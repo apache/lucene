@@ -27,18 +27,22 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
+import org.apache.lucene.codecs.lucene95.OffHeapFloat16VectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.search.AcceptDocs;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.FileDataHint;
@@ -212,7 +216,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   @Override
   public FloatVectorValues getFloatVectorValues(String field) throws IOException {
     final FieldEntry fieldEntry =
-        getFieldEntry(field, VectorEncoding.FLOAT32, VectorEncoding.FLOAT16);
+        getFieldEntry(field, VectorEncoding.FLOAT32);
     return OffHeapFloatVectorValues.load(
         fieldEntry.similarityFunction,
         vectorScorer,
@@ -228,6 +232,20 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   public ByteVectorValues getByteVectorValues(String field) throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.BYTE);
     return OffHeapByteVectorValues.load(
+        fieldEntry.similarityFunction,
+        vectorScorer,
+        fieldEntry.ordToDoc,
+        fieldEntry.vectorEncoding,
+        fieldEntry.dimension,
+        fieldEntry.vectorDataOffset,
+        fieldEntry.vectorDataLength,
+        vectorData);
+  }
+
+  @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT16);
+    return OffHeapFloat16VectorValues.load(
         fieldEntry.similarityFunction,
         vectorScorer,
         fieldEntry.ordToDoc,
@@ -262,6 +280,24 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     return vectorScorer.getRandomVectorScorer(
         fieldEntry.similarityFunction,
         OffHeapByteVectorValues.load(
+            fieldEntry.similarityFunction,
+            vectorScorer,
+            fieldEntry.ordToDoc,
+            fieldEntry.vectorEncoding,
+            fieldEntry.dimension,
+            fieldEntry.vectorDataOffset,
+            fieldEntry.vectorDataLength,
+            vectorData),
+        target);
+  }
+
+  @Override
+  public RandomVectorScorer getRandomVectorScorer(String field, short[] target) throws IOException {
+
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT16);
+    return vectorScorer.getRandomVectorScorer(
+        fieldEntry.similarityFunction,
+        OffHeapFloat16VectorValues.load(
             fieldEntry.similarityFunction,
             vectorScorer,
             fieldEntry.ordToDoc,

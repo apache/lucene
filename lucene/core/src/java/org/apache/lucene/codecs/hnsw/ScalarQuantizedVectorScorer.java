@@ -53,6 +53,23 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     return scalarQuantizer.quantize(processedQuery, quantizedQuery, similarityFunction);
   }
 
+  public static float quantizeQuery(
+      short[] query,
+      byte[] quantizedQuery,
+      VectorSimilarityFunction similarityFunction,
+      ScalarQuantizer scalarQuantizer) {
+    short[] processedQuery =
+        switch (similarityFunction) {
+          case EUCLIDEAN, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT -> query;
+          case COSINE -> {
+            short[] queryCopy = ArrayUtil.copyArray(query);
+            VectorUtil.l2normalize(queryCopy);
+            yield queryCopy;
+          }
+        };
+    return scalarQuantizer.quantize(processedQuery, quantizedQuery, similarityFunction);
+  }
+
   private final FlatVectorsScorer nonQuantizedDelegate;
 
   public ScalarQuantizedVectorScorer(FlatVectorsScorer flatVectorsScorer) {
@@ -105,6 +122,34 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
   public RandomVectorScorer getRandomVectorScorer(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, byte[] target)
       throws IOException {
+    return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
+  }
+
+  @Override
+  public RandomVectorScorer getRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, short[] target)
+      throws IOException {
+    if (vectorValues instanceof QuantizedByteVectorValues quantizedByteVectorValues) {
+      ScalarQuantizer scalarQuantizer = quantizedByteVectorValues.getScalarQuantizer();
+      byte[] targetBytes = new byte[target.length];
+      float offsetCorrection =
+          quantizeQuery(target, targetBytes, similarityFunction, scalarQuantizer);
+      ScalarQuantizedVectorSimilarity scalarQuantizedVectorSimilarity =
+          ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
+              similarityFunction,
+              scalarQuantizer.getConstantMultiplier(),
+              scalarQuantizer.getBits());
+      return new RandomVectorScorer.AbstractRandomVectorScorer(quantizedByteVectorValues) {
+        @Override
+        public float score(int node) throws IOException {
+          byte[] nodeVector = quantizedByteVectorValues.vectorValue(node);
+          float nodeOffset = quantizedByteVectorValues.getScoreCorrectionConstant(node);
+          return scalarQuantizedVectorSimilarity.score(
+              targetBytes, offsetCorrection, nodeVector, nodeOffset);
+        }
+      };
+    }
+    // It is possible to get to this branch during initial indexing and flush
     return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
 

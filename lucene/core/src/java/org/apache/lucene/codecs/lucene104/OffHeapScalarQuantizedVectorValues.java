@@ -330,6 +330,31 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
     }
 
     @Override
+    public VectorScorer scorer(short[] target) throws IOException {
+      assert isQuerySide == false;
+      OffHeapScalarQuantizedVectorValues.DenseOffHeapVectorValues copy = copy();
+      DocIndexIterator iterator = copy.iterator();
+      RandomVectorScorer scorer =
+          vectorsScorer.getRandomVectorScorer(similarityFunction, copy, target);
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return scorer.score(iterator.index());
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return iterator;
+        }
+
+        @Override
+        public VectorScorer.Bulk bulk(DocIdSetIterator matchingDocs) {
+          return Bulk.fromRandomScorerDense(scorer, iterator, matchingDocs);
+        }
+      };
+    }
+
+    @Override
     public DocIndexIterator iterator() {
       return createDenseIterator();
     }
@@ -442,6 +467,31 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
         }
       };
     }
+
+    @Override
+    public VectorScorer scorer(short[] target) throws IOException {
+      assert isQuerySide == false;
+      SparseOffHeapVectorValues copy = copy();
+      DocIndexIterator iterator = copy.iterator();
+      RandomVectorScorer scorer =
+          vectorsScorer.getRandomVectorScorer(similarityFunction, copy, target);
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          return scorer.score(iterator.index());
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return iterator;
+        }
+
+        @Override
+        public VectorScorer.Bulk bulk(DocIdSetIterator matchingDocs) {
+          return Bulk.fromRandomScorerSparse(scorer, iterator, matchingDocs);
+        }
+      };
+    }
   }
 
   private static class EmptyOffHeapVectorValues extends OffHeapScalarQuantizedVectorValues {
@@ -479,6 +529,11 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
 
     @Override
     public VectorScorer scorer(float[] target) {
+      return null;
+    }
+
+    @Override
+    public VectorScorer scorer(short[] target) {
       return null;
     }
   }

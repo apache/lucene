@@ -27,11 +27,17 @@ public interface VectorUtilSupport {
   /** Calculates the dot product of the given float arrays. */
   float dotProduct(float[] a, float[] b);
 
+  /** Calculates the dot product of the given short arrays used when we are using float16 vectors. */
+  short dotProduct(short[] a, short[] b);
+
   /** Returns the cosine similarity between the two vectors. */
   float cosine(float[] v1, float[] v2);
 
   /** Returns the sum of squared differences of the two vectors. */
   float squareDistance(float[] a, float[] b);
+
+  /** Returns the sum of squared differences of the two vectors. */
+  short squareDistance(short[] a, short[] b);
 
   /** Returns the dot product computed over signed bytes. */
   int dotProduct(byte[] a, byte[] b);
@@ -144,6 +150,8 @@ public interface VectorUtilSupport {
   int filterByScore(int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo);
 
   float[] l2normalize(float[] v, boolean throwOnZero);
+
+  short[] l2normalize(short[] v, boolean throwOnZero);
 
   /**
    * Expands a 64-element integer array into a 256-element array by extracting individual bytes.

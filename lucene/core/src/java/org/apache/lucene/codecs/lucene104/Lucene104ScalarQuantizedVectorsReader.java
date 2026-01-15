@@ -33,6 +33,7 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
@@ -185,6 +186,30 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   }
 
   @Override
+  public RandomVectorScorer getRandomVectorScorer(String field, short[] target) throws IOException {
+    FieldEntry fi = fields.get(field);
+    if (fi == null) {
+      return null;
+    }
+    return vectorScorer.getRandomVectorScorer(
+        fi.similarityFunction,
+        OffHeapScalarQuantizedVectorValues.load(
+            fi.ordToDocDISIReaderConfiguration,
+            fi.dimension,
+            fi.size,
+            new OptimizedScalarQuantizer(fi.similarityFunction),
+            fi.scalarEncoding,
+            fi.similarityFunction,
+            vectorScorer,
+            fi.centroid,
+            fi.centroidDP,
+            fi.vectorDataOffset,
+            fi.vectorDataLength,
+            quantizedVectorData),
+        target);
+  }
+
+  @Override
   public RandomVectorScorer getRandomVectorScorer(String field, byte[] target) throws IOException {
     return rawVectorsReader.getRandomVectorScorer(field, target);
   }
@@ -201,17 +226,14 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     if (fi == null) {
       return null;
     }
-    if (fi.vectorEncoding != VectorEncoding.FLOAT32
-        && fi.vectorEncoding != VectorEncoding.FLOAT16) {
+    if (fi.vectorEncoding != VectorEncoding.FLOAT32) {
       throw new IllegalArgumentException(
           "field=\""
               + field
               + "\" is encoded as: "
               + fi.vectorEncoding
               + " expected: "
-              + VectorEncoding.FLOAT32
-              + " or "
-              + VectorEncoding.FLOAT16);
+              + VectorEncoding.FLOAT32);
     }
 
     FloatVectorValues rawFloatVectorValues = rawVectorsReader.getFloatVectorValues(field);
@@ -253,7 +275,62 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   }
 
   @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    FieldEntry fi = fields.get(field);
+    if (fi == null) {
+      return null;
+    }
+    if (fi.vectorEncoding != VectorEncoding.FLOAT16) {
+      throw new IllegalArgumentException(
+          "field=\""
+              + field
+              + "\" is encoded as: "
+              + fi.vectorEncoding
+              + " expected: "
+              + VectorEncoding.FLOAT16);
+    }
+
+    Float16VectorValues rawFloatVectorValues = rawVectorsReader.getFloat16VectorValues(field);
+
+//    if (rawFloatVectorValues.size() == 0) {
+//      return OffHeapScalarQuantizedFloatVectorValues.load(
+//          fi.ordToDocDISIReaderConfiguration,
+//          fi.dimension,
+//          fi.size,
+//          fi.scalarEncoding,
+//          fi.similarityFunction,
+//          vectorScorer,
+//          fi.centroid,
+//          fi.vectorDataOffset,
+//          fi.vectorDataLength,
+//          quantizedVectorData);
+//    }
+
+    OffHeapScalarQuantizedVectorValues sqvv =
+        OffHeapScalarQuantizedVectorValues.load(
+            fi.ordToDocDISIReaderConfiguration,
+            fi.dimension,
+            fi.size,
+            new OptimizedScalarQuantizer(fi.similarityFunction),
+            fi.scalarEncoding,
+            fi.similarityFunction,
+            vectorScorer,
+            fi.centroid,
+            fi.centroidDP,
+            fi.vectorDataOffset,
+            fi.vectorDataLength,
+            quantizedVectorData);
+    return new ScalarQuantizedFloat16VectorValues(rawFloatVectorValues, sqvv);
+  }
+
+  @Override
   public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    rawVectorsReader.search(field, target, knnCollector, acceptDocs);
+  }
+
+  @Override
+  public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     rawVectorsReader.search(field, target, knnCollector, acceptDocs);
   }
@@ -555,6 +632,67 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
 
     @Override
     public VectorScorer rescorer(float[] target) throws IOException {
+      return rawVectorValues.rescorer(target);
+    }
+
+    QuantizedByteVectorValues getQuantizedVectorValues() throws IOException {
+      return quantizedVectorValues;
+    }
+  }
+
+  /** Vector values holding row and quantized vector values */
+  protected static final class ScalarQuantizedFloat16VectorValues extends Float16VectorValues {
+    private final Float16VectorValues rawVectorValues;
+    private final QuantizedByteVectorValues quantizedVectorValues;
+
+    ScalarQuantizedFloat16VectorValues(
+        Float16VectorValues rawVectorValues, QuantizedByteVectorValues quantizedVectorValues) {
+      this.rawVectorValues = rawVectorValues;
+      this.quantizedVectorValues = quantizedVectorValues;
+    }
+
+    @Override
+    public int dimension() {
+      return rawVectorValues.dimension();
+    }
+
+    @Override
+    public int size() {
+      return rawVectorValues.size();
+    }
+
+    @Override
+    public short[] vectorValue(int ord) throws IOException {
+      return rawVectorValues.vectorValue(ord);
+    }
+
+    @Override
+    public ScalarQuantizedFloat16VectorValues copy() throws IOException {
+      return new ScalarQuantizedFloat16VectorValues(rawVectorValues.copy(), quantizedVectorValues.copy());
+    }
+
+    @Override
+    public Bits getAcceptOrds(Bits acceptDocs) {
+      return rawVectorValues.getAcceptOrds(acceptDocs);
+    }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return rawVectorValues.ordToDoc(ord);
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return rawVectorValues.iterator();
+    }
+
+    @Override
+    public VectorScorer scorer(short[] query) throws IOException {
+      return quantizedVectorValues.scorer(query);
+    }
+
+    @Override
+    public VectorScorer rescorer(short[] target) throws IOException {
       return rawVectorValues.rescorer(target);
     }
 

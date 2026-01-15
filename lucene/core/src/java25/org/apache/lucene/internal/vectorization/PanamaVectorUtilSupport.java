@@ -29,9 +29,13 @@ import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_S2I;
 import static org.apache.lucene.util.VectorUtil.EPSILON;
 
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
+import java.nio.ByteOrder;
 import jdk.incubator.vector.ByteVector;
 import jdk.incubator.vector.DoubleVector;
+import jdk.incubator.vector.Float16;
 import jdk.incubator.vector.FloatVector;
+import jdk.incubator.vector.Float16Vector;
 import jdk.incubator.vector.IntVector;
 import jdk.incubator.vector.LongVector;
 import jdk.incubator.vector.ShortVector;
@@ -67,6 +71,9 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       PanamaVectorConstants.PRERERRED_INT_SPECIES;
   private static final VectorSpecies<Byte> BYTE_SPECIES;
   private static final VectorSpecies<Short> SHORT_SPECIES;
+  static final ByteOrder LE = ByteOrder.LITTLE_ENDIAN;
+  private static final VectorSpecies<Float16> FLOAT16_SPECIES  = PanamaVectorConstants.PREFERRED_FLOAT16_SPECIES;
+  private static final ValueLayout.OfShort LAYOUT_LE_FLOAT16 = ValueLayout.JAVA_SHORT_UNALIGNED.withOrder(LE);
   private static final VectorSpecies<Byte> BYTE_SPECIES_128 = ByteVector.SPECIES_128;
   private static final VectorSpecies<Byte> BYTE_SPECIES_256 = ByteVector.SPECIES_256;
 
@@ -96,6 +103,17 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
   }
 
+
+  @SuppressForbidden(reason = "Uses FMA only where fast and carefully contained")
+  static Float16Vector fma(Float16Vector a, Float16Vector b, Float16Vector c) {
+    if (Constants.HAS_FAST_VECTOR_FMA) {
+      return a.fma(b, c);
+    } else {
+      return a.mul(b).add(c);
+    }
+  }
+
+
   @SuppressForbidden(reason = "Uses FMA only where fast and carefully contained")
   static float fma(float a, float b, float c) {
     if (Constants.HAS_FAST_SCALAR_FMA) {
@@ -103,6 +121,14 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     } else {
       return a * b + c;
     }
+  }
+
+  static short fma(short a, short b, short c) {
+
+    return Float16.fma(Float16.shortBitsToFloat16(a),
+        Float16.shortBitsToFloat16(b),
+        Float16.shortBitsToFloat16(c))
+        .shortValue();
   }
 
   @Override
@@ -122,6 +148,26 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     }
     return res;
   }
+
+  public static short dotProduct(MemorySegment seg, long q, long d, int elementCount) {
+    int i = 0;
+    Float16Vector sv = Float16Vector.zero(FLOAT16_SPECIES);
+    final int limit = FLOAT16_SPECIES.loopBound(elementCount);
+    for (; i < limit; i += FLOAT16_SPECIES.length()) {
+      final long offset = (long) i * Short.BYTES;
+      Float16Vector qv = Float16Vector.fromMemorySegment(FLOAT16_SPECIES, seg, q + offset, LE);
+      Float16Vector dv = Float16Vector.fromMemorySegment(FLOAT16_SPECIES, seg, d + offset, LE);
+      sv = fma(qv, dv, sv);
+    }
+    short score = sv.reduceLanes(VectorOperators.ADD);
+
+    for (; i < elementCount; i++) {
+      final long offset = (long) i * Short.BYTES;
+      score += seg.get(LAYOUT_LE_FLOAT16, q + offset) * seg.get(LAYOUT_LE_FLOAT16, d + offset);
+    }
+    return score;
+  }
+
 
   /** vectorized float dot product body */
   private float dotProductBody(float[] a, float[] b, int limit) {
@@ -165,6 +211,68 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     FloatVector res2 = acc3.add(acc4);
     return res1.add(res2).reduceLanes(ADD);
   }
+
+  @Override
+  public short dotProduct(short[] a, short[] b) {
+    int i = 0;
+    short res = 0;
+
+    // if the array size is large (> 2x platform vector size), it's worth the overhead to vectorize
+    if (a.length > 2 * FLOAT16_SPECIES.length()) {
+      i += FLOAT16_SPECIES.loopBound(a.length);
+      res += dotProductBody(a, b, i);
+    }
+
+    // scalar tail
+    for (; i < a.length; i++) {
+      res = fma(a[i], b[i], res);
+    }
+    return res;
+  }
+
+  /** vectorized float dot product body */
+  private short dotProductBody(short[] a, short[] b, int limit) {
+    int i = 0;
+    // vector loop is unrolled 4x (4 accumulators in parallel)
+    // we don't know how many the cpu can do at once, some can do 2, some 4
+    Float16Vector acc1 = Float16Vector.zero(FLOAT16_SPECIES);
+    Float16Vector acc2 = Float16Vector.zero(FLOAT16_SPECIES);
+    Float16Vector acc3 = Float16Vector.zero(FLOAT16_SPECIES);
+    Float16Vector acc4 = Float16Vector.zero(FLOAT16_SPECIES);
+    int unrolledLimit = limit - 3 * FLOAT16_SPECIES.length();
+    for (; i < unrolledLimit; i += 4 * FLOAT16_SPECIES.length()) {
+      // one
+      Float16Vector va = Float16Vector.fromArray(FLOAT16_SPECIES, a, i);
+      Float16Vector vb = Float16Vector.fromArray(FLOAT16_SPECIES, b, i);
+      acc1 = fma(va, vb, acc1);
+
+      // two
+      Float16Vector vc = Float16Vector.fromArray(FLOAT16_SPECIES, a, i + FLOAT16_SPECIES.length());
+      Float16Vector vd = Float16Vector.fromArray(FLOAT16_SPECIES, b, i + FLOAT16_SPECIES.length());
+      acc2 = fma(vc, vd, acc2);
+
+      // three
+      Float16Vector ve = Float16Vector.fromArray(FLOAT16_SPECIES, a, i + 2 * FLOAT16_SPECIES.length());
+      Float16Vector vf = Float16Vector.fromArray(FLOAT16_SPECIES, b, i + 2 * FLOAT16_SPECIES.length());
+      acc3 = fma(ve, vf, acc3);
+
+      // four
+      Float16Vector vg = Float16Vector.fromArray(FLOAT16_SPECIES, a, i + 3 * FLOAT16_SPECIES.length());
+      Float16Vector vh = Float16Vector.fromArray(FLOAT16_SPECIES, b, i + 3 * FLOAT16_SPECIES.length());
+      acc4 = fma(vg, vh, acc4);
+    }
+    // vector tail: less scalar computations for unaligned sizes, esp with big vector sizes
+    for (; i < limit; i += FLOAT16_SPECIES.length()) {
+      Float16Vector va = Float16Vector.fromArray(FLOAT16_SPECIES, a, i);
+      Float16Vector vb = Float16Vector.fromArray(FLOAT16_SPECIES, b, i);
+      acc1 = fma(va, vb, acc1);
+    }
+    // reduce
+    Float16Vector res1 = acc1.add(acc2);
+    Float16Vector res2 = acc3.add(acc4);
+    return res1.add(res2).reduceLanes(ADD);
+  }
+
 
   @Override
   public float cosine(float[] a, float[] b) {
@@ -297,6 +405,74 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     // reduce
     FloatVector res1 = acc1.add(acc2);
     FloatVector res2 = acc3.add(acc4);
+    return res1.add(res2).reduceLanes(ADD);
+  }
+
+  @Override
+  public short squareDistance(short[] a, short[] b) {
+    int i = 0;
+    short res = 0;
+
+    // if the array size is large (> 2x platform vector size), it's worth the overhead to vectorize
+    if (a.length > 2 * FLOAT16_SPECIES.length()) {
+      i += FLOAT_SPECIES.loopBound(a.length);
+      res += squareDistanceBody(a, b, i);
+    }
+
+    short diff;
+    // scalar tail
+    for (; i < a.length; i++) {
+      diff = Float16.subtract(Float16.shortBitsToFloat16(a[i]), Float16.shortBitsToFloat16(b[i])).shortValue();
+      res = fma(diff, diff, res);
+    }
+    return res;
+  }
+
+  /** vectorized square distance body */
+  private float squareDistanceBody(short[] a, short[] b, int limit) {
+    int i = 0;
+    // vector loop is unrolled 4x (4 accumulators in parallel)
+    // we don't know how many the cpu can do at once, some can do 2, some 4
+    Float16Vector acc1 = Float16Vector.zero(FLOAT16_SPECIES);
+    Float16Vector acc2 = Float16Vector.zero(FLOAT16_SPECIES);
+    Float16Vector acc3 = Float16Vector.zero(FLOAT16_SPECIES);
+    Float16Vector acc4 = Float16Vector.zero(FLOAT16_SPECIES);
+    int unrolledLimit = limit - 3 * FLOAT16_SPECIES.length();
+    for (; i < unrolledLimit; i += 4 * FLOAT16_SPECIES.length()) {
+      // one
+      Float16Vector va = Float16Vector.fromArray(FLOAT16_SPECIES, a, i);
+      Float16Vector vb = Float16Vector.fromArray(FLOAT16_SPECIES, b, i);
+      Float16Vector diff1 = va.sub(vb);
+      acc1 = fma(diff1, diff1, acc1);
+
+      // two
+      Float16Vector vc = Float16Vector.fromArray(FLOAT16_SPECIES, a, i + FLOAT16_SPECIES.length());
+      Float16Vector vd = Float16Vector.fromArray(FLOAT16_SPECIES, b, i + FLOAT16_SPECIES.length());
+      Float16Vector diff2 = vc.sub(vd);
+      acc2 = fma(diff2, diff2, acc2);
+
+      // three
+      Float16Vector ve = Float16Vector.fromArray(FLOAT16_SPECIES, a, i + 2 * FLOAT16_SPECIES.length());
+      Float16Vector vf = Float16Vector.fromArray(FLOAT16_SPECIES, b, i + 2 * FLOAT16_SPECIES.length());
+      Float16Vector diff3 = ve.sub(vf);
+      acc3 = fma(diff3, diff3, acc3);
+
+      // four
+      Float16Vector vg = Float16Vector.fromArray(FLOAT16_SPECIES, a, i + 3 * FLOAT16_SPECIES.length());
+      Float16Vector vh = Float16Vector.fromArray(FLOAT16_SPECIES, b, i + 3 * FLOAT16_SPECIES.length());
+      Float16Vector diff4 = vg.sub(vh);
+      acc4 = fma(diff4, diff4, acc4);
+    }
+    // vector tail: less scalar computations for unaligned sizes, esp with big vector sizes
+    for (; i < limit; i += FLOAT16_SPECIES.length()) {
+      Float16Vector va = Float16Vector.fromArray(FLOAT16_SPECIES, a, i);
+      Float16Vector vb = Float16Vector.fromArray(FLOAT16_SPECIES, b, i);
+      Float16Vector diff = va.sub(vb);
+      acc1 = fma(diff, diff, acc1);
+    }
+    // reduce
+    Float16Vector res1 = acc1.add(acc2);
+    Float16Vector res2 = acc3.add(acc4);
     return res1.add(res2).reduceLanes(ADD);
   }
 
@@ -1432,6 +1608,58 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         arr[128 + i] = (l >>> 8) & 0xFF;
         arr[192 + i] = l & 0xFF;
       }
+    }
+  }
+
+  @Override
+  public short[] l2normalize(short[] v, boolean throwOnZero) {
+    double l1norm = this.dotProduct(v, v);
+    if (l1norm == 0) {
+      if (throwOnZero) {
+        throw new IllegalArgumentException("Cannot normalize a zero-length vector");
+      } else {
+        return v;
+      }
+    }
+    if (Math.abs(l1norm - 1.0d) <= EPSILON) {
+      return v;
+    }
+
+    float invNorm = 1.0f / (float) Math.sqrt(l1norm);
+    int i = 0;
+
+    // if the array size is large (> 2x platform vector size), it's worth the overhead to vectorize
+    if (v.length > 2 * FLOAT16_SPECIES.length()) {
+      i += FLOAT16_SPECIES.loopBound(v.length);
+      l2normalizeBody(v, invNorm, i);
+    }
+
+    for (; i < v.length; i++) {
+      v[i] = Float.floatToFloat16(Float.float16ToFloat(v[i]) * invNorm);
+    }
+    return v;
+  }
+
+  private void l2normalizeBody(short[] v, float invNorm, int limit) {
+    Float16Vector invNormVector = Float16Vector.broadcast(FLOAT16_SPECIES, (short) Float.floatToFloat16(invNorm));
+    int i = 0;
+    int unrolledLimit = limit - 3 * FLOAT16_SPECIES.length();
+
+    for (; i < unrolledLimit; i += 4 * FLOAT16_SPECIES.length()) {
+      Float16Vector.fromArray(FLOAT16_SPECIES, v, i).mul(invNormVector).intoArray(v, i);
+      Float16Vector.fromArray(FLOAT16_SPECIES, v, i + FLOAT16_SPECIES.length())
+          .mul(invNormVector)
+          .intoArray(v, i + FLOAT16_SPECIES.length());
+      Float16Vector.fromArray(FLOAT16_SPECIES, v, i + 2 * FLOAT16_SPECIES.length())
+          .mul(invNormVector)
+          .intoArray(v, i + 2 * FLOAT16_SPECIES.length());
+      Float16Vector.fromArray(FLOAT16_SPECIES, v, i + 3 * FLOAT16_SPECIES.length())
+          .mul(invNormVector)
+          .intoArray(v, i + 3 * FLOAT16_SPECIES.length());
+    }
+
+    for (; i < limit; i += FLOAT16_SPECIES.length()) {
+      Float16Vector.fromArray(FLOAT16_SPECIES, v, i).mul(invNormVector).intoArray(v, i);
     }
   }
 }

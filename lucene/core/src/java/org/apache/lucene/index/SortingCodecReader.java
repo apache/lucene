@@ -383,6 +383,42 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
   }
 
+  private static class SortingFloat16VectorValues extends Float16VectorValues {
+    final Float16VectorValues delegate;
+    final SortingIteratorSupplier iteratorSupplier;
+
+    SortingFloat16VectorValues(Float16VectorValues delegate, Sorter.DocMap sortMap) throws IOException {
+      this.delegate = delegate;
+      // SortingValuesIterator consumes the iterator and records the docs and ord mapping
+      iteratorSupplier = iteratorSupplier(delegate, sortMap);
+    }
+
+    @Override
+    public short[] vectorValue(int ord) throws IOException {
+      return delegate.vectorValue(ord);
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return iteratorSupplier.get();
+    }
+
+    @Override
+    public int dimension() {
+      return delegate.dimension();
+    }
+
+    @Override
+    public int size() {
+      return iteratorSupplier.size();
+    }
+
+    @Override
+    public Float16VectorValues copy() {
+      throw new UnsupportedOperationException();
+    }
+  }
+
   /**
    * Return a sorted view of <code>reader</code> according to the order defined by <code>sort</code>
    * . If the reader is already sorted, this method might return the reader as-is.
@@ -582,6 +618,11 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
+      public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+        return new SortingFloat16VectorValues(delegate.getFloat16VectorValues(field), docMap);
+      }
+
+      @Override
       public void search(
           String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {
         throw new UnsupportedOperationException();
@@ -590,6 +631,12 @@ public final class SortingCodecReader extends FilterCodecReader {
       @Override
       public void search(
           String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {
+        throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+          throws IOException {
         throw new UnsupportedOperationException();
       }
 

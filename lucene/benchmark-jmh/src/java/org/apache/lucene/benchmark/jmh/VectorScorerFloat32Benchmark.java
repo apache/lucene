@@ -327,8 +327,7 @@ public class VectorScorerFloat32Benchmark {
         in.slice("test", 0, in.length()),
         byteSize,
         new ThrowingFlatVectorScorer(),
-        sim,
-        VectorEncoding.FLOAT32);
+        sim);
   }
 
   static final class ThrowingFlatVectorScorer implements FlatVectorsScorer {
@@ -348,6 +347,14 @@ public class VectorScorerFloat32Benchmark {
     @Override
     public RandomVectorScorer getRandomVectorScorer(
         VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, byte[] target) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public RandomVectorScorer getRandomVectorScorer(
+        VectorSimilarityFunction similarityFunction,
+        KnnVectorValues vectorValues,
+        short[] target) {
       throw new UnsupportedOperationException();
     }
   }

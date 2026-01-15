@@ -457,6 +457,13 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    LeafReader reader = fieldToReader.get(field);
+    return reader == null ? null : reader.getFloat16VectorValues(field);
+  }
+
+
+  @Override
   public ByteVectorValues getByteVectorValues(String fieldName) throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
@@ -471,6 +478,16 @@ public class ParallelLeafReader extends LeafReader {
     LeafReader reader = fieldToReader.get(fieldName);
     if (reader != null) {
       reader.searchNearestVectors(fieldName, target, knnCollector, acceptDocs);
+    }
+  }
+
+  @Override
+  public void searchNearestVectors(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    ensureOpen();
+    LeafReader reader = fieldToReader.get(field);
+    if (reader != null) {
+      reader.searchNearestVectors(field, target, knnCollector, acceptDocs);
     }
   }
 

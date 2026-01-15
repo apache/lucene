@@ -30,6 +30,7 @@ import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafMetaData;
 import org.apache.lucene.index.LeafReader;
@@ -236,6 +237,11 @@ class MergeReaderWrapper extends LeafReader {
   }
 
   @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    return in.getFloat16VectorValues(field);
+  }
+
+  @Override
   public ByteVectorValues getByteVectorValues(String fieldName) throws IOException {
     return in.getByteVectorValues(fieldName);
   }
@@ -243,6 +249,12 @@ class MergeReaderWrapper extends LeafReader {
   @Override
   public void searchNearestVectors(
       String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    in.searchNearestVectors(field, target, knnCollector, acceptDocs);
+  }
+
+  @Override
+  public void searchNearestVectors(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     in.searchNearestVectors(field, target, knnCollector, acceptDocs);
   }

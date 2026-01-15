@@ -1881,6 +1881,13 @@ public class AssertingLeafReader extends FilterLeafReader {
     super.searchNearestVectors(field, target, knnCollector, acceptDocs);
   }
 
+  @Override
+  public void searchNearestVectors(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    acceptDocs = AssertingAcceptDocs.wrap(acceptDocs);
+    super.searchNearestVectors(field, target, knnCollector, acceptDocs);
+  }
+
   // we don't change behavior of the reader: just validate the API.
 
   @Override

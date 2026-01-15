@@ -339,6 +339,15 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
+    public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+      final Float16VectorValues vectorValues = in.getFloat16VectorValues(field);
+      if (vectorValues == null) {
+        return null;
+      }
+      return new ExitableFloat16VectorValues(vectorValues);
+    }
+
+    @Override
     public ByteVectorValues getByteVectorValues(String field) throws IOException {
       final ByteVectorValues vectorValues = in.getByteVectorValues(field);
       if (vectorValues == null) {
@@ -429,6 +438,12 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
+    public void searchNearestVectors(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+        throws IOException {
+
+    }
+
+    @Override
     public void searchNearestVectors(
         String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
@@ -507,6 +522,49 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
 
       @Override
       public FloatVectorValues copy() {
+        throw new UnsupportedOperationException();
+      }
+    }
+
+    private class ExitableFloat16VectorValues extends Float16VectorValues {
+      private final Float16VectorValues vectorValues;
+
+      public ExitableFloat16VectorValues(Float16VectorValues vectorValues) {
+        this.vectorValues = vectorValues;
+      }
+
+      @Override
+      public int dimension() {
+        return vectorValues.dimension();
+      }
+
+      @Override
+      public short[] vectorValue(int ord) throws IOException {
+        return vectorValues.vectorValue(ord);
+      }
+
+      @Override
+      public int ordToDoc(int ord) {
+        return vectorValues.ordToDoc(ord);
+      }
+
+      @Override
+      public int size() {
+        return vectorValues.size();
+      }
+
+      @Override
+      public DocIndexIterator iterator() {
+        return createExitableIterator(vectorValues.iterator(), queryTimeout);
+      }
+
+      @Override
+      public VectorScorer scorer(short[] target) throws IOException {
+        return vectorValues.scorer(target);
+      }
+
+      @Override
+      public Float16VectorValues copy() {
         throw new UnsupportedOperationException();
       }
     }

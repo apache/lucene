@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.internal.vectorization;
 
+import jdk.incubator.vector.Float16;
 import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.util.Constants;
@@ -31,6 +32,7 @@ final class PanamaVectorConstants {
 
   static final VectorSpecies<Integer> PRERERRED_INT_SPECIES;
   static final VectorSpecies<Double> PREFERRED_DOUBLE_SPECIES;
+  static final VectorSpecies<Float16> PREFERRED_FLOAT16_SPECIES;
 
   static {
     // default to platform supported bitsize
@@ -49,6 +51,8 @@ final class PanamaVectorConstants {
         VectorSpecies.of(int.class, VectorShape.forBitSize(PREFERRED_VECTOR_BITSIZE));
     PREFERRED_DOUBLE_SPECIES =
         VectorSpecies.of(double.class, VectorShape.forBitSize(PREFERRED_VECTOR_BITSIZE));
+
+    PREFERRED_FLOAT16_SPECIES = VectorSpecies.of(Float16.class, VectorShape.forBitSize(PREFERRED_VECTOR_BITSIZE));
   }
 
   private PanamaVectorConstants() {}

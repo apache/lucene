@@ -94,6 +94,14 @@ public class Lucene102BinaryFlatVectorsScorer implements FlatVectorsScorer {
   }
 
   @Override
+  public RandomVectorScorer getRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction,
+      KnnVectorValues vectorValues,
+      short[] target) throws IOException {
+    return null;
+  }
+
+  @Override
   public String toString() {
     return "Lucene102BinaryFlatVectorsScorer(nonQuantizedDelegate=" + nonQuantizedDelegate + ")";
   }

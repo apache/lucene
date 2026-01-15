@@ -42,6 +42,11 @@ public enum VectorSimilarityFunction {
     public float compare(byte[] v1, byte[] v2) {
       return 1 / (1f + squareDistance(v1, v2));
     }
+
+    @Override
+    public float compare(short[] v1, short[] v2) {
+      return normalizeDistanceToUnitInterval(squareDistance(v1, v2));
+    }
   },
 
   /**
@@ -61,6 +66,12 @@ public enum VectorSimilarityFunction {
     public float compare(byte[] v1, byte[] v2) {
       return dotProductScore(v1, v2);
     }
+
+    @Override
+    public float compare(short[] v1, short[] v2) {
+
+      return dotProduct(v1, v2);
+    }
   },
 
   /**
@@ -79,6 +90,17 @@ public enum VectorSimilarityFunction {
     public float compare(byte[] v1, byte[] v2) {
       return (1 + cosine(v1, v2)) / 2;
     }
+
+    @Override
+    public float compare(short[] v1, short[] v2) {
+      float[] v1f = new float[v1.length];
+      float[] v2f = new float[v2.length];
+      for (int i = 0; i < v1.length; i++) {
+        v1f[i] = Float.float16ToFloat(v1[i]);
+        v2f[i] = Float.float16ToFloat(v1[i]);
+      }
+      return normalizeToUnitInterval(cosine(v1f, v2f));
+    }
   },
 
   /**
@@ -96,6 +118,10 @@ public enum VectorSimilarityFunction {
     public float compare(byte[] v1, byte[] v2) {
       return scaleMaxInnerProductScore(dotProduct(v1, v2));
     }
+
+    @Override
+    public float compare(short[] v1, short[] v2) {return scaleMaxInnerProductScore(dotProduct(v1, v2));
+  }
   };
 
   /**
@@ -118,4 +144,15 @@ public enum VectorSimilarityFunction {
    * @return the value of the similarity function applied to the two vectors
    */
   public abstract float compare(byte[] v1, byte[] v2);
+
+  /**
+   * Calculates a similarity score between the two vectors with a specified function. Higher
+   * similarity scores correspond to closer vectors. Each short represents a vector
+   * dimension.
+   *
+   * @param v1 a vector
+   * @param v2 another vector, of the same dimension
+   * @return the value of the similarity function applied to the two vectors
+   */
+  public abstract float compare(short[] v1, short[] v2);
 }

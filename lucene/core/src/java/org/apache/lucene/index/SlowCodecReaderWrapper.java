@@ -175,6 +175,11 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
+      public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+        return reader.getFloat16VectorValues(field);
+      }
+
+      @Override
       public void search(
           String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
           throws IOException {
@@ -184,6 +189,12 @@ public final class SlowCodecReaderWrapper {
       @Override
       public void search(
           String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+          throws IOException {
+        reader.searchNearestVectors(field, target, knnCollector, acceptDocs);
+      }
+
+      @Override
+      public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
           throws IOException {
         reader.searchNearestVectors(field, target, knnCollector, acceptDocs);
       }

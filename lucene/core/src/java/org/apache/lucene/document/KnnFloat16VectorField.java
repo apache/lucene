@@ -21,6 +21,7 @@ import java.util.Objects;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.KnnFloat16VectorQuery;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.util.VectorUtil;
@@ -37,9 +38,9 @@ import org.apache.lucene.util.VectorUtil;
  *
  * @lucene.experimental
  */
-public class KnnFloatVectorField extends Field {
+public class KnnFloat16VectorField extends Field {
 
-  private static FieldType createType(float[] v, VectorSimilarityFunction similarityFunction) {
+  private static FieldType createType(short[] v, VectorSimilarityFunction similarityFunction) {
     if (v == null) {
       throw new IllegalArgumentException("vector value must not be null");
     }
@@ -51,13 +52,13 @@ public class KnnFloatVectorField extends Field {
       throw new IllegalArgumentException("similarity function must not be null");
     }
     FieldType type = new FieldType();
-    type.setVectorAttributes(dimension, VectorEncoding.FLOAT32, similarityFunction);
+    type.setVectorAttributes(dimension, VectorEncoding.FLOAT16, similarityFunction);
     type.freeze();
     return type;
   }
 
   private static FieldType createType(
-      float[] v, VectorSimilarityFunction similarityFunction, VectorEncoding vectorEncoding) {
+      short[] v, VectorSimilarityFunction similarityFunction, VectorEncoding vectorEncoding) {
     if (v == null) {
       throw new IllegalArgumentException("vector value must not be null");
     }
@@ -73,8 +74,8 @@ public class KnnFloatVectorField extends Field {
       throw new IllegalArgumentException("Vector encoding must not be null");
     }
 
-    if (vectorEncoding != VectorEncoding.FLOAT32) {
-      throw new IllegalArgumentException("Vector encoding must be FLOAT32");
+    if (vectorEncoding != VectorEncoding.FLOAT16) {
+      throw new IllegalArgumentException("Vector encoding must be FLOAT16");
     }
 
     FieldType type = new FieldType();
@@ -93,7 +94,7 @@ public class KnnFloatVectorField extends Field {
   public static FieldType createFieldType(
       int dimension, VectorSimilarityFunction similarityFunction) {
     FieldType type = new FieldType();
-    type.setVectorAttributes(dimension, VectorEncoding.FLOAT32, similarityFunction);
+    type.setVectorAttributes(dimension, VectorEncoding.FLOAT16, similarityFunction);
     type.freeze();
     return type;
   }
@@ -103,8 +104,7 @@ public class KnnFloatVectorField extends Field {
    *
    * @param dimension dimension of vectors.
    * @param similarityFunction a function defining vector proximity.
-   * @param vectorEncoding the encoding format for the vector. Currently, supports FLOAT16 and
-   *     FLOAT32.
+   * @param vectorEncoding the encoding format for the vector. Currently, supports FLOAT16
    */
   public static FieldType createFieldType(
       int dimension, VectorSimilarityFunction similarityFunction, VectorEncoding vectorEncoding) {
@@ -122,8 +122,8 @@ public class KnnFloatVectorField extends Field {
    * @param k The number of nearest neighbors to gather
    * @return A new vector query
    */
-  public static Query newVectorQuery(String field, float[] queryVector, int k) {
-    return new KnnFloatVectorQuery(field, queryVector, k);
+  public static Query newVectorQuery(String field, short[] queryVector, int k) {
+    return new KnnFloat16VectorQuery(field, queryVector, k);
   }
 
   /**
@@ -138,10 +138,10 @@ public class KnnFloatVectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public KnnFloatVectorField(
-      String name, float[] vector, VectorSimilarityFunction similarityFunction) {
+  public KnnFloat16VectorField(
+      String name, short[] vector, VectorSimilarityFunction similarityFunction) {
     super(name, createType(vector, similarityFunction));
-    fieldsData = VectorUtil.checkFinite(vector); // null check done above
+    fieldsData = vector; // null check done above
   }
 
   /**
@@ -153,13 +153,13 @@ public class KnnFloatVectorField extends Field {
    * @param similarityFunction the similarity function to use for vector comparisons
    * @param vectorEncoding the encoding format for the vector
    */
-  public KnnFloatVectorField(
+  public KnnFloat16VectorField(
       String name,
-      float[] vector,
+      short[] vector,
       VectorSimilarityFunction similarityFunction,
       VectorEncoding vectorEncoding) {
     super(name, createType(vector, similarityFunction, vectorEncoding));
-    fieldsData = VectorUtil.checkFinite(vector); // null check done above
+    fieldsData = vector; // null check done above
   }
 
   /**
@@ -172,7 +172,7 @@ public class KnnFloatVectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public KnnFloatVectorField(String name, float[] vector) {
+  public KnnFloat16VectorField(String name, short[] vector) {
     this(name, vector, VectorSimilarityFunction.EUCLIDEAN);
   }
 
@@ -186,10 +186,9 @@ public class KnnFloatVectorField extends Field {
    * @throws IllegalArgumentException if any parameter is null, or the vector is empty or has
    *     dimension &gt; 1024.
    */
-  public KnnFloatVectorField(String name, float[] vector, FieldType fieldType) {
+  public KnnFloat16VectorField(String name, short[] vector, FieldType fieldType) {
     super(name, fieldType);
-    if ((fieldType.vectorEncoding() != VectorEncoding.FLOAT32
-        && fieldType.vectorEncoding() != VectorEncoding.FLOAT16)) {
+    if (fieldType.vectorEncoding() != VectorEncoding.FLOAT16) {
       throw new IllegalArgumentException(
           "Attempt to create a vector for field "
               + name
@@ -201,12 +200,12 @@ public class KnnFloatVectorField extends Field {
       throw new IllegalArgumentException(
           "The number of vector dimensions does not match the field type");
     }
-    fieldsData = VectorUtil.checkFinite(vector);
+    fieldsData = vector;
   }
 
   /** Return the vector value of this field */
-  public float[] vectorValue() {
-    return (float[]) fieldsData;
+  public short[] vectorValue() {
+    return (short[]) fieldsData;
   }
 
   /**
@@ -214,7 +213,7 @@ public class KnnFloatVectorField extends Field {
    *
    * @param value the value to set; must not be null, and length must match the field type
    */
-  public void setVectorValue(float[] value) {
+  public void setVectorValue(short[] value) {
     if (value == null) {
       throw new IllegalArgumentException("value must not be null");
     }

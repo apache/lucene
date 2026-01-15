@@ -23,9 +23,11 @@ import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloat16VectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorEncoding;
@@ -48,8 +50,12 @@ public class TestVectorScorer extends LuceneTestCase {
         case BYTE:
           vectorScorer = context.reader().getByteVectorValues("field").scorer(new byte[] {1, 2});
           break;
-        case FLOAT32, FLOAT16:
+        case FLOAT32:
           vectorScorer = context.reader().getFloatVectorValues("field").scorer(new float[] {1, 2});
+          break;
+        case FLOAT16:
+          Float16VectorValues val = context.reader().getFloat16VectorValues("field");
+          vectorScorer = val.scorer(new short[] {1, 2});
           break;
         default:
           throw new IllegalArgumentException("unexpected vector encoding: " + encoding);
@@ -77,7 +83,13 @@ public class TestVectorScorer extends LuceneTestCase {
           v[j] = (byte) contents[i][j];
         }
         doc.add(new KnnByteVectorField(field, v, EUCLIDEAN));
-      } else {
+      } else if (encoding == VectorEncoding.FLOAT16) {
+        short[] v = new short[contents[i].length];
+        for (int j = 0; j < v.length; j++) {
+          v[j] =  Float.floatToFloat16(contents[i][j]);
+        }
+        doc.add(new KnnFloat16VectorField(field, v, EUCLIDEAN));
+      }  else {
         doc.add(new KnnFloatVectorField(field, contents[i]));
       }
       doc.add(new StringField("id", "id" + i, Field.Store.YES));

@@ -236,8 +236,7 @@ public abstract class CodecReader extends LeafReader {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null
         || fi.getVectorDimension() == 0
-        || (fi.getVectorEncoding() != VectorEncoding.FLOAT32
-            && fi.getVectorEncoding() != VectorEncoding.FLOAT16)) {
+        || fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
       // Field does not exist or does not index vectors
       return null;
     }
@@ -260,6 +259,20 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
+  public final Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null
+        || fi.getVectorDimension() == 0
+        || fi.getVectorEncoding() != VectorEncoding.FLOAT16) {
+      // Field does not exist or does not index vectors
+      return null;
+    }
+
+    return getVectorReader().getFloat16VectorValues(field);
+  }
+
+  @Override
   public final void searchNearestVectors(
       String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
@@ -267,8 +280,22 @@ public abstract class CodecReader extends LeafReader {
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null
         || fi.getVectorDimension() == 0
-        || (fi.getVectorEncoding() != VectorEncoding.FLOAT32
-            && fi.getVectorEncoding() != VectorEncoding.FLOAT16)) {
+        || (fi.getVectorEncoding() != VectorEncoding.FLOAT32)) {
+      // Field does not exist or does not index vectors
+      return;
+    }
+    getVectorReader().search(field, target, knnCollector, acceptDocs);
+  }
+
+  @Override
+  public final void searchNearestVectors(
+      String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null
+        || fi.getVectorDimension() == 0
+        || fi.getVectorEncoding() != VectorEncoding.FLOAT16) {
       // Field does not exist or does not index vectors
       return;
     }

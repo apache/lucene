@@ -58,6 +58,14 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
     throw new IllegalArgumentException("vectorValues must be an instance of ByteVectorValues");
   }
 
+  @Override
+  public RandomVectorScorer getRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction,
+      KnnVectorValues vectorValues,
+      short[] target) throws IOException {
+    throw new IllegalArgumentException("bit vectors do not support short[] targets");
+  }
+
   static class BitRandomVectorScorer implements UpdateableRandomVectorScorer, HasKnnVectorValues {
     private final ByteVectorValues vectorValues;
     private final int bitDimensions;

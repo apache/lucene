@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -139,6 +140,11 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
             }
 
             @Override
+            public Float16VectorValues getFloat16VectorValues(String field)  {
+              throw new UnsupportedOperationException();
+            }
+
+            @Override
             public void search(
                 String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {
               throw new UnsupportedOperationException();
@@ -147,6 +153,12 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
             @Override
             public void search(
                 String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {
+              throw new UnsupportedOperationException();
+            }
+
+            @Override
+            public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+                {
               throw new UnsupportedOperationException();
             }
 

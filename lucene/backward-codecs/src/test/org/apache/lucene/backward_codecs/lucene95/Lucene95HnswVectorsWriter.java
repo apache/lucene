@@ -478,8 +478,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
                         vectorDataInput,
                         byteSize,
                         defaultFlatVectorScorer,
-                        fieldInfo.getVectorSimilarityFunction(),
-                        VectorEncoding.FLOAT32));
+                        fieldInfo.getVectorSimilarityFunction()));
             break;
           case FLOAT16:
             throw new UnsupportedOperationException("FLOAT16 is not supported");

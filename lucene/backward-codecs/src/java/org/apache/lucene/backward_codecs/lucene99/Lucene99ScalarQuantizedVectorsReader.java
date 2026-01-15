@@ -32,6 +32,7 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
@@ -224,6 +225,11 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
     return rawVectorsReader.getByteVectorValues(field);
   }
 
+  @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    return rawVectorsReader.getFloat16VectorValues(field);
+  }
+
   private static IndexInput openDataInput(
       SegmentReadState state,
       int versionMeta,
@@ -263,6 +269,27 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(String field, float[] target) throws IOException {
+    final FieldEntry fieldEntry = getFieldEntry(field);
+    if (fieldEntry.scalarQuantizer == null) {
+      return rawVectorsReader.getRandomVectorScorer(field, target);
+    }
+    OffHeapQuantizedByteVectorValues vectorValues =
+        OffHeapQuantizedByteVectorValues.load(
+            fieldEntry.ordToDoc,
+            fieldEntry.dimension,
+            fieldEntry.size,
+            fieldEntry.scalarQuantizer,
+            fieldEntry.similarityFunction,
+            vectorScorer,
+            fieldEntry.compress,
+            fieldEntry.vectorDataOffset,
+            fieldEntry.vectorDataLength,
+            quantizedVectorData);
+    return vectorScorer.getRandomVectorScorer(fieldEntry.similarityFunction, vectorValues, target);
+  }
+
+  @Override
+  public RandomVectorScorer getRandomVectorScorer(String field, short[] target) throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field);
     if (fieldEntry.scalarQuantizer == null) {
       return rawVectorsReader.getRandomVectorScorer(field, target);

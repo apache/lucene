@@ -67,6 +67,12 @@ public abstract class FlatVectorsReader extends KnnVectorsReader implements Acco
     // don't scan stored field data. If we didn't index it, produce no search results
   }
 
+  @Override
+  public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    // don't scan stored field data. If we didn't index it, produce no search results
+  }
+
   /**
    * Returns a {@link RandomVectorScorer} for the given field and target vector.
    *
@@ -88,6 +94,10 @@ public abstract class FlatVectorsReader extends KnnVectorsReader implements Acco
    */
   public abstract RandomVectorScorer getRandomVectorScorer(String field, byte[] target)
       throws IOException;
+
+  public abstract RandomVectorScorer getRandomVectorScorer(String field, short[] target)
+      throws IOException;
+
 
   /**
    * Returns an instance optimized for merging. This instance may only be consumed in the thread

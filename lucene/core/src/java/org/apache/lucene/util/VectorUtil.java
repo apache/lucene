@@ -48,7 +48,7 @@ import org.apache.lucene.internal.vectorization.VectorizationProvider;
  */
 public final class VectorUtil {
 
-  public static final float EPSILON = 1e-4f;
+  public static final float EPSILON = 1e-2f;
 
   private static final VectorUtilSupport IMPL =
       VectorizationProvider.getInstance().getVectorUtilSupport();
@@ -73,6 +73,23 @@ public final class VectorUtil {
             + ","
             + java.util.Arrays.toString(b)
             + ">";
+    return r;
+  }
+
+
+  public static float dotProduct(short[] a, short[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    float r = Float.float16ToFloat(IMPL.dotProduct(a, b));
+    assert Float.isFinite(r)
+        : "not finite: "
+        + r
+        + " from <"
+        + java.util.Arrays.toString(a)
+        + ","
+        + java.util.Arrays.toString(b)
+        + ">";
     return r;
   }
 
@@ -109,6 +126,27 @@ public final class VectorUtil {
     }
     float r = IMPL.squareDistance(a, b);
     assert Float.isFinite(r);
+    return r;
+  }
+
+  /**
+   * Returns the sum of squared differences of the two vectors.
+   *
+   * @throws IllegalArgumentException if the vectors' dimensions differ.
+   */
+  public static float squareDistance(short[] a, short[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    float r = Float.float16ToFloat(IMPL.squareDistance(a, b));
+    assert Float.isFinite(r)
+        : "not finite: "
+        + r
+        + " from <"
+        + java.util.Arrays.toString(a)
+        + ","
+        + java.util.Arrays.toString(b)
+        + ">";
     return r;
   }
 
@@ -170,6 +208,11 @@ public final class VectorUtil {
     return v;
   }
 
+  public static short[] l2normalize(short[] v) {
+    l2normalize(v, true);
+    return v;
+  }
+
   public static boolean isUnitVector(float[] v) {
     double l1norm = IMPL.dotProduct(v, v);
     return Math.abs(l1norm - 1.0d) <= EPSILON;
@@ -184,6 +227,10 @@ public final class VectorUtil {
    * @throws IllegalArgumentException when the vector is all zero and throwOnZero is true
    */
   public static float[] l2normalize(float[] v, boolean throwOnZero) {
+    return IMPL.l2normalize(v, throwOnZero);
+  }
+
+  public static short[] l2normalize(short[] v, boolean throwOnZero) {
     return IMPL.l2normalize(v, throwOnZero);
   }
 

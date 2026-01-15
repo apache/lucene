@@ -941,6 +941,85 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       return new MergedByteVectorValues(dimension, size, subs);
     }
 
+    @Override
+    public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+      List<DocValuesSub<Float16VectorValues>> subs = new ArrayList<>();
+      int i = 0;
+      int dimension = -1;
+      int size = 0;
+      for (CodecReader reader : codecReaders) {
+        Float16VectorValues values = reader.getFloat16VectorValues(field);
+        subs.add(new DocValuesSub<>(values, docStarts[i], size));
+        if (values != null) {
+          if (dimension == -1) {
+            dimension = values.dimension();
+          }
+          size += values.size();
+        }
+        i++;
+      }
+      return new MergedFloat16VectorValues(dimension, size, subs);
+    }
+
+    class MergedFloat16VectorValues extends Float16VectorValues {
+      final int dimension;
+      final int size;
+      final List<DocValuesSub<Float16VectorValues>> subs;
+      final MergedDocIterator<Float16VectorValues> iter;
+      final int[] starts;
+      int lastSubIndex;
+
+      MergedFloat16VectorValues(int dimension, int size, List<DocValuesSub<Float16VectorValues>> subs) {
+        this.dimension = dimension;
+        this.size = size;
+        this.subs = subs;
+        iter = new MergedDocIterator<>(subs);
+        // [0, start(1), ..., size] - we want the extra element
+        // to avoid checking for out-of-array bounds
+        starts = new int[subs.size() + 1];
+        for (int i = 0; i < subs.size(); i++) {
+          starts[i] = subs.get(i).ordStart;
+        }
+        starts[starts.length - 1] = size;
+      }
+
+      @Override
+      public MergedDocIterator<Float16VectorValues> iterator() {
+        return iter;
+      }
+
+      @Override
+      public int dimension() {
+        return dimension;
+      }
+
+      @Override
+      public int size() {
+        return size;
+      }
+
+      @SuppressWarnings("unchecked")
+      @Override
+      public Float16VectorValues copy() throws IOException {
+        List<DocValuesSub<Float16VectorValues>> subsCopy = new ArrayList<>();
+        for (DocValuesSub<Float16VectorValues> sub : subs) {
+          subsCopy.add(sub.copy());
+        }
+        return new MergedFloat16VectorValues(dimension, size, subsCopy);
+      }
+
+      @Override
+      public short[] vectorValue(int ord) throws IOException {
+        assert ord >= 0 && ord < size;
+        // We need to implement fully random-access API here in order to support callers like
+        // SortingCodecReader that rely on it.
+        lastSubIndex = findSub(ord, lastSubIndex, starts);
+        DocValuesSub<Float16VectorValues> sub = subs.get(lastSubIndex);
+        assert sub.sub != null;
+        return (sub.sub).vectorValue(ord - sub.ordStart);
+      }
+    }
+
     class MergedByteVectorValues extends ByteVectorValues {
       final int dimension;
       final int size;
@@ -1036,6 +1115,12 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     @Override
     public void search(
         String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+        throws IOException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
       throw new UnsupportedOperationException();
     }

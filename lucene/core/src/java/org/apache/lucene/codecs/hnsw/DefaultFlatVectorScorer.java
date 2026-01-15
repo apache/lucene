@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
 import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -40,8 +41,11 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
       throws IOException {
     switch (vectorValues.getEncoding()) {
-      case FLOAT32, FLOAT16 -> {
+      case FLOAT32 -> {
         return new FloatScoringSupplier((FloatVectorValues) vectorValues, similarityFunction);
+      }
+      case FLOAT16 -> {
+        return new Float16ScoringSupplier((Float16VectorValues) vectorValues, similarityFunction);
       }
       case BYTE -> {
         return new ByteScoringSupplier((ByteVectorValues) vectorValues, similarityFunction);
@@ -80,6 +84,22 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
               + vectorValues.dimension());
     }
     return new ByteVectorScorer((ByteVectorValues) vectorValues, target, similarityFunction);
+  }
+
+  @Override
+  public RandomVectorScorer getRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction,
+      KnnVectorValues vectorValues,
+      short[] target) throws IOException {
+    assert vectorValues instanceof Float16VectorValues;
+    if (target.length != vectorValues.dimension()) {
+      throw new IllegalArgumentException(
+          "vector query dimension: "
+              + target.length
+              + " differs from field dimension: "
+              + vectorValues.dimension());
+    }
+    return new Float16VectorScorer((Float16VectorValues) vectorValues, target, similarityFunction);
   }
 
   @Override
@@ -168,6 +188,45 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
     }
   }
 
+  private static final class Float16ScoringSupplier implements RandomVectorScorerSupplier {
+    private final Float16VectorValues vectors;
+    private final Float16VectorValues targetVectors;
+    private final VectorSimilarityFunction similarityFunction;
+
+    private Float16ScoringSupplier(
+        Float16VectorValues vectors, VectorSimilarityFunction similarityFunction) throws IOException {
+      this.vectors = vectors;
+      targetVectors = vectors.copy();
+      this.similarityFunction = similarityFunction;
+    }
+
+    @Override
+    public UpdateableRandomVectorScorer scorer() throws IOException {
+      short[] vector = new short[vectors.dimension()];
+      return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(vectors) {
+        @Override
+        public float score(int node) throws IOException {
+          return similarityFunction.compare(vector, targetVectors.vectorValue(node));
+        }
+
+        @Override
+        public void setScoringOrdinal(int node) throws IOException {
+          System.arraycopy(targetVectors.vectorValue(node), 0, vector, 0, vector.length);
+        }
+      };
+    }
+
+    @Override
+    public RandomVectorScorerSupplier copy() throws IOException {
+      return new Float16ScoringSupplier(vectors, similarityFunction);
+    }
+
+    @Override
+    public String toString() {
+      return "FloatScoringSupplier(similarityFunction=" + similarityFunction + ")";
+    }
+  }
+
   /** A {@link RandomVectorScorer} for float vectors. */
   private static class FloatVectorScorer extends RandomVectorScorer.AbstractRandomVectorScorer {
     private final FloatVectorValues values;
@@ -176,6 +235,25 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
 
     public FloatVectorScorer(
         FloatVectorValues values, float[] query, VectorSimilarityFunction similarityFunction) {
+      super(values);
+      this.values = values;
+      this.query = query;
+      this.similarityFunction = similarityFunction;
+    }
+
+    @Override
+    public float score(int node) throws IOException {
+      return similarityFunction.compare(query, values.vectorValue(node));
+    }
+  }
+
+  private static class Float16VectorScorer extends RandomVectorScorer.AbstractRandomVectorScorer {
+    private final Float16VectorValues values;
+    private final short[] query;
+    private final VectorSimilarityFunction similarityFunction;
+
+    public Float16VectorScorer(
+        Float16VectorValues values, short[] query, VectorSimilarityFunction similarityFunction) {
       super(values);
       this.values = values;
       this.query = query;

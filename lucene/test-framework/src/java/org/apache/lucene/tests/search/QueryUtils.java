@@ -27,6 +27,7 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafMetaData;
@@ -240,6 +241,11 @@ public class QueryUtils {
       }
 
       @Override
+      public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+        return null;
+      }
+
+      @Override
       public ByteVectorValues getByteVectorValues(String field) throws IOException {
         return null;
       }
@@ -247,6 +253,11 @@ public class QueryUtils {
       @Override
       public void searchNearestVectors(
           String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {}
+
+      @Override
+      public void searchNearestVectors(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+          throws IOException {
+      }
 
       @Override
       public void searchNearestVectors(

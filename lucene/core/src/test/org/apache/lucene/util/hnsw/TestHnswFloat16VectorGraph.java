@@ -20,14 +20,14 @@ package org.apache.lucene.util.hnsw;
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.KnnFloatVectorField;
-import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.document.KnnFloat16VectorField;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.search.KnnFloatVectorQuery;
+import org.apache.lucene.search.KnnFloat16VectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
@@ -36,7 +36,7 @@ import org.apache.lucene.util.FixedBitSet;
 import org.junit.Before;
 
 /** Tests HNSW KNN graphs */
-public class TestHnswFloat16VectorGraph extends HnswGraphTestCase<float[]> {
+public class TestHnswFloat16VectorGraph extends HnswGraphTestCase<short[]> {
 
   @Before
   public void setup() {
@@ -49,42 +49,50 @@ public class TestHnswFloat16VectorGraph extends HnswGraphTestCase<float[]> {
   }
 
   @Override
-  Query knnQuery(String field, float[] vector, int k) {
-    return new KnnFloatVectorQuery(field, vector, k);
+  Query knnQuery(String field, short[] vector, int k) {
+    return new KnnFloat16VectorQuery(field, vector, k);
   }
 
   @Override
-  float[] randomVector(int dim) {
+  short[] randomVector(int dim) {
     return randomFloat16Vector(random(), dim);
   }
 
   @Override
-  MockVectorValues vectorValues(int size, int dimension) {
-    return MockVectorValues.fromValues(createRandomFloat16Vectors(size, dimension, random()));
+  MockFloat16VectorValues vectorValues(int size, int dimension) {
+    return MockFloat16VectorValues.fromValues(createRandomFloat16Vectors(size, dimension, random()));
   }
 
   @Override
-  MockVectorValues vectorValues(float[][] values) {
-    return MockVectorValues.fromValues(values);
+  MockFloat16VectorValues vectorValues(float[][] values) {
+    short[][] float16Values = new short[values.length][];
+    for (int i = 0; i < values.length; i++) {
+
+      float16Values[i] = new short[values[i].length];
+      for (int j = 0; j < values[i].length; j++) {
+        float16Values[i][j] = Float.floatToFloat16(values[i][j]);
+      }
+    }
+    return MockFloat16VectorValues.fromValues(float16Values);
   }
 
   @Override
-  MockVectorValues vectorValues(LeafReader reader, String fieldName) throws IOException {
-    FloatVectorValues vectorValues = reader.getFloatVectorValues(fieldName);
-    float[][] vectors = new float[reader.maxDoc()][];
+  MockFloat16VectorValues vectorValues(LeafReader reader, String fieldName) throws IOException {
+    Float16VectorValues vectorValues = reader.getFloat16VectorValues(fieldName);
+    short[][] vectors = new short[reader.maxDoc()][];
     for (int i = 0; i < vectorValues.size(); i++) {
       vectors[vectorValues.ordToDoc(i)] =
           ArrayUtil.copyOfSubArray(vectorValues.vectorValue(i), 0, vectorValues.dimension());
     }
-    return MockVectorValues.fromValues(vectors);
+    return MockFloat16VectorValues.fromValues(vectors);
   }
 
   @Override
-  MockVectorValues vectorValues(
+  MockFloat16VectorValues vectorValues(
       int size, int dimension, KnnVectorValues pregeneratedVectorValues, int pregeneratedOffset) {
-    MockVectorValues pvv = (MockVectorValues) pregeneratedVectorValues;
-    float[][] vectors = new float[size][];
-    float[][] randomVectors =
+    MockFloat16VectorValues pvv = (MockFloat16VectorValues) pregeneratedVectorValues;
+    short[][] vectors = new short[size][];
+    short[][] randomVectors =
         createRandomFloat16Vectors(size - pvv.values.length, dimension, random());
 
     for (int i = 0; i < pregeneratedOffset; i++) {
@@ -99,12 +107,12 @@ public class TestHnswFloat16VectorGraph extends HnswGraphTestCase<float[]> {
       vectors[i] = randomVectors[i - pvv.values.length];
     }
 
-    return MockVectorValues.fromValues(vectors);
+    return MockFloat16VectorValues.fromValues(vectors);
   }
 
   @Override
-  Field knnVectorField(String name, float[] vector, VectorSimilarityFunction similarityFunction) {
-    return new KnnFloatVectorField(name, vector, similarityFunction, VectorEncoding.FLOAT16);
+  Field knnVectorField(String name, short[] vector, VectorSimilarityFunction similarityFunction) {
+    return new KnnFloat16VectorField(name, vector, similarityFunction, VectorEncoding.FLOAT16);
   }
 
   @Override
@@ -113,14 +121,14 @@ public class TestHnswFloat16VectorGraph extends HnswGraphTestCase<float[]> {
   }
 
   @Override
-  float[] getTargetVector() {
-    return new float[] {1f, 0f};
+  short[] getTargetVector() {
+    return new short[] {Float.floatToFloat16(1f), Float.floatToFloat16(0f)};
   }
 
   public void testSearchWithSkewedAcceptOrds() throws IOException {
     int nDoc = 1000;
     similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-    FloatVectorValues vectors = circularVectorValues(nDoc);
+    Float16VectorValues vectors = circularVectorValues(nDoc);
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors.size());

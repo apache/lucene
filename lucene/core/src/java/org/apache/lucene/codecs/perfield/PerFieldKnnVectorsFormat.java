@@ -32,6 +32,7 @@ import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
@@ -293,6 +294,16 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
+    public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+      final FieldInfo info = fieldInfos.fieldInfo(field);
+      final KnnVectorsReader reader;
+      if (info == null || (reader = fields.get(info.number)) == null) {
+        return null;
+      }
+      return reader.getFloat16VectorValues(field);
+    }
+
+    @Override
     public void search(
         String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
@@ -307,6 +318,17 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void search(
         String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+        throws IOException {
+      final FieldInfo info = fieldInfos.fieldInfo(field);
+      final KnnVectorsReader reader;
+      if (info == null || (reader = fields.get(info.number)) == null) {
+        return;
+      }
+      reader.search(field, target, knnCollector, acceptDocs);
+    }
+
+    @Override
+    public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
       final FieldInfo info = fieldInfos.fieldInfo(field);
       final KnnVectorsReader reader;

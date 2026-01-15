@@ -418,8 +418,7 @@ public class TestVectorScorer extends LuceneTestCase {
         in.slice("floatValues", 0, in.length()),
         dims,
         MEMSEG_SCORER,
-        sim,
-        VectorEncoding.FLOAT32);
+        sim);
   }
 
   // creates the vector based on the given ordinal, which is reproducible given the ord and dims

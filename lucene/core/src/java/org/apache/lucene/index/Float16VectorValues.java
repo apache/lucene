@@ -27,10 +27,10 @@ import org.apache.lucene.search.VectorScorer;
  *
  * @lucene.experimental
  */
-public abstract class FloatVectorValues extends KnnVectorValues {
+public abstract class Float16VectorValues extends KnnVectorValues {
 
   /** Sole constructor */
-  protected FloatVectorValues() {}
+  protected Float16VectorValues() {}
 
   /**
    * Return the vector value for the given vector ordinal which must be in [0, size() - 1],
@@ -38,10 +38,10 @@ public abstract class FloatVectorValues extends KnnVectorValues {
    *
    * @return the vector value
    */
-  public abstract float[] vectorValue(int ord) throws IOException;
+  public abstract short[] vectorValue(int ord) throws IOException;
 
   @Override
-  public abstract FloatVectorValues copy() throws IOException;
+  public abstract Float16VectorValues copy() throws IOException;
 
   /**
    * Checks the Vector Encoding of a field
@@ -54,14 +54,14 @@ public abstract class FloatVectorValues extends KnnVectorValues {
     FieldInfo fi = in.getFieldInfos().fieldInfo(field);
     if (fi != null
         && fi.hasVectorValues()
-        && fi.getVectorEncoding() != VectorEncoding.FLOAT32) {
+        && fi.getVectorEncoding() != VectorEncoding.FLOAT16) {
       throw new IllegalStateException(
-          "Inside FloatVectorValues Unexpected vector encoding ("
+          "Unexpected vector encoding ("
               + fi.getVectorEncoding()
               + ") for field "
               + field
               + "(expected="
-              + VectorEncoding.FLOAT32
+              + VectorEncoding.FLOAT16
               + ")");
     }
   }
@@ -74,7 +74,7 @@ public abstract class FloatVectorValues extends KnnVectorValues {
    * @param target the query vector
    * @return a {@link VectorScorer} instance or null
    */
-  public VectorScorer scorer(float[] target) throws IOException {
+  public VectorScorer scorer(short[] target) throws IOException {
     throw new UnsupportedOperationException();
   }
 
@@ -84,31 +84,31 @@ public abstract class FloatVectorValues extends KnnVectorValues {
    * often utilize the highest fidelity scoring algorithm available. This is useful when the initial
    * search used a quantized index or an approximate search algorithm, and now we want to rescore
    * the hits using the full fidelity vectors. The default implementation is to call {@link
-   * #scorer(float[])} assuming that the scorer is already the highest fidelity implementation
+   * #scorer(short[])} assuming that the scorer is already the highest fidelity implementation
    * available.
    *
    * @param target the query vector
    * @return a {@link VectorScorer} instance or null
    * @throws IOException if an I/O error occurs
    */
-  public VectorScorer rescorer(float[] target) throws IOException {
+  public VectorScorer rescorer(short[] target) throws IOException {
     return scorer(target);
   }
 
   @Override
   public VectorEncoding getEncoding() {
-    return VectorEncoding.FLOAT32;
+    return VectorEncoding.FLOAT16;
   }
 
   /**
-   * Creates a {@link FloatVectorValues} from a list of float arrays.
+   * Creates a {@link Float16VectorValues} from a list of float arrays.
    *
    * @param vectors the list of float arrays
    * @param dim the dimension of the vectors
-   * @return a {@link FloatVectorValues} instance
+   * @return a {@link Float16VectorValues} instance
    */
-  public static FloatVectorValues fromFloats(List<float[]> vectors, int dim) {
-    return new FloatVectorValues() {
+  public static Float16VectorValues fromFloats16(List<short[]> vectors, int dim) {
+    return new Float16VectorValues() {
       @Override
       public int size() {
         return vectors.size();
@@ -120,12 +120,12 @@ public abstract class FloatVectorValues extends KnnVectorValues {
       }
 
       @Override
-      public float[] vectorValue(int targetOrd) {
+      public short[] vectorValue(int targetOrd) {
         return vectors.get(targetOrd);
       }
 
       @Override
-      public FloatVectorValues copy() {
+      public Float16VectorValues copy() {
         return this;
       }
 

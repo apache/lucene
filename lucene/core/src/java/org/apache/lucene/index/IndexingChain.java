@@ -42,9 +42,12 @@ import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloat16VectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.StoredValue;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.similarities.Similarity;
@@ -1030,9 +1033,12 @@ final class IndexingChain implements Accountable {
       case BYTE ->
           ((KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter)
               .addValue(docID, ((KnnByteVectorField) field).vectorValue());
-      case FLOAT32, FLOAT16 ->
+      case FLOAT32 ->
           ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
               .addValue(docID, ((KnnFloatVectorField) field).vectorValue());
+      case FLOAT16 ->
+          ((KnnFieldVectorsWriter<short[]>) pf.knnFieldVectorsWriter)
+              .addValue(docID, ((KnnFloat16VectorField) field).vectorValue());
     }
   }
 

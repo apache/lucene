@@ -107,8 +107,10 @@ public class ConcurrentHnswMerger extends IncrementalHnswGraphMerger {
 
     switch (fieldInfo.getVectorEncoding()) {
       case BYTE -> initializerIterator = initReader.getByteVectorValues(fieldInfo.name).iterator();
-      case FLOAT32, FLOAT16 ->
+      case FLOAT32 ->
           initializerIterator = initReader.getFloatVectorValues(fieldInfo.name).iterator();
+      case FLOAT16 ->
+          initializerIterator = initReader.getFloat16VectorValues(fieldInfo.name).iterator();
     }
 
     IntIntHashMap newIdToOldOrdinal = new IntIntHashMap(initGraphSize);

@@ -59,6 +59,8 @@ public class VectorUtilBenchmark {
   private byte[] halfBytesBPacked;
   private float[] floatsA;
   private float[] floatsB;
+  private short[] shortsA;
+  private short[] shortsB;
   private int expectedHalfByteDotProduct;
   private int expectedHalfByteSquareDistance;
 
@@ -100,9 +102,13 @@ public class VectorUtilBenchmark {
     // random float arrays for float methods
     floatsA = new float[size];
     floatsB = new float[size];
+    shortsA = new short[size];
+    shortsB = new short[size];
     for (int i = 0; i < size; ++i) {
       floatsA[i] = random.nextFloat();
+      shortsA[i] = Float.floatToFloat16(floatsA[i]);
       floatsB[i] = random.nextFloat();
+      shortsB[i] = Float.floatToFloat16(floatsB[i]);
     }
   }
 
@@ -312,6 +318,19 @@ public class VectorUtilBenchmark {
       jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public float floatDotProductVector() {
     return VectorUtil.dotProduct(floatsA, floatsB);
+  }
+
+  @Benchmark
+  @Fork(
+      value = 15,
+      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public float shortDotProduct() {
+    return VectorUtil.dotProduct(shortsA, shortsB);
+  }
+
+  @Benchmark
+  public float shortDotProductScalar1() {
+    return VectorUtil.dotProduct(shortsA, shortsB);
   }
 
   @Benchmark

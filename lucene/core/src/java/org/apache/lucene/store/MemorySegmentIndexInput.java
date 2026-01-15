@@ -246,6 +246,18 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   }
 
   @Override
+  public void readShorts(short[] dst, int offset, int length) throws IOException {
+    try {
+      MemorySegment.copy(curSegment, LAYOUT_LE_SHORT, curPosition, dst, offset, length);
+      curPosition += Short.BYTES * (long) length;
+    } catch (IndexOutOfBoundsException _) {
+      super.readShorts(dst, offset, length);
+    } catch (NullPointerException | IllegalStateException e) {
+      throw alreadyClosed(e);
+    }
+  }
+
+  @Override
   public final int readInt() throws IOException {
     try {
       final int v = curSegment.get(LAYOUT_LE_INT, curPosition);

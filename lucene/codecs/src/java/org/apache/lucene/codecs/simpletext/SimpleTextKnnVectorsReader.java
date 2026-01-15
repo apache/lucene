@@ -32,6 +32,7 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
@@ -178,6 +179,11 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+     throw new UnsupportedOperationException("operation not supported");
+  }
+
+  @Override
   public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     FloatVectorValues values = getFloatVectorValues(field);
@@ -236,6 +242,12 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       knnCollector.collect(doc, score);
       knnCollector.incVisitedCount(1);
     }
+  }
+
+  @Override
+  public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+      throw new UnsupportedOperationException("Operation Not supported");
   }
 
   @Override

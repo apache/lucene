@@ -32,6 +32,7 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
@@ -275,6 +276,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     return flatVectorsReader.getByteVectorValues(field);
   }
 
+  @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    return flatVectorsReader.getFloat16VectorValues(field);
+  }
+
   private FieldEntry getFieldEntryOrThrow(String field) {
     final FieldInfo info = fieldInfos.fieldInfo(field);
     final FieldEntry entry;
@@ -304,7 +310,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     final FieldEntry fieldEntry =
-        getFieldEntry(field, VectorEncoding.FLOAT32, VectorEncoding.FLOAT16);
+        getFieldEntry(field, VectorEncoding.FLOAT32);
     search(
         fieldEntry,
         knnCollector,
@@ -316,6 +322,17 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.BYTE);
+    search(
+        fieldEntry,
+        knnCollector,
+        acceptDocs,
+        () -> flatVectorsReader.getRandomVectorScorer(field, target));
+  }
+
+  @Override
+  public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT16);
     search(
         fieldEntry,
         knnCollector,

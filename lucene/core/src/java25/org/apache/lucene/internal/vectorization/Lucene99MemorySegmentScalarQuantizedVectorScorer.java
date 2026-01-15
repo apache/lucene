@@ -76,6 +76,18 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
   }
 
   @Override
+  public RandomVectorScorer getRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction,
+      KnnVectorValues vectorValues,
+      short[] target) throws IOException {
+    if (vectorValues instanceof QuantizedByteVectorValues quantized
+        && quantized.getSlice() instanceof MemorySegmentAccessInput input) {
+      return new RandomVectorScorerImpl(similarityFunction, quantized, input, target);
+    }
+    return DELEGATE.getRandomVectorScorer(similarityFunction, vectorValues, target);
+  }
+
+  @Override
   public String toString() {
     return "Lucene99MemorySegmentScalarQuantizedVectorScorer()";
   }
@@ -207,6 +219,16 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
         QuantizedByteVectorValues values,
         MemorySegmentAccessInput input,
         float[] target) {
+      super(similarityFunction, values, input);
+      this.targetBytes = new byte[target.length];
+      this.queryOffset = quantizeQuery(target, targetBytes, similarityFunction, getQuantizer());
+    }
+
+    RandomVectorScorerImpl(
+        VectorSimilarityFunction similarityFunction,
+        QuantizedByteVectorValues values,
+        MemorySegmentAccessInput input,
+        short[] target) {
       super(similarityFunction, values, input);
       this.targetBytes = new byte[target.length];
       this.queryOffset = quantizeQuery(target, targetBytes, similarityFunction, getQuantizer());

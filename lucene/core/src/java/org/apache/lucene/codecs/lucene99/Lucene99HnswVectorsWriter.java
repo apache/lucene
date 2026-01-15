@@ -40,6 +40,7 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.MergeState;
@@ -436,9 +437,12 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
           case BYTE ->
               mergedVectorValues =
                   KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
-          case FLOAT32, FLOAT16 ->
+          case FLOAT32 ->
               mergedVectorValues =
                   KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
+          case FLOAT16 ->
+              mergedVectorValues =
+                  KnnVectorsWriter.MergedVectorValues.mergeFloat16VectorValues(fieldInfo, mergeState);
         }
         graph =
             merger.merge(
@@ -655,7 +659,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                 beamWidth,
                 infoStream,
                 tinySegmentsThreshold);
-        case FLOAT32, FLOAT16 ->
+        case FLOAT32 ->
             new FieldWriter<>(
                 scorer,
                 (FlatFieldVectorsWriter<float[]>) flatFieldVectorsWriter,
@@ -664,6 +668,16 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                 beamWidth,
                 infoStream,
                 tinySegmentsThreshold);
+        case FLOAT16 ->
+            new FieldWriter<>(
+                scorer,
+                (FlatFieldVectorsWriter<short[]>) flatFieldVectorsWriter,
+                fieldInfo,
+                M,
+                beamWidth,
+                infoStream,
+                tinySegmentsThreshold);
+
       };
     }
 
@@ -691,11 +705,17 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
                     ByteVectorValues.fromBytes(
                         (List<byte[]>) flatFieldVectorsWriter.getVectors(),
                         fieldInfo.getVectorDimension()));
-            case FLOAT32, FLOAT16 ->
+            case FLOAT32 ->
                 scorer.getRandomVectorScorerSupplier(
                     fieldInfo.getVectorSimilarityFunction(),
                     FloatVectorValues.fromFloats(
                         (List<float[]>) flatFieldVectorsWriter.getVectors(),
+                        fieldInfo.getVectorDimension()));
+            case FLOAT16 ->
+                scorer.getRandomVectorScorerSupplier(
+                    fieldInfo.getVectorSimilarityFunction(),
+                    Float16VectorValues.fromFloats16(
+                        (List<short[]>) flatFieldVectorsWriter.getVectors(),
                         fieldInfo.getVectorDimension()));
           };
 

@@ -20,7 +20,7 @@ package org.apache.lucene.codecs.lucene95;
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
-import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -32,18 +32,18 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 
 /** Read the vector values from the index input. This supports both iterated and random access. */
-public abstract class OffHeapFloatVectorValues extends FloatVectorValues implements HasIndexSlice {
+public abstract class OffHeapFloat16VectorValues extends Float16VectorValues implements HasIndexSlice {
 
   protected final int dimension;
   protected final int size;
   protected final IndexInput slice;
   protected final int byteSize;
   protected int lastOrd = -1;
-  protected final float[] value;
+  protected final short[] value;
   protected final VectorSimilarityFunction similarityFunction;
   protected final FlatVectorsScorer flatVectorsScorer;
 
-  OffHeapFloatVectorValues(
+  OffHeapFloat16VectorValues(
       int dimension,
       int size,
       IndexInput slice,
@@ -56,7 +56,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     this.byteSize = byteSize;
     this.similarityFunction = similarityFunction;
     this.flatVectorsScorer = flatVectorsScorer;
-    value = new float[dimension];
+    value = new short[dimension];
   }
 
   @Override
@@ -75,25 +75,22 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
   }
 
   @Override
-  public float[] vectorValue(int targetOrd) throws IOException {
+  public short[] vectorValue(int targetOrd) throws IOException {
     if (lastOrd == targetOrd) {
       return value;
     }
     slice.seek((long) targetOrd * byteSize);
-
-
-      slice.readFloats(value, 0, value.length);
+    slice.readShorts(value, 0, dimension);
     lastOrd = targetOrd;
     return value;
   }
 
-
   @Override
   public VectorEncoding getEncoding() {
-    return VectorEncoding.FLOAT32;
+    return VectorEncoding.FLOAT16;
   }
 
-  public static OffHeapFloatVectorValues load(
+  public static OffHeapFloat16VectorValues load(
       VectorSimilarityFunction vectorSimilarityFunction,
       FlatVectorsScorer flatVectorsScorer,
       OrdToDocDISIReaderConfiguration configuration,
@@ -104,12 +101,12 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
       IndexInput vectorData)
       throws IOException {
     if (configuration.docsWithFieldOffset == -2
-        || vectorEncoding != VectorEncoding.FLOAT32) {
+        || vectorEncoding != VectorEncoding.FLOAT16) {
       return new EmptyOffHeapVectorValues(
           dimension, flatVectorsScorer, vectorSimilarityFunction);
     }
     IndexInput bytesSlice = vectorData.slice("vector-data", vectorDataOffset, vectorDataLength);
-    int byteSize = dimension * Float.BYTES;
+    int byteSize = dimension * Short.BYTES;
 
     if (configuration.docsWithFieldOffset == -1) {
       return new DenseOffHeapVectorValues(
@@ -136,7 +133,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
    * Dense vector values that are stored off-heap. This is the most common case when every doc has a
    * vector.
    */
-  public static class DenseOffHeapVectorValues extends OffHeapFloatVectorValues {
+  public static class DenseOffHeapVectorValues extends OffHeapFloat16VectorValues {
 
     public DenseOffHeapVectorValues(
         int dimension,
@@ -176,7 +173,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     }
 
     @Override
-    public VectorScorer scorer(float[] query) throws IOException {
+    public VectorScorer scorer(short[] query) throws IOException {
       DenseOffHeapVectorValues copy = copy();
       DocIndexIterator iterator = copy.iterator();
       RandomVectorScorer randomVectorScorer =
@@ -200,7 +197,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     }
   }
 
-  private static class SparseOffHeapVectorValues extends OffHeapFloatVectorValues {
+  private static class SparseOffHeapVectorValues extends OffHeapFloat16VectorValues {
     private final DirectMonotonicReader ordToDoc;
     private final IndexedDISI disi;
     // dataIn was used to init a new IndexedDIS for #randomAccess()
@@ -280,7 +277,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     }
 
     @Override
-    public VectorScorer scorer(float[] query) throws IOException {
+    public VectorScorer scorer(short[] query) throws IOException {
       SparseOffHeapVectorValues copy = copy();
       DocIndexIterator iterator = copy.iterator();
       RandomVectorScorer randomVectorScorer =
@@ -304,7 +301,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     }
   }
 
-  private static class EmptyOffHeapVectorValues extends OffHeapFloatVectorValues {
+  private static class EmptyOffHeapVectorValues extends OffHeapFloat16VectorValues {
 
     public EmptyOffHeapVectorValues(
         int dimension,
@@ -329,7 +326,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     }
 
     @Override
-    public float[] vectorValue(int targetOrd) {
+    public short[] vectorValue(int targetOrd) {
       throw new UnsupportedOperationException();
     }
 
@@ -344,7 +341,7 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     }
 
     @Override
-    public VectorScorer scorer(float[] query) {
+    public VectorScorer scorer(short[] query) {
       return null;
     }
   }

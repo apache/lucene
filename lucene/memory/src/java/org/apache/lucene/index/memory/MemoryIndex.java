@@ -37,6 +37,7 @@ import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloat16VectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.BinaryDocValues;
@@ -48,6 +49,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
@@ -813,7 +815,7 @@ public class MemoryIndex {
                 + vectorField.name()
                 + "] is not a byte vector field, but the field info is configured for byte vectors");
       }
-      case FLOAT32, FLOAT16 -> {
+      case FLOAT32 -> {
         if (vectorField instanceof KnnFloatVectorField floatVectorField) {
           if (info.floatVectorCount == 1) {
             throw new IllegalArgumentException(
@@ -828,6 +830,29 @@ public class MemoryIndex {
           info.floatVectorValues[0] =
               ArrayUtil.copyOfSubArray(
                   floatVectorField.vectorValue(), 0, info.fieldInfo.getVectorDimension());
+          return;
+        }
+        throw new IllegalArgumentException(
+            "Field ["
+                + vectorField.name()
+                + "] is not a float vector field, but the field info is configured for float vectors");
+      }
+
+      case FLOAT16 -> {
+        if (vectorField instanceof KnnFloat16VectorField float16VectorField) {
+          if (info.float16VectorCount == 1) {
+            throw new IllegalArgumentException(
+                "Only one value per field allowed for float vector field ["
+                    + vectorField.name()
+                    + "]");
+          }
+          info.float16VectorCount++;
+          if (info.float16VectorValues == null) {
+            info.float16VectorValues = new short[1][];
+          }
+          info.float16VectorValues[0] =
+              ArrayUtil.copyOfSubArray(
+                  float16VectorField.vectorValue(), 0, info.fieldInfo.getVectorDimension());
           return;
         }
         throw new IllegalArgumentException(
@@ -1243,8 +1268,11 @@ public class MemoryIndex {
     /** the float vectors added for this field */
     private float[][] floatVectorValues;
 
+    private short[][] float16VectorValues;
+
     /** Number of byte vectors added for this field */
     private int byteVectorCount;
+    private int float16VectorCount;
 
     /** the byte vectors added for this field */
     private byte[][] byteVectorValues;
@@ -1748,6 +1776,15 @@ public class MemoryIndex {
     }
 
     @Override
+    public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+      Info info = fields.get(field);
+      if (info == null || info.float16VectorValues == null) {
+        return null;
+      }
+      return new MemoryFloat16VectorValues(info);
+    }
+
+    @Override
     public ByteVectorValues getByteVectorValues(String fieldName) {
       Info info = fields.get(fieldName);
       if (info == null || info.byteVectorValues == null) {
@@ -1759,6 +1796,11 @@ public class MemoryIndex {
     @Override
     public void searchNearestVectors(
         String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {}
+
+    @Override
+    public void searchNearestVectors(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+        throws IOException {
+    }
 
     @Override
     public void searchNearestVectors(
@@ -2372,6 +2414,70 @@ public class MemoryIndex {
 
     @Override
     public MemoryFloatVectorValues copy() {
+      return this;
+    }
+  }
+
+  private static final class MemoryFloat16VectorValues extends Float16VectorValues {
+    private final Info info;
+
+    MemoryFloat16VectorValues(Info info) {
+      this.info = info;
+    }
+
+    @Override
+    public int dimension() {
+      return info.fieldInfo.getVectorDimension();
+    }
+
+    @Override
+    public int size() {
+      return info.float16VectorCount;
+    }
+
+    @Override
+    public short[] vectorValue(int ord) {
+      if (ord == 0) {
+        return info.float16VectorValues[0];
+      } else {
+        return null;
+      }
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return createDenseIterator();
+    }
+
+    @Override
+    public VectorScorer scorer(short[] query) {
+      if (query.length != info.fieldInfo.getVectorDimension()) {
+        throw new IllegalArgumentException(
+            "query vector dimension "
+                + query.length
+                + " does not match field dimension "
+                + info.fieldInfo.getVectorDimension());
+      }
+      MemoryFloat16VectorValues vectorValues = new MemoryFloat16VectorValues(info);
+      DocIndexIterator iterator = vectorValues.iterator();
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          assert iterator.docID() == 0;
+          return info.fieldInfo
+              .getVectorSimilarityFunction()
+              .compare(vectorValues.vectorValue(0), query);
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return iterator;
+        }
+      };
+    }
+
+    @Override
+    public MemoryFloat16VectorValues copy() {
       return this;
     }
   }
