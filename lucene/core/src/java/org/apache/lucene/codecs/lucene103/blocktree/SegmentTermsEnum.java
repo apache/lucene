@@ -499,7 +499,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         };
       } else {
         // NextNode != node, we get a child to search, set nextNode to nodes.
-        setNode(nextNode, clone.offset);
+        setNode(nextNode, clone.offset - target.offset);
 
         // Follow this node
         term.setBytes(clone.bytes, lastOffset, targetUpto, clone.offset - lastOffset);
@@ -511,7 +511,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         // targetUpto]&0xff) + " node.output=" + node.output + " node.nfo=" + node.nextFinalOutput);
         // }
         //        targetUpto++;
-        targetUpto = clone.offset;
+        targetUpto = clone.offset - target.offset;
 
         if (node.hasOutput()) {
           // if (DEBUG) System.out.println("    node is final!");
@@ -796,7 +796,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         }
       } else {
         // NextNode != node, we get a child to search, set nextNode to nodes.
-        setNode(nextNode, clone.offset);
+        setNode(nextNode, clone.offset - target.offset);
 
         // Follow this node
         term.setBytes(clone.bytes, lastOffset, targetUpto, clone.offset - lastOffset);
@@ -808,7 +808,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         // targetUpto]&0xff) + " node.output=" + node.output + " node.nfo=" + node.nextFinalOutput);
         // }
         //        targetUpto++;
-        targetUpto = clone.offset;
+        targetUpto = clone.offset - target.offset;
 
         if (node.hasOutput()) {
           // if (DEBUG) System.out.println("    node is final!");
