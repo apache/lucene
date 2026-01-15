@@ -68,7 +68,7 @@ public final class OffsetsFromPositions implements OffsetsRetrievalStrategy {
 
     // If values are not stored, there is nothing to highlight...
     if (values.isEmpty()) {
-      return Collections.emptyList();
+      return List.of();
     }
 
     class PositionSpan extends OffsetRange {
