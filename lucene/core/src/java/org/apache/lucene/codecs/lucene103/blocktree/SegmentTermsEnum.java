@@ -441,7 +441,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
       final int lastOffset = clone.offset;
       final Node nextNode = artReader.lookupChild(clone, node);
 
-      if (nextNode == null) {
+      if (nextNode == null || nextNode == node) {
         // Target equals or contains parent's prefix(non leaf node) or key (leaf node), match, scan
         // suffixes block.
 
@@ -450,6 +450,14 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         //   System.out.println("    index: index exhausted label=" + ((char) targetLabel) + " " +
         // toHex(targetLabel));
         // }
+
+        // TODO: nextNode == node, there are different bytes between target and child, we still back
+        // to scan last frame's suffixes.
+        // E.G.: With BasePostingsFormatTestCase.testInvertedWrite -Dtests.seed=CDC7121B1A6A9E89,
+        // Trie/FST index: t -> r -> a, when seeking
+        // "trouwens", we walk to 'r', and get null since can not find target 'o' (r -> a). We need
+        // to back to scan t's output's suffixes, since r has no
+        // output. I am wonder if the output can record on r, maybe suffixes too few.
 
         validIndexPrefix = currentFrame.prefixLength;
         // validIndexPrefix = targetUpto;
@@ -489,7 +497,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
             return false;
           }
         };
-      } else if (nextNode != node) {
+      } else {
         // NextNode != node, we get a child to search, set nextNode to nodes.
         setNode(nextNode, clone.offset);
 
@@ -511,9 +519,6 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
           // if (DEBUG) System.out.println("    curFrame.ord=" + currentFrame.ord + " hasTerms=" +
           // currentFrame.hasTerms);
         }
-      } else {
-        // TODO: NextNode == node, there are different bytes between target and parent, not match.
-        //        System.out.println("NOT MATCH");
       }
     }
 
@@ -739,7 +744,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
       final int lastOffset = clone.offset;
       final Node nextNode = artReader.lookupChild(clone, node);
 
-      if (nextNode == null) {
+      if (nextNode == null || nextNode == node) {
         // Target equals or contains parent's prefix(non leaf node) or key (leaf node), match, scan
         // suffixes block.
 
@@ -748,6 +753,14 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         //   System.out.println("    index: index exhausted label=" + ((char) targetLabel) + " " +
         // targetLabel);
         // }
+
+        // TODO: nextNode == node, there are different bytes between target and child, we still back
+        // to scan last frame's suffixes.
+        // E.G.: With BasePostingsFormatTestCase.testInvertedWrite -Dtests.seed=CDC7121B1A6A9E89,
+        // Trie/FST index: t -> r -> a, when seeking
+        // "trouwens", we walk to 'r', and get null since can not find target 'o' (r -> a). We need
+        // to back to scan t's output's suffixes, since r has no
+        // output. I am wonder if the output can record on r, maybe suffixes too few.
 
         validIndexPrefix = currentFrame.prefixLength;
         // validIndexPrefix = targetUpto;
@@ -781,7 +794,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
           // }
           return result;
         }
-      } else if (nextNode != node) {
+      } else {
         // NextNode != node, we get a child to search, set nextNode to nodes.
         setNode(nextNode, clone.offset);
 
@@ -803,9 +816,6 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
           // if (DEBUG) System.out.println("    curFrame.ord=" + currentFrame.ord + " hasTerms=" +
           // currentFrame.hasTerms);
         }
-      } else {
-        // TODO: NextNode == node, there are different bytes between target and parent, not match.
-        //        System.out.println("NOT MATCH");
       }
     }
 
