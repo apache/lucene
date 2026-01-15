@@ -24,10 +24,7 @@ import java.util.function.Supplier;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.Sort;
 
-/**
- * A CollectorManager implementation for FirstPassGroupingCollector.
- *
- */
+/** A CollectorManager implementation for FirstPassGroupingCollector. */
 public class FirstPassGroupingCollectorManager<T>
     implements CollectorManager<FirstPassGroupingCollector<T>, Collection<SearchGroup<T>>> {
 
