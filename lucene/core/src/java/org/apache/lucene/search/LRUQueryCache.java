@@ -1140,6 +1140,11 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     Set<IndexReader.CacheKey> keysToCleanCopy = Set.copyOf(keysToClean);
     Set<Query> queriesToCleanCopy = Set.copyOf(queriesToClean);
 
+    // Break early if there are no stale keys to be cleaned up.
+    if (keysToCleanCopy.isEmpty() && queriesToCleanCopy.isEmpty()) {
+      return;
+    }
+
     keysToClean.removeAll(keysToCleanCopy);
     queriesToClean.removeAll(queriesToCleanCopy);
 

@@ -1898,9 +1898,9 @@ public class TestLRUQueryCache extends LuceneTestCase {
     // due to thread contention
     IndexSearcher searcher = new AssertingIndexSearcher(random(), reader);
     searcher.setQueryCachingPolicy(ALWAYS_CACHE);
-
+    // 160 so that each parition(total 16 by default) can hold 10 keys at max.
     LRUQueryCache cache =
-        new LRUQueryCache(16 * reader.leaves().size(), 10000, _ -> true, Float.POSITIVE_INFINITY);
+        new LRUQueryCache(160, 10000, _ -> true, Float.POSITIVE_INFINITY, 1, null);
     searcher.setQueryCache(cache);
 
     DVCacheQuery query = new DVCacheQuery("field");
