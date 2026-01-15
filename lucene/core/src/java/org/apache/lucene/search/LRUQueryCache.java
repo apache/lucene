@@ -112,7 +112,7 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
   private final ScheduledThreadPoolExecutor scheduler;
 
   /**
-   * Expert: Create a new instance that will cache at most <code>maxSize</code> queries with at most
+   * Expert: Create a new instance that will cache at most <code>maxSize</code> keys with at most
    * <code>maxRamBytesUsed</code> bytes of memory, only on leaves that satisfy {@code
    * leavesToCache}.
    *
@@ -128,7 +128,7 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
   }
 
   /**
-   * Expert: Create a new instance that will cache at most <code>maxSize</code> queries with at most
+   * Expert: Create a new instance that will cache at most <code>maxSize</code> keys with at most
    * <code>maxRamBytesUsed</code> bytes of memory, only on leaves that satisfy {@code
    * leavesToCache}.
    *
@@ -210,12 +210,12 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
   }
 
   /**
-   * Create a new instance that will cache at most <code>maxSize</code> queries with at most <code>
-   * maxRamBytesUsed</code> bytes of memory. Queries will only be cached on leaves that have more
-   * than 10k documents and have more than half of the average documents per leave of the index.
-   * This should guarantee that all leaves from the upper {@link TieredMergePolicy tier} will be
-   * cached. Only clauses whose cost is at most 100x the cost of the top-level query will be cached
-   * in order to not hurt latency too much because of caching.
+   * Create a new instance that will cache at most <code>maxSize</code> keys with at most <code>
+   * maxRamBytesUsed</code> bytes of memory. Items will only be cached on leaves that have more than
+   * 10k documents and have more than half of the average documents per leave of the index. This
+   * should guarantee that all leaves from the upper {@link TieredMergePolicy tier} will be cached.
+   * Only clauses whose cost is at most 100x the cost of the top-level query will be cached in order
+   * to not hurt latency too much because of caching.
    */
   public LRUQueryCache(int maxSize, long maxRamBytesUsed) {
     this(maxSize, maxRamBytesUsed, new MinSegmentSizePredicate(10000), 10);
