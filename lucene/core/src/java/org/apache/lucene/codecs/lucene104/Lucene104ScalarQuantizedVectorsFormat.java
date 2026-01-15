@@ -153,8 +153,10 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
         // so we discretize to the same as single bit encoding
         int docDiscretized = (dimensions + 7) / 8 * 8;
         int maxDiscretized = Math.max(queryDiscretized, docDiscretized);
-        assert maxDiscretized % (8.0 / 4) == 0 : "bad discretized=" + maxDiscretized + " for dim=" + dimensions;
-        assert maxDiscretized % (8.0 / 2) == 0 : "bad discretized=" + maxDiscretized + " for dim=" + dimensions;
+        assert maxDiscretized % (8.0 / 4) == 0
+            : "bad discretized=" + maxDiscretized + " for dim=" + dimensions;
+        assert maxDiscretized % (8.0 / 2) == 0
+            : "bad discretized=" + maxDiscretized + " for dim=" + dimensions;
         return maxDiscretized;
       }
 
