@@ -332,7 +332,6 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         // + " output=" + output);
         // }
         if (cmp != 0) {
-          nextNodeIndex = nodeIndex + 1;
           break;
         }
         node = nodes[1 + nodeIndex];
@@ -348,6 +347,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         targetUpto = nodeEnds[1 + nodeIndex];
         nodeIndex++;
       }
+      nextNodeIndex = nodeIndex + 1;
 
       if (cmp == 0) {
         // Second compare the rest of the term, but
@@ -638,7 +638,6 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         // + " output=" + output);
         // }
         if (cmp != 0) {
-          nextNodeIndex = nodeIndex + 1;
           break;
         }
         node = nodes[1 + nodeIndex];
@@ -654,6 +653,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         targetUpto = nodeEnds[1 + nodeIndex];
         nodeIndex++;
       }
+      nextNodeIndex = nodeIndex + 1;
 
       if (cmp == 0) {
         // Second compare the rest of the term, but
