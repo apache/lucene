@@ -41,7 +41,7 @@ public abstract class NumericDocValues extends DocValuesIterator {
    *
    * <p>This API behaves as if implemented as below, which is the default implementation:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * public void longValues(int size, int[] docs, long[] values, long defaultValue) throws IOException {
    *   for (int i = 0; i &lt; size; ++i) {
    *     int doc = docs[i];
@@ -54,7 +54,7 @@ public abstract class NumericDocValues extends DocValuesIterator {
    *     values[i] = value;
    *   }
    * }
-   * </pre>
+   * </code></pre>
    *
    * <p><b>NOTE</b>: The {@code docs} array is required to be sorted in ascending order with no
    * duplicates.
@@ -65,13 +65,13 @@ public abstract class NumericDocValues extends DocValuesIterator {
    * using {@link #advanceExact} and {@link #longValue()} on ranges of doc IDs that may not be
    * dense, e.g.
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * if (size > 0 &amp;&amp; values.advannceExact(docs[0]) &amp;&amp; values.docIDRunEnd() &gt; docs[size - 1]) {
    *   // use values#longValues to retrieve values
    * } else {
    *   // some docs may not have a value, use #advanceExact and #longValue
    * }
-   * </pre>
+   * </code></pre>
    *
    * @param size the number of values to retrieve
    * @param docs the buffer of doc IDs whose values should be looked up

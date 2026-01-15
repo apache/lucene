@@ -39,7 +39,7 @@ import org.apache.lucene.search.DocIdSetIterator;
  *
  * <p>For re-mapping the ordinals during index merge, do the following:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * // merge the old taxonomy with the new one.
  * OrdinalMap map = new MemoryOrdinalMap();
  * DirectoryTaxonomyWriter.addTaxonomy(srcTaxoDir, map);
@@ -56,7 +56,7 @@ import org.apache.lucene.search.DocIdSetIterator;
  * }
  * writer.addIndexes(new MultiReader(wrappedLeaves));
  * writer.commit();
- * </pre>
+ * </code></pre>
  *
  * @lucene.experimental
  */

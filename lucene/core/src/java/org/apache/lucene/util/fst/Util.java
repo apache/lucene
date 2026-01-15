@@ -476,11 +476,11 @@ public final class Util {
    * Dumps an {@link FST} to a GraphViz's <code>dot</code> language description for visualization.
    * Example of use:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * PrintWriter pw = new PrintWriter(&quot;out.dot&quot;);
    * Util.toDot(fst, pw, true, true);
    * pw.close();
-   * </pre>
+   * </code></pre>
    *
    * and then, from command line:
    *

@@ -325,15 +325,13 @@ public class MultiFieldQueryParser extends QueryParser {
    *
    * <p>Usage:
    *
-   * <pre class="prettyprint">
-   * <code>
+   * <pre><code class="language-java">
    * String[] fields = {"filename", "contents", "description"};
    * BooleanClause.Occur[] flags = {BooleanClause.Occur.SHOULD,
    *                BooleanClause.Occur.MUST,
    *                BooleanClause.Occur.MUST_NOT};
    * MultiFieldQueryParser.parse("query", fields, flags, analyzer);
-   * </code>
-   * </pre>
+   * </code></pre>
    *
    * <p>The code above would construct a query:
    *
@@ -375,16 +373,14 @@ public class MultiFieldQueryParser extends QueryParser {
    *
    * <p>Usage:
    *
-   * <pre class="prettyprint">
-   * <code>
+   * <pre><code class="language-java">
    * String[] query = {"query1", "query2", "query3"};
    * String[] fields = {"filename", "contents", "description"};
    * BooleanClause.Occur[] flags = {BooleanClause.Occur.SHOULD,
    *                BooleanClause.Occur.MUST,
    *                BooleanClause.Occur.MUST_NOT};
    * MultiFieldQueryParser.parse(query, fields, flags, analyzer);
-   * </code>
-   * </pre>
+   * </code></pre>
    *
    * <p>The code above would construct a query:
    *

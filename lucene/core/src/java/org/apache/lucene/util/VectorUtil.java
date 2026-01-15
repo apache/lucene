@@ -245,12 +245,12 @@ public final class VectorUtil {
    * Dot product computed over uint4 (values between [0,15]) bytes. The second vector is considered
    * "packed" (i.e. every byte representing two values). The following packing is assumed:
    *
-   * <pre class="prettyprint lang-java">
+   * <pre><code class="language-java">
    *   packed[0] = (raw[0] * 16) | raw[packed.length];
    *   packed[1] = (raw[1] * 16) | raw[packed.length + 1];
    *   ...
    *   packed[packed.length - 1] = (raw[packed.length - 1] * 16) | raw[2 * packed.length - 1];
-   * </pre>
+   * </code></pre>
    *
    * @param unpacked the unpacked vector, of even length
    * @param packed the packed vector, of length {@code (unpacked.length + 1) / 2}

@@ -37,7 +37,7 @@ import org.apache.lucene.util.ResourceLoader;
  *
  * <p>CustomAnalyzer example:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * Analyzer ana = CustomAnalyzer.builder()
  *   .withTokenizer("standard")
  *   .when("protectedterm", "ignoreCase", "true", "protected", "protectedTerms.txt")
@@ -45,26 +45,26 @@ import org.apache.lucene.util.ResourceLoader;
  *     .addTokenFilter("lowercase")
  *   .endwhen()
  *   .build();
- * </pre>
+ * </code></pre>
  *
  * <p>Solr example, in which conditional filters are specified via the <code>wrappedFilters</code>
  * parameter - a comma-separated list of case-insensitive TokenFilter SPI names - and conditional
  * filter args are specified via <code>filterName.argName</code> parameters:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="reverse_lower_with_exceptions" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
  *     &lt;filter class="solr.ProtectedTermFilterFactory" ignoreCase="true" protected="protectedTerms.txt"
  *             wrappedFilters="truncate,lowercase" truncate.prefixLength="4" /&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * <p>When using the <code>wrappedFilters</code> parameter, each filter name must be unique, so if
  * you need to specify the same filter more than once, you must add case-insensitive unique '-id'
  * suffixes (note that the '-id' suffix is stripped prior to SPI lookup), e.g.:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="double_synonym_with_exceptions" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
@@ -73,7 +73,7 @@ import org.apache.lucene.util.ResourceLoader;
  *             synonymgraph-A.synonyms="synonyms-1.txt"
  *             synonymgraph-B.synonyms="synonyms-2.txt"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * <p>See related {@link
  * org.apache.lucene.analysis.custom.CustomAnalyzer.Builder#whenTerm(Predicate)}
