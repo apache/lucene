@@ -239,6 +239,8 @@ Improvements
 
 * GITHUB#15479: Add NumericDocValueRangeQuery base class to add accessor methods for field, lower and upper values (Alan Woodward)
 
+* GITHUB#15570: Disallow invalid offset 0 for LZ4 decompression (Marcono1234)
+
 Optimizations
 ---------------------
 * GITHUB#15140: Optimize TopScoreDocCollector with TernaryLongHeap for improved performance over Binary-LongHeap. (Ramakrishna Chilaka)

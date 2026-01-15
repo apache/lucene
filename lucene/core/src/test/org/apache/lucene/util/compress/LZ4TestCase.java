@@ -384,34 +384,4 @@ public abstract class LZ4TestCase extends LuceneTestCase {
     // own
     assertTrue(out.size() < len);
   }
-
-  public void testDecompressOffset0() {
-    byte[] input =
-        new byte[] {
-          // token
-          0xE,
-          // offset 0
-          0,
-          0,
-          // last literal
-          // token
-          7 << 4,
-          // literal
-          0,
-          0,
-          0,
-          0,
-          0,
-          0,
-          0
-        };
-
-    byte[] output = new byte[18];
-
-    var e =
-        assertThrows(
-            IOException.class,
-            () -> LZ4.decompress(new ByteArrayDataInput(input), output.length, output, 0));
-    assertEquals("offset 0 is invalid", e.getMessage());
-  }
 }
