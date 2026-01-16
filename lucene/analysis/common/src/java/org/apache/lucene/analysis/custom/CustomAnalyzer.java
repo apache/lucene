@@ -24,6 +24,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -41,7 +42,6 @@ import org.apache.lucene.analysis.miscellaneous.ConditionalTokenFilterFactory;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.util.FilesystemResourceLoader;
 import org.apache.lucene.util.ClasspathResourceLoader;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.ResourceLoader;
 import org.apache.lucene.util.ResourceLoaderAware;
 import org.apache.lucene.util.SetOnce;
@@ -55,13 +55,13 @@ import org.apache.lucene.util.Version;
  * <p>You can create an instance of this Analyzer using the builder by passing the SPI names (as
  * defined by {@link java.util.ServiceLoader} interface) to it:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * Analyzer ana = CustomAnalyzer.builder(Paths.get(&quot;/path/to/config/dir&quot;))
  *   .withTokenizer(StandardTokenizerFactory.NAME)
  *   .addTokenFilter(LowerCaseFilterFactory.NAME)
  *   .addTokenFilter(StopFilterFactory.NAME, &quot;ignoreCase&quot;, &quot;false&quot;, &quot;words&quot;, &quot;stopwords.txt&quot;, &quot;format&quot;, &quot;wordset&quot;)
  *   .build();
- * </pre>
+ * </code></pre>
  *
  * The parameters passed to components are also used by Apache Solr and are documented on their
  * corresponding factory classes. Refer to documentation of subclasses of {@link TokenizerFactory},
@@ -69,13 +69,13 @@ import org.apache.lucene.util.Version;
  *
  * <p>This is the same as the above:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * Analyzer ana = CustomAnalyzer.builder(Paths.get(&quot;/path/to/config/dir&quot;))
  *   .withTokenizer(&quot;standard&quot;)
  *   .addTokenFilter(&quot;lowercase&quot;)
  *   .addTokenFilter(&quot;stop&quot;, &quot;ignoreCase&quot;, &quot;false&quot;, &quot;words&quot;, &quot;stopwords.txt&quot;, &quot;format&quot;, &quot;wordset&quot;)
  *   .build();
- * </pre>
+ * </code></pre>
  *
  * <p>The list of names to be used for components can be looked up through: {@link
  * TokenizerFactory#availableTokenizers()}, {@link TokenFilterFactory#availableTokenFilters()}, and
@@ -84,7 +84,7 @@ import org.apache.lucene.util.Version;
  * <p>You can create conditional branches in the analyzer by using {@link Builder#when(String,
  * String...)} and {@link Builder#whenTerm(Predicate)}:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * Analyzer ana = CustomAnalyzer.builder()
  *    .withTokenizer(&quot;standard&quot;)
  *    .addTokenFilter(&quot;lowercase&quot;)
@@ -92,7 +92,7 @@ import org.apache.lucene.util.Version;
  *      .addTokenFilter(&quot;reversestring&quot;)
  *    .endwhen()
  *    .build();
- * </pre>
+ * </code></pre>
  *
  * @since 5.0.0
  */
@@ -606,7 +606,8 @@ public final class CustomAnalyzer extends Analyzer {
         throw new IllegalArgumentException(
             "Key-value pairs expected, so the number of params must be even.");
       }
-      final Map<String, String> map = CollectionUtil.newHashMap(params.length);
+      // Plus 1 since applyDefaultParams will add a default param later.
+      final Map<String, String> map = HashMap.newHashMap(params.length / 2 + 1);
       for (int i = 0; i < params.length; i += 2) {
         Objects.requireNonNull(params[i], "Key of param may not be null.");
         map.put(params[i], params[i + 1]);

@@ -274,9 +274,17 @@ public class CheckJarChecksumsAndLicensesPlugin extends LuceneGradlePlugin {
   /** Update checksums for each jar. */
   private static void writeChecksums(CollectJarInfos task, Directory licensesDir) {
     try {
+      var licensesPath = licensesDir.getAsFile().toPath();
+      var sha1Matcher = licensesPath.getFileSystem().getPathMatcher("glob:**.sha1");
+      Set<Path> danglingShaFiles;
+      try (var stream = Files.list(licensesPath)) {
+        danglingShaFiles = stream.filter(sha1Matcher::matches).collect(Collectors.toSet());
+      }
+
       for (var jarInfo : task.getUniqueJarInfos()) {
-        var expectedChecksumFile =
-            licensesDir.file(jarInfo.fileName() + ".sha1").getAsFile().toPath();
+        var expectedChecksumFile = licensesPath.resolve(jarInfo.fileName() + ".sha1");
+        danglingShaFiles.remove(expectedChecksumFile);
+
         var newChecksum = jarInfo.checksum();
         if (Files.exists(expectedChecksumFile)) {
           var previousChecksum = Files.readString(expectedChecksumFile).trim();
@@ -285,6 +293,10 @@ public class CheckJarChecksumsAndLicensesPlugin extends LuceneGradlePlugin {
           }
         }
         Files.writeString(expectedChecksumFile, newChecksum + "\n");
+      }
+
+      for (var path : danglingShaFiles) {
+        Files.delete(path);
       }
     } catch (IOException e) {
       throw new UncheckedIOException(e);

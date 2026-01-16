@@ -45,13 +45,13 @@ import org.apache.lucene.util.BitSet;
  * top documents returned are the child document ids and the calculated scores. Here is how to use
  * this in conjunction with {@link ToParentBlockJoinQuery}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   Query knnQuery = new DiversifyingChildrenByteKnnVectorQuery(fieldName, queryVector, ...);
  *   // Rewrite executes kNN search and collects nearest children docIds and their scores
  *   Query rewrittenKnnQuery = searcher.rewrite(knnQuery);
  *   // Join the scored children docs with their parents and score the parents
  *   Query childrenToParents = new ToParentBlockJoinQuery(rewrittenKnnQuery, parentsFilter, ScoreMode.MAX);
- * </pre>
+ * </code></pre>
  */
 public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
   private static final TopDocs NO_RESULTS = TopDocsCollector.EMPTY_TOPDOCS;

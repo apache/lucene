@@ -20,11 +20,7 @@ plugins {
   alias(deps.plugins.forbiddenapis) apply false
 }
 
-repositories {
-  mavenCentral()
-  gradlePluginPortal()
-}
-
+apply from: file("declare-repositories.gradle")
 apply from: file("ecj-source.gradle")
 
 group = "org.apache"

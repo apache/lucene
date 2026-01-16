@@ -194,6 +194,20 @@ public class TestOptimizedScalarQuantizer extends LuceneTestCase {
     assertArrayEquals(scratch, unpacked);
   }
 
+  public void testPackTransposeDibit() {
+    int dim = randomIntBetween(1, 4096);
+    ScalarEncoding encoding = ScalarEncoding.DIBIT_QUERY_NIBBLE;
+    byte[] scratch = new byte[encoding.getDiscreteDimensions(dim)];
+    for (int i = 0; i < scratch.length; i++) {
+      scratch[i] = (byte) randomIntBetween(0, 3);
+    }
+    byte[] packed = new byte[encoding.getDocPackedLength(scratch.length)];
+    byte[] unpacked = new byte[scratch.length];
+    OptimizedScalarQuantizer.transposeDibit(scratch, packed);
+    OptimizedScalarQuantizer.untransposeDibit(packed, unpacked);
+    assertArrayEquals(scratch, unpacked);
+  }
+
   static void assertValidQuantizedRange(byte[] quantized, byte bits) {
     for (byte b : quantized) {
       if (bits < 8) {

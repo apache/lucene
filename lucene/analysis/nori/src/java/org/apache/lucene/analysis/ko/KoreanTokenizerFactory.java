@@ -36,7 +36,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
 /**
  * Factory for {@link KoreanTokenizer}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_ko" class="solr.TextField"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.KoreanTokenizerFactory"
@@ -48,7 +48,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
  *     /&gt;
  *  &lt;/analyzer&gt;
  * &lt;/fieldType&gt;
- * </pre>
+ * </code></pre>
  *
  * <p>Supports the following attributes:
  *

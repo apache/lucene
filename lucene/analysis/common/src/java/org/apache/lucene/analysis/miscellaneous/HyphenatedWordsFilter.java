@@ -30,7 +30,7 @@ import org.apache.lucene.util.IgnoreRandomChains;
  * broken into two lines back together. This filter should be used on indexing time only. Example
  * field definition in schema.xml:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldtype name="text" class="solr.TextField" positionIncrementGap="100"&gt;
  *  &lt;analyzer type="index"&gt;
  *    &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
@@ -50,7 +50,7 @@ import org.apache.lucene.util.IgnoreRandomChains;
  *      &lt;filter class="solr.RemoveDuplicatesTokenFilterFactory"/&gt;
  *  &lt;/analyzer&gt;
  * &lt;/fieldtype&gt;
- * </pre>
+ * </code></pre>
  */
 @IgnoreRandomChains(
     reason = "TODO: doesn't handle graph inputs (or even look at positionIncrement)")

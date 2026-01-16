@@ -197,8 +197,7 @@ public final class DocValuesRangeIterator extends TwoPhaseIterator {
   @Override
   public final boolean matches() throws IOException {
     return switch (approximation.match) {
-      case YES -> true;
-      case IF_DOC_HAS_VALUE -> true;
+      case YES, IF_DOC_HAS_VALUE -> true;
       case MAYBE -> innerTwoPhase.matches();
       case NO -> throw new IllegalStateException("Unpositioned approximation");
     };

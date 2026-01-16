@@ -75,9 +75,12 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       var targetCorrectiveTerms =
           quantizer.scalarQuantize(
               target, scratch, scalarEncoding.getQueryBits(), qv.getCentroid());
-      // for single bit query nibble, we need to transpose the nibbles for fast scoring comparisons
+      // for asymmetric encodings with 4-bit query, we need to transpose the nibbles for fast
+      // scoring comparisons
       if (scalarEncoding
-          == Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE) {
+              == Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE
+          || scalarEncoding
+              == Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.DIBIT_QUERY_NIBBLE) {
         OptimizedScalarQuantizer.transposeHalfByte(scratch, targetQuantized);
       }
       return new RandomVectorScorer.AbstractRandomVectorScorer(qv) {
@@ -198,9 +201,10 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
               }
               OffHeapScalarQuantizedVectorValues.unpackNibbles(rawTargetVector, targetVector);
             }
-            case SINGLE_BIT_QUERY_NIBBLE -> {
+            case SINGLE_BIT_QUERY_NIBBLE, DIBIT_QUERY_NIBBLE -> {
               throw new IllegalStateException(
-                  "SINGLE_BIT_QUERY_NIBBLE encoding is not supported for symmetric quantization");
+                  values.getScalarEncoding().name()
+                      + " encoding is not supported for symmetric quantization");
             }
           }
           targetCorrectiveTerms = targetValues.getCorrectiveTerms(node);
@@ -242,6 +246,7 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
           case PACKED_NIBBLE -> VectorUtil.int4DotProductSinglePacked(quantizedQuery, quantizedDoc);
           case SINGLE_BIT_QUERY_NIBBLE ->
               VectorUtil.int4BitDotProduct(quantizedQuery, quantizedDoc);
+          case DIBIT_QUERY_NIBBLE -> VectorUtil.int4DibitDotProduct(quantizedQuery, quantizedDoc);
         };
     OptimizedScalarQuantizer.QuantizationResult indexCorrections =
         targetVectors.getCorrectiveTerms(targetOrd);

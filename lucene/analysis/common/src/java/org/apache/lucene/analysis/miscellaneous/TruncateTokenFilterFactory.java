@@ -24,7 +24,7 @@ import org.apache.lucene.analysis.TokenStream;
  * Factory for {@link org.apache.lucene.analysis.miscellaneous.TruncateTokenFilter}. The following
  * type is recommended for "<i>diacritics-insensitive search</i>" for Turkish.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_tr_ascii_f5" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.StandardTokenizerFactory"/&gt;
@@ -35,7 +35,7 @@ import org.apache.lucene.analysis.TokenStream;
  *     &lt;filter class="solr.TruncateTokenFilterFactory" prefixLength="5"/&gt;
  *     &lt;filter class="solr.RemoveDuplicatesTokenFilterFactory"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @since 4.8.0
  * @lucene.spi {@value #NAME}

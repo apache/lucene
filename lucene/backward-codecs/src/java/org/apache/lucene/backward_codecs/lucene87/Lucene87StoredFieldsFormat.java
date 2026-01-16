@@ -47,12 +47,12 @@ import org.apache.lucene.util.packed.DirectMonotonicWriter;
  * dictionaries for a better ratio at the expense of slower performance. These two options can be
  * configured like this:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   // the default: for high performance
  *   indexWriterConfig.setCodec(new Lucene87Codec(Mode.BEST_SPEED));
  *   // instead for higher performance (but slower):
  *   // indexWriterConfig.setCodec(new Lucene87Codec(Mode.BEST_COMPRESSION));
- * </pre>
+ * </code></pre>
  *
  * <p><b>File formats</b>
  *

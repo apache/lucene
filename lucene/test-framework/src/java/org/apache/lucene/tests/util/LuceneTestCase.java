@@ -210,49 +210,53 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
-import org.junit.Test;
 import org.junit.internal.AssumptionViolatedException;
 import org.junit.rules.RuleChain;
 import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 
-/**
- * Base class for all Lucene unit tests, Junit3 or Junit4 variant.
- *
- * <h2>Class and instance setup.</h2>
- *
- * <p>The preferred way to specify class (suite-level) setup/cleanup is to use static methods
- * annotated with {@link BeforeClass} and {@link AfterClass}. Any code in these methods is executed
- * within the test framework's control and ensure proper setup has been made. <b>Try not to use
- * static initializers (including complex final field initializers).</b> Static initializers are
- * executed before any setup rules are fired and may cause you (or somebody else) headaches.
- *
- * <p>For instance-level setup, use {@link Before} and {@link After} annotated methods. If you
- * override either {@link #setUp()} or {@link #tearDown()} in your subclass, make sure you call
- * <code>super.setUp()</code> and <code>super.tearDown()</code>. This is detected and enforced.
- *
- * <h2>Specifying test cases</h2>
- *
- * <p>Any test method with a <code>testXXX</code> prefix is considered a test case. Any test method
- * annotated with {@link Test} is considered a test case.
- *
- * <h2>Randomized execution and test facilities</h2>
- *
- * <p>{@link LuceneTestCase} uses {@link RandomizedRunner} to execute test cases. {@link
- * RandomizedRunner} has built-in support for tests randomization including access to a repeatable
- * {@link Random} instance. See {@link #random()} method. Any test using {@link Random} acquired
- * from {@link #random()} should be fully reproducible (assuming no race conditions between threads
- * etc.). The initial seed for a test case is reported in many ways:
- *
- * <ul>
- *   <li>as part of any exception thrown from its body (inserted as a dummy stack trace entry),
- *   <li>as part of the main thread executing the test case (if your test hangs, just dump the stack
- *       trace of all threads and you'll see the seed),
- *   <li>the master seed can also be accessed manually by getting the current context ({@link
- *       RandomizedContext#current()}) and then calling {@link
- *       RandomizedContext#getRunnerSeedAsString()}.
- * </ul>
- */
+/// Base class for all Lucene unit tests (JUnit4 variant).
+///
+/// ## Class and instance setup
+///
+/// The preferred way to specify class (suite-level) setup/cleanup is to use static methods
+/// annotated with [BeforeClass] and [AfterClass]. Any code in these methods is executed
+/// within the test framework's control and ensure proper setup has been made. **Try not to use
+/// static initializers (including complex final field initializers).** Static initializers are
+/// executed before any setup rules are fired and may cause you (or somebody else) headaches.
+///
+/// For instance-level setup, use [Before] and [After] annotated methods. If you
+/// override either [#setUp()] or [#tearDown()] in your subclass, make sure you call
+/// `super.setUp()` and `super.tearDown()`. This is detected and enforced.
+///
+/// ## Specifying test cases
+///
+/// Any test method with a `testXXX` prefix is considered a test case. Any test method
+/// annotated with [org.junit.Test] is considered a test case. For example, these are equivalent
+/// declarations:
+///
+/// ```java
+/// public void testPrefixIsSufficient() {}
+///
+/// @Test
+/// public void annotationIsRequiredHere() {}
+/// ```
+///
+/// ## Randomized execution and test facilities
+///
+/// [LuceneTestCase] uses [RandomizedRunner] to execute test cases.
+/// [RandomizedRunner] has built-in support for tests randomization including access to a repeatable
+/// [Random] instance. See [#random()] method. Any test using [Random] acquired
+/// from [#random()] should be fully reproducible (assuming no race conditions between threads
+/// etc.). The initial seed for a test case is reported in many ways:
+///
+///   - as part of any exception thrown from its body (inserted as a dummy stack trace entry),
+///   - as part of the main thread executing the test case (if your test hangs, just dump the stack
+///     trace of all threads, and you'll see the seed),
+///   - the master seed can also be accessed manually by getting the current context (
+///     [RandomizedContext#current()]) and then calling
+///     [RandomizedContext#getRunnerSeedAsString()].
+///
 @RunWith(RandomizedRunner.class)
 @TestMethodProviders({LuceneJUnit3MethodProvider.class, JUnit4MethodProvider.class})
 @Listeners({RunListenerPrintReproduceInfo.class, FailureMarker.class})

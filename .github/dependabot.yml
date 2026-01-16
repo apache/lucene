@@ -1,7 +1,10 @@
 version: 2
 updates:
   - package-ecosystem: github-actions
-    directory: /
+    directories:
+      - "/"
+      - ".github/actions/eclint"
+      - ".github/actions/prepare-for-build"
     open-pull-requests-limit: 25
     schedule:
       interval: monthly

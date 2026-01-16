@@ -23,14 +23,14 @@ import org.apache.lucene.analysis.TokenStream;
 /**
  * Factory for {@link KoreanReadingFormFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_ko" class="solr.TextField"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.KoreanTokenizerFactory"/&gt;
  *     &lt;filter class="solr.KoreanReadingFormFilterFactory"/&gt;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;
- * </pre>
+ * </code></pre>
  *
  * @lucene.experimental
  * @since 7.4.0

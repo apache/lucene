@@ -27,9 +27,9 @@ import org.apache.lucene.util.BytesRef;
  * share (many) values, such as a title field. If values may be shared and sorted it's better to use
  * {@link SortedDocValuesField}. Here's an example usage:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   document.add(new BinaryDocValuesField(name, new BytesRef("hello")));
- * </pre>
+ * </code></pre>
  *
  * <p>If you also need to store the value, you should add a separate {@link StoredField} instance.
  *

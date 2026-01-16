@@ -45,12 +45,12 @@ import org.apache.lucene.util.graph.GraphTokenStreamFiniteStrings;
  *
  * <p>Example usage:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   QueryBuilder builder = new QueryBuilder(analyzer);
  *   Query a = builder.createBooleanQuery("body", "just a test");
  *   Query b = builder.createPhraseQuery("body", "another test");
  *   Query c = builder.createMinShouldMatchQuery("body", "another test", 0.5f);
- * </pre>
+ * </code></pre>
  *
  * <p>This can also be used as a subclass for query parsers to make it easier to interact with the
  * analysis chain. Factory methods such as {@code newTermQuery} are provided so that the generated

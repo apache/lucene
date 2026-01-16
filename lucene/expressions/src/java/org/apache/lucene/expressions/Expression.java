@@ -28,7 +28,7 @@ import org.apache.lucene.search.SortField;
  *
  * <p>Example that sorts based on an expression:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   // compile an expression:
  *   Expression expr = JavascriptCompiler.compile("sqrt(_score) + ln(popularity)");
  *
@@ -41,11 +41,11 @@ import org.apache.lucene.search.SortField;
  *   Sort sort = new Sort(expr.getSortField(bindings, true));
  *   Query query = new TermQuery(new Term("body", "contents"));
  *   searcher.search(query, 10, sort);
- * </pre>
+ * </code></pre>
  *
  * <p>Example that modifies the scores produced by the query:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   // compile an expression:
  *   Expression expr = JavascriptCompiler.compile("sqrt(_score) + ln(popularity)");
  *
@@ -60,7 +60,7 @@ import org.apache.lucene.search.SortField;
  *       new TermQuery(new Term("body", "contents")),
  *       expr.getDoubleValuesSource(bindings));
  *   searcher.search(query, 10);
- * </pre>
+ * </code></pre>
  *
  * @see JavascriptCompiler#compile
  * @lucene.experimental
