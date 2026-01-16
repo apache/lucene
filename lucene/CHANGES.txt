@@ -45,6 +45,9 @@ API Changes
   and throughput. This provides visibility into Lucene's merge backpressure mechanisms that can
   stall indexing when merge debt accumulates. (Zihan Xu)
 
+* GITHUB#15569: Allow a DataAccessHint to be passed during the construction of Lucene99FlatVectorsReader
+  (Chris Hegarty)
+
 New Features
 ---------------------
 * GITHUB#15328: VectorSimilarityFunction.getValues() now implements doubleVal allowing its
