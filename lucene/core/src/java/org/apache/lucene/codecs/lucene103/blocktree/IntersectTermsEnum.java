@@ -165,6 +165,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
       System.arraycopy(nodeEnds, 0, nextNodeEnds, 0, nodeEnds.length);
       nodeEnds = nextNodeEnds;
     }
+    assert end > nodeEnds[nextNodeIndex - 1];
     nodes[nextNodeIndex] = node;
     nodeEnds[nextNodeIndex] = end;
     nextNodeIndex++;
@@ -185,6 +186,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     // possible:
     Node node = currentFrame.node;
     int idx = currentFrame.prefix;
+    nextNodeIndex = idx + 1;
     assert currentFrame.suffix > 0;
 
     BytesRef clone = term.clone();
