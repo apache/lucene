@@ -321,7 +321,7 @@ public class IndexSearcher {
    * href="https://github.com/apache/lucene/issues/13745">the corresponding github issue</a>.
    */
   protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-    return slices(leaves, MAX_DOCS_PER_SLICE, MAX_SEGMENTS_PER_SLICE, false);
+    return slices(leaves, MAX_DOCS_PER_SLICE, MAX_SEGMENTS_PER_SLICE, true);
   }
 
   /**
@@ -828,7 +828,14 @@ public class IndexSearcher {
       // continue with the following leaf
       return;
     }
-    ScorerSupplier scorerSupplier = weight.scorerSupplier(ctx);
+    ScorerSupplier scorerSupplier;
+    if (minDocId == 0 && maxDocId == DocIdSetIterator.NO_MORE_DOCS) {
+      scorerSupplier = weight.scorerSupplier(ctx);
+    } else {
+      LeafReaderContextPartition partition =
+          LeafReaderContextPartition.createFromAndTo(ctx, minDocId, maxDocId);
+      scorerSupplier = weight.scorerSupplier(partition);
+    }
     if (scorerSupplier != null) {
       scorerSupplier.setTopLevelScoringClause();
       BulkScorer scorer = scorerSupplier.bulkScorer();
