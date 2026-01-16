@@ -182,6 +182,9 @@ API Changes
 
 * GITHUB#15514: Refactor DocValuesSkipper stat methods to accept IndexReader instead of IndexSearcher (Pan Guixin)
 
+* GITHUB#15584: Add support for termdoc fields that use custom term freqs: IndexWriter counts their terms
+                rather than summing their freqs.
+
 New Features
 ---------------------
 * GITHUB#15328: VectorSimilarityFunction.getValues() now implements doubleVal allowing its
