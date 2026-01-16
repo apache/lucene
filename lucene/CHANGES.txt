@@ -197,7 +197,7 @@ API Changes
 
 * GITHUB#15581: Minor javadoc clarification that HasIndexSlice::getSlice can return null
   (Chris Hegarty)
-  
+
 New Features
 ---------------------
 * GITHUB#15328: VectorSimilarityFunction.getValues() now implements doubleVal allowing its
