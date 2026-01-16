@@ -21,6 +21,7 @@ import java.util.Objects;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.IndexSearcher.LeafReaderContextPartition;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -148,6 +149,30 @@ public abstract class Weight implements SegmentCacheable {
    * @see DefaultScorerSupplier
    */
   public abstract ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException;
+
+  /**
+   * Returns a {@link ScorerSupplier}, which can then be used to get a {@link Scorer} for a
+   * partition of a leaf reader context.
+   *
+   * <p>This method allows queries to optimize for intra-segment concurrency by knowing the specific
+   * doc ID range being searched within the segment. The default implementation delegates to {@link
+   * #scorerSupplier(LeafReaderContext)} ignoring the partition bounds. Queries that can benefit
+   * from partition awareness (e.g., by creating smaller data structures scoped to the partition)
+   * should override this method.
+   *
+   * <p>A scorer supplier for the same {@link LeafReaderContext} instance may be requested multiple
+   * times as part of a single search call, potentially from different threads searching different
+   * doc ID ranges concurrently.
+   *
+   * @param partition the leaf reader context partition containing the context and doc ID range
+   * @return a {@link ScorerSupplier} providing the scorer, or null if scorer is null
+   * @throws IOException if an IOException occurs
+   * @see LeafReaderContextPartition
+   * @since 10.1
+   */
+  public ScorerSupplier scorerSupplier(LeafReaderContextPartition partition) throws IOException {
+    return scorerSupplier(partition.ctx);
+  }
 
   /**
    * Helper method that delegates to {@link #scorerSupplier(LeafReaderContext)}. It is implemented
