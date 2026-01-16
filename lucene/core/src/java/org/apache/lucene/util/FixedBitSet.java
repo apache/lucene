@@ -56,13 +56,13 @@ public final class FixedBitSet extends BitSet {
   /// bitset is allocated.
   ///
   /// @see #ensureCapacity(FixedBitSet, int)
-  public static FixedBitSet ensureCapacityAndClear(FixedBitSet bits, int numBits) {
-    return ensureCapacityInternal(bits, numBits, false);
+  public static FixedBitSet ensureCapacityAndClear(FixedBitSet bits, int desiredBit) {
+    return ensureCapacityInternal(bits, desiredBit, false);
   }
 
   private static FixedBitSet ensureCapacityInternal(
-      FixedBitSet bits, int numBits, boolean preserveData) {
-    if (numBits < bits.numBits) {
+      FixedBitSet bits, int desiredBit, boolean preserveData) {
+    if (desiredBit < bits.numBits) {
       if (!preserveData) {
         bits.clear();
       }
@@ -70,7 +70,7 @@ public final class FixedBitSet extends BitSet {
     } else {
       // Depends on the ghost bits being clear!
       // (Otherwise, they may become visible in the new instance)
-      int numWords = bits2words(numBits);
+      int numWords = bits2words(desiredBit);
       long[] arr = bits.getBits();
       if (numWords >= arr.length) {
         if (preserveData) {
