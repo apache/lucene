@@ -41,14 +41,16 @@ import org.apache.lucene.util.IOConsumer;
  */
 abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegmentAccessInput {
 
-  /** Shared counter for prefetch hit tracking across clones and slices. */
+  /** Shared counter for prefetch hit tracking. */
   static final class SharedPrefetchCounter {
     private int count;
 
+    /** Increments and gets the shared counter */
     int incrementAndGet() {
       return ++count;
     }
 
+    /** Resets the shared counter */
     void reset() {
       count = 0;
     }
