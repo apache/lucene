@@ -88,7 +88,7 @@ import org.apache.lucene.search.similarities.Similarity.SimScorer;
  * example, assuming that documents have a {@link FeatureField} called 'features' with values for
  * the 'pagerank' feature.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * Query query = new BooleanQuery.Builder()
  *     .add(new TermQuery(new Term("body", "apache")), Occur.SHOULD)
  *     .add(new TermQuery(new Term("body", "lucene")), Occur.SHOULD)
@@ -99,7 +99,7 @@ import org.apache.lucene.search.similarities.Similarity.SimScorer;
  *     .add(boost, Occur.SHOULD)
  *     .build();
  * TopDocs topDocs = searcher.search(boostedQuery, 10);
- * </pre>
+ * </code></pre>
  *
  * @lucene.experimental
  */

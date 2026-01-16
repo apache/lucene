@@ -29,10 +29,10 @@ import org.apache.lucene.util.BytesRef;
  * Field that stores a set of per-document {@link BytesRef} values, indexed for
  * faceting,grouping,joining. Here's an example usage:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   document.add(new SortedSetDocValuesField(name, new BytesRef("hello")));
  *   document.add(new SortedSetDocValuesField(name, new BytesRef("world")));
- * </pre>
+ * </code></pre>
  *
  * <p>If you also need to store the value, you should add a separate {@link StoredField} instance.
  *

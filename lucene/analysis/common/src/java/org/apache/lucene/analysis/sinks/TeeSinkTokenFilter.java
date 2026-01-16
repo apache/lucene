@@ -32,7 +32,7 @@ import org.apache.lucene.util.AttributeSource;
  * <p>It is also useful for doing things like entity extraction or proper noun analysis as part of
  * the analysis workflow and saving off those tokens for use in another field.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * TeeSinkTokenFilter source1 = new TeeSinkTokenFilter(new WhitespaceTokenizer());
  * TeeSinkTokenFilter.SinkTokenStream sink1 = source1.newSinkTokenStream();
  * TeeSinkTokenFilter.SinkTokenStream sink2 = source1.newSinkTokenStream();
@@ -44,7 +44,7 @@ import org.apache.lucene.util.AttributeSource;
  * d.add(new TextField("f1", final1));
  * d.add(new TextField("f2", final2));
  * d.add(new TextField("f3", final3));
- * </pre>
+ * </code></pre>
  *
  * <p>In this example, {@code sink1} and {@code sink2} will both get tokens from {@code source1}
  * after whitespace tokenization, and will further do additional token filtering, e.g. detect
