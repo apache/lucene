@@ -45,14 +45,41 @@ public final class FixedBitSet extends BitSet {
   /**
    * If the given {@link FixedBitSet} is large enough to hold {@code numBits+1}, returns the given
    * bits, otherwise returns a new {@link FixedBitSet} which can hold {@code numBits+1} bits. That
-   * means the bitset returned by this method can be safely called with {@code bits.set(numBits)}
+   * means the bitset returned by this method can be safely called with {@code bits.set(numBits)}.
+   * Existing contents lf {@code bits} are preserved.
    *
    * <p><b>NOTE:</b> the returned bitset reuses the underlying {@code long[]} of the given {@code
    * bits} if possible. Also, calling {@link #length()} on the returned bits may return a value
    * greater than {@code numBits+1}.
+   *
+   * @see #ensureCapacityAndClear(FixedBitSet, int)
    */
   public static FixedBitSet ensureCapacity(FixedBitSet bits, int numBits) {
+    return ensureCapacityInternal(bits, numBits, true);
+  }
+
+  /**
+   * If the given {@link FixedBitSet} is large enough to hold {@code numBits+1}, clears the given
+   * {@code bits} and return it. Otherwise, allocate a new {@link FixedBitSet} which can hold {@code
+   * numBits+1} bits. That means the bitset returned by this method can be safely called with {@code
+   * bits.set(numBits)}.
+   *
+   * <p><b>NOTE:</b> Calling {@link #length()} on the returned bits may return a value greater than
+   * {@code numBits+1}.
+   *
+   * @return Cleared {@code bits}, if large enough, or a new instance otherwise.
+   * @see #ensureCapacity(FixedBitSet, int)
+   */
+  public static FixedBitSet ensureCapacityAndClear(FixedBitSet bits, int numBits) {
+    return ensureCapacityInternal(bits, numBits, false);
+  }
+
+  private static FixedBitSet ensureCapacityInternal(
+      FixedBitSet bits, int numBits, boolean preserveData) {
     if (numBits < bits.numBits) {
+      if (!preserveData) {
+        bits.clear();
+      }
       return bits;
     } else {
       // Depends on the ghost bits being clear!
@@ -60,7 +87,11 @@ public final class FixedBitSet extends BitSet {
       int numWords = bits2words(numBits);
       long[] arr = bits.getBits();
       if (numWords >= arr.length) {
-        arr = ArrayUtil.grow(arr, numWords + 1);
+        if (preserveData) {
+          arr = ArrayUtil.grow(arr, numWords + 1);
+        } else {
+          arr = new long[ArrayUtil.oversize(numWords + 1, Long.BYTES)];
+        }
       }
       return new FixedBitSet(arr, arr.length << 6);
     }
