@@ -22,6 +22,8 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVe
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -43,6 +45,7 @@ import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IOContext.FileOpenHint;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -65,13 +68,27 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
 
   public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer scorer)
       throws IOException {
+    this(state, scorer, DataAccessHint.RANDOM);
+  }
+
+  /**
+   * Creates a Lucene99FlatVectorsReader.
+   *
+   * @param state the segment read state
+   * @param scorer the flat vectors scorer
+   * @param accessHint a data access hint, or null
+   */
+  public Lucene99FlatVectorsReader(
+      SegmentReadState state, FlatVectorsScorer scorer, DataAccessHint accessHint)
+      throws IOException {
     super(scorer);
     int versionMeta = readMetadata(state);
     this.fieldInfos = state.fieldInfos;
-    // Flat formats are used to randomly access vectors from their node ID that is stored
-    // in the HNSW graph.
-    dataContext =
-        state.context.withHints(FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM);
+    FileOpenHint[] hints =
+        Stream.of(FileTypeHint.DATA, FileDataHint.KNN_VECTORS, accessHint)
+            .filter(Objects::nonNull)
+            .toArray(FileOpenHint[]::new);
+    dataContext = state.context.withHints(hints);
     try {
       vectorData =
           openDataInput(
