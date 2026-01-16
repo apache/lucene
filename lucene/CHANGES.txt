@@ -48,6 +48,9 @@ API Changes
 * GITHUB#15569: Allow a DataAccessHint to be passed during the construction of Lucene99FlatVectorsReader
   (Chris Hegarty)
 
+* GITHUB#15581: Minor javadoc clarification that HasIndexSlice::getSlice can return null
+  (Chris Hegarty)
+
 New Features
 ---------------------
 * GITHUB#15328: VectorSimilarityFunction.getValues() now implements doubleVal allowing its
