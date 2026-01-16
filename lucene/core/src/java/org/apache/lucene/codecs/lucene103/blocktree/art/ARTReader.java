@@ -107,7 +107,7 @@ public class ARTReader {
 
       // Get child.
       byte indexByte = target.bytes[target.offset];
-      int childPos = parent.getChildPos(target.bytes[target.offset]);
+      int childPos = parent.getChildPos(indexByte);
       target.offset++;
       target.length--;
       if (childPos != Node.ILLEGAL_IDX) {
@@ -168,7 +168,7 @@ public class ARTReader {
     } else {
       // Get child.
       byte indexByte = target.bytes[target.offset];
-      int childPos = parent.getChildPos(target.bytes[target.offset]);
+      int childPos = parent.getChildPos(indexByte);
       target.offset++;
       target.length--;
       if (childPos != Node.ILLEGAL_IDX) {
