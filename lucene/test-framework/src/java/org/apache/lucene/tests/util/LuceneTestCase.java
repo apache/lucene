@@ -1587,7 +1587,10 @@ public abstract class LuceneTestCase extends Assert {
         if (value instanceof String && !newType.storeTermVectorOffsets()) {
           newType.setStoreTermVectorOffsets(random.nextBoolean());
         }
-
+        if (value instanceof String && rarely(random())) {
+          // sometimes (rarely) test termdoc fields
+          newType.putAttribute(FieldInfo.IS_TERM_DOC_FIELD, "true");
+        }
         if (VERBOSE) {
           System.out.println("NOTE: LuceneTestCase: upgrade name=" + name + " type=" + newType);
         }
