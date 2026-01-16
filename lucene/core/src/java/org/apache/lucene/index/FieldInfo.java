@@ -29,6 +29,11 @@ import java.util.Objects;
  */
 public final class FieldInfo {
 
+  /**
+   * #putAttribute(IS_TERM_DOC_FIELD, "true") to indicate that the field's term frequencies are
+   * custom scores and that IndexWriter should count term occurrences rather than summing term
+   * scores encoded as frequencies.
+   */
   public static final String IS_TERM_DOC_FIELD = "isTermDocField";
 
   /** Field's name */
