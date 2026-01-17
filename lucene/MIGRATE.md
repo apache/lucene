@@ -126,6 +126,17 @@ As part of GITHUB#13820, GITHUB#13825, GITHUB#13830, this issue corrects DataInp
 to be public and not-final, allowing subclasses to override it. This change also removes the protected
 DataInput.readGroupVInt method: subclasses should delegate or reimplement it entirely.
 
+### Scoring and ranking across major versions
+
+Lucene does not guarantee identical scoring or document ranking behavior across
+major version upgrades. Changes may occur due to improvements or modifications
+in Similarity implementations, query execution, or related internals.
+
+Applications that require stable ranking behavior across upgrades should
+explicitly configure the Similarity used for indexing and searching rather than
+relying on defaults. Reviewing `CHANGES.txt` for intervening major versions is
+recommended when upgrading.
+
 ### OpenNLP dependency upgrade
 
 [Apache OpenNLP](https://opennlp.apache.org) 2.x opens the door to accessing various models via the ONNX runtime. To migrate you will need to update any deprecated OpenNLP methods that you may be using.
