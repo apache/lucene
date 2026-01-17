@@ -168,6 +168,16 @@ public class Node256 extends Node {
     return this;
   }
 
+  /**
+   * Insert the child node into this. Calculate the prefix and index byte internal.
+   *
+   * @param childNode
+   */
+  @Override
+  public Node insert(Node childNode) {
+    return null;
+  }
+
   static void setBit(byte indexByte, long[] bitmapMask) {
     int i = Byte.toUnsignedInt(indexByte);
     int longIdx = i >>> 6;

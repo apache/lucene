@@ -126,6 +126,7 @@ public class ARTBuilder {
 
   /** Insert an art builder into this one. */
   public void insert(ARTBuilder artBuilder) {
+    // TODO: Implement insert with duplicate prefix, e.g.: we can insert to root: ra, re, ri.
     if (artBuilder.root.nodeType.equals(NodeType.LEAF_NODE)) {
       insert(artBuilder.root.key, artBuilder.root.output);
     } else {

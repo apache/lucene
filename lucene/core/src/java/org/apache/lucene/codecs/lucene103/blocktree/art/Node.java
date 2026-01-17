@@ -436,6 +436,9 @@ public abstract class Node {
   /** Insert the child node into this with the index byte. */
   public abstract Node insert(Node childNode, byte indexByte);
 
+  /** Insert the child node into this. Calculate the prefix and index byte internal. */
+  public abstract Node insert(Node childNode);
+
   /** Insert the LeafNode as a child of the current internal node. */
   public static Node insertLeaf(Node current, LeafNode childNode, byte indexByte) {
     return switch (current.nodeType) {
@@ -448,7 +451,20 @@ public abstract class Node {
     };
   }
 
-  protected void updateNodePrefix(Node node, int from) {
+  protected void updateKey(Node node, int from) {
+    assert from > node.key.offset;
+    if (from < node.key.offset + node.key.length) {
+      // TODO: subtract bytes?
+      //      node.key.bytes = ArrayUtil.copyOfSubArray(node.key.bytes, from,
+      // node.key.bytes.length);
+      node.key.length = node.key.offset + node.key.length - from;
+      node.key.offset = from;
+    } else {
+      node.key = null;
+    }
+  }
+
+  protected void updatePrefix(Node node, int from) {
     if (from < node.prefix.length) {
       node.prefix = ArrayUtil.copyOfSubArray(node.prefix, from, node.prefix.length);
       node.prefixLength = node.prefix.length;

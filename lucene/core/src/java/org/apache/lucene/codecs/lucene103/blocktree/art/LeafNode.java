@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
@@ -63,6 +64,79 @@ public class LeafNode extends Node {
       // TODO: check key's offset, length.
       node4.prefix = this.key.bytes;
       node4.insert(childNode, indexByte);
+      return node4;
+    }
+  }
+
+  /** Insert the child node into this. Calculate the prefix and index byte internal. */
+  @Override
+  public Node insert(Node childNode) {
+    // LEAF_NODE should be inserted in ARTBuilder#insert, we also implement here.
+    // This happens at final, we will append all sub blocks to an empty block.
+    if (this.key == null) {
+      Node4 node4 = new Node4(0);
+      node4.output = this.output;
+      if (childNode.nodeType.equals(NodeType.LEAF_NODE)) {
+        node4.insert(childNode, childNode.key.bytes[0]);
+        updateKey(childNode, 1);
+      } else {
+        node4.insert(childNode, childNode.prefix[0]);
+        updatePrefix(childNode, 1);
+      }
+      return node4;
+    } else {
+      // e.g.: insert 're' into 'r'. or insert 're' into 'ra'
+      // TODO: use this method replace similar part in ARTBuilder#insert.
+      Node4 node4;
+      if (childNode.nodeType.equals(NodeType.LEAF_NODE)) {
+        final int prefixLength =
+            ARTUtil.commonPrefixLength(
+                this.key.bytes,
+                this.key.offset,
+                this.key.offset + this.key.length,
+                childNode.key.bytes,
+                childNode.key.offset,
+                childNode.key.offset + childNode.key.length);
+        assert childNode.key.length > prefixLength;
+
+        node4 = new Node4(prefixLength);
+        node4.output = this.output;
+        if (prefixLength > 0) {
+          node4.prefix = Arrays.copyOfRange(this.key.bytes, this.key.offset, prefixLength);
+        }
+        if (this.key.length > prefixLength) {
+          node4.insert(this, this.key.bytes[this.key.offset + prefixLength]);
+          updateKey(this, this.key.offset + prefixLength + 1);
+        }
+
+        node4.insert(childNode, childNode.key.bytes[childNode.key.offset + prefixLength]);
+        updateKey(childNode, childNode.key.offset + prefixLength + 1);
+      } else {
+        // TODO: childNode.prefix should have a depth(offset), similar to ARTBuilder#insert.
+        final int prefixLength =
+            ARTUtil.commonPrefixLength(
+                this.key.bytes,
+                this.key.offset,
+                this.key.offset + this.key.length,
+                childNode.prefix,
+                0,
+                childNode.prefixLength);
+        assert childNode.prefixLength > prefixLength;
+
+        node4 = new Node4(prefixLength);
+        node4.output = this.output;
+        if (prefixLength > 0) {
+          node4.prefix = Arrays.copyOfRange(this.key.bytes, this.key.offset, prefixLength);
+        }
+        if (this.key.length > prefixLength) {
+          node4.insert(this, this.key.bytes[this.key.offset + prefixLength]);
+          updateKey(this, this.key.offset + prefixLength + 1);
+        }
+
+        node4.insert(childNode, childNode.prefix[prefixLength]);
+        updatePrefix(childNode, prefixLength + 1);
+      }
+
       return node4;
     }
   }
