@@ -42,21 +42,6 @@ import org.apache.lucene.util.IOConsumer;
  */
 abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegmentAccessInput {
 
-  /** Shared counter for prefetch hit tracking. */
-  static final class SharedPrefetchCounter {
-    private final AtomicInteger count = new AtomicInteger();
-
-    /** Increments and gets the shared counter */
-    int incrementAndGet() {
-      return count.incrementAndGet();
-    }
-
-    /** Resets the shared counter */
-    void reset() {
-      count.set(0);
-    }
-  }
-
   static final ValueLayout.OfByte LAYOUT_BYTE = ValueLayout.JAVA_BYTE;
   static final ValueLayout.OfShort LAYOUT_LE_SHORT =
       ValueLayout.JAVA_SHORT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
@@ -75,7 +60,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   final Arena arena;
   final MemorySegment[] segments;
   final Function<IOContext, ReadAdvice> toReadAdvice;
-  final SharedPrefetchCounter sharedPrefetchCounter;
+  final AtomicInteger sharedPrefetchCounter;
 
   int curSegmentIndex = -1;
   MemorySegment
@@ -91,7 +76,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       boolean confined,
       Function<IOContext, ReadAdvice> toReadAdvice) {
     assert Arrays.stream(segments).map(MemorySegment::scope).allMatch(arena.scope()::equals);
-    SharedPrefetchCounter counter = new SharedPrefetchCounter();
+    AtomicInteger sharedPrefetchCounter = new AtomicInteger();
     if (segments.length == 1) {
       return new SingleSegmentImpl(
           resourceDescription,
@@ -101,7 +86,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           chunkSizePower,
           confined,
           toReadAdvice,
-          counter);
+          sharedPrefetchCounter);
     } else {
       return new MultiSegmentImpl(
           resourceDescription,
@@ -112,7 +97,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           chunkSizePower,
           confined,
           toReadAdvice,
-          counter);
+          sharedPrefetchCounter);
     }
   }
 
@@ -124,7 +109,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       int chunkSizePower,
       boolean confined,
       Function<IOContext, ReadAdvice> toReadAdvice,
-      SharedPrefetchCounter sharedPrefetchCounter) {
+      AtomicInteger sharedPrefetchCounter) {
     super(resourceDescription);
     this.arena = arena;
     this.segments = segments;
@@ -366,7 +351,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
         segment -> {
           if (segment.isLoaded() == false) {
             // We have a cache miss on at least one page, let's reset the counter.
-            sharedPrefetchCounter.reset();
+            sharedPrefetchCounter.set(0);
             nativeAccess.madviseWillNeed(segment);
           }
         });
@@ -725,7 +710,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
         int chunkSizePower,
         boolean confined,
         Function<IOContext, ReadAdvice> toReadAdvice,
-        SharedPrefetchCounter sharedPrefetchCounter) {
+        AtomicInteger sharedPrefetchCounter) {
       super(
           resourceDescription,
           arena,
@@ -839,7 +824,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
         int chunkSizePower,
         boolean confined,
         Function<IOContext, ReadAdvice> toReadAdvice,
-        SharedPrefetchCounter sharedPrefetchCounter) {
+        AtomicInteger sharedPrefetchCounter) {
       super(
           resourceDescription,
           arena,
