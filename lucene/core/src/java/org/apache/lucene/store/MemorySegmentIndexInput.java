@@ -27,6 +27,7 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
@@ -43,16 +44,16 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
 
   /** Shared counter for prefetch hit tracking. */
   static final class SharedPrefetchCounter {
-    private int count;
+    private final AtomicInteger count = new AtomicInteger();
 
     /** Increments and gets the shared counter */
     int incrementAndGet() {
-      return ++count;
+      return count.incrementAndGet();
     }
 
     /** Resets the shared counter */
     void reset() {
-      count = 0;
+      count.set(0);
     }
   }
 

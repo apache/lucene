@@ -311,6 +311,8 @@ Optimizations
 
 * GITHUB#15560: Avoid unnecessary getGraph() call. (Shubham Chaudhary)
 
+* GITHUB#15585: Added shared prefetch counter to maintain count across clones and slices of MemorySegmentIndexInput. (Shubham Sharma)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
