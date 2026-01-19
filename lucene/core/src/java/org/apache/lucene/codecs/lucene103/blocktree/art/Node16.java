@@ -139,44 +139,62 @@ public class Node16 extends Node {
   /** Insert the child node into this with the index byte. */
   @Override
   public Node insert(Node childNode, byte indexByte) {
-    if (this.childrenCount < 8) {
-      // first
-      byte[] bytes = LongUtils.toBDBytes(this.firstChildIndex);
-      bytes[this.childrenCount] = indexByte;
-      this.firstChildIndex = LongUtils.fromBDBytes(bytes);
-      this.children[this.childrenCount] = childNode;
-      this.childrenCount++;
-      return this;
-    } else if (this.childrenCount < 16) {
-      // second
-      byte[] bytes = LongUtils.toBDBytes(this.secondChildIndex);
-      bytes[this.childrenCount - 8] = indexByte;
-      this.secondChildIndex = LongUtils.fromBDBytes(bytes);
-      this.children[this.childrenCount] = childNode;
-      this.childrenCount++;
+    if (getChildPos(indexByte) != ILLEGAL_IDX) {
+      Node oldChild = getChild(indexByte);
+      Node newChild = null;
+      // We may insert leaf node by ARTBuilder#insert already. Here compat more.
+      if (childNode.nodeType.equals(NodeType.LEAF_NODE)) {
+        assert childNode.key.length > 1;
+        newChild = oldChild.insert(childNode, childNode.key.bytes[childNode.key.offset + 1]);
+      } else {
+        assert childNode.prefixLength > 1;
+        newChild = oldChild.insert(childNode, 1);
+        updatePrefix(childNode, 2);
+      }
+
+      assert newChild != null;
+      replaceNode(indexByte, newChild);
       return this;
     } else {
-      Node48 node48 = new Node48(this.prefixLength);
-      byte[] firstBytes = LongUtils.toBDBytes(this.firstChildIndex);
-      for (int i = 0; i < 8; i++) {
-        byte v = firstBytes[i];
-        int unsignedIdx = Byte.toUnsignedInt(v);
-        // i won't be beyond 48
-        Node48.setOneByte(unsignedIdx, (byte) i, node48.childIndex);
-        node48.children[i] = this.children[i];
+      if (this.childrenCount < 8) {
+        // first
+        byte[] bytes = LongUtils.toBDBytes(this.firstChildIndex);
+        bytes[this.childrenCount] = indexByte;
+        this.firstChildIndex = LongUtils.fromBDBytes(bytes);
+        this.children[this.childrenCount] = childNode;
+        this.childrenCount++;
+        return this;
+      } else if (this.childrenCount < 16) {
+        // second
+        byte[] bytes = LongUtils.toBDBytes(this.secondChildIndex);
+        bytes[this.childrenCount - 8] = indexByte;
+        this.secondChildIndex = LongUtils.fromBDBytes(bytes);
+        this.children[this.childrenCount] = childNode;
+        this.childrenCount++;
+        return this;
+      } else {
+        Node48 node48 = new Node48(this.prefixLength);
+        byte[] firstBytes = LongUtils.toBDBytes(this.firstChildIndex);
+        for (int i = 0; i < 8; i++) {
+          byte v = firstBytes[i];
+          int unsignedIdx = Byte.toUnsignedInt(v);
+          // i won't be beyond 48
+          Node48.setOneByte(unsignedIdx, (byte) i, node48.childIndex);
+          node48.children[i] = this.children[i];
+        }
+        byte[] secondBytes = LongUtils.toBDBytes(this.secondChildIndex);
+        for (int i = 8; i < this.childrenCount; i++) {
+          byte v = secondBytes[i - 8];
+          int unsignedIdx = Byte.toUnsignedInt(v);
+          // i won't be beyond 48
+          Node48.setOneByte(unsignedIdx, (byte) i, node48.childIndex);
+          node48.children[i] = this.children[i];
+        }
+        copyNode(this, node48);
+        node48.childrenCount = this.childrenCount;
+        Node freshOne = Node48.insert(node48, childNode, indexByte);
+        return freshOne;
       }
-      byte[] secondBytes = LongUtils.toBDBytes(this.secondChildIndex);
-      for (int i = 8; i < this.childrenCount; i++) {
-        byte v = secondBytes[i - 8];
-        int unsignedIdx = Byte.toUnsignedInt(v);
-        // i won't be beyond 48
-        Node48.setOneByte(unsignedIdx, (byte) i, node48.childIndex);
-        node48.children[i] = this.children[i];
-      }
-      copyNode(this, node48);
-      node48.childrenCount = this.childrenCount;
-      Node freshOne = Node48.insert(node48, childNode, indexByte);
-      return freshOne;
     }
   }
 

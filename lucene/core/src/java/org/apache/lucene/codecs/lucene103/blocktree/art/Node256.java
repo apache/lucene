@@ -161,11 +161,29 @@ public class Node256 extends Node {
   /** Insert the child node into this with the index byte. */
   @Override
   public Node insert(Node child, byte indexByte) {
-    this.childrenCount++;
-    int i = Byte.toUnsignedInt(indexByte);
-    this.children[i] = child;
-    setBit(indexByte, this.bitmapMask);
-    return this;
+    if (getChildPos(indexByte) != ILLEGAL_IDX) {
+      Node oldChild = getChild(indexByte);
+      Node newChild = null;
+      // We may insert leaf node by ARTBuilder#insert already. Here compat more.
+      if (child.nodeType.equals(NodeType.LEAF_NODE)) {
+        assert child.key.length > 1;
+        newChild = oldChild.insert(child, child.key.bytes[child.key.offset + 1]);
+      } else {
+        assert child.prefixLength > 1;
+        newChild = oldChild.insert(child, 1);
+        updatePrefix(child, 2);
+      }
+
+      assert newChild != null;
+      replaceNode(indexByte, newChild);
+      return this;
+    } else {
+      this.childrenCount++;
+      int i = Byte.toUnsignedInt(indexByte);
+      this.children[i] = child;
+      setBit(indexByte, this.bitmapMask);
+      return this;
+    }
   }
 
   /**

@@ -49,25 +49,27 @@ public class LeafNode extends Node {
   @Override
   public Node insert(Node childNode, byte indexByte) {
     return insert(childNode, 0);
-//        // This happens at final, we will append all sub blocks to an empty block.
-//        if (this.key == null) {
-//          Node4 node4 = new Node4(0);
-//          node4.output = this.output;
-//          node4.insert(childNode, indexByte);
-//          return node4;
-//        } else {
-//          // This case childNode's prefix/key must start with this node's key, e.g.: insert 're'
-//          //into 'r'.
-//          // TODO: Maybe we cloud ignore the above condition, and use this method replace similar
-//          // part
-//          // in ARTBuilder#insert.
-//          Node4 node4 = new Node4(this.key.length);
-//          node4.output = this.output;
-//          // TODO: check key's offset, length.
-//          node4.prefix = this.key.bytes;
-//          node4.insert(childNode, indexByte);
-//          return node4;
-//        }
+    //        // This happens at final, we will append all sub blocks to an empty block.
+    //        if (this.key == null) {
+    //          Node4 node4 = new Node4(0);
+    //          node4.output = this.output;
+    //          node4.insert(childNode, indexByte);
+    //          return node4;
+    //        } else {
+    //          // This case childNode's prefix/key must start with this node's key, e.g.: insert
+    // 're'
+    //          //into 'r'.
+    //          // TODO: Maybe we cloud ignore the above condition, and use this method replace
+    // similar
+    //          // part
+    //          // in ARTBuilder#insert.
+    //          Node4 node4 = new Node4(this.key.length);
+    //          node4.output = this.output;
+    //          // TODO: check key's offset, length.
+    //          node4.prefix = this.key.bytes;
+    //          node4.insert(childNode, indexByte);
+    //          return node4;
+    //        }
   }
 
   /** Insert the child node into this. Calculate the prefix and index byte internal. */

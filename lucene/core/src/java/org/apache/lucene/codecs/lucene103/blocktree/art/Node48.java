@@ -170,6 +170,7 @@ public class Node48 extends Node {
     if (getChildPos(indexByte) != ILLEGAL_IDX) {
       Node oldChild = getChild(indexByte);
       Node newChild = null;
+      // We may insert leaf node by ARTBuilder#insert already. Here compat more.
       if (child.nodeType.equals(NodeType.LEAF_NODE)) {
         assert child.key.length > 1;
         newChild = oldChild.insert(child, child.key.bytes[child.key.offset + 1]);
