@@ -200,6 +200,11 @@ public class ARTBuilder {
 
   /** Set remaining suffix to bytes. */
   private void updateNodeBytes(Node node, int from) {
+    // TODO: Fix duplicate call.
+    if (node.key == null) {
+      return;
+    }
+
     assert from > node.key.offset;
     if (from < node.key.offset + node.key.length) {
       // TODO: subtract bytes?
@@ -213,8 +218,11 @@ public class ARTBuilder {
   }
 
   /** Set remaining suffix to prefix. */
-  // TODO: Maybe called in insert.
   private void updateNodePrefix(Node node, int from) {
+    // TODO: Fix duplicate call.
+    if (node.prefix == null) {
+      return;
+    }
     if (from < node.prefix.length) {
       node.prefix = ArrayUtil.copyOfSubArray(node.prefix, from, node.prefix.length);
       node.prefixLength = node.prefix.length;

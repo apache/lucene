@@ -89,7 +89,7 @@ public abstract class Node {
    * constructor
    *
    * @param nodeType the node type
-   * @param compressedPrefixSize the prefix byte array size,less than or equal to 6
+   * @param compressedPrefixSize the prefix byte array size
    */
   public Node(NodeType nodeType, int compressedPrefixSize) {
     this.nodeType = nodeType;
