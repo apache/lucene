@@ -175,8 +175,8 @@ public class Node48 extends Node {
         newChild = oldChild.insert(child, child.key.bytes[child.key.offset + 1]);
       } else {
         assert child.prefixLength > 1;
-        newChild = oldChild.insert(child, child.prefix[1]);
-        //        updateNodePrefix(child, 2);
+        newChild = oldChild.insert(child, 1);
+        updatePrefix(child, 2);
       }
       assert newChild != null;
       replaceNode(indexByte, newChild);
@@ -219,7 +219,7 @@ public class Node48 extends Node {
    * @param childNode
    */
   @Override
-  public Node insert(Node childNode) {
+  public Node insert(Node childNode, int depth) {
     return null;
   }
 

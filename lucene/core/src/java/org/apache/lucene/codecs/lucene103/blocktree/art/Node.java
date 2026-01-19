@@ -437,7 +437,7 @@ public abstract class Node {
   public abstract Node insert(Node childNode, byte indexByte);
 
   /** Insert the child node into this. Calculate the prefix and index byte internal. */
-  public abstract Node insert(Node childNode);
+  public abstract Node insert(Node childNode, int depth);
 
   /** Insert the LeafNode as a child of the current internal node. */
   public static Node insertLeaf(Node current, LeafNode childNode, byte indexByte) {
@@ -452,6 +452,11 @@ public abstract class Node {
   }
 
   protected void updateKey(Node node, int from) {
+    // TODO: Fix duplicate call.
+    if (node.key == null) {
+      return;
+    }
+
     assert from > node.key.offset;
     if (from < node.key.offset + node.key.length) {
       // TODO: subtract bytes?
@@ -465,6 +470,11 @@ public abstract class Node {
   }
 
   protected void updatePrefix(Node node, int from) {
+    // TODO: Fix duplicate call.
+    if (node.prefix == null) {
+      return;
+    }
+
     if (from < node.prefix.length) {
       node.prefix = ArrayUtil.copyOfSubArray(node.prefix, from, node.prefix.length);
       node.prefixLength = node.prefix.length;

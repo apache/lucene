@@ -48,32 +48,31 @@ public class LeafNode extends Node {
    */
   @Override
   public Node insert(Node childNode, byte indexByte) {
-    return insert(childNode);
-    //    // This happens at final, we will append all sub blocks to an empty block.
-    //    if (this.key == null) {
-    //      Node4 node4 = new Node4(0);
-    //      node4.output = this.output;
-    //      node4.insert(childNode, indexByte);
-    //      return node4;
-    //    } else {
-    //      // This case childNode's prefix/key must start with this node's key, e.g.: insert 're'
-    // into
-    //      // 'r'.
-    //      // TODO: Maybe we cloud ignore the above condition, and use this method replace similar
-    // part
-    //      // in ARTBuilder#insert.
-    //      Node4 node4 = new Node4(this.key.length);
-    //      node4.output = this.output;
-    //      // TODO: check key's offset, length.
-    //      node4.prefix = this.key.bytes;
-    //      node4.insert(childNode, indexByte);
-    //      return node4;
-    //    }
+    return insert(childNode, 0);
+//        // This happens at final, we will append all sub blocks to an empty block.
+//        if (this.key == null) {
+//          Node4 node4 = new Node4(0);
+//          node4.output = this.output;
+//          node4.insert(childNode, indexByte);
+//          return node4;
+//        } else {
+//          // This case childNode's prefix/key must start with this node's key, e.g.: insert 're'
+//          //into 'r'.
+//          // TODO: Maybe we cloud ignore the above condition, and use this method replace similar
+//          // part
+//          // in ARTBuilder#insert.
+//          Node4 node4 = new Node4(this.key.length);
+//          node4.output = this.output;
+//          // TODO: check key's offset, length.
+//          node4.prefix = this.key.bytes;
+//          node4.insert(childNode, indexByte);
+//          return node4;
+//        }
   }
 
   /** Insert the child node into this. Calculate the prefix and index byte internal. */
   @Override
-  public Node insert(Node childNode) {
+  public Node insert(Node childNode, int depth) {
     // LEAF_NODE should be inserted in ARTBuilder#insert, we also implement here.
     // This happens at final, we will append all sub blocks to an empty block.
     if (this.key == null) {
@@ -83,12 +82,12 @@ public class LeafNode extends Node {
         node4.insert(childNode, childNode.key.bytes[0]);
         updateKey(childNode, 1);
       } else {
-        node4.insert(childNode, childNode.prefix[0]);
-        updatePrefix(childNode, 1);
+        node4.insert(childNode, childNode.prefix[depth]);
+        updatePrefix(childNode, depth + 1);
       }
       return node4;
     } else {
-      // e.g.: insert 're' into 'r'. or insert 're' into 'ra'
+      // e.g.: insert 're' into 'r'. or insert 're' into 'ra'.
       // TODO: use this method replace similar part in ARTBuilder#insert.
       Node4 node4;
       if (childNode.nodeType.equals(NodeType.LEAF_NODE)) {
@@ -122,9 +121,9 @@ public class LeafNode extends Node {
                 this.key.offset,
                 this.key.offset + this.key.length,
                 childNode.prefix,
-                0,
+                depth,
                 childNode.prefixLength);
-        assert childNode.prefixLength > prefixLength;
+        assert childNode.prefixLength - depth > prefixLength;
 
         node4 = new Node4(prefixLength);
         node4.output = this.output;
@@ -136,8 +135,8 @@ public class LeafNode extends Node {
           updateKey(this, this.key.offset + prefixLength + 1);
         }
 
-        node4.insert(childNode, childNode.prefix[prefixLength]);
-        updatePrefix(childNode, prefixLength + 1);
+        node4.insert(childNode, childNode.prefix[depth + prefixLength]);
+        updatePrefix(childNode, depth + prefixLength + 1);
       }
 
       return node4;

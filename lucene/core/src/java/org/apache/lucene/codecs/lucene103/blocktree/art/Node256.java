@@ -174,7 +174,7 @@ public class Node256 extends Node {
    * @param childNode
    */
   @Override
-  public Node insert(Node childNode) {
+  public Node insert(Node childNode, int depth) {
     return null;
   }
 
