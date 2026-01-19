@@ -98,6 +98,8 @@ Optimizations
 
 * GITHUB#15085, GITHUB#15092: Hunspell suggestions: Ensure candidate roots are not worse before updating. (Ilia Permiashkin)
 
+* GITHUB#15582: Avoid copying bitset that's subsequently cleared
+
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
@@ -196,6 +198,12 @@ API Changes
   enabling applications to monitor merge performance metrics like pause time, throttling behavior,
   and throughput. This provides visibility into Lucene's merge backpressure mechanisms that can
   stall indexing when merge debt accumulates. (Zihan Xu)
+
+* GITHUB#15569: Allow a DataAccessHint to be passed during the construction of Lucene99FlatVectorsReader
+  (Chris Hegarty)
+
+* GITHUB#15581: Minor javadoc clarification that HasIndexSlice::getSlice can return null
+  (Chris Hegarty)
 
 * GITHUB#15502: Add `count()` method to `FilterWeight`  (Prudhvi Godithi)
 

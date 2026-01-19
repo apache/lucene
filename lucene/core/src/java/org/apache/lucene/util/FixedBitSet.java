@@ -42,25 +42,42 @@ public final class FixedBitSet extends BitSet {
   private final int numBits; // The number of bits in use
   private final int numWords; // The exact number of longs needed to hold numBits (<= bits.length)
 
-  /**
-   * If the given {@link FixedBitSet} is large enough to hold {@code numBits+1}, returns the given
-   * bits, otherwise returns a new {@link FixedBitSet} which can hold {@code numBits+1} bits. That
-   * means the bitset returned by this method can be safely called with {@code bits.set(numBits)}
-   *
-   * <p><b>NOTE:</b> the returned bitset reuses the underlying {@code long[]} of the given {@code
-   * bits} if possible. Also, calling {@link #length()} on the returned bits may return a value
-   * greater than {@code numBits+1}.
-   */
-  public static FixedBitSet ensureCapacity(FixedBitSet bits, int numBits) {
-    if (numBits < bits.numBits) {
+  /// Ensure the given `bits` can store a value at `desiredBit` index. If the current [#length()] is
+  /// sufficient, `bits` is simply returned. Otherwise, a new, larger bitset is allocated, with
+  /// contents of `bits` copied.
+  ///
+  /// @see #ensureCapacityAndClear(FixedBitSet, int)
+  public static FixedBitSet ensureCapacity(FixedBitSet bits, int desiredBit) {
+    return ensureCapacityInternal(bits, desiredBit, true);
+  }
+
+  /// Clear the given `bits` and ensure it can store a value at `desiredBit` index. If the current
+  /// [#length()] is sufficient, `bits` is simply cleared and returned. Otherwise, a new, larger
+  /// bitset is allocated.
+  ///
+  /// @see #ensureCapacity(FixedBitSet, int)
+  public static FixedBitSet ensureCapacityAndClear(FixedBitSet bits, int desiredBit) {
+    return ensureCapacityInternal(bits, desiredBit, false);
+  }
+
+  private static FixedBitSet ensureCapacityInternal(
+      FixedBitSet bits, int desiredBit, boolean preserveData) {
+    if (desiredBit < bits.numBits) {
+      if (!preserveData) {
+        bits.clear();
+      }
       return bits;
     } else {
       // Depends on the ghost bits being clear!
       // (Otherwise, they may become visible in the new instance)
-      int numWords = bits2words(numBits);
+      int numWords = bits2words(desiredBit);
       long[] arr = bits.getBits();
       if (numWords >= arr.length) {
-        arr = ArrayUtil.grow(arr, numWords + 1);
+        if (preserveData) {
+          arr = ArrayUtil.grow(arr, numWords + 1);
+        } else {
+          arr = new long[ArrayUtil.oversize(numWords + 1, Long.BYTES)];
+        }
       }
       return new FixedBitSet(arr, arr.length << 6);
     }
