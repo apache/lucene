@@ -41,7 +41,6 @@ import org.apache.lucene.util.IOConsumer;
  * chunkSizePower</code>).
  */
 abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegmentAccessInput {
-
   static final ValueLayout.OfByte LAYOUT_BYTE = ValueLayout.JAVA_BYTE;
   static final ValueLayout.OfShort LAYOUT_LE_SHORT =
       ValueLayout.JAVA_SHORT_UNALIGNED.withOrder(ByteOrder.LITTLE_ENDIAN);
