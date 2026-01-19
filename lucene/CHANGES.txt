@@ -98,8 +98,6 @@ Optimizations
 
 * GITHUB#15085, GITHUB#15092: Hunspell suggestions: Ensure candidate roots are not worse before updating. (Ilia Permiashkin)
 
-* GITHUB#15582: Avoid copying bitset that's subsequently cleared
-
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
@@ -312,6 +310,8 @@ Optimizations
 * GITHUB#15511: Dynamic pruning for SORTED(_SET) fields with doc values skipper (Pan Guixin)
 
 * GITHUB#15560: Avoid unnecessary getGraph() call. (Shubham Chaudhary)
+
+* GITHUB#15582: Avoid copying bitset that's subsequently cleared (Viliam Durina)
 
 Bug Fixes
 ---------------------
