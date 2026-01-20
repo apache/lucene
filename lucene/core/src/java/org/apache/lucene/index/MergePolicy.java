@@ -70,6 +70,14 @@ import org.apache.lucene.util.ThreadInterruptedException;
  */
 public abstract class MergePolicy {
 
+  /** Enum representing the unit of measurement used by a merge policy for segment size. */
+  public enum SizeUnit {
+    /** Size measured in bytes */
+    BYTES,
+    /** Size measured in document count */
+    DOCS
+  }
+
   /**
    * Progress and state for an executing merge. This class encapsulates the logic to pause and
    * resume the merge thread or to abort the merge entirely.
@@ -580,6 +588,16 @@ public abstract class MergePolicy {
 
   /** Creates a new merge policy instance. */
   protected MergePolicy() {}
+
+  /**
+   * Returns the unit of measurement used by this merge policy for segment size. This is used to
+   * determine which threshold to apply when deciding whether to use compound files.
+   *
+   * @return the size unit (BYTES or DOCS)
+   */
+  public SizeUnit getSizeUnit() {
+    return SizeUnit.BYTES;
+  }
 
   /**
    * Determine what set of merge operations are now necessary on the index. {@link IndexWriter}

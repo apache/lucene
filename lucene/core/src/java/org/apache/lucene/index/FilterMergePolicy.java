@@ -81,6 +81,11 @@ public class FilterMergePolicy extends MergePolicy implements Unwrappable<MergeP
   }
 
   @Override
+  public SizeUnit getSizeUnit() {
+    return super.getSizeUnit();
+  }
+
+  @Override
   public String toString() {
     return getClass().getSimpleName() + "(" + in + ")";
   }

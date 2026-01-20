@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs;
 
 import java.io.IOException;
-import org.apache.lucene.index.LogDocMergePolicy;
 import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.store.Directory;
@@ -151,12 +150,12 @@ public abstract class CompoundFormat {
    * <ol>
    *   <li>If compound files are disabled globally, return false
    *   <li>If segment size exceeds the maximum CFS segment size, return false
-   *   <li>For LogDocMergePolicy: use CFS if document count ≤ document threshold
-   *   <li>For other merge policies: use CFS if byte size ≤ byte threshold
+   *   <li>For DOCS-based policies: use CFS if document count ≤ document threshold
+   *   <li>For BYTES-based policies: use CFS if byte size ≤ byte threshold
    * </ol>
    *
-   * @param mergedInfoSize the size of the segment (document count for LogDocMergePolicy, bytes for
-   *     others)
+   * @param mergedInfoSize the size of the segment (document count for DOCS-based policies, bytes
+   *     for BYTES-based policies)
    * @param mergePolicy the merge policy being used
    * @return true if the segment should use compound file format, false otherwise
    * @throws IOException if an I/O error occurs
@@ -172,12 +171,10 @@ public abstract class CompoundFormat {
       return false;
     }
 
-    // Apply appropriate threshold based on merge policy type
-    if (mergePolicy instanceof LogDocMergePolicy) {
-      // For LogDocMergePolicy, mergedInfoSize represents document count
+    // Apply appropriate threshold based on merge policy's size unit
+    if (mergePolicy.getSizeUnit() == MergePolicy.SizeUnit.DOCS) {
       return mergedInfoSize <= this.cfsThresholdDocSize;
     } else {
-      // For other policies, mergedInfoSize represents byte size
       return mergedInfoSize <= this.cfsThresholdByteSize;
     }
   }

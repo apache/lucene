@@ -76,6 +76,11 @@ public final class NoMergePolicy extends MergePolicy {
   }
 
   @Override
+  public SizeUnit getSizeUnit() {
+    return super.getSizeUnit();
+  }
+
+  @Override
   public boolean keepFullyDeletedSegment(IOSupplier<CodecReader> readerIOSupplier)
       throws IOException {
     return super.keepFullyDeletedSegment(readerIOSupplier);
