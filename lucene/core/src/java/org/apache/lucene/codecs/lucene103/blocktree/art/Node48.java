@@ -164,9 +164,6 @@ public class Node48 extends Node {
   /** Insert the child node into this with the index byte. */
   @Override
   public Node insert(Node child, byte indexByte) {
-    if (indexByte == 114) {
-      System.out.println();
-    }
     if (getChildPos(indexByte) != ILLEGAL_IDX) {
       Node oldChild = getChild(indexByte);
       Node newChild = null;

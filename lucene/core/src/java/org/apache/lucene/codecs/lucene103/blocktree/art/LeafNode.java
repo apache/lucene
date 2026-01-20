@@ -17,10 +17,10 @@
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
 import java.io.IOException;
-import java.util.Arrays;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 
 /** An ART node without children. */
@@ -50,33 +50,34 @@ public class LeafNode extends Node {
   public Node insert(Node childNode, byte indexByte) {
     // TODO: call insert(childNode, 0), if needed.
     return insert(childNode, 0);
-//    // This happens at final, we will append all sub blocks to an empty block.
-//    if (this.key == null) {
-//      Node4 node4 = new Node4(0);
-//      node4.output = this.output;
-//      node4.insert(childNode, indexByte);
-//      return node4;
-//    } else {
-//
-//      // This case childNode's prefix/key must start with this node's key, e.g.: insert 're'
-//      //into 'r'. or insert 're' into 'ra'.
-//      // TODO: Maybe we cloud ignore the above condition, and use this method replace similar
-//      // part
-//      // in ARTBuilder#insert.
-//      if (key.length > 1) {
-//        System.out.println("key.length:" + key.length);
-//      }
-//      Node4 node4 = new Node4(this.key.length);
-//      node4.output = this.output;
-//      // TODO: check key's offset, length.
-//      node4.prefix = this.key.bytes;
-//      if (node4.prefixLength > 0) {
-//        node4.prefix = new byte[node4.prefixLength];
-//        System.arraycopy(this.key.bytes, this.key.offset, node4.prefix, 0, node4.prefixLength);
-//      }
-//      node4.insert(childNode, indexByte);
-//      return node4;
-//    }
+    //    // This happens at final, we will append all sub blocks to an empty block.
+    //    if (this.key == null) {
+    //      Node4 node4 = new Node4(0);
+    //      node4.output = this.output;
+    //      node4.insert(childNode, indexByte);
+    //      return node4;
+    //    } else {
+    //
+    //      // This case childNode's prefix/key must start with this node's key, e.g.: insert 're'
+    //      //into 'r'. or insert 're' into 'ra'.
+    //      // TODO: Maybe we cloud ignore the above condition, and use this method replace similar
+    //      // part
+    //      // in ARTBuilder#insert.
+    //      if (key.length > 1) {
+    //        System.out.println("key.length:" + key.length);
+    //      }
+    //      Node4 node4 = new Node4(this.key.length);
+    //      node4.output = this.output;
+    //      // TODO: check key's offset, length.
+    //      node4.prefix = this.key.bytes;
+    //      if (node4.prefixLength > 0) {
+    //        node4.prefix = new byte[node4.prefixLength];
+    //        System.arraycopy(this.key.bytes, this.key.offset, node4.prefix, 0,
+    // node4.prefixLength);
+    //      }
+    //      node4.insert(childNode, indexByte);
+    //      return node4;
+    //    }
   }
 
   /**
@@ -118,7 +119,9 @@ public class LeafNode extends Node {
         node4 = new Node4(prefixLength);
         node4.output = this.output;
         if (prefixLength > 0) {
-          node4.prefix = Arrays.copyOfRange(this.key.bytes, this.key.offset, prefixLength);
+          node4.prefix =
+              ArrayUtil.copyOfSubArray(
+                  this.key.bytes, this.key.offset, this.key.offset + prefixLength);
         }
         if (this.key.length > prefixLength) {
           node4.insert(this, this.key.bytes[this.key.offset + prefixLength]);
@@ -140,13 +143,19 @@ public class LeafNode extends Node {
         assert childNode.prefixLength - depth > prefixLength;
 
         node4 = new Node4(prefixLength);
-        node4.output = this.output;
+
         if (prefixLength > 0) {
-          node4.prefix = Arrays.copyOfRange(this.key.bytes, this.key.offset, prefixLength);
+          node4.prefix =
+              ArrayUtil.copyOfSubArray(
+                  this.key.bytes, this.key.offset, this.key.offset + prefixLength);
         }
         if (this.key.length > prefixLength) {
+          // Keep output in leaf node.
           node4.insert(this, this.key.bytes[this.key.offset + prefixLength]);
           updateKey(this, this.key.offset + prefixLength + 1);
+        } else {
+          // Use leaf node's output if we hide this leaf node.
+          node4.output = this.output;
         }
 
         node4.insert(childNode, childNode.prefix[depth + prefixLength]);

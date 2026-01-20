@@ -501,10 +501,10 @@ public abstract class Node {
         // TODO: prefixLength == this.prefixLength maybe never happens, if so, we can remove the
         // operation of inserting childNode's all children below.
         if (prefixLength == this.prefixLength) {
-          // TODO: Insert childNode's all children.
-          System.out.println("TODO: Insert childNode's all children.");
+          // System.out.println("Insert childNode's all children.");
           int nextPos = Node.ILLEGAL_IDX;
           newNode = this;
+          // Insert childNode's all children.
           while ((nextPos = childNode.getNextLargerPos(nextPos)) != Node.ILLEGAL_IDX) {
             Node freshedOne =
                 newNode.insert(childNode.getChild(nextPos), childNode.getChildIndexByte(nextPos));
