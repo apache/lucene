@@ -687,6 +687,19 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         for (int i = 0; i < dimension; i++) {
           vector[i] = i % 2 == 0 ? 42 : 7;
         }
+        // This is to consistently ensure we take the exactSearch path and make the #cost not random
+        // when we don't cache in PointRangeQuery
+        searcher.setQueryCachingPolicy(
+            new QueryCachingPolicy() {
+
+              @Override
+              public void onUse(Query query) {}
+
+              @Override
+              public boolean shouldCache(Query query) throws IOException {
+                return true;
+              }
+            });
         Query filter4 = IntPoint.newRangeQuery("tag", 250, 256);
         expectThrows(
             UnsupportedOperationException.class,

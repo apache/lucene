@@ -189,8 +189,14 @@ public abstract class AcceptDocs {
 
     @Override
     public int cost() throws IOException {
-      createBitSetAcceptDocsIfNecessary();
-      return cardinality;
+      if (acceptBitSet != null) {
+        return cardinality;
+      }
+      DocIdSetIterator iterator = iterator();
+      if (liveDocs == null && iterator instanceof BitSetIterator bitSetIterator) {
+        return bitSetIterator.getBitSet().approximateCardinality();
+      }
+      return Math.toIntExact(iterator.cost());
     }
 
     @Override
@@ -198,8 +204,8 @@ public abstract class AcceptDocs {
       if (acceptBitSet != null) {
         return new BitSetIterator(acceptBitSet, cardinality);
       }
-      DocIdSetIterator iterator = Objects.requireNonNull(iteratorSupplier.get());
-      return AcceptDocs.getFilteredDocIdSetIterator(iterator, liveDocs);
+      return AcceptDocs.getFilteredDocIdSetIterator(
+          Objects.requireNonNull(iteratorSupplier.get()), liveDocs);
     }
   }
 
