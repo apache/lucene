@@ -21,6 +21,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.LongAdder;
 import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
@@ -63,7 +64,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   private int upto;
   private NeighborArray cur;
 
-  private volatile long graphRamBytesUsed;
+  private final LongAdder graphRamBytesUsed = new LongAdder();
 
   /**
    * ctor
@@ -83,7 +84,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       numNodes = INIT_SIZE;
     }
     this.graph = new NeighborArray[numNodes][];
-    this.graphRamBytesUsed = RAM_BYTES_USED + RamUsageEstimator.shallowSizeOf(graph);
+    this.graphRamBytesUsed.add(RAM_BYTES_USED + RamUsageEstimator.shallowSizeOf(graph));
   }
 
   /**
@@ -160,27 +161,14 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       graph[node] = ArrayUtil.growExact(graph[node], level + 1);
     }
 
-    if (level == 0) {
-      graph[node][level] =
-          new NeighborArray(
-              nsize0,
-              true,
-              l -> {
-                assert l > 0;
-                long bytesUsed = graphRamBytesUsed;
-                graphRamBytesUsed = bytesUsed + l;
-              });
-    } else {
-      graph[node][level] =
-          new NeighborArray(
-              nsize,
-              true,
-              l -> {
-                assert l > 0;
-                long bytesUsed = graphRamBytesUsed;
-                graphRamBytesUsed = bytesUsed + l;
-              });
-    }
+    graph[node][level] =
+        new NeighborArray(
+            level == 0 ? nsize0 : nsize,
+            true,
+            l -> {
+              assert l > 0;
+              graphRamBytesUsed.add(l);
+            });
     maxNodeId.accumulateAndGet(node, Math::max);
   }
 
@@ -289,7 +277,6 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
     }
   }
 
-  @SuppressWarnings({"unchecked", "rawtypes"})
   private void generateLevelToNodes() {
     if (lastFreezeSize == size()) {
       return;
@@ -323,7 +310,7 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
    */
   @Override
   public long ramBytesUsed() {
-    return graphRamBytesUsed;
+    return graphRamBytesUsed.sum();
   }
 
   @Override
