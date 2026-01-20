@@ -35,7 +35,6 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -48,7 +47,6 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
-import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
@@ -84,21 +82,6 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
     return TestUtil.alwaysKnnVectorsFormat(
         new Lucene99RWScalarQuantizedVectorsFormat(
             confidenceInterval, bits, bits == 4 ? random().nextBoolean() : false));
-  }
-
-  protected List<float[]> getRandomFloatVector(int numVectors, int dim, boolean normalize) {
-    List<float[]> vectors = new ArrayList<>(numVectors);
-    for (int i = 0; i < numVectors; i++) {
-      float[] vec = randomVector(dim);
-      if (normalize) {
-        float[] copy = new float[vec.length];
-        System.arraycopy(vec, 0, copy, 0, copy.length);
-        VectorUtil.l2normalize(copy);
-        vec = copy;
-      }
-      vectors.add(vec);
-    }
-    return vectors;
   }
 
   public void testSearch() throws Exception {
@@ -219,75 +202,74 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
     }
   }
 
-  public void testReadQuantizedVectorWithEmptyRawVectors() throws Exception {
-    String vectorFieldName = "vec1";
-    int numVectors = 1 + random().nextInt(50);
-    int dim = random().nextInt(64) + 1;
-    if (dim % 2 == 1) {
-      dim++;
-    }
-    VectorSimilarityFunction similarityFunction = randomSimilarity();
-    List<float[]> vectors =
-        getRandomFloatVector(
-            numVectors, dim, similarityFunction == VectorSimilarityFunction.COSINE);
-
-    try (BaseDirectoryWrapper dir = newDirectory();
-        IndexWriter w =
-            new IndexWriter(
-                dir,
-                new IndexWriterConfig()
-                    .setMaxBufferedDocs(numVectors + 1)
-                    .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
-                    .setMergePolicy(NoMergePolicy.INSTANCE)
-                    .setUseCompoundFile(false)
-                    .setCodec(getCodec(1f)))) {
-      dir.setCheckIndexOnClose(false);
-
-      for (int i = 0; i < numVectors; i++) {
-        Document doc = new Document();
-        doc.add(new KnnFloatVectorField(vectorFieldName, vectors.get(i), similarityFunction));
-        w.addDocument(doc);
-      }
-      w.commit();
-
-      simulateEmptyRawVectors(dir);
-
-      try (IndexReader reader = DirectoryReader.open(w)) {
-        LeafReader r = getOnlyLeafReader(reader);
-        if (r instanceof CodecReader codecReader) {
-          KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
-          knnVectorsReader = knnVectorsReader.unwrapReaderForField(vectorFieldName);
-          if (knnVectorsReader instanceof Lucene99ScalarQuantizedVectorsReader quantizedReader) {
-            FloatVectorValues floatVectorValues =
-                quantizedReader.getFloatVectorValues(vectorFieldName);
-            if (floatVectorValues instanceof OffHeapQuantizedFloatVectorValues) {
-              KnnVectorValues.DocIndexIterator iter = floatVectorValues.iterator();
-              for (int docId = iter.nextDoc(); docId != NO_MORE_DOCS; docId = iter.nextDoc()) {
-                float[] dequantizedVector = floatVectorValues.vectorValue(iter.index());
-                for (int i = 0; i < dim; i++) {
-                  assertEquals(
-                      "docId=" + docId + " i=" + i,
-                      dequantizedVector[i],
-                      vectors.get(docId)[i],
-                      0.2f);
-                }
-              }
-            } else {
-              fail("floatVectorValues is not OffHeapQuantizedFloatVectorValues");
-            }
-          } else {
-            System.out.println("Vector READER:: " + knnVectorsReader.toString());
-            fail("reader is not Lucene99ScalarQuantizedVectorsReader");
+  public void testToString() {
+    FilterCodec customCodec =
+        new FilterCodec("foo", Codec.getDefault()) {
+          @Override
+          public KnnVectorsFormat knnVectorsFormat() {
+            return new Lucene99ScalarQuantizedVectorsFormat(0.9f, (byte) 4, false);
           }
-        } else {
-          fail("reader is not CodecReader");
-        }
-      }
-    }
+        };
+    String expectedPattern =
+        "Lucene99ScalarQuantizedVectorsFormat(name=Lucene99ScalarQuantizedVectorsFormat, confidenceInterval=0.9, bits=4, compress=false, flatVectorScorer=%s, rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s))";
+    var defaultScorer =
+        format(
+            Locale.ROOT,
+            expectedPattern,
+            "ScalarQuantizedVectorScorer(nonQuantizedDelegate=DefaultFlatVectorScorer())",
+            "DefaultFlatVectorScorer()");
+    var memSegScorer =
+        format(
+            Locale.ROOT,
+            expectedPattern,
+            "Lucene99MemorySegmentScalarQuantizedVectorScorer()",
+            "Lucene99MemorySegmentFlatVectorsScorer()");
+    assertThat(customCodec.knnVectorsFormat().toString(), is(oneOf(defaultScorer, memSegScorer)));
+  }
+
+  public void testLimits() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new Lucene99ScalarQuantizedVectorsFormat(1.1f, 7, false));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new Lucene99ScalarQuantizedVectorsFormat(null, -1, false));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new Lucene99ScalarQuantizedVectorsFormat(null, 5, false));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new Lucene99ScalarQuantizedVectorsFormat(null, 9, false));
+  }
+
+  @Override
+  public void testRandomWithUpdatesAndGraph() {
+    // graph not supported
+  }
+
+  @Override
+  public void testSearchWithVisitedLimit() {
+    // search not supported
+  }
+
+  @Override
+  protected boolean supportsFloatVectorFallback() {
+    return true;
+  }
+
+  @Override
+  protected int getQuantizationBits() {
+    return bits;
+  }
+
+  @Override
+  protected Codec getCodecForFloatVectorFallbackTest() {
+    return getCodec(1f);
   }
 
   /** Simulates empty raw vectors by modifying index files. */
-  private void simulateEmptyRawVectors(Directory dir) throws Exception {
+  @Override
+  protected void simulateEmptyRawVectors(Directory dir) throws Exception {
     final String[] indexFiles = dir.listAll();
     final String RAW_VECTOR_EXTENSION = "vec";
     final String VECTOR_META_EXTENSION = "vemf";
@@ -356,55 +338,5 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
       out.writeInt(-1);
       CodecUtil.writeFooter(out);
     }
-  }
-
-  public void testToString() {
-    FilterCodec customCodec =
-        new FilterCodec("foo", Codec.getDefault()) {
-          @Override
-          public KnnVectorsFormat knnVectorsFormat() {
-            return new Lucene99ScalarQuantizedVectorsFormat(0.9f, (byte) 4, false);
-          }
-        };
-    String expectedPattern =
-        "Lucene99ScalarQuantizedVectorsFormat(name=Lucene99ScalarQuantizedVectorsFormat, confidenceInterval=0.9, bits=4, compress=false, flatVectorScorer=%s, rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s))";
-    var defaultScorer =
-        format(
-            Locale.ROOT,
-            expectedPattern,
-            "ScalarQuantizedVectorScorer(nonQuantizedDelegate=DefaultFlatVectorScorer())",
-            "DefaultFlatVectorScorer()");
-    var memSegScorer =
-        format(
-            Locale.ROOT,
-            expectedPattern,
-            "Lucene99MemorySegmentScalarQuantizedVectorScorer()",
-            "Lucene99MemorySegmentFlatVectorsScorer()");
-    assertThat(customCodec.knnVectorsFormat().toString(), is(oneOf(defaultScorer, memSegScorer)));
-  }
-
-  public void testLimits() {
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> new Lucene99ScalarQuantizedVectorsFormat(1.1f, 7, false));
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> new Lucene99ScalarQuantizedVectorsFormat(null, -1, false));
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> new Lucene99ScalarQuantizedVectorsFormat(null, 5, false));
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> new Lucene99ScalarQuantizedVectorsFormat(null, 9, false));
-  }
-
-  @Override
-  public void testRandomWithUpdatesAndGraph() {
-    // graph not supported
-  }
-
-  @Override
-  public void testSearchWithVisitedLimit() {
-    // search not supported
   }
 }

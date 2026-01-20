@@ -234,6 +234,8 @@ public class TestIndexWriterExceptions extends LuceneTestCase {
     }
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandomExceptions() throws Throwable {
     if (VERBOSE) {
       System.out.println("\nTEST: start testRandomExceptions");

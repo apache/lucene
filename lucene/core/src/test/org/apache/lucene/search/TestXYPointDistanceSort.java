@@ -67,7 +67,7 @@ public class TestXYPointDistanceSort extends LuceneTestCase {
     iw.close();
 
     Sort sort = new Sort(XYDocValuesField.newDistanceSort("location", 40.7143528f, -74.0059731f));
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 3, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 3, sort);
 
     FieldDoc d = (FieldDoc) td.scoreDocs[0];
     assertEquals(d2, (Double) d.fields[0], 0.0D);
@@ -106,7 +106,7 @@ public class TestXYPointDistanceSort extends LuceneTestCase {
     iw.close();
 
     Sort sort = new Sort(XYDocValuesField.newDistanceSort("location", 40.7143528f, -74.0059731f));
-    TopDocs td = searcher.search(new MatchAllDocsQuery(), 3, sort);
+    TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 3, sort);
 
     FieldDoc d = (FieldDoc) td.scoreDocs[0];
     assertEquals(d2, (Double) d.fields[0], 0.0D);
@@ -237,10 +237,9 @@ public class TestXYPointDistanceSort extends LuceneTestCase {
       int topN = TestUtil.nextInt(random(), 1, reader.maxDoc());
       // sort by distance, then ID
       SortField distanceSort = XYDocValuesField.newDistanceSort("field", x, y);
-      distanceSort.setMissingValue(missingValue);
       Sort sort = new Sort(distanceSort, new SortField("id", SortField.Type.INT));
 
-      TopDocs topDocs = searcher.search(new MatchAllDocsQuery(), topN, sort);
+      TopDocs topDocs = searcher.search(MatchAllDocsQuery.INSTANCE, topN, sort);
       for (int resultNumber = 0; resultNumber < topN; resultNumber++) {
         FieldDoc fieldDoc = (FieldDoc) topDocs.scoreDocs[resultNumber];
         Result actual = new Result((Integer) fieldDoc.fields[1], (Double) fieldDoc.fields[0]);
@@ -251,7 +250,8 @@ public class TestXYPointDistanceSort extends LuceneTestCase {
       if (topN < reader.maxDoc()) {
         int page2 = TestUtil.nextInt(random(), 1, reader.maxDoc() - topN);
         TopDocs topDocs2 =
-            searcher.searchAfter(topDocs.scoreDocs[topN - 1], new MatchAllDocsQuery(), page2, sort);
+            searcher.searchAfter(
+                topDocs.scoreDocs[topN - 1], MatchAllDocsQuery.INSTANCE, page2, sort);
         for (int resultNumber = 0; resultNumber < page2; resultNumber++) {
           FieldDoc fieldDoc = (FieldDoc) topDocs2.scoreDocs[resultNumber];
           Result actual = new Result((Integer) fieldDoc.fields[1], (Double) fieldDoc.fields[0]);

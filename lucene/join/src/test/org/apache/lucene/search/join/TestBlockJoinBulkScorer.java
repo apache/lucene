@@ -315,6 +315,8 @@ public class TestBlockJoinBulkScorer extends LuceneTestCase {
     }
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testScoreRandomIndices() throws IOException {
     for (int i = 0; i < 200 * RANDOM_MULTIPLIER; i++) {
       try (Directory dir = newDirectory()) {

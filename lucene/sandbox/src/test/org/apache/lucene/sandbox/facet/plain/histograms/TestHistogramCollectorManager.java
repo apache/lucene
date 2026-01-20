@@ -62,7 +62,7 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
     w.close();
     IndexSearcher searcher = newSearcher(reader);
     LongIntHashMap actualCounts =
-        searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 4));
+        searcher.search(MatchAllDocsQuery.INSTANCE, new HistogramCollectorManager("f", 4));
     LongIntHashMap expectedCounts = new LongIntHashMap();
     expectedCounts.put(0, 1);
     expectedCounts.put(1, 2);
@@ -70,7 +70,8 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
 
     expectThrows(
         IllegalStateException.class,
-        () -> searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 4, 1)));
+        () ->
+            searcher.search(MatchAllDocsQuery.INSTANCE, new HistogramCollectorManager("f", 4, 1)));
 
     reader.close();
     dir.close();
@@ -92,7 +93,7 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
     w.close();
     IndexSearcher searcher = newSearcher(reader);
     LongIntHashMap actualCounts =
-        searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 4));
+        searcher.search(MatchAllDocsQuery.INSTANCE, new HistogramCollectorManager("f", 4));
     LongIntHashMap expectedCounts = new LongIntHashMap();
     expectedCounts.put(0, 1);
     expectedCounts.put(1, 1);
@@ -101,7 +102,8 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
 
     expectThrows(
         IllegalStateException.class,
-        () -> searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 4, 1)));
+        () ->
+            searcher.search(MatchAllDocsQuery.INSTANCE, new HistogramCollectorManager("f", 4, 1)));
 
     reader.close();
     dir.close();
@@ -131,7 +133,7 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
 
     // Validate the MATCH_ALL case
     LongIntHashMap actualCounts =
-        searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 1000));
+        searcher.search(MatchAllDocsQuery.INSTANCE, new HistogramCollectorManager("f", 1000));
     LongIntHashMap expectedCounts = new LongIntHashMap();
     for (long value : values) {
       expectedCounts.addTo(Math.floorDiv(value, 1000), 1);
@@ -216,7 +218,8 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
     // Validate that exception is thrown when doc values is disabled on numeric field
     expectThrows(
         IllegalStateException.class,
-        () -> searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 1000)));
+        () ->
+            searcher.search(MatchAllDocsQuery.INSTANCE, new HistogramCollectorManager("f", 1000)));
 
     reader.close();
     dir.close();
@@ -265,7 +268,7 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
     w.close();
     IndexSearcher searcher = newSearcher(reader);
     LongIntHashMap actualCounts =
-        searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 4));
+        searcher.search(MatchAllDocsQuery.INSTANCE, new HistogramCollectorManager("f", 4));
     LongIntHashMap expectedCounts = new LongIntHashMap();
     for (long value : values) {
       expectedCounts.addTo(Math.floorDiv(value, 4), 1);
@@ -274,7 +277,8 @@ public class TestHistogramCollectorManager extends LuceneTestCase {
 
     expectThrows(
         IllegalStateException.class,
-        () -> searcher.search(new MatchAllDocsQuery(), new HistogramCollectorManager("f", 4, 1)));
+        () ->
+            searcher.search(MatchAllDocsQuery.INSTANCE, new HistogramCollectorManager("f", 4, 1)));
 
     // Create a query so that bucket "1" (values from 4 to 8), which is in the middle of the range,
     // doesn't match any docs. HistogramCollector should not add an entry with a count of 0 in this

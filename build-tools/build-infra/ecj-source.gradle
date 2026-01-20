@@ -21,7 +21,7 @@
 // we redirect dependency resolution to our own s3-based "maven repository" just for
 // the ecj jar.
 
-boolean useDropMirrorForEcj = true
+boolean useDropMirrorForEcj = false
 if (useDropMirrorForEcj) {
   repositories {
     exclusiveContent {

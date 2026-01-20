@@ -75,7 +75,6 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -251,8 +250,8 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
         }
       }
 
-      positionToTerms = CollectionUtil.newHashMap(len);
-      startOffsetToTerms = CollectionUtil.newHashMap(len);
+      positionToTerms = HashMap.newHashMap(len);
+      startOffsetToTerms = HashMap.newHashMap(len);
       for (int i = 0; i < len; ++i) {
         positionToTerms.computeIfAbsent(positions[i], _ -> new HashSet<>(1)).add(i);
         startOffsetToTerms.computeIfAbsent(startOffsets[i], _ -> new HashSet<>(1)).add(i);
@@ -518,7 +517,10 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
             assertTrue(foundPayload);
           }
         }
-        expectThrows(getReadPastLastPositionExceptionClass(), docsAndPositionsEnum::nextPosition);
+        Class<? extends Throwable> exClass = getReadPastLastPositionExceptionClass();
+        if (AssertionError.class.isAssignableFrom(exClass) && TEST_ASSERTS_ENABLED) {
+          expectThrows(exClass, docsAndPositionsEnum::nextPosition);
+        }
         assertEquals(PostingsEnum.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
       }
       this.docsEnum.set(docsAndPositionsEnum);

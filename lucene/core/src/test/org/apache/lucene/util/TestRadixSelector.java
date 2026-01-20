@@ -22,6 +22,7 @@ import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.sameInstance;
 
 import java.util.Arrays;
+import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -34,13 +35,15 @@ public class TestRadixSelector extends LuceneTestCase {
   }
 
   private void doTestSelect() {
-    final int from = random().nextInt(5);
-    final int to = from + TestUtil.nextInt(random(), 1, 10000);
-    final int maxLen = TestUtil.nextInt(random(), 1, 12);
-    BytesRef[] arr = new BytesRef[from + to + random().nextInt(5)];
+    Random random = nonAssertingRandom(random());
+    final int from = random.nextInt(5);
+    final int to = from + TestUtil.nextInt(random, 1, 10000);
+    final int maxLen = TestUtil.nextInt(random, 1, 12);
+
+    BytesRef[] arr = new BytesRef[from + to + random.nextInt(5)];
     for (int i = 0; i < arr.length; ++i) {
-      byte[] bytes = new byte[TestUtil.nextInt(random(), 0, maxLen)];
-      random().nextBytes(bytes);
+      byte[] bytes = new byte[TestUtil.nextInt(random, 0, maxLen)];
+      random.nextBytes(bytes);
       arr[i] = new BytesRef(bytes);
     }
     doTest(arr, from, to, maxLen);
@@ -53,16 +56,18 @@ public class TestRadixSelector extends LuceneTestCase {
   }
 
   private void doTestSharedPrefixes() {
-    final int from = random().nextInt(5);
-    final int to = from + TestUtil.nextInt(random(), 1, 10000);
-    final int maxLen = TestUtil.nextInt(random(), 1, 12);
-    BytesRef[] arr = new BytesRef[from + to + random().nextInt(5)];
+    Random random = nonAssertingRandom(random());
+
+    final int from = random.nextInt(5);
+    final int to = from + TestUtil.nextInt(random, 1, 10000);
+    final int maxLen = TestUtil.nextInt(random, 1, 12);
+    BytesRef[] arr = new BytesRef[from + to + random.nextInt(5)];
     for (int i = 0; i < arr.length; ++i) {
-      byte[] bytes = new byte[TestUtil.nextInt(random(), 0, maxLen)];
-      random().nextBytes(bytes);
+      byte[] bytes = new byte[TestUtil.nextInt(random, 0, maxLen)];
+      random.nextBytes(bytes);
       arr[i] = new BytesRef(bytes);
     }
-    final int sharedPrefixLength = Math.min(arr[0].length, TestUtil.nextInt(random(), 1, maxLen));
+    final int sharedPrefixLength = Math.min(arr[0].length, TestUtil.nextInt(random, 1, maxLen));
     for (int i = 1; i < arr.length; ++i) {
       System.arraycopy(
           arr[0].bytes,

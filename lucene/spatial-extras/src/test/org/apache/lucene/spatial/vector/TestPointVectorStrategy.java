@@ -73,7 +73,7 @@ public class TestPointVectorStrategy extends StrategyTestCase {
     this.strategy = PointVectorStrategy.newInstance(ctx, getClass().getSimpleName());
     adoc("99", "POINT(-5.0 8.2)");
     commit();
-    SearchResults results = executeQuery(new MatchAllDocsQuery(), 1);
+    SearchResults results = executeQuery(MatchAllDocsQuery.INSTANCE, 1);
     Document document = results.results.get(0).document;
     assertNull(
         "not stored", document.getField(strategy.getFieldName() + PointVectorStrategy.SUFFIX_X));
@@ -88,7 +88,7 @@ public class TestPointVectorStrategy extends StrategyTestCase {
     this.strategy = new PointVectorStrategy(ctx, getClass().getSimpleName(), fieldType);
     adoc("99", "POINT(-5.0 8.2)");
     commit();
-    results = executeQuery(new MatchAllDocsQuery(), 1);
+    results = executeQuery(MatchAllDocsQuery.INSTANCE, 1);
     document = results.results.get(0).document;
     assertEquals(
         "stored",

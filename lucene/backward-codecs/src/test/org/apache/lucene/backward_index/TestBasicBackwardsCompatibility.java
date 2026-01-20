@@ -861,7 +861,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
     assertTrue(
         ex.getMessage()
             .contains(
-                "This Lucene version only supports indexes created with major version "
+                "This Lucene version only supports indexes with major version "
                     + Version.LATEST.major
                     + " or later"));
     // now open with allowed min version

@@ -89,12 +89,13 @@ public class TestDoubleValuesSource extends LuceneTestCase {
     DoubleValuesSource onefield = DoubleValuesSource.fromDoubleField("onefield");
     // sort decreasing
     TopDocs results =
-        searcher.search(new MatchAllDocsQuery(), 1, new Sort(onefield.getSortField(true)));
+        searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(onefield.getSortField(true)));
     FieldDoc first = (FieldDoc) results.scoreDocs[0];
     assertEquals(LEAST_DOUBLE_VALUE, first.fields[0]);
 
     // sort increasing
-    results = searcher.search(new MatchAllDocsQuery(), 1, new Sort(onefield.getSortField(false)));
+    results =
+        searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(onefield.getSortField(false)));
     first = (FieldDoc) results.scoreDocs[0];
     assertEquals(0d, first.fields[0]);
   }
@@ -105,34 +106,32 @@ public class TestDoubleValuesSource extends LuceneTestCase {
     DoubleValuesSource onefield = DoubleValuesSource.fromDoubleField("onefield");
 
     // sort decreasing, missing last
-    SortField oneFieldSort = onefield.getSortField(true);
-    oneFieldSort.setMissingValue(Double.MIN_VALUE);
+    SortField oneFieldSort = onefield.getSortField(true, Double.MIN_VALUE);
 
-    TopDocs results = searcher.search(new MatchAllDocsQuery(), 1, new Sort(oneFieldSort));
+    TopDocs results = searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(oneFieldSort));
     FieldDoc first = (FieldDoc) results.scoreDocs[0];
     assertEquals(LEAST_DOUBLE_VALUE, first.fields[0]);
 
     // sort increasing, missing last
-    oneFieldSort = onefield.getSortField(false);
-    oneFieldSort.setMissingValue(Double.MAX_VALUE);
+    oneFieldSort = onefield.getSortField(false, Double.MAX_VALUE);
 
-    results = searcher.search(new MatchAllDocsQuery(), 1, new Sort(oneFieldSort));
+    results = searcher.search(MatchAllDocsQuery.INSTANCE, 1, new Sort(oneFieldSort));
     first = (FieldDoc) results.scoreDocs[0];
     assertEquals(LEAST_DOUBLE_VALUE, first.fields[0]);
   }
 
   public void testSimpleFieldEquivalences() throws Exception {
     checkSorts(
-        new MatchAllDocsQuery(),
+        MatchAllDocsQuery.INSTANCE,
         new Sort(new SortField("int", SortField.Type.INT, random().nextBoolean())));
     checkSorts(
-        new MatchAllDocsQuery(),
+        MatchAllDocsQuery.INSTANCE,
         new Sort(new SortField("long", SortField.Type.LONG, random().nextBoolean())));
     checkSorts(
-        new MatchAllDocsQuery(),
+        MatchAllDocsQuery.INSTANCE,
         new Sort(new SortField("float", SortField.Type.FLOAT, random().nextBoolean())));
     checkSorts(
-        new MatchAllDocsQuery(),
+        MatchAllDocsQuery.INSTANCE,
         new Sort(new SortField("double", SortField.Type.DOUBLE, random().nextBoolean())));
   }
 
@@ -158,7 +157,7 @@ public class TestDoubleValuesSource extends LuceneTestCase {
     int n = atLeast(4);
     for (int i = 0; i < n; i++) {
       Sort sort = randomSort();
-      checkSorts(new MatchAllDocsQuery(), sort);
+      checkSorts(MatchAllDocsQuery.INSTANCE, sort);
       checkSorts(new TermQuery(new Term("english", "one")), sort);
     }
   }
@@ -235,7 +234,7 @@ public class TestDoubleValuesSource extends LuceneTestCase {
 
   static final Query[] testQueries =
       new Query[] {
-        new MatchAllDocsQuery(),
+        MatchAllDocsQuery.INSTANCE,
         new TermQuery(new Term("oddeven", "odd")),
         new BooleanQuery.Builder()
             .add(new TermQuery(new Term("english", "one")), BooleanClause.Occur.MUST)

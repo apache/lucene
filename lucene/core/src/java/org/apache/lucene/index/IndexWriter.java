@@ -2221,8 +2221,10 @@ public class IndexWriter
    * Just like {@link #forceMergeDeletes()}, except you can specify whether the call should block
    * until the operation completes. This is only meaningful with a {@link MergeScheduler} that is
    * able to run merges in background threads.
+   *
+   * @return a {@link MergePolicy.MergeObserver} to monitor merge progress and wait for completion
    */
-  public void forceMergeDeletes(boolean doWait) throws IOException {
+  public MergePolicy.MergeObserver forceMergeDeletes(boolean doWait) throws IOException {
     ensureOpen();
 
     flush(true, true);
@@ -2282,6 +2284,7 @@ public class IndexWriter
     // NOTE: in the ConcurrentMergeScheduler case, when
     // doWait is false, we can return immediately while
     // background threads accomplish the merging
+    return new MergePolicy.MergeObserver(spec);
   }
 
   /**
@@ -2296,9 +2299,12 @@ public class IndexWriter
    *
    * <p><b>NOTE</b>: this method first flushes a new segment (if there are indexed documents), and
    * applies all buffered deletes.
+   *
+   * @return a {@link MergePolicy.MergeObserver} to monitor merge progress. Since this method blocks
+   *     until completion, merges will already be complete when it returns.
    */
-  public void forceMergeDeletes() throws IOException {
-    forceMergeDeletes(true);
+  public MergePolicy.MergeObserver forceMergeDeletes() throws IOException {
+    return forceMergeDeletes(true);
   }
 
   /**
@@ -2609,12 +2615,12 @@ public class IndexWriter
    * This change will not be visible until a {@link #commit()} has been called. This method can be
    * rolled back using {@link #rollback()}.
    *
-   * <p>NOTE: this method is much faster than using deleteDocuments( new MatchAllDocsQuery() ). Yet,
-   * this method also has different semantics compared to {@link #deleteDocuments(Query...)} since
-   * internal data-structures are cleared as well as all segment information is forcefully dropped
-   * anti-viral semantics like omitting norms are reset or doc value types are cleared. Essentially
-   * a call to {@link #deleteAll()} is equivalent to creating a new {@link IndexWriter} with {@link
-   * OpenMode#CREATE} which a delete query only marks documents as deleted.
+   * <p>NOTE: this method is much faster than using deleteDocuments( MatchAllDocsQuery.INSTANCE ).
+   * Yet, this method also has different semantics compared to {@link #deleteDocuments(Query...)}
+   * since internal data-structures are cleared as well as all segment information is forcefully
+   * dropped anti-viral semantics like omitting norms are reset or doc value types are cleared.
+   * Essentially a call to {@link #deleteAll()} is equivalent to creating a new {@link IndexWriter}
+   * with {@link OpenMode#CREATE} which a delete query only marks documents as deleted.
    *
    * <p>NOTE: this method will forcefully abort all merges in progress. If other threads are running
    * {@link #forceMerge}, {@link #addIndexes(CodecReader[])} or {@link #forceMergeDeletes} methods,

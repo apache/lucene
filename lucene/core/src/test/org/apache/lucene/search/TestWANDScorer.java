@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThan;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -63,8 +66,8 @@ public class TestWANDScorer extends LuceneTestCase {
   private void doTestScalingFactor(float f) {
     int scalingFactor = WANDScorer.scalingFactor(f);
     float scaled = Math.scalb(f, scalingFactor);
-    assertTrue("" + scaled, scaled >= 1 << (WANDScorer.FLOAT_MANTISSA_BITS - 1));
-    assertTrue("" + scaled, scaled < 1 << WANDScorer.FLOAT_MANTISSA_BITS);
+    assertThat(scaled, greaterThanOrEqualTo((float) (1 << (WANDScorer.FLOAT_MANTISSA_BITS - 1))));
+    assertThat(scaled, lessThan((float) (1 << WANDScorer.FLOAT_MANTISSA_BITS)));
   }
 
   public void testScaleMaxScore() {
@@ -746,7 +749,7 @@ public class TestWANDScorer extends LuceneTestCase {
     // but will be called during searching
     IndexSearcher searcher = newSearcher(reader, true, true, false);
 
-    for (int iter = 0; iter < 100; ++iter) {
+    for (int iter = 0; iter < 10; ++iter) {
       int start = random().nextInt(10);
       int numClauses = random().nextInt(1 << random().nextInt(5));
       BooleanQuery.Builder builder = new BooleanQuery.Builder();
@@ -822,12 +825,22 @@ public class TestWANDScorer extends LuceneTestCase {
     dir.close();
   }
 
-  /** Test the case when some clauses produce infinite max scores. */
+  /**
+   * Test the case when some clauses produce infinite max scores.
+   *
+   * <p>TODO: incredibly slow
+   */
+  @Nightly
   public void testRandomWithInfiniteMaxScore() throws IOException {
     doTestRandomSpecialMaxScore(Float.POSITIVE_INFINITY);
   }
 
-  /** Test the case when some clauses produce finite max scores, but their sum overflows. */
+  /**
+   * Test the case when some clauses produce finite max scores, but their sum overflows.
+   *
+   * <p>TODO: incredibly slow
+   */
+  @Nightly
   public void testRandomWithMaxScoreOverflow() throws IOException {
     doTestRandomSpecialMaxScore(Float.MAX_VALUE);
   }

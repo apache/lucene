@@ -42,11 +42,11 @@ public class TestSimpleExplanations extends BaseExplanationTestCase {
   /* MatchAllDocs */
 
   public void testMA1() throws Exception {
-    qtest(new MatchAllDocsQuery(), new int[] {0, 1, 2, 3});
+    qtest(MatchAllDocsQuery.INSTANCE, new int[] {0, 1, 2, 3});
   }
 
   public void testMA2() throws Exception {
-    Query q = new MatchAllDocsQuery();
+    Query q = MatchAllDocsQuery.INSTANCE;
     qtest(new BoostQuery(q, 1000), new int[] {0, 1, 2, 3});
   }
 

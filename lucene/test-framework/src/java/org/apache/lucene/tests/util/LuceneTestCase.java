@@ -30,6 +30,7 @@ import com.carrotsearch.randomizedtesting.MixWithSuiteName;
 import com.carrotsearch.randomizedtesting.RandomizedContext;
 import com.carrotsearch.randomizedtesting.RandomizedRunner;
 import com.carrotsearch.randomizedtesting.RandomizedTest;
+import com.carrotsearch.randomizedtesting.Xoroshiro128PlusRandom;
 import com.carrotsearch.randomizedtesting.annotations.Listeners;
 import com.carrotsearch.randomizedtesting.annotations.SeedDecorators;
 import com.carrotsearch.randomizedtesting.annotations.TestGroup;
@@ -90,7 +91,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import junit.framework.AssertionFailedError;
 import org.apache.lucene.analysis.Analyzer;
@@ -169,6 +172,7 @@ import org.apache.lucene.store.MergeInfo;
 import org.apache.lucene.store.NRTCachingDirectory;
 import org.apache.lucene.store.ReadOnceHint;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.index.AlcoholicMergePolicy;
 import org.apache.lucene.tests.index.AssertingDirectoryReader;
 import org.apache.lucene.tests.index.AssertingLeafReader;
@@ -207,49 +211,53 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
-import org.junit.Test;
 import org.junit.internal.AssumptionViolatedException;
 import org.junit.rules.RuleChain;
 import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 
-/**
- * Base class for all Lucene unit tests, Junit3 or Junit4 variant.
- *
- * <h2>Class and instance setup.</h2>
- *
- * <p>The preferred way to specify class (suite-level) setup/cleanup is to use static methods
- * annotated with {@link BeforeClass} and {@link AfterClass}. Any code in these methods is executed
- * within the test framework's control and ensure proper setup has been made. <b>Try not to use
- * static initializers (including complex final field initializers).</b> Static initializers are
- * executed before any setup rules are fired and may cause you (or somebody else) headaches.
- *
- * <p>For instance-level setup, use {@link Before} and {@link After} annotated methods. If you
- * override either {@link #setUp()} or {@link #tearDown()} in your subclass, make sure you call
- * <code>super.setUp()</code> and <code>super.tearDown()</code>. This is detected and enforced.
- *
- * <h2>Specifying test cases</h2>
- *
- * <p>Any test method with a <code>testXXX</code> prefix is considered a test case. Any test method
- * annotated with {@link Test} is considered a test case.
- *
- * <h2>Randomized execution and test facilities</h2>
- *
- * <p>{@link LuceneTestCase} uses {@link RandomizedRunner} to execute test cases. {@link
- * RandomizedRunner} has built-in support for tests randomization including access to a repeatable
- * {@link Random} instance. See {@link #random()} method. Any test using {@link Random} acquired
- * from {@link #random()} should be fully reproducible (assuming no race conditions between threads
- * etc.). The initial seed for a test case is reported in many ways:
- *
- * <ul>
- *   <li>as part of any exception thrown from its body (inserted as a dummy stack trace entry),
- *   <li>as part of the main thread executing the test case (if your test hangs, just dump the stack
- *       trace of all threads and you'll see the seed),
- *   <li>the master seed can also be accessed manually by getting the current context ({@link
- *       RandomizedContext#current()}) and then calling {@link
- *       RandomizedContext#getRunnerSeedAsString()}.
- * </ul>
- */
+/// Base class for all Lucene unit tests (JUnit4 variant).
+///
+/// ## Class and instance setup
+///
+/// The preferred way to specify class (suite-level) setup/cleanup is to use static methods
+/// annotated with [BeforeClass] and [AfterClass]. Any code in these methods is executed
+/// within the test framework's control and ensure proper setup has been made. **Try not to use
+/// static initializers (including complex final field initializers).** Static initializers are
+/// executed before any setup rules are fired and may cause you (or somebody else) headaches.
+///
+/// For instance-level setup, use [Before] and [After] annotated methods. If you
+/// override either [#setUp()] or [#tearDown()] in your subclass, make sure you call
+/// `super.setUp()` and `super.tearDown()`. This is detected and enforced.
+///
+/// ## Specifying test cases
+///
+/// Any test method with a `testXXX` prefix is considered a test case. Any test method
+/// annotated with [org.junit.Test] is considered a test case. For example, these are equivalent
+/// declarations:
+///
+/// ```java
+/// public void testPrefixIsSufficient() {}
+///
+/// @Test
+/// public void annotationIsRequiredHere() {}
+/// ```
+///
+/// ## Randomized execution and test facilities
+///
+/// [LuceneTestCase] uses [RandomizedRunner] to execute test cases.
+/// [RandomizedRunner] has built-in support for tests randomization including access to a repeatable
+/// [Random] instance. See [#random()] method. Any test using [Random] acquired
+/// from [#random()] should be fully reproducible (assuming no race conditions between threads
+/// etc.). The initial seed for a test case is reported in many ways:
+///
+///   - as part of any exception thrown from its body (inserted as a dummy stack trace entry),
+///   - as part of the main thread executing the test case (if your test hangs, just dump the stack
+///     trace of all threads, and you'll see the seed),
+///   - the master seed can also be accessed manually by getting the current context (
+///     [RandomizedContext#current()]) and then calling
+///     [RandomizedContext#getRunnerSeedAsString()].
+///
 @RunWith(RandomizedRunner.class)
 @TestMethodProviders({LuceneJUnit3MethodProvider.class, JUnit4MethodProvider.class})
 @Listeners({RunListenerPrintReproduceInfo.class, FailureMarker.class})
@@ -287,6 +295,21 @@ public abstract class LuceneTestCase extends Assert {
    * @see #ignoreAfterMaxFailures
    */
   public static final String SYSPROP_FAILFAST = "tests.failfast";
+
+  /**
+   * If specified, limits the number of method calls to each individual instance returned by {@link
+   * #random()}.
+   *
+   * @see #randomSupplier
+   */
+  public static final String SYSPROP_RANDOM_MAXCALLS = "tests.random.maxcalls";
+
+  /**
+   * If specified, limits the number of calls {@link #random()} itself.
+   *
+   * @see #randomSupplier
+   */
+  public static final String SYSPROP_RANDOM_MAXACQUIRES = "tests.random.maxacquires";
 
   /** Annotation for tests that should only be run during nightly builds. */
   @Documented
@@ -346,6 +369,20 @@ public abstract class LuceneTestCase extends Assert {
   @Target(ElementType.TYPE)
   public @interface SuppressFileSystems {
     String[] value();
+  }
+
+  /**
+   * Annotation for test classes that should avoid specific asserting formats within the {@link
+   * AssertingCodec} while keeping other asserting formats active.
+   *
+   * @see org.apache.lucene.tests.codecs.asserting.AssertingCodec.Format
+   */
+  @Documented
+  @Inherited
+  @Retention(RetentionPolicy.RUNTIME)
+  @Target(ElementType.TYPE)
+  public @interface SuppressAssertingFormats {
+    AssertingCodec.Format[] value();
   }
 
   /**
@@ -415,7 +452,12 @@ public abstract class LuceneTestCase extends Assert {
   /** Enables or disables dumping of {@link InfoStream} messages. */
   public static final boolean INFOSTREAM = systemPropertyAsBoolean("tests.infostream", VERBOSE);
 
-  public static final boolean TEST_ASSERTS_ENABLED = systemPropertyAsBoolean("tests.asserts", true);
+  /**
+   * True if {@code tests.asserts} is enabled (either explicitly via the build option or, if not
+   * present, by the default assertion status on this class).
+   */
+  public static final boolean TEST_ASSERTS_ENABLED =
+      systemPropertyAsBoolean("tests.asserts", LuceneTestCase.class.desiredAssertionStatus());
 
   /**
    * The default (embedded resource) lines file.
@@ -682,6 +724,37 @@ public abstract class LuceneTestCase extends Assert {
     liveIWCFlushMode = flushMode;
   }
 
+  private static final Supplier<Random> randomSupplier;
+
+  /** A counter of calls to {@link #random()} if {@link #SYSPROP_RANDOM_MAXACQUIRES} is defined. */
+  @SuppressWarnings("NonFinalStaticField")
+  private static AtomicLong randomCalls = new AtomicLong();
+
+  static {
+    int maxCalls = Integer.parseInt(System.getProperty(SYSPROP_RANDOM_MAXCALLS, "0"));
+    Supplier<Random> supplier = () -> RandomizedContext.current().getRandom();
+    if (maxCalls > 0) {
+      var finalizedSupplier = supplier;
+      supplier = () -> new MaxCallCountRandom(finalizedSupplier.get(), maxCalls);
+    }
+
+    int maxAquires = Integer.parseInt(System.getProperty(SYSPROP_RANDOM_MAXACQUIRES, "0"));
+    if (maxAquires > 0) {
+      var finalizedSupplier = supplier;
+      supplier =
+          () -> {
+            if (randomCalls.incrementAndGet() > maxAquires) {
+              throw new RuntimeException(
+                  "Too many random() calls. Consider using LuceneTestCase.nonAssertingRandom for"
+                      + " large loops or data generation.");
+            }
+            return finalizedSupplier.get();
+          };
+    }
+
+    randomSupplier = supplier;
+  }
+
   // -----------------------------------------------------------------
   // Suite and test case setup/ cleanup.
   // -----------------------------------------------------------------
@@ -689,6 +762,7 @@ public abstract class LuceneTestCase extends Assert {
   /** For subclasses to override. Overrides must call {@code super.setUp()}. */
   @Before
   public void setUp() throws Exception {
+    randomCalls.set(0);
     parentChainCallRule.setupCalled = true;
   }
 
@@ -734,17 +808,22 @@ public abstract class LuceneTestCase extends Assert {
    * another test case.
    *
    * <p>There is an overhead connected with getting the {@link Random} for a particular context and
-   * thread. It is better to cache the {@link Random} locally if tight loops with multiple
-   * invocations are present or create a derivative local {@link Random} for millions of calls like
-   * this:
-   *
-   * <pre>
-   * Random random = new Random(random().nextLong());
-   * // tight loop with many invocations.
-   * </pre>
+   * thread. It is better to use a non-asserting {@link Random} instance locally if tight loops with
+   * multiple invocations are present. See {@link #nonAssertingRandom(Random)}.
    */
   public static Random random() {
-    return RandomizedContext.current().getRandom();
+    return randomSupplier.get();
+  }
+
+  /**
+   * Returns a Random instance based on the current state of another Random. The returned instance
+   * should be faster for thousands of consecutive calls because it doesn't assert that it isn't
+   * shared between threads or used within the correct {@link RandomizedContext}.
+   *
+   * <p>Use this method for local tight loops that generate a lot of random data.
+   */
+  public static Random nonAssertingRandom(Random rnd) {
+    return new Xoroshiro128PlusRandom(rnd.nextLong());
   }
 
   /**
@@ -923,7 +1002,7 @@ public abstract class LuceneTestCase extends Assert {
     IndexWriterConfig c = new IndexWriterConfig(a);
     configureRandom(r, c.getCodec().compoundFormat());
     c.setSimilarity(classEnvRule.similarity);
-    if (VERBOSE) {
+    if (INFOSTREAM) {
       // Even though TestRuleSetupAndRestoreClassEnv calls
       // InfoStream.setDefault, we do it again here so that
       // the PrintStreamInfoStream.messageID increments so
@@ -3090,15 +3169,6 @@ public abstract class LuceneTestCase extends Assert {
     }
 
     return Files.readAllLines(forkArgsPath, StandardCharsets.UTF_8);
-  }
-
-  /** True if assertions (-ea) are enabled (at least for this class). */
-  public static final boolean assertsAreEnabled;
-
-  static {
-    boolean enabled = false;
-    assert (enabled = true) == true; // Intentional side-effect!!!
-    assertsAreEnabled = enabled;
   }
 
   /**

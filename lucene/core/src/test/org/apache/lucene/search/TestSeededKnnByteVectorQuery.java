@@ -16,10 +16,13 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
 import static org.apache.lucene.search.TestKnnByteVectorQuery.floatToBytes;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
@@ -39,7 +42,7 @@ import org.apache.lucene.util.TestVectorUtil;
 
 public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
-  private static final Query MATCH_NONE = new MatchNoDocsQuery();
+  private static final Query MATCH_NONE = MatchNoDocsQuery.INSTANCE;
 
   @Override
   AbstractKnnVectorQuery getKnnVectorQuery(String field, float[] query, int k, Query queryFilter) {
@@ -111,14 +114,14 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
           Query seed =
               random().nextBoolean()
                   ? IntPoint.newRangeQuery("tag", 1, 6)
-                  : new MatchAllDocsQuery();
-          Query filter = random().nextBoolean() ? null : new MatchAllDocsQuery();
+                  : MatchAllDocsQuery.INSTANCE;
+          Query filter = random().nextBoolean() ? null : MatchAllDocsQuery.INSTANCE;
           KnnByteVectorQuery byteVectorQuery =
               new KnnByteVectorQuery("field", floatToBytes(randomVector(dimension)), k, filter);
           Query knnQuery = SeededKnnVectorQuery.fromByteQuery(byteVectorQuery, seed);
           assertEquals(0, searcher.count(knnQuery));
           // No seed documents -- falls back on full approx search
-          seed = new MatchNoDocsQuery();
+          seed = MatchNoDocsQuery.INSTANCE;
           knnQuery = SeededKnnVectorQuery.fromByteQuery(byteVectorQuery, seed);
           assertEquals(0, searcher.count(knnQuery));
         }
@@ -137,7 +140,11 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
       // visitedLimit. This is fine since the test targets AbstractKnnVectorQuery logic, not the kNN
       // format
       // implementation.
-      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(TestUtil.getDefaultCodec());
+      IndexWriterConfig iwc =
+          new IndexWriterConfig()
+              .setCodec(
+                  TestUtil.alwaysKnnVectorsFormat(
+                      new Lucene99HnswVectorsFormat(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, 0)));
       RandomIndexWriter w = new RandomIndexWriter(random(), d, iwc);
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();
@@ -170,8 +177,8 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
 
           // All documents as seeds
           AtomicInteger seedCalls = new AtomicInteger();
-          Query seed1 = new MatchAllDocsQuery();
-          Query filter = random().nextBoolean() ? null : new MatchAllDocsQuery();
+          Query seed1 = MatchAllDocsQuery.INSTANCE;
+          Query filter = random().nextBoolean() ? null : MatchAllDocsQuery.INSTANCE;
           KnnByteVectorQuery byteVectorQuery =
               new KnnByteVectorQuery("field", floatToBytes(randomVector(dimension)), k, filter);
           AssertingSeededKnnVectorQuery query =
@@ -215,7 +222,7 @@ public class TestSeededKnnByteVectorQuery extends BaseKnnVectorQueryTestCase {
           }
 
           // No seed documents -- falls back on full approx search
-          Query seed3 = new MatchNoDocsQuery();
+          Query seed3 = MatchNoDocsQuery.INSTANCE;
           query = new AssertingSeededKnnVectorQuery(byteVectorQuery, seed3, null, null);
           results = searcher.search(query, n);
           expected = Math.min(Math.min(n, k), reader.numDocs());

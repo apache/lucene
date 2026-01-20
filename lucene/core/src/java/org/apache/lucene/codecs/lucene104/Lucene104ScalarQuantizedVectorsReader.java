@@ -50,14 +50,13 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /** Reader for scalar quantized vectors in the Lucene 10.4 format. */
-class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
+public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     implements QuantizedVectorsReader {
 
   private static final long SHALLOW_SIZE =
@@ -67,8 +66,10 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
   private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
+  public static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
 
-  Lucene104ScalarQuantizedVectorsReader(
+  /** Sole constructor */
+  public Lucene104ScalarQuantizedVectorsReader(
       SegmentReadState state,
       FlatVectorsReader rawVectorsReader,
       Lucene104ScalarQuantizedVectorScorer vectorsScorer)
@@ -209,6 +210,23 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               + " expected: "
               + VectorEncoding.FLOAT32);
     }
+
+    FloatVectorValues rawFloatVectorValues = rawVectorsReader.getFloatVectorValues(field);
+
+    if (rawFloatVectorValues.size() == 0) {
+      return OffHeapScalarQuantizedFloatVectorValues.load(
+          fi.ordToDocDISIReaderConfiguration,
+          fi.dimension,
+          fi.size,
+          fi.scalarEncoding,
+          fi.similarityFunction,
+          vectorScorer,
+          fi.centroid,
+          fi.vectorDataOffset,
+          fi.vectorDataLength,
+          quantizedVectorData);
+    }
+
     OffHeapScalarQuantizedVectorValues sqvv =
         OffHeapScalarQuantizedVectorValues.load(
             fi.ordToDocDISIReaderConfiguration,
@@ -223,7 +241,7 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
             fi.vectorDataOffset,
             fi.vectorDataLength,
             quantizedVectorData);
-    return new ScalarQuantizedVectorValues(rawVectorsReader.getFloatVectorValues(field), sqvv);
+    return new ScalarQuantizedVectorValues(rawFloatVectorValues, sqvv);
   }
 
   @Override
@@ -243,13 +261,37 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     if (knnCollector.k() == 0) return;
     final RandomVectorScorer scorer = getRandomVectorScorer(field, target);
     if (scorer == null) return;
-    OrdinalTranslatedKnnCollector collector =
-        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
     Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs.bits());
-    for (int i = 0; i < scorer.maxOrd(); i++) {
+    // if k is larger than the number of vectors we expect to visit in an HNSW search,
+    // we can just iterate over all vectors and collect them.
+    int[] ords = new int[EXHAUSTIVE_BULK_SCORE_ORDS];
+    float[] scores = new float[EXHAUSTIVE_BULK_SCORE_ORDS];
+    int numOrds = 0;
+    int numVectors = scorer.maxOrd();
+    for (int i = 0; i < numVectors; i++) {
       if (acceptedOrds == null || acceptedOrds.get(i)) {
-        collector.collect(i, scorer.score(i));
-        collector.incVisitedCount(1);
+        if (knnCollector.earlyTerminated()) {
+          break;
+        }
+        ords[numOrds++] = i;
+        if (numOrds == ords.length) {
+          knnCollector.incVisitedCount(numOrds);
+          if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCompetitiveSimilarity()) {
+            for (int j = 0; j < numOrds; j++) {
+              knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
+            }
+          }
+          numOrds = 0;
+        }
+      }
+    }
+
+    if (numOrds > 0) {
+      knnCollector.incVisitedCount(numOrds);
+      if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCompetitiveSimilarity()) {
+        for (int j = 0; j < numOrds; j++) {
+          knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
+        }
       }
     }
   }

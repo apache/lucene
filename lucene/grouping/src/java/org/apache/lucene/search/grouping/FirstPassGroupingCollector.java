@@ -31,7 +31,6 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.util.CollectionUtil;
 
 /**
  * FirstPassGroupingCollector is the first of two passes necessary to collect grouped hits. This
@@ -44,6 +43,7 @@ import org.apache.lucene.util.CollectionUtil;
 public class FirstPassGroupingCollector<T> extends SimpleCollector {
 
   private final GroupSelector<T> groupSelector;
+  private final boolean ignoreDocsWithoutGroupField;
 
   private final FieldComparator<?>[] comparators;
   private final LeafFieldComparator[] leafComparators;
@@ -73,7 +73,28 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
    */
   public FirstPassGroupingCollector(
       GroupSelector<T> groupSelector, Sort groupSort, int topNGroups) {
+    this(groupSelector, groupSort, topNGroups, false);
+  }
+
+  /**
+   * Create the first pass collector with ignoreDocsWithoutGroupField
+   *
+   * @param groupSelector a GroupSelector used to defined groups
+   * @param groupSort The {@link Sort} used to sort the groups. The top sorted document within each
+   *     group according to groupSort, determines how that group sorts against other groups. This
+   *     must be non-null, ie, if you want to groupSort by relevance use Sort.RELEVANCE.
+   * @param topNGroups How many top groups to keep.
+   * @param ignoreDocsWithoutGroupField if true, ignore documents that don't have the group field
+   *     instead of putting them in a null group
+   */
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  public FirstPassGroupingCollector(
+      GroupSelector<T> groupSelector,
+      Sort groupSort,
+      int topNGroups,
+      boolean ignoreDocsWithoutGroupField) {
     this.groupSelector = groupSelector;
+    this.ignoreDocsWithoutGroupField = ignoreDocsWithoutGroupField;
     if (topNGroups < 1) {
       throw new IllegalArgumentException("topNGroups must be >= 1 (got " + topNGroups + ")");
     }
@@ -98,7 +119,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
     }
 
     spareSlot = topNGroups;
-    groupMap = CollectionUtil.newHashMap(topNGroups);
+    groupMap = HashMap.newHashMap(topNGroups);
   }
 
   @Override
@@ -197,11 +218,13 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
       return;
     }
 
-    // TODO: should we add option to mean "ignore docs that
-    // don't have the group field" (instead of stuffing them
-    // under null group)?
-    groupSelector.advanceTo(doc);
+    GroupSelector.State state = groupSelector.advanceTo(doc);
     T groupValue = groupSelector.currentValue();
+
+    // Skip documents without group field if option is enabled
+    if (ignoreDocsWithoutGroupField && state == GroupSelector.State.SKIP) {
+      return;
+    }
 
     final CollectedSearchGroup<T> group = groupMap.get(groupValue);
 
@@ -293,14 +316,19 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
       }
     }
 
-    // Remove before updating the group since lookup is done via comparators
-    // TODO: optimize this
-
     final CollectedSearchGroup<T> prevLast;
+    boolean skipHeavyOps = false;
+
     if (orderedGroups != null) {
       prevLast = orderedGroups.last();
-      orderedGroups.remove(group);
-      assert orderedGroups.size() == topNGroups - 1;
+
+      // Skip remove/add for first group
+      if (group == orderedGroups.first()) {
+        skipHeavyOps = true;
+      } else {
+        orderedGroups.remove(group);
+        assert orderedGroups.size() == topNGroups - 1;
+      }
     } else {
       prevLast = null;
     }
@@ -312,9 +340,11 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
     spareSlot = group.comparatorSlot;
     group.comparatorSlot = tmp;
 
-    // Re-add the changed group
+    // Re-add only if we removed it
     if (orderedGroups != null) {
-      orderedGroups.add(group);
+      if (!skipHeavyOps) {
+        orderedGroups.add(group);
+      }
       assert orderedGroups.size() == topNGroups;
       final CollectedSearchGroup<?> newLast = orderedGroups.last();
       // If we changed the value of the last group, or changed which group was last, then update

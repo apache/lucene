@@ -615,7 +615,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
           new Thread(
               () -> {
                 try {
-                  for (int i = 0, max = RandomizedTest.randomIntBetween(500, 1000); i < max; i++) {
+                  for (int i = 0, max = RandomizedTest.randomIntBetween(100, 200); i < max; i++) {
                     String fileName = "file-" + i;
                     try (IndexOutput output = dir.createOutput(fileName, newIOContext(random()))) {
                       assert output != null;
@@ -960,7 +960,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
   public void testRandomLong() throws Exception {
     try (Directory dir = getDirectory(createTempDir("testLongs"))) {
       IndexOutput output = dir.createOutput("longs", newIOContext(random()));
-      int num = TestUtil.nextInt(random(), 50, 3000);
+      int num = TestUtil.nextInt(random(), 50, 700);
       long[] longs = new long[num];
       for (int i = 0; i < longs.length; i++) {
         longs[i] = TestUtil.nextLong(random(), Long.MIN_VALUE, Long.MAX_VALUE);

@@ -26,8 +26,7 @@ import java.util.function.Supplier;
 
 /**
  * A priority queue maintains a partial ordering of its elements such that the least element can
- * always be found in constant time. Put()'s and pop()'s require log(size) time but the remove()
- * cost implemented here is linear.
+ * always be found in constant time. Put()'s and pop()'s require log(size) time.
  *
  * <p><b>NOTE</b>: This class pre-allocates an array of length {@code maxSize+1} and pre-fills it
  * with elements if instantiated via the {@link #PriorityQueue(int,LessThan,Supplier)} constructor.
@@ -68,7 +67,7 @@ public class PriorityQueue<T> implements Iterable<T> {
         maxSize, (a, b) -> comparator.compare(a, b) < 0, sentinelObjectSupplier);
   }
 
-  private int size = 0;
+  protected int size = 0;
   private final int maxSize;
   private final T[] heap;
   private final LessThan<? super T> lessThan;
@@ -92,7 +91,7 @@ public class PriorityQueue<T> implements Iterable<T> {
    * <p>If this method is extended to return a non-null value, then the following usage pattern is
    * recommended:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * PriorityQueue&lt;MyObject&gt; pq = new PriorityQueue&lt;MyObject&gt;(numHits, lessThan);
    * // save the 'top' element, which is guaranteed to not be null.
    * MyObject pqTop = pq.top();
@@ -101,7 +100,7 @@ public class PriorityQueue<T> implements Iterable<T> {
    * // you've verified it is better), it is as simple as:
    * pqTop.change().
    * pqTop = pq.updateTop();
-   * </pre>
+   * </code></pre>
    *
    * <b>NOTE:</b> the given supplier will be called {@code maxSize} times, relying on a new object
    * to be returned and will not check if it's null again. Therefore you should ensure any call to
@@ -237,18 +236,18 @@ public class PriorityQueue<T> implements Iterable<T> {
    * Should be called when the Object at top changes values. Still log(n) worst case, but it's at
    * least twice as fast to
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * pq.top().change();
    * pq.updateTop();
-   * </pre>
+   * </code></pre>
    *
    * instead of
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * o = pq.pop();
    * o.change();
    * pq.push(o);
-   * </pre>
+   * </code></pre>
    *
    * @return the new 'top' element.
    */
@@ -275,28 +274,6 @@ public class PriorityQueue<T> implements Iterable<T> {
   }
 
   /**
-   * Removes an existing element currently stored in the PriorityQueue. Cost is linear with the size
-   * of the queue. (A specialization of PriorityQueue which tracks element positions would provide a
-   * constant remove time but the trade-off would be extra cost to all additions/insertions)
-   */
-  public final boolean remove(T element) {
-    for (int i = 1; i <= size; i++) {
-      if (heap[i] == element) {
-        heap[i] = heap[size];
-        heap[size] = null; // permit GC of objects
-        size--;
-        if (i <= size) {
-          if (!upHeap(i)) {
-            downHeap(i);
-          }
-        }
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
    * Moves the contents of this queue into a new array created by {@code newArray}, lowest items
    * first
    */
@@ -320,7 +297,7 @@ public class PriorityQueue<T> implements Iterable<T> {
     return array;
   }
 
-  private boolean upHeap(int origPos) {
+  protected boolean upHeap(int origPos) {
     int i = origPos;
     T node = heap[i]; // save bottom node
     int j = i >>> 1;
@@ -333,7 +310,7 @@ public class PriorityQueue<T> implements Iterable<T> {
     return i != origPos;
   }
 
-  private void downHeap(int i) {
+  protected void downHeap(int i) {
     T node = heap[i]; // save top node
     int j = i << 1; // find smaller child
     int k = j + 1;

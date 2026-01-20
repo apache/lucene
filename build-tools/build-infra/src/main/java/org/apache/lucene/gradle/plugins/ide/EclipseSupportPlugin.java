@@ -37,6 +37,7 @@ import org.gradle.api.artifacts.VersionCatalog;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.Delete;
 import org.gradle.api.tasks.Sync;
 import org.gradle.plugins.ide.eclipse.EclipsePlugin;
 import org.gradle.plugins.ide.eclipse.GenerateEclipseClasspath;
@@ -153,6 +154,15 @@ public class EclipseSupportPlugin extends LuceneGradlePlugin {
               task.dependsOn(luceneEclipseJdt);
             });
 
+    var wipePreviousConfiguration =
+        tasks.register(
+            "wipePreviousConfiguration",
+            Delete.class,
+            task -> {
+              Path rootDir = getProjectRootPath(project);
+              task.delete(rootDir.resolve(".classpath"), rootDir.resolve(".project"));
+            });
+
     // Add gradle plugin portal to the source repository list and
     // apply any ecj source repository hackery the same way as everywhere.
     project.getRepositories().gradlePluginPortal();
@@ -163,6 +173,8 @@ public class EclipseSupportPlugin extends LuceneGradlePlugin {
         .named("eclipseClasspath")
         .configure(
             task -> {
+              task.dependsOn(wipePreviousConfiguration);
+
               var classpath = task.getClasspath();
               classpath.setDefaultOutputDir(project.file("build/eclipse"));
               classpath.setDownloadJavadoc(false);

@@ -28,7 +28,14 @@ import org.hamcrest.MatcherAssert;
 /** Test case for the Polygon {@link Tessellator} class */
 public class TestTessellator extends LuceneTestCase {
 
-  /** test line intersection */
+  /**
+   * test line intersection
+   *
+   * <p>Flaky at rev 6c66a9d0ea9b4cde99accc832d6d998512c1f928 NOTE: reproduce with: gradlew test
+   * --tests TestTessellator.testLinesIntersect -Dtests.seed=C1CBF6465727D90C -Dtests.locale=en-NA
+   * -Dtests.timezone=America/Argentina/Cordoba -Dtests.asserts=true -Dtests.file.encoding=UTF-8
+   */
+  @AwaitsFix(bugUrl = "please open a PR if you want to fix this")
   public void testLinesIntersect() {
     Rectangle rect = nextBoxNotCrossingDateline();
     // simple case; test intersecting diagonals

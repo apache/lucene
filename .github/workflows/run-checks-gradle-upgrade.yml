@@ -25,9 +25,38 @@ env:
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
 jobs:
+  gradleScriptBootstrapCheck:
+    name: "Check gradle boostrap script sanity on old JVMs."
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-java@f2beeb24e141e01a676f977032f5a29d81c9e27e # v5.1.0
+        with:
+          distribution: 'temurin'
+          java-version: 11
+          java-package: jdk
+
+      - name: Checkout repository
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          persist-credentials: false
+
+      - shell: bash
+        run: |
+          set +e
+          output=$(./gradlew 2>&1)
+          if [[ "$output" == *"ERROR: java version must be"* ]]; then
+            echo "Passed."
+          else
+            echo "Something is not right: gradlew command returned suspicious output or status code on JDK 11"
+            echo -e "gradlew output echoed below:\n\n$output\n\n---(end of output)"
+            exit 1
+          fi
+
   gradleSanityCheck:
     name: "Run tasks (java: ${{ matrix.java-version }}, alt-java: ${{ matrix.uses-alt-java }})"
     timeout-minutes: 30
+    needs: gradleScriptBootstrapCheck
 
     strategy:
       matrix:
@@ -42,13 +71,14 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
         with:
           persist-credentials: false
 
       - uses: ./.github/actions/prepare-for-build
         with:
           java-version: ${{ matrix.java-version }}
+          use-cache: false
 
       - name: Set up RUNTIME_JAVA_HOME variable
         if: ${{ matrix.uses-alt-java }}
@@ -84,7 +114,7 @@ jobs:
         run: |
           # add this package for generateEmojiTokenizationTestChecksumLoad.
           sudo apt-get install libwww-perl
-          ./gradlew regenerate -x generateUAX29URLEmailTokenizerInternal --rerun-tasks
+          ./gradlew regenerate -x regenerateUAX29URLEmailTokenizer --rerun-tasks
           if [ ! -z "$(git status --porcelain)" ]; then
             echo ":warning: **regenerate left local checkout in modified state**" >> "$GITHUB_STEP_SUMMARY"
             echo '```' >> "$GITHUB_STEP_SUMMARY"
@@ -95,7 +125,7 @@ jobs:
 
       - run: ./gradlew allOptions
       - run: ./gradlew helpWorkflow
-      - run: ./gradlew licenses updateLicenses
+      - run: ./gradlew licenses writeChecksums
       - run: ./gradlew check -x test
       - run: ./gradlew assembleRelease mavenToLocal
       - run: ./gradlew eclipse

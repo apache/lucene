@@ -240,7 +240,7 @@ public class TestBooleanScorer extends LuceneTestCase {
     query =
         new BooleanQuery.Builder()
             .add(new TermQuery(new Term("foo", "baz")), Occur.SHOULD)
-            .add(new MatchAllDocsQuery(), Occur.SHOULD)
+            .add(MatchAllDocsQuery.INSTANCE, Occur.SHOULD)
             .add(new TermQuery(new Term("foo", "bar")), Occur.MUST_NOT)
             .build();
     weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
@@ -433,9 +433,8 @@ public class TestBooleanScorer extends LuceneTestCase {
     int totalHitsThreshold = 7;
     TopScoreDocCollectorManager topScoreDocCollectorManager =
         new TopScoreDocCollectorManager(3, null, totalHitsThreshold);
-    TopScoreDocCollector collector = topScoreDocCollectorManager.newCollector();
-    searcher.search(builder.build(), collector);
-    assertEquals(totalHitsThreshold + 1, collector.totalHits);
+    TopDocs topDocs = searcher.search(builder.build(), topScoreDocCollectorManager);
+    assertEquals(totalHitsThreshold + 1, topDocs.totalHits.value());
 
     reader.close();
     w.close();
