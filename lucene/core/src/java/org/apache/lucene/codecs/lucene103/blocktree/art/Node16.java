@@ -140,7 +140,7 @@ public class Node16 extends Node {
   @Override
   public Node insert(Node childNode, byte indexByte) {
     if (getChildPos(indexByte) != ILLEGAL_IDX) {
-      Node oldChild = getChild(indexByte);
+      Node oldChild = getChild(getChildPos(indexByte));
       Node newChild = null;
       // We may insert leaf node by ARTBuilder#insert already. Here compat more.
       if (childNode.nodeType.equals(NodeType.LEAF_NODE)) {
