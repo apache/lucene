@@ -214,16 +214,6 @@ public class Node48 extends Node {
     }
   }
 
-  /**
-   * Insert the child node into this. Calculate the prefix and index byte internal.
-   *
-   * @param childNode
-   */
-  @Override
-  public Node insert(Node childNode, int depth) {
-    return null;
-  }
-
   private static byte childrenIdx(int pos, long[] childIndex) {
     int longPos = pos >>> 3;
     int bytePos = pos & (8 - 1);

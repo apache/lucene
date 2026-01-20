@@ -80,16 +80,6 @@ public class DummyNode extends Node {
     return null;
   }
 
-  /**
-   * Insert the child node into this. Calculate the prefix and index byte internal.
-   *
-   * @param childNode
-   */
-  @Override
-  public Node insert(Node childNode, int depth) {
-    return null;
-  }
-
   /** Set the node's children to right index while doing the read phase. */
   @Override
   void setChildren(Node[] children) {}

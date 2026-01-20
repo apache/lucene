@@ -198,16 +198,6 @@ public class Node16 extends Node {
     }
   }
 
-  /**
-   * Insert the child node into this. Calculate the prefix and index byte internal.
-   *
-   * @param childNode
-   */
-  @Override
-  public Node insert(Node childNode, int depth) {
-    return null;
-  }
-
   @Override
   public void saveChildIndex(IndexOutput dataOutput) throws IOException {
     // little endian

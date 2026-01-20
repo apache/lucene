@@ -141,6 +141,7 @@ final class IntersectTermsEnumFrame {
 
   void load(Node node) throws IOException {
     if (node != null) {
+      System.out.println("load: " + this.fp);
       // This block is the first one in a possible sequence of floor blocks corresponding to a
       // single seek point from the trie terms index
       if (node.isFloor()) {

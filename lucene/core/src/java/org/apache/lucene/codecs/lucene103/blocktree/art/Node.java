@@ -436,8 +436,101 @@ public abstract class Node {
   /** Insert the child node into this with the index byte. */
   public abstract Node insert(Node childNode, byte indexByte);
 
-  /** Insert the child node into this. Calculate the prefix and index byte internal. */
-  public abstract Node insert(Node childNode, int depth);
+  /**
+   * Insert the child node into this. Calculate the prefix and index byte internal. This is
+   * typically used when we insert this childNode into a parent, but this node already inserted in
+   * the save pos. This node and childNode have same index byte in parent, so we insert
+   * childNode(without index byte) into this node.
+   */
+  public Node insert(Node childNode, int depth) {
+    // LEAF_NODE should be inserted in ARTBuilder#insert, we also implement here.
+    Node newNode = null;
+    if (prefixLength == 0) {
+      if (childNode.nodeType.equals(NodeType.LEAF_NODE)) {
+        newNode = this.insert(childNode, childNode.key.bytes[0]);
+        updateKey(childNode, 1);
+      } else {
+        // TODO: childNode.prefix.length is 0 maybe never happens, otherwise we should insert all
+        // childNode's children like below.
+        assert childNode.prefix.length > 0;
+        newNode = this.insert(childNode, childNode.prefix[depth]);
+        updatePrefix(childNode, depth + 1);
+      }
+    } else {
+      // Similar to ARTBuilder#insert inner node case part.
+      if (childNode.nodeType.equals(NodeType.LEAF_NODE)) {
+        final int prefixLength =
+            ARTUtil.commonPrefixLength(
+                this.prefix,
+                depth,
+                this.key.length,
+                childNode.key.bytes,
+                childNode.key.offset,
+                childNode.key.offset + childNode.key.length);
+
+        if (prefixLength == this.prefixLength) {
+          newNode =
+              this.insert(childNode, childNode.key.bytes[childNode.key.offset + prefixLength]);
+          updateKey(childNode, childNode.key.offset + prefixLength + 1);
+        } else {
+          newNode = new Node4(prefixLength);
+          // copy prefix
+          newNode.prefixLength = prefixLength;
+          if (newNode.prefixLength > 0) {
+            System.arraycopy(this.prefix, 0, newNode.prefix, 0, prefixLength);
+          }
+          // split the current internal node, spawn a fresh node4 and let the
+          // current internal node as its children.
+          newNode.insert(this, this.prefix[prefixLength]);
+          updatePrefix(this, prefixLength + 1);
+          LeafNode leafNode = new LeafNode(key, output);
+          newNode.insert(leafNode, key.bytes[prefixLength + depth]);
+          updateKey(leafNode, prefixLength + depth + 1);
+        }
+      } else {
+        final int prefixLength =
+            ARTUtil.commonPrefixLength(
+                this.prefix,
+                depth,
+                this.key.length,
+                childNode.prefix,
+                depth,
+                childNode.prefixLength);
+
+        assert prefixLength != this.prefixLength;
+        // TODO: prefixLength == this.prefixLength maybe never happens, if so, we can remove the
+        // operation of inserting childNode's all children below.
+        if (prefixLength == this.prefixLength) {
+          // TODO: Insert childNode's all children.
+          System.out.println("TODO: Insert childNode's all children.");
+          int nextPos = Node.ILLEGAL_IDX;
+          newNode = this;
+          while ((nextPos = childNode.getNextLargerPos(nextPos)) != Node.ILLEGAL_IDX) {
+            Node freshedOne =
+                newNode.insert(childNode.getChild(nextPos), childNode.getChildIndexByte(nextPos));
+            if (freshedOne != newNode) {
+              newNode = freshedOne;
+            }
+          }
+        } else {
+          newNode = new Node4(prefixLength);
+          // copy prefix
+          newNode.prefixLength = prefixLength;
+          if (newNode.prefixLength > 0) {
+            System.arraycopy(this.prefix, 0, newNode.prefix, 0, prefixLength);
+          }
+          // split the current internal node, spawn a fresh node4 and let the
+          // current internal node as its children.
+          newNode.insert(this, this.prefix[prefixLength]);
+          updatePrefix(this, prefixLength + 1);
+          LeafNode leafNode = new LeafNode(key, output);
+          newNode.insert(leafNode, key.bytes[prefixLength + depth]);
+          updateKey(leafNode, prefixLength + depth + 1);
+        }
+      }
+    }
+    return newNode;
+  }
 
   /** Insert the LeafNode as a child of the current internal node. */
   public static Node insertLeaf(Node current, LeafNode childNode, byte indexByte) {
