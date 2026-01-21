@@ -60,7 +60,6 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
@@ -1159,8 +1158,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           BitSetIterator bitSetIterator =
               new BitSetIterator(docs, docs.approximateCardinality()) {
                 @Override
-                public BitSet getBitSet() {
-                  throw new UnsupportedOperationException("reusing BitSet is not supported");
+                public long cost() {
+                  throw new UnsupportedOperationException("reusing BitSetIterator cost");
                 }
               };
           final var scorer = new ConstantScoreScorer(score(), scoreMode, bitSetIterator);

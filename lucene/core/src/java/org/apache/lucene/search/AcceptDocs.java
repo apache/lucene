@@ -157,7 +157,7 @@ public abstract class AcceptDocs {
 
   /**
    * Impl backed by a {@link DocIdSetIterator}, which lazily creates a {@link BitSet} if {@link
-   * #cost()} or {@link #bits()} are called.
+   * #bits()} is called. Otherwise, returns the cost of underlying iterator.
    */
   private static class DocIdSetIteratorAcceptDocs extends AcceptDocs {
 
@@ -192,11 +192,7 @@ public abstract class AcceptDocs {
       if (acceptBitSet != null) {
         return cardinality;
       }
-      DocIdSetIterator iterator = iterator();
-      if (liveDocs == null && iterator instanceof BitSetIterator bitSetIterator) {
-        return bitSetIterator.getBitSet().approximateCardinality();
-      }
-      return Math.toIntExact(iterator.cost());
+      return Math.toIntExact(iterator().cost());
     }
 
     @Override
