@@ -48,8 +48,9 @@ public class LeafNode extends Node {
    */
   @Override
   public Node insert(Node childNode, byte indexByte) {
-    // TODO: call insert(childNode, 0), if needed.
-    return insert(childNode, 0);
+    return null;
+    // This should be implemented in ARTBuilder#insert(Node node, Node child, int depth).
+    //    return insert(childNode, 0);
     //    // This happens at final, we will append all sub blocks to an empty block.
     //    if (this.key == null) {
     //      Node4 node4 = new Node4(0);

@@ -130,34 +130,37 @@ public class ARTBuilder {
     if (artBuilder.root.nodeType.equals(NodeType.LEAF_NODE)) {
       insert(artBuilder.root.key, artBuilder.root.output);
     } else {
-      if (this.root.nodeType.equals(NodeType.LEAF_NODE)) {
-        assert this.root.prefixLength == 0;
-        final BytesRef key = this.root.key;
-        if (key == null) {
-          this.root = this.root.insert(artBuilder.root, artBuilder.root.prefix[0]);
-          // update in leafNode#insert.
-          //          updateNodePrefix(artBuilder.root, 1);
-        } else {
-          this.root = this.root.insert(artBuilder.root, artBuilder.root.prefix[key.length]);
-          // update in leafNode#insert.
-          //          updateNodePrefix(artBuilder.root, key.length + 1);
-        }
-      } else {
-        assert this.root.key == null;
-        final int prefixLength = this.root.prefixLength;
-        if (prefixLength == 0) {
-          this.root = this.root.insert(artBuilder.root, artBuilder.root.prefix[0]);
-          // TODO: update in Node#insert.
-          updatePrefix(artBuilder.root, 1);
-        } else {
-          assert prefixLength
-              == ARTUtil.commonPrefixLength(
-                  this.root.prefix, 0, prefixLength, artBuilder.root.prefix, 0, prefixLength);
-          this.root = this.root.insert(artBuilder.root, artBuilder.root.prefix[prefixLength]);
-          // TODO: update in Node#insert.
-          updatePrefix(artBuilder.root, prefixLength + 1);
-        }
-      }
+      this.root = insert(this.root, artBuilder.root, 0);
+      //      if (this.root.nodeType.equals(NodeType.LEAF_NODE)) {
+      //        assert this.root.prefixLength == 0;
+      //        final BytesRef key = this.root.key;
+      //        if (key == null) {
+      //          this.root = this.root.insert(artBuilder.root, artBuilder.root.prefix[0]);
+      //          // update in leafNode#insert.
+      //          //          updateNodePrefix(artBuilder.root, 1);
+      //        } else {
+      //          this.root = this.root.insert(artBuilder.root, artBuilder.root.prefix[key.length]);
+      //          // update in leafNode#insert.
+      //          //          updateNodePrefix(artBuilder.root, key.length + 1);
+      //        }
+      //      } else {
+      //        assert this.root.key == null;
+      //        final int prefixLength = this.root.prefixLength;
+      //        if (prefixLength == 0) {
+      //          this.root = this.root.insert(artBuilder.root, artBuilder.root.prefix[0]);
+      //          // TODO: update in Node#insert.
+      //          updatePrefix(artBuilder.root, 1);
+      //        } else {
+      //          assert prefixLength
+      //              == ARTUtil.commonPrefixLength(
+      //                  this.root.prefix, 0, prefixLength, artBuilder.root.prefix, 0,
+      // prefixLength);
+      //          this.root = this.root.insert(artBuilder.root,
+      // artBuilder.root.prefix[prefixLength]);
+      //          // TODO: update in Node#insert.
+      //          updatePrefix(artBuilder.root, prefixLength + 1);
+      //        }
+      //      }
     }
   }
 
@@ -241,17 +244,16 @@ public class ARTBuilder {
       return new LeafNode(key, output);
     }
     if (node.nodeType == NodeType.LEAF_NODE) {
-      LeafNode leafNode = (LeafNode) node;
       //      byte[] prefix = leafNode.key.bytes;
       // This happens insert: abc1, abc10, abc100. When inserting abc100 to abc10, there is no key
       // in abc10: abc1 is
       // common prefix, 0 is child index(let it as common prefix for abc10 and abc100, but stay in
       // child index).
       // Or, we even insert a BytesRef("").
-      if (leafNode.key == null) {
+      if (node.key == null) {
         Node4 node4 = new Node4(0);
-        node4.output = leafNode.output;
-        leafNode = null;
+        node4.output = node.output;
+        node = null;
         LeafNode anotherLeaf = new LeafNode(key, output);
         assert depth < anotherLeaf.key.length;
         Node4.insert(node4, anotherLeaf, key.bytes[depth]);
@@ -260,12 +262,12 @@ public class ARTBuilder {
         return node4;
       } else {
         assert key.length > 0;
-        assert leafNode.key.offset + leafNode.key.length <= leafNode.key.bytes.length;
+        assert node.key.offset + node.key.length <= node.key.bytes.length;
         int commonPrefix =
             ARTUtil.commonPrefixLength(
-                leafNode.key.bytes,
+                node.key.bytes,
                 depth,
-                leafNode.key.offset + leafNode.key.length,
+                node.key.offset + node.key.length,
                 key.bytes,
                 depth,
                 key.offset + key.length);
@@ -278,12 +280,12 @@ public class ARTBuilder {
         // generate two leaf nodes as the children of the fresh node4
         // Save output to parent node for node without commonPrefix. e.g. abc1, abc10.
 
-        if (depth + commonPrefix < leafNode.key.offset + leafNode.key.length) {
-          Node4.insert(node4, leafNode, leafNode.key.bytes[depth + commonPrefix]);
-          updateKey(leafNode, depth + commonPrefix + 1);
+        if (depth + commonPrefix < node.key.offset + node.key.length) {
+          Node4.insert(node4, node, node.key.bytes[depth + commonPrefix]);
+          updateKey(node, depth + commonPrefix + 1);
         } else {
-          node4.output = leafNode.output;
-          leafNode = null;
+          node4.output = node.output;
+          node = null;
         }
         LeafNode anotherLeaf = new LeafNode(key, output);
         assert depth + commonPrefix < anotherLeaf.key.length;
@@ -330,6 +332,93 @@ public class ARTBuilder {
     LeafNode leafNode = new LeafNode(key, output);
     Node freshOne = Node.insertLeaf(node, leafNode, key.bytes[depth]);
     updateKey(leafNode, depth + 1);
+    return freshOne;
+  }
+
+  private Node insert(Node node, Node child, int depth) {
+    assert child.nodeType.equals(NodeType.LEAF_NODE) == false
+        : "Use insert k,v method to insert leaf node";
+
+    if (node.nodeType == NodeType.LEAF_NODE) {
+      if (node.key == null) {
+        Node4 node4 = new Node4(0);
+        node4.output = node.output;
+        node = null;
+        assert depth < child.prefixLength;
+        Node4.insert(node4, child, child.prefix[depth]);
+        updatePrefix(child, depth + 1);
+        // replace the current node with this internal node4
+        return node4;
+      } else {
+        int commonPrefix =
+            ARTUtil.commonPrefixLength(
+                node.key.bytes,
+                depth,
+                node.key.offset + node.key.length,
+                child.prefix,
+                depth,
+                child.prefixLength);
+        Node4 node4 = new Node4(commonPrefix);
+        // copy common prefix
+        node4.prefixLength = commonPrefix;
+        if (node4.prefixLength > 0) {
+          System.arraycopy(node.key.bytes, depth, node4.prefix, 0, commonPrefix);
+        }
+        // generate two leaf nodes as the children of the fresh node4
+        // Save output to parent node for node without commonPrefix. e.g. abc1, abc10.
+
+        if (depth + commonPrefix < node.key.offset + node.key.length) {
+          Node4.insert(node4, node, node.key.bytes[depth + commonPrefix]);
+          updateKey(node, depth + commonPrefix + 1);
+        } else {
+          node4.output = node.output;
+          node = null;
+        }
+
+        assert depth + commonPrefix < child.prefixLength;
+        Node4.insert(node4, child, child.prefix[depth + commonPrefix]);
+        updatePrefix(child, depth + commonPrefix + 1);
+        // replace the current node with this internal node4
+        return node4;
+      }
+    }
+    // to a inner node case
+    if (node.prefixLength > 0) {
+      // find the mismatch position
+      int mismatchPos =
+          Arrays.mismatch(
+              node.prefix, 0, node.prefixLength, child.prefix, depth, child.prefixLength);
+      if (mismatchPos != node.prefixLength) {
+        Node4 node4 = new Node4(mismatchPos);
+        // copy prefix
+        node4.prefixLength = mismatchPos;
+        if (node4.prefixLength > 0) {
+          System.arraycopy(node.prefix, 0, node4.prefix, 0, mismatchPos);
+        }
+        // split the current internal node, spawn a fresh node4 and let the
+        // current internal node as its children.
+        Node4.insert(node4, node, node.prefix[mismatchPos]);
+        updatePrefix(node, mismatchPos + 1);
+
+        Node4.insert(node4, child, child.prefix[mismatchPos + depth]);
+        updatePrefix(child, mismatchPos + depth + 1);
+        return node4;
+      }
+      depth += node.prefixLength;
+    }
+    int pos = node.getChildPos(child.prefix[depth]);
+    if (pos != Node.ILLEGAL_IDX) {
+      // insert the key as current internal node's children's child node.
+      Node oldChild = node.getChild(pos);
+      Node newChild = insert(oldChild, child, depth + 1);
+      if (newChild != oldChild) {
+        node.replaceNode(pos, newChild);
+      }
+      return node;
+    }
+    // insert the key as a child leaf node of the current internal node
+    Node freshOne = node.insert(child, child.prefix[depth]);
+    updatePrefix(child, depth + 1);
     return freshOne;
   }
 }

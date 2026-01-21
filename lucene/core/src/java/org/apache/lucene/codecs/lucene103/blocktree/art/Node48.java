@@ -164,7 +164,9 @@ public class Node48 extends Node {
   /** Insert the child node into this with the index byte. */
   @Override
   public Node insert(Node child, byte indexByte) {
+    assert getChildPos(indexByte) == ILLEGAL_IDX;
     if (getChildPos(indexByte) != ILLEGAL_IDX) {
+      // This should be implemented in ARTBuilder#insert(Node node, Node child, int depth).
       Node oldChild = getChild(indexByte);
       Node newChild = null;
       // We may insert leaf node by ARTBuilder#insert already. Here compat more.
