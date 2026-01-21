@@ -48,6 +48,9 @@ API Changes
 
 * GITHUB#14844: Change IndexInput.updateReadAdvice to take an IOContext instead (Simon Cooper)
 
+* GITHUB#12980: Make FSTPostingsFormat to build FST off-heap. This PostingsFormat will now
+  create 2 FST files (tfp.meta and tfp.data) instead of a single one. (Anh Dung Bui)
+
 * GITHUB#15131: Restrict visibility of TieredMergePolicy.score() API (Trevor McCulloch)
 
 * GITHUB#15187: Restrict visibility of PerFieldKnnVectorsFormat.FieldsReader (Simon Cooper)
