@@ -85,6 +85,8 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
+
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
 * GITHUB#14022: Optimize DFS marking of connected components in HNSW by reducing stack depth, improving performance and reducing allocations. (Viswanath Kuchibhotla)
 
@@ -1622,7 +1624,7 @@ Optimizations
 
 * GITHUB#13306: Use RWLock to access LRUQueryCache to reduce contention. (Boice Huang)
 
-* GITHUB#13252, GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (zhouhui)
+* GITHUB#13252: Replace handwritten loops compare with Arrays.compareUnsigned in SegmentTermsEnum. (zhouhui)
 
 * GITHUB#12996: Reduce ArrayUtil#grow in decompress. (Zhang Chao)
 
