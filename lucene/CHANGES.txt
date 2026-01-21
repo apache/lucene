@@ -121,7 +121,7 @@ Bug Fixes
 * GITHUB#12561: UAX29URLEmailTokenizer matched emails with commas and invalid
   periods in the local part. (Eran Yarkon)
 
-* GITHUB#15590: Fix race in OnHeapHnswGraph memory accounting (Viliam Durina)
+* GITHUB#15590: Fix race and improve performance of HNSW graph building (Viliam Durina)
 
 Changes in Runtime Behavior
 ---------------------
