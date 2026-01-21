@@ -28,11 +28,14 @@ import java.util.function.Predicate;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.queries.function.FunctionQuery;
+import org.apache.lucene.queries.function.valuesource.ConstValueSource;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.uhighlight.FieldHighlighter;
 import org.apache.lucene.search.uhighlight.FieldOffsetStrategy;
 import org.apache.lucene.search.uhighlight.LabelledCharArrayMatcher;
@@ -89,6 +92,33 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
           }
         };
     assertEquals(offsetSource, strategy.getOffsetSource());
+  }
+
+  static class TestExtendedUnifiedHighlighter extends UnifiedHighlighter {
+    boolean supportsNewQueryType = false;
+
+    public TestExtendedUnifiedHighlighter(Builder builder) {
+      super(builder);
+    }
+
+    @Override
+    protected boolean isIgnorableQuery(Query q) {
+      return super.isIgnorableQuery(q) || (this.supportsNewQueryType && q instanceof TermQuery);
+    }
+  }
+  ;
+
+  @Test
+  public void testUnifiedHighlighterIgnorableQueryExtensibility() {
+    final UnifiedHighlighter.Builder uhBuilder =
+        new UnifiedHighlighter.Builder(null, new MockAnalyzer(random()));
+    final TestExtendedUnifiedHighlighter uh = new TestExtendedUnifiedHighlighter(uhBuilder);
+
+    assertTrue(uh.isIgnorableQuery(new MatchAllDocsQuery()));
+    assertTrue(uh.isIgnorableQuery(new FunctionQuery(new ConstValueSource(46))));
+    assertFalse(uh.isIgnorableQuery(new TermQuery(new Term("term"))));
+    uh.supportsNewQueryType = true;
+    assertTrue(uh.isIgnorableQuery(new TermQuery(new Term("term"))));
   }
 
   /**
