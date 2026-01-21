@@ -44,7 +44,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Test;
 
 public class TestRescoreTopNQuery extends LuceneTestCase {
 
@@ -69,7 +68,6 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
         TestUtil.alwaysKnnVectorsFormat(new Lucene104HnswScalarQuantizedVectorsFormat()));
   }
 
-  @Test
   public void testInvalidN() {
     expectThrows(
         IllegalArgumentException.class,
@@ -79,7 +77,6 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
   }
 
   // TODO: incredibly slow
-  @Test
   @Nightly
   public void testRescoreField() throws Exception {
     Map<Integer, float[]> vectors = new HashMap<>();
@@ -100,9 +97,8 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
           doc.add(new KnnFloatVectorField(FIELD, vector, VECTOR_SIMILARITY_FUNCTION));
           writer.addDocument(doc);
           vectors.put(id, vector);
-
-          writer.flush();
         }
+        writer.flush();
       }
     }
 
@@ -197,8 +193,8 @@ public class TestRescoreTopNQuery extends LuceneTestCase {
               doc.add(new IntField("has_li_vector", 1, Field.Store.YES));
             }
             w.addDocument(doc);
-            w.flush();
           }
+          w.flush();
         }
         // add a segment with no vectors
         for (int i = 0; i < 100; i++) {
