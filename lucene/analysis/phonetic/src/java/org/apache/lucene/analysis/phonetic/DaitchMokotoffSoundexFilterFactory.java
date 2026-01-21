@@ -32,13 +32,13 @@ import org.apache.lucene.analysis.TokenStream;
  *   <dd>(default=true) add tokens to the stream with the offset=0
  * </dl>
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_phonetic" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
  *     &lt;filter class="solr.DaitchMokotoffSoundexFilterFactory" inject="true"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @see DaitchMokotoffSoundexFilter
  * @lucene.experimental

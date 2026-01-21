@@ -52,21 +52,21 @@ import org.apache.lucene.util.IOSupplier;
  * Also, Leading holes don't have any particular meaning for this query and will be ignored. For
  * instance this query:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * PhraseQuery.Builder builder = new PhraseQuery.Builder();
  * builder.add(new Term("body", "one"), 4);
  * builder.add(new Term("body", "two"), 5);
  * PhraseQuery pq = builder.build();
- * </pre>
+ * </code></pre>
  *
  * is equivalent to the below query:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * PhraseQuery.Builder builder = new PhraseQuery.Builder();
  * builder.add(new Term("body", "one"), 0);
  * builder.add(new Term("body", "two"), 1);
  * PhraseQuery pq = builder.build();
- * </pre>
+ * </code></pre>
  */
 public class PhraseQuery extends Query {
 

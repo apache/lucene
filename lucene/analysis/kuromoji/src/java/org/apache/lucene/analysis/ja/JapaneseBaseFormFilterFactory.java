@@ -23,14 +23,14 @@ import org.apache.lucene.analysis.TokenStream;
 /**
  * Factory for {@link org.apache.lucene.analysis.ja.JapaneseBaseFormFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_ja" class="solr.TextField"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.JapaneseTokenizerFactory"/&gt;
  *     &lt;filter class="solr.JapaneseBaseFormFilterFactory"/&gt;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;
- * </pre>
+ * </code></pre>
  *
  * @since 3.6.0
  * @lucene.spi {@value #NAME}
