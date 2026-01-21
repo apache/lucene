@@ -18,8 +18,10 @@ package org.apache.lucene.queryparser.surround.query;
 
 import java.io.IOException;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.MultiTerms;
+import org.apache.lucene.index.IndexReaderContext;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.BytesRef;
@@ -50,14 +52,28 @@ public class SrndTermQuery extends SimpleTerm {
   public void visitMatchingTerms(IndexReader reader, String fieldName, MatchingTermVisitor mtv)
       throws IOException {
     /* check term presence in index here for symmetry with other SimpleTerm's */
-    Terms terms = MultiTerms.getTerms(reader, fieldName);
-    if (terms != null) {
-      TermsEnum termsEnum = terms.iterator();
-
-      TermsEnum.SeekStatus status = termsEnum.seekCeil(new BytesRef(getTermText()));
-      if (status == TermsEnum.SeekStatus.FOUND) {
-        mtv.visitMatchingTerm(getLuceneTerm(fieldName));
+    BytesRef seekTerm = new BytesRef(getTermText());
+    IndexReaderContext topReaderContext = reader.getContext();
+    TermStates ts = new TermStates(topReaderContext);
+    for (LeafReaderContext context : topReaderContext.leaves()) {
+      final Terms terms = context.reader().terms(fieldName);
+      if (terms == null) {
+        // field does not exist
+        continue;
       }
+
+      final TermsEnum termsEnum = terms.iterator();
+      assert termsEnum != null;
+
+      if (termsEnum == TermsEnum.EMPTY) continue;
+
+      if (termsEnum.seekCeil(seekTerm) == TermsEnum.SeekStatus.FOUND) {
+        ts.register(
+            termsEnum.termState(), context.ord, termsEnum.docFreq(), termsEnum.totalTermFreq());
+      }
+    }
+    if (ts.docFreq() > 0) {
+      mtv.visitMatchingTerm(getLuceneTerm(fieldName), ts);
     }
   }
 }
