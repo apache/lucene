@@ -18,6 +18,7 @@ package org.apache.lucene.benchmark.jmh;
 
 import java.io.IOException;
 import java.util.UUID;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
@@ -65,6 +66,8 @@ public class LRUQueryCacheBenchmark {
   private AtomicBoolean[] invalidated;
   private final AtomicLong lastInvalidateNs = new AtomicLong(0);
   private static final long INVALIDATE_INTERVAL_NS = TimeUnit.MILLISECONDS.toNanos(2000);
+  private static final long CACHE_BACKGROUND_CLEANUP_INTERVAL_NS =
+      TimeUnit.MILLISECONDS.toNanos(1000);
 
   @Setup
   public void setup() {
@@ -82,8 +85,18 @@ public class LRUQueryCacheBenchmark {
     for (int i = 0; i < MAX_SIZE; i++) {
       invalidated[i] = new AtomicBoolean(false);
     }
+    LRUQueryCache.CacheCleanUpParameters cacheCleanUpParameters =
+        new LRUQueryCache.CacheCleanUpParameters(
+            CACHE_BACKGROUND_CLEANUP_INTERVAL_NS,
+            new ScheduledThreadPoolExecutor(1, new DefaultCleanUpThreadFactory()));
     queryCache =
-        new LRUQueryCache(MAX_SIZE * SEGMENTS * 16, MAX_SIZE_IN_BYTES * 16, _ -> true, 100000);
+        new LRUQueryCache(
+            MAX_SIZE * SEGMENTS * 16,
+            MAX_SIZE_IN_BYTES * 16,
+            _ -> true,
+            100000,
+            16,
+            cacheCleanUpParameters);
 
     this.queries = new Query[MAX_SIZE];
     for (int i = 0; i < MAX_SIZE; i++) {
