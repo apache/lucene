@@ -50,7 +50,6 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.PriorityQueue;
 
 /**
@@ -337,7 +336,7 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
         createSegmentTermsQueue(segmentTermsList);
     List<TermIterator<SegmentTerms>> groupedSegmentTerms = new ArrayList<>(segmentTermsList.size());
     Map<String, List<SegmentPostings>> fieldPostingsMap =
-        CollectionUtil.newHashMap(mergeState.fieldInfos.length);
+        HashMap.newHashMap(mergeState.fieldInfos.length);
     List<MergingFieldTerms> groupedFieldTerms = new ArrayList<>(mergeState.fieldInfos.length);
     List<FieldMetadataTermState> termStates = new ArrayList<>(mergeState.fieldInfos.length);
 
@@ -357,8 +356,7 @@ public class STUniformSplitTermsWriter extends UniformSplitTermsWriter {
 
   private Map<String, MergingFieldTerms> createMergingFieldTermsMap(
       List<FieldMetadata> fieldMetadataList, int numSegments) {
-    Map<String, MergingFieldTerms> fieldTermsMap =
-        CollectionUtil.newHashMap(fieldMetadataList.size());
+    Map<String, MergingFieldTerms> fieldTermsMap = HashMap.newHashMap(fieldMetadataList.size());
     for (FieldMetadata fieldMetadata : fieldMetadataList) {
       FieldInfo fieldInfo = fieldMetadata.getFieldInfo();
       fieldTermsMap.put(
