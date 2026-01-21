@@ -38,6 +38,9 @@ public class TestOpenNLPLemmatizerFilterFactory extends BaseTokenStreamTestCase 
   private static final String[] SENTENCE_posTags = {
     "NNP", "VBD", "PRP", "VBG", "IN", "DT", "NN", "."
   };
+  private static final String[] SENTENCE_posTags_UD = {
+    "PROPN", "VERB", "PRON", "VERB", "ADP", "DET", "NOUN", "PUNCT"
+  };
 
   private static final String SENTENCES =
       "They sent him running in the evening. He did not come back.";
@@ -50,6 +53,10 @@ public class TestOpenNLPLemmatizerFilterFactory extends BaseTokenStreamTestCase 
   };
   private static final String[] SENTENCES_posTags = {
     "NNP", "VBD", "PRP", "VBG", "IN", "DT", "NN", ".", "PRP", "VBD", "RB", "VB", "RB", "."
+  };
+  private static final String[] SENTENCES_posTags_UD = {
+    "PROPN", "VERB", "PRON", "VERB", "ADP", "DET", "NOUN", "PUNCT", "PRON", "VERB", "ADV", "VERB",
+    "ADV", "PUNCT"
   };
 
   private static final String SENTENCE_both = "Konstantin Kalashnitsov constantly caliphed.";
@@ -88,6 +95,10 @@ public class TestOpenNLPLemmatizerFilterFactory extends BaseTokenStreamTestCase 
   private static final String[] SENTENCES_keep_orig_posTags = {
     "NNP", "NNP", "VBD", "VBD", "PRP", "PRP", "VBG", "VBG", "IN", "DT", "NN", ".", "PRP", "PRP",
     "VBD", "VBD", "RB", "VB", "RB", "."
+  };
+  private static final String[] SENTENCES_keep_orig_posTags_UD = {
+    "PROPN", "PROPN", "VERB", "VERB", "PRON", "PRON", "VERB", "VERB", "ADP", "DET", "NOUN", "PUNCT",
+    "PRON", "PRON", "VERB", "VERB", "ADV", "VERB", "ADV", "PUNCT"
   };
 
   private static final String[] SENTENCES_both_keep_orig_punc = {
@@ -133,6 +144,19 @@ public class TestOpenNLPLemmatizerFilterFactory extends BaseTokenStreamTestCase 
         analyzer, SENTENCE, SENTENCE_dict_punc, null, null, SENTENCE_posTags, null, null, true);
   }
 
+  public void test1SentenceDictionaryOnlyUD() throws Exception {
+    CustomAnalyzer analyzer =
+        CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
+            .withTokenizer(
+                "opennlp", "tokenizerModel", tokenizerModelFile, "sentenceModel", sentenceModelFile)
+            .addTokenFilter(
+                "opennlpPOS", "posTaggerModel", "en-test-pos-maxent.bin", "posTagFormat", "UD")
+            .addTokenFilter("opennlplemmatizer", "dictionary", "en-test-lemmas.dict")
+            .build();
+    assertAnalyzesTo(
+        analyzer, SENTENCE, SENTENCE_dict_punc, null, null, SENTENCE_posTags_UD, null, null, true);
+  }
+
   public void test2SentencesDictionaryOnly() throws Exception {
     CustomAnalyzer analyzer =
         CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
@@ -143,6 +167,27 @@ public class TestOpenNLPLemmatizerFilterFactory extends BaseTokenStreamTestCase 
             .build();
     assertAnalyzesTo(
         analyzer, SENTENCES, SENTENCES_dict_punc, null, null, SENTENCES_posTags, null, null, true);
+  }
+
+  public void test2SentencesDictionaryOnlyUD() throws Exception {
+    CustomAnalyzer analyzer =
+        CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
+            .withTokenizer(
+                "opennlp", "tokenizerModel", tokenizerModelFile, "sentenceModel", sentenceModelFile)
+            .addTokenFilter(
+                "opennlpPOS", "posTaggerModel", posTaggerModelFile, "posTagFormat", "UD")
+            .addTokenFilter("opennlplemmatizer", "dictionary", lemmatizerDictFile)
+            .build();
+    assertAnalyzesTo(
+        analyzer,
+        SENTENCES,
+        SENTENCES_dict_punc,
+        null,
+        null,
+        SENTENCES_posTags_UD,
+        null,
+        null,
+        true);
   }
 
   public void test1SentenceMaxEntOnly() throws Exception {
@@ -244,6 +289,29 @@ public class TestOpenNLPLemmatizerFilterFactory extends BaseTokenStreamTestCase 
         null,
         null,
         SENTENCES_keep_orig_posTags,
+        null,
+        null,
+        true);
+  }
+
+  public void testKeywordAttributeAwarenessDictionaryOnlyUD() throws Exception {
+    CustomAnalyzer analyzer =
+        CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
+            .withTokenizer(
+                "opennlp", "tokenizerModel", tokenizerModelFile, "sentenceModel", sentenceModelFile)
+            .addTokenFilter(
+                "opennlpPOS", "posTaggerModel", posTaggerModelFile, "posTagFormat", "UD")
+            .addTokenFilter(KeywordRepeatFilterFactory.class)
+            .addTokenFilter("opennlplemmatizer", "dictionary", lemmatizerDictFile)
+            .addTokenFilter(RemoveDuplicatesTokenFilterFactory.class)
+            .build();
+    assertAnalyzesTo(
+        analyzer,
+        SENTENCES,
+        SENTENCES_dict_keep_orig_punc,
+        null,
+        null,
+        SENTENCES_keep_orig_posTags_UD,
         null,
         null,
         true);
