@@ -828,6 +828,10 @@ public class BKDReader extends PointValues {
 
       readCommonPrefixes(commonPrefixLengths, scratchDataPackedValue, in);
       int compressedDim = readCompressedDim(in);
+      int sortedDim = compressedDim;
+      if (sortedDim == -2) {
+        sortedDim = in.readByte();
+      }
       if (compressedDim == -1) {
         // all values are the same
         visitor.grow(count);
@@ -865,12 +869,18 @@ public class BKDReader extends PointValues {
         }
 
         if (compressedDim == -2) {
-          // low cardinality values
-          visitSparseRawDocValues(
-              commonPrefixLengths, scratchDataPackedValue, in, scratchIterator, count, visitor);
+          // Low cardinality values.
+          visitSparseRawDocValuesEarlyTerminate(
+              commonPrefixLengths,
+              scratchDataPackedValue,
+              in,
+              scratchIterator,
+              count,
+              visitor,
+              sortedDim);
         } else {
-          // high cardinality
-          visitCompressedDocValues(
+          // High cardinality.
+          visitCompressedDocValuesEarlyTerminate(
               commonPrefixLengths,
               scratchDataPackedValue,
               in,
@@ -894,14 +904,15 @@ public class BKDReader extends PointValues {
       }
     }
 
-    // read cardinality and point
-    private void visitSparseRawDocValues(
+    // Early terminate if packed value greater than upper point in sorted dimension.
+    private void visitSparseRawDocValuesEarlyTerminate(
         int[] commonPrefixLengths,
         byte[] scratchPackedValue,
         IndexInput in,
         BKDReaderDocIDSetIterator scratchIterator,
         int count,
-        PointValues.IntersectVisitor visitor)
+        PointValues.IntersectVisitor visitor,
+        int sortedDim)
         throws IOException {
       int i;
       for (i = 0; i < count; ) {
@@ -914,12 +925,16 @@ public class BKDReader extends PointValues {
               config.bytesPerDim() - prefix);
         }
         scratchIterator.reset(i, length);
-        visitor.visit(scratchIterator, scratchPackedValue);
+        VisitState visitState =
+            visitor.visitWithSortedDim(scratchIterator, scratchPackedValue, sortedDim);
+        if (visitState == VisitState.TERMINATE) {
+          break;
+        } else if (visitState == VisitState.MATCH_REMAINING) {
+          scratchIterator.reset(i, count - i);
+          visitor.visit(scratchIterator);
+          break;
+        }
         i += length;
-      }
-      if (i != count) {
-        throw new CorruptIndexException(
-            "Sub blocks do not add up to the expected count: " + count + " != " + i, in);
       }
     }
 
@@ -967,6 +982,53 @@ public class BKDReader extends PointValues {
       if (i != count) {
         throw new CorruptIndexException(
             "Sub blocks do not add up to the expected count: " + count + " != " + i, in);
+      }
+    }
+
+    // Early terminate if packed value greater than upper point in sorted dimension.
+    private void visitCompressedDocValuesEarlyTerminate(
+        int[] commonPrefixLengths,
+        byte[] scratchPackedValue,
+        IndexInput in,
+        BKDReaderDocIDSetIterator scratchIterator,
+        int count,
+        PointValues.IntersectVisitor visitor,
+        int compressedDim)
+        throws IOException {
+      // the byte at `compressedByteOffset` is compressed using run-length compression,
+      // other suffix bytes are stored verbatim
+      final int compressedByteOffset =
+          compressedDim * config.bytesPerDim() + commonPrefixLengths[compressedDim];
+      commonPrefixLengths[compressedDim]++;
+      int i;
+      VisitState visitState = null;
+      for (i = 0; i < count; ) {
+        scratchPackedValue[compressedByteOffset] = in.readByte();
+        final int runLen = Byte.toUnsignedInt(in.readByte());
+        for (int j = 0; j < runLen; ++j) {
+          for (int dim = 0; dim < config.numDims(); dim++) {
+            int prefix = commonPrefixLengths[dim];
+            in.readBytes(
+                scratchPackedValue,
+                dim * config.bytesPerDim() + prefix,
+                config.bytesPerDim() - prefix);
+          }
+          int offset = i + j;
+          visitState =
+              visitor.visitWithSortedDim(
+                  scratchIterator.docIDs[offset], scratchPackedValue, compressedDim);
+          if (visitState == VisitState.TERMINATE) {
+            break;
+          } else if (visitState == VisitState.MATCH_REMAINING) {
+            scratchIterator.reset(offset, count - offset);
+            visitor.visit(scratchIterator);
+            break;
+          }
+        }
+        if (visitState == VisitState.TERMINATE || visitState == VisitState.MATCH_REMAINING) {
+          break;
+        }
+        i += runLen;
       }
     }
 

@@ -229,6 +229,44 @@ public abstract class PointValues {
     CELL_CROSSES_QUERY
   };
 
+  /** Visit states for current value. */
+  public enum VisitState {
+    /** value match */
+    CONTINUE,
+    /**
+     * Return this if MatchState is PointValues.MatchState.HIGH_IN_SORTED_DIM in IntersectVisitor,
+     * so we can terminate visiting.
+     */
+    TERMINATE,
+    /**
+     * Return this if MatchState is PointValues.MatchState.HIGH_IN_SORTED_DIM in Inverse
+     * IntersectVisitor, so we can terminate visiting and match remaining values.
+     */
+    MATCH_REMAINING
+  };
+
+  /** Math states for current value. */
+  public enum MatchState {
+
+    /** Invalid state */
+    INVALID,
+
+    /** Packed value matches the range in this dimension */
+    MATCH,
+
+    /** Packed value is too low in this SORTED or NON-SORTED dimension */
+    LOW,
+
+    /** Packed value is too high in SORTED dimension */
+    HIGH_IN_SORTED_DIM,
+
+    /** Packed value is too high in NON-SORTED dimension */
+    HIGH_IN_NON_SORTED_DIM,
+
+    /** Packed value does not match the range in this dimension */
+    NOT_MATCH
+  }
+
   /** Create a new {@link PointTree} to navigate the index */
   public abstract PointTree getPointTree() throws IOException;
 
@@ -282,6 +320,7 @@ public abstract class PointValues {
    * @lucene.experimental
    */
   public interface IntersectVisitor {
+
     /**
      * Called for all documents in a leaf cell that's fully contained by the query. The consumer
      * should blindly accept the docID.
@@ -320,6 +359,21 @@ public abstract class PointValues {
     void visit(int docID, byte[] packedValue) throws IOException;
 
     /**
+     * Similar to {@link IntersectVisitor#visit(int, byte[])} but data is visited in increasing
+     * order on the sortedDim, and in the case of ties, in increasing docID order. Implementers can
+     * stop processing points on the leaf by returning false when for example the sorted dimension
+     * value is too high to be matched by the query.
+     *
+     * @return VisitState.CONTINUE if the visitor should continue visiting points on this leaf,
+     *     otherwise false.
+     */
+    default VisitState visitWithSortedDim(int docID, byte[] packedValue, int sortedDim)
+        throws IOException {
+      visit(docID, packedValue);
+      return VisitState.CONTINUE;
+    }
+
+    /**
      * Similar to {@link IntersectVisitor#visit(int, byte[])} but in this case the packedValue can
      * have more than one docID associated to it. The provided iterator should not escape the scope
      * of this method so that implementations of PointValues are free to reuse it,
@@ -329,6 +383,21 @@ public abstract class PointValues {
       while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
         visit(docID, packedValue);
       }
+    }
+
+    /**
+     * Similar to {@link IntersectVisitor#visit(DocIdSetIterator, byte[])} but data is visited in
+     * increasing order on the sortedDim, and in the case of ties, in increasing docID order.
+     * Implementers can stop processing points on the leaf by returning false when for example the
+     * sorted dimension value is too high to be matched by the query.
+     *
+     * @return VisitState.CONTINUE if the visitor should continue visiting points on this leaf,
+     *     otherwise false.
+     */
+    default VisitState visitWithSortedDim(
+        DocIdSetIterator iterator, byte[] packedValue, int sortedDim) throws IOException {
+      visit(iterator, packedValue);
+      return VisitState.CONTINUE;
     }
 
     /**
