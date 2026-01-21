@@ -73,7 +73,7 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
     @Override
     public void visit(QueryVisitor visitor) {
       if (visitor.acceptField(query.getField())) {
-        visitor.getSubVisitor(BooleanClause.Occur.FILTER, query);
+        query.visit(visitor.getSubVisitor(BooleanClause.Occur.FILTER, this));
       }
     }
 
