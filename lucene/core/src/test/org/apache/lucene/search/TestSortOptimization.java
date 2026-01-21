@@ -857,6 +857,10 @@ public class TestSortOptimization extends LuceneTestCase {
     int iterations = limit + random().nextInt(limit);
     long seqNoGenerator = random().nextInt(1000);
     for (long i = 0; i < iterations; i++) {
+      int copies = random().nextInt(100) <= 5 ? 1 : 1 + random().nextInt(5);
+      for (int j = 0; j < copies; j++) {
+        seqNos.add(seqNoGenerator);
+      }
       seqNos.add(seqNoGenerator);
       seqNoGenerator++;
       if (random().nextInt(100) <= 5) {

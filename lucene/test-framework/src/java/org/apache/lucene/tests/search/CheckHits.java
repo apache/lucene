@@ -24,7 +24,6 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Locale;
@@ -38,7 +37,6 @@ import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.Query;
@@ -267,9 +265,6 @@ public class CheckHits {
             .append(hits1[i].score)
             .append(" shardIndex=")
             .append(hits1[i].shardIndex);
-        if (hits1[i] instanceof FieldDoc fd) {
-          sb.append(" fields=").append(Arrays.toString(fd.fields));
-        }
       } else {
         sb.append("               ");
       }
@@ -281,9 +276,6 @@ public class CheckHits {
             .append(hits2[i].score)
             .append(" shardIndex=")
             .append(hits2[i].shardIndex);
-        if (hits2[i] instanceof FieldDoc fd) {
-          sb.append(" fields=").append(Arrays.toString(fd.fields));
-        }
       }
 
       sb.append('\n');
