@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.ToLongFunction;
 import org.apache.lucene.index.DocumentsWriterPerThread.FlushedSegment;
@@ -50,7 +51,7 @@ import org.apache.lucene.util.InfoStream;
  * <p>Threads:
  *
  * <p>Multiple threads are allowed into addDocument at once. There is an initial synchronized call
- * to {@link DocumentsWriterFlushControl#obtainAndLock()} which allocates a DWPT for this indexing
+ * to {@link DocumentsWriterFlushControl#obtainAndLock} which allocates a DWPT for this indexing
  * thread. The same thread will not necessarily get the same DWPT over time. Then updateDocuments is
  * called on that DWPT without synchronization (most of the "heavy lifting" is in this call). Once a
  * DWPT fills up enough RAM or hold enough documents in memory the DWPT is checked out for flush and
@@ -119,7 +120,7 @@ final class DocumentsWriter implements Closeable, Accountable {
     this.deleteQueue = new DocumentsWriterDeleteQueue(infoStream);
     this.perThreadPool =
         new DocumentsWriterPerThreadPool(
-            () -> {
+            (dwptGroupNumber) -> {
               final FieldInfos.Builder infos = new FieldInfos.Builder(globalFieldNumberMap);
               return new DocumentsWriterPerThread(
                   indexCreatedVersionMajor,
@@ -130,7 +131,8 @@ final class DocumentsWriter implements Closeable, Accountable {
                   deleteQueue,
                   infos,
                   pendingNumDocs,
-                  enableTestPoints);
+                  enableTestPoints,
+                  dwptGroupNumber);
             });
     this.pendingNumDocs = pendingNumDocs;
     flushControl = new DocumentsWriterFlushControl(this, config);
@@ -414,7 +416,7 @@ final class DocumentsWriter implements Closeable, Accountable {
       throws IOException {
     boolean hasEvents = preUpdate();
 
-    final DocumentsWriterPerThread dwpt = flushControl.obtainAndLock();
+    final DocumentsWriterPerThread dwpt = flushControl.obtainAndLock(getDWPTGroupNumber(docs));
     final DocumentsWriterPerThread flushingDWPT;
     long seqNo;
 
@@ -459,6 +461,29 @@ final class DocumentsWriter implements Closeable, Accountable {
       return true;
     }
     return false;
+  }
+
+  /**
+   * Fetches dwpt group number for a given list of docs. For any group number greater than
+   * dwptGroupLimit we return the default group.
+   *
+   * @param docs the passed list of docs.
+   * @return dwpt group number for a given list of docs
+   */
+  private int getDWPTGroupNumber(
+      final Iterable<? extends Iterable<? extends IndexableField>> docs) {
+    final DWPTGroupingCriteriaDefinition dwptGroupingCriteriaDefinition =
+        config.getDwptGroupingCriteriaDefinition();
+    final Function<Iterable<? extends Iterable<? extends IndexableField>>, Integer>
+        dwptGroupingCriteriaFunction =
+            dwptGroupingCriteriaDefinition.getDwptGroupingCriteriaFunction();
+    final int dwptGroupLimit = dwptGroupingCriteriaDefinition.getMaxDWPTGroupSize();
+    int dwptGroupNumber = dwptGroupingCriteriaFunction.apply(docs);
+    if (dwptGroupNumber >= dwptGroupLimit) {
+      dwptGroupNumber = DWPTGroupingCriteriaDefinition.DEFAULT_DWPT_GROUP_NUMBER;
+    }
+
+    return dwptGroupNumber;
   }
 
   private void doFlush(DocumentsWriterPerThread flushingDWPT) throws IOException {

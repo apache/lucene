@@ -4103,7 +4103,9 @@ public class TestIndexWriter extends LuceneTestCase {
               List<Closeable> states = new ArrayList<>();
               try {
                 for (int i = 0; i < 100; i++) {
-                  DocumentsWriterPerThread state = w.docWriter.perThreadPool.getAndLock();
+                  DocumentsWriterPerThread state =
+                      w.docWriter.perThreadPool.getAndLock(
+                          DWPTGroupingCriteriaDefinition.DEFAULT_DWPT_GROUP_NUMBER);
                   states.add(state::unlock);
                   state.deleteQueue.getNextSequenceNumber();
                 }

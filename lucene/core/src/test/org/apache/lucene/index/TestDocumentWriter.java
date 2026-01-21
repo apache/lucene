@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.io.Reader;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.function.Function;
 import org.apache.lucene.analysis.Analyzer;
@@ -590,5 +591,46 @@ public class TestDocumentWriter extends LuceneTestCase {
         }
       }
     }
+  }
+
+  public void testCriteriaBasedDWPTGrouping() throws IOException {
+    int[] statusCodes = new int[] {200, 201, 400, 404, 500, 200, 300};
+    final IndexWriterConfig config = newIndexWriterConfig(new MockAnalyzer(random()));
+    config.setMergePolicy(new CriteriaBasedGroupingTieredMergePolicy());
+    config.setDWPTGroupingCriteriaFunction(DocHelper.getDWPTCriteriaDefinition());
+    IndexWriter writer = new IndexWriter(dir, config);
+    for (int statusCode : statusCodes) {
+      final Document logDocument = DocHelper.createLogDocument(17, "test", statusCode);
+      writer.addDocument(logDocument);
+    }
+
+    writer.commit();
+    SegmentInfos infos = writer.cloneSegmentInfos();
+    assertEquals(infos.size(), 2);
+    Iterator<SegmentCommitInfo> segInfoIterator = infos.iterator();
+    SegmentCommitInfo si = segInfoIterator.next();
+
+    // First segment will contain 2xx and 3xx logs.
+    SegmentReader reader = new SegmentReader(si, Version.LATEST.major, newIOContext(random()));
+    assertTrue(reader != null);
+    Document doc = reader.storedFields().document(0);
+    assertTrue(doc != null);
+    IndexableField[] fields = doc.getFields("statuscode");
+    assertTrue(fields != null && fields.length == 1);
+    assertTrue(fields[0].stringValue().startsWith("2") || fields[0].stringValue().startsWith("3"));
+    reader.close();
+
+    si = segInfoIterator.next();
+
+    // Second segments will contain 4xx and 5xx logs.
+    reader = new SegmentReader(si, Version.LATEST.major, newIOContext(random()));
+    assertTrue(reader != null);
+    doc = reader.storedFields().document(0);
+    assertTrue(doc != null);
+    fields = doc.getFields("statuscode");
+    assertTrue(fields != null && fields.length == 1);
+    assertTrue(fields[0].stringValue().startsWith("4") || fields[0].stringValue().startsWith("5"));
+    writer.close();
+    reader.close();
   }
 }
