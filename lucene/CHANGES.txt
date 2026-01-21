@@ -121,8 +121,6 @@ Bug Fixes
 * GITHUB#12561: UAX29URLEmailTokenizer matched emails with commas and invalid
   periods in the local part. (Eran Yarkon)
 
-* GITHUB#15590: Fix race and improve performance of HNSW graph building (Viliam Durina)
-
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -316,6 +314,8 @@ Optimizations
 * GITHUB#15560: Avoid unnecessary getGraph() call. (Shubham Chaudhary)
 
 * GITHUB#15582: Avoid copying bitset that's subsequently cleared (Viliam Durina)
+
+* GITHUB#15590: Fix race and improve performance of HNSW graph building (Viliam Durina)
 
 Bug Fixes
 ---------------------
