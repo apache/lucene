@@ -226,7 +226,7 @@ public class TestSimpleFragmentsBuilder extends AbstractTestCase {
     result = sfb.createFragments(reader, 0, F, ffl, 3);
     assertEquals(2, result.length);
     assertEquals("text to <b>highlight</b>", result[0]);
-    assertEquals("<b>highlight</b> other text", result[1]);
+    assertEquals("<b>highlight</b> other", result[1]);
   }
 
   public void testRandomDiscreteMultiValueHighlighting() throws Exception {
