@@ -18,9 +18,8 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
+import com.carrotsearch.randomizedtesting.annotations.Seed;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleField;
 import org.apache.lucene.document.Field;
@@ -46,7 +45,7 @@ public class TestSegmentReordering extends LuceneTestCase {
   public void testSingleValuedNumericSorts() throws Exception {
 
     Directory dir = newDirectory();
-    IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
+    IndexWriterConfig iwc = new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
     IndexWriter writer = new IndexWriter(dir, iwc);
 
     for (int i = 0; i < 500; i++) {
@@ -96,7 +95,7 @@ public class TestSegmentReordering extends LuceneTestCase {
 
   public void testMultiValuedSegmentSorts() throws Exception {
     Directory dir = newDirectory();
-    IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
+    IndexWriterConfig iwc = new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
     IndexWriter writer = new IndexWriter(dir, iwc);
 
     for (int i = 0; i < 1000; i += 2) {
@@ -176,7 +175,7 @@ public class TestSegmentReordering extends LuceneTestCase {
 
   public void testNumericSegmentSortsWithMissingValues() throws Exception {
     Directory dir = newDirectory();
-    IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
+    IndexWriterConfig iwc = new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
     IndexWriter writer = new IndexWriter(dir, iwc);
     for (int i = 0; i < 500; i++) {
       Document doc = new Document();
@@ -379,50 +378,13 @@ public class TestSegmentReordering extends LuceneTestCase {
   private void assertSegmentOrder(IndexReader reader, Sort sort, int... expectedOrds)
       throws IOException {
 
+    List<LeafReaderContext> leaves = reader.leaves();
+    assertEquals(expectedOrds.length, leaves.size());
     IndexReader reorderedReader = SegmentOrder.fromSort(sort).reorder(reader);
-    IndexSearcher searcher = new IndexSearcher(reorderedReader);
 
-    SegmentOrderCollectorManager manager = new SegmentOrderCollectorManager();
-    List<Integer> leaves = searcher.search(MatchAllDocsQuery.INSTANCE, manager);
-    for (int i = 0; i < leaves.size(); i++) {
-      assertEquals(expectedOrds[i], leaves.get(i).intValue());
-    }
-  }
-
-  private static class SegmentOrderCollector implements Collector {
-
-    List<Integer> leaves = new ArrayList<>();
-
-    @Override
-    public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
-      String segmentId = context.toString().substring(19, 20);
-      leaves.add(Integer.parseInt(segmentId));
-      return new LeafCollector() {
-        @Override
-        public void setScorer(Scorable scorer) throws IOException {}
-
-        @Override
-        public void collect(int doc) throws IOException {}
-      };
-    }
-
-    @Override
-    public ScoreMode scoreMode() {
-      return ScoreMode.TOP_DOCS;
-    }
-  }
-
-  private static class SegmentOrderCollectorManager
-      implements CollectorManager<SegmentOrderCollector, List<Integer>> {
-
-    @Override
-    public SegmentOrderCollector newCollector() {
-      return new SegmentOrderCollector();
-    }
-
-    @Override
-    public List<Integer> reduce(Collection<SegmentOrderCollector> collectors) {
-      return collectors.stream().flatMap(c -> c.leaves.stream()).toList();
+    List<LeafReaderContext> reorderedLeaves = reorderedReader.leaves();
+    for (int i = 0; i < expectedOrds.length; i++) {
+      assertEquals(reorderedLeaves.get(i).reader(), leaves.get(expectedOrds[i]).reader());
     }
   }
 }
