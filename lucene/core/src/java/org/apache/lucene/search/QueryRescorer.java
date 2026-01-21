@@ -50,6 +50,12 @@ public abstract class QueryRescorer extends Rescorer {
       throws IOException {
     ScoreDoc[] hits = firstPassTopDocs.scoreDocs.clone();
 
+    // record original index of each hit in its originalIndex
+    // NB code below relies on hits being in docId order so the order is about to be lost
+    for (int i = 0; i < hits.length; i++) {
+      hits[i].originalIndex = i;
+    }
+
     Arrays.sort(hits, (a, b) -> a.doc - b.doc);
 
     List<LeafReaderContext> leaves = searcher.getIndexReader().leaves();
@@ -110,6 +116,10 @@ public abstract class QueryRescorer extends Rescorer {
             return -1;
           } else if (a.score < b.score) {
             return 1;
+          } else if (a.originalIndex > b.originalIndex) {
+            return 1;
+          } else if (a.originalIndex < b.originalIndex) {
+            return -1;
           } else {
             // This subtraction can't overflow int
             // because docIDs are >= 0:
