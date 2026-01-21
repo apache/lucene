@@ -649,6 +649,16 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
     assertEquals("Test\n\n\n\nSome text.", result.toString().trim());
   }
 
+  public void testForIssue10520Regression() throws IOException {
+    String test =
+        "<!DOCTYPE html><html lang=\"en\"><head><title>Test</title></head><a href=\"https://www.somewhere.com?data=\">a link</a> some text <a href=\"https://www.elsewhere.com\">another link</a></html>";
+    Reader reader = new StringReader(test);
+    HTMLStripCharFilter filter = new HTMLStripCharFilter(reader);
+    StringWriter result = new StringWriter();
+    filter.transferTo(result);
+    assertEquals("Test\n\na link some text another link", result.toString().trim());
+  }
+
   public static void assertHTMLStripsTo(String input, String gold, Set<String> escapedTags)
       throws Exception {
     assertHTMLStripsTo(new StringReader(input), gold, escapedTags);
