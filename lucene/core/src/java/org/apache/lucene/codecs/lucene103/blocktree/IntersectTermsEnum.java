@@ -186,7 +186,7 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     // possible:
     Node node = currentFrame.node;
     int idx = currentFrame.prefix;
-    nextNodeIndex = idx + 1;
+    nextNodeIndex = currentFrame.ord + 1;
     assert currentFrame.suffix > 0;
 
     BytesRef clone = term.clone();
