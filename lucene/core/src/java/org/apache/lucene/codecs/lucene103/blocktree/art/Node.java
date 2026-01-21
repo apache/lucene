@@ -544,6 +544,7 @@ public abstract class Node {
     };
   }
 
+  // TODO: Only call one time.
   protected void updateKey(Node node, int from) {
     // TODO: Fix duplicate call.
     if (node.key == null) {
@@ -562,8 +563,8 @@ public abstract class Node {
     }
   }
 
+  // TODO: Only call one time.
   protected void updatePrefix(Node node, int from) {
-    // TODO: Fix duplicate call.
     if (node.prefix == null) {
       return;
     }
