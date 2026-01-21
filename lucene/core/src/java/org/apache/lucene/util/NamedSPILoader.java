@@ -99,6 +99,8 @@ public final class NamedSPILoader<S extends NamedSPILoader.NamedSPI> implements 
     return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z') || ('0' <= c && c <= '9');
   }
 
+  @SuppressWarnings("removal")
+  @SuppressForbidden(reason = "security manager")
   public S lookup(String name) {
     final S service = services.get(name);
     if (service != null) return service;
@@ -110,7 +112,14 @@ public final class NamedSPILoader<S extends NamedSPILoader.NamedSPI> implements 
             + "' does not exist."
             + "  You need to add the corresponding JAR file supporting this SPI to your classpath."
             + "  The current classpath supports the following names: "
-            + availableServices());
+            + availableServices()
+            + ((System.getSecurityManager() == null)
+                ? ""
+                : " We have detected that a security manager is installed so it is also possible "
+                    + "that the services file in the jar containing the implementation is inaccessible under "
+                    + "the current security policy. A FilePermission implying 'read' access to the "
+                    + "jar containing the META-INF/services directory is necessary. "
+                    + "Note that Java does not throw SecurityException if the permission is missing."));
   }
 
   public Set<String> availableServices() {
