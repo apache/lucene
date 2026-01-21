@@ -148,14 +148,14 @@ public class ARTBuilder {
         if (prefixLength == 0) {
           this.root = this.root.insert(artBuilder.root, artBuilder.root.prefix[0]);
           // TODO: update in Node#insert.
-          updateNodePrefix(artBuilder.root, 1);
+          updatePrefix(artBuilder.root, 1);
         } else {
           assert prefixLength
               == ARTUtil.commonPrefixLength(
                   this.root.prefix, 0, prefixLength, artBuilder.root.prefix, 0, prefixLength);
           this.root = this.root.insert(artBuilder.root, artBuilder.root.prefix[prefixLength]);
           // TODO: update in Node#insert.
-          updateNodePrefix(artBuilder.root, prefixLength + 1);
+          updatePrefix(artBuilder.root, prefixLength + 1);
         }
       }
     }
@@ -203,7 +203,7 @@ public class ARTBuilder {
   }
 
   /** Set remaining suffix to bytes. */
-  private void updateNodeBytes(Node node, int from) {
+  private void updateKey(Node node, int from) {
     // TODO: Fix duplicate call.
     if (node.key == null) {
       return;
@@ -222,7 +222,7 @@ public class ARTBuilder {
   }
 
   /** Set remaining suffix to prefix. */
-  private void updateNodePrefix(Node node, int from) {
+  private void updatePrefix(Node node, int from) {
     // TODO: Fix duplicate call.
     if (node.prefix == null) {
       return;
@@ -255,7 +255,7 @@ public class ARTBuilder {
         LeafNode anotherLeaf = new LeafNode(key, output);
         assert depth < anotherLeaf.key.length;
         Node4.insert(node4, anotherLeaf, key.bytes[depth]);
-        updateNodeBytes(anotherLeaf, depth + 1);
+        updateKey(anotherLeaf, depth + 1);
         // replace the current node with this internal node4
         return node4;
       } else {
@@ -281,7 +281,7 @@ public class ARTBuilder {
 
         if (depth + commonPrefix < leafNode.key.offset + leafNode.key.length) {
           Node4.insert(node4, leafNode, prefix[depth + commonPrefix]);
-          updateNodeBytes(leafNode, depth + commonPrefix + 1);
+          updateKey(leafNode, depth + commonPrefix + 1);
         } else {
           node4.output = leafNode.output;
           leafNode = null;
@@ -289,7 +289,7 @@ public class ARTBuilder {
         LeafNode anotherLeaf = new LeafNode(key, output);
         assert depth + commonPrefix < anotherLeaf.key.length;
         Node4.insert(node4, anotherLeaf, key.bytes[depth + commonPrefix]);
-        updateNodeBytes(anotherLeaf, depth + commonPrefix + 1);
+        updateKey(anotherLeaf, depth + commonPrefix + 1);
         // replace the current node with this internal node4
         return node4;
       }
@@ -309,10 +309,10 @@ public class ARTBuilder {
         // split the current internal node, spawn a fresh node4 and let the
         // current internal node as its children.
         Node4.insert(node4, node, node.prefix[mismatchPos]);
-        updateNodePrefix(node, mismatchPos + 1);
+        updatePrefix(node, mismatchPos + 1);
         LeafNode leafNode = new LeafNode(key, output);
         Node4.insert(node4, leafNode, key.bytes[mismatchPos + depth]);
-        updateNodeBytes(leafNode, mismatchPos + depth + 1);
+        updateKey(leafNode, mismatchPos + depth + 1);
         return node4;
       }
       depth += node.prefixLength;
@@ -330,7 +330,7 @@ public class ARTBuilder {
     // insert the key as a child leaf node of the current internal node
     LeafNode leafNode = new LeafNode(key, output);
     Node freshOne = Node.insertLeaf(node, leafNode, key.bytes[depth]);
-    updateNodeBytes(leafNode, depth + 1);
+    updateKey(leafNode, depth + 1);
     return freshOne;
   }
 }
