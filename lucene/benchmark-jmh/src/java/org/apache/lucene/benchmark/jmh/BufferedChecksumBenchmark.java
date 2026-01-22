@@ -37,10 +37,10 @@ import org.openjdk.jmh.annotations.Warmup;
 @State(Scope.Benchmark)
 @Warmup(iterations = 5, time = 5)
 @Measurement(iterations = 5, time = 5)
-@Fork(1)
+@Fork(value = 1)
 public class BufferedChecksumBenchmark {
 
-  @Param({"1024", "8192", "65536"})
+  @Param({"1024", "4096", "8192", "65536"})
   private int dataSize;
 
   @Param({"1024", "2048", "4096"})
