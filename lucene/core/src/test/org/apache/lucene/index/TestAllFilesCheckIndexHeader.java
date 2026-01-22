@@ -86,7 +86,7 @@ public class TestAllFilesCheckIndexHeader extends LuceneTestCase {
 
   private void checkOneFile(Directory dir, String victim) throws IOException {
     // use ramdir explicitly, as we do evil things like trying to generate broken files, deletes
-    // mustk work.
+    // must work.
     try (BaseDirectoryWrapper dirCopy =
         new MockDirectoryWrapper(random(), new ByteBuffersDirectory())) {
       dirCopy.setCheckIndexOnClose(false);
