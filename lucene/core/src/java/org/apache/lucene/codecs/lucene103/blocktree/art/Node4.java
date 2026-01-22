@@ -100,41 +100,25 @@ public class Node4 extends Node {
   /** Insert the child node into this with the index byte. */
   @Override
   public Node insert(Node childNode, byte indexByte) {
+    // There already is a child exits in pos is implemented in ARTBuilder#insert(Node node, Node
+    // child, int depth).
     assert getChildPos(indexByte) == ILLEGAL_IDX;
-    if (getChildPos(indexByte) != ILLEGAL_IDX) {
-      // This should be implemented in ARTBuilder#insert(Node node, Node child, int depth).
-      Node oldChild = getChild(getChildPos(indexByte));
-      Node newChild = null;
-      // We may insert leaf node by ARTBuilder#insert already. Here compat more.
-      if (childNode.nodeType.equals(NodeType.LEAF_NODE)) {
-        assert childNode.key.length > 1;
-        newChild = oldChild.insert(childNode, childNode.key.bytes[childNode.key.offset + 1]);
-      } else {
-        assert childNode.prefixLength > 1;
-        newChild = oldChild.insert(childNode, 1);
-        updatePrefix(childNode, 2);
-      }
 
-      assert newChild != null;
-      replaceNode(indexByte, newChild);
+    if (this.childrenCount < 4) {
+      // insert leaf into current node
+      this.childIndex = IntegerUtil.setByte(this.childIndex, indexByte, this.childrenCount);
+      this.children[this.childrenCount] = childNode;
+      this.childrenCount++;
       return this;
     } else {
-      if (this.childrenCount < 4) {
-        // insert leaf into current node
-        this.childIndex = IntegerUtil.setByte(this.childIndex, indexByte, this.childrenCount);
-        this.children[this.childrenCount] = childNode;
-        this.childrenCount++;
-        return this;
-      } else {
-        // grow to Node16
-        Node16 node16 = new Node16(this.prefixLength);
-        node16.childrenCount = 4;
-        node16.firstChildIndex = LongUtils.initWithFirst4Byte(this.childIndex);
-        System.arraycopy(this.children, 0, node16.children, 0, 4);
-        copyNode(this, node16);
-        Node freshOne = Node16.insert(node16, childNode, indexByte);
-        return freshOne;
-      }
+      // grow to Node16
+      Node16 node16 = new Node16(this.prefixLength);
+      node16.childrenCount = 4;
+      node16.firstChildIndex = LongUtils.initWithFirst4Byte(this.childIndex);
+      System.arraycopy(this.children, 0, node16.children, 0, 4);
+      copyNode(this, node16);
+      Node freshOne = Node16.insert(node16, childNode, indexByte);
+      return freshOne;
     }
   }
 

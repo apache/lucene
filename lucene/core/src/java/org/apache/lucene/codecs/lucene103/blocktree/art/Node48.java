@@ -164,52 +164,37 @@ public class Node48 extends Node {
   /** Insert the child node into this with the index byte. */
   @Override
   public Node insert(Node child, byte indexByte) {
+    // There already is a child exits in pos is implemented in ARTBuilder#insert(Node node, Node
+    // child, int depth).
     assert getChildPos(indexByte) == ILLEGAL_IDX;
-    if (getChildPos(indexByte) != ILLEGAL_IDX) {
-      // This should be implemented in ARTBuilder#insert(Node node, Node child, int depth).
-      Node oldChild = getChild(indexByte);
-      Node newChild = null;
-      // We may insert leaf node by ARTBuilder#insert already. Here compat more.
-      if (child.nodeType.equals(NodeType.LEAF_NODE)) {
-        assert child.key.length > 1;
-        newChild = oldChild.insert(child, child.key.bytes[child.key.offset + 1]);
-      } else {
-        assert child.prefixLength > 1;
-        newChild = oldChild.insert(child, 1);
-        updatePrefix(child, 2);
-      }
-      assert newChild != null;
-      replaceNode(indexByte, newChild);
+
+    if (this.childrenCount < 48) {
+      // insert leaf node into current node
+      int pos = this.childrenCount;
+      assert this.children[pos] == null;
+      this.children[pos] = child;
+      int unsignedByte = Byte.toUnsignedInt(indexByte);
+      int longPosition = unsignedByte >>> 3;
+      int bytePosition = unsignedByte & (8 - 1);
+      long original = this.childIndex[longPosition];
+      byte[] bytes = LongUtils.toBDBytes(original);
+      bytes[bytePosition] = (byte) pos;
+      this.childIndex[longPosition] = LongUtils.fromBDBytes(bytes);
+      this.childrenCount++;
       return this;
     } else {
-      if (this.childrenCount < 48) {
-        // insert leaf node into current node
-        int pos = this.childrenCount;
-        assert this.children[pos] == null;
-        this.children[pos] = child;
-        int unsignedByte = Byte.toUnsignedInt(indexByte);
-        int longPosition = unsignedByte >>> 3;
-        int bytePosition = unsignedByte & (8 - 1);
-        long original = this.childIndex[longPosition];
-        byte[] bytes = LongUtils.toBDBytes(original);
-        bytes[bytePosition] = (byte) pos;
-        this.childIndex[longPosition] = LongUtils.fromBDBytes(bytes);
-        this.childrenCount++;
-        return this;
-      } else {
-        // grow to Node256
-        Node256 node256 = new Node256(this.prefixLength);
-        int currentPos = ILLEGAL_IDX;
-        while ((currentPos = this.getNextLargerPos(currentPos)) != ILLEGAL_IDX) {
-          Node childNode = this.getChild(currentPos);
-          node256.children[currentPos] = childNode;
-          Node256.setBit((byte) currentPos, node256.bitmapMask);
-        }
-        node256.childrenCount = this.childrenCount;
-        copyNode(this, node256);
-        Node freshOne = Node256.insert(node256, child, indexByte);
-        return freshOne;
+      // grow to Node256
+      Node256 node256 = new Node256(this.prefixLength);
+      int currentPos = ILLEGAL_IDX;
+      while ((currentPos = this.getNextLargerPos(currentPos)) != ILLEGAL_IDX) {
+        Node childNode = this.getChild(currentPos);
+        node256.children[currentPos] = childNode;
+        Node256.setBit((byte) currentPos, node256.bitmapMask);
       }
+      node256.childrenCount = this.childrenCount;
+      copyNode(this, node256);
+      Node freshOne = Node256.insert(node256, child, indexByte);
+      return freshOne;
     }
   }
 
@@ -234,8 +219,7 @@ public class Node48 extends Node {
   public void saveChildIndex(IndexOutput dataOutput) throws IOException {
     for (int i = 0; i < 32; i++) {
       long longV = childIndex[i];
-      // TODO: Skip -1 and write VLong.
-      //      dataOutput.writeVLong(longV);
+      // TODO: Skip -1 and write VLong, dataOutput.writeVLong(longV). Or other compression.
       dataOutput.writeLong(longV);
     }
   }

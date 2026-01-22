@@ -22,7 +22,6 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -66,7 +65,6 @@ public abstract class Node {
   int savedChildPos = -1;
 
   // TODO: move to leafNode if key just exists in leafNode?
-  // TODO: rename to suffix.
   BytesRef key;
   Output output;
 
@@ -361,8 +359,8 @@ public abstract class Node {
     offset += 1;
 
     // Read children delta fp bytes and children delta fp start(for loading child).
-    // TODO: If we want calculate child's delta fp with childrenDeltaFpStart, childrenDeltaFpBytes.
-    // children's pos must saved
+    // If we want to calculate child's delta fp with childrenDeltaFpStart, childrenDeltaFpBytes.
+    // children's pos must be saved
     // without gap(node4, node16, node48), we should resolve gap issue for node256.
     node.childrenDeltaFpBytes = (header & 0x07) + 1;
     node.childrenDeltaFpStart = fp + offset;
@@ -436,102 +434,6 @@ public abstract class Node {
   /** Insert the child node into this with the index byte. */
   public abstract Node insert(Node childNode, byte indexByte);
 
-  /**
-   * Insert the child node into this. Calculate the prefix and index byte internal. This is
-   * typically used when we insert this childNode into a parent, but this node already inserted in
-   * the save pos. This node and childNode have same index byte in parent, so we insert
-   * childNode(without index byte) into this node.
-   */
-  public Node insert(Node childNode, int depth) {
-    // LEAF_NODE should be inserted in ARTBuilder#insert, we also implement here.
-    Node newNode = null;
-    if (prefixLength == 0) {
-      if (childNode.nodeType.equals(NodeType.LEAF_NODE)) {
-        newNode = this.insert(childNode, childNode.key.bytes[0]);
-        updateKey(childNode, 1);
-      } else {
-        // TODO: childNode.prefix.length is 0 maybe never happens, otherwise we should insert all
-        // childNode's children like below.
-        assert childNode.prefix.length > 0;
-        newNode = this.insert(childNode, childNode.prefix[depth]);
-        updatePrefix(childNode, depth + 1);
-      }
-    } else {
-      // Similar to ARTBuilder#insert inner node case part.
-      if (childNode.nodeType.equals(NodeType.LEAF_NODE)) {
-        final int prefixLength =
-            ARTUtil.commonPrefixLength(
-                this.prefix,
-                depth,
-                this.key.length,
-                childNode.key.bytes,
-                childNode.key.offset,
-                childNode.key.offset + childNode.key.length);
-
-        if (prefixLength == this.prefixLength) {
-          newNode =
-              this.insert(childNode, childNode.key.bytes[childNode.key.offset + prefixLength]);
-          updateKey(childNode, childNode.key.offset + prefixLength + 1);
-        } else {
-          newNode = new Node4(prefixLength);
-          // copy prefix
-          newNode.prefixLength = prefixLength;
-          if (newNode.prefixLength > 0) {
-            System.arraycopy(this.prefix, 0, newNode.prefix, 0, prefixLength);
-          }
-          // split the current internal node, spawn a fresh node4 and let the
-          // current internal node as its children.
-          newNode.insert(this, this.prefix[prefixLength]);
-          updatePrefix(this, prefixLength + 1);
-          LeafNode leafNode = new LeafNode(key, output);
-          newNode.insert(leafNode, key.bytes[prefixLength + depth]);
-          updateKey(leafNode, prefixLength + depth + 1);
-        }
-      } else {
-        final int prefixLength =
-            ARTUtil.commonPrefixLength(
-                this.prefix,
-                depth,
-                this.key.length,
-                childNode.prefix,
-                depth,
-                childNode.prefixLength);
-
-        assert prefixLength != this.prefixLength;
-        // TODO: prefixLength == this.prefixLength maybe never happens, if so, we can remove the
-        // operation of inserting childNode's all children below.
-        if (prefixLength == this.prefixLength) {
-          // System.out.println("Insert childNode's all children.");
-          int nextPos = Node.ILLEGAL_IDX;
-          newNode = this;
-          // Insert childNode's all children.
-          while ((nextPos = childNode.getNextLargerPos(nextPos)) != Node.ILLEGAL_IDX) {
-            Node freshedOne =
-                newNode.insert(childNode.getChild(nextPos), childNode.getChildIndexByte(nextPos));
-            if (freshedOne != newNode) {
-              newNode = freshedOne;
-            }
-          }
-        } else {
-          newNode = new Node4(prefixLength);
-          // copy prefix
-          newNode.prefixLength = prefixLength;
-          if (newNode.prefixLength > 0) {
-            System.arraycopy(this.prefix, 0, newNode.prefix, 0, prefixLength);
-          }
-          // split the current internal node, spawn a fresh node4 and let the
-          // current internal node as its children.
-          newNode.insert(this, this.prefix[prefixLength]);
-          updatePrefix(this, prefixLength + 1);
-          LeafNode leafNode = new LeafNode(key, output);
-          newNode.insert(leafNode, key.bytes[prefixLength + depth]);
-          updateKey(leafNode, prefixLength + depth + 1);
-        }
-      }
-    }
-    return newNode;
-  }
-
   /** Insert the LeafNode as a child of the current internal node. */
   public static Node insertLeaf(Node current, LeafNode childNode, byte indexByte) {
     return switch (current.nodeType) {
@@ -542,40 +444,6 @@ public abstract class Node {
       // $CASES-OMITTED$
       default -> throw new IllegalArgumentException("Not supported node type!");
     };
-  }
-
-  // TODO: Only call one time.
-  protected void updateKey(Node node, int from) {
-    // TODO: Fix duplicate call.
-    if (node.key == null) {
-      return;
-    }
-
-    assert from > node.key.offset;
-    if (from < node.key.offset + node.key.length) {
-      // TODO: subtract bytes?
-      //      node.key.bytes = ArrayUtil.copyOfSubArray(node.key.bytes, from,
-      // node.key.bytes.length);
-      node.key.length = node.key.offset + node.key.length - from;
-      node.key.offset = from;
-    } else {
-      node.key = null;
-    }
-  }
-
-  // TODO: Only call one time.
-  protected void updatePrefix(Node node, int from) {
-    if (node.prefix == null) {
-      return;
-    }
-
-    if (from < node.prefix.length) {
-      node.prefix = ArrayUtil.copyOfSubArray(node.prefix, from, node.prefix.length);
-      node.prefixLength = node.prefix.length;
-    } else {
-      node.prefix = null;
-      node.prefixLength = 0;
-    }
   }
 
   /**

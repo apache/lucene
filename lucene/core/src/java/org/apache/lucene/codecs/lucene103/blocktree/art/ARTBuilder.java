@@ -101,7 +101,6 @@ public class ARTBuilder {
       // All children have been written(saved), now it's time to write the parent!
       node.fp = index.getFilePointer() - startFP;
       stack.pop();
-      // TODO: Enhance meta data like trie.
       node.saveNode(index);
     }
   }
@@ -126,41 +125,10 @@ public class ARTBuilder {
 
   /** Insert an art builder into this one. */
   public void insert(ARTBuilder artBuilder) {
-    // TODO: Implement insert with duplicate prefix, e.g.: we can insert to root: ra, re, ri.
     if (artBuilder.root.nodeType.equals(NodeType.LEAF_NODE)) {
       insert(artBuilder.root.key, artBuilder.root.output);
     } else {
       this.root = insert(this.root, artBuilder.root, 0);
-      //      if (this.root.nodeType.equals(NodeType.LEAF_NODE)) {
-      //        assert this.root.prefixLength == 0;
-      //        final BytesRef key = this.root.key;
-      //        if (key == null) {
-      //          this.root = this.root.insert(artBuilder.root, artBuilder.root.prefix[0]);
-      //          // update in leafNode#insert.
-      //          //          updateNodePrefix(artBuilder.root, 1);
-      //        } else {
-      //          this.root = this.root.insert(artBuilder.root, artBuilder.root.prefix[key.length]);
-      //          // update in leafNode#insert.
-      //          //          updateNodePrefix(artBuilder.root, key.length + 1);
-      //        }
-      //      } else {
-      //        assert this.root.key == null;
-      //        final int prefixLength = this.root.prefixLength;
-      //        if (prefixLength == 0) {
-      //          this.root = this.root.insert(artBuilder.root, artBuilder.root.prefix[0]);
-      //          // TODO: update in Node#insert.
-      //          updatePrefix(artBuilder.root, 1);
-      //        } else {
-      //          assert prefixLength
-      //              == ARTUtil.commonPrefixLength(
-      //                  this.root.prefix, 0, prefixLength, artBuilder.root.prefix, 0,
-      // prefixLength);
-      //          this.root = this.root.insert(artBuilder.root,
-      // artBuilder.root.prefix[prefixLength]);
-      //          // TODO: update in Node#insert.
-      //          updatePrefix(artBuilder.root, prefixLength + 1);
-      //        }
-      //      }
     }
   }
 
@@ -207,12 +175,9 @@ public class ARTBuilder {
 
   /** Set remaining suffix to bytes. */
   private void updateKey(Node node, int from) {
-    // TODO: Fix duplicate call.
-    if (node.key == null) {
-      return;
-    }
-
+    assert node.key != null;
     assert from > node.key.offset;
+
     if (from < node.key.offset + node.key.length) {
       // TODO: subtract bytes?
       //      node.key.bytes = ArrayUtil.copyOfSubArray(node.key.bytes, from,
@@ -226,10 +191,8 @@ public class ARTBuilder {
 
   /** Set remaining suffix to prefix. */
   private void updatePrefix(Node node, int from) {
-    // TODO: Fix duplicate call.
-    if (node.prefix == null) {
-      return;
-    }
+    assert node.prefix != null;
+
     if (from < node.prefix.length) {
       node.prefix = ArrayUtil.copyOfSubArray(node.prefix, from, node.prefix.length);
       node.prefixLength = node.prefix.length;
