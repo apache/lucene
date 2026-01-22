@@ -586,6 +586,28 @@ public abstract class MergePolicy {
     }
   }
 
+  /**
+   * Default ratio for compound file system usage. Set to <code>1.0</code> to always use compound
+   * file system.
+   */
+  protected static final double DEFAULT_NO_CFS_RATIO = 1.0;
+
+  /**
+   * Default max segment size in order to use compound file system. Set to {@link Long#MAX_VALUE}.
+   */
+  protected static final long DEFAULT_MAX_CFS_SEGMENT_SIZE = Long.MAX_VALUE;
+
+  /**
+   * If the size of the merge segment exceeds this ratio of the total index size then it will remain
+   * in non-compound format
+   */
+  protected double noCFSRatio;
+
+  /**
+   * If the size of the merged segment exceeds this value then it will not use compound file format.
+   */
+  protected long maxCFSSegmentSize;
+
   /** Creates a new merge policy instance. */
   protected MergePolicy() {}
 
