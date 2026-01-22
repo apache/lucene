@@ -13,7 +13,7 @@ API Changes
 * GITHUB#15309: PriorityQueue.remove method has been removed entirely. If you need remove(), implement
   it yourself in a subclass (heap access and size, upHeap and downHeap are protected members of PQ). (Dawid Weiss)
 
-* GITHUB#15215: Switch to Java 25 as the minimum required platform. Upgrade to gradle 9.1.0.
+* GITHUB#15215: Switch to Java 25 as the minimum required platform. Upgrade to gradle 9.x.
   (Robert Muir, Kaival Parikh, Dawid Weiss)
 
 * GITHUB#13797: Relaxed Lucene Index Upgrade Policy to Allow Safe Upgrades Across Multiple Major Versions.
@@ -54,6 +54,8 @@ API Changes
 
 * GITHUB#15486: Remove deprecated SortField.setMissingValue() method (Alan Woodward)
 
+* GITHUB#14615 : Remove unnecessary public methods in FuzzySet (Greg Miller)
+
 New Features
 ---------------------
 
@@ -68,6 +70,8 @@ New Features
 
 Improvements
 ---------------------
+
+* GITHUB#15568: Add markdown support for javadocs and modernize highlighting a bit. (Dawid Weiss)
 
 * GITHUB#14972: Require named thread factory in ThreadPoolExecutor constructors. (Dawid Weiss)
 
@@ -85,6 +89,8 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
+
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
 * GITHUB#14022: Optimize DFS marking of connected components in HNSW by reducing stack depth, improving performance and reducing allocations. (Viswanath Kuchibhotla)
 
@@ -111,6 +117,11 @@ Bug Fixes
 * GITHUB#15213: Don't normalize centroids with zero samples, which caused divide-by-zero. (Mike Sokolov)
 
 * GITHUB#15125: Handle inconsistent schema on flush with index sorts (Nhat Nguyen)
+
+* GITHUB#15434: Don't override boost of conflicting expanded phrases by taking the max boost in markTerminal for FVHighlighter (Luana Fragoso)
+
+* GITHUB#12561: UAX29URLEmailTokenizer matched emails with commas and invalid
+  periods in the local part. (Eran Yarkon)
 
 Changes in Runtime Behavior
 ---------------------
@@ -180,6 +191,24 @@ API Changes
 
 * GITHUB#15501: Introduce optional access to backing vector values from the scorer  (Chris Hegarty)
 
+* GITHUB#15514: Refactor DocValuesSkipper stat methods to accept IndexReader instead of IndexSearcher (Pan Guixin)
+
+* GITHUB#15559: Deprecate some public FuzzySet methods ahead of removing them in the future (Greg Miller)
+
+* GITHUB#15507: Expose MergeRateLimiter in ConcurrentMergeScheduler.runOnMergeFinished hook.
+  The runOnMergeFinished method signature now includes OneMerge and MergeRateLimiter parameters,
+  enabling applications to monitor merge performance metrics like pause time, throttling behavior,
+  and throughput. This provides visibility into Lucene's merge backpressure mechanisms that can
+  stall indexing when merge debt accumulates. (Zihan Xu)
+
+* GITHUB#15569: Allow a DataAccessHint to be passed during the construction of Lucene99FlatVectorsReader
+  (Chris Hegarty)
+
+* GITHUB#15581: Minor javadoc clarification that HasIndexSlice::getSlice can return null
+  (Chris Hegarty)
+
+* GITHUB#15502: Add `count()` method to `FilterWeight`  (Prudhvi Godithi)
+
 New Features
 ---------------------
 * GITHUB#15328: VectorSimilarityFunction.getValues() now implements doubleVal allowing its
@@ -205,10 +234,17 @@ New Features
    `Lucene104HnswScalarQuantizedVectorsFormat(ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE, int, int)`
     (Ben Trent)
 
+ * GITHUB#15564: Further extend `Lucene104ScalarQuantizedVectorsFormat` and `Lucene104HnswScalarQuantizedVectorsFormat` to
+   allow asymmetric quantization with 2 bits and 4 bit queries. This can provide increased recall over single bit
+   with little additional storage cost and latency.
+   (Ben Trent)
+
  * GITHUB#15415: Add fallback support to Lucene104ScalarQuantizedVectorsFormat getFloatVectorValues when there are
    no full-precision vectors present (Pulkit Gupta)
 
  * GITHUB#15468: Add support for `@SuppressAssertingFormats` annotation for fine-grained control over `AssertingCodec` formats (Prudhvi Godithi)
+
+ * GITHUB#15518: Add support for post-collection faceting to the new faceting API in the sandbox module. (Egor Potemkin)
 
 Improvements
 ---------------------
@@ -221,6 +257,8 @@ Improvements
 * GITHUB#15425: Refactoring internal HnswGraph.NodesIterator to avoid unneeded copying and sorting (Mike Sokolov)
 
 * GITHUB#15479: Add NumericDocValueRangeQuery base class to add accessor methods for field, lower and upper values (Alan Woodward)
+
+* GITHUB#15570: Disallow invalid offset 0 for LZ4 decompression (Marcono1234)
 
 Optimizations
 ---------------------
@@ -273,6 +311,12 @@ Optimizations
 
 * GITHUB#15498: ExitableDirectoryReader keeps singleton SortedSetDocValues or SortedNumericDocValues as singletons. (Houston Putman)
 
+* GITHUB#15511: Dynamic pruning for SORTED(_SET) fields with doc values skipper (Pan Guixin)
+
+* GITHUB#15560: Avoid unnecessary getGraph() call. (Shubham Chaudhary)
+
+* GITHUB#15582: Avoid copying bitset that's subsequently cleared (Viliam Durina)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
@@ -295,6 +339,10 @@ Bug Fixes
 
 * GITHUB#15478: Fix duplicate neighbor issue by checking node existence before making reverse link. (Pulkit Gupta)
 
+* GITHUB#15523: Updating createMultiSegmentIndex to utilize an explicit NoMergePolicy (Bryce Kane)
+
+* GITHUB#14616 : Fix mis-interpretation of `maxNumBytes` in FuzzySet#createSetBasedOnMaxMemory (Greg Miller)
+
 Other
 ---------------------
 * GITHUB#15237: Fix SmartChinese to only deserialize dictionary data from classpath with a native array
@@ -303,10 +351,17 @@ Other
   Applications using SecurityManager now need to grant SerializablePermission("serialFilter")
   to the analysis-smartcn module. (Uwe Schindler, Isaac David)
 
+* GITHUB#15431: Index open performs version check on each segment, ignores indexCreatedVersionMajor (Rahul Goswami, Mike Sokolov)
+
 * GITHUB#15481: The `reverse` field of SortField is now final. If you have subclassed SortField,
   you should set `reverse` in the super constructor. (Alan Woodward)
 
+* GITHUB#15476: Enforce fallback support for float vector retrieval in quantized KNN vector formats. (Pulkit Gupta)
+
 * GITHUB#15513: Update documentation in DefaultBloomFilterFactory to reflect changes made in GITHUB#11900 (Greg Miller)
+
+* GITHUB#15341: Align float vectors on disk to 64 bytes, for optimal performance on Arm Neoverse
+  machines (including vectors inside CFS files). (Mike McCandless, Kaival Parikh)
 
 Build
 ---------------------

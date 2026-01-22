@@ -87,7 +87,7 @@ import org.apache.lucene.util.PriorityQueue;
  * <p>This class has lots of options to try to make it efficient and flexible. The simplest possible
  * usage is as follows. The bold fragment is specific to this class. <br>
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * IndexReader ir = ...
  * IndexSearcher is = ...
  *
@@ -99,7 +99,7 @@ import org.apache.lucene.util.PriorityQueue;
  * // now the usual iteration thru 'topDocs' - the only thing to watch for is to make sure
  * // you ignore the doc if it matches your 'target' document, as it should be similar to itself
  *
- * </pre>
+ * </code></pre>
  *
  * <p>Thus you:
  *

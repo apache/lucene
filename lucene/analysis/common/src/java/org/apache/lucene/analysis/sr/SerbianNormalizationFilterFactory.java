@@ -24,7 +24,7 @@ import org.apache.lucene.analysis.TokenStream;
 /**
  * Factory for {@link SerbianNormalizationFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_srnorm" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.StandardTokenizerFactory"/&gt;
@@ -32,7 +32,7 @@ import org.apache.lucene.analysis.TokenStream;
  *     &lt;filter class="solr.SerbianNormalizationFilterFactory"
  *       haircut="bald"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @since 5.0.0
  * @lucene.spi {@value #NAME}

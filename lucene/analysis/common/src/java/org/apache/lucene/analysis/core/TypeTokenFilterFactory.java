@@ -29,14 +29,14 @@ import org.apache.lucene.util.ResourceLoaderAware;
 /**
  * Factory class for {@link TypeTokenFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="chars" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.StandardTokenizerFactory"/&gt;
  *     &lt;filter class="solr.TypeTokenFilterFactory" types="stoptypes.txt"
  *                   useWhitelist="false"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @since 3.6.0
  * @lucene.spi {@value #NAME}

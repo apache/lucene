@@ -11,23 +11,23 @@ commons-compress = "1.28.0"
 # See ecj-lint.gradle (used for more linting).
 ecj = "3.44.0"
 # java linting
-errorprone = "2.45.0"
+errorprone = "2.46.0"
 # markdown documentation generation
 flexmark = "0.64.8"
 # @keep This is GJF version for java source code formatting
-googleJavaFormat = "1.33.0"
+googleJavaFormat = "1.33.0-markdown"
 # gradle build support
 groovy = "5.0.3"
 # test assertions
 hamcrest = "3.0"
 # analysis/icu/, gradle regeneration unicode support
-icu4j = "78.1"
+icu4j = "78.2"
 # queryparsers/ grammars
 javacc = "7.0.13"
 # analysis/ tokenizer grammars
 jflex = "1.9.1"
 # build infra only (diff of changes from google java format tasks)
-jgit = "7.4.0.202509020913-r"
+jgit = "7.5.0.202512021534-r"
 # benchmark-jmh/ microbenchmarks
 jmh = "1.37"
 # spatial-extras/ support
@@ -35,7 +35,7 @@ jts = "1.20.0"
 # unit tests
 junit = "4.13.2"
 # @keep Minimum gradle version to run the build
-minGradle = "9.1.0"
+minGradle = "9.2.1"
 # @keep This is the minimum required Java version.
 minJava = "25"
 # analysis/morfologik polish support
@@ -45,7 +45,7 @@ morfologik-ukrainian = "4.9.1"
 # benchmark/ html parsing
 nekohtml = "1.9.22"
 # analysis/opennlp/ support
-opennlp = "2.5.6.1"
+opennlp = "2.5.7"
 # distribution.tests/ process management
 procfork = "1.0.6"
 # unit tests
@@ -72,7 +72,7 @@ flexmark-ext-abbreviation = { module = "com.vladsch.flexmark:flexmark-ext-abbrev
 flexmark-ext-attributes = { module = "com.vladsch.flexmark:flexmark-ext-attributes", version.ref = "flexmark" }
 flexmark-ext-autolink = { module = "com.vladsch.flexmark:flexmark-ext-autolink", version.ref = "flexmark" }
 flexmark-ext-tables = { module = "com.vladsch.flexmark:flexmark-ext-tables", version.ref = "flexmark" }
-gjf = { module = "com.google.googlejavaformat:google-java-format", version.ref = "googleJavaFormat" }
+gjf = { module = "com.carrotsearch.googlejavaformat:google-java-format", version.ref = "googleJavaFormat" }
 groovy = { module = "org.apache.groovy:groovy-all", version.ref = "groovy" }
 hamcrest = { module = "org.hamcrest:hamcrest", version.ref = "hamcrest" }
 icu4j = { module = "com.ibm.icu:icu4j", version.ref = "icu4j" }
@@ -99,7 +99,7 @@ zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
 benmanes-versions = "com.github.ben-manes.versions:0.53.0"
 carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.0"
 carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.1.0"
-errorprone = "net.ltgt.errorprone:4.3.0"
+errorprone = "net.ltgt.errorprone:4.4.0"
 forbiddenapis = "de.thetaphi.forbiddenapis:3.10"
 jacocolog = "org.barfuin.gradle.jacocolog:3.1.0"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"

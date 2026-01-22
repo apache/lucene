@@ -49,12 +49,12 @@ import org.apache.lucene.util.IOUtils;
  *
  * <p>Here's a simple example usage:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   Directory fsDir = FSDirectory.open(new File("/path/to/index").toPath());
  *   NRTCachingDirectory cachedFSDir = new NRTCachingDirectory(fsDir, 5.0, 60.0);
  *   IndexWriterConfig conf = new IndexWriterConfig(analyzer);
  *   IndexWriter writer = new IndexWriter(cachedFSDir, conf);
- * </pre>
+ * </code></pre>
  *
  * <p>This will cache all newly flushed segments, all merges whose expected segment size is {@code
  * <= 5 MB}, unless the net cached bytes exceed 60 MB at which point all writes will not be cached
