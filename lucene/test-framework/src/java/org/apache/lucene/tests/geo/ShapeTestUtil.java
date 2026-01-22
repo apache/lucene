@@ -19,7 +19,9 @@ package org.apache.lucene.tests.geo;
 import com.carrotsearch.randomizedtesting.RandomizedContext;
 import com.carrotsearch.randomizedtesting.generators.BiasedNumbers;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Random;
+import java.util.Set;
 import org.apache.lucene.geo.GeoUtils;
 import org.apache.lucene.geo.XYCircle;
 import org.apache.lucene.geo.XYEncodingUtils;
@@ -152,12 +154,14 @@ public class ShapeTestUtil {
   }
 
   private static XYPolygon surpriseMePolygon(Random random) {
+
     while (true) {
       float centerX = nextFloat(random);
       float centerY = nextFloat(random);
       double radius = 0.1 + 20 * random.nextDouble();
       double radiusDelta = random.nextDouble();
 
+      Set<XYPoint> vertices = new HashSet<>();
       ArrayList<Float> xList = new ArrayList<>();
       ArrayList<Float> yList = new ArrayList<>();
       double angle = 0.0;
@@ -181,6 +185,12 @@ public class ShapeTestUtil {
         float x = (float) (centerX + len * Math.cos(Math.toRadians(angle)));
         float y = (float) (centerY + len * Math.sin(Math.toRadians(angle)));
 
+        XYPoint vertex = new XYPoint(x, y);
+        if (vertices.contains(vertex)) {
+          // If we have already generated an identical vertex, ignore and try again.
+          continue;
+        }
+        vertices.add(vertex);
         xList.add(x);
         yList.add(y);
       }
@@ -195,8 +205,42 @@ public class ShapeTestUtil {
         xArray[i] = xList.get(i);
         yArray[i] = yList.get(i);
       }
+      if (xArray.length < 4 || yArray.length < 4) {
+        // Not a valid polygon, try again.
+        continue;
+      }
       return new XYPolygon(xArray, yArray);
     }
+  }
+
+  /**
+   * Polygons can get so small that their sides are shorter than a float is able to represent. For a
+   * regular polygon, a smaller radius produces smaller sides, as does increasing the number of
+   * vertices.
+   *
+   * <p>This method checks that we can represent the regular polygon with the given radius and
+   * number of vertices.
+   */
+  private static boolean regularPolygonFitsFloat(double radius, int gons) {
+    // https://en.wikipedia.org/wiki/Regular_polygon
+    double side = 2 * radius * Math.sin(Math.PI / gons);
+
+    // We need the difference between two vertices along at least one axis to be >= smallest
+    // positive float.
+    // To ensure that, we take the worst case, where the difference along the axes is equal.
+    // Effectively, the side in this case is the hypothenuse of an isosceles right triangle
+    // with catheti equal to the smallest positive float.
+    double threshold = Float.MIN_VALUE * Math.sqrt(2);
+
+    return side > threshold;
+  }
+
+  /**
+   * Find the radius of the smallest polygon with {@code gons} sides, whose vertices can be
+   * represented as floats.
+   */
+  public static double smallestRadius(int gons) {
+    return (double) Float.MIN_VALUE / Math.sqrt(2) / Math.sin(Math.PI / gons);
   }
 
   /**
@@ -207,6 +251,11 @@ public class ShapeTestUtil {
    */
   public static XYPolygon createRegularPolygon(
       double centerX, double centerY, double radius, int gons) {
+
+    if (regularPolygonFitsFloat(radius, gons) == false) {
+      // The provided radius is too small, use the smallest radius that will work.
+      radius = smallestRadius(gons);
+    }
 
     double maxX =
         StrictMath.min(

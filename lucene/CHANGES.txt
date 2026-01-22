@@ -1932,6 +1932,8 @@ Bug Fixes
 
 * GITHUB#12900: Push and pop OutputAccumulator as IntersectTermsEnumFrames are pushed and popped (Guo Feng, Mike McCandless)
 
+* GITHUB#12757: Stop generating test polygons with duplicate vertices when the radius is small. (Stefan Vodita)
+
 ======================== Lucene 9.9.0 =======================
 
 API Changes
