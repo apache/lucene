@@ -602,7 +602,7 @@ public final class ArrayUtil {
   }
 
   /**
-   * Reorganize {@code arr[from:to[} so that the element at offset k is at the same position as if
+   * Reorganize {@code arr[from:to]} so that the element at offset k is at the same position as if
    * {@code arr[from:to]} was sorted, and all elements on its left are less than or equal to it, and
    * all elements on its right are greater than or equal to it.
    *
