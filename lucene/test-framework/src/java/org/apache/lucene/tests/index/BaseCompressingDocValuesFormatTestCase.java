@@ -46,6 +46,7 @@ public abstract class BaseCompressingDocValuesFormatTestCase extends BaseDocValu
   public void testUniqueValuesCompression() throws IOException {
     try (final Directory dir = new ByteBuffersDirectory()) {
       final IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.getCodec().compoundFormat().setShouldUseCompoundFile(false);
       final IndexWriter iwriter = new IndexWriter(dir, iwc);
 
       final int uniqueValueCount = TestUtil.nextInt(random(), 1, 256);

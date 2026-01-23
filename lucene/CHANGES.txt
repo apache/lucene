@@ -56,6 +56,8 @@ API Changes
 
 * GITHUB#14615 : Remove unnecessary public methods in FuzzySet (Greg Miller)
 
+* GITHUB#15295 : Switched to a fixed CFS threshold (Shubham Sharma)
+
 New Features
 ---------------------
 
