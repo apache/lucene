@@ -158,8 +158,8 @@ public class HnswGraphBuilder implements HnswBuilder {
     this.hnsw = hnsw;
     this.hnswLock = hnswLock;
     this.graphSearcher = graphSearcher;
-    this.bulkScoreNodes = new int[this.M];
-    this.bulkScores = new float[this.M];
+    this.bulkScoreNodes = new int[8];
+    this.bulkScores = new float[8];
     entryCandidates = new GraphBuilderKnnCollector(1);
     beamCandidates = new GraphBuilderKnnCollector(beamWidth);
     beamCandidates0 = new GraphBuilderKnnCollector(Math.min(beamWidth / 2, M * 3));
