@@ -89,6 +89,8 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
+
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
 * GITHUB#14022: Optimize DFS marking of connected components in HNSW by reducing stack depth, improving performance and reducing allocations. (Viswanath Kuchibhotla)
 
@@ -244,6 +246,8 @@ New Features
 
  * GITHUB#15518: Add support for post-collection faceting to the new faceting API in the sandbox module. (Egor Potemkin)
 
+ * GITHUB#15591: Add SegmentOrder helper class to re-order segments at query time to align with sorts. (Alan Woodward)
+
 Improvements
 ---------------------
 * GITHUB#15148: Add support uint8 distance and allow 8 bit scalar quantization (Trevor McCulloch)
@@ -293,7 +297,7 @@ Optimizations
 
 * GITHUB#15397: NumericComparator: immediately check whether a segment is competitive with the recorded bottom (Martijn van Groningen)
 
-# GITHUB#15303: Speed up NumericUtils#{add,subtract} by operating on integers instead of bytes. (Kaival Parikh)
+* GITHUB#15303: Speed up NumericUtils#{add,subtract} by operating on integers instead of bytes. (Kaival Parikh)
 
 * GITHUB#15003: Avoid reconstructing HNSW graph during merging (Pulkit Gupta)
 
@@ -314,6 +318,8 @@ Optimizations
 * GITHUB#15560: Avoid unnecessary getGraph() call. (Shubham Chaudhary)
 
 * GITHUB#15582: Avoid copying bitset that's subsequently cleared (Viliam Durina)
+
+* GITHUB#15592: Optimize DocIdSetIteratorAcceptDocs#cost. (Shubham Chaudhary)
 
 * GITHUB#15585: Added shared prefetch counter to maintain count across clones and slices of MemorySegmentIndexInput. (Shubham Sharma)
 

@@ -579,8 +579,8 @@ public abstract class MergePolicy {
   }
 
   /**
-   * Default ratio for compound file system usage. Set to <code>1.0</code>, always use compound file
-   * system.
+   * Default ratio for compound file system usage. Set to <code>1.0</code> to always use compound
+   * file system.
    */
   protected static final double DEFAULT_NO_CFS_RATIO = 1.0;
 
