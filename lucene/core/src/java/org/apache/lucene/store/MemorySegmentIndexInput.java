@@ -335,7 +335,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
 
     ensureOpen();
 
-    if (BitUtil.isZeroOrPowerOfTwo(sharedPrefetchCounter.incrementAndGet()) == false) {
+    if (BitUtil.isZeroOrPowerOfTwo(sharedPrefetchCounter.getAndIncrement()) == false) {
       // We've had enough consecutive hits on the page cache that this number is neither zero nor a
       // power of two. There is a good chance that a good chunk of this index input is cached in
       // physical memory. Let's skip the overhead of the madvise system call, we'll be trying again
