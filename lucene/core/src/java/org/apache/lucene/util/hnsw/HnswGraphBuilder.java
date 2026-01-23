@@ -158,6 +158,8 @@ public class HnswGraphBuilder implements HnswBuilder {
     this.hnsw = hnsw;
     this.hnswLock = hnswLock;
     this.graphSearcher = graphSearcher;
+    // pick a number that keeps us from scoring TOO much for diversity checking
+    // but enough to take advantage of bulk scoring
     this.bulkScoreNodes = new int[8];
     this.bulkScores = new float[8];
     entryCandidates = new GraphBuilderKnnCollector(1);
@@ -474,7 +476,6 @@ public class HnswGraphBuilder implements HnswBuilder {
    */
   private boolean diversityCheck(float score, NeighborArray neighbors, RandomVectorScorer scorer)
       throws IOException {
-    // bulk score all neighbors, bulkScoreNodes is at most `M` need to handle paging over it
     int bulkCount = 0;
     for (int i = 0; i < neighbors.size(); i++) {
       bulkScoreNodes[bulkCount++] = neighbors.nodes()[i];
