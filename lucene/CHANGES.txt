@@ -2,7 +2,10 @@ Lucene Change Log
 
 For more information on past and future Lucene versions, please see:
 http://s.apache.org/luceneversions
-
+Bug Fixes
+---------------------
+* Fix FVH boost issue where boost values were not preserved
+when merging overlapping phrases (issue #15442, PR #15604)
 ======================= Lucene 10.3.3 =======================
 
 Bug Fixes

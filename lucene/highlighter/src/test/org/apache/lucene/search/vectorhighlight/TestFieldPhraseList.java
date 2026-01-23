@@ -268,6 +268,23 @@ public class TestFieldPhraseList extends AbstractTestCase {
     assertConsistentLessThan(d, c);
   }
 
+  public void testMergeOverlappingWeightedPhraseInfoAccumulateBoost() {
+    LinkedList<TermInfo> infos1 = new LinkedList<>();
+    infos1.add(new TermInfo("中国", 0, 2, 0, 0));
+    infos1.add(new TermInfo("经济", 3, 5, 1, 1));
+    WeightedPhraseInfo wpi1 = new WeightedPhraseInfo(infos1, 2.0f);
+
+    LinkedList<TermInfo> infos2 = new LinkedList<>();
+    infos2.add(new TermInfo("经济", 3, 5, 1, 1));
+    infos2.add(new TermInfo("发展", 6, 8, 2, 2));
+    WeightedPhraseInfo wpi2 = new WeightedPhraseInfo(infos2, 3.0f);
+
+    // trigger merge
+    WeightedPhraseInfo merged = new WeightedPhraseInfo(java.util.List.of(wpi1, wpi2));
+
+    assertEquals(5.0f, merged.getBoost(), 0.0001f);
+  }
+
   private WeightedPhraseInfo newInfo(int startOffset, int endOffset, float boost) {
     LinkedList<TermInfo> infos = new LinkedList<>();
     infos.add(new TermInfo(TestUtil.randomUnicodeString(random()), startOffset, endOffset, 0, 0));
