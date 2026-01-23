@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.codecs.simpletext.SimpleTextCodec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -233,14 +234,14 @@ public class TestIndexFileDeleter extends LuceneTestCase {
     TestUtil.disableVirusChecker(dir);
 
     // add empty commit
-    new IndexWriter(dir, new IndexWriterConfig(null)).close();
+    new IndexWriter(dir, new IndexWriterConfig((Analyzer) null)).close();
     // add a trash unreferenced file
     dir.createOutput("_0.si", IOContext.DEFAULT).close();
 
     // start virus scanner
     TestUtil.enableVirusChecker(dir);
 
-    IndexWriter iw = new IndexWriter(dir, new IndexWriterConfig(null));
+    IndexWriter iw = new IndexWriter(dir, new IndexWriterConfig((Analyzer) null));
     iw.addDocument(new Document());
     // stop virus scanner
     TestUtil.disableVirusChecker(dir);
@@ -253,7 +254,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
     Directory dir = newMockDirectory();
 
     // empty commit
-    new IndexWriter(dir, new IndexWriterConfig(null)).close();
+    new IndexWriter(dir, new IndexWriterConfig((Analyzer) null)).close();
 
     SegmentInfos sis = SegmentInfos.readLatestCommit(dir);
     assertEquals(1, sis.getGeneration());
@@ -270,7 +271,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
     dir.setCheckIndexOnClose(false); // TODO: allow falling back more than one commit
 
     // empty commit
-    new IndexWriter(dir, new IndexWriterConfig(null)).close();
+    new IndexWriter(dir, new IndexWriterConfig((Analyzer) null)).close();
 
     SegmentInfos sis = SegmentInfos.readLatestCommit(dir);
     assertEquals(1, sis.getGeneration());
@@ -294,7 +295,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
     MockDirectoryWrapper dir = newMockDirectory();
 
     // empty commit
-    new IndexWriter(dir, new IndexWriterConfig(null)).close();
+    new IndexWriter(dir, new IndexWriterConfig((Analyzer) null)).close();
 
     SegmentInfos sis = SegmentInfos.readLatestCommit(dir);
     assertEquals(0, sis.counter);
@@ -316,7 +317,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
     assertEquals(4, sis.counter);
 
     // ensure we write _4 segment next
-    IndexWriter iw = new IndexWriter(dir, new IndexWriterConfig(null));
+    IndexWriter iw = new IndexWriter(dir, new IndexWriterConfig((Analyzer) null));
     iw.addDocument(new Document());
     iw.commit();
     iw.close();
@@ -331,7 +332,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
     MockDirectoryWrapper dir = newMockDirectory();
 
     // initial commit
-    IndexWriter iw = new IndexWriter(dir, new IndexWriterConfig(null));
+    IndexWriter iw = new IndexWriter(dir, new IndexWriterConfig((Analyzer) null));
     iw.addDocument(new Document());
     iw.commit();
     iw.close();
@@ -360,7 +361,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
     dir.setCheckIndexOnClose(false); // TODO: maybe handle such trash better elsewhere...
 
     // empty commit
-    new IndexWriter(dir, new IndexWriterConfig(null)).close();
+    new IndexWriter(dir, new IndexWriterConfig((Analyzer) null)).close();
 
     SegmentInfos sis = SegmentInfos.readLatestCommit(dir);
     assertEquals(1, sis.getGeneration());
@@ -379,7 +380,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
     MockDirectoryWrapper dir = newMockDirectory();
 
     // initial commit
-    IndexWriter iw = new IndexWriter(dir, new IndexWriterConfig(null));
+    IndexWriter iw = new IndexWriter(dir, new IndexWriterConfig((Analyzer) null));
     iw.addDocument(new Document());
     iw.commit();
     iw.close();

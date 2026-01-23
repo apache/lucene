@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.facet.DrillDownQuery;
 import org.apache.lucene.facet.FacetField;
@@ -274,7 +275,7 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     Directory dir = newDirectory();
 
     // create an empty index first, so that DirTaxoWriter initializes indexEpoch to 1.
-    new IndexWriter(dir, new IndexWriterConfig(null)).close();
+    new IndexWriter(dir, new IndexWriterConfig((Analyzer) null)).close();
 
     DirectoryTaxonomyWriter taxoWriter =
         new DirectoryTaxonomyWriter(dir, OpenMode.CREATE_OR_APPEND, NO_OP_CACHE);
