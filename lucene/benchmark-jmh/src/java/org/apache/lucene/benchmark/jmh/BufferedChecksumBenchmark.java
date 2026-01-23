@@ -43,8 +43,11 @@ public class BufferedChecksumBenchmark {
   @Param({"1024", "4096", "8192", "65536"})
   private int dataSize;
 
-  @Param({"1024", "2048", "4096"})
+  @Param({"512", "1024", "2048"})
   private int bufferSize;
+
+  @Param({"1", "8", "64", "256"}) // Key: test different chunk sizes
+  private int chunkSize;
 
   private byte[] data;
 
@@ -66,6 +69,17 @@ public class BufferedChecksumBenchmark {
   }
 
   @Benchmark
+  public long bufferedCRC32ChunkUpdates() {
+    BufferedChecksum bc = new BufferedChecksum(new CRC32(), bufferSize);
+    for (int i = 0; i < dataSize; i += chunkSize) {
+      int len = Math.min(chunkSize, dataSize - i);
+      bc.update(data, i, len);
+    }
+    return bc.getValue();
+  }
+
+  //
+  @Benchmark
   public long bufferedCRC32BulkUpdate() {
     BufferedChecksum checksum = new BufferedChecksum(new CRC32(), bufferSize);
     checksum.update(data, 0, data.length);
@@ -80,6 +94,16 @@ public class BufferedChecksumBenchmark {
       checksum.update(data[i]);
     }
     return checksum.getValue();
+  }
+
+  @Benchmark
+  public long bufferedCRC32CChunkUpdates() {
+    BufferedChecksum bc = new BufferedChecksum(new CRC32C(), bufferSize);
+    for (int i = 0; i < dataSize; i += chunkSize) {
+      int len = Math.min(chunkSize, dataSize - i);
+      bc.update(data, i, len);
+    }
+    return bc.getValue();
   }
 
   @Benchmark
