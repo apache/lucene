@@ -135,7 +135,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     }
   }
 
-  private static class ByteVectorValuesSub extends DocIDMerger.Sub {
+  static class ByteVectorValuesSub extends DocIDMerger.Sub {
 
     final ByteVectorValues values;
     final KnnVectorValues.DocIndexIterator iterator;
@@ -401,7 +401,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       private int docId = -1;
       ByteVectorValuesSub current;
 
-      private MergedByteVectorValues(List<ByteVectorValuesSub> subs, MergeState mergeState)
+      MergedByteVectorValues(List<ByteVectorValuesSub> subs, MergeState mergeState)
           throws IOException {
         this.subs = subs;
         docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
@@ -414,11 +414,9 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
       @Override
       public byte[] vectorValue(int ord) throws IOException {
-        if (ord != lastOrd + 1) {
+        if (ord != lastOrd) {
           throw new IllegalStateException(
               "only supports forward iteration: ord=" + ord + ", lastOrd=" + lastOrd);
-        } else {
-          lastOrd = ord;
         }
         return current.values.vectorValue(current.index());
       }
@@ -446,6 +444,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
               index = NO_MORE_DOCS;
             } else {
               docId = current.mappedDocID;
+              ++lastOrd;
               ++index;
             }
             return docId;
