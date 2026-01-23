@@ -67,8 +67,8 @@ public class HnswGraphBuilder implements HnswBuilder {
   protected final int M; // max number of connections on upper layers
   private final double ml;
 
-  private int[] bulkScoreNodes; // for bulk scoring
-  private float[] bulkScores; // for bulk scoring
+  private final int[] bulkScoreNodes; // for bulk scoring
+  private final float[] bulkScores; // for bulk scoring
   private final SplittableRandom random;
   protected final UpdateableRandomVectorScorer scorer;
   protected final HnswGraphSearcher graphSearcher;
