@@ -120,6 +120,9 @@ Bug Fixes
 
 * GITHUB#15125: Handle inconsistent schema on flush with index sorts (Nhat Nguyen)
 
+* GITHUB#10309: Do not merge term queries with different docFreq. Fixes wrong scores in some queries that included
+  term query and fuzzy query. (Rafał Harabień)
+
 * GITHUB#15434: Don't override boost of conflicting expanded phrases by taking the max boost in markTerminal for FVHighlighter (Luana Fragoso)
 
 * GITHUB#12561: UAX29URLEmailTokenizer matched emails with commas and invalid
