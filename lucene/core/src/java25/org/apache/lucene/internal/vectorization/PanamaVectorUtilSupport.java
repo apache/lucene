@@ -163,7 +163,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
     for (; i < elementCount; i++) {
       final long offset = (long) i * Short.BYTES;
-      score += seg.get(LAYOUT_LE_FLOAT16, q + offset) * seg.get(LAYOUT_LE_FLOAT16, d + offset);
+      score = fma(seg.get(LAYOUT_LE_FLOAT16, q + offset), seg.get(LAYOUT_LE_FLOAT16, d + offset), score);
     }
     return score;
   }
