@@ -19,6 +19,9 @@ package org.apache.lucene.search;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.hamcrest.Matchers.either;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.lessThan;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -317,7 +320,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
           int id = getId(searcher, scoreDoc.doc);
 
           // Check that returned document is not deleted
-          assertFalse(id >= startIndex && id <= endIndex);
+          assertThat(id, either(lessThan(startIndex)).or(greaterThan(endIndex)));
         }
         // Check that all live docs are returned
         assertEquals(numDocs - endIndex + startIndex - 1, scoreDocs.length);
@@ -329,7 +332,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
     try (Directory dir = getIndexStore(getRandomVectors(numDocs, dim));
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       // Delete all documents
-      w.deleteDocuments(new MatchAllDocsQuery());
+      w.deleteDocuments(MatchAllDocsQuery.INSTANCE);
       w.commit();
 
       try (IndexReader reader = DirectoryReader.open(dir)) {

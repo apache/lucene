@@ -37,10 +37,16 @@ import org.apache.lucene.search.SortedNumericSortField;
 public class MultiValuedDoubleFieldSource extends DoubleFieldSource {
 
   protected final SortedNumericSelector.Type selector;
+  private final Double missingValue;
 
   public MultiValuedDoubleFieldSource(String field, Type selector) {
+    this(field, selector, null);
+  }
+
+  public MultiValuedDoubleFieldSource(String field, Type selector, Double missingValue) {
     super(field);
     this.selector = selector;
+    this.missingValue = missingValue;
     Objects.requireNonNull(field, "Field is required to create a MultiValuedDoubleFieldSource");
     Objects.requireNonNull(
         selector, "SortedNumericSelector is required to create a MultiValuedDoubleFieldSource");
@@ -48,7 +54,8 @@ public class MultiValuedDoubleFieldSource extends DoubleFieldSource {
 
   @Override
   public SortField getSortField(boolean reverse) {
-    return new SortedNumericSortField(field, SortField.Type.DOUBLE, reverse, selector);
+    return new SortedNumericSortField(
+        field, SortField.Type.DOUBLE, reverse, selector, missingValue);
   }
 
   @Override

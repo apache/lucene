@@ -26,13 +26,12 @@ final class XYPointSortField extends SortField {
   final float y;
 
   XYPointSortField(String field, float x, float y) {
-    super(field, Type.CUSTOM);
+    super(field, Type.CUSTOM, false, Double.POSITIVE_INFINITY);
     if (field == null) {
       throw new IllegalArgumentException("field must not be null");
     }
     this.x = x;
     this.y = y;
-    setMissingValue(Double.POSITIVE_INFINITY);
   }
 
   @Override
@@ -43,16 +42,6 @@ final class XYPointSortField extends SortField {
   @Override
   public Double getMissingValue() {
     return (Double) super.getMissingValue();
-  }
-
-  @Override
-  public void setMissingValue(Object missingValue) {
-    if (Double.valueOf(Double.POSITIVE_INFINITY).equals(missingValue) == false) {
-      throw new IllegalArgumentException(
-          "Missing value can only be Double.POSITIVE_INFINITY (missing values last), but got "
-              + missingValue);
-    }
-    this.missingValue = missingValue;
   }
 
   @Override

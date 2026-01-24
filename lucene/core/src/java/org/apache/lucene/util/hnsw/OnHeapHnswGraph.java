@@ -44,9 +44,9 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   // level
   // e.g. graph[1][2] is all the neighbours of node 1 at level 2
   private NeighborArray[][] graph;
-  // essentially another 2d map which the first dimension is level and second dimension is node id,
-  // this is only
-  // generated on demand when there's someone calling getNodeOnLevel on a non-zero level
+  // essentially another 2d map in which the first dimension is level and second dimension is node
+  // id, this is only generated on demand when there's someone calling getNodeOnLevel on a
+  // non-zero level
   private IntArrayList[] levelToNodes;
   private int
       lastFreezeSize; // remember the size we are at last time to freeze the graph and generate
@@ -151,13 +151,15 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
       graph = ArrayUtil.grow(graph, node + 1);
     }
 
-    assert graph[node] == null || graph[node].length > level
-        : "node must be inserted from the top level";
+    assert graph[node] == null || graph[node].length >= level
+        : "node must be inserted from the top level: ";
     if (graph[node] == null) {
-      graph[node] =
-          new NeighborArray[level + 1]; // assumption: we always call this function from top level
+      graph[node] = new NeighborArray[level + 1];
       size.incrementAndGet();
+    } else if (graph[node].length <= level) {
+      graph[node] = ArrayUtil.growExact(graph[node], level + 1);
     }
+
     if (level == 0) {
       graph[node][level] =
           new NeighborArray(
@@ -214,6 +216,10 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   @Override
   public int maxConn() {
     return nsize - 1;
+  }
+
+  public boolean nodeExistAtLevel(int level, int node) {
+    return graph[node] != null && graph[node].length > level;
   }
 
   /**

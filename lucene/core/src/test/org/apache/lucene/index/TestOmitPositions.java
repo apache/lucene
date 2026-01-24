@@ -129,7 +129,7 @@ public class TestOmitPositions extends LuceneTestCase {
                 .setMergePolicy(newLogMergePolicy()));
     LogMergePolicy lmp = (LogMergePolicy) writer.getConfig().getMergePolicy();
     lmp.setMergeFactor(2);
-    lmp.setNoCFSRatio(0.0);
+    writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
     Document d = new Document();
 
     FieldType ft = new FieldType(TextField.TYPE_NOT_STORED);

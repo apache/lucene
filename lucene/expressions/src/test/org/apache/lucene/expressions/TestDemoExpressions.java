@@ -218,7 +218,7 @@ public class TestDemoExpressions extends LuceneTestCase {
     bindings.add("latitude", DoubleValuesSource.fromDoubleField("latitude"));
     bindings.add("longitude", DoubleValuesSource.fromDoubleField("longitude"));
     Sort sort = new Sort(distance.getSortField(bindings, false));
-    TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), 3, sort);
+    TopFieldDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 3, sort);
 
     FieldDoc d = (FieldDoc) td.scoreDocs[0];
     assertEquals(0.4621D, (Double) d.fields[0], 1E-1);
@@ -237,7 +237,7 @@ public class TestDemoExpressions extends LuceneTestCase {
     bindings.add("latitude", DoubleValuesSource.fromDoubleField("latitude"));
     bindings.add("longitude", DoubleValuesSource.fromDoubleField("longitude"));
     Sort sort = new Sort(distance.getSortField(bindings, false));
-    TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), 3, sort);
+    TopFieldDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 3, sort);
 
     FieldDoc d = (FieldDoc) td.scoreDocs[0];
     assertEquals(462.1D, (Double) d.fields[0], 1E-1);
@@ -254,7 +254,7 @@ public class TestDemoExpressions extends LuceneTestCase {
     SimpleBindings bindings = new SimpleBindings();
     bindings.add("doc['popularity'].value", DoubleValuesSource.fromIntField("popularity"));
     Sort sort = new Sort(popularity.getSortField(bindings, true));
-    TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), 3, sort);
+    TopFieldDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 3, sort);
 
     FieldDoc d = (FieldDoc) td.scoreDocs[0];
     assertEquals(20D, (Double) d.fields[0], 1E-4);
@@ -307,7 +307,7 @@ public class TestDemoExpressions extends LuceneTestCase {
           }
         };
     Sort sort = new Sort(popularity.getSortField(bindings, false));
-    TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), 3, sort);
+    TopFieldDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 3, sort);
 
     FieldDoc d = (FieldDoc) td.scoreDocs[0];
     assertEquals(2092D, (Double) d.fields[0], 1E-4);

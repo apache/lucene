@@ -258,6 +258,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
    */
   private static final String[] ALL_CHECKS = {
     "ASTHelpersSuggestions:OFF", // we don't use ASTHelpers
+    "AddNullMarkedToClass:OFF", // we don't use jspecify
     "AddNullMarkedToPackageInfo:OFF", // we don't use jspecify
     "AddressSelection:OFF", // TODO: new, not checked if applicable to Lucene
     "AlmostJavadoc:OFF", // noisy (e.g. commented-out code misinterpreted as javadocs)
@@ -281,6 +282,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "AssertFalse:OFF", // TODO: new, not checked if applicable to Lucene
     "AssertThrowsMultipleStatements:WARN",
     "AssertionFailureIgnored:OFF", // TODO: there are problems
+    "AssertSameIncompatible:WARN",
     "AssignmentExpression:OFF", // TODO: there are problems
     "AssistedInjectAndInjectOnConstructors:OFF", // TODO: new, not checked if applicable to Lucene
     "AssistedInjectAndInjectOnSameConstructor:OFF", // we don't use this annotation
@@ -380,6 +382,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "DoNotMockAutoValue:OFF", // we don't use autovalue
     "DoubleBraceInitialization:OFF", // we don't use guava
     "DoubleCheckedLocking:OFF", // TODO: there are problems
+    "DuplicateAssertion:ERROR",
     "DuplicateBranches:ERROR",
     "DuplicateDateFormatField:WARN",
     "DuplicateMapKeys:ERROR",
@@ -440,6 +443,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "ForEachIterable:OFF", // TODO: new, not checked if applicable to Lucene
     "ForOverride:OFF", // we don't use this annotation
     "FormatString:ERROR",
+    "FormatStringShouldUsePlaceholders:ERROR",
     "FormatStringAnnotation:OFF", // we don't use this annotation
     "FragmentInjection:OFF", // we don't use android
     "FragmentNotInstantiable:OFF", // we don't use android
@@ -466,6 +470,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "IdentityBinaryExpression:OFF",
     "IdentityHashMapBoxing:ERROR",
     "IdentityHashMapUsage:OFF", // noisy
+    "IfChainToSwitch:WARN",
     "IgnoredPureGetter:OFF", // we don't use these annotations
     "Immutable:OFF", // we don't use this annotation
     "ImmutableAnnotationChecker:OFF", // we don't use this annotation
@@ -739,6 +744,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "SelfEquals:ERROR",
     "SelfSet:ERROR",
     "SetUnrecognized:OFF", // we don't use protobuf
+    "ScannerUseDelimiter:OFF", // not very useful
     "ShortCircuitBoolean:OFF", // TODO: there are problems
     "ShouldHaveEvenArgs:OFF", // we don't use truth
     "SizeGreaterThanOrEqualsZero:ERROR",

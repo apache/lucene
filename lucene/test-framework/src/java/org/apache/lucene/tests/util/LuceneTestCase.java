@@ -97,6 +97,7 @@ import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import junit.framework.AssertionFailedError;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.codecs.CompoundFormat;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.bitvectors.HnswBitVectorsFormat;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
@@ -171,6 +172,7 @@ import org.apache.lucene.store.MergeInfo;
 import org.apache.lucene.store.NRTCachingDirectory;
 import org.apache.lucene.store.ReadOnceHint;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
+import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.index.AlcoholicMergePolicy;
 import org.apache.lucene.tests.index.AssertingDirectoryReader;
 import org.apache.lucene.tests.index.AssertingLeafReader;
@@ -209,49 +211,53 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
-import org.junit.Test;
 import org.junit.internal.AssumptionViolatedException;
 import org.junit.rules.RuleChain;
 import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
 
-/**
- * Base class for all Lucene unit tests, Junit3 or Junit4 variant.
- *
- * <h2>Class and instance setup.</h2>
- *
- * <p>The preferred way to specify class (suite-level) setup/cleanup is to use static methods
- * annotated with {@link BeforeClass} and {@link AfterClass}. Any code in these methods is executed
- * within the test framework's control and ensure proper setup has been made. <b>Try not to use
- * static initializers (including complex final field initializers).</b> Static initializers are
- * executed before any setup rules are fired and may cause you (or somebody else) headaches.
- *
- * <p>For instance-level setup, use {@link Before} and {@link After} annotated methods. If you
- * override either {@link #setUp()} or {@link #tearDown()} in your subclass, make sure you call
- * <code>super.setUp()</code> and <code>super.tearDown()</code>. This is detected and enforced.
- *
- * <h2>Specifying test cases</h2>
- *
- * <p>Any test method with a <code>testXXX</code> prefix is considered a test case. Any test method
- * annotated with {@link Test} is considered a test case.
- *
- * <h2>Randomized execution and test facilities</h2>
- *
- * <p>{@link LuceneTestCase} uses {@link RandomizedRunner} to execute test cases. {@link
- * RandomizedRunner} has built-in support for tests randomization including access to a repeatable
- * {@link Random} instance. See {@link #random()} method. Any test using {@link Random} acquired
- * from {@link #random()} should be fully reproducible (assuming no race conditions between threads
- * etc.). The initial seed for a test case is reported in many ways:
- *
- * <ul>
- *   <li>as part of any exception thrown from its body (inserted as a dummy stack trace entry),
- *   <li>as part of the main thread executing the test case (if your test hangs, just dump the stack
- *       trace of all threads and you'll see the seed),
- *   <li>the master seed can also be accessed manually by getting the current context ({@link
- *       RandomizedContext#current()}) and then calling {@link
- *       RandomizedContext#getRunnerSeedAsString()}.
- * </ul>
- */
+/// Base class for all Lucene unit tests (JUnit4 variant).
+///
+/// ## Class and instance setup
+///
+/// The preferred way to specify class (suite-level) setup/cleanup is to use static methods
+/// annotated with [BeforeClass] and [AfterClass]. Any code in these methods is executed
+/// within the test framework's control and ensure proper setup has been made. **Try not to use
+/// static initializers (including complex final field initializers).** Static initializers are
+/// executed before any setup rules are fired and may cause you (or somebody else) headaches.
+///
+/// For instance-level setup, use [Before] and [After] annotated methods. If you
+/// override either [#setUp()] or [#tearDown()] in your subclass, make sure you call
+/// `super.setUp()` and `super.tearDown()`. This is detected and enforced.
+///
+/// ## Specifying test cases
+///
+/// Any test method with a `testXXX` prefix is considered a test case. Any test method
+/// annotated with [org.junit.Test] is considered a test case. For example, these are equivalent
+/// declarations:
+///
+/// ```java
+/// public void testPrefixIsSufficient() {}
+///
+/// @Test
+/// public void annotationIsRequiredHere() {}
+/// ```
+///
+/// ## Randomized execution and test facilities
+///
+/// [LuceneTestCase] uses [RandomizedRunner] to execute test cases.
+/// [RandomizedRunner] has built-in support for tests randomization including access to a repeatable
+/// [Random] instance. See [#random()] method. Any test using [Random] acquired
+/// from [#random()] should be fully reproducible (assuming no race conditions between threads
+/// etc.). The initial seed for a test case is reported in many ways:
+///
+///   - as part of any exception thrown from its body (inserted as a dummy stack trace entry),
+///   - as part of the main thread executing the test case (if your test hangs, just dump the stack
+///     trace of all threads, and you'll see the seed),
+///   - the master seed can also be accessed manually by getting the current context (
+///     [RandomizedContext#current()]) and then calling
+///     [RandomizedContext#getRunnerSeedAsString()].
+///
 @RunWith(RandomizedRunner.class)
 @TestMethodProviders({LuceneJUnit3MethodProvider.class, JUnit4MethodProvider.class})
 @Listeners({RunListenerPrintReproduceInfo.class, FailureMarker.class})
@@ -363,6 +369,20 @@ public abstract class LuceneTestCase extends Assert {
   @Target(ElementType.TYPE)
   public @interface SuppressFileSystems {
     String[] value();
+  }
+
+  /**
+   * Annotation for test classes that should avoid specific asserting formats within the {@link
+   * AssertingCodec} while keeping other asserting formats active.
+   *
+   * @see org.apache.lucene.tests.codecs.asserting.AssertingCodec.Format
+   */
+  @Documented
+  @Inherited
+  @Retention(RetentionPolicy.RUNTIME)
+  @Target(ElementType.TYPE)
+  public @interface SuppressAssertingFormats {
+    AssertingCodec.Format[] value();
   }
 
   /**
@@ -980,8 +1000,9 @@ public abstract class LuceneTestCase extends Assert {
   /** create a new index writer config with random defaults using the specified random */
   public static IndexWriterConfig newIndexWriterConfig(Random r, Analyzer a) {
     IndexWriterConfig c = new IndexWriterConfig(a);
+    configureRandom(r, c.getCodec().compoundFormat());
     c.setSimilarity(classEnvRule.similarity);
-    if (VERBOSE) {
+    if (INFOSTREAM) {
       // Even though TestRuleSetupAndRestoreClassEnv calls
       // InfoStream.setDefault, we do it again here so that
       // the PrintStreamInfoStream.messageID increments so
@@ -1116,21 +1137,16 @@ public abstract class LuceneTestCase extends Assert {
     } else {
       logmp.setMergeFactor(TestUtil.nextInt(r, 10, 50));
     }
-    configureRandom(r, logmp);
     return logmp;
   }
 
-  private static void configureRandom(Random r, MergePolicy mergePolicy) {
-    if (r.nextBoolean()) {
-      mergePolicy.setNoCFSRatio(0.1 + r.nextDouble() * 0.8);
-    } else {
-      mergePolicy.setNoCFSRatio(r.nextBoolean() ? 1.0 : 0.0);
-    }
+  private static void configureRandom(Random r, CompoundFormat compoundFormat) {
+    compoundFormat.setShouldUseCompoundFile(random().nextBoolean());
 
     if (rarely(r)) {
-      mergePolicy.setMaxCFSSegmentSizeMB(0.2 + r.nextDouble() * 2.0);
+      compoundFormat.setMaxCFSSegmentSizeMB(0.2 + r.nextDouble() * 2.0);
     } else {
-      mergePolicy.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
+      compoundFormat.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     }
   }
 
@@ -1154,22 +1170,8 @@ public abstract class LuceneTestCase extends Assert {
       tmp.setTargetSearchConcurrency(TestUtil.nextInt(r, 2, 20));
     }
 
-    configureRandom(r, tmp);
     tmp.setDeletesPctAllowed(20 + random().nextDouble() * 30);
     return tmp;
-  }
-
-  public static MergePolicy newLogMergePolicy(boolean useCFS) {
-    MergePolicy logmp = newLogMergePolicy();
-    logmp.setNoCFSRatio(useCFS ? 1.0 : 0.0);
-    return logmp;
-  }
-
-  public static LogMergePolicy newLogMergePolicy(boolean useCFS, int mergeFactor) {
-    LogMergePolicy logmp = newLogMergePolicy();
-    logmp.setNoCFSRatio(useCFS ? 1.0 : 0.0);
-    logmp.setMergeFactor(mergeFactor);
-    return logmp;
   }
 
   public static LogMergePolicy newLogMergePolicy(int mergeFactor) {
@@ -1258,7 +1260,7 @@ public abstract class LuceneTestCase extends Assert {
 
     if (rarely(r)) {
       MergePolicy mp = c.getMergePolicy();
-      configureRandom(r, mp);
+      configureRandom(r, c.getCodec().compoundFormat());
       if (mp instanceof LogMergePolicy logmp) {
         logmp.setCalibrateSizeByDeletes(r.nextBoolean());
         if (rarely(r)) {
@@ -1279,7 +1281,7 @@ public abstract class LuceneTestCase extends Assert {
         } else {
           tmp.setSegmentsPerTier(TestUtil.nextInt(r, 10, 50));
         }
-        configureRandom(r, tmp);
+        configureRandom(r, c.getCodec().compoundFormat());
         tmp.setDeletesPctAllowed(20 + random().nextDouble() * 30);
       }
       didChange = true;
@@ -3200,7 +3202,6 @@ public abstract class LuceneTestCase extends Assert {
       // and might use many per-field codecs. turn on CFS for IW flushes
       // and ensure CFS ratio is reasonable to keep it contained.
       conf.setUseCompoundFile(true);
-      mp.setNoCFSRatio(Math.max(0.25d, mp.getNoCFSRatio()));
     }
     return conf;
   }
