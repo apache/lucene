@@ -477,9 +477,10 @@ public class HnswGraphBuilder implements HnswBuilder {
   private boolean diversityCheck(float score, NeighborArray neighbors, RandomVectorScorer scorer)
       throws IOException {
     int bulkCount = 0;
+    final int bulkScoreChunk = Math.min((neighbors.nodes().length + 1) / 2, bulkScoreNodes.length);
     for (int i = 0; i < neighbors.size(); i++) {
       bulkScoreNodes[bulkCount++] = neighbors.nodes()[i];
-      if (bulkCount == bulkScoreNodes.length || i == neighbors.size() - 1) {
+      if (bulkCount == bulkScoreChunk || i == neighbors.size() - 1) {
         if (scorer.bulkScore(bulkScoreNodes, bulkScores, bulkCount) >= score) {
           return false;
         }

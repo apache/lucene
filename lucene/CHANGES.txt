@@ -323,6 +323,9 @@ Optimizations
 
 * GITHUB#15592: Optimize DocIdSetIteratorAcceptDocs#cost. (Shubham Chaudhary)
 
+* GITHUB#15607: Utilize bulk scoring for diversity checking when building HNSW vector indices. This results
+  in some performance improvements during indexing and segment merges. (Ben Trent)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
