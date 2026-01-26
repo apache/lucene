@@ -267,7 +267,6 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     assumeTrue("merge is not stable", mergeIsStable());
     Directory dir = applyCreatedVersionMajor(newDirectory());
 
-    // do not use newMergePolicy that might return a MockMergePolicy that ignores the no-CFS ratio
     // do not use RIW which will change things up!
     MergePolicy mp = newTieredMergePolicy();
     IndexWriterConfig cfg = new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(mp);
