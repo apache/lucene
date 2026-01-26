@@ -59,17 +59,18 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
 
   public void testIntegration() throws Exception {
     try (Directory dir = newDirectory()) {
-      Codec codec = new Lucene104Codec() {
-        @Override
-        public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-          return new Lucene99SpannVectorsFormat();
-        }
-      };
+      Codec codec =
+          new Lucene104Codec() {
+            @Override
+            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+              return new Lucene99SpannVectorsFormat();
+            }
+          };
 
       IndexWriterConfig iwc = newIndexWriterConfig().setCodec(codec);
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("vec", new float[] { 1f, 2f, 3f }));
+        doc.add(new KnnFloatVectorField("vec", new float[] {1f, 2f, 3f}));
         writer.addDocument(doc);
         writer.commit();
       }
@@ -87,15 +88,16 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
     int numDocs = 1000;
     try (Directory dir = newDirectory()) {
       // Indexing with fixed parameters
-      IndexWriterConfig iwc = newIndexWriterConfig()
-          .setCodec(
-              new Lucene104Codec() {
-                @Override
-                public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                  return new Lucene99SpannVectorsFormat(10, 20, 256);
-                }
-              })
-          .setUseCompoundFile(false);
+      IndexWriterConfig iwc =
+          newIndexWriterConfig()
+              .setCodec(
+                  new Lucene104Codec() {
+                    @Override
+                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                      return new Lucene99SpannVectorsFormat(10, 20, 256);
+                    }
+                  })
+              .setUseCompoundFile(false);
 
       float[][] vectors = new float[numDocs][];
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
@@ -138,31 +140,34 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
         }
       }
 
-      SegmentReadState state = new SegmentReadState(
-          ((SegmentReader) leaf).directory(),
-          ((SegmentReader) leaf).getSegmentInfo().info,
-          leaf.getFieldInfos(),
-          IOContext.DEFAULT,
-          segmentSuffix);
-      KnnVectorsReader vecReader = new Lucene99SpannVectorsFormat(nprobe, 20, 256).fieldsReader(state);
+      SegmentReadState state =
+          new SegmentReadState(
+              ((SegmentReader) leaf).directory(),
+              ((SegmentReader) leaf).getSegmentInfo().info,
+              leaf.getFieldInfos(),
+              IOContext.DEFAULT,
+              segmentSuffix);
+      KnnVectorsReader vecReader =
+          new Lucene99SpannVectorsFormat(nprobe, 20, 256).fieldsReader(state);
       TopKnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
 
-      AcceptDocs acceptDocs = new AcceptDocs() {
-        @Override
-        public int cost() {
-          return ((SegmentReader) leaf).maxDoc();
-        }
+      AcceptDocs acceptDocs =
+          new AcceptDocs() {
+            @Override
+            public int cost() {
+              return ((SegmentReader) leaf).maxDoc();
+            }
 
-        @Override
-        public Bits bits() {
-          return ((SegmentReader) leaf).getLiveDocs();
-        }
+            @Override
+            public Bits bits() {
+              return ((SegmentReader) leaf).getLiveDocs();
+            }
 
-        @Override
-        public DocIdSetIterator iterator() throws java.io.IOException {
-          return DocIdSetIterator.all(((SegmentReader) leaf).maxDoc());
-        }
-      };
+            @Override
+            public DocIdSetIterator iterator() throws java.io.IOException {
+              return DocIdSetIterator.all(((SegmentReader) leaf).maxDoc());
+            }
+          };
 
       vecReader.search("vec", query, collector, acceptDocs);
       TopDocs docs = collector.topDocs();

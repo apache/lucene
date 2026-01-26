@@ -37,11 +37,8 @@ import org.apache.lucene.util.IOUtils;
 /**
  * Writes vectors in the SPANN (HNSW-IVF) format.
  *
- * <p>
- * Centroids are computed via K-Means and indexed into an HNSW-based coarse
- * quantizer. Vector
- * data is assigned to the nearest centroid and written sequentially in a
- * clustered format.
+ * <p>Centroids are computed via K-Means and indexed into an HNSW-based coarse quantizer. Vector
+ * data is assigned to the nearest centroid and written sequentially in a clustered format.
  */
 public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
 
@@ -124,13 +121,17 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
         }
       }
 
-      float[][] centroids = SpannKMeans.cluster(
-          trainingVectors, numPartitions, fieldInfo.getVectorSimilarityFunction(), KMEANS_MAX_ITERS);
+      float[][] centroids =
+          SpannKMeans.cluster(
+              trainingVectors,
+              numPartitions,
+              fieldInfo.getVectorSimilarityFunction(),
+              KMEANS_MAX_ITERS);
 
       if (fieldInfo.getVectorEncoding() == VectorEncoding.BYTE) {
         @SuppressWarnings("unchecked")
-        KnnFieldVectorsWriter<byte[]> byteCentroidWriter = (KnnFieldVectorsWriter<byte[]>) centroidDelegate
-            .addField(fieldInfo);
+        KnnFieldVectorsWriter<byte[]> byteCentroidWriter =
+            (KnnFieldVectorsWriter<byte[]>) centroidDelegate.addField(fieldInfo);
         for (int partitionId = 0; partitionId < centroids.length; partitionId++) {
           byte[] byteCentroid = new byte[centroids[partitionId].length];
           for (int k = 0; k < centroids[partitionId].length; k++) {
@@ -140,8 +141,8 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
         }
       } else {
         @SuppressWarnings("unchecked")
-        KnnFieldVectorsWriter<float[]> floatCentroidWriter = (KnnFieldVectorsWriter<float[]>) centroidDelegate
-            .addField(fieldInfo);
+        KnnFieldVectorsWriter<float[]> floatCentroidWriter =
+            (KnnFieldVectorsWriter<float[]>) centroidDelegate.addField(fieldInfo);
         for (int partitionId = 0; partitionId < centroids.length; partitionId++) {
           floatCentroidWriter.addValue(partitionId, centroids[partitionId]);
         }
@@ -174,10 +175,12 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
         partitionDocIds.get(bestCentroid).add(docId);
       }
 
-      String dataFileName = IndexFileNames.segmentFileName(
-          state.segmentInfo.name, state.segmentSuffix, fieldName + ".spad");
-      String metaFileName = IndexFileNames.segmentFileName(
-          state.segmentInfo.name, state.segmentSuffix, fieldName + ".spam");
+      String dataFileName =
+          IndexFileNames.segmentFileName(
+              state.segmentInfo.name, state.segmentSuffix, fieldName + ".spad");
+      String metaFileName =
+          IndexFileNames.segmentFileName(
+              state.segmentInfo.name, state.segmentSuffix, fieldName + ".spam");
 
       try (IndexOutput dataOut = state.directory.createOutput(dataFileName, state.context);
           IndexOutput metaOut = state.directory.createOutput(metaFileName, state.context)) {

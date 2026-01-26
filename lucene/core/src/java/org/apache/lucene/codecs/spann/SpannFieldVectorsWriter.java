@@ -26,9 +26,7 @@ import org.apache.lucene.util.RamUsageEstimator;
 /**
  * Buffers vectors in memory until flush.
  *
- * <p>
- * Future improvements could include off-heap or disk-backed buffering (e.g.
- * ByteBlockPool) to
+ * <p>Future improvements could include off-heap or disk-backed buffering (e.g. ByteBlockPool) to
  * support larger segments without significant heap pressure.
  */
 public class SpannFieldVectorsWriter extends KnnFieldVectorsWriter<float[]> {

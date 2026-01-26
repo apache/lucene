@@ -27,16 +27,12 @@ import org.apache.lucene.index.SegmentWriteState;
 /**
  * Lucene 9.9 SPANN Vectors Format.
  *
- * <p>
- * This format implements the <b>Disk-Resident HNSW-IVF</b> architecture. It is
- * a composite codec
+ * <p>This format implements the <b>Disk-Resident HNSW-IVF</b> architecture. It is a composite codec
  * that delegates:
  *
  * <ul>
- * <li><b>Navigation</b>: To {@link Lucene99HnswVectorsFormat} (Off-Heap
- * Centroids).
- * <li><b>Storage</b>: To a local sequential implementation (Disk-Resident
- * Data).
+ *   <li><b>Navigation</b>: To {@link Lucene99HnswVectorsFormat} (Off-Heap Centroids).
+ *   <li><b>Storage</b>: To a local sequential implementation (Disk-Resident Data).
  * </ul>
  */
 public final class Lucene99SpannVectorsFormat extends KnnVectorsFormat {
@@ -47,8 +43,7 @@ public final class Lucene99SpannVectorsFormat extends KnnVectorsFormat {
   public static final int DEFAULT_CLUSTERING_SAMPLE = 16384;
 
   /**
-   * We delegate the "Centroid Index" to HNSW. This allows us to use off-heap
-   * navigation for
+   * We delegate the "Centroid Index" to HNSW. This allows us to use off-heap navigation for
    * millions of centroids.
    */
   private final KnnVectorsFormat centroidIndexFormat;

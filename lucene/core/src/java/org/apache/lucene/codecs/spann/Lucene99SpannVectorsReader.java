@@ -58,10 +58,12 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
 
     for (FieldInfo fieldInfo : state.fieldInfos) {
       if (fieldInfo.hasVectorValues()) {
-        String metaFileName = IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, fieldInfo.name + ".spam");
-        String dataFileName = IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, fieldInfo.name + ".spad");
+        String metaFileName =
+            IndexFileNames.segmentFileName(
+                state.segmentInfo.name, state.segmentSuffix, fieldInfo.name + ".spam");
+        String dataFileName =
+            IndexFileNames.segmentFileName(
+                state.segmentInfo.name, state.segmentSuffix, fieldInfo.name + ".spad");
 
         IndexInput metaIn = null;
         IndexInput dataIn = null;
@@ -104,9 +106,10 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
           long[] ordToOffset = new long[totalSize];
           int currentOrd = 0;
           IndexInput dataInClone = dataIn.clone();
-          int vectorByteWidth = fieldInfo.getVectorEncoding() == VectorEncoding.BYTE
-              ? fieldInfo.getVectorDimension()
-              : fieldInfo.getVectorDimension() * Float.BYTES;
+          int vectorByteWidth =
+              fieldInfo.getVectorEncoding() == VectorEncoding.BYTE
+                  ? fieldInfo.getVectorDimension()
+                  : fieldInfo.getVectorDimension() * Float.BYTES;
 
           for (Integer pId : offsets.keySet()) {
             long start = offsets.get(pId);
@@ -382,7 +385,8 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return entry.fieldInfo
+          return entry
+              .fieldInfo
               .getVectorSimilarityFunction()
               .compare(target, copy.vectorValue(it.index()));
         }
@@ -451,7 +455,8 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return entry.fieldInfo
+          return entry
+              .fieldInfo
               .getVectorSimilarityFunction()
               .compare(target, copy.vectorValue(it.index()));
         }
