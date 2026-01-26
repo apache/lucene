@@ -1,19 +1,19 @@
 /*
-* Licensed to the Apache Software Foundation (ASF) under one or more
-* contributor license agreements.  See the NOTICE file distributed with
-* this work for additional information regarding copyright ownership.
-* The ASF licenses this file to You under the Apache License, Version 2.0
-* (the "License"); you may not use this file except in compliance with
-* the License.  You may obtain a copy of the License at
-*
-*     http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.lucene.codecs.spann;
 
 import java.io.IOException;
@@ -23,11 +23,10 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.ByteVectorValues;
-import org.apache.lucene.index.KnnVectorValues.DocIndexIterator;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.index.KnnVectorValues.DocIndexIterator;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.AcceptDocs;
@@ -35,26 +34,26 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.VectorUtil;
 
 /**
-* Reader for SPANN (HNSW-IVF) vectors.
-*
-* @lucene.experimental
-*/
+ * Reader for SPANN (HNSW-IVF) vectors.
+ *
+ * @lucene.experimental
+ */
 public class Lucene99SpannVectorsReader extends KnnVectorsReader {
 
   private final KnnVectorsReader centroidDelegate;
   private final Map<String, SpannFieldEntry> fields = new HashMap<>();
+  private final int nprobe;
 
-  public Lucene99SpannVectorsReader(SegmentReadState state, KnnVectorsFormat centroidFormat)
-      throws IOException {
+  public Lucene99SpannVectorsReader(
+      SegmentReadState state, KnnVectorsFormat centroidFormat, int nprobe) throws IOException {
+    this.nprobe = nprobe;
     this.centroidDelegate = centroidFormat.fieldsReader(state);
 
     for (FieldInfo fieldInfo : state.fieldInfos) {
@@ -69,12 +68,18 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
         boolean success = false;
 
         try {
+          // Probe for the "spam" (Meta) file.
+          // If it's missing, this field is likely managed by another codec (e.g., HNSW).
+          // We must catch this to allow mixed-codec segments.
           metaIn = state.directory.openInput(metaFileName, state.context);
         } catch (java.nio.file.NoSuchFileException | java.io.FileNotFoundException e) {
           continue;
         }
 
         try {
+          // If we found the meta file, we assume this IS a SPANN field.
+          // Any subsequent missing files (like .spad) or corruption MUST throw an
+          // exception.
           CodecUtil.checkIndexHeader(
               metaIn, "Lucene99SpannMeta", 0, 0, state.segmentInfo.getId(), state.segmentSuffix);
 
@@ -116,9 +121,10 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
             }
           }
 
-          fields.put(fieldInfo.name,
-              new SpannFieldEntry(offsets, lengths, dataIn, fieldInfo, totalSize, ordToDocId,
-                  ordToOffset));
+          fields.put(
+              fieldInfo.name,
+              new SpannFieldEntry(
+                  offsets, lengths, dataIn, fieldInfo, totalSize, ordToDocId, ordToOffset));
           success = true;
         } finally {
           if (!success) {
@@ -214,7 +220,6 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
 
   private TopDocs searchCentroids(String field, float[] target, AcceptDocs acceptDocs)
       throws IOException {
-    int nprobe = 10;
     TopKnnCollector coarseCollector = new TopKnnCollector(nprobe, Integer.MAX_VALUE);
     centroidDelegate.search(field, target, coarseCollector, acceptDocs);
     return coarseCollector.topDocs();
@@ -222,14 +227,18 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
 
   private TopDocs searchCentroids(String field, byte[] target, AcceptDocs acceptDocs)
       throws IOException {
-    int nprobe = 10;
     TopKnnCollector coarseCollector = new TopKnnCollector(nprobe, Integer.MAX_VALUE);
     centroidDelegate.search(field, target, coarseCollector, acceptDocs);
     return coarseCollector.topDocs();
   }
 
-  private void searchFine(SpannFieldEntry entry, float[] target, TopDocs topCentroids,
-      KnnCollector knnCollector, AcceptDocs acceptDocs) throws IOException {
+  private void searchFine(
+      SpannFieldEntry entry,
+      float[] target,
+      TopDocs topCentroids,
+      KnnCollector knnCollector,
+      AcceptDocs acceptDocs)
+      throws IOException {
     IndexInput dataIn = entry.dataIn.clone();
     for (ScoreDoc centroidDoc : topCentroids.scoreDocs) {
       int partitionId = centroidDoc.doc;
@@ -243,29 +252,33 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
       dataIn.seek(startOffset);
       long endOffset = startOffset + lengthBytes;
 
+      Bits acceptedBits = acceptDocs == null ? null : acceptDocs.bits();
       boolean isByte = entry.fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
       byte[] byteTarget = null;
+      byte[] vectorBytes = null;
+      float[] vectorFloats = null;
+
       if (isByte) {
         byteTarget = new byte[target.length];
+        vectorBytes = new byte[target.length];
         for (int i = 0; i < target.length; i++) {
           byteTarget[i] = (byte) target[i];
         }
+      } else {
+        vectorFloats = new float[target.length];
       }
 
       while (dataIn.getFilePointer() < endOffset) {
         int docId = dataIn.readInt();
         float score;
         if (isByte) {
-          byte[] vector = new byte[target.length];
-          dataIn.readBytes(vector, 0, vector.length);
-          score = entry.fieldInfo.getVectorSimilarityFunction().compare(byteTarget, vector);
+          dataIn.readBytes(vectorBytes, 0, vectorBytes.length);
+          score = entry.fieldInfo.getVectorSimilarityFunction().compare(byteTarget, vectorBytes);
         } else {
-          float[] vector = new float[target.length];
-          dataIn.readFloats(vector, 0, vector.length);
-          score = entry.fieldInfo.getVectorSimilarityFunction().compare(target, vector);
+          dataIn.readFloats(vectorFloats, 0, vectorFloats.length);
+          score = entry.fieldInfo.getVectorSimilarityFunction().compare(target, vectorFloats);
         }
 
-        Bits acceptedBits = acceptDocs == null ? null : acceptDocs.bits();
         knnCollector.incVisitedCount(1);
         if (acceptedBits == null || acceptedBits.get(docId)) {
           knnCollector.collect(docId, score);
@@ -291,8 +304,14 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
     final int[] ordToDocId;
     final long[] ordToOffset;
 
-    SpannFieldEntry(Map<Integer, Long> offsets, Map<Integer, Long> lengths, IndexInput dataIn,
-        FieldInfo fieldInfo, int totalSize, int[] ordToDocId, long[] ordToOffset) {
+    SpannFieldEntry(
+        Map<Integer, Long> offsets,
+        Map<Integer, Long> lengths,
+        IndexInput dataIn,
+        FieldInfo fieldInfo,
+        int totalSize,
+        int[] ordToDocId,
+        long[] ordToOffset) {
       this.offsets = offsets;
       this.lengths = lengths;
       this.dataIn = dataIn;
@@ -363,7 +382,9 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return entry.fieldInfo.getVectorSimilarityFunction().compare(target, copy.vectorValue(it.index()));
+          return entry.fieldInfo
+              .getVectorSimilarityFunction()
+              .compare(target, copy.vectorValue(it.index()));
         }
 
         @Override
@@ -430,7 +451,9 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
-          return entry.fieldInfo.getVectorSimilarityFunction().compare(target, copy.vectorValue(it.index()));
+          return entry.fieldInfo
+              .getVectorSimilarityFunction()
+              .compare(target, copy.vectorValue(it.index()));
         }
 
         @Override
