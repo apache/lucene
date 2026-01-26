@@ -175,7 +175,7 @@ public final class RunListenerPrintReproduceInfo extends RunListener {
     }
 
     final StringBuilder b = new StringBuilder();
-    b.append("NOTE: reproduce with: gradlew test ");
+    b.append("NOTE: reproduce with: ./gradlew test ");
 
     // Figure out the test case name and method, if any.
     String testClass = RandomizedContext.current().getTargetClass().getSimpleName();
