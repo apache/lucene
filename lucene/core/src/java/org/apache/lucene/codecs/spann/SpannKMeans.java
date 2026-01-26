@@ -35,7 +35,7 @@ public class SpannKMeans {
   public static float[][] cluster(
       float[][] vectors, int k, VectorSimilarityFunction similarityFunction, int maxIterations) {
     if (vectors.length < k) {
-      return Arrays.copyOf(vectors, vectors.length);
+      return vectors.clone();
     }
 
     int dim = vectors[0].length;

@@ -26,7 +26,6 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.KnnVectorValues.DocIndexIterator;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.AcceptDocs;
@@ -74,7 +73,7 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
           // If it's missing, this field is likely managed by another codec (e.g., HNSW).
           // We must catch this to allow mixed-codec segments.
           metaIn = state.directory.openInput(metaFileName, state.context);
-        } catch (java.nio.file.NoSuchFileException | java.io.FileNotFoundException e) {
+        } catch (java.nio.file.NoSuchFileException | java.io.FileNotFoundException _) {
           continue;
         }
 
@@ -328,7 +327,7 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
   private static class SpannFloatVectorValues extends FloatVectorValues {
     private final SpannFieldEntry entry;
     private final IndexInput dataIn;
-    private int currentDoc = -1;
+
     private float[] currentVector;
 
     SpannFloatVectorValues(SpannFieldEntry entry) throws IOException {
