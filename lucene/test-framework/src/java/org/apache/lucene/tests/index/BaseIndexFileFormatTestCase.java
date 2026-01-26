@@ -272,9 +272,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     MergePolicy mp = newTieredMergePolicy();
     IndexWriterConfig cfg =
         new IndexWriterConfig(new MockAnalyzer(random()))
-            .setUseCompoundFile(false)
             .setMergePolicy(mp);
-    cfg.getCodec().compoundFormat().setShouldUseCompoundFile(false);
     if (VERBOSE) {
       cfg.setInfoStream(System.out);
     }
@@ -294,9 +292,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     mp = newTieredMergePolicy();
     cfg =
         new IndexWriterConfig(new MockAnalyzer(random()))
-            .setUseCompoundFile(false)
             .setMergePolicy(mp);
-    cfg.getCodec().compoundFormat().setShouldUseCompoundFile(false);
     w = new IndexWriter(dir2, cfg);
     TestUtil.addIndexesSlowly(w, reader);
 
