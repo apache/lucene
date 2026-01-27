@@ -689,8 +689,7 @@ final class DocumentsWriter implements Closeable, Accountable {
   void finishFullFlush(boolean success) throws IOException {
     try {
       if (infoStream.isEnabled("DW")) {
-        infoStream.message(
-            "DW", Thread.currentThread().getName() + " finishFullFlush success=" + success);
+        infoStream.message("DW", " finishFullFlush success=" + success);
       }
       assert setFlushingDeleteQueue(null);
       if (success) {
