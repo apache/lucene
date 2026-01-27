@@ -42,6 +42,13 @@ public class SpannKMeans {
     float[][] centroids = new float[k][dim];
     Random random = new Random(SEED);
 
+    // If we have significantly more vectors than K (and sample limit), we should
+    // sample.
+    // Ideally this sampling happens before calling cluster(), but we can also
+    // enforce it here
+    // or provide a helper.
+    // For now, we assume the caller passes the training set.
+
     // K-Means++ Initialization
     int firstIdx = random.nextInt(vectors.length);
     centroids[0] = vectors[firstIdx].clone();
@@ -131,5 +138,22 @@ public class SpannKMeans {
     }
 
     return centroids;
+  }
+
+  /**
+   * Deterministically downsamples a list of vectors to a maximum target size. Useful for reducing
+   * clustering overhead on large datasets.
+   */
+  public static float[][] downsample(float[][] vectors, int maxSampleSize) {
+    if (vectors.length <= maxSampleSize) {
+      return vectors;
+    }
+
+    int step = vectors.length / maxSampleSize;
+    float[][] sampled = new float[maxSampleSize][];
+    for (int i = 0; i < maxSampleSize; i++) {
+      sampled[i] = vectors[i * step];
+    }
+    return sampled;
   }
 }

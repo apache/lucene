@@ -49,6 +49,7 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
   private final Map<String, SpannFieldVectorsWriter> fieldWriters = new HashMap<>();
   private final int maxPartitions;
   private final int clusteringSampleSize;
+  private final int replicationFactor;
 
   public Lucene99SpannVectorsWriter(
       SegmentWriteState state,
@@ -56,10 +57,21 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
       int maxPartitions,
       int clusteringSampleSize)
       throws IOException {
+    this(state, centroidFormat, maxPartitions, clusteringSampleSize, 1);
+  }
+
+  public Lucene99SpannVectorsWriter(
+      SegmentWriteState state,
+      KnnVectorsFormat centroidFormat,
+      int maxPartitions,
+      int clusteringSampleSize,
+      int replicationFactor)
+      throws IOException {
     this.state = state;
     this.centroidDelegate = centroidFormat.fieldsWriter(state);
     this.maxPartitions = maxPartitions;
     this.clusteringSampleSize = clusteringSampleSize;
+    this.replicationFactor = replicationFactor;
   }
 
   @Override
@@ -95,7 +107,12 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
 
   @Override
   public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
+    // We already collected data in addValue; we wait for finish() to write SPANN
+    // files
+  }
 
+  @Override
+  public void finish() throws IOException {
     for (Map.Entry<String, SpannFieldVectorsWriter> entry : fieldWriters.entrySet()) {
       String fieldName = entry.getKey();
       SpannFieldVectorsWriter writer = entry.getValue();
@@ -111,15 +128,7 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
       int numPartitions = Math.min(vectorArray.length, maxPartitions);
 
       // Downsample to keep flush time constant
-      // Cap at max(clusteringSampleSize, 256 * numPartitions)
-      float[][] trainingVectors = vectorArray;
-      if (vectorArray.length > clusteringSampleSize) {
-        int step = vectorArray.length / clusteringSampleSize;
-        trainingVectors = new float[clusteringSampleSize][];
-        for (int i = 0; i < clusteringSampleSize; i++) {
-          trainingVectors[i] = vectorArray[i * step];
-        }
-      }
+      float[][] trainingVectors = SpannKMeans.downsample(vectorArray, clusteringSampleSize);
 
       float[][] centroids =
           SpannKMeans.cluster(
@@ -158,21 +167,42 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
       VectorSimilarityFunction simFunc = fieldInfo.getVectorSimilarityFunction();
       List<float[]> vectors = writer.getVectors();
       List<Integer> docIds = writer.getDocIds();
+      int totalAssignments = 0;
+
       for (int i = 0; i < vectors.size(); i++) {
         float[] vector = vectors.get(i);
         int docId = docIds.get(i);
-        int bestCentroid = 0;
-        float bestScore = Float.NEGATIVE_INFINITY;
+
+        // Find top K centroids
+        int[] bestCentroids = new int[replicationFactor];
+        float[] bestScores = new float[replicationFactor];
+        java.util.Arrays.fill(bestScores, Float.NEGATIVE_INFINITY);
 
         for (int c = 0; c < centroids.length; c++) {
           float score = simFunc.compare(vector, centroids[c]);
-          if (score > bestScore) {
-            bestScore = score;
-            bestCentroid = c;
+          // Insert into sorted list/array if better
+          // Linear scan for small replication factor is fastest
+          for (int r = 0; r < replicationFactor; r++) {
+            if (score > bestScores[r]) {
+              // Shift right
+              for (int k = replicationFactor - 1; k > r; k--) {
+                bestScores[k] = bestScores[k - 1];
+                bestCentroids[k] = bestCentroids[k - 1];
+              }
+              bestScores[r] = score;
+              bestCentroids[r] = c;
+              break;
+            }
           }
         }
-        partitions.get(bestCentroid).add(vector);
-        partitionDocIds.get(bestCentroid).add(docId);
+
+        for (int r = 0; r < replicationFactor; r++) {
+          if (bestScores[r] > Float.NEGATIVE_INFINITY) {
+            partitions.get(bestCentroids[r]).add(vector);
+            partitionDocIds.get(bestCentroids[r]).add(docId);
+            totalAssignments++;
+          }
+        }
       }
 
       String dataFileName =
@@ -190,7 +220,7 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
         CodecUtil.writeIndexHeader(
             metaOut, "Lucene99SpannMeta", 0, state.segmentInfo.getId(), state.segmentSuffix);
 
-        metaOut.writeVInt(vectors.size());
+        metaOut.writeVInt(totalAssignments); // Write total stored vectors, not unique docs
         for (int partitionId = 0; partitionId < partitions.size(); partitionId++) {
           List<float[]> clusterVectors = partitions.get(partitionId);
           long startOffset = dataOut.getFilePointer();
@@ -222,7 +252,8 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
       }
     }
 
-    centroidDelegate.flush(maxDoc, sortMap);
+    centroidDelegate.flush(1, null); // maxDoc actually doesn't matter much for our use case here
+    centroidDelegate.finish();
   }
 
   @Override
@@ -232,11 +263,6 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
       total += writer.ramBytesUsed();
     }
     return total;
-  }
-
-  @Override
-  public void finish() throws IOException {
-    centroidDelegate.finish();
   }
 
   @Override

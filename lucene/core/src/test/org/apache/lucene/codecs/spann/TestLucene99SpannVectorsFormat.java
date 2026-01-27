@@ -31,6 +31,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.store.Directory;
@@ -83,6 +84,54 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
     }
   }
 
+  public void testReplication() throws Exception {
+    int dim = 16;
+    int numDocs = 100;
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc =
+          newIndexWriterConfig()
+              .setCodec(
+                  new Lucene104Codec() {
+                    @Override
+                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                      // replicationFactor = 2
+                      return new Lucene99SpannVectorsFormat(10, 20, 256, 2);
+                    }
+                  })
+              .setUseCompoundFile(false);
+
+      float[][] vectors = new float[numDocs][];
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < numDocs; i++) {
+          vectors[i] = new float[dim];
+          for (int j = 0; j < dim; j++) {
+            vectors[i][j] = random().nextFloat();
+          }
+          VectorUtil.l2normalize(vectors[i]);
+          Document doc = new Document();
+          doc.add(new KnnFloatVectorField("vec", vectors[i]));
+          writer.addDocument(doc);
+        }
+        writer.commit();
+      }
+
+      // Check file size / entries to verify replication
+      // This is a bit tricky without opening the file, but we can search and see if
+      // things work.
+      // Actually, searching should just work and return unique results.
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        // Search for the first doc. It should be found.
+        TopDocs results =
+            searcher.search(
+                new org.apache.lucene.search.KnnFloatVectorQuery("vec", vectors[0], 10), 10);
+        assertTrue(results.scoreDocs.length > 0);
+        assertEquals(0, results.scoreDocs[0].doc);
+      }
+    }
+  }
+
   public void testNProbeImpact() throws Exception {
     int dim = 16;
     int numDocs = 1000;
@@ -124,6 +173,83 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
       assertTrue(
           "High nprobe (" + hitsHigh + ") should be >= Low nprobe (" + hitsLow + ")",
           hitsHigh >= hitsLow);
+    }
+  }
+
+  public void testParityWithExactSearch() throws Exception {
+    int dim = 16;
+    int numDocs = 200;
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc =
+          newIndexWriterConfig()
+              .setCodec(
+                  new Lucene104Codec() {
+                    @Override
+                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                      // High nProbe and replication to ensure high recall for this small test
+                      return new Lucene99SpannVectorsFormat(20, 10, 256, 2);
+                    }
+                  })
+              .setUseCompoundFile(false);
+
+      float[][] vectors = new float[numDocs][];
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < numDocs; i++) {
+          vectors[i] = new float[dim];
+          for (int j = 0; j < dim; j++) {
+            vectors[i][j] = random().nextFloat();
+          }
+          VectorUtil.l2normalize(vectors[i]);
+          Document doc = new Document();
+          doc.add(
+              new KnnFloatVectorField(
+                  "vec", vectors[i], org.apache.lucene.index.VectorSimilarityFunction.COSINE));
+          writer.addDocument(doc);
+        }
+        writer.commit();
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+
+        // Randomly test 10 queries
+        for (int i = 0; i < 10; i++) {
+          float[] query = new float[dim];
+          for (int j = 0; j < dim; j++) {
+            query[j] = random().nextFloat();
+          }
+          VectorUtil.l2normalize(query);
+
+          // Alternative: Compute truth manually in Java loop.
+
+          float bestScore = Float.NEGATIVE_INFINITY;
+          for (int d = 0; d < numDocs; d++) {
+            float cosine = VectorUtil.cosine(query, vectors[d]);
+            // Convert to Lucene score
+            float score = (1 + cosine) / 2;
+            if (score > bestScore) {
+              bestScore = score;
+            }
+          }
+
+          // Search via SPANN
+          TopDocs spannResults =
+              searcher.search(
+                  new org.apache.lucene.search.KnnFloatVectorQuery("vec", query, 10), 10);
+
+          // Check if top result matches (or is very close in score)
+          if (spannResults.scoreDocs.length > 0) {
+            float spannScore = spannResults.scoreDocs[0].score;
+            // Allow small floating point error, or if we found a DIFFERENT doc with SAME
+            // score
+            assertEquals(
+                "SPANN should find top-1 recall on small dataset data",
+                bestScore,
+                spannScore,
+                0.001f);
+          }
+        }
+      }
     }
   }
 

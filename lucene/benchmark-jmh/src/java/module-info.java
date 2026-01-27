@@ -17,7 +17,8 @@
 
 /** Lucene JMH benchmarks. */
 
-// jmh.core is not modularized and causes a warning. Suppressing it until it is modularized.
+// jmh.core is not modularized and causes a warning. Suppressing it until it is
+// modularized.
 @SuppressWarnings("requires-automatic")
 module org.apache.lucene.benchmark.jmh {
   requires jmh.core;
@@ -28,4 +29,7 @@ module org.apache.lucene.benchmark.jmh {
 
   exports org.apache.lucene.benchmark.jmh;
   exports org.apache.lucene.benchmark.jmh.jmh_generated;
+
+  provides org.apache.lucene.codecs.Codec with
+      org.apache.lucene.benchmark.jmh.SpannBenchmarkCodec;
 }

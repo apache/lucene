@@ -49,10 +49,12 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
   private final KnnVectorsReader centroidDelegate;
   private final Map<String, SpannFieldEntry> fields = new HashMap<>();
   private final int nprobe;
+  private final int maxDoc;
 
   public Lucene99SpannVectorsReader(
       SegmentReadState state, KnnVectorsFormat centroidFormat, int nprobe) throws IOException {
     this.nprobe = nprobe;
+    this.maxDoc = state.segmentInfo.maxDoc();
     this.centroidDelegate = centroidFormat.fieldsReader(state);
 
     for (FieldInfo fieldInfo : state.fieldInfos) {
@@ -182,18 +184,11 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
       return;
     }
 
-    TopDocs topCentroids;
-    if (entry.fieldInfo.getVectorEncoding() == VectorEncoding.BYTE) {
-      byte[] byteTarget = new byte[target.length];
-      for (int i = 0; i < target.length; i++) {
-        byteTarget[i] = (byte) target[i];
-      }
-      topCentroids = searchCentroids(field, byteTarget, acceptDocs);
-    } else {
-      topCentroids = searchCentroids(field, target, acceptDocs);
+    if (entry.fieldInfo.getVectorEncoding() != VectorEncoding.FLOAT32) {
+      throw new IllegalArgumentException("float[] query on BYTE field");
     }
-
-    searchFine(entry, target, topCentroids, knnCollector, acceptDocs);
+    TopDocs topCentroids = searchCentroids(field, target, acceptDocs);
+    searchFine(entry, target, null, topCentroids, knnCollector, acceptDocs);
   }
 
   @Override
@@ -205,19 +200,13 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
       return;
     }
 
-    TopDocs topCentroids;
-    float[] floatTarget = new float[target.length];
-    for (int i = 0; i < target.length; i++) {
-      floatTarget[i] = (float) target[i];
+    if (entry.fieldInfo.getVectorEncoding() != VectorEncoding.BYTE) {
+      throw new IllegalArgumentException("byte[] query on FLOAT32 field");
     }
 
-    if (entry.fieldInfo.getVectorEncoding() == VectorEncoding.BYTE) {
-      topCentroids = searchCentroids(field, target, acceptDocs);
-    } else {
-      topCentroids = searchCentroids(field, floatTarget, acceptDocs);
-    }
-
-    searchFine(entry, floatTarget, topCentroids, knnCollector, acceptDocs);
+    TopDocs topCentroids = searchCentroids(field, target, acceptDocs);
+    // Explicitly pass null for float target
+    searchFine(entry, null, target, topCentroids, knnCollector, acceptDocs);
   }
 
   private TopDocs searchCentroids(String field, float[] target, AcceptDocs acceptDocs)
@@ -236,13 +225,50 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
 
   private void searchFine(
       SpannFieldEntry entry,
-      float[] target,
+      float[] floatTarget,
+      byte[] byteTarget,
       TopDocs topCentroids,
       KnnCollector knnCollector,
       AcceptDocs acceptDocs)
       throws IOException {
     IndexInput dataIn = entry.dataIn.clone();
+    boolean isByte = entry.fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
+    byte[] vectorBytes = null;
+    float[] vectorFloats = null;
+
+    if (isByte) {
+      if (byteTarget == null) {
+        throw new IllegalArgumentException("Byte target cannot be null for BYTE field");
+      }
+      vectorBytes = new byte[byteTarget.length];
+    } else {
+      if (floatTarget == null) {
+        throw new IllegalArgumentException("Float target cannot be null for FLOAT32 field");
+      }
+      vectorFloats = new float[floatTarget.length];
+    }
+
+    org.apache.lucene.util.SparseFixedBitSet visitedDocs =
+        new org.apache.lucene.util.SparseFixedBitSet(maxDoc);
+
+    // Short-circuiting: find the best centroid score first to establish a baseline
+    float bestCentroidScore = Float.NEGATIVE_INFINITY;
+    if (topCentroids.scoreDocs.length > 0) {
+      bestCentroidScore = topCentroids.scoreDocs[0].score;
+    }
+
+    // Prune partitions that are significantly worse than the best one
+    final float DYNAMIC_PRUNING_THRESHOLD = 0.2f;
+
     for (ScoreDoc centroidDoc : topCentroids.scoreDocs) {
+      // Dynamic Pruning
+      // If the current centroid is much worse than the best centroid, skip scanning
+      // its full posting list.
+      // This saves massive I/O on "long-tail" nProbe matches.
+      if (bestCentroidScore - centroidDoc.score > DYNAMIC_PRUNING_THRESHOLD) {
+        continue;
+      }
+
       int partitionId = centroidDoc.doc;
 
       long startOffset = entry.offsets.getOrDefault(partitionId, -1L);
@@ -251,34 +277,33 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
       }
 
       long lengthBytes = entry.lengths.get(partitionId);
-      dataIn.seek(startOffset);
       long endOffset = startOffset + lengthBytes;
+      dataIn.seek(startOffset);
 
       Bits acceptedBits = acceptDocs == null ? null : acceptDocs.bits();
-      boolean isByte = entry.fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
-      byte[] byteTarget = null;
-      byte[] vectorBytes = null;
-      float[] vectorFloats = null;
-
-      if (isByte) {
-        byteTarget = new byte[target.length];
-        vectorBytes = new byte[target.length];
-        for (int i = 0; i < target.length; i++) {
-          byteTarget[i] = (byte) target[i];
-        }
-      } else {
-        vectorFloats = new float[target.length];
-      }
 
       while (dataIn.getFilePointer() < endOffset) {
         int docId = dataIn.readInt();
+
+        // Skip duplicates
+        if (visitedDocs.get(docId)) {
+          // Already visited, just skip vector bytes
+          if (isByte) {
+            dataIn.skipBytes(vectorBytes.length);
+          } else {
+            dataIn.skipBytes(vectorFloats.length * Float.BYTES);
+          }
+          continue;
+        }
+        visitedDocs.set(docId);
+
         float score;
         if (isByte) {
           dataIn.readBytes(vectorBytes, 0, vectorBytes.length);
           score = entry.fieldInfo.getVectorSimilarityFunction().compare(byteTarget, vectorBytes);
         } else {
           dataIn.readFloats(vectorFloats, 0, vectorFloats.length);
-          score = entry.fieldInfo.getVectorSimilarityFunction().compare(target, vectorFloats);
+          score = entry.fieldInfo.getVectorSimilarityFunction().compare(floatTarget, vectorFloats);
         }
 
         knnCollector.incVisitedCount(1);

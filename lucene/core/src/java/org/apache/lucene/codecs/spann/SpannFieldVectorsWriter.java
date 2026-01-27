@@ -23,12 +23,7 @@ import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.util.RamUsageEstimator;
 
-/**
- * Buffers vectors in memory until flush.
- *
- * <p>Future improvements could include off-heap or disk-backed buffering (e.g. ByteBlockPool) to
- * support larger segments without significant heap pressure.
- */
+/** Buffers vectors in memory until flush. */
 public class SpannFieldVectorsWriter extends KnnFieldVectorsWriter<float[]> {
   private final FieldInfo fieldInfo;
   private final List<float[]> vectors = new ArrayList<>();

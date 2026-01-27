@@ -41,6 +41,7 @@ public final class Lucene99SpannVectorsFormat extends KnnVectorsFormat {
   public static final int DEFAULT_N_PROBE = 10;
   public static final int DEFAULT_NUM_PARTITIONS = 100;
   public static final int DEFAULT_CLUSTERING_SAMPLE = 16384;
+  public static final int DEFAULT_REPLICATION_FACTOR = 1;
 
   /**
    * We delegate the "Centroid Index" to HNSW. This allows us to use off-heap navigation for
@@ -51,23 +52,34 @@ public final class Lucene99SpannVectorsFormat extends KnnVectorsFormat {
   private final int nprobe;
   private final int numPartitions;
   private final int clusteringSample;
+  private final int replicationFactor;
 
   public Lucene99SpannVectorsFormat() {
-    this(DEFAULT_N_PROBE, DEFAULT_NUM_PARTITIONS, DEFAULT_CLUSTERING_SAMPLE);
+    this(
+        DEFAULT_N_PROBE,
+        DEFAULT_NUM_PARTITIONS,
+        DEFAULT_CLUSTERING_SAMPLE,
+        DEFAULT_REPLICATION_FACTOR);
   }
 
   public Lucene99SpannVectorsFormat(int nprobe, int numPartitions, int clusteringSample) {
+    this(nprobe, numPartitions, clusteringSample, DEFAULT_REPLICATION_FACTOR);
+  }
+
+  public Lucene99SpannVectorsFormat(
+      int nprobe, int numPartitions, int clusteringSample, int replicationFactor) {
     super(FORMAT_NAME);
     this.nprobe = nprobe;
     this.numPartitions = numPartitions;
     this.clusteringSample = clusteringSample;
+    this.replicationFactor = replicationFactor;
     this.centroidIndexFormat = new Lucene99HnswVectorsFormat();
   }
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene99SpannVectorsWriter(
-        state, centroidIndexFormat, numPartitions, clusteringSample);
+        state, centroidIndexFormat, numPartitions, clusteringSample, replicationFactor);
   }
 
   @Override

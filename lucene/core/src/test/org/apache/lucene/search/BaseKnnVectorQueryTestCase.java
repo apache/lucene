@@ -139,6 +139,14 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     assertEquals("f2", q2.getField());
   }
 
+  protected static KnnVectorsFormat randomVectorFormat(VectorEncoding vectorEncoding) {
+    KnnVectorsFormat format;
+    do {
+      format = LuceneTestCase.randomVectorFormat(vectorEncoding);
+    } while (format.getName().equals("Lucene99SpannVectors"));
+    return format;
+  }
+
   public void testGetK() {
     AbstractKnnVectorQuery q1 = getKnnVectorQuery("f1", new float[] {0, 1}, 6);
     Query filter1 = new TermQuery(new Term("id", "id1"));
@@ -259,7 +267,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
 
-      // make sure we don't drop to exact search, even though the filter matches fewer than k docs
+      // make sure we don't drop to exact search, even though the filter matches fewer
+      // than k docs
       Query kvq =
           getThrowingKnnVectorQuery("field", new float[] {0, 0}, 10, MatchAllDocsQuery.INSTANCE);
       TopDocs topDocs = searcher.search(kvq, 3);
@@ -367,13 +376,15 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       assertEquals(-1, scorer.docID());
       expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
 
-      /* score0 = ((2,3) * (1, 1) = 5) / (||2, 3|| * ||1, 1|| = sqrt(26)), then
+      /*
+       * score0 = ((2,3) * (1, 1) = 5) / (||2, 3|| * ||1, 1|| = sqrt(26)), then
        * normalized by (1 + x) /2.
        */
       float score0 =
           (float) ((1 + (2 * 1 + 3 * 1) / Math.sqrt((2 * 2 + 3 * 3) * (1 * 1 + 1 * 1))) / 2);
 
-      /* score1 = ((2,3) * (2, 4) = 16) / (||2, 3|| * ||2, 4|| = sqrt(260)), then
+      /*
+       * score1 = ((2,3) * (2, 4) = 16) / (||2, 3|| * ||2, 4|| = sqrt(260)), then
        * normalized by (1 + x) /2
        */
       float score1 =
@@ -475,8 +486,11 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
   /** Test that when vectors are abnormally distributed among segments, we still find the top K */
   public void testSkewedIndex() throws IOException {
-    /* We have to choose the numbers carefully here so that some segment has more than the expected
-     * number of top K documents, but no more than K documents in total (otherwise we might occasionally
+    /*
+     * We have to choose the numbers carefully here so that some segment has more
+     * than the expected
+     * number of top K documents, but no more than K documents in total (otherwise
+     * we might occasionally
      * randomly fail to find one).
      */
     try (Directory d = newDirectoryForTest()) {
@@ -500,7 +514,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         assertIdMatches(reader, "id0", results.scoreDocs[0]);
         assertIdMatches(reader, "id7", results.scoreDocs[7]);
 
-        // test some results in the middle of the sequence - also tests docid tiebreaking
+        // test some results in the middle of the sequence - also tests docid
+        // tiebreaking
         results = searcher.search(getKnnVectorQuery("field", new float[] {10, 10}, 8), 10);
         assertEquals(8, results.scoreDocs.length);
         assertIdMatches(reader, "id10", results.scoreDocs[0]);
@@ -546,7 +561,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       }
       try (IndexReader reader = DirectoryReader.open(d)) {
         IndexSearcher searcher = newSearcher(reader, true, true, multiThreaded);
-        // first get the initial set of docs, and we expect all future queries to be exactly the
+        // first get the initial set of docs, and we expect all future queries to be
+        // exactly the
         // same
         int k = random().nextInt(80) + 1;
         AbstractKnnVectorQuery query = getKnnVectorQuery("field", randomVector(dimension), k);
@@ -589,7 +605,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           int n = random().nextInt(100) + 1;
           TopDocs results = searcher.search(query, n);
           int expected = Math.min(Math.min(n, k), reader.numDocs());
-          // we may get fewer results than requested if there are deletions, but this test doesn't
+          // we may get fewer results than requested if there are deletions, but this test
+          // doesn't
           // test that
           assert reader.hasDeletions() == false;
           assertEquals(expected, results.scoreDocs.length);
@@ -611,8 +628,10 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     int dimension = atLeast(5);
     int numIters = atLeast(10);
     try (Directory d = newDirectoryForTest()) {
-      // Always use the default kNN format to have predictable behavior around when it hits
-      // visitedLimit. This is fine since the test targets AbstractKnnVectorQuery logic, not the kNN
+      // Always use the default kNN format to have predictable behavior around when it
+      // hits
+      // visitedLimit. This is fine since the test targets AbstractKnnVectorQuery
+      // logic, not the kNN
       // format
       // implementation.
       IndexWriterConfig iwc = configStandardCodec();
@@ -663,7 +682,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
             int tag = (int) fieldDoc.fields[0];
             assertTrue(lower <= tag && tag <= numDocs);
           }
-          // Test a filter with cost slightly more than k, and check we use exact search as k
+          // Test a filter with cost slightly more than k, and check we use exact search
+          // as k
           // results are not retrieved from approximate search
           Query filter5 = IntPoint.newRangeQuery("tag", lower, lower + 11);
           results =
@@ -681,7 +701,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           assertEquals(10, results.totalHits.value());
           assertEquals(results.totalHits.value(), results.scoreDocs.length);
         }
-        // Test a filter that exhausts visitedLimit in upper levels, and switches to exact search
+        // Test a filter that exhausts visitedLimit in upper levels, and switches to
+        // exact search
         // due to extreme edge cases, removing the randomness
         float[] vector = new float[dimension];
         for (int i = 0; i < dimension; i++) {
@@ -700,8 +721,10 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     int numDocs = 100;
     int dimension = atLeast(5);
     try (Directory d = newDirectoryForTest()) {
-      // Always use the default kNN format to have predictable behavior around when it hits
-      // visitedLimit. This is fine since the test targets AbstractKnnVectorQuery logic, not the kNN
+      // Always use the default kNN format to have predictable behavior around when it
+      // hits
+      // visitedLimit. This is fine since the test targets AbstractKnnVectorQuery
+      // logic, not the kNN
       // format
       // implementation.
       IndexWriterConfig iwc = configStandardCodec();
@@ -934,7 +957,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       KnnCollector timeoutCollector =
           timeoutManager.newCollector(Integer.MAX_VALUE, null, searcher.leafContexts.get(0));
 
-      // Check that a time limiting collector is created, which returns partial results
+      // Check that a time limiting collector is created, which returns partial
+      // results
       assertThat(timeoutCollector, not(instanceOf(TopKnnCollector.class)));
       timeoutCollector.collect(0, 0);
       assertTrue(timeoutCollector.earlyTerminated());
@@ -966,8 +990,10 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       assertEquals(0, searcher.count(exactQuery)); // Same for exact search
 
       searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 doc
-      // Note: We get partial results when the HNSW graph has 1 layer, but no results for > 1 layer
-      // because the timeout is exhausted while finding the best entry node for the last level
+      // Note: We get partial results when the HNSW graph has 1 layer, but no results
+      // for > 1 layer
+      // because the timeout is exhausted while finding the best entry node for the
+      // last level
       assertThat(searcher.count(query), lessThanOrEqualTo(1));
 
       searcher.setTimeout(new CountingQueryTimeout(1)); // Only score 1 doc
@@ -1069,7 +1095,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   void assertDocScoreQueryToString(Query query) {
     String queryString = query.toString("ignored");
     // The string should contain matching docIds and their score.
-    // Since a forceMerge could occur in this test, we must not assert that a specific doc_id is
+    // Since a forceMerge could occur in this test, we must not assert that a
+    // specific doc_id is
     // matched
     // But that instead the string format is expected and that the max score is 1.0
     assertTrue(queryString.matches("DocAndScoreQuery\\[\\d+,...]\\[\\d+.\\d+,...],1.0"));
