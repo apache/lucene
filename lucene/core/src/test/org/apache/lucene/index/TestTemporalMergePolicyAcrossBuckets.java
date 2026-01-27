@@ -275,7 +275,7 @@ public class TestTemporalMergePolicyAcrossBuckets extends LuceneTestCase {
 
     IndexWriter writer = new IndexWriter(dir, config);
 
-    long now = System.currentTimeMillis();
+    long now = 1769540949799L;
     long fiveYearsAgo = now - TimeUnit.DAYS.toMillis(365 * 5);
 
     // Create 3 segments, all containing data older than 3 years

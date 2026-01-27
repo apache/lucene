@@ -279,7 +279,7 @@ public class TestTemporalMergePolicy extends LuceneTestCase {
 
     IndexWriter writer = new IndexWriter(dir, config);
 
-    long nowMillis = System.currentTimeMillis();
+    long nowMillis = 1769540949799L;
     long nowMicros = nowMillis * 1000;
 
     for (int segment = 0; segment < 4; segment++) {
