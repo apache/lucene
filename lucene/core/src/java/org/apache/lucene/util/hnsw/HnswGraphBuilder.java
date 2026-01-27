@@ -67,6 +67,8 @@ public class HnswGraphBuilder implements HnswBuilder {
   protected final int M; // max number of connections on upper layers
   private final double ml;
 
+  private final int[] bulkScoreNodes; // for bulk scoring
+  private final float[] bulkScores; // for bulk scoring
   private final SplittableRandom random;
   protected final UpdateableRandomVectorScorer scorer;
   protected final HnswGraphSearcher graphSearcher;
@@ -156,6 +158,10 @@ public class HnswGraphBuilder implements HnswBuilder {
     this.hnsw = hnsw;
     this.hnswLock = hnswLock;
     this.graphSearcher = graphSearcher;
+    // pick a number that keeps us from scoring TOO much for diversity checking
+    // but enough to take advantage of bulk scoring
+    this.bulkScoreNodes = new int[8];
+    this.bulkScores = new float[8];
     entryCandidates = new GraphBuilderKnnCollector(1);
     beamCandidates = new GraphBuilderKnnCollector(beamWidth);
     beamCandidates0 = new GraphBuilderKnnCollector(Math.min(beamWidth / 2, M * 3));
@@ -470,12 +476,18 @@ public class HnswGraphBuilder implements HnswBuilder {
    */
   private boolean diversityCheck(float score, NeighborArray neighbors, RandomVectorScorer scorer)
       throws IOException {
+    int bulkCount = 0;
+    final int bulkScoreChunk = Math.min((neighbors.nodes().length + 1) / 2, bulkScoreNodes.length);
     for (int i = 0; i < neighbors.size(); i++) {
-      float neighborSimilarity = scorer.score(neighbors.nodes()[i]);
-      if (neighborSimilarity >= score) {
-        return false;
+      bulkScoreNodes[bulkCount++] = neighbors.nodes()[i];
+      if (bulkCount == bulkScoreChunk || i == neighbors.size() - 1) {
+        if (scorer.bulkScore(bulkScoreNodes, bulkScores, bulkCount) >= score) {
+          return false;
+        }
+        bulkCount = 0;
       }
     }
+    assert bulkCount == 0;
     return true;
   }
 
