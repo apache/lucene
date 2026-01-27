@@ -317,6 +317,8 @@ Optimizations
 
 * GITHUB#15582: Avoid copying bitset that's subsequently cleared (Viliam Durina)
 
+* GITHUB#15618: SegmentTermsEnumFrame: avoid unnecessary array allocations that waste memory (Misha Dmitriev)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
