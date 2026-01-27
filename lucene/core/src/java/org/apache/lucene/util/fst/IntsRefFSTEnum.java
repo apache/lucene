@@ -17,6 +17,7 @@
 package org.apache.lucene.util.fst;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IntsRef;
 
@@ -101,6 +102,12 @@ public final class IntsRefFSTEnum<T> extends FSTEnum<T> {
   protected int getCurrentLabel() {
     // current.offset fixed at 1
     return current.ints[upto];
+  }
+
+  @Override
+  protected int getMismatch(int uptoLimit) {
+    return Arrays.mismatch(
+        current.ints, 1, uptoLimit + 1, target.ints, target.offset, target.offset + uptoLimit);
   }
 
   @Override
