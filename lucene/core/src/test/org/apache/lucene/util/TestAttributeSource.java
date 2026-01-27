@@ -165,7 +165,6 @@ public class TestAttributeSource extends LuceneTestCase {
         () -> {
           AttributeSource src = new AttributeSource();
           src.addAttribute(Token.class);
-          fail("Should throw IllegalArgumentException");
         });
 
     expectThrows(

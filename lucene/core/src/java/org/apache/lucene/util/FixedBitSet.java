@@ -19,13 +19,12 @@ package org.apache.lucene.util;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
-import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
  * BitSet of fixed length (numBits), backed by accessible ({@link #getBits}) long[], accessed with
- * an int index, implementing {@link Bits} and {@link DocIdSet}. If you need to manage more than
- * 2.1B bits, use {@link LongBitSet}.
+ * an int index, implementing {@link BitSet}. If you need to manage more than 2.1B bits, use {@link
+ * LongBitSet}.
  *
  * @lucene.internal
  */
