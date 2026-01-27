@@ -167,6 +167,8 @@ Optimizations
 
 * GITHUB#15618: SegmentTermsEnumFrame: avoid unnecessary array allocations that waste memory (Misha Dmitriev)
 
+* GITHUB#15585: Added shared prefetch counter to maintain count across clones and slices of MemorySegmentIndexInput. (Shubham Sharma)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
