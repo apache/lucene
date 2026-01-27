@@ -3,7 +3,7 @@
 # expressions/ grammars
 antlr = "4.13.2"
 # test assertions
-assertj = "3.27.6"
+assertj = "3.27.7"
 # analysis/phonetic/ algorithms, gradle build checksums
 commons-codec = "1.20.0"
 # benchmark/ bzip2 compression
