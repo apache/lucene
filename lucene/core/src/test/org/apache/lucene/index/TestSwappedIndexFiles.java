@@ -66,10 +66,10 @@ public class TestSwappedIndexFiles extends LuceneTestCase {
 
     if (useCFS == false) {
       conf.setUseCompoundFile(false);
-      conf.getMergePolicy().setNoCFSRatio(0.0);
+      conf.getCodec().compoundFormat().setShouldUseCompoundFile(false);
     } else {
       conf.setUseCompoundFile(true);
-      conf.getMergePolicy().setNoCFSRatio(1.0);
+      conf.getCodec().compoundFormat().setShouldUseCompoundFile(true);
     }
 
     RandomIndexWriter w = new RandomIndexWriter(random, dir, conf);

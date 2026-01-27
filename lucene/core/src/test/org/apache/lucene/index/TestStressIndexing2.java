@@ -158,7 +158,7 @@ public class TestStressIndexing2 extends LuceneTestCase {
             random());
     w.commit();
     LogMergePolicy lmp = (LogMergePolicy) w.getConfig().getMergePolicy();
-    lmp.setNoCFSRatio(0.0);
+    w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
     lmp.setMergeFactor(mergeFactor);
     /*
      * w.setMaxMergeDocs(Integer.MAX_VALUE);
@@ -216,7 +216,7 @@ public class TestStressIndexing2 extends LuceneTestCase {
                 .setMergePolicy(newLogMergePolicy()),
             random());
     LogMergePolicy lmp = (LogMergePolicy) w.getConfig().getMergePolicy();
-    lmp.setNoCFSRatio(0.0);
+    w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
     lmp.setMergeFactor(mergeFactor);
 
     threads = new IndexingThread[nThreads];
