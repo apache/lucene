@@ -399,7 +399,6 @@ public class TemporalMergePolicy extends MergePolicy {
     Map<SegmentCommitInfo, SegmentDateRange> allRanges = resolveSegmentDateRanges(segments);
 
     if (allRanges.isEmpty()) {
-      log.fine("No date ranges found in segments; no temporal merges to schedule");
       return null;
     }
 
@@ -423,27 +422,8 @@ public class TemporalMergePolicy extends MergePolicy {
       return null;
     }
 
-    log.fine(
-        "Grouped "
-            + windowBuckets.values().stream().mapToInt(List::size).sum()
-            + " available segments into "
-            + windowBuckets.size()
-            + " time windows (baseTime="
-            + baseTimeSeconds
-            + "s, minThreshold="
-            + minThreshold
-            + ")");
-
     // Find merge candidates within time windows (only considering available segments)
-    MergeSpecification spec = findMergeCandidates(windowBuckets, allRanges);
-
-    if (spec != null) {
-      log.info("Date-tiered merge: found " + spec.merges.size() + " merge(s)");
-      return spec;
-    }
-
-    // No date-tiered merges found
-    return null;
+    return findMergeCandidates(windowBuckets, allRanges);
   }
 
   @Override
@@ -460,7 +440,6 @@ public class TemporalMergePolicy extends MergePolicy {
     Map<SegmentCommitInfo, SegmentDateRange> segmentDateRanges =
         resolveSegmentDateRanges(segmentInfos);
     if (segmentDateRanges.isEmpty()) {
-      log.fine("No date ranges available for forced merge");
       return null;
     }
 
@@ -486,7 +465,6 @@ public class TemporalMergePolicy extends MergePolicy {
     }
 
     if (forceMergeRunning) {
-      log.fine("Force merge already running; skipping new forced merge request");
       return null;
     }
 
@@ -504,22 +482,7 @@ public class TemporalMergePolicy extends MergePolicy {
     // Calculate target segments per window based on maxSegmentCount
     // IMPORTANT: We NEVER merge across time buckets, even in forceMerge
     // If maxSegmentCount < windowCount, we'll end up with more segments than requested
-    int segmentsPerWindow = 1; // Default: merge each window to 1 segment
-    if (maxSegmentCount < windowCount) {
-      log.info(
-          "Forced merge requested "
-              + maxSegmentCount
-              + " segments but "
-              + windowCount
-              + " time windows exist; "
-              + "will merge to 1 segment per window (respecting bucket boundaries) "
-              + "resulting in "
-              + windowCount
-              + " total segments");
-    } else {
-      segmentsPerWindow = Math.max(1, maxSegmentCount / windowCount);
-    }
-
+    int segmentsPerWindow; // Default: merge each window to 1 segment
     MergeSpecification spec = null;
     int eligibleWindows;
 
@@ -527,22 +490,11 @@ public class TemporalMergePolicy extends MergePolicy {
     eligibleWindows = windowBuckets.size();
 
     // Recalculate segmentsPerWindow based on eligible windows
-    if (eligibleWindows > 0) {
-      segmentsPerWindow = Math.max(1, maxSegmentCount / eligibleWindows);
-      // Cap at maxThreshold to ensure we still merge aggressively even with few windows
-      // Without this cap, a single window with 27 segments and maxSegmentCount=32
-      // would result in segmentsPerWindow=32, causing no merges to be scheduled
-      segmentsPerWindow = Math.min(segmentsPerWindow, maxThreshold);
-    }
-
-    log.fine(
-        "Force merge: "
-            + eligibleWindows
-            + " eligible windows, target "
-            + segmentsPerWindow
-            + " segments per window (maxSegmentCount="
-            + maxSegmentCount
-            + ")");
+    segmentsPerWindow = Math.max(1, maxSegmentCount / eligibleWindows);
+    // Cap at maxThreshold to ensure we still merge aggressively even with few windows
+    // Without this cap, a single window with 27 segments and maxSegmentCount=32
+    // would result in segmentsPerWindow=32, causing no merges to be scheduled
+    segmentsPerWindow = Math.min(segmentsPerWindow, maxThreshold);
 
     // Second pass: schedule merges for all windows
     for (Map.Entry<Long, List<SegmentCommitInfo>> entry : windowBuckets.entrySet()) {
@@ -551,12 +503,6 @@ public class TemporalMergePolicy extends MergePolicy {
 
       // Skip old data bucket (-1 sentinel) - don't merge very old data
       if (windowStart == -1) {
-        log.fine(
-            "Skipping force merge for old data bucket (>"
-                + maxAgeSeconds
-                + "s old) with "
-                + bucketSegments.size()
-                + " segments");
         continue;
       }
 
@@ -577,14 +523,6 @@ public class TemporalMergePolicy extends MergePolicy {
       }
     }
 
-    if (spec != null) {
-      log.info(
-          "Forced merge: scheduling "
-              + spec.merges.size()
-              + " merge(s) across "
-              + windowCount
-              + " window(s)");
-    }
     return spec;
   }
 
@@ -598,7 +536,6 @@ public class TemporalMergePolicy extends MergePolicy {
     Map<SegmentCommitInfo, SegmentDateRange> segmentDateRanges =
         resolveSegmentDateRanges(segmentInfos);
     if (segmentDateRanges.isEmpty()) {
-      log.fine("No date ranges available for forced delete merges");
       return null;
     }
 
@@ -658,14 +595,6 @@ public class TemporalMergePolicy extends MergePolicy {
       }
     }
 
-    if (spec != null) {
-      log.fine(
-          "Forced deletes merge: scheduling "
-              + spec.merges.size()
-              + " merge(s) (threshold="
-              + forceMergeDeletesPctAllowed
-              + "%)");
-    }
     return spec;
   }
 
@@ -692,7 +621,6 @@ public class TemporalMergePolicy extends MergePolicy {
     Map<SegmentCommitInfo, SegmentDateRange> ranges = new HashMap<>();
 
     if (segments.size() == 0) {
-      log.fine("No segments to extract date ranges from");
       return ranges;
     }
 
@@ -702,14 +630,6 @@ public class TemporalMergePolicy extends MergePolicy {
         if (range != null) {
           ranges.put(segmentInfo, range);
         }
-      } catch (java.io.FileNotFoundException | java.nio.file.NoSuchFileException e) {
-        // Segment files not fully written yet (mid-flush), skip for now
-        // This can happen when findMerges() is called during SEGMENT_FLUSH trigger
-        log.fine(
-            "Segment "
-                + segmentInfo.info.name
-                + " files not ready yet, skipping: "
-                + e.getMessage());
       } catch (IOException e) {
         log.warning(
             "Failed to read point values from segment "
@@ -718,8 +638,6 @@ public class TemporalMergePolicy extends MergePolicy {
                 + e.getMessage());
       }
     }
-
-    log.fine("Extracted date ranges for " + ranges.size() + "/" + segments.size() + " segments");
     return ranges;
   }
 
@@ -748,7 +666,6 @@ public class TemporalMergePolicy extends MergePolicy {
       // Validate that the temporal field exists and is a point field
       FieldInfo fieldInfo = fieldInfos.fieldInfo(temporalField);
       if (fieldInfo == null) {
-        log.fine("Segment " + si.name + ": temporal field '" + temporalField + "' not found");
         return null;
       }
 
@@ -774,7 +691,6 @@ public class TemporalMergePolicy extends MergePolicy {
 
         PointValues pointValues = pointsReader.getValues(temporalField);
         if (pointValues == null) {
-          log.fine("Segment " + si.name + ": no point values for field '" + temporalField + "'");
           return null;
         }
 
@@ -782,7 +698,6 @@ public class TemporalMergePolicy extends MergePolicy {
         byte[] maxPackedValue = pointValues.getMaxPackedValue();
 
         if (minPackedValue == null || maxPackedValue == null) {
-          log.fine("Segment " + si.name + ": no min/max values for field '" + temporalField + "'");
           return null;
         }
 
@@ -841,18 +756,6 @@ public class TemporalMergePolicy extends MergePolicy {
       SegmentDateRange dateRange = entry.getValue();
       assignToBucket(buckets, now, segment, dateRange);
     }
-
-    log.fine(
-        "Grouped "
-            + segmentDateRanges.size()
-            + " segments into "
-            + buckets.size()
-            + " time windows (baseTime="
-            + baseTimeSeconds
-            + "s, minThreshold="
-            + minThreshold
-            + ")");
-
     return buckets;
   }
 
@@ -866,13 +769,6 @@ public class TemporalMergePolicy extends MergePolicy {
     long bucket = getBucketForTimestamp(maxDateSeconds, now / 1000);
 
     buckets.computeIfAbsent(bucket, _ -> new ArrayList<>()).add(segment);
-    log.fine(
-        "Segment "
-            + segment.info.name
-            + ": max_date="
-            + dateRange.maxDate
-            + ", assigned to bucket="
-            + bucket);
   }
 
   private long getBucketForTimestamp(long timestampSeconds, long nowSeconds) {
@@ -922,24 +818,10 @@ public class TemporalMergePolicy extends MergePolicy {
 
       // Skip old data bucket (-1 sentinel) - don't merge very old data
       if (windowStart == -1) {
-        log.fine(
-            "Skipping old data bucket (>"
-                + maxAgeSeconds
-                + "s old) with "
-                + segmentsInWindow.size()
-                + " segments");
         continue;
       }
 
       if (segmentsInWindow.size() < minThreshold) {
-        log.fine(
-            "Window "
-                + windowStart
-                + " has "
-                + segmentsInWindow.size()
-                + " segments (below threshold of "
-                + minThreshold
-                + ")");
         continue;
       }
 
@@ -947,16 +829,6 @@ public class TemporalMergePolicy extends MergePolicy {
           planWindowMerges(windowStart, segmentsInWindow, segmentDateRanges);
 
       if (mergesForWindow.isEmpty()) {
-        log.fine(
-            "Window "
-                + windowStart
-                + " has "
-                + segmentsInWindow.size()
-                + " segments but no merge met compaction ratio "
-                + compactionRatio
-                + " (maxThreshold="
-                + maxThreshold
-                + ")");
         continue;
       }
 
@@ -967,14 +839,6 @@ public class TemporalMergePolicy extends MergePolicy {
       for (List<SegmentCommitInfo> mergeSegments : mergesForWindow) {
         OneMerge merge = new OneMerge(mergeSegments);
         spec.add(merge);
-        log.fine(
-            "Date-tiered merge: window "
-                + windowStart
-                + " scheduling "
-                + mergeSegments.size()
-                + "-segment merge (ratio "
-                + compactionRatio
-                + ")");
       }
     }
 
@@ -1040,18 +904,6 @@ public class TemporalMergePolicy extends MergePolicy {
       }
 
       if (!emittedMerge) {
-        log.fine(
-            "Window "
-                + windowStart
-                + " waiting for more segments (available="
-                + (ordered.size() - cursor)
-                + ", totalDocs="
-                + totalDocs
-                + ", largestSegmentDocs="
-                + largestDocs
-                + ", ratio="
-                + compactionRatio
-                + ")");
         break;
       }
     }

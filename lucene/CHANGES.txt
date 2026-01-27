@@ -58,6 +58,7 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#15620: Add Temporal Merge Policy for time-series data
 
 * GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
   PolishSnowballAnalyzer in the stempel package) (Justas Sakalauskas, Dawid Weiss)
