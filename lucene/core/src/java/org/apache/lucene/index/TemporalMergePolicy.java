@@ -865,7 +865,7 @@ public class TemporalMergePolicy extends MergePolicy {
     long maxDateSeconds = dateRange.maxDate / 1000;
     long bucket = getBucketForTimestamp(maxDateSeconds, now / 1000);
 
-    buckets.computeIfAbsent(bucket, k -> new ArrayList<>()).add(segment);
+    buckets.computeIfAbsent(bucket, _ -> new ArrayList<>()).add(segment);
     log.fine(
         "Segment "
             + segment.info.name
