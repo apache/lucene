@@ -35,7 +35,7 @@ import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
  * Vector scorer over OptimizedScalarQuantized vectors
  *
  * @lucene.experimental
- **/
+ */
 public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
   private final FlatVectorsScorer nonQuantizedDelegate;
 
