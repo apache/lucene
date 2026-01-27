@@ -1,7 +1,7 @@
-#!/usr/bin/env sh
+#!/bin/sh
 
 #
-# Copyright © 2015-2021 the original authors.
+# Copyright © 2015 the original authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -114,7 +114,6 @@ case "$( uname )" in                #(
   NONSTOP* )        nonstop=true ;;
 esac
 
-CLASSPATH="\\\"\\\""
 
 
 # Determine the Java command to use to start the JVM.
@@ -172,7 +171,6 @@ fi
 # For Cygwin or MSYS, switch paths to Windows format before running java
 if "$cygwin" || "$msys" ; then
     APP_HOME=$( cygpath --path --mixed "$APP_HOME" )
-    CLASSPATH=$( cygpath --path --mixed "$CLASSPATH" )
 
     JAVACMD=$( cygpath --unix "$JAVACMD" )
 
@@ -200,50 +198,9 @@ if "$cygwin" || "$msys" ; then
     done
 fi
 
-# START OF LUCENE CUSTOMIZATION
 
 # Add default JVM options here. You can also use JAVA_OPTS and GRADLE_OPTS to pass JVM options to this script.
 DEFAULT_JVM_OPTS='"-Xmx64m" "-Xms64m"'
-
-# LUCENE-9471: workaround for gradle leaving junk temp. files behind.
-GRADLE_TEMPDIR="$APP_HOME/.gradle/tmp"
-mkdir -p "$GRADLE_TEMPDIR"
-if [ "$cygwin" = "true" -o "$msys" = "true" ] ; then
-    GRADLE_TEMPDIR=`cygpath --path --mixed "$GRADLE_TEMPDIR"`
-fi
-DEFAULT_JVM_OPTS="$DEFAULT_JVM_OPTS \"-Djava.io.tmpdir=$GRADLE_TEMPDIR\""
-
-# LUCENE-9266: verify and download the gradle wrapper jar if we don't have one.
-if [ "$cygwin" = "true" -o "$msys" = "true" ] ; then
-    APP_HOME=`cygpath --path --mixed "$APP_HOME"`
-fi
-
-GRADLE_WRAPPER_JAR="$APP_HOME/gradle/wrapper/gradle-wrapper.jar"
-if "$darwin"; then
-    shasumcmd=shasum
-else
-    shasumcmd=sha256sum
-fi
-if [ ! -e "$GRADLE_WRAPPER_JAR" ] || ! ( cd "$APP_HOME/gradle/wrapper" && "$shasumcmd" --status -c "${GRADLE_WRAPPER_JAR}.sha256" ); then
-    "$JAVACMD" $JAVA_OPTS "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "$GRADLE_WRAPPER_JAR"
-    WRAPPER_STATUS=$?
-    if [ "$WRAPPER_STATUS" -eq 1 ]; then
-        echo "ERROR: Something went wrong. Make sure you're using Java version of exactly 25."
-        exit $WRAPPER_STATUS
-    elif [ "$WRAPPER_STATUS" -ne 0 ]; then
-        exit $WRAPPER_STATUS
-    fi
-fi
-
-# Generate gradle.properties if they don't exist
-if [ ! -e "$APP_HOME/gradle.properties" ]; then
-    "$JAVACMD" $JAVA_OPTS "$APP_HOME/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/GradlePropertiesGenerator.java" "$APP_HOME/gradle/template.gradle.properties" "$APP_HOME/gradle.properties"
-    GENERATOR_STATUS=$?
-    if [ "$GENERATOR_STATUS" -ne 0 ]; then
-        exit $GENERATOR_STATUS
-    fi
-fi
-# END OF LUCENE CUSTOMIZATION
 
 # Collect all arguments for the java command:
 #   * DEFAULT_JVM_OPTS, JAVA_OPTS, and optsEnvironmentVar are not allowed to contain shell fragments,
@@ -253,7 +210,6 @@ fi
 
 set -- \
         "-Dorg.gradle.appname=$APP_BASE_NAME" \
-        -classpath "$CLASSPATH" \
         -jar "$APP_HOME/gradle/wrapper/gradle-wrapper.jar" \
         "$@"
 
