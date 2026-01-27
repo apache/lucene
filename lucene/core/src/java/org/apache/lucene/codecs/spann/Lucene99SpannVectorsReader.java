@@ -291,7 +291,7 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
           if (isByte) {
             dataIn.skipBytes(vectorBytes.length);
           } else {
-            dataIn.skipBytes(vectorFloats.length * Float.BYTES);
+            dataIn.skipBytes(vectorFloats.length * (long) Float.BYTES);
           }
           continue;
         }
