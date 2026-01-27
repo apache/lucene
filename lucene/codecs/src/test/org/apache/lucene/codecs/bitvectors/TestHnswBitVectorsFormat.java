@@ -55,7 +55,9 @@ public class TestHnswBitVectorsFormat extends BaseIndexFileFormatTestCase {
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       Document doc = new Document();
-      doc.add(new KnnFloatVectorField("f", new float[] {1f, 0f, 0f, 1f}, VectorSimilarityFunction.DOT_PRODUCT));
+      doc.add(
+          new KnnFloatVectorField(
+              "f", new float[] {1f, 0f, 0f, 1f}, VectorSimilarityFunction.DOT_PRODUCT));
       IllegalArgumentException e =
           expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
       e.getMessage().contains("HnswBitVectorsFormat only supports BYTE encoding");

@@ -176,7 +176,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
           doc.add(
               new SortedSetDocValuesField("sorted_set_dv", new BytesRef(Integer.toString(docId))));
           if (dense || docId % 2 == 0) {
-            doc.add(new KnnFloatVectorField("vector", new float[] {(float) docId}));
+            doc.add(new KnnFloatVectorField("vector", new float[] {(float) docId + 1e-6f}));
           }
           doc.add(new NumericDocValuesField("foo", random().nextInt(20)));
 
