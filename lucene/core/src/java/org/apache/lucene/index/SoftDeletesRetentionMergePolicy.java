@@ -161,20 +161,25 @@ public final class SoftDeletesRetentionMergePolicy extends OneMergeWrappingMerge
         BooleanQuery.Builder builder = new BooleanQuery.Builder();
         builder.add(new FieldExistsQuery(field), BooleanClause.Occur.FILTER);
         builder.add(retentionQuerySupplier.get(), BooleanClause.Occur.FILTER);
-        Scorer scorer =
-            getScorer(
-                builder.build(), FilterCodecReader.wrapLiveDocs(reader, null, reader.maxDoc()));
-        if (scorer != null) {
-          DocIdSetIterator iterator = scorer.iterator();
-          Bits liveDocs = reader.getLiveDocs();
-          int numDeletedDocs = reader.numDeletedDocs();
-          while (iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
-            if (liveDocs.get(iterator.docID()) == false) {
-              numDeletedDocs--;
-            }
-          }
-          return numDeletedDocs;
-        }
+        Bits liveDocs = reader.getLiveDocs();
+        CodecReader codecReader =
+            FilterCodecReader.wrapLiveDocs(
+                reader,
+                new Bits() {
+
+                  @Override
+                  public boolean get(int index) {
+                    return liveDocs.get(index) == false;
+                  }
+
+                  @Override
+                  public int length() {
+                    return liveDocs.length();
+                  }
+                },
+                reader.maxDoc());
+        IndexSearcher searcher = new IndexSearcher(codecReader);
+        return reader.numDeletedDocs() - searcher.count(builder.build());
       }
     }
     assert numDeletesToMerge >= 0 : "numDeletesToMerge: " + numDeletesToMerge;
