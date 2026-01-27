@@ -434,33 +434,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           return null;
         }
 
-        boolean doDefer = maybePrefetch(prefetch);
-
-        return new IOBooleanSupplier() {
-          @Override
-          public boolean get() throws IOException {
-            currentFrame.loadBlock();
-
-            final SeekStatus result = currentFrame.scanToTerm(target, true);
-            if (result == SeekStatus.FOUND) {
-              // if (DEBUG) {
-              //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
-              // }
-              return true;
-            } else {
-              // if (DEBUG) {
-              //   System.out.println("  got " + result + "; return NOT_FOUND term=" +
-              // ToStringUtils.bytesRefToString(term));
-              // }
-              return false;
-            }
-          }
-
-          @Override
-          public boolean doDefer() {
-            return doDefer;
-          }
-        };
+        return getIoBooleanSupplier(target, prefetch);
       } else {
         // Follow this node
         node = nextNode;
@@ -497,7 +471,12 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       return null;
     }
 
-    boolean doDefer = maybePrefetch(prefetch);
+    return getIoBooleanSupplier(target, prefetch);
+  }
+
+  private IOBooleanSupplier getIoBooleanSupplier(BytesRef target, boolean prefetch)
+      throws IOException {
+    final boolean doDefer = maybePrefetch(prefetch);
 
     return new IOBooleanSupplier() {
       @Override
