@@ -73,6 +73,12 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
     return TestUtil.alwaysKnnVectorsFormat(format);
   }
 
+  private Codec getCodec(float confidenceInterval) {
+    return TestUtil.alwaysKnnVectorsFormat(
+        new Lucene99ScalarQuantizedVectorsFormat(
+            confidenceInterval, bits, bits == 4 ? random().nextBoolean() : false));
+  }
+
   public void testSearch() throws Exception {
     try (Directory dir = newDirectory();
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
@@ -236,5 +242,33 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
   @Override
   public void testSearchWithVisitedLimit() {
     // search not supported
+  }
+
+  @Override
+  protected boolean supportsFloatVectorFallback() {
+    return true;
+  }
+
+  @Override
+  protected int getQuantizationBits() {
+    return bits;
+  }
+
+  @Override
+  protected Codec getCodecForFloatVectorFallbackTest() {
+    return getCodec(1f);
+  }
+
+  /** Simulates empty raw vectors by modifying index files. */
+  @Override
+  protected void simulateEmptyRawVectors(Directory dir) {
+    //  Old codecs may only be used for reading, hence we are disabling this test because it writes
+    // the indexes
+  }
+
+  @Override
+  public void testReadQuantizedVectorWithEmptyRawVectors() {
+    //  Old codecs may only be used for reading, hence we are disabling this test because it writes
+    // the indexes
   }
 }
