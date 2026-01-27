@@ -736,7 +736,10 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
     // We are done sharing the common prefix with the incoming target and where we are currently
     // seek'd; now continue walking the index:
 
-    // TODO: Search target directly if we can.
+    // TODO: Discard clone.
+    // We can not use target directly, since target's offset, length are not thread-safe.
+    // Concurrency happens when we search multi segments, or in some test case, e.g.:
+    // RandomPostingsTester.
     BytesRef clone = target.clone();
     clone.offset += targetUpto;
     clone.length -= targetUpto;
