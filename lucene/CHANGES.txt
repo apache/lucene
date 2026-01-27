@@ -51,6 +51,8 @@ API Changes
 * GITHUB#15581: Minor javadoc clarification that HasIndexSlice::getSlice can return null
   (Chris Hegarty)
 
+* GITHUB#15502: Add `count()` method to `FilterWeight`  (Prudhvi Godithi)
+
 New Features
 ---------------------
 * GITHUB#15328: VectorSimilarityFunction.getValues() now implements doubleVal allowing its
@@ -88,7 +90,9 @@ New Features
 
  * GITHUB#15518: Add support for post-collection faceting to the new faceting API in the sandbox module. (Egor Potemkin)
 
-* GITHUB#14792: Introduced OffHeapQuantizedFloatVectorValues class to access float vectors when only quantized byte vectors are available in the index. (Pulkit Gupta)
+ * GITHUB#14792: Introduced OffHeapQuantizedFloatVectorValues class to access float vectors when only quantized byte vectors are available in the index. (Pulkit Gupta)
+ 
+ * GITHUB#15591: Add SegmentOrder helper class to re-order segments at query time to align with sorts. (Alan Woodward)
 
 Improvements
 ---------------------
@@ -139,7 +143,7 @@ Optimizations
 
 * GITHUB#15397: NumericComparator: immediately check whether a segment is competitive with the recorded bottom (Martijn van Groningen)
 
-# GITHUB#15303: Speed up NumericUtils#{add,subtract} by operating on integers instead of bytes. (Kaival Parikh)
+* GITHUB#15303: Speed up NumericUtils#{add,subtract} by operating on integers instead of bytes. (Kaival Parikh)
 
 * GITHUB#15003: Avoid reconstructing HNSW graph during merging (Pulkit Gupta)
 
@@ -156,6 +160,16 @@ Optimizations
 * GITHUB#15498: ExitableDirectoryReader keeps singleton SortedSetDocValues or SortedNumericDocValues as singletons. (Houston Putman)
 
 * GITHUB#15511: Dynamic pruning for SORTED(_SET) fields with doc values skipper (Pan Guixin)
+
+* GITHUB#15560: Avoid unnecessary getGraph() call. (Shubham Chaudhary)
+
+* GITHUB#15582: Avoid copying bitset that's subsequently cleared (Viliam Durina)
+
+* GITHUB#15592: Optimize DocIdSetIteratorAcceptDocs#cost. (Shubham Chaudhary)
+
+* GITHUB#15618: SegmentTermsEnumFrame: avoid unnecessary array allocations that waste memory (Misha Dmitriev)
+
+* GITHUB#15585: Added shared prefetch counter to maintain count across clones and slices of MemorySegmentIndexInput. (Shubham Sharma)
 
 Bug Fixes
 ---------------------
