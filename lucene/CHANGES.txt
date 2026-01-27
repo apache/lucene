@@ -70,6 +70,8 @@ New Features
 
 * GITHUB#14792: Introduced OffHeapQuantizedFloatVectorValues class to access float vectors when only quantized byte vectors are available in the index. (Pulkit Gupta)
 
+* GITHUB#14969: Add metadata support to Nori Korean analyzer tokens, allowing users to attach additional information to dictionary words. (twosom)
+
 Improvements
 ---------------------
 
