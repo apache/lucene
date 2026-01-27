@@ -76,35 +76,13 @@ public class FilterMergePolicy extends MergePolicy implements Unwrappable<MergeP
   }
 
   @Override
-  public boolean useCompoundFile(
-      SegmentInfos infos, SegmentCommitInfo mergedInfo, MergeContext mergeContext)
-      throws IOException {
-    return in.useCompoundFile(infos, mergedInfo, mergeContext);
-  }
-
-  @Override
   protected long size(SegmentCommitInfo info, MergeContext context) throws IOException {
     return in.size(info, context);
   }
 
   @Override
-  public double getNoCFSRatio() {
-    return in.getNoCFSRatio();
-  }
-
-  @Override
-  public final void setNoCFSRatio(double noCFSRatio) {
-    in.setNoCFSRatio(noCFSRatio);
-  }
-
-  @Override
-  public final void setMaxCFSSegmentSizeMB(double v) {
-    in.setMaxCFSSegmentSizeMB(v);
-  }
-
-  @Override
-  public final double getMaxCFSSegmentSizeMB() {
-    return in.getMaxCFSSegmentSizeMB();
+  public SizeUnit getSizeUnit() {
+    return super.getSizeUnit();
   }
 
   @Override
