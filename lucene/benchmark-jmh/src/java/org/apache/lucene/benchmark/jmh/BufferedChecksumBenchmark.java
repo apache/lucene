@@ -40,14 +40,14 @@ import org.openjdk.jmh.annotations.Warmup;
 @Fork(value = 1)
 public class BufferedChecksumBenchmark {
 
-  @Param({"1024", "4096", "8192", "65536"})
+  @Param({"1", "8", "32", "64", "128", "256", "512", "1024", "4096", "8192", "65536"})
   private int dataSize;
 
   @Param({"512", "1024", "2048"})
   private int bufferSize;
 
-  @Param({"1", "8", "64", "256"}) // Key: test different chunk sizes
-  private int chunkSize;
+//  @Param({"1", "8", "64", "256"}) // Key: test different chunk sizes
+//  private int chunkSize;
 
   private byte[] data;
 
@@ -59,6 +59,7 @@ public class BufferedChecksumBenchmark {
     }
   }
 
+
   @Benchmark
   public long bufferedCRC32SmallUpdates() {
     BufferedChecksum checksum = new BufferedChecksum(new CRC32(), bufferSize);
@@ -66,16 +67,6 @@ public class BufferedChecksumBenchmark {
       checksum.update(data[i]); // Single byte updates
     }
     return checksum.getValue();
-  }
-
-  @Benchmark
-  public long bufferedCRC32ChunkUpdates() {
-    BufferedChecksum bc = new BufferedChecksum(new CRC32(), bufferSize);
-    for (int i = 0; i < dataSize; i += chunkSize) {
-      int len = Math.min(chunkSize, dataSize - i);
-      bc.update(data, i, len);
-    }
-    return bc.getValue();
   }
 
   //
@@ -97,18 +88,40 @@ public class BufferedChecksumBenchmark {
   }
 
   @Benchmark
-  public long bufferedCRC32CChunkUpdates() {
-    BufferedChecksum bc = new BufferedChecksum(new CRC32C(), bufferSize);
-    for (int i = 0; i < dataSize; i += chunkSize) {
-      int len = Math.min(chunkSize, dataSize - i);
-      bc.update(data, i, len);
-    }
-    return bc.getValue();
+  public long bufferedCRC32CBulkUpdate() {
+    BufferedChecksum checksum = new BufferedChecksum(new CRC32C(), bufferSize);
+    checksum.update(data, 0, data.length);
+    return checksum.getValue();
   }
 
   @Benchmark
-  public long bufferedCRC32CBulkUpdate() {
-    BufferedChecksum checksum = new BufferedChecksum(new CRC32C(), bufferSize);
+  public long directCRC32SmallUpdates() {
+    CRC32 checksum = new CRC32();
+    for (int i = 0; i < data.length; i++) {
+      checksum.update(data[i]);
+    }
+    return checksum.getValue();
+  }
+
+  @Benchmark
+  public long directCRC32BulkUpdate() {
+    CRC32 checksum = new CRC32();
+    checksum.update(data, 0, data.length);
+    return checksum.getValue();
+  }
+
+  @Benchmark
+  public long directCRC32CSmallUpdates() {
+    CRC32C checksum = new CRC32C();
+    for (int i = 0; i < data.length; i++) {
+      checksum.update(data[i]);
+    }
+    return checksum.getValue();
+  }
+
+  @Benchmark
+  public long directCRC32CBulkUpdate() {
+    CRC32C checksum = new CRC32C();
     checksum.update(data, 0, data.length);
     return checksum.getValue();
   }

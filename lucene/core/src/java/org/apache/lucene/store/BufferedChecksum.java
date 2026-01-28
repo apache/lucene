@@ -70,7 +70,7 @@ public class BufferedChecksum implements Checksum {
     upto += Short.BYTES;
   }
 
-  void updateInt(int val) {
+  public void updateInt(int val) {
     if (upto + Integer.BYTES > buffer.length) flush();
     BitUtil.VH_LE_INT.set(buffer, upto, val);
     upto += Integer.BYTES;
