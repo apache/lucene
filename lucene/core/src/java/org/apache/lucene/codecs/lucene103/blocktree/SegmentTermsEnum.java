@@ -250,7 +250,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     return true;
   }
 
-  private IOBooleanSupplier prepareSeekExact(BytesRef target, boolean prefetch) throws IOException {
+  private IOBooleanSupplier prepareSeekExactly(BytesRef target) throws IOException {
     if (fr.size() > 0 && (target.compareTo(fr.getMin()) < 0 || target.compareTo(fr.getMax()) > 0)) {
       return null;
     }
@@ -434,7 +434,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           return null;
         }
 
-        return getIoBooleanSupplier(target, prefetch);
+        return getIoBooleanSupplier(target);
       } else {
         // Follow this node
         node = nextNode;
@@ -471,12 +471,11 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       return null;
     }
 
-    return getIoBooleanSupplier(target, prefetch);
+    return getIoBooleanSupplier(target);
   }
 
-  private IOBooleanSupplier getIoBooleanSupplier(BytesRef target, boolean prefetch)
-      throws IOException {
-    final boolean doDefer = maybePrefetch(prefetch);
+  private IOBooleanSupplier getIoBooleanSupplier(BytesRef target) throws IOException {
+    final boolean doDefer = currentFrame.prefetchBlock();
 
     return new IOBooleanSupplier() {
       @Override
@@ -506,35 +505,14 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     };
   }
 
-  private boolean maybePrefetch(boolean prefetch) throws IOException {
-    boolean doDefer;
-    if (prefetch) {
-      doDefer = currentFrame.prefetchBlock();
-      if (doDefer) {
-        hotCounter = 0;
-      } else {
-        hotCounter++;
-      }
-    } else {
-      doDefer = false;
-    }
-    return doDefer;
-  }
-
   @Override
   public IOBooleanSupplier prepareSeekExact(BytesRef target) throws IOException {
-    return prepareSeekExact(target, likelyCold());
-  }
-
-  private short hotCounter = 0;
-
-  private boolean likelyCold() {
-    return hotCounter < 1000; // TODO: constant/param/heurisitcs?
+    return prepareSeekExactly(target);
   }
 
   @Override
   public boolean seekExact(BytesRef target) throws IOException {
-    IOBooleanSupplier termExistsSupplier = prepareSeekExact(target, false);
+    IOBooleanSupplier termExistsSupplier = prepareSeekExactly(target);
     return termExistsSupplier != null && termExistsSupplier.get();
   }
 
