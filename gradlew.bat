@@ -70,7 +70,42 @@ goto fail
 :execute
 @rem Setup the command line
 
+@rem START OF LUCENE CUSTOMIZATION
 
+@rem LUCENE-9471: workaround for gradle leaving junk temp. files behind.
+SET GRADLE_TEMPDIR=%DIRNAME%\.gradle\tmp
+IF NOT EXIST "%GRADLE_TEMPDIR%" MKDIR "%GRADLE_TEMPDIR%"
+SET DEFAULT_JVM_OPTS=%DEFAULT_JVM_OPTS% "-Djava.io.tmpdir=%GRADLE_TEMPDIR%"
+
+@rem LUCENE-9266: verify and download the gradle wrapper jar if we don't have one.
+set GRADLE_WRAPPER_JAR=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar
+set GRADLE_WRAPPER_CHECKSUM=%APP_HOME%\gradle\wrapper\gradle-wrapper.jar.sha256
+
+@rem Read the expected hash from .sha256 file
+for /f "tokens=1 usebackq" %%A in ("%GRADLE_WRAPPER_CHECKSUM%") do (
+    set "EXPECTED=%%A"
+)
+@rem Get actual SHA-256 hash using certutil
+for /f "tokens=* delims=" %%H in ('certutil -hashfile "%GRADLE_WRAPPER_JAR%" SHA256 ^| findstr /R /B /I /X "[0-9a-f]*"') do (
+    set "ACTUAL=%%H"
+)
+
+if /i "%ACTUAL%" NEQ "%EXPECTED%" (
+  "%JAVA_EXE%" -XX:TieredStopAtLevel=1 %JAVA_OPTS% "%APP_HOME%/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/WrapperDownloader.java" "%GRADLE_WRAPPER_JAR%"
+  IF %ERRORLEVEL% EQU 1 goto failWithJvmMessage
+  IF %ERRORLEVEL% NEQ 0 goto fail
+)
+
+@rem Generate gradle.properties if they don't exist
+IF NOT EXIST "%APP_HOME%\gradle.properties" (
+  @rem local expansion is needed to check ERRORLEVEL inside control blocks.
+  setlocal enableDelayedExpansion
+  "%JAVA_EXE%" %JAVA_OPTS% "%APP_HOME%/build-tools/build-infra/src/main/java/org/apache/lucene/gradle/GradlePropertiesGenerator.java" "%APP_HOME%\gradle\template.gradle.properties" "%APP_HOME%\gradle.properties"
+  IF %ERRORLEVEL% NEQ 0 goto fail
+  endlocal
+)
+
+@rem END OF LUCENE CUSTOMIZATION
 
 @rem Execute Gradle
 "%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -jar "%APP_HOME%\gradle\wrapper\gradle-wrapper.jar" %*
@@ -78,6 +113,11 @@ goto fail
 :end
 @rem End local scope for the variables with windows NT shell
 if %ERRORLEVEL% equ 0 goto mainEnd
+goto fail
+
+:failWithJvmMessage
+@rem https://github.com/apache/lucene/pull/819
+echo Error: Something went wrong. Make sure you're using the minimum required Java version to compile Lucene.
 
 :fail
 rem Set variable GRADLE_EXIT_CONSOLE if you need the _script_ return code instead of
