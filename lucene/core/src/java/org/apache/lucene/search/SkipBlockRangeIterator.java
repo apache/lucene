@@ -1,7 +1,25 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.lucene.search;
 
-import org.apache.lucene.index.DocValuesSkipper;
 import java.io.IOException;
+import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.util.FixedBitSet;
 
 public class SkipBlockRangeIterator extends AbstractDocIdSetIterator {
 
@@ -23,13 +41,21 @@ public class SkipBlockRangeIterator extends AbstractDocIdSetIterator {
   @Override
   public int advance(int target) throws IOException {
     if (target <= skipper.maxDocID(0)) {
-      // within current range, and we have already checked the bounds
-      return target;
+      // within current block
+      if (doc > -1) {
+        // already positioned, so we've checked bounds and know that we're in a matching block
+        return doc = target;
+      } else {
+        // first call, the skipper might already be positioned so ask it to find the next
+        // matching block (which could be the current one)
+        skipper.advance(minValue, maxValue);
+        return doc = Math.max(target, skipper.minDocID(0));
+      }
     }
     // Advance to target
     skipper.advance(target);
 
-    // Find the next block in range (could be the current block)
+    // Find the next matching block (could be the current block)
     skipper.advance(minValue, maxValue);
 
     return doc = Math.max(target, skipper.minDocID(0));
@@ -38,5 +64,27 @@ public class SkipBlockRangeIterator extends AbstractDocIdSetIterator {
   @Override
   public long cost() {
     return DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  @Override
+  public int docIDRunEnd() throws IOException {
+    int maxDoc = skipper.maxDocID(0);
+    int nextLevel = 1;
+    while (nextLevel < skipper.numLevels()
+        && skipper.minValue(nextLevel) < maxValue
+        && skipper.maxValue(nextLevel) > minValue) {
+      maxDoc = skipper.maxDocID(nextLevel);
+      nextLevel++;
+    }
+    return maxDoc + 1;
+  }
+
+  @Override
+  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+    while (doc < upTo) {
+      int end = Math.min(upTo, docIDRunEnd());
+      bitSet.set(doc - offset, end - offset);
+      advance(docIDRunEnd());
+    }
   }
 }

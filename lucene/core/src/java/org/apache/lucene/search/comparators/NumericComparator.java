@@ -26,14 +26,12 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.DocValuesRangeIterator;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.SkipBlockRangeIterator;
-import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.IntsRef;
 
@@ -504,7 +502,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     private final DocValuesSkipper skipper;
 
-    DVSkipperCompetitiveDISIBuilder(DocValuesSkipper skipper, NumericLeafComparator leafComparator) {
+    DVSkipperCompetitiveDISIBuilder(
+        DocValuesSkipper skipper, NumericLeafComparator leafComparator) {
       super(leafComparator);
       this.skipper = skipper;
       postInitializeCompetitiveIterator();
@@ -537,7 +536,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     @Override
     void doUpdateCompetitiveIterator() {
-      competitiveIterator.update(new SkipBlockRangeIterator(skipper, minValueAsLong, maxValueAsLong));
+      competitiveIterator.update(
+          new SkipBlockRangeIterator(skipper, minValueAsLong, maxValueAsLong));
     }
   }
 }
