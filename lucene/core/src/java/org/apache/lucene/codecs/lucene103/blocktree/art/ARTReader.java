@@ -258,12 +258,8 @@ public class ARTReader {
    */
   public Node lookupChild(BytesRef target, Node parent, int offset) throws IOException {
     assert parent != null;
-
-    // TODO: Target length is 0 may never happen, when we search step by step?
-    if (target.length == 0) {
-      // We can not get a child from empty target.
-      return null;
-    }
+    assert target.length > 0;
+    assert offset >= target.offset;
 
     if (parent.nodeType.equals(NodeType.LEAF_NODE)) {
       return null;
@@ -316,7 +312,6 @@ public class ARTReader {
         // If this leaf node has no key, we should scan the suffixes' block.
         return true;
       } else {
-        // TODO: Use equals.
         int commonLength =
             ARTUtil.commonPrefixLength(
                 target.bytes,
