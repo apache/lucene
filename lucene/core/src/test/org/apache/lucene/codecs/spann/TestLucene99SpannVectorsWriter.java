@@ -87,4 +87,43 @@ public class TestLucene99SpannVectorsWriter extends LuceneTestCase {
       }
     }
   }
+
+  public void testLargeSegmentSpill() throws Exception {
+    try (Directory dir = newDirectory()) {
+      Codec codec =
+          new Lucene104Codec() {
+            @Override
+            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+              return new Lucene99SpannVectorsFormat();
+            }
+          };
+
+      // Ensure we create one large segment
+      IndexWriterConfig iwc = newIndexWriterConfig().setCodec(codec).setUseCompoundFile(false);
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        int numDocs = 5000; // Trigger > 4096 threshold
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          doc.add(new KnnFloatVectorField("vec", new float[] {(float) i, (float) i, (float) i}));
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1); // Force single large segment to verify > 4096 path
+        writer.commit();
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        assertEquals(5000, reader.numDocs());
+        LeafReader leaf = reader.leaves().get(0).reader(); // Should be 1 leaf now
+        assertEquals(5000, leaf.numDocs());
+      }
+
+      // Verify files exist
+      String[] files = dir.listAll();
+      boolean foundSpad = false;
+      for (String f : files) {
+        if (f.endsWith(".spad")) foundSpad = true;
+      }
+      assertTrue("Expected .spad file for large segment", foundSpad);
+    }
+  }
 }

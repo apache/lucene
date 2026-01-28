@@ -94,7 +94,7 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
                   new Lucene104Codec() {
                     @Override
                     public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                      // replicationFactor = 2
+                      // Set replication factor to 2
                       return new Lucene99SpannVectorsFormat(10, 20, 256, 2);
                     }
                   })
@@ -115,11 +115,7 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
         writer.commit();
       }
 
-      // Check file size / entries to verify replication
-      // This is a bit tricky without opening the file, but we can search and see if
-      // things work.
-      // Actually, searching should just work and return unique results.
-
+      // Verify replication by searching and ensuring results are correct.
       try (IndexReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         // Search for the first doc. It should be found.
@@ -173,6 +169,186 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
       assertTrue(
           "High nprobe (" + hitsHigh + ") should be >= Low nprobe (" + hitsLow + ")",
           hitsHigh >= hitsLow);
+    }
+  }
+
+  public void testDeletedDocs() throws Exception {
+    int dim = 8;
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc =
+          newIndexWriterConfig()
+              .setCodec(
+                  new Lucene104Codec() {
+                    @Override
+                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                      return new Lucene99SpannVectorsFormat(20, 5, 256);
+                    }
+                  });
+
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < 10; i++) {
+          Document doc = new Document();
+          doc.add(new KnnFloatVectorField("vec", new float[dim]));
+          doc.add(
+              new org.apache.lucene.document.StringField(
+                  "id", Integer.toString(i), org.apache.lucene.document.Field.Store.YES));
+          writer.addDocument(doc);
+        }
+        writer.commit();
+        writer.deleteDocuments(new org.apache.lucene.index.Term("id", "0"));
+        writer.commit();
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        TopDocs results =
+            searcher.search(
+                new org.apache.lucene.search.KnnFloatVectorQuery("vec", new float[dim], 10), 10);
+        for (org.apache.lucene.search.ScoreDoc sd : results.scoreDocs) {
+          assertNotEquals("Deleted doc 0 should not be found", 0, sd.doc);
+        }
+      }
+    }
+  }
+
+  public void testMixedCodecs() throws Exception {
+    int dim = 8;
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc =
+          newIndexWriterConfig()
+              .setCodec(
+                  new Lucene104Codec() {
+                    @Override
+                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                      if (field.equals("spann")) return new Lucene99SpannVectorsFormat();
+                      return new org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat();
+                    }
+                  });
+
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        Document doc = new Document();
+        doc.add(new KnnFloatVectorField("spann", new float[dim]));
+        doc.add(new KnnFloatVectorField("hnsw", new float[dim]));
+        writer.addDocument(doc);
+        writer.commit();
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        LeafReader leaf = reader.leaves().get(0).reader();
+        leaf.checkIntegrity();
+        // Reader should be able to search both
+        IndexSearcher searcher = new IndexSearcher(reader);
+        assertNotNull(
+            searcher.search(
+                new org.apache.lucene.search.KnnFloatVectorQuery("spann", new float[dim], 1), 1));
+        assertNotNull(
+            searcher.search(
+                new org.apache.lucene.search.KnnFloatVectorQuery("hnsw", new float[dim], 1), 1));
+      }
+    }
+  }
+
+  public void testByteVectors() throws Exception {
+    int dim = 8;
+    int numDocs = 100;
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc =
+          newIndexWriterConfig()
+              .setCodec(
+                  new Lucene104Codec() {
+                    @Override
+                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                      return new Lucene99SpannVectorsFormat(10, 5, 256);
+                    }
+                  });
+
+      byte[][] vectors = new byte[numDocs][dim];
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < numDocs; i++) {
+          for (int j = 0; j < dim; j++) {
+            vectors[i][j] = (byte) random().nextInt(128);
+          }
+          Document doc = new Document();
+          doc.add(new org.apache.lucene.document.KnnByteVectorField("vec", vectors[i]));
+          writer.addDocument(doc);
+        }
+        writer.commit();
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        TopDocs results =
+            searcher.search(
+                new org.apache.lucene.search.KnnByteVectorQuery("vec", vectors[0], 1), 1);
+        assertEquals(1, results.scoreDocs.length);
+        assertEquals(0, results.scoreDocs[0].doc);
+      }
+    }
+  }
+
+  public void testAllSimilarities() throws Exception {
+    for (org.apache.lucene.index.VectorSimilarityFunction sim :
+        org.apache.lucene.index.VectorSimilarityFunction.values()) {
+      doTestParity(sim);
+    }
+  }
+
+  private void doTestParity(org.apache.lucene.index.VectorSimilarityFunction sim) throws Exception {
+    int dim = 8;
+    int numDocs = 50;
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc =
+          newIndexWriterConfig()
+              .setCodec(
+                  new Lucene104Codec() {
+                    @Override
+                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                      return new Lucene99SpannVectorsFormat(20, 5, 128);
+                    }
+                  });
+
+      float[][] vectors = new float[numDocs][];
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < numDocs; i++) {
+          vectors[i] = new float[dim];
+          for (int j = 0; j < dim; j++) {
+            vectors[i][j] = random().nextFloat();
+          }
+          if (sim == org.apache.lucene.index.VectorSimilarityFunction.COSINE) {
+            VectorUtil.l2normalize(vectors[i]);
+          }
+          Document doc = new Document();
+          doc.add(new KnnFloatVectorField("vec", vectors[i], sim));
+          writer.addDocument(doc);
+        }
+        writer.commit();
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        for (int i = 0; i < 5; i++) {
+          float[] query = new float[dim];
+          for (int j = 0; j < dim; j++) query[j] = random().nextFloat();
+          if (sim == org.apache.lucene.index.VectorSimilarityFunction.COSINE) {
+            VectorUtil.l2normalize(query);
+          }
+
+          float bestScore = Float.NEGATIVE_INFINITY;
+          for (int d = 0; d < numDocs; d++) {
+            bestScore = Math.max(bestScore, sim.compare(query, vectors[d]));
+          }
+
+          TopDocs results =
+              searcher.search(new org.apache.lucene.search.KnnFloatVectorQuery("vec", query, 1), 1);
+          if (results.scoreDocs.length > 0) {
+            assertEquals(
+                "Score mismatch for similarity: " + sim,
+                bestScore,
+                results.scoreDocs[0].score,
+                0.001f);
+          }
+        }
+      }
     }
   }
 

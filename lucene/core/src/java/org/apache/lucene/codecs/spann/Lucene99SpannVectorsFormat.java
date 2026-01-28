@@ -39,7 +39,10 @@ public final class Lucene99SpannVectorsFormat extends KnnVectorsFormat {
 
   public static final String FORMAT_NAME = "Lucene99SpannVectors";
   public static final int DEFAULT_N_PROBE = 10;
-  public static final int DEFAULT_NUM_PARTITIONS = 100;
+
+  /** Use -1 for automatic partition count (sqrt(N)) */
+  public static final int DEFAULT_NUM_PARTITIONS = -1;
+
   public static final int DEFAULT_CLUSTERING_SAMPLE = 16384;
   public static final int DEFAULT_REPLICATION_FACTOR = 1;
 

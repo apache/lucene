@@ -309,6 +309,20 @@ public class SpannVsHNSWBenchmark {
     return spannSearcher.search(new KnnFloatVectorQuery("field", query, 100), 10);
   }
 
+  @Benchmark
+  public void openReaderHNSW() throws IOException {
+    try (DirectoryReader reader = DirectoryReader.open(hnswDir)) {
+      reader.getVersion();
+    }
+  }
+
+  @Benchmark
+  public void openReaderSPANN() throws IOException {
+    try (DirectoryReader reader = DirectoryReader.open(spannDir)) {
+      reader.getVersion();
+    }
+  }
+
   public static void main(String[] args) throws Exception {
     org.openjdk.jmh.Main.main(args);
   }
