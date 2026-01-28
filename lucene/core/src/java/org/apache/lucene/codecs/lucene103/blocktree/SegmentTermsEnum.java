@@ -22,6 +22,7 @@ import java.util.Arrays;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.lucene103.blocktree.art.ARTReader;
 import org.apache.lucene.codecs.lucene103.blocktree.art.Node;
+import org.apache.lucene.codecs.lucene103.blocktree.art.NodeType;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.PostingsEnum;
@@ -432,14 +433,13 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
     // We are done sharing the common prefix with the incoming target and where we are currently
     // seek'd; now continue walking the index:
 
-    //    while (targetUpto < target.length) {
-    // TODO: Search target directly if we can.
-    BytesRef clone = target.clone();
-    clone.offset += targetUpto;
-    clone.length -= targetUpto;
-    while (clone.length > 0) {
-      final int lastOffset = clone.offset;
-      final Node nextNode = artReader.lookupChild(clone, node);
+    // We can not use target directly, since target's offset, length are not thread-safe.
+    // Concurrency happens when we search multi segments, or in some test case, e.g.:
+    // RandomPostingsTester.
+    int offset = target.offset;
+    offset += targetUpto;
+    while (offset < target.offset + target.length) {
+      final Node nextNode = artReader.lookupChild(target, node, offset);
 
       if (nextNode == null || nextNode == node) {
         // Target equals or contains parent's prefix(non leaf node) or key (leaf node), match, scan
@@ -468,7 +468,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
           termExists = false;
           // TODO: Check this.
           // TODO: set bytes when we walked multi bytes.
-          term.setByteAt(targetUpto, clone.bytes[targetUpto]);
+          term.setByteAt(targetUpto, target.bytes[targetUpto]);
           term.setLength(1 + targetUpto);
           // if (DEBUG) {
           //   System.out.println("  FAST NOT_FOUND term=" + ToStringUtils.bytesRefToString(term));
@@ -498,11 +498,19 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
           }
         };
       } else {
-        // NextNode != node, we get a child to search, set nextNode to nodes.
-        setNode(nextNode, clone.offset - target.offset);
+        // 1 for index byte.
+        int walkedLength = 1;
+        if (nextNode.nodeType.equals(NodeType.LEAF_NODE) == false) {
+          walkedLength += nextNode.prefixLength;
+        } else if (nextNode.key != null) {
+          walkedLength += nextNode.key.length;
+        }
 
         // Follow this node
-        term.setBytes(clone.bytes, lastOffset, targetUpto, clone.offset - lastOffset);
+        term.setBytes(target.bytes, offset, targetUpto, walkedLength);
+        offset += walkedLength;
+        // NextNode != node, we get a child to search, set nextNode to nodes.
+        setNode(nextNode, offset - target.offset);
         // TODO: We have not set term length.
         node = nextNode;
 
@@ -510,8 +518,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         // System.out.println("    index: follow label=" + (target.bytes[target.offset +
         // targetUpto]&0xff) + " node.output=" + node.output + " node.nfo=" + node.nextFinalOutput);
         // }
-        //        targetUpto++;
-        targetUpto = clone.offset - target.offset;
+        targetUpto = offset - target.offset;
 
         if (node.hasOutput()) {
           // if (DEBUG) System.out.println("    node is final!");
@@ -736,16 +743,14 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
     // We are done sharing the common prefix with the incoming target and where we are currently
     // seek'd; now continue walking the index:
 
-    // TODO: Discard clone.
     // We can not use target directly, since target's offset, length are not thread-safe.
     // Concurrency happens when we search multi segments, or in some test case, e.g.:
     // RandomPostingsTester.
-    BytesRef clone = target.clone();
-    clone.offset += targetUpto;
-    clone.length -= targetUpto;
-    while (clone.length > 0) {
-      final int lastOffset = clone.offset;
-      final Node nextNode = artReader.lookupChild(clone, node);
+
+    int offset = target.offset;
+    offset += targetUpto;
+    while (offset < target.offset + target.length) {
+      final Node nextNode = artReader.lookupChild(target, node, offset);
 
       if (nextNode == null || nextNode == node) {
         // Target equals or contains parent's prefix(non leaf node) or key (leaf node), match, scan
@@ -798,11 +803,19 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
           return result;
         }
       } else {
-        // NextNode != node, we get a child to search, set nextNode to nodes.
-        setNode(nextNode, clone.offset - target.offset);
+        // 1 for index byte.
+        int walkedLength = 1;
+        if (nextNode.nodeType.equals(NodeType.LEAF_NODE) == false) {
+          walkedLength += nextNode.prefixLength;
+        } else if (nextNode.key != null) {
+          walkedLength += nextNode.key.length;
+        }
 
         // Follow this node
-        term.setBytes(clone.bytes, lastOffset, targetUpto, clone.offset - lastOffset);
+        term.setBytes(target.bytes, offset, targetUpto, walkedLength);
+        offset += walkedLength;
+        // NextNode != node, we get a child to search, set nextNode to nodes.
+        setNode(nextNode, offset - target.offset);
         // TODO: We have not set term length.
         node = nextNode;
 
@@ -810,8 +823,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         // System.out.println("    index: follow label=" + (target.bytes[target.offset +
         // targetUpto]&0xff) + " node.output=" + node.output + " node.nfo=" + node.nextFinalOutput);
         // }
-        //        targetUpto++;
-        targetUpto = clone.offset - target.offset;
+        targetUpto = offset - target.offset;
 
         if (node.hasOutput()) {
           // if (DEBUG) System.out.println("    node is final!");

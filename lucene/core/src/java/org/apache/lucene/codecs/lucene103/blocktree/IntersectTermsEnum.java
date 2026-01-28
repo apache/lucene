@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene103.blocktree;
 import java.io.IOException;
 import org.apache.lucene.codecs.lucene103.blocktree.art.ARTReader;
 import org.apache.lucene.codecs.lucene103.blocktree.art.Node;
+import org.apache.lucene.codecs.lucene103.blocktree.art.NodeType;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.PostingsEnum;
@@ -192,14 +193,24 @@ final class IntersectTermsEnum extends BaseTermsEnum {
     BytesRef clone = term.clone();
     clone.offset += idx;
     clone.length -= idx;
-    while (clone.offset < f.prefix) {
+    int offset = term.offset;
+    offset += idx;
+    while (offset < f.prefix) {
       // TODO: we could be more efficient for the next()
       // case by using current node as starting point,
       // passed to findTargetNode
       Node parent = node;
-      node = artReader.lookupChild(clone, parent);
+      node = artReader.lookupChild(term, parent, offset);
       assert node != null;
-      setNode(node, clone.offset);
+      // 1 for index byte.
+      offset++;
+      if (node.nodeType.equals(NodeType.LEAF_NODE) == false) {
+        offset += node.prefixLength;
+      } else if (node.key != null) {
+        offset += node.key.length;
+      }
+
+      setNode(node, offset);
     }
 
     f.node = node;

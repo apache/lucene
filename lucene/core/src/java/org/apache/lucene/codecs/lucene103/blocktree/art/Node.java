@@ -65,7 +65,7 @@ public abstract class Node {
   int savedChildPos = -1;
 
   // TODO: move to leafNode if key just exists in leafNode?
-  BytesRef key;
+  public BytesRef key;
   Output output;
 
   static final int HAS_OUTPUT = 1;
