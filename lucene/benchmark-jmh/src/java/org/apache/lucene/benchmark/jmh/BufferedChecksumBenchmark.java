@@ -43,7 +43,7 @@ public class BufferedChecksumBenchmark {
   @Param({"1", "16", "64", "128", "256", "512", "1024", "4096", "8192", "65536"})
   private int dataSize;
 
-  @Param({"128", "256", "512", "1024", "2048"})
+  @Param({"128", "256", "512", "1024", "2048", "4096", "8192"})
   private int bufferSize;
 
 //  @Param({"1", "8", "64", "256"}) // Key: test different chunk sizes
