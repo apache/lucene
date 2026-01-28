@@ -153,7 +153,7 @@ public class SerialIOCountingDirectory extends FilterDirectory {
         pendingPages.add(page);
       }
 
-      return true; // TODO: looks like the right thing to do for this class?
+      return true;
     }
 
     @Override
