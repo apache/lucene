@@ -26,6 +26,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.SegmentReader;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
@@ -111,19 +112,29 @@ public class TestLucene99SpannVectorsWriter extends LuceneTestCase {
         writer.commit();
       }
 
+      boolean useCfs = false;
       try (IndexReader reader = DirectoryReader.open(dir)) {
         assertEquals(5000, reader.numDocs());
         LeafReader leaf = reader.leaves().get(0).reader(); // Should be 1 leaf now
         assertEquals(5000, leaf.numDocs());
+        if (leaf instanceof SegmentReader sr) {
+          useCfs = sr.getSegmentInfo().info.getUseCompoundFile();
+        }
       }
 
       // Verify files exist
       String[] files = dir.listAll();
       boolean foundSpad = false;
+      boolean foundCfs = false;
       for (String f : files) {
         if (f.endsWith(".spad")) foundSpad = true;
+        if (f.endsWith(".cfs")) foundCfs = true;
       }
-      assertTrue("Expected .spad file for large segment", foundSpad);
+      if (useCfs) {
+        assertTrue("Expected .cfs for compound segment", foundCfs);
+      } else {
+        assertTrue("Expected .spad file for large segment", foundSpad);
+      }
     }
   }
 }
