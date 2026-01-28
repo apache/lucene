@@ -35,15 +35,15 @@ import org.openjdk.jmh.annotations.Warmup;
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)
 @State(Scope.Benchmark)
-@Warmup(iterations = 5, time = 5)
-@Measurement(iterations = 5, time = 5)
+@Warmup(iterations = 1, time = 3)
+@Measurement(iterations = 1, time = 3)
 @Fork(value = 1)
 public class BufferedChecksumBenchmark {
 
-  @Param({"1", "8", "32", "64", "128", "256", "512", "1024", "4096", "8192", "65536"})
+  @Param({"1", "16", "64", "128", "256", "512", "1024", "4096", "8192", "65536"})
   private int dataSize;
 
-  @Param({"512", "1024", "2048"})
+  @Param({"128", "256", "512", "1024", "2048"})
   private int bufferSize;
 
 //  @Param({"1", "8", "64", "256"}) // Key: test different chunk sizes
