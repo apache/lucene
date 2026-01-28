@@ -250,7 +250,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
     return true;
   }
 
-  private IOBooleanSupplier prepareSeekExactly(BytesRef target) throws IOException {
+  private IOBooleanSupplier prepareSeekExact(BytesRef target, boolean prefetch) throws IOException {
     if (fr.size() > 0 && (target.compareTo(fr.getMin()) < 0 || target.compareTo(fr.getMax()) > 0)) {
       return null;
     }
@@ -434,7 +434,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           return null;
         }
 
-        return getIoBooleanSupplier(target);
+        return getIoBooleanSupplier(target, prefetch);
       } else {
         // Follow this node
         node = nextNode;
@@ -471,11 +471,17 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       return null;
     }
 
-    return getIoBooleanSupplier(target);
+    return getIoBooleanSupplier(target, prefetch);
   }
 
-  private IOBooleanSupplier getIoBooleanSupplier(BytesRef target) throws IOException {
-    final boolean doDefer = currentFrame.prefetchBlock();
+  private IOBooleanSupplier getIoBooleanSupplier(BytesRef target, boolean prefetch)
+      throws IOException {
+    boolean doDefer;
+    if (prefetch) {
+      doDefer = currentFrame.prefetchBlock();
+    } else {
+      doDefer = false;
+    }
 
     return new IOBooleanSupplier() {
       @Override
@@ -507,12 +513,12 @@ final class SegmentTermsEnum extends BaseTermsEnum {
 
   @Override
   public IOBooleanSupplier prepareSeekExact(BytesRef target) throws IOException {
-    return prepareSeekExactly(target);
+    return prepareSeekExact(target, true);
   }
 
   @Override
   public boolean seekExact(BytesRef target) throws IOException {
-    IOBooleanSupplier termExistsSupplier = prepareSeekExactly(target);
+    IOBooleanSupplier termExistsSupplier = prepareSeekExact(target, false);
     return termExistsSupplier != null && termExistsSupplier.get();
   }
 
