@@ -434,7 +434,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           return null;
         }
 
-        return getIoBooleanSupplier(target, prefetch);
+        return getIOBooleanSupplier(target, prefetch);
       } else {
         // Follow this node
         node = nextNode;
@@ -471,10 +471,10 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       return null;
     }
 
-    return getIoBooleanSupplier(target, prefetch);
+    return getIOBooleanSupplier(target, prefetch);
   }
 
-  private IOBooleanSupplier getIoBooleanSupplier(BytesRef target, boolean prefetch)
+  private IOBooleanSupplier getIOBooleanSupplier(BytesRef target, boolean prefetch)
       throws IOException {
     if (prefetch) {
       currentFrame.prefetchBlock();
