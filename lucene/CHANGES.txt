@@ -374,6 +374,8 @@ Other
 * GITHUB#15341: Align float vectors on disk to 64 bytes, for optimal performance on Arm Neoverse
   machines (including vectors inside CFS files). (Mike McCandless, Kaival Parikh)
 
+* GITHUB#15619: Update documentation in Lucene104PostingsFormat. with 259 documents, the first 256 document ids should be  encoded as one packed block (Lyon-NEU)
+
 Build
 ---------------------
 * Upgrade forbiddenapis to version 3.10.  (Uwe Schindler)
