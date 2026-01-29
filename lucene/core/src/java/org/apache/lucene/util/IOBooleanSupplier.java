@@ -34,4 +34,8 @@ public interface IOBooleanSupplier {
    * @throws IOException if supplying the result throws an {@link IOException}
    */
   boolean get() throws IOException;
+
+  default boolean doDefer() {
+    return false;
+  }
 }

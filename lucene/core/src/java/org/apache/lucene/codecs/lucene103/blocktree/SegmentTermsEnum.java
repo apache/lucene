@@ -434,27 +434,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           return null;
         }
 
-        if (prefetch) {
-          currentFrame.prefetchBlock();
-        }
-
-        return () -> {
-          currentFrame.loadBlock();
-
-          final SeekStatus result = currentFrame.scanToTerm(target, true);
-          if (result == SeekStatus.FOUND) {
-            // if (DEBUG) {
-            //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
-            // }
-            return true;
-          } else {
-            // if (DEBUG) {
-            //   System.out.println("  got " + result + "; return NOT_FOUND term=" +
-            // ToStringUtils.bytesRefToString(term));
-            // }
-            return false;
-          }
-        };
+        return getIoBooleanSupplier(target, prefetch);
       } else {
         // Follow this node
         node = nextNode;
@@ -491,26 +471,42 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       return null;
     }
 
+    return getIoBooleanSupplier(target, prefetch);
+  }
+
+  private IOBooleanSupplier getIoBooleanSupplier(BytesRef target, boolean prefetch)
+      throws IOException {
+    boolean doDefer;
     if (prefetch) {
-      currentFrame.prefetchBlock();
+      doDefer = currentFrame.prefetchBlock();
+    } else {
+      doDefer = false;
     }
 
-    return () -> {
-      currentFrame.loadBlock();
+    return new IOBooleanSupplier() {
+      @Override
+      public boolean get() throws IOException {
+        currentFrame.loadBlock();
 
-      final SeekStatus result = currentFrame.scanToTerm(target, true);
-      if (result == SeekStatus.FOUND) {
-        // if (DEBUG) {
-        //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
-        // }
-        return true;
-      } else {
-        // if (DEBUG) {
-        //   System.out.println("  got result " + result + "; return NOT_FOUND term=" +
-        // term.utf8ToString());
-        // }
+        final SeekStatus result = currentFrame.scanToTerm(target, true);
+        if (result == SeekStatus.FOUND) {
+          // if (DEBUG) {
+          //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
+          // }
+          return true;
+        } else {
+          // if (DEBUG) {
+          //   System.out.println("  got result " + result + "; return NOT_FOUND term=" +
+          // term.utf8ToString());
+          // }
 
-        return false;
+          return false;
+        }
+      }
+
+      @Override
+      public boolean doDefer() {
+        return doDefer;
       }
     };
   }

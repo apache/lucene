@@ -193,28 +193,25 @@ public final class TermStates {
         this.states[ctx.ord] = EMPTY_TERMSTATE;
         return null;
       }
-      return () -> {
-        if (this.states[ctx.ord] == null) {
-          TermState state = null;
-          if (termExistsSupplier.get()) {
-            state = termsEnum.termState();
-            this.states[ctx.ord] = state;
-          } else {
-            this.states[ctx.ord] = EMPTY_TERMSTATE;
-          }
-        }
-        TermState state = this.states[ctx.ord];
-        if (state == EMPTY_TERMSTATE) {
-          return null;
-        }
-        return state;
-      };
+      IOSupplier<TermState> stateSupplier =
+          () -> {
+            if (this.states[ctx.ord] == null) {
+              if (termExistsSupplier.get()) {
+                this.states[ctx.ord] = termsEnum.termState();
+              } else {
+                this.states[ctx.ord] = EMPTY_TERMSTATE;
+              }
+            }
+            return this.states[ctx.ord] == EMPTY_TERMSTATE ? null : this.states[ctx.ord];
+          };
+      if (termExistsSupplier.doDefer()) {
+        return stateSupplier;
+      } else {
+        stateSupplier.get();
+        return this.states[ctx.ord] == EMPTY_TERMSTATE ? null : () -> this.states[ctx.ord];
+      }
     }
-    TermState state = this.states[ctx.ord];
-    if (state == EMPTY_TERMSTATE) {
-      return null;
-    }
-    return () -> state;
+    return this.states[ctx.ord] == EMPTY_TERMSTATE ? null : () -> this.states[ctx.ord];
   }
 
   /**
