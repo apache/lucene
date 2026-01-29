@@ -21,12 +21,22 @@ import java.io.IOException;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.util.FixedBitSet;
 
+/**
+ * A DocIdSetIterator that returns all documents within DocValuesSkipper blocks
+ * that have minimum and maximum values that fall within a specified range.
+ */
 public class SkipBlockRangeIterator extends AbstractDocIdSetIterator {
 
   private final DocValuesSkipper skipper;
   private final long minValue;
   private final long maxValue;
 
+  /**
+   * Creates a new SkipBlockRangeIterator
+   * @param skipper   the DocValuesSkipper to use to check block bounds
+   * @param minValue  only return documents that lie within a block with a maximum value greater than this
+   * @param maxValue  only return documents that lie within a block with a minimum value less than this
+   */
   public SkipBlockRangeIterator(DocValuesSkipper skipper, long minValue, long maxValue) {
     this.skipper = skipper;
     this.minValue = minValue;
@@ -84,7 +94,7 @@ public class SkipBlockRangeIterator extends AbstractDocIdSetIterator {
     while (doc < upTo) {
       int end = Math.min(upTo, docIDRunEnd());
       bitSet.set(doc - offset, end - offset);
-      advance(docIDRunEnd());
+      advance(end);
     }
   }
 }
