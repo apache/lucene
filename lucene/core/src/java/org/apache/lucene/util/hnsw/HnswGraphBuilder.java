@@ -485,14 +485,6 @@ public class HnswGraphBuilder implements HnswBuilder {
         return false;
       }
     }
-    // handle a tail
-    if (scored < neighbors.size()) {
-      int chunkSize = neighbors.size() - scored;
-      System.arraycopy(neighbors.nodes(), scored, bulkScoreNodes, 0, chunkSize);
-      if (scorer.bulkScore(bulkScoreNodes, bulkScores, chunkSize) >= score) {
-        return false;
-      }
-    }
     return true;
   }
 
