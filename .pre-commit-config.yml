@@ -80,9 +80,6 @@ repos:
         name: Normalize or check line endings
         types: [ text ]
 
-      - id: check-symlinks
-        name: Check for broken symlinks
-
       - id: check-merge-conflict
         name: Check for merge conflicts
 
@@ -233,3 +230,17 @@ repos:
         types_or: [ 'css', 'html', 'java', 'javascript', 'yaml']
         env:
           UV_PROJECT: dev-tools
+  # self-checks for this configuration file
+  - repo: meta
+    hooks:
+      - id: check-hooks-apply
+        name: Check prek hooks match at least one file
+        files:
+          glob:
+            .pre-commit-config.yml
+
+      - id: check-useless-excludes
+        name: Check prek excludes match include pattern
+        files:
+          glob:
+            .pre-commit-config.yml
