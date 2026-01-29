@@ -17,9 +17,9 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Create a TopFieldCollectorManager which uses a shared hit counter to maintain number of hits and
@@ -111,7 +111,7 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
     this.after = after;
     this.totalHitsThreshold = totalHitsThreshold;
     this.minScoreAcc = totalHitsThreshold != Integer.MAX_VALUE ? new MaxScoreAccumulator() : null;
-    this.collectors = new ArrayList<>();
+    this.collectors = new CopyOnWriteArrayList<>();
   }
 
   /**
@@ -182,6 +182,7 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
     return TopDocs.merge(sort, 0, numHits, topDocs);
   }
 
+  @Deprecated
   public List<TopFieldCollector> getCollectors() {
     return collectors;
   }
