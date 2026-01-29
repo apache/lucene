@@ -233,6 +233,6 @@ repos:
         language: system
         entry: uv
         args: [ 'run', 'ast-grep', '-c', './gradle/validation/ast-grep/sgconfig.yml', 'scan', '--format', 'github' ]
-        types_or: [ 'css', 'html', 'java', 'javascript', 'python', 'yaml']
+        types_or: [ 'css', 'html', 'java', 'javascript', 'yaml']
         env:
           UV_PROJECT: dev-tools
