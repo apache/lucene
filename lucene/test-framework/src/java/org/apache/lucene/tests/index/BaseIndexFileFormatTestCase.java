@@ -267,14 +267,9 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     assumeTrue("merge is not stable", mergeIsStable());
     Directory dir = applyCreatedVersionMajor(newDirectory());
 
-    // do not use newMergePolicy that might return a MockMergePolicy that ignores the no-CFS ratio
     // do not use RIW which will change things up!
     MergePolicy mp = newTieredMergePolicy();
-    IndexWriterConfig cfg =
-        new IndexWriterConfig(new MockAnalyzer(random()))
-            .setUseCompoundFile(false)
-            .setMergePolicy(mp);
-    cfg.getCodec().compoundFormat().setShouldUseCompoundFile(false);
+    IndexWriterConfig cfg = new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(mp);
     if (VERBOSE) {
       cfg.setInfoStream(System.out);
     }
@@ -292,11 +287,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
 
     Directory dir2 = applyCreatedVersionMajor(newDirectory());
     mp = newTieredMergePolicy();
-    cfg =
-        new IndexWriterConfig(new MockAnalyzer(random()))
-            .setUseCompoundFile(false)
-            .setMergePolicy(mp);
-    cfg.getCodec().compoundFormat().setShouldUseCompoundFile(false);
+    cfg = new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(mp);
     w = new IndexWriter(dir2, cfg);
     TestUtil.addIndexesSlowly(w, reader);
 
