@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.TreeSet;
+import java.util.concurrent.atomic.LongAccumulator;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
@@ -31,6 +32,7 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.TotalHits;
 
 /**
  * FirstPassGroupingCollector is the first of two passes necessary to collect grouped hits. This
@@ -42,6 +44,8 @@ import org.apache.lucene.search.SortField;
  */
 public class FirstPassGroupingCollector<T> extends SimpleCollector {
 
+  private static final int DEFAULT_INTERVAL = 0x3ff;
+
   private final GroupSelector<T> groupSelector;
   private final boolean ignoreDocsWithoutGroupField;
 
@@ -52,6 +56,14 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
   private final boolean needsScores;
   private final HashMap<T, CollectedSearchGroup<T>> groupMap;
   private final int compIDXEnd;
+  private final boolean canSetMinScore;
+  private final LongAccumulator minScoreAcc;
+  private final int totalHitsThreshold;
+
+  private Scorable scorer;
+  private float minCompetitiveScore;
+  private int totalHitCount;
+  private TotalHits.Relation totalHitsRelation = TotalHits.Relation.EQUAL_TO;
 
   // Set once we reach topNGroups unique groups:
   /**
@@ -93,6 +105,32 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
       Sort groupSort,
       int topNGroups,
       boolean ignoreDocsWithoutGroupField) {
+    this(groupSelector, groupSort, topNGroups, ignoreDocsWithoutGroupField, Integer.MAX_VALUE);
+  }
+
+  /**
+   * Create the first pass collector with ignoreDocsWithoutGroupField
+   *
+   * @param groupSelector a GroupSelector used to defined groups
+   * @param groupSort The {@link Sort} used to sort the groups. The top sorted document within each
+   *     group according to groupSort, determines how that group sorts against other groups. This
+   *     must be non-null, ie, if you want to groupSort by relevance use Sort.RELEVANCE.
+   * @param topNGroups How many top groups to keep.
+   * @param ignoreDocsWithoutGroupField if true, ignore documents that don't have the group field
+   *     instead of putting them in a null group
+   * @param totalHitsThreshold totalHitsThreshold the number of hits to collect accurately. If the
+   *     number of hits is greater than threshold, hits beyond the threshold will be collected as
+   *     well, but the accuracy of the total hits will be reduced. This is used to reduce the memory
+   *     footprint of the collector when collecting hits beyond the threshold. If set to {@link
+   *     Integer#MAX_VALUE}, total hits is calculated precisely.
+   */
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  public FirstPassGroupingCollector(
+      GroupSelector<T> groupSelector,
+      Sort groupSort,
+      int topNGroups,
+      boolean ignoreDocsWithoutGroupField,
+      int totalHitsThreshold) {
     this.groupSelector = groupSelector;
     this.ignoreDocsWithoutGroupField = ignoreDocsWithoutGroupField;
     if (topNGroups < 1) {
@@ -120,11 +158,32 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
 
     spareSlot = topNGroups;
     groupMap = HashMap.newHashMap(topNGroups);
+
+    this.totalHitsThreshold = totalHitsThreshold;
+    this.canSetMinScore =
+        sortFields.length > 0
+            && sortFields[0].getType() == SortField.Type.SCORE
+            && this.totalHitsThreshold != Integer.MAX_VALUE;
+    this.minScoreAcc = canSetMinScore ? new LongAccumulator(Math::max, Long.MIN_VALUE) : null;
+  }
+
+  public int getTotalHitCount() {
+    return this.totalHitCount;
+  }
+
+  public TotalHits.Relation getTotalHitsRelation() {
+    return this.totalHitsRelation;
   }
 
   @Override
   public ScoreMode scoreMode() {
-    return needsScores ? ScoreMode.COMPLETE : ScoreMode.COMPLETE_NO_SCORES;
+    if (canSetMinScore) {
+      return ScoreMode.TOP_SCORES;
+    } else if (needsScores) {
+      return ScoreMode.COMPLETE;
+    } else {
+      return ScoreMode.COMPLETE_NO_SCORES;
+    }
   }
 
   /**
@@ -175,9 +234,15 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
 
   @Override
   public void setScorer(Scorable scorer) throws IOException {
+    this.scorer = scorer;
     groupSelector.setScorer(scorer);
     for (LeafFieldComparator comparator : leafComparators) {
       comparator.setScorer(scorer);
+    }
+    if (minScoreAcc == null) {
+      updateMinCompetitiveScore();
+    } else {
+      updateGlobalMinCompetitiveScore();
     }
   }
 
@@ -213,6 +278,10 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
 
   @Override
   public void collect(int doc) throws IOException {
+    int hitCountSoFar = ++totalHitCount;
+    if (minScoreAcc != null && (hitCountSoFar & DEFAULT_INTERVAL) == 0) {
+      updateGlobalMinCompetitiveScore();
+    }
 
     if (isCompetitive(doc) == false) {
       return;
@@ -261,6 +330,8 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
         // number of groups; from here on we will drop
         // bottom group when we insert new one:
         buildSortedSet();
+        // if groups is full, we can propagate the min competitive score to the scorer
+        updateMinCompetitiveScore();
       }
 
     } else {
@@ -288,6 +359,7 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
       for (LeafFieldComparator fc : leafComparators) {
         fc.setBottom(lastComparatorSlot);
       }
+      updateMinCompetitiveScore();
     }
   }
 
@@ -353,6 +425,8 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
         for (LeafFieldComparator fc : leafComparators) {
           fc.setBottom(newLast.comparatorSlot);
         }
+        // now the groups is full, we can propagate the min competitive score to the scorer
+        updateMinCompetitiveScore();
       }
     }
   }
@@ -380,6 +454,40 @@ public class FirstPassGroupingCollector<T> extends SimpleCollector {
 
     for (LeafFieldComparator fc : leafComparators) {
       fc.setBottom(orderedGroups.last().comparatorSlot);
+    }
+  }
+
+  private void updateMinCompetitiveScore() throws IOException {
+    if (canSetMinScore
+        && orderedGroups != null
+        && scorer != null
+        && totalHitCount > totalHitsThreshold) {
+      // Get the score of the bottom group
+      CollectedSearchGroup<T> bottomGroup = orderedGroups.last();
+      float bottomScore = (float) comparators[0].value(bottomGroup.comparatorSlot);
+      if (bottomScore > minCompetitiveScore) {
+        minCompetitiveScore = bottomScore;
+        totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
+        scorer.setMinCompetitiveScore(minCompetitiveScore);
+        if (minScoreAcc != null) {
+          minScoreAcc.accumulate(DocScoreEncoder.encode(docBase, bottomScore));
+        }
+      }
+    }
+  }
+
+  protected void updateGlobalMinCompetitiveScore() throws IOException {
+    if (canSetMinScore && scorer != null) {
+      long maxMinScore = minScoreAcc.get();
+      if (maxMinScore != Long.MIN_VALUE) {
+        float score = DocScoreEncoder.toScore(maxMinScore);
+        score = docBase >= DocScoreEncoder.docId(maxMinScore) ? Math.nextUp(score) : score;
+        if (score > minCompetitiveScore) {
+          minCompetitiveScore = score;
+          totalHitsRelation = TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO;
+          scorer.setMinCompetitiveScore(score);
+        }
+      }
     }
   }
 
