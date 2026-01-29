@@ -27,6 +27,7 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
@@ -58,12 +59,12 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   final Arena arena;
   final MemorySegment[] segments;
   final Function<IOContext, ReadAdvice> toReadAdvice;
+  final AtomicInteger sharedPrefetchCounter;
 
   int curSegmentIndex = -1;
   MemorySegment
       curSegment; // redundant for speed: segments[curSegmentIndex], also marker if closed!
   long curPosition; // relative to curSegment, not globally
-  int consecutivePrefetchHitCount;
 
   public static MemorySegmentIndexInput newInstance(
       String resourceDescription,
@@ -74,12 +75,28 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       boolean confined,
       Function<IOContext, ReadAdvice> toReadAdvice) {
     assert Arrays.stream(segments).map(MemorySegment::scope).allMatch(arena.scope()::equals);
+    AtomicInteger sharedPrefetchCounter = new AtomicInteger();
     if (segments.length == 1) {
       return new SingleSegmentImpl(
-          resourceDescription, arena, segments[0], length, chunkSizePower, confined, toReadAdvice);
+          resourceDescription,
+          arena,
+          segments[0],
+          length,
+          chunkSizePower,
+          confined,
+          toReadAdvice,
+          sharedPrefetchCounter);
     } else {
       return new MultiSegmentImpl(
-          resourceDescription, arena, segments, 0, length, chunkSizePower, confined, toReadAdvice);
+          resourceDescription,
+          arena,
+          segments,
+          0,
+          length,
+          chunkSizePower,
+          confined,
+          toReadAdvice,
+          sharedPrefetchCounter);
     }
   }
 
@@ -90,7 +107,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       long length,
       int chunkSizePower,
       boolean confined,
-      Function<IOContext, ReadAdvice> toReadAdvice) {
+      Function<IOContext, ReadAdvice> toReadAdvice,
+      AtomicInteger sharedPrefetchCounter) {
     super(resourceDescription);
     this.arena = arena;
     this.segments = segments;
@@ -100,6 +118,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     this.chunkSizeMask = (1L << chunkSizePower) - 1L;
     this.curSegment = segments[0];
     this.toReadAdvice = toReadAdvice;
+    this.sharedPrefetchCounter = sharedPrefetchCounter;
   }
 
   void ensureOpen() {
@@ -316,7 +335,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
 
     ensureOpen();
 
-    if (BitUtil.isZeroOrPowerOfTwo(consecutivePrefetchHitCount++) == false) {
+    if (BitUtil.isZeroOrPowerOfTwo(sharedPrefetchCounter.getAndIncrement()) == false) {
       // We've had enough consecutive hits on the page cache that this number is neither zero nor a
       // power of two. There is a good chance that a good chunk of this index input is cached in
       // physical memory. Let's skip the overhead of the madvise system call, we'll be trying again
@@ -331,7 +350,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
         segment -> {
           if (segment.isLoaded() == false) {
             // We have a cache miss on at least one page, let's reset the counter.
-            consecutivePrefetchHitCount = 0;
+            sharedPrefetchCounter.set(0);
             nativeAccess.madviseWillNeed(segment);
           }
         });
@@ -529,7 +548,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
               length,
               chunkSizePower,
               confined,
-              toReadAdvice);
+              toReadAdvice,
+              sharedPrefetchCounter);
     } else {
       clone =
           new MultiSegmentImpl(
@@ -540,7 +560,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
               length,
               chunkSizePower,
               confined,
-              toReadAdvice);
+              toReadAdvice,
+              sharedPrefetchCounter);
     }
     try {
       clone.seek(getFilePointer());
@@ -631,7 +652,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           length,
           chunkSizePower,
           confined,
-          toReadAdvice);
+          toReadAdvice,
+          sharedPrefetchCounter);
     } else {
       return new MultiSegmentImpl(
           newResourceDescription,
@@ -641,7 +663,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           length,
           chunkSizePower,
           confined,
-          toReadAdvice);
+          toReadAdvice,
+          sharedPrefetchCounter);
     }
   }
 
@@ -685,7 +708,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
         long length,
         int chunkSizePower,
         boolean confined,
-        Function<IOContext, ReadAdvice> toReadAdvice) {
+        Function<IOContext, ReadAdvice> toReadAdvice,
+        AtomicInteger sharedPrefetchCounter) {
       super(
           resourceDescription,
           arena,
@@ -693,7 +717,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           length,
           chunkSizePower,
           confined,
-          toReadAdvice);
+          toReadAdvice,
+          sharedPrefetchCounter);
       this.curSegmentIndex = 0;
     }
 
@@ -797,8 +822,17 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
         long length,
         int chunkSizePower,
         boolean confined,
-        Function<IOContext, ReadAdvice> toReadAdvice) {
-      super(resourceDescription, arena, segments, length, chunkSizePower, confined, toReadAdvice);
+        Function<IOContext, ReadAdvice> toReadAdvice,
+        AtomicInteger sharedPrefetchCounter) {
+      super(
+          resourceDescription,
+          arena,
+          segments,
+          length,
+          chunkSizePower,
+          confined,
+          toReadAdvice,
+          sharedPrefetchCounter);
       this.offset = offset;
       try {
         seek(0L);
