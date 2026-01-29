@@ -58,6 +58,8 @@ API Changes
 
 * GITHUB#15295 : Switched to a fixed CFS threshold (Shubham Sharma)
 
+* GITHUB#15627 : Deferred lambda in TermStates.java according to prefetch (Shubham Sharma)
+
 New Features
 ---------------------
 
