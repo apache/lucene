@@ -328,6 +328,8 @@ Optimizations
 
 * GITHUB#15618: SegmentTermsEnumFrame: avoid unnecessary array allocations that waste memory (Misha Dmitriev)
 
+* GITHUB#15585: Added shared prefetch counter to maintain count across clones and slices of MemorySegmentIndexInput. (Shubham Sharma)
+
 * GITHUB#15607: Utilize bulk scoring for diversity checking when building HNSW vector indices. This results
   in some performance improvements during indexing and segment merges. (Ben Trent)
 
@@ -376,6 +378,8 @@ Other
 
 * GITHUB#15341: Align float vectors on disk to 64 bytes, for optimal performance on Arm Neoverse
   machines (including vectors inside CFS files). (Mike McCandless, Kaival Parikh)
+
+* GITHUB#15619: Update documentation in Lucene104PostingsFormat. with 259 documents, the first 256 document ids should be  encoded as one packed block (Lyon-NEU)
 
 Build
 ---------------------
