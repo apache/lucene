@@ -39,6 +39,8 @@ public class Node256 extends Node {
 
   @Override
   public int getChildPos(byte indexByte) {
+    long t0 = System.nanoTime();
+    try {
     int pos = Byte.toUnsignedInt(indexByte);
     int longIdx = pos >> 6;
 
@@ -47,6 +49,10 @@ public class Node256 extends Node {
       return pos;
     }
     return ILLEGAL_IDX;
+  } finally {
+    long t1 = System.nanoTime();
+    System.out.println(Thread.currentThread().getName() + " - Node256#getChildPos took: " + (t1 - t0));
+  }
   }
 
   //  @Override
@@ -198,11 +204,17 @@ public class Node256 extends Node {
 
   @Override
   public void readChildIndex(RandomAccessInput access, long fp) throws IOException {
+    long t0 = System.nanoTime();
+    try {
     int offset = 0;
     for (int i = 0; i < bitmapMask.length; i++) {
       bitmapMask[i] = Long.reverseBytes(access.readLong(fp + offset));
       offset += 8;
     }
+  } finally {
+    long t1 = System.nanoTime();
+    System.out.println(Thread.currentThread().getName() + " - Node256#readChildIndex took: " + (t1 - t0));
+  }
   }
 
   @Override

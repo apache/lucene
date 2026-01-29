@@ -139,6 +139,8 @@ public class LeafNode extends Node {
   }
 
   public static Node load(RandomAccessInput access, long fp) throws IOException {
+    long t0 = System.nanoTime();
+    try {
     // TODO: Impl write/read VInt like DataInput#readVInt.
     // from fp: 1 byte nodeType, 4 byte keyLength, n bytes key, 1 byte header(1 bit has floor, 1 bit
     // has terms,
@@ -177,5 +179,9 @@ public class LeafNode extends Node {
     }
 
     return leafNode;
+    } finally {
+      long t1 = System.nanoTime();
+      System.out.println(Thread.currentThread().getName() + " - LeafNode#load took: " + (t1 - t0));
+    }
   }
 }

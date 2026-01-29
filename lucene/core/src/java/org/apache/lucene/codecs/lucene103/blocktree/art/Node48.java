@@ -39,6 +39,8 @@ public class Node48 extends Node {
   // Return the original byte, we will calculate the real index in getChild.
   @Override
   public int getChildPos(byte indexByte) {
+    long t0 = System.nanoTime();
+    try {
     // Different with other type's node, this pos is a position value(byte value) to calculate the
     // position (long position and byte position) in childIndex, the value in this position is the
     // index in
@@ -49,6 +51,10 @@ public class Node48 extends Node {
       return unsignedIdx;
     }
     return ILLEGAL_IDX;
+    } finally {
+      long t1 = System.nanoTime();
+      System.out.println(Thread.currentThread().getName() + " - Node48#getChildPos took: " + (t1 - t0));
+    }
   }
 
   public int getChildIndex(byte k) {
@@ -233,11 +239,17 @@ public class Node48 extends Node {
 
   @Override
   public void readChildIndex(RandomAccessInput access, long fp) throws IOException {
+    long t0 = System.nanoTime();
+    try {
     int offset = 0;
     for (int i = 0; i < 32; i++) {
       childIndex[i] = access.readLong(fp + offset);
       offset += 8;
     }
+  } finally {
+    long t1 = System.nanoTime();
+    System.out.println(Thread.currentThread().getName() + " - Node48#readChildIndex took: " + (t1 - t0));
+  }
   }
 
   @Override

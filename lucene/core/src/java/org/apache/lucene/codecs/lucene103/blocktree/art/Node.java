@@ -322,6 +322,8 @@ public abstract class Node {
       // TODO: adjust this call architecture.
       return LeafNode.load(access, fp);
     }
+    long t0 = System.nanoTime();
+    try {
     // Children count.
     short childrenCount = Short.reverseBytes(access.readShort(fp + offset));
     assert childrenCount > 0;
@@ -394,6 +396,10 @@ public abstract class Node {
 
     node.readChildIndex(access, fp + offset + node.floorDataLen);
     return node;
+    } finally {
+      long t1 = System.nanoTime();
+      System.out.println(Thread.currentThread().getName() + " - Node#load took: " + (t1 - t0));
+    }
   }
 
   private long encodeFP(Output output) {

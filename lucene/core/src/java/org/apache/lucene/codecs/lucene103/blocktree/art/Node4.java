@@ -34,6 +34,8 @@ public class Node4 extends Node {
 
   @Override
   public int getChildPos(byte indexByte) {
+    long t0 = System.nanoTime();
+    try {
     for (int i = 0; i < childrenCount; i++) {
       int shiftLeftLen = (3 - i) * 8;
       byte v = (byte) (childIndex >> shiftLeftLen);
@@ -42,6 +44,10 @@ public class Node4 extends Node {
       }
     }
     return ILLEGAL_IDX;
+  } finally {
+    long t1 = System.nanoTime();
+    System.out.println(Thread.currentThread().getName() + " - Node4#getChildPos took: " + (t1 - t0));
+  }
   }
 
   @Override
@@ -134,7 +140,13 @@ public class Node4 extends Node {
 
   @Override
   public void readChildIndex(RandomAccessInput access, long fp) throws IOException {
+    long t0 = System.nanoTime();
+    try {
     childIndex = access.readInt(fp);
+  } finally {
+    long t1 = System.nanoTime();
+    System.out.println(Thread.currentThread().getName() + " - Node4#readChildIndex took: " + (t1 - t0));
+  }
   }
 
   @Override

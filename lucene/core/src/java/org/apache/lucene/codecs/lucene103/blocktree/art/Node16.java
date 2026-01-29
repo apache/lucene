@@ -35,22 +35,28 @@ public class Node16 extends Node {
 
   @Override
   public int getChildPos(byte indexByte) {
-    byte[] firstBytes = LongUtils.toBDBytes(firstChildIndex);
-    if (childrenCount <= 8) {
-      return Node.binarySearch(firstBytes, 0, childrenCount, indexByte);
-    } else {
-      int pos = Node.binarySearch(firstBytes, 0, 8, indexByte);
-      if (pos != ILLEGAL_IDX) {
-        return pos;
+    long t0 = System.nanoTime();
+    try {
+      byte[] firstBytes = LongUtils.toBDBytes(firstChildIndex);
+      if (childrenCount <= 8) {
+        return Node.binarySearch(firstBytes, 0, childrenCount, indexByte);
       } else {
-        byte[] secondBytes = LongUtils.toBDBytes(secondChildIndex);
-        pos = Node.binarySearch(secondBytes, 0, (childrenCount - 8), indexByte);
+        int pos = Node.binarySearch(firstBytes, 0, 8, indexByte);
         if (pos != ILLEGAL_IDX) {
-          return 8 + pos;
+          return pos;
         } else {
-          return ILLEGAL_IDX;
+          byte[] secondBytes = LongUtils.toBDBytes(secondChildIndex);
+          pos = Node.binarySearch(secondBytes, 0, (childrenCount - 8), indexByte);
+          if (pos != ILLEGAL_IDX) {
+            return 8 + pos;
+          } else {
+            return ILLEGAL_IDX;
+          }
         }
       }
+    } finally {
+      long t1 = System.nanoTime();
+      System.out.println(Thread.currentThread().getName() + " - Node16#getChildPos took: " + (t1 - t0));
     }
   }
 
@@ -199,8 +205,14 @@ public class Node16 extends Node {
 
   @Override
   public void readChildIndex(RandomAccessInput access, long fp) throws IOException {
+    long t0 = System.nanoTime();
+    try {
     firstChildIndex = Long.reverseBytes(access.readLong(fp));
     secondChildIndex = Long.reverseBytes(access.readLong(fp + 8));
+  } finally {
+    long t1 = System.nanoTime();
+    System.out.println(Thread.currentThread().getName() + " - Node16#readChildIndex took: " + (t1 - t0));
+  }
   }
 
   @Override
