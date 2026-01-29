@@ -330,6 +330,9 @@ Optimizations
 
 * GITHUB#15585: Added shared prefetch counter to maintain count across clones and slices of MemorySegmentIndexInput. (Shubham Sharma)
 
+* GITHUB#15632: Use a coarser-grained competitive iterator with lower construction costs for
+  numeric sorts against fields with DocValuesSkippers. (Alan Woodward)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
