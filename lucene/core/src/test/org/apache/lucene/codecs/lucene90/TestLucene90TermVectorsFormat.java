@@ -68,9 +68,10 @@ public class TestLucene90TermVectorsFormat extends BaseTermVectorsFormatTestCase
     }
 
     @Override
-    public void prefetch(long offset, long length) throws IOException {
+    public boolean prefetch(long offset, long length) throws IOException {
       in.prefetch(offset, length);
       counter.incrementAndGet();
+      return true;
     }
 
     @Override

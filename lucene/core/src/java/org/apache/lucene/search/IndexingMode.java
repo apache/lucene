@@ -14,28 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search;
 
-package org.apache.lucene.util;
+import org.apache.lucene.store.IOContext;
 
-import java.io.IOException;
-
-/**
- * Boolean supplier that is allowed to throw an IOException.
- *
- * @see java.util.function.BooleanSupplier
- */
-@FunctionalInterface
-public interface IOBooleanSupplier {
-
-  /**
-   * Gets the boolean result.
-   *
-   * @return the result
-   * @throws IOException if supplying the result throws an {@link IOException}
-   */
-  boolean get() throws IOException;
-
-  default boolean doDefer() {
-    return false;
-  }
+/** The different indexing modes for prefetching. */
+public enum IndexingMode implements IOContext.FileOpenHint {
+  HOT,
+  COLD,
+  ADAPTIVE
 }

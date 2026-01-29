@@ -21,6 +21,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.search.IndexingMode;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
@@ -46,6 +47,7 @@ public final class FieldReader extends Terms {
   final long indexEnd;
   final Lucene103BlockTreeTermsReader parent;
   final IndexInput indexIn;
+  final IndexingMode indexingMode;
 
   // private boolean DEBUG;
 
@@ -59,7 +61,8 @@ public final class FieldReader extends Terms {
       IndexInput metaIn,
       IndexInput indexIn,
       BytesRef minTerm,
-      BytesRef maxTerm)
+      BytesRef maxTerm,
+      IndexingMode indexingMode)
       throws IOException {
     assert numTerms > 0;
     this.fieldInfo = fieldInfo;
@@ -81,10 +84,15 @@ public final class FieldReader extends Terms {
     this.rootFP = metaIn.readVLong();
     this.indexEnd = metaIn.readVLong();
     this.indexIn = indexIn;
+    this.indexingMode = indexingMode;
   }
 
   private TrieReader newReader() throws IOException {
     return new TrieReader(indexIn.slice("trie index", indexStart, indexEnd - indexStart), rootFP);
+  }
+
+  public IndexingMode getIndexingMode() {
+    return indexingMode;
   }
 
   @Override
@@ -110,7 +118,7 @@ public final class FieldReader extends Terms {
   /** For debugging -- used by CheckIndex too */
   @Override
   public Stats getStats() throws IOException {
-    return new SegmentTermsEnum(this, newReader()).computeBlockStats();
+    return new SegmentTermsEnum(this, newReader(), this.indexingMode).computeBlockStats();
   }
 
   @Override
@@ -138,7 +146,7 @@ public final class FieldReader extends Terms {
 
   @Override
   public TermsEnum iterator() throws IOException {
-    return new SegmentTermsEnum(this, newReader());
+    return new SegmentTermsEnum(this, newReader(), this.indexingMode);
   }
 
   @Override

@@ -24,6 +24,7 @@ import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.TermState;
+import org.apache.lucene.search.IndexingMode;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -56,9 +57,12 @@ final class SegmentTermsEnum extends BaseTermsEnum {
   final BytesRefBuilder term = new BytesRefBuilder();
   private final TrieReader trieReader;
   private TrieReader.Node[] nodes = new TrieReader.Node[1];
+  private final IndexingMode indexingMode;
 
-  public SegmentTermsEnum(FieldReader fr, TrieReader reader) throws IOException {
+  public SegmentTermsEnum(FieldReader fr, TrieReader reader, IndexingMode indexingMode)
+      throws IOException {
     this.fr = fr;
+    this.indexingMode = indexingMode;
     // Used to hold seek by TermState, or cached seek
     staticFrame = new SegmentTermsEnumFrame(this, -1);
     trieReader = reader;
@@ -434,27 +438,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           return null;
         }
 
-        if (prefetch) {
-          currentFrame.prefetchBlock();
-        }
-
-        return () -> {
-          currentFrame.loadBlock();
-
-          final SeekStatus result = currentFrame.scanToTerm(target, true);
-          if (result == SeekStatus.FOUND) {
-            // if (DEBUG) {
-            //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
-            // }
-            return true;
-          } else {
-            // if (DEBUG) {
-            //   System.out.println("  got " + result + "; return NOT_FOUND term=" +
-            // ToStringUtils.bytesRefToString(term));
-            // }
-            return false;
-          }
-        };
+        return getIoBooleanSupplier(target, prefetch);
       } else {
         // Follow this node
         node = nextNode;
@@ -491,33 +475,75 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       return null;
     }
 
-    if (prefetch) {
-      currentFrame.prefetchBlock();
-    }
+    return getIoBooleanSupplier(target, prefetch);
+  }
 
-    return () -> {
-      currentFrame.loadBlock();
+  private IOBooleanSupplier getIoBooleanSupplier(BytesRef target, boolean prefetch)
+      throws IOException {
+    boolean doDefer = maybePrefetch(prefetch);
 
-      final SeekStatus result = currentFrame.scanToTerm(target, true);
-      if (result == SeekStatus.FOUND) {
-        // if (DEBUG) {
-        //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
-        // }
-        return true;
-      } else {
-        // if (DEBUG) {
-        //   System.out.println("  got result " + result + "; return NOT_FOUND term=" +
-        // term.utf8ToString());
-        // }
+    return new IOBooleanSupplier() {
+      @Override
+      public boolean get() throws IOException {
+        currentFrame.loadBlock();
 
-        return false;
+        final SeekStatus result = currentFrame.scanToTerm(target, true);
+        if (result == SeekStatus.FOUND) {
+          // if (DEBUG) {
+          //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
+          // }
+          return true;
+        } else {
+          // if (DEBUG) {
+          //   System.out.println("  got result " + result + "; return NOT_FOUND term=" +
+          // term.utf8ToString());
+          // }
+
+          return false;
+        }
+      }
+
+      @Override
+      public boolean doDefer() {
+        return doDefer;
       }
     };
   }
 
+  private boolean maybePrefetch(boolean prefetch) throws IOException {
+    if (indexingMode == IndexingMode.HOT) {
+      return prefetch;
+    }
+    if (indexingMode == IndexingMode.COLD || !prefetch) {
+      return false;
+    }
+
+    boolean doDefer = currentFrame.prefetchBlock();
+    if (doDefer) {
+      hotCounter = 0;
+    } else {
+      hotCounter++;
+    }
+    return doDefer;
+  }
+
   @Override
   public IOBooleanSupplier prepareSeekExact(BytesRef target) throws IOException {
-    return prepareSeekExact(target, true);
+    return prepareSeekExact(target, likelyCold());
+  }
+
+  private short hotCounter = 0;
+
+  private boolean likelyCold() {
+    switch (indexingMode) {
+      case COLD:
+        return true;
+      case HOT:
+        return false;
+      case ADAPTIVE:
+      default:
+        return hotCounter < 1000;
+    }
   }
 
   @Override
