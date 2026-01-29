@@ -223,19 +223,20 @@ public class TestGrouping extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     // Test default behavior (include null group)
-    FirstPassGroupingCollector<BytesRef> collector1 =
-        new FirstPassGroupingCollector<>(new TermGroupSelector(groupField), Sort.RELEVANCE, 10);
-    searcher.search(MatchAllDocsQuery.INSTANCE, collector1);
-    Collection<SearchGroup<BytesRef>> groups1 = collector1.getTopGroups(0);
+    FirstPassGroupingCollectorManager<BytesRef> firstPassGroupingCollectorManager1 =
+        new FirstPassGroupingCollectorManager<>(
+            () -> new TermGroupSelector(groupField), Sort.RELEVANCE, 10);
+    Collection<SearchGroup<BytesRef>> groups1 =
+        searcher.search(MatchAllDocsQuery.INSTANCE, firstPassGroupingCollectorManager1);
 
     assertEquals(3, groups1.size()); // Should include null group
 
     // Test ignoring docs without group field
-    FirstPassGroupingCollector<BytesRef> collector2 =
-        new FirstPassGroupingCollector<>(
-            new TermGroupSelector(groupField), Sort.RELEVANCE, 10, true);
-    searcher.search(MatchAllDocsQuery.INSTANCE, collector2);
-    Collection<SearchGroup<BytesRef>> groups2 = collector2.getTopGroups(0);
+    FirstPassGroupingCollectorManager<BytesRef> firstPassGroupingCollectorManager2 =
+        new FirstPassGroupingCollectorManager<>(
+            () -> new TermGroupSelector(groupField), Sort.RELEVANCE, 10, true);
+    Collection<SearchGroup<BytesRef>> groups2 =
+        searcher.search(MatchAllDocsQuery.INSTANCE, firstPassGroupingCollectorManager2);
 
     assertEquals(2, groups2.size()); // Should exclude null group
 
@@ -261,10 +262,11 @@ public class TestGrouping extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     // Test ignoring docs without group field when all docs lack the field
-    FirstPassGroupingCollector<BytesRef> collector =
-        new FirstPassGroupingCollector<>(new TermGroupSelector("group"), Sort.RELEVANCE, 10, true);
-    searcher.search(MatchAllDocsQuery.INSTANCE, collector);
-    Collection<SearchGroup<BytesRef>> groups = collector.getTopGroups(0);
+    FirstPassGroupingCollectorManager<BytesRef> firstPassGroupingCollectorManager2 =
+        new FirstPassGroupingCollectorManager<>(
+            () -> new TermGroupSelector("group"), Sort.RELEVANCE, 10, true);
+    Collection<SearchGroup<BytesRef>> groups =
+        searcher.search(MatchAllDocsQuery.INSTANCE, firstPassGroupingCollectorManager2);
 
     assertNull(groups); // Should return null when no groups found
 
@@ -280,11 +282,13 @@ public class TestGrouping extends LuceneTestCase {
       String groupField, Sort groupSort, int topDocs) throws IOException {
     if (random().nextBoolean()) {
       ValueSource vs = new BytesRefFieldSource(groupField);
-      return new FirstPassGroupingCollector<>(
-          new ValueSourceGroupSelector(vs, new HashMap<>()), groupSort, topDocs);
+      return new FirstPassGroupingCollectorManager<>(
+              () -> new ValueSourceGroupSelector(vs, new HashMap<>()), groupSort, topDocs)
+          .newCollector();
     } else {
-      return new FirstPassGroupingCollector<>(
-          new TermGroupSelector(groupField), groupSort, topDocs);
+      return new FirstPassGroupingCollectorManager<>(
+              () -> new TermGroupSelector(groupField), groupSort, topDocs)
+          .newCollector();
     }
   }
 
@@ -297,11 +301,13 @@ public class TestGrouping extends LuceneTestCase {
     GroupSelector<?> selector = firstPassGroupingCollector.getGroupSelector();
     if (TermGroupSelector.class.isAssignableFrom(selector.getClass())) {
       ValueSource vs = new BytesRefFieldSource(groupField);
-      return new FirstPassGroupingCollector<>(
-          new ValueSourceGroupSelector(vs, new HashMap<>()), groupSort, topDocs);
+      return new FirstPassGroupingCollectorManager<>(
+              () -> new ValueSourceGroupSelector(vs, new HashMap<>()), groupSort, topDocs)
+          .newCollector();
     } else {
-      return new FirstPassGroupingCollector<>(
-          new TermGroupSelector(groupField), groupSort, topDocs);
+      return new FirstPassGroupingCollectorManager<>(
+              () -> new TermGroupSelector(groupField), groupSort, topDocs)
+          .newCollector();
     }
   }
 
