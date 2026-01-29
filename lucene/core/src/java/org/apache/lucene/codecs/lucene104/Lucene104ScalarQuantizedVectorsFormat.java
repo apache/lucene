@@ -199,7 +199,7 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
       this.queryBitsPerDim = queryBitsPerDim;
     }
 
-    boolean isAsymmetric() {
+    public boolean isAsymmetric() {
       return bits != queryBits;
     }
 
