@@ -58,6 +58,71 @@ import org.apache.lucene.util.automaton.ByteRunAutomaton;
 
 public class TestTermInSetQuery extends LuceneTestCase {
 
+  public void testCachingPolicyInteraction() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    // Use few enough terms to trigger the BooleanQuery rewrite logic (≤ threshold)
+    final int numTerms =
+        AbstractMultiTermQueryConstantScoreWrapper.BOOLEAN_REWRITE_TERM_COUNT_THRESHOLD;
+    List<BytesRef> terms = new ArrayList<>();
+    for (int i = 0; i < numTerms; ++i) {
+      String term = "term" + i;
+      terms.add(newBytesRef(term));
+      Document doc = new Document();
+      doc.add(new StringField("field", term, Store.NO));
+      iw.addDocument(doc);
+    }
+    iw.commit();
+    IndexReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    final AtomicInteger onUseCount = new AtomicInteger(0);
+    final Set<Query> seenQueries = new HashSet<>();
+    QueryCachingPolicy policy =
+        new QueryCachingPolicy() {
+          @Override
+          public void onUse(Query query) {
+            onUseCount.incrementAndGet();
+            seenQueries.add(query);
+          }
+
+          @Override
+          public boolean shouldCache(Query query) throws IOException {
+            return true;
+          }
+        };
+
+    searcher.setQueryCache(new LRUQueryCache(100, 10000));
+    searcher.setQueryCachingPolicy(policy);
+
+    TermInSetQuery query = new TermInSetQuery("field", terms);
+    // use count() to ensure scores are not needed, which triggers caching logic
+    searcher.count(query);
+
+    // We expect only the top-level TermInSetQuery to be tracked.
+    // The inner rewrites (ConstantScoreQuery wrapping BooleanQuery) should
+    // effectively bypass the
+    // cache because they are executed by the non-caching private searcher.
+    // Verify that no BooleanQuery or ConstantScoreQuery wrapping BooleanQuery was
+    // tracked
+    assertFalse(
+        "Segment-specific BooleanQuery rewrites should not be tracked",
+        seenQueries.stream().anyMatch(q -> q instanceof BooleanQuery));
+    assertFalse(
+        "ConstantScoreQuery wrapping BooleanQuery should not be tracked",
+        seenQueries.stream()
+            .anyMatch(
+                q ->
+                    q instanceof ConstantScoreQuery
+                        && ((ConstantScoreQuery) q).getQuery() instanceof BooleanQuery));
+    // The TermInSetQuery itself should be tracked
+    assertTrue("TermInSetQuery should be tracked", seenQueries.contains(query));
+
+    reader.close();
+    dir.close();
+  }
+
   public void testAllDocsInFieldTerm() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
