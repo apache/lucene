@@ -1,0 +1,14 @@
+Precommit Checks
+================
+
+Precommit checks are run by CI on your pull request.
+
+To run checks before committing:
+
+uvx prek
+
+To install a precommit hook so this happens automatically:
+
+uvx prek install
+
+You need the uv package manager: https://docs.astral.sh/uv/getting-started/installation/
