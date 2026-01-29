@@ -15,4 +15,6 @@ dev = [
   "actionlint-py==1.7.10.24",
   # validates bash
   "shellcheck-py==0.11.0.1",
+  # validates various
+  "ast-grep-cli==0.40.5",
 ]

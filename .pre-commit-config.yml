@@ -145,3 +145,25 @@ repos:
         files:
           glob:
             - .github/**/*.yml
+
+      - id: test-ast-grep
+        name: Check ast-grep rules
+        language: system
+        entry: uv
+        args: [ 'run', 'ast-grep', '-c', './gradle/validation/ast-grep/sgconfig.yml', 'test', '--skip-snapshot-tests' ]
+        env:
+          UV_PROJECT: dev-tools
+        # run across all rules if any are touched
+        pass_filenames: false
+        files:
+          glob:
+            - gradle/validation/ast-grep/**/*.yml
+
+      - id: ast-grep
+        name: Check Sources with ast-grep
+        language: system
+        entry: uv
+        args: [ 'run', 'ast-grep', '-c', './gradle/validation/ast-grep/sgconfig.yml', 'scan', '--format', 'github' ]
+        types: [ 'text' ]
+        env:
+          UV_PROJECT: dev-tools

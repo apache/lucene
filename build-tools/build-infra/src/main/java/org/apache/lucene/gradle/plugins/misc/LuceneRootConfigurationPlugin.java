@@ -19,7 +19,6 @@ package org.apache.lucene.gradle.plugins.misc;
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin;
 import java.util.Collection;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
-import org.apache.lucene.gradle.plugins.astgrep.AstGrepPlugin;
 import org.apache.lucene.gradle.plugins.documentation.DocumentationConfigPlugin;
 import org.apache.lucene.gradle.plugins.eclint.EditorConfigLintPlugin;
 import org.apache.lucene.gradle.plugins.gitgrep.GitGrepPlugin;
@@ -76,7 +75,6 @@ public class LuceneRootConfigurationPlugin extends LuceneGradlePlugin {
     // Register more root-level plugins
     plugins.apply(RegenerateTasksSupportPlugin.class);
     plugins.apply(GitGrepPlugin.class);
-    plugins.apply(AstGrepPlugin.class);
     plugins.apply(EditorConfigLintPlugin.class);
     plugins.apply(HelpPlugin.class);
     plugins.apply(HacksPlugin.class);
