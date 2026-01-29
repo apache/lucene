@@ -1,0 +1,6 @@
+This product includes software developed by the Agrona project.
+https://github.com/real-logic/agrona
+
+Copyright © 2014-2023 Real Logic Limited
+
+Licensed under the Apache License, Version 2.0.
