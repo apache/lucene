@@ -116,6 +116,8 @@ Bug Fixes
 * GITHUB#14847: Allow Faiss vector format to index >2GB of vectors per-field per-segment by using MemorySegment APIs
   (instead of ByteBuffer) to copy bytes to native memory. (Kaival Parikh)
 
+* GITHUB#15108: Fixed test failure caused by DirectoryReader.open() reading an index with uncommitted changes. (Vivek Kumar)
+
 * GITHUB#15213: Don't normalize centroids with zero samples, which caused divide-by-zero. (Mike Sokolov)
 
 * GITHUB#15125: Handle inconsistent schema on flush with index sorts (Nhat Nguyen)
