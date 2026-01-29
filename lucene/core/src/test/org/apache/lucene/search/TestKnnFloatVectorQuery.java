@@ -81,7 +81,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
 
   public void testToString() throws IOException {
     try (Directory indexStore =
-            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {1, 1});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {0.0f, 1.0f}, 10);
       assertEquals("KnnFloatVectorQuery:field[0.0,...][10]", query.toString("ignored"));
@@ -97,7 +97,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
 
   public void testVectorEncodingMismatch() throws IOException {
     try (Directory indexStore =
-            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {1, 1});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       Query filter = null;
       if (random().nextBoolean()) {

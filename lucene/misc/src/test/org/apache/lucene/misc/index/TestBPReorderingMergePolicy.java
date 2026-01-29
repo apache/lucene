@@ -257,7 +257,7 @@ public class TestBPReorderingMergePolicy extends LuceneTestCase {
     doc.add(idField);
     StringField bodyField = new StringField("body", "", Store.YES);
     doc.add(bodyField);
-    KnnFloatVectorField vectorField = new KnnFloatVectorField("vector", new float[] {0});
+    KnnFloatVectorField vectorField = new KnnFloatVectorField("vector", new float[] {1});
     doc.add(vectorField);
 
     for (int i = 0; i < 10; ++i) {

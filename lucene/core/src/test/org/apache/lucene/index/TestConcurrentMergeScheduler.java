@@ -49,6 +49,7 @@ import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.SameThreadExecutorService;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.SuppressForbidden;
+import org.apache.lucene.util.TestVectorUtil;
 import org.apache.lucene.util.Version;
 
 public class TestConcurrentMergeScheduler extends LuceneTestCase {
@@ -109,7 +110,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     IndexWriter writer = new IndexWriter(directory, iwc);
     Document doc = new Document();
     Field idField = newStringField("id", "", Field.Store.YES);
-    KnnFloatVectorField knnField = new KnnFloatVectorField("knn", new float[] {0.0f, 0.0f});
+    KnnFloatVectorField knnField = new KnnFloatVectorField("knn", TestVectorUtil.randomVector(2));
     doc.add(idField);
     // Add knn float vectors to test parallel merge
     doc.add(knnField);
@@ -244,7 +245,7 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     Directory directory = newDirectory();
     Document doc = new Document();
     Field idField = newStringField("id", "", Field.Store.YES);
-    KnnFloatVectorField knnField = new KnnFloatVectorField("knn", new float[] {0.0f, 0.0f});
+    KnnFloatVectorField knnField = new KnnFloatVectorField("knn", TestVectorUtil.randomVector(2));
     doc.add(idField);
     doc.add(knnField);
     IndexWriterConfig iwc =

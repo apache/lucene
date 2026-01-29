@@ -39,7 +39,7 @@ public class TestVectorScorer extends LuceneTestCase {
     VectorEncoding encoding = RandomPicks.randomFrom(random(), VectorEncoding.values());
     try (Directory indexStore =
             getIndexStore(
-                "field", encoding, new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+                "field", encoding, new float[] {0, 1}, new float[] {1, 2}, new float[] {1, 1});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       assert reader.leaves().size() == 1;
       LeafReaderContext context = reader.leaves().get(0);

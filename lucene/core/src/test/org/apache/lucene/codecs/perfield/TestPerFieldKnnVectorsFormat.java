@@ -55,6 +55,7 @@ import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.index.RandomCodec;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.TestVectorUtil;
 import org.hamcrest.MatcherAssert;
 
 /** Basic tests of PerFieldDocValuesFormat */
@@ -232,14 +233,14 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
           });
       try (IndexWriter writer = new IndexWriter(directory, iwc)) {
         Document doc1 = new Document();
-        doc1.add(new KnnFloatVectorField("field1", new float[33]));
+        doc1.add(new KnnFloatVectorField("field1", TestVectorUtil.randomVector(33)));
         Exception exc =
             expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc1));
         assertTrue(exc.getMessage().contains("vector's dimensions must be <= [32]"));
 
         Document doc2 = new Document();
-        doc2.add(new KnnFloatVectorField("field1", new float[32]));
-        doc2.add(new KnnFloatVectorField("field2", new float[33]));
+        doc2.add(new KnnFloatVectorField("field1", TestVectorUtil.randomVector(32)));
+        doc2.add(new KnnFloatVectorField("field2", TestVectorUtil.randomVector(33)));
         writer.addDocument(doc2);
       }
 

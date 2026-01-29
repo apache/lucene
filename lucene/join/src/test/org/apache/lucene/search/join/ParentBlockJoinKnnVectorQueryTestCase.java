@@ -176,7 +176,7 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
 
   public void testFilterWithNoVectorMatches() throws IOException {
     try (Directory indexStore =
-            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {1, 1});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
       Query filter = new TermQuery(new Term("other", "value"));
@@ -251,7 +251,7 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
     try (Directory d = newDirectory()) {
       try (IndexWriter w =
           new IndexWriter(d, new IndexWriterConfig().setCodec(TestUtil.getDefaultCodec()))) {
-        int r = 0;
+        int r = 1;
         for (int i = 0; i < 5; i++) {
           for (int j = 0; j < 5; j++) {
             List<Document> toAdd = new ArrayList<>();
@@ -271,11 +271,11 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
         TopDocs results =
             searcher.search(
                 getParentJoinKnnQuery(
-                    "field", new float[] {0, 0}, null, 8, parentFilter(searcher.getIndexReader())),
+                    "field", new float[] {1, 1}, null, 8, parentFilter(searcher.getIndexReader())),
                 10);
         assertEquals(8, results.scoreDocs.length);
-        assertIdMatches(reader, "0", results.scoreDocs[0].doc);
-        assertIdMatches(reader, "7", results.scoreDocs[7].doc);
+        assertIdMatches(reader, "1", results.scoreDocs[0].doc);
+        assertIdMatches(reader, "8", results.scoreDocs[7].doc);
 
         // test some results in the middle of the sequence - also tests docid tiebreaking
         results =
@@ -297,7 +297,7 @@ abstract class ParentBlockJoinKnnVectorQueryTestCase extends LuceneTestCase {
   /** Test that the query times out correctly. */
   public void testTimeout() throws IOException {
     try (Directory indexStore =
-            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {1, 1});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       BitSetProducer parentFilter = parentFilter(reader);
       IndexSearcher searcher = newSearcher(reader);

@@ -214,6 +214,8 @@ API Changes
 
 * GITHUB#15502: Add `count()` method to `FilterWeight`  (Prudhvi Godithi)
 
+* GITHUB#15621: Add validation to prevent zero vectors in KNN fields (Vigya Sharma)
+
 New Features
 ---------------------
 * GITHUB#15328: VectorSimilarityFunction.getValues() now implements doubleVal allowing its

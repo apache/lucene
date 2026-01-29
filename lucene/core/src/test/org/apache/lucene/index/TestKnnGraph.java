@@ -270,7 +270,8 @@ public class TestKnnGraph extends LuceneTestCase {
     for (int i = 0; i < values.length; i++) {
       // System.out.printf("%d: (%d, %d)\n", i, index % n, index / n);
       int x = index % n, y = index / n;
-      values[i] = new float[] {x, y};
+      // avoid zero vectors
+      values[i] = new float[] {x + 1e-5f, y + 1e-5f};
       index = (index + stepSize) % (n * n);
       add(iw, i, values[i]);
       if (i == 13) {

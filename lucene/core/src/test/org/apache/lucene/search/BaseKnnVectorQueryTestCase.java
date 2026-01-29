@@ -177,10 +177,10 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
    */
   public void testFindAll() throws IOException {
     try (Directory indexStore =
-            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {1, 1});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
-      AbstractKnnVectorQuery kvq = getKnnVectorQuery("field", new float[] {0, 0}, 10);
+      AbstractKnnVectorQuery kvq = getKnnVectorQuery("field", new float[] {1, 1}, 10);
       assertMatches(searcher, kvq, 3);
       ScoreDoc[] scoreDocs = searcher.search(kvq, 3).scoreDocs;
       assertIdMatches(reader, "id2", scoreDocs[0]);
@@ -191,10 +191,10 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
   public void testFindFewer() throws IOException {
     try (Directory indexStore =
-            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {1, 1});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
-      AbstractKnnVectorQuery kvq = getKnnVectorQuery("field", new float[] {0, 0}, 2);
+      AbstractKnnVectorQuery kvq = getKnnVectorQuery("field", new float[] {1, 1}, 2);
       assertMatches(searcher, kvq, 2);
       ScoreDoc[] scoreDocs = searcher.search(kvq, 3).scoreDocs;
       assertEquals(scoreDocs.length, 2);
@@ -204,11 +204,11 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
   public void testSearchBoost() throws IOException {
     try (Directory indexStore =
-            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {1, 1});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
 
-      Query vectorQuery = getKnnVectorQuery("field", new float[] {0, 0}, 10);
+      Query vectorQuery = getKnnVectorQuery("field", new float[] {1, 1}, 10);
       ScoreDoc[] scoreDocs = searcher.search(vectorQuery, 3).scoreDocs;
 
       Query boostQuery = new BoostQuery(vectorQuery, 3.0f);
@@ -228,11 +228,11 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   /** Tests that a AbstractKnnVectorQuery applies the filter query */
   public void testSimpleFilter() throws IOException {
     try (Directory indexStore =
-            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {1, 1});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
       Query filter = new TermQuery(new Term("id", "id2"));
-      Query kvq = getKnnVectorQuery("field", new float[] {0, 0}, 10, filter);
+      Query kvq = getKnnVectorQuery("field", new float[] {1, 1}, 10, filter);
       TopDocs topDocs = searcher.search(kvq, 3);
       assertEquals(1, topDocs.totalHits.value());
       assertIdMatches(reader, "id2", topDocs.scoreDocs[0]);
@@ -241,12 +241,12 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
   public void testFilterWithNoVectorMatches() throws IOException {
     try (Directory indexStore =
-            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {1, 1});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
 
       Query filter = new TermQuery(new Term("other", "value"));
-      Query kvq = getKnnVectorQuery("field", new float[] {0, 0}, 10, filter);
+      Query kvq = getKnnVectorQuery("field", new float[] {1, 1}, 10, filter);
       TopDocs topDocs = searcher.search(kvq, 3);
       assertEquals(0, topDocs.totalHits.value());
     }
@@ -254,13 +254,13 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
   public void testMatchAllFilter() throws IOException {
     try (Directory indexStore =
-            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {1, 1});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
 
       // make sure we don't drop to exact search, even though the filter matches fewer than k docs
       Query kvq =
-          getThrowingKnnVectorQuery("field", new float[] {0, 0}, 10, MatchAllDocsQuery.INSTANCE);
+          getThrowingKnnVectorQuery("field", new float[] {1, 1}, 10, MatchAllDocsQuery.INSTANCE);
       TopDocs topDocs = searcher.search(kvq, 3);
       assertEquals(3, topDocs.totalHits.value());
     }
@@ -269,7 +269,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   /** testDimensionMismatch */
   public void testDimensionMismatch() throws IOException {
     try (Directory indexStore =
-            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {1, 1});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
       AbstractKnnVectorQuery kvq = getKnnVectorQuery("field", new float[] {0}, 1);
@@ -282,7 +282,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   /** testNonVectorField */
   public void testNonVectorField() throws IOException {
     try (Directory indexStore =
-            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {1, 1});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
       assertMatches(searcher, getKnnVectorQuery("xyzzy", new float[] {0}, 10), 0);
@@ -297,7 +297,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
 
   public void testDifferentReader() throws IOException {
     try (Directory indexStore =
-            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {1, 1});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {2, 3}, 3);
       Query dasq = query.rewrite(newSearcher(reader));
@@ -311,7 +311,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   public void testScoreEuclidean() throws IOException {
     float[][] vectors = new float[5][];
     for (int j = 0; j < 5; j++) {
-      vectors[j] = new float[] {j, j};
+      vectors[j] = new float[] {j + 1, j + 1};
     }
     try (Directory d = getStableIndexStore("field", vectors);
         IndexReader reader = DirectoryReader.open(d)) {
@@ -332,17 +332,17 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       DocIdSetIterator it = scorer.iterator();
       assertEquals(3, it.cost());
       int firstDoc = it.nextDoc();
-      if (firstDoc == 1) {
+      if (firstDoc == 0) {
         assertEquals(1 / 6f, scorer.score(), 0);
-        assertEquals(3, it.advance(3));
+        assertEquals(2, it.advance(2));
         assertEquals(1 / 2f, scorer.score(), 0);
-        assertEquals(NO_MORE_DOCS, it.advance(4));
+        assertEquals(NO_MORE_DOCS, it.advance(3));
       } else {
-        assertEquals(2, firstDoc);
+        assertEquals(1, firstDoc);
         assertEquals(1 / 2f, scorer.score(), 0);
-        assertEquals(4, it.advance(4));
+        assertEquals(3, it.advance(3));
         assertEquals(1 / 6f, scorer.score(), 0);
-        assertEquals(NO_MORE_DOCS, it.advance(5));
+        assertEquals(NO_MORE_DOCS, it.advance(4));
       }
       expectThrows(ArrayIndexOutOfBoundsException.class, scorer::score);
     }
@@ -397,7 +397,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   }
 
   public void testScoreMIP() throws IOException {
-    float[][] vectors = {{0, 1}, {1, 2}, {0, 0}};
+    float[][] vectors = {{0, 1}, {1, 2}, {1, 1}};
     try (Directory d =
             getStableIndexStore("field", VectorSimilarityFunction.MAXIMUM_INNER_PRODUCT, vectors);
         IndexReader reader = DirectoryReader.open(d)) {
@@ -405,11 +405,11 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       AbstractKnnVectorQuery kvq = getKnnVectorQuery("field", new float[] {0, -1}, 10);
       assertMatches(searcher, kvq, 3);
       ScoreDoc[] scoreDocs = searcher.search(kvq, 3).scoreDocs;
-      assertIdMatches(reader, "id2", scoreDocs[0]);
-      assertIdMatches(reader, "id0", scoreDocs[1]);
+      assertIdMatches(reader, "id0", scoreDocs[0]);
+      assertIdMatches(reader, "id2", scoreDocs[1]);
       assertIdMatches(reader, "id1", scoreDocs[2]);
 
-      assertEquals(1.0, scoreDocs[0].score, 1e-7);
+      assertEquals(1 / 2f, scoreDocs[0].score, 1e-7);
       assertEquals(1 / 2f, scoreDocs[1].score, 1e-7);
       assertEquals(1 / 3f, scoreDocs[2].score, 1e-7);
     }
@@ -418,7 +418,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   public void testExplain() throws IOException {
     try (Directory d = newDirectoryForTest()) {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
-        for (int j = 0; j < 5; j++) {
+        for (int j = 1; j <= 5; j++) {
           Document doc = new Document();
           doc.add(getKnnVectorField("field", new float[] {j, j}));
           w.addDocument(doc);
@@ -446,7 +446,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   public void testExplainMultipleSegments() throws IOException {
     try (Directory d = newDirectoryForTest()) {
       try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
-        for (int j = 0; j < 5; j++) {
+        for (int j = 1; j <= 5; j++) {
           Document doc = new Document();
           doc.add(getKnnVectorField("field", new float[] {j, j}));
           w.addDocument(doc);
@@ -480,7 +480,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
      */
     try (Directory d = newDirectoryForTest()) {
       try (IndexWriter w = new IndexWriter(d, configStandardCodec())) {
-        int r = 0;
+        int r = 1;
         for (int i = 0; i < 5; i++) {
           for (int j = 0; j < 5; j++) {
             Document doc = new Document();
@@ -494,10 +494,10 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
       }
       try (IndexReader reader = DirectoryReader.open(d)) {
         IndexSearcher searcher = newSearcher(reader);
-        TopDocs results = searcher.search(getKnnVectorQuery("field", new float[] {0, 0}, 8), 10);
+        TopDocs results = searcher.search(getKnnVectorQuery("field", new float[] {1, 1}, 8), 10);
         assertEquals(8, results.scoreDocs.length);
-        assertIdMatches(reader, "id0", results.scoreDocs[0]);
-        assertIdMatches(reader, "id7", results.scoreDocs[7]);
+        assertIdMatches(reader, "id1", results.scoreDocs[0]);
+        assertIdMatches(reader, "id8", results.scoreDocs[7]);
 
         // test some results in the middle of the sequence - also tests docid tiebreaking
         results = searcher.search(getKnnVectorQuery("field", new float[] {10, 10}, 8), 10);
@@ -916,7 +916,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   /** Test functionality of {@link TimeLimitingKnnCollectorManager}. */
   public void testTimeLimitingKnnCollectorManager() throws IOException {
     try (Directory indexStore =
-            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {1, 1});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
 
@@ -962,7 +962,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
   /** Test that the query times out correctly. */
   public void testTimeout() throws IOException {
     try (Directory indexStore =
-            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {0, 0});
+            getIndexStore("field", new float[] {0, 1}, new float[] {1, 2}, new float[] {1, 1});
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
 
