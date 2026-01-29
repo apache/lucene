@@ -39,8 +39,10 @@ jobs:
 
       - name: Configure problem matchers
         run: |
-          echo "::add-matcher::.github/problem-matchers/shellcheck-gcc.json"
           echo "::add-matcher::.github/problem-matchers/actionlint-matcher.json"
+          echo "::add-matcher::.github/problem-matchers/ruff-check.json"
+          echo "::add-matcher::.github/problem-matchers/ruff-format.json"
+          echo "::add-matcher::.github/problem-matchers/shellcheck-gcc.json"
 
       - name: Setup uv
         uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7.1.6
