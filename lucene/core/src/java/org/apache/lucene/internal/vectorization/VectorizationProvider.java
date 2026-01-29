@@ -96,6 +96,11 @@ public abstract class VectorizationProvider {
         Holder.INSTANCE, "call to getInstance() from subclass of VectorizationProvider");
   }
 
+  /** Returns the name of the {@code VectorizationProvider}'s implementation that's being used. */
+  public static String getImplementationName() {
+    return Objects.requireNonNull(Holder.INSTANCE).getName();
+  }
+
   VectorizationProvider() {
     // no instance/subclass except from this package
   }
@@ -222,6 +227,10 @@ public abstract class VectorizationProvider {
       throw new UnsupportedOperationException(
           "VectorizationProvider is internal and can only be used by known Lucene classes.");
     }
+  }
+
+  public String getName() {
+    return this.getClass().getSimpleName();
   }
 
   /** This static holder class prevents classloading deadlock. */

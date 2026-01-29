@@ -16,12 +16,22 @@
  */
 package org.apache.lucene.internal.vectorization;
 
+import java.util.Set;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestVectorizationProvider extends LuceneTestCase {
 
   public void testCallerOfGetter() {
     expectThrows(UnsupportedOperationException.class, TestVectorizationProvider::illegalCaller);
+  }
+
+  public void testGetProviderName() {
+    Set<String> knownVectorizationProviders =
+        Set.of("DefaultVectorizationProvider", "PanamaVectorizationProvider");
+    String currentVectorizationProvider = VectorizationProvider.getImplementationName();
+    assertTrue(
+        "Unknown Vectorization provider: " + currentVectorizationProvider,
+        knownVectorizationProviders.contains(currentVectorizationProvider));
   }
 
   private static void illegalCaller() {
