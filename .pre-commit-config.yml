@@ -1,0 +1,147 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/j178/prek/refs/heads/master/prek.schema.json
+default_install_hook_types:
+  - pre-commit
+default_stages:
+  - pre-commit
+repos:
+  # "Built-in Fast Hooks" from prek.
+  - repo: builtin
+    hooks:
+      - id: trailing-whitespace
+        name: Check for trailing whitespace
+        types: [ text ]
+        # TODO: fix these files
+        exclude:
+          glob:
+            - lucene/demo/src/test/org/apache/lucene/demo/test-files/docs/*.txt
+            - lucene/analysis/common/src/resources/org/apache/lucene/analysis/**/stopwords.txt
+            - lucene/analysis/common/src/java/org/apache/lucene/analysis/charfilter/HTMLStripCharFilter.java
+            - lucene/analysis/common/src/test/org/apache/lucene/analysis/hunspell/checkcompoundrep.aff
+
+      - id: check-added-large-files
+        name: Prevent committing large files
+
+      - id: check-case-conflict
+        name: Check for files that would conflict in case-insensitive filesystems
+
+      - id: end-of-file-fixer
+        name: Ensure newline at EOF
+        # TODO: fix these files
+        exclude:
+          glob:
+            - .dir-locals.el
+            - .github/actionlint.yaml
+            - dev-tools/scripts/README.md
+            - gradle/documentation/render-javadoc/custom_styles.css
+            - help/*.txt
+            - LICENSE.txt
+            - lucene/analysis/common/src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex
+            - lucene/analysis/common/src/resources/org/apache/lucene/analysis/bn/stopwords.txt
+            - lucene/analysis/common/src/resources/org/apache/lucene/analysis/snowball/*.txt
+            - lucene/analysis/common/src/test/org/apache/lucene/analysis/charfilter/*.htm
+            - lucene/analysis/common/src/test/org/apache/lucene/analysis/email/*.{txt,html}
+            - lucene/analysis/common/src/test/org/apache/lucene/analysis/hunspell/*.{aff,dic}
+            - lucene/analysis/common/src/test/org/apache/lucene/analysis/no/*.txt
+            - lucene/analysis/common/src/test/org/apache/lucene/analysis/synonym/synonyms.txt
+            - lucene/analysis/icu/src/data/utr30/*.txt
+            - lucene/analysis/icu/src/test/org/apache/lucene/analysis/icu/segmentation/*.rbbi
+            - lucene/benchmark/conf/*.alg
+            - lucene/demo/src/test/org/apache/lucene/demo/test-files/docs/*.txt
+            - lucene/distribution/src/binary-release/README.md
+            - lucene/highlighter/src/test/org/apache/lucene/search/uhighlight/CambridgeMA.utf8
+            - lucene/licenses/*.txt
+            - lucene/misc/src/java/org/apache/lucene/misc/doc-files/*.svg
+            - lucene/test-framework/src/resources/org/apache/lucene/tests/index/LICENSE.txt
+            - lucene/queryparser/src/java/org/apache/lucene/queryparser/surround/parser/QueryParser.jj
+            - versions.lock
+
+      - id: fix-byte-order-marker
+        name: Remove UTF-8 byte order marker
+
+      - id: check-json
+        name: Validate JSON files
+        types: [ json ]
+
+      - id: check-toml
+        name: Validate TOML files
+        types: [ toml ]
+
+      - id: check-yaml
+        name: Validate YAML files
+        types: [ yaml ]
+        # this check does not support deserializing more than one yaml doc from file
+        exclude:
+          glob:
+            - gradle/validation/ast-grep/{rules,tests}/*.yml
+
+      - id: check-xml
+        name: Validate XML files
+        types: [ xml ]
+
+      - id: mixed-line-ending
+        name: Normalize or check line endings
+        types: [ text ]
+
+      - id: check-symlinks
+        name: Check for broken symlinks
+
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+
+      - id: detect-private-key
+        name: Detect private keys
+
+      - id: check-executables-have-shebangs
+        name: Ensures that (non-binary) executables have a shebang
+        exclude:
+          glob:
+            # TODO: fix these permissions
+            - lucene/analysis/common/**/*.java
+            - lucene/codecs/**/*.java
+            - lucene/queries/**/*.java
+            - lucene/spatial3d/**/*.java
+
+  - repo: local
+    hooks:
+      - id: shellcheck
+        name: Check Shell Scripts
+        language: system
+        entry: uv
+        args: [ 'run', 'shellcheck', '--format', 'gcc' ]
+        env:
+          UV_PROJECT: dev-tools
+        types: [ shell ]
+        exclude:
+          glob:
+            # TODO: fix these shell scripts
+            - dev-tools/test-patch/*.sh
+            - gradle/regenerate/snowball/snowball.sh
+            - gradlew
+            - lucene/distribution/src/binary-release/bin/luke.sh
+
+      - id: actionlint
+        name: Lint Github Actions
+        language: system
+        entry: uv
+        args: [ 'run', 'actionlint' ]
+        env:
+          UV_PROJECT: dev-tools
+        # run across all actions if any are touched
+        pass_filenames: false
+        files:
+          glob:
+            - .github/**/*.yml
+
+      - id: zizmor
+        name: Check Github Actions Security
+        language: system
+        entry: uv
+        args: [ 'run', 'zizmor', '--pedantic', '--offline', '.' ]
+        env:
+          UV_PROJECT: dev-tools
+        # run across all actions if any are touched
+        pass_filenames: false
+        files:
+          glob:
+            - .github/**/*.yml
