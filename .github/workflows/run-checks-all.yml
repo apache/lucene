@@ -49,7 +49,7 @@ jobs:
           enable-cache: true
           prune-cache: false
           save-cache: ${{ github.event_name != 'pull_request' }}
-          cache-dependency-glob: /dev-tools/uv.lock
+          cache-dependency-glob: dev-tools/uv.lock
           cache-suffix: dev-tools
 
       - name: Run prek
