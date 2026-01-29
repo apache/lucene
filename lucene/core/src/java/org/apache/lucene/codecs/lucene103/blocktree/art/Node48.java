@@ -224,9 +224,9 @@ public class Node48 extends Node {
   @Override
   public void saveChildIndex(IndexOutput dataOutput) throws IOException {
     for (int i = 0; i < 32; i++) {
-      long longV = childIndex[i];
       // TODO: Skip -1 and write VLong, dataOutput.writeVLong(longV). Or other compression.
-      dataOutput.writeLong(longV);
+      // TODO: Long.reverseBytes(childIndex[i]).
+      dataOutput.writeLong(childIndex[i]);
     }
   }
 
