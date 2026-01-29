@@ -87,12 +87,6 @@ jobs:
         if: ${{ ! startsWith(matrix.os, 'windows') }}
         uses: ./.github/actions/eclint
 
-      - name: Install ast-grep
-        if: ${{ ! startsWith(matrix.os, 'windows') }}
-        run: |
-          npm -g i @ast-grep/cli
-          echo "lucene.tool.ast-grep=ast-grep" >> build-options.local.properties
-
       - name: Run gradle check (without tests)
         run: ./gradlew check -x test "-Ptask.times=true"
 
