@@ -32,7 +32,6 @@ import java.util.function.Function;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Constants;
-import org.apache.lucene.util.IOConsumer;
 
 /**
  * Base IndexInput implementation that uses an array of MemorySegments to represent a file.
@@ -328,9 +327,9 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   }
 
   @Override
-  public void prefetch(long offset, long length) throws IOException {
+  public boolean prefetch(long offset, long length) throws IOException {
     if (NATIVE_ACCESS.isEmpty()) {
-      return;
+      return false;
     }
 
     ensureOpen();
@@ -340,20 +339,54 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       // power of two. There is a good chance that a good chunk of this index input is cached in
       // physical memory. Let's skip the overhead of the madvise system call, we'll be trying again
       // on the next power of two of the counter.
-      return;
+      return false;
     }
 
     final NativeAccess nativeAccess = NATIVE_ACCESS.get();
-    advise(
+    return advise(
         offset,
         length,
         segment -> {
-          if (segment.isLoaded() == false) {
+          if (isProbablyLoaded(segment)) {
+            return false;
+          } else {
             // We have a cache miss on at least one page, let's reset the counter.
             sharedPrefetchCounter.set(0);
             nativeAccess.madviseWillNeed(segment);
+            return true;
           }
         });
+  }
+
+  private boolean isProbablyLoaded(MemorySegment segment) {
+    if (NATIVE_ACCESS.isEmpty()) {
+      return true;
+    }
+
+    final NativeAccess nativeAccess = NATIVE_ACCESS.get();
+    final long pageSize = nativeAccess.getPageSize();
+    final long segmentSize = segment.byteSize();
+
+    // Sample at most 3 pages: start, middle, end
+    final int maxSamples = Math.min(3, (int) ((segmentSize + pageSize - 1) / pageSize));
+
+    for (int i = 0; i < maxSamples; i++) {
+      long offset = (i * segmentSize) / maxSamples;
+      offset = (offset / pageSize) * pageSize; // Align to page boundary
+
+      if (offset + pageSize > segmentSize) {
+        offset = segmentSize - pageSize;
+      }
+
+      if (offset >= 0) {
+        MemorySegment pageSlice = segment.asSlice(offset, Math.min(pageSize, segmentSize - offset));
+        if (!pageSlice.isLoaded()) {
+          return false;
+        }
+      }
+    }
+
+    return true;
   }
 
   @Override
@@ -369,14 +402,25 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
 
     long offset = 0;
     for (MemorySegment seg : segments) {
-      advise(offset, seg.byteSize(), segment -> nativeAccess.madvise(segment, readAdvice));
+      advise(
+          offset,
+          seg.byteSize(),
+          segment -> {
+            nativeAccess.madvise(segment, readAdvice);
+            return true;
+          });
       offset += seg.byteSize();
     }
   }
 
-  void advise(long offset, long length, IOConsumer<MemorySegment> advice) throws IOException {
+  @FunctionalInterface
+  interface ReadAdviceConsumer {
+    boolean accept(MemorySegment input) throws IOException;
+  }
+
+  boolean advise(long offset, long length, ReadAdviceConsumer advice) throws IOException {
     if (NATIVE_ACCESS.isEmpty()) {
-      return;
+      return false;
     }
 
     ensureOpen();
@@ -404,12 +448,12 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
         length -= nativeAccess.getPageSize();
         if (length <= 0) {
           // This segment has no data beyond the first page.
-          return;
+          return false;
         }
       }
 
       final MemorySegment advisedSlice = segment.asSlice(offset, length);
-      advice.accept(advisedSlice);
+      return advice.accept(advisedSlice);
     } catch (IndexOutOfBoundsException _) {
       throw new EOFException("Read past EOF: " + this);
     } catch (NullPointerException | IllegalStateException e) {
@@ -615,6 +659,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
             slice.length,
             segment -> {
               nativeAccess.madvise(segment, advice);
+              return true;
             });
       }
     }
@@ -804,9 +849,9 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     }
 
     @Override
-    public void prefetch(long offset, long length) throws IOException {
+    public boolean prefetch(long offset, long length) throws IOException {
       Objects.checkFromIndexSize(offset, length, this.length);
-      super.prefetch(offset, length);
+      return super.prefetch(offset, length);
     }
   }
 
@@ -904,9 +949,9 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     }
 
     @Override
-    public void prefetch(long offset, long length) throws IOException {
+    public boolean prefetch(long offset, long length) throws IOException {
       Objects.checkFromIndexSize(offset, length, this.length);
-      super.prefetch(this.offset + offset, length);
+      return super.prefetch(this.offset + offset, length);
     }
   }
 }
