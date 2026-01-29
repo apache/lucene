@@ -46,9 +46,6 @@ public class BufferedChecksumBenchmark {
   @Param({"128", "256", "512", "1024", "2048", "4096", "8192"})
   private int bufferSize;
 
-//  @Param({"1", "8", "64", "256"}) // Key: test different chunk sizes
-//  private int chunkSize;
-
   private byte[] data;
 
   @Setup
@@ -58,7 +55,6 @@ public class BufferedChecksumBenchmark {
       data[i] = (byte) i;
     }
   }
-
 
   @Benchmark
   public long bufferedCRC32SmallUpdates() {
