@@ -268,8 +268,6 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
   }
 
   private IOBooleanSupplier prepareSeekExact(BytesRef target, boolean prefetch) throws IOException {
-    long t0 = System.nanoTime();
-    try {
     if (fr.size() > 0 && (target.compareTo(fr.getMin()) < 0 || target.compareTo(fr.getMax()) > 0)) {
       return null;
     }
@@ -568,15 +566,6 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
         return false;
       }
     };
-  } finally {
-    long t1 = System.nanoTime();
-    try {
-      System.out.println(Thread.currentThread().getName() + " - ST#prepareSeekExact took: " + (t1 - t0) + ", term: " + target.utf8ToString());
-    } catch (Throwable e) {
-      System.out.println(Thread.currentThread().getName() + " - ST#prepareSeekExact took: " + (t1 - t0) + ", term: " + target.toString());
-    }
-
-  }
   }
 
   @Override
@@ -592,9 +581,6 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
 
   @Override
   public SeekStatus seekCeil(BytesRef target) throws IOException {
-    long t0 = System.nanoTime();
-    try {
-
     term.grow(1 + target.length);
 
     assert clearEOF();
@@ -872,15 +858,6 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
       }
     } else {
       return result;
-    }
-    } finally {
-      long t1 = System.nanoTime();
-
-      try {
-        System.out.println(Thread.currentThread().getName() + " - ST#seekCeil took: " + (t1 - t0) + ", term: " + target.utf8ToString());
-      } catch (Throwable e) {
-        System.out.println(Thread.currentThread().getName() + " - ST#seekCeil took: " + (t1 - t0) + ", term: " + target.toString());
-      }
     }
   }
 

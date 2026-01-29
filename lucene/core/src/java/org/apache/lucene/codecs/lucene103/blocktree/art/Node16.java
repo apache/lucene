@@ -35,8 +35,6 @@ public class Node16 extends Node {
 
   @Override
   public int getChildPos(byte indexByte) {
-    long t0 = System.nanoTime();
-    try {
       byte[] firstBytes = LongUtils.toBDBytes(firstChildIndex);
       if (childrenCount <= 8) {
         return Node.binarySearch(firstBytes, 0, childrenCount, indexByte);
@@ -54,10 +52,6 @@ public class Node16 extends Node {
           }
         }
       }
-    } finally {
-      long t1 = System.nanoTime();
-      System.out.println(Thread.currentThread().getName() + " - Node16#getChildPos took: " + (t1 - t0));
-    }
   }
 
   @Override
@@ -205,14 +199,8 @@ public class Node16 extends Node {
 
   @Override
   public void readChildIndex(RandomAccessInput access, long fp) throws IOException {
-    long t0 = System.nanoTime();
-    try {
     firstChildIndex = Long.reverseBytes(access.readLong(fp));
     secondChildIndex = Long.reverseBytes(access.readLong(fp + 8));
-  } finally {
-    long t1 = System.nanoTime();
-    System.out.println(Thread.currentThread().getName() + " - Node16#readChildIndex took: " + (t1 - t0));
-  }
   }
 
   @Override

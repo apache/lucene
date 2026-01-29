@@ -323,7 +323,6 @@ public abstract class Node {
       return LeafNode.load(access, fp);
     }
     long t0 = System.nanoTime();
-    try {
     // Children count.
     short childrenCount = Short.reverseBytes(access.readShort(fp + offset));
     assert childrenCount > 0;
@@ -332,13 +331,20 @@ public abstract class Node {
     int prefixLength = access.readInt(fp + offset);
     offset += 4;
     byte[] prefix = null;
-    if (prefixLength > 0) {
+    long other0 = System.nanoTime();
+
+
+    long prefixT0 = System.nanoTime();
+      if (prefixLength > 0) {
       prefix = new byte[prefixLength];
       access.readBytes(fp + offset, prefix, 0, prefixLength);
       offset += prefixLength;
     }
+      long prefixT1 = System.nanoTime();
+
 
     // TODO: Change the constructor.
+    long s0 = System.nanoTime();
     Node node;
     if (nodeTypeOrdinal == NodeType.NODE4.ordinal()) {
       node = new Node4(prefixLength);
@@ -367,6 +373,11 @@ public abstract class Node {
     node.childrenDeltaFpBytes = (header & 0x07) + 1;
     node.childrenDeltaFpStart = fp + offset;
 
+    long s1 = System.nanoTime();
+
+
+
+    long output0 = System.nanoTime();
     if ((header & NON_LEAF_NODE_HAS_OUTPUT) != 0) {
       int encodedOutputFpBytes = ((header >>> 4) & 0x07) + 1;
       // TODO: impl readLongFromNBytes.
@@ -393,13 +404,20 @@ public abstract class Node {
       // Skip children delta fp bytes.
       offset += childrenCount * node.childrenDeltaFpBytes;
     }
+      long output1 = System.nanoTime();
 
+    long read0 = System.nanoTime();
     node.readChildIndex(access, fp + offset + node.floorDataLen);
+    long read1 = System.nanoTime();
+
+    long t1 = System.nanoTime();
+    System.out.println(Thread.currentThread().getName() + " - Node#load other0 took: " + (other0 - t0) + ", fp: " + fp);
+    System.out.println(Thread.currentThread().getName() + " - Node#load readPrefix took: " + (prefixT1 - prefixT0) + ", prefixLength: " + prefixLength + ", fp: " + fp);
+    System.out.println(Thread.currentThread().getName() + " - Node#load other1 took: " + (s1 - s0) + ", fp: " + fp);
+    System.out.println(Thread.currentThread().getName() + " - Node#load readOutput took: " + (output1 - output0) + ", outputFp: " + node.outputFp + ", fp: " + fp);
+    System.out.println(Thread.currentThread().getName() + " - Node#load readIndex took: " + (read1 - read0) + ", nodeType: " + node.nodeType + ", fp: " + fp);
+    System.out.println(Thread.currentThread().getName() + " - Node#load took: " + (t1 - t0) + ", fp: " + fp);
     return node;
-    } finally {
-      long t1 = System.nanoTime();
-      System.out.println(Thread.currentThread().getName() + " - Node#load took: " + (t1 - t0));
-    }
   }
 
   private long encodeFP(Output output) {
