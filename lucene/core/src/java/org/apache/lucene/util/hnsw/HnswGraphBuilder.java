@@ -64,6 +64,8 @@ public class HnswGraphBuilder implements HnswBuilder {
   @SuppressWarnings("NonFinalStaticField")
   public static long randSeed = DEFAULT_RAND_SEED;
 
+  private static final int MAX_BULK_SCORE_NODES = 8;
+
   protected final int M; // max number of connections on upper layers
   private final double ml;
 
@@ -160,8 +162,8 @@ public class HnswGraphBuilder implements HnswBuilder {
     this.graphSearcher = graphSearcher;
     // pick a number that keeps us from scoring TOO much for diversity checking
     // but enough to take advantage of bulk scoring
-    this.bulkScoreNodes = new int[8];
-    this.bulkScores = new float[8];
+    this.bulkScoreNodes = new int[MAX_BULK_SCORE_NODES];
+    this.bulkScores = new float[MAX_BULK_SCORE_NODES];
     entryCandidates = new GraphBuilderKnnCollector(1);
     beamCandidates = new GraphBuilderKnnCollector(beamWidth);
     beamCandidates0 = new GraphBuilderKnnCollector(Math.min(beamWidth / 2, M * 3));
@@ -477,8 +479,7 @@ public class HnswGraphBuilder implements HnswBuilder {
   private boolean diversityCheck(float score, NeighborArray neighbors, RandomVectorScorer scorer)
       throws IOException {
     final int bulkScoreChunk = Math.min((neighbors.size() + 1) / 2, bulkScoreNodes.length);
-    int scored = 0;
-    for (scored = 0; scored < neighbors.size(); scored += bulkScoreChunk) {
+    for (int scored = 0; scored < neighbors.size(); scored += bulkScoreChunk) {
       int chunkSize = Math.min(bulkScoreChunk, neighbors.size() - scored);
       System.arraycopy(neighbors.nodes(), scored, bulkScoreNodes, 0, chunkSize);
       if (scorer.bulkScore(bulkScoreNodes, bulkScores, chunkSize) >= score) {
