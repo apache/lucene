@@ -79,7 +79,7 @@ public class TestFrozenBufferedUpdates extends LuceneTestCase {
           BytesRefIterator values =
               sorted ? array.iterator(Comparator.naturalOrder()) : array.iterator();
           assertEquals(1, reader.leaves().size());
-          TermDocsIterator iterator = new TermDocsIterator(reader.leaves().get(0).reader(), sorted);
+          TermDocsIterator iterator = new TermDocsIterator(reader.leaves().get(0).reader());
           FixedBitSet bitSet = new FixedBitSet(reader.maxDoc());
           BytesRef ref;
           while ((ref = values.next()) != null) {
