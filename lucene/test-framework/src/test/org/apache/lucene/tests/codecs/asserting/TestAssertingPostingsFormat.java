@@ -32,4 +32,9 @@ public class TestAssertingPostingsFormat extends BasePostingsFormatTestCase {
   protected boolean isPostingsEnumReuseImplemented() {
     return false;
   }
+
+  @Override
+  protected boolean indexFakeImpacts() {
+    return true;
+  }
 }
