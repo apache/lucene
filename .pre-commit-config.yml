@@ -70,10 +70,7 @@ repos:
       - id: check-yaml
         name: Validate YAML files
         types: [ yaml ]
-        # this check does not support deserializing more than one yaml doc from file
-        exclude:
-          glob:
-            - gradle/validation/ast-grep/{rules,tests}/*.yml
+        args: [ --allow-multiple-documents ]
 
       - id: check-xml
         name: Validate XML files
