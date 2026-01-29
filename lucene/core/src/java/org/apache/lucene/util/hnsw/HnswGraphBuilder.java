@@ -476,18 +476,23 @@ public class HnswGraphBuilder implements HnswBuilder {
    */
   private boolean diversityCheck(float score, NeighborArray neighbors, RandomVectorScorer scorer)
       throws IOException {
-    int bulkCount = 0;
     final int bulkScoreChunk = Math.min((neighbors.nodes().length + 1) / 2, bulkScoreNodes.length);
-    for (int i = 0; i < neighbors.size(); i++) {
-      bulkScoreNodes[bulkCount++] = neighbors.nodes()[i];
-      if (bulkCount == bulkScoreChunk || i == neighbors.size() - 1) {
-        if (scorer.bulkScore(bulkScoreNodes, bulkScores, bulkCount) >= score) {
-          return false;
-        }
-        bulkCount = 0;
+    int scored = 0;
+    for (scored = 0; scored < neighbors.size(); scored += bulkScoreChunk) {
+      int chunkSize = Math.min(bulkScoreChunk, neighbors.size() - scored);
+      System.arraycopy(neighbors.nodes(), scored, bulkScoreNodes, 0, chunkSize);
+      if (scorer.bulkScore(bulkScoreNodes, bulkScores, chunkSize) >= score) {
+        return false;
       }
     }
-    assert bulkCount == 0;
+    // handle a tail
+    if (scored < neighbors.size()) {
+      int chunkSize = neighbors.size() - scored;
+      System.arraycopy(neighbors.nodes(), scored, bulkScoreNodes, 0, chunkSize);
+      if (scorer.bulkScore(bulkScoreNodes, bulkScores, chunkSize) >= score) {
+        return false;
+      }
+    }
     return true;
   }
 
