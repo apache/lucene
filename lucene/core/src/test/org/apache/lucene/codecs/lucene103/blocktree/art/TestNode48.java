@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.codecs.lucene103.blocktree.art;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
@@ -39,11 +41,46 @@ public class TestNode48 extends LuceneTestCase {
     }
   }
 
+  public void testMaskAll() {
+    int mask = 0;
+    for (int i = 0; i < 32; i++) {
+      mask |= 1 << i;
+    }
+    for (int i = 0; i < 32; i++) {
+      assert ((mask >>> i) & 1) == 1 : "i: " + i + " is: " + ((mask >>> i) & 1);
+    }
+  }
+
+  public void testMaskRandom() {
+    int size = random().nextInt(32);
+    List<Integer> offs = new ArrayList<>(size);
+    for (int i = 0; i < size; i++) {
+      int off = random().nextInt(32);
+      while (offs.contains(off)) {
+        off = random().nextInt(32);
+      }
+      offs.add(off);
+    }
+
+    int mask = 0;
+    for (int i = 0; i < 32; i++) {
+      if (offs.contains(i) == false) {
+        mask |= 1 << i;
+      }
+    }
+    for (int i = 0; i < 32; i++) {
+      if (offs.contains(i)) {
+        assert ((mask >>> i) & 1) == 0 : "i: " + i + " is: " + ((mask >>> i) & 1);
+      } else {
+        assert ((mask >>> i) & 1) == 1 : "i: " + i + " is: " + ((mask >>> i) & 1);
+      }
+    }
+  }
+
   // For Node48, position is the key byte, we can use this key to calculate child index with
   // #getChildIndex
   public void testPosition() {
     assert node.nodeType.equals(NodeType.NODE48);
-
     for (int i = 0; i < node.childrenCount; i++) {
       Node child = node.children[i];
       assert child != null;

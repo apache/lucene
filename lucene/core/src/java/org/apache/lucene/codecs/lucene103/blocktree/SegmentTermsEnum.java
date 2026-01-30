@@ -581,6 +581,7 @@ public final class SegmentTermsEnum extends BaseTermsEnum {
 
   @Override
   public SeekStatus seekCeil(BytesRef target) throws IOException {
+
     term.grow(1 + target.length);
 
     assert clearEOF();

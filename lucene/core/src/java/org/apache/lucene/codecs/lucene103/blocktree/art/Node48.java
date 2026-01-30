@@ -217,26 +217,47 @@ public class Node48 extends Node {
 
   @Override
   public void saveChildIndex(IndexOutput dataOutput) throws IOException {
+    // TODO: Use mask can save store, but it is hard to say whether benefit to performance.
+    dataOutput.writeInt(getMask());
     for (int i = 0; i < 32; i++) {
-      // TODO: Skip -1 and write VLong, dataOutput.writeVLong(longV). Or other compression.
-      // TODO: Long.reverseBytes(childIndex[i]).
-      dataOutput.writeLong(childIndex[i]);
+      // TODO: We can calculate mask in this loop, and write back it. But this will need to implement IndexOutput#setFilePointer,
+      // And write back may harm performance. Maybe we can calculate mask in when inserting node.
+      if (childIndex[i] != -1) {
+        dataOutput.writeLong(Long.reverseBytes(childIndex[i]));
+      }
     }
+  }
+
+  /** Get a 32bit mask to skip -1 in childIndex. */
+  private int getMask() {
+    int mask = 0;
+    for (int i = 0; i < 32; i++) {
+      if (childIndex[i] != -1) {
+        mask |= 1 << i;
+      }
+    }
+    return mask;
   }
 
   @Override
   public void readChildIndex(IndexInput dataInput) throws IOException {
+    final int mask = dataInput.readInt();
     for (int i = 0; i < 32; i++) {
-      childIndex[i] = dataInput.readLong();
+      if (((mask >>> i) & 1) == 1) {
+        childIndex[i] = Long.reverseBytes(dataInput.readLong());
+      }
     }
   }
 
   @Override
   public void readChildIndex(RandomAccessInput access, long fp) throws IOException {
-    int offset = 0;
+    final int mask = access.readInt(fp);
+    int offset = 4;
     for (int i = 0; i < 32; i++) {
-      childIndex[i] = access.readLong(fp + offset);
-      offset += 8;
+      if (((mask >>> i) & 1) == 1) {
+        childIndex[i] = Long.reverseBytes(access.readLong(fp + offset));
+        offset += 8;
+      }
     }
   }
 
