@@ -70,8 +70,6 @@ goto fail
 :execute
 @rem Setup the command line
 
-set CLASSPATH=
-
 @rem START OF LUCENE CUSTOMIZATION
 
 @rem LUCENE-9471: workaround for gradle leaving junk temp. files behind.
@@ -110,7 +108,7 @@ IF NOT EXIST "%APP_HOME%\gradle.properties" (
 @rem END OF LUCENE CUSTOMIZATION
 
 @rem Execute Gradle
-"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -classpath "%CLASSPATH%" -jar "%APP_HOME%\gradle\wrapper\gradle-wrapper.jar" %*
+"%JAVA_EXE%" %DEFAULT_JVM_OPTS% %JAVA_OPTS% %GRADLE_OPTS% "-Dorg.gradle.appname=%APP_BASE_NAME%" -jar "%APP_HOME%\gradle\wrapper\gradle-wrapper.jar" %*
 
 :end
 @rem End local scope for the variables with windows NT shell
@@ -119,7 +117,7 @@ goto fail
 
 :failWithJvmMessage
 @rem https://github.com/apache/lucene/pull/819
-echo Error: Something went wrong. Make sure you're using Java version of exactly 24.
+echo Error: Something went wrong. Make sure you're using the minimum required Java version to compile Lucene.
 
 :fail
 rem Set variable GRADLE_EXIT_CONSOLE if you need the _script_ return code instead of
