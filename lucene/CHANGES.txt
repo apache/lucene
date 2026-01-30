@@ -330,6 +330,9 @@ Optimizations
 
 * GITHUB#15585: Added shared prefetch counter to maintain count across clones and slices of MemorySegmentIndexInput. (Shubham Sharma)
 
+* GITHUB#15607: Utilize bulk scoring for diversity checking when building HNSW vector indices. This results
+  in some performance improvements during indexing and segment merges. (Ben Trent)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
