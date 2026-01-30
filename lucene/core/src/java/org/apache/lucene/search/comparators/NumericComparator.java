@@ -26,13 +26,12 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.DocValuesRangeIterator;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.TwoPhaseIterator;
+import org.apache.lucene.search.SkipBlockRangeIterator;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.IntsRef;
 
@@ -502,27 +501,11 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
   private class DVSkipperCompetitiveDISIBuilder extends CompetitiveDISIBuilder {
 
     private final DocValuesSkipper skipper;
-    private final TwoPhaseIterator innerTwoPhase;
 
-    DVSkipperCompetitiveDISIBuilder(DocValuesSkipper skipper, NumericLeafComparator leafComparator)
-        throws IOException {
+    DVSkipperCompetitiveDISIBuilder(
+        DocValuesSkipper skipper, NumericLeafComparator leafComparator) {
       super(leafComparator);
       this.skipper = skipper;
-      NumericDocValues docValues =
-          leafComparator.getNumericDocValues(leafComparator.context, field);
-      innerTwoPhase =
-          new TwoPhaseIterator(docValues) {
-            @Override
-            public boolean matches() throws IOException {
-              final long value = docValues.longValue();
-              return value >= minValueAsLong && value <= maxValueAsLong;
-            }
-
-            @Override
-            public float matchCost() {
-              return 2; // 2 comparisons
-            }
-          };
       postInitializeCompetitiveIterator();
     }
 
@@ -553,9 +536,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
 
     @Override
     void doUpdateCompetitiveIterator() {
-      TwoPhaseIterator twoPhaseIterator =
-          new DocValuesRangeIterator(innerTwoPhase, skipper, minValueAsLong, maxValueAsLong, false);
-      competitiveIterator.update(TwoPhaseIterator.asDocIdSetIterator(twoPhaseIterator));
+      competitiveIterator.update(
+          new SkipBlockRangeIterator(skipper, minValueAsLong, maxValueAsLong));
     }
   }
 }
