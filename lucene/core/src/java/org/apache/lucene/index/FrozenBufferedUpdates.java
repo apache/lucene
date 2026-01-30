@@ -250,8 +250,7 @@ final class FrozenBufferedUpdates {
       boolean isNumeric = value.isNumeric();
       FieldUpdatesBuffer.BufferedUpdateIterator iterator = value.iterator();
       FieldUpdatesBuffer.BufferedUpdate bufferedUpdate;
-      TermDocsIterator termDocsIterator =
-          new TermDocsIterator(segState.reader, iterator.isSortedTerms());
+      TermDocsIterator termDocsIterator = new TermDocsIterator(segState.reader);
       while ((bufferedUpdate = iterator.next()) != null) {
         // TODO: we traverse the terms in update order (not term order) so that we
         // apply the updates in the correct order, i.e. if two terms update the
@@ -464,7 +463,7 @@ final class FrozenBufferedUpdates {
 
       FieldTermIterator iter = deleteTerms.iterator();
       BytesRef delTerm;
-      TermDocsIterator termDocsIterator = new TermDocsIterator(segState.reader, true);
+      TermDocsIterator termDocsIterator = new TermDocsIterator(segState.reader);
       while ((delTerm = iter.next()) != null) {
         final DocIdSetIterator iterator = termDocsIterator.nextTerm(iter.field(), delTerm);
         if (iterator != null) {
@@ -545,20 +544,16 @@ final class FrozenBufferedUpdates {
     private String field;
     private TermsEnum termsEnum;
     private PostingsEnum postingsEnum;
-    private final boolean sortedTerms;
-    private BytesRef readerTerm;
-    private BytesRef lastTerm; // only set with asserts
 
-    TermDocsIterator(Fields fields, boolean sortedTerms) {
-      this(fields::terms, sortedTerms);
+    TermDocsIterator(Fields fields) {
+      this(fields::terms);
     }
 
-    TermDocsIterator(LeafReader reader, boolean sortedTerms) {
-      this(reader::terms, sortedTerms);
+    TermDocsIterator(LeafReader reader) {
+      this(reader::terms);
     }
 
-    private TermDocsIterator(IOFunction<String, Terms> provider, boolean sortedTerms) {
-      this.sortedTerms = sortedTerms;
+    private TermDocsIterator(IOFunction<String, Terms> provider) {
       this.provider = provider;
     }
 
@@ -569,11 +564,6 @@ final class FrozenBufferedUpdates {
         Terms terms = provider.apply(field);
         if (terms != null) {
           termsEnum = terms.iterator();
-          if (sortedTerms) {
-            // need to reset otherwise we fail the assertSorted below since we sort per field
-            assert (lastTerm = null) == null;
-            readerTerm = termsEnum.next();
-          }
         } else {
           termsEnum = null;
         }
@@ -582,46 +572,10 @@ final class FrozenBufferedUpdates {
 
     DocIdSetIterator nextTerm(String field, BytesRef term) throws IOException {
       setField(field);
-      if (termsEnum != null) {
-        if (sortedTerms) {
-          assert assertSorted(term);
-          // in the sorted case we can take advantage of the "seeking forward" property
-          // this allows us depending on the term dict impl to reuse data-structures internally
-          // which speed up iteration over terms and docs significantly.
-          int cmp = term.compareTo(readerTerm);
-          if (cmp < 0) {
-            return null; // requested term does not exist in this segment
-          } else if (cmp == 0) {
-            return getDocs();
-          } else {
-            TermsEnum.SeekStatus status = termsEnum.seekCeil(term);
-            switch (status) {
-              case FOUND:
-                return getDocs();
-              case NOT_FOUND:
-                readerTerm = termsEnum.term();
-                return null;
-              case END:
-                // no more terms in this segment
-                termsEnum = null;
-                return null;
-              default:
-                throw new AssertionError("unknown status");
-            }
-          }
-        } else if (termsEnum.seekExact(term)) {
-          return getDocs();
-        }
+      if (termsEnum != null && termsEnum.seekExact(term)) {
+        return getDocs();
       }
       return null;
-    }
-
-    private boolean assertSorted(BytesRef term) {
-      assert sortedTerms;
-      assert lastTerm == null || term.compareTo(lastTerm) >= 0
-          : "boom: " + term.utf8ToString() + " last: " + lastTerm.utf8ToString();
-      lastTerm = BytesRef.deepCopyOf(term);
-      return true;
     }
 
     private DocIdSetIterator getDocs() throws IOException {

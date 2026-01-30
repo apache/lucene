@@ -57,7 +57,7 @@ final class FreqProxTermsWriter extends TermsHash {
 
       BufferedUpdates.DeletedTerms segDeletes = state.segUpdates.deleteTerms;
       FrozenBufferedUpdates.TermDocsIterator iterator =
-          new FrozenBufferedUpdates.TermDocsIterator(fields, true);
+          new FrozenBufferedUpdates.TermDocsIterator(fields);
 
       segDeletes.forEachOrdered(
           (term, docId) -> {
