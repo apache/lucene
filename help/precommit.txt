@@ -3,6 +3,10 @@ Precommit Checks
 
 Precommit checks are run by CI on your pull request.
 
+Checks use the prek tool:
+  * src: https://github.com/j178/prek
+  * docs: https://prek.j178.dev/
+
 To run checks before committing:
 
 uvx prek
