@@ -332,6 +332,10 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#15442: Preserve boost values when merging overlapping phrases in
+  FastVectorHighlighter so highlight scoring fully reflects query boosts.
+  (Yang Feng)
+
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
   instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
 
