@@ -214,6 +214,9 @@ API Changes
 
 * GITHUB#15502: Add `count()` method to `FilterWeight`  (Prudhvi Godithi)
 
+* GITHUB#15636: Introduce TermsEnum.preferSeekExact(). Update and delete processing obey this setting,
+  allowing bloom or other approximate membership filters to apply in these paths. (Trevor McCulloch)
+
 New Features
 ---------------------
 * GITHUB#15328: VectorSimilarityFunction.getValues() now implements doubleVal allowing its
