@@ -434,7 +434,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           return null;
         }
 
-        return getIoBooleanSupplier(target, prefetch);
+        return getIOBooleanSupplier(target, prefetch);
       } else {
         // Follow this node
         node = nextNode;
