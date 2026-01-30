@@ -239,6 +239,20 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
             // is super important since we can not address more than 2048 MB per DWPT
             setFlushPending(perThread);
           }
+
+          // Buffer count limit check
+          if (!perThread.isFlushPending() && perThread.isApproachingBufferLimit()) {
+            if (infoStream.isEnabled("DWFC")) {
+              infoStream.message(
+                  "DWFC",
+                  "force flush due to buffer count limit approaching in DWPT "
+                      + perThread.getSegmentInfo().name
+                      + ": "
+                      + ", limit: "
+                      + 65000);
+            }
+            setFlushPending(perThread);
+          }
         }
         return checkout(perThread, false);
       } finally {
