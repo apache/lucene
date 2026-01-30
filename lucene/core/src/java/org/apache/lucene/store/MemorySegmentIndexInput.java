@@ -32,6 +32,7 @@ import java.util.function.Function;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Constants;
+import org.apache.lucene.util.IOFunction;
 
 /**
  * Base IndexInput implementation that uses an array of MemorySegments to represent a file.
@@ -381,12 +382,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     }
   }
 
-  @FunctionalInterface
-  interface ReadAdviceConsumer {
-    boolean accept(MemorySegment input) throws IOException;
-  }
-
-  boolean advise(long offset, long length, ReadAdviceConsumer advice) throws IOException {
+  boolean advise(long offset, long length, IOFunction<MemorySegment, Boolean> advice)
+      throws IOException {
     if (NATIVE_ACCESS.isEmpty()) {
       return false;
     }
@@ -421,7 +418,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       }
 
       final MemorySegment advisedSlice = segment.asSlice(offset, length);
-      return advice.accept(advisedSlice);
+      return advice.apply(advisedSlice);
     } catch (IndexOutOfBoundsException _) {
       throw new EOFException("Read past EOF: " + this);
     } catch (NullPointerException | IllegalStateException e) {

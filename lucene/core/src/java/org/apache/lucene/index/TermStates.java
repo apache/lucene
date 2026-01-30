@@ -202,16 +202,18 @@ public final class TermStates {
                 this.states[ctx.ord] = EMPTY_TERMSTATE;
               }
             }
-            return this.states[ctx.ord] == EMPTY_TERMSTATE ? null : this.states[ctx.ord];
+            TermState termState = this.states[ctx.ord];
+            return termState == EMPTY_TERMSTATE ? null : termState;
           };
       if (termExistsSupplier.doDefer()) {
         return stateSupplier;
       } else {
-        stateSupplier.get();
-        return this.states[ctx.ord] == EMPTY_TERMSTATE ? null : () -> this.states[ctx.ord];
+        TermState termState = stateSupplier.get();
+        return termState == EMPTY_TERMSTATE ? null : () -> termState;
       }
     }
-    return this.states[ctx.ord] == EMPTY_TERMSTATE ? null : () -> this.states[ctx.ord];
+    TermState termState = this.states[ctx.ord];
+    return termState == EMPTY_TERMSTATE ? null : () -> termState;
   }
 
   /**

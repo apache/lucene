@@ -35,6 +35,11 @@ public interface IOBooleanSupplier {
    */
   boolean get() throws IOException;
 
+  /**
+   * Returns whether the TermState get should be deferred.
+   *
+   * @return {@code true} if the TermState get should be deferred, {@code false} otherwise
+   */
   default boolean doDefer() {
     return false;
   }
