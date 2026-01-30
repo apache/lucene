@@ -330,6 +330,8 @@ Optimizations
 
 * GITHUB#15585: Added shared prefetch counter to maintain count across clones and slices of MemorySegmentIndexInput. (Shubham Sharma)
 
+* GITHUB#15590: Fix race and improve performance of HNSW graph building (Viliam Durina)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
