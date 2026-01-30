@@ -55,6 +55,14 @@ public abstract class KnnVectorValues {
    */
   public abstract KnnVectorValues copy() throws IOException;
 
+  /**
+   * Temporary function to expose the address of a specific vector ordinal. This is needed because
+   * the assumption of address being ord * vectorByteSize no longer holds, and can now be arbitrary.
+   */
+  public long address(int ord) {
+    throw new UnsupportedOperationException();
+  }
+
   /** Returns the vector byte length, defaults to dimension multiplied by float byte size */
   public int getVectorByteLength() {
     return dimension() * getEncoding().byteSize;
