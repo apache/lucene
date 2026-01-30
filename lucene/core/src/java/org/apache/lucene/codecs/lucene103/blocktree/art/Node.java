@@ -411,12 +411,12 @@ public abstract class Node {
     long read1 = System.nanoTime();
 
     long t1 = System.nanoTime();
-    System.out.println(Thread.currentThread().getName() + " - Node#load other0 took: " + (other0 - t0) + ", fp: " + fp);
-    System.out.println(Thread.currentThread().getName() + " - Node#load readPrefix took: " + (prefixT1 - prefixT0) + ", prefixLength: " + prefixLength + ", fp: " + fp);
-    System.out.println(Thread.currentThread().getName() + " - Node#load other1 took: " + (s1 - s0) + ", fp: " + fp);
-    System.out.println(Thread.currentThread().getName() + " - Node#load readOutput took: " + (output1 - output0) + ", outputFp: " + node.outputFp + ", fp: " + fp);
-    System.out.println(Thread.currentThread().getName() + " - Node#load readIndex took: " + (read1 - read0) + ", nodeType: " + node.nodeType + ", fp: " + fp);
-    System.out.println(Thread.currentThread().getName() + " - Node#load took: " + (t1 - t0) + ", fp: " + fp);
+//    System.out.println(Thread.currentThread().getName() + " - Node#load other0 took: " + (other0 - t0) + ", fp: " + fp);
+//    System.out.println(Thread.currentThread().getName() + " - Node#load readPrefix took: " + (prefixT1 - prefixT0) + ", prefixLength: " + prefixLength + ", fp: " + fp);
+//    System.out.println(Thread.currentThread().getName() + " - Node#load other1 took: " + (s1 - s0) + ", fp: " + fp);
+//    System.out.println(Thread.currentThread().getName() + " - Node#load readOutput took: " + (output1 - output0) + ", outputFp: " + node.outputFp + ", fp: " + fp);
+//    System.out.println(Thread.currentThread().getName() + " - Node#load readIndex took: " + (read1 - read0) + ", nodeType: " + node.nodeType + ", fp: " + fp);
+//    System.out.println(Thread.currentThread().getName() + " - Node#load took: " + (t1 - t0) + ", fp: " + fp);
     return node;
   }
 

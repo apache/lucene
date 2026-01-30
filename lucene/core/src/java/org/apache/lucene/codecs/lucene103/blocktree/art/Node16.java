@@ -188,13 +188,17 @@ public class Node16 extends Node {
   public void saveChildIndex(IndexOutput dataOutput) throws IOException {
     // little endian
     dataOutput.writeLong(Long.reverseBytes(firstChildIndex));
-    dataOutput.writeLong(Long.reverseBytes(secondChildIndex));
+    if (childrenCount > 8) {
+      dataOutput.writeLong(Long.reverseBytes(secondChildIndex));
+    }
   }
 
   @Override
   public void readChildIndex(IndexInput dataInput) throws IOException {
     firstChildIndex = Long.reverseBytes(dataInput.readLong());
-    secondChildIndex = Long.reverseBytes(dataInput.readLong());
+    if (childrenCount > 8) {
+      secondChildIndex = Long.reverseBytes(dataInput.readLong());
+    }
   }
 
   @Override
