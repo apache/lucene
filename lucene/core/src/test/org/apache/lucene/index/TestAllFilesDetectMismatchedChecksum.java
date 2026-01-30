@@ -41,6 +41,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressFileSystems;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.TestVectorUtil;
 
 /** Test that the default codec detects mismatched checksums at open or checkIntegrity time. */
 @SuppressFileSystems("ExtrasFS")
@@ -69,7 +70,7 @@ public class TestAllFilesDetectMismatchedChecksum extends LuceneTestCase {
     doc.add(pointNumber);
     Field dvNumber = new NumericDocValuesField("long", 0L);
     doc.add(dvNumber);
-    KnnFloatVectorField vector = new KnnFloatVectorField("vector", new float[16]);
+    KnnFloatVectorField vector = new KnnFloatVectorField("vector", TestVectorUtil.randomVector(16));
     doc.add(vector);
 
     for (int i = 0; i < 100; i++) {

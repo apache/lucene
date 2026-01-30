@@ -437,6 +437,26 @@ public final class VectorUtil {
     return v;
   }
 
+  /** Returns true if all dimensions of provided vector are zero, false otherwise. */
+  public static boolean isZeroVector(float[] v) {
+    for (float value : v) {
+      if (value != 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /** Returns true if all dimensions of provided vector are zero, false otherwise. */
+  public static boolean isZeroVector(byte[] v) {
+    for (float value : v) {
+      if (value != 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   /**
    * Given an array {@code buffer} that is sorted between indexes {@code 0} inclusive and {@code to}
    * exclusive, find the first array index whose value is greater than or equal to {@code target}.
