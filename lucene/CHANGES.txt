@@ -148,7 +148,8 @@ Build
 * GITHUB#15629: Introduce prek for fast pre-commit/repository checks.
   Markdown files are now linted with local broken-link detection.
   Python and Shell scripts are now linted system-wide.
-  See help/precommit.txt (Robert Muir)
+  Install with `uvx prek install`
+  For more see help/precommit.txt (Robert Muir)
 
 Other
 ---------------------
