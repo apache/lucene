@@ -458,11 +458,12 @@ public abstract class StringHelper {
     //     what impact that has on the period, whereas the simple ++ (mod 2^128)
     //     we use here is guaranteed to have the full period.
 
-    byte[] bits;
+    final BigInteger scratch;
     synchronized (idLock) {
-      bits = nextId.toByteArray();
+      scratch = nextId;
       nextId = nextId.add(BigInteger.ONE).and(mask128);
     }
+    byte[] bits = scratch.toByteArray();
 
     // toByteArray() always returns a sign bit, so it may require an extra byte (always zero)
     if (bits.length > ID_LENGTH) {

@@ -16,6 +16,12 @@
  */
 package org.apache.lucene.util;
 
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestStringHelper extends LuceneTestCase {
@@ -91,5 +97,39 @@ public class TestStringHelper extends LuceneTestCase {
         () -> {
           StringHelper.sortKeyLength(newBytesRef("ab"), newBytesRef("ab"));
         });
+  }
+
+  public void testRandomIdThreadSafety() throws Exception {
+    final int numThreads = atLeast(3);
+    final int idsPerThread = atLeast(10000);
+    final int totalIds = numThreads * idsPerThread;
+    final Set<BytesRef> generatedIds = ConcurrentHashMap.newKeySet(totalIds);
+    final ExecutorService executor =
+        Executors.newFixedThreadPool(numThreads, new NamedThreadFactory("randomId"));
+    final CountDownLatch startLatch = new CountDownLatch(1);
+    final CountDownLatch doneLatch = new CountDownLatch(numThreads);
+
+    for (int i = 0; i < numThreads; i++) {
+      executor.submit(
+          () -> {
+            try {
+              startLatch.await();
+              for (int j = 0; j < idsPerThread; j++) {
+                byte[] idBytes = StringHelper.randomId();
+                generatedIds.add(new BytesRef(idBytes));
+              }
+            } catch (InterruptedException e) {
+              throw new AssertionError(e);
+            } finally {
+              doneLatch.countDown();
+            }
+          });
+    }
+
+    startLatch.countDown();
+    assertTrue(doneLatch.await(30, TimeUnit.SECONDS));
+    executor.shutdown();
+    assertTrue(executor.awaitTermination(30, TimeUnit.SECONDS));
+    assertEquals("Found duplicate IDs", totalIds, generatedIds.size());
   }
 }
