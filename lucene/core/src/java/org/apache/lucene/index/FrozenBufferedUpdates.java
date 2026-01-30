@@ -544,8 +544,6 @@ final class FrozenBufferedUpdates {
     private String field;
     private TermsEnum termsEnum;
     private PostingsEnum postingsEnum;
-    private BytesRef readerTerm;
-    private BytesRef lastTerm; // only set with asserts
 
     TermDocsIterator(Fields fields) {
       this(fields::terms);
