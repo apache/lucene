@@ -89,6 +89,8 @@ Improvements
 
 * GITHUB#15453: Avoid unnecessary sorting and instantiations in readMapOfStrings. (Benjamin Lerer)
 
+* GTIHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
+
 Optimizations
 ---------------------
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
