@@ -208,7 +208,8 @@ public final class TermStates {
       if (termExistsSupplier.doDefer()) {
         return stateSupplier;
       } else {
-        TermState termState = stateSupplier.get();
+        stateSupplier.get();
+        TermState termState = this.states[ctx.ord];
         return termState == EMPTY_TERMSTATE ? null : () -> termState;
       }
     }
