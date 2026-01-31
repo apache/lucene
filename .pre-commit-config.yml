@@ -162,6 +162,7 @@ repos:
         env:
           UV_PROJECT: dev-tools
         types: [ 'markdown']
+        require_serial: true
         exclude:
           glob:
             # TODO: fix formatting of these files separately
@@ -187,7 +188,6 @@ repos:
         env:
           UV_PROJECT: dev-tools
         types_or: [ python, pyi, jupyter ]
-        # must apply fixes before the formatter applies its fixes
         require_serial: true
         exclude:
           glob:
@@ -209,7 +209,6 @@ repos:
         env:
           UV_PROJECT: dev-tools
         types_or: [ python, pyi, jupyter ]
-        # must apply fixes after the linter applies its fixes
         require_serial: true
         exclude:
           glob:
@@ -244,6 +243,7 @@ repos:
         entry: uv
         args: [ 'run', 'ast-grep', '-c', './gradle/validation/ast-grep/sgconfig.yml', 'scan', '--format', 'github' ]
         types_or: [ 'css', 'html', 'java', 'javascript', 'yaml']
+        require_serial: true
         env:
           UV_PROJECT: dev-tools
   # self-checks for this configuration file
