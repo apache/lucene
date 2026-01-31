@@ -92,7 +92,6 @@ public abstract class Node {
   public Node(NodeType nodeType, int compressedPrefixSize) {
     this.nodeType = nodeType;
     this.prefixLength = compressedPrefixSize;
-    childrenCount = 0;
     if (prefixLength > 0) {
       prefix = new byte[prefixLength];
     }
