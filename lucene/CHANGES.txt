@@ -326,6 +326,10 @@ Optimizations
 
 * GITHUB#15592: Optimize DocIdSetIteratorAcceptDocs#cost. (Shubham Chaudhary)
 
+* GITHUB#15618: SegmentTermsEnumFrame: avoid unnecessary array allocations that waste memory (Misha Dmitriev)
+
+* GITHUB#15585: Added shared prefetch counter to maintain count across clones and slices of MemorySegmentIndexInput. (Shubham Sharma)
+
 Bug Fixes
 ---------------------
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
@@ -371,6 +375,8 @@ Other
 
 * GITHUB#15341: Align float vectors on disk to 64 bytes, for optimal performance on Arm Neoverse
   machines (including vectors inside CFS files). (Mike McCandless, Kaival Parikh)
+
+* GITHUB#15619: Update documentation in Lucene104PostingsFormat. with 259 documents, the first 256 document ids should be  encoded as one packed block (Lyon-NEU)
 
 Build
 ---------------------

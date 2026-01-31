@@ -45,13 +45,13 @@ final class SegmentTermsEnumFrame {
   long fpEnd;
   long totalSuffixBytes; // for stats
 
-  byte[] suffixBytes = new byte[128];
+  byte[] suffixBytes;
   ByteArrayDataInput suffixesReader;
 
   byte[] suffixLengthBytes;
   final ByteArrayDataInput suffixLengthsReader;
 
-  byte[] statBytes = new byte[64];
+  byte[] statBytes;
   int statsSingletonRunLength = 0;
   ByteArrayDataInput statsReader;
 
@@ -95,7 +95,7 @@ final class SegmentTermsEnumFrame {
   final BlockTermState state;
 
   // metadata buffer
-  byte[] bytes = new byte[32];
+  byte[] bytes;
   ByteArrayDataInput bytesReader;
 
   private final SegmentTermsEnum ste;
@@ -105,7 +105,6 @@ final class SegmentTermsEnumFrame {
     this.ord = ord;
     this.state = ste.fr.parent.postingsReader.newTermState();
     this.state.totalTermFreq = -1;
-    suffixLengthBytes = new byte[32];
     suffixLengthsReader = new ByteArrayDataInput();
   }
 
@@ -192,7 +191,7 @@ final class SegmentTermsEnumFrame {
     final long codeL = ste.in.readVLong();
     isLeafBlock = (codeL & 0x04) != 0;
     final int numSuffixBytes = (int) (codeL >>> 3);
-    if (suffixBytes.length < numSuffixBytes) {
+    if (suffixBytes == null || suffixBytes.length < numSuffixBytes) {
       suffixBytes = new byte[ArrayUtil.oversize(numSuffixBytes, 1)];
     }
     try {
@@ -210,7 +209,7 @@ final class SegmentTermsEnumFrame {
     int numSuffixLengthBytes = ste.in.readVInt();
     allEqual = (numSuffixLengthBytes & 0x01) != 0;
     numSuffixLengthBytes >>>= 1;
-    if (suffixLengthBytes.length < numSuffixLengthBytes) {
+    if (suffixLengthBytes == null || suffixLengthBytes.length < numSuffixLengthBytes) {
       suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
     }
     if (allEqual) {
@@ -231,7 +230,7 @@ final class SegmentTermsEnumFrame {
 
     // stats
     int numBytes = ste.in.readVInt();
-    if (statBytes.length < numBytes) {
+    if (statBytes == null || statBytes.length < numBytes) {
       statBytes = new byte[ArrayUtil.oversize(numBytes, 1)];
     }
     ste.in.readBytes(statBytes, 0, numBytes);
@@ -251,7 +250,7 @@ final class SegmentTermsEnumFrame {
     // that's rare so won't help much
     // metadata
     numBytes = ste.in.readVInt();
-    if (bytes.length < numBytes) {
+    if (bytes == null || bytes.length < numBytes) {
       bytes = new byte[ArrayUtil.oversize(numBytes, 1)];
     }
     ste.in.readBytes(bytes, 0, numBytes);
