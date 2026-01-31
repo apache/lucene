@@ -1,5 +1,6 @@
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/j178/prek/refs/heads/master/prek.schema.json
+minimum_prek_version: 0.2.29
 default_install_hook_types:
   - pre-commit
 default_stages:
