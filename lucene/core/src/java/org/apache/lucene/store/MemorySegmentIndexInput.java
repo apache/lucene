@@ -32,7 +32,7 @@ import java.util.function.Function;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Constants;
-import org.apache.lucene.util.IOConsumer;
+import org.apache.lucene.util.IOFunction;
 
 /**
  * Base IndexInput implementation that uses an array of MemorySegments to represent a file.
@@ -328,9 +328,9 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   }
 
   @Override
-  public void prefetch(long offset, long length) throws IOException {
+  public boolean prefetch(long offset, long length) throws IOException {
     if (NATIVE_ACCESS.isEmpty()) {
-      return;
+      return false;
     }
 
     ensureOpen();
@@ -340,11 +340,11 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       // power of two. There is a good chance that a good chunk of this index input is cached in
       // physical memory. Let's skip the overhead of the madvise system call, we'll be trying again
       // on the next power of two of the counter.
-      return;
+      return false;
     }
 
     final NativeAccess nativeAccess = NATIVE_ACCESS.get();
-    advise(
+    return advise(
         offset,
         length,
         segment -> {
@@ -352,7 +352,9 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
             // We have a cache miss on at least one page, let's reset the counter.
             sharedPrefetchCounter.set(0);
             nativeAccess.madviseWillNeed(segment);
+            return true;
           }
+          return false;
         });
   }
 
@@ -369,14 +371,21 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
 
     long offset = 0;
     for (MemorySegment seg : segments) {
-      advise(offset, seg.byteSize(), segment -> nativeAccess.madvise(segment, readAdvice));
+      advise(
+          offset,
+          seg.byteSize(),
+          segment -> {
+            nativeAccess.madvise(segment, readAdvice);
+            return true;
+          });
       offset += seg.byteSize();
     }
   }
 
-  void advise(long offset, long length, IOConsumer<MemorySegment> advice) throws IOException {
+  boolean advise(long offset, long length, IOFunction<MemorySegment, Boolean> advice)
+      throws IOException {
     if (NATIVE_ACCESS.isEmpty()) {
-      return;
+      return false;
     }
 
     ensureOpen();
@@ -404,12 +413,12 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
         length -= nativeAccess.getPageSize();
         if (length <= 0) {
           // This segment has no data beyond the first page.
-          return;
+          return false;
         }
       }
 
       final MemorySegment advisedSlice = segment.asSlice(offset, length);
-      advice.accept(advisedSlice);
+      return advice.apply(advisedSlice);
     } catch (IndexOutOfBoundsException _) {
       throw new EOFException("Read past EOF: " + this);
     } catch (NullPointerException | IllegalStateException e) {
@@ -615,6 +624,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
             slice.length,
             segment -> {
               nativeAccess.madvise(segment, advice);
+              return true;
             });
       }
     }
@@ -804,9 +814,9 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     }
 
     @Override
-    public void prefetch(long offset, long length) throws IOException {
+    public boolean prefetch(long offset, long length) throws IOException {
       Objects.checkFromIndexSize(offset, length, this.length);
-      super.prefetch(offset, length);
+      return super.prefetch(offset, length);
     }
   }
 
@@ -904,9 +914,9 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     }
 
     @Override
-    public void prefetch(long offset, long length) throws IOException {
+    public boolean prefetch(long offset, long length) throws IOException {
       Objects.checkFromIndexSize(offset, length, this.length);
-      super.prefetch(this.offset + offset, length);
+      return super.prefetch(this.offset + offset, length);
     }
   }
 }
