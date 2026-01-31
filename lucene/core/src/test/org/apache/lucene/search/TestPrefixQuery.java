@@ -16,14 +16,20 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.tests.util.TestUtil.alwaysPostingsFormat;
+import static org.apache.lucene.tests.util.TestUtil.getDefaultPostingsFormat;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -34,6 +40,42 @@ import org.apache.lucene.util.StringHelper;
 
 /** Tests {@link PrefixQuery} class. */
 public class TestPrefixQuery extends LuceneTestCase {
+
+  // TODO: Remove this test case after debugging.
+  public void testDeepSubBlock() throws Exception {
+    Directory dir = newDirectory();
+    // Set minTermBlockSize to 2, maxTermBlockSize to 3, to generate deep subBlock.
+    PostingsFormat postingsFormat = getDefaultPostingsFormat(2, 3);
+
+    IndexWriter writer =
+        new IndexWriter(dir, newIndexWriterConfig().setCodec(alwaysPostingsFormat(postingsFormat)));
+    String[] categories =
+        new String[] {
+          "regular", "request1", "request2", "request3", "request4", "rest", "teacher", "team"
+        };
+
+    for (String category : categories) {
+      Document doc = new Document();
+      doc.add(newStringField("category", category, Field.Store.YES));
+      writer.addDocument(doc);
+    }
+
+    IndexReader reader = DirectoryReader.open(writer);
+    PrefixQuery query = new PrefixQuery(new Term("category", "re"));
+    IndexSearcher searcher = newSearcher(reader);
+    ScoreDoc[] hits = searcher.search(query, 1000).scoreDocs;
+    assertEquals(6, hits.length);
+
+    query = new PrefixQuery(new Term("category", "te"));
+    searcher = newSearcher(reader);
+    hits = searcher.search(query, 1000).scoreDocs;
+    assertEquals(2, hits.length);
+
+    writer.close();
+    reader.close();
+    dir.close();
+  }
+
   public void testPrefixQuery() throws Exception {
     Directory directory = newDirectory();
 
