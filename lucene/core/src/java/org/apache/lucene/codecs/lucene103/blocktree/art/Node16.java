@@ -93,50 +93,6 @@ public class Node16 extends Node {
   }
 
   /** Insert the child node into this with the index byte. */
-  public static Node insert(Node node, Node child, byte indexByte) {
-    Node16 currentNode16 = (Node16) node;
-    if (currentNode16.childrenCount < 8) {
-      // first
-      byte[] bytes = LongUtils.toBDBytes(currentNode16.firstChildIndex);
-      bytes[currentNode16.childrenCount] = indexByte;
-      currentNode16.firstChildIndex = LongUtils.fromBDBytes(bytes);
-      currentNode16.children[currentNode16.childrenCount] = child;
-      currentNode16.childrenCount++;
-      return currentNode16;
-    } else if (currentNode16.childrenCount < 16) {
-      // second
-      byte[] bytes = LongUtils.toBDBytes(currentNode16.secondChildIndex);
-      bytes[currentNode16.childrenCount - 8] = indexByte;
-      currentNode16.secondChildIndex = LongUtils.fromBDBytes(bytes);
-      currentNode16.children[currentNode16.childrenCount] = child;
-      currentNode16.childrenCount++;
-      return currentNode16;
-    } else {
-      Node48 node48 = new Node48(currentNode16.prefixLength);
-      byte[] firstBytes = LongUtils.toBDBytes(currentNode16.firstChildIndex);
-      for (int i = 0; i < 8; i++) {
-        byte v = firstBytes[i];
-        int unsignedIdx = Byte.toUnsignedInt(v);
-        // i won't be beyond 48
-        Node48.setOneByte(unsignedIdx, (byte) i, node48.childIndex);
-        node48.children[i] = currentNode16.children[i];
-      }
-      byte[] secondBytes = LongUtils.toBDBytes(currentNode16.secondChildIndex);
-      for (int i = 8; i < currentNode16.childrenCount; i++) {
-        byte v = secondBytes[i - 8];
-        int unsignedIdx = Byte.toUnsignedInt(v);
-        // i won't be beyond 48
-        Node48.setOneByte(unsignedIdx, (byte) i, node48.childIndex);
-        node48.children[i] = currentNode16.children[i];
-      }
-      copyNode(currentNode16, node48);
-      node48.childrenCount = currentNode16.childrenCount;
-      Node freshOne = Node48.insert(node48, child, indexByte);
-      return freshOne;
-    }
-  }
-
-  /** Insert the child node into this with the index byte. */
   @Override
   public Node insert(Node childNode, byte indexByte) {
     // There already is a child exits in pos is implemented in ARTBuilder#insert(Node node, Node
@@ -179,8 +135,7 @@ public class Node16 extends Node {
       }
       copyNode(this, node48);
       node48.childrenCount = this.childrenCount;
-      Node freshOne = Node48.insert(node48, childNode, indexByte);
-      return freshOne;
+      return node48.insert(childNode, indexByte);
     }
   }
 

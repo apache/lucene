@@ -76,28 +76,6 @@ public class Node4 extends Node {
   }
 
   /** Insert the child node into this with the index byte. */
-  public static Node insert(Node node, Node childNode, byte indexByte) {
-    Node4 current = (Node4) node;
-    if (current.childrenCount < 4) {
-      // insert leaf into current node
-      current.childIndex =
-          IntegerUtil.setByte(current.childIndex, indexByte, current.childrenCount);
-      current.children[current.childrenCount] = childNode;
-      current.childrenCount++;
-      return current;
-    } else {
-      // grow to Node16
-      Node16 node16 = new Node16(current.prefixLength);
-      node16.childrenCount = 4;
-      node16.firstChildIndex = LongUtils.initWithFirst4Byte(current.childIndex);
-      System.arraycopy(current.children, 0, node16.children, 0, 4);
-      copyNode(current, node16);
-      Node freshOne = Node16.insert(node16, childNode, indexByte);
-      return freshOne;
-    }
-  }
-
-  /** Insert the child node into this with the index byte. */
   @Override
   public Node insert(Node childNode, byte indexByte) {
     // There already is a child exits in pos is implemented in ARTBuilder#insert(Node node, Node
@@ -117,8 +95,7 @@ public class Node4 extends Node {
       node16.firstChildIndex = LongUtils.initWithFirst4Byte(this.childIndex);
       System.arraycopy(this.children, 0, node16.children, 0, 4);
       copyNode(this, node16);
-      Node freshOne = Node16.insert(node16, childNode, indexByte);
-      return freshOne;
+      return node16.insert(childNode, indexByte);
     }
   }
 

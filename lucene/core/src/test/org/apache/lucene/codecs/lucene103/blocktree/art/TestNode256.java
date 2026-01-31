@@ -18,6 +18,7 @@ package org.apache.lucene.codecs.lucene103.blocktree.art;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
+import java.util.HashSet;
 
 public class TestNode256 extends LuceneTestCase {
   Node256 node = new Node256(0);
@@ -26,9 +27,15 @@ public class TestNode256 extends LuceneTestCase {
   public void setUp() throws Exception {
     super.setUp();
     int childrenCount = random().nextInt(49, 256);
+    HashSet<Byte> bytes = new HashSet<>();
     for (int i = 0; i < childrenCount; i++) {
       byte b = (byte) random().nextInt();
-      Node256.insert(node, new LeafNode(new BytesRef(new byte[] {b}), null), b);
+      // Use unique byte to insert.
+      while (bytes.contains(b)) {
+        b = (byte) random().nextInt();
+      }
+      bytes.add(b);
+      node.insert(new LeafNode(new BytesRef(new byte[] {b}), null), b);
     }
   }
 

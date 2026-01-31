@@ -149,16 +149,6 @@ public class Node256 extends Node {
   }
 
   /** Insert the child node into this with the index byte. */
-  public static Node256 insert(Node currentNode, Node child, byte indexByte) {
-    Node256 node256 = (Node256) currentNode;
-    node256.childrenCount++;
-    int i = Byte.toUnsignedInt(indexByte);
-    node256.children[i] = child;
-    setBit(indexByte, node256.bitmapMask);
-    return node256;
-  }
-
-  /** Insert the child node into this with the index byte. */
   @Override
   public Node insert(Node child, byte indexByte) {
     // There already is a child exits in pos is implemented in ARTBuilder#insert(Node node, Node

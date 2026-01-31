@@ -37,7 +37,7 @@ public class TestNode48 extends LuceneTestCase {
         b = (byte) random().nextInt();
       }
       bytes.add(b);
-      Node48.insert(node, new LeafNode(new BytesRef(new byte[] {b}), null), b);
+      node.insert(new LeafNode(new BytesRef(new byte[] {b}), null), b);
     }
   }
 
@@ -95,7 +95,7 @@ public class TestNode48 extends LuceneTestCase {
   public void test() {
     Node48 node48 = new Node48(0);
     for (int i = 100; i < 148; i++) {
-      Node48.insert(node48, new LeafNode(new BytesRef(new byte[] {(byte) i}), null), (byte) i);
+      node48.insert(new LeafNode(new BytesRef(new byte[] {(byte) i}), null), (byte) i);
     }
 
     int pos = 0;

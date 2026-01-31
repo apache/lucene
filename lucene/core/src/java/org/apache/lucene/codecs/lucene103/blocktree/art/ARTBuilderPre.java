@@ -174,7 +174,7 @@ public class ARTBuilderPre {
         leafNode = null;
         LeafNode anotherLeaf = new LeafNode(key, output);
         assert depth < anotherLeaf.key.length;
-        Node4.insert(node4, anotherLeaf, key.bytes[depth]);
+        node4.insert(anotherLeaf, key.bytes[depth]);
         updateNodeBytes(anotherLeaf, depth + 1);
         // replace the current node with this internal node4
         return node4;
@@ -200,7 +200,7 @@ public class ARTBuilderPre {
         // Save output to parent node for node without commonPrefix. e.g. abc1, abc10.
 
         if (depth + commonPrefix < leafNode.key.offset + leafNode.key.length) {
-          Node4.insert(node4, leafNode, prefix[depth + commonPrefix]);
+          node4.insert(leafNode, prefix[depth + commonPrefix]);
           updateNodeBytes(leafNode, depth + commonPrefix + 1);
         } else {
           node4.output = leafNode.output;
@@ -208,7 +208,7 @@ public class ARTBuilderPre {
         }
         LeafNode anotherLeaf = new LeafNode(key, output);
         assert depth + commonPrefix < anotherLeaf.key.length;
-        Node4.insert(node4, anotherLeaf, key.bytes[depth + commonPrefix]);
+        node4.insert(anotherLeaf, key.bytes[depth + commonPrefix]);
         updateNodeBytes(anotherLeaf, depth + commonPrefix + 1);
         // replace the current node with this internal node4
         return node4;
@@ -228,10 +228,10 @@ public class ARTBuilderPre {
         }
         // split the current internal node, spawn a fresh node4 and let the
         // current internal node as its children.
-        Node4.insert(node4, node, node.prefix[mismatchPos]);
+        node4.insert(node, node.prefix[mismatchPos]);
         updateNodePrefix(node, mismatchPos + 1);
         LeafNode leafNode = new LeafNode(key, output);
-        Node4.insert(node4, leafNode, key.bytes[mismatchPos + depth]);
+        node4.insert(leafNode, key.bytes[mismatchPos + depth]);
         updateNodeBytes(leafNode, mismatchPos + depth + 1);
         return node4;
       }

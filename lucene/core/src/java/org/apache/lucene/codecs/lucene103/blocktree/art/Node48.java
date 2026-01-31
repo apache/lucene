@@ -129,39 +129,6 @@ public class Node48 extends Node {
   }
 
   /** Insert the child node into this with the index byte. */
-  public static Node insert(Node currentNode, Node child, byte indexByte) {
-    Node48 node48 = (Node48) currentNode;
-    if (node48.childrenCount < 48) {
-      // insert leaf node into current node
-      int pos = node48.childrenCount;
-      assert node48.children[pos] == null;
-      node48.children[pos] = child;
-      int unsignedByte = Byte.toUnsignedInt(indexByte);
-      int longPosition = unsignedByte >>> 3;
-      int bytePosition = unsignedByte & (8 - 1);
-      long original = node48.childIndex[longPosition];
-      byte[] bytes = LongUtils.toBDBytes(original);
-      bytes[bytePosition] = (byte) pos;
-      node48.childIndex[longPosition] = LongUtils.fromBDBytes(bytes);
-      node48.childrenCount++;
-      return node48;
-    } else {
-      // grow to Node256
-      Node256 node256 = new Node256(node48.prefixLength);
-      int currentPos = ILLEGAL_IDX;
-      while ((currentPos = node48.getNextLargerPos(currentPos)) != ILLEGAL_IDX) {
-        Node childNode = node48.getChild(currentPos);
-        node256.children[currentPos] = childNode;
-        Node256.setBit((byte) currentPos, node256.bitmapMask);
-      }
-      node256.childrenCount = node48.childrenCount;
-      copyNode(node48, node256);
-      Node freshOne = Node256.insert(node256, child, indexByte);
-      return freshOne;
-    }
-  }
-
-  /** Insert the child node into this with the index byte. */
   @Override
   public Node insert(Node child, byte indexByte) {
     // There already is a child exits in pos is implemented in ARTBuilder#insert(Node node, Node
@@ -193,8 +160,7 @@ public class Node48 extends Node {
       }
       node256.childrenCount = this.childrenCount;
       copyNode(this, node256);
-      Node freshOne = Node256.insert(node256, child, indexByte);
-      return freshOne;
+      return node256.insert(child, indexByte);
     }
   }
 

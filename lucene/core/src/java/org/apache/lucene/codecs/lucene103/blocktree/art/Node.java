@@ -321,7 +321,7 @@ public abstract class Node {
       // TODO: adjust this call architecture.
       return LeafNode.load(access, fp);
     }
-    long t0 = System.nanoTime();
+//    long t0 = System.nanoTime();
     // Children count.
     short childrenCount = Short.reverseBytes(access.readShort(fp + offset));
     assert childrenCount > 0;
@@ -330,20 +330,20 @@ public abstract class Node {
     int prefixLength = access.readInt(fp + offset);
     offset += 4;
     byte[] prefix = null;
-    long other0 = System.nanoTime();
+//    long other0 = System.nanoTime();
 
 
-    long prefixT0 = System.nanoTime();
+//    long prefixT0 = System.nanoTime();
       if (prefixLength > 0) {
       prefix = new byte[prefixLength];
       access.readBytes(fp + offset, prefix, 0, prefixLength);
       offset += prefixLength;
     }
-      long prefixT1 = System.nanoTime();
+//      long prefixT1 = System.nanoTime();
 
 
     // TODO: Change the constructor.
-    long s0 = System.nanoTime();
+//    long s0 = System.nanoTime();
     Node node;
     if (nodeTypeOrdinal == NodeType.NODE4.ordinal()) {
       node = new Node4(prefixLength);
@@ -372,11 +372,11 @@ public abstract class Node {
     node.childrenDeltaFpBytes = (header & 0x07) + 1;
     node.childrenDeltaFpStart = fp + offset;
 
-    long s1 = System.nanoTime();
+//    long s1 = System.nanoTime();
 
 
 
-    long output0 = System.nanoTime();
+//    long output0 = System.nanoTime();
     if ((header & NON_LEAF_NODE_HAS_OUTPUT) != 0) {
       int encodedOutputFpBytes = ((header >>> 4) & 0x07) + 1;
       // TODO: impl readLongFromNBytes.
@@ -403,13 +403,13 @@ public abstract class Node {
       // Skip children delta fp bytes.
       offset += childrenCount * node.childrenDeltaFpBytes;
     }
-      long output1 = System.nanoTime();
+//      long output1 = System.nanoTime();
 
-    long read0 = System.nanoTime();
+//    long read0 = System.nanoTime();
     node.readChildIndex(access, fp + offset + node.floorDataLen);
-    long read1 = System.nanoTime();
+//    long read1 = System.nanoTime();
 
-    long t1 = System.nanoTime();
+//    long t1 = System.nanoTime();
 //    System.out.println(Thread.currentThread().getName() + " - Node#load other0 took: " + (other0 - t0) + ", fp: " + fp);
 //    System.out.println(Thread.currentThread().getName() + " - Node#load readPrefix took: " + (prefixT1 - prefixT0) + ", prefixLength: " + prefixLength + ", fp: " + fp);
 //    System.out.println(Thread.currentThread().getName() + " - Node#load other1 took: " + (s1 - s0) + ", fp: " + fp);
@@ -459,14 +459,7 @@ public abstract class Node {
 
   /** Insert the LeafNode as a child of the current internal node. */
   public static Node insertLeaf(Node current, LeafNode childNode, byte indexByte) {
-    return switch (current.nodeType) {
-      case NODE4 -> Node4.insert(current, childNode, indexByte);
-      case NODE16 -> Node16.insert(current, childNode, indexByte);
-      case NODE48 -> Node48.insert(current, childNode, indexByte);
-      case NODE256 -> Node256.insert(current, childNode, indexByte);
-      // $CASES-OMITTED$
-      default -> throw new IllegalArgumentException("Not supported node type!");
-    };
+    return current.insert(childNode, indexByte);
   }
 
   /**
