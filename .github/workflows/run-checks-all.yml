@@ -58,6 +58,7 @@ jobs:
         run: uv run prek --all-files
         env:
           UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
 
 
   # This runs all validation checks without tests.

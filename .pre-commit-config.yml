@@ -117,6 +117,7 @@ repos:
         args: [ 'run', 'shellcheck', '--format', 'gcc' ]
         env:
           UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
         types: [ shell ]
         exclude:
           glob:
@@ -134,6 +135,7 @@ repos:
         args: [ 'run', 'actionlint' ]
         env:
           UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
         # run across all actions if any are touched
         pass_filenames: false
         files:
@@ -148,6 +150,7 @@ repos:
         args: [ 'run', 'zizmor', '--pedantic', '--offline', '.' ]
         env:
           UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
         # run across all actions if any are touched
         pass_filenames: false
         files:
@@ -161,6 +164,7 @@ repos:
         args: [ 'run', 'rumdl', 'fmt' ]
         env:
           UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
         types: [ 'markdown']
         require_serial: true
         exclude:
@@ -187,6 +191,7 @@ repos:
         args: [ 'run', 'ruff', 'check', '--fix', '--force-exclude' ]
         env:
           UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
         types_or: [ python, pyi, jupyter ]
         require_serial: true
         exclude:
@@ -208,6 +213,7 @@ repos:
         args: [ 'run', 'ruff', 'format', '--force-exclude' ]
         env:
           UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
         types_or: [ python, pyi, jupyter ]
         require_serial: true
         exclude:
@@ -230,6 +236,7 @@ repos:
         args: [ 'run', 'ast-grep', '-c', './gradle/validation/ast-grep/sgconfig.yml', 'test', '--skip-snapshot-tests' ]
         env:
           UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
         # run across all rules if any are touched
         pass_filenames: false
         files:
@@ -246,6 +253,7 @@ repos:
         require_serial: true
         env:
           UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
   # self-checks for this configuration file
   - repo: meta
     hooks:
