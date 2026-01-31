@@ -15,4 +15,4 @@ jira==3.10.5
 # type-checking in "make lint"
 basedpyright==1.36.2
 # linting in "make lint"
-ruff==0.14.10
+ruff==0.14.14
