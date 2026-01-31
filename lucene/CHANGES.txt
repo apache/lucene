@@ -145,6 +145,12 @@ Build
 * GITHUB#14808: Add support for validating sources using ast-grep tool rules #14808
   (Robert Muir, Dawid Weiss)
 
+* GITHUB#15629: Introduce prek for fast pre-commit/repository checks.
+  Markdown files are now linted with local broken-link detection.
+  Python and Shell scripts are now linted system-wide.
+  Install with `uvx prek install`
+  For more see help/precommit.txt or `./gradlew helpPrecommit` (Robert Muir)
+
 Other
 ---------------------
 

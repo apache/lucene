@@ -1,0 +1,5 @@
+[global]
+# disable line length checks to prevent annoyances
+line-length = 0
+# not really a markdown file, but a template
+exclude = [ "lucene/documentation/src/markdown/index.template.md" ]

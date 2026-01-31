@@ -26,6 +26,18 @@ updates:
     cooldown:
       default-days: 7
 
+  # python dependencies in /dev-tools
+  - package-ecosystem: uv
+    directory: /dev-tools/
+    open-pull-requests-limit: 25
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: build(deps)
+    labels: [dependencies, skip-changelog]
+    cooldown:
+      default-days: 7
+
   - package-ecosystem: gradle
     directory: /
     open-pull-requests-limit: 25
