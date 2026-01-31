@@ -149,7 +149,7 @@ Build
   Markdown files are now linted with local broken-link detection.
   Python and Shell scripts are now linted system-wide.
   Install with `uvx prek install`
-  For more see help/precommit.txt (Robert Muir)
+  For more see help/precommit.txt or `./gradlew helpPrecommit` (Robert Muir)
 
 Other
 ---------------------
