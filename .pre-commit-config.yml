@@ -195,17 +195,6 @@ repos:
           UV_FROZEN: "1"
         types_or: [ python, pyi, jupyter ]
         require_serial: true
-        exclude:
-          glob:
-            # TODO: fix the issues with these files separately
-            - gradle/regenerate/jflex/htmlentity.py
-            - gradle/regenerate/packed/gen_BulkOperation.py
-            - gradle/regenerate/moman/createLevAutomata.py
-            - lucene/backward-codecs/src/java/org/apache/lucene/backward_codecs/**/{gen_ForUtil.py,gen_ForDeltaUtil.py}
-            - lucene/core/src/java/org/apache/lucene/codecs/**/gen_ForUtil.py
-            - lucene/core/src/java/org/apache/lucene/util/automaton/UTF32ToUTF8.py
-            - lucene/core/src/java/org/apache/lucene/util/packed/gen_BulkOperation.py
-            - lucene/core/src/test/org/apache/lucene/util/makeEuroparlLineFile.py
 
       - id: ruff-format
         language: system
@@ -217,17 +206,6 @@ repos:
           UV_FROZEN: "1"
         types_or: [ python, pyi, jupyter ]
         require_serial: true
-        exclude:
-          glob:
-            # TODO: fix the formatting of these files separately
-            - gradle/regenerate/jflex/htmlentity.py
-            - gradle/regenerate/moman/createLevAutomata.py
-            - gradle/regenerate/packed/{gen_BulkOperation.py,gen_Packed64SingleBlock.py}
-            - lucene/backward-codecs/src/java/org/apache/lucene/backward_codecs/**/{gen_ForUtil.py,gen_ForDeltaUtil.py}
-            - lucene/core/src/java/org/apache/lucene/codecs/**/gen_ForUtil.py
-            - lucene/core/src/java/org/apache/lucene/util/packed/{gen_BulkOperation.py,gen_Packed64SingleBlock.py}
-            - lucene/core/src/java/org/apache/lucene/util/automaton/UTF32ToUTF8.py
-            - lucene/core/src/test/org/apache/lucene/util/makeEuroparlLineFile.py
 
       - id: test-ast-grep
         name: Check ast-grep rules
