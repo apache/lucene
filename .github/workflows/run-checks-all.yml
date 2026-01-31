@@ -55,7 +55,7 @@ jobs:
           cache-suffix: dev-tools
 
       - name: Run prek
-        run: uv run prek --all-files
+        run: uv run prek --all-files --show-diff-on-failure
         env:
           UV_PROJECT: dev-tools
           UV_FROZEN: "1"
