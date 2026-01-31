@@ -46,4 +46,3 @@ module is published to  Maven central (as Maven POMs).
 
 To review the documentation, read the main documentation page, located at:
 `docs/index.html`
-

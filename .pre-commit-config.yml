@@ -22,44 +22,20 @@ repos:
       - id: trailing-whitespace
         name: Fix trailing whitespace
         types: [ text ]
-        # TODO: fix these files
         exclude:
           glob:
-            - lucene/demo/src/test/org/apache/lucene/demo/test-files/docs/*.txt
-            - lucene/analysis/common/src/resources/org/apache/lucene/analysis/**/stopwords.txt
             - lucene/analysis/common/src/java/org/apache/lucene/analysis/charfilter/HTMLStripCharFilter.java
-            - lucene/analysis/common/src/test/org/apache/lucene/analysis/hunspell/checkcompoundrep.aff
 
       - id: end-of-file-fixer
         name: Fix newline at EOF
-        # TODO: fix these files
         exclude:
           glob:
-            - .dir-locals.el
-            - .github/actionlint.yaml
-            - dev-tools/scripts/README.md
-            - gradle/documentation/render-javadoc/custom_styles.css
-            - help/*.txt
-            - LICENSE.txt
-            - lucene/analysis/common/src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex
-            - lucene/analysis/common/src/resources/org/apache/lucene/analysis/bn/stopwords.txt
-            - lucene/analysis/common/src/resources/org/apache/lucene/analysis/snowball/*.txt
-            - lucene/analysis/common/src/test/org/apache/lucene/analysis/charfilter/*.htm
-            - lucene/analysis/common/src/test/org/apache/lucene/analysis/email/*.{txt,html}
-            - lucene/analysis/common/src/test/org/apache/lucene/analysis/hunspell/*.{aff,dic}
-            - lucene/analysis/common/src/test/org/apache/lucene/analysis/no/*.txt
-            - lucene/analysis/common/src/test/org/apache/lucene/analysis/synonym/synonyms.txt
-            - lucene/analysis/icu/src/data/utr30/*.txt
-            - lucene/analysis/icu/src/test/org/apache/lucene/analysis/icu/segmentation/*.rbbi
-            - lucene/benchmark/conf/*.alg
-            - lucene/demo/src/test/org/apache/lucene/demo/test-files/docs/*.txt
-            - lucene/distribution/src/binary-release/README.md
-            - lucene/highlighter/src/test/org/apache/lucene/search/uhighlight/CambridgeMA.utf8
-            - lucene/licenses/*.txt
-            - lucene/misc/src/java/org/apache/lucene/misc/doc-files/*.svg
-            - lucene/test-framework/src/resources/org/apache/lucene/tests/index/LICENSE.txt
-            - lucene/queryparser/src/java/org/apache/lucene/queryparser/surround/parser/QueryParser.jj
+            # generated file
             - versions.lock
+            # generated file
+            - lucene/analysis/common/src/resources/org/apache/lucene/analysis/snowball/*_stop.txt
+            # TODO: do this one later with more free RAM
+            - lucene/analysis/common/src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex
 
       - id: fix-byte-order-marker
         name: Fix UTF-8 byte order marker
