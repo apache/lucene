@@ -29,7 +29,7 @@ All issues/PRs associated with a milestone must be resolved before the release, 
 
 Once the release is done, the Milestone should be closed then a new Milestone for the next release should be created.
 
-You can see the list of current active (opened) Milestones here. https://github.com/apache/lucene/milestones
+You can see the list of current active (opened) Milestones here. <https://github.com/apache/lucene/milestones>
 
 See [GitHub documentation](https://docs.github.com/en/issues/using-labels-and-milestones-to-track-work/about-milestones) for more details.
 
@@ -42,18 +42,18 @@ The Milestone associated with an Issue/PR should be the same version in [CHANGES
 There are a few pre-defined label families to organize/search issues.
 
 - `type` (color code `#ffbb00`) : issue type
-    - `type:bug` is attached to bug reports
-    - `type:enhancement` is attached to enhancement requests or suggestions
-    - `type:test` is attached to test improvements or failure reports
-    - `type:task` is attached to general tasks
-    - `type:documentation` is attached to tasks relate to documentation
+  - `type:bug` is attached to bug reports
+  - `type:enhancement` is attached to enhancement requests or suggestions
+  - `type:test` is attached to test improvements or failure reports
+  - `type:task` is attached to general tasks
+  - `type:documentation` is attached to tasks relate to documentation
 - `affects-version` (color code `#f19072`) : the versions in which a bug was found
-    - this may be used with `type:bug`
-    - (example) `affects-version:9.1.0`
+  - this may be used with `type:bug`
+  - (example) `affects-version:9.1.0`
 - `module` (color code `#a0d8ef`) : Lucene module
-    - (example) `module:core/index`, `module:analysis`
+  - (example) `module:core/index`, `module:analysis`
 - `tool` (color code `#a0d8ef`) : tooling
-    - (example) `tool:build`, `tool:release-wizard`
+  - (example) `tool:build`, `tool:release-wizard`
 
 A `type` label is automatically attached to an issue by the issue template that the reporter selected. Other labels such as `affects-version` may be manually added by committers.
 

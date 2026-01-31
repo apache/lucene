@@ -162,28 +162,12 @@ repos:
         name: Fix Markdown
         language: system
         entry: uv
-        args: [ 'run', 'rumdl', 'fmt' ]
+        args: [ 'run', 'rumdl', 'check', '--fix' ]
         env:
           UV_PROJECT: dev-tools
           UV_FROZEN: "1"
         types: [ 'markdown']
         require_serial: true
-        exclude:
-          glob:
-            # TODO: fix formatting of these files separately
-            - .github/PULL_REQUEST_TEMPLATE.md
-            - CONTRIBUTING.md
-            - dev-docs/file-formats.md
-            - dev-docs/github-issues-howto.md
-            - dev-tools/aws-jmh/README.md
-            - dev-tools/scripts/README.md
-            - lucene/backward-codecs/README.md
-            - lucene/distribution/src/binary-release/README.md
-            - lucene/luke/README.md
-            - lucene/luke/src/distribution/README.md
-            - lucene/MIGRATE.md
-            - lucene/SYSTEM_REQUIREMENTS.md
-            - README.md
 
       - id: ruff-check
         name: Fix Python
