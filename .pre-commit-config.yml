@@ -4,12 +4,22 @@ default_install_hook_types:
   - pre-commit
 default_stages:
   - pre-commit
+# define priority: 0 for linters that don't modify sources
+# leave fixers with priority: null so they run sequentially
 repos:
   # "Built-in Fast Hooks" from prek.
   - repo: builtin
     hooks:
+      - id: check-added-large-files
+        name: Check for large files
+        priority: 0
+
+      - id: check-case-conflict
+        name: Check for files that would conflict in case-insensitive filesystems
+        priority: 0
+
       - id: trailing-whitespace
-        name: Check for trailing whitespace
+        name: Fix trailing whitespace
         types: [ text ]
         # TODO: fix these files
         exclude:
@@ -19,14 +29,8 @@ repos:
             - lucene/analysis/common/src/java/org/apache/lucene/analysis/charfilter/HTMLStripCharFilter.java
             - lucene/analysis/common/src/test/org/apache/lucene/analysis/hunspell/checkcompoundrep.aff
 
-      - id: check-added-large-files
-        name: Prevent committing large files
-
-      - id: check-case-conflict
-        name: Check for files that would conflict in case-insensitive filesystems
-
       - id: end-of-file-fixer
-        name: Ensure newline at EOF
+        name: Fix newline at EOF
         # TODO: fix these files
         exclude:
           glob:
@@ -57,37 +61,44 @@ repos:
             - versions.lock
 
       - id: fix-byte-order-marker
-        name: Remove UTF-8 byte order marker
+        name: Fix UTF-8 byte order marker
 
       - id: check-json
-        name: Validate JSON files
+        name: Check JSON files
+        priority: 0
         types: [ json ]
 
       - id: check-toml
-        name: Validate TOML files
+        name: Check TOML files
+        priority: 0
         types: [ toml ]
 
       - id: check-yaml
-        name: Validate YAML files
+        name: Check YAML files
+        priority: 0
         types: [ yaml ]
         args: [ --allow-multiple-documents ]
 
       - id: check-xml
-        name: Validate XML files
+        name: Check XML files
+        priority: 0
         types: [ xml ]
 
       - id: mixed-line-ending
-        name: Normalize or check line endings
+        name: Fix line endings
         types: [ text ]
 
       - id: check-merge-conflict
         name: Check for merge conflicts
+        priority: 0
 
       - id: detect-private-key
-        name: Detect private keys
+        name: Check for private keys
+        priority: 0
 
       - id: check-executables-have-shebangs
-        name: Ensures that (non-binary) executables have a shebang
+        name: Check that (non-binary) executables have a shebang
+        priority: 0
         exclude:
           glob:
             # TODO: fix these permissions
@@ -100,6 +111,7 @@ repos:
     hooks:
       - id: shellcheck
         name: Check Shell Scripts
+        priority: 0
         language: system
         entry: uv
         args: [ 'run', 'shellcheck', '--format', 'gcc' ]
@@ -115,7 +127,8 @@ repos:
             - lucene/distribution/src/binary-release/bin/luke.sh
 
       - id: actionlint
-        name: Lint Github Actions
+        name: Check Github Actions
+        priority: 0
         language: system
         entry: uv
         args: [ 'run', 'actionlint' ]
@@ -129,6 +142,7 @@ repos:
 
       - id: zizmor
         name: Check Github Actions Security
+        priority: 0
         language: system
         entry: uv
         args: [ 'run', 'zizmor', '--pedantic', '--offline', '.' ]
@@ -141,7 +155,7 @@ repos:
             - .github/**/*.yml
 
       - id: rumdl
-        name: Lint/Format Markdown
+        name: Fix Markdown
         language: system
         entry: uv
         args: [ 'run', 'rumdl', 'fmt' ]
@@ -166,7 +180,7 @@ repos:
             - README.md
 
       - id: ruff-check
-        name: Lint Python
+        name: Fix Python
         language: system
         entry: uv
         args: [ 'run', 'ruff', 'check', '--fix', '--force-exclude' ]
@@ -189,7 +203,7 @@ repos:
 
       - id: ruff-format
         language: system
-        name: Format Python
+        name: Fix Python formatting
         entry: uv
         args: [ 'run', 'ruff', 'format', '--force-exclude' ]
         env:
@@ -211,6 +225,7 @@ repos:
 
       - id: test-ast-grep
         name: Check ast-grep rules
+        priority: 0
         language: system
         entry: uv
         args: [ 'run', 'ast-grep', '-c', './gradle/validation/ast-grep/sgconfig.yml', 'test', '--skip-snapshot-tests' ]
@@ -224,6 +239,7 @@ repos:
 
       - id: ast-grep
         name: Check Sources with ast-grep
+        priority: 0
         language: system
         entry: uv
         args: [ 'run', 'ast-grep', '-c', './gradle/validation/ast-grep/sgconfig.yml', 'scan', '--format', 'github' ]
@@ -235,12 +251,14 @@ repos:
     hooks:
       - id: check-hooks-apply
         name: Check prek hooks match at least one file
+        priority: 0
         files:
           glob:
             .pre-commit-config.yml
 
       - id: check-useless-excludes
         name: Check prek excludes match include pattern
+        priority: 0
         files:
           glob:
             .pre-commit-config.yml
