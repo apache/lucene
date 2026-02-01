@@ -23,6 +23,7 @@ import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
@@ -57,12 +58,10 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
 
     for (FieldInfo fieldInfo : state.fieldInfos) {
       if (fieldInfo.hasVectorValues()) {
-        String metaFileName =
-            IndexFileNames.segmentFileName(
-                state.segmentInfo.name, state.segmentSuffix, fieldInfo.name + ".spam");
-        String dataFileName =
-            IndexFileNames.segmentFileName(
-                state.segmentInfo.name, state.segmentSuffix, fieldInfo.name + ".spad");
+        String metaFileName = IndexFileNames.segmentFileName(
+            state.segmentInfo.name, state.segmentSuffix, fieldInfo.name + ".spam");
+        String dataFileName = IndexFileNames.segmentFileName(
+            state.segmentInfo.name, state.segmentSuffix, fieldInfo.name + ".spad");
 
         IndexInput metaIn = null;
         IndexInput dataIn = null;
@@ -92,7 +91,7 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
 
             fields.put(
                 fieldInfo.name,
-                new SpannFieldEntry(offsets, lengths, dataIn, fieldInfo, totalSize));
+                new SpannFieldEntry(offsets, lengths, dataIn, fieldInfo, totalSize, state.segmentInfo.maxDoc()));
             success = true;
           }
         } finally {
@@ -132,6 +131,23 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
     return new SpannByteVectorValues(entry);
   }
 
+  private static final AcceptDocs MATCH_ALL_ACCEPT_DOCS = new AcceptDocs() {
+    @Override
+    public int cost() {
+      return Integer.MAX_VALUE;
+    }
+
+    @Override
+    public Bits bits() {
+      return new Bits.MatchAllBits(Integer.MAX_VALUE);
+    }
+
+    @Override
+    public org.apache.lucene.search.DocIdSetIterator iterator() {
+      return org.apache.lucene.search.DocIdSetIterator.all(Integer.MAX_VALUE);
+    }
+  };
+
   @Override
   public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
@@ -145,7 +161,12 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
       throw new IllegalArgumentException("float[] query on BYTE field");
     }
 
-    TopDocs topCentroids = searchCentroids(field, target, acceptDocs);
+    int candidateProbe = Math.max(nprobe * 4, 16);
+    TopKnnCollector coarseCollector = new TopKnnCollector(candidateProbe, Integer.MAX_VALUE);
+    // CRITICAL FIX: Do NOT pass acceptDocs to centroid search.
+    centroidDelegate.search(field, target, coarseCollector, MATCH_ALL_ACCEPT_DOCS);
+    TopDocs topCentroids = coarseCollector.topDocs();
+
     searchFine(entry, target, null, topCentroids, knnCollector, acceptDocs);
   }
 
@@ -162,7 +183,12 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
       throw new IllegalArgumentException("byte[] query on FLOAT32 field");
     }
 
-    TopDocs topCentroids = searchCentroids(field, target, acceptDocs);
+    int candidateProbe = Math.max(nprobe * 4, 16);
+    TopKnnCollector coarseCollector = new TopKnnCollector(candidateProbe, Integer.MAX_VALUE);
+    // CRITICAL FIX: Do NOT pass acceptDocs to centroid search.
+    centroidDelegate.search(field, target, coarseCollector, MATCH_ALL_ACCEPT_DOCS);
+    TopDocs topCentroids = coarseCollector.topDocs();
+
     searchFine(entry, null, target, topCentroids, knnCollector, acceptDocs);
   }
 
@@ -170,7 +196,7 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
       throws IOException {
     int candidateProbe = Math.max(nprobe * 4, 16);
     TopKnnCollector coarseCollector = new TopKnnCollector(candidateProbe, Integer.MAX_VALUE);
-    centroidDelegate.search(field, target, coarseCollector, acceptDocs);
+    centroidDelegate.search(field, target, coarseCollector, MATCH_ALL_ACCEPT_DOCS);
     return coarseCollector.topDocs();
   }
 
@@ -178,7 +204,7 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
       throws IOException {
     int candidateProbe = Math.max(nprobe * 4, 16);
     TopKnnCollector coarseCollector = new TopKnnCollector(candidateProbe, Integer.MAX_VALUE);
-    centroidDelegate.search(field, target, coarseCollector, acceptDocs);
+    centroidDelegate.search(field, target, coarseCollector, MATCH_ALL_ACCEPT_DOCS);
     return coarseCollector.topDocs();
   }
 
@@ -190,18 +216,34 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
       KnnCollector knnCollector,
       AcceptDocs acceptDocs)
       throws IOException {
+    Bits acceptBits = null;
+    if (acceptDocs != null) {
+      acceptBits = acceptDocs.bits();
+    }
+    org.apache.lucene.util.FixedBitSet visitedDocs = new org.apache.lucene.util.FixedBitSet(entry.maxDoc);
+
     try (IndexInput dataIn = entry.dataIn.clone()) {
       boolean isByte = entry.fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
-      int vectorByteWidth =
-          isByte
-              ? entry.fieldInfo.getVectorDimension()
-              : entry.fieldInfo.getVectorDimension() * Float.BYTES;
+      int vectorByteWidth = isByte
+          ? entry.fieldInfo.getVectorDimension()
+          : entry.fieldInfo.getVectorDimension() * Float.BYTES;
+      byte[] byteVector = isByte ? new byte[entry.fieldInfo.getVectorDimension()] : null;
+      float[] floatVector = isByte ? null : new float[entry.fieldInfo.getVectorDimension()];
+
+      int visitedPartitions = 0;
 
       for (int i = 0; i < topCentroids.scoreDocs.length; i++) {
+        // Stop if we have processed enough partitions to satisfy nprobe
+        if (visitedPartitions >= nprobe) {
+          break;
+        }
+
         int partitionId = topCentroids.scoreDocs[i].doc;
         Long offset = entry.offsets.get(partitionId);
         Long length = entry.lengths.get(partitionId);
-        if (offset == null) continue;
+
+        if (offset == null)
+          continue;
 
         dataIn.seek(offset);
         int numDocs = (int) (length / (Integer.BYTES + vectorByteWidth));
@@ -210,20 +252,91 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
           docIds[j] = dataIn.readInt();
         }
 
-        for (int j = 0; j < numDocs; j++) {
-          float score;
-          if (isByte) {
-            byte[] v = new byte[entry.fieldInfo.getVectorDimension()];
-            dataIn.readBytes(v, 0, v.length);
-            score = entry.fieldInfo.getVectorSimilarityFunction().compare(byteTarget, v);
-          } else {
-            float[] v = new float[entry.fieldInfo.getVectorDimension()];
-            for (int d = 0; d < v.length; d++) {
-              v[d] = Float.intBitsToFloat(dataIn.readInt());
+        long vectorsStart = offset + (long) numDocs * Integer.BYTES;
+        if (acceptBits == null) {
+          boolean anyAccepted = false;
+          dataIn.seek(vectorsStart);
+          for (int j = 0; j < numDocs; j++) {
+            int docId = docIds[j];
+            boolean accept = visitedDocs.get(docId) == false;
+            if (accept) {
+              visitedDocs.set(docId);
+              anyAccepted = true;
             }
-            score = entry.fieldInfo.getVectorSimilarityFunction().compare(floatTarget, v);
+            float score;
+            if (isByte) {
+              dataIn.readBytes(byteVector, 0, byteVector.length);
+              if (accept == false) {
+                continue;
+              }
+              score = entry.fieldInfo.getVectorSimilarityFunction().compare(byteTarget, byteVector);
+            } else {
+              for (int d = 0; d < floatVector.length; d++) {
+                floatVector[d] = Float.intBitsToFloat(dataIn.readInt());
+              }
+              if (accept == false) {
+                continue;
+              }
+              score = entry.fieldInfo.getVectorSimilarityFunction().compare(floatTarget, floatVector);
+            }
+            knnCollector.incVisitedCount(1);
+            knnCollector.collect(docId, score);
           }
-          knnCollector.collect(docIds[j], score);
+          if (anyAccepted == false) {
+            continue;
+          }
+          visitedPartitions++;
+        } else {
+          int[] acceptedIndices = new int[numDocs];
+          int acceptedCount = 0;
+          for (int j = 0; j < numDocs; j++) {
+            int docId = docIds[j];
+            if (acceptBits.get(docId) && !visitedDocs.get(docId)) {
+              acceptedIndices[acceptedCount++] = j;
+              visitedDocs.set(docId);
+            }
+          }
+
+          if (acceptedCount == 0) {
+            continue;
+          }
+
+          visitedPartitions++;
+
+          // 4. Read & Score ONLY accepted vectors
+          // Optimization: Bulk Read into buffer to avoid virtual method calls
+          byte[] rawVectorBytes = new byte[vectorByteWidth];
+
+          for (int k = 0; k < acceptedCount; k++) {
+            int idx = acceptedIndices[k];
+            long vectorOffset = vectorsStart + ((long) idx) * vectorByteWidth;
+
+            // Seek is efficient (sequential usually)
+            dataIn.seek(vectorOffset);
+            dataIn.readBytes(rawVectorBytes, 0, rawVectorBytes.length);
+
+            float score;
+            if (isByte) {
+              // rawVectorBytes IS the vector
+              score = entry.fieldInfo.getVectorSimilarityFunction().compare(byteTarget, rawVectorBytes);
+            } else {
+              // Unpack floats manually from Big-Endian bytes
+              // This avoids 1024x readInt() calls per vector
+              float[] v = new float[entry.fieldInfo.getVectorDimension()];
+              int byteIdx = 0;
+              for (int d = 0; d < v.length; d++) {
+                int iVal = ((rawVectorBytes[byteIdx++] & 0xFF) << 24) |
+                    ((rawVectorBytes[byteIdx++] & 0xFF) << 16) |
+                    ((rawVectorBytes[byteIdx++] & 0xFF) << 8) |
+                    (rawVectorBytes[byteIdx++] & 0xFF);
+                v[d] = Float.intBitsToFloat(iVal);
+              }
+              score = entry.fieldInfo.getVectorSimilarityFunction().compare(floatTarget, v);
+            }
+
+            knnCollector.incVisitedCount(1);
+            knnCollector.collect(docIds[idx], score);
+          }
         }
       }
     }
@@ -242,7 +355,8 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
     final Map<Integer, Long> lengths;
     final IndexInput dataIn;
     final FieldInfo fieldInfo;
-    final int totalSize;
+    final int maxDoc;
+    final int docCount;
     final int[] ordToDocId;
     final long[] ordToOffset;
 
@@ -251,22 +365,21 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
         Map<Integer, Long> lengths,
         IndexInput dataIn,
         FieldInfo fieldInfo,
-        int totalSize)
+        int totalSize,
+        int maxDoc)
         throws IOException {
       this.offsets = offsets;
       this.lengths = lengths;
       this.dataIn = dataIn;
       this.fieldInfo = fieldInfo;
-      this.totalSize = totalSize;
-      this.ordToDocId = new int[totalSize];
-      this.ordToOffset = new long[totalSize];
+      this.maxDoc = maxDoc;
+      long[] docIdToOffset = new long[maxDoc];
+      java.util.Arrays.fill(docIdToOffset, -1L);
 
       // Build in-memory map (Path A style)
       try (IndexInput input = dataIn.clone()) {
-        int currentOrd = 0;
         boolean isByte = fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
-        int vectorByteWidth =
-            isByte ? fieldInfo.getVectorDimension() : fieldInfo.getVectorDimension() * Float.BYTES;
+        int vectorByteWidth = isByte ? fieldInfo.getVectorDimension() : fieldInfo.getVectorDimension() * Float.BYTES;
 
         // Sort partition IDs to scan sequentially
         Integer[] pIds = offsets.keySet().toArray(new Integer[0]);
@@ -285,10 +398,30 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
 
           long vectorsStart = offset + (long) numDocs * Integer.BYTES;
           for (int i = 0; i < numDocs; i++) {
-            ordToDocId[currentOrd] = tempIds[i];
-            ordToOffset[currentOrd] = vectorsStart + (long) i * vectorByteWidth;
-            currentOrd++;
+            int docId = tempIds[i];
+            if (docIdToOffset[docId] == -1L) {
+              docIdToOffset[docId] = vectorsStart + (long) i * vectorByteWidth;
+            }
           }
+        }
+      }
+
+      int count = 0;
+      for (long offset : docIdToOffset) {
+        if (offset != -1L) {
+          count++;
+        }
+      }
+      this.docCount = count;
+      this.ordToDocId = new int[docCount];
+      this.ordToOffset = new long[docCount];
+      int ord = 0;
+      for (int docId = 0; docId < docIdToOffset.length; docId++) {
+        long offset = docIdToOffset[docId];
+        if (offset != -1L) {
+          ordToDocId[ord] = docId;
+          ordToOffset[ord] = offset;
+          ord++;
         }
       }
     }
@@ -310,7 +443,7 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
 
     @Override
     public int size() {
-      return entry.totalSize;
+      return entry.docCount;
     }
 
     @Override
@@ -355,7 +488,7 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
 
     @Override
     public int size() {
-      return entry.totalSize;
+      return entry.docCount;
     }
 
     @Override

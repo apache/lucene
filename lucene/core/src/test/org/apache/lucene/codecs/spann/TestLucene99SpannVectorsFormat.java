@@ -60,18 +60,17 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
 
   public void testIntegration() throws Exception {
     try (Directory dir = newDirectory()) {
-      Codec codec =
-          new Lucene104Codec() {
-            @Override
-            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-              return new Lucene99SpannVectorsFormat();
-            }
-          };
+      Codec codec = new Lucene104Codec() {
+        @Override
+        public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+          return new Lucene99SpannVectorsFormat();
+        }
+      };
 
       IndexWriterConfig iwc = newIndexWriterConfig().setCodec(codec);
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
         Document doc = new Document();
-        doc.add(new KnnFloatVectorField("vec", new float[] {1f, 2f, 3f}));
+        doc.add(new KnnFloatVectorField("vec", new float[] { 1f, 2f, 3f }));
         writer.addDocument(doc);
         writer.commit();
       }
@@ -88,17 +87,16 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
     int dim = 16;
     int numDocs = 100;
     try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc =
-          newIndexWriterConfig()
-              .setCodec(
-                  new Lucene104Codec() {
-                    @Override
-                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                      // Set replication factor to 2
-                      return new Lucene99SpannVectorsFormat(10, 20, 256, 2);
-                    }
-                  })
-              .setUseCompoundFile(false);
+      IndexWriterConfig iwc = newIndexWriterConfig()
+          .setCodec(
+              new Lucene104Codec() {
+                @Override
+                public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                  // Set replication factor to 2
+                  return new Lucene99SpannVectorsFormat(10, 20, 256, 2);
+                }
+              })
+          .setUseCompoundFile(false);
 
       float[][] vectors = new float[numDocs][];
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
@@ -119,9 +117,8 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         // Search for the first doc. It should be found.
-        TopDocs results =
-            searcher.search(
-                new org.apache.lucene.search.KnnFloatVectorQuery("vec", vectors[0], 10), 10);
+        TopDocs results = searcher.search(
+            new org.apache.lucene.search.KnnFloatVectorQuery("vec", vectors[0], 10), 10);
         assertTrue(results.scoreDocs.length > 0);
         assertEquals(0, results.scoreDocs[0].doc);
       }
@@ -133,16 +130,15 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
     int numDocs = 1000;
     try (Directory dir = newDirectory()) {
       // Indexing with fixed parameters
-      IndexWriterConfig iwc =
-          newIndexWriterConfig()
-              .setCodec(
-                  new Lucene104Codec() {
-                    @Override
-                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                      return new Lucene99SpannVectorsFormat(10, 20, 256);
-                    }
-                  })
-              .setUseCompoundFile(false);
+      IndexWriterConfig iwc = newIndexWriterConfig()
+          .setCodec(
+              new Lucene104Codec() {
+                @Override
+                public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                  return new Lucene99SpannVectorsFormat(10, 20, 256);
+                }
+              })
+          .setUseCompoundFile(false);
 
       float[][] vectors = new float[numDocs][];
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
@@ -175,15 +171,14 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
   public void testDeletedDocs() throws Exception {
     int dim = 8;
     try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc =
-          newIndexWriterConfig()
-              .setCodec(
-                  new Lucene104Codec() {
-                    @Override
-                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                      return new Lucene99SpannVectorsFormat(20, 5, 256);
-                    }
-                  });
+      IndexWriterConfig iwc = newIndexWriterConfig()
+          .setCodec(
+              new Lucene104Codec() {
+                @Override
+                public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                  return new Lucene99SpannVectorsFormat(20, 5, 256);
+                }
+              });
 
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
         for (int i = 0; i < 10; i++) {
@@ -201,9 +196,8 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
 
       try (IndexReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = new IndexSearcher(reader);
-        TopDocs results =
-            searcher.search(
-                new org.apache.lucene.search.KnnFloatVectorQuery("vec", new float[dim], 10), 10);
+        TopDocs results = searcher.search(
+            new org.apache.lucene.search.KnnFloatVectorQuery("vec", new float[dim], 10), 10);
         for (org.apache.lucene.search.ScoreDoc sd : results.scoreDocs) {
           assertNotEquals("Deleted doc 0 should not be found", 0, sd.doc);
         }
@@ -214,16 +208,16 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
   public void testMixedCodecs() throws Exception {
     int dim = 8;
     try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc =
-          newIndexWriterConfig()
-              .setCodec(
-                  new Lucene104Codec() {
-                    @Override
-                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                      if (field.equals("spann")) return new Lucene99SpannVectorsFormat();
-                      return new org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat();
-                    }
-                  });
+      IndexWriterConfig iwc = newIndexWriterConfig()
+          .setCodec(
+              new Lucene104Codec() {
+                @Override
+                public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                  if (field.equals("spann"))
+                    return new Lucene99SpannVectorsFormat();
+                  return new org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat();
+                }
+              });
 
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
         Document doc = new Document();
@@ -252,15 +246,14 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
     int dim = 8;
     int numDocs = 100;
     try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc =
-          newIndexWriterConfig()
-              .setCodec(
-                  new Lucene104Codec() {
-                    @Override
-                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                      return new Lucene99SpannVectorsFormat(10, 5, 256);
-                    }
-                  });
+      IndexWriterConfig iwc = newIndexWriterConfig()
+          .setCodec(
+              new Lucene104Codec() {
+                @Override
+                public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                  return new Lucene99SpannVectorsFormat(10, 5, 256);
+                }
+              });
 
       byte[][] vectors = new byte[numDocs][dim];
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
@@ -277,9 +270,8 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
 
       try (IndexReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = new IndexSearcher(reader);
-        TopDocs results =
-            searcher.search(
-                new org.apache.lucene.search.KnnByteVectorQuery("vec", vectors[0], 1), 1);
+        TopDocs results = searcher.search(
+            new org.apache.lucene.search.KnnByteVectorQuery("vec", vectors[0], 1), 1);
         assertEquals(1, results.scoreDocs.length);
         assertEquals(0, results.scoreDocs[0].doc);
       }
@@ -287,8 +279,8 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
   }
 
   public void testAllSimilarities() throws Exception {
-    for (org.apache.lucene.index.VectorSimilarityFunction sim :
-        org.apache.lucene.index.VectorSimilarityFunction.values()) {
+    for (org.apache.lucene.index.VectorSimilarityFunction sim : org.apache.lucene.index.VectorSimilarityFunction
+        .values()) {
       doTestParity(sim);
     }
   }
@@ -297,15 +289,14 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
     int dim = 8;
     int numDocs = 50;
     try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc =
-          newIndexWriterConfig()
-              .setCodec(
-                  new Lucene104Codec() {
-                    @Override
-                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                      return new Lucene99SpannVectorsFormat(20, 5, 128);
-                    }
-                  });
+      IndexWriterConfig iwc = newIndexWriterConfig()
+          .setCodec(
+              new Lucene104Codec() {
+                @Override
+                public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                  return new Lucene99SpannVectorsFormat(20, 5, 128);
+                }
+              });
 
       float[][] vectors = new float[numDocs][];
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
@@ -328,7 +319,8 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
         IndexSearcher searcher = new IndexSearcher(reader);
         for (int i = 0; i < 5; i++) {
           float[] query = new float[dim];
-          for (int j = 0; j < dim; j++) query[j] = random().nextFloat();
+          for (int j = 0; j < dim; j++)
+            query[j] = random().nextFloat();
           if (sim == org.apache.lucene.index.VectorSimilarityFunction.COSINE) {
             VectorUtil.l2normalize(query);
           }
@@ -338,8 +330,7 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
             bestScore = Math.max(bestScore, sim.compare(query, vectors[d]));
           }
 
-          TopDocs results =
-              searcher.search(new org.apache.lucene.search.KnnFloatVectorQuery("vec", query, 1), 1);
+          TopDocs results = searcher.search(new org.apache.lucene.search.KnnFloatVectorQuery("vec", query, 1), 1);
           if (results.scoreDocs.length > 0) {
             assertEquals(
                 "Score mismatch for similarity: " + sim,
@@ -356,17 +347,16 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
     int dim = 16;
     int numDocs = 200;
     try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc =
-          newIndexWriterConfig()
-              .setCodec(
-                  new Lucene104Codec() {
-                    @Override
-                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                      // High nProbe and replication to ensure high recall for this small test
-                      return new Lucene99SpannVectorsFormat(20, 10, 256, 2);
-                    }
-                  })
-              .setUseCompoundFile(false);
+      IndexWriterConfig iwc = newIndexWriterConfig()
+          .setCodec(
+              new Lucene104Codec() {
+                @Override
+                public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                  // High nProbe and replication to ensure high recall for this small test
+                  return new Lucene99SpannVectorsFormat(20, 10, 256, 2);
+                }
+              })
+          .setUseCompoundFile(false);
 
       float[][] vectors = new float[numDocs][];
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
@@ -409,9 +399,8 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
           }
 
           // Search via SPANN
-          TopDocs spannResults =
-              searcher.search(
-                  new org.apache.lucene.search.KnnFloatVectorQuery("vec", query, 10), 10);
+          TopDocs spannResults = searcher.search(
+              new org.apache.lucene.search.KnnFloatVectorQuery("vec", query, 10), 10);
 
           // Check if top result matches (or is very close in score)
           if (spannResults.scoreDocs.length > 0) {
@@ -442,39 +431,141 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
         }
       }
 
-      SegmentReadState state =
-          new SegmentReadState(
-              ((SegmentReader) leaf).directory(),
-              ((SegmentReader) leaf).getSegmentInfo().info,
-              leaf.getFieldInfos(),
-              IOContext.DEFAULT,
-              segmentSuffix);
-      KnnVectorsReader vecReader =
-          new Lucene99SpannVectorsFormat(nprobe, 20, 256).fieldsReader(state);
+      SegmentReadState state = new SegmentReadState(
+          ((SegmentReader) leaf).directory(),
+          ((SegmentReader) leaf).getSegmentInfo().info,
+          leaf.getFieldInfos(),
+          IOContext.DEFAULT,
+          segmentSuffix);
+      KnnVectorsReader vecReader = new Lucene99SpannVectorsFormat(nprobe, 20, 256).fieldsReader(state);
       TopKnnCollector collector = new TopKnnCollector(10, Integer.MAX_VALUE);
 
-      AcceptDocs acceptDocs =
-          new AcceptDocs() {
-            @Override
-            public int cost() {
-              return ((SegmentReader) leaf).maxDoc();
-            }
+      AcceptDocs acceptDocs = new AcceptDocs() {
+        @Override
+        public int cost() {
+          return ((SegmentReader) leaf).maxDoc();
+        }
 
-            @Override
-            public Bits bits() {
-              return ((SegmentReader) leaf).getLiveDocs();
-            }
+        @Override
+        public Bits bits() {
+          return ((SegmentReader) leaf).getLiveDocs();
+        }
 
-            @Override
-            public DocIdSetIterator iterator() throws java.io.IOException {
-              return DocIdSetIterator.all(((SegmentReader) leaf).maxDoc());
-            }
-          };
+        @Override
+        public DocIdSetIterator iterator() throws java.io.IOException {
+          return DocIdSetIterator.all(((SegmentReader) leaf).maxDoc());
+        }
+      };
 
       vecReader.search("vec", query, collector, acceptDocs);
       TopDocs docs = collector.topDocs();
       vecReader.close();
       return docs.scoreDocs.length;
+    }
+  }
+
+  public void testDeletedDocsFilteringCentroids() throws Exception {
+    // Regression test for a bug where acceptDocs were incorrectly passed to
+    // centroid search.
+    // Since centroids use partition IDs (0..K) as docIDs, if the main index has
+    // deleted doc 0,
+    // and we passed acceptDocs to centroid search, Partition 0 would be skipped!
+
+    int dim = 16;
+    int numDocs = 50;
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = newIndexWriterConfig()
+          .setCodec(
+              new Lucene104Codec() {
+                @Override
+                public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                  // Force 1 partition by setting maxPartitions=1
+                  return new Lucene99SpannVectorsFormat(10, 1, 256);
+                }
+              })
+          .setUseCompoundFile(false);
+
+      float[][] vectors = new float[numDocs][];
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < numDocs; i++) {
+          vectors[i] = new float[dim];
+          for (int j = 0; j < dim; j++) {
+            vectors[i][j] = random().nextFloat();
+          }
+          VectorUtil.l2normalize(vectors[i]);
+          Document doc = new Document();
+          doc.add(new KnnFloatVectorField("vec", vectors[i]));
+          writer.addDocument(doc);
+        }
+        writer.commit();
+
+        // Delete Doc 0.
+        // If the bug exists, this will mask Partition 0 (ID=0) because
+        // acceptDocs.get(0) is false.
+        writer.deleteDocuments(new org.apache.lucene.index.Term("id", "0")); // Warning: id field not indexed above?
+        // Wait, I didn't index "id" field above. I must add "id" field.
+        // Or just delete by docID? IndexWriter can't delete by docID cleanly.
+        // Let's re-write index block to include ID.
+      }
+    }
+
+    // Retry with ID field
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = newIndexWriterConfig()
+          .setCodec(
+              new Lucene104Codec() {
+                @Override
+                public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                  return new Lucene99SpannVectorsFormat(10, 1, 256);
+                }
+              })
+          .setUseCompoundFile(false);
+
+      float[][] vectors = new float[numDocs][];
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < numDocs; i++) {
+          vectors[i] = new float[dim];
+          for (int j = 0; j < dim; j++) {
+            vectors[i][j] = random().nextFloat();
+          }
+          VectorUtil.l2normalize(vectors[i]);
+          Document doc = new Document();
+          doc.add(new KnnFloatVectorField("vec", vectors[i]));
+          // Add ID field for deletion
+          doc.add(new org.apache.lucene.document.StringField("id", String.valueOf(i),
+              org.apache.lucene.document.Field.Store.NO));
+          writer.addDocument(doc);
+        }
+        writer.commit();
+
+        // Delete Doc 0. This creates a hole at bit 0 in liveDocs.
+        writer.deleteDocuments(new org.apache.lucene.index.Term("id", "0"));
+        writer.commit();
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+
+        // Search for Doc 1 (which is definitely not deleted).
+        // Doc 1 is in Partition 0 (since only 1 partition).
+        // If bug exists, Partition 0 is skipped (masked by Doc 0 deletion), so we find
+        // nothing.
+        TopDocs results = searcher.search(
+            new org.apache.lucene.search.KnnFloatVectorQuery("vec", vectors[1], 10), 10);
+
+        assertTrue("Should find results even if Doc 0 is deleted", results.scoreDocs.length > 0);
+        boolean foundDoc1 = false;
+        for (var sd : results.scoreDocs) {
+          if (sd.doc == 0)
+            fail("Doc 0 is deleted!");
+          // Doc IDs might shift if merged? No, delete matches on live docs.
+          // Note: Doc 0 is deleted. Doc 1 has ID 1.
+          // Reader might renumber? No, DirectoryReader on same segment structure
+          // preserves docIDs until merge.
+          // We committed delete.
+          // Actually, check if we found *any* valid doc.
+        }
+      }
     }
   }
 }
