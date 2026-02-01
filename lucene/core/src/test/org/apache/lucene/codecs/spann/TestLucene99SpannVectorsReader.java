@@ -55,4 +55,52 @@ public class TestLucene99SpannVectorsReader extends LuceneTestCase {
       }
     }
   }
+
+  public void testSearch() throws Exception {
+    try (Directory dir = newDirectory()) {
+      Codec codec =
+          new Lucene104Codec() {
+            @Override
+            public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+              return new Lucene99SpannVectorsFormat();
+            }
+          };
+
+      IndexWriterConfig iwc = newIndexWriterConfig().setCodec(codec);
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < 100; i++) {
+          Document doc = new Document();
+          doc.add(new KnnFloatVectorField("vec", new float[] {i, i + 1, i + 2}));
+          writer.addDocument(doc);
+        }
+        writer.commit();
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        int totalSize = 0;
+        int totalCount = 0;
+
+        for (org.apache.lucene.index.LeafReaderContext ctx : reader.leaves()) {
+          LeafReader leaf = ctx.reader();
+          org.apache.lucene.index.FloatVectorValues values = leaf.getFloatVectorValues("vec");
+          if (values == null) continue; // Some segments might not have vectors if empty/deleted?
+
+          assertEquals(3, values.dimension());
+          totalSize += values.size();
+
+          // Test Scorer
+          org.apache.lucene.search.VectorScorer scorer = values.scorer(new float[] {1, 2, 3});
+          org.apache.lucene.search.DocIdSetIterator it = scorer.iterator();
+
+          while (it.nextDoc() != org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS) {
+            float score = scorer.score();
+            assertTrue(score >= 0);
+            totalCount++;
+          }
+        }
+        assertEquals(100, totalSize);
+        assertEquals(100, totalCount);
+      }
+    }
+  }
 }

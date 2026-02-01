@@ -39,11 +39,8 @@ import org.apache.lucene.util.OfflineSorter;
 /**
  * Writes vectors in the SPANN (HNSW-IVF) format.
  *
- * <p>
- * Centroids are computed via K-Means and indexed into an HNSW-based coarse
- * quantizer. Vector
- * data is assigned to the nearest centroid and written sequentially in a
- * clustered format.
+ * <p>Centroids are computed via K-Means and indexed into an HNSW-based coarse quantizer. Vector
+ * data is assigned to the nearest centroid and written sequentially in a clustered format.
  */
 public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
 
@@ -162,8 +159,8 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
         // Write the single centroid
         if (fieldInfo.getVectorEncoding() == VectorEncoding.BYTE) {
           @SuppressWarnings("unchecked")
-          KnnFieldVectorsWriter<byte[]> byteCentroidWriter = (KnnFieldVectorsWriter<byte[]>) centroidDelegate
-              .addField(fieldInfo);
+          KnnFieldVectorsWriter<byte[]> byteCentroidWriter =
+              (KnnFieldVectorsWriter<byte[]>) centroidDelegate.addField(fieldInfo);
           byte[] byteCentroid = new byte[mean.length];
           for (int k = 0; k < mean.length; k++) {
             byteCentroid[k] = (byte) mean[k];
@@ -171,8 +168,8 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
           byteCentroidWriter.addValue(0, byteCentroid);
         } else {
           @SuppressWarnings("unchecked")
-          KnnFieldVectorsWriter<float[]> floatCentroidWriter = (KnnFieldVectorsWriter<float[]>) centroidDelegate
-              .addField(fieldInfo);
+          KnnFieldVectorsWriter<float[]> floatCentroidWriter =
+              (KnnFieldVectorsWriter<float[]>) centroidDelegate.addField(fieldInfo);
           floatCentroidWriter.addValue(0, mean);
         }
         maxCentroidDoc = Math.max(maxCentroidDoc, 1);
@@ -223,18 +220,19 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
         }
       }
 
-      float[][] centroids = SpannKMeans.cluster(
-          trainingVectors,
-          numPartitions,
-          fieldInfo.getVectorSimilarityFunction(),
-          KMEANS_MAX_ITERS);
+      float[][] centroids =
+          SpannKMeans.cluster(
+              trainingVectors,
+              numPartitions,
+              fieldInfo.getVectorSimilarityFunction(),
+              KMEANS_MAX_ITERS);
       maxCentroidDoc = Math.max(maxCentroidDoc, centroids.length);
 
       // Write centroids to the delegate format (HNSW coarse quantizer)
       if (fieldInfo.getVectorEncoding() == VectorEncoding.BYTE) {
         @SuppressWarnings("unchecked")
-        KnnFieldVectorsWriter<byte[]> byteCentroidWriter = (KnnFieldVectorsWriter<byte[]>) centroidDelegate
-            .addField(fieldInfo);
+        KnnFieldVectorsWriter<byte[]> byteCentroidWriter =
+            (KnnFieldVectorsWriter<byte[]>) centroidDelegate.addField(fieldInfo);
         for (int partitionId = 0; partitionId < centroids.length; partitionId++) {
           byte[] byteCentroid = new byte[centroids[partitionId].length];
           for (int k = 0; k < centroids[partitionId].length; k++) {
@@ -244,8 +242,8 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
         }
       } else {
         @SuppressWarnings("unchecked")
-        KnnFieldVectorsWriter<float[]> floatCentroidWriter = (KnnFieldVectorsWriter<float[]>) centroidDelegate
-            .addField(fieldInfo);
+        KnnFieldVectorsWriter<float[]> floatCentroidWriter =
+            (KnnFieldVectorsWriter<float[]>) centroidDelegate.addField(fieldInfo);
         for (int partitionId = 0; partitionId < centroids.length; partitionId++) {
           floatCentroidWriter.addValue(partitionId, centroids[partitionId]);
         }
@@ -254,14 +252,17 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
       // Partition assignment and offline sort.
       OfflineSorter sorter = new OfflineSorter(state.directory, "spann_assign_" + fieldName);
 
-      IndexOutput unsortedOut = state.directory.createTempOutput(state.segmentInfo.name, "assign", state.context);
+      IndexOutput unsortedOut =
+          state.directory.createTempOutput(state.segmentInfo.name, "assign", state.context);
       String unsortedAssignName = unsortedOut.getName();
-      try (OfflineSorter.ByteSequencesWriter assignWriter = new OfflineSorter.ByteSequencesWriter(unsortedOut)) {
+      try (OfflineSorter.ByteSequencesWriter assignWriter =
+          new OfflineSorter.ByteSequencesWriter(unsortedOut)) {
         try (IndexInput input = writer.openInput()) {
           boolean isByte = fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
-          int vectorDataSize = isByte
-              ? fieldInfo.getVectorDimension()
-              : fieldInfo.getVectorDimension() * Float.BYTES;
+          int vectorDataSize =
+              isByte
+                  ? fieldInfo.getVectorDimension()
+                  : fieldInfo.getVectorDimension() * Float.BYTES;
           byte[] scratch = new byte[Integer.BYTES * 2 + vectorDataSize];
           ByteArrayDataOutput scratchOut = new ByteArrayDataOutput(scratch);
           float[] currentVector = new float[fieldInfo.getVectorDimension()];
@@ -280,7 +281,8 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
               java.util.Arrays.fill(bestScores, Float.NEGATIVE_INFINITY);
 
               for (int j = 0; j < centroids.length; j++) {
-                float sim = fieldInfo.getVectorSimilarityFunction().compare(currentVector, centroids[j]);
+                float sim =
+                    fieldInfo.getVectorSimilarityFunction().compare(currentVector, centroids[j]);
                 // Simple insertion sort for small replicationFactor
                 for (int k = 0; k < replicationFactor; k++) {
                   if (sim > bestScores[k]) {
@@ -297,8 +299,7 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
               }
 
               for (int k = 0; k < replicationFactor; k++) {
-                if (bestScores[k] == Float.NEGATIVE_INFINITY)
-                  break;
+                if (bestScores[k] == Float.NEGATIVE_INFINITY) break;
                 scratchOut.reset(scratch);
                 scratchOut.writeInt(bestCentroids[k]);
                 scratchOut.writeInt(docId);
@@ -314,7 +315,8 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
               java.util.Arrays.fill(bestScores, Float.NEGATIVE_INFINITY);
 
               for (int j = 0; j < centroids.length; j++) {
-                float sim = fieldInfo.getVectorSimilarityFunction().compare(currentVector, centroids[j]);
+                float sim =
+                    fieldInfo.getVectorSimilarityFunction().compare(currentVector, centroids[j]);
                 for (int k = 0; k < replicationFactor; k++) {
                   if (sim > bestScores[k]) {
                     for (int l = replicationFactor - 1; l > k; l--) {
@@ -329,8 +331,7 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
               }
 
               for (int k = 0; k < replicationFactor; k++) {
-                if (bestScores[k] == Float.NEGATIVE_INFINITY)
-                  break;
+                if (bestScores[k] == Float.NEGATIVE_INFINITY) break;
                 scratchOut.reset(scratch);
                 scratchOut.writeInt(bestCentroids[k]);
                 scratchOut.writeInt(docId);
@@ -361,10 +362,12 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
   private void writeSinglePartition(
       String fieldName, FieldInfo fieldInfo, float[][] vectors, int[] docIds) throws IOException {
 
-    String dataFileName = IndexFileNames.segmentFileName(
-        state.segmentInfo.name, state.segmentSuffix, fieldName + ".spad");
-    String metaFileName = IndexFileNames.segmentFileName(
-        state.segmentInfo.name, state.segmentSuffix, fieldName + ".spam");
+    String dataFileName =
+        IndexFileNames.segmentFileName(
+            state.segmentInfo.name, state.segmentSuffix, fieldName + ".spad");
+    String metaFileName =
+        IndexFileNames.segmentFileName(
+            state.segmentInfo.name, state.segmentSuffix, fieldName + ".spam");
 
     try (IndexOutput dataOut = state.directory.createOutput(dataFileName, state.context);
         IndexOutput metaOut = state.directory.createOutput(metaFileName, state.context)) {
@@ -376,15 +379,12 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
       metaOut.writeVInt(vectors.length);
 
       long startOffset = dataOut.getFilePointer();
-      for (int docId : docIds)
-        dataOut.writeInt(docId);
+      for (int docId : docIds) dataOut.writeInt(docId);
       for (float[] v : vectors) {
         if (fieldInfo.getVectorEncoding() == VectorEncoding.BYTE) {
-          for (float f : v)
-            dataOut.writeByte((byte) f);
+          for (float f : v) dataOut.writeByte((byte) f);
         } else {
-          for (float f : v)
-            dataOut.writeInt(Float.floatToIntBits(f));
+          for (float f : v) dataOut.writeInt(Float.floatToIntBits(f));
         }
       }
       long lengthBytes = dataOut.getFilePointer() - startOffset;
@@ -402,14 +402,16 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
       String fieldName, FieldInfo fieldInfo, String sortedFileName, int numPartitions)
       throws IOException {
 
-    String spadFile = IndexFileNames.segmentFileName(
-        state.segmentInfo.name, state.segmentSuffix, fieldName + ".spad");
-    String spamFile = IndexFileNames.segmentFileName(
-        state.segmentInfo.name, state.segmentSuffix, fieldName + ".spam");
+    String spadFile =
+        IndexFileNames.segmentFileName(
+            state.segmentInfo.name, state.segmentSuffix, fieldName + ".spad");
+    String spamFile =
+        IndexFileNames.segmentFileName(
+            state.segmentInfo.name, state.segmentSuffix, fieldName + ".spam");
 
-    try (
-        org.apache.lucene.util.OfflineSorter.ByteSequencesReader reader = new org.apache.lucene.util.OfflineSorter.ByteSequencesReader(
-            state.directory.openChecksumInput(sortedFileName), sortedFileName);
+    try (org.apache.lucene.util.OfflineSorter.ByteSequencesReader reader =
+            new org.apache.lucene.util.OfflineSorter.ByteSequencesReader(
+                state.directory.openChecksumInput(sortedFileName), sortedFileName);
         IndexOutput dataOut = state.directory.createOutput(spadFile, state.context);
         IndexOutput metaOut = state.directory.createOutput(spamFile, state.context)) {
 
@@ -418,15 +420,19 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
       CodecUtil.writeIndexHeader(
           metaOut, "Lucene99SpannMeta", 0, state.segmentInfo.getId(), state.segmentSuffix);
 
-      org.apache.lucene.store.ByteBuffersDataOutput metaBuffer = new org.apache.lucene.store.ByteBuffersDataOutput();
+      org.apache.lucene.store.ByteBuffersDataOutput metaBuffer =
+          new org.apache.lucene.store.ByteBuffersDataOutput();
       int totalAssignments = 0;
 
       org.apache.lucene.util.BytesRef scratch;
-      org.apache.lucene.store.ByteArrayDataInput readerInput = new org.apache.lucene.store.ByteArrayDataInput();
+      org.apache.lucene.store.ByteArrayDataInput readerInput =
+          new org.apache.lucene.store.ByteArrayDataInput();
 
       int currentPartition = -1;
-      org.apache.lucene.store.ByteBuffersDataOutput docIdBuffer = new org.apache.lucene.store.ByteBuffersDataOutput();
-      org.apache.lucene.store.ByteBuffersDataOutput vectorBuffer = new org.apache.lucene.store.ByteBuffersDataOutput();
+      org.apache.lucene.store.ByteBuffersDataOutput docIdBuffer =
+          new org.apache.lucene.store.ByteBuffersDataOutput();
+      org.apache.lucene.store.ByteBuffersDataOutput vectorBuffer =
+          new org.apache.lucene.store.ByteBuffersDataOutput();
 
       while ((scratch = reader.next()) != null) {
         readerInput.reset(scratch.bytes, scratch.offset, scratch.length);

@@ -18,20 +18,15 @@ package org.apache.lucene.codecs;
 
 import java.util.Objects;
 import java.util.Set;
-import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.util.NamedSPILoader;
 
 /**
  * Represents an abstraction of an inverted index structure.
  *
- * <p>
- * All codecs extending this class accessible via the
- * {@link java.util.ServiceLoader} are
+ * <p>All codecs extending this class accessible via the {@link java.util.ServiceLoader} are
  * registered and can be loaded via {@link #forName(String)}.
  *
- * <p>
- * Note: Codecs are identified by their {@link #getName()}. The name must be
- * unique across all
+ * <p>Note: Codecs are identified by their {@link #getName()}. The name must be unique across all
  * registered codecs.
  */
 public abstract class Codec implements NamedSPILoader.NamedSPI {
@@ -39,8 +34,7 @@ public abstract class Codec implements NamedSPILoader.NamedSPI {
   private static final class Holder {
     private static final NamedSPILoader<Codec> LOADER = new NamedSPILoader<>(Codec.class);
 
-    private Holder() {
-    }
+    private Holder() {}
 
     static NamedSPILoader<Codec> getLoader() {
       if (LOADER == null) {
@@ -59,9 +53,7 @@ public abstract class Codec implements NamedSPILoader.NamedSPI {
   /**
    * Creates a new codec.
    *
-   * <p>
-   * The provided name will be used as the name of the codec, which is stored in
-   * the index.
+   * <p>The provided name will be used as the name of the codec, which is stored in the index.
    */
   protected Codec(String name) {
     NamedSPILoader.checkServiceName(name);
@@ -123,10 +115,8 @@ public abstract class Codec implements NamedSPILoader.NamedSPI {
   }
 
   /**
-   * Reloads the codec list from the given {@link ClassLoader}. Changes to the
-   * codec list are visible
-   * to all other context classloaders, so this shouldn't be used outside of a
-   * "container"
+   * Reloads the codec list from the given {@link ClassLoader}. Changes to the codec list are
+   * visible to all other context classloaders, so this shouldn't be used outside of a "container"
    * environment.
    */
   public static void reloadCodecs(ClassLoader classloader) {
@@ -150,8 +140,7 @@ public abstract class Codec implements NamedSPILoader.NamedSPI {
   }
 
   /**
-   * returns the codec's name. Subclasses can override to provide more detail
-   * (such as parameters).
+   * returns the codec's name. Subclasses can override to provide more detail (such as parameters).
    */
   @Override
   public String toString() {
