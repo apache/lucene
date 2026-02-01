@@ -58,19 +58,14 @@ public class SkipBlockRangeIterator extends AbstractDocIdSetIterator {
       if (doc > -1) {
         // already positioned, so we've checked bounds and know that we're in a matching block
         return doc = target;
-      } else {
-        // first call, the skipper might already be positioned so ask it to find the next
-        // matching block (which could be the current one)
-        skipper.advance(minValue, maxValue);
-        return doc = Math.max(target, skipper.minDocID(0));
       }
+    } else {
+      // Advance to target
+      skipper.advance(target);
     }
-    // Advance to target
-    skipper.advance(target);
 
     // Find the next matching block (could be the current block)
     skipper.advance(minValue, maxValue);
-
     return doc = Math.max(target, skipper.minDocID(0));
   }
 
