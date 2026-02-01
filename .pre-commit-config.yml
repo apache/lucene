@@ -1,0 +1,273 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/j178/prek/refs/heads/master/prek.schema.json
+minimum_prek_version: 0.2.29
+default_install_hook_types:
+  - pre-commit
+default_stages:
+  - pre-commit
+# define priority: 0 for linters that don't modify sources
+# leave fixers with priority: null so they run sequentially
+repos:
+  # "Built-in Fast Hooks" from prek.
+  - repo: builtin
+    hooks:
+      - id: check-added-large-files
+        name: Check for large files
+        priority: 0
+
+      - id: check-case-conflict
+        name: Check for files that would conflict in case-insensitive filesystems
+        priority: 0
+
+      - id: trailing-whitespace
+        name: Fix trailing whitespace
+        types: [ text ]
+        # TODO: fix these files
+        exclude:
+          glob:
+            - lucene/demo/src/test/org/apache/lucene/demo/test-files/docs/*.txt
+            - lucene/analysis/common/src/resources/org/apache/lucene/analysis/**/stopwords.txt
+            - lucene/analysis/common/src/java/org/apache/lucene/analysis/charfilter/HTMLStripCharFilter.java
+            - lucene/analysis/common/src/test/org/apache/lucene/analysis/hunspell/checkcompoundrep.aff
+
+      - id: end-of-file-fixer
+        name: Fix newline at EOF
+        # TODO: fix these files
+        exclude:
+          glob:
+            - .dir-locals.el
+            - .github/actionlint.yaml
+            - dev-tools/scripts/README.md
+            - gradle/documentation/render-javadoc/custom_styles.css
+            - help/*.txt
+            - LICENSE.txt
+            - lucene/analysis/common/src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex
+            - lucene/analysis/common/src/resources/org/apache/lucene/analysis/bn/stopwords.txt
+            - lucene/analysis/common/src/resources/org/apache/lucene/analysis/snowball/*.txt
+            - lucene/analysis/common/src/test/org/apache/lucene/analysis/charfilter/*.htm
+            - lucene/analysis/common/src/test/org/apache/lucene/analysis/email/*.{txt,html}
+            - lucene/analysis/common/src/test/org/apache/lucene/analysis/hunspell/*.{aff,dic}
+            - lucene/analysis/common/src/test/org/apache/lucene/analysis/no/*.txt
+            - lucene/analysis/common/src/test/org/apache/lucene/analysis/synonym/synonyms.txt
+            - lucene/analysis/icu/src/data/utr30/*.txt
+            - lucene/analysis/icu/src/test/org/apache/lucene/analysis/icu/segmentation/*.rbbi
+            - lucene/benchmark/conf/*.alg
+            - lucene/demo/src/test/org/apache/lucene/demo/test-files/docs/*.txt
+            - lucene/distribution/src/binary-release/README.md
+            - lucene/highlighter/src/test/org/apache/lucene/search/uhighlight/CambridgeMA.utf8
+            - lucene/licenses/*.txt
+            - lucene/misc/src/java/org/apache/lucene/misc/doc-files/*.svg
+            - lucene/test-framework/src/resources/org/apache/lucene/tests/index/LICENSE.txt
+            - lucene/queryparser/src/java/org/apache/lucene/queryparser/surround/parser/QueryParser.jj
+            - versions.lock
+
+      - id: fix-byte-order-marker
+        name: Fix UTF-8 byte order marker
+
+      - id: check-json
+        name: Check JSON files
+        priority: 0
+        types: [ json ]
+
+      - id: check-toml
+        name: Check TOML files
+        priority: 0
+        types: [ toml ]
+
+      - id: check-yaml
+        name: Check YAML files
+        priority: 0
+        types: [ yaml ]
+        args: [ --allow-multiple-documents ]
+
+      - id: check-xml
+        name: Check XML files
+        priority: 0
+        types: [ xml ]
+
+      - id: mixed-line-ending
+        name: Fix line endings
+        types: [ text ]
+
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+        priority: 0
+
+      - id: detect-private-key
+        name: Check for private keys
+        priority: 0
+
+      - id: check-executables-have-shebangs
+        name: Check that (non-binary) executables have a shebang
+        priority: 0
+        exclude:
+          glob:
+            # TODO: fix these permissions
+            - lucene/analysis/common/**/*.java
+            - lucene/codecs/**/*.java
+            - lucene/queries/**/*.java
+            - lucene/spatial3d/**/*.java
+
+  - repo: local
+    hooks:
+      - id: shellcheck
+        name: Check Shell Scripts
+        priority: 0
+        language: system
+        entry: uv
+        args: [ 'run', 'shellcheck', '--format', 'gcc' ]
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+        types: [ shell ]
+        exclude:
+          glob:
+            # TODO: fix these shell scripts
+            - dev-tools/test-patch/*.sh
+            - gradle/regenerate/snowball/snowball.sh
+            - gradlew
+            - lucene/distribution/src/binary-release/bin/luke.sh
+
+      - id: actionlint
+        name: Check Github Actions
+        priority: 0
+        language: system
+        entry: uv
+        args: [ 'run', 'actionlint' ]
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+        # run across all actions if any are touched
+        pass_filenames: false
+        files:
+          glob:
+            - .github/**/*.yml
+
+      - id: zizmor
+        name: Check Github Actions Security
+        priority: 0
+        language: system
+        entry: uv
+        args: [ 'run', 'zizmor', '--pedantic', '--offline', '.' ]
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+        # run across all actions if any are touched
+        pass_filenames: false
+        files:
+          glob:
+            - .github/**/*.yml
+
+      - id: rumdl
+        name: Fix Markdown
+        language: system
+        entry: uv
+        args: [ 'run', 'rumdl', 'fmt' ]
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+        types: [ 'markdown']
+        require_serial: true
+        exclude:
+          glob:
+            # TODO: fix formatting of these files separately
+            - .github/PULL_REQUEST_TEMPLATE.md
+            - CONTRIBUTING.md
+            - dev-docs/file-formats.md
+            - dev-docs/github-issues-howto.md
+            - dev-tools/aws-jmh/README.md
+            - dev-tools/scripts/README.md
+            - lucene/backward-codecs/README.md
+            - lucene/distribution/src/binary-release/README.md
+            - lucene/luke/README.md
+            - lucene/luke/src/distribution/README.md
+            - lucene/MIGRATE.md
+            - lucene/SYSTEM_REQUIREMENTS.md
+            - README.md
+
+      - id: ruff-check
+        name: Fix Python
+        language: system
+        entry: uv
+        args: [ 'run', 'ruff', 'check', '--fix', '--force-exclude' ]
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+        types_or: [ python, pyi, jupyter ]
+        require_serial: true
+        exclude:
+          glob:
+            # TODO: fix the issues with these files separately
+            - gradle/regenerate/jflex/htmlentity.py
+            - gradle/regenerate/packed/gen_BulkOperation.py
+            - gradle/regenerate/moman/createLevAutomata.py
+            - lucene/backward-codecs/src/java/org/apache/lucene/backward_codecs/**/{gen_ForUtil.py,gen_ForDeltaUtil.py}
+            - lucene/core/src/java/org/apache/lucene/codecs/**/gen_ForUtil.py
+            - lucene/core/src/java/org/apache/lucene/util/automaton/UTF32ToUTF8.py
+            - lucene/core/src/java/org/apache/lucene/util/packed/gen_BulkOperation.py
+            - lucene/core/src/test/org/apache/lucene/util/makeEuroparlLineFile.py
+
+      - id: ruff-format
+        language: system
+        name: Fix Python formatting
+        entry: uv
+        args: [ 'run', 'ruff', 'format', '--force-exclude' ]
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+        types_or: [ python, pyi, jupyter ]
+        require_serial: true
+        exclude:
+          glob:
+            # TODO: fix the formatting of these files separately
+            - gradle/regenerate/jflex/htmlentity.py
+            - gradle/regenerate/moman/createLevAutomata.py
+            - gradle/regenerate/packed/{gen_BulkOperation.py,gen_Packed64SingleBlock.py}
+            - lucene/backward-codecs/src/java/org/apache/lucene/backward_codecs/**/{gen_ForUtil.py,gen_ForDeltaUtil.py}
+            - lucene/core/src/java/org/apache/lucene/codecs/**/gen_ForUtil.py
+            - lucene/core/src/java/org/apache/lucene/util/packed/{gen_BulkOperation.py,gen_Packed64SingleBlock.py}
+            - lucene/core/src/java/org/apache/lucene/util/automaton/UTF32ToUTF8.py
+            - lucene/core/src/test/org/apache/lucene/util/makeEuroparlLineFile.py
+
+      - id: test-ast-grep
+        name: Check ast-grep rules
+        priority: 0
+        language: system
+        entry: uv
+        args: [ 'run', 'ast-grep', '-c', './gradle/validation/ast-grep/sgconfig.yml', 'test', '--skip-snapshot-tests' ]
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+        # run across all rules if any are touched
+        pass_filenames: false
+        files:
+          glob:
+            - gradle/validation/ast-grep/**/*.yml
+
+      - id: ast-grep
+        name: Check Sources with ast-grep
+        priority: 0
+        language: system
+        entry: uv
+        args: [ 'run', 'ast-grep', '-c', './gradle/validation/ast-grep/sgconfig.yml', 'scan', '--format', 'github' ]
+        types_or: [ 'css', 'html', 'java', 'javascript', 'yaml']
+        require_serial: true
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+  # self-checks for this configuration file
+  - repo: meta
+    hooks:
+      - id: check-hooks-apply
+        name: Check prek hooks match at least one file
+        priority: 0
+        files:
+          glob:
+            .pre-commit-config.yml
+
+      - id: check-useless-excludes
+        name: Check prek excludes match include pattern
+        priority: 0
+        files:
+          glob:
+            .pre-commit-config.yml
