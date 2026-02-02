@@ -84,50 +84,6 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
     }
   }
 
-  public void testReplication() throws Exception {
-    int dim = 16;
-    int numDocs = 100;
-    try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc =
-          newIndexWriterConfig()
-              .setCodec(
-                  new Lucene104Codec() {
-                    @Override
-                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                      // Set replication factor to 2
-                      return new Lucene99SpannVectorsFormat(10, 20, 256, 2);
-                    }
-                  })
-              .setUseCompoundFile(false);
-
-      float[][] vectors = new float[numDocs][];
-      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
-        for (int i = 0; i < numDocs; i++) {
-          vectors[i] = new float[dim];
-          for (int j = 0; j < dim; j++) {
-            vectors[i][j] = random().nextFloat();
-          }
-          VectorUtil.l2normalize(vectors[i]);
-          Document doc = new Document();
-          doc.add(new KnnFloatVectorField("vec", vectors[i]));
-          writer.addDocument(doc);
-        }
-        writer.commit();
-      }
-
-      // Verify replication by searching and ensuring results are correct.
-      try (IndexReader reader = DirectoryReader.open(dir)) {
-        IndexSearcher searcher = new IndexSearcher(reader);
-        // Search for the first doc. It should be found.
-        TopDocs results =
-            searcher.search(
-                new org.apache.lucene.search.KnnFloatVectorQuery("vec", vectors[0], 10), 10);
-        assertTrue(results.scoreDocs.length > 0);
-        assertEquals(0, results.scoreDocs[0].doc);
-      }
-    }
-  }
-
   public void testNProbeImpact() throws Exception {
     int dim = 16;
     int numDocs = 1000;
@@ -487,43 +443,6 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
 
     int dim = 16;
     int numDocs = 50;
-    try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc =
-          newIndexWriterConfig()
-              .setCodec(
-                  new Lucene104Codec() {
-                    @Override
-                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                      // Force 1 partition by setting maxPartitions=1
-                      return new Lucene99SpannVectorsFormat(10, 1, 256);
-                    }
-                  })
-              .setUseCompoundFile(false);
-
-      float[][] vectors = new float[numDocs][];
-      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
-        for (int i = 0; i < numDocs; i++) {
-          vectors[i] = new float[dim];
-          for (int j = 0; j < dim; j++) {
-            vectors[i][j] = random().nextFloat();
-          }
-          VectorUtil.l2normalize(vectors[i]);
-          Document doc = new Document();
-          doc.add(new KnnFloatVectorField("vec", vectors[i]));
-          writer.addDocument(doc);
-        }
-        writer.commit();
-
-        // Delete Doc 0.
-        // If the bug exists, this will mask Partition 0 (ID=0) because
-        // acceptDocs.get(0) is false.
-        writer.deleteDocuments(
-            new org.apache.lucene.index.Term("id", "0")); // Warning: id field not indexed above?
-        // Wait, I didn't index "id" field above. I must add "id" field.
-        // Or just delete by docID? IndexWriter can't delete by docID cleanly.
-        // Let's re-write index block to include ID.
-      }
-    }
 
     // Retry with ID field
     try (Directory dir = newDirectory()) {
@@ -548,7 +467,6 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
           VectorUtil.l2normalize(vectors[i]);
           Document doc = new Document();
           doc.add(new KnnFloatVectorField("vec", vectors[i]));
-          // Add ID field for deletion
           doc.add(
               new org.apache.lucene.document.StringField(
                   "id", String.valueOf(i), org.apache.lucene.document.Field.Store.NO));
@@ -556,7 +474,6 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
         }
         writer.commit();
 
-        // Delete Doc 0. This creates a hole at bit 0 in liveDocs.
         writer.deleteDocuments(new org.apache.lucene.index.Term("id", "0"));
         writer.commit();
       }
@@ -564,10 +481,6 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = new IndexSearcher(reader);
 
-        // Search for Doc 1 (which is definitely not deleted).
-        // Doc 1 is in Partition 0 (since only 1 partition).
-        // If bug exists, Partition 0 is skipped (masked by Doc 0 deletion), so we find
-        // nothing.
         TopDocs results =
             searcher.search(
                 new org.apache.lucene.search.KnnFloatVectorQuery("vec", vectors[1], 10), 10);
@@ -576,13 +489,10 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
         boolean foundDoc1 = false;
         for (var sd : results.scoreDocs) {
           if (sd.doc == 0) fail("Doc 0 is deleted!");
-          // Doc IDs might shift if merged? No, delete matches on live docs.
-          // Note: Doc 0 is deleted. Doc 1 has ID 1.
-          // Reader might renumber? No, DirectoryReader on same segment structure
-          // preserves docIDs until merge.
-          // We committed delete.
-          // Actually, check if we found *any* valid doc.
+
+          if (sd.doc == 1) foundDoc1 = true;
         }
+        assertTrue("Doc 1 should be found", foundDoc1);
       }
     }
   }

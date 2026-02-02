@@ -183,10 +183,6 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
       // segments.
       int numPartitions = maxPartitions;
       if (numPartitions == -1) {
-        // Improved Heuristic: 2 * sqrt(N) or more.
-        // For 1M docs: sqrt(1M)=1000. 2*1000 = 2000 partitions.
-        // Partition size = 500.
-        // nProbe=100 -> Scan 50,000 docs (5%). Better than 100k.
         numPartitions = (int) (2.0 * Math.sqrt(writer.getCount()));
       }
       numPartitions = Math.min(writer.getCount(), Math.max(1, numPartitions));
@@ -197,7 +193,7 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
       try (IndexInput input = writer.openInput()) {
         boolean isByte = fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
         for (int i = 0; i < writer.getCount(); i++) {
-          input.readInt(); // Consume docID
+          input.readInt();
           float[] currentVector = new float[fieldInfo.getVectorDimension()];
           if (isByte) {
             for (int d = 0; d < fieldInfo.getVectorDimension(); d++) {
@@ -434,6 +430,10 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
       org.apache.lucene.store.ByteBuffersDataOutput vectorBuffer =
           new org.apache.lucene.store.ByteBuffersDataOutput();
 
+      final boolean isByte = fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
+      final int vectorDataSize =
+          isByte ? fieldInfo.getVectorDimension() : fieldInfo.getVectorDimension() * Float.BYTES;
+
       while ((scratch = reader.next()) != null) {
         readerInput.reset(scratch.bytes, scratch.offset, scratch.length);
         int partitionId = readerInput.readInt();
@@ -448,8 +448,12 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
 
         totalAssignments++;
         docIdBuffer.writeInt(docId);
-        vectorBuffer.writeBytes(
-            scratch.bytes, readerInput.getPosition(), scratch.length - readerInput.getPosition());
+        int writeLen = scratch.length - readerInput.getPosition();
+        if (writeLen != vectorDataSize) {
+          throw new IllegalStateException(
+              "Unexpected vector data size: got " + writeLen + ", expected " + vectorDataSize);
+        }
+        vectorBuffer.writeBytes(scratch.bytes, readerInput.getPosition(), writeLen);
       }
 
       if (currentPartition != -1) {
