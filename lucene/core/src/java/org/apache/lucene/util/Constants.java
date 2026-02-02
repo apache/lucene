@@ -113,6 +113,12 @@ public final class Constants {
     return enabledExplicitly || enabledForTests;
   }
 
+  public static boolean NATIVE_STRICT_MODE = hasNativeStrictModeOn();
+
+  private static boolean hasNativeStrictModeOn() {
+    return Boolean.parseBoolean(getSysProp("lucene.useNativeStrict", "false"));
+  }
+
   /** true iff we know FMA has faster throughput than separate mul/add. */
   public static final boolean HAS_FAST_SCALAR_FMA = hasFastScalarFMA();
 
