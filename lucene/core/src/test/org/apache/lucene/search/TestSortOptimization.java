@@ -35,6 +35,7 @@ import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
@@ -1000,14 +1001,23 @@ public class TestSortOptimization extends LuceneTestCase {
     }
   }
 
-  public void testStringSortOptimization() throws IOException {
+  public void testStringSortOptimizationBasedPostings() throws IOException {
+    testStringSortOptimization((field, value) -> new KeywordField(field, value, Field.Store.NO));
+  }
+
+  public void testStringSortOptimizationBasedDVSkipper() throws IOException {
+    testStringSortOptimization(SortedDocValuesField::indexedField);
+  }
+
+  private void testStringSortOptimization(
+      BiFunction<String, BytesRef, IndexableField> fieldsBuilder) throws IOException {
     final Directory dir = newDirectory();
     final IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
     final int numDocs = atLeast(10000);
     for (int i = 0; i < numDocs; ++i) {
       final Document doc = new Document();
       final BytesRef value = new BytesRef(Integer.toString(random().nextInt(1000)));
-      doc.add(new KeywordField("my_field", value, Field.Store.NO));
+      doc.add(fieldsBuilder.apply("my_field", value));
       writer.addDocument(doc);
       if (i == 7000) writer.flush(); // multiple segments
     }
@@ -1019,7 +1029,17 @@ public class TestSortOptimization extends LuceneTestCase {
     dir.close();
   }
 
-  public void testStringSortOptimizationWithMissingValues() throws IOException {
+  public void testStringSortOptimizationWithMissingValuesBasedPostings() throws IOException {
+    testStringSortOptimizationWithMissingValues(
+        (field, value) -> new KeywordField(field, value, Field.Store.NO));
+  }
+
+  public void testStringSortOptimizationWithMissingValuesBasedDVSkipper() throws IOException {
+    testStringSortOptimizationWithMissingValues(SortedDocValuesField::indexedField);
+  }
+
+  private void testStringSortOptimizationWithMissingValues(
+      BiFunction<String, BytesRef, IndexableField> fieldsBuilder) throws IOException {
     final Directory dir = newDirectory();
     final IndexWriter writer =
         new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(newLogMergePolicy()));
@@ -1031,7 +1051,7 @@ public class TestSortOptimization extends LuceneTestCase {
       final Document doc = new Document();
       if (random().nextInt(2) == 0) {
         final BytesRef value = new BytesRef(Integer.toString(random().nextInt(1000)));
-        doc.add(new KeywordField("my_field", value, Field.Store.NO));
+        doc.add(fieldsBuilder.apply("my_field", value));
       }
       writer.addDocument(doc);
     }

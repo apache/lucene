@@ -2,7 +2,7 @@
 Copyright (c) 2001, Dr Martin Porter
 Copyright (c) 2004,2005, Richard Boulton
 Copyright (c) 2013, Yoshiki Shibukawa
-Copyright (c) 2006,2007,2009,2010,2011,2014-2019, Olly Betts
+Copyright (c) 2006-2025, Olly Betts
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -39,7 +39,11 @@ import java.util.Arrays;
 /** Base class for a snowball stemmer */
 public class SnowballProgram implements Serializable {
   protected SnowballProgram() {
-    setCurrent("");
+    cursor = 0;
+    length = limit = 0;
+    limit_backward = 0;
+    bra = cursor;
+    ket = limit;
   }
 
   static final long serialVersionUID = 2016072500L;
@@ -96,7 +100,7 @@ public class SnowballProgram implements Serializable {
   }
 
   // current string
-  private char[] current;
+  protected char[] current;
 
   protected int cursor;
   protected int length;
@@ -127,7 +131,7 @@ public class SnowballProgram implements Serializable {
 
   protected boolean in_grouping(char[] s, int min, int max) {
     if (cursor >= limit) return false;
-    char ch = current[cursor];
+    int ch = current[cursor];
     if (ch > max || ch < min) return false;
     ch -= min;
     if ((s[ch >> 3] & (0X1 << (ch & 0X7))) == 0) return false;
@@ -135,9 +139,20 @@ public class SnowballProgram implements Serializable {
     return true;
   }
 
+  protected boolean go_in_grouping(char[] s, int min, int max) {
+    while (cursor < limit) {
+      int ch = current[cursor];
+      if (ch > max || ch < min) return true;
+      ch -= min;
+      if ((s[ch >> 3] & (0X1 << (ch & 0X7))) == 0) return true;
+      cursor++;
+    }
+    return false;
+  }
+
   protected boolean in_grouping_b(char[] s, int min, int max) {
     if (cursor <= limit_backward) return false;
-    char ch = current[cursor - 1];
+    int ch = current[cursor - 1];
     if (ch > max || ch < min) return false;
     ch -= min;
     if ((s[ch >> 3] & (0X1 << (ch & 0X7))) == 0) return false;
@@ -145,9 +160,20 @@ public class SnowballProgram implements Serializable {
     return true;
   }
 
+  protected boolean go_in_grouping_b(char[] s, int min, int max) {
+    while (cursor > limit_backward) {
+      int ch = current[cursor - 1];
+      if (ch > max || ch < min) return true;
+      ch -= min;
+      if ((s[ch >> 3] & (0X1 << (ch & 0X7))) == 0) return true;
+      cursor--;
+    }
+    return false;
+  }
+
   protected boolean out_grouping(char[] s, int min, int max) {
     if (cursor >= limit) return false;
-    char ch = current[cursor];
+    int ch = current[cursor];
     if (ch > max || ch < min) {
       cursor++;
       return true;
@@ -160,9 +186,23 @@ public class SnowballProgram implements Serializable {
     return false;
   }
 
+  protected boolean go_out_grouping(char[] s, int min, int max) {
+    while (cursor < limit) {
+      int ch = current[cursor];
+      if (ch <= max && ch >= min) {
+        ch -= min;
+        if ((s[ch >> 3] & (0X1 << (ch & 0X7))) != 0) {
+          return true;
+        }
+      }
+      cursor++;
+    }
+    return false;
+  }
+
   protected boolean out_grouping_b(char[] s, int min, int max) {
     if (cursor <= limit_backward) return false;
-    char ch = current[cursor - 1];
+    int ch = current[cursor - 1];
     if (ch > max || ch < min) {
       cursor--;
       return true;
@@ -171,6 +211,20 @@ public class SnowballProgram implements Serializable {
     if ((s[ch >> 3] & (0X1 << (ch & 0X7))) == 0) {
       cursor--;
       return true;
+    }
+    return false;
+  }
+
+  protected boolean go_out_grouping_b(char[] s, int min, int max) {
+    while (cursor > limit_backward) {
+      int ch = current[cursor - 1];
+      if (ch <= max && ch >= min) {
+        ch -= min;
+        if ((s[ch >> 3] & (0X1 << (ch & 0X7))) != 0) {
+          return true;
+        }
+      }
+      cursor--;
     }
     return false;
   }
@@ -195,7 +249,7 @@ public class SnowballProgram implements Serializable {
     return true;
   }
 
-  protected int find_among(Among v[]) {
+  protected int find_among(Among[] v) {
     int i = 0;
     int j = v.length;
 
@@ -246,16 +300,16 @@ public class SnowballProgram implements Serializable {
       if (common_i >= w.s.length) {
         cursor = c + w.s.length;
         if (w.method == null) return w.result;
-        boolean res = false;
         try {
-          res = (boolean) w.method.invokeExact(this);
+          if ((boolean) w.method.invokeExact(this)) {
+            cursor = c + w.s.length;
+            return w.result;
+          }
         } catch (Error | RuntimeException e) {
           throw e;
         } catch (Throwable e) {
           throw new UndeclaredThrowableException(e);
         }
-        cursor = c + w.s.length;
-        if (res) return w.result;
       }
       i = w.substring_i;
       if (i < 0) return 0;
@@ -263,7 +317,7 @@ public class SnowballProgram implements Serializable {
   }
 
   // find_among_b is for backwards processing. Same comments apply
-  protected int find_among_b(Among v[]) {
+  protected int find_among_b(Among[] v) {
     int i = 0;
     int j = v.length;
 
@@ -309,17 +363,16 @@ public class SnowballProgram implements Serializable {
       if (common_i >= w.s.length) {
         cursor = c - w.s.length;
         if (w.method == null) return w.result;
-
-        boolean res = false;
         try {
-          res = (boolean) w.method.invokeExact(this);
+          if ((boolean) w.method.invokeExact(this)) {
+            cursor = c - w.s.length;
+            return w.result;
+          }
         } catch (Error | RuntimeException e) {
           throw e;
         } catch (Throwable e) {
           throw new UndeclaredThrowableException(e);
         }
-        cursor = c - w.s.length;
-        if (res) return w.result;
       }
       i = w.substring_i;
       if (i < 0) return 0;
@@ -363,6 +416,7 @@ public class SnowballProgram implements Serializable {
   protected void slice_from(CharSequence s) {
     slice_check();
     replace_s(bra, ket, s);
+    ket = bra + s.length();
   }
 
   protected void slice_del() {
@@ -373,19 +427,6 @@ public class SnowballProgram implements Serializable {
     int adjustment = replace_s(c_bra, c_ket, s);
     if (c_bra <= bra) bra += adjustment;
     if (c_bra <= ket) ket += adjustment;
-  }
-
-  /* Copy the slice into the supplied StringBuilder */
-  protected void slice_to(StringBuilder s) {
-    slice_check();
-    int len = ket - bra;
-    s.setLength(0);
-    s.append(current, bra, len);
-  }
-
-  protected void assign_to(StringBuilder s) {
-    s.setLength(0);
-    s.append(current, 0, limit);
   }
 
   /*
@@ -411,4 +452,3 @@ public class SnowballProgram implements Serializable {
   */
 
 }
-;

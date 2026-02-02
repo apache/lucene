@@ -24,11 +24,11 @@ import java.io.IOException;
  *
  * <p>Typical use might look like:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   try (final Lock lock = directory.obtainLock("my.lock")) {
  *     // ... code to execute while locked ...
  *   }
- * </pre>
+ * </code></pre>
  *
  * @see Directory#obtainLock(String)
  * @lucene.internal

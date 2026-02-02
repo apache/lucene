@@ -209,4 +209,3 @@ $HangulSyllable $HangulSyllable {200};
 # Rule 999
 #     Match a single code point if no other rule applies.
 .;
-

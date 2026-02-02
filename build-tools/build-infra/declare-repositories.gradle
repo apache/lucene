@@ -14,14 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-!function(){
-  var oldonload = window.onload;
-  if (typeof oldonload != 'function') {
-    window.onload = prettyPrint;
-  } else {
-    window.onload = function() {
-      oldonload();
-      prettyPrint();
+
+// These are repository declarations. This file is extracted
+// because it's reused in build-infra-shadow and from build settings.
+
+repositories {
+  // use google's maven central mirror first, if requested or if we're
+  // running on github runners (https://github.com/apache/lucene/issues/15541)
+  boolean useGoogleMavenProxy = System.getenv("GITHUB_ACTIONS") != null
+  if (useGoogleMavenProxy) {
+    maven {
+      url "https://maven-central.storage-download.googleapis.com/maven2/"
     }
+  } else {
+    mavenCentral()
   }
-}();
+
+  gradlePluginPortal()
+}

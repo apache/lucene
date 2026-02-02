@@ -92,7 +92,7 @@ public abstract class Scorer extends Scorable {
    *
    * <p>The default implementation is provided below:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * int batchSize = 64; // arbitrary
    * buffer.growNoCopy(batchSize);
    * int size = 0;
@@ -105,7 +105,7 @@ public abstract class Scorer extends Scorable {
    *   }
    * }
    * buffer.size = size;
-   * </pre>
+   * </code></pre>
    *
    * <p><b>NOTE</b>: The provided {@link DocAndFloatFeatureBuffer} should not hold references to
    * internal data structures.

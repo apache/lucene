@@ -205,7 +205,7 @@ public class TestUnifiedHighlighterTermVec extends UnifiedHighlighterTestBase {
     }
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testUserFailedToIndexOffsets() throws IOException {
     FieldType fieldType = new FieldType(tvType); // note: it's indexed too
     fieldType.setStoreTermVectorPositions(random().nextBoolean());
@@ -216,24 +216,23 @@ public class TestUnifiedHighlighterTermVec extends UnifiedHighlighterTestBase {
     doc.add(new Field("body", "term vectors", fieldType));
     iw.addDocument(doc);
 
-    IndexReader ir = iw.getReader();
-    iw.close();
+    try (IndexReader ir = iw.getReader()) {
+      iw.close();
 
-    IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.Builder uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
-    UnifiedHighlighter highlighter =
-        new UnifiedHighlighter(uhBuilder) {
-          @Override
-          protected Set<HighlightFlag> getFlags(String field) {
-            return Collections.emptySet(); // no WEIGHT_MATCHES
-          }
-        };
-    TermQuery query = new TermQuery(new Term("body", "vectors"));
-    TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
-    try {
-      highlighter.highlight("body", query, topDocs, 1); // should throw
-    } finally {
-      ir.close();
+      IndexSearcher searcher = newSearcher(ir);
+      UnifiedHighlighter.Builder uhBuilder =
+          new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
+      UnifiedHighlighter highlighter =
+          new UnifiedHighlighter(uhBuilder) {
+            @Override
+            protected Set<HighlightFlag> getFlags(String field) {
+              return Collections.emptySet(); // no WEIGHT_MATCHES
+            }
+          };
+      TermQuery query = new TermQuery(new Term("body", "vectors"));
+      TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
+      expectThrows(
+          IllegalArgumentException.class, () -> highlighter.highlight("body", query, topDocs, 1));
     }
   }
 }

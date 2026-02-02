@@ -1,0 +1,20 @@
+{
+  "problemMatcher": [
+    {
+      "owner": "ruff-format",
+      "pattern": [
+        {
+          "code": 2,
+          "column": 5,
+          "endColumn": 7,
+          "endLine": 6,
+          "file": 3,
+          "line": 4,
+          "message": 8,
+          "regexp": "^(?:(error|warning|notice))\\s+title=([^,]+),file=([^,]+),line=(\\d+),col=(\\d+)(?:,endLine=(\\d+))?(?:,endColumn=(\\d+))?::(.+)$",
+          "severity": 1
+        }
+      ]
+    }
+  ]
+}

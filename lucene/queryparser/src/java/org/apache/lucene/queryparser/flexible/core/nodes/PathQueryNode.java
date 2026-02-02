@@ -29,13 +29,13 @@ import org.apache.lucene.queryparser.flexible.core.parser.EscapeQuerySyntax.Type
  *
  * <p>Example how the text parser creates these objects:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * List values = ArrayList();
  * values.add(new PathQueryNode.QueryText("company", 1, 7));
  * values.add(new PathQueryNode.QueryText("USA", 9, 12));
  * values.add(new PathQueryNode.QueryText("California", 14, 23));
  * QueryNode q = new PathQueryNode(values);
- * </pre>
+ * </code></pre>
  */
 public class PathQueryNode extends QueryNodeImpl {
 

@@ -26,14 +26,14 @@ import org.apache.lucene.analysis.TokenStream;
 /**
  * Factory for {@link DateRecognizerFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_filter_none_date" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
  *     &lt;filter class="solr.DateRecognizerFilterFactory" datePattern="yyyy/mm/dd" locale="en-US" /&gt;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;
- * </pre>
+ * </code></pre>
  *
  * <p>The {@code datePattern} is optional. If omitted, {@link DateRecognizerFilter} will be created
  * with the default date format of the system. The {@code locale} is optional and if omitted the

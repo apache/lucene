@@ -1,7 +1,10 @@
 version: 2
 updates:
   - package-ecosystem: github-actions
-    directory: /
+    directories:
+      - "/"
+      - ".github/actions/eclint"
+      - ".github/actions/prepare-for-build"
     open-pull-requests-limit: 25
     schedule:
       interval: monthly
@@ -14,6 +17,18 @@ updates:
   # python dependencies in /dev-tools/scripts
   - package-ecosystem: pip
     directory: /dev-tools/scripts/
+    open-pull-requests-limit: 25
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: build(deps)
+    labels: [dependencies, skip-changelog]
+    cooldown:
+      default-days: 7
+
+  # python dependencies in /dev-tools
+  - package-ecosystem: uv
+    directory: /dev-tools/
     open-pull-requests-limit: 25
     schedule:
       interval: monthly

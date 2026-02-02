@@ -64,7 +64,7 @@ import org.apache.lucene.store.IndexOutput;
  *       that follows has that many entries.
  *   <li>Each directory entry contains a long pointer to the start of this file's data section, the
  *       files length, and a String with that file's name. The start of file's data section is
- *       aligned to 8 bytes to not introduce additional unaligned accesses with mmap.
+ *       aligned to 64 bytes to not introduce additional unaligned accesses with mmap.
  * </ul>
  */
 public final class Lucene90CompoundFormat extends CompoundFormat {
@@ -79,6 +79,9 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
   static final String ENTRY_CODEC = "Lucene90CompoundEntries";
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
+
+  // Align to LCM of all file alignments in code, which guarantees that they hold individually.
+  private static final int ALIGNMENT_BYTES = 64;
 
   /** Sole constructor. */
   public Lucene90CompoundFormat() {}
@@ -121,7 +124,7 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
     for (SizedFile sizedFile : files) {
       String file = sizedFile.name;
       // align file start offset
-      long startOffset = data.alignFilePointer(Long.BYTES);
+      long startOffset = data.alignFilePointer(ALIGNMENT_BYTES);
       // write bytes for file
       try (ChecksumIndexInput in = dir.openChecksumInput(file)) {
 

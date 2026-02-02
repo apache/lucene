@@ -54,8 +54,8 @@ public class FuzzySet implements Accountable {
     NO
   };
 
-  private FixedBitSet filter;
-  private int bloomSize;
+  private final FixedBitSet filter;
+  private final int bloomSize;
   private final int hashCount;
 
   // The sizes of BitSet used are all numbers that, when expressed in binary form,
@@ -78,48 +78,18 @@ public class FuzzySet implements Accountable {
    * Rounds down required maxNumberOfBits to the nearest number that is made up of all ones as a
    * binary number. Use this method where controlling memory use is paramount.
    */
-  public static int getNearestSetSize(int maxNumberOfBits) {
+  private static int getNearestSetSize(int maxNumberOfBits) {
     int result = usableBitSetSizes[0];
-    for (int i = 0; i < usableBitSetSizes.length; i++) {
-      if (usableBitSetSizes[i] <= maxNumberOfBits) {
-        result = usableBitSetSizes[i];
+    for (int usableBitSetSize : usableBitSetSizes) {
+      if (usableBitSetSize <= maxNumberOfBits) {
+        result = usableBitSetSize;
       }
     }
     return result;
   }
 
-  /**
-   * Use this method to choose a set size where accuracy (low content saturation) is more important
-   * than deciding how much memory to throw at the problem.
-   *
-   * @param desiredSaturation A number between 0 and 1 expressing the % of bits set once all values
-   *     have been recorded
-   * @return The size of the set nearest to the required size
-   */
-  public static int getNearestSetSize(int maxNumberOfValuesExpected, float desiredSaturation) {
-    // Iterate around the various scales of bitset from smallest to largest looking for the first
-    // that
-    // satisfies value volumes at the chosen saturation level
-    for (int i = 0; i < usableBitSetSizes.length; i++) {
-      int numSetBitsAtDesiredSaturation = (int) (usableBitSetSizes[i] * desiredSaturation);
-      int estimatedNumUniqueValues =
-          getEstimatedNumberUniqueValuesAllowingForCollisions(
-              usableBitSetSizes[i], numSetBitsAtDesiredSaturation);
-      if (estimatedNumUniqueValues > maxNumberOfValuesExpected) {
-        return usableBitSetSizes[i];
-      }
-    }
-    return -1;
-  }
-
   public static FuzzySet createSetBasedOnMaxMemory(int maxNumBytes) {
-    int setSize = getNearestSetSize(maxNumBytes);
-    return new FuzzySet(new FixedBitSet(setSize + 1), setSize, 1);
-  }
-
-  public static FuzzySet createSetBasedOnQuality(
-      int maxNumUniqueValues, float desiredMaxSaturation, int version) {
-    int setSize = getNearestSetSize(maxNumUniqueValues, desiredMaxSaturation);
+    int setSize = getNearestSetSize(maxNumBytes * Byte.SIZE);
     return new FuzzySet(new FixedBitSet(setSize + 1), setSize, 1);
   }
 
@@ -154,8 +124,9 @@ public class FuzzySet implements Accountable {
     long msb = hash[0];
     long lsb = hash[1];
     for (int i = 0; i < hashCount; i++) {
+      // Bloom sizes are always base 2 and so can be ANDed for a fast modulo
       int bloomPos = ((int) (lsb + i * msb)) & bloomSize;
-      if (!mayContainValue(bloomPos)) {
+      if (filter.get(bloomPos) == false) {
         return ContainsResult.NO;
       }
     }
@@ -199,12 +170,6 @@ public class FuzzySet implements Accountable {
     in.readLongs(longs, 0, numLongs);
     FixedBitSet bits = new FixedBitSet(longs, bloomSize + 1);
     return new FuzzySet(bits, bloomSize, hashCount);
-  }
-
-  private boolean mayContainValue(int aHash) {
-    // Bloom sizes are always base 2 and so can be ANDed for a fast modulo
-    int pos = aHash & bloomSize;
-    return filter.get(pos);
   }
 
   /**
@@ -268,27 +233,8 @@ public class FuzzySet implements Accountable {
   }
 
   public int getEstimatedUniqueValues() {
-    return getEstimatedNumberUniqueValuesAllowingForCollisions(
-        bloomSize, filter.cardinality(), hashCount);
-  }
-
-  /**
-   * Given a set size and the number of set bits, produces an estimate of the number of unique
-   * values recorded (assuming a single hash function is used)
-   */
-  public static int getEstimatedNumberUniqueValuesAllowingForCollisions(
-      int setSize, int numRecordedBits) {
-    return getEstimatedNumberUniqueValuesAllowingForCollisions(setSize, numRecordedBits, 1);
-  }
-
-  /**
-   * Given a set size, the number of set bits and hash function count, produces an estimate of the
-   * number of unique values recorded
-   */
-  public static int getEstimatedNumberUniqueValuesAllowingForCollisions(
-      int setSize, int numRecordedBits, int hashCount) {
-    double setSizeAsDouble = setSize;
-    double numRecordedBitsAsDouble = numRecordedBits;
+    double setSizeAsDouble = bloomSize;
+    double numRecordedBitsAsDouble = filter.cardinality();
     double hashCountAsDouble = hashCount;
     double saturation = numRecordedBitsAsDouble / setSizeAsDouble;
     double logInverseSaturation = Math.log(1 - saturation) * -1;

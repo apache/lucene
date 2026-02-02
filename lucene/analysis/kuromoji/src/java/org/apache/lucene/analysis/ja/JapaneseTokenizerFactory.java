@@ -36,7 +36,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
 /**
  * Factory for {@link org.apache.lucene.analysis.ja.JapaneseTokenizer}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_ja" class="solr.TextField"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.JapaneseTokenizerFactory"
@@ -49,7 +49,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
  *     &lt;filter class="solr.JapaneseBaseFormFilterFactory"/&gt;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;
- * </pre>
+ * </code></pre>
  *
  * <p>Additional expert user parameters nBestCost and nBestExamples can be used to include
  * additional searchable tokens that those most likely according to the statistical model. A typical

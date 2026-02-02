@@ -55,12 +55,12 @@ import org.apache.lucene.util.compress.LZ4;
  * href="http://en.wikipedia.org/wiki/DEFLATE">DEFLATE</a> algorithm with 60KB blocks for a better
  * ratio at the expense of slower performance. These two options can be configured like this:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   // the default: for high performance
  *   indexWriterConfig.setCodec(new Lucene54Codec(Mode.BEST_SPEED));
  *   // instead for higher performance (but slower):
  *   // indexWriterConfig.setCodec(new Lucene54Codec(Mode.BEST_COMPRESSION));
- * </pre>
+ * </code></pre>
  *
  * <p><b>File formats</b>
  *

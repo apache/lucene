@@ -243,10 +243,10 @@ public class TestDocumentsImpl extends DocumentsTestBase {
     assertEquals(0, documents.getTermPositions().size());
   }
 
-  @Test(expected = AlreadyClosedException.class)
+  @Test
   public void testClose() throws Exception {
     new DocumentsImpl(reader);
     reader.close();
-    IndexUtils.getFieldNames(reader);
+    expectThrows(AlreadyClosedException.class, () -> IndexUtils.getFieldNames(reader));
   }
 }

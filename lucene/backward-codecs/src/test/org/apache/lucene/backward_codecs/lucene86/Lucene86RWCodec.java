@@ -36,6 +36,7 @@ public class Lucene86RWCodec extends Lucene86Codec {
 
   private final StoredFieldsFormat storedFieldsFormat;
   private final PostingsFormat defaultPF = new Lucene84RWPostingsFormat();
+  private final CompoundFormat compoundFormat = new Lucene50RWCompoundFormat();
   private final PostingsFormat postingsFormat =
       new PerFieldPostingsFormat() {
         @Override
@@ -76,7 +77,7 @@ public class Lucene86RWCodec extends Lucene86Codec {
 
   @Override
   public final CompoundFormat compoundFormat() {
-    return new Lucene50RWCompoundFormat();
+    return compoundFormat;
   }
 
   @Override

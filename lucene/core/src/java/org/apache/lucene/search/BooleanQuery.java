@@ -203,7 +203,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
    * Returns an iterator on the clauses in this query. It implements the {@link Iterable} interface
    * to make it possible to do:
    *
-   * <pre class="prettyprint">for (BooleanClause clause : booleanQuery) {}</pre>
+   * <pre><code class="language-java">for (BooleanClause clause : booleanQuery) {}</code></pre>
    */
   @Override
   public final Iterator<BooleanClause> iterator() {

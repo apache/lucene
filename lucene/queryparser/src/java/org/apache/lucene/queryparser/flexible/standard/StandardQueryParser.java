@@ -50,13 +50,13 @@ import org.apache.lucene.search.Query;
  *
  * <p>Typical usage, including configuration tweaks:
  *
- * <pre class="prettyprint">{@code
+ * <pre><code class="language-java">
  * StandardQueryParser qpHelper = new StandardQueryParser();
  * StandardQueryConfigHandler config =  qpHelper.getQueryConfigHandler();
  * config.setAllowLeadingWildcard(true);
  * config.setAnalyzer(new WhitespaceAnalyzer());
  * Query query = qpHelper.parse("apache AND lucene", "defaultField");
- * }</pre>
+ * </code></pre>
  *
  * <h2>Supported query syntax</h2>
  *
@@ -245,10 +245,10 @@ public class StandardQueryParser extends QueryParserHelper
    * Constructs a {@link StandardQueryParser} object and sets an {@link Analyzer} to it. The same
    * as:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * StandardQueryParser qp = new StandardQueryParser();
    * qp.getQueryConfigHandler().setAnalyzer(analyzer);
-   * </pre>
+   * </code></pre>
    *
    * @param analyzer the analyzer to be used by this query parser helper
    */

@@ -178,7 +178,7 @@
  * <p>However an application might invoke Analysis of any text for testing or for any other purpose,
  * something like:
  *
- * <pre class="prettyprint" id="analysis-workflow">
+ * <pre id="analysis-workflow"><code class="language-java">
  *     Version matchVersion = Version.LUCENE_XY; // Substitute desired Lucene version for XY
  *     Analyzer analyzer = new StandardAnalyzer(matchVersion); // or any other analyzer
  *     TokenStream ts = analyzer.tokenStream("myfield", new StringReader("some text goes here"));
@@ -200,7 +200,7 @@
  *     } finally {
  *       ts.close(); // Release resources associated with this stream.
  *     }
- * </pre>
+ * </code></pre>
  *
  * <h2>Indexing Analysis vs. Search Analysis</h2>
  *
@@ -251,25 +251,25 @@
  * search and proximity search to seamlessly cross boundaries between these "sections". In other
  * words, if a certain field "f" is added like this:
  *
- * <PRE class="prettyprint">
+ * <pre><code class="language-java">
  *     document.add(new Field("f","first ends",...);
  *     document.add(new Field("f","starts two",...);
  *     indexWriter.addDocument(document);
- * </PRE>
+ * </code></pre>
  *
  * <p>Then, a phrase search for "ends starts" would find that document. Where desired, this behavior
  * can be modified by introducing a "position gap" between consecutive field "sections", simply by
  * overriding {@link org.apache.lucene.analysis.Analyzer#getPositionIncrementGap(java.lang.String)
  * Analyzer.getPositionIncrementGap(fieldName)}:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   Version matchVersion = Version.LUCENE_XY; // Substitute desired Lucene version for XY
  *   Analyzer myAnalyzer = new StandardAnalyzer(matchVersion) {
  *     public int getPositionIncrementGap(String fieldName) {
  *       return 10;
  *     }
  *   };
- * </pre>
+ * </code></pre>
  *
  * <h3>End of Input Cleanup</h3>
  *
@@ -304,7 +304,7 @@
  * the position increment in order not to generate corrupt tokenstream graphs. Here is the logic
  * used by StopFilter to increment positions when filtering out tokens:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   public TokenStream tokenStream(final String fieldName, Reader reader) {
  *     final TokenStream ts = someAnalyzer.tokenStream(fieldName, reader);
  *     TokenStream res = new TokenStream() {
@@ -330,7 +330,7 @@
  *     };
  *     return res;
  *   }
- * </pre>
+ * </code></pre>
  *
  * <p>A few more use cases for modifying position increments are:
  *
@@ -537,7 +537,7 @@
  * selected logic to another tokenizer) must also set the reader to the delegate in the overridden
  * {@link org.apache.lucene.analysis.Tokenizer#reset()} method, e.g.:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *     public class ForwardingTokenizer extends Tokenizer {
  *        private Tokenizer delegate;
  *        ...
@@ -548,7 +548,7 @@
  *           delegate.reset();
  *        }
  *     }
- * </pre>
+ * </code></pre>
  *
  * <h3>Testing Your Analysis Component</h3>
  *
@@ -603,7 +603,7 @@
  *
  * <h4>Whitespace tokenization</h4>
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * public class MyAnalyzer extends Analyzer {
  *
  *   private Version matchVersion;
@@ -642,7 +642,7 @@
  *     }
  *   }
  * }
- * </pre>
+ * </code></pre>
  *
  * In this easy example a simple white space tokenization is performed. In main() a loop consumes
  * the stream and prints the term text of the tokens by accessing the CharTermAttribute that the
@@ -666,14 +666,14 @@
  * LengthFilter to the chain. Only the <code>createComponents()</code> method in our analyzer needs
  * to be changed:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   {@literal @Override}
  *   protected TokenStreamComponents createComponents(String fieldName) {
  *     final Tokenizer source = new WhitespaceTokenizer(matchVersion);
  *     TokenStream result = new LengthFilter(true, source, 3, Integer.MAX_VALUE);
  *     return new TokenStreamComponents(source, result);
  *   }
- * </pre>
+ * </code></pre>
  *
  * Note how now only words with 3 or more characters are contained in the output:
  *
@@ -688,7 +688,7 @@
  *
  * Now let's take a look at how the LengthFilter is implemented:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * public final class LengthFilter extends FilteringTokenFilter {
  *
  *   private final int min;
@@ -718,7 +718,7 @@
  *   }
  *
  * }
- * </pre>
+ * </code></pre>
  *
  * <p>In LengthFilter, the CharTermAttribute is added and stored in the instance variable <code>
  * termAtt</code>. Remember that there can only be a single instance of CharTermAttribute in the
@@ -734,7 +734,7 @@
  *
  * <p>LengthFilter extends FilteringTokenFilter:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * public abstract class FilteringTokenFilter extends TokenFilter {
  *
  *   private final PositionIncrementAttribute posIncrAtt = addAttribute(PositionIncrementAttribute.class);
@@ -772,7 +772,7 @@
  *   }
  *
  * }
- * </pre>
+ * </code></pre>
  *
  * <h4>Adding a custom Attribute</h4>
  *
@@ -780,7 +780,7 @@
  * consequently <code>PartOfSpeechAttribute</code>. First we need to define the interface of the new
  * Attribute:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   public interface PartOfSpeechAttribute extends Attribute {
  *     public enum PartOfSpeech {
  *       Noun, Verb, Adjective, Adverb, Pronoun, Preposition, Conjunction, Article, Unknown
@@ -790,7 +790,7 @@
  *
  *     public PartOfSpeech getPartOfSpeech();
  *   }
- * </pre>
+ * </code></pre>
  *
  * <p>Now we also need to write the implementing class. The name of that class is important here: By
  * default, Lucene checks if there is a class with the name of the Attribute with the suffix 'Impl'.
@@ -805,7 +805,7 @@
  * <p>Now here is the actual class that implements our new Attribute. Notice that the class has to
  * extend {@link org.apache.lucene.util.AttributeImpl}:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * public final class PartOfSpeechAttributeImpl extends AttributeImpl
  *                                   implements PartOfSpeechAttribute {
  *
@@ -829,7 +829,7 @@
  *     ((PartOfSpeechAttribute) target).setPartOfSpeech(pos);
  *   }
  * }
- * </pre>
+ * </code></pre>
  *
  * <p>This is a simple Attribute implementation has only a single variable that stores the
  * part-of-speech of a token. It extends the <code>AttributeImpl</code> class and therefore
@@ -838,7 +838,7 @@
  * very naive filter that tags every word with a leading upper-case letter as a 'Noun' and all other
  * words as 'Unknown'.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   public static class PartOfSpeechTaggingFilter extends TokenFilter {
  *     PartOfSpeechAttribute posAtt = addAttribute(PartOfSpeechAttribute.class);
  *     CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
@@ -862,7 +862,7 @@
  *       return PartOfSpeech.Unknown;
  *     }
  *   }
- * </pre>
+ * </code></pre>
  *
  * <p>Just like the LengthFilter, this new filter stores references to the attributes it needs in
  * instance variables. Notice how you only need to pass in the interface of the new Attribute and
@@ -870,7 +870,7 @@
  *
  * <p>Now we need to add the filter to the chain in MyAnalyzer:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   {@literal @Override}
  *   protected TokenStreamComponents createComponents(String fieldName) {
  *     final Tokenizer source = new WhitespaceTokenizer(matchVersion);
@@ -878,7 +878,7 @@
  *     result = new PartOfSpeechTaggingFilter(result);
  *     return new TokenStreamComponents(source, result);
  *   }
- * </pre>
+ * </code></pre>
  *
  * Now let's look at the output:
  *
@@ -895,7 +895,7 @@
  * chain does not affect any existing consumers, simply because they don't know the new Attribute.
  * Now let's change the consumer to make use of the new PartOfSpeechAttribute and print it out:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   public static void main(String[] args) throws IOException {
  *     // text to tokenize
  *     final String text = "This is a demo of the TokenStream API";
@@ -922,7 +922,7 @@
  *       stream.close();
  *     }
  *   }
- * </pre>
+ * </code></pre>
  *
  * The change that was made is to get the PartOfSpeechAttribute from the TokenStream and print out
  * its contents in the while loop that consumes the stream. Here is the new output:
@@ -945,7 +945,7 @@
  * nouns if not the first word of a sentence (we know, this is still not a correct behavior, but
  * hey, it's a good exercise). As a small hint, this is how the new Attribute class could begin:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   public class FirstTokenOfSentenceAttributeImpl extends AttributeImpl
  *                               implements FirstTokenOfSentenceAttribute {
  *
@@ -965,7 +965,7 @@
  *     }
  *
  *   ...
- * </pre>
+ * </code></pre>
  *
  * <h4>Adding a CharFilter chain</h4>
  *
@@ -980,7 +980,7 @@
  *
  * <p>Example:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * public class MyAnalyzer extends Analyzer {
  *
  *   {@literal @Override}
@@ -994,6 +994,6 @@
  *     return new SecondCharFilter(new FirstCharFilter(reader));
  *   }
  * }
- * </pre>
+ * </code></pre>
  */
 package org.apache.lucene.analysis;

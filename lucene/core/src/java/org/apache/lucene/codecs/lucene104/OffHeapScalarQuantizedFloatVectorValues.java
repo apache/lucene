@@ -123,6 +123,8 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
           OffHeapScalarQuantizedVectorValues.unpackNibbles(byteValue, unpackedByteVectorValue);
       case SINGLE_BIT_QUERY_NIBBLE ->
           OptimizedScalarQuantizer.unpackBinary(byteValue, unpackedByteVectorValue);
+      case DIBIT_QUERY_NIBBLE ->
+          OptimizedScalarQuantizer.untransposeDibit(byteValue, unpackedByteVectorValue);
       case UNSIGNED_BYTE, SEVEN_BIT -> {
         deQuantize(
             byteValue,

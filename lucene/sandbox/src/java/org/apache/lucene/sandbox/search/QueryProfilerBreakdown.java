@@ -24,7 +24,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.util.CollectionUtil;
 
 /**
  * A record of timings for the various operations that may happen during query execution. A node's
@@ -62,8 +61,7 @@ class QueryProfilerBreakdown {
       Query query, List<QueryProfilerResult> childrenProfileResults) {
     long queryStartTime = Long.MAX_VALUE;
     long queryTotalTime = 0;
-    final Map<String, Long> breakdownMap =
-        CollectionUtil.newHashMap(QUERY_LEVEL_TIMING_TYPE.size() * 2);
+    final Map<String, Long> breakdownMap = HashMap.newHashMap(QUERY_LEVEL_TIMING_TYPE.size() * 2);
     for (QueryProfilerTimingType type : QUERY_LEVEL_TIMING_TYPE) {
       final QueryProfilerTimer timer = queryProfilerTimers.get(type);
       if (timer.getCount() > 0) {

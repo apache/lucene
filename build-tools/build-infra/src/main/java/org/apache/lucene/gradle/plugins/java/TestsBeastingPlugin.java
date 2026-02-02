@@ -29,7 +29,9 @@ import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.internal.tasks.testing.filter.DefaultTestFilter;
 import org.gradle.api.plugins.JavaPlugin;
+import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.options.Option;
 import org.gradle.api.tasks.testing.Test;
@@ -122,6 +124,13 @@ public class TestsBeastingPlugin extends LuceneGradlePlugin {
             .getRootSeedAsLong()
             .get();
 
+    var testSourceSet =
+        project
+            .getExtensions()
+            .getByType(JavaPluginExtension.class)
+            .getSourceSets()
+            .getByName(SourceSet.TEST_SOURCE_SET_NAME);
+
     var subtasks =
         IntStream.rangeClosed(1, dupsOption.get())
             .mapToObj(
@@ -132,6 +141,10 @@ public class TestsBeastingPlugin extends LuceneGradlePlugin {
                           "test_" + idx,
                           Test.class,
                           test -> {
+                            // we need to configure these manually in gradle 9+.
+                            test.setClasspath(testSourceSet.getRuntimeClasspath());
+                            test.setTestClassesDirs(testSourceSet.getOutput().getClassesDirs());
+
                             test.setFailFast(true);
                             // If there is a user-provided root seed, use it
                             // (all

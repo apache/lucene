@@ -91,7 +91,7 @@ public class PriorityQueue<T> implements Iterable<T> {
    * <p>If this method is extended to return a non-null value, then the following usage pattern is
    * recommended:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * PriorityQueue&lt;MyObject&gt; pq = new PriorityQueue&lt;MyObject&gt;(numHits, lessThan);
    * // save the 'top' element, which is guaranteed to not be null.
    * MyObject pqTop = pq.top();
@@ -100,7 +100,7 @@ public class PriorityQueue<T> implements Iterable<T> {
    * // you've verified it is better), it is as simple as:
    * pqTop.change().
    * pqTop = pq.updateTop();
-   * </pre>
+   * </code></pre>
    *
    * <b>NOTE:</b> the given supplier will be called {@code maxSize} times, relying on a new object
    * to be returned and will not check if it's null again. Therefore you should ensure any call to
@@ -236,18 +236,18 @@ public class PriorityQueue<T> implements Iterable<T> {
    * Should be called when the Object at top changes values. Still log(n) worst case, but it's at
    * least twice as fast to
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * pq.top().change();
    * pq.updateTop();
-   * </pre>
+   * </code></pre>
    *
    * instead of
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * o = pq.pop();
    * o.change();
    * pq.push(o);
-   * </pre>
+   * </code></pre>
    *
    * @return the new 'top' element.
    */
