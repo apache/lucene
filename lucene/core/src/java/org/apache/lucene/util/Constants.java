@@ -113,7 +113,7 @@ public final class Constants {
     return enabledExplicitly || enabledForTests;
   }
 
-  public static boolean NATIVE_STRICT_MODE = hasNativeStrictModeOn();
+  public static final boolean NATIVE_STRICT_MODE = hasNativeStrictModeOn();
 
   private static boolean hasNativeStrictModeOn() {
     return Boolean.parseBoolean(getSysProp("lucene.useNativeStrict", "false"));
