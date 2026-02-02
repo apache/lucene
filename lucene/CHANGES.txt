@@ -145,6 +145,12 @@ Build
 * GITHUB#14808: Add support for validating sources using ast-grep tool rules #14808
   (Robert Muir, Dawid Weiss)
 
+* GITHUB#15629: Introduce prek for fast pre-commit/repository checks.
+  Markdown files are now linted with local broken-link detection.
+  Python and Shell scripts are now linted system-wide.
+  Install with `uvx prek install`
+  For more see help/precommit.txt or `./gradlew helpPrecommit` (Robert Muir)
+
 Other
 ---------------------
 
@@ -330,6 +336,9 @@ Optimizations
 
 * GITHUB#15585: Added shared prefetch counter to maintain count across clones and slices of MemorySegmentIndexInput. (Shubham Sharma)
 
+* GITHUB#15632: Use a coarser-grained competitive iterator with lower construction costs for
+  numeric sorts against fields with DocValuesSkippers. (Alan Woodward)
+  
 * GITHUB#15607: Utilize bulk scoring for diversity checking when building HNSW vector indices. This results
   in some performance improvements during indexing and segment merges. (Ben Trent)
 
