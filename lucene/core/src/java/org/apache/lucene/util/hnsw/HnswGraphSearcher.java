@@ -369,9 +369,10 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   private void prepareScratchState(int capacity, int bulkScoreSize) {
     candidates.clear();
     if (visited.length() < capacity) {
-      visited = FixedBitSet.ensureCapacity((FixedBitSet) visited, capacity);
+      visited = FixedBitSet.ensureCapacityAndClear((FixedBitSet) visited, capacity);
+    } else {
+      visited.clear();
     }
-    visited.clear();
     if (bulkNodes == null || bulkNodes.length < bulkScoreSize) {
       bulkNodes = new int[bulkScoreSize];
       bulkScores = new float[bulkScoreSize];

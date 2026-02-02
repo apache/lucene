@@ -59,7 +59,7 @@ import org.apache.lucene.util.RoaringDocIdSet;
  * <p>A default query cache and policy instance is used in IndexSearcher. If you want to replace
  * those defaults it is typically done like this:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   final int maxNumberOfCachedQueries = 256;
  *   final long maxRamBytesUsed = 50 * 1024L * 1024L; // 50MB
  *   // these cache and policy instances can be shared across several queries and readers
@@ -68,7 +68,7 @@ import org.apache.lucene.util.RoaringDocIdSet;
  *   final QueryCachingPolicy defaultCachingPolicy = new UsageTrackingQueryCachingPolicy();
  *   indexSearcher.setQueryCache(queryCache);
  *   indexSearcher.setQueryCachingPolicy(defaultCachingPolicy);
- * </pre>
+ * </code></pre>
  *
  * This cache exposes some global statistics ({@link #getHitCount() hit count}, {@link
  * #getMissCount() miss count}, {@link #getCacheSize() number of cache entries}, {@link

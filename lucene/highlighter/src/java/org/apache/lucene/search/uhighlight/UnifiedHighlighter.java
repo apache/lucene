@@ -775,13 +775,13 @@ public class UnifiedHighlighter {
    *
    * <p>Conceptually, this behaves as a more efficient form of:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * Map m = new HashMap();
    * for (String field : fields) {
    * m.put(field, highlight(field, query, topDocs));
    * }
    * return m;
-   * </pre>
+   * </code></pre>
    *
    * @param fields field names to highlight. Must have a stored string value.
    * @param query query to highlight.
@@ -805,13 +805,13 @@ public class UnifiedHighlighter {
    *
    * <p>Conceptually, this behaves as a more efficient form of:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * Map m = new HashMap();
    * for (String field : fields) {
    * m.put(field, highlight(field, query, topDocs, maxPassages));
    * }
    * return m;
-   * </pre>
+   * </code></pre>
    *
    * @param fields field names to highlight. Must have a stored string value.
    * @param query query to highlight.

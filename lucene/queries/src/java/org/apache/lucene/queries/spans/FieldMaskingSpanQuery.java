@@ -50,12 +50,12 @@ import org.apache.lucene.search.ScoreMode;
  * <p>a SpanNearQuery with a slop of 0 can be applied across two {@link SpanTermQuery} objects as
  * follows:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *    SpanQuery q1  = new SpanTermQuery(new Term("studentfirstname", "james"));
  *    SpanQuery q2  = new SpanTermQuery(new Term("studentsurname", "jones"));
  *    SpanQuery q2m = new FieldMaskingSpanQuery(q2, "studentfirstname");
  *    Query q = new SpanNearQuery(new SpanQuery[]{q1, q2m}, -1, false);
- * </pre>
+ * </code></pre>
  *
  * to search for 'studentfirstname:james studentsurname:jones' and find teacherid 1 without matching
  * teacherid 2 (which has a 'james' in position 0 and 'jones' in position 1).

@@ -46,9 +46,9 @@ import org.apache.lucene.util.automaton.UTF32ToUTF8;
  * <p>Example usage of querying an analyzed prefix within an edit distance of 1 of 'subg' against a
  * field 'suggest_field' is as follows:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *  CompletionQuery query = new FuzzyCompletionQuery(analyzer, new Term("suggest_field", "subg"));
- * </pre>
+ * </code></pre>
  *
  * @lucene.experimental
  */

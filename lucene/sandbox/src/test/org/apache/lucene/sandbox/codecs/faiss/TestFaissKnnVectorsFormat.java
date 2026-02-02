@@ -138,4 +138,9 @@ public class TestFaissKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
           Collections.nCopies(numDocs, List.of(new KnnFloatVectorField("vector", largeVector))));
     }
   }
+
+  @Override
+  protected boolean supportsFloatVectorFallback() {
+    return false;
+  }
 }

@@ -44,9 +44,9 @@ public final class OnHeapHnswGraph extends HnswGraph implements Accountable {
   // level
   // e.g. graph[1][2] is all the neighbours of node 1 at level 2
   private NeighborArray[][] graph;
-  // essentially another 2d map which the first dimension is level and second dimension is node id,
-  // this is only
-  // generated on demand when there's someone calling getNodeOnLevel on a non-zero level
+  // essentially another 2d map in which the first dimension is level and second dimension is node
+  // id, this is only generated on demand when there's someone calling getNodeOnLevel on a
+  // non-zero level
   private IntArrayList[] levelToNodes;
   private int
       lastFreezeSize; // remember the size we are at last time to freeze the graph and generate

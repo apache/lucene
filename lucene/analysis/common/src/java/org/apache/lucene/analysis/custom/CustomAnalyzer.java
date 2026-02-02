@@ -55,13 +55,13 @@ import org.apache.lucene.util.Version;
  * <p>You can create an instance of this Analyzer using the builder by passing the SPI names (as
  * defined by {@link java.util.ServiceLoader} interface) to it:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * Analyzer ana = CustomAnalyzer.builder(Paths.get(&quot;/path/to/config/dir&quot;))
  *   .withTokenizer(StandardTokenizerFactory.NAME)
  *   .addTokenFilter(LowerCaseFilterFactory.NAME)
  *   .addTokenFilter(StopFilterFactory.NAME, &quot;ignoreCase&quot;, &quot;false&quot;, &quot;words&quot;, &quot;stopwords.txt&quot;, &quot;format&quot;, &quot;wordset&quot;)
  *   .build();
- * </pre>
+ * </code></pre>
  *
  * The parameters passed to components are also used by Apache Solr and are documented on their
  * corresponding factory classes. Refer to documentation of subclasses of {@link TokenizerFactory},
@@ -69,13 +69,13 @@ import org.apache.lucene.util.Version;
  *
  * <p>This is the same as the above:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * Analyzer ana = CustomAnalyzer.builder(Paths.get(&quot;/path/to/config/dir&quot;))
  *   .withTokenizer(&quot;standard&quot;)
  *   .addTokenFilter(&quot;lowercase&quot;)
  *   .addTokenFilter(&quot;stop&quot;, &quot;ignoreCase&quot;, &quot;false&quot;, &quot;words&quot;, &quot;stopwords.txt&quot;, &quot;format&quot;, &quot;wordset&quot;)
  *   .build();
- * </pre>
+ * </code></pre>
  *
  * <p>The list of names to be used for components can be looked up through: {@link
  * TokenizerFactory#availableTokenizers()}, {@link TokenFilterFactory#availableTokenFilters()}, and
@@ -84,7 +84,7 @@ import org.apache.lucene.util.Version;
  * <p>You can create conditional branches in the analyzer by using {@link Builder#when(String,
  * String...)} and {@link Builder#whenTerm(Predicate)}:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * Analyzer ana = CustomAnalyzer.builder()
  *    .withTokenizer(&quot;standard&quot;)
  *    .addTokenFilter(&quot;lowercase&quot;)
@@ -92,7 +92,7 @@ import org.apache.lucene.util.Version;
  *      .addTokenFilter(&quot;reversestring&quot;)
  *    .endwhen()
  *    .build();
- * </pre>
+ * </code></pre>
  *
  * @since 5.0.0
  */

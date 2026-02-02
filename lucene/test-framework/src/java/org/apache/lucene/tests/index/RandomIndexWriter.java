@@ -51,7 +51,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 
 /**
- * Silly class that randomizes the indexing experience. EG it may swap in a different merge
+ * Silly class that randomizes the indexing experience. E.g. it may swap in a different merge
  * policy/scheduler; may commit periodically; may or may not forceMerge in the end, may flush by doc
  * count instead of RAM, etc.
  */

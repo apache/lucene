@@ -36,12 +36,12 @@ import org.apache.lucene.util.ResourceLoaderAware;
  * TokenFilterFactory that creates instances of {@link HunspellStemFilter}. Example config for
  * British English:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;filter class=&quot;solr.HunspellStemFilterFactory&quot;
  *         dictionary=&quot;en_GB.dic,my_custom.dic&quot;
  *         affix=&quot;en_GB.aff&quot;
  *         ignoreCase=&quot;false&quot;
- *         longestOnly=&quot;false&quot; /&gt;</pre>
+ *         longestOnly=&quot;false&quot; /&gt;</code></pre>
  *
  * Both parameters dictionary and affix are mandatory. Dictionaries for many languages are available
  * through the OpenOffice project.

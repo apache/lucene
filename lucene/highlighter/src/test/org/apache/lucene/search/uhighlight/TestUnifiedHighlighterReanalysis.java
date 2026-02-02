@@ -55,7 +55,7 @@ public class TestUnifiedHighlighterReanalysis extends UnifiedHighlighterTestBase
     assertEquals("Hello", highlighter.highlightWithoutSearcher("nonexistent", query, "Hello", 1));
   }
 
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testIndexSearcherNullness() throws IOException {
     String text =
         "This is a test. Just a test highlighting without a searcher. Feel free to ignore.";
@@ -66,7 +66,9 @@ public class TestUnifiedHighlighterReanalysis extends UnifiedHighlighterTestBase
         IndexReader indexReader = indexWriter.getReader()) {
       IndexSearcher searcher = newSearcher(indexReader);
       UnifiedHighlighter highlighter = UnifiedHighlighter.builder(searcher, indexAnalyzer).build();
-      highlighter.highlightWithoutSearcher("body", query, text, 1); // should throw
+      expectThrows(
+          IllegalStateException.class,
+          () -> highlighter.highlightWithoutSearcher("body", query, text, 1));
     }
   }
 }

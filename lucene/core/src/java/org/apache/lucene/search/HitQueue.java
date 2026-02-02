@@ -33,7 +33,7 @@ public final class HitQueue extends PriorityQueue<ScoreDoc> {
    * <b>NOTE:</b> in case <code>prePopulate</code> is true, you should pop elements from the queue
    * using the following code example:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * PriorityQueue&lt;ScoreDoc&gt; pq = new HitQueue(10, true); // pre-populate.
    * ScoreDoc top = pq.top();
    *
@@ -52,7 +52,7 @@ public final class HitQueue extends PriorityQueue<ScoreDoc> {
    * for (int i = totalHits - 1; i &gt;= 0; i--) {
    *   results[i] = (ScoreDoc) pq.pop();
    * }
-   * </pre>
+   * </code></pre>
    *
    * <p><b>NOTE</b>: This class pre-allocate a full array of length <code>size</code>.
    *

@@ -23,19 +23,15 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
-import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexReader;
@@ -43,7 +39,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
@@ -55,9 +50,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
-import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.junit.Before;
 
@@ -201,6 +194,8 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
                   OffHeapScalarQuantizedVectorValues.packNibbles(scratch, expectedVector);
               case SINGLE_BIT_QUERY_NIBBLE ->
                   OptimizedScalarQuantizer.packAsBinary(scratch, expectedVector);
+              case DIBIT_QUERY_NIBBLE ->
+                  OptimizedScalarQuantizer.transposeDibit(scratch, expectedVector);
             }
             assertArrayEquals(expectedVector, qvectorValues.vectorValue(docIndexIterator.index()));
             var actualCorrections = qvectorValues.getCorrectiveTerms(docIndexIterator.index());
@@ -218,91 +213,19 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
     }
   }
 
-  protected List<float[]> getRandomFloatVector(int numVectors, int dim, boolean normalize) {
-    List<float[]> vectors = new ArrayList<>(numVectors);
-    for (int i = 0; i < numVectors; i++) {
-      float[] vec = randomVector(dim);
-      if (normalize) {
-        float[] copy = new float[vec.length];
-        System.arraycopy(vec, 0, copy, 0, copy.length);
-        VectorUtil.l2normalize(copy);
-        vec = copy;
-      }
-      vectors.add(vec);
-    }
-    return vectors;
+  @Override
+  protected boolean supportsFloatVectorFallback() {
+    return true;
   }
 
-  public void testReadQuantizedVectorWithEmptyRawVectors() throws Exception {
-    String vectorFieldName = "vec1";
-    int numVectors = 1 + random().nextInt(50);
-    int dim = random().nextInt(64) + 1;
-    if (dim % 2 == 1) {
-      dim++;
-    }
-    float eps = (1f / (float) (1 << (encoding.getBits())));
-    VectorSimilarityFunction similarityFunction = randomSimilarity();
-    List<float[]> vectors =
-        getRandomFloatVector(
-            numVectors, dim, similarityFunction == VectorSimilarityFunction.COSINE);
-
-    try (BaseDirectoryWrapper dir = newDirectory();
-        IndexWriter w =
-            new IndexWriter(
-                dir,
-                new IndexWriterConfig()
-                    .setMaxBufferedDocs(numVectors + 1)
-                    .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
-                    .setMergePolicy(NoMergePolicy.INSTANCE)
-                    .setUseCompoundFile(false)
-                    .setCodec(getCodec()))) {
-      dir.setCheckIndexOnClose(false);
-
-      for (int i = 0; i < numVectors; i++) {
-        Document doc = new Document();
-        doc.add(new KnnFloatVectorField(vectorFieldName, vectors.get(i), similarityFunction));
-        w.addDocument(doc);
-      }
-      w.commit();
-
-      simulateEmptyRawVectors(dir);
-
-      try (IndexReader reader = DirectoryReader.open(w)) {
-        LeafReader r = getOnlyLeafReader(reader);
-        if (r instanceof CodecReader codecReader) {
-          KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
-          knnVectorsReader = knnVectorsReader.unwrapReaderForField(vectorFieldName);
-          if (knnVectorsReader instanceof Lucene104ScalarQuantizedVectorsReader quantizedReader) {
-            FloatVectorValues floatVectorValues =
-                quantizedReader.getFloatVectorValues(vectorFieldName);
-            if (floatVectorValues instanceof OffHeapScalarQuantizedFloatVectorValues) {
-              KnnVectorValues.DocIndexIterator iter = floatVectorValues.iterator();
-              for (int docId = iter.nextDoc(); docId != NO_MORE_DOCS; docId = iter.nextDoc()) {
-                float[] dequantizedVector = floatVectorValues.vectorValue(iter.index());
-                float mae = 0;
-                for (int i = 0; i < dim; i++) {
-                  mae += Math.abs(dequantizedVector[i] - vectors.get(docId)[i]);
-                }
-                mae /= dim;
-                assertTrue(
-                    "bits: " + encoding.getBits() + " mae: " + mae + " > eps: " + eps, mae <= eps);
-              }
-            } else {
-              fail("floatVectorValues is not OffHeapScalarQuantizedFloatVectorValues");
-            }
-          } else {
-            System.out.println("Vector READER:: " + knnVectorsReader.toString());
-            fail("reader is not Lucene104ScalarQuantizedVectorsReader");
-          }
-        } else {
-          fail("reader is not CodecReader");
-        }
-      }
-    }
+  @Override
+  protected int getQuantizationBits() {
+    return encoding.getBits();
   }
 
   /** Simulates empty raw vectors by modifying index files. */
-  private void simulateEmptyRawVectors(Directory dir) throws Exception {
+  @Override
+  protected void simulateEmptyRawVectors(Directory dir) throws Exception {
     final String[] indexFiles = dir.listAll();
     final String RAW_VECTOR_EXTENSION = "vec";
     final String VECTOR_META_EXTENSION = "vemf";

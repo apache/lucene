@@ -433,9 +433,9 @@ public class TestUAX29URLEmailAnalyzer extends BaseTokenStreamTestCase {
         new String[] {
           "mailto",
           "persona@example.com",
-          // TODO: recognize ',' address delimiter. Also, see examples of ';' delimiter use at:
+          // Also, see examples of ';' delimiter use at:
           // http://www.mailto.co.uk/
-          ",personb@example.com",
+          "personb@example.com",
           "?cc=personc@example.com", // TODO: split field keys/values
           "subject",
           "subjectivity",

@@ -41,7 +41,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
 /**
  * Factory for {@link SynonymFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_synonym" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
@@ -50,7 +50,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
  *             tokenizerFactory="solr.WhitespaceTokenizerFactory"
  *             [optional tokenizer factory parameters]/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * <p>An optional param name prefix of "tokenizerFactory." may be used for any init params that the
  * SynonymFilterFactory needs to pass to the specified TokenizerFactory. If the TokenizerFactory

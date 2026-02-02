@@ -25,7 +25,7 @@
  *
  * <h2>Example Usage</h2>
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * //... Above, create documents with two fields, one with term vectors (tv) and one without (notv)
  * IndexSearcher searcher = new IndexSearcher(directory);
  * QueryParser parser = new QueryParser("notv", analyzer);
@@ -57,7 +57,7 @@
  *     }
  *     System.out.println("-------------");
  *   }
- * </pre>
+ * </code></pre>
  *
  * <h2>New features 06/02/2005</h2>
  *

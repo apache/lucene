@@ -23,13 +23,13 @@ import org.apache.lucene.analysis.TokenStream;
 /**
  * Factory for {@link LimitTokenCountFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_lngthcnt" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
  *     &lt;filter class="solr.LimitTokenCountFilterFactory" maxTokenCount="10" consumeAllTokens="false" /&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * <p>The {@code consumeAllTokens} property is optional and defaults to {@code false}. See {@link
  * LimitTokenCountFilter} for an explanation of its use.

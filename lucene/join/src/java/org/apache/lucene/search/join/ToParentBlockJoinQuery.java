@@ -217,6 +217,11 @@ public class ToParentBlockJoinQuery extends Query {
       }
       return MatchesUtils.MATCH_WITH_NO_TERMS;
     }
+
+    @Override
+    public int count(LeafReaderContext context) {
+      return -1;
+    }
   }
 
   private static class ParentApproximation extends DocIdSetIterator {

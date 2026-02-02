@@ -32,10 +32,10 @@ import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
  * {@link SuggestField} which additionally takes in a set of contexts. Example usage of adding a
  * suggestion with contexts is as follows:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *  document.add(
  *   new ContextSuggestField(name, "suggestion", Arrays.asList("context1", "context2"),  4));
- * </pre>
+ * </code></pre>
  *
  * Use {@link ContextQuery} to boost and/or filter suggestions at query-time. Use {@link
  * PrefixCompletionQuery}, {@link RegexCompletionQuery} or {@link FuzzyCompletionQuery} if context
