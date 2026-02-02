@@ -51,4 +51,12 @@ public class CollectorMemoryTracker implements MemoryTracker {
   public long getBytes() {
     return memoryUsage.get();
   }
+
+  public String getName() {
+    return name;
+  }
+
+  public long getMemoryLimit() {
+    return memoryLimit;
+  }
 }

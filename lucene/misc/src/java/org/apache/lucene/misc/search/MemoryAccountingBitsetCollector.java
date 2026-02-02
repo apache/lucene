@@ -40,7 +40,7 @@ public class MemoryAccountingBitsetCollector extends SimpleCollector {
   @Override
   protected void doSetNextReader(LeafReaderContext context) throws IOException {
     docBase = context.docBase;
-    length += context.reader().maxDoc();
+    length = docBase + context.reader().maxDoc();
     FixedBitSet newBitSet = FixedBitSet.ensureCapacity(bitSet, length);
     if (newBitSet != bitSet) {
       tracker.updateBytes(newBitSet.ramBytesUsed() - bitSet.ramBytesUsed());
