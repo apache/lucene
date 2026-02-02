@@ -292,6 +292,11 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public long int4DibitDotProduct(byte[] int4Quantized, byte[] dibitQuantized) {
+    return delegateVectorUtilSupport.int4DibitDotProduct(int4Quantized, dibitQuantized);
+  }
+
+  @Override
   public float minMaxScalarQuantize(
       float[] vector, byte[] dest, float scale, float alpha, float minQuantile, float maxQuantile) {
     return delegateVectorUtilSupport.minMaxScalarQuantize(
