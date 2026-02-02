@@ -68,4 +68,9 @@ public class DocValuesStatsCollector implements Collector {
   public ScoreMode scoreMode() {
     return ScoreMode.COMPLETE_NO_SCORES;
   }
+
+  /** Returns the statistics computed by this collector. */
+  public DocValuesStats<?> getStats() {
+    return stats;
+  }
 }

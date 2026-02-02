@@ -28,8 +28,8 @@ import org.apache.lucene.util.BytesRef;
 /** Holds statistics for a DocValues field. */
 public abstract class DocValuesStats<T> {
 
-  private int missing = 0;
-  private int count = 0;
+  int missing = 0;
+  int count = 0;
 
   protected final String field;
 
@@ -71,6 +71,43 @@ public abstract class DocValuesStats<T> {
 
   final void addMissing() {
     ++missing;
+  }
+
+  void merge(DocValuesStats<?> other) {
+    count += other.count;
+    missing += other.missing;
+    if (other.min != null && (min == null || compareMin(other.min, min) < 0)) {
+      copyMin(other);
+    }
+    if (other.max != null && (max == null || compareMax(other.max, max) > 0)) {
+      copyMax(other);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  void copyMin(DocValuesStats<?> other) {
+    min = (T) other.min;
+  }
+
+  @SuppressWarnings("unchecked")
+  void copyMax(DocValuesStats<?> other) {
+    max = (T) other.max;
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  int compareMin(Object a, Object b) {
+    if (a instanceof Number numA && b instanceof Number numB) {
+      return Double.compare(numA.doubleValue(), numB.doubleValue());
+    }
+    return ((Comparable) a).compareTo(b);
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  int compareMax(Object a, Object b) {
+    if (a instanceof Number numA && b instanceof Number numB) {
+      return Double.compare(numA.doubleValue(), numB.doubleValue());
+    }
+    return ((Comparable) a).compareTo(b);
   }
 
   /** The field for which these stats were computed. */
@@ -142,6 +179,47 @@ public abstract class DocValuesStats<T> {
      * might overflow.
      */
     public abstract T sum();
+
+    @Override
+    void merge(DocValuesStats<?> other) {
+      if (!(other instanceof NumericDocValuesStats<?> o)) {
+        throw new IllegalArgumentException("Cannot merge different stat types");
+      }
+
+      this.missing += o.missing();
+
+      if (o.count() == 0) {
+        return;
+      }
+      if (this.count() == 0) {
+        this.count = o.count();
+        copyMin(o);
+        copyMax(o);
+        this.mean = o.mean;
+        this.variance = o.variance;
+        return;
+      }
+
+      int totalCount = this.count() + o.count();
+      double combinedMean = (sum().doubleValue() + o.sum().doubleValue()) / totalCount;
+      double targetDelta = this.mean - combinedMean;
+      double sourceDelta = o.mean - combinedMean;
+
+      this.variance =
+          this.variance
+              + o.variance
+              + targetDelta * targetDelta * this.count()
+              + sourceDelta * sourceDelta * o.count();
+      this.mean = combinedMean;
+      this.count = totalCount;
+
+      if (compareMin(o.min(), min()) < 0) {
+        copyMin(o);
+      }
+      if (compareMax(o.max(), max()) > 0) {
+        copyMax(o);
+      }
+    }
   }
 
   /** Holds DocValues statistics for a numeric field storing {@code long} values. */
@@ -172,6 +250,14 @@ public abstract class DocValuesStats<T> {
     @Override
     public Long sum() {
       return sum;
+    }
+
+    @Override
+    void merge(DocValuesStats<?> other) {
+      super.merge(other);
+      if (other instanceof LongDocValuesStats o) {
+        sum += o.sum;
+      }
     }
   }
 
@@ -204,6 +290,14 @@ public abstract class DocValuesStats<T> {
     @Override
     public Double sum() {
       return sum;
+    }
+
+    @Override
+    void merge(DocValuesStats<?> other) {
+      super.merge(other);
+      if (other instanceof DoubleDocValuesStats o) {
+        sum += o.sum;
+      }
     }
   }
 
@@ -258,6 +352,49 @@ public abstract class DocValuesStats<T> {
      * might overflow.
      */
     public abstract T sum();
+
+    @Override
+    void merge(DocValuesStats<?> other) {
+      if (!(other instanceof SortedNumericDocValuesStats<?> o)) {
+        throw new IllegalArgumentException("Cannot merge different stat types");
+      }
+
+      this.missing += o.missing();
+
+      if (o.count() == 0) {
+        return;
+      }
+      if (this.count() == 0) {
+        this.count = o.count();
+        copyMin(o);
+        copyMax(o);
+        this.mean = o.mean;
+        this.variance = o.variance;
+        this.valuesCount = o.valuesCount;
+        return;
+      }
+
+      long totalValuesCount = this.valuesCount + o.valuesCount;
+      double combinedMean = (sum().doubleValue() + o.sum().doubleValue()) / totalValuesCount;
+      double targetDelta = this.mean - combinedMean;
+      double sourceDelta = o.mean - combinedMean;
+
+      this.variance =
+          this.variance
+              + o.variance
+              + targetDelta * targetDelta * this.valuesCount
+              + sourceDelta * sourceDelta * o.valuesCount;
+      this.mean = combinedMean;
+      this.valuesCount = totalValuesCount;
+      this.count += o.count();
+
+      if (compareMin(o.min(), min()) < 0) {
+        copyMin(o);
+      }
+      if (compareMax(o.max(), max()) > 0) {
+        copyMax(o);
+      }
+    }
   }
 
   /** Holds DocValues statistics for a sorted-numeric field storing {@code long} values. */
@@ -295,6 +432,14 @@ public abstract class DocValuesStats<T> {
     @Override
     public Long sum() {
       return sum;
+    }
+
+    @Override
+    void merge(DocValuesStats<?> other) {
+      super.merge(other);
+      if (other instanceof SortedLongDocValuesStats o) {
+        sum += o.sum;
+      }
     }
   }
 
@@ -334,6 +479,14 @@ public abstract class DocValuesStats<T> {
     @Override
     public Double sum() {
       return sum;
+    }
+
+    @Override
+    void merge(DocValuesStats<?> other) {
+      super.merge(other);
+      if (other instanceof SortedDoubleDocValuesStats o) {
+        sum += o.sum;
+      }
     }
   }
 
