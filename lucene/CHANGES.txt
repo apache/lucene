@@ -338,7 +338,7 @@ Optimizations
 
 * GITHUB#15632: Use a coarser-grained competitive iterator with lower construction costs for
   numeric sorts against fields with DocValuesSkippers. (Alan Woodward)
-  
+
 * GITHUB#15607: Utilize bulk scoring for diversity checking when building HNSW vector indices. This results
   in some performance improvements during indexing and segment merges. (Ben Trent)
 
