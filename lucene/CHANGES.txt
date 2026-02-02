@@ -365,6 +365,9 @@ Bug Fixes
 
 * GITHUB#14616 : Fix mis-interpretation of `maxNumBytes` in FuzzySet#createSetBasedOnMaxMemory (Greg Miller)
 
+* GITHUB#15554: Fix tessellator failure by preferring the shared vertex that is the leftmost vertex of the hole
+  (Ignacio Vera)
+
 Other
 ---------------------
 * GITHUB#15237: Fix SmartChinese to only deserialize dictionary data from classpath with a native array
