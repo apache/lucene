@@ -113,7 +113,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   }
 
   /** Tracks state of one sub-reader that we are merging */
-  private static class FloatVectorValuesSub extends DocIDMerger.Sub {
+  static class FloatVectorValuesSub extends DocIDMerger.Sub {
 
     final FloatVectorValues values;
     final KnnVectorValues.DocIndexIterator iterator;
@@ -294,6 +294,11 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           mergeState);
     }
 
+    /**
+     * Unified view over several segments containing float vector values.
+     *
+     * @lucene.internal
+     */
     static class MergedFloat32VectorValues extends FloatVectorValues {
       private final List<FloatVectorValuesSub> subs;
       private final DocIDMerger<FloatVectorValuesSub> docIdMerger;
@@ -302,7 +307,15 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       private int lastOrd = -1;
       FloatVectorValuesSub current;
 
-      private MergedFloat32VectorValues(List<FloatVectorValuesSub> subs, MergeState mergeState)
+      /**
+       * Package-private for testing.
+       *
+       * @param subs List of sub-readers to be merged.
+       * @param mergeState MergeState for the merge.
+       * @throws IOException
+       * @lucene.internal
+       */
+      MergedFloat32VectorValues(List<FloatVectorValuesSub> subs, MergeState mergeState)
           throws IOException {
         this.subs = subs;
         docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
@@ -392,6 +405,11 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
     }
 
+    /**
+     * Unified view over several segments containing byte vector values.
+     *
+     * @lucene.internal
+     */
     static class MergedByteVectorValues extends ByteVectorValues {
       private final List<ByteVectorValuesSub> subs;
       private final DocIDMerger<ByteVectorValuesSub> docIdMerger;
@@ -401,6 +419,14 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       private int docId = -1;
       ByteVectorValuesSub current;
 
+      /**
+       * Package-private for testing.
+       *
+       * @param subs List of sub-readers to be merged.
+       * @param mergeState MergeState for the merge.
+       * @throws IOException
+       * @lucene.internal
+       */
       MergedByteVectorValues(List<ByteVectorValuesSub> subs, MergeState mergeState)
           throws IOException {
         this.subs = subs;

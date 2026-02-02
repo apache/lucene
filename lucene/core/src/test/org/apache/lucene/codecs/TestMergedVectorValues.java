@@ -19,11 +19,12 @@ package org.apache.lucene.codecs;
 import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
-/** Tests for MergedByteVectorValues to ensure lastOrd is properly incremented during iteration. */
-public class TestMergedByteVectorValues extends LuceneTestCase {
+/** Tests for merged vector values to ensure lastOrd is properly incremented during iteration. */
+public class TestMergedVectorValues extends LuceneTestCase {
 
   /**
    * Test that skipping vectors in MergedByteVectorValues via nextDoc() and then loading a
@@ -51,5 +52,33 @@ public class TestMergedByteVectorValues extends LuceneTestCase {
 
     // Read vector for doc 1
     assertArrayEquals(vectors.get(1), values.vectorValue(1));
+  }
+
+  /**
+   * Test that skipping vectors in MergedFloat32VectorValues via nextDoc() and then loading a
+   * subsequent vector via vectorValue() works correctly.
+   */
+  public void testSkipsInMergedFloat32VectorValues() throws IOException {
+    // Data
+    List<float[]> vectors = List.of(new float[] {0.0f}, new float[] {1.0f});
+
+    // Setup
+    KnnVectorsWriter.FloatVectorValuesSub sub =
+        new KnnVectorsWriter.FloatVectorValuesSub(x -> x, FloatVectorValues.fromFloats(vectors, 1));
+    MergeState state =
+        new MergeState(
+            null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+            null, false);
+
+    // Run the test
+    FloatVectorValues values =
+        new KnnVectorsWriter.MergedVectorValues.MergedFloat32VectorValues(List.of(sub), state);
+
+    // Skip doc 0 and load doc 1
+    values.iterator().nextDoc(); // doc 0
+    values.iterator().nextDoc(); // doc 1
+
+    // Read vector for doc 1
+    assertArrayEquals(vectors.get(1), values.vectorValue(1), 0.0f);
   }
 }
