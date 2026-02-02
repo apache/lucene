@@ -263,6 +263,8 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
         }
 
         if (!anyAccepted) {
+          // Skip all vectors for this partition if no accepted docs are found
+          dataIn.skipBytes((long) numDocs * vectorByteWidth);
           continue;
         }
 
