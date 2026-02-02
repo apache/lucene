@@ -441,7 +441,7 @@ public final class Tessellator {
       next = next.next;
     } while (next != outerNode);
 
-    // The leftmost vertex of the hole is a shared vertex. Prefer this onnection point if it is
+    // The leftmost vertex of the hole is a shared vertex. Prefer this connection point if it is
     // from a hole that was already merged (higher idx), as this maintains proper connectivity
     // for chained holes.
     if (leftmostSharedVertex != null
