@@ -18,6 +18,7 @@ package org.apache.lucene.codecs;
 
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.util.NamedSPILoader;
 
 /**
@@ -45,7 +46,8 @@ public abstract class Codec implements NamedSPILoader.NamedSPI {
       return LOADER;
     }
 
-    static Codec defaultCodec = LOADER.lookup("Lucene104");
+    static final AtomicReference<Codec> DEFAULT_CODEC =
+        new AtomicReference<>(LOADER.lookup("Lucene104"));
   }
 
   private final String name;
@@ -128,7 +130,7 @@ public abstract class Codec implements NamedSPILoader.NamedSPI {
    * org.apache.lucene.index.IndexWriterConfig}s.
    */
   public static Codec getDefault() {
-    return Holder.defaultCodec;
+    return Holder.DEFAULT_CODEC.get();
   }
 
   /**
@@ -136,7 +138,7 @@ public abstract class Codec implements NamedSPILoader.NamedSPI {
    * org.apache.lucene.index.IndexWriterConfig}s.
    */
   public static void setDefault(Codec codec) {
-    Holder.defaultCodec = Objects.requireNonNull(codec);
+    Holder.DEFAULT_CODEC.set(Objects.requireNonNull(codec));
   }
 
   /**

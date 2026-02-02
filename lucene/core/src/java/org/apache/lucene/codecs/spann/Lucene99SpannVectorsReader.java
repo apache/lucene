@@ -334,7 +334,7 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
       this.fieldInfo = fieldInfo;
       this.maxDoc = maxDoc;
       long[] docIdToOffset = new long[maxDoc];
-      java.util.Arrays.fill(docIdToOffset, -1L);
+      Arrays.fill(docIdToOffset, -1L);
 
       try (IndexInput input = dataIn.clone()) {
         boolean isByte = fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
@@ -343,7 +343,7 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
 
         // Sort partition IDs to scan sequentially
         Integer[] pIds = offsets.keySet().toArray(new Integer[0]);
-        java.util.Arrays.sort(pIds);
+        Arrays.sort(pIds);
 
         for (int pId : pIds) {
           long offset = offsets.get(pId);
