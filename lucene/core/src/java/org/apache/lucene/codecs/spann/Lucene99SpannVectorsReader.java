@@ -268,34 +268,41 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
 
         visitedPartitions++;
 
-        for (int j = 0; j < numDocs; j++) {
-          int docId = docIds[j];
+        if (isByte) {
+          for (int j = 0; j < numDocs; j++) {
+            int docId = docIds[j];
+            boolean shouldProcess =
+                (acceptBits == null || acceptBits.get(docId)) && !visitedDocs.get(docId);
 
-          if (isByte) {
+            if (!shouldProcess) {
+              dataIn.skipBytes(vectorByteWidth);
+              continue;
+            }
+
             dataIn.readBytes(byteScratch, 0, vectorByteWidth);
-          } else {
-            for (int d = 0; d < dim; d++) {
-              floatScratch[d] = Float.intBitsToFloat(dataIn.readInt());
-            }
-          }
-
-          boolean accepted =
-              (acceptBits == null || acceptBits.get(docId)) && !visitedDocs.get(docId);
-
-          if (accepted) {
-            visitedDocs.set(docId);
-
-            float score;
-            if (isByte) {
-              score =
-                  entry.fieldInfo.getVectorSimilarityFunction().compare(byteTarget, byteScratch);
-            } else {
-              score =
-                  entry.fieldInfo.getVectorSimilarityFunction().compare(floatTarget, floatScratch);
-            }
-
+            float score =
+                entry.fieldInfo.getVectorSimilarityFunction().compare(byteTarget, byteScratch);
             knnCollector.incVisitedCount(1);
             knnCollector.collect(docId, score);
+            visitedDocs.set(docId);
+          }
+        } else {
+          for (int j = 0; j < numDocs; j++) {
+            int docId = docIds[j];
+            boolean shouldProcess =
+                (acceptBits == null || acceptBits.get(docId)) && !visitedDocs.get(docId);
+
+            if (!shouldProcess) {
+              dataIn.skipBytes(vectorByteWidth);
+              continue;
+            }
+
+            dataIn.readFloats(floatScratch, 0, dim);
+            float score =
+                entry.fieldInfo.getVectorSimilarityFunction().compare(floatTarget, floatScratch);
+            knnCollector.incVisitedCount(1);
+            knnCollector.collect(docId, score);
+            visitedDocs.set(docId);
           }
         }
       }
