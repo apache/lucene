@@ -15,7 +15,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from math import gcd
 
 """Code generation for ForUtil.java"""
 
@@ -263,108 +262,159 @@ final class ForUtil {
 
 """
 
+
 def writeRemainder(bpv, next_primitive, remaining_bits_per_long, o, num_values, f):
-  iteration = 1
-  num_longs = bpv * num_values / remaining_bits_per_long
-  while num_longs % 2 == 0 and num_values % 2 == 0:
-    num_longs /= 2
-    num_values /= 2
-    iteration *= 2
-  f.write('    for (int iter = 0, tmpIdx = 0, longsIdx = %d; iter < %d; ++iter, tmpIdx += %d, longsIdx += %d) {\n' %(o, iteration, num_longs, num_values))
-  i = 0
-  remaining_bits = 0
-  tmp_idx = 0
-  for i in range(int(num_values)):
-    b = bpv
-    if remaining_bits == 0:
-      b -= remaining_bits_per_long
-      f.write('      long l%d = tmp[tmpIdx + %d] << %d;\n' %(i, tmp_idx, b))
-    else:
-      b -= remaining_bits
-      f.write('      long l%d = (tmp[tmpIdx + %d] & MASK%d_%d) << %d;\n' %(i, tmp_idx, next_primitive, remaining_bits, b))
-    tmp_idx += 1
-    while b >= remaining_bits_per_long:
-      b -= remaining_bits_per_long
-      f.write('      l%d |= tmp[tmpIdx + %d] << %d;\n' %(i, tmp_idx, b))
-      tmp_idx += 1
-    if b > 0:
-      f.write('      l%d |= (tmp[tmpIdx + %d] >>> %d) & MASK%d_%d;\n' %(i, tmp_idx, remaining_bits_per_long-b, next_primitive, b))
-      remaining_bits = remaining_bits_per_long-b
-    f.write('      longs[longsIdx + %d] = l%d;\n' %(i, i))
-  f.write('    }\n')
+    iteration = 1
+    num_longs = bpv * num_values / remaining_bits_per_long
+    while num_longs % 2 == 0 and num_values % 2 == 0:
+        num_longs /= 2
+        num_values /= 2
+        iteration *= 2
+    f.write(
+        "    for (int iter = 0, tmpIdx = 0, longsIdx = %d; iter < %d; ++iter, tmpIdx += %d, longsIdx += %d) {\n"
+        % (o, iteration, num_longs, num_values)
+    )
+    i = 0
+    remaining_bits = 0
+    tmp_idx = 0
+    for i in range(int(num_values)):
+        b = bpv
+        if remaining_bits == 0:
+            b -= remaining_bits_per_long
+            f.write("      long l%d = tmp[tmpIdx + %d] << %d;\n" % (i, tmp_idx, b))
+        else:
+            b -= remaining_bits
+            f.write(
+                "      long l%d = (tmp[tmpIdx + %d] & MASK%d_%d) << %d;\n"
+                % (i, tmp_idx, next_primitive, remaining_bits, b)
+            )
+        tmp_idx += 1
+        while b >= remaining_bits_per_long:
+            b -= remaining_bits_per_long
+            f.write("      l%d |= tmp[tmpIdx + %d] << %d;\n" % (i, tmp_idx, b))
+            tmp_idx += 1
+        if b > 0:
+            f.write(
+                "      l%d |= (tmp[tmpIdx + %d] >>> %d) & MASK%d_%d;\n"
+                % (i, tmp_idx, remaining_bits_per_long - b, next_primitive, b)
+            )
+            remaining_bits = remaining_bits_per_long - b
+        f.write("      longs[longsIdx + %d] = l%d;\n" % (i, i))
+    f.write("    }\n")
 
 
 def writeDecode(bpv, f):
-  next_primitive = 32
-  if bpv <= 8:
-    next_primitive = 8
-  elif bpv <= 16:
-    next_primitive = 16
-  if bpv == next_primitive:
-    f.write('  static void decode%d(IndexInput in, long[] longs) throws IOException {\n' %bpv)
-    f.write('    in.readLongs(longs, 0, %d);\n' %(bpv*2))
-  else:
-    num_values_per_long = 64 / next_primitive
-    remaining_bits = next_primitive % bpv
-    num_iters = (next_primitive - 1) // bpv
-    o = 2 * bpv * num_iters
-    if remaining_bits == 0:
-      f.write('  static void decode%d(IndexInput in, long[] longs) throws IOException {\n' %bpv)
-      f.write('    splitLongs(in, %d, longs, %d, %d, MASK%d_%d, longs, %d, MASK%d_%d);\n' %(bpv*2, next_primitive - bpv, bpv, next_primitive, bpv, o, next_primitive, next_primitive - num_iters * bpv))
+    next_primitive = 32
+    if bpv <= 8:
+        next_primitive = 8
+    elif bpv <= 16:
+        next_primitive = 16
+    if bpv == next_primitive:
+        f.write(
+            "  static void decode%d(IndexInput in, long[] longs) throws IOException {\n"
+            % bpv
+        )
+        f.write("    in.readLongs(longs, 0, %d);\n" % (bpv * 2))
     else:
-      f.write('  static void decode%d(IndexInput in, long[] tmp, long[] longs) throws IOException {\n' %bpv)
-      f.write('    splitLongs(in, %d, longs, %d, %d, MASK%d_%d, tmp, 0, MASK%d_%d);\n' %(bpv*2, next_primitive - bpv, bpv, next_primitive, bpv, next_primitive, next_primitive - num_iters * bpv))
-      writeRemainder(bpv, next_primitive, remaining_bits, o, 128/num_values_per_long - o, f)
-  f.write('  }\n')
+        num_values_per_long = 64 / next_primitive
+        remaining_bits = next_primitive % bpv
+        num_iters = (next_primitive - 1) // bpv
+        o = 2 * bpv * num_iters
+        if remaining_bits == 0:
+            f.write(
+                "  static void decode%d(IndexInput in, long[] longs) throws IOException {\n"
+                % bpv
+            )
+            f.write(
+                "    splitLongs(in, %d, longs, %d, %d, MASK%d_%d, longs, %d, MASK%d_%d);\n"
+                % (
+                    bpv * 2,
+                    next_primitive - bpv,
+                    bpv,
+                    next_primitive,
+                    bpv,
+                    o,
+                    next_primitive,
+                    next_primitive - num_iters * bpv,
+                )
+            )
+        else:
+            f.write(
+                "  static void decode%d(IndexInput in, long[] tmp, long[] longs) throws IOException {\n"
+                % bpv
+            )
+            f.write(
+                "    splitLongs(in, %d, longs, %d, %d, MASK%d_%d, tmp, 0, MASK%d_%d);\n"
+                % (
+                    bpv * 2,
+                    next_primitive - bpv,
+                    bpv,
+                    next_primitive,
+                    bpv,
+                    next_primitive,
+                    next_primitive - num_iters * bpv,
+                )
+            )
+            writeRemainder(
+                bpv, next_primitive, remaining_bits, o, 128 / num_values_per_long - o, f
+            )
+    f.write("  }\n")
 
-if __name__ == '__main__':
-  f = open(OUTPUT_FILE, 'w')
-  f.write(HEADER)
-  for primitive_size in PRIMITIVE_SIZE:
-    f.write('  static final long[] MASKS%d = new long[%d];\n' %(primitive_size, primitive_size))
-  f.write('\n')
-  f.write('  static {\n')
-  for primitive_size in PRIMITIVE_SIZE:
-    f.write('    for (int i = 0; i < %d; ++i) {\n' %primitive_size)
-    f.write('      MASKS%d[i] = mask%d(i);\n' %(primitive_size, primitive_size))
-    f.write('    }\n')
-  f.write('  }')
-  f.write("""
+
+if __name__ == "__main__":
+    f = open(OUTPUT_FILE, "w")
+    f.write(HEADER)
+    for primitive_size in PRIMITIVE_SIZE:
+        f.write(
+            "  static final long[] MASKS%d = new long[%d];\n"
+            % (primitive_size, primitive_size)
+        )
+    f.write("\n")
+    f.write("  static {\n")
+    for primitive_size in PRIMITIVE_SIZE:
+        f.write("    for (int i = 0; i < %d; ++i) {\n" % primitive_size)
+        f.write("      MASKS%d[i] = mask%d(i);\n" % (primitive_size, primitive_size))
+        f.write("    }\n")
+    f.write("  }")
+    f.write("""
   // mark values in array as final longs to avoid the cost of reading array, arrays should only be
   // used when the idx is a variable
 """)
-  for primitive_size in PRIMITIVE_SIZE:
-    for bpv in range(1, min(MAX_SPECIALIZED_BITS_PER_VALUE + 1, primitive_size)):
-      f.write('  static final long MASK%d_%d = MASKS%d[%d];\n' %(primitive_size, bpv, primitive_size, bpv))
+    for primitive_size in PRIMITIVE_SIZE:
+        for bpv in range(1, min(MAX_SPECIALIZED_BITS_PER_VALUE + 1, primitive_size)):
+            f.write(
+                "  static final long MASK%d_%d = MASKS%d[%d];\n"
+                % (primitive_size, bpv, primitive_size, bpv)
+            )
 
-  f.write("""
+    f.write("""
   /** Decode 128 integers into {@code longs}. */
   void decode(int bitsPerValue, IndexInput in, long[] longs) throws IOException {
     switch (bitsPerValue) {
 """)
-  for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
-    next_primitive = 32
-    if bpv <= 8:
-      next_primitive = 8
-    elif bpv <= 16:
-      next_primitive = 16
-    f.write('      case %d:\n' %bpv)
-    if next_primitive % bpv == 0:
-      f.write('        decode%d(in, longs);\n' %bpv)
-    else:
-      f.write('        decode%d(in, tmp, longs);\n' %bpv)
-    f.write('        expand%d(longs);\n' %next_primitive)
-    f.write('        break;\n')
-  f.write('      default:\n')
-  f.write('        decodeSlow(bitsPerValue, in, tmp, longs);\n')
-  f.write('        expand32(longs);\n')
-  f.write('        break;\n')
-  f.write('    }\n')
-  f.write('  }\n')
+    for bpv in range(1, MAX_SPECIALIZED_BITS_PER_VALUE + 1):
+        next_primitive = 32
+        if bpv <= 8:
+            next_primitive = 8
+        elif bpv <= 16:
+            next_primitive = 16
+        f.write("      case %d:\n" % bpv)
+        if next_primitive % bpv == 0:
+            f.write("        decode%d(in, longs);\n" % bpv)
+        else:
+            f.write("        decode%d(in, tmp, longs);\n" % bpv)
+        f.write("        expand%d(longs);\n" % next_primitive)
+        f.write("        break;\n")
+    f.write("      default:\n")
+    f.write("        decodeSlow(bitsPerValue, in, tmp, longs);\n")
+    f.write("        expand32(longs);\n")
+    f.write("        break;\n")
+    f.write("    }\n")
+    f.write("  }\n")
 
-  for i in range(1, MAX_SPECIALIZED_BITS_PER_VALUE+1):
-    writeDecode(i, f)
-    if i < MAX_SPECIALIZED_BITS_PER_VALUE:
-      f.write('\n')
+    for i in range(1, MAX_SPECIALIZED_BITS_PER_VALUE + 1):
+        writeDecode(i, f)
+        if i < MAX_SPECIALIZED_BITS_PER_VALUE:
+            f.write("\n")
 
-  f.write('}\n')
+    f.write("}\n")

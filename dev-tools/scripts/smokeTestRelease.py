@@ -431,7 +431,7 @@ def printFileContents(fileName: str):
   # even if we are wrong, we replace errors ... the ASCII chars
   # (which is what we mostly care about eg for the test seed) should
   # still survive:
-  txt = codecs.open(fileName, "r", encoding=sys.getdefaultencoding(), errors="replace").read()
+  txt = open(fileName, encoding=sys.getdefaultencoding(), errors="replace").read()
 
   # Encode to our output encoding (likely also system's default
   # encoding):

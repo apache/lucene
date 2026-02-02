@@ -20,14 +20,11 @@
 This is Luke, Apache Lucene low-level index inspection and repair utility.
 
 Luke requires Java ${required.java.version}. You can start it with:
-```
-java -jar ${luke.cmd}
-```
+
+    java -jar ${luke.cmd}
 
 or, using Java modules:
 
-```
-java --module-path . --add-modules jdk.unsupported --module org.apache.lucene.luke
-```
+    java --module-path . --add-modules jdk.unsupported --module org.apache.lucene.luke
 
 Happy index hacking!
