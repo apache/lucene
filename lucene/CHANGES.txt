@@ -362,7 +362,7 @@ Bug Fixes
 
 * GITHUB#14616 : Fix mis-interpretation of `maxNumBytes` in FuzzySet#createSetBasedOnMaxMemory (Greg Miller)
 
-* GITHUB#15523: Fix wrong BitSet result in MemoryAccountingBitsetCollector (Binlong Gao)
+* GITHUB#15656: Fix wrong BitSet result in MemoryAccountingBitsetCollector (Binlong Gao)
 
 Other
 ---------------------
