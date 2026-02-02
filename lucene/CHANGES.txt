@@ -362,6 +362,8 @@ Bug Fixes
 
 * GITHUB#14616 : Fix mis-interpretation of `maxNumBytes` in FuzzySet#createSetBasedOnMaxMemory (Greg Miller)
 
+* GITHUB#15523: Fix wrong BitSet result in MemoryAccountingBitsetCollector (Binlong Gao)
+
 Other
 ---------------------
 * GITHUB#15237: Fix SmartChinese to only deserialize dictionary data from classpath with a native array
