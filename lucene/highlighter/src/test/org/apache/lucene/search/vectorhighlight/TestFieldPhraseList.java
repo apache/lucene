@@ -301,8 +301,15 @@ public class TestFieldPhraseList extends AbstractTestCase {
     infos2.add(new TermInfo("发展", 6, 8, 2, 2));
     WeightedPhraseInfo wpi2 = new WeightedPhraseInfo(infos2, 3.0f);
 
-    // trigger merge
-    WeightedPhraseInfo merged = new WeightedPhraseInfo(java.util.List.of(wpi1, wpi2));
+    FieldPhraseList fpl = new FieldPhraseList(new FieldPhraseList[0]);
+    fpl.getPhraseList().add(wpi1);
+
+    // This will execute: existWpi.boost += wpi.getBoost();
+    fpl.addIfNoOverlap(wpi2);
+
+    assertEquals(1, fpl.getPhraseList().size());
+
+    WeightedPhraseInfo merged = fpl.getPhraseList().get(0);
 
     assertEquals(5.0f, merged.getBoost(), 0.0001f);
   }
