@@ -103,20 +103,23 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     public NumericLeafComparator(LeafReaderContext context) throws IOException {
       this.context = context;
       this.docValues = getNumericDocValues(context, field);
-      CompetitiveDISIBuilder builder = null;
-      if (pruning != Pruning.NONE) {
-        LeafReader reader = context.reader();
-        PointValues pointValues = reader.getPointValues(field);
-        if (pointValues != null) {
-          builder = new PointsCompetitiveDISIBuilder(pointValues, this);
-        } else {
-          DocValuesSkipper skipper = reader.getDocValuesSkipper(field);
-          if (skipper != null) {
-            builder = new DVSkipperCompetitiveDISIBuilder(skipper, this);
-          }
-        }
+      this.competitiveDISIBuilder = buildCompetitiveDISIBuilder();
+    }
+
+    protected CompetitiveDISIBuilder buildCompetitiveDISIBuilder() throws IOException {
+      if (pruning == Pruning.NONE) {
+        return null;
       }
-      competitiveDISIBuilder = builder;
+      LeafReader reader = context.reader();
+      PointValues pointValues = reader.getPointValues(field);
+      if (pointValues != null) {
+        return new PointsCompetitiveDISIBuilder(pointValues, this);
+      }
+      DocValuesSkipper skipper = reader.getDocValuesSkipper(field);
+      if (skipper != null) {
+        return new DVSkipperCompetitiveDISIBuilder(skipper, this);
+      }
+      return null;
     }
 
     /**
@@ -176,7 +179,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     protected abstract long topAsComparableLong();
   }
 
-  private abstract class CompetitiveDISIBuilder {
+  protected abstract class CompetitiveDISIBuilder {
 
     final int maxDoc;
     final NumericLeafComparator leafComparator;
