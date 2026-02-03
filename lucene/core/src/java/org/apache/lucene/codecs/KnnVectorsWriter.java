@@ -112,7 +112,11 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     finish();
   }
 
-  /** Tracks state of one sub-reader that we are merging */
+  /**
+   * Tracks state of one sub-reader of float vectors that we are merging.
+   *
+   * @lucene.internal
+   */
   static class FloatVectorValuesSub extends DocIDMerger.Sub {
 
     final FloatVectorValues values;
@@ -135,6 +139,11 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     }
   }
 
+  /**
+   * Tracks state of one sub-reader of byte vectors that we are merging.
+   *
+   * @lucene.internal
+   */
   static class ByteVectorValuesSub extends DocIDMerger.Sub {
 
     final ByteVectorValues values;
@@ -307,14 +316,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       private int lastOrd = -1;
       FloatVectorValuesSub current;
 
-      /**
-       * Package-private for testing.
-       *
-       * @param subs List of sub-readers to be merged.
-       * @param mergeState MergeState for the merge.
-       * @throws IOException
-       * @lucene.internal
-       */
+      // package-private for testing
       MergedFloat32VectorValues(List<FloatVectorValuesSub> subs, MergeState mergeState)
           throws IOException {
         this.subs = subs;
@@ -419,14 +421,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       private int docId = -1;
       ByteVectorValuesSub current;
 
-      /**
-       * Package-private for testing.
-       *
-       * @param subs List of sub-readers to be merged.
-       * @param mergeState MergeState for the merge.
-       * @throws IOException
-       * @lucene.internal
-       */
+      // package-private for testing
       MergedByteVectorValues(List<ByteVectorValuesSub> subs, MergeState mergeState)
           throws IOException {
         this.subs = subs;
