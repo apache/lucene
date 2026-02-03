@@ -57,8 +57,4 @@ public class MemoryAccountingBitsetCollector extends SimpleCollector {
   public ScoreMode scoreMode() {
     return ScoreMode.COMPLETE_NO_SCORES;
   }
-
-  public FixedBitSet getBitSet() {
-    return bitSet;
-  }
 }

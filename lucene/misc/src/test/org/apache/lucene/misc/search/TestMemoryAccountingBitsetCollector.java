@@ -79,9 +79,9 @@ public class TestMemoryAccountingBitsetCollector extends LuceneTestCase {
     IndexSearcher searcher = new IndexSearcher(reader);
     searcher.search(MatchAllDocsQuery.INSTANCE, collector);
 
-    assertEquals(1000, collector.getBitSet().cardinality());
+    assertEquals(1000, collector.bitSet.cardinality());
     for (int i = 0; i < 1000; i++) {
-      assertTrue(collector.getBitSet().get(i));
+      assertTrue(collector.bitSet.get(i));
     }
   }
 }
