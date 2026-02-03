@@ -242,14 +242,14 @@ public class DocumentationConfigPlugin extends LuceneGradlePlugin {
                             var content = Files.readString(defaultCodecFile.toPath());
                             var legacy =
                                 Pattern.compile(
-                                    "Codec defaultCodec = LOADER\\.lookup\\((?<codec>\"([^\"]+)\")\\);");
+                                    "Codec\\s+defaultCodec\\s*=\\s*LOADER\\.lookup\\((?<codec>\"([^\"]+)\")\\)\\s*;");
                             var matcher = legacy.matcher(content);
                             if (matcher.find()) {
                               return matcher.group("codec").toLowerCase(Locale.ROOT);
                             }
                             var atomic =
                                 Pattern.compile(
-                                    "DEFAULT_CODEC = new AtomicReference<>\\(LOADER\\.lookup\\((?<codec>\"([^\"]+)\")\\)\\);");
+                                    "(?s)DEFAULT_CODEC\\s*=\\s*new\\s+AtomicReference<[^>]*>\\s*\\(\\s*LOADER\\.lookup\\((?<codec>\"([^\"]+)\")\\)\\s*\\)\\s*;");
                             matcher = atomic.matcher(content);
                             if (matcher.find()) {
                               return matcher.group("codec").toLowerCase(Locale.ROOT);

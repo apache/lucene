@@ -129,7 +129,7 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
     if (canOptimize && allCentroids.isEmpty() == false) {
       int targetPartitions = maxPartitions;
       if (targetPartitions == -1) {
-        targetPartitions = (int) (2.0 * Math.sqrt(totalVectors));
+        targetPartitions = (int) (2.0 * Math.sqrt((double) totalVectors));
       }
       targetPartitions = Math.min((int) totalVectors, Math.max(1, targetPartitions));
 
