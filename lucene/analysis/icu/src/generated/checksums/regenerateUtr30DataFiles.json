@@ -3,7 +3,7 @@
     "lucene/analysis/icu/src/data/utr30/DiacriticFolding.txt": "373e40493455c8b22f83e5b19c4d480817451b00",
     "lucene/analysis/icu/src/data/utr30/DingbatFolding.txt": "bed27b1f97b52538ffeb3a4eccd85c5848991a3e",
     "lucene/analysis/icu/src/data/utr30/HanRadicalFolding.txt": "567197dc87a5ff803cc44cd5ce874f0e4717e3d4",
-    "lucene/analysis/icu/src/data/utr30/NativeDigitFolding.txt": "ffda744598d5341c08288931bae4661a83e6e43e",
+    "lucene/analysis/icu/src/data/utr30/NativeDigitFolding.txt": "5e133d0bf22a0b96a79b5a418055de7c23443697",
     "lucene/analysis/icu/src/data/utr30/nfc.txt": "57c1d9b3641c50486d429ab1779f3f6adeb60a87",
     "lucene/analysis/icu/src/data/utr30/nfkc.txt": "62ec59ac1c59c8b2de246ac565cc97e99c4765db",
     "lucene/analysis/icu/src/data/utr30/nfkc_cf.txt": "1b820f8f0975a9434837b57c2a44a83847e1ba1b",

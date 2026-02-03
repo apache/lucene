@@ -3,3 +3,11 @@
 line-length = 0
 # not really a markdown file, but a template
 exclude = [ "lucene/documentation/src/markdown/index.template.md" ]
+
+[MD007]
+# match indentation set in .editorconfig for least friction
+indent = 4
+
+[per-file-ignores]
+# doesn't start with level 1 heading on purpose
+".github/PULL_REQUEST_TEMPLATE.md" = [ "MD041" ]

@@ -49,4 +49,3 @@ the lucene.spotlessGradleScripts option to false - either on command line
 using -Plucene.spotlessGradleScripts=false, in your local
 build-options.local.properties or by any other means build options can be
 set.
-
