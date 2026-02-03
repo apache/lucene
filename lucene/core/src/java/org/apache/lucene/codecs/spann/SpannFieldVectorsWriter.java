@@ -59,6 +59,20 @@ public class SpannFieldVectorsWriter extends KnnFieldVectorsWriter<float[]> impl
     count++;
   }
 
+  private float[][] preDefinedCentroids;
+
+  /**
+   * Sets pre-defined centroids for this writer. If set, finish() will skip clustering and use these
+   * centroids for assignment.
+   */
+  public void setCentroids(float[][] centroids) {
+    this.preDefinedCentroids = centroids;
+  }
+
+  public float[][] getPreDefinedCentroids() {
+    return preDefinedCentroids;
+  }
+
   @Override
   public float[] copyValue(float[] vectorValue) {
     return vectorValue.clone();
@@ -66,7 +80,7 @@ public class SpannFieldVectorsWriter extends KnnFieldVectorsWriter<float[]> impl
 
   @Override
   public long ramBytesUsed() {
-    return 0; // Off-heap
+    return 0;
   }
 
   public void finish() throws IOException {

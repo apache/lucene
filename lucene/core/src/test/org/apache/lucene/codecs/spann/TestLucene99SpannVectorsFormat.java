@@ -88,7 +88,6 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
     int dim = 16;
     int numDocs = 1000;
     try (Directory dir = newDirectory()) {
-      // Indexing with fixed parameters
       IndexWriterConfig iwc =
           newIndexWriterConfig()
               .setCodec(
@@ -115,13 +114,10 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
         writer.commit();
       }
 
-      // Search with Low N-Probe (1)
       int hitsLow = countHits(dir, vectors[0], 1);
 
-      // Search with High N-Probe (20)
       int hitsHigh = countHits(dir, vectors[0], 20);
 
-      // High nprobe should find at least as many
       assertTrue(
           "High nprobe (" + hitsHigh + ") should be >= Low nprobe (" + hitsLow + ")",
           hitsHigh >= hitsLow);
@@ -192,7 +188,6 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(dir)) {
         LeafReader leaf = reader.leaves().get(0).reader();
         leaf.checkIntegrity();
-        // Reader should be able to search both
         IndexSearcher searcher = new IndexSearcher(reader);
         assertNotNull(
             searcher.search(
@@ -318,7 +313,6 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
                   new Lucene104Codec() {
                     @Override
                     public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                      // High nProbe and replication to ensure high recall for this small test
                       return new Lucene99SpannVectorsFormat(20, 10, 256, 2);
                     }
                   })
@@ -344,7 +338,6 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = new IndexSearcher(reader);
 
-        // Randomly test 10 queries
         for (int i = 0; i < 10; i++) {
           float[] query = new float[dim];
           for (int j = 0; j < dim; j++) {
@@ -352,28 +345,21 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
           }
           VectorUtil.l2normalize(query);
 
-          // Alternative: Compute truth manually in Java loop.
-
           float bestScore = Float.NEGATIVE_INFINITY;
           for (int d = 0; d < numDocs; d++) {
             float cosine = VectorUtil.cosine(query, vectors[d]);
-            // Convert to Lucene score
             float score = (1 + cosine) / 2;
             if (score > bestScore) {
               bestScore = score;
             }
           }
 
-          // Search via SPANN
           TopDocs spannResults =
               searcher.search(
                   new org.apache.lucene.search.KnnFloatVectorQuery("vec", query, 10), 10);
 
-          // Check if top result matches (or is very close in score)
           if (spannResults.scoreDocs.length > 0) {
             float spannScore = spannResults.scoreDocs[0].score;
-            // Allow small floating point error, or if we found a DIFFERENT doc with SAME
-            // score
             assertEquals(
                 "SPANN should find top-1 recall on small dataset data",
                 bestScore,
@@ -434,17 +420,86 @@ public class TestLucene99SpannVectorsFormat extends LuceneTestCase {
     }
   }
 
-  public void testDeletedDocsFilteringCentroids() throws Exception {
-    // Regression test for a bug where acceptDocs were incorrectly passed to
-    // centroid search.
-    // Since centroids use partition IDs (0..K) as docIDs, if the main index has
-    // deleted doc 0,
-    // and we passed acceptDocs to centroid search, Partition 0 would be skipped!
+  public void testMergeRecall() throws Exception {
+    int dim = 16;
+    int numDocs = 400;
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc =
+          newIndexWriterConfig()
+              .setCodec(
+                  new Lucene104Codec() {
+                    @Override
+                    public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
+                      return new Lucene99SpannVectorsFormat(20, 10, 256, 2);
+                    }
+                  })
+              .setUseCompoundFile(false);
 
+      float[][] vectors = new float[numDocs][];
+      java.util.Random rnd = new java.util.Random(42);
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < numDocs; i++) {
+          vectors[i] = new float[dim];
+          for (int j = 0; j < dim; j++) {
+            vectors[i][j] = rnd.nextFloat();
+          }
+          VectorUtil.l2normalize(vectors[i]);
+          Document doc = new Document();
+          doc.add(
+              new KnnFloatVectorField(
+                  "vec", vectors[i], org.apache.lucene.index.VectorSimilarityFunction.COSINE));
+          writer.addDocument(doc);
+          if (i % 100 == 99) {
+            writer.commit();
+          }
+        }
+        writer.forceMerge(1);
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+
+        int numQueries = 20;
+        int successfulQueries = 0;
+        float tolerance = 0.01f;
+
+        for (int i = 0; i < numQueries; i++) {
+          float[] query = new float[dim];
+          for (int j = 0; j < dim; j++) {
+            query[j] = rnd.nextFloat();
+          }
+          VectorUtil.l2normalize(query);
+
+          float bestScore = Float.NEGATIVE_INFINITY;
+          for (int d = 0; d < numDocs; d++) {
+            float cosine = VectorUtil.cosine(query, vectors[d]);
+            float score = (1 + cosine) / 2;
+            bestScore = Math.max(bestScore, score);
+          }
+
+          TopDocs results =
+              searcher.search(
+                  new org.apache.lucene.search.KnnFloatVectorQuery("vec", query, 50), 1);
+
+          if (results.scoreDocs.length > 0) {
+            float actualScore = results.scoreDocs[0].score;
+            if (actualScore >= bestScore - tolerance) {
+              successfulQueries++;
+            }
+          }
+        }
+
+        assertTrue(
+            "Recall after merge was too low: " + successfulQueries + "/" + numQueries,
+            successfulQueries >= (numQueries * 0.9));
+      }
+    }
+  }
+
+  public void testDeletedDocsFilteringCentroids() throws Exception {
     int dim = 16;
     int numDocs = 50;
 
-    // Retry with ID field
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwc =
           newIndexWriterConfig()

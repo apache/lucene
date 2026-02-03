@@ -76,7 +76,6 @@ public class TestLucene99SpannVectorsWriter extends LuceneTestCase {
 
       IndexWriterConfig iwc = newIndexWriterConfig().setCodec(codec).setUseCompoundFile(false);
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
-        // Doc without vector
         Document doc = new Document();
         writer.addDocument(doc);
         writer.commit();
@@ -99,30 +98,28 @@ public class TestLucene99SpannVectorsWriter extends LuceneTestCase {
             }
           };
 
-      // Ensure we create one large segment
       IndexWriterConfig iwc = newIndexWriterConfig().setCodec(codec).setUseCompoundFile(false);
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
-        int numDocs = 5000; // Trigger > 4096 threshold
+        int numDocs = 5000;
         for (int i = 0; i < numDocs; i++) {
           Document doc = new Document();
           doc.add(new KnnFloatVectorField("vec", new float[] {(float) i, (float) i, (float) i}));
           writer.addDocument(doc);
         }
-        writer.forceMerge(1); // Force single large segment to verify > 4096 path
+        writer.forceMerge(1);
         writer.commit();
       }
 
       boolean useCfs = false;
       try (IndexReader reader = DirectoryReader.open(dir)) {
         assertEquals(5000, reader.numDocs());
-        LeafReader leaf = reader.leaves().get(0).reader(); // Should be 1 leaf now
+        LeafReader leaf = reader.leaves().get(0).reader();
         assertEquals(5000, leaf.numDocs());
         if (leaf instanceof SegmentReader sr) {
           useCfs = sr.getSegmentInfo().info.getUseCompoundFile();
         }
       }
 
-      // Verify files exist
       String[] files = dir.listAll();
       boolean foundSpad = false;
       boolean foundCfs = false;

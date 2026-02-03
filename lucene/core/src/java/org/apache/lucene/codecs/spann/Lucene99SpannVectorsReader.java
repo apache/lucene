@@ -136,6 +136,82 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
     return new SpannByteVectorValues(entry);
   }
 
+  /** Returns the centroids for the given field. */
+  float[][] getCentroids(String field) throws IOException {
+    SpannFieldEntry entry = fields.get(field);
+    if (entry == null) {
+      return null;
+    }
+
+    if (entry.fieldInfo.getVectorEncoding() == VectorEncoding.BYTE) {
+      return null;
+    }
+
+    FloatVectorValues centroidValues = centroidDelegate.getFloatVectorValues(field);
+    if (centroidValues == null) {
+      return null;
+    }
+
+    int numCentroids = centroidValues.size();
+    int dim = centroidValues.dimension();
+    float[][] centroids = new float[numCentroids][dim];
+
+    org.apache.lucene.index.KnnVectorValues.DocIndexIterator iterator = centroidValues.iterator();
+    while (iterator.nextDoc() != org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS) {
+      int id = iterator.index();
+      if (id < numCentroids) {
+        float[] v = centroidValues.vectorValue(id);
+        System.arraycopy(v, 0, centroids[id], 0, dim);
+      }
+    }
+    return centroids;
+  }
+
+  /**
+   * Returns the weights (element counts) for each centroid/partition. Based on the on-disk segment
+   * data.
+   */
+  long[] getCentroidWeights(String field) throws IOException {
+    SpannFieldEntry entry = fields.get(field);
+    if (entry == null) {
+      return null;
+    }
+
+    int numCentroids = 0;
+    if (entry.fieldInfo.getVectorEncoding() == VectorEncoding.BYTE) {
+      ByteVectorValues bv = centroidDelegate.getByteVectorValues(field);
+      if (bv != null) numCentroids = bv.size();
+    } else {
+      FloatVectorValues fv = centroidDelegate.getFloatVectorValues(field);
+      if (fv != null) numCentroids = fv.size();
+    }
+
+    if (numCentroids == 0) {
+      int maxId = -1;
+      for (int id : entry.lengths.keySet()) {
+        maxId = Math.max(maxId, id);
+      }
+      numCentroids = maxId + 1;
+    }
+
+    if (numCentroids == 0) return new long[0];
+
+    long[] weights = new long[numCentroids];
+    boolean isByte = entry.fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
+    int dim = entry.fieldInfo.getVectorDimension();
+    int vectorByteWidth = isByte ? dim : dim * Float.BYTES;
+    int bytesPerDoc = Integer.BYTES + vectorByteWidth;
+
+    for (Map.Entry<Integer, Long> e : entry.lengths.entrySet()) {
+      int id = e.getKey();
+      long length = e.getValue();
+      if (id < weights.length) {
+        weights[id] = length / bytesPerDoc;
+      }
+    }
+    return weights;
+  }
+
   private static final AcceptDocs MATCH_ALL_ACCEPT_DOCS =
       new AcceptDocs() {
         @Override
@@ -169,8 +245,6 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
 
     int candidateProbe = Math.max(nprobe * 4, 16);
     TopKnnCollector coarseCollector = new TopKnnCollector(candidateProbe, Integer.MAX_VALUE);
-    // Don't use acceptDocs for the coarse (centroid) search; we filter fine results
-    // later.
     centroidDelegate.search(field, target, coarseCollector, MATCH_ALL_ACCEPT_DOCS);
     TopDocs topCentroids = coarseCollector.topDocs();
 
@@ -192,7 +266,6 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
 
     int candidateProbe = Math.max(nprobe * 4, 16);
     TopKnnCollector coarseCollector = new TopKnnCollector(candidateProbe, Integer.MAX_VALUE);
-    // Don't use acceptDocs for the coarse (centroid) search.
     centroidDelegate.search(field, target, coarseCollector, MATCH_ALL_ACCEPT_DOCS);
     TopDocs topCentroids = coarseCollector.topDocs();
 
@@ -263,7 +336,6 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
         }
 
         if (!anyAccepted) {
-          // Skip all vectors for this partition if no accepted docs are found
           dataIn.skipBytes((long) numDocs * vectorByteWidth);
           continue;
         }
@@ -350,7 +422,6 @@ public class Lucene99SpannVectorsReader extends KnnVectorsReader {
         int vectorByteWidth =
             isByte ? fieldInfo.getVectorDimension() : fieldInfo.getVectorDimension() * Float.BYTES;
 
-        // Sort partition IDs to scan sequentially
         Integer[] pIds = offsets.keySet().toArray(new Integer[0]);
         Arrays.sort(pIds);
 

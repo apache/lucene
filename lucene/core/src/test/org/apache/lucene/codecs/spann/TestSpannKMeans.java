@@ -22,25 +22,18 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestSpannKMeans extends LuceneTestCase {
 
   public void testCleanSeparation() {
-    float[][] points =
-        new float[][] {
-          {0, 0}, {0.1f, 0.1f}, // Cluster A
-          {10, 10}, {10.1f, 10.1f} // Cluster B
-        };
+    float[][] points = new float[][] {{0, 0}, {0.1f, 0.1f}, {10, 10}, {10.1f, 10.1f}};
 
-    // K=2, should perfectly separate
     float[][] centroids = SpannKMeans.cluster(points, 2, VectorSimilarityFunction.EUCLIDEAN, 10);
 
     assertEquals(2, centroids.length);
 
-    // Verify centroids are close to (0,0) and (10,10)
     boolean hasZero = false;
     boolean hasTen = false;
 
     for (float[] c : centroids) {
-      float seedDist0 = c[0] * c[0] + c[1] * c[1]; // SqrDist from 0,0
-      float seedDist10 =
-          (c[0] - 10) * (c[0] - 10) + (c[1] - 10) * (c[1] - 10); // SqrDist from 10,10
+      float seedDist0 = c[0] * c[0] + c[1] * c[1];
+      float seedDist10 = (c[0] - 10) * (c[0] - 10) + (c[1] - 10) * (c[1] - 10);
 
       if (seedDist0 < 1.0f) hasZero = true;
       if (seedDist10 < 1.0f) hasTen = true;
@@ -52,7 +45,6 @@ public class TestSpannKMeans extends LuceneTestCase {
 
   public void testFewerPointsThanClusters() {
     float[][] points = new float[][] {{1, 2}, {3, 4}};
-    // Request K=5, but only have 2 points
     float[][] centroids = SpannKMeans.cluster(points, 5, VectorSimilarityFunction.EUCLIDEAN, 10);
 
     assertEquals(2, centroids.length);
@@ -62,7 +54,6 @@ public class TestSpannKMeans extends LuceneTestCase {
 
   public void testSingleCluster() {
     float[][] points = new float[][] {{1, 1}, {2, 2}, {3, 3}};
-    // K=1, should average them -> (2, 2)
     float[][] centroids = SpannKMeans.cluster(points, 1, VectorSimilarityFunction.EUCLIDEAN, 10);
 
     assertEquals(1, centroids.length);

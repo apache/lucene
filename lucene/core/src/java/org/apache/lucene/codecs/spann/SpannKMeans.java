@@ -31,7 +31,85 @@ public class SpannKMeans {
   /** Seed for deterministic clustering. */
   private static final long SEED = 42;
 
-  /** Clusters the input vectors using Lloyd's algorithm. */
+  /**
+   * Clusters input vectors with associated weights using Lloyd's algorithm. Useful for merging
+   * pre-clustered centroids where weights represent original cluster sizes.
+   */
+  public static float[][] clusterWeighted(
+      float[][] vectors,
+      long[] weights,
+      int k,
+      VectorSimilarityFunction similarityFunction,
+      int maxIterations) {
+    if (vectors.length < k) {
+      return vectors.clone();
+    }
+
+    int dim = vectors[0].length;
+    float[][] centroids = new float[k][dim];
+    Random random = new Random(SEED);
+
+    for (int i = 0; i < k; i++) {
+      centroids[i] = vectors[random.nextInt(vectors.length)].clone();
+    }
+
+    int[] assignments = new int[vectors.length];
+    Arrays.fill(assignments, -1);
+
+    for (int iter = 0; iter < maxIterations; iter++) {
+      boolean changed = false;
+
+      for (int i = 0; i < vectors.length; i++) {
+        int bestCentroid = 0;
+        float bestScore = Float.NEGATIVE_INFINITY;
+
+        for (int c = 0; c < k; c++) {
+          float score = similarityFunction.compare(vectors[i], centroids[c]);
+          if (score > bestScore) {
+            bestScore = score;
+            bestCentroid = c;
+          }
+        }
+
+        if (assignments[i] != bestCentroid) {
+          assignments[i] = bestCentroid;
+          changed = true;
+        }
+      }
+
+      if (!changed) {
+        break;
+      }
+
+      for (float[] centroid : centroids) {
+        Arrays.fill(centroid, 0f);
+      }
+      long[] totalWeights = new long[k];
+
+      for (int i = 0; i < vectors.length; i++) {
+        int cluster = assignments[i];
+        long weight = weights[i];
+        for (int d = 0; d < dim; d++) {
+          centroids[cluster][d] += vectors[i][d] * weight;
+        }
+        totalWeights[cluster] += weight;
+      }
+
+      for (int c = 0; c < k; c++) {
+        if (totalWeights[c] > 0) {
+          float scale = 1.0f / totalWeights[c];
+          for (int d = 0; d < dim; d++) {
+            centroids[c][d] *= scale;
+          }
+        } else {
+          centroids[c] = vectors[random.nextInt(vectors.length)].clone();
+        }
+      }
+    }
+
+    return centroids;
+  }
+
   public static float[][] cluster(
       float[][] vectors, int k, VectorSimilarityFunction similarityFunction, int maxIterations) {
     if (vectors.length < k) {
@@ -42,8 +120,6 @@ public class SpannKMeans {
     float[][] centroids = new float[k][dim];
     Random random = new Random(SEED);
 
-    // Lloyd's algorithm for K-Means clustering.
-    // The training set is expected to be sampled before calling cluster().
     int firstIdx = random.nextInt(vectors.length);
     centroids[0] = vectors[firstIdx].clone();
 
@@ -125,7 +201,6 @@ public class SpannKMeans {
             centroids[c][d] *= scale;
           }
         } else {
-          // Re-init empty cluster randomly
           centroids[c] = vectors[random.nextInt(vectors.length)].clone();
         }
       }
@@ -134,7 +209,6 @@ public class SpannKMeans {
     return centroids;
   }
 
-  /** Deterministically downsamples a list of vectors to a maximum target size. */
   public static float[][] downsample(float[][] vectors, int maxSampleSize) {
     if (vectors.length <= maxSampleSize) {
       return vectors;

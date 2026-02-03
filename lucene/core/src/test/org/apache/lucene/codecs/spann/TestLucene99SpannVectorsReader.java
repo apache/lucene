@@ -83,12 +83,11 @@ public class TestLucene99SpannVectorsReader extends LuceneTestCase {
         for (org.apache.lucene.index.LeafReaderContext ctx : reader.leaves()) {
           LeafReader leaf = ctx.reader();
           org.apache.lucene.index.FloatVectorValues values = leaf.getFloatVectorValues("vec");
-          if (values == null) continue; // Some segments might not have vectors if empty/deleted?
+          if (values == null) continue;
 
           assertEquals(3, values.dimension());
           totalSize += values.size();
 
-          // Test Scorer
           org.apache.lucene.search.VectorScorer scorer = values.scorer(new float[] {1, 2, 3});
           org.apache.lucene.search.DocIdSetIterator it = scorer.iterator();
 

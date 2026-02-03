@@ -24,6 +24,7 @@ import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
@@ -76,9 +77,84 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
     this.replicationFactor = replicationFactor;
   }
 
+  private final Map<String, float[][]> preComputedCentroids = new HashMap<>();
+
+  @Override
+  public void mergeOneField(FieldInfo fieldInfo, org.apache.lucene.index.MergeState mergeState)
+      throws IOException {
+    if (fieldInfo.hasVectorValues() == false
+        || fieldInfo.getVectorEncoding() == VectorEncoding.BYTE) {
+      super.mergeOneField(fieldInfo, mergeState);
+      return;
+    }
+
+    List<float[]> allCentroids = new ArrayList<>();
+    List<Long> allWeights = new ArrayList<>();
+    boolean canOptimize = true;
+
+    for (KnnVectorsReader reader : mergeState.knnVectorsReaders) {
+      if (reader instanceof Lucene99SpannVectorsReader == false) {
+        canOptimize = false;
+        break;
+      }
+
+      Lucene99SpannVectorsReader spannReader = (Lucene99SpannVectorsReader) reader;
+      float[][] segCentroids = spannReader.getCentroids(fieldInfo.name);
+      long[] segWeights = spannReader.getCentroidWeights(fieldInfo.name);
+
+      if (segCentroids == null
+          || segWeights == null
+          || segCentroids.length != segWeights.length
+          || segCentroids.length == 0) {
+        canOptimize = false;
+        break;
+      }
+
+      for (int k = 0; k < segCentroids.length; k++) {
+        allCentroids.add(segCentroids[k]);
+        allWeights.add(segWeights[k]);
+      }
+    }
+
+    long totalVectors = 0;
+    if (canOptimize && allCentroids.isEmpty() == false) {
+      for (long w : allWeights) {
+        totalVectors += w;
+      }
+      if (totalVectors == 0) {
+        canOptimize = false;
+      }
+    }
+
+    if (canOptimize && allCentroids.isEmpty() == false) {
+      int targetPartitions = maxPartitions;
+      if (targetPartitions == -1) {
+        targetPartitions = (int) (2.0 * Math.sqrt(totalVectors));
+      }
+      targetPartitions = Math.min((int) totalVectors, Math.max(1, targetPartitions));
+
+      float[][] centroidArray = allCentroids.toArray(new float[0][]);
+      long[] weightArray = allWeights.stream().mapToLong(l -> l).toArray();
+
+      float[][] mergedCentroids =
+          SpannKMeans.clusterWeighted(
+              centroidArray,
+              weightArray,
+              targetPartitions,
+              fieldInfo.getVectorSimilarityFunction(),
+              KMEANS_MAX_ITERS);
+      preComputedCentroids.put(fieldInfo.name, mergedCentroids);
+    }
+
+    super.mergeOneField(fieldInfo, mergeState);
+  }
+
   @Override
   public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
     SpannFieldVectorsWriter writer = new SpannFieldVectorsWriter(fieldInfo, state);
+    if (preComputedCentroids.containsKey(fieldInfo.name)) {
+      writer.setCentroids(preComputedCentroids.get(fieldInfo.name));
+    }
     fieldWriters.put(fieldInfo.name, writer);
 
     if (fieldInfo.getVectorEncoding() == VectorEncoding.BYTE) {
@@ -99,7 +175,7 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
 
         @Override
         public long ramBytesUsed() {
-          return 0; // The delegate writer tracks usage
+          return 0;
         }
       };
     }
@@ -108,9 +184,7 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
-    // Data is buffered in addValue and persisted during finish()
-  }
+  public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {}
 
   @Override
   public void finish() throws IOException {
@@ -124,7 +198,6 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
         continue;
       }
 
-      // Optimized path for small segments to avoid clustering overhead.
       if (writer.getCount() < 4096) {
         float[][] vectorArray = new float[writer.getCount()][fieldInfo.getVectorDimension()];
         int[] docIds = new int[writer.getCount()];
@@ -142,9 +215,8 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
             }
           }
         }
-        writer.close(); // Delete temp file
+        writer.close();
 
-        // Compute mean for the single representative centroid
         float[] mean = new float[fieldInfo.getVectorDimension()];
         for (float[] v : vectorArray) {
           for (int d = 0; d < mean.length; d++) {
@@ -156,7 +228,6 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
           mean[d] *= scale;
         }
 
-        // Write the single centroid
         if (fieldInfo.getVectorEncoding() == VectorEncoding.BYTE) {
           @SuppressWarnings("unchecked")
           KnnFieldVectorsWriter<byte[]> byteCentroidWriter =
@@ -174,57 +245,59 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
         }
         maxCentroidDoc = Math.max(maxCentroidDoc, 1);
 
-        // Write directly to .spad (no need for list of lists)
         writeSinglePartition(fieldName, fieldInfo, vectorArray, docIds);
         continue;
       }
 
-      // Sample training vectors via reservoir sampling to mitigate bias in sorted
-      // segments.
-      int numPartitions = maxPartitions;
-      if (numPartitions == -1) {
-        numPartitions = (int) (2.0 * Math.sqrt(writer.getCount()));
-      }
-      numPartitions = Math.min(writer.getCount(), Math.max(1, numPartitions));
+      float[][] centroids = writer.getPreDefinedCentroids();
+      int numPartitions;
+      if (centroids == null) {
+        numPartitions = maxPartitions;
+        if (numPartitions == -1) {
+          numPartitions = (int) (2.0 * Math.sqrt(writer.getCount()));
+        }
+        numPartitions = Math.min(writer.getCount(), Math.max(1, numPartitions));
 
-      int sampleSize = Math.min(clusteringSampleSize, writer.getCount());
-      float[][] trainingVectors = new float[sampleSize][fieldInfo.getVectorDimension()];
-      java.util.Random random = new java.util.Random(42);
-      try (IndexInput input = writer.openInput()) {
-        boolean isByte = fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
-        for (int i = 0; i < writer.getCount(); i++) {
-          input.readInt();
-          float[] currentVector = new float[fieldInfo.getVectorDimension()];
-          if (isByte) {
-            for (int d = 0; d < fieldInfo.getVectorDimension(); d++) {
-              currentVector[d] = (float) input.readByte();
+        int sampleSize = Math.min(clusteringSampleSize, writer.getCount());
+        float[][] trainingVectors = new float[sampleSize][fieldInfo.getVectorDimension()];
+        java.util.Random random = new java.util.Random(42);
+        try (IndexInput input = writer.openInput()) {
+          boolean isByte = fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
+          for (int i = 0; i < writer.getCount(); i++) {
+            input.readInt();
+            float[] currentVector = new float[fieldInfo.getVectorDimension()];
+            if (isByte) {
+              for (int d = 0; d < fieldInfo.getVectorDimension(); d++) {
+                currentVector[d] = (float) input.readByte();
+              }
+            } else {
+              for (int d = 0; d < fieldInfo.getVectorDimension(); d++) {
+                currentVector[d] = Float.intBitsToFloat(input.readInt());
+              }
             }
-          } else {
-            for (int d = 0; d < fieldInfo.getVectorDimension(); d++) {
-              currentVector[d] = Float.intBitsToFloat(input.readInt());
-            }
-          }
 
-          if (i < sampleSize) {
-            trainingVectors[i] = currentVector;
-          } else {
-            int j = random.nextInt(i + 1);
-            if (j < sampleSize) {
-              trainingVectors[j] = currentVector;
+            if (i < sampleSize) {
+              trainingVectors[i] = currentVector;
+            } else {
+              int j = random.nextInt(i + 1);
+              if (j < sampleSize) {
+                trainingVectors[j] = currentVector;
+              }
             }
           }
         }
-      }
 
-      float[][] centroids =
-          SpannKMeans.cluster(
-              trainingVectors,
-              numPartitions,
-              fieldInfo.getVectorSimilarityFunction(),
-              KMEANS_MAX_ITERS);
+        centroids =
+            SpannKMeans.cluster(
+                trainingVectors,
+                numPartitions,
+                fieldInfo.getVectorSimilarityFunction(),
+                KMEANS_MAX_ITERS);
+      } else {
+        numPartitions = centroids.length;
+      }
       maxCentroidDoc = Math.max(maxCentroidDoc, centroids.length);
 
-      // Write centroids to the delegate format (HNSW coarse quantizer)
       if (fieldInfo.getVectorEncoding() == VectorEncoding.BYTE) {
         @SuppressWarnings("unchecked")
         KnnFieldVectorsWriter<byte[]> byteCentroidWriter =
@@ -245,7 +318,6 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
         }
       }
 
-      // Partition assignment and offline sort.
       OfflineSorter sorter = new OfflineSorter(state.directory, "spann_assign_" + fieldName);
 
       IndexOutput unsortedOut =
@@ -279,10 +351,8 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
               for (int j = 0; j < centroids.length; j++) {
                 float sim =
                     fieldInfo.getVectorSimilarityFunction().compare(currentVector, centroids[j]);
-                // Simple insertion sort for small replicationFactor
                 for (int k = 0; k < replicationFactor; k++) {
                   if (sim > bestScores[k]) {
-                    // Shift down
                     for (int l = replicationFactor - 1; l > k; l--) {
                       bestScores[l] = bestScores[l - 1];
                       bestCentroids[l] = bestCentroids[l - 1];
@@ -341,7 +411,7 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
         }
         CodecUtil.writeFooter(unsortedOut);
       }
-      writer.close(); // Cleanup temp file
+      writer.close();
 
       String sortedAssignName = sorter.sort(unsortedAssignName);
       state.directory.deleteFile(unsortedAssignName);
@@ -385,7 +455,7 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
       }
       long lengthBytes = dataOut.getFilePointer() - startOffset;
 
-      metaOut.writeVInt(0); // Single partition ID
+      metaOut.writeVInt(0);
       metaOut.writeVLong(startOffset);
       metaOut.writeVLong(lengthBytes);
 
