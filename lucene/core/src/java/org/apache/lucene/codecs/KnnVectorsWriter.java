@@ -121,8 +121,12 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     }
   }
 
-  /** Tracks state of one sub-reader that we are merging */
-  private static class FloatVectorValuesSub extends DocIDMerger.Sub {
+  /**
+   * Tracks state of one sub-reader of float vectors that we are merging.
+   *
+   * @lucene.internal
+   */
+  static class FloatVectorValuesSub extends DocIDMerger.Sub {
 
     final FloatVectorValues values;
     final KnnVectorValues.DocIndexIterator iterator;
@@ -144,7 +148,12 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     }
   }
 
-  private static class ByteVectorValuesSub extends DocIDMerger.Sub {
+  /**
+   * Tracks state of one sub-reader of byte vectors that we are merging.
+   *
+   * @lucene.internal
+   */
+  static class ByteVectorValuesSub extends DocIDMerger.Sub {
 
     final ByteVectorValues values;
     final KnnVectorValues.DocIndexIterator iterator;
@@ -303,6 +312,11 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           mergeState);
     }
 
+    /**
+     * Unified view over several segments containing float vector values.
+     *
+     * @lucene.internal
+     */
     static class MergedFloat32VectorValues extends FloatVectorValues {
       private final List<FloatVectorValuesSub> subs;
       private final DocIDMerger<FloatVectorValuesSub> docIdMerger;
@@ -311,7 +325,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       private int lastOrd = -1;
       FloatVectorValuesSub current;
 
-      private MergedFloat32VectorValues(List<FloatVectorValuesSub> subs, MergeState mergeState)
+      // package-private for testing
+      MergedFloat32VectorValues(List<FloatVectorValuesSub> subs, MergeState mergeState)
           throws IOException {
         this.subs = subs;
         docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
@@ -401,6 +416,11 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
     }
 
+    /**
+     * Unified view over several segments containing byte vector values.
+     *
+     * @lucene.internal
+     */
     static class MergedByteVectorValues extends ByteVectorValues {
       private final List<ByteVectorValuesSub> subs;
       private final DocIDMerger<ByteVectorValuesSub> docIdMerger;
@@ -410,7 +430,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       private int docId = -1;
       ByteVectorValuesSub current;
 
-      private MergedByteVectorValues(List<ByteVectorValuesSub> subs, MergeState mergeState)
+      // package-private for testing
+      MergedByteVectorValues(List<ByteVectorValuesSub> subs, MergeState mergeState)
           throws IOException {
         this.subs = subs;
         docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
@@ -423,11 +444,9 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
       @Override
       public byte[] vectorValue(int ord) throws IOException {
-        if (ord != lastOrd + 1) {
+        if (ord != lastOrd) {
           throw new IllegalStateException(
               "only supports forward iteration: ord=" + ord + ", lastOrd=" + lastOrd);
-        } else {
-          lastOrd = ord;
         }
         return current.values.vectorValue(current.index());
       }
@@ -455,6 +474,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
               index = NO_MORE_DOCS;
             } else {
               docId = current.mappedDocID;
+              ++lastOrd;
               ++index;
             }
             return docId;
