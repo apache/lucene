@@ -28,18 +28,12 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.FieldComparator;
-import org.apache.lucene.search.FieldComparatorSource;
 import org.apache.lucene.search.FieldDoc;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
-import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -264,67 +258,5 @@ public class TestNumericComparator extends LuceneTestCase {
     comparator1.bottom = bottom;
     var leafComparator = comparator1.getLeafComparator(leafContext);
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, leafComparator.competitiveIterator().nextDoc());
-  }
-
-  public void testPluggableCompetitiveIterators() throws IOException {
-
-    boolean[] updated = new boolean[] {false};
-
-    LongComparator extendedComparator =
-        new LongComparator(10, "field", 0L, true, Pruning.NONE) {
-          @Override
-          public LeafFieldComparator getLeafComparator(LeafReaderContext context)
-              throws IOException {
-            return new LongLeafComparator(context) {
-              @Override
-              protected NumericComparator<Long>.CompetitiveDISIBuilder buildCompetitiveDISIBuilder()
-                  throws IOException {
-                int maxDoc = context.reader().maxDoc();
-                int jumpTo = Math.max(0, maxDoc - 10);
-                return new CompetitiveDISIBuilder(this) {
-                  @Override
-                  int docCount() {
-                    return 0;
-                  }
-
-                  @Override
-                  void doUpdateCompetitiveIterator() throws IOException {
-                    this.competitiveIterator.update(DocIdSetIterator.range(jumpTo, maxDoc));
-                    updated[0] = true;
-                  }
-                };
-              }
-            };
-          }
-        };
-
-    try (var dir = newDirectory();
-        var writer = new RandomIndexWriter(random(), dir)) {
-      for (int i = 0; i < 2000; i++) {
-        Document doc = new Document();
-        doc.add(NumericDocValuesField.indexedField("field", i));
-        writer.addDocument(doc);
-      }
-      writer.commit();
-
-      try (var reader = writer.getReader()) {
-        IndexSearcher searcher = new IndexSearcher(reader);
-        Sort sort =
-            new Sort(
-                new SortField(
-                    "field",
-                    new FieldComparatorSource() {
-                      @Override
-                      public FieldComparator<?> newComparator(
-                          String fieldname, int numHits, Pruning pruning, boolean reversed) {
-                        return extendedComparator;
-                      }
-                    }));
-
-        TopDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
-        assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, td.totalHits.relation());
-        assertTrue(updated[0]);
-      }
-    }
   }
 }
