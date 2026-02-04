@@ -174,7 +174,8 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+* GITHUB#15663: Allow subclasses of NumericComparator to implement their own
+  CompetitiveDISIBuilder subtypes. (Alan Woodward)
 
 New Features
 ---------------------
