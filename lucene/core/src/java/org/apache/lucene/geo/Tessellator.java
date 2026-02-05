@@ -408,18 +408,31 @@ public final class Tessellator {
     // Attempt to find a common point between the HoleNode and OuterNode.
     Node sharedVertex = null;
     Node sharedVertexConnection = null;
+    // Track the leftmost vertex match (holeNode is the leftmost vertex of the hole)
+    Node leftmostSharedVertex = null;
+    Node leftmostSharedVertexConnection = null;
     Node next = outerNode;
     do {
       if (Rectangle.containsPoint(
           next.getY(), next.getX(), holeMinY, holeMaxY, holeMinX, holeMaxX)) {
         Node newSharedVertex = getSharedVertex(holeNode, next);
         if (newSharedVertex != null) {
+          // Check if this shared vertex is the leftmost point of the hole (holeNode)
+          if (isVertexEquals(newSharedVertex, holeNode)) {
+            if (leftmostSharedVertex == null) {
+              leftmostSharedVertex = newSharedVertex;
+              leftmostSharedVertexConnection = next;
+            } else if (newSharedVertex.equals(leftmostSharedVertex)) {
+              // Same vertex found again via different connection
+              leftmostSharedVertexConnection =
+                  getSharedInsideVertex(leftmostSharedVertex, leftmostSharedVertexConnection, next);
+            }
+          }
           if (sharedVertex == null) {
             sharedVertex = newSharedVertex;
             sharedVertexConnection = next;
           } else if (newSharedVertex.equals(sharedVertex)) {
-            // This can only happen if this vertex has been already used for a bridge. We need to
-            // choose the right one.
+            // Same vertex found again via different connection.
             sharedVertexConnection =
                 getSharedInsideVertex(sharedVertex, sharedVertexConnection, next);
           }
@@ -427,6 +440,15 @@ public final class Tessellator {
       }
       next = next.next;
     } while (next != outerNode);
+
+    // The leftmost vertex of the hole is a shared vertex. Prefer this connection point if it is
+    // from a hole that was already merged (higher idx), as this maintains proper connectivity
+    // for chained holes.
+    if (leftmostSharedVertex != null
+        && leftmostSharedVertexConnection.idx > sharedVertexConnection.idx) {
+      splitPolygon(leftmostSharedVertexConnection, leftmostSharedVertex, true);
+      return true;
+    }
     if (sharedVertex != null) {
       // Split the resulting polygon.
       splitPolygon(sharedVertexConnection, sharedVertex, true);
