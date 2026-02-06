@@ -426,6 +426,8 @@ Other
 
 * GITHUB#15619: Update documentation in Lucene104PostingsFormat. with 259 documents, the first 256 document ids should be  encoded as one packed block (Lyon-NEU)
 
+* GITHUB#15670: Update documentation in Lucene104PostingsWriter. since BLOCK_SIZE now is 256, so the level1 truely doc cnt should be 8192. (Lyon-NEU)
+
 Build
 ---------------------
 * Upgrade forbiddenapis to version 3.10.  (Uwe Schindler)
