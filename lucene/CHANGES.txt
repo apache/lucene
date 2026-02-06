@@ -20,7 +20,8 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* Improved performance of HNSW graph construction by using bulk vector
+  scoring in NeighborArray diversity checks. (PR#15667)
 
 Bug Fixes
 ---------------------
