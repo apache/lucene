@@ -1200,7 +1200,7 @@ public class IndexWriter
       if (infoStream.isEnabled("IW")) {
         infoStream.message("IW", "init: hit exception on init; releasing write lock: " + t);
       }
-      IOUtils.closeWhileSuppressingExceptions(t, writeLock);
+      IOUtils.closeWhileSuppressingExceptions(t, config.getMergeScheduler(), writeLock);
       writeLock = null;
       throw t;
     }
