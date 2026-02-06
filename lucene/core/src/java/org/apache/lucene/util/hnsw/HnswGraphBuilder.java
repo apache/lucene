@@ -71,6 +71,7 @@ public class HnswGraphBuilder implements HnswBuilder {
 
   private final int[] bulkScoreNodes; // for bulk scoring
   private final float[] bulkScores; // for bulk scoring
+  private final float[] diversityScratch;
   private final SplittableRandom random;
   protected final UpdateableRandomVectorScorer scorer;
   protected final HnswGraphSearcher graphSearcher;
@@ -185,6 +186,7 @@ public class HnswGraphBuilder implements HnswBuilder {
     // but enough to take advantage of bulk scoring
     this.bulkScoreNodes = new int[MAX_BULK_SCORE_NODES];
     this.bulkScores = new float[MAX_BULK_SCORE_NODES];
+    this.diversityScratch = new float[M * 2];
     entryCandidates = new GraphBuilderKnnCollector(1);
     beamCandidates = new GraphBuilderKnnCollector(beamWidth);
     beamCandidates0 = new GraphBuilderKnnCollector(Math.min(beamWidth / 2, M * 3));
@@ -439,7 +441,7 @@ public class HnswGraphBuilder implements HnswBuilder {
         if (nbrsOfNbr.nodes()[j] == node) return;
       }
     }
-    nbrsOfNbr.addAndEnsureDiversity(node, score, nbr, scorer);
+    nbrsOfNbr.addAndEnsureDiversity(node, score, nbr, scorer, diversityScratch);
   }
 
   /**
