@@ -117,9 +117,14 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
   public boolean collect(int docId, float similarity) {
     boolean collected = super.collect(docId, similarity);
     if (collected) {
-      // Update the global accumulator with the new competitive hit.
-      // We encode with the absolute docId (docId + docBase).
-      minScoreAcc.accumulate(DocScoreEncoder.encode(docId + docBase, similarity));
+      // Share the k-th best score (floor of the top-k queue) rather than each collected
+      // doc's score. The floor is Float.NEGATIVE_INFINITY until the queue is full, so we
+      // only accumulate once we have a meaningful threshold. This gives a gentler global
+      // bar that maintains high recall while still enabling cross-segment pruning.
+      float floorScore = super.minCompetitiveSimilarity();
+      if (floorScore > Float.NEGATIVE_INFINITY) {
+        minScoreAcc.accumulate(DocScoreEncoder.encode(docId + docBase, floorScore));
+      }
     }
     return collected;
   }
