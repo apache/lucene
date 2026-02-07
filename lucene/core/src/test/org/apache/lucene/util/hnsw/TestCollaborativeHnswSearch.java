@@ -346,6 +346,7 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
    * (standard), then searches with a shared collaborative pruning bar, and asserts that the
    * collaborative approach visits significantly fewer nodes overall.
    */
+  @Nightly
   public void testMultiIndexHighKPerformance() throws IOException {
     int numGraphs = 5;
     int vectorsPerGraph = 5000;
@@ -428,6 +429,7 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
    * separate Directory instances combined via MultiReader. Uses tracking query subclasses to
    * capture per-leaf visited counts through the full IndexSearcher search path.
    */
+  @Nightly
   public void testMultiIndexCollaborativeEndToEnd() throws IOException {
     int numIndices = 5;
     int docsPerIndex = 2000;
