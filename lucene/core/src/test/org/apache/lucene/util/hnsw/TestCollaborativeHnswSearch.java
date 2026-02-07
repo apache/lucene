@@ -175,6 +175,8 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
         collaborativeVisited < standardVisited);
   }
 
+  // Builds a 30K-vector graph with K=1000; takes ~8-12s due to graph construction cost.
+  @Nightly
   public void testHighKPruning() throws IOException {
     // High K (1000) on a larger dataset
     int nDoc = 30000;
@@ -207,6 +209,8 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
         collaborativeVisited < (standardVisited / 2));
   }
 
+  // Builds a 10K-vector graph at 128 dimensions; takes ~5-7s due to high-dim scoring cost.
+  @Nightly
   public void testHighDimensionPruning() throws IOException {
     // Standard 128-dimension embeddings
     int nDoc = 10000;
