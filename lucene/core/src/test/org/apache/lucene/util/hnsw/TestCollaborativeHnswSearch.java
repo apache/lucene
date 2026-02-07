@@ -18,7 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FloatVectorValues;
@@ -135,7 +135,7 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
     TopDocs topDocs = standardCollector.topDocs();
     float highBar = topDocs.scoreDocs[4].score;
 
-    AtomicLong globalMinSimBits = new AtomicLong(Float.floatToRawIntBits(-1.0f));
+    AtomicInteger globalMinSimBits = new AtomicInteger(Float.floatToRawIntBits(-1.0f));
     CollaborativeKnnCollector collaborativeCollector =
         new CollaborativeKnnCollector(10, Integer.MAX_VALUE, globalMinSimBits);
 
@@ -177,7 +177,7 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
     // Simulate another shard having found the top 100 results already
     TopDocs topDocs = standardCollector.topDocs();
     float globalBar = topDocs.scoreDocs[99].score;
-    AtomicLong globalMinSimBits = new AtomicLong(Float.floatToRawIntBits(globalBar));
+    AtomicInteger globalMinSimBits = new AtomicInteger(Float.floatToRawIntBits(globalBar));
     CollaborativeKnnCollector collaborativeCollector =
         new CollaborativeKnnCollector(k, Integer.MAX_VALUE, globalMinSimBits);
     HnswGraphSearcher.search(scorer, collaborativeCollector, hnsw, null);
@@ -208,7 +208,7 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
 
     // High bar from global search
     float highBar = standardCollector.topDocs().scoreDocs[10].score;
-    AtomicLong globalMinSimBits = new AtomicLong(Float.floatToRawIntBits(highBar));
+    AtomicInteger globalMinSimBits = new AtomicInteger(Float.floatToRawIntBits(highBar));
     CollaborativeKnnCollector collaborativeCollector =
         new CollaborativeKnnCollector(100, Integer.MAX_VALUE, globalMinSimBits);
     HnswGraphSearcher.search(scorer, collaborativeCollector, hnsw, null);

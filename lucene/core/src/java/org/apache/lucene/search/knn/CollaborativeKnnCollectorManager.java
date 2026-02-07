@@ -18,21 +18,21 @@
 package org.apache.lucene.search.knn;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.CollaborativeKnnCollector;
 import org.apache.lucene.search.KnnCollector;
 
 /**
  * A {@link KnnCollectorManager} that creates {@link CollaborativeKnnCollector} instances sharing a
- * single {@link AtomicLong} for global pruning.
+ * single {@link AtomicInteger} for global pruning.
  *
  * @lucene.experimental
  */
 public class CollaborativeKnnCollectorManager implements KnnCollectorManager {
 
   private final int k;
-  private final AtomicLong globalMinSimBits;
+  private final AtomicInteger globalMinSimBits;
 
   /**
    * Create a new CollaborativeKnnCollectorManager
@@ -40,7 +40,7 @@ public class CollaborativeKnnCollectorManager implements KnnCollectorManager {
    * @param k number of neighbors to collect
    * @param globalMinSimBits shared atomic float bits for global pruning
    */
-  public CollaborativeKnnCollectorManager(int k, AtomicLong globalMinSimBits) {
+  public CollaborativeKnnCollectorManager(int k, AtomicInteger globalMinSimBits) {
     this.k = k;
     this.globalMinSimBits = globalMinSimBits;
   }

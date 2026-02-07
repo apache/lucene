@@ -17,22 +17,22 @@
 
 package org.apache.lucene.search;
 
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 
 /**
  * A {@link KnnCollector} that allows for collaborative search by sharing a global minimum
  * competitive similarity across multiple threads or nodes.
  *
- * <p>This collector wraps a {@link TopKnnCollector} and an {@link AtomicLong} (storing float bits).
- * It ensures that the search can be pruned by scores found in other concurrent search processes
- * (e.g., other shards in a cluster).
+ * <p>This collector wraps a {@link TopKnnCollector} and an {@link AtomicInteger} (storing float
+ * bits). It ensures that the search can be pruned by scores found in other concurrent search
+ * processes (e.g., other shards in a cluster).
  *
  * @lucene.experimental
  */
 public class CollaborativeKnnCollector extends KnnCollector.Decorator {
 
-  private final AtomicLong globalMinSimBits;
+  private final AtomicInteger globalMinSimBits;
 
   /**
    * Create a new CollaborativeKnnCollector
@@ -41,7 +41,7 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
    * @param visitLimit maximum number of nodes to visit
    * @param globalMinSimBits shared atomic float bits for global pruning
    */
-  public CollaborativeKnnCollector(int k, int visitLimit, AtomicLong globalMinSimBits) {
+  public CollaborativeKnnCollector(int k, int visitLimit, AtomicInteger globalMinSimBits) {
     this(new TopKnnCollector(k, visitLimit), globalMinSimBits);
   }
 
@@ -54,11 +54,11 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
    * @param globalMinSimBits shared atomic float bits for global pruning
    */
   public CollaborativeKnnCollector(
-      int k, int visitLimit, KnnSearchStrategy searchStrategy, AtomicLong globalMinSimBits) {
+      int k, int visitLimit, KnnSearchStrategy searchStrategy, AtomicInteger globalMinSimBits) {
     this(new TopKnnCollector(k, visitLimit, searchStrategy), globalMinSimBits);
   }
 
-  private CollaborativeKnnCollector(KnnCollector delegate, AtomicLong globalMinSimBits) {
+  private CollaborativeKnnCollector(KnnCollector delegate, AtomicInteger globalMinSimBits) {
     super(delegate);
     this.globalMinSimBits = globalMinSimBits;
   }
@@ -66,7 +66,7 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
   @Override
   public float minCompetitiveSimilarity() {
     float localMin = super.minCompetitiveSimilarity();
-    float globalMin = Float.intBitsToFloat((int) globalMinSimBits.get());
+    float globalMin = Float.intBitsToFloat(globalMinSimBits.get());
     return Math.max(localMin, globalMin);
   }
 
@@ -78,8 +78,8 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
   public void updateGlobalMinSimilarity(float score) {
     int newBits = Float.floatToRawIntBits(score);
     while (true) {
-      long currentBits = globalMinSimBits.get();
-      if (score <= Float.intBitsToFloat((int) currentBits)) {
+      int currentBits = globalMinSimBits.get();
+      if (score <= Float.intBitsToFloat(currentBits)) {
         break;
       }
       if (globalMinSimBits.compareAndSet(currentBits, newBits)) {
