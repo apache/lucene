@@ -27,11 +27,10 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.CollaborativeKnnCollector;
-import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.util.ArrayUtil;
 import org.junit.Before;
 
@@ -134,14 +133,15 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
 
     // 2. Collaborative search where we raise the bar externally
     TopDocs topDocs = standardCollector.topDocs();
-    float highBar = topDocs.scoreDocs[4].score; 
+    float highBar = topDocs.scoreDocs[4].score;
 
     AtomicLong globalMinSimBits = new AtomicLong(Float.floatToRawIntBits(-1.0f));
-    CollaborativeKnnCollector collaborativeCollector = new CollaborativeKnnCollector(10, Integer.MAX_VALUE, globalMinSimBits);
-    
+    CollaborativeKnnCollector collaborativeCollector =
+        new CollaborativeKnnCollector(10, Integer.MAX_VALUE, globalMinSimBits);
+
     // Set the high bar to simulate another shard having found these matches
     globalMinSimBits.set(Float.floatToRawIntBits(highBar));
-    
+
     HnswGraphSearcher.search(scorer, collaborativeCollector, hnsw, null);
     long collaborativeVisited = collaborativeCollector.visitedCount();
 
@@ -149,7 +149,110 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
     System.out.println("Collaborative visited: " + collaborativeVisited);
     System.out.println("Pruning bar: " + highBar);
 
-    assertTrue("Collaborative search (" + collaborativeVisited + ") should visit fewer nodes than standard search (" + standardVisited + ")", 
-               collaborativeVisited < standardVisited);
+    assertTrue(
+        "Collaborative search ("
+            + collaborativeVisited
+            + ") should visit fewer nodes than standard search ("
+            + standardVisited
+            + ")",
+        collaborativeVisited < standardVisited);
+  }
+
+  public void testHighKPruning() throws IOException {
+
+    // High K (1000) on a larger dataset
+
+    int nDoc = 30000;
+
+    int k = 1000;
+
+    MockVectorValues vectors = (MockVectorValues) vectorValues(nDoc, 16);
+
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, 42);
+
+    OnHeapHnswGraph hnsw = builder.build(vectors.size());
+
+    float[] target = randomVector(16);
+
+    RandomVectorScorer scorer = buildScorer(vectors, target);
+
+    TopKnnCollector standardCollector = new TopKnnCollector(k, Integer.MAX_VALUE);
+
+    HnswGraphSearcher.search(scorer, standardCollector, hnsw, null);
+
+    long standardVisited = standardCollector.visitedCount();
+
+    // Simulate another shard having found the top 100 results already
+
+    TopDocs topDocs = standardCollector.topDocs();
+
+    float globalBar = topDocs.scoreDocs[99].score;
+
+    AtomicLong globalMinSimBits = new AtomicLong(Float.floatToRawIntBits(globalBar));
+
+    CollaborativeKnnCollector collaborativeCollector =
+        new CollaborativeKnnCollector(k, Integer.MAX_VALUE, globalMinSimBits);
+
+    HnswGraphSearcher.search(scorer, collaborativeCollector, hnsw, null);
+
+    long collaborativeVisited = collaborativeCollector.visitedCount();
+
+    System.out.println("High-K Standard visited: " + standardVisited);
+
+    System.out.println("High-K Collaborative visited: " + collaborativeVisited);
+
+    assertTrue(
+        "High-K Collaborative search should visit significantly fewer nodes",
+        collaborativeVisited < (standardVisited / 2));
+  }
+
+  public void testHighDimensionPruning() throws IOException {
+
+    // Standard 128-dimension embeddings
+
+    int nDoc = 10000;
+
+    int dim = 128;
+
+    MockVectorValues vectors = (MockVectorValues) vectorValues(nDoc, dim);
+
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, 42);
+
+    OnHeapHnswGraph hnsw = builder.build(vectors.size());
+
+    float[] target = randomVector(dim);
+
+    RandomVectorScorer scorer = buildScorer(vectors, target);
+
+    TopKnnCollector standardCollector = new TopKnnCollector(100, Integer.MAX_VALUE);
+
+    HnswGraphSearcher.search(scorer, standardCollector, hnsw, null);
+
+    long standardVisited = standardCollector.visitedCount();
+
+    // High bar from global search
+
+    float highBar = standardCollector.topDocs().scoreDocs[10].score;
+
+    AtomicLong globalMinSimBits = new AtomicLong(Float.floatToRawIntBits(highBar));
+
+    CollaborativeKnnCollector collaborativeCollector =
+        new CollaborativeKnnCollector(100, Integer.MAX_VALUE, globalMinSimBits);
+
+    HnswGraphSearcher.search(scorer, collaborativeCollector, hnsw, null);
+
+    long collaborativeVisited = collaborativeCollector.visitedCount();
+
+    System.out.println("High-Dim Standard visited: " + standardVisited);
+
+    System.out.println("High-Dim Collaborative visited: " + collaborativeVisited);
+
+    assertTrue(
+        "High-Dim Collaborative search should prune effectively",
+        collaborativeVisited < standardVisited);
   }
 }
