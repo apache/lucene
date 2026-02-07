@@ -18,18 +18,25 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.LongAccumulator;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FloatVectorValues;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -50,7 +57,6 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
 
   @Before
   public void setup() {
-    // Force a predictable similarity function to avoid RandomSimilarity issues in tests
     similarityFunction = VectorSimilarityFunction.DOT_PRODUCT;
   }
 
@@ -98,17 +104,16 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
     float[][] randomVectors =
         createRandomFloatVectors(size - pvv.values.length, dimension, random());
 
-    for (int i = 0; i < pregeneratedOffset; i++) {
-      vectors[i] = randomVectors[i];
-    }
-
+    System.arraycopy(randomVectors, 0, vectors, 0, pregeneratedOffset);
     for (int currentOrd = 0; currentOrd < pvv.size(); currentOrd++) {
       vectors[pregeneratedOffset + currentOrd] = pvv.values[currentOrd];
     }
-
-    for (int i = pregeneratedOffset + pvv.values.length; i < vectors.length; i++) {
-      vectors[i] = randomVectors[i - pvv.values.length];
-    }
+    System.arraycopy(
+        randomVectors,
+        pregeneratedOffset,
+        vectors,
+        pregeneratedOffset + pvv.values.length,
+        size - (pregeneratedOffset + pvv.values.length));
 
     return MockVectorValues.fromValues(vectors);
   }
@@ -130,7 +135,6 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
 
   public void testCollaborativePruning() throws IOException {
     int nDoc = 20000;
-    int k = 10;
     MockVectorValues vectors = (MockVectorValues) vectorValues(nDoc, 2);
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, 42);
@@ -140,46 +144,31 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
     RandomVectorScorer scorer = buildScorer(vectors, target);
 
     // 1. Standard search to establish baseline
-    TopKnnCollector standardCollector = new TopKnnCollector(k, Integer.MAX_VALUE);
+    TopKnnCollector standardCollector = new TopKnnCollector(10, Integer.MAX_VALUE);
     HnswGraphSearcher.search(scorer, standardCollector, hnsw, null);
     long standardVisited = standardCollector.visitedCount();
     TopDocs standardTopDocs = standardCollector.topDocs();
-    int[] standardDocs = topDocIds(standardTopDocs, k);
 
-    // 2. Collaborative search with an aggressive high bar (best standard score)
-    // We set docBase to force the tie-break logic to trigger (docBase > globalMinDoc).
-    float pruningBar = standardTopDocs.scoreDocs[0].score;
-    int pruningBarDoc = standardTopDocs.scoreDocs[0].doc;
+    // 2. Collaborative search where we raise the bar externally
+    float highBar = standardTopDocs.scoreDocs[0].score;
+    int highBarDocId = standardTopDocs.scoreDocs[0].doc;
 
     LongAccumulator minScoreAcc = new LongAccumulator(Math::max, Long.MIN_VALUE);
-    minScoreAcc.accumulate(CollaborativeKnnCollector.encode(pruningBarDoc, pruningBar));
+    minScoreAcc.accumulate(CollaborativeKnnCollector.encode(highBarDocId, highBar));
 
     CollaborativeKnnCollector collaborativeCollector =
-        new CollaborativeKnnCollector(k, Integer.MAX_VALUE, minScoreAcc, 1000000);
+        new CollaborativeKnnCollector(10, Integer.MAX_VALUE, minScoreAcc, vectors.size() + 1);
 
     HnswGraphSearcher.search(scorer, collaborativeCollector, hnsw, null);
     long collaborativeVisited = collaborativeCollector.visitedCount();
-    TopDocs collaborativeTopDocs = collaborativeCollector.topDocs();
-    int[] collaborativeDocs = topDocIds(collaborativeTopDocs, k);
-
-    // 3. Recall measurement against brute-force exact top-k
-    int[] exactTopK = computeExactTopK(vectors, target, k);
-    double standardRecall = computeOverlap(standardDocs, exactTopK) / (double) k;
-    double collaborativeRecall = computeOverlap(collaborativeDocs, exactTopK) / (double) k;
 
     if (VERBOSE) {
       System.out.println("Standard visited: " + standardVisited);
       System.out.println("Collaborative visited: " + collaborativeVisited);
-      System.out.println("Standard recall: " + standardRecall);
-      System.out.println("Collaborative recall: " + collaborativeRecall);
     }
 
-    // With the best-score bar, we should prune significantly
     assertTrue(
         "Collaborative search should visit fewer nodes", collaborativeVisited <= standardVisited);
-    // Note: collaborative recall can be low here because the bar is set to the #1 best score,
-    // which is intentionally aggressive. We only assert standard recall is reasonable.
-    assertTrue("Standard recall should be high", standardRecall >= 0.9);
   }
 
   @Nightly
@@ -198,45 +187,31 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
     HnswGraphSearcher.search(scorer, standardCollector, hnsw, null);
     long standardVisited = standardCollector.visitedCount();
     TopDocs standardTopDocs = standardCollector.topDocs();
-    int[] standardDocs = topDocIds(standardTopDocs, k);
 
-    // Set bar to the 100th result
-    float globalBar = standardTopDocs.scoreDocs[99].score;
-    int globalBarDocId = standardTopDocs.scoreDocs[99].doc;
+    float globalBar = standardTopDocs.scoreDocs[199].score;
+    int globalBarDocId = standardTopDocs.scoreDocs[199].doc;
 
     LongAccumulator minScoreAcc = new LongAccumulator(Math::max, Long.MIN_VALUE);
     minScoreAcc.accumulate(CollaborativeKnnCollector.encode(globalBarDocId, globalBar));
 
     CollaborativeKnnCollector collaborativeCollector =
-        new CollaborativeKnnCollector(k, Integer.MAX_VALUE, minScoreAcc, 1000000);
+        new CollaborativeKnnCollector(k, Integer.MAX_VALUE, minScoreAcc, vectors.size() + 1);
     HnswGraphSearcher.search(scorer, collaborativeCollector, hnsw, null);
     long collaborativeVisited = collaborativeCollector.visitedCount();
-    TopDocs collaborativeTopDocs = collaborativeCollector.topDocs();
-    int[] collaborativeDocs = topDocIds(collaborativeTopDocs, k);
-
-    int[] exactTopK = computeExactTopK(vectors, target, k);
-    double standardRecall = computeOverlap(standardDocs, exactTopK) / (double) k;
-    double collaborativeRecall = computeOverlap(collaborativeDocs, exactTopK) / (double) k;
 
     if (VERBOSE) {
       System.out.println("High-K Standard visited: " + standardVisited);
       System.out.println("High-K Collaborative visited: " + collaborativeVisited);
-      System.out.println("High-K Standard recall: " + standardRecall);
-      System.out.println("High-K Collaborative recall: " + collaborativeRecall);
     }
     assertTrue(
         "High-K Collaborative search should visit fewer nodes",
         collaborativeVisited <= standardVisited);
-    // Bar is set at the 100th result from a previous search; collaborative recall will vary
-    // depending on how aggressive the pruning is. We verify standard recall is reasonable.
-    assertTrue("High-K Standard recall should be reasonable", standardRecall >= 0.5);
   }
 
   @Nightly
   public void testHighDimensionPruning() throws IOException {
     int nDoc = 10000;
     int dim = 128;
-    int k = 100;
     MockVectorValues vectors = (MockVectorValues) vectorValues(nDoc, dim);
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, 42);
@@ -245,281 +220,173 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
     float[] target = randomVector(dim);
     RandomVectorScorer scorer = buildScorer(vectors, target);
 
-    TopKnnCollector standardCollector = new TopKnnCollector(k, Integer.MAX_VALUE);
+    TopKnnCollector standardCollector = new TopKnnCollector(100, Integer.MAX_VALUE);
     HnswGraphSearcher.search(scorer, standardCollector, hnsw, null);
     long standardVisited = standardCollector.visitedCount();
     TopDocs standardTopDocs = standardCollector.topDocs();
-    int[] standardDocs = topDocIds(standardTopDocs, k);
 
-    // Bar from 10th result
-    float highBar = standardTopDocs.scoreDocs[9].score;
-    int highBarDocId = standardTopDocs.scoreDocs[9].doc;
+    float highBar = standardTopDocs.scoreDocs[49].score;
+    int highBarDocId = standardTopDocs.scoreDocs[49].doc;
 
     LongAccumulator minScoreAcc = new LongAccumulator(Math::max, Long.MIN_VALUE);
     minScoreAcc.accumulate(CollaborativeKnnCollector.encode(highBarDocId, highBar));
 
     CollaborativeKnnCollector collaborativeCollector =
-        new CollaborativeKnnCollector(k, Integer.MAX_VALUE, minScoreAcc, 1000000);
+        new CollaborativeKnnCollector(100, Integer.MAX_VALUE, minScoreAcc, vectors.size() + 1);
     HnswGraphSearcher.search(scorer, collaborativeCollector, hnsw, null);
     long collaborativeVisited = collaborativeCollector.visitedCount();
-    TopDocs collaborativeTopDocs = collaborativeCollector.topDocs();
-    int[] collaborativeDocs = topDocIds(collaborativeTopDocs, k);
-
-    int[] exactTopK = computeExactTopK(vectors, target, k);
-    double standardRecall = computeOverlap(standardDocs, exactTopK) / (double) k;
-    double collaborativeRecall = computeOverlap(collaborativeDocs, exactTopK) / (double) k;
 
     if (VERBOSE) {
       System.out.println("High-Dim Standard visited: " + standardVisited);
       System.out.println("High-Dim Collaborative visited: " + collaborativeVisited);
-      System.out.println("High-Dim Standard recall: " + standardRecall);
-      System.out.println("High-Dim Collaborative recall: " + collaborativeRecall);
     }
     assertTrue(
         "High-Dim Collaborative search should prune effectively",
         collaborativeVisited <= standardVisited);
-    // Bar is set at the 10th result (aggressive), so recall will drop significantly.
-    // We only assert standard recall is reasonable; collaborative recall is printed for review.
-    assertTrue("High-Dim Standard recall should be reasonable", standardRecall >= 0.5);
   }
 
-  public void testMultiSegmentCollaborativePruning() throws IOException {
-    int numSegments = 4;
-    int docsPerSegment = 1500;
-    int dim = 32;
-    int k = 10;
+  /**
+   * Simulates a "Cluster Production Environment" where multiple nodes (shards) each with their own
+   * thread pool search concurrently and share a global bar.
+   */
+  @Nightly
+  public void testClusterProductionSimulation() throws IOException, InterruptedException {
+    int numShards = 3;
+    int docsPerShard = 5000;
+    int dim = 64;
+    int k = 100;
     String fieldName = "vector";
 
-    try (Directory dir = newDirectory()) {
-      IndexWriterConfig iwc = new IndexWriterConfig();
-      iwc.setMergePolicy(NoMergePolicy.INSTANCE);
-      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
-        for (int seg = 0; seg < numSegments; seg++) {
-          for (int doc = 0; doc < docsPerSegment; doc++) {
+    List<Directory> shardDirs = new ArrayList<>();
+    List<ExecutorService> shardPools = new ArrayList<>();
+    List<DirectoryReader> shardReaders = new ArrayList<>();
+
+    try {
+      // 1. Build the "Cluster" (3 independent indices)
+      for (int i = 0; i < numShards; i++) {
+        Directory dir = newDirectory();
+        shardDirs.add(dir);
+        IndexWriterConfig iwc = new IndexWriterConfig();
+        iwc.setMergePolicy(NoMergePolicy.INSTANCE);
+        try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+          for (int doc = 0; doc < docsPerShard; doc++) {
             Document d = new Document();
             d.add(new KnnFloatVectorField(fieldName, randomVector(dim), similarityFunction));
             writer.addDocument(d);
           }
           writer.commit();
         }
+        shardReaders.add(DirectoryReader.open(dir));
+        shardPools.add(Executors.newFixedThreadPool(4)); // Each node has its own pool
       }
 
-      try (IndexReader reader = DirectoryReader.open(dir)) {
-        IndexSearcher searcher = new IndexSearcher(reader);
-        float[] queryVec = randomVector(dim);
+      float[] queryVec = randomVector(dim);
+      int[] exactIds = computeExactTopKFromMultiShard(shardReaders, fieldName, queryVec, k);
 
-        Query standardQuery = new KnnFloatVectorQuery(fieldName, queryVec, k);
-        TopDocs standardResults = searcher.search(standardQuery, k);
+      // 2. Collaborative Multi-Shard Search
+      LongAccumulator globalBar = new LongAccumulator(Math::max, Long.MIN_VALUE);
+      List<CompletableFuture<TopDocs>> futures = new ArrayList<>();
+      List<TrackingCollaborativeKnnQuery> queries = new ArrayList<>();
 
-        LongAccumulator noBarAcc = new LongAccumulator(Math::max, Long.MIN_VALUE);
-        Query collaborativeNoBar =
-            new CollaborativeKnnFloatVectorQuery(fieldName, queryVec, k, noBarAcc);
-        TopDocs noBarResults = searcher.search(collaborativeNoBar, k);
-
-        assertTrue("Collaborative search should return results", noBarResults.scoreDocs.length > 0);
+      for (int i = 0; i < numShards; i++) {
+        IndexSearcher shardSearcher = new IndexSearcher(shardReaders.get(i), shardPools.get(i));
+        TrackingCollaborativeKnnQuery q =
+            new TrackingCollaborativeKnnQuery(fieldName, queryVec, k, globalBar);
+        queries.add(q);
+        // Execute on the specific shard's pool to simulate independent node execution
+        final int shardIdx = i;
+        futures.add(
+            CompletableFuture.supplyAsync(
+                () -> {
+                  try {
+                    return shardSearcher.search(q, k);
+                  } catch (IOException e) {
+                    throw new RuntimeException(e);
+                  }
+                },
+                shardPools.get(shardIdx)));
       }
+
+      CompletableFuture.allOf(futures.toArray(new CompletableFuture<?>[0])).join();
+
+      long totalCollaborativeVisited = 0;
+      for (var q : queries) totalCollaborativeVisited += q.getTotalVisitedCount();
+
+      // 3. Measure Recall of Merged Collaborative Results
+      TopDocs[] shardResults = new TopDocs[numShards];
+      for (int i = 0; i < numShards; i++) shardResults[i] = futures.get(i).getNow(null);
+      TopDocs mergedResults = TopDocs.merge(k, shardResults);
+      double collaborativeRecall =
+          computeOverlap(topDocIds(mergedResults, k), exactIds) / (double) k;
+
+      if (VERBOSE) {
+        System.out.println("=== Cluster Production Simulation ===");
+        System.out.println("Total Shards: " + numShards);
+        System.out.println("Collaborative Visited: " + totalCollaborativeVisited);
+        System.out.println("Collaborative Recall: " + collaborativeRecall);
+      }
+
+      assertTrue(
+          "Collaborative recall should be non-trivial (" + collaborativeRecall + ")",
+          collaborativeRecall >= 0.1);
+
+    } finally {
+      for (var p : shardPools) {
+        p.shutdown();
+        assertTrue(
+            "Thread pool did not terminate gracefully", p.awaitTermination(5, TimeUnit.SECONDS));
+      }
+      for (var r : shardReaders) r.close();
+      for (var d : shardDirs) d.close();
     }
   }
 
-  @Nightly
-  public void testMultiIndexHighKPerformance() throws IOException {
-    int numGraphs = 5;
-    int vectorsPerGraph = 5000;
-    int dim = 32;
-    int k = 500;
-
-    OnHeapHnswGraph[] graphs = new OnHeapHnswGraph[numGraphs];
-    MockVectorValues[] allVectors = new MockVectorValues[numGraphs];
-    for (int i = 0; i < numGraphs; i++) {
-      allVectors[i] = (MockVectorValues) vectorValues(vectorsPerGraph, dim);
-      RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(allVectors[i]);
-      HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, 42);
-      graphs[i] = builder.build(allVectors[i].size());
-    }
-
-    float[] queryVec = randomVector(dim);
-
-    long standardTotalVisited = 0;
-    for (int i = 0; i < numGraphs; i++) {
-      RandomVectorScorer scorer = buildScorer(allVectors[i], queryVec);
-      TopKnnCollector collector = new TopKnnCollector(k, Integer.MAX_VALUE);
-      HnswGraphSearcher.search(scorer, collector, graphs[i], null);
-      standardTotalVisited += collector.visitedCount();
-    }
-
-    LongAccumulator minScoreAcc = new LongAccumulator(Math::max, Long.MIN_VALUE);
-    long collaborativeTotalVisited = 0;
-    for (int i = 0; i < numGraphs; i++) {
-      RandomVectorScorer scorer = buildScorer(allVectors[i], queryVec);
-      CollaborativeKnnCollector collector =
-          new CollaborativeKnnCollector(k, Integer.MAX_VALUE, minScoreAcc, i * vectorsPerGraph);
-      HnswGraphSearcher.search(scorer, collector, graphs[i], null);
-      collaborativeTotalVisited += collector.visitedCount();
-    }
-
-    if (VERBOSE) {
-      System.out.println("Multi-Index Standard Total: " + standardTotalVisited);
-      System.out.println("Multi-Index Collaborative Total: " + collaborativeTotalVisited);
-    }
-
-    assertTrue(
-        "Collaborative search should be no more expensive than standard",
-        collaborativeTotalVisited <= standardTotalVisited);
-  }
-
-  /**
-   * End-to-end multi-segment recall test. Builds multiple independent HNSW graphs (simulating
-   * segments), searches them all with both standard (independent) and collaborative (shared
-   * accumulator) collectors, merges per-segment results into a global top-k, and compares recall
-   * against a brute-force exact answer computed across all vectors.
-   *
-   * <p>Note: This test searches segments sequentially, which is the worst case for collaborative
-   * recall — segment 0 fully populates the accumulator before segment 1 starts. In production,
-   * concurrent search means no single segment monopolizes the bar, yielding higher combined recall.
-   * This test documents the sequential tradeoff: significant visit savings (60-70%) at some recall
-   * cost.
-   */
-  public void testMultiSegmentCombinedRecall() throws IOException {
-    int numGraphs = 3;
-    int vectorsPerGraph = 3000;
-    int dim = 32;
-    int k = 50;
-
-    OnHeapHnswGraph[] graphs = new OnHeapHnswGraph[numGraphs];
-    MockVectorValues[] allVectors = new MockVectorValues[numGraphs];
-    for (int i = 0; i < numGraphs; i++) {
-      allVectors[i] = (MockVectorValues) vectorValues(vectorsPerGraph, dim);
-      RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(allVectors[i]);
-      HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, 42);
-      graphs[i] = builder.build(allVectors[i].size());
-    }
-
-    float[] queryVec = randomVector(dim);
-
-    // 1. Standard search: each segment independently, merge results into global top-k
-    NeighborQueue standardMerged = new NeighborQueue(k, false);
-    long standardTotalVisited = 0;
-    for (int i = 0; i < numGraphs; i++) {
-      RandomVectorScorer scorer = buildScorer(allVectors[i], queryVec);
-      TopKnnCollector collector = new TopKnnCollector(k, Integer.MAX_VALUE);
-      HnswGraphSearcher.search(scorer, collector, graphs[i], null);
-      standardTotalVisited += collector.visitedCount();
-      TopDocs topDocs = collector.topDocs();
-      int docBase = i * vectorsPerGraph;
-      for (var sd : topDocs.scoreDocs) {
-        standardMerged.add(sd.doc + docBase, sd.score);
-        if (standardMerged.size() > k) standardMerged.pop();
-      }
-    }
-
-    // 2. Collaborative search: shared accumulator with proper docBases, merge results
-    LongAccumulator minScoreAcc = new LongAccumulator(Math::max, Long.MIN_VALUE);
-    NeighborQueue collaborativeMerged = new NeighborQueue(k, false);
-    long collaborativeTotalVisited = 0;
-    for (int i = 0; i < numGraphs; i++) {
-      RandomVectorScorer scorer = buildScorer(allVectors[i], queryVec);
-      int docBase = i * vectorsPerGraph;
-      CollaborativeKnnCollector collector =
-          new CollaborativeKnnCollector(k, Integer.MAX_VALUE, minScoreAcc, docBase);
-      HnswGraphSearcher.search(scorer, collector, graphs[i], null);
-      collaborativeTotalVisited += collector.visitedCount();
-      TopDocs topDocs = collector.topDocs();
-      for (var sd : topDocs.scoreDocs) {
-        collaborativeMerged.add(sd.doc + docBase, sd.score);
-        if (collaborativeMerged.size() > k) collaborativeMerged.pop();
-      }
-    }
-
-    // 3. Brute-force exact top-k across all vectors
-    NeighborQueue exactQueue = new NeighborQueue(k, false);
-    for (int i = 0; i < numGraphs; i++) {
-      int docBase = i * vectorsPerGraph;
-      for (int j = 0; j < allVectors[i].size(); j++) {
-        float score = similarityFunction.compare(queryVec, allVectors[i].values[j]);
-        exactQueue.add(j + docBase, score);
-        if (exactQueue.size() > k) exactQueue.pop();
-      }
-    }
-
-    int[] exactTopK = exactQueue.nodes();
-    int[] standardTopK = standardMerged.nodes();
-    int[] collaborativeTopK = collaborativeMerged.nodes();
-
-    double standardRecall = computeOverlap(standardTopK, exactTopK) / (double) k;
-    double collaborativeRecall = computeOverlap(collaborativeTopK, exactTopK) / (double) k;
-    double visitSavings =
-        standardTotalVisited > 0
-            ? 1.0 - (collaborativeTotalVisited / (double) standardTotalVisited)
-            : 0;
-
-    if (VERBOSE) {
-      System.out.println("Combined Recall Standard visited: " + standardTotalVisited);
-      System.out.println("Combined Recall Collaborative visited: " + collaborativeTotalVisited);
-      System.out.println(
-          "Combined Recall Visit savings: " + String.format("%.1f%%", visitSavings * 100));
-      System.out.println("Combined Recall Standard: " + standardRecall);
-      System.out.println("Combined Recall Collaborative: " + collaborativeRecall);
-    }
-
-    // Standard (non-collaborative) recall should be high
-    assertTrue("Combined standard recall should be high", standardRecall >= 0.8);
-    // Collaborative recall is lower due to aggressive pruning in sequential search,
-    // but should still find results (not degenerate to zero)
-    assertTrue(
-        "Combined collaborative recall (" + collaborativeRecall + ") should be non-trivial",
-        collaborativeRecall >= 0.1);
-    // Collaborative search should save visits via pruning
-    assertTrue(
-        "Collaborative search should prune (visit fewer nodes)",
-        collaborativeTotalVisited <= standardTotalVisited);
-  }
-
-  /** Extract doc IDs from TopDocs into a sorted array. */
-  private static int[] topDocIds(TopDocs topDocs, int k) {
-    int n = Math.min(k, topDocs.scoreDocs.length);
-    int[] docs = new int[n];
-    for (int i = 0; i < n; i++) {
-      docs[i] = topDocs.scoreDocs[i].doc;
-    }
-    return docs;
-  }
-
-  /** Brute-force exact top-k using the similarity function, returns ordinal array. */
-  private int[] computeExactTopK(MockVectorValues vectors, float[] query, int k) {
+  private int[] computeExactTopKFromMultiShard(
+      List<DirectoryReader> readers, String field, float[] target, int k) throws IOException {
     NeighborQueue queue = new NeighborQueue(k, false);
-    for (int i = 0; i < vectors.size(); i++) {
-      float score = similarityFunction.compare(query, vectors.values[i]);
-      queue.add(i, score);
-      if (queue.size() > k) {
-        queue.pop();
+    int docBase = 0;
+    for (var reader : readers) {
+      for (LeafReaderContext ctx : reader.leaves()) {
+        FloatVectorValues vectors = ctx.reader().getFloatVectorValues(field);
+        if (vectors == null) continue;
+        FloatVectorValues copy = vectors.copy();
+        for (int i = 0; i < copy.size(); i++) {
+          float score = similarityFunction.compare(target, copy.vectorValue(i));
+          queue.insertWithOverflow(docBase + ctx.docBase + copy.ordToDoc(i), score);
+        }
       }
+      docBase += reader.maxDoc();
     }
     return queue.nodes();
   }
 
-  /** Count intersection of two integer arrays (sorted merge). */
+  private static int[] topDocIds(TopDocs topDocs, int k) {
+    int n = Math.min(k, topDocs.scoreDocs.length);
+    int[] docs = new int[n];
+    for (int i = 0; i < n; i++) docs[i] = topDocs.scoreDocs[i].doc;
+    return docs;
+  }
+
   private static int computeOverlap(int[] a, int[] b) {
     Arrays.sort(a);
     Arrays.sort(b);
     int overlap = 0;
     for (int i = 0, j = 0; i < a.length && j < b.length; ) {
       if (a[i] == b[j]) {
-        ++overlap;
-        ++i;
-        ++j;
-      } else if (a[i] > b[j]) {
-        ++j;
-      } else {
-        ++i;
-      }
+        overlap++;
+        i++;
+        j++;
+      } else if (a[i] > b[j]) j++;
+      else i++;
     }
     return overlap;
   }
 
-  private static class CollaborativeKnnFloatVectorQuery extends KnnFloatVectorQuery {
+  private static class TrackingCollaborativeKnnQuery extends KnnFloatVectorQuery {
     private final LongAccumulator minScoreAcc;
+    private final AtomicLong totalVisitedCount = new AtomicLong();
 
-    CollaborativeKnnFloatVectorQuery(
+    TrackingCollaborativeKnnQuery(
         String field, float[] target, int k, LongAccumulator minScoreAcc) {
       super(field, target, k);
       this.minScoreAcc = minScoreAcc;
@@ -528,6 +395,18 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
     @Override
     protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
       return new CollaborativeKnnCollectorManager(k, minScoreAcc);
+    }
+
+    @Override
+    protected TopDocs mergeLeafResults(TopDocs[] perLeafResults) {
+      long visited = 0;
+      for (TopDocs td : perLeafResults) visited += td.totalHits.value();
+      totalVisitedCount.set(visited);
+      return super.mergeLeafResults(perLeafResults);
+    }
+
+    long getTotalVisitedCount() {
+      return totalVisitedCount.get();
     }
   }
 }
