@@ -145,9 +145,11 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
     HnswGraphSearcher.search(scorer, collaborativeCollector, hnsw, null);
     long collaborativeVisited = collaborativeCollector.visitedCount();
 
-    System.out.println("Standard visited: " + standardVisited);
-    System.out.println("Collaborative visited: " + collaborativeVisited);
-    System.out.println("Pruning bar: " + highBar);
+    if (VERBOSE) {
+      System.out.println("Standard visited: " + standardVisited);
+      System.out.println("Collaborative visited: " + collaborativeVisited);
+      System.out.println("Pruning bar: " + highBar);
+    }
 
     assertTrue(
         "Collaborative search ("
@@ -181,8 +183,10 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
     HnswGraphSearcher.search(scorer, collaborativeCollector, hnsw, null);
     long collaborativeVisited = collaborativeCollector.visitedCount();
 
-    System.out.println("High-K Standard visited: " + standardVisited);
-    System.out.println("High-K Collaborative visited: " + collaborativeVisited);
+    if (VERBOSE) {
+      System.out.println("High-K Standard visited: " + standardVisited);
+      System.out.println("High-K Collaborative visited: " + collaborativeVisited);
+    }
     assertTrue(
         "High-K Collaborative search should visit significantly fewer nodes",
         collaborativeVisited < (standardVisited / 2));
@@ -210,8 +214,10 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
     HnswGraphSearcher.search(scorer, collaborativeCollector, hnsw, null);
     long collaborativeVisited = collaborativeCollector.visitedCount();
 
-    System.out.println("High-Dim Standard visited: " + standardVisited);
-    System.out.println("High-Dim Collaborative visited: " + collaborativeVisited);
+    if (VERBOSE) {
+      System.out.println("High-Dim Standard visited: " + standardVisited);
+      System.out.println("High-Dim Collaborative visited: " + collaborativeVisited);
+    }
     assertTrue(
         "High-Dim Collaborative search should prune effectively",
         collaborativeVisited < standardVisited);
