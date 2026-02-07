@@ -24,9 +24,9 @@ import org.apache.lucene.search.CollaborativeKnnCollector;
 import org.apache.lucene.search.KnnCollector;
 
 /**
- * A {@link KnnCollectorManager} that creates {@link CollaborativeKnnCollector} instances 
- * sharing a single {@link AtomicLong} for global pruning.
- * 
+ * A {@link KnnCollectorManager} that creates {@link CollaborativeKnnCollector} instances sharing a
+ * single {@link AtomicLong} for global pruning.
+ *
  * @lucene.experimental
  */
 public class CollaborativeKnnCollectorManager implements KnnCollectorManager {
@@ -36,7 +36,7 @@ public class CollaborativeKnnCollectorManager implements KnnCollectorManager {
 
   /**
    * Create a new CollaborativeKnnCollectorManager
-   * 
+   *
    * @param k number of neighbors to collect
    * @param globalMinSimBits shared atomic float bits for global pruning
    */
@@ -46,7 +46,9 @@ public class CollaborativeKnnCollectorManager implements KnnCollectorManager {
   }
 
   @Override
-  public KnnCollector newCollector(int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context) throws IOException {
+  public KnnCollector newCollector(
+      int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context)
+      throws IOException {
     return new CollaborativeKnnCollector(k, visitedLimit, searchStrategy, globalMinSimBits);
   }
 }

@@ -21,13 +21,13 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 
 /**
- * A {@link KnnCollector} that allows for collaborative search by sharing a global minimum 
+ * A {@link KnnCollector} that allows for collaborative search by sharing a global minimum
  * competitive similarity across multiple threads or nodes.
- * 
- * <p>This collector wraps a {@link TopKnnCollector} and an {@link AtomicLong} (storing 
- * float bits). It ensures that the search can be pruned by scores found in other 
- * concurrent search processes (e.g., other shards in a cluster).
- * 
+ *
+ * <p>This collector wraps a {@link TopKnnCollector} and an {@link AtomicLong} (storing float bits).
+ * It ensures that the search can be pruned by scores found in other concurrent search processes
+ * (e.g., other shards in a cluster).
+ *
  * @lucene.experimental
  */
 public class CollaborativeKnnCollector extends KnnCollector.Decorator {
@@ -36,7 +36,7 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
 
   /**
    * Create a new CollaborativeKnnCollector
-   * 
+   *
    * @param k number of neighbors to collect
    * @param visitLimit maximum number of nodes to visit
    * @param globalMinSimBits shared atomic float bits for global pruning
@@ -47,13 +47,14 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
 
   /**
    * Create a new CollaborativeKnnCollector with a search strategy
-   * 
+   *
    * @param k number of neighbors to collect
    * @param visitLimit maximum number of nodes to visit
    * @param searchStrategy search strategy to use
    * @param globalMinSimBits shared atomic float bits for global pruning
    */
-  public CollaborativeKnnCollector(int k, int visitLimit, KnnSearchStrategy searchStrategy, AtomicLong globalMinSimBits) {
+  public CollaborativeKnnCollector(
+      int k, int visitLimit, KnnSearchStrategy searchStrategy, AtomicLong globalMinSimBits) {
     this(new TopKnnCollector(k, visitLimit, searchStrategy), globalMinSimBits);
   }
 
@@ -71,7 +72,7 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
 
   /**
    * Update the global minimum similarity if the provided score is higher.
-   * 
+   *
    * @param score the new potential global minimum
    */
   public void updateGlobalMinSimilarity(float score) {
