@@ -305,6 +305,15 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     // We should allow exploring equivalent minAcceptedSimilarity values at least once
     boolean shouldExploreMinSim = true;
     while (candidates.size() > 0 && results.earlyTerminated() == false) {
+      // Update the threshold dynamically from the collector to allow external pruning.
+      // This enables "Parallel-Collaborative" search where multiple shards/threads 
+      // share a global high-score bar, typically via a bi-directional gRPC stream.
+      float liveMinSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
+      if (liveMinSimilarity > minAcceptedSimilarity) {
+        minAcceptedSimilarity = liveMinSimilarity;
+        shouldExploreMinSim = true;
+      }
+
       // get the best candidate (closest or best scoring)
       float topCandidateSimilarity = candidates.topScore();
       if (topCandidateSimilarity < minAcceptedSimilarity) {
