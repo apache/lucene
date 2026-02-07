@@ -17,7 +17,7 @@ flexmark = "0.64.8"
 # @keep This is GJF version for java source code formatting
 googleJavaFormat = "1.33.0-markdown"
 # gradle build support
-groovy = "5.0.3"
+groovy = "5.0.4"
 # test assertions
 hamcrest = "3.0"
 # analysis/icu/, gradle regeneration unicode support
@@ -101,8 +101,8 @@ carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.0"
 carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.1.0"
 errorprone = "net.ltgt.errorprone:4.4.0"
 forbiddenapis = "de.thetaphi.forbiddenapis:3.10"
-jacocolog = "org.barfuin.gradle.jacocolog:3.1.0"
+jacocolog = "org.barfuin.gradle.jacocolog:4.0.1"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
-spotless = "com.diffplug.spotless:8.1.0"
+spotless = "com.diffplug.spotless:8.2.1"
 undercouch-download = "de.undercouch.download:5.6.0"
 versionCatalogUpdate = "nl.littlerobots.version-catalog-update:1.0.1"

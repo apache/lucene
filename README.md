@@ -27,7 +27,7 @@ written in Java.
 
 ## Online Documentation
 
-This README file only contains basic setup instructions.  For more
+This README file only contains basic setup instructions. For more
 comprehensive documentation, visit:
 
 - Latest Releases: <https://lucene.apache.org/core/documentation.html>
@@ -38,7 +38,7 @@ comprehensive documentation, visit:
 
 ## Building
 
-### Basic steps:
+### Basic steps
 
 1. Install JDK 25 using your package manager or download manually from
 [OpenJDK](https://jdk.java.net/),
@@ -48,7 +48,7 @@ comprehensive documentation, visit:
 2. Clone Lucene's git repository (or download the source distribution).
 3. Run gradle launcher script (`gradlew`).
 
-We'll assume that you know how to get and set up the JDK - if you don't, then we suggest starting at https://jdk.java.net/ and learning more about Java, before returning to this README.
+We'll assume that you know how to get and set up the JDK - if you don't, then we suggest starting at <https://jdk.java.net/> and learning more about Java, before returning to this README.
 
 ## Contributing
 

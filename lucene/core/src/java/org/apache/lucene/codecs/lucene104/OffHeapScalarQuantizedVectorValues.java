@@ -134,6 +134,11 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
   }
 
   @Override
+  public IndexInput getSlice() {
+    return slice;
+  }
+
+  @Override
   public float getCentroidDP() {
     return centroidDp;
   }
@@ -169,7 +174,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
 
   @Override
   public int getVectorByteLength() {
-    return dimension;
+    return vectorValue.length;
   }
 
   static void packNibbles(byte[] unpacked, byte[] packed) {

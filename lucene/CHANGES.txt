@@ -145,6 +145,12 @@ Build
 * GITHUB#14808: Add support for validating sources using ast-grep tool rules #14808
   (Robert Muir, Dawid Weiss)
 
+* GITHUB#15629: Introduce prek for fast pre-commit/repository checks.
+  Markdown files are now linted with local broken-link detection.
+  Python and Shell scripts are now linted system-wide.
+  Install with `uvx prek install`
+  For more see help/precommit.txt or `./gradlew helpPrecommit` (Robert Muir)
+
 Other
 ---------------------
 
@@ -163,6 +169,33 @@ Other
 
 * GITHUB#14607: Index open performs version check on each segment, ignores indexCreatedVersionMajor (Rahul Goswami)
 * GITHUB#15454: Restore binary readability for 8.x indexes like previously and throw IndexFormatTooOldException for an older default codec not found on classpath (Rahul Goswami)
+
+======================= Lucene 10.5.0 =======================
+
+API Changes
+---------------------
+* GITHUB#15663: Allow subclasses of NumericComparator to implement their own
+  CompetitiveDISIBuilder subtypes. (Alan Woodward)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+* GITHUB#15637: Lazily allocate ByteArrayDataInputs in SegmentTermsEnumFrame#15637 (Misha Dmitriev)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+* GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
 
 ======================= Lucene 10.4.0 =======================
 
@@ -330,8 +363,18 @@ Optimizations
 
 * GITHUB#15585: Added shared prefetch counter to maintain count across clones and slices of MemorySegmentIndexInput. (Shubham Sharma)
 
+* GITHUB#15632: Use a coarser-grained competitive iterator with lower construction costs for
+  numeric sorts against fields with DocValuesSkippers. (Alan Woodward)
+
+* GITHUB#15607: Utilize bulk scoring for diversity checking when building HNSW vector indices. This results
+  in some performance improvements during indexing and segment merges. (Ben Trent)
+
 Bug Fixes
 ---------------------
+* GITHUB#15442: Preserve boost values when merging overlapping phrases in
+  FastVectorHighlighter so highlight scoring fully reflects query boosts.
+  (Yang Feng)
+
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
   instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
 
@@ -356,6 +399,12 @@ Bug Fixes
 
 * GITHUB#14616 : Fix mis-interpretation of `maxNumBytes` in FuzzySet#createSetBasedOnMaxMemory (Greg Miller)
 
+* GITHUB#15554: Fix tessellator failure by preferring the shared vertex that is the leftmost vertex of the hole
+  (Ignacio Vera)
+
+* GITHUB#15553: Fix MergedByteVectorValues lastOrd behavior to enable partitioning of vector values
+(Finn Roblin, Dooyong Kim)
+
 Other
 ---------------------
 * GITHUB#15237: Fix SmartChinese to only deserialize dictionary data from classpath with a native array
@@ -375,6 +424,8 @@ Other
 
 * GITHUB#15341: Align float vectors on disk to 64 bytes, for optimal performance on Arm Neoverse
   machines (including vectors inside CFS files). (Mike McCandless, Kaival Parikh)
+
+* GITHUB#15619: Update documentation in Lucene104PostingsFormat. with 259 documents, the first 256 document ids should be  encoded as one packed block (Lyon-NEU)
 
 Build
 ---------------------

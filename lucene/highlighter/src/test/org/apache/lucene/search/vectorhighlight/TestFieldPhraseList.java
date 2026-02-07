@@ -289,4 +289,28 @@ public class TestFieldPhraseList extends AbstractTestCase {
     assertTrue(a.compareTo(b) < 0);
     assertTrue(b.compareTo(a) > 0);
   }
+
+  public void testMergeOverlappingWeightedPhraseInfoAccumulateBoost() {
+    LinkedList<TermInfo> infos1 = new LinkedList<>();
+    infos1.add(new TermInfo("中国", 0, 2, 0, 0));
+    infos1.add(new TermInfo("经济", 3, 5, 1, 1));
+    WeightedPhraseInfo wpi1 = new WeightedPhraseInfo(infos1, 2.0f);
+
+    LinkedList<TermInfo> infos2 = new LinkedList<>();
+    infos2.add(new TermInfo("经济", 3, 5, 1, 1));
+    infos2.add(new TermInfo("发展", 6, 8, 2, 2));
+    WeightedPhraseInfo wpi2 = new WeightedPhraseInfo(infos2, 3.0f);
+
+    FieldPhraseList fpl = new FieldPhraseList(new FieldPhraseList[0]);
+    fpl.getPhraseList().add(wpi1);
+
+    // This will execute: existWpi.boost += wpi.getBoost();
+    fpl.addIfNoOverlap(wpi2);
+
+    assertEquals(1, fpl.getPhraseList().size());
+
+    WeightedPhraseInfo merged = fpl.getPhraseList().get(0);
+
+    assertEquals(5.0f, merged.getBoost(), 0.0001f);
+  }
 }

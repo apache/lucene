@@ -31,7 +31,11 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 
-/** Vector scorer over OptimizedScalarQuantized vectors */
+/**
+ * Vector scorer over OptimizedScalarQuantized vectors
+ *
+ * @lucene.experimental
+ */
 public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
   private final FlatVectorsScorer nonQuantizedDelegate;
 
@@ -103,7 +107,7 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
 
-  RandomVectorScorerSupplier getRandomVectorScorerSupplier(
+  public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction,
       QuantizedByteVectorValues scoringVectors,
       QuantizedByteVectorValues targetVectors) {
