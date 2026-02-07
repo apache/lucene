@@ -20,6 +20,7 @@ package org.apache.lucene.util.hnsw;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.document.Document;
@@ -399,6 +400,7 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
       System.out.println(
           "Reduction: "
               + String.format(
+                  Locale.ROOT,
                   "%.1f%%",
                   100.0 * (1.0 - (double) collaborativeTotalVisited / standardTotalVisited)));
     }
@@ -490,7 +492,9 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
             System.out.println(
                 "Reduction: "
                     + String.format(
-                        "%.1f%%", 100.0 * (1.0 - (double) collaborativeVisited / standardVisited)));
+                        Locale.ROOT,
+                        "%.1f%%",
+                        100.0 * (1.0 - (double) collaborativeVisited / standardVisited)));
           }
         }
 
