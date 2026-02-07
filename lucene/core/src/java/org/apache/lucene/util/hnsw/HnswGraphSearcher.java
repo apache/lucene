@@ -307,7 +307,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     while (candidates.size() > 0 && results.earlyTerminated() == false) {
       // Update the threshold dynamically from the collector to allow external pruning.
       // This enables "Parallel-Collaborative" search where multiple shards/threads
-      // share a global high-score bar, typically via a bi-directional stream.
+      // share a global high-score bar, typically via a shared LongAccumulator.
       // Note: Visibility is guaranteed because the collector's minCompetitiveSimilarity()
       // performs a volatile read (via LongAccumulator) of the global bar.
       float liveMinSimilarity = results.minCompetitiveSimilarity();

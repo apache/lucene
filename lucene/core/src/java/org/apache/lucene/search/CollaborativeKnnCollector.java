@@ -73,6 +73,20 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
     this.docBase = docBase;
   }
 
+  /**
+   * Returns the minimum competitive similarity for this collector.
+   *
+   * <p>This method implements cross-segment pruning by consulting the shared {@link
+   * LongAccumulator}. The global bar is only applied when this segment's {@code docBase} is
+   * strictly greater than the global minimum document ID, ensuring Lucene's tie-breaking semantics
+   * (lower docId wins at equal scores) are preserved.
+   *
+   * <p><b>Design note:</b> Segment 0 (the segment with the lowest docBase) never benefits from
+   * global pruning because its docBase is always {@code <= globalMinDoc}. This is intentional: if a
+   * document in segment 0 ties with the global bar, it would win the tie-break, so we must not
+   * prune it. In practice, exact float score ties are extremely rare for vector similarity, so this
+   * conservative behavior has negligible impact on pruning effectiveness.
+   */
   @Override
   public float minCompetitiveSimilarity() {
     float localMin = super.minCompetitiveSimilarity();
