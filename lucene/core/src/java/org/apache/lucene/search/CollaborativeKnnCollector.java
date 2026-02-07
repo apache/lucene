@@ -17,32 +17,35 @@
 
 package org.apache.lucene.search;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.LongAccumulator;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 
 /**
  * A {@link KnnCollector} that allows for collaborative search by sharing a global minimum
- * competitive similarity across multiple threads or nodes.
+ * competitive similarity across multiple threads or segments.
  *
- * <p>This collector wraps a {@link TopKnnCollector} and an {@link AtomicInteger} (storing float
- * bits). It ensures that the search can be pruned by scores found in other concurrent search
- * processes (e.g., other shards in a cluster).
+ * <p>This collector wraps a {@link TopKnnCollector} and a {@link LongAccumulator}. It uses {@link
+ * DocScoreEncoder} logic to pack scores and document IDs into a single 64-bit value, ensuring that
+ * tie-breaking rules (lower DocID wins) are respected across concurrent search processes.
  *
  * @lucene.experimental
  */
 public class CollaborativeKnnCollector extends KnnCollector.Decorator {
 
-  private final AtomicInteger globalMinSimBits;
+  private final LongAccumulator minScoreAcc;
+  private final int docBase;
 
   /**
    * Create a new CollaborativeKnnCollector
    *
    * @param k number of neighbors to collect
    * @param visitLimit maximum number of nodes to visit
-   * @param globalMinSimBits shared atomic float bits for global pruning
+   * @param minScoreAcc shared accumulator for global pruning
+   * @param docBase the starting document ID for the current segment
    */
-  public CollaborativeKnnCollector(int k, int visitLimit, AtomicInteger globalMinSimBits) {
-    this(new TopKnnCollector(k, visitLimit), globalMinSimBits);
+  public CollaborativeKnnCollector(
+      int k, int visitLimit, LongAccumulator minScoreAcc, int docBase) {
+    this(new TopKnnCollector(k, visitLimit), minScoreAcc, docBase);
   }
 
   /**
@@ -51,40 +54,67 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
    * @param k number of neighbors to collect
    * @param visitLimit maximum number of nodes to visit
    * @param searchStrategy search strategy to use
-   * @param globalMinSimBits shared atomic float bits for global pruning
+   * @param minScoreAcc shared accumulator for global pruning
+   * @param docBase the starting document ID for the current segment
    */
   public CollaborativeKnnCollector(
-      int k, int visitLimit, KnnSearchStrategy searchStrategy, AtomicInteger globalMinSimBits) {
-    this(new TopKnnCollector(k, visitLimit, searchStrategy), globalMinSimBits);
+      int k,
+      int visitLimit,
+      KnnSearchStrategy searchStrategy,
+      LongAccumulator minScoreAcc,
+      int docBase) {
+    this(new TopKnnCollector(k, visitLimit, searchStrategy), minScoreAcc, docBase);
   }
 
-  private CollaborativeKnnCollector(KnnCollector delegate, AtomicInteger globalMinSimBits) {
+  private CollaborativeKnnCollector(
+      KnnCollector delegate, LongAccumulator minScoreAcc, int docBase) {
     super(delegate);
-    this.globalMinSimBits = globalMinSimBits;
+    this.minScoreAcc = minScoreAcc;
+    this.docBase = docBase;
   }
 
   @Override
   public float minCompetitiveSimilarity() {
     float localMin = super.minCompetitiveSimilarity();
-    float globalMin = Float.intBitsToFloat(globalMinSimBits.get());
-    return Math.max(localMin, globalMin);
+    long globalMinCode = minScoreAcc.get();
+    if (globalMinCode == Long.MIN_VALUE) {
+      return localMin;
+    }
+
+    float globalMinScore = DocScoreEncoder.toScore(globalMinCode);
+    int globalMinDoc = DocScoreEncoder.docId(globalMinCode);
+
+    // Lucene tie-breaking: lower DocID wins.
+    // If the global minimum was found in a document with a smaller ID than our
+    // current segment's base, then ANY document in our segment with the SAME
+    // score is guaranteed to lose the tie-break. In this case, we return
+    // the global score as-is.
+    if (docBase > globalMinDoc) {
+      return Math.max(localMin, globalMinScore);
+    }
+
+    // If our segment could contain a document with the same score that wins (smaller DocID),
+    // we must allow it to be explored. We return localMin to ensure we only prune
+    // when we are mathematically certain that no better match can be found in this segment.
+    return localMin;
+  }
+
+  @Override
+  public boolean collect(int docId, float similarity) {
+    boolean collected = super.collect(docId, similarity);
+    if (collected) {
+      // Update the global accumulator with the new competitive hit.
+      // We encode with the absolute docId (docId + docBase).
+      minScoreAcc.accumulate(DocScoreEncoder.encode(docId + docBase, similarity));
+    }
+    return collected;
   }
 
   /**
-   * Update the global minimum similarity if the provided score is higher.
-   *
-   * @param score the new potential global minimum
+   * Encode a score and docId into a long for the accumulator. Exposed for testing and orchestration
+   * layers.
    */
-  public void updateGlobalMinSimilarity(float score) {
-    int newBits = Float.floatToRawIntBits(score);
-    while (true) {
-      int currentBits = globalMinSimBits.get();
-      if (score <= Float.intBitsToFloat(currentBits)) {
-        break;
-      }
-      if (globalMinSimBits.compareAndSet(currentBits, newBits)) {
-        break;
-      }
-    }
+  public static long encode(int docId, float score) {
+    return DocScoreEncoder.encode(docId, score);
   }
 }

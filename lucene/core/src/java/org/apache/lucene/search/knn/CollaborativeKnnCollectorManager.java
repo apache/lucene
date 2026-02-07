@@ -18,37 +18,38 @@
 package org.apache.lucene.search.knn;
 
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.LongAccumulator;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.CollaborativeKnnCollector;
 import org.apache.lucene.search.KnnCollector;
 
 /**
  * A {@link KnnCollectorManager} that creates {@link CollaborativeKnnCollector} instances sharing a
- * single {@link AtomicInteger} for global pruning.
+ * single {@link LongAccumulator} for global pruning across segments.
  *
  * @lucene.experimental
  */
 public class CollaborativeKnnCollectorManager implements KnnCollectorManager {
 
   private final int k;
-  private final AtomicInteger globalMinSimBits;
+  private final LongAccumulator minScoreAcc;
 
   /**
    * Create a new CollaborativeKnnCollectorManager
    *
    * @param k number of neighbors to collect
-   * @param globalMinSimBits shared atomic float bits for global pruning
+   * @param minScoreAcc shared accumulator for global pruning
    */
-  public CollaborativeKnnCollectorManager(int k, AtomicInteger globalMinSimBits) {
+  public CollaborativeKnnCollectorManager(int k, LongAccumulator minScoreAcc) {
     this.k = k;
-    this.globalMinSimBits = globalMinSimBits;
+    this.minScoreAcc = minScoreAcc;
   }
 
   @Override
   public KnnCollector newCollector(
       int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context)
       throws IOException {
-    return new CollaborativeKnnCollector(k, visitedLimit, searchStrategy, globalMinSimBits);
+    return new CollaborativeKnnCollector(
+        k, visitedLimit, searchStrategy, minScoreAcc, context.docBase);
   }
 }
