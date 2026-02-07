@@ -279,7 +279,8 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
         // 1. Standard KNN search (baseline) to get reference results and scores
         Query standardQuery = new KnnFloatVectorQuery(fieldName, queryVec, k);
         TopDocs standardResults = searcher.search(standardQuery, k);
-        assertEquals("Standard search should return k results", k, standardResults.scoreDocs.length);
+        assertEquals(
+            "Standard search should return k results", k, standardResults.scoreDocs.length);
 
         // 2. Collaborative KNN search with NO bar (bar = -1.0f, equivalent to no pruning).
         // This should produce results equivalent to standard search.
@@ -422,8 +423,8 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
 
   /**
    * End-to-end test that collaborative pruning reduces visited nodes when searching across multiple
-   * separate Directory instances combined via MultiReader. Uses tracking query subclasses to capture
-   * per-leaf visited counts through the full IndexSearcher search path.
+   * separate Directory instances combined via MultiReader. Uses tracking query subclasses to
+   * capture per-leaf visited counts through the full IndexSearcher search path.
    */
   public void testMultiIndexCollaborativeEndToEnd() throws IOException {
     int numIndices = 5;
@@ -489,8 +490,7 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
             System.out.println(
                 "Reduction: "
                     + String.format(
-                        "%.1f%%",
-                        100.0 * (1.0 - (double) collaborativeVisited / standardVisited)));
+                        "%.1f%%", 100.0 * (1.0 - (double) collaborativeVisited / standardVisited)));
           }
         }
 
