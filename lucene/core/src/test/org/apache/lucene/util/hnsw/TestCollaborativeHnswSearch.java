@@ -26,6 +26,7 @@ import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.CollaborativeKnnCollector;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
@@ -150,21 +151,5 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
 
     assertTrue("Collaborative search (" + collaborativeVisited + ") should visit fewer nodes than standard search (" + standardVisited + ")", 
                collaborativeVisited < standardVisited);
-  }
-
-  private static class CollaborativeKnnCollector extends TopKnnCollector {
-    private final AtomicLong globalMinSimBits;
-
-    public CollaborativeKnnCollector(int k, int visitLimit, AtomicLong globalMinSimBits) {
-      super(k, visitLimit);
-      this.globalMinSimBits = globalMinSimBits;
-    }
-
-    @Override
-    public float minCompetitiveSimilarity() {
-      float localMin = super.minCompetitiveSimilarity();
-      float globalMin = Float.intBitsToFloat((int) globalMinSimBits.get());
-      return Math.max(localMin, globalMin);
-    }
   }
 }
