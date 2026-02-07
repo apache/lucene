@@ -18,7 +18,10 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -29,6 +32,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -331,6 +335,240 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
                 + highBarResults.scoreDocs.length,
             highBarResults.scoreDocs.length <= standardResults.scoreDocs.length);
       }
+    }
+  }
+
+  /**
+   * Tests performance improvement with collaborative pruning across multiple separate HNSW graphs
+   * (simulating cross-shard KNN search). Builds N separate graphs, searches each independently
+   * (standard), then searches with a shared collaborative pruning bar, and asserts that the
+   * collaborative approach visits significantly fewer nodes overall.
+   */
+  public void testMultiIndexHighKPerformance() throws IOException {
+    int numGraphs = 5;
+    int vectorsPerGraph = 5000;
+    int dim = 32;
+    int k = 500;
+
+    // Build N separate HNSW graphs
+    OnHeapHnswGraph[] graphs = new OnHeapHnswGraph[numGraphs];
+    MockVectorValues[] allVectors = new MockVectorValues[numGraphs];
+    for (int i = 0; i < numGraphs; i++) {
+      allVectors[i] = (MockVectorValues) vectorValues(vectorsPerGraph, dim);
+      RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(allVectors[i]);
+      HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, 42);
+      graphs[i] = builder.build(allVectors[i].size());
+    }
+
+    float[] queryVec = randomVector(dim);
+
+    // Standard search: search each graph independently, merge results
+    TopDocs[] standardPerGraph = new TopDocs[numGraphs];
+    long standardTotalVisited = 0;
+    for (int i = 0; i < numGraphs; i++) {
+      RandomVectorScorer scorer = buildScorer(allVectors[i], queryVec);
+      TopKnnCollector collector = new TopKnnCollector(k, Integer.MAX_VALUE);
+      HnswGraphSearcher.search(scorer, collector, graphs[i], null);
+      standardTotalVisited += collector.visitedCount();
+      standardPerGraph[i] = collector.topDocs();
+    }
+    TopDocs mergedStandard = TopDocs.merge(k, standardPerGraph);
+
+    // Derive a pruning bar: median score of the merged top-k results
+    float pruningBar = mergedStandard.scoreDocs[k / 2].score;
+
+    // Collaborative search: pre-set the global bar, then search all graphs sequentially
+    AtomicInteger globalMinSimBits = new AtomicInteger(Float.floatToRawIntBits(pruningBar));
+    long collaborativeTotalVisited = 0;
+    for (int i = 0; i < numGraphs; i++) {
+      RandomVectorScorer scorer = buildScorer(allVectors[i], queryVec);
+      CollaborativeKnnCollector collector =
+          new CollaborativeKnnCollector(k, Integer.MAX_VALUE, globalMinSimBits);
+      HnswGraphSearcher.search(scorer, collector, graphs[i], null);
+      collaborativeTotalVisited += collector.visitedCount();
+    }
+
+    if (VERBOSE) {
+      System.out.println("=== Multi-Index High-K Performance ===");
+      System.out.println("Graphs: " + numGraphs + " x " + vectorsPerGraph + " vectors");
+      System.out.println("K: " + k + ", Dim: " + dim);
+      System.out.println("Pruning bar (median score): " + pruningBar);
+      System.out.println("Standard total visited: " + standardTotalVisited);
+      System.out.println("Collaborative total visited: " + collaborativeTotalVisited);
+      System.out.println(
+          "Reduction: "
+              + String.format(
+                  "%.1f%%",
+                  100.0 * (1.0 - (double) collaborativeTotalVisited / standardTotalVisited)));
+    }
+
+    assertTrue(
+        "Collaborative search ("
+            + collaborativeTotalVisited
+            + ") should visit fewer nodes than standard search ("
+            + standardTotalVisited
+            + ")",
+        collaborativeTotalVisited < standardTotalVisited);
+
+    // Expect at least 25% reduction with a meaningful pruning bar across 5 graphs
+    assertTrue(
+        "Collaborative search ("
+            + collaborativeTotalVisited
+            + ") should visit at least 25% fewer nodes than standard ("
+            + standardTotalVisited
+            + ")",
+        collaborativeTotalVisited < standardTotalVisited * 0.75);
+  }
+
+  /**
+   * End-to-end test that collaborative pruning reduces visited nodes when searching across multiple
+   * separate Directory instances combined via MultiReader. Uses tracking query subclasses to capture
+   * per-leaf visited counts through the full IndexSearcher search path.
+   */
+  public void testMultiIndexCollaborativeEndToEnd() throws IOException {
+    int numIndices = 5;
+    int docsPerIndex = 2000;
+    int dim = 32;
+    int k = 100;
+    String fieldName = "vector";
+
+    List<Directory> directories = new ArrayList<>();
+    List<DirectoryReader> readers = new ArrayList<>();
+    try {
+      // Create N separate Directory instances, each with its own IndexWriter
+      for (int i = 0; i < numIndices; i++) {
+        Directory dir = newDirectory();
+        directories.add(dir);
+        IndexWriterConfig iwc = new IndexWriterConfig();
+        iwc.setMergePolicy(NoMergePolicy.INSTANCE);
+        try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+          for (int doc = 0; doc < docsPerIndex; doc++) {
+            Document d = new Document();
+            d.add(new KnnFloatVectorField(fieldName, randomVector(dim), similarityFunction));
+            writer.addDocument(d);
+          }
+          writer.commit();
+        }
+        readers.add(DirectoryReader.open(dir));
+      }
+
+      // Combine all readers into a single MultiReader
+      try (MultiReader multiReader = new MultiReader(readers.toArray(new IndexReader[0]))) {
+        IndexSearcher searcher = new IndexSearcher(multiReader);
+        float[] queryVec = randomVector(dim);
+
+        // Standard search with visited-count tracking
+        TrackingKnnQuery standardQuery = new TrackingKnnQuery(fieldName, queryVec, k);
+        TopDocs standardResults = searcher.search(standardQuery, k);
+        long standardVisited = standardQuery.getTotalVisitedCount();
+
+        assertTrue("Standard search should return results", standardResults.scoreDocs.length > 0);
+        assertTrue("Standard visited count should be positive", standardVisited > 0);
+
+        // Derive pruning bar from standard results: median score
+        float pruningBar = standardResults.scoreDocs[standardResults.scoreDocs.length / 2].score;
+
+        // Collaborative search with pre-set pruning bar
+        AtomicInteger globalMinSimBits = new AtomicInteger(Float.floatToRawIntBits(pruningBar));
+        TrackingCollaborativeKnnQuery collaborativeQuery =
+            new TrackingCollaborativeKnnQuery(fieldName, queryVec, k, globalMinSimBits);
+        TopDocs collaborativeResults = searcher.search(collaborativeQuery, k);
+        long collaborativeVisited = collaborativeQuery.getTotalVisitedCount();
+
+        if (VERBOSE) {
+          System.out.println("=== Multi-Index Collaborative End-to-End ===");
+          System.out.println("Indices: " + numIndices + " x " + docsPerIndex + " vectors");
+          System.out.println("K: " + k + ", Dim: " + dim);
+          System.out.println("Leaves: " + multiReader.leaves().size());
+          System.out.println("Pruning bar (median score): " + pruningBar);
+          System.out.println("Standard results: " + standardResults.scoreDocs.length);
+          System.out.println("Standard visited: " + standardVisited);
+          System.out.println("Collaborative results: " + collaborativeResults.scoreDocs.length);
+          System.out.println("Collaborative visited: " + collaborativeVisited);
+          if (standardVisited > 0) {
+            System.out.println(
+                "Reduction: "
+                    + String.format(
+                        "%.1f%%",
+                        100.0 * (1.0 - (double) collaborativeVisited / standardVisited)));
+          }
+        }
+
+        assertTrue(
+            "Collaborative search ("
+                + collaborativeVisited
+                + ") should visit fewer nodes than standard search ("
+                + standardVisited
+                + ")",
+            collaborativeVisited < standardVisited);
+      }
+    } finally {
+      for (DirectoryReader reader : readers) {
+        reader.close();
+      }
+      for (Directory dir : directories) {
+        dir.close();
+      }
+    }
+  }
+
+  /**
+   * A KnnFloatVectorQuery subclass that tracks the sum of per-leaf visited counts by overriding
+   * mergeLeafResults. Uses the default TopKnnCollectorManager (standard search).
+   */
+  private static class TrackingKnnQuery extends KnnFloatVectorQuery {
+    private final AtomicLong totalVisitedCount = new AtomicLong();
+
+    TrackingKnnQuery(String field, float[] target, int k) {
+      super(field, target, k);
+    }
+
+    @Override
+    protected TopDocs mergeLeafResults(TopDocs[] perLeafResults) {
+      long visited = 0;
+      for (TopDocs td : perLeafResults) {
+        visited += td.totalHits.value();
+      }
+      totalVisitedCount.set(visited);
+      return super.mergeLeafResults(perLeafResults);
+    }
+
+    long getTotalVisitedCount() {
+      return totalVisitedCount.get();
+    }
+  }
+
+  /**
+   * A KnnFloatVectorQuery subclass that uses CollaborativeKnnCollectorManager and tracks the sum of
+   * per-leaf visited counts through mergeLeafResults.
+   */
+  private static class TrackingCollaborativeKnnQuery extends KnnFloatVectorQuery {
+    private final AtomicInteger globalMinSimBits;
+    private final AtomicLong totalVisitedCount = new AtomicLong();
+
+    TrackingCollaborativeKnnQuery(
+        String field, float[] target, int k, AtomicInteger globalMinSimBits) {
+      super(field, target, k);
+      this.globalMinSimBits = globalMinSimBits;
+    }
+
+    @Override
+    protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
+      return new CollaborativeKnnCollectorManager(k, globalMinSimBits);
+    }
+
+    @Override
+    protected TopDocs mergeLeafResults(TopDocs[] perLeafResults) {
+      long visited = 0;
+      for (TopDocs td : perLeafResults) {
+        visited += td.totalHits.value();
+      }
+      totalVisitedCount.set(visited);
+      return super.mergeLeafResults(perLeafResults);
+    }
+
+    long getTotalVisitedCount() {
+      return totalVisitedCount.get();
     }
   }
 
