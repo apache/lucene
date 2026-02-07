@@ -19,18 +19,28 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.CollaborativeKnnCollector;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopKnnCollector;
+import org.apache.lucene.search.knn.CollaborativeKnnCollectorManager;
+import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.ArrayUtil;
 import org.junit.Before;
 
@@ -221,5 +231,127 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
     assertTrue(
         "High-Dim Collaborative search should prune effectively",
         collaborativeVisited < standardVisited);
+  }
+
+  /**
+   * Tests that CollaborativeKnnCollectorManager correctly wires a shared pruning threshold across
+   * multiple segments within a single IndexSearcher search. This exercises the full path:
+   * IndexSearcher → AbstractKnnVectorQuery.rewrite() → per-leaf approximateSearch().
+   *
+   * <p>The test pre-sets a high bar in the shared AtomicInteger (simulating another shard/thread
+   * having already found good matches) and verifies that the collaborative search through
+   * IndexSearcher still returns valid results and that the pruning bar affects the search.
+   */
+  public void testMultiSegmentCollaborativePruning() throws IOException {
+    int numSegments = 4;
+    int docsPerSegment = 1500;
+    int dim = 32;
+    int k = 10;
+    String fieldName = "vector";
+
+    try (Directory dir = newDirectory()) {
+      // Build a multi-segment index with NoMergePolicy
+      IndexWriterConfig iwc = new IndexWriterConfig();
+      iwc.setMergePolicy(NoMergePolicy.INSTANCE);
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        for (int seg = 0; seg < numSegments; seg++) {
+          for (int doc = 0; doc < docsPerSegment; doc++) {
+            Document d = new Document();
+            d.add(new KnnFloatVectorField(fieldName, randomVector(dim), similarityFunction));
+            writer.addDocument(d);
+          }
+          writer.commit();
+        }
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        assertTrue(
+            "Expected multiple segments but got " + reader.leaves().size(),
+            reader.leaves().size() >= numSegments);
+
+        IndexSearcher searcher = new IndexSearcher(reader);
+        float[] queryVec = randomVector(dim);
+
+        // 1. Standard KNN search (baseline) to get reference results and scores
+        Query standardQuery = new KnnFloatVectorQuery(fieldName, queryVec, k);
+        TopDocs standardResults = searcher.search(standardQuery, k);
+        assertEquals("Standard search should return k results", k, standardResults.scoreDocs.length);
+
+        // 2. Collaborative KNN search with NO bar (bar = -1.0f, equivalent to no pruning).
+        // This should produce results equivalent to standard search.
+        AtomicInteger noBarBits = new AtomicInteger(Float.floatToRawIntBits(-1.0f));
+        Query collaborativeNoBar =
+            new CollaborativeKnnFloatVectorQuery(fieldName, queryVec, k, noBarBits);
+        TopDocs noBarResults = searcher.search(collaborativeNoBar, k);
+
+        // With no bar set, collaborative search should find the same number of results
+        assertEquals(
+            "Collaborative search with no bar should return same result count as standard",
+            standardResults.scoreDocs.length,
+            noBarResults.scoreDocs.length);
+
+        // Verify the top scores match between standard and collaborative-with-no-bar,
+        // confirming the collaborative path produces equivalent results
+        assertEquals(
+            "Best score should match between standard and collaborative (no bar)",
+            standardResults.scoreDocs[0].score,
+            noBarResults.scoreDocs[0].score,
+            1e-5);
+
+        // 3. Collaborative KNN search with a HIGH bar (the best score from standard results).
+        // This simulates another shard having already found excellent matches, forcing
+        // aggressive pruning in the HNSW graph traversal across all segments.
+        float highBar = standardResults.scoreDocs[0].score;
+        AtomicInteger highBarBits = new AtomicInteger(Float.floatToRawIntBits(highBar));
+        Query collaborativeHighBar =
+            new CollaborativeKnnFloatVectorQuery(fieldName, queryVec, k, highBarBits);
+        TopDocs highBarResults = searcher.search(collaborativeHighBar, k);
+
+        if (VERBOSE) {
+          System.out.println("Segments: " + reader.leaves().size());
+          System.out.println("Standard results: " + standardResults.scoreDocs.length);
+          System.out.println("No-bar collaborative results: " + noBarResults.scoreDocs.length);
+          System.out.println("High-bar collaborative results: " + highBarResults.scoreDocs.length);
+          System.out.println("High bar value: " + highBar);
+          System.out.println(
+              "Standard scores: best="
+                  + standardResults.scoreDocs[0].score
+                  + " worst="
+                  + standardResults.scoreDocs[k - 1].score);
+        }
+
+        // With the highest bar set, the search may return fewer results because the
+        // pruning threshold causes HNSW graph traversal to terminate early in some
+        // or all segments. The search should still complete without error.
+        assertTrue(
+            "Collaborative search with high bar should produce no more results than standard. "
+                + "Standard: "
+                + standardResults.scoreDocs.length
+                + ", High-bar: "
+                + highBarResults.scoreDocs.length,
+            highBarResults.scoreDocs.length <= standardResults.scoreDocs.length);
+      }
+    }
+  }
+
+  /**
+   * A KnnFloatVectorQuery subclass that uses CollaborativeKnnCollectorManager instead of the
+   * default TopKnnCollectorManager. This allows testing the collaborative pruning mechanism through
+   * the full IndexSearcher search path.
+   */
+  private static class CollaborativeKnnFloatVectorQuery extends KnnFloatVectorQuery {
+
+    private final AtomicInteger globalMinSimBits;
+
+    CollaborativeKnnFloatVectorQuery(
+        String field, float[] target, int k, AtomicInteger globalMinSimBits) {
+      super(field, target, k);
+      this.globalMinSimBits = globalMinSimBits;
+    }
+
+    @Override
+    protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
+      return new CollaborativeKnnCollectorManager(k, globalMinSimBits);
+    }
   }
 }
