@@ -128,6 +128,9 @@ Bug Fixes
 * GITHUB#12561: UAX29URLEmailTokenizer matched emails with commas and invalid
   periods in the local part. (Eran Yarkon)
 
+* GITHUB#15668: Fix UnsupportedOperationException in WeightedSpanTermExtractor by
+  implementing getFieldInfos in DelegatingLeafReader. (Simranjeet Singh)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
