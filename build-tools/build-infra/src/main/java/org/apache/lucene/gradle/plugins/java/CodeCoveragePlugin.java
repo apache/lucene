@@ -22,10 +22,12 @@ import org.barfuin.gradle.jacocolog.JacocoLogPlugin;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.reporting.ReportingExtension;
 import org.gradle.api.tasks.TaskCollection;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.api.tasks.testing.Test;
+import org.gradle.testing.jacoco.plugins.JacocoCoverageReport;
 import org.gradle.testing.jacoco.plugins.JacocoTaskExtension;
 import org.gradle.testing.jacoco.tasks.JacocoReport;
 
@@ -44,10 +46,33 @@ public class CodeCoveragePlugin extends LuceneGradlePlugin {
 
       if (withCoverage) {
         project.getPlugins().apply(JacocoLogPlugin.class);
+        project.getPlugins().apply("jacoco-report-aggregation");
+
+        project
+            .getExtensions()
+            .getByType(ReportingExtension.class)
+            .reports(
+                reports -> {
+                  reports
+                      .register("testCodeCoverageReport", JacocoCoverageReport.class)
+                      .configure(
+                          report -> {
+                            report.getTestSuiteName().set("test");
+                          });
+                });
+
+        project
+            .getSubprojects()
+            .forEach(
+                p -> {
+                  if (p.file("src/test").exists()) {
+                    project.getDependencies().add("jacocoAggregation", p);
+                  }
+                });
 
         var tasks = project.getTasks();
 
-        String jacocoTaskName = "jacocoAggregatedReport";
+        String jacocoTaskName = "testCodeCoverageReport";
         var jacocoAggregatedReport =
             configureJacocoReport(tasks, jacocoTaskName, "Aggregated code coverage report at: ");
 
