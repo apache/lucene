@@ -133,10 +133,11 @@ sub get_URL_content {
     my $url = shift;
     print STDERR "Retrieving '$url'...";
     my $user_agent = LWP::UserAgent->new;
+    $user_agent->agent("curl");
     my $request = HTTP::Request->new(GET => $url);
     my $response = $user_agent->request($request);
     unless ($response->is_success) {
-        print STDERR "Failed to download '$url':\n\t",$response->status_line,"\n";
+        print STDERR "Failed to download '$url':\n\t",$response->status_line,$response->content,"\n";
         exit 1;
     }
     print STDERR "done.\n";
