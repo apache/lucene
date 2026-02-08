@@ -106,7 +106,8 @@ public class CodeCoveragePlugin extends LuceneGradlePlugin {
 
   private static TaskProvider<JacocoReport> configureJacocoReport(
       TaskContainer tasks, String jacocoTaskName, String logLine) {
-    TaskProvider<JacocoReport> jacocoAggregatedReport = tasks.register(jacocoTaskName,JacocoReport.class);
+    TaskProvider<JacocoReport> jacocoAggregatedReport =
+        tasks.register(jacocoTaskName, JacocoReport.class);
 
     jacocoAggregatedReport.configure(
         task -> {
