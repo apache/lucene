@@ -20,35 +20,55 @@ import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsExtension;
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.File;
+import java.io.IOException;
+import java.lang.classfile.ClassFile;
+import java.lang.classfile.ClassModel;
 import java.nio.file.Path;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import javax.inject.Inject;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.apache.lucene.gradle.plugins.globals.LuceneBuildGlobalsExtension;
 import org.apache.tools.ant.taskdefs.condition.Os;
 import org.apache.tools.ant.types.Commandline;
+import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.internal.file.RelativeFile;
+import org.gradle.api.internal.tasks.testing.ClassTestDefinition;
+import org.gradle.api.internal.tasks.testing.TestDefinitionProcessor;
+import org.gradle.api.internal.tasks.testing.TestFramework;
+import org.gradle.api.internal.tasks.testing.WorkerTestDefinitionProcessorFactory;
+import org.gradle.api.internal.tasks.testing.detection.TestFrameworkDetector;
+import org.gradle.api.internal.tasks.testing.filter.DefaultTestFilter;
+import org.gradle.api.internal.tasks.testing.junit.JUnitSpec;
+import org.gradle.api.internal.tasks.testing.junit.JUnitTestDefinitionProcessorFactory;
 import org.gradle.api.invocation.Gradle;
+import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Delete;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.Internal;
+import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.testing.Test;
+import org.gradle.api.tasks.testing.TestFilter;
+import org.gradle.api.tasks.testing.junit.JUnitOptions;
 import org.gradle.api.tasks.testing.logging.TestExceptionFormat;
 import org.gradle.api.tasks.testing.logging.TestLogEvent;
+import org.gradle.internal.Factory;
 import org.gradle.process.CommandLineArgumentProvider;
+import org.gradle.process.internal.worker.WorkerProcessBuilder;
 
 /** Sets up gradle's Test task configuration, including all kinds of randomized options */
 public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
@@ -425,7 +445,18 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
               }
 
               task.setWorkingDir(testsCwd);
-              task.useJUnit();
+
+              // do not use any of the existing gradle frameworks.
+              // see https://github.com/gradle/gradle/issues/36508
+              task.getTestFrameworkProperty()
+                  .set(
+                      project
+                          .getObjects()
+                          .newInstance(
+                              LuceneTestFramework.class,
+                              new Object[] {
+                                task.getFilter(), task.getTemporaryDirFactory(), task.getDryRun()
+                              }));
 
               task.setMinHeapSize(minHeapSizeOption.get());
               task.setMaxHeapSize(heapSizeOption.get());
@@ -600,5 +631,115 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
     optionsInheritedAsProperties.add("tests.vectorsize");
 
     return defaultVectorizationOption.get();
+  }
+
+  public abstract static class LuceneTestFramework implements TestFramework {
+    private final DefaultTestFilter filter;
+    private final Factory<File> testTaskTemporaryDir;
+    private final Provider<Boolean> dryRun;
+    private TestFrameworkDetector detector =
+        new TestFrameworkDetector() {
+          private TestDefinitionProcessor<? super ClassTestDefinition> testDefinitionProcessor;
+
+          @Override
+          public void startDetection(
+              TestDefinitionProcessor<? super ClassTestDefinition> testDefinitionProcessor) {
+            this.testDefinitionProcessor = testDefinitionProcessor;
+          }
+
+          @Override
+          public boolean processTestClass(RelativeFile testClassFile) {
+            var cc =
+                ClassFile.of(
+                    ClassFile.ConstantPoolSharingOption.NEW_POOL,
+                    ClassFile.DebugElementsOption.DROP_DEBUG,
+                    ClassFile.LineNumbersOption.DROP_LINE_NUMBERS,
+                    ClassFile.StackMapsOption.DROP_STACK_MAPS);
+
+            try {
+              ClassModel parsed = cc.parse(testClassFile.getFile().toPath());
+              String internalName = parsed.thisClass().asInternalName().replace('/', '.');
+              testDefinitionProcessor.processTestDefinition(new ClassTestDefinition(internalName));
+            } catch (Exception e) {
+              throw new RuntimeException(e);
+            }
+
+            return true;
+          }
+
+          @Override
+          public void setTestClasses(List<File> testClasses) {}
+
+          @Override
+          public void setTestClasspath(List<File> classpath) {}
+        };
+
+    @Inject
+    public LuceneTestFramework(
+        DefaultTestFilter filter, Factory<File> testTaskTemporaryDir, Provider<Boolean> dryRun) {
+      this.filter = filter;
+      this.testTaskTemporaryDir = testTaskTemporaryDir;
+      this.dryRun = dryRun;
+    }
+
+    @Inject
+    protected abstract ObjectFactory getObjectFactory();
+
+    @Override
+    public TestFramework copyWithFilters(TestFilter newTestFilters) {
+      var newTestFramework =
+          this.getObjectFactory()
+              .newInstance(
+                  LuceneTestFramework.class,
+                  new Object[] {newTestFilters, this.testTaskTemporaryDir, this.dryRun});
+      newTestFramework.getOptions().copyFrom(this.getOptions());
+      return newTestFramework;
+    }
+
+    @Override
+    public WorkerTestDefinitionProcessorFactory<?> getProcessorFactory() {
+      this.validateOptions();
+      return new JUnitTestDefinitionProcessorFactory(
+          new JUnitSpec(
+              this.filter.toSpec(),
+              this.getOptions().getIncludeCategories(),
+              this.getOptions().getExcludeCategories(),
+              this.dryRun.get()));
+    }
+
+    @Override
+    public Action<WorkerProcessBuilder> getWorkerConfigurationAction() {
+      return (workerProcessBuilder) -> {
+        workerProcessBuilder.sharedPackages(new String[] {"junit.framework"});
+        workerProcessBuilder.sharedPackages(new String[] {"junit.extensions"});
+        workerProcessBuilder.sharedPackages(new String[] {"org.junit"});
+      };
+    }
+
+    @Override
+    @Nested
+    public abstract JUnitOptions getOptions();
+
+    @Override
+    public TestFrameworkDetector getDetector() {
+      return detector;
+    }
+
+    @Override
+    public void close() throws IOException {
+      this.detector = null;
+    }
+
+    private void validateOptions() {
+      if (!this.getOptions().getIncludeCategories().isEmpty()
+          || !this.getOptions().getExcludeCategories().isEmpty()) {
+        throw new RuntimeException("Include and exclude categories are not supported in Lucene.");
+      }
+    }
+
+    @Override
+    public String getDisplayName() {
+      return "JUnit";
+    }
   }
 }
