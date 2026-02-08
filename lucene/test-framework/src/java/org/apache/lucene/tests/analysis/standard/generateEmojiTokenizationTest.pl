@@ -30,7 +30,7 @@ unless (GetOptions("version=s" => \$version) && $version =~ /\d+\.\d+/) {
         if ($version);
     exit 1;
 }
-my $url = "http://www.unicode.org/Public/emoji/${version}/emoji-test.txt";
+my $url = "https://www.unicode.org/Public/emoji/${version}/emoji-test.txt";
 my $underscore_version = $version;
 $underscore_version =~ s/\./_/g;
 my $class_name = "EmojiTokenizationTestUnicode_${underscore_version}";
