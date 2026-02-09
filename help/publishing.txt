@@ -130,5 +130,3 @@ If this is not possible, then you should avoid using an external GPG process, an
 
 This may mean that there is a problem preventing `gpg` from communicating correctly with the `gpg-agent` (and/or invoking your `pinentry`
 program) that is independent of gradle.  Try running `pkill gpg-agent` and then retrying your `./gradlew` command
-
-

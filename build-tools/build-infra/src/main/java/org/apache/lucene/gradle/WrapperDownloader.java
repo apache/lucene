@@ -38,6 +38,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 /**
  * Standalone class used to download the {@code gradle-wrapper.jar}.
@@ -122,12 +123,28 @@ public class WrapperDownloader {
       }
     }
 
-    Path versionPath =
-        destination.resolveSibling(destination.getFileName().toString() + ".version");
-    if (!Files.exists(versionPath)) {
-      throw new IOException("Wrapper version file not found: " + versionPath);
+    Path wrapperProperties =
+        destination.resolveSibling(
+            destination.getFileName().toString().replace(".jar", ".properties"));
+    if (!Files.exists(wrapperProperties)) {
+      throw new IOException("Wrapper property file not found: " + wrapperProperties);
     }
-    String wrapperVersion = Files.readString(versionPath, StandardCharsets.UTF_8).trim();
+
+    Pattern versionPattern = Pattern.compile("gradle-(?<version>.+?)-bin.zip");
+    String wrapperVersion =
+        Files.readAllLines(wrapperProperties, StandardCharsets.UTF_8).stream()
+            .map(
+                line -> {
+                  var matcher = versionPattern.matcher(line);
+                  if (matcher.find()) {
+                    return matcher.group("version");
+                  } else {
+                    return null;
+                  }
+                })
+            .filter(Objects::nonNull)
+            .findAny()
+            .orElseThrow();
 
     MessageDigest digest = MessageDigest.getInstance("SHA-256");
 
