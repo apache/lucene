@@ -1258,8 +1258,8 @@ public class IndexWriter
   }
 
   /**
-   * Loads the global field number map for this {@link SegmentInfos}.
-   * If this {@link SegmentInfos} has no global field number map the returned instance is empty.
+   * Loads the global field number map for this {@link SegmentInfos}. If this {@link SegmentInfos}
+   * has no global field number map the returned instance is empty.
    *
    * <p>If the a {@code reader} is given, then instead of reading the field info file (.fnm), the
    * field infos from its leaves are used.
