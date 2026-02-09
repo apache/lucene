@@ -456,7 +456,7 @@ public class TestGrouping extends LuceneTestCase {
           mvalTopGroups.withinGroupSort,
           mvalTopGroups.totalHitCount,
           mvalTopGroups.totalGroupedHitCount,
-          groups.toArray(new GroupDocs[groups.size()]),
+          groups.toArray(new GroupDocs[0]),
           Float.NaN);
     }
     fail();
@@ -500,7 +500,7 @@ public class TestGrouping extends LuceneTestCase {
     }
     // Break ties:
     sortFields.add(new SortField("id", SortField.Type.INT));
-    return new Sort(sortFields.toArray(new SortField[sortFields.size()]));
+    return new Sort(sortFields.toArray(new SortField[0]));
   }
 
   private Comparator<GroupDoc> getComparator(Sort sort) {

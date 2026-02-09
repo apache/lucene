@@ -74,7 +74,7 @@ public final class MLTConfig {
   }
 
   public String[] getFieldNames() {
-    return fields.toArray(new String[fields.size()]);
+    return fields.toArray(new String[0]);
   }
 
   public int getMaxDocFreq() {

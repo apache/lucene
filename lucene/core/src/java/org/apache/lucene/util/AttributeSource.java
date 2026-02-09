@@ -163,7 +163,7 @@ public class AttributeSource {
             clazz = clazz.getSuperclass();
           } while (clazz != null);
           @SuppressWarnings({"unchecked", "rawtypes"})
-          final Class<? extends Attribute>[] a = intfSet.toArray(new Class[intfSet.size()]);
+          final Class<? extends Attribute>[] a = intfSet.toArray(new Class[0]);
           return a;
         }
       };
