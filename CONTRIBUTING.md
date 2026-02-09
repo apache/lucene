@@ -59,9 +59,9 @@ In case your contribution fixes a bug, please create a new test case that fails 
 ### IDE support
 
 - *IntelliJ* - IntelliJ idea can import and build gradle-based projects out of the box. It will default to running tests by calling the gradle wrapper, and while this works, it is can be a bit slow. If instead you configure IntelliJ to use its own built-in test runner by (in 2024 version) navigating to settings for Build Execution & Deployment/Build Tools/Gradle (under File/Settings menu on some platforms) and selecting "Build and Run using: IntelliJ IDEA" and "Run Tests using: IntelliJ IDEA", then some tests will run faster. However some other tests will not run using this configuration.
-- *Eclipse*  - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L7)).
-- *VSCode*   - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L23)).
-- *Neovim*   - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L32)).
+- *Eclipse* - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L7)).
+- *VSCode* - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L23)).
+- *Neovim* - Basic support ([help/IDEs.txt](https://github.com/apache/lucene/blob/main/help/IDEs.txt#L32)).
 - *Netbeans* - Not tested.
 
 ## Benchmarking
@@ -78,7 +78,7 @@ Feel free to share your findings (especially if your implementation performs bet
 
 ## Contributing your work
 
-You can open a pull request at https://github.com/apache/lucene.
+You can open a pull request at <https://github.com/apache/lucene>.
 
 Please be patient. Committers are busy people too. If no one responds to your patch after a few days, please make friendly reminders. Please incorporate others' suggestions into your patch if you think they're reasonable. Finally, remember that even a patch that is not committed is useful to the community.
 
