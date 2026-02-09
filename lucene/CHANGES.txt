@@ -91,6 +91,8 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#15681: Use empty array style to call Collection#toArray. (Zhou Hui)
+
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
 
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
