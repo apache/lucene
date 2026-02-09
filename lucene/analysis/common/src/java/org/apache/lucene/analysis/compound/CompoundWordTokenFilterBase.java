@@ -101,7 +101,7 @@ public abstract class CompoundWordTokenFilterBase extends TokenFilter {
   public final boolean incrementToken() throws IOException {
     if (!tokens.isEmpty()) {
       assert current != null;
-      CompoundToken token = tokens.remove();
+      CompoundToken token = tokens.poll();
       restoreState(current); // keep all other attributes untouched
       termAtt.setEmpty().append(token.txt);
       offsetAtt.setOffset(token.startOffset, token.endOffset);
