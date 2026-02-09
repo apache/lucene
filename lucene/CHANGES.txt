@@ -363,8 +363,6 @@ Optimizations
 
 * GITHUB#15582: Avoid copying bitset that's subsequently cleared (Viliam Durina)
 
-* GITHUB#15592: Optimize DocIdSetIteratorAcceptDocs#cost. (Shubham Chaudhary)
-
 * GITHUB#15618: SegmentTermsEnumFrame: avoid unnecessary array allocations that waste memory (Misha Dmitriev)
 
 * GITHUB#15585: Added shared prefetch counter to maintain count across clones and slices of MemorySegmentIndexInput. (Shubham Sharma)
