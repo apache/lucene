@@ -54,7 +54,6 @@ import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.DisjunctionMaxQuery;
-import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
@@ -237,8 +236,6 @@ public class WeightedSpanTermExtractor {
         }
       }
     } else if (query instanceof MatchAllDocsQuery) {
-      // nothing
-    } else if (query instanceof FieldExistsQuery) {
       // nothing
     } else if (query instanceof FunctionScoreQuery) {
       extract(((FunctionScoreQuery) query).getWrappedQuery(), boost, terms);
