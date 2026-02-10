@@ -20,11 +20,44 @@ package org.apache.lucene.internal.vectorization;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.util.Optional;
+import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 
 // this should live in a separate module, really. but for now - since we use
 // mr-jars, we have to look up the class by reflection (it isn't visible from this module).
+
+/**
+ * Expert: set the {@value #UPPER_JAVA_FEATURE_VERSION_SYSPROP} system property to increase the set
+ * of Java versions this class will provide optimized implementations for.
+ */
 public class PanamaVectorizationProviderService implements VectorizationProviderService {
+  private static final Logger LOG =
+      Logger.getLogger(PanamaVectorizationProviderService.class.getName());
+
+  private static final String UPPER_JAVA_FEATURE_VERSION_SYSPROP =
+      "org.apache.lucene.vectorization.upperJavaFeatureVersion";
+
+  private static final int DEFAULT_UPPER_JAVA_FEATURE_VERSION = 25;
+
+  static final int UPPER_JAVA_FEATURE_VERSION = getUpperJavaFeatureVersion();
+
+  private static int getUpperJavaFeatureVersion() {
+    int runtimeVersion = DEFAULT_UPPER_JAVA_FEATURE_VERSION;
+    try {
+      String str = System.getProperty(UPPER_JAVA_FEATURE_VERSION_SYSPROP);
+      if (str != null) {
+        runtimeVersion = Math.max(Integer.parseInt(str), runtimeVersion);
+      }
+    } catch (NumberFormatException | SecurityException _) {
+      Logger.getLogger(VectorizationProvider.class.getName())
+          .warning(
+              "Cannot read sysprop "
+                  + UPPER_JAVA_FEATURE_VERSION_SYSPROP
+                  + ", so the default value will be used.");
+    }
+    return runtimeVersion;
+  }
+
   /**
    * Looks up the vector module from Lucene's {@link ModuleLayer} or the root layer (if unnamed).
    */
@@ -39,30 +72,49 @@ public class PanamaVectorizationProviderService implements VectorizationProvider
     final int runtimeVersion = Runtime.version().feature();
     assert runtimeVersion >= 21;
 
+    if (runtimeVersion > UPPER_JAVA_FEATURE_VERSION) {
+      LOG.warning(
+          "You are running with unsupported Java "
+              + runtimeVersion
+              + ". To make full use of the Vector API, please update Apache Lucene.");
+      return false;
+    }
+
     // only use vector module with Hotspot VM
     if (!Constants.IS_HOTSPOT_VM) {
+      LOG.warning(
+          "Java runtime is not using Hotspot VM; Java vector incubator API can't be enabled.");
       return false;
     }
 
     // don't use vector module with JVMCI (it does not work)
     if (Constants.IS_JVMCI_VM) {
+      LOG.warning(
+          "Java runtime is using JVMCI Compiler; Java vector incubator API can't be enabled.");
       return false;
     }
 
-    // is the incubator module present and readable (JVM providers may to exclude them or it is
-    // build with jlink)
+    if (Constants.IS_CLIENT_VM) {
+      LOG.warning("C2 compiler is disabled; Java vector incubator API can't be enabled");
+      return false;
+    }
+
+    // is the incubator module present and readable (JVM providers may to exclude them, or it is
+    // built with jlink)
     final var vectorMod = lookupVectorModule();
     if (vectorMod.isEmpty()) {
+      LOG.warning(
+          "Java vector incubator module is not readable. For optimal vector performance, pass '--add-modules jdk.incubator.vector' to enable Vector API.");
       return false;
     }
     vectorMod.ifPresent(VectorizationProvider.class.getModule()::addReads);
 
-    // TODO: check for testMode and otherwise fallback to default if slowness could happen
-
     try {
       return newInstance() != null;
-    } catch (Throwable _) {
-      return false;
+    } catch (Throwable ex) {
+      throw new RuntimeException(
+          "All the conditions to run panama seem to be met but the vectorization provider cannot be instantiated?",
+          ex);
     }
   }
 
@@ -81,7 +133,6 @@ public class PanamaVectorizationProviderService implements VectorizationProvider
       final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
       return (VectorizationProvider) constr.invoke();
     } catch (Throwable t) {
-      // TODO: we should probably check what happened more thoroughly...
       throw new RuntimeException(t);
     }
   }

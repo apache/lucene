@@ -19,7 +19,11 @@ package org.apache.lucene.internal.vectorization.panama;
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
 import java.util.Locale;
+import java.util.OptionalInt;
+import java.util.Set;
+import java.util.function.Predicate;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 import jdk.incubator.vector.FloatVector;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
@@ -32,6 +36,21 @@ import org.apache.lucene.util.SuppressForbidden;
 
 /** A vectorization provider that leverages the Panama Vector API. */
 public final class PanamaVectorizationProvider extends VectorizationProvider {
+  static final OptionalInt TESTS_VECTOR_SIZE;
+
+  static {
+    var vs = OptionalInt.empty();
+    try {
+      vs =
+          Stream.ofNullable(System.getProperty("tests.vectorsize"))
+              .filter(Predicate.not(Set.of("", "default")::contains))
+              .mapToInt(Integer::parseInt)
+              .findAny();
+    } catch (SecurityException _) {
+      // ignored
+    }
+    TESTS_VECTOR_SIZE = vs;
+  }
 
   // NOTE: Avoid static fields or initializers which rely on the vector API, as these initializers
   // would get called before we have a chance to perform sanity checks around the vector API in the
@@ -68,7 +87,7 @@ public final class PanamaVectorizationProvider extends VectorizationProvider {
             "Java vector incubator API enabled; uses preferredBitSize=%d%s%s",
             PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE,
             Constants.HAS_FAST_VECTOR_FMA ? "; FMA enabled" : "",
-            VectorizationProvider.TESTS_VECTOR_SIZE.isPresent() ? "; testMode enabled" : ""));
+            PanamaVectorizationProvider.TESTS_VECTOR_SIZE.isPresent() ? "; testMode enabled" : ""));
   }
 
   @Override

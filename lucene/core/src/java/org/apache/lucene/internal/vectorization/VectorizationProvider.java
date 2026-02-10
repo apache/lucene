@@ -22,14 +22,10 @@ import java.lang.StackWalker.StackFrame;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.OptionalInt;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.function.Predicate;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.VectorUtil;
@@ -37,52 +33,19 @@ import org.apache.lucene.util.VectorUtil;
 /**
  * A provider of vectorization implementations. Depending on the Java version and availability of
  * vectorization modules in the Java runtime this class provides optimized implementations (using
- * SIMD) of several algorithms used throughout Apache Lucene.
- *
- * <p>Expert: set the {@value #UPPER_JAVA_FEATURE_VERSION_SYSPROP} system property to increase the
- * set of Java versions this class will provide optimized implementations for.
+ * SIMD) of several algorithms used throughout Apache Lucene. *
  *
  * @lucene.internal
  */
 public abstract class VectorizationProvider {
+  /**
+   * Prefer any provider that is available and supported. If nothing is, try panama, followed by
+   * default
+   */
+  public static final String DEFAULT_VECTORIZATION_PROVIDER_ORDER_PREFERENCE = "*,panama,default";
 
-  public static final OptionalInt TESTS_VECTOR_SIZE;
-  static final int UPPER_JAVA_FEATURE_VERSION = getUpperJavaFeatureVersion();
-
-  static {
-    var vs = OptionalInt.empty();
-    try {
-      vs =
-          Stream.ofNullable(System.getProperty("tests.vectorsize"))
-              .filter(Predicate.not(Set.of("", "default")::contains))
-              .mapToInt(Integer::parseInt)
-              .findAny();
-    } catch (SecurityException _) {
-      // ignored
-    }
-    TESTS_VECTOR_SIZE = vs;
-  }
-
-  private static final String UPPER_JAVA_FEATURE_VERSION_SYSPROP =
-      "org.apache.lucene.vectorization.upperJavaFeatureVersion";
-  private static final int DEFAULT_UPPER_JAVA_FEATURE_VERSION = 25;
-
-  private static int getUpperJavaFeatureVersion() {
-    int runtimeVersion = DEFAULT_UPPER_JAVA_FEATURE_VERSION;
-    try {
-      String str = System.getProperty(UPPER_JAVA_FEATURE_VERSION_SYSPROP);
-      if (str != null) {
-        runtimeVersion = Math.max(Integer.parseInt(str), runtimeVersion);
-      }
-    } catch (NumberFormatException | SecurityException _) {
-      Logger.getLogger(VectorizationProvider.class.getName())
-          .warning(
-              "Cannot read sysprop "
-                  + UPPER_JAVA_FEATURE_VERSION_SYSPROP
-                  + ", so the default value will be used.");
-    }
-    return runtimeVersion;
-  }
+  public static final String VECTORIZATION_PROVIDER_ORDER_PREFERENCE_PROPERTY =
+      "lucene.vectorization";
 
   /**
    * Returns the default instance of the provider matching vectorization possibilities of actual
@@ -118,10 +81,8 @@ public abstract class VectorizationProvider {
 
   // *** Lookup mechanism: ***
 
-  private static final Logger LOG = Logger.getLogger(VectorizationProvider.class.getName());
-
   // visible for tests
-  static VectorizationProvider lookup(boolean testMode) {
+  static VectorizationProvider lookup(String providerPreference) {
     var implementations =
         ServiceLoader.load(VectorizationProviderService.class).stream()
             .map(ServiceLoader.Provider::get)
@@ -132,8 +93,7 @@ public abstract class VectorizationProvider {
     ArrayDeque<VectorizationProviderService> inReversePreferenceOrder = new ArrayDeque<>();
 
     // force a specific implementation here or give order of preference.
-    String preference = System.getProperty("lucene.vectorization.impl", "*,panama,default");
-    var options = Arrays.asList(preference.split(",")).reversed().iterator();
+    var options = Arrays.asList(providerPreference.split(",")).reversed().iterator();
 
     while (options.hasNext()) {
       var s = options.next();
@@ -155,7 +115,8 @@ public abstract class VectorizationProvider {
       }
     }
 
-    throw new RuntimeException("No vectorization provider matches this preference: " + preference);
+    throw new RuntimeException(
+        "No vectorization provider matches this preference: " + providerPreference);
   }
 
   // add all possible callers here as FQCN:
@@ -186,6 +147,10 @@ public abstract class VectorizationProvider {
   private static final class Holder {
     private Holder() {}
 
-    static final VectorizationProvider INSTANCE = lookup(false);
+    static final VectorizationProvider INSTANCE =
+        lookup(
+            System.getProperty(
+                VECTORIZATION_PROVIDER_ORDER_PREFERENCE_PROPERTY,
+                DEFAULT_VECTORIZATION_PROVIDER_ORDER_PREFERENCE));
   }
 }

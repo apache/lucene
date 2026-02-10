@@ -36,6 +36,6 @@ public abstract class BaseVectorizationTestCase extends LuceneTestCase {
   }
 
   public static VectorizationProvider maybePanamaProvider() {
-    return VectorizationProvider.lookup(true);
+    return VectorizationProvider.lookup("panama,default");
   }
 }

@@ -37,7 +37,7 @@ public class TestPostingDecodingUtil extends LuceneTestCase {
           out.writeLong(random().nextInt());
         }
       }
-      VectorizationProvider vectorizationProvider = VectorizationProvider.lookup(true);
+      VectorizationProvider vectorizationProvider = VectorizationProvider.lookup("panama,default");
       try (IndexInput in = dir.openInput("tests.bin", IOContext.DEFAULT)) {
         int[] expectedB = new int[ForUtil.BLOCK_SIZE];
         int[] expectedC = new int[ForUtil.BLOCK_SIZE];
