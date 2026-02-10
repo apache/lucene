@@ -311,8 +311,13 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       // Note: Visibility is guaranteed because the collector's minCompetitiveSimilarity()
       // performs a volatile read (via LongAccumulator) of the global bar.
       float liveMinSimilarity = results.minCompetitiveSimilarity();
-      if (liveMinSimilarity > minAcceptedSimilarity) {
-        minAcceptedSimilarity = liveMinSimilarity;
+      
+      // Fix 1: Use Math.nextUp() to be consistent with standard HNSW logic. 
+      // This prevents minor floating point differences from blocking exploration of equal scores
+      // (bridge nodes) when the global bar is close.
+      float nextLiveMinSimilarity = Math.nextUp(liveMinSimilarity);
+      if (nextLiveMinSimilarity > minAcceptedSimilarity) {
+        minAcceptedSimilarity = nextLiveMinSimilarity;
         shouldExploreMinSim = true;
       }
 
@@ -349,9 +354,14 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
 
       numNodes = (int) Math.min(numNodes, results.visitLimit() - results.visitedCount());
       results.incVisitedCount(numNodes);
+      
+      // Fix 2: Strict Bulk-Score Pruning
+      // Use >= instead of > to allow bulk scoring of nodes that exactly match the threshold.
+      // This is critical when shards have identical high scores (e.g., duplicated documents)
+      // or when the global bar is exactly equal to a local bridge node's score.
       if (numNodes > 0
           && scorer.bulkScore(bulkNodes, bulkScores, numNodes)
-              > results.minCompetitiveSimilarity()) {
+              >= results.minCompetitiveSimilarity()) {
         for (int i = 0; i < numNodes; i++) {
           int node = bulkNodes[i];
           float score = bulkScores[i];

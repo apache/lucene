@@ -19,6 +19,7 @@ package org.apache.lucene.search.knn;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.LongAccumulator;
+import java.util.function.IntUnaryOperator;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.CollaborativeKnnCollector;
 import org.apache.lucene.search.KnnCollector;
@@ -33,6 +34,7 @@ public class CollaborativeKnnCollectorManager implements KnnCollectorManager {
 
   private final int k;
   private final LongAccumulator minScoreAcc;
+  private final IntUnaryOperator docIdMapper;
 
   /**
    * Create a new CollaborativeKnnCollectorManager
@@ -43,6 +45,21 @@ public class CollaborativeKnnCollectorManager implements KnnCollectorManager {
   public CollaborativeKnnCollectorManager(int k, LongAccumulator minScoreAcc) {
     this.k = k;
     this.minScoreAcc = minScoreAcc;
+    this.docIdMapper = docId -> docId;
+  }
+
+  /**
+   * Create a new CollaborativeKnnCollectorManager with a docId mapper
+   *
+   * @param k number of neighbors to collect
+   * @param minScoreAcc shared accumulator for global pruning
+   * @param docIdMapper maps absolute docIds (docBase + docId) to a globally comparable space
+   */
+  public CollaborativeKnnCollectorManager(
+      int k, LongAccumulator minScoreAcc, IntUnaryOperator docIdMapper) {
+    this.k = k;
+    this.minScoreAcc = minScoreAcc;
+    this.docIdMapper = docIdMapper;
   }
 
   @Override
@@ -50,6 +67,6 @@ public class CollaborativeKnnCollectorManager implements KnnCollectorManager {
       int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context)
       throws IOException {
     return new CollaborativeKnnCollector(
-        k, visitedLimit, searchStrategy, minScoreAcc, context.docBase);
+        k, visitedLimit, searchStrategy, minScoreAcc, context.docBase, docIdMapper);
   }
 }
