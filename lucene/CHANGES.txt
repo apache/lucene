@@ -104,6 +104,8 @@ Optimizations
 
 * GITHUB#15085, GITHUB#15092: Hunspell suggestions: Ensure candidate roots are not worse before updating. (Ilia Permiashkin)
 
+* GITHUB#15597: Reduce memory usage of NeighborArray (Viliam Durina)
+
 * GITHUB#15683: Reuse reader's fieldinfos. (Vliam Durina)
 
 Bug Fixes
@@ -195,7 +197,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#15668: Fix UnsupportedOperationException in WeightedSpanTermExtractor by
+  implementing getFieldInfos in DelegatingLeafReader. (Simranjeet Singh)
+
 
 Other
 ---------------------
@@ -360,8 +364,6 @@ Optimizations
 * GITHUB#15560: Avoid unnecessary getGraph() call. (Shubham Chaudhary)
 
 * GITHUB#15582: Avoid copying bitset that's subsequently cleared (Viliam Durina)
-
-* GITHUB#15592: Optimize DocIdSetIteratorAcceptDocs#cost. (Shubham Chaudhary)
 
 * GITHUB#15618: SegmentTermsEnumFrame: avoid unnecessary array allocations that waste memory (Misha Dmitriev)
 
