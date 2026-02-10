@@ -33,7 +33,7 @@ import org.apache.lucene.util.RamUsageEstimator;
  *
  * @lucene.internal
  */
-public class NFARunAutomaton implements ByteRunnable, TransitionAccessor, Accountable {
+abstract class NFARunAutomaton implements Runnable, TransitionAccessor, Accountable {
 
   /** state ordinal of "no such state" */
   private static final int MISSING = -1;
@@ -53,16 +53,6 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor, Accoun
   private final Operations.PointTransitionSet transitionSet =
       new Operations.PointTransitionSet(); // reusable
   private final StateSet statesSet = new StateSet(5); // reusable
-
-  /**
-   * Constructor, assuming alphabet size is the whole Unicode code point space
-   *
-   * @param automaton incoming automaton, should be NFA, for DFA please use {@link RunAutomaton} for
-   *     better efficiency
-   */
-  public NFARunAutomaton(Automaton automaton) {
-    this(automaton, Character.MAX_CODE_POINT + 1);
-  }
 
   /**
    * Constructor
@@ -91,14 +81,6 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor, Accoun
     }
   }
 
-  /**
-   * For a given state and an incoming character (codepoint), return the next state
-   *
-   * @param state incoming state, should either be 0 or some state that is returned previously by
-   *     this function
-   * @param c codepoint
-   * @return the next state or {@link #MISSING} if the transition doesn't exist
-   */
   @Override
   public int step(int state, int c) {
     assert dStates[state] != null;
@@ -114,21 +96,6 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor, Accoun
   @Override
   public int getSize() {
     return dStates.length;
-  }
-
-  /**
-   * Run through a given codepoint array, return accepted or not, should only be used in test
-   *
-   * @param s String represented by an int array
-   * @return accept or not
-   */
-  boolean run(int[] s) {
-    int p = 0;
-    for (int c : s) {
-      p = step(p, c);
-      if (p == MISSING) return false;
-    }
-    return dStates[p].isAccept;
   }
 
   /**

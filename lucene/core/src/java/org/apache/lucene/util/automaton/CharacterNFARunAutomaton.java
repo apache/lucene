@@ -16,16 +16,15 @@
  */
 package org.apache.lucene.util.automaton;
 
-/** A runnable automaton accepting byte array as input */
-public interface ByteRunnable extends Runnable {
-  /** Returns true if the given byte array is accepted by this automaton */
-  default boolean run(byte[] s, int offset, int length) {
-    int p = 0;
-    int l = offset + length;
-    for (int i = offset; i < l; i++) {
-      p = step(p, s[i] & 0xFF);
-      if (p == -1) return false;
-    }
-    return isAccept(p);
+/**
+ * Automaton for matching character sequences against a non-deterministic automaton. Note: the
+ * current implementation is NOT thread-safe!
+ *
+ * @lucene.internal
+ */
+public class CharacterNFARunAutomaton extends NFARunAutomaton implements CharacterRunnable {
+  /** Construct from an automaton. */
+  public CharacterNFARunAutomaton(Automaton automaton) {
+    super(automaton, Character.MAX_CODE_POINT + 1);
   }
 }

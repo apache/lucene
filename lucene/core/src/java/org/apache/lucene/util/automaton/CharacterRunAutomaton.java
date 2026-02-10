@@ -17,7 +17,7 @@
 package org.apache.lucene.util.automaton;
 
 /** Automaton representation for matching char[]. */
-public class CharacterRunAutomaton extends RunAutomaton {
+public class CharacterRunAutomaton extends RunAutomaton implements CharacterRunnable {
   /**
    * Construct from a DFA
    *
@@ -25,27 +25,5 @@ public class CharacterRunAutomaton extends RunAutomaton {
    */
   public CharacterRunAutomaton(Automaton a) {
     super(a, Character.MAX_CODE_POINT + 1);
-  }
-
-  /** Returns true if the given string is accepted by this automaton. */
-  public boolean run(String s) {
-    int p = 0;
-    int l = s.length();
-    for (int i = 0, cp = 0; i < l; i += Character.charCount(cp)) {
-      p = step(p, cp = s.codePointAt(i));
-      if (p == -1) return false;
-    }
-    return accept.get(p);
-  }
-
-  /** Returns true if the given string is accepted by this automaton */
-  public boolean run(char[] s, int offset, int length) {
-    int p = 0;
-    int l = offset + length;
-    for (int i = offset, cp = 0; i < l; i += Character.charCount(cp)) {
-      p = step(p, cp = Character.codePointAt(s, i, l));
-      if (p == -1) return false;
-    }
-    return accept.get(p);
   }
 }

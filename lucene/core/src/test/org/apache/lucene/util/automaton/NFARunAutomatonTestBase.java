@@ -39,14 +39,18 @@ import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.IntsRef;
 import org.junit.Assert;
 
-public class TestNFARunAutomaton extends LuceneTestCase {
+abstract class NFARunAutomatonTestBase<T extends NFARunAutomaton> extends LuceneTestCase {
 
   private static final String FIELD = "field";
+
+  abstract T getRunner(Automaton automaton);
+
+  abstract boolean run(T runner, int[] codePoints);
 
   public void testRamUsageEstimation() {
     RegExp regExp = new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE);
     Automaton nfa = regExp.toAutomaton();
-    NFARunAutomaton runAutomaton = new NFARunAutomaton(nfa);
+    NFARunAutomaton runAutomaton = getRunner(nfa);
     long estimation = runAutomaton.ramBytesUsed();
     long actual = RamUsageTester.ramUsed(runAutomaton);
     Assert.assertEquals((double) actual, (double) estimation, (double) actual * 0.3);
@@ -62,7 +66,7 @@ public class TestNFARunAutomaton extends LuceneTestCase {
         continue;
       }
       Automaton dfa = Operations.determinize(nfa, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-      NFARunAutomaton candidate = new NFARunAutomaton(nfa);
+      T candidate = getRunner(nfa);
       AutomatonTestUtil.RandomAcceptedStrings randomStringGen;
       try {
         randomStringGen = new AutomatonTestUtil.RandomAcceptedStrings(dfa);
@@ -91,8 +95,8 @@ public class TestNFARunAutomaton extends LuceneTestCase {
       nfa = new RegExp(AutomatonTestUtil.randomRegexp(random()), RegExp.NONE).toAutomaton();
     }
     NFARunAutomaton runAutomaton1, runAutomaton2;
-    runAutomaton1 = new NFARunAutomaton(nfa);
-    runAutomaton2 = new NFARunAutomaton(nfa);
+    runAutomaton1 = getRunner(nfa);
+    runAutomaton2 = getRunner(nfa);
     assertRandomAccessTransition(runAutomaton1, runAutomaton2, 0, new HashSet<>());
   }
 
@@ -198,25 +202,24 @@ public class TestNFARunAutomaton extends LuceneTestCase {
   private void testAcceptedString(
       RegExp regExp,
       AutomatonTestUtil.RandomAcceptedStrings randomStringGen,
-      NFARunAutomaton candidate,
+      T candidate,
       int repeat) {
     for (int n = 0; n < repeat; n++) {
       int[] acceptedString = randomStringGen.getRandomAcceptedString(random());
       assertTrue(
           "regExp: " + regExp + " testString: " + Arrays.toString(acceptedString),
-          candidate.run(acceptedString));
+          run(candidate, acceptedString));
     }
   }
 
-  private void testRandomString(
-      RegExp regExp, Automaton dfa, NFARunAutomaton candidate, int repeat) {
+  private void testRandomString(RegExp regExp, Automaton dfa, T candidate, int repeat) {
     for (int n = 0; n < repeat; n++) {
       int[] randomString =
           random().ints(random().nextInt(50), 0, Character.MAX_CODE_POINT).toArray();
       assertEquals(
           "regExp: " + regExp + " testString: " + Arrays.toString(randomString),
           Operations.run(dfa, new IntsRef(randomString, 0, randomString.length)),
-          candidate.run(randomString));
+          run(candidate, randomString));
     }
   }
 }

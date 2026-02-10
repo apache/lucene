@@ -16,16 +16,14 @@
  */
 package org.apache.lucene.util.automaton;
 
-/** A runnable automaton accepting byte array as input */
-public interface ByteRunnable extends Runnable {
-  /** Returns true if the given byte array is accepted by this automaton */
-  default boolean run(byte[] s, int offset, int length) {
-    int p = 0;
-    int l = offset + length;
-    for (int i = offset; i < l; i++) {
-      p = step(p, s[i] & 0xFF);
-      if (p == -1) return false;
-    }
-    return isAccept(p);
+public class TestByteNFARunAutomaton extends NFARunAutomatonTestBase<ByteNFARunAutomaton> {
+  @Override
+  ByteNFARunAutomaton getRunner(Automaton automaton) {
+    return new ByteNFARunAutomaton(automaton, Character.MAX_CODE_POINT + 1);
+  }
+
+  @Override
+  boolean run(ByteNFARunAutomaton runner, int[] codePoints) {
+    return runner.run(codePoints);
   }
 }

@@ -16,14 +16,33 @@
  */
 package org.apache.lucene.util.automaton;
 
-/** A runnable automaton accepting byte array as input */
-public interface ByteRunnable extends Runnable {
-  /** Returns true if the given byte array is accepted by this automaton */
-  default boolean run(byte[] s, int offset, int length) {
+/**
+ * Automaton for matching a byte array against a non-deterministic automaton. Note: the current
+ * implementation is NOT thread-safe!
+ *
+ * @lucene.internal
+ */
+public class ByteNFARunAutomaton extends NFARunAutomaton implements ByteRunnable {
+  /** Construct from an automaton, with alphabet size of 2^8 (range of unsigned byte). */
+  public ByteNFARunAutomaton(Automaton automaton) {
+    this(automaton, 0xff);
+  }
+
+  /** Construct from an automaton and alphabet size. */
+  public ByteNFARunAutomaton(Automaton automaton, int alphabetSize) {
+    super(automaton, alphabetSize);
+  }
+
+  /**
+   * Run through a given codepoint array, return accepted or not, should only be used in test
+   *
+   * @param s String represented by an int array
+   * @return accept or not
+   */
+  boolean run(int[] s) {
     int p = 0;
-    int l = offset + length;
-    for (int i = offset; i < l; i++) {
-      p = step(p, s[i] & 0xFF);
+    for (int c : s) {
+      p = step(p, c);
       if (p == -1) return false;
     }
     return isAccept(p);

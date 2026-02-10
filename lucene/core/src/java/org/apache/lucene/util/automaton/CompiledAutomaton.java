@@ -37,7 +37,7 @@ import org.apache.lucene.util.UnicodeUtil;
  * Immutable class holding compiled details for a given Automaton. The Automaton could either be
  * deterministic or non-deterministic, For deterministic automaton, it must not have dead states but
  * is not necessarily minimal. And will be executed using {@link ByteRunAutomaton} For
- * non-deterministic automaton, it will be executed using {@link NFARunAutomaton}
+ * non-deterministic automaton, it will be executed using {@link ByteNFARunAutomaton}
  *
  * @lucene.experimental
  */
@@ -85,7 +85,7 @@ public class CompiledAutomaton implements Accountable {
    *
    * <p>TODO: merge this with runAutomaton
    */
-  final NFARunAutomaton nfaRunAutomaton;
+  final ByteNFARunAutomaton nfaRunAutomaton;
 
   /**
    * Shared common suffix accepted by the automaton. Only valid for {@link AUTOMATON_TYPE#NORMAL},
@@ -254,7 +254,7 @@ public class CompiledAutomaton implements Accountable {
       this.automaton = null;
       this.runAutomaton = null;
       this.sinkState = -1;
-      this.nfaRunAutomaton = new NFARunAutomaton(binary, 0xff);
+      this.nfaRunAutomaton = new ByteNFARunAutomaton(binary);
     } else {
       // We already had a DFA (or threw exception), according to mike UTF32toUTF8 won't "blow up"
       binary = Operations.determinize(binary, Integer.MAX_VALUE);
