@@ -23,14 +23,17 @@ import java.util.Optional;
 import java.util.logging.Logger;
 import org.apache.lucene.util.Constants;
 
-// this should live in a separate module, really. but for now - since we use
-// mr-jars, we have to look up the class by reflection (it isn't visible from this module).
-
 /**
  * Expert: set the {@value #UPPER_JAVA_FEATURE_VERSION_SYSPROP} system property to increase the set
  * of Java versions this class will provide optimized implementations for.
  */
 public class PanamaVectorizationProviderService implements VectorizationProviderService {
+  //
+  // All the panama vectorization classes should live in a separate module, really. However, this
+  // would require another jar and would complicate life for many people. It is also de-facto
+  // default on all modern JVMs, so we will let it live in the core.
+  //
+
   private static final Logger LOG =
       Logger.getLogger(PanamaVectorizationProviderService.class.getName());
 
@@ -125,6 +128,10 @@ public class PanamaVectorizationProviderService implements VectorizationProvider
 
   @Override
   public VectorizationProvider newInstance() {
+    // This is intentional because the implementation lives in multi-release JAR space; we may
+    // substitute implementations for different JDKs until the API stabilizes. IDEs and gradle
+    // don't support mr-jars too well so this is easier.
+
     try {
       final var lookup = MethodHandles.lookup();
       final var cls =

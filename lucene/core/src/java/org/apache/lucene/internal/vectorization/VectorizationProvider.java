@@ -81,6 +81,19 @@ public abstract class VectorizationProvider {
 
   // *** Lookup mechanism: ***
 
+  /**
+   * Lookup {@link VectorizationProvider} implementation by scanning the available {@link
+   * VectorizationProviderService} in the provided order of preference. Implementations that cannot
+   * be loaded (for some reason) will be omitted. If no implementation fulfilling the provided
+   * preferences can be found, an exception is thrown.
+   *
+   * @param providerPreference A comma-separated list of {@linkplain
+   *     VectorizationProviderService#name() implementation names} to try. The list is scanned
+   *     left-to-right. An asterisk ({@code *} character indicates any service implementation.
+   *     Example: {@code *,panama,default} indicates any service implementation (other than
+   *     subsequent choices), followed by {@code panama} and then {@code default}.
+   * @see VectorizationProviderService
+   */
   // visible for tests
   static VectorizationProvider lookup(String providerPreference) {
     var implementations =
