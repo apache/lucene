@@ -111,15 +111,15 @@ Missing values should be configured in SortField constructor methods, as they ar
 MatchAllDocs and MatchNoDocs queries should use the INSTANCE final field instead of creating
 new objects. The constructors will be removed in the future.
 
-### APIs for configuring compound file creation thresholds have been updated and moved.
+### APIs for configuring compound file creation thresholds have been updated and moved
 
 APIs for configuring compound file creation thresholds were part of merge policies before.
 They are now part of `CompoundFormat`. Previously, the compound file creation depended upon the size of the merged
 segment with respect to the total index size (determined by `CFSRatio` which was 10% by default). Lucene now uses fixed
 thresholds to decide whether a merged segment should be written as a compound file, the default thresholds are:
 
-* **64 MB** for size-based merge policies (e.g., `TieredMergePolicy`)
-* **65,536 documents** for document-count based merge policies (e.g., `LogDocMergePolicy`)
+- **64 MB** for size-based merge policies (e.g., `TieredMergePolicy`)
+- **65,536 documents** for document-count based merge policies (e.g., `LogDocMergePolicy`)
 
 These thresholds could be changed using `setCfsThresholdByteSize` and `setCfsThresholdDocSize` respectively.
 
@@ -128,7 +128,7 @@ These thresholds could be changed using `setCfsThresholdByteSize` and `setCfsThr
 If your code previously configured `getNoCFSRatio`, `getMaxCFSSegmentSizeMB`, `setMaxCFSSegmentSizeMB` and `setNoCFSRatio`
 on merge policies, you should change it as follows:
 
-**Before**
+##### Before
 
 ```java
 TieredMergePolicy mp = new TieredMergePolicy();
@@ -140,7 +140,7 @@ mp.getNoCFSRatio();
 mp.getMaxCFSSegmentSizeMB();
 ```
 
-**After**
+##### After
 
 ```java
 IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
