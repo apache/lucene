@@ -37,8 +37,8 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
 
   private final LongAccumulator minScoreAcc;
   private final int docBase;
-  private final int mappedDocBase;
   private final IntUnaryOperator docIdMapper;
+  private float lastSharedScore = Float.NEGATIVE_INFINITY;
 
   /**
    * Create a new CollaborativeKnnCollector
@@ -122,37 +122,27 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
     this.minScoreAcc = minScoreAcc;
     this.docBase = docBase;
     this.docIdMapper = docIdMapper;
-    this.mappedDocBase = docIdMapper.applyAsInt(docBase);
   }
 
   /**
    * Returns the minimum competitive similarity for this collector.
    *
    * <p>This method implements cross-segment pruning by consulting the shared {@link
-   * LongAccumulator}. The global bar is only applied when this segment's mapped base docId is
-   * strictly greater than the global minimum document ID, ensuring Lucene's tie-breaking semantics
-   * (lower docId wins at equal scores) are preserved.
-   *
-   * <p><b>Design note:</b> Segment 0 (the segment with the lowest docBase) never benefits from
-   * global pruning because its docBase is always {@code <= globalMinDoc}. This is intentional: if a
-   * document in segment 0 ties with the global bar, it would win the tie-break, so we must not
-   * prune it. In practice, exact float score ties are extremely rare for vector similarity, so this
-   * conservative behavior has negligible impact on pruning effectiveness.
+   * LongAccumulator}.
    *
    * <p><b>Important for Distributed search:</b> This logic assumes that the {@code docIdMapper}
-   * maps local document IDs to a globally consistent integer space where the ordering of IDs reflects
-   * the desired tie-breaking priority across shards.
+   * maps local document IDs to a globally consistent integer space where the ordering of IDs
+   * reflects the desired tie-breaking priority across shards.
    */
   @Override
   public float minCompetitiveSimilarity() {
     float localMin = super.minCompetitiveSimilarity();
-    
+
     // "Lagging Threshold" / Entry Point Protection:
-    // Do not apply the global bar until the local collector is full (has collected k results)
-    // AND we have explored a minimum number of nodes.
-    // This prevents the search from terminating immediately at the entry point if the 
+    // Do not apply the global bar until we have explored a minimum number of nodes (100).
+    // This prevents the search from terminating immediately at the entry point if the
     // global bar is high but the local entry point is poor (a "bridge" node).
-    if (localMin == Float.NEGATIVE_INFINITY || visitedCount() < k() * 2) {
+    if (visitedCount() < 100) {
       return localMin;
     }
 
@@ -162,38 +152,27 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
     }
 
     float globalMinScore = DocScoreEncoder.toScore(globalMinCode);
-    int globalMinDoc = DocScoreEncoder.docId(globalMinCode);
 
-    // Lucene tie-breaking: lower DocID wins.
-    // If the global minimum was found in a document with a smaller ID than our
-    // current segment's base, then ANY document in our segment with the SAME
-    // score is guaranteed to lose the tie-break. In this case, we return
-    // the global score as-is (with a small slack).
-    if (mappedDocBase > globalMinDoc) {
-      // Safety Slack: Use a slightly lower global bar to allow bridging through nodes
-      // that are necessary to reach the target cluster.
-      return Math.max(localMin, globalMinScore - 0.05f);
-    }
-
-    // If our segment could contain a document with the same score that wins (smaller DocID),
-    // we must allow it to be explored. We return localMin to ensure we only prune
-    // when we are mathematically certain that no better match can be found in this segment.
-    return localMin;
+    // Safety Slack: Use a 0.01 safety margin to allow shards to complete their 
+    // local greedy climbs without being constantly interrupted by tiny 
+    // threshold updates from other shards.
+    return Math.max(localMin, globalMinScore - 0.01f);
   }
 
   @Override
   public boolean collect(int docId, float similarity) {
     boolean collected = super.collect(docId, similarity);
     if (collected) {
-      // Share the k-th best score (floor of the top-k queue) rather than each collected
-      // doc's score. The floor is Float.NEGATIVE_INFINITY until the queue is full, so we
-      // only accumulate once we have a meaningful threshold. This gives a gentler global
-      // bar that maintains high recall while still enabling cross-segment pruning.
+      // Share the k-th best score (floor of the top-k queue). 
       float floorScore = super.minCompetitiveSimilarity();
-      if (floorScore > Float.NEGATIVE_INFINITY) {
+      
+      // Smart Accumulation: Only update the global bar if the improvement is significant (0.001).
+      // This reduces atomic contention across threads and shards.
+      if (floorScore > Float.NEGATIVE_INFINITY && floorScore > lastSharedScore + 0.001f) {
         int absoluteDocId = docId + docBase;
         int mappedDocId = docIdMapper.applyAsInt(absoluteDocId);
         minScoreAcc.accumulate(DocScoreEncoder.encode(mappedDocId, floorScore));
+        lastSharedScore = floorScore;
       }
     }
     return collected;

@@ -43,9 +43,7 @@ public class CollaborativeKnnCollectorManager implements KnnCollectorManager {
    * @param minScoreAcc shared accumulator for global pruning
    */
   public CollaborativeKnnCollectorManager(int k, LongAccumulator minScoreAcc) {
-    this.k = k;
-    this.minScoreAcc = minScoreAcc;
-    this.docIdMapper = docId -> docId;
+    this(k, minScoreAcc, docId -> docId);
   }
 
   /**
