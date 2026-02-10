@@ -99,7 +99,7 @@ zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
 benmanes-versions = "com.github.ben-manes.versions:0.53.0"
 carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.0"
 carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.1.0"
-errorprone = "net.ltgt.errorprone:4.4.0"
+errorprone = "net.ltgt.errorprone:5.0.0"
 forbiddenapis = "de.thetaphi.forbiddenapis:3.10"
 jacocolog = "org.barfuin.gradle.jacocolog:4.0.1"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
