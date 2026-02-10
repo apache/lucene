@@ -44,7 +44,4 @@ public abstract class Fields implements Iterable<String> {
    * 0, {@link #iterator} will return as many field names.
    */
   public abstract int size();
-
-  /** Zero-length {@code Fields} array. */
-  public static final Fields[] EMPTY_ARRAY = new Fields[0];
 }

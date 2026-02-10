@@ -24,8 +24,4 @@ package org.apache.lucene.index;
  * @param readerIndex Sub-reader index for this slice.
  * @lucene.internal
  */
-public record ReaderSlice(int start, int length, int readerIndex) {
-
-  /** Zero-length {@code ReaderSlice} array. */
-  public static final ReaderSlice[] EMPTY_ARRAY = new ReaderSlice[0];
-}
+public record ReaderSlice(int start, int length, int readerIndex) {}
