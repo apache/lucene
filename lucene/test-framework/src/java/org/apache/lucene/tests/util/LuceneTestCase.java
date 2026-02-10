@@ -97,6 +97,7 @@ import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import junit.framework.AssertionFailedError;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.codecs.CompoundFormat;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.bitvectors.HnswBitVectorsFormat;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
@@ -999,6 +1000,7 @@ public abstract class LuceneTestCase extends Assert {
   /** create a new index writer config with random defaults using the specified random */
   public static IndexWriterConfig newIndexWriterConfig(Random r, Analyzer a) {
     IndexWriterConfig c = new IndexWriterConfig(a);
+    configureRandom(r, c.getCodec().compoundFormat());
     c.setSimilarity(classEnvRule.similarity);
     if (INFOSTREAM) {
       // Even though TestRuleSetupAndRestoreClassEnv calls
@@ -1135,21 +1137,16 @@ public abstract class LuceneTestCase extends Assert {
     } else {
       logmp.setMergeFactor(TestUtil.nextInt(r, 10, 50));
     }
-    configureRandom(r, logmp);
     return logmp;
   }
 
-  private static void configureRandom(Random r, MergePolicy mergePolicy) {
-    if (r.nextBoolean()) {
-      mergePolicy.setNoCFSRatio(0.1 + r.nextDouble() * 0.8);
-    } else {
-      mergePolicy.setNoCFSRatio(r.nextBoolean() ? 1.0 : 0.0);
-    }
+  private static void configureRandom(Random r, CompoundFormat compoundFormat) {
+    compoundFormat.setShouldUseCompoundFile(random().nextBoolean());
 
     if (rarely(r)) {
-      mergePolicy.setMaxCFSSegmentSizeMB(0.2 + r.nextDouble() * 2.0);
+      compoundFormat.setMaxCFSSegmentSizeMB(0.2 + r.nextDouble() * 2.0);
     } else {
-      mergePolicy.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
+      compoundFormat.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     }
   }
 
@@ -1173,22 +1170,8 @@ public abstract class LuceneTestCase extends Assert {
       tmp.setTargetSearchConcurrency(TestUtil.nextInt(r, 2, 20));
     }
 
-    configureRandom(r, tmp);
     tmp.setDeletesPctAllowed(20 + random().nextDouble() * 30);
     return tmp;
-  }
-
-  public static MergePolicy newLogMergePolicy(boolean useCFS) {
-    MergePolicy logmp = newLogMergePolicy();
-    logmp.setNoCFSRatio(useCFS ? 1.0 : 0.0);
-    return logmp;
-  }
-
-  public static LogMergePolicy newLogMergePolicy(boolean useCFS, int mergeFactor) {
-    LogMergePolicy logmp = newLogMergePolicy();
-    logmp.setNoCFSRatio(useCFS ? 1.0 : 0.0);
-    logmp.setMergeFactor(mergeFactor);
-    return logmp;
   }
 
   public static LogMergePolicy newLogMergePolicy(int mergeFactor) {
@@ -1277,7 +1260,7 @@ public abstract class LuceneTestCase extends Assert {
 
     if (rarely(r)) {
       MergePolicy mp = c.getMergePolicy();
-      configureRandom(r, mp);
+      configureRandom(r, c.getCodec().compoundFormat());
       if (mp instanceof LogMergePolicy logmp) {
         logmp.setCalibrateSizeByDeletes(r.nextBoolean());
         if (rarely(r)) {
@@ -1298,7 +1281,7 @@ public abstract class LuceneTestCase extends Assert {
         } else {
           tmp.setSegmentsPerTier(TestUtil.nextInt(r, 10, 50));
         }
-        configureRandom(r, tmp);
+        configureRandom(r, c.getCodec().compoundFormat());
         tmp.setDeletesPctAllowed(20 + random().nextDouble() * 30);
       }
       didChange = true;
@@ -3219,7 +3202,6 @@ public abstract class LuceneTestCase extends Assert {
       // and might use many per-field codecs. turn on CFS for IW flushes
       // and ensure CFS ratio is reasonable to keep it contained.
       conf.setUseCompoundFile(true);
-      mp.setNoCFSRatio(Math.max(0.25d, mp.getNoCFSRatio()));
     }
     return conf;
   }

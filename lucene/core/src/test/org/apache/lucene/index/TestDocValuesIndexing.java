@@ -102,7 +102,6 @@ public class TestDocValuesIndexing extends LuceneTestCase {
         IllegalArgumentException.class,
         () -> {
           w.addDocument(doc);
-          fail("didn't hit expected exception");
         });
 
     DirectoryReader r = w.getReader();

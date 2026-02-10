@@ -67,4 +67,3 @@ Also you must run benchmarks as root to use dtrace, but it works.
   $ vi jdk/src/utils/hsdis/binutils/hsdis-binutils.c, change #include "hsdis.h" to #include "../hsdis.h"
   $ (cd jdk/src/utils/hsdis/binutils && make BINUTILS=../../../../../binutils-2.38 ARCH=aarch64)
   $ cp jdk/src/utils/hsdis/binutils/build/macosx-aarch64/hsdis-aarch64.dylib $JAVA_HOME/lib/server
-

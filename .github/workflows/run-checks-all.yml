@@ -25,11 +25,47 @@ env:
 # the other runs all tests without other validation checks.
 
 jobs:
+  # Fast repository check
+  lint:
+    name: lint repository
+    runs-on: ubuntu-slim
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Configure problem matchers
+        run: |
+          echo "::add-matcher::.github/problem-matchers/actionlint-matcher.json"
+          echo "::add-matcher::.github/problem-matchers/ruff-check.json"
+          echo "::add-matcher::.github/problem-matchers/ruff-format.json"
+          echo "::add-matcher::.github/problem-matchers/shellcheck-gcc.json"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7.1.6
+        with:
+          version: "0.9.27"
+          enable-cache: true
+          prune-cache: false
+          save-cache: ${{ github.event_name != 'pull_request' }}
+          cache-dependency-glob: dev-tools/uv.lock
+          cache-suffix: dev-tools
+
+      - name: Run prek
+        run: uv run prek --all-files --show-diff-on-failure
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+
 
   # This runs all validation checks without tests.
   checks:
     name: checks without tests (JDK ${{ matrix.java }} on ${{ matrix.os }})
     timeout-minutes: 15
+    needs: lint
 
     strategy:
       matrix:
@@ -43,7 +79,7 @@ jobs:
         run: git config --global core.autocrlf false
 
       - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
@@ -54,12 +90,6 @@ jobs:
         if: ${{ ! startsWith(matrix.os, 'windows') }}
         uses: ./.github/actions/eclint
 
-      - name: Install ast-grep
-        if: ${{ ! startsWith(matrix.os, 'windows') }}
-        run: |
-          npm -g i @ast-grep/cli
-          echo "lucene.tool.ast-grep=ast-grep" >> build-options.local.properties
-
       - name: Run gradle check (without tests)
         run: ./gradlew check -x test "-Ptask.times=true"
 
@@ -68,6 +98,7 @@ jobs:
   tests:
     name: tests (JDK ${{ matrix.java }} on ${{ matrix.os }})
     timeout-minutes: 30
+    needs: lint
 
     strategy:
       matrix:
@@ -90,7 +121,7 @@ jobs:
         run: git config --global core.autocrlf false
 
       - name: Checkout repository
-        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 

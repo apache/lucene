@@ -107,14 +107,24 @@ public class LuceneJavaCoreMrjarPlugin extends LuceneGradlePlugin {
                 compilerArgs.remove("-Xlint:options");
                 compilerArgs.add("-Xlint:-options");
 
-                compilerArgs.addAll(
-                    List.of(
-                        "--add-exports",
-                        "java.base/java.lang.foreign=ALL-UNNAMED",
-                        // for compilation, we patch the incubator packages into java.base, this has
-                        // no effect on resulting class files:
-                        "--add-exports",
-                        "java.base/jdk.incubator.vector=ALL-UNNAMED"));
+                if (getLuceneBuildGlobals(project).getIntellijIdea().get().isIdeaSync()) {
+                  // Let's make it simpler for intellij so that it doesn't complain
+                  // about inaccessible incubator module. We enable this only for
+                  // "syncing" IDE settings, not for actual compilation done from within
+                  // the IDE.
+                  compilerArgs.addAll(List.of("--add-modules", "jdk.incubator.vector"));
+                  compilerArgs.remove("-Xlint:incubating");
+                  compilerArgs.remove("-Xlint:-incubating");
+                } else {
+                  compilerArgs.addAll(
+                      List.of(
+                          "--add-exports",
+                          "java.base/java.lang.foreign=ALL-UNNAMED",
+                          // for compilation, we patch the incubator packages into java.base, this
+                          // has no effect on resulting class files:
+                          "--add-exports",
+                          "java.base/jdk.incubator.vector=ALL-UNNAMED"));
+                }
 
                 var argsProvider = project.getObjects().newInstance(CompilerArgsProvider.class);
                 argsProvider.getApiJarFile().set(apijar);

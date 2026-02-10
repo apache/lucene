@@ -118,12 +118,16 @@ public class TestSpanWithinQuery extends LuceneTestCase {
     check(query, expectedDocs);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testDifferentFieldsThrowsIllegalArgumentException() {
     SpanQuery big = new SpanTermQuery(new Term("field1", "one"));
     SpanQuery little = new SpanTermQuery(new Term("field2", "two"));
 
-    new SpanWithinQuery(big, little);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new SpanWithinQuery(big, little);
+        });
   }
 
   public void testToString() {

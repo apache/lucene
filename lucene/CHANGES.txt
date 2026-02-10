@@ -56,6 +56,8 @@ API Changes
 
 * GITHUB#14615 : Remove unnecessary public methods in FuzzySet (Greg Miller)
 
+* GITHUB#15295 : Switched to a fixed CFS threshold (Shubham Sharma)
+
 New Features
 ---------------------
 
@@ -70,6 +72,8 @@ New Features
 
 Improvements
 ---------------------
+
+* GITHUB#15682: Use ArrayDeque instead of LinkedList in CompoundWordTokenFilterBase.java. (Renato Haeberli)
 
 * GITHUB#15568: Add markdown support for javadocs and modernize highlighting a bit. (Dawid Weiss)
 
@@ -89,6 +93,8 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
+
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
 * GITHUB#14022: Optimize DFS marking of connected components in HNSW by reducing stack depth, improving performance and reducing allocations. (Viswanath Kuchibhotla)
 
@@ -97,6 +103,8 @@ Optimizations
 * GITHUB#15043: Vectorize L2 normalize function. (Ramakrishna Chilaka)
 
 * GITHUB#15085, GITHUB#15092: Hunspell suggestions: Ensure candidate roots are not worse before updating. (Ilia Permiashkin)
+
+* GITHUB#15597: Reduce memory usage of NeighborArray (Viliam Durina)
 
 Bug Fixes
 ---------------------
@@ -115,6 +123,9 @@ Bug Fixes
 * GITHUB#15213: Don't normalize centroids with zero samples, which caused divide-by-zero. (Mike Sokolov)
 
 * GITHUB#15125: Handle inconsistent schema on flush with index sorts (Nhat Nguyen)
+
+* GITHUB#10309: Do not merge term queries with different docFreq. Fixes wrong scores in some queries that included
+  term query and fuzzy query. (Rafał Harabień)
 
 * GITHUB#15434: Don't override boost of conflicting expanded phrases by taking the max boost in markTerminal for FVHighlighter (Luana Fragoso)
 
@@ -138,6 +149,12 @@ Build
 * GITHUB#14808: Add support for validating sources using ast-grep tool rules #14808
   (Robert Muir, Dawid Weiss)
 
+* GITHUB#15629: Introduce prek for fast pre-commit/repository checks.
+  Markdown files are now linted with local broken-link detection.
+  Python and Shell scripts are now linted system-wide.
+  Install with `uvx prek install`
+  For more see help/precommit.txt or `./gradlew helpPrecommit` (Robert Muir)
+
 Other
 ---------------------
 
@@ -156,6 +173,35 @@ Other
 
 * GITHUB#14607: Index open performs version check on each segment, ignores indexCreatedVersionMajor (Rahul Goswami)
 * GITHUB#15454: Restore binary readability for 8.x indexes like previously and throw IndexFormatTooOldException for an older default codec not found on classpath (Rahul Goswami)
+
+======================= Lucene 10.5.0 =======================
+
+API Changes
+---------------------
+* GITHUB#15663: Allow subclasses of NumericComparator to implement their own
+  CompetitiveDISIBuilder subtypes. (Alan Woodward)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+* GITHUB#15637: Lazily allocate ByteArrayDataInputs in SegmentTermsEnumFrame#15637 (Misha Dmitriev)
+
+Bug Fixes
+---------------------
+* GITHUB#15668: Fix UnsupportedOperationException in WeightedSpanTermExtractor by
+  implementing getFieldInfos in DelegatingLeafReader. (Simranjeet Singh)
+
+
+Other
+---------------------
+* GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
 
 ======================= Lucene 10.4.0 =======================
 
@@ -191,6 +237,8 @@ API Changes
 
 * GITHUB#15514: Refactor DocValuesSkipper stat methods to accept IndexReader instead of IndexSearcher (Pan Guixin)
 
+* GITHUB#15559: Deprecate some public FuzzySet methods ahead of removing them in the future (Greg Miller)
+
 * GITHUB#15507: Expose MergeRateLimiter in ConcurrentMergeScheduler.runOnMergeFinished hook.
   The runOnMergeFinished method signature now includes OneMerge and MergeRateLimiter parameters,
   enabling applications to monitor merge performance metrics like pause time, throttling behavior,
@@ -202,6 +250,8 @@ API Changes
 
 * GITHUB#15581: Minor javadoc clarification that HasIndexSlice::getSlice can return null
   (Chris Hegarty)
+
+* GITHUB#15502: Add `count()` method to `FilterWeight`  (Prudhvi Godithi)
 
 New Features
 ---------------------
@@ -239,6 +289,8 @@ New Features
  * GITHUB#15468: Add support for `@SuppressAssertingFormats` annotation for fine-grained control over `AssertingCodec` formats (Prudhvi Godithi)
 
  * GITHUB#15518: Add support for post-collection faceting to the new faceting API in the sandbox module. (Egor Potemkin)
+
+ * GITHUB#15591: Add SegmentOrder helper class to re-order segments at query time to align with sorts. (Alan Woodward)
 
 Improvements
 ---------------------
@@ -289,7 +341,7 @@ Optimizations
 
 * GITHUB#15397: NumericComparator: immediately check whether a segment is competitive with the recorded bottom (Martijn van Groningen)
 
-# GITHUB#15303: Speed up NumericUtils#{add,subtract} by operating on integers instead of bytes. (Kaival Parikh)
+* GITHUB#15303: Speed up NumericUtils#{add,subtract} by operating on integers instead of bytes. (Kaival Parikh)
 
 * GITHUB#15003: Avoid reconstructing HNSW graph during merging (Pulkit Gupta)
 
@@ -309,8 +361,24 @@ Optimizations
 
 * GITHUB#15560: Avoid unnecessary getGraph() call. (Shubham Chaudhary)
 
+* GITHUB#15582: Avoid copying bitset that's subsequently cleared (Viliam Durina)
+
+* GITHUB#15618: SegmentTermsEnumFrame: avoid unnecessary array allocations that waste memory (Misha Dmitriev)
+
+* GITHUB#15585: Added shared prefetch counter to maintain count across clones and slices of MemorySegmentIndexInput. (Shubham Sharma)
+
+* GITHUB#15632: Use a coarser-grained competitive iterator with lower construction costs for
+  numeric sorts against fields with DocValuesSkippers. (Alan Woodward)
+
+* GITHUB#15607: Utilize bulk scoring for diversity checking when building HNSW vector indices. This results
+  in some performance improvements during indexing and segment merges. (Ben Trent)
+
 Bug Fixes
 ---------------------
+* GITHUB#15442: Preserve boost values when merging overlapping phrases in
+  FastVectorHighlighter so highlight scoring fully reflects query boosts.
+  (Yang Feng)
+
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
   instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
 
@@ -335,6 +403,12 @@ Bug Fixes
 
 * GITHUB#14616 : Fix mis-interpretation of `maxNumBytes` in FuzzySet#createSetBasedOnMaxMemory (Greg Miller)
 
+* GITHUB#15554: Fix tessellator failure by preferring the shared vertex that is the leftmost vertex of the hole
+  (Ignacio Vera)
+
+* GITHUB#15553: Fix MergedByteVectorValues lastOrd behavior to enable partitioning of vector values
+(Finn Roblin, Dooyong Kim)
+
 Other
 ---------------------
 * GITHUB#15237: Fix SmartChinese to only deserialize dictionary data from classpath with a native array
@@ -342,6 +416,8 @@ Other
   filter factory that disallows any unprotected deserialization while running tests.
   Applications using SecurityManager now need to grant SerializablePermission("serialFilter")
   to the analysis-smartcn module. (Uwe Schindler, Isaac David)
+
+* GITHUB#15431: Index open performs version check on each segment, ignores indexCreatedVersionMajor (Rahul Goswami, Mike Sokolov)
 
 * GITHUB#15481: The `reverse` field of SortField is now final. If you have subclassed SortField,
   you should set `reverse` in the super constructor. (Alan Woodward)
@@ -352,6 +428,8 @@ Other
 
 * GITHUB#15341: Align float vectors on disk to 64 bytes, for optimal performance on Arm Neoverse
   machines (including vectors inside CFS files). (Mike McCandless, Kaival Parikh)
+
+* GITHUB#15619: Update documentation in Lucene104PostingsFormat. with 259 documents, the first 256 document ids should be  encoded as one packed block (Lyon-NEU)
 
 Build
 ---------------------

@@ -175,10 +175,11 @@ public class Test2BTerms extends LuceneTestCase {
                   .setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH)
                   .setRAMBufferSizeMB(256.0)
                   .setMergeScheduler(new ConcurrentMergeScheduler())
-                  .setMergePolicy(newLogMergePolicy(false, 10))
+                  .setMergePolicy(newLogMergePolicy(10))
                   .setOpenMode(IndexWriterConfig.OpenMode.CREATE)
                   .setCodec(TestUtil.getDefaultCodec()));
 
+      w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
       MergePolicy mp = w.getConfig().getMergePolicy();
       if (mp instanceof LogByteSizeMergePolicy) {
         // 1 petabyte:
