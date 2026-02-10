@@ -14,10 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.internal.vectorization.panama;
+package org.apache.lucene.internal.vectorization;
 
-import static org.apache.lucene.internal.vectorization.panama.PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE;
-import static org.apache.lucene.internal.vectorization.panama.PanamaVectorUtilSupport.fma;
+import static org.apache.lucene.internal.vectorization.NativeVectorUtilSupport.fma;
+import static org.apache.lucene.internal.vectorization.PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE;
 
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;

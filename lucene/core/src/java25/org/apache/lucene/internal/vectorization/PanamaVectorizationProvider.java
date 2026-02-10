@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.internal.vectorization.panama;
+package org.apache.lucene.internal.vectorization;
 
 import java.io.IOException;
 import java.lang.foreign.MemorySegment;
@@ -22,16 +22,13 @@ import java.util.Locale;
 import java.util.logging.Logger;
 import jdk.incubator.vector.FloatVector;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
-import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
-import org.apache.lucene.internal.vectorization.VectorUtilSupport;
-import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.MemorySegmentAccessInput;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
 /** A vectorization provider that leverages the Panama Vector API. */
-public final class PanamaVectorizationProvider extends VectorizationProvider {
+final class PanamaVectorizationProvider extends VectorizationProvider {
 
   // NOTE: Avoid static fields or initializers which rely on the vector API, as these initializers
   // would get called before we have a chance to perform sanity checks around the vector API in the
@@ -39,7 +36,7 @@ public final class PanamaVectorizationProvider extends VectorizationProvider {
 
   private final VectorUtilSupport vectorUtilSupport;
 
-  public PanamaVectorizationProvider() {
+  PanamaVectorizationProvider() {
     // hack to work around for JDK-8309727:
     FloatVector.fromArray(
         FloatVector.SPECIES_PREFERRED, new float[FloatVector.SPECIES_PREFERRED.length()], 0);

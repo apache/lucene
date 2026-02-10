@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.internal.vectorization.panama;
+package org.apache.lucene.internal.vectorization;
 
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 import static java.nio.ByteOrder.LITTLE_ENDIAN;
@@ -40,8 +40,6 @@ import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorShape;
 import jdk.incubator.vector.VectorSpecies;
-import org.apache.lucene.internal.vectorization.DefaultVectorUtilSupport;
-import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 

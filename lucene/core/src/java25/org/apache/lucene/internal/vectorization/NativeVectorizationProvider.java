@@ -15,15 +15,12 @@
  * limitations under the License.
  */
 
-package org.apache.lucene.internal.vectorization.panama;
+package org.apache.lucene.internal.vectorization;
 
 import java.io.IOException;
 import java.util.Locale;
 import java.util.logging.Logger;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
-import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
-import org.apache.lucene.internal.vectorization.VectorUtilSupport;
-import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
@@ -32,15 +29,11 @@ import org.apache.lucene.util.SuppressForbidden;
 public final class NativeVectorizationProvider extends VectorizationProvider {
 
   private final VectorizationProvider delegateVectorUtilProvider =
-      new PanamaVectorizationProvider();
+      new DefaultVectorizationProvider();
 
   private final VectorUtilSupport vectorUtilSupport;
 
-  public NativeVectorizationProvider() {
-    if (NativeVectorUtilSupport.isLibraryLoaded() == false) {
-      throw new UnsupportedOperationException(
-          "Native library is not loaded, cannot instantiate NativeVectorizationProvider");
-    }
+  NativeVectorizationProvider() {
     vectorUtilSupport =
         new NativeVectorUtilSupport(delegateVectorUtilProvider.getVectorUtilSupport());
     logIncubatorSetup();

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.internal.vectorization.panama;
+package org.apache.lucene.internal.vectorization;
 
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 import static java.lang.foreign.ValueLayout.JAVA_DOUBLE;
@@ -31,7 +31,6 @@ import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.logging.Logger;
 import jdk.incubator.vector.FloatVector;
-import org.apache.lucene.internal.vectorization.VectorUtilSupport;
 import org.apache.lucene.util.Constants;
 
 /**

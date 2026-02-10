@@ -26,7 +26,7 @@ public class PostingDecodingUtil {
   public final IndexInput in;
 
   /** Sole constructor, called by sub-classes. */
-  public PostingDecodingUtil(IndexInput in) {
+  protected PostingDecodingUtil(IndexInput in) {
     this.in = in;
   }
 
