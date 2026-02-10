@@ -62,6 +62,7 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
   @SuppressWarnings("NonFinalStaticField")
   private static boolean isLibraryLoaded;
 
+  // TODO: Make this dynamic?
   public static final String NATIVE_VECTOR_LIBRARY_NAME = "dotProduct";
 
   public NativeVectorUtilSupport(VectorUtilSupport vectorUtilSupport) {
@@ -120,11 +121,17 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
   private static final FunctionDescriptor expand8Desc =
       FunctionDescriptor.ofVoid(POINTER, JAVA_INT);
 
+  // (POINTER, INT, INT, INT) -> INT
+  private static final FunctionDescriptor findNextGEQDesc =
+      FunctionDescriptor.of(JAVA_INT, POINTER, JAVA_INT, JAVA_INT, JAVA_INT);
+
   // Method handles
   private static final MethodHandle dotProduct$MH;
   private static final MethodHandle squareDistance$MH;
+  private static final MethodHandle cosine$MH;
   private static final MethodHandle int4SquareDistance$MH;
   private static final MethodHandle int4SquareDistanceSinglePacked$MH;
+  private static final MethodHandle int4SquareDistanceBothPacked$MH;
   private static final MethodHandle uint8SquareDistance$MH;
   private static final MethodHandle uint8DotProduct$MH;
   private static final MethodHandle int4DotProduct$MH;
@@ -137,6 +144,7 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
   private static final MethodHandle filterByScore$MH;
   private static final MethodHandle l2normalize$MH;
   private static final MethodHandle expand8$MH;
+  private static final MethodHandle findNextGEQ$MH;
 
   public static boolean isLibraryLoaded() {
     return isLibraryLoaded;
@@ -149,9 +157,12 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
 
       dotProduct$MH = getMethodHandle("dotProduct", twoPointerIntToInt);
       squareDistance$MH = getMethodHandle("squareDistance", twoPointerIntToInt);
+      cosine$MH = getMethodHandle("cosine", twoPointerIntToInt);
       int4SquareDistance$MH = getMethodHandle("int4SquareDistance", twoPointerIntToInt);
       int4SquareDistanceSinglePacked$MH =
           getMethodHandle("int4SquareDistanceSinglePacked", twoPointerIntToInt);
+      int4SquareDistanceBothPacked$MH =
+          getMethodHandle("int4SquareDistanceBothPacked", twoPointerIntToInt);
       uint8SquareDistance$MH = getMethodHandle("uint8SquareDistance", twoPointerIntToInt);
       uint8DotProduct$MH = getMethodHandle("uint8DotProduct", twoPointerIntToInt);
       int4DotProduct$MH = getMethodHandle("int4DotProduct", twoPointerIntToInt);
@@ -166,14 +177,17 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
       filterByScore$MH = getMethodHandle("filterByScore", filterByScoreDesc);
       l2normalize$MH = getMethodHandle("l2normalize", l2normalizeDesc);
       expand8$MH = getMethodHandle("expand8", expand8Desc);
+      findNextGEQ$MH = getMethodHandle("findNextGEQ", findNextGEQDesc);
     } else if (Constants.NATIVE_DOT_PRODUCT_ENABLED) {
       throw new RuntimeException("Native library dotProduct missing!");
     } else {
       SYMBOL_LOOKUP = null;
       dotProduct$MH = null;
       squareDistance$MH = null;
+      cosine$MH = null;
       int4SquareDistance$MH = null;
       int4SquareDistanceSinglePacked$MH = null;
+      int4SquareDistanceBothPacked$MH = null;
       uint8SquareDistance$MH = null;
       uint8DotProduct$MH = null;
       int4DotProduct$MH = null;
@@ -186,6 +200,7 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
       filterByScore$MH = null;
       l2normalize$MH = null;
       expand8$MH = null;
+      findNextGEQ$MH = null;
     }
   }
 
@@ -227,14 +242,23 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
   }
 
   public static float cosine(byte[] a, MemorySegment b) {
+    if (cosine$MH != null) {
+      return invokeIntMethodHandle(cosine$MH, MemorySegment.ofArray(a), b);
+    }
     return PanamaVectorUtilSupport.cosine(a, b);
   }
 
   public static float cosine(MemorySegment a, MemorySegment b) {
+    if (cosine$MH != null) {
+      return invokeIntMethodHandle(cosine$MH, a, b);
+    }
     return PanamaVectorUtilSupport.cosine(a, b);
   }
 
   public static int dotProduct(byte[] a, MemorySegment b) {
+    if (dotProduct$MH != null) {
+      return invokeIntMethodHandle(dotProduct$MH, MemorySegment.ofArray(a), b);
+    }
     return PanamaVectorUtilSupport.dotProduct(a, b);
   }
 
@@ -253,10 +277,16 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
   }
 
   public static int squareDistance(byte[] a, MemorySegment b) {
+    if (squareDistance$MH != null) {
+      return invokeIntMethodHandle(squareDistance$MH, MemorySegment.ofArray(a), b);
+    }
     return PanamaVectorUtilSupport.squareDistance(a, b);
   }
 
   public static int int4SquareDistance(byte[] a, MemorySegment b) {
+    if (int4SquareDistance$MH != null) {
+      return invokeIntMethodHandle(int4SquareDistance$MH, MemorySegment.ofArray(a), b);
+    }
     return PanamaVectorUtilSupport.int4SquareDistance(a, b);
   }
 
@@ -275,6 +305,9 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
   }
 
   public static int uint8SquareDistance(byte[] a, MemorySegment b) {
+    if (uint8SquareDistance$MH != null) {
+      return invokeIntMethodHandle(uint8SquareDistance$MH, MemorySegment.ofArray(a), b);
+    }
     return PanamaVectorUtilSupport.uint8SquareDistance(a, b);
   }
 
@@ -286,6 +319,9 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
   }
 
   public static int uint8DotProduct(byte[] a, MemorySegment b) {
+    if (uint8DotProduct$MH != null) {
+      return invokeIntMethodHandle(uint8DotProduct$MH, MemorySegment.ofArray(a), b);
+    }
     return PanamaVectorUtilSupport.uint8DotProduct(a, b);
   }
 
@@ -297,6 +333,9 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
   }
 
   public static int int4DotProduct(byte[] a, MemorySegment b) {
+    if (int4DotProduct$MH != null) {
+      return invokeIntMethodHandle(int4DotProduct$MH, MemorySegment.ofArray(a), b);
+    }
     return PanamaVectorUtilSupport.int4DotProduct(a, b);
   }
 
@@ -316,6 +355,9 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
   }
 
   public static int int4SquareDistanceBothPacked(MemorySegment a, MemorySegment b) {
+    if (int4SquareDistanceBothPacked$MH != null) {
+      return invokeIntMethodHandle(int4SquareDistanceBothPacked$MH, a, b);
+    }
     return PanamaVectorUtilSupport.int4SquareDistanceBothPacked(a, b);
   }
 
@@ -383,6 +425,9 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public float cosine(byte[] a, byte[] b) {
+    if (cosine$MH != null) {
+      return cosine(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
+    }
     return delegateVectorUtilSupport.cosine(a, b);
   }
 
@@ -412,6 +457,9 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public int int4SquareDistanceBothPacked(byte[] a, byte[] b) {
+    if (int4SquareDistanceBothPacked$MH != null) {
+      return int4SquareDistanceBothPacked(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
+    }
     return delegateVectorUtilSupport.int4SquareDistanceBothPacked(a, b);
   }
 
@@ -425,6 +473,13 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public int findNextGEQ(int[] buffer, int target, int from, int to) {
+    if (findNextGEQ$MH != null) {
+      try {
+        return (int) findNextGEQ$MH.invokeExact(MemorySegment.ofArray(buffer), target, from, to);
+      } catch (Throwable ex) {
+        throw new AssertionError("should not reach here", ex);
+      }
+    }
     return delegateVectorUtilSupport.findNextGEQ(buffer, target, from, to);
   }
 
