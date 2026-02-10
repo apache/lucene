@@ -827,7 +827,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
 
     FieldInfos finish() {
       finished = true;
-      return new FieldInfos(byName.values().toArray(new FieldInfo[0]));
+      return new FieldInfos(byName.values().toArray(FieldInfo[]::new));
     }
   }
 }

@@ -121,7 +121,7 @@ public final class Document implements Iterable<IndexableField> {
       }
     }
 
-    return result.toArray(new BytesRef[0]);
+    return result.toArray(BytesRef[]::new);
   }
 
   /**
@@ -172,7 +172,7 @@ public final class Document implements Iterable<IndexableField> {
       }
     }
 
-    return result.toArray(new IndexableField[0]);
+    return result.toArray(IndexableField[]::new);
   }
 
   /**
@@ -210,7 +210,7 @@ public final class Document implements Iterable<IndexableField> {
       return NO_STRINGS;
     }
 
-    return result.toArray(new String[0]);
+    return result.toArray(String[]::new);
   }
 
   /**

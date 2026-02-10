@@ -92,7 +92,7 @@ class SimpleGeoJSONPolygonParser {
         polygons.add(parsePolygon((List<Object>) o));
       }
 
-      return polygons.toArray(new Polygon[0]);
+      return polygons.toArray(Polygon[]::new);
     }
   }
 
@@ -242,7 +242,7 @@ class SimpleGeoJSONPolygonParser {
       double[][] holePoints = parsePoints((List<Object>) o);
       holes.add(new Polygon(holePoints[0], holePoints[1]));
     }
-    return new Polygon(polyPoints[0], polyPoints[1], holes.toArray(new Polygon[0]));
+    return new Polygon(polyPoints[0], polyPoints[1], holes.toArray(Polygon[]::new));
   }
 
   /** Parses [[lat, lon], [lat, lon] ...] into 2d double array */

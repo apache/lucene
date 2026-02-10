@@ -586,9 +586,9 @@ public final class CustomAnalyzer extends Analyzer {
         throw new IllegalStateException("You have to set at least a tokenizer.");
       }
       return new CustomAnalyzer(
-          charFilters.toArray(new CharFilterFactory[0]),
+          charFilters.toArray(CharFilterFactory[]::new),
           tokenizer.get(),
-          tokenFilters.toArray(new TokenFilterFactory[0]),
+          tokenFilters.toArray(TokenFilterFactory[]::new),
           posIncGap.get(),
           offsetGap.get());
     }

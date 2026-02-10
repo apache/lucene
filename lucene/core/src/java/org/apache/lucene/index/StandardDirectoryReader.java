@@ -149,7 +149,7 @@ public final class StandardDirectoryReader extends DirectoryReader {
 
       return new StandardDirectoryReader(
           dir,
-          readers.toArray(new SegmentReader[0]),
+          readers.toArray(SegmentReader[]::new),
           writer,
           segmentInfos,
           writer.getConfig().getLeafSorter(),

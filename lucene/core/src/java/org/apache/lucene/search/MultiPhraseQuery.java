@@ -141,7 +141,7 @@ public class MultiPhraseQuery extends Query {
 
     /** Builds a {@link MultiPhraseQuery}. */
     public MultiPhraseQuery build() {
-      Term[][] termArraysArray = termArrays.toArray(new Term[0][]);
+      Term[][] termArraysArray = termArrays.toArray(Term[][]::new);
       return new MultiPhraseQuery(field, termArraysArray, positions.toArray(), slop);
     }
   }

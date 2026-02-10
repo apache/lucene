@@ -1213,7 +1213,7 @@ public class UnifiedHighlighter {
         filteredTerms.add(term.bytes());
       }
     }
-    return filteredTerms.toArray(new BytesRef[0]);
+    return filteredTerms.toArray(BytesRef[]::new);
   }
 
   protected PhraseHelper getPhraseHelper(
