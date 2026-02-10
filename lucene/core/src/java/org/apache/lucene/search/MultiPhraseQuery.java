@@ -235,7 +235,7 @@ public class MultiPhraseQuery extends Query {
           return similarity.scorer(
               boost,
               searcher.collectionStatistics(field),
-              allTermStats.toArray(new TermStatistics[allTermStats.size()]));
+              allTermStats.toArray(TermStatistics[]::new));
         }
       }
 
@@ -436,7 +436,7 @@ public class MultiPhraseQuery extends Query {
         cost += sub.cost();
       }
       this.cost = cost;
-      this.subs = subs.toArray(new PostingsEnum[subs.size()]);
+      this.subs = subs.toArray(PostingsEnum[]::new);
     }
 
     @Override
