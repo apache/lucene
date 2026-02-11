@@ -89,8 +89,7 @@ public class TestTemporalMergePolicy extends LuceneTestCase {
   }
 
   public void testForcedMergeReducesSegments() throws Exception {
-    TemporalMergePolicy policy =
-        buildPolicy().disableExponentialBuckets().setBaseTimeInSeconds(10);
+    TemporalMergePolicy policy = buildPolicy().disableExponentialBuckets().setBaseTimeInSeconds(10);
     SegmentInfos infos = new SegmentInfos(Version.LATEST.major);
     SegmentCommitInfo segA = newSegment("forceA", 400);
     SegmentCommitInfo segB = newSegment("forceB", 300);
@@ -154,8 +153,7 @@ public class TestTemporalMergePolicy extends LuceneTestCase {
   }
 
   public void testForcedMergeKeepsWindowsDisjoint() throws Exception {
-    TemporalMergePolicy policy =
-        buildPolicy().disableExponentialBuckets().setBaseTimeInSeconds(10);
+    TemporalMergePolicy policy = buildPolicy().disableExponentialBuckets().setBaseTimeInSeconds(10);
 
     SegmentInfos infos = new SegmentInfos(Version.LATEST.major);
     SegmentCommitInfo segA1 = newSegment("bucketA1", 100);

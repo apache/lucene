@@ -68,11 +68,11 @@ import org.apache.lucene.store.IOContext;
  * config.setMergePolicy(policy);
  * </pre>
  *
- * <p><b>Time bucketing:</b> By default, window sizes grow exponentially: {@code baseTime},
- * {@code baseTime * minThreshold}, {@code baseTime * minThreshold^2}, etc. This ensures that
- * recent data is in small, frequently-merged windows while older data is in larger,
- * less-frequently-merged windows. Call {@link #disableExponentialBuckets()} to use fixed-size
- * windows instead, where all windows have the same size ({@code baseTime}).
+ * <p><b>Time bucketing:</b> By default, window sizes grow exponentially: {@code baseTime}, {@code
+ * baseTime * minThreshold}, {@code baseTime * minThreshold^2}, etc. This ensures that recent data
+ * is in small, frequently-merged windows while older data is in larger, less-frequently-merged
+ * windows. Call {@link #disableExponentialBuckets()} to use fixed-size windows instead, where all
+ * windows have the same size ({@code baseTime}).
  *
  * <p><b>Compaction ratio:</b> The {@link #setCompactionRatio} parameter controls when merges are
  * triggered. A merge is considered when the total document count across candidate segments exceeds
@@ -207,8 +207,8 @@ public class TemporalMergePolicy extends MergePolicy {
 
   /**
    * Disables exponentially growing time windows. By default, older data is grouped into
-   * progressively larger time buckets: {@code baseTime}, {@code baseTime * minThreshold},
-   * {@code baseTime * minThreshold^2}, etc.
+   * progressively larger time buckets: {@code baseTime}, {@code baseTime * minThreshold}, {@code
+   * baseTime * minThreshold^2}, etc.
    *
    * <p>Calling this method changes the behavior so that all time windows have a fixed size equal to
    * {@code baseTime}, which can be useful for workloads with uniform query patterns across all time
