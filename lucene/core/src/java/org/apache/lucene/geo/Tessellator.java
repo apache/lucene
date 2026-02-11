@@ -890,6 +890,8 @@ public final class Tessellator {
         boolean caFromPolygon =
             (b.next == a) ? b.isNextEdgeFromPolygon : isEdgeFromPolygon(a, b, mortonOptimized);
         tessellation.add(new Triangle(a, abFromPolygon, node, bcFromPolygon, b, caFromPolygon));
+        // Return the triangulated vertices to the tessellation
+        tessellation.add(new Triangle(a, abFromPolygon, node, bcFromPolygon, b, caFromPolygon));
 
         // remove two nodes involved
         removeNode(node, caFromPolygon);
