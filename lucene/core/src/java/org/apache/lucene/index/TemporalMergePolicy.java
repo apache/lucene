@@ -156,7 +156,7 @@ public class TemporalMergePolicy extends MergePolicy {
    *
    * <p>Default is 3600 seconds (1 hour).
    */
-  public TemporalMergePolicy setBaseTimeSeconds(long baseTimeSeconds) {
+  public TemporalMergePolicy setBaseTimeInSeconds(long baseTimeInSeconds) {
     if (baseTimeSeconds <= 0) {
       throw new IllegalArgumentException("baseTimeSeconds must be positive");
     }
