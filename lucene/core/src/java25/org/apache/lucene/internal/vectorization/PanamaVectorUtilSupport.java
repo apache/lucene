@@ -39,6 +39,7 @@ import jdk.incubator.vector.Vector;
 import jdk.incubator.vector.VectorMask;
 import jdk.incubator.vector.VectorOperators;
 import jdk.incubator.vector.VectorShape;
+import jdk.incubator.vector.VectorShuffle;
 import jdk.incubator.vector.VectorSpecies;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
@@ -487,6 +488,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     static final VectorSpecies<Byte> BYTE_SPECIES;
     static final VectorSpecies<Short> SHORT_SPECIES;
     static final int CHUNK;
+    static final VectorShuffle<Byte> LOWER_SHUFFLE;
+    static final VectorShuffle<Byte> UPPER_SHUFFLE;
 
     static {
       if (VECTOR_BITSIZE >= 512) {
@@ -502,6 +505,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         SHORT_SPECIES = ShortVector.SPECIES_128;
         CHUNK = 1024;
       }
+      LOWER_SHUFFLE = VectorShuffle.makeZip(BYTE_SPECIES, 0);
+      UPPER_SHUFFLE = VectorShuffle.makeZip(BYTE_SPECIES, 1);
     }
   }
 
@@ -577,8 +582,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     // scalar tail
     for (; i < packed.length(); i++) {
       byte packedByte = packed.tail(i);
-      byte unpacked1 = unpacked.tail(i);
-      byte unpacked2 = unpacked.tail(i + packed.length());
+      byte unpacked1 = unpacked.tail(i * 2);
+      byte unpacked2 = unpacked.tail(i * 2 + 1);
       res += (packedByte & 0x0F) * unpacked2;
       res += ((packedByte & 0xFF) >> 4) * unpacked1;
     }
@@ -594,21 +599,29 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       ShortVector acc1 = ShortVector.zero(Int4Constants.SHORT_SPECIES);
       int innerLimit = Math.min(limit - i, Int4Constants.CHUNK);
       for (int j = 0; j < innerLimit; j += Int4Constants.BYTE_SPECIES.length()) {
-        // packed
-        ByteVector vb8 = packed.load(Int4Constants.BYTE_SPECIES, i + j);
+        int packedOffset = i + j;
 
-        // upper
-        ByteVector va8 = unpacked.load(Int4Constants.BYTE_SPECIES, i + j + packed.length());
-        ByteVector prod8 = vb8.and((byte) 0x0F).mul(va8);
-        Vector<Short> prod16 = prod8.convertShape(ZERO_EXTEND_B2S, Int4Constants.SHORT_SPECIES, 0);
-        acc0 = acc0.add(prod16);
+        // packed
+        ByteVector vb8 = packed.load(Int4Constants.BYTE_SPECIES, packedOffset);
+        ByteVector vb8Even = vb8.and((byte) 0x0F); // get all even dimensions
+        ByteVector vb8Odd = vb8.lanewise(LSHR, 4); // get all odd dimensions
+
+        int unpackedOffset = packedOffset * 2;
 
         // lower
-        ByteVector vc8 = unpacked.load(Int4Constants.BYTE_SPECIES, i + j);
-        ByteVector prod8a = vb8.lanewise(LSHR, 4).mul(vc8);
+        ByteVector vc8 = unpacked.load(Int4Constants.BYTE_SPECIES, unpackedOffset);
+        ByteVector prod8a = vb8Odd.rearrange(Int4Constants.LOWER_SHUFFLE, vb8Even).mul(vc8);
         Vector<Short> prod16a =
             prod8a.convertShape(ZERO_EXTEND_B2S, Int4Constants.SHORT_SPECIES, 0);
         acc1 = acc1.add(prod16a);
+
+        // upper
+        ByteVector va8 =
+            unpacked.load(
+                Int4Constants.BYTE_SPECIES, unpackedOffset + Int4Constants.BYTE_SPECIES.length());
+        ByteVector prod8 = vb8Odd.rearrange(Int4Constants.UPPER_SHUFFLE, vb8Even).mul(va8);
+        Vector<Short> prod16 = prod8.convertShape(ZERO_EXTEND_B2S, Int4Constants.SHORT_SPECIES, 0);
+        acc0 = acc0.add(prod16);
       }
       Vector<Integer> intAcc0 = acc0.convert(S2I, 0);
       Vector<Integer> intAcc1 = acc0.convert(S2I, 1);
@@ -985,8 +998,8 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     // scalar tail
     for (; i < packed.length(); i++) {
       byte packedByte = packed.tail(i);
-      byte unpacked1 = unpacked.tail(i);
-      byte unpacked2 = unpacked.tail(i + packed.length());
+      byte unpacked1 = unpacked.tail(i * 2);
+      byte unpacked2 = unpacked.tail(i * 2 + 1);
 
       int diff1 = (packedByte & 0x0F) - unpacked2;
       int diff2 = ((packedByte & 0xFF) >> 4) - unpacked1;
@@ -1005,20 +1018,28 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
       ShortVector acc1 = ShortVector.zero(Int4Constants.SHORT_SPECIES);
       int innerLimit = Math.min(limit - i, Int4Constants.CHUNK);
       for (int j = 0; j < innerLimit; j += Int4Constants.BYTE_SPECIES.length()) {
-        // packed
-        ByteVector vb8 = packed.load(Int4Constants.BYTE_SPECIES, i + j);
+        int packedOffset = i + j;
 
-        // upper
-        ByteVector va8 = unpacked.load(Int4Constants.BYTE_SPECIES, i + j + packed.length());
-        ByteVector diff8 = vb8.and((byte) 0x0F).sub(va8);
-        Vector<Short> diff16 = diff8.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
-        acc0 = acc0.add(diff16.mul(diff16));
+        // packed
+        ByteVector vb8 = packed.load(Int4Constants.BYTE_SPECIES, packedOffset);
+        ByteVector vb8Even = vb8.and((byte) 0x0F); // get all even dimensions
+        ByteVector vb8Odd = vb8.lanewise(LSHR, 4); // get all odd dimensions
+
+        int unpackedOffset = packedOffset * 2;
 
         // lower
-        ByteVector vc8 = unpacked.load(Int4Constants.BYTE_SPECIES, i + j);
-        ByteVector diff8a = vb8.lanewise(LSHR, 4).sub(vc8);
+        ByteVector vc8 = unpacked.load(Int4Constants.BYTE_SPECIES, unpackedOffset);
+        ByteVector diff8a = vb8Odd.rearrange(Int4Constants.LOWER_SHUFFLE, vb8Even).sub(vc8);
         Vector<Short> diff16a = diff8a.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
         acc1 = acc1.add(diff16a.mul(diff16a));
+
+        // upper
+        ByteVector va8 =
+            unpacked.load(
+                Int4Constants.BYTE_SPECIES, unpackedOffset + Int4Constants.BYTE_SPECIES.length());
+        ByteVector diff8 = vb8Odd.rearrange(Int4Constants.UPPER_SHUFFLE, vb8Even).sub(va8);
+        Vector<Short> diff16 = diff8.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
+        acc0 = acc0.add(diff16.mul(diff16));
       }
       Vector<Integer> intAcc0 = acc0.convert(S2I, 0);
       Vector<Integer> intAcc1 = acc0.convert(S2I, 1);

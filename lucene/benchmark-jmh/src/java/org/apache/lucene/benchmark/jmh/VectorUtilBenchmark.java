@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.benchmark.jmh;
 
+import static org.apache.lucene.codecs.lucene104.OffHeapScalarQuantizedVectorValues.packNibbles;
+
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.util.VectorUtil;
@@ -44,13 +46,6 @@ import org.openjdk.jmh.annotations.Warmup;
     value = 3,
     jvmArgsAppend = {"-Xmx2g", "-Xms2g", "-XX:+AlwaysPreTouch"})
 public class VectorUtilBenchmark {
-  static void compressBytes(byte[] raw, byte[] compressed) {
-    for (int i = 0; i < compressed.length; ++i) {
-      int v = (raw[i] << 4) | raw[compressed.length + i];
-      compressed[i] = (byte) v;
-    }
-  }
-
   private byte[] bytesA;
   private byte[] bytesB;
   private byte[] halfBytesA;
@@ -91,10 +86,10 @@ public class VectorUtilBenchmark {
     // pack the half byte arrays
     if (size % 2 == 0) {
       halfBytesAPacked = new byte[(size + 1) >> 1];
-      compressBytes(halfBytesA, halfBytesAPacked);
+      packNibbles(halfBytesA, halfBytesAPacked);
 
       halfBytesBPacked = new byte[(size + 1) >> 1];
-      compressBytes(halfBytesB, halfBytesBPacked);
+      packNibbles(halfBytesB, halfBytesBPacked);
     }
 
     // random float arrays for float methods

@@ -173,8 +173,8 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     int total = 0;
     for (int i = 0; i < packed.length; i++) {
       byte packedByte = packed[i];
-      byte unpacked1 = unpacked[i];
-      byte unpacked2 = unpacked[i + packed.length];
+      byte unpacked1 = unpacked[i * 2];
+      byte unpacked2 = unpacked[i * 2 + 1];
       total += (packedByte & 0x0F) * unpacked2;
       total += ((packedByte & 0xFF) >> 4) * unpacked1;
     }
@@ -231,8 +231,8 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     int total = 0;
     for (int i = 0; i < packed.length; i++) {
       byte packedByte = packed[i];
-      byte unpacked1 = unpacked[i];
-      byte unpacked2 = unpacked[i + packed.length];
+      byte unpacked1 = unpacked[i * 2];
+      byte unpacked2 = unpacked[i * 2 + 1];
 
       int diff1 = (packedByte & 0x0F) - unpacked2;
       int diff2 = ((packedByte & 0xFF) >> 4) - unpacked1;

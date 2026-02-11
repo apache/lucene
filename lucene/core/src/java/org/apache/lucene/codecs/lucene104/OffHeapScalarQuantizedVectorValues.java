@@ -177,19 +177,19 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
     return vectorValue.length;
   }
 
-  static void packNibbles(byte[] unpacked, byte[] packed) {
+  public static void packNibbles(byte[] unpacked, byte[] packed) {
     assert unpacked.length == packed.length * 2;
     for (int i = 0; i < packed.length; i++) {
-      int x = unpacked[i] << 4 | unpacked[packed.length + i];
+      int x = unpacked[i * 2] << 4 | unpacked[i * 2 + 1];
       packed[i] = (byte) x;
     }
   }
 
-  static void unpackNibbles(byte[] packed, byte[] unpacked) {
+  public static void unpackNibbles(byte[] packed, byte[] unpacked) {
     assert unpacked.length == packed.length * 2;
     for (int i = 0; i < packed.length; i++) {
-      unpacked[i] = (byte) ((packed[i] >> 4) & 0x0F);
-      unpacked[packed.length + i] = (byte) (packed[i] & 0x0F);
+      unpacked[i * 2] = (byte) ((packed[i] >> 4) & 0x0F);
+      unpacked[i * 2 + 1] = (byte) (packed[i] & 0x0F);
     }
   }
 
