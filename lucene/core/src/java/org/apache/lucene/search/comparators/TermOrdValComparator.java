@@ -30,13 +30,12 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.DocValuesRangeIterator;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LeafFieldComparator;
 import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Scorable;
-import org.apache.lucene.search.TwoPhaseIterator;
+import org.apache.lucene.search.SkipBlockRangeIterator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.PriorityQueue;
@@ -493,7 +492,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
 
   private record PostingsEnumAndOrd(PostingsEnum postings, int ord) {}
 
-  private abstract class CompetitiveState {
+  private abstract static class CompetitiveState {
     final UpdateableDocIdSetIterator iterator;
 
     CompetitiveState(LeafReaderContext context) {
@@ -625,41 +624,18 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     }
   }
 
-  private class SkipperBasedCompetitiveState extends CompetitiveState {
+  private static class SkipperBasedCompetitiveState extends CompetitiveState {
     private final DocValuesSkipper skipper;
-    private final TwoPhaseIterator innerTwoPhase;
-    private int minOrd;
-    private int maxOrd;
 
-    SkipperBasedCompetitiveState(LeafReaderContext context, DocValuesSkipper skipper)
-        throws IOException {
+    SkipperBasedCompetitiveState(LeafReaderContext context, DocValuesSkipper skipper) {
       super(context);
       this.skipper = skipper;
       this.iterator.update(DocIdSetIterator.all(context.reader().maxDoc()));
-      final SortedDocValues docValues = getSortedDocValues(context, field);
-      this.innerTwoPhase =
-          new TwoPhaseIterator(docValues) {
-            @Override
-            public boolean matches() throws IOException {
-              final int cur = docValues.ordValue();
-              return cur >= minOrd && cur <= maxOrd;
-            }
-
-            @Override
-            public float matchCost() {
-              return 2;
-            }
-          };
     }
 
     @Override
-    public void update(int minOrd, int maxOrd) throws IOException {
-      this.minOrd = minOrd;
-      this.maxOrd = maxOrd;
-
-      final TwoPhaseIterator twoPhaseIterator =
-          new DocValuesRangeIterator(innerTwoPhase, skipper, minOrd, maxOrd, false);
-      iterator.update(TwoPhaseIterator.asDocIdSetIterator(twoPhaseIterator));
+    public void update(int minOrd, int maxOrd) {
+      iterator.update(new SkipBlockRangeIterator(skipper, minOrd, maxOrd));
     }
   }
 }

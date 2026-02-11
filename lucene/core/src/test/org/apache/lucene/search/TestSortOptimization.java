@@ -1016,7 +1016,9 @@ public class TestSortOptimization extends LuceneTestCase {
     final int numDocs = atLeast(10000);
     for (int i = 0; i < numDocs; ++i) {
       final Document doc = new Document();
-      final BytesRef value = new BytesRef(Integer.toString(random().nextInt(1000)));
+      // Random values that roughly correlate with index order, to make skipper implementation
+      // useful
+      final BytesRef value = new BytesRef(Integer.toString(random().nextInt(i, i + 20)));
       doc.add(fieldsBuilder.apply("my_field", value));
       writer.addDocument(doc);
       if (i == 7000) writer.flush(); // multiple segments
@@ -1043,14 +1045,18 @@ public class TestSortOptimization extends LuceneTestCase {
     final Directory dir = newDirectory();
     final IndexWriter writer =
         new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(newLogMergePolicy()));
-    final int numDocs = atLeast(10000);
+    // Larger number of documents as some of them are missing values and we still want
+    // to have multiple skipper blocks of 4096 entries.
+    final int numDocs = atLeast(30000);
     // one segment with all values missing to start with
     writer.addDocument(new Document());
     for (int i = 0; i < numDocs - 2; ++i) {
       if (i == 7000) writer.flush(); // multiple segments
       final Document doc = new Document();
       if (random().nextInt(2) == 0) {
-        final BytesRef value = new BytesRef(Integer.toString(random().nextInt(1000)));
+        // Random values that roughly correlate with index order, to make skipper implementation
+        // useful
+        final BytesRef value = new BytesRef(Integer.toString(random().nextInt(i, i + 20)));
         doc.add(fieldsBuilder.apply("my_field", value));
       }
       writer.addDocument(doc);
