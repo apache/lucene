@@ -169,7 +169,7 @@ public class TemporalMergePolicy extends MergePolicy {
    *
    * @see #setBaseTimeSeconds
    */
-  public long getBaseTimeSeconds() {
+  public long getBaseTimeInSeconds() {
     return baseTimeSeconds;
   }
 
