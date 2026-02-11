@@ -411,6 +411,9 @@ Bug Fixes
 * GITHUB#15553: Fix MergedByteVectorValues lastOrd behavior to enable partitioning of vector values
 (Finn Roblin, Dooyong Kim)
 
+* GITHUB#15695: Fix Tessellation error for holes that share the same leftmost vertex with an outer ring vertex
+  (Robert Burris)
+
 Other
 ---------------------
 * GITHUB#15237: Fix SmartChinese to only deserialize dictionary data from classpath with a native array
