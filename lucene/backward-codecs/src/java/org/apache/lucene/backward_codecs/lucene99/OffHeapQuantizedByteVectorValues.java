@@ -17,6 +17,8 @@
 
 package org.apache.lucene.backward_codecs.lucene99;
 
+import static org.apache.lucene.codecs.lucene104.OffHeapScalarQuantizedVectorValues.packNibbles;
+
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -61,9 +63,10 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
       throw new IllegalArgumentException(
           "numBytes: " + numBytes + " does not match compressed length: " + compressed.length);
     }
-    for (int i = 0; i < numBytes; ++i) {
-      compressed[numBytes + i] = (byte) (compressed[i] & 0x0F);
-      compressed[i] = (byte) ((compressed[i] & 0xFF) >> 4);
+    // in-place unpackNibbles
+    for (int i = numBytes - 1; i >= 0; i--) {
+      compressed[i * 2 + 1] = (byte) (compressed[i] & 0x0F);
+      compressed[i * 2] = (byte) ((compressed[i] & 0xFF) >> 4);
     }
   }
 
@@ -80,10 +83,7 @@ public abstract class OffHeapQuantizedByteVectorValues extends QuantizedByteVect
       throw new IllegalArgumentException(
           "compressed length: " + compressed.length + " does not match raw length: " + raw.length);
     }
-    for (int i = 0; i < compressed.length; ++i) {
-      int v = (raw[i] << 4) | raw[compressed.length + i];
-      compressed[i] = (byte) v;
-    }
+    packNibbles(raw, compressed);
   }
 
   OffHeapQuantizedByteVectorValues(

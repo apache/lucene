@@ -186,7 +186,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
   }
 
   public static void unpackNibbles(byte[] packed, byte[] unpacked) {
-    assert unpacked.length == packed.length * 2;
+    assert (unpacked.length + 1) >> 1 == packed.length;
     for (int i = 0; i < packed.length; i++) {
       unpacked[i * 2] = (byte) ((packed[i] >> 4) & 0x0F);
       unpacked[i * 2 + 1] = (byte) (packed[i] & 0x0F);

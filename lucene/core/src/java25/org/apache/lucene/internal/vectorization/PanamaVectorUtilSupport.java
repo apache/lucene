@@ -484,6 +484,7 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return acc.reduceLanes(ADD);
   }
 
+  @SuppressForbidden(reason = "Uses VectorShuffle only where fast and carefully contained")
   private static class Int4Constants {
     static final VectorSpecies<Byte> BYTE_SPECIES;
     static final VectorSpecies<Short> SHORT_SPECIES;

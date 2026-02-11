@@ -195,6 +195,8 @@ Optimizations
 ---------------------
 * GITHUB#15637: Lazily allocate ByteArrayDataInputs in SegmentTermsEnumFrame#15637 (Misha Dmitriev)
 
+* GITHUB#15698: For 4-bit quantized vectors, unpack nibbles in dimension order for faster vector computations. (Kaival Parikh)
+
 Bug Fixes
 ---------------------
 * GITHUB#15668: Fix UnsupportedOperationException in WeightedSpanTermExtractor by

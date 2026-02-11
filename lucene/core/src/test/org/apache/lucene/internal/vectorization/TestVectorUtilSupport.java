@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.internal.vectorization;
 
+import static org.apache.lucene.codecs.lucene104.OffHeapScalarQuantizedVectorValues.packNibbles;
+
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -258,11 +260,8 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
   }
 
   static byte[] pack(byte[] unpacked) {
-    int len = (unpacked.length + 1) / 2;
-    var packed = new byte[len];
-    for (int i = 0; i < len; i++) {
-      packed[i] = (byte) (unpacked[i] << 4 | unpacked[packed.length + i]);
-    }
+    byte[] packed = new byte[(unpacked.length + 1) >> 1];
+    packNibbles(unpacked, packed);
     return packed;
   }
 
