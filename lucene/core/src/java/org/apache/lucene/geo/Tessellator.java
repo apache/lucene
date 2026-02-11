@@ -378,8 +378,6 @@ public final class Tessellator {
       double holeMaxY) {
 
     // Attempt to merge the hole using a common point between if it exists.
-    // Returns the bridge node for leftmost shared vertex merges (for outerNode position update),
-    // outerNode for non-leftmost merges, or null if no shared vertex was found.
     Node mergeResult =
         maybeMergeHoleWithSharedVertices(
             holeNode, outerNode, holeMinX, holeMaxX, holeMinY, holeMaxY);
@@ -455,11 +453,9 @@ public final class Tessellator {
     if (leftmostSharedVertexConnection != null
         && leftmostSharedVertexConnection.idx >= sharedVertexConnection.idx) {
       splitPolygon(leftmostSharedVertexConnection, holeNode, true);
-      // When previous bridge operations created multiple copies of the shared vertex,
-      // getSharedInsideVertex may pick the wrong copy. In this case (detected by the first-match
-      // leftmostSharedVertexConnection differing from the getSharedInsideVertex-chosen
-      // sharedVertexConnection), return the bridge node so the caller updates outerNode to the
-      // bridge position. This ensures subsequent holes sharing the same vertex find the right copy.
+      // When multiple copies of the shared vertex exist (from previous splitPolygon calls),
+      // return the bridge node so the caller updates outerNode to the bridge position.
+      // This ensures subsequent holes sharing the same vertex find the right copy.
       if (leftmostSharedVertexConnection != sharedVertexConnection) {
         return leftmostSharedVertexConnection;
       }
