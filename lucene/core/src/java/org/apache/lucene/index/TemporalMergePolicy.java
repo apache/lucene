@@ -61,18 +61,18 @@ import org.apache.lucene.store.IOContext;
  *     .setBaseTimeSeconds(3600)                // Base window size: 1 hour
  *     .setMinThreshold(4)                      // Merge when 4+ segments in a window
  *     .setMaxThreshold(8)                      // Merge at most 8 segments at once
- *     .setCompactionRatio(1.2)                 // Size ratio threshold for merging
- *     .setUseExponentialBuckets(true);         // Use exponentially growing windows
+ *     .setCompactionRatio(1.2);                // Size ratio threshold for merging
+ *     // By default, exponential buckets are enabled. Use .disableExponentialBuckets() to disable.
  *
  * IndexWriterConfig config = new IndexWriterConfig(analyzer);
  * config.setMergePolicy(policy);
  * </pre>
  *
- * <p><b>Time bucketing:</b> When {@link #setUseExponentialBuckets} is true (default), window sizes
- * grow exponentially: {@code baseTime}, {@code baseTime * minThreshold}, {@code baseTime *
- * minThreshold^2}, etc. This ensures that recent data is in small, frequently-merged windows while
- * older data is in larger, less-frequently-merged windows. When false, all windows have the same
- * size ({@code baseTime}).
+ * <p><b>Time bucketing:</b> By default, window sizes grow exponentially: {@code baseTime},
+ * {@code baseTime * minThreshold}, {@code baseTime * minThreshold^2}, etc. This ensures that
+ * recent data is in small, frequently-merged windows while older data is in larger,
+ * less-frequently-merged windows. Call {@link #disableExponentialBuckets()} to use fixed-size
+ * windows instead, where all windows have the same size ({@code baseTime}).
  *
  * <p><b>Compaction ratio:</b> The {@link #setCompactionRatio} parameter controls when merges are
  * triggered. A merge is considered when the total document count across candidate segments exceeds
@@ -146,9 +146,9 @@ public class TemporalMergePolicy extends MergePolicy {
    * Sets the base time window size in seconds. This determines the size of the smallest (most
    * recent) time buckets.
    *
-   * <p>When {@link #setUseExponentialBuckets} is enabled (default), window sizes grow
-   * exponentially: {@code baseTime}, {@code baseTime * minThreshold}, {@code baseTime *
-   * minThreshold^2}, etc. When disabled, all windows have the same size equal to {@code baseTime}.
+   * <p>By default, window sizes grow exponentially: {@code baseTime}, {@code baseTime *
+   * minThreshold}, {@code baseTime * minThreshold^2}, etc. If you call {@link
+   * #disableExponentialBuckets()}, all windows will have the same size equal to {@code baseTime}.
    *
    * <p>Smaller values create finer-grained time windows, which can improve query performance for
    * time-range queries but may result in more segments. Larger values reduce the number of time
@@ -167,7 +167,7 @@ public class TemporalMergePolicy extends MergePolicy {
   /**
    * Returns the current base time window size in seconds.
    *
-   * @see #setBaseTimeSeconds
+   * @see #setBaseTimeInSeconds
    */
   public long getBaseTimeInSeconds() {
     return baseTimeSeconds;
@@ -178,9 +178,9 @@ public class TemporalMergePolicy extends MergePolicy {
    * reduce merge frequency and I/O but allow more segments to accumulate. Lower values keep segment
    * counts lower but increase write amplification.
    *
-   * <p>This threshold is also used as the growth factor for exponential bucketing when {@link
-   * #setUseExponentialBuckets} is enabled. For example, with {@code minThreshold=4}, window sizes
-   * will be: {@code baseTime}, {@code baseTime * 4}, {@code baseTime * 16}, etc.
+   * <p>This threshold is also used as the growth factor for exponential bucketing (which is enabled
+   * by default). For example, with {@code minThreshold=4}, window sizes will be: {@code baseTime},
+   * {@code baseTime * 4}, {@code baseTime * 16}, etc.
    *
    * <p>Must be at least 2 and cannot exceed {@link #setMaxThreshold}. Default is 4.
    */
@@ -206,27 +206,26 @@ public class TemporalMergePolicy extends MergePolicy {
   }
 
   /**
-   * Sets whether to use exponentially growing time windows. When enabled (default), older data is
-   * grouped into progressively larger time buckets: {@code baseTime}, {@code baseTime *
-   * minThreshold}, {@code baseTime * minThreshold^2}, etc.
+   * Disables exponentially growing time windows. By default, older data is grouped into
+   * progressively larger time buckets: {@code baseTime}, {@code baseTime * minThreshold},
+   * {@code baseTime * minThreshold^2}, etc.
    *
-   * <p>When disabled, all time windows have a fixed size equal to {@code baseTime}, which can be
-   * useful for workloads with uniform query patterns across all time ranges.
+   * <p>Calling this method changes the behavior so that all time windows have a fixed size equal to
+   * {@code baseTime}, which can be useful for workloads with uniform query patterns across all time
+   * ranges.
    *
-   * <p>Exponential bucketing is recommended for typical time-series use cases where recent data is
-   * accessed more frequently than older data.
-   *
-   * <p>Default is true.
+   * <p>Exponential bucketing (the default) is recommended for typical time-series use cases where
+   * recent data is accessed more frequently than older data.
    */
-  public TemporalMergePolicy setUseExponentialBuckets(boolean useExponentialBuckets) {
-    this.useExponentialBuckets = useExponentialBuckets;
+  public TemporalMergePolicy disableExponentialBuckets() {
+    this.useExponentialBuckets = false;
     return this;
   }
 
   /**
    * Returns whether exponential bucketing is enabled.
    *
-   * @see #setUseExponentialBuckets
+   * @see #disableExponentialBuckets()
    */
   public boolean getUseExponentialBuckets() {
     return useExponentialBuckets;
@@ -297,9 +296,8 @@ public class TemporalMergePolicy extends MergePolicy {
   }
 
   /**
-   * Sets the maximum size for exponentially growing time windows. When {@link
-   * #setUseExponentialBuckets} is enabled, window sizes grow exponentially but are capped at this
-   * value.
+   * Sets the maximum size for exponentially growing time windows. When exponential bucketing is
+   * enabled (the default), window sizes grow exponentially but are capped at this value.
    *
    * <p>This prevents extremely large time windows for very old data, which could mix data from
    * vastly different time periods. Once window size reaches this limit, all older data uses
@@ -600,7 +598,18 @@ public class TemporalMergePolicy extends MergePolicy {
 
   @Override
   public String toString() {
-    return getClass().getSimpleName();
+    StringBuilder sb = new StringBuilder("[" + getClass().getSimpleName() + ": ");
+    sb.append("temporalField=").append(temporalField).append(", ");
+    sb.append("baseTimeSeconds=").append(baseTimeSeconds).append(", ");
+    sb.append("minThreshold=").append(minThreshold).append(", ");
+    sb.append("maxThreshold=").append(maxThreshold).append(", ");
+    sb.append("useExponentialBuckets=").append(useExponentialBuckets).append(", ");
+    sb.append("maxWindowSizeSeconds=").append(maxWindowSizeSeconds).append(", ");
+    sb.append("maxAgeSeconds=").append(maxAgeSeconds).append(", ");
+    sb.append("compactionRatio=").append(compactionRatio).append(", ");
+    sb.append("forceMergeDeletesPctAllowed=").append(forceMergeDeletesPctAllowed);
+    sb.append("]");
+    return sb.toString();
   }
 
   /**

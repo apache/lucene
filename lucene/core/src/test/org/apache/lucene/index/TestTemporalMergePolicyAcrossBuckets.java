@@ -40,11 +40,11 @@ public class TestTemporalMergePolicyAcrossBuckets extends LuceneTestCase {
     TemporalMergePolicy policy =
         new TemporalMergePolicy()
             .setTemporalField("timestamp_tl")
-            .setBaseTimeSeconds(TimeUnit.DAYS.toSeconds(365))
+            .setBaseTimeInSeconds(TimeUnit.DAYS.toSeconds(365))
             .setMaxAgeSeconds(TimeUnit.DAYS.toSeconds(365 * 10))
             .setMinThreshold(2)
             .setMaxThreshold(10)
-            .setUseExponentialBuckets(false)
+            .disableExponentialBuckets()
             .setCompactionRatio(1.0);
 
     IndexWriterConfig config = new IndexWriterConfig();
@@ -134,11 +134,11 @@ public class TestTemporalMergePolicyAcrossBuckets extends LuceneTestCase {
     TemporalMergePolicy policy =
         new TemporalMergePolicy()
             .setTemporalField("timestamp_tl")
-            .setBaseTimeSeconds(TimeUnit.DAYS.toSeconds(365)) // 1-year buckets
+            .setBaseTimeInSeconds(TimeUnit.DAYS.toSeconds(365)) // 1-year buckets
             .setMaxAgeSeconds(TimeUnit.DAYS.toSeconds(365 * 10)) // 10 years
             .setMinThreshold(2)
             .setMaxThreshold(10)
-            .setUseExponentialBuckets(false)
+            .disableExponentialBuckets()
             .setCompactionRatio(1.0);
 
     IndexWriterConfig config = new IndexWriterConfig();
@@ -188,11 +188,11 @@ public class TestTemporalMergePolicyAcrossBuckets extends LuceneTestCase {
     TemporalMergePolicy policy =
         new TemporalMergePolicy()
             .setTemporalField("timestamp_tl")
-            .setBaseTimeSeconds(TimeUnit.DAYS.toSeconds(365))
+            .setBaseTimeInSeconds(TimeUnit.DAYS.toSeconds(365))
             .setMaxAgeSeconds(TimeUnit.DAYS.toSeconds(365 * 10))
             .setMinThreshold(2)
             .setMaxThreshold(10)
-            .setUseExponentialBuckets(false)
+            .disableExponentialBuckets()
             .setCompactionRatio(1.0);
 
     IndexWriterConfig config = new IndexWriterConfig();
@@ -262,11 +262,11 @@ public class TestTemporalMergePolicyAcrossBuckets extends LuceneTestCase {
     TemporalMergePolicy policy =
         new TemporalMergePolicy()
             .setTemporalField("timestamp_tl")
-            .setBaseTimeSeconds(TimeUnit.DAYS.toSeconds(365))
+            .setBaseTimeInSeconds(TimeUnit.DAYS.toSeconds(365))
             .setMaxAgeSeconds(TimeUnit.DAYS.toSeconds(365 * 3))
             .setMinThreshold(2)
             .setMaxThreshold(10)
-            .setUseExponentialBuckets(false)
+            .disableExponentialBuckets()
             .setCompactionRatio(1.0);
 
     IndexWriterConfig config = new IndexWriterConfig();
