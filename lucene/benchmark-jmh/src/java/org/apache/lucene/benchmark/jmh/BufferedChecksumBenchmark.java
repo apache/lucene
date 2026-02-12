@@ -17,6 +17,7 @@
 package org.apache.lucene.benchmark.jmh;
 
 import java.util.concurrent.TimeUnit;
+import java.util.zip.CRC32;
 import java.util.zip.CRC32C;
 import org.apache.lucene.store.BufferedChecksum;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -72,8 +73,10 @@ public class BufferedChecksumBenchmark {
   private byte[] data;
 
   // Reused instances to measure real-world performance
-  private BufferedChecksum reusedBuffered;
-  private CRC32C reusedDirect;
+  private BufferedChecksum reusedBufferedCRC32C;
+  private BufferedChecksum reusedBufferedCRC32;
+  private CRC32C reusedDirectCRC32C;
+  private CRC32 reusedDirectCRC32;
 
   @Setup(Level.Trial)
   public void setup() {
@@ -85,42 +88,114 @@ public class BufferedChecksumBenchmark {
 
   @Setup(Level.Iteration)
   public void setupReused() {
-    reusedBuffered = new BufferedChecksum(new CRC32C(), bufferSize);
-    reusedDirect = new CRC32C();
+    reusedBufferedCRC32C = new BufferedChecksum(new CRC32C(), bufferSize);
+    reusedBufferedCRC32 = new BufferedChecksum(new CRC32(), bufferSize);
+    reusedDirectCRC32C = new CRC32C();
+    reusedDirectCRC32 = new CRC32();
   }
 
 
   @Benchmark
-  public long bufferedSmallWrites() {
-    reusedBuffered.reset();
+  public long bufferedCRC32CSmallWrites() {
+    reusedBufferedCRC32C.reset();
+    for (int i = 0; i < data.length; i++) {
+      reusedBufferedCRC32C.update(data[i]);
+    }
+    return reusedBufferedCRC32C.getValue();
+  }
+
+  @Benchmark
+  public long bufferedCRC32CSmallArrayWrites() {
+    reusedBufferedCRC32C.reset();
     for (int i = 0; i < data.length; i += smallWriteSize) {
       int len = Math.min(smallWriteSize, data.length - i);
-      reusedBuffered.update(data, i, len);
+      reusedBufferedCRC32C.update(data, i, len);
     }
-    return reusedBuffered.getValue();
+    return reusedBufferedCRC32C.getValue();
   }
 
   @Benchmark
-  public long bufferedBulkWrite() {
-    reusedBuffered.reset();
-    reusedBuffered.update(data, 0, data.length);
-    return reusedBuffered.getValue();
+  public long bufferedCRC32CBulkWrite() {
+    reusedBufferedCRC32C.reset();
+    reusedBufferedCRC32C.update(data, 0, data.length);
+    return reusedBufferedCRC32C.getValue();
   }
 
   @Benchmark
-  public long directSmallWrites() {
-    reusedDirect.reset();
+  public long directCRC32CSmallWrites() {
+    reusedDirectCRC32C.reset();
+    for (int i = 0; i < data.length; i++) {
+      reusedDirectCRC32C.update(data[i]);
+    }
+    return reusedDirectCRC32C.getValue();
+  }
+
+  @Benchmark
+  public long directCRC32CSmallArrayWrites() {
+    reusedDirectCRC32C.reset();
     for (int i = 0; i < data.length; i += smallWriteSize) {
       int len = Math.min(smallWriteSize, data.length - i);
-      reusedDirect.update(data, i, len);
+      reusedDirectCRC32C.update(data, i, len);
     }
-    return reusedDirect.getValue();
+    return reusedDirectCRC32C.getValue();
   }
 
   @Benchmark
-  public long directBulkWrite() {
-    reusedDirect.reset();
-    reusedDirect.update(data, 0, data.length);
-    return reusedDirect.getValue();
+  public long directCRC32CBulkWrite() {
+    reusedDirectCRC32C.reset();
+    reusedDirectCRC32C.update(data, 0, data.length);
+    return reusedDirectCRC32C.getValue();
+  }
+
+  @Benchmark
+  public long bufferedCRC32SmallWrites() {
+    reusedBufferedCRC32.reset();
+    for (int i = 0; i < data.length; i++) {
+      reusedBufferedCRC32.update(data[i]);
+    }
+    return reusedBufferedCRC32.getValue();
+  }
+
+  @Benchmark
+  public long bufferedCRC32SmallArrayWrites() {
+    reusedBufferedCRC32.reset();
+    for (int i = 0; i < data.length; i += smallWriteSize) {
+      int len = Math.min(smallWriteSize, data.length - i);
+      reusedBufferedCRC32.update(data, i, len);
+    }
+    return reusedBufferedCRC32.getValue();
+  }
+
+  @Benchmark
+  public long bufferedCRC32BulkWrite() {
+    reusedBufferedCRC32.reset();
+    reusedBufferedCRC32.update(data, 0, data.length);
+    return reusedBufferedCRC32.getValue();
+  }
+
+  @Benchmark
+  public long directCRC32SmallWrites() {
+    reusedDirectCRC32.reset();
+    for (int i = 0; i < data.length; i++) {
+      reusedDirectCRC32.update(data[i]);
+    }
+    return reusedDirectCRC32.getValue();
+  }
+
+  @Benchmark
+  public long directCRC32SmallArrayWrites() {
+    reusedDirectCRC32.reset();
+    for (int i = 0; i < data.length; i += smallWriteSize) {
+      int len = Math.min(smallWriteSize, data.length - i);
+      reusedDirectCRC32.update(data, i, len);
+    }
+    return reusedDirectCRC32.getValue();
+  }
+
+  @Benchmark
+  public long directCRC32BulkWrite() {
+    reusedDirectCRC32.reset();
+    reusedDirectCRC32.update(data, 0, data.length);
+    return reusedDirectCRC32.getValue();
   }
 }
