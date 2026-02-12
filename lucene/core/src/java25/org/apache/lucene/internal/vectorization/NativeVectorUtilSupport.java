@@ -70,15 +70,18 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
   }
 
   static {
-    try {
-      // Attempt to load the library
-      System.loadLibrary(NATIVE_VECTOR_LIBRARY_NAME);
-      isLibraryLoaded = true; // If successful, set the flag to true
-    } catch (UnsatisfiedLinkError e) {
-      // If the library loading fails, set the flag to false
-      isLibraryLoaded = false;
-      Logger.getLogger(NativeVectorUtilSupport.class.getName())
-          .warning("No native library" + NATIVE_VECTOR_LIBRARY_NAME + " found : " + e.getMessage());
+    if (Constants.NATIVE_DOT_PRODUCT_ENABLED) {
+      try {
+        // Attempt to load the library
+        System.loadLibrary(NATIVE_VECTOR_LIBRARY_NAME);
+        isLibraryLoaded = true; // If successful, set the flag to true
+      } catch (UnsatisfiedLinkError e) {
+        // If the library loading fails, set the flag to false
+        isLibraryLoaded = false;
+        Logger.getLogger(NativeVectorUtilSupport.class.getName())
+            .warning(
+                "No native library" + NATIVE_VECTOR_LIBRARY_NAME + " found : " + e.getMessage());
+      }
     }
   }
 

@@ -29,7 +29,7 @@ import org.apache.lucene.util.SuppressForbidden;
 public final class NativeVectorizationProvider extends VectorizationProvider {
 
   private final VectorizationProvider delegateVectorUtilProvider =
-      new DefaultVectorizationProvider();
+      new PanamaVectorizationProvider();
 
   private final VectorUtilSupport vectorUtilSupport;
 

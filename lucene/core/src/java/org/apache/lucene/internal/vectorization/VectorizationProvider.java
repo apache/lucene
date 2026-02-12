@@ -157,31 +157,11 @@ public abstract class VectorizationProvider {
           return new DefaultVectorizationProvider();
         }
       }
-      try {
-        // we use method handles with lookup, so we do not need to deal with setAccessible as we
-        // have private access through the lookup:
-        final var lookup = MethodHandles.lookup();
-        final var cls =
-            lookup.findClass(
-                "org.apache.lucene.internal.vectorization.NativeVectorizationProvider");
-        final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
-        try {
-          return (VectorizationProvider) constr.invoke();
-        } catch (UnsupportedOperationException uoe) {
-          // not supported because preferred vector size too small or similar
-          LOG.warning("Java vector incubator API was not enabled. " + uoe.getMessage());
-          return new DefaultVectorizationProvider();
-        } catch (RuntimeException | Error e) {
-          throw e;
-        } catch (Throwable th) {
-          throw new AssertionError(th);
-        }
-      } catch (NoSuchMethodException | IllegalAccessException e) {
-        throw new LinkageError(
-            "NativeVectorizationProvider is missing correctly typed constructor", e);
-      } catch (ClassNotFoundException cnfe) {
-        throw new LinkageError("NativeVectorizationProvider is missing in Lucene JAR file", cnfe);
+      if (Constants.NATIVE_DOT_PRODUCT_ENABLED) {
+        return lookup("NativeVectorizationProvider");
       }
+
+      return lookup("PanamaVectorizationProvider");
     } else {
       LOG.warning(
           "You are running with unsupported Java "
@@ -189,6 +169,31 @@ public abstract class VectorizationProvider {
               + ". To make full use of the Vector API, please update Apache Lucene.");
     }
     return new DefaultVectorizationProvider();
+  }
+
+  static VectorizationProvider lookup(String className) {
+    try {
+      // we use method handles with lookup, so we do not need to deal with setAccessible as we
+      // have private access through the lookup:
+      final var lookup = MethodHandles.lookup();
+      final var cls = lookup.findClass("org.apache.lucene.internal.vectorization." + className);
+      final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
+      try {
+        return (VectorizationProvider) constr.invoke();
+      } catch (UnsupportedOperationException uoe) {
+        // not supported because preferred vector size too small or similar
+        LOG.warning("Java vector incubator API was not enabled. " + uoe.getMessage());
+        return new DefaultVectorizationProvider();
+      } catch (RuntimeException | Error e) {
+        throw e;
+      } catch (Throwable th) {
+        throw new AssertionError(th);
+      }
+    } catch (NoSuchMethodException | IllegalAccessException e) {
+      throw new LinkageError(className + " is missing correctly typed constructor", e);
+    } catch (ClassNotFoundException cnfe) {
+      throw new LinkageError(className + " is missing in Lucene JAR file", cnfe);
+    }
   }
 
   /**
