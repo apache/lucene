@@ -47,9 +47,9 @@ import org.openjdk.jmh.annotations.Warmup;
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)
 @State(Scope.Thread)
-@Warmup(iterations = 3, time = 2)
-@Measurement(iterations = 3, time = 2)
-@Fork(value = 1, jvmArgs = {"-Xms2g", "-Xmx2g"})
+@Warmup(iterations = 1, time = 3)
+@Measurement(iterations = 1, time = 3)
+@Fork(value = 1)
 public class BufferedChecksumBenchmark {
 
   // Realistic Lucene write sizes?
