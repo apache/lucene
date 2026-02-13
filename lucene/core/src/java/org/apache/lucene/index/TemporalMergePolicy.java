@@ -793,7 +793,7 @@ public class TemporalMergePolicy extends MergePolicy {
       return -1;
     }
 
-    if (!useExponentialBuckets) {
+    if (useExponentialBuckets == false) {
       return (timestampSeconds / baseTimeSeconds) * baseTimeSeconds;
     }
 
@@ -912,7 +912,7 @@ public class TemporalMergePolicy extends MergePolicy {
         }
       }
 
-      if (!emittedMerge) {
+      if (emittedMerge == false) {
         break;
       }
     }
@@ -926,22 +926,22 @@ public class TemporalMergePolicy extends MergePolicy {
       return null;
     }
 
-    List<SegmentCommitInfo> pool = new ArrayList<>(candidates);
     MergeSpecification spec = null;
-    int remaining = pool.size();
+    int remaining = candidates.size();
+    int offset = 0;
 
-    while (remaining > maxSegmentCount && pool.size() >= 2) {
+    while (remaining > maxSegmentCount && (candidates.size() - offset) >= 2) {
       int neededReduction = remaining - maxSegmentCount;
       int mergeInputs = Math.min(maxThreshold, Math.max(2, neededReduction + 1));
-      mergeInputs = Math.min(mergeInputs, pool.size());
+      mergeInputs = Math.min(mergeInputs, candidates.size() - offset);
 
-      List<SegmentCommitInfo> batch = new ArrayList<>(pool.subList(0, mergeInputs));
-      pool.subList(0, mergeInputs).clear();
+      List<SegmentCommitInfo> batch = candidates.subList(offset, offset + mergeInputs);
 
       if (spec == null) {
         spec = new MergeSpecification();
       }
-      spec.add(new OneMerge(batch));
+      spec.add(new OneMerge(new ArrayList<>(batch)));
+      offset += mergeInputs;
       remaining -= (mergeInputs - 1);
     }
 
