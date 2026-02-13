@@ -86,7 +86,7 @@ abstract class AbstractKnnVectorQuery extends Query {
     List<LeafReaderContext> leafReaderContexts = reader.leaves();
 
     // Use deterministic search strategy for multi-segment cases without filters
-    if (leafReaderContexts.size() > 1 && filter == null) {
+    if (leafReaderContexts.size() > 1) {
       TopDocs topK = deterministicSearch(leafReaderContexts, filterWeight, indexSearcher);
       if (topK.scoreDocs.length == 0) {
         return new MatchNoDocsQuery();
