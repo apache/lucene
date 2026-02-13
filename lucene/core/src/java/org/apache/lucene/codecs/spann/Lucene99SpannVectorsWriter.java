@@ -31,21 +31,17 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.store.ByteArrayDataOutput;
+import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
-
 import org.apache.lucene.util.hnsw.HnswGraphBuilder;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
-import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
-import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.search.TopKnnCollector;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.util.Bits;
 
 /**
  * Writes vectors in the SPANN (HNSW-IVF) format.
@@ -351,60 +347,61 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
         boolean isByte = fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
         float[] currentVector = new float[fieldInfo.getVectorDimension()];
 
-          
-          class CentroidScorer extends UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer {
-            private final float[][] centroids;
-            private float[] query;
+        class CentroidScorer
+            extends UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer {
+          private final float[][] centroids;
+          private float[] query;
 
-            CentroidScorer(float[][] centroids) {
-              super(null);
-              this.centroids = centroids;
-            }
-
-            @Override
-            public void setScoringOrdinal(int node) {
-              query = centroids[node];
-            }
-
-            public void setQuery(float[] query) {
-              this.query = query;
-            }
-
-            @Override
-            public float score(int node) throws IOException {
-              return fieldInfo.getVectorSimilarityFunction().compare(query, centroids[node]);
-            }
-
-            @Override
-            public int maxOrd() {
-              return centroids.length;
-            }
-
-            @Override
-            public int ordToDoc(int ord) {
-              return ord;
-            }
-
-            @Override
-            public Bits getAcceptOrds(Bits acceptDocs) {
-              return null;
-            }
+          CentroidScorer(float[][] centroids) {
+            super(null);
+            this.centroids = centroids;
           }
-          
-          final float[][] finalCentroids = centroids;
-          CentroidScorer scorer = new CentroidScorer(finalCentroids);
 
-          RandomVectorScorerSupplier scorerSupplier = new RandomVectorScorerSupplier() {
-            @Override
-            public UpdateableRandomVectorScorer scorer() {
-              return new CentroidScorer(finalCentroids);
-            }
+          @Override
+          public void setScoringOrdinal(int node) {
+            query = centroids[node];
+          }
 
-            @Override
-            public RandomVectorScorerSupplier copy() {
-              return this;
-            }
-          };
+          public void setQuery(float[] query) {
+            this.query = query;
+          }
+
+          @Override
+          public float score(int node) throws IOException {
+            return fieldInfo.getVectorSimilarityFunction().compare(query, centroids[node]);
+          }
+
+          @Override
+          public int maxOrd() {
+            return centroids.length;
+          }
+
+          @Override
+          public int ordToDoc(int ord) {
+            return ord;
+          }
+
+          @Override
+          public Bits getAcceptOrds(Bits acceptDocs) {
+            return null;
+          }
+        }
+
+        final float[][] finalCentroids = centroids;
+        CentroidScorer scorer = new CentroidScorer(finalCentroids);
+
+        RandomVectorScorerSupplier scorerSupplier =
+            new RandomVectorScorerSupplier() {
+              @Override
+              public UpdateableRandomVectorScorer scorer() {
+                return new CentroidScorer(finalCentroids);
+              }
+
+              @Override
+              public RandomVectorScorerSupplier copy() {
+                return this;
+              }
+            };
 
         HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, 42);
         OnHeapHnswGraph centroidGraph = builder.build(centroids.length);
@@ -425,13 +422,15 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
           }
 
           scorer.setQuery(currentVector);
-          KnnCollector collector = HnswGraphSearcher.search(scorer, replicationFactor, centroidGraph, null, Integer.MAX_VALUE);
+          KnnCollector collector =
+              HnswGraphSearcher.search(
+                  scorer, replicationFactor, centroidGraph, null, Integer.MAX_VALUE);
           org.apache.lucene.search.TopDocs topDocs = collector.topDocs();
           for (ScoreDoc sd : topDocs.scoreDocs) {
-              partitioner.addAssignment(sd.doc, i);
+            partitioner.addAssignment(sd.doc, i);
           }
         }
-        
+
         partitioner.finish(
             input, dataOut, metaOut, fieldInfo.getVectorEncoding(), fieldInfo.getVectorDimension());
       }

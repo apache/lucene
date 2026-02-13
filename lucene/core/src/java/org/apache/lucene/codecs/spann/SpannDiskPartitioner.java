@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.spann;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.SegmentInfo;
@@ -29,7 +28,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InPlaceMergeSorter;
 
@@ -42,7 +40,7 @@ import org.apache.lucene.util.InPlaceMergeSorter;
  */
 final class SpannDiskPartitioner implements Closeable {
 
-  private static final long TARGET_BUCKET_BYTES = 256 * 1024 * 1024; // 256MB RAM per bucket
+  private static final long TARGET_BUCKET_BYTES = 32 * 1024 * 1024; // 32MB per bucket
   private static final int RECORD_BYTES = Integer.BYTES * 2; // PartitionID + DocID
 
   private final Directory directory;
@@ -116,8 +114,6 @@ final class SpannDiskPartitioner implements Closeable {
     ByteBuffersDataOutput metaBuffer = new ByteBuffersDataOutput();
     int totalAssignments = 0;
 
-    ByteBuffersDataOutput docIdBuffer = new ByteBuffersDataOutput();
-    ByteBuffersDataOutput vectorBuffer = new ByteBuffersDataOutput();
     byte[] vectorScratch = new byte[vectorByteWidth];
 
     // Process each bucket
@@ -158,33 +154,79 @@ final class SpannDiskPartitioner implements Closeable {
         }.sort(0, numRecords);
 
         // Iterate sorted records and write to final output
-        int currentPartition = -1;
-        for (int j = 0; j < numRecords; j++) {
-          int pId = partitionIds[j];
-          int sourceOrdinal = docIds[j]; // We stored the ordinal in the bucket's "docId" slot
-
-          if (pId != currentPartition) {
-            if (currentPartition != -1) {
-              writePartition(
-                  spadOut, metaBuffer, currentPartition, docIdBuffer, vectorBuffer, vectorByteWidth);
-            }
-            currentPartition = pId;
+        int start = 0;
+        while (start < numRecords) {
+          int end = start + 1;
+          int partitionId = partitionIds[start];
+          while (end < numRecords && partitionIds[end] == partitionId) {
+            end++;
           }
 
-          // Random Access Read
-          long offset = (long) sourceOrdinal * vectorDataSize;
-          vectorData.seek(offset);
-          int realDocId = vectorData.readInt();
-          vectorData.readBytes(vectorScratch, 0, vectorByteWidth);
+          // Found a run for partitionId: [start, end)
+          int count = end - start;
+          long partitionStart = spadOut.getFilePointer();
 
-          docIdBuffer.writeInt(realDocId);
-          vectorBuffer.writeBytes(vectorScratch, 0, vectorByteWidth);
-          totalAssignments++;
-        }
+          // Hybrid Buffering: Use RAM for small runs to avoid FS churn, Disk for large runs.
+          long totalVectorBytes = (long) count * vectorByteWidth;
+          boolean useHeap = totalVectorBytes <= 1024 * 1024; // 1MB threshold
 
-        if (currentPartition != -1) {
-          writePartition(
-              spadOut, metaBuffer, currentPartition, docIdBuffer, vectorBuffer, vectorByteWidth);
+          if (useHeap) {
+            byte[] heapBuffer = new byte[(int) totalVectorBytes];
+            int bufferOffset = 0;
+            for (int k = start; k < end; k++) {
+              int sourceOrdinal = docIds[k];
+              long offset = (long) sourceOrdinal * vectorDataSize;
+              vectorData.seek(offset);
+              int realDocId = vectorData.readInt();
+              spadOut.writeInt(realDocId);
+
+              vectorData.readBytes(vectorScratch, 0, vectorByteWidth);
+              System.arraycopy(vectorScratch, 0, heapBuffer, bufferOffset, vectorByteWidth);
+              bufferOffset += vectorByteWidth;
+            }
+            spadOut.writeBytes(heapBuffer, heapBuffer.length);
+          } else {
+            // Large run: Use Temp File (Fixes Double-Seek and OOM, accepts some churn)
+            String vectorTempName = null;
+            try {
+              try (IndexOutput vecTempOut =
+                  directory.createTempOutput(
+                      tempFileNamePrefix + "_vectors", "spann_vec_temp", IOContext.DEFAULT)) {
+                vectorTempName = vecTempOut.getName();
+                for (int k = start; k < end; k++) {
+                  int sourceOrdinal = docIds[k];
+                  long offset = (long) sourceOrdinal * vectorDataSize;
+                  vectorData.seek(offset);
+                  int realDocId = vectorData.readInt();
+                  spadOut.writeInt(realDocId);
+
+                  vectorData.readBytes(vectorScratch, 0, vectorByteWidth);
+                  vecTempOut.writeBytes(vectorScratch, 0, vectorByteWidth);
+                }
+                CodecUtil.writeFooter(vecTempOut);
+              }
+
+              // vecTempOut is now closed, safe to read
+              try (IndexInput vecTempIn = directory.openInput(vectorTempName, IOContext.READONCE)) {
+                long vecLength = vecTempIn.length() - CodecUtil.footerLength();
+                spadOut.copyBytes(vecTempIn, vecLength);
+              }
+            } finally {
+              if (vectorTempName != null) {
+                IOUtils.deleteFilesIgnoringExceptions(directory, vectorTempName);
+              }
+            }
+          }
+
+          long partitionLen = spadOut.getFilePointer() - partitionStart;
+
+          // Write Metadata
+          metaBuffer.writeVInt(partitionId);
+          metaBuffer.writeVLong(partitionStart);
+          metaBuffer.writeVLong(partitionLen);
+
+          totalAssignments += count;
+          start = end;
         }
       } finally {
         // Delete bucket immediately to free space
@@ -193,32 +235,11 @@ final class SpannDiskPartitioner implements Closeable {
     }
 
     CodecUtil.writeFooter(spadOut);
-    
+
     // Write final metadata
     spamOut.writeVInt(totalAssignments);
     metaBuffer.copyTo(spamOut);
     CodecUtil.writeFooter(spamOut);
-  }
-
-  private void writePartition(
-      IndexOutput dataOut,
-      ByteBuffersDataOutput metaBuffer,
-      int partitionId,
-      ByteBuffersDataOutput docIdBuffer,
-      ByteBuffersDataOutput vectorBuffer,
-      int vectorByteWidth)
-      throws IOException {
-
-    long partitionStart = dataOut.getFilePointer();
-    docIdBuffer.copyTo(dataOut);
-    vectorBuffer.copyTo(dataOut);
-
-    metaBuffer.writeVInt(partitionId);
-    metaBuffer.writeVLong(partitionStart);
-    metaBuffer.writeVLong(dataOut.getFilePointer() - partitionStart);
-
-    docIdBuffer.reset();
-    vectorBuffer.reset();
   }
 
   @Override

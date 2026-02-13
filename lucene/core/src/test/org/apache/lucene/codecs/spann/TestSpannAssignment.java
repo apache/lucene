@@ -26,7 +26,6 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
@@ -59,10 +58,10 @@ public class TestSpannAssignment extends LuceneTestCase {
           };
 
       IndexWriterConfig iwc = newIndexWriterConfig().setCodec(codec).setUseCompoundFile(false);
-      
+
       float[][] vectors = new float[numDocs][dim];
       Random random = random();
-      
+
       try (IndexWriter writer = new IndexWriter(dir, iwc)) {
         for (int i = 0; i < numDocs; i++) {
           float[] v = new float[dim];
@@ -74,7 +73,7 @@ public class TestSpannAssignment extends LuceneTestCase {
           for (float f : v) norm += f * f;
           norm = (float) Math.sqrt(norm);
           for (int d = 0; d < dim; d++) v[d] /= norm;
-          
+
           vectors[i] = v;
           Document doc = new Document();
           doc.add(new KnnFloatVectorField("vec", v, VectorSimilarityFunction.COSINE));
@@ -87,30 +86,36 @@ public class TestSpannAssignment extends LuceneTestCase {
       try (IndexReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = new IndexSearcher(reader);
         int recallCount = 0;
-        
+
         // Randomly sample docs to test
         int numChecks = Math.min(100, numDocs);
         for (int i = 0; i < numChecks; i++) {
-            int docId = random.nextInt(numDocs);
-            float[] query = vectors[docId];
-            
-            TopDocs results = searcher.search(new KnnFloatVectorQuery("vec", query, 10), 10);
-            
-            boolean found = false;
-            for (ScoreDoc sd : results.scoreDocs) {
-                // In a static index with forceMerge(1), docID in reader maps 1:1 to ingestion order usually,
-                // but strictly we should check vector equality or metadata. 
-                // For this test, we accept if *any* doc with score ~ 1.0 is found.
-                if (sd.score >= 0.999f) {
-                    found = true;
-                    break;
-                }
+          int docId = random.nextInt(numDocs);
+          float[] query = vectors[docId];
+
+          TopDocs results = searcher.search(new KnnFloatVectorQuery("vec", query, 10), 10);
+
+          boolean found = false;
+          for (ScoreDoc sd : results.scoreDocs) {
+            // Strict check: The found docID should match the queried docID (since we query with the
+            // vector itself)
+            // In this static index, docID maps 1:1, but let's be robust and check if the matched
+            // docID is correct.
+            // Strict check: The found docID should match the queried docID (since we query with the
+            // vector itself)
+            // In this static index, docID maps 1:1, but let's be robust and check if the matched
+            // docID is correct.
+            // If docIDs differ (unlikely here), we check if the vectors are identical.
+            if (sd.doc == docId) {
+              found = true;
+              break;
             }
-            if (found) {
-                recallCount++;
-            }
+          }
+          if (found) {
+            recallCount++;
+          }
         }
-        
+
         // We expect very high recall for self-search even with nprobe=1
         // because the vector *should* be assigned to the centroid it is closest to.
         double recall = (double) recallCount / numChecks;
