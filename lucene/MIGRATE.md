@@ -7,7 +7,7 @@
     the License.  You may obtain a copy of the License at
 
         http://www.apache.org/licenses/LICENSE-2.0
-    
+
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -87,8 +87,9 @@ number of segments that may be merged together.
 ### Snowball dependency upgrade (Dutch stemmer)
 
 Snowball replaced the "Dutch" stemmer by the "Kraaij-Pohlmann" stemmer (previous called dutch-kp). As a result Lucene supports 2 Dutch stemmers:
--  DutchStemmer, which is now the "Kraaij-Pohlmann" stemmer.
--  Dutch_porterStemmer, which is the DutchStemmer from Lucene-10 and before.
+
+- DutchStemmer, which is now the "Kraaij-Pohlmann" stemmer.
+- Dutch_porterStemmer, which is the DutchStemmer from Lucene-10 and before.
 
 Opening an pre Lucene-11 index which is indexed using the DutchStemmer will succeed, but due to the different stemmer implementation a re-index is needed in order to make searching work correctly. Or replace DutchStemmer by Dutch_porterStemmer in your code.
 
