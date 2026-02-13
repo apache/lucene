@@ -108,9 +108,7 @@ public final class Constants {
   public static final boolean NATIVE_DOT_PRODUCT_ENABLED = enableNativeDotProduct();
 
   private static boolean enableNativeDotProduct() {
-    var enabledExplicitly = Boolean.parseBoolean(getSysProp("lucene.useNativeDotProduct", "false"));
-    var enabledForTests = Boolean.parseBoolean(getSysProp("test.native.dotProduct", "false"));
-    return enabledExplicitly || enabledForTests;
+    return Boolean.parseBoolean(getSysProp("lucene.useNativeDotProduct", "false"));
   }
 
   public static final boolean NATIVE_STRICT_MODE = hasNativeStrictModeOn();

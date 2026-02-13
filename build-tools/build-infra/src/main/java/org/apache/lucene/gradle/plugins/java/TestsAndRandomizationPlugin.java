@@ -627,10 +627,8 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
         "tests.vectorsize",
         "Sets preferred vector size in bits.",
         project.provider(() -> defaultVectorizationOption.get() ? "default" : randomVectorSize));
-    buildOptions.addBooleanOption("test.native.dotProduct", "Native dot product.", false);
 
     optionsInheritedAsProperties.add("tests.vectorsize");
-    optionsInheritedAsProperties.add("test.native.dotProduct");
 
     return defaultVectorizationOption.get();
   }

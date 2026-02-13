@@ -23,8 +23,7 @@ import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
-/** Default scalar implementation of vector utilities without SIMD optimizations. */
-public final class DefaultVectorUtilSupport implements VectorUtilSupport {
+final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   DefaultVectorUtilSupport() {}
 
@@ -359,20 +358,19 @@ public final class DefaultVectorUtilSupport implements VectorUtilSupport {
         .recalculateOffset(vector, 0, oldAlpha, oldMinQuantile);
   }
 
-  /** Scalar quantizer for converting float vectors to byte vectors. */
-  public static final class ScalarQuantizer {
+  static class ScalarQuantizer {
     private final float alpha;
     private final float scale;
     private final float minQuantile, maxQuantile;
 
-    public ScalarQuantizer(float alpha, float scale, float minQuantile, float maxQuantile) {
+    ScalarQuantizer(float alpha, float scale, float minQuantile, float maxQuantile) {
       this.alpha = alpha;
       this.scale = scale;
       this.minQuantile = minQuantile;
       this.maxQuantile = maxQuantile;
     }
 
-    public float quantize(float[] vector, byte[] dest, int start) {
+    float quantize(float[] vector, byte[] dest, int start) {
       assert vector.length == dest.length;
       float correction = 0;
       for (int i = start; i < vector.length; i++) {
@@ -381,7 +379,7 @@ public final class DefaultVectorUtilSupport implements VectorUtilSupport {
       return correction;
     }
 
-    public float recalculateOffset(byte[] vector, int start, float oldAlpha, float oldMinQuantile) {
+    float recalculateOffset(byte[] vector, int start, float oldAlpha, float oldMinQuantile) {
       float correction = 0;
       for (int i = start; i < vector.length; i++) {
         // undo the old quantization

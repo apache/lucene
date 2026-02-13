@@ -14,6 +14,9 @@
   * See the License for the specific language governing permissions and
   * limitations under the License.
   */
+
+// EXAMPLE CODE FOR DOT PRODUCT IMPLEMENTATION IN C (Scalar, NEON, SVE)
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,13 +36,6 @@
   - ARM intrinsics guide - https://developer.arm.com/architectures/instruction-sets/intrinsics/#q=svptrue
   - SVE Programming examples - https://developer.arm.com/documentation/dai0548/latest/
 */
-void dump(int8_t vec[], int N) {
-  printf("[");
-  for (int i = 0; i < N ; i++) {
-      printf("%d,",vec[i]);
-  }
-  printf("]\n");
-}
 
   /*
   * Unrolled and vectorized int8 dotProduct implementation using SVE instructions
@@ -50,10 +46,8 @@ void dump(int8_t vec[], int N) {
   *
   */
 // === Using SVE intrinsics ===
-__attribute__((target("arch=armv8.2-a+sve")))
+__attribute__((target("arch=armv8.4-a+sve")))
 int32_t vdot8s_sve(int8_t vec1[], int8_t vec2[], int32_t limit) {
-  // printf("Vector1: "); dump(vec1, limit);
-  // printf("Vector2: "); dump(vec2, limit);
     int32_t result = 0;
     int32_t i = 0;
     // Vectors of 8-bit signed integers
@@ -70,9 +64,9 @@ int32_t vdot8s_sve(int8_t vec1[], int8_t vec2[], int32_t limit) {
 
     // Manually unroll the loop
     for (i = 0; i + 4 * vec_length <= limit; i += 4 * vec_length) {
-  // Load vectors into the Z registers which can range from 128-bit to 2048-bit wide
-  // The predicate register - P determines which bytes are active
-  // svptrue_b8() returns a predicate in which every element is true
+      // Load vectors into the Z registers which can range from 128-bit to 2048-bit wide
+      // The predicate register - P determines which bytes are active
+      // svptrue_b8() returns a predicate in which every element is true
       va1 = svld1_s8(svptrue_b8(), &vec1[i]);
         vb1 = svld1_s8(svptrue_b8(), &vec2[i]);
 
@@ -85,7 +79,7 @@ int32_t vdot8s_sve(int8_t vec1[], int8_t vec2[], int32_t limit) {
         va4 = svld1_s8(svptrue_b8(), &vec1[i + 3 * vec_length]);
         vb4 = svld1_s8(svptrue_b8(), &vec2[i + 3 * vec_length]);
 
-      // Dot product using SDOT instruction on Z vectors
+        // Dot product using SDOT instruction on Z vectors
         acc1 = svdot_s32(acc1, va1, vb1);
         acc2 = svdot_s32(acc2, va2, vb2);
         acc3 = svdot_s32(acc3, va3, vb3);
@@ -144,8 +138,8 @@ int32_t vdot8s_neon(int8_t vec1[], int8_t vec2[], int32_t limit) {
         va4 = vld1q_s8(&vec1[i + 48]);
         vb4 = vld1q_s8(&vec2[i + 48]);
 
-      // Dot product using SDOT instruction
-      // GCC 7.3 does not define the intrinsic below so we get compile time error.
+        // Dot product using SDOT instruction
+        // GCC 7.3 does not define the intrinsic below so we get compile time error.
         acc1 = vdotq_s32(acc1, va1, vb1);
         acc2 = vdotq_s32(acc2, va2, vb2);
         acc3 = vdotq_s32(acc3, va3, vb3);
@@ -173,7 +167,7 @@ int32_t vdot8s_neon(int8_t vec1[], int8_t vec2[], int32_t limit) {
 #endif
 #endif
 
-int32_t dot8s_scalar(int8_t vec1[], int8_t vec2[], int32_t limit) {
+int32_t vdot8s_scalar(int8_t vec1[], int8_t vec2[], int32_t limit) {
     int32_t result = 0;
     #ifdef __clang__
     #pragma clang loop vectorize(assume_safety) unroll(enable)
@@ -198,7 +192,7 @@ static void* resolve_dot8s(void) {
         return (void*) vdot8s_neon;
     }
 #endif
-    return (void*) dot8s_scalar;
+    return (void*) vdot8s_scalar;
 }
 
 // dot8s will dispatch based on runtime capabilities
@@ -208,7 +202,7 @@ int32_t dotProduct(int8_t vec1[], int8_t vec2[], int32_t limit);
 #else
 // Fallback implementation for non-Linux platforms
 int32_t dotProduct(int8_t vec1[], int8_t vec2[], int32_t limit) {
-    return dot8s_scalar(vec1, vec2, limit);
+    return vdot8s_scalar(vec1, vec2, limit);
 }
 #endif
 

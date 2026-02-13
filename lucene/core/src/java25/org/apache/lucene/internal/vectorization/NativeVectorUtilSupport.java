@@ -29,8 +29,8 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import java.util.function.Supplier;
 import java.util.logging.Logger;
-import jdk.incubator.vector.FloatVector;
 import org.apache.lucene.util.Constants;
 
 /**
@@ -70,18 +70,15 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
   }
 
   static {
-    if (Constants.NATIVE_DOT_PRODUCT_ENABLED) {
-      try {
-        // Attempt to load the library
-        System.loadLibrary(NATIVE_VECTOR_LIBRARY_NAME);
-        isLibraryLoaded = true; // If successful, set the flag to true
-      } catch (UnsatisfiedLinkError e) {
-        // If the library loading fails, set the flag to false
-        isLibraryLoaded = false;
-        Logger.getLogger(NativeVectorUtilSupport.class.getName())
-            .warning(
-                "No native library" + NATIVE_VECTOR_LIBRARY_NAME + " found : " + e.getMessage());
-      }
+    try {
+      // Attempt to load the library
+      System.loadLibrary(NATIVE_VECTOR_LIBRARY_NAME);
+      isLibraryLoaded = true; // If successful, set the flag to true
+    } catch (UnsatisfiedLinkError e) {
+      // If the library loading fails, set the flag to false
+      isLibraryLoaded = false;
+      Logger.getLogger(NativeVectorUtilSupport.class.getName())
+          .warning("No native library" + NATIVE_VECTOR_LIBRARY_NAME + " found : " + e.getMessage());
     }
   }
 
@@ -93,6 +90,10 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
   // (POINTER, POINTER, INT) -> LONG
   private static final FunctionDescriptor twoPointerIntToLong =
       FunctionDescriptor.of(JAVA_LONG, POINTER, POINTER, JAVA_INT);
+
+  // (POINTER, POINTER, INT) -> FLOAT
+  private static final FunctionDescriptor twoPointerIntToFloat =
+      FunctionDescriptor.of(JAVA_FLOAT, POINTER, POINTER, JAVA_INT);
 
   // (POINTER, POINTER, FLOAT, FLOAT, FLOAT, FLOAT, INT) -> FLOAT
   private static final FunctionDescriptor minMaxScalarQuantizeDesc =
@@ -132,6 +133,9 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
   private static final MethodHandle dotProduct$MH;
   private static final MethodHandle squareDistance$MH;
   private static final MethodHandle cosine$MH;
+  private static final MethodHandle dotProductFloat$MH;
+  private static final MethodHandle squareDistanceFloat$MH;
+  private static final MethodHandle cosineFloat$MH;
   private static final MethodHandle int4SquareDistance$MH;
   private static final MethodHandle int4SquareDistanceSinglePacked$MH;
   private static final MethodHandle int4SquareDistanceBothPacked$MH;
@@ -158,9 +162,13 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
       SymbolLookup loaderLookup = SymbolLookup.loaderLookup();
       SYMBOL_LOOKUP = name -> loaderLookup.find(name).or(() -> LINKER.defaultLookup().find(name));
 
+      // Each method handle with a unique native method name
       dotProduct$MH = getMethodHandle("dotProduct", twoPointerIntToInt);
       squareDistance$MH = getMethodHandle("squareDistance", twoPointerIntToInt);
       cosine$MH = getMethodHandle("cosine", twoPointerIntToInt);
+      dotProductFloat$MH = getMethodHandle("dotProductFloat", twoPointerIntToFloat);
+      squareDistanceFloat$MH = getMethodHandle("squareDistanceFloat", twoPointerIntToFloat);
+      cosineFloat$MH = getMethodHandle("cosineFloat", twoPointerIntToFloat);
       int4SquareDistance$MH = getMethodHandle("int4SquareDistance", twoPointerIntToInt);
       int4SquareDistanceSinglePacked$MH =
           getMethodHandle("int4SquareDistanceSinglePacked", twoPointerIntToInt);
@@ -188,6 +196,9 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
       dotProduct$MH = null;
       squareDistance$MH = null;
       cosine$MH = null;
+      dotProductFloat$MH = null;
+      squareDistanceFloat$MH = null;
+      cosineFloat$MH = null;
       int4SquareDistance$MH = null;
       int4SquareDistanceSinglePacked$MH = null;
       int4SquareDistanceBothPacked$MH = null;
@@ -236,254 +247,234 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
     }
   }
 
-  static FloatVector fma(FloatVector a, FloatVector b, FloatVector c) {
-    return PanamaVectorUtilSupport.fma(a, b, c);
-  }
-
-  static float fma(float a, float b, float c) {
-    return PanamaVectorUtilSupport.fma(a, b, c);
-  }
-
-  public static float cosine(byte[] a, MemorySegment b) {
-    if (cosine$MH != null) {
-      return invokeIntMethodHandle(cosine$MH, MemorySegment.ofArray(a), b);
+  private static float invokeFloatMethodHandle(MethodHandle mh, MemorySegment a, MemorySegment b) {
+    try {
+      return (float) mh.invokeExact(a, b, (int) a.byteSize());
+    } catch (Throwable ex) {
+      throw new AssertionError("should not reach here", ex);
     }
-    return PanamaVectorUtilSupport.cosine(a, b);
   }
 
-  public static float cosine(MemorySegment a, MemorySegment b) {
-    if (cosine$MH != null) {
-      return invokeIntMethodHandle(cosine$MH, a, b);
-    }
-    return PanamaVectorUtilSupport.cosine(a, b);
-  }
-
-  public static int dotProduct(byte[] a, MemorySegment b) {
-    if (dotProduct$MH != null) {
-      return invokeIntMethodHandle(dotProduct$MH, MemorySegment.ofArray(a), b);
-    }
-    return PanamaVectorUtilSupport.dotProduct(a, b);
-  }
-
-  public static int dotProduct(MemorySegment a, MemorySegment b) {
-    if (dotProduct$MH != null) {
-      return invokeIntMethodHandle(dotProduct$MH, a, b);
-    }
-    return PanamaVectorUtilSupport.dotProduct(a, b);
-  }
-
-  public static int squareDistance(MemorySegment a, MemorySegment b) {
-    if (squareDistance$MH != null) {
-      return invokeIntMethodHandle(squareDistance$MH, a, b);
-    }
-    return PanamaVectorUtilSupport.squareDistance(a, b);
-  }
-
-  public static int squareDistance(byte[] a, MemorySegment b) {
-    if (squareDistance$MH != null) {
-      return invokeIntMethodHandle(squareDistance$MH, MemorySegment.ofArray(a), b);
-    }
-    return PanamaVectorUtilSupport.squareDistance(a, b);
-  }
-
-  public static int int4SquareDistance(byte[] a, MemorySegment b) {
-    if (int4SquareDistance$MH != null) {
-      return invokeIntMethodHandle(int4SquareDistance$MH, MemorySegment.ofArray(a), b);
-    }
-    return PanamaVectorUtilSupport.int4SquareDistance(a, b);
-  }
-
-  public static int int4SquareDistance(MemorySegment a, MemorySegment b) {
-    if (int4SquareDistance$MH != null) {
-      return invokeIntMethodHandle(int4SquareDistance$MH, a, b);
-    }
-    return PanamaVectorUtilSupport.int4SquareDistance(a, b);
-  }
-
-  public static int int4SquareDistanceSinglePacked(byte[] a, MemorySegment b) {
-    if (int4SquareDistanceSinglePacked$MH != null) {
-      return invokeIntMethodHandle(int4SquareDistanceSinglePacked$MH, MemorySegment.ofArray(a), b);
-    }
-    return PanamaVectorUtilSupport.int4SquareDistanceSinglePacked(a, b);
-  }
-
-  public static int uint8SquareDistance(byte[] a, MemorySegment b) {
-    if (uint8SquareDistance$MH != null) {
-      return invokeIntMethodHandle(uint8SquareDistance$MH, MemorySegment.ofArray(a), b);
-    }
-    return PanamaVectorUtilSupport.uint8SquareDistance(a, b);
-  }
-
-  public static int uint8SquareDistance(MemorySegment a, MemorySegment b) {
-    if (uint8SquareDistance$MH != null) {
-      return invokeIntMethodHandle(uint8SquareDistance$MH, a, b);
-    }
-    return PanamaVectorUtilSupport.uint8SquareDistance(a, b);
-  }
-
-  public static int uint8DotProduct(byte[] a, MemorySegment b) {
-    if (uint8DotProduct$MH != null) {
-      return invokeIntMethodHandle(uint8DotProduct$MH, MemorySegment.ofArray(a), b);
-    }
-    return PanamaVectorUtilSupport.uint8DotProduct(a, b);
-  }
-
-  public static int uint8DotProduct(MemorySegment a, MemorySegment b) {
-    if (uint8DotProduct$MH != null) {
-      return invokeIntMethodHandle(uint8DotProduct$MH, a, b);
-    }
-    return PanamaVectorUtilSupport.uint8DotProduct(a, b);
-  }
-
-  public static int int4DotProduct(byte[] a, MemorySegment b) {
-    if (int4DotProduct$MH != null) {
-      return invokeIntMethodHandle(int4DotProduct$MH, MemorySegment.ofArray(a), b);
-    }
-    return PanamaVectorUtilSupport.int4DotProduct(a, b);
-  }
-
-  public static int int4DotProduct(MemorySegment a, MemorySegment b) {
-    if (int4DotProduct$MH != null) {
-      return invokeIntMethodHandle(int4DotProduct$MH, a, b);
-    }
-    return PanamaVectorUtilSupport.int4DotProduct(a, b);
-  }
-
-  public static int int4DotProductSinglePacked(byte[] unpacked, MemorySegment packed) {
-    if (int4DotProductSinglePacked$MH != null) {
-      return invokeIntMethodHandle(
-          int4DotProductSinglePacked$MH, MemorySegment.ofArray(unpacked), packed);
-    }
-    return PanamaVectorUtilSupport.int4DotProductSinglePacked(unpacked, packed);
-  }
-
-  public static int int4SquareDistanceBothPacked(MemorySegment a, MemorySegment b) {
-    if (int4SquareDistanceBothPacked$MH != null) {
-      return invokeIntMethodHandle(int4SquareDistanceBothPacked$MH, a, b);
-    }
-    return PanamaVectorUtilSupport.int4SquareDistanceBothPacked(a, b);
-  }
-
-  public static int int4DotProductBothPacked(MemorySegment a, MemorySegment b) {
-    if (int4DotProductBothPacked$MH != null) {
-      return invokeIntMethodHandle(int4DotProductBothPacked$MH, a, b);
-    }
-    return PanamaVectorUtilSupport.int4DotProductBothPacked(a, b);
-  }
-
-  @Override
-  public float dotProduct(float[] a, float[] b) {
-    return delegateVectorUtilSupport.dotProduct(a, b);
-  }
-
-  @Override
-  public float cosine(float[] v1, float[] v2) {
-    return delegateVectorUtilSupport.cosine(v1, v2);
-  }
-
-  @Override
-  public float squareDistance(float[] a, float[] b) {
-    return delegateVectorUtilSupport.squareDistance(a, b);
-  }
-
-  @Override
-  public int dotProduct(byte[] a, byte[] b) {
-    if (dotProduct$MH != null) {
-      return dotProduct(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
-    }
-    return delegateVectorUtilSupport.dotProduct(a, b);
-  }
-
-  @Override
-  public int int4DotProduct(byte[] a, byte[] b) {
-    if (int4DotProduct$MH != null) {
-      return int4DotProduct(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
-    }
-    return delegateVectorUtilSupport.int4DotProduct(a, b);
-  }
-
-  @Override
-  public int int4DotProductSinglePacked(byte[] unpacked, byte[] packed) {
-    if (int4DotProductSinglePacked$MH != null) {
-      return int4DotProductSinglePacked(unpacked, MemorySegment.ofArray(packed));
-    }
-    return delegateVectorUtilSupport.int4DotProductSinglePacked(unpacked, packed);
-  }
-
-  @Override
-  public int int4DotProductBothPacked(byte[] a, byte[] b) {
-    if (int4DotProductBothPacked$MH != null) {
-      return int4DotProductBothPacked(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
-    }
-    return delegateVectorUtilSupport.int4DotProductBothPacked(a, b);
-  }
-
-  @Override
-  public int uint8DotProduct(byte[] a, byte[] b) {
-    if (uint8DotProduct$MH != null) {
-      return uint8DotProduct(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
-    }
-    return delegateVectorUtilSupport.uint8DotProduct(a, b);
-  }
-
-  @Override
-  public float cosine(byte[] a, byte[] b) {
-    if (cosine$MH != null) {
-      return cosine(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
-    }
-    return delegateVectorUtilSupport.cosine(a, b);
-  }
-
-  @Override
-  public int squareDistance(byte[] a, byte[] b) {
-    if (squareDistance$MH != null) {
-      return squareDistance(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
-    }
-    return delegateVectorUtilSupport.squareDistance(a, b);
-  }
-
-  @Override
-  public int int4SquareDistance(byte[] a, byte[] b) {
-    if (int4SquareDistance$MH != null) {
-      return int4SquareDistance(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
-    }
-    return delegateVectorUtilSupport.int4SquareDistance(a, b);
-  }
-
-  @Override
-  public int int4SquareDistanceSinglePacked(byte[] unpacked, byte[] packed) {
-    if (int4SquareDistanceSinglePacked$MH != null) {
-      return int4SquareDistanceSinglePacked(unpacked, MemorySegment.ofArray(packed));
-    }
-    return delegateVectorUtilSupport.int4SquareDistanceSinglePacked(unpacked, packed);
-  }
-
-  @Override
-  public int int4SquareDistanceBothPacked(byte[] a, byte[] b) {
-    if (int4SquareDistanceBothPacked$MH != null) {
-      return int4SquareDistanceBothPacked(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
-    }
-    return delegateVectorUtilSupport.int4SquareDistanceBothPacked(a, b);
-  }
-
-  @Override
-  public int uint8SquareDistance(byte[] a, byte[] b) {
-    if (uint8SquareDistance$MH != null) {
-      return uint8SquareDistance(MemorySegment.ofArray(a), MemorySegment.ofArray(b));
-    }
-    return delegateVectorUtilSupport.uint8SquareDistance(a, b);
-  }
-
-  @Override
-  public int findNextGEQ(int[] buffer, int target, int from, int to) {
-    if (findNextGEQ$MH != null) {
+  @SuppressWarnings("unchecked")
+  private static <T> T invokeOrDelegate(MethodHandle mh, Supplier<T> delegate, Object... args) {
+    if (mh != null) {
       try {
-        return (int) findNextGEQ$MH.invokeExact(MemorySegment.ofArray(buffer), target, from, to);
+        return (T) mh.invokeExact(args);
       } catch (Throwable ex) {
         throw new AssertionError("should not reach here", ex);
       }
     }
-    return delegateVectorUtilSupport.findNextGEQ(buffer, target, from, to);
+    return delegate.get();
+  }
+
+  public static float cosine(byte[] a, MemorySegment b) {
+    return (cosine$MH != null)
+        ? cosine(MemorySegment.ofArray(a), b)
+        : PanamaVectorUtilSupport.cosine(a, b);
+  }
+
+  public static float cosine(MemorySegment a, MemorySegment b) {
+    return (cosine$MH != null)
+        ? invokeIntMethodHandle(cosine$MH, a, b)
+        : PanamaVectorUtilSupport.cosine(a, b);
+  }
+
+  public static int dotProduct(byte[] a, MemorySegment b) {
+    return (dotProduct$MH != null)
+        ? dotProduct(MemorySegment.ofArray(a), b)
+        : PanamaVectorUtilSupport.dotProduct(a, b);
+  }
+
+  public static int dotProduct(MemorySegment a, MemorySegment b) {
+    return (dotProduct$MH != null)
+        ? invokeIntMethodHandle(dotProduct$MH, a, b)
+        : PanamaVectorUtilSupport.dotProduct(a, b);
+  }
+
+  public static int squareDistance(byte[] a, MemorySegment b) {
+    return (squareDistance$MH != null)
+        ? squareDistance(MemorySegment.ofArray(a), b)
+        : PanamaVectorUtilSupport.squareDistance(a, b);
+  }
+
+  public static int squareDistance(MemorySegment a, MemorySegment b) {
+    return (squareDistance$MH != null)
+        ? invokeIntMethodHandle(squareDistance$MH, a, b)
+        : PanamaVectorUtilSupport.squareDistance(a, b);
+  }
+
+  public static int int4SquareDistance(byte[] a, MemorySegment b) {
+    return (int4SquareDistance$MH != null)
+        ? int4SquareDistance(MemorySegment.ofArray(a), b)
+        : PanamaVectorUtilSupport.int4SquareDistance(a, b);
+  }
+
+  public static int int4SquareDistance(MemorySegment a, MemorySegment b) {
+    return (int4SquareDistance$MH != null)
+        ? invokeIntMethodHandle(int4SquareDistance$MH, a, b)
+        : PanamaVectorUtilSupport.int4SquareDistance(a, b);
+  }
+
+  public static int int4SquareDistanceSinglePacked(byte[] a, MemorySegment b) {
+    return (int4SquareDistanceSinglePacked$MH != null)
+        ? invokeIntMethodHandle(int4SquareDistanceSinglePacked$MH, MemorySegment.ofArray(a), b)
+        : PanamaVectorUtilSupport.int4SquareDistanceSinglePacked(a, b);
+  }
+
+  public static int uint8SquareDistance(byte[] a, MemorySegment b) {
+    return (uint8SquareDistance$MH != null)
+        ? uint8SquareDistance(MemorySegment.ofArray(a), b)
+        : PanamaVectorUtilSupport.uint8SquareDistance(a, b);
+  }
+
+  public static int uint8SquareDistance(MemorySegment a, MemorySegment b) {
+    return (uint8SquareDistance$MH != null)
+        ? invokeIntMethodHandle(uint8SquareDistance$MH, a, b)
+        : PanamaVectorUtilSupport.uint8SquareDistance(a, b);
+  }
+
+  public static int uint8DotProduct(byte[] a, MemorySegment b) {
+    return (uint8DotProduct$MH != null)
+        ? uint8DotProduct(MemorySegment.ofArray(a), b)
+        : PanamaVectorUtilSupport.uint8DotProduct(a, b);
+  }
+
+  public static int uint8DotProduct(MemorySegment a, MemorySegment b) {
+    return (uint8DotProduct$MH != null)
+        ? invokeIntMethodHandle(uint8DotProduct$MH, a, b)
+        : PanamaVectorUtilSupport.uint8DotProduct(a, b);
+  }
+
+  public static int int4DotProduct(byte[] a, MemorySegment b) {
+    return (int4DotProduct$MH != null)
+        ? int4DotProduct(MemorySegment.ofArray(a), b)
+        : PanamaVectorUtilSupport.int4DotProduct(a, b);
+  }
+
+  public static int int4DotProduct(MemorySegment a, MemorySegment b) {
+    return (int4DotProduct$MH != null)
+        ? invokeIntMethodHandle(int4DotProduct$MH, a, b)
+        : PanamaVectorUtilSupport.int4DotProduct(a, b);
+  }
+
+  public static int int4DotProductSinglePacked(byte[] unpacked, MemorySegment packed) {
+    return (int4DotProductSinglePacked$MH != null)
+        ? invokeIntMethodHandle(
+            int4DotProductSinglePacked$MH, MemorySegment.ofArray(unpacked), packed)
+        : PanamaVectorUtilSupport.int4DotProductSinglePacked(unpacked, packed);
+  }
+
+  public static int int4SquareDistanceBothPacked(MemorySegment a, MemorySegment b) {
+    return (int4SquareDistanceBothPacked$MH != null)
+        ? invokeIntMethodHandle(int4SquareDistanceBothPacked$MH, a, b)
+        : PanamaVectorUtilSupport.int4SquareDistanceBothPacked(a, b);
+  }
+
+  public static int int4DotProductBothPacked(MemorySegment a, MemorySegment b) {
+    return (int4DotProductBothPacked$MH != null)
+        ? invokeIntMethodHandle(int4DotProductBothPacked$MH, a, b)
+        : PanamaVectorUtilSupport.int4DotProductBothPacked(a, b);
+  }
+
+  @Override
+  public float dotProduct(float[] a, float[] b) {
+    return (dotProductFloat$MH != null)
+        ? invokeFloatMethodHandle(
+            dotProductFloat$MH, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+        : delegateVectorUtilSupport.dotProduct(a, b);
+  }
+
+  @Override
+  public float cosine(float[] v1, float[] v2) {
+    return (cosineFloat$MH != null)
+        ? invokeFloatMethodHandle(
+            cosineFloat$MH, MemorySegment.ofArray(v1), MemorySegment.ofArray(v2))
+        : delegateVectorUtilSupport.cosine(v1, v2);
+  }
+
+  @Override
+  public float squareDistance(float[] a, float[] b) {
+    return (squareDistanceFloat$MH != null)
+        ? invokeFloatMethodHandle(
+            squareDistanceFloat$MH, MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+        : delegateVectorUtilSupport.squareDistance(a, b);
+  }
+
+  @Override
+  public int dotProduct(byte[] a, byte[] b) {
+    return (dotProduct$MH != null)
+        ? dotProduct(MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+        : delegateVectorUtilSupport.dotProduct(a, b);
+  }
+
+  @Override
+  public int int4DotProduct(byte[] a, byte[] b) {
+    return (int4DotProduct$MH != null)
+        ? int4DotProduct(MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+        : delegateVectorUtilSupport.int4DotProduct(a, b);
+  }
+
+  @Override
+  public int int4DotProductSinglePacked(byte[] unpacked, byte[] packed) {
+    return int4DotProductSinglePacked$MH != null
+        ? int4DotProductSinglePacked(unpacked, MemorySegment.ofArray(packed))
+        : delegateVectorUtilSupport.int4DotProductSinglePacked(unpacked, packed);
+  }
+
+  @Override
+  public int int4DotProductBothPacked(byte[] a, byte[] b) {
+    return (int4DotProductBothPacked$MH != null)
+        ? int4DotProductBothPacked(MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+        : delegateVectorUtilSupport.int4DotProductBothPacked(a, b);
+  }
+
+  @Override
+  public int uint8DotProduct(byte[] a, byte[] b) {
+    return (uint8DotProduct$MH != null)
+        ? uint8DotProduct(MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+        : delegateVectorUtilSupport.uint8DotProduct(a, b);
+  }
+
+  @Override
+  public float cosine(byte[] a, byte[] b) {
+    return (cosine$MH != null)
+        ? cosine(MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+        : delegateVectorUtilSupport.cosine(a, b);
+  }
+
+  @Override
+  public int squareDistance(byte[] a, byte[] b) {
+    return (squareDistance$MH != null)
+        ? squareDistance(MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+        : delegateVectorUtilSupport.squareDistance(a, b);
+  }
+
+  @Override
+  public int int4SquareDistance(byte[] a, byte[] b) {
+    return (int4SquareDistance$MH != null)
+        ? int4SquareDistance(MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+        : delegateVectorUtilSupport.int4SquareDistance(a, b);
+  }
+
+  @Override
+  public int int4SquareDistanceSinglePacked(byte[] unpacked, byte[] packed) {
+    return (int4SquareDistanceSinglePacked$MH != null)
+        ? int4SquareDistanceSinglePacked(unpacked, MemorySegment.ofArray(packed))
+        : delegateVectorUtilSupport.int4SquareDistanceSinglePacked(unpacked, packed);
+  }
+
+  @Override
+  public int int4SquareDistanceBothPacked(byte[] a, byte[] b) {
+    return (int4SquareDistanceBothPacked$MH != null)
+        ? int4SquareDistanceBothPacked(MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+        : delegateVectorUtilSupport.int4SquareDistanceBothPacked(a, b);
+  }
+
+  @Override
+  public int uint8SquareDistance(byte[] a, byte[] b) {
+    return (uint8SquareDistance$MH != null)
+        ? uint8SquareDistance(MemorySegment.ofArray(a), MemorySegment.ofArray(b))
+        : delegateVectorUtilSupport.uint8SquareDistance(a, b);
   }
 
   @Override
@@ -509,25 +500,31 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public int findNextGEQ(int[] buffer, int target, int from, int to) {
+    return invokeOrDelegate(
+        findNextGEQ$MH,
+        () -> delegateVectorUtilSupport.findNextGEQ(buffer, target, from, to),
+        MemorySegment.ofArray(buffer),
+        target,
+        from,
+        to);
+  }
+
+  @Override
   public float minMaxScalarQuantize(
       float[] vector, byte[] dest, float scale, float alpha, float minQuantile, float maxQuantile) {
-    if (minMaxScalarQuantize$MH != null) {
-      try {
-        return (float)
-            minMaxScalarQuantize$MH.invokeExact(
-                MemorySegment.ofArray(vector),
-                MemorySegment.ofArray(dest),
-                scale,
-                alpha,
-                minQuantile,
-                maxQuantile,
-                vector.length);
-      } catch (Throwable ex) {
-        throw new AssertionError("should not reach here", ex);
-      }
-    }
-    return delegateVectorUtilSupport.minMaxScalarQuantize(
-        vector, dest, scale, alpha, minQuantile, maxQuantile);
+    return invokeOrDelegate(
+        minMaxScalarQuantize$MH,
+        () ->
+            delegateVectorUtilSupport.minMaxScalarQuantize(
+                vector, dest, scale, alpha, minQuantile, maxQuantile),
+        MemorySegment.ofArray(vector),
+        MemorySegment.ofArray(dest),
+        scale,
+        alpha,
+        minQuantile,
+        maxQuantile,
+        vector.length);
   }
 
   @Override
@@ -539,68 +536,55 @@ public final class NativeVectorUtilSupport implements VectorUtilSupport {
       float alpha,
       float minQuantile,
       float maxQuantile) {
-    if (recalculateScalarQuantizationOffset$MH != null) {
-      try {
-        return (float)
-            recalculateScalarQuantizationOffset$MH.invokeExact(
-                MemorySegment.ofArray(vector),
-                oldAlpha,
-                oldMinQuantile,
-                scale,
-                alpha,
-                minQuantile,
-                maxQuantile,
-                vector.length);
-      } catch (Throwable ex) {
-        throw new AssertionError("should not reach here", ex);
-      }
-    }
-    return delegateVectorUtilSupport.recalculateScalarQuantizationOffset(
-        vector, oldAlpha, oldMinQuantile, scale, alpha, minQuantile, maxQuantile);
+    return invokeOrDelegate(
+        recalculateScalarQuantizationOffset$MH,
+        () ->
+            delegateVectorUtilSupport.recalculateScalarQuantizationOffset(
+                vector, oldAlpha, oldMinQuantile, scale, alpha, minQuantile, maxQuantile),
+        MemorySegment.ofArray(vector),
+        oldAlpha,
+        oldMinQuantile,
+        scale,
+        alpha,
+        minQuantile,
+        maxQuantile,
+        vector.length);
   }
 
   @Override
   public int filterByScore(
       int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
-    if (filterByScore$MH != null) {
-      try {
-        return (int)
-            filterByScore$MH.invokeExact(
-                MemorySegment.ofArray(docBuffer),
-                MemorySegment.ofArray(scoreBuffer),
-                minScoreInclusive,
-                upTo);
-      } catch (Throwable ex) {
-        throw new AssertionError("should not reach here", ex);
-      }
-    }
-    return delegateVectorUtilSupport.filterByScore(docBuffer, scoreBuffer, minScoreInclusive, upTo);
+    return invokeOrDelegate(
+        filterByScore$MH,
+        () ->
+            delegateVectorUtilSupport.filterByScore(
+                docBuffer, scoreBuffer, minScoreInclusive, upTo),
+        MemorySegment.ofArray(docBuffer),
+        MemorySegment.ofArray(scoreBuffer),
+        minScoreInclusive,
+        upTo);
   }
 
   @Override
   public float[] l2normalize(float[] v, boolean throwOnZero) {
-    if (l2normalize$MH != null) {
-      try {
-        l2normalize$MH.invokeExact(
-            MemorySegment.ofArray(v), (byte) (throwOnZero ? 1 : 0), v.length);
-        return v;
-      } catch (Throwable ex) {
-        throw new AssertionError("should not reach here", ex);
-      }
-    }
-    return delegateVectorUtilSupport.l2normalize(v, throwOnZero);
+    invokeOrDelegate(
+        l2normalize$MH,
+        () -> delegateVectorUtilSupport.l2normalize(v, throwOnZero),
+        MemorySegment.ofArray(v),
+        (byte) (throwOnZero ? 1 : 0),
+        v.length);
+    return v;
   }
 
   @Override
   public void expand8(int[] arr) {
-    if (expand8$MH != null) {
-      try {
-        expand8$MH.invokeExact(MemorySegment.ofArray(arr), arr.length);
-        return;
-      } catch (Throwable ex) {
-        throw new AssertionError("should not reach here", ex);
-      }
-    }
-    delegateVectorUtilSupport.expand8(arr);
+    invokeOrDelegate(
+        expand8$MH,
+        () -> {
+          delegateVectorUtilSupport.expand8(arr);
+          return null;
+        },
+        MemorySegment.ofArray(arr),
+        arr.length);
   }
 }
