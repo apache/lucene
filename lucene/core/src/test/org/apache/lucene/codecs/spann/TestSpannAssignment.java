@@ -101,11 +101,6 @@ public class TestSpannAssignment extends LuceneTestCase {
             // vector itself)
             // In this static index, docID maps 1:1, but let's be robust and check if the matched
             // docID is correct.
-            // Strict check: The found docID should match the queried docID (since we query with the
-            // vector itself)
-            // In this static index, docID maps 1:1, but let's be robust and check if the matched
-            // docID is correct.
-            // If docIDs differ (unlikely here), we check if the vectors are identical.
             if (sd.doc == docId) {
               found = true;
               break;

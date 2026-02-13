@@ -432,7 +432,11 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
         }
 
         partitioner.finish(
-            input, dataOut, metaOut, fieldInfo.getVectorEncoding(), fieldInfo.getVectorDimension());
+            input.clone(),
+            dataOut,
+            metaOut,
+            fieldInfo.getVectorEncoding(),
+            fieldInfo.getVectorDimension());
       }
       writer.close();
     }

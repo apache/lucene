@@ -109,7 +109,16 @@ final class SpannDiskPartitioner implements Closeable {
 
     boolean isByte = vectorEncoding == VectorEncoding.BYTE;
     int vectorByteWidth = isByte ? dim : dim * Float.BYTES;
-    int vectorDataSize = Integer.BYTES + vectorByteWidth; // DocID + Vector
+    long vectorDataSize = (long) Integer.BYTES + vectorByteWidth; // DocID + Vector
+    if (vectorData.length() % vectorDataSize != 0) {
+      throw new IllegalStateException(
+          "Vector data file "
+              + vectorData
+              + " has length "
+              + vectorData.length()
+              + " which is not divisible by record size "
+              + vectorDataSize);
+    }
 
     ByteBuffersDataOutput metaBuffer = new ByteBuffersDataOutput();
     int totalAssignments = 0;
@@ -244,7 +253,6 @@ final class SpannDiskPartitioner implements Closeable {
 
   @Override
   public void close() throws IOException {
-    // Safety close in case finish wasn't called or failed
     // Safety close in case finish wasn't called or failed
     IOUtils.close(bucketOutputs);
     IOUtils.deleteFilesIgnoringExceptions(directory, tempFiles);
