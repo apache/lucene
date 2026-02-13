@@ -35,7 +35,17 @@ import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.OfflineSorter;
+
+import org.apache.lucene.util.hnsw.HnswGraphBuilder;
+import org.apache.lucene.util.hnsw.HnswGraphSearcher;
+import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
+import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.TopKnnCollector;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.util.Bits;
 
 /**
  * Writes vectors in the SPANN (HNSW-IVF) format.
@@ -318,106 +328,114 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
         }
       }
 
-      OfflineSorter sorter = new OfflineSorter(state.directory, "spann_assign_" + fieldName);
+      String spadFile =
+          IndexFileNames.segmentFileName(
+              state.segmentInfo.name, state.segmentSuffix, fieldName + ".spad");
+      String spamFile =
+          IndexFileNames.segmentFileName(
+              state.segmentInfo.name, state.segmentSuffix, fieldName + ".spam");
 
-      IndexOutput unsortedOut =
-          state.directory.createTempOutput(state.segmentInfo.name, "assign", state.context);
-      String unsortedAssignName = unsortedOut.getName();
-      try (OfflineSorter.ByteSequencesWriter assignWriter =
-          new OfflineSorter.ByteSequencesWriter(unsortedOut)) {
-        try (IndexInput input = writer.openInput()) {
-          boolean isByte = fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
-          int vectorDataSize =
-              isByte
-                  ? fieldInfo.getVectorDimension()
-                  : fieldInfo.getVectorDimension() * Float.BYTES;
-          byte[] scratch = new byte[Integer.BYTES * 2 + vectorDataSize];
-          ByteArrayDataOutput scratchOut = new ByteArrayDataOutput(scratch);
-          float[] currentVector = new float[fieldInfo.getVectorDimension()];
+      long totalAssignments = (long) writer.getCount() * replicationFactor;
+      try (SpannDiskPartitioner partitioner =
+              new SpannDiskPartitioner(
+                  state.directory, state.segmentInfo, fieldName, state.context, totalAssignments);
+          IndexInput input = writer.openInput();
+          IndexOutput dataOut = state.directory.createOutput(spadFile, state.context);
+          IndexOutput metaOut = state.directory.createOutput(spamFile, state.context)) {
 
-          for (int i = 0; i < writer.getCount(); i++) {
-            int docId = input.readInt();
-            if (isByte) {
-              byte[] vectorBytes = new byte[fieldInfo.getVectorDimension()];
-              for (int d = 0; d < fieldInfo.getVectorDimension(); d++) {
-                byte b = input.readByte();
-                vectorBytes[d] = b;
-                currentVector[d] = (float) b;
-              }
-              int[] bestCentroids = new int[replicationFactor];
-              float[] bestScores = new float[replicationFactor];
-              java.util.Arrays.fill(bestScores, Float.NEGATIVE_INFINITY);
+        CodecUtil.writeIndexHeader(
+            dataOut, "Lucene99SpannData", 0, state.segmentInfo.getId(), state.segmentSuffix);
+        CodecUtil.writeIndexHeader(
+            metaOut, "Lucene99SpannMeta", 0, state.segmentInfo.getId(), state.segmentSuffix);
 
-              for (int j = 0; j < centroids.length; j++) {
-                float sim =
-                    fieldInfo.getVectorSimilarityFunction().compare(currentVector, centroids[j]);
-                for (int k = 0; k < replicationFactor; k++) {
-                  if (sim > bestScores[k]) {
-                    for (int l = replicationFactor - 1; l > k; l--) {
-                      bestScores[l] = bestScores[l - 1];
-                      bestCentroids[l] = bestCentroids[l - 1];
-                    }
-                    bestScores[k] = sim;
-                    bestCentroids[k] = j;
-                    break;
-                  }
-                }
-              }
+        boolean isByte = fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
+        float[] currentVector = new float[fieldInfo.getVectorDimension()];
 
-              for (int k = 0; k < replicationFactor; k++) {
-                if (bestScores[k] == Float.NEGATIVE_INFINITY) break;
-                scratchOut.reset(scratch);
-                scratchOut.writeInt(bestCentroids[k]);
-                scratchOut.writeInt(docId);
-                scratchOut.writeBytes(vectorBytes, 0, vectorBytes.length);
-                assignWriter.write(scratch, 0, scratch.length);
-              }
-            } else {
-              for (int d = 0; d < fieldInfo.getVectorDimension(); d++) {
-                currentVector[d] = Float.intBitsToFloat(input.readInt());
-              }
-              int[] bestCentroids = new int[replicationFactor];
-              float[] bestScores = new float[replicationFactor];
-              java.util.Arrays.fill(bestScores, Float.NEGATIVE_INFINITY);
+          
+          class CentroidScorer extends UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer {
+            private final float[][] centroids;
+            private float[] query;
 
-              for (int j = 0; j < centroids.length; j++) {
-                float sim =
-                    fieldInfo.getVectorSimilarityFunction().compare(currentVector, centroids[j]);
-                for (int k = 0; k < replicationFactor; k++) {
-                  if (sim > bestScores[k]) {
-                    for (int l = replicationFactor - 1; l > k; l--) {
-                      bestScores[l] = bestScores[l - 1];
-                      bestCentroids[l] = bestCentroids[l - 1];
-                    }
-                    bestScores[k] = sim;
-                    bestCentroids[k] = j;
-                    break;
-                  }
-                }
-              }
+            CentroidScorer(float[][] centroids) {
+              super(null);
+              this.centroids = centroids;
+            }
 
-              for (int k = 0; k < replicationFactor; k++) {
-                if (bestScores[k] == Float.NEGATIVE_INFINITY) break;
-                scratchOut.reset(scratch);
-                scratchOut.writeInt(bestCentroids[k]);
-                scratchOut.writeInt(docId);
-                for (float v : currentVector) {
-                  scratchOut.writeInt(Float.floatToIntBits(v));
-                }
-                assignWriter.write(scratch, 0, scratch.length);
-              }
+            @Override
+            public void setScoringOrdinal(int node) {
+              query = centroids[node];
+            }
+
+            public void setQuery(float[] query) {
+              this.query = query;
+            }
+
+            @Override
+            public float score(int node) throws IOException {
+              return fieldInfo.getVectorSimilarityFunction().compare(query, centroids[node]);
+            }
+
+            @Override
+            public int maxOrd() {
+              return centroids.length;
+            }
+
+            @Override
+            public int ordToDoc(int ord) {
+              return ord;
+            }
+
+            @Override
+            public Bits getAcceptOrds(Bits acceptDocs) {
+              return null;
             }
           }
+          
+          final float[][] finalCentroids = centroids;
+          CentroidScorer scorer = new CentroidScorer(finalCentroids);
+
+          RandomVectorScorerSupplier scorerSupplier = new RandomVectorScorerSupplier() {
+            @Override
+            public UpdateableRandomVectorScorer scorer() {
+              return new CentroidScorer(finalCentroids);
+            }
+
+            @Override
+            public RandomVectorScorerSupplier copy() {
+              return this;
+            }
+          };
+
+        HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, 42);
+        OnHeapHnswGraph centroidGraph = builder.build(centroids.length);
+
+        for (int i = 0; i < writer.getCount(); i++) {
+          input.readInt(); // Skip DocID
+          if (isByte) {
+            byte[] vectorBytes = new byte[fieldInfo.getVectorDimension()];
+            for (int d = 0; d < fieldInfo.getVectorDimension(); d++) {
+              byte b = input.readByte();
+              vectorBytes[d] = b;
+              currentVector[d] = (float) b;
+            }
+          } else {
+            for (int d = 0; d < fieldInfo.getVectorDimension(); d++) {
+              currentVector[d] = Float.intBitsToFloat(input.readInt());
+            }
+          }
+
+          scorer.setQuery(currentVector);
+          KnnCollector collector = HnswGraphSearcher.search(scorer, replicationFactor, centroidGraph, null, Integer.MAX_VALUE);
+          org.apache.lucene.search.TopDocs topDocs = collector.topDocs();
+          for (ScoreDoc sd : topDocs.scoreDocs) {
+              partitioner.addAssignment(sd.doc, i);
+          }
         }
-        CodecUtil.writeFooter(unsortedOut);
+        
+        partitioner.finish(
+            input, dataOut, metaOut, fieldInfo.getVectorEncoding(), fieldInfo.getVectorDimension());
       }
       writer.close();
-
-      String sortedAssignName = sorter.sort(unsortedAssignName);
-      state.directory.deleteFile(unsortedAssignName);
-
-      writeSortedPartitions(fieldName, fieldInfo, sortedAssignName, numPartitions);
-      state.directory.deleteFile(sortedAssignName);
     }
     if (maxCentroidDoc > 0) {
       centroidDelegate.flush(maxCentroidDoc, null);
@@ -462,100 +480,6 @@ public class Lucene99SpannVectorsWriter extends KnnVectorsWriter {
       CodecUtil.writeFooter(dataOut);
       CodecUtil.writeFooter(metaOut);
     }
-  }
-
-  private void writeSortedPartitions(
-      String fieldName, FieldInfo fieldInfo, String sortedFileName, int numPartitions)
-      throws IOException {
-
-    String spadFile =
-        IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, fieldName + ".spad");
-    String spamFile =
-        IndexFileNames.segmentFileName(
-            state.segmentInfo.name, state.segmentSuffix, fieldName + ".spam");
-
-    try (org.apache.lucene.util.OfflineSorter.ByteSequencesReader reader =
-            new org.apache.lucene.util.OfflineSorter.ByteSequencesReader(
-                state.directory.openChecksumInput(sortedFileName), sortedFileName);
-        IndexOutput dataOut = state.directory.createOutput(spadFile, state.context);
-        IndexOutput metaOut = state.directory.createOutput(spamFile, state.context)) {
-
-      CodecUtil.writeIndexHeader(
-          dataOut, "Lucene99SpannData", 0, state.segmentInfo.getId(), state.segmentSuffix);
-      CodecUtil.writeIndexHeader(
-          metaOut, "Lucene99SpannMeta", 0, state.segmentInfo.getId(), state.segmentSuffix);
-
-      org.apache.lucene.store.ByteBuffersDataOutput metaBuffer =
-          new org.apache.lucene.store.ByteBuffersDataOutput();
-      int totalAssignments = 0;
-
-      org.apache.lucene.util.BytesRef scratch;
-      org.apache.lucene.store.ByteArrayDataInput readerInput =
-          new org.apache.lucene.store.ByteArrayDataInput();
-
-      int currentPartition = -1;
-      org.apache.lucene.store.ByteBuffersDataOutput docIdBuffer =
-          new org.apache.lucene.store.ByteBuffersDataOutput();
-      org.apache.lucene.store.ByteBuffersDataOutput vectorBuffer =
-          new org.apache.lucene.store.ByteBuffersDataOutput();
-
-      final boolean isByte = fieldInfo.getVectorEncoding() == VectorEncoding.BYTE;
-      final int vectorDataSize =
-          isByte ? fieldInfo.getVectorDimension() : fieldInfo.getVectorDimension() * Float.BYTES;
-
-      while ((scratch = reader.next()) != null) {
-        readerInput.reset(scratch.bytes, scratch.offset, scratch.length);
-        int partitionId = readerInput.readInt();
-        int docId = readerInput.readInt();
-
-        if (partitionId != currentPartition) {
-          if (currentPartition != -1) {
-            writePartition(dataOut, metaBuffer, currentPartition, docIdBuffer, vectorBuffer);
-          }
-          currentPartition = partitionId;
-        }
-
-        totalAssignments++;
-        docIdBuffer.writeInt(docId);
-        int writeLen = scratch.length - readerInput.getPosition();
-        if (writeLen != vectorDataSize) {
-          throw new IllegalStateException(
-              "Unexpected vector data size: got " + writeLen + ", expected " + vectorDataSize);
-        }
-        vectorBuffer.writeBytes(scratch.bytes, readerInput.getPosition(), writeLen);
-      }
-
-      if (currentPartition != -1) {
-        writePartition(dataOut, metaBuffer, currentPartition, docIdBuffer, vectorBuffer);
-      }
-
-      metaOut.writeVInt(totalAssignments);
-      metaBuffer.copyTo(metaOut);
-
-      CodecUtil.writeFooter(dataOut);
-      CodecUtil.writeFooter(metaOut);
-    }
-  }
-
-  private void writePartition(
-      IndexOutput dataOut,
-      org.apache.lucene.store.ByteBuffersDataOutput metaBuffer,
-      int partitionId,
-      org.apache.lucene.store.ByteBuffersDataOutput docIdBuffer,
-      org.apache.lucene.store.ByteBuffersDataOutput vectorBuffer)
-      throws IOException {
-
-    long partitionStart = dataOut.getFilePointer();
-    docIdBuffer.copyTo(dataOut);
-    vectorBuffer.copyTo(dataOut);
-
-    metaBuffer.writeVInt(partitionId);
-    metaBuffer.writeVLong(partitionStart);
-    metaBuffer.writeVLong(dataOut.getFilePointer() - partitionStart);
-
-    docIdBuffer.reset();
-    vectorBuffer.reset();
   }
 
   @Override
