@@ -6458,7 +6458,7 @@ public class IndexWriter
       throw t;
     }
 
-    return segStates.toArray(new BufferedUpdatesStream.SegmentState[0]);
+    return segStates.toArray(BufferedUpdatesStream.SegmentState[]::new);
   }
 
   /** Tests should override this to enable test points. Default is <code>false</code>. */

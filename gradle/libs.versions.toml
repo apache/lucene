@@ -5,7 +5,7 @@ antlr = "4.13.2"
 # test assertions
 assertj = "3.27.7"
 # analysis/phonetic/ algorithms, gradle build checksums
-commons-codec = "1.20.0"
+commons-codec = "1.21.0"
 # benchmark/ bzip2 compression
 commons-compress = "1.28.0"
 # See ecj-lint.gradle (used for more linting).
@@ -99,10 +99,10 @@ zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
 benmanes-versions = "com.github.ben-manes.versions:0.53.0"
 carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.0"
 carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.1.0"
-errorprone = "net.ltgt.errorprone:4.4.0"
+errorprone = "net.ltgt.errorprone:5.0.0"
 forbiddenapis = "de.thetaphi.forbiddenapis:3.10"
 jacocolog = "org.barfuin.gradle.jacocolog:4.0.1"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
 spotless = "com.diffplug.spotless:8.2.1"
-undercouch-download = "de.undercouch.download:5.6.0"
+undercouch-download = "de.undercouch.download:5.7.0"
 versionCatalogUpdate = "nl.littlerobots.version-catalog-update:1.0.1"
