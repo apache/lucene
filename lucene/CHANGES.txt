@@ -342,8 +342,9 @@ Optimizations
 * GITHUB#15607: Utilize bulk scoring for diversity checking when building HNSW vector indices. This results
   in some performance improvements during indexing and segment merges. (Ben Trent)
 
-* GITHUB#15658: Avoid DisjunctionMaxQuery bulk scoring regressions when all clauses only
-  provide DefaultBulkScorer. (Shimpei Kodama)
+* GITHUB#15658: DisjunctionMaxBulkScorer now uses progressive window sizing sub-scorers to be skipped
+  sooner when their scores are no longer competitive (Shimpei Kodama)
+
 
 Bug Fixes
 ---------------------
