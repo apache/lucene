@@ -243,10 +243,6 @@ public abstract class Weight implements SegmentCacheable {
       }
     }
 
-    Scorer getScorer() {
-      return scorer;
-    }
-
     @Override
     public long cost() {
       return iterator.cost();

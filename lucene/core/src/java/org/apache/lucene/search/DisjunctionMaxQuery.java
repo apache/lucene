@@ -160,29 +160,14 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
 
           @Override
           public BulkScorer bulkScorer() throws IOException {
-            if (tieBreakerMultiplier != 0f || scoreMode != ScoreMode.TOP_SCORES) {
-              return super.bulkScorer();
-            }
-
-            List<BulkScorer> bulkScorers = new ArrayList<>(scorerSuppliers.size());
-            for (ScorerSupplier ss : scorerSuppliers) {
-              bulkScorers.add(ss.bulkScorer());
-            }
-
-            // If all are DefaultBulkScorer, combine the underlying scorers directly.
-            // This avoids the overhead of DisjunctionMaxBulkScorer.
-            List<Scorer> scorers = new ArrayList<>(bulkScorers.size());
-            for (BulkScorer bs : bulkScorers) {
-              if (bs instanceof Weight.DefaultBulkScorer dbs) {
-                scorers.add(dbs.getScorer());
-              } else {
-                return new DisjunctionMaxBulkScorer(bulkScorers);
+            if (tieBreakerMultiplier == 0f && scoreMode == ScoreMode.TOP_SCORES) {
+              List<BulkScorer> scorers = new ArrayList<>();
+              for (ScorerSupplier ss : scorerSuppliers) {
+                scorers.add(ss.bulkScorer());
               }
+              return new DisjunctionMaxBulkScorer(scorers);
             }
-
-            return new Weight.DefaultBulkScorer(
-                new DisjunctionMaxScorer(tieBreakerMultiplier, scorers, scoreMode, Long.MAX_VALUE)
-            );
+            return super.bulkScorer();
           }
 
           @Override
