@@ -200,6 +200,7 @@ Bug Fixes
 * GITHUB#15668: Fix UnsupportedOperationException in WeightedSpanTermExtractor by
   implementing getFieldInfos in DelegatingLeafReader. (Simranjeet Singh)
 
+* GITHUB#15702: Fix Potential NullPointException in BytesRefHash initialization#15702 (tyronecai)
 
 Other
 ---------------------
