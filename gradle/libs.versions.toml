@@ -49,7 +49,7 @@ opennlp = "2.5.7"
 # distribution.tests/ process management
 procfork = "1.0.6"
 # unit tests
-randomizedtesting = "2.8.3"
+randomizedtesting = "2.8.4"
 # spatial-extras/ support
 s2-geometry = "1.0.0"
 # spatial-extras/ support
