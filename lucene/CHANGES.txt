@@ -93,6 +93,8 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#15681: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
+
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
 
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
@@ -293,6 +295,8 @@ New Features
 
  * GITHUB#15518: Add support for post-collection faceting to the new faceting API in the sandbox module. (Egor Potemkin)
 
+ * GITHUB#14792: Introduced OffHeapQuantizedFloatVectorValues class to access float vectors when only quantized byte vectors are available in the index. (Pulkit Gupta)
+
  * GITHUB#15591: Add SegmentOrder helper class to re-order segments at query time to align with sorts. (Alan Woodward)
 
 Improvements
@@ -360,7 +364,7 @@ Optimizations
 
 * GITHUB#15498: ExitableDirectoryReader keeps singleton SortedSetDocValues or SortedNumericDocValues as singletons. (Houston Putman)
 
-* GITHUB#15511: Dynamic pruning for SORTED(_SET) fields with doc values skipper (Pan Guixin)
+* GITHUB#15511, GITHUB#15696: Dynamic pruning for SORTED(_SET) fields with doc values skipper (Pan Guixin, Alan Woodward)
 
 * GITHUB#15560: Avoid unnecessary getGraph() call. (Shubham Chaudhary)
 
