@@ -488,6 +488,9 @@ API Changes
   instance instead of a Bits instance to identify document IDs to filter.
   (Shubham Chaudhary, Adrien Grand)
 
+* GITHUB#15614: Added optional query bit size hint plumbing to KnnSearchStrategy.Hnsw,
+    including passthrough in Patience/seeded strategy wrapping. (Arup Chauhan)
+
 New Features
 ---------------------
 * GITHUB#15015: MultiIndexMergeScheduler: a production multi-tenant merge scheduler (Shawn Yarbrough)
