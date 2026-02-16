@@ -89,6 +89,8 @@ Improvements
 
 * GITHUB#15453: Avoid unnecessary sorting and instantiations in readMapOfStrings. (Benjamin Lerer)
 
+* GITHUB#15574: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
+
 Optimizations
 ---------------------
 * GITHUB#15681: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
