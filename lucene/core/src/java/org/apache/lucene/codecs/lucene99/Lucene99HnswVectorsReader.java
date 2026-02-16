@@ -359,6 +359,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       // we can just iterate over all vectors and collect them.
       int[] ords = new int[EXHAUSTIVE_BULK_SCORE_ORDS];
       float[] scores = new float[EXHAUSTIVE_BULK_SCORE_ORDS];
+
+      // For cases here we can do prefetch
       int numOrds = 0;
       for (int i = 0; i < scorer.maxOrd(); i++) {
         if (acceptedOrds == null || acceptedOrds.get(i)) {
@@ -367,6 +369,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
           }
           ords[numOrds++] = i;
           if (numOrds == ords.length) {
+            scorer.prefetch(ords, numOrds);
             scorer.bulkScore(ords, scores, numOrds);
             for (int j = 0; j < numOrds; j++) {
               knnCollector.incVisitedCount(1);
@@ -378,6 +381,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       }
 
       if (numOrds > 0) {
+        scorer.prefetch(ords, numOrds);
         scorer.bulkScore(ords, scores, numOrds);
         for (int j = 0; j < numOrds; j++) {
           knnCollector.incVisitedCount(1);

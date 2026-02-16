@@ -91,6 +91,11 @@ abstract sealed class Lucene99MemorySegmentByteVectorScorer
     }
   }
 
+  @Override
+  public void prefetch(int[] prefetchOrds, int numOrds) throws IOException {
+    values.prefetch(prefetchOrds, numOrds);
+  }
+
   static final class CosineScorer extends Lucene99MemorySegmentByteVectorScorer {
     CosineScorer(MemorySegmentAccessInput input, KnnVectorValues values, byte[] query) {
       super(input, values, query);

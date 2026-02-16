@@ -50,6 +50,15 @@ public interface RandomVectorScorer {
   }
 
   /**
+   * Provide an interface to prefetch the ordinals
+   *
+   * @param prefetchOrds array of ordinals to prefetch
+   * @param ordsCount count of ordinals to prefetch
+   * @throws IOException IO exception while prefetching ordinals
+   */
+  default void prefetch(int[] prefetchOrds, int ordsCount) throws IOException {}
+
+  /**
    * @return the maximum possible ordinal for this scorer
    */
   int maxOrd();
@@ -76,7 +85,7 @@ public interface RandomVectorScorer {
 
   /** Creates a default scorer for random access vectors. */
   abstract class AbstractRandomVectorScorer implements RandomVectorScorer {
-    private final KnnVectorValues values;
+    protected final KnnVectorValues values;
 
     /**
      * Creates a new scorer for the given vector values.

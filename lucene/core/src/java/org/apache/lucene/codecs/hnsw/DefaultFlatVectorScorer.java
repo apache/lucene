@@ -186,6 +186,11 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
     public float score(int node) throws IOException {
       return similarityFunction.compare(query, values.vectorValue(node));
     }
+
+    @Override
+    public void prefetch(int[] prefetchOrds, int numOrds) throws IOException {
+      values.prefetch(prefetchOrds, numOrds);
+    }
   }
 
   /** A {@link RandomVectorScorer} for byte vectors. */
@@ -205,6 +210,11 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
     @Override
     public float score(int node) throws IOException {
       return similarityFunction.compare(query, values.vectorValue(node));
+    }
+
+    @Override
+    public void prefetch(int[] prefetchOrds, int numOrds) throws IOException {
+      values.prefetch(prefetchOrds, numOrds);
     }
   }
 }
