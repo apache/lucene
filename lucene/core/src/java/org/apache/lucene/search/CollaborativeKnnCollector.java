@@ -35,14 +35,17 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
   private static final IntUnaryOperator IDENTITY_MAPPER = docId -> docId;
   private static final int GLOBAL_BAR_MIN_VISITS = 100;
   private static final float GLOBAL_BAR_TERMINATION_SLACK = 0.0001f;
+  private static final int MAX_NEIGHBORHOOD_BIT_DIFF = 350;
 
   private final LongAccumulator minScoreAcc;
   private final AtomicReference<byte[]> globalHint;
   private final KnnVectorValues vectorValues;
+  private final KnnVectorValues.DocIndexIterator vectorIterator;
   private final int docBase;
   private final IntUnaryOperator docIdMapper;
   
   private float localMaxScore = Float.NEGATIVE_INFINITY;
+  private int localMaxDocId = -1;
   private float lastSharedScore = Float.NEGATIVE_INFINITY;
 
   public CollaborativeKnnCollector(
@@ -69,6 +72,7 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
     this.minScoreAcc = minScoreAcc;
     this.globalHint = globalHint;
     this.vectorValues = vectorValues;
+    this.vectorIterator = (vectorValues != null) ? vectorValues.iterator() : null;
     this.docBase = docBase;
     this.docIdMapper = docIdMapper;
   }
@@ -89,10 +93,36 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
 
     float globalFloorScore = DocScoreEncoder.toScore(globalFloorCode);
 
-    // CRITICAL FIX: Only stop if our BEST hit is worse than the global 500th best hit.
-    // If localMax < globalFloor, it's impossible for this shard to make the Top K.
+    // 1. Neighborhood Affinity (Immunity)
+    // If we are topologically close to the current global winners, stay alive to find bridges.
+    if (globalHint != null && globalHint.get() != null && localMaxDocId != -1 && 
+        vectorIterator != null && vectorValues instanceof FloatVectorValues fvv) {
+        try {
+            if (vectorIterator.advance(localMaxDocId) == localMaxDocId) {
+                byte[] localSig = computeSignature(fvv.vectorValue(vectorIterator.index()));
+                if (VectorUtil.xorBitCount(globalHint.get(), localSig) <= MAX_NEIGHBORHOOD_BIT_DIFF) {
+                    return false; // Immune from pruning
+                }
+            }
+        } catch (IOException e) {
+            // Ignore and fallback to score pruning
+        }
+    }
+
+    // 2. Mathematically Safe Pruning
+    // Only stop if our BEST hit is worse than the global 500th best hit.
     return localMaxScore > Float.NEGATIVE_INFINITY && 
            localMaxScore < (globalFloorScore - GLOBAL_BAR_TERMINATION_SLACK);
+  }
+
+  private byte[] computeSignature(float[] vector) {
+    byte[] sig = new byte[128]; // 1024 bits
+    for (int i = 0; i < Math.min(vector.length, 1024); i++) {
+      if (vector[i] > 0) {
+        sig[i >> 3] |= (1 << (i & 7));
+      }
+    }
+    return sig;
   }
 
   @Override
@@ -102,6 +132,7 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
     // Track local maximum (best hit seen so far on this shard)
     if (similarity > localMaxScore) {
         localMaxScore = similarity;
+        localMaxDocId = docId;
     }
 
     if (collected) {
