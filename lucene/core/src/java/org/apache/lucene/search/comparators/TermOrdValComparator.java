@@ -490,7 +490,7 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
       return competitiveState != null ? competitiveState.iterator : null;
     }
 
-    /** Returns true if the competitive iterator has been adaptively disabled. */
+    // package-private for testing
     boolean isSkippingDisabled() {
       // index-based competitive iterators are never disabled
       return competitiveState instanceof SkipperBasedCompetitiveState skipperState
