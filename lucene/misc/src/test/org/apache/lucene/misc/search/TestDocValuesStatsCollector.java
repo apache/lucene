@@ -35,7 +35,7 @@ import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.misc.search.DocValuesStats.DoubleDocValuesStats;
 import org.apache.lucene.misc.search.DocValuesStats.LongDocValuesStats;
@@ -46,6 +46,7 @@ import org.apache.lucene.misc.search.DocValuesStats.SortedSetDocValuesStats;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
@@ -55,16 +56,21 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
 
   public void testNoDocsWithField() throws IOException {
     try (Directory dir = newDirectory();
-        IndexWriter indexWriter = new IndexWriter(dir, newIndexWriterConfig())) {
-      int numDocs = TestUtil.nextInt(random(), 1, 100);
+        RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir)) {
+      int numDocs = TestUtil.nextInt(random(), 50, 100);
       for (int i = 0; i < numDocs; i++) {
         indexWriter.addDocument(new Document());
+        if (i % 10 == 0) {
+          indexWriter.commit();
+        }
       }
 
-      try (DirectoryReader reader = DirectoryReader.open(indexWriter)) {
-        IndexSearcher searcher = new IndexSearcher(reader);
-        LongDocValuesStats stats = new LongDocValuesStats("foo");
-        searcher.search(MatchAllDocsQuery.INSTANCE, new DocValuesStatsCollector(stats));
+      try (DirectoryReader reader = indexWriter.getReader()) {
+        IndexSearcher searcher = newSearcher(reader);
+        LongDocValuesStats stats =
+            searcher.search(
+                MatchAllDocsQuery.INSTANCE,
+                new DocValuesStatsCollectorManager<>(() -> new LongDocValuesStats("foo")));
 
         assertEquals(0, stats.count());
         assertEquals(numDocs, stats.missing());
@@ -74,17 +80,19 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
 
   public void testOneDoc() throws IOException {
     try (Directory dir = newDirectory();
-        IndexWriter indexWriter = new IndexWriter(dir, newIndexWriterConfig())) {
+        RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir)) {
       String field = "numeric";
       Document doc = new Document();
       doc.add(new NumericDocValuesField(field, 1));
       doc.add(new StringField("id", "doc1", Store.NO));
       indexWriter.addDocument(doc);
 
-      try (DirectoryReader reader = DirectoryReader.open(indexWriter)) {
-        IndexSearcher searcher = new IndexSearcher(reader);
-        LongDocValuesStats stats = new LongDocValuesStats(field);
-        searcher.search(MatchAllDocsQuery.INSTANCE, new DocValuesStatsCollector(stats));
+      try (DirectoryReader reader = indexWriter.getReader()) {
+        IndexSearcher searcher = newSearcher(reader);
+        LongDocValuesStats stats =
+            searcher.search(
+                MatchAllDocsQuery.INSTANCE,
+                new DocValuesStatsCollectorManager<>(() -> new LongDocValuesStats(field)));
 
         assertEquals(1, stats.count());
         assertEquals(0, stats.missing());
@@ -99,218 +107,235 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
   }
 
   public void testDocsWithLongValues() throws IOException {
-    try (Directory dir = newDirectory();
-        IndexWriter indexWriter = new IndexWriter(dir, newIndexWriterConfig())) {
-      String field = "numeric";
-      int numDocs = TestUtil.nextInt(random(), 1, 100);
-      long[] docValues = new long[numDocs];
-      int nextVal = 1;
-      for (int i = 0; i < numDocs; i++) {
-        Document doc = new Document();
-        if (random().nextBoolean()) { // not all documents have a value
-          doc.add(new NumericDocValuesField(field, nextVal));
-          doc.add(new StringField("id", "doc" + i, Store.NO));
-          docValues[i] = nextVal;
-          ++nextVal;
-        }
-        indexWriter.addDocument(doc);
-      }
-
-      // 20% of cases delete some docs
-      if (random().nextDouble() < 0.2) {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig config = newIndexWriterConfig();
+      config.setMaxBufferedDocs(10);
+      try (RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir, config)) {
+        String field = "numeric";
+        int numDocs = TestUtil.nextInt(random(), 50, 100);
+        long[] docValues = new long[numDocs];
+        int nextVal = 1;
         for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
           if (random().nextBoolean()) {
-            indexWriter.deleteDocuments(new Term("id", "doc" + i));
-            docValues[i] = 0;
+            doc.add(new NumericDocValuesField(field, nextVal));
+            doc.add(new StringField("id", "doc" + i, Store.NO));
+            docValues[i] = nextVal;
+            ++nextVal;
+          }
+          indexWriter.addDocument(doc);
+        }
+
+        if (random().nextDouble() < 0.2) {
+          for (int i = 0; i < numDocs; i++) {
+            if (random().nextBoolean()) {
+              indexWriter.deleteDocuments(new Term("id", "doc" + i));
+              docValues[i] = 0;
+            }
           }
         }
-      }
 
-      try (DirectoryReader reader = DirectoryReader.open(indexWriter)) {
-        IndexSearcher searcher = new IndexSearcher(reader);
-        LongDocValuesStats stats = new LongDocValuesStats(field);
-        searcher.search(MatchAllDocsQuery.INSTANCE, new DocValuesStatsCollector(stats));
+        try (DirectoryReader reader = indexWriter.getReader()) {
+          IndexSearcher searcher = newSearcher(reader);
+          LongDocValuesStats stats =
+              searcher.search(
+                  MatchAllDocsQuery.INSTANCE,
+                  new DocValuesStatsCollectorManager<>(() -> new LongDocValuesStats(field)));
 
-        int expCount = (int) Arrays.stream(docValues).filter(v -> v > 0).count();
-        assertEquals(expCount, stats.count());
-        int numDocsWithoutField = (int) getZeroValues(docValues).count();
-        assertEquals(computeExpMissing(numDocsWithoutField, numDocs, reader), stats.missing());
-        if (stats.count() > 0) {
-          LongSummaryStatistics sumStats = getPositiveValues(docValues).summaryStatistics();
-          assertEquals(sumStats.getMax(), stats.max().longValue());
-          assertEquals(sumStats.getMin(), stats.min().longValue());
-          assertEquals(sumStats.getAverage(), stats.mean(), 0.00001);
-          assertEquals(sumStats.getSum(), stats.sum().longValue());
-          double variance = computeVariance(docValues, stats.mean, stats.count());
-          assertEquals(variance, stats.variance(), 0.00001);
-          assertEquals(Math.sqrt(variance), stats.stdev(), 0.00001);
+          int expCount = (int) Arrays.stream(docValues).filter(v -> v > 0).count();
+          assertEquals(expCount, stats.count());
+          int numDocsWithoutField = (int) getZeroValues(docValues).count();
+          assertEquals(computeExpMissing(numDocsWithoutField, numDocs, reader), stats.missing());
+          if (stats.count() > 0) {
+            LongSummaryStatistics sumStats = getPositiveValues(docValues).summaryStatistics();
+            assertEquals(sumStats.getMax(), stats.max().longValue());
+            assertEquals(sumStats.getMin(), stats.min().longValue());
+            assertEquals(sumStats.getAverage(), stats.mean(), 0.00001);
+            assertEquals(sumStats.getSum(), stats.sum().longValue());
+            double variance = computeVariance(docValues, stats.mean, stats.count());
+            assertEquals(variance, stats.variance(), 0.00001);
+            assertEquals(Math.sqrt(variance), stats.stdev(), 0.00001);
+          }
         }
       }
     }
   }
 
   public void testDocsWithDoubleValues() throws IOException {
-    try (Directory dir = newDirectory();
-        IndexWriter indexWriter = new IndexWriter(dir, newIndexWriterConfig())) {
-      String field = "numeric";
-      int numDocs = TestUtil.nextInt(random(), 1, 100);
-      double[] docValues = new double[numDocs];
-      double nextVal = 1.0;
-      for (int i = 0; i < numDocs; i++) {
-        Document doc = new Document();
-        if (random().nextBoolean()) { // not all documents have a value
-          doc.add(new DoubleDocValuesField(field, nextVal));
-          doc.add(new StringField("id", "doc" + i, Store.NO));
-          docValues[i] = nextVal;
-          ++nextVal;
-        }
-        indexWriter.addDocument(doc);
-      }
-
-      // 20% of cases delete some docs
-      if (random().nextDouble() < 0.2) {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig config = newIndexWriterConfig();
+      config.setMaxBufferedDocs(10);
+      try (RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir, config)) {
+        String field = "numeric";
+        int numDocs = TestUtil.nextInt(random(), 50, 100);
+        double[] docValues = new double[numDocs];
+        double nextVal = 1.0;
         for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
           if (random().nextBoolean()) {
-            indexWriter.deleteDocuments(new Term("id", "doc" + i));
-            docValues[i] = 0;
+            doc.add(new DoubleDocValuesField(field, nextVal));
+            doc.add(new StringField("id", "doc" + i, Store.NO));
+            docValues[i] = nextVal;
+            ++nextVal;
+          }
+          indexWriter.addDocument(doc);
+        }
+
+        if (random().nextDouble() < 0.2) {
+          for (int i = 0; i < numDocs; i++) {
+            if (random().nextBoolean()) {
+              indexWriter.deleteDocuments(new Term("id", "doc" + i));
+              docValues[i] = 0;
+            }
           }
         }
-      }
 
-      try (DirectoryReader reader = DirectoryReader.open(indexWriter)) {
-        IndexSearcher searcher = new IndexSearcher(reader);
-        DoubleDocValuesStats stats = new DoubleDocValuesStats(field);
-        searcher.search(MatchAllDocsQuery.INSTANCE, new DocValuesStatsCollector(stats));
+        try (DirectoryReader reader = indexWriter.getReader()) {
+          IndexSearcher searcher = newSearcher(reader);
+          DoubleDocValuesStats stats =
+              searcher.search(
+                  MatchAllDocsQuery.INSTANCE,
+                  new DocValuesStatsCollectorManager<>(() -> new DoubleDocValuesStats(field)));
 
-        int expCount = (int) Arrays.stream(docValues).filter(v -> v > 0).count();
-        assertEquals(expCount, stats.count());
-        int numDocsWithoutField = (int) getZeroValues(docValues).count();
-        assertEquals(computeExpMissing(numDocsWithoutField, numDocs, reader), stats.missing());
-        if (stats.count() > 0) {
-          DoubleSummaryStatistics sumStats = getPositiveValues(docValues).summaryStatistics();
-          assertEquals(sumStats.getMax(), stats.max().doubleValue(), 0.00001);
-          assertEquals(sumStats.getMin(), stats.min().doubleValue(), 0.00001);
-          assertEquals(sumStats.getAverage(), stats.mean(), 0.00001);
-          assertEquals(sumStats.getSum(), stats.sum(), 0.00001);
-          double variance = computeVariance(docValues, stats.mean, stats.count());
-          assertEquals(variance, stats.variance(), 0.00001);
-          assertEquals(Math.sqrt(variance), stats.stdev(), 0.00001);
+          int expCount = (int) Arrays.stream(docValues).filter(v -> v > 0).count();
+          assertEquals(expCount, stats.count());
+          int numDocsWithoutField = (int) getZeroValues(docValues).count();
+          assertEquals(computeExpMissing(numDocsWithoutField, numDocs, reader), stats.missing());
+          if (stats.count() > 0) {
+            DoubleSummaryStatistics sumStats = getPositiveValues(docValues).summaryStatistics();
+            assertEquals(sumStats.getMax(), stats.max().doubleValue(), 0.00001);
+            assertEquals(sumStats.getMin(), stats.min().doubleValue(), 0.00001);
+            assertEquals(sumStats.getAverage(), stats.mean(), 0.00001);
+            assertEquals(sumStats.getSum(), stats.sum(), 0.00001);
+            double variance = computeVariance(docValues, stats.mean, stats.count());
+            assertEquals(variance, stats.variance(), 0.00001);
+            assertEquals(Math.sqrt(variance), stats.stdev(), 0.00001);
+          }
         }
       }
     }
   }
 
   public void testDocsWithMultipleLongValues() throws IOException {
-    try (Directory dir = newDirectory();
-        IndexWriter indexWriter = new IndexWriter(dir, newIndexWriterConfig())) {
-      String field = "numeric";
-      int numDocs = TestUtil.nextInt(random(), 1, 100);
-      long[][] docValues = new long[numDocs][];
-      long nextVal = 1;
-      for (int i = 0; i < numDocs; i++) {
-        Document doc = new Document();
-        if (random().nextBoolean()) { // not all documents have a value
-          int numValues = TestUtil.nextInt(random(), 1, 5);
-          docValues[i] = new long[numValues];
-          for (int j = 0; j < numValues; j++) {
-            doc.add(new SortedNumericDocValuesField(field, nextVal));
-            docValues[i][j] = nextVal;
-            ++nextVal;
-          }
-          doc.add(new StringField("id", "doc" + i, Store.NO));
-        }
-        indexWriter.addDocument(doc);
-      }
-
-      // 20% of cases delete some docs
-      if (random().nextDouble() < 0.2) {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig config = newIndexWriterConfig();
+      config.setMaxBufferedDocs(10);
+      try (RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir, config)) {
+        String field = "numeric";
+        int numDocs = TestUtil.nextInt(random(), 50, 100);
+        long[][] docValues = new long[numDocs][];
+        long nextVal = 1;
         for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
           if (random().nextBoolean()) {
-            indexWriter.deleteDocuments(new Term("id", "doc" + i));
-            docValues[i] = null;
+            int numValues = TestUtil.nextInt(random(), 1, 5);
+            docValues[i] = new long[numValues];
+            for (int j = 0; j < numValues; j++) {
+              doc.add(new SortedNumericDocValuesField(field, nextVal));
+              docValues[i][j] = nextVal;
+              ++nextVal;
+            }
+            doc.add(new StringField("id", "doc" + i, Store.NO));
+          }
+          indexWriter.addDocument(doc);
+        }
+
+        if (random().nextDouble() < 0.2) {
+          for (int i = 0; i < numDocs; i++) {
+            if (random().nextBoolean()) {
+              indexWriter.deleteDocuments(new Term("id", "doc" + i));
+              docValues[i] = null;
+            }
           }
         }
-      }
 
-      try (DirectoryReader reader = DirectoryReader.open(indexWriter)) {
-        IndexSearcher searcher = new IndexSearcher(reader);
-        SortedLongDocValuesStats stats = new SortedLongDocValuesStats(field);
-        searcher.search(MatchAllDocsQuery.INSTANCE, new DocValuesStatsCollector(stats));
+        try (DirectoryReader reader = indexWriter.getReader()) {
+          IndexSearcher searcher = newSearcher(reader);
+          SortedLongDocValuesStats stats =
+              searcher.search(
+                  MatchAllDocsQuery.INSTANCE,
+                  new DocValuesStatsCollectorManager<>(() -> new SortedLongDocValuesStats(field)));
 
-        assertEquals(nonNull(docValues).count(), stats.count());
-        int numDocsWithoutField = (int) isNull(docValues).count();
-        assertEquals(computeExpMissing(numDocsWithoutField, numDocs, reader), stats.missing());
-        if (stats.count() > 0) {
-          LongSummaryStatistics sumStats =
-              filterAndFlatValues(docValues, (v) -> v != null).summaryStatistics();
-          assertEquals(sumStats.getMax(), stats.max().longValue());
-          assertEquals(sumStats.getMin(), stats.min().longValue());
-          assertEquals(sumStats.getAverage(), stats.mean(), 0.00001);
-          assertEquals(sumStats.getSum(), stats.sum().longValue());
-          assertEquals(sumStats.getCount(), stats.valuesCount());
-          double variance =
-              computeVariance(
-                  filterAndFlatValues(docValues, (v) -> v != null), stats.mean, stats.count());
-          assertEquals(variance, stats.variance(), 0.00001);
-          assertEquals(Math.sqrt(variance), stats.stdev(), 0.00001);
+          assertEquals(nonNull(docValues).count(), stats.count());
+          int numDocsWithoutField = (int) isNull(docValues).count();
+          assertEquals(computeExpMissing(numDocsWithoutField, numDocs, reader), stats.missing());
+          if (stats.count() > 0) {
+            LongSummaryStatistics sumStats =
+                filterAndFlatValues(docValues, (v) -> v != null).summaryStatistics();
+            assertEquals(sumStats.getMax(), stats.max().longValue());
+            assertEquals(sumStats.getMin(), stats.min().longValue());
+            assertEquals(sumStats.getAverage(), stats.mean(), 0.00001);
+            assertEquals(sumStats.getSum(), stats.sum().longValue());
+            assertEquals(sumStats.getCount(), stats.valuesCount());
+            double variance =
+                computeVariance(
+                    filterAndFlatValues(docValues, (v) -> v != null), stats.mean, stats.count());
+            assertEquals(variance, stats.variance(), 0.00001);
+            assertEquals(Math.sqrt(variance), stats.stdev(), 0.00001);
+          }
         }
       }
     }
   }
 
   public void testDocsWithMultipleDoubleValues() throws IOException {
-    try (Directory dir = newDirectory();
-        IndexWriter indexWriter = new IndexWriter(dir, newIndexWriterConfig())) {
-      String field = "numeric";
-      int numDocs = TestUtil.nextInt(random(), 1, 100);
-      double[][] docValues = new double[numDocs][];
-      double nextVal = 1;
-      for (int i = 0; i < numDocs; i++) {
-        Document doc = new Document();
-        if (random().nextBoolean()) { // not all documents have a value
-          int numValues = TestUtil.nextInt(random(), 1, 5);
-          docValues[i] = new double[numValues];
-          for (int j = 0; j < numValues; j++) {
-            doc.add(new SortedNumericDocValuesField(field, Double.doubleToRawLongBits(nextVal)));
-            docValues[i][j] = nextVal;
-            ++nextVal;
-          }
-          doc.add(new StringField("id", "doc" + i, Store.NO));
-        }
-        indexWriter.addDocument(doc);
-      }
-
-      // 20% of cases delete some docs
-      if (random().nextDouble() < 0.2) {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig config = newIndexWriterConfig();
+      config.setMaxBufferedDocs(10);
+      try (RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir, config)) {
+        String field = "numeric";
+        int numDocs = TestUtil.nextInt(random(), 50, 100);
+        double[][] docValues = new double[numDocs][];
+        double nextVal = 1;
         for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
           if (random().nextBoolean()) {
-            indexWriter.deleteDocuments(new Term("id", "doc" + i));
-            docValues[i] = null;
+            int numValues = TestUtil.nextInt(random(), 1, 5);
+            docValues[i] = new double[numValues];
+            for (int j = 0; j < numValues; j++) {
+              doc.add(new SortedNumericDocValuesField(field, Double.doubleToRawLongBits(nextVal)));
+              docValues[i][j] = nextVal;
+              ++nextVal;
+            }
+            doc.add(new StringField("id", "doc" + i, Store.NO));
+          }
+          indexWriter.addDocument(doc);
+        }
+
+        if (random().nextDouble() < 0.2) {
+          for (int i = 0; i < numDocs; i++) {
+            if (random().nextBoolean()) {
+              indexWriter.deleteDocuments(new Term("id", "doc" + i));
+              docValues[i] = null;
+            }
           }
         }
-      }
 
-      try (DirectoryReader reader = DirectoryReader.open(indexWriter)) {
-        IndexSearcher searcher = new IndexSearcher(reader);
-        SortedDoubleDocValuesStats stats = new SortedDoubleDocValuesStats(field);
-        searcher.search(MatchAllDocsQuery.INSTANCE, new DocValuesStatsCollector(stats));
+        try (DirectoryReader reader = indexWriter.getReader()) {
+          IndexSearcher searcher = newSearcher(reader);
+          SortedDoubleDocValuesStats stats =
+              searcher.search(
+                  MatchAllDocsQuery.INSTANCE,
+                  new DocValuesStatsCollectorManager<>(
+                      () -> new SortedDoubleDocValuesStats(field)));
 
-        assertEquals(nonNull(docValues).count(), stats.count());
-        int numDocsWithoutField = (int) isNull(docValues).count();
-        assertEquals(computeExpMissing(numDocsWithoutField, numDocs, reader), stats.missing());
-        if (stats.count() > 0) {
-          DoubleSummaryStatistics sumStats =
-              filterAndFlatValues(docValues, (v) -> v != null).summaryStatistics();
-          assertEquals(sumStats.getMax(), stats.max(), 0.00001);
-          assertEquals(sumStats.getMin(), stats.min(), 0.00001);
-          assertEquals(sumStats.getAverage(), stats.mean(), 0.00001);
-          assertEquals(sumStats.getSum(), stats.sum().doubleValue(), 0.00001);
-          assertEquals(sumStats.getCount(), stats.valuesCount());
-          double variance =
-              computeVariance(
-                  filterAndFlatValues(docValues, (v) -> v != null), stats.mean, stats.count());
-          assertEquals(variance, stats.variance(), 0.00001);
-          assertEquals(Math.sqrt(variance), stats.stdev(), 0.00001);
+          assertEquals(nonNull(docValues).count(), stats.count());
+          int numDocsWithoutField = (int) isNull(docValues).count();
+          assertEquals(computeExpMissing(numDocsWithoutField, numDocs, reader), stats.missing());
+          if (stats.count() > 0) {
+            DoubleSummaryStatistics sumStats =
+                filterAndFlatValues(docValues, (v) -> v != null).summaryStatistics();
+            assertEquals(sumStats.getMax(), stats.max(), 0.00001);
+            assertEquals(sumStats.getMin(), stats.min(), 0.00001);
+            assertEquals(sumStats.getAverage(), stats.mean(), 0.00001);
+            assertEquals(sumStats.getSum(), stats.sum().doubleValue(), 0.00001);
+            assertEquals(sumStats.getCount(), stats.valuesCount());
+            double variance =
+                computeVariance(
+                    filterAndFlatValues(docValues, (v) -> v != null), stats.mean, stats.count());
+            assertEquals(variance, stats.variance(), 0.00001);
+            assertEquals(Math.sqrt(variance), stats.stdev(), 0.00001);
+          }
         }
       }
     }
@@ -318,7 +343,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
 
   public void testDocsWithSortedValues() throws IOException {
     try (Directory dir = newDirectory();
-        IndexWriter indexWriter = new IndexWriter(dir, newIndexWriterConfig())) {
+        RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir)) {
       String field = "sorted";
       int numDocs = TestUtil.nextInt(random(), 1, 100);
       BytesRef[] docValues = new BytesRef[numDocs];
@@ -343,10 +368,12 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
         }
       }
 
-      try (DirectoryReader reader = DirectoryReader.open(indexWriter)) {
-        IndexSearcher searcher = new IndexSearcher(reader);
-        SortedDocValuesStats stats = new SortedDocValuesStats(field);
-        searcher.search(MatchAllDocsQuery.INSTANCE, new DocValuesStatsCollector(stats));
+      try (DirectoryReader reader = indexWriter.getReader()) {
+        IndexSearcher searcher = newSearcher(reader);
+        SortedDocValuesStats stats =
+            searcher.search(
+                MatchAllDocsQuery.INSTANCE,
+                new DocValuesStatsCollectorManager<>(() -> new SortedDocValuesStats(field)));
 
         int expCount = (int) nonNull(docValues).count();
         assertEquals(expCount, stats.count());
@@ -362,7 +389,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
 
   public void testDocsWithSortedSetValues() throws IOException {
     try (Directory dir = newDirectory();
-        IndexWriter indexWriter = new IndexWriter(dir, newIndexWriterConfig())) {
+        RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir)) {
       String field = "sorted";
       int numDocs = TestUtil.nextInt(random(), 1, 100);
       BytesRef[][] docValues = new BytesRef[numDocs][];
@@ -391,11 +418,12 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
         }
       }
 
-      try (DirectoryReader reader = DirectoryReader.open(indexWriter)) {
-        IndexSearcher searcher = new IndexSearcher(reader);
-        SortedSetDocValuesStats stats = new SortedSetDocValuesStats(field);
-
-        searcher.search(MatchAllDocsQuery.INSTANCE, new DocValuesStatsCollector(stats));
+      try (DirectoryReader reader = indexWriter.getReader()) {
+        IndexSearcher searcher = newSearcher(reader);
+        SortedSetDocValuesStats stats =
+            searcher.search(
+                MatchAllDocsQuery.INSTANCE,
+                new DocValuesStatsCollectorManager<>(() -> new SortedSetDocValuesStats(field)));
 
         int expCount = (int) nonNull(docValues).count();
         assertEquals(expCount, stats.count());
