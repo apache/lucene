@@ -17,172 +17,106 @@
 
 package org.apache.lucene.search;
 
+import java.io.IOException;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAccumulator;
 import java.util.function.IntUnaryOperator;
+import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
+import org.apache.lucene.util.VectorUtil;
 
 /**
- * A {@link KnnCollector} that allows for collaborative search by sharing a global minimum
- * competitive similarity across multiple threads or segments.
- *
- * <p>This collector wraps a {@link TopKnnCollector} and a {@link LongAccumulator}. It uses {@link
- * DocScoreEncoder} logic to pack scores and document IDs into a single 64-bit value, ensuring that
- * tie-breaking rules (lower DocID wins) are respected across concurrent search processes.
- *
- * @lucene.experimental
+ * A {@link KnnCollector} that allows for collaborative search.
+ * PRUNING BASED ON GLOBAL FLOOR vs LOCAL MAX.
  */
 public class CollaborativeKnnCollector extends KnnCollector.Decorator {
 
   private static final IntUnaryOperator IDENTITY_MAPPER = docId -> docId;
+  private static final int GLOBAL_BAR_MIN_VISITS = 100;
+  private static final float GLOBAL_BAR_TERMINATION_SLACK = 0.0001f;
 
   private final LongAccumulator minScoreAcc;
+  private final AtomicReference<byte[]> globalHint;
+  private final KnnVectorValues vectorValues;
   private final int docBase;
   private final IntUnaryOperator docIdMapper;
+  
+  private float localMaxScore = Float.NEGATIVE_INFINITY;
   private float lastSharedScore = Float.NEGATIVE_INFINITY;
 
-  /**
-   * Create a new CollaborativeKnnCollector
-   *
-   * @param k number of neighbors to collect
-   * @param visitLimit maximum number of nodes to visit
-   * @param minScoreAcc shared accumulator for global pruning
-   * @param docBase the starting document ID for the current segment
-   */
   public CollaborativeKnnCollector(
-      int k, int visitLimit, LongAccumulator minScoreAcc, int docBase) {
-    this(new TopKnnCollector(k, visitLimit), minScoreAcc, docBase, IDENTITY_MAPPER);
+      int k, int visitLimit, LongAccumulator minScoreAcc, 
+      AtomicReference<byte[]> globalHint, KnnVectorValues vectorValues, int docBase) {
+    this(new TopKnnCollector(k, visitLimit), minScoreAcc, globalHint, vectorValues, docBase, IDENTITY_MAPPER);
   }
 
-  /**
-   * Create a new CollaborativeKnnCollector with a docId mapper
-   *
-   * @param k number of neighbors to collect
-   * @param visitLimit maximum number of nodes to visit
-   * @param minScoreAcc shared accumulator for global pruning
-   * @param docBase the starting document ID for the current segment
-   * @param docIdMapper maps absolute docIds (docBase + docId) to a globally comparable space
-   */
   public CollaborativeKnnCollector(
-      int k,
-      int visitLimit,
-      LongAccumulator minScoreAcc,
-      int docBase,
-      IntUnaryOperator docIdMapper) {
-    this(new TopKnnCollector(k, visitLimit), minScoreAcc, docBase, docIdMapper);
-  }
-
-  /**
-   * Create a new CollaborativeKnnCollector with a search strategy
-   *
-   * @param k number of neighbors to collect
-   * @param visitLimit maximum number of nodes to visit
-   * @param searchStrategy search strategy to use
-   * @param minScoreAcc shared accumulator for global pruning
-   * @param docBase the starting document ID for the current segment
-   */
-  public CollaborativeKnnCollector(
-      int k,
-      int visitLimit,
-      KnnSearchStrategy searchStrategy,
-      LongAccumulator minScoreAcc,
-      int docBase) {
-    this(new TopKnnCollector(k, visitLimit, searchStrategy), minScoreAcc, docBase, IDENTITY_MAPPER);
-  }
-
-  /**
-   * Create a new CollaborativeKnnCollector with a search strategy and docId mapper
-   *
-   * @param k number of neighbors to collect
-   * @param visitLimit maximum number of nodes to visit
-   * @param searchStrategy search strategy to use
-   * @param minScoreAcc shared accumulator for global pruning
-   * @param docBase the starting document ID for the current segment
-   * @param docIdMapper maps absolute docIds (docBase + docId) to a globally comparable space
-   */
-  public CollaborativeKnnCollector(
-      int k,
-      int visitLimit,
-      KnnSearchStrategy searchStrategy,
-      LongAccumulator minScoreAcc,
-      int docBase,
-      IntUnaryOperator docIdMapper) {
-    this(
-        new TopKnnCollector(k, visitLimit, searchStrategy),
-        minScoreAcc,
-        docBase,
-        docIdMapper);
+      int k, int visitLimit, KnnSearchStrategy searchStrategy, 
+      LongAccumulator minScoreAcc, AtomicReference<byte[]> globalHint, 
+      KnnVectorValues vectorValues, int docBase, IntUnaryOperator docIdMapper) {
+    this(new TopKnnCollector(k, visitLimit, searchStrategy), minScoreAcc, globalHint, vectorValues, docBase, docIdMapper);
   }
 
   private CollaborativeKnnCollector(
       KnnCollector delegate,
       LongAccumulator minScoreAcc,
+      AtomicReference<byte[]> globalHint,
+      KnnVectorValues vectorValues,
       int docBase,
       IntUnaryOperator docIdMapper) {
     super(delegate);
     this.minScoreAcc = minScoreAcc;
+    this.globalHint = globalHint;
+    this.vectorValues = vectorValues;
     this.docBase = docBase;
     this.docIdMapper = docIdMapper;
   }
 
-  /**
-   * Returns the minimum competitive similarity for this collector.
-   *
-   * <p>This method implements cross-segment pruning by consulting the shared {@link
-   * LongAccumulator}.
-   *
-   * <p><b>Important for Distributed search:</b> This logic assumes that the {@code docIdMapper}
-   * maps local document IDs to a globally consistent integer space where the ordering of IDs
-   * reflects the desired tie-breaking priority across shards.
-   */
   @Override
   public float minCompetitiveSimilarity() {
-    float localMin = super.minCompetitiveSimilarity();
+    // Pathfinding always uses local bar
+    return super.minCompetitiveSimilarity();
+  }
 
-    // "Lagging Threshold" / Entry Point Protection:
-    // Do not apply the global bar until we have explored a minimum number of nodes (100).
-    // This prevents the search from terminating immediately at the entry point if the
-    // global bar is high but the local entry point is poor (a "bridge" node).
-    if (visitedCount() < 100) {
-      return localMin;
-    }
+  @Override
+  public boolean earlyTerminated() {
+    if (super.earlyTerminated()) return true;
+    if (visitedCount() < GLOBAL_BAR_MIN_VISITS) return false;
 
-    long globalMinCode = minScoreAcc.get();
-    if (globalMinCode == Long.MIN_VALUE) {
-      return localMin;
-    }
+    long globalFloorCode = minScoreAcc.get();
+    if (globalFloorCode == Long.MIN_VALUE) return false;
 
-    float globalMinScore = DocScoreEncoder.toScore(globalMinCode);
+    float globalFloorScore = DocScoreEncoder.toScore(globalFloorCode);
 
-    // Safety Slack: Use a 0.01 safety margin to allow shards to complete their 
-    // local greedy climbs without being constantly interrupted by tiny 
-    // threshold updates from other shards.
-    return Math.max(localMin, globalMinScore - 0.01f);
+    // CRITICAL FIX: Only stop if our BEST hit is worse than the global 500th best hit.
+    // If localMax < globalFloor, it's impossible for this shard to make the Top K.
+    return localMaxScore > Float.NEGATIVE_INFINITY && 
+           localMaxScore < (globalFloorScore - GLOBAL_BAR_TERMINATION_SLACK);
   }
 
   @Override
   public boolean collect(int docId, float similarity) {
     boolean collected = super.collect(docId, similarity);
+    
+    // Track local maximum (best hit seen so far on this shard)
+    if (similarity > localMaxScore) {
+        localMaxScore = similarity;
+    }
+
     if (collected) {
-      // Share the k-th best score (floor of the top-k queue). 
       float floorScore = super.minCompetitiveSimilarity();
-      
-      // Smart Accumulation: Only update the global bar if the improvement is significant (0.001).
-      // This reduces atomic contention across threads and shards.
-      if (floorScore > Float.NEGATIVE_INFINITY && floorScore > lastSharedScore + 0.001f) {
+      if (floorScore > Float.NEGATIVE_INFINITY
+          && floorScore > lastSharedScore + 0.0001f) {
+        
         int absoluteDocId = docId + docBase;
-        int mappedDocId = docIdMapper.applyAsInt(absoluteDocId);
-        minScoreAcc.accumulate(DocScoreEncoder.encode(mappedDocId, floorScore));
+        minScoreAcc.accumulate(DocScoreEncoder.encode(docIdMapper.applyAsInt(absoluteDocId), floorScore));
         lastSharedScore = floorScore;
       }
     }
     return collected;
   }
 
-  /**
-   * Encode a score and docId into a long for the accumulator. Exposed for testing and orchestration
-   * layers.
-   */
-  public static long encode(int docId, float score) {
-    return DocScoreEncoder.encode(docId, score);
-  }
+  public static float toScore(long value) { return DocScoreEncoder.toScore(value); }
+  public static long encode(int docId, float score) { return DocScoreEncoder.encode(docId, score); }
 }

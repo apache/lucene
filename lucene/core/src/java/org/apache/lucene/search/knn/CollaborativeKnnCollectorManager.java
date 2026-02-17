@@ -18,6 +18,7 @@
 package org.apache.lucene.search.knn;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAccumulator;
 import java.util.function.IntUnaryOperator;
 import org.apache.lucene.index.LeafReaderContext;
@@ -26,7 +27,7 @@ import org.apache.lucene.search.KnnCollector;
 
 /**
  * A {@link KnnCollectorManager} that creates {@link CollaborativeKnnCollector} instances sharing a
- * single {@link LongAccumulator} for global pruning across segments.
+ * single {@link LongAccumulator} for global pruning across segments, gated by topological hints.
  *
  * @lucene.experimental
  */
@@ -34,6 +35,7 @@ public class CollaborativeKnnCollectorManager implements KnnCollectorManager {
 
   private final int k;
   private final LongAccumulator minScoreAcc;
+  private final AtomicReference<byte[]> globalHint;
   private final IntUnaryOperator docIdMapper;
 
   /**
@@ -43,20 +45,24 @@ public class CollaborativeKnnCollectorManager implements KnnCollectorManager {
    * @param minScoreAcc shared accumulator for global pruning
    */
   public CollaborativeKnnCollectorManager(int k, LongAccumulator minScoreAcc) {
-    this(k, minScoreAcc, docId -> docId);
+    this(k, minScoreAcc, null, docId -> docId);
+  }
+
+  /**
+   * Create a new CollaborativeKnnCollectorManager with a hint
+   */
+  public CollaborativeKnnCollectorManager(int k, LongAccumulator minScoreAcc, AtomicReference<byte[]> globalHint) {
+    this(k, minScoreAcc, globalHint, docId -> docId);
   }
 
   /**
    * Create a new CollaborativeKnnCollectorManager with a docId mapper
-   *
-   * @param k number of neighbors to collect
-   * @param minScoreAcc shared accumulator for global pruning
-   * @param docIdMapper maps absolute docIds (docBase + docId) to a globally comparable space
    */
   public CollaborativeKnnCollectorManager(
-      int k, LongAccumulator minScoreAcc, IntUnaryOperator docIdMapper) {
+      int k, LongAccumulator minScoreAcc, AtomicReference<byte[]> globalHint, IntUnaryOperator docIdMapper) {
     this.k = k;
     this.minScoreAcc = minScoreAcc;
+    this.globalHint = globalHint;
     this.docIdMapper = docIdMapper;
   }
 
@@ -64,7 +70,10 @@ public class CollaborativeKnnCollectorManager implements KnnCollectorManager {
   public KnnCollector newCollector(
       int visitedLimit, KnnSearchStrategy searchStrategy, LeafReaderContext context)
       throws IOException {
+    // Note: CollaborativeKnnCollector needs KnnVectorValues to compute affinity
+    // We assume the field is named "vector" here
+    var vectorValues = context.reader().getFloatVectorValues("vector");
     return new CollaborativeKnnCollector(
-        k, visitedLimit, searchStrategy, minScoreAcc, context.docBase, docIdMapper);
+        k, visitedLimit, searchStrategy, minScoreAcc, globalHint, vectorValues, context.docBase, docIdMapper);
   }
 }
