@@ -42,7 +42,6 @@ public class NeighborArray {
   private final MaxSizedFloatArrayList scores;
   private final MaxSizedIntArrayList nodes;
   private int sortedNodeSize;
-  private long ramBytesUsed = BASE_RAM_BYTES_USED;
   private final LongConsumer onHeapMemoryUsageListener;
 
   public NeighborArray(int maxSize, boolean descOrder) {
@@ -53,11 +52,11 @@ public class NeighborArray {
     this.maxSize = maxSize;
     nodes = new MaxSizedIntArrayList(maxSize, maxSize / 8);
     scores = new MaxSizedFloatArrayList(maxSize, maxSize / 8);
-    this.ramBytesUsed += nodes.ramBytesUsed() + scores.ramBytesUsed();
     this.scoresDescOrder = descOrder;
     this.onHeapMemoryUsageListener = onHeapMemoryUsageListener;
     if (onHeapMemoryUsageListener != null) {
-      onHeapMemoryUsageListener.accept(ramBytesUsed);
+      onHeapMemoryUsageListener.accept(
+          BASE_RAM_BYTES_USED + nodes.ramBytesUsed() + scores.ramBytesUsed());
     }
   }
 
@@ -145,7 +144,7 @@ public class NeighborArray {
     int[] uncheckedIndexes = new int[size - sortedNodeSize];
     int count = 0;
     while (sortedNodeSize != size) {
-      // TODO: Instead of do an array copy on every insertion, I think we can do better here:
+      // TODO: Instead of doing an array copy on every insertion, I think we can do better here:
       //       Remember the insertion point of each unsorted node and insert them altogether
       //       We can save several array copy by doing that
       uncheckedIndexes[count] = insertSortedInternal(scorer); // sortedNodeSize is increased inside

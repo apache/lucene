@@ -84,6 +84,15 @@ Enhanced error messages will clearly indicate:
 This parameter has no replacement, TieredMergePolicy no longer bounds the
 number of segments that may be merged together.
 
+### Snowball dependency upgrade (Dutch stemmer)
+
+Snowball replaced the "Dutch" stemmer by the "Kraaij-Pohlmann" stemmer (previous called dutch-kp). As a result Lucene supports 2 Dutch stemmers:
+
+- DutchStemmer, which is now the "Kraaij-Pohlmann" stemmer.
+- Dutch_porterStemmer, which is the DutchStemmer from Lucene-10 and before.
+
+Opening an pre Lucene-11 index which is indexed using the DutchStemmer will succeed, but due to the different stemmer implementation a re-index is needed in order to make searching work correctly. Or replace DutchStemmer by Dutch_porterStemmer in your code.
+
 ### Query caching is now disabled by default
 
 Query caching is now disabled by default. To enable caching back, do something

@@ -108,7 +108,7 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
           wrapped.add(wrap);
         }
       }
-      return wrapped.toArray(new LeafReader[0]);
+      return wrapped.toArray(LeafReader[]::new);
     }
 
     @Override

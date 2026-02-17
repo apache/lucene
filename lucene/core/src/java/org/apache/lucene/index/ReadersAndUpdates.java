@@ -681,7 +681,7 @@ final class ReadersAndUpdates {
             byName.put(fi.name, fi);
           }
         }
-        fieldInfos = new FieldInfos(byName.values().toArray(new FieldInfo[0]));
+        fieldInfos = new FieldInfos(byName.values().toArray(FieldInfo[]::new));
         final DocValuesFormat docValuesFormat = codec.docValuesFormat();
 
         handleDVUpdates(

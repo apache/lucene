@@ -340,9 +340,11 @@ public final class Tessellator {
         holeMinY = holePoly.minY;
         holeMaxY = holePoly.maxY;
       }
-      if (eliminateHole(holeNode, outerNode, holeMinX, holeMaxX, holeMinY, holeMaxY)) {
-        // Filter the new polygon.
-        outerNode = filterPoints(outerNode, outerNode.next);
+      Node result = eliminateHole(holeNode, outerNode, holeMinX, holeMaxX, holeMinY, holeMaxY);
+      if (result != null) {
+        // Filter the new polygon. The result node determines outerNode's position:
+        // for leftmost shared vertex merges, it's at the bridge; otherwise at the original.
+        outerNode = filterPoints(result, result.next);
       } else {
         // we couldn't find a point to the left of the hole's leftmost point, the point
         // is not inside the polygon.
@@ -363,8 +365,11 @@ public final class Tessellator {
     return filterPoints(outerNode, null);
   }
 
-  /** Finds a bridge between vertices that connects a hole with an outer ring, and links it */
-  private static boolean eliminateHole(
+  /**
+   * Finds a bridge between vertices that connects a hole with an outer ring, links it, and returns
+   * a node to use as the new outerNode position, or null if no bridge was found.
+   */
+  private static Node eliminateHole(
       final Node holeNode,
       Node outerNode,
       double holeMinX,
@@ -373,32 +378,35 @@ public final class Tessellator {
       double holeMaxY) {
 
     // Attempt to merge the hole using a common point between if it exists.
-    if (maybeMergeHoleWithSharedVertices(
-        holeNode, outerNode, holeMinX, holeMaxX, holeMinY, holeMaxY)) {
-      return true;
+    Node mergeResult =
+        maybeMergeHoleWithSharedVertices(
+            holeNode, outerNode, holeMinX, holeMaxX, holeMinY, holeMaxY);
+    if (mergeResult != null) {
+      return mergeResult;
     }
     // Attempt to find a logical bridge between the HoleNode and OuterNode.
-    outerNode = fetchHoleBridge(holeNode, outerNode);
+    Node bridge = fetchHoleBridge(holeNode, outerNode);
 
     // Determine whether a hole bridge could be fetched.
-    if (outerNode != null) {
+    if (bridge != null) {
       // compute if the bridge overlaps with a polygon edge.
       boolean fromPolygon =
-          isPointInLine(outerNode, outerNode.next, holeNode)
-              || isPointInLine(holeNode, holeNode.next, outerNode);
+          isPointInLine(bridge, bridge.next, holeNode)
+              || isPointInLine(holeNode, holeNode.next, bridge);
       // Split the resulting polygon.
-      splitPolygon(outerNode, holeNode, fromPolygon);
-      return true;
+      splitPolygon(bridge, holeNode, fromPolygon);
+      return outerNode;
     } else {
-      return false;
+      return null;
     }
   }
 
   /**
-   * Choose a common vertex between the polygon and the hole if it exists and return true, otherwise
-   * return false
+   * Choose a common vertex between the polygon and the hole if it exists and merge them. Returns
+   * the bridge node for leftmost shared vertex merges (so the caller can update outerNode to the
+   * bridge position), outerNode for non-leftmost merges, or null if no shared vertex was found.
    */
-  private static boolean maybeMergeHoleWithSharedVertices(
+  private static Node maybeMergeHoleWithSharedVertices(
       final Node holeNode,
       Node outerNode,
       double holeMinX,
@@ -408,8 +416,10 @@ public final class Tessellator {
     // Attempt to find a common point between the HoleNode and OuterNode.
     Node sharedVertex = null;
     Node sharedVertexConnection = null;
-    // Track the leftmost vertex match (holeNode is the leftmost vertex of the hole)
-    Node leftmostSharedVertex = null;
+    // Track the leftmost vertex match (holeNode is the leftmost vertex of the hole).
+    // Use first-match in ring order for the leftmost case (matching earcut.js). When previous
+    // bridge operations created multiple copies of a vertex, the first copy from outerNode
+    // is the correct connection point for chained shared-vertex holes.
     Node leftmostSharedVertexConnection = null;
     Node next = outerNode;
     do {
@@ -419,14 +429,10 @@ public final class Tessellator {
         if (newSharedVertex != null) {
           // Check if this shared vertex is the leftmost point of the hole (holeNode)
           if (isVertexEquals(newSharedVertex, holeNode)) {
-            if (leftmostSharedVertex == null) {
-              leftmostSharedVertex = newSharedVertex;
+            if (leftmostSharedVertexConnection == null) {
               leftmostSharedVertexConnection = next;
-            } else if (newSharedVertex.equals(leftmostSharedVertex)) {
-              // Same vertex found again via different connection
-              leftmostSharedVertexConnection =
-                  getSharedInsideVertex(leftmostSharedVertex, leftmostSharedVertexConnection, next);
             }
+            // For leftmost, take first match only — don't use getSharedInsideVertex.
           }
           if (sharedVertex == null) {
             sharedVertex = newSharedVertex;
@@ -444,17 +450,23 @@ public final class Tessellator {
     // The leftmost vertex of the hole is a shared vertex. Prefer this connection point if it is
     // from a hole that was already merged (higher idx), as this maintains proper connectivity
     // for chained holes.
-    if (leftmostSharedVertex != null
-        && leftmostSharedVertexConnection.idx > sharedVertexConnection.idx) {
-      splitPolygon(leftmostSharedVertexConnection, leftmostSharedVertex, true);
-      return true;
+    if (leftmostSharedVertexConnection != null
+        && leftmostSharedVertexConnection.idx >= sharedVertexConnection.idx) {
+      splitPolygon(leftmostSharedVertexConnection, holeNode, true);
+      // When multiple copies of the shared vertex exist (from previous splitPolygon calls),
+      // return the bridge node so the caller updates outerNode to the bridge position.
+      // This ensures subsequent holes sharing the same vertex find the right copy.
+      if (leftmostSharedVertexConnection != sharedVertexConnection) {
+        return leftmostSharedVertexConnection;
+      }
+      return outerNode;
     }
     if (sharedVertex != null) {
       // Split the resulting polygon.
       splitPolygon(sharedVertexConnection, sharedVertex, true);
-      return true;
+      return outerNode;
     }
-    return false;
+    return null;
   }
 
   /** Check if the provided vertex is in the polygon and return it */

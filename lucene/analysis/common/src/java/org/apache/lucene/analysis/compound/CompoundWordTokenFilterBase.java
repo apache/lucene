@@ -17,7 +17,8 @@
 package org.apache.lucene.analysis.compound;
 
 import java.io.IOException;
-import java.util.LinkedList;
+import java.util.ArrayDeque;
+import java.util.Queue;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -37,7 +38,7 @@ public abstract class CompoundWordTokenFilterBase extends TokenFilter {
   public static final int DEFAULT_MAX_SUBWORD_SIZE = 15;
 
   protected final CharArraySet dictionary;
-  protected final LinkedList<CompoundToken> tokens;
+  protected final Queue<CompoundToken> tokens;
   protected final int minWordSize;
   protected final int minSubwordSize;
   protected final int maxSubwordSize;
@@ -79,7 +80,7 @@ public abstract class CompoundWordTokenFilterBase extends TokenFilter {
       int maxSubwordSize,
       boolean onlyLongestMatch) {
     super(input);
-    this.tokens = new LinkedList<>();
+    this.tokens = new ArrayDeque<>();
     if (minWordSize < 0) {
       throw new IllegalArgumentException("minWordSize cannot be negative");
     }
@@ -100,7 +101,7 @@ public abstract class CompoundWordTokenFilterBase extends TokenFilter {
   public final boolean incrementToken() throws IOException {
     if (!tokens.isEmpty()) {
       assert current != null;
-      CompoundToken token = tokens.removeFirst();
+      CompoundToken token = tokens.remove();
       restoreState(current); // keep all other attributes untouched
       termAtt.setEmpty().append(token.txt);
       offsetAtt.setOffset(token.startOffset, token.endOffset);
