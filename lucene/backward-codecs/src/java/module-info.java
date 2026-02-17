@@ -21,6 +21,7 @@ module org.apache.lucene.backward_codecs {
 
   exports org.apache.lucene.backward_codecs;
   exports org.apache.lucene.backward_codecs.compressing;
+  exports org.apache.lucene.backward_codecs.lucene80;
   exports org.apache.lucene.backward_codecs.lucene90;
   exports org.apache.lucene.backward_codecs.lucene90.blocktree;
   exports org.apache.lucene.backward_codecs.lucene91;
