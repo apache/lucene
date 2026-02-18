@@ -17,17 +17,15 @@
 
 package org.apache.lucene.search;
 
-import java.io.IOException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAccumulator;
 import java.util.function.IntUnaryOperator;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 
 /**
- * A {@link KnnCollector} that allows for collaborative search.
- * PRUNING BASED ON GLOBAL FLOOR vs LOCAL MAX.
+ * A {@link KnnCollector} that allows for collaborative search. PRUNING BASED ON GLOBAL FLOOR vs
+ * LOCAL MAX.
  */
 public class CollaborativeKnnCollector extends KnnCollector.Decorator {
 
@@ -45,21 +43,43 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
   private float lastSharedScore = Float.NEGATIVE_INFINITY;
 
   /** Convenience constructor for tests; globalHint and vectorValues are null. */
-  public CollaborativeKnnCollector(int k, int visitLimit, LongAccumulator minScoreAcc, int docBase) {
+  public CollaborativeKnnCollector(
+      int k, int visitLimit, LongAccumulator minScoreAcc, int docBase) {
     this(new TopKnnCollector(k, visitLimit), minScoreAcc, null, null, docBase, IDENTITY_MAPPER);
   }
 
   public CollaborativeKnnCollector(
-      int k, int visitLimit, LongAccumulator minScoreAcc,
-      AtomicReference<byte[]> globalHint, KnnVectorValues vectorValues, int docBase) {
-    this(new TopKnnCollector(k, visitLimit), minScoreAcc, globalHint, vectorValues, docBase, IDENTITY_MAPPER);
+      int k,
+      int visitLimit,
+      LongAccumulator minScoreAcc,
+      AtomicReference<byte[]> globalHint,
+      KnnVectorValues vectorValues,
+      int docBase) {
+    this(
+        new TopKnnCollector(k, visitLimit),
+        minScoreAcc,
+        globalHint,
+        vectorValues,
+        docBase,
+        IDENTITY_MAPPER);
   }
 
   public CollaborativeKnnCollector(
-      int k, int visitLimit, KnnSearchStrategy searchStrategy,
-      LongAccumulator minScoreAcc, AtomicReference<byte[]> globalHint,
-      KnnVectorValues vectorValues, int docBase, IntUnaryOperator docIdMapper) {
-    this(new TopKnnCollector(k, visitLimit, searchStrategy), minScoreAcc, globalHint, vectorValues, docBase, docIdMapper);
+      int k,
+      int visitLimit,
+      KnnSearchStrategy searchStrategy,
+      LongAccumulator minScoreAcc,
+      AtomicReference<byte[]> globalHint,
+      KnnVectorValues vectorValues,
+      int docBase,
+      IntUnaryOperator docIdMapper) {
+    this(
+        new TopKnnCollector(k, visitLimit, searchStrategy),
+        minScoreAcc,
+        globalHint,
+        vectorValues,
+        docBase,
+        docIdMapper);
   }
 
   private CollaborativeKnnCollector(
@@ -109,17 +129,22 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
 
     if (collected) {
       float floorScore = super.minCompetitiveSimilarity();
-      if (floorScore > Float.NEGATIVE_INFINITY
-          && floorScore > lastSharedScore + 0.0001f) {
+      if (floorScore > Float.NEGATIVE_INFINITY && floorScore > lastSharedScore + 0.0001f) {
 
         int absoluteDocId = docId + docBase;
-        minScoreAcc.accumulate(DocScoreEncoder.encode(docIdMapper.applyAsInt(absoluteDocId), floorScore));
+        minScoreAcc.accumulate(
+            DocScoreEncoder.encode(docIdMapper.applyAsInt(absoluteDocId), floorScore));
         lastSharedScore = floorScore;
       }
     }
     return collected;
   }
 
-  public static float toScore(long value) { return DocScoreEncoder.toScore(value); }
-  public static long encode(int docId, float score) { return DocScoreEncoder.encode(docId, score); }
+  public static float toScore(long value) {
+    return DocScoreEncoder.toScore(value);
+  }
+
+  public static long encode(int docId, float score) {
+    return DocScoreEncoder.encode(docId, score);
+  }
 }

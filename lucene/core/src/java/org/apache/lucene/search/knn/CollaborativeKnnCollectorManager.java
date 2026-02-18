@@ -48,18 +48,18 @@ public class CollaborativeKnnCollectorManager implements KnnCollectorManager {
     this(k, minScoreAcc, null, docId -> docId);
   }
 
-  /**
-   * Create a new CollaborativeKnnCollectorManager with a hint
-   */
-  public CollaborativeKnnCollectorManager(int k, LongAccumulator minScoreAcc, AtomicReference<byte[]> globalHint) {
+  /** Create a new CollaborativeKnnCollectorManager with a hint */
+  public CollaborativeKnnCollectorManager(
+      int k, LongAccumulator minScoreAcc, AtomicReference<byte[]> globalHint) {
     this(k, minScoreAcc, globalHint, docId -> docId);
   }
 
-  /**
-   * Create a new CollaborativeKnnCollectorManager with a docId mapper
-   */
+  /** Create a new CollaborativeKnnCollectorManager with a docId mapper */
   public CollaborativeKnnCollectorManager(
-      int k, LongAccumulator minScoreAcc, AtomicReference<byte[]> globalHint, IntUnaryOperator docIdMapper) {
+      int k,
+      LongAccumulator minScoreAcc,
+      AtomicReference<byte[]> globalHint,
+      IntUnaryOperator docIdMapper) {
     this.k = k;
     this.minScoreAcc = minScoreAcc;
     this.globalHint = globalHint;
@@ -74,6 +74,13 @@ public class CollaborativeKnnCollectorManager implements KnnCollectorManager {
     // We assume the field is named "vector" here
     var vectorValues = context.reader().getFloatVectorValues("vector");
     return new CollaborativeKnnCollector(
-        k, visitedLimit, searchStrategy, minScoreAcc, globalHint, vectorValues, context.docBase, docIdMapper);
+        k,
+        visitedLimit,
+        searchStrategy,
+        minScoreAcc,
+        globalHint,
+        vectorValues,
+        context.docBase,
+        docIdMapper);
   }
 }
