@@ -26,7 +26,7 @@ import static jdk.incubator.vector.VectorOperators.S2I;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2I;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_B2S;
 import static jdk.incubator.vector.VectorOperators.ZERO_EXTEND_S2I;
-import static org.apache.lucene.util.VectorUtil.EPSILON;
+import static org.apache.lucene.util.VectorUtil.isUnitVector;
 
 import java.lang.foreign.MemorySegment;
 import jdk.incubator.vector.ByteVector;
@@ -1402,19 +1402,19 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public float[] l2normalize(float[] v, boolean throwOnZero) {
-    double l1norm = this.dotProduct(v, v);
-    if (l1norm == 0) {
+    double squaredNorm = this.dotProduct(v, v);
+    if (squaredNorm == 0) {
       if (throwOnZero) {
         throw new IllegalArgumentException("Cannot normalize a zero-length vector");
       } else {
         return v;
       }
     }
-    if (Math.abs(l1norm - 1.0d) <= EPSILON) {
+    if (isUnitVector(squaredNorm)) {
       return v;
     }
 
-    float invNorm = 1.0f / (float) Math.sqrt(l1norm);
+    float invNorm = 1.0f / (float) Math.sqrt(squaredNorm);
     int i = 0;
 
     // if the array size is large (> 2x platform vector size), it's worth the overhead to vectorize
