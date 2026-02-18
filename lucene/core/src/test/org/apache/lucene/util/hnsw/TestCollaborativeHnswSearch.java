@@ -279,7 +279,8 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
         }
         shardReaders.add(DirectoryReader.open(dir));
         shardPools.add(
-            Executors.newFixedThreadPool(4, new NamedThreadFactory("shard-" + i))); // Each node has its own pool
+            Executors.newFixedThreadPool(
+                4, new NamedThreadFactory("shard-" + i))); // Each node has its own pool
       }
 
       float[] queryVec = randomVector(dim);
