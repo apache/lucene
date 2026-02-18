@@ -50,15 +50,15 @@ public class ToParentBlockJoinSortField extends SortField {
   private final boolean reverseChildren;
   private final BitSetProducer parentFilter;
   private final BitSetProducer childFilter;
+  private final Object childMissingValue;
 
   /**
    * Create ToParentBlockJoinSortField. The parent document ordering is based on child document
-   * ordering (reverse).
+   * ordering (reverse). Missing values are treated as the default for the type.
    *
    * @param field The sort field on the nested / child level.
    * @param type The sort type on the nested / child level.
-   * @param reverse Whether natural order should be reversed on both levels nested / child and
-   *     parent.
+   * @param reverse Whether natural order should be reversed on both child and parent levels.
    * @param parentFilter Filter that identifies the parent documents.
    * @param childFilter Filter that defines which child documents participates in sorting.
    */
@@ -68,30 +68,11 @@ public class ToParentBlockJoinSortField extends SortField {
       boolean reverse,
       BitSetProducer parentFilter,
       BitSetProducer childFilter) {
-    super(field, type, reverse);
-    switch (getType()) {
-      case STRING:
-      case DOUBLE:
-      case FLOAT:
-      case LONG:
-      case INT:
-        // ok
-        break;
-      case CUSTOM:
-      case DOC:
-      case REWRITEABLE:
-      case STRING_VAL:
-      case SCORE:
-      default:
-        throw new UnsupportedOperationException("Sort type " + type + " is not supported");
-    }
-    this.reverseChildren = reverse;
-    this.parentFilter = parentFilter;
-    this.childFilter = childFilter;
+    this(field, type, reverse, null, null, parentFilter, childFilter);
   }
 
   /**
-   * Create ToParentBlockJoinSortField.
+   * Create ToParentBlockJoinSortField. Missing values are treated as the default for the type.
    *
    * @param field The sort field on the nested / child level.
    * @param type The sort type on the nested / child level.
@@ -108,10 +89,144 @@ public class ToParentBlockJoinSortField extends SortField {
       boolean reverseChildren,
       BitSetProducer parentFilter,
       BitSetProducer childFilter) {
-    super(field, type, reverseParents);
+    this(field, type, reverseParents, reverseChildren, null, null, parentFilter, childFilter);
+  }
+
+  /**
+   * Create ToParentBlockJoinSortField. The parent document ordering is based on child document
+   * ordering (reverse).
+   *
+   * @param field The sort field on the nested / child level.
+   * @param type The sort type on the nested / child level.
+   * @param reverse Whether natural order should be reversed on both child and parent levels.
+   * @param parentMissingValue The missing value for parent documents whose children do not have a
+   *     value for the sort field. For Type.STRING use {@link SortField#STRING_FIRST} or {@link
+   *     SortField#STRING_LAST}. For numeric types use the corresponding boxed type (e.g. {@link
+   *     Integer} for Type.INT). Pass {@code null} for default behavior.
+   * @param childMissingValue The missing value for child documents that lack the sort field. This
+   *     value participates in the min/max selection among siblings. Type constraints are the same
+   *     as for {@code parentMissingValue}. Pass {@code null} to skip children without a value.
+   * @param parentFilter Filter that identifies the parent documents.
+   * @param childFilter Filter that defines which child documents participates in sorting.
+   */
+  public ToParentBlockJoinSortField(
+      String field,
+      Type type,
+      boolean reverse,
+      Object parentMissingValue,
+      Object childMissingValue,
+      BitSetProducer parentFilter,
+      BitSetProducer childFilter) {
+    super(field, type, reverse, parentMissingValue);
+    validateType(type);
+    validateMissingValue(type, childMissingValue);
+    this.reverseChildren = reverse;
+    this.parentFilter = parentFilter;
+    this.childFilter = childFilter;
+    this.childMissingValue = childMissingValue;
+  }
+
+  /**
+   * Create ToParentBlockJoinSortField.
+   *
+   * @param field The sort field on the nested / child level.
+   * @param type The sort type on the nested / child level.
+   * @param reverseParents Whether natural order should be reversed on the parent level.
+   * @param reverseChildren Whether natural order should be reversed on the nested / child document
+   *     level.
+   * @param parentMissingValue The missing value for parent documents whose children do not have a
+   *     value for the sort field. For Type.STRING use {@link SortField#STRING_FIRST} or {@link
+   *     SortField#STRING_LAST}. For numeric types use the corresponding boxed type (e.g. {@link
+   *     Integer} for Type.INT). Pass {@code null} for default behavior.
+   * @param childMissingValue The missing value for child documents that lack the sort field. This
+   *     value participates in the min/max selection among siblings. Type constraints are the same
+   *     as for {@code parentMissingValue}. Pass {@code null} to skip children without a value.
+   * @param parentFilter Filter that identifies the parent documents.
+   * @param childFilter Filter that defines which child documents participates in sorting.
+   */
+  public ToParentBlockJoinSortField(
+      String field,
+      Type type,
+      boolean reverseParents,
+      boolean reverseChildren,
+      Object parentMissingValue,
+      Object childMissingValue,
+      BitSetProducer parentFilter,
+      BitSetProducer childFilter) {
+    super(field, type, reverseParents, parentMissingValue);
+    validateType(type);
+    validateMissingValue(type, childMissingValue);
     this.reverseChildren = reverseChildren;
     this.parentFilter = parentFilter;
     this.childFilter = childFilter;
+    this.childMissingValue = childMissingValue;
+  }
+
+  /** Returns the missing value used for child documents that lack the sort field. */
+  public Object getChildMissingValue() {
+    return childMissingValue;
+  }
+
+  private static void validateType(Type type) {
+    switch (type) {
+      case STRING:
+      case DOUBLE:
+      case FLOAT:
+      case LONG:
+      case INT:
+        break;
+      case CUSTOM:
+      case DOC:
+      case REWRITEABLE:
+      case STRING_VAL:
+      case SCORE:
+      default:
+        throw new UnsupportedOperationException("Sort type " + type + " is not supported");
+    }
+  }
+
+  private static void validateMissingValue(Type type, Object missingValue) {
+    if (missingValue == null) {
+      return;
+    }
+    switch (type) {
+      case STRING:
+        if (missingValue != STRING_FIRST && missingValue != STRING_LAST) {
+          throw new IllegalArgumentException(
+              "For Type.STRING, missing value must be either STRING_FIRST or STRING_LAST");
+        }
+        break;
+      case INT:
+        if (!(missingValue instanceof Integer)) {
+          throw new IllegalArgumentException(
+              "Missing value for Type.INT must be an Integer, got "
+                  + missingValue.getClass().getName());
+        }
+        break;
+      case LONG:
+        if (!(missingValue instanceof Long)) {
+          throw new IllegalArgumentException(
+              "Missing value for Type.LONG must be a Long, got "
+                  + missingValue.getClass().getName());
+        }
+        break;
+      case FLOAT:
+        if (!(missingValue instanceof Float)) {
+          throw new IllegalArgumentException(
+              "Missing value for Type.FLOAT must be a Float, got "
+                  + missingValue.getClass().getName());
+        }
+        break;
+      case DOUBLE:
+        if (!(missingValue instanceof Double)) {
+          throw new IllegalArgumentException(
+              "Missing value for Type.DOUBLE must be a Double, got "
+                  + missingValue.getClass().getName());
+        }
+        break;
+      default:
+        throw new UnsupportedOperationException("Sort type " + type + " is not supported");
+    }
   }
 
   @Override
@@ -277,6 +392,7 @@ public class ToParentBlockJoinSortField extends SortField {
     result = prime * result + ((childFilter == null) ? 0 : childFilter.hashCode());
     result = prime * result + (reverseChildren ? 1231 : 1237);
     result = prime * result + ((parentFilter == null) ? 0 : parentFilter.hashCode());
+    result = prime * result + ((childMissingValue == null) ? 0 : childMissingValue.hashCode());
     return result;
   }
 
@@ -293,6 +409,9 @@ public class ToParentBlockJoinSortField extends SortField {
     if (parentFilter == null) {
       if (other.parentFilter != null) return false;
     } else if (!parentFilter.equals(other.parentFilter)) return false;
+    if (childMissingValue == null) {
+      if (other.childMissingValue != null) return false;
+    } else if (!childMissingValue.equals(other.childMissingValue)) return false;
     return true;
   }
 }
