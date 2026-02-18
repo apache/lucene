@@ -17,10 +17,8 @@
 
 package org.apache.lucene.search;
 
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAccumulator;
 import java.util.function.IntUnaryOperator;
-import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 
 /**
@@ -34,34 +32,20 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
   private static final float GLOBAL_BAR_TERMINATION_SLACK = 0.0001f;
 
   private final LongAccumulator minScoreAcc;
-  private final AtomicReference<byte[]> globalHint;
-  private final KnnVectorValues vectorValues;
   private final int docBase;
   private final IntUnaryOperator docIdMapper;
 
   private float localMaxScore = Float.NEGATIVE_INFINITY;
   private float lastSharedScore = Float.NEGATIVE_INFINITY;
 
-  /** Convenience constructor for tests; globalHint and vectorValues are null. */
-  public CollaborativeKnnCollector(
-      int k, int visitLimit, LongAccumulator minScoreAcc, int docBase) {
-    this(new TopKnnCollector(k, visitLimit), minScoreAcc, null, null, docBase, IDENTITY_MAPPER);
+  /** Convenience constructor for tests. */
+  public CollaborativeKnnCollector(int k, int visitLimit, LongAccumulator minScoreAcc, int docBase) {
+    this(new TopKnnCollector(k, visitLimit), minScoreAcc, docBase, IDENTITY_MAPPER);
   }
 
   public CollaborativeKnnCollector(
-      int k,
-      int visitLimit,
-      LongAccumulator minScoreAcc,
-      AtomicReference<byte[]> globalHint,
-      KnnVectorValues vectorValues,
-      int docBase) {
-    this(
-        new TopKnnCollector(k, visitLimit),
-        minScoreAcc,
-        globalHint,
-        vectorValues,
-        docBase,
-        IDENTITY_MAPPER);
+      int k, int visitLimit, LongAccumulator minScoreAcc, int docBase, IntUnaryOperator docIdMapper) {
+    this(new TopKnnCollector(k, visitLimit), minScoreAcc, docBase, docIdMapper);
   }
 
   public CollaborativeKnnCollector(
@@ -69,30 +53,18 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
       int visitLimit,
       KnnSearchStrategy searchStrategy,
       LongAccumulator minScoreAcc,
-      AtomicReference<byte[]> globalHint,
-      KnnVectorValues vectorValues,
       int docBase,
       IntUnaryOperator docIdMapper) {
-    this(
-        new TopKnnCollector(k, visitLimit, searchStrategy),
-        minScoreAcc,
-        globalHint,
-        vectorValues,
-        docBase,
-        docIdMapper);
+    this(new TopKnnCollector(k, visitLimit, searchStrategy), minScoreAcc, docBase, docIdMapper);
   }
 
   private CollaborativeKnnCollector(
       KnnCollector delegate,
       LongAccumulator minScoreAcc,
-      AtomicReference<byte[]> globalHint,
-      KnnVectorValues vectorValues,
       int docBase,
       IntUnaryOperator docIdMapper) {
     super(delegate);
     this.minScoreAcc = minScoreAcc;
-    this.globalHint = globalHint;
-    this.vectorValues = vectorValues;
     this.docBase = docBase;
     this.docIdMapper = docIdMapper;
   }
