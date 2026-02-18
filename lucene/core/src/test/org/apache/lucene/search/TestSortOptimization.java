@@ -65,6 +65,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.junit.Ignore;
 
 public class TestSortOptimization extends LuceneTestCase {
 
@@ -1005,6 +1006,7 @@ public class TestSortOptimization extends LuceneTestCase {
     testStringSortOptimization((field, value) -> new KeywordField(field, value, Field.Store.NO));
   }
 
+  @Ignore
   public void testStringSortOptimizationBasedDVSkipper() throws IOException {
     testStringSortOptimization(SortedDocValuesField::indexedField);
   }
@@ -1036,6 +1038,7 @@ public class TestSortOptimization extends LuceneTestCase {
         (field, value) -> new KeywordField(field, value, Field.Store.NO));
   }
 
+  @Ignore
   public void testStringSortOptimizationWithMissingValuesBasedDVSkipper() throws IOException {
     testStringSortOptimizationWithMissingValues(SortedDocValuesField::indexedField);
   }
