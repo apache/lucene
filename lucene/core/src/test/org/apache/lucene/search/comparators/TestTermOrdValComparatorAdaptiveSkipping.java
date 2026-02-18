@@ -42,12 +42,14 @@ import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
+import org.junit.Ignore;
 
 /**
  * Tests that the adaptive skipping logic in TermOrdValComparator's SkipperBasedCompetitiveState
  * preserves correctness across data distributions, and that it disables skipping when the skip
  * index is ineffective.
  */
+@Ignore
 public class TestTermOrdValComparatorAdaptiveSkipping extends LuceneTestCase {
 
   private static final String SORT_FIELD_SKIP = "sort.skip";

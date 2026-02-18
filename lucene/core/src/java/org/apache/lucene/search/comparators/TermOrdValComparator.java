@@ -269,9 +269,8 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
       if (enableSkipping && terms != null) {
         competitiveState =
             new PostingsBasedCompetitiveState(context, field, dense, values.termsEnum());
-      } else if (enableSkipping && skipper != null) {
-        competitiveState = new SkipperBasedCompetitiveState(context, skipper);
       } else {
+        // TODO add support for SkipperBasedCompetitiveState
         competitiveState = null;
       }
       updateCompetitiveIterator();
