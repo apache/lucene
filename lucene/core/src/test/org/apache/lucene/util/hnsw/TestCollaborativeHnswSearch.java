@@ -50,6 +50,7 @@ import org.apache.lucene.search.knn.CollaborativeKnnCollectorManager;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.NamedThreadFactory;
 import org.junit.Before;
 
 /** Tests collaborative HNSW search with dynamic threshold updates and recall validation */
@@ -277,7 +278,8 @@ public class TestCollaborativeHnswSearch extends HnswGraphTestCase<float[]> {
           writer.commit();
         }
         shardReaders.add(DirectoryReader.open(dir));
-        shardPools.add(Executors.newFixedThreadPool(4)); // Each node has its own pool
+        shardPools.add(
+            Executors.newFixedThreadPool(4, new NamedThreadFactory("shard-" + i))); // Each node has its own pool
       }
 
       float[] queryVec = randomVector(dim);
