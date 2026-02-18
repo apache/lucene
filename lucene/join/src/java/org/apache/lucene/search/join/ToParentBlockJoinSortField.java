@@ -47,7 +47,7 @@ import org.apache.lucene.util.NumericUtils;
  */
 public class ToParentBlockJoinSortField extends SortField {
 
-  private final boolean order;
+  private final boolean reverseChildren;
   private final BitSetProducer parentFilter;
   private final BitSetProducer childFilter;
 
@@ -57,7 +57,8 @@ public class ToParentBlockJoinSortField extends SortField {
    *
    * @param field The sort field on the nested / child level.
    * @param type The sort type on the nested / child level.
-   * @param reverse Whether natural order should be reversed on the nested / child level.
+   * @param reverse Whether natural order should be reversed on both levels nested / child and
+   *     parent.
    * @param parentFilter Filter that identifies the parent documents.
    * @param childFilter Filter that defines which child documents participates in sorting.
    */
@@ -84,7 +85,7 @@ public class ToParentBlockJoinSortField extends SortField {
       default:
         throw new UnsupportedOperationException("Sort type " + type + " is not supported");
     }
-    this.order = reverse;
+    this.reverseChildren = reverse;
     this.parentFilter = parentFilter;
     this.childFilter = childFilter;
   }
@@ -94,20 +95,21 @@ public class ToParentBlockJoinSortField extends SortField {
    *
    * @param field The sort field on the nested / child level.
    * @param type The sort type on the nested / child level.
-   * @param reverse Whether natural order should be reversed on the nested / child document level.
-   * @param order Whether natural order should be reversed on the parent level.
+   * @param reverseParents Whether natural order should be reversed on the parent level.
+   * @param reverseChildren Whether natural order should be reversed on the nested / child document
+   *     level.
    * @param parentFilter Filter that identifies the parent documents.
    * @param childFilter Filter that defines which child documents participates in sorting.
    */
   public ToParentBlockJoinSortField(
       String field,
       Type type,
-      boolean reverse,
-      boolean order,
+      boolean reverseParents,
+      boolean reverseChildren,
       BitSetProducer parentFilter,
       BitSetProducer childFilter) {
-    super(field, type, reverse);
-    this.order = order;
+    super(field, type, reverseParents);
+    this.reverseChildren = reverseChildren;
     this.parentFilter = parentFilter;
     this.childFilter = childFilter;
   }
@@ -143,7 +145,7 @@ public class ToParentBlockJoinSortField extends SortField {
           throws IOException {
         SortedSetDocValues sortedSet = DocValues.getSortedSet(context.reader(), field);
         final BlockJoinSelector.Type type =
-            order ? BlockJoinSelector.Type.MAX : BlockJoinSelector.Type.MIN;
+            reverseChildren ? BlockJoinSelector.Type.MAX : BlockJoinSelector.Type.MIN;
         final BitSet parents = parentFilter.getBitSet(context);
         final BitSet children = childFilter.getBitSet(context);
         if (children == null) {
@@ -166,7 +168,7 @@ public class ToParentBlockJoinSortField extends SortField {
             SortedNumericDocValues sortedNumeric =
                 DocValues.getSortedNumeric(context.reader(), field);
             final BlockJoinSelector.Type type =
-                order ? BlockJoinSelector.Type.MAX : BlockJoinSelector.Type.MIN;
+                reverseChildren ? BlockJoinSelector.Type.MAX : BlockJoinSelector.Type.MIN;
             final BitSet parents = parentFilter.getBitSet(context);
             final BitSet children = childFilter.getBitSet(context);
             if (children == null) {
@@ -191,7 +193,7 @@ public class ToParentBlockJoinSortField extends SortField {
             SortedNumericDocValues sortedNumeric =
                 DocValues.getSortedNumeric(context.reader(), field);
             final BlockJoinSelector.Type type =
-                order ? BlockJoinSelector.Type.MAX : BlockJoinSelector.Type.MIN;
+                reverseChildren ? BlockJoinSelector.Type.MAX : BlockJoinSelector.Type.MIN;
             final BitSet parents = parentFilter.getBitSet(context);
             final BitSet children = childFilter.getBitSet(context);
             if (children == null) {
@@ -216,7 +218,7 @@ public class ToParentBlockJoinSortField extends SortField {
             SortedNumericDocValues sortedNumeric =
                 DocValues.getSortedNumeric(context.reader(), field);
             final BlockJoinSelector.Type type =
-                order ? BlockJoinSelector.Type.MAX : BlockJoinSelector.Type.MIN;
+                reverseChildren ? BlockJoinSelector.Type.MAX : BlockJoinSelector.Type.MIN;
             final BitSet parents = parentFilter.getBitSet(context);
             final BitSet children = childFilter.getBitSet(context);
             if (children == null) {
@@ -248,7 +250,7 @@ public class ToParentBlockJoinSortField extends SortField {
             SortedNumericDocValues sortedNumeric =
                 DocValues.getSortedNumeric(context.reader(), field);
             final BlockJoinSelector.Type type =
-                order ? BlockJoinSelector.Type.MAX : BlockJoinSelector.Type.MIN;
+                reverseChildren ? BlockJoinSelector.Type.MAX : BlockJoinSelector.Type.MIN;
             final BitSet parents = parentFilter.getBitSet(context);
             final BitSet children = childFilter.getBitSet(context);
             if (children == null) {
@@ -273,7 +275,7 @@ public class ToParentBlockJoinSortField extends SortField {
     final int prime = 31;
     int result = super.hashCode();
     result = prime * result + ((childFilter == null) ? 0 : childFilter.hashCode());
-    result = prime * result + (order ? 1231 : 1237);
+    result = prime * result + (reverseChildren ? 1231 : 1237);
     result = prime * result + ((parentFilter == null) ? 0 : parentFilter.hashCode());
     return result;
   }
@@ -287,7 +289,7 @@ public class ToParentBlockJoinSortField extends SortField {
     if (childFilter == null) {
       if (other.childFilter != null) return false;
     } else if (!childFilter.equals(other.childFilter)) return false;
-    if (order != other.order) return false;
+    if (reverseChildren != other.reverseChildren) return false;
     if (parentFilter == null) {
       if (other.parentFilter != null) return false;
     } else if (!parentFilter.equals(other.parentFilter)) return false;
