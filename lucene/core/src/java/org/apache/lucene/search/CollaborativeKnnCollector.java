@@ -39,12 +39,17 @@ public class CollaborativeKnnCollector extends KnnCollector.Decorator {
   private float lastSharedScore = Float.NEGATIVE_INFINITY;
 
   /** Convenience constructor for tests. */
-  public CollaborativeKnnCollector(int k, int visitLimit, LongAccumulator minScoreAcc, int docBase) {
+  public CollaborativeKnnCollector(
+      int k, int visitLimit, LongAccumulator minScoreAcc, int docBase) {
     this(new TopKnnCollector(k, visitLimit), minScoreAcc, docBase, IDENTITY_MAPPER);
   }
 
   public CollaborativeKnnCollector(
-      int k, int visitLimit, LongAccumulator minScoreAcc, int docBase, IntUnaryOperator docIdMapper) {
+      int k,
+      int visitLimit,
+      LongAccumulator minScoreAcc,
+      int docBase,
+      IntUnaryOperator docIdMapper) {
     this(new TopKnnCollector(k, visitLimit), minScoreAcc, docBase, docIdMapper);
   }
 
