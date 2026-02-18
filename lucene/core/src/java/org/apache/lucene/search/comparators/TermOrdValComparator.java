@@ -405,7 +405,9 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     }
 
     @Override
-    public void setScorer(Scorable scorer) {}
+    public void setScorer(Scorable scorer) throws IOException {
+      updateCompetitiveIterator();
+    }
 
     private void updateCompetitiveIterator() throws IOException {
       if (competitiveState == null || hitsThresholdReached == false || bottomSlot == -1) {
