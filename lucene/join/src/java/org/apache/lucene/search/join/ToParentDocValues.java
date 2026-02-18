@@ -185,6 +185,7 @@ class ToParentDocValues extends DocIdSetIterator {
   private int docID = -1;
   private final Accumulator collector;
   boolean seen = false;
+  boolean hasMissing = false;
   private DocIdSetIterator childWithValues;
 
   @Override
@@ -210,6 +211,7 @@ class ToParentDocValues extends DocIdSetIterator {
     int nextParentDocID = parents.nextSetBit(childWithValues.docID());
     collector.reset();
     seen = true;
+    int childrenWithValuesCount = 1;
 
     while (true) {
       int childDocID = childWithValues.nextDoc();
@@ -218,9 +220,12 @@ class ToParentDocValues extends DocIdSetIterator {
         break;
       }
       collector.increment();
+      childrenWithValuesCount++;
     }
 
     docID = nextParentDocID;
+    int prevParentDocID = parents.prevSetBit(docID - 1);
+    hasMissing = childrenWithValuesCount < getTotalChildrenCount(prevParentDocID);
 
     return docID;
   }
@@ -258,11 +263,13 @@ class ToParentDocValues extends DocIdSetIterator {
     }
     docID = targetParentDocID;
     seen = false;
+    hasMissing = false;
     // ord = -1;
     if (parents.get(targetParentDocID) == false) {
       return false;
     }
     int prevParentDocId = docID == 0 ? -1 : parents.prevSetBit(docID - 1);
+    int totalChildren = getTotalChildrenCount(prevParentDocId);
     int childDoc = childWithValues.docID();
     if (childDoc <= prevParentDocId) {
       childDoc = childWithValues.advance(prevParentDocId + 1);
@@ -271,9 +278,11 @@ class ToParentDocValues extends DocIdSetIterator {
       return false;
     }
 
+    int childrenWithValuesCount = 0;
     if (childWithValues.docID() < docID) {
       collector.reset();
       seen = true;
+      childrenWithValuesCount = 1;
       childWithValues.nextDoc();
     }
 
@@ -283,8 +292,14 @@ class ToParentDocValues extends DocIdSetIterator {
 
     for (int doc = childWithValues.docID(); doc < docID; doc = childWithValues.nextDoc()) {
       collector.increment();
+      childrenWithValuesCount++;
     }
+    hasMissing = childrenWithValuesCount < totalChildren;
     return true;
+  }
+
+  private int getTotalChildrenCount(int prevParentDocID) {
+    return docID - prevParentDocID - 1;
   }
 
   @Override

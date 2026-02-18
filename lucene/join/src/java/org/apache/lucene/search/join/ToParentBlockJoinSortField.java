@@ -162,11 +162,6 @@ public class ToParentBlockJoinSortField extends SortField {
     this.childMissingValue = childMissingValue;
   }
 
-  /** Returns the missing value used for child documents that lack the sort field. */
-  public Object getChildMissingValue() {
-    return childMissingValue;
-  }
-
   private static void validateType(Type type) {
     switch (type) {
       case STRING:
