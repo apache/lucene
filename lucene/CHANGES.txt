@@ -110,7 +110,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
-* GITHUB#15548: Add separately configurable missing values to ToParentBlockJoinSortField for parent and children sorting;
+* GITHUB#15727: Add separately configurable missing values to ToParentBlockJoinSortField for parent and children sorting;
   and fix incorrect handling of children missing values. Children with missing values now correctly participate in the
   min/max selection according to the configured missing value. (Mary Gouseti)
 
