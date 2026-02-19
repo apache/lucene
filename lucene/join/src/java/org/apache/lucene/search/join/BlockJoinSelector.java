@@ -91,7 +91,7 @@ public class BlockJoinSelector {
   /**
    * Wraps the provided {@link SortedSetDocValues} in order to only select one value per parent
    * among its {@code children} using the configured {@code selection} type. When a parent has
-   * children * with missing values, we sort missing values according to {@code sortMissingLast}.
+   * children with missing values, we sort missing values according to {@code sortMissingLast}.
    */
   public static SortedDocValues wrap(
       SortedSetDocValues sortedSet,
@@ -136,33 +136,6 @@ public class BlockJoinSelector {
   /** creates an iterator for the given bitset */
   protected static BitSetIterator toIter(BitSet children) {
     return new BitSetIterator(children, 0);
-  }
-
-  /**
-   * Wraps the provided {@link SortedNumericDocValues} in order to only select one value per parent
-   * among its {@code children} using the configured {@code selection} type.
-   */
-  public static NumericDocValues wrap(
-      SortedNumericDocValues sortedNumerics,
-      Type selection,
-      BitSet parents,
-      DocIdSetIterator children) {
-    NumericDocValues values;
-    switch (selection) {
-      case MIN:
-        values =
-            SortedNumericSelector.wrap(
-                sortedNumerics, SortedNumericSelector.Type.MIN, SortField.Type.LONG);
-        break;
-      case MAX:
-        values =
-            SortedNumericSelector.wrap(
-                sortedNumerics, SortedNumericSelector.Type.MAX, SortField.Type.LONG);
-        break;
-      default:
-        throw new AssertionError();
-    }
-    return wrap(values, selection, parents, children);
   }
 
   /**

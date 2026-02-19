@@ -104,7 +104,7 @@ public class TestBlockJoinSelector extends LuceneTestCase {
     }
   }
 
-  static boolean advanceExact(DocIdSetIterator sdv, int target) throws IOException {
+  private static boolean advanceExact(DocIdSetIterator sdv, int target) throws IOException {
     return sdv instanceof SortedDocValues
         ? ((SortedDocValues) sdv).advanceExact(target)
         : ((NumericDocValues) sdv).advanceExact(target);
@@ -168,7 +168,7 @@ public class TestBlockJoinSelector extends LuceneTestCase {
     assertEquals(18, nextDoc(maxs, 18));
     assertNoMoreDoc(maxs, 20);
 
-    final SortedDocValues withMissingValues =
+    SortedDocValues withMissingValues =
         BlockJoinSelector.wrap(
             DocValues.singleton(new CannedSortedDocValues(ords)),
             BlockJoinSelector.Type.MAX,
@@ -176,9 +176,19 @@ public class TestBlockJoinSelector extends LuceneTestCase {
             toIter(children),
             false,
             false);
-    assertFalse(advanceExact(withMissingValues, 5));
-    assertFalse(advanceExact(withMissingValues, 15));
-    assertTrue(advanceExact(withMissingValues, 18));
+    assertFalse(withMissingValues.advanceExact(5));
+    assertFalse(withMissingValues.advanceExact(15));
+    assertTrue(withMissingValues.advanceExact(18));
+
+    withMissingValues =
+        BlockJoinSelector.wrap(
+            DocValues.singleton(new CannedSortedDocValues(ords)),
+            BlockJoinSelector.Type.MAX,
+            parents,
+            toIter(children),
+            false,
+            false);
+    assertEquals(18, withMissingValues.nextDoc());
   }
 
   private static class CannedSortedDocValues extends SortedDocValues {
@@ -284,7 +294,8 @@ public class TestBlockJoinSelector extends LuceneTestCase {
             DocValues.singleton(new CannedNumericDocValues(longs, docsWithValue)),
             BlockJoinSelector.Type.MIN,
             parents,
-            toIter(children));
+            toIter(children),
+            null);
     assertEquals(5, nextDoc(mins, 5));
     assertEquals(3, mins.longValue());
     assertEquals(15, nextDoc(mins, 15));
@@ -296,7 +307,8 @@ public class TestBlockJoinSelector extends LuceneTestCase {
             DocValues.singleton(new CannedNumericDocValues(longs, docsWithValue)),
             BlockJoinSelector.Type.MAX,
             parents,
-            toIter(children));
+            toIter(children),
+            null);
     assertEquals(5, nextDoc(maxs, 5));
     assertEquals(7, maxs.longValue());
     assertEquals(15, nextDoc(maxs, 15));

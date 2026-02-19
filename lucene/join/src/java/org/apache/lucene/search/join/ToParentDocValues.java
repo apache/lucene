@@ -39,8 +39,6 @@ class ToParentDocValues extends DocIdSetIterator {
     private final BlockJoinSelector.Type selection;
     private int ord = -1;
     private final ToParentDocValues iter;
-    // When true, it treats a parent with at least one child with missing value as missing
-    private final boolean missingWithChildWithoutValue;
 
     private SortedDVs(
         SortedDocValues values,
@@ -51,8 +49,8 @@ class ToParentDocValues extends DocIdSetIterator {
         boolean sortMissingLast) {
       this.values = values;
       this.selection = selection;
-      this.missingWithChildWithoutValue = reverse == sortMissingLast;
-      this.iter = new ToParentDocValues(values, parents, children, this);
+      this.iter =
+          new ToParentDocValues(values, parents, children, reverse == sortMissingLast, this);
     }
 
     @Override
@@ -88,7 +86,7 @@ class ToParentDocValues extends DocIdSetIterator {
 
     @Override
     public boolean advanceExact(int targetParentDocID) throws IOException {
-      return iter.advanceExact(targetParentDocID, missingWithChildWithoutValue);
+      return iter.advanceExact(targetParentDocID);
     }
 
     @Override
@@ -198,9 +196,19 @@ class ToParentDocValues extends DocIdSetIterator {
 
   private ToParentDocValues(
       DocIdSetIterator values, BitSet parents, DocIdSetIterator children, Accumulator collect) {
+    this(values, parents, children, false, collect);
+  }
+
+  private ToParentDocValues(
+      DocIdSetIterator values,
+      BitSet parents,
+      DocIdSetIterator children,
+      boolean missingWithChildWithoutValue,
+      Accumulator collect) {
     this.parents = parents;
     childWithValues = ConjunctionUtils.intersectIterators(Arrays.asList(children, values));
     this.collector = collect;
+    this.missingWithChildWithoutValue = missingWithChildWithoutValue;
   }
 
   private final BitSet parents;
@@ -209,6 +217,7 @@ class ToParentDocValues extends DocIdSetIterator {
   private final Accumulator collector;
   boolean seen = false;
   private final DocIdSetIterator childWithValues;
+  boolean missingWithChildWithoutValue;
 
   @Override
   public int docID() {
@@ -252,6 +261,9 @@ class ToParentDocValues extends DocIdSetIterator {
     docID = nextParentDocID;
     int prevParentDocID = parents.prevSetBit(docID - 1);
     hasChildWithMissingValue = childrenWithValuesCount < getTotalChildrenCount(prevParentDocID);
+    if (hasChildWithMissingValue && missingWithChildWithoutValue) {
+      docID = nextDoc();
+    }
 
     return docID;
   }
@@ -273,11 +285,6 @@ class ToParentDocValues extends DocIdSetIterator {
     return nextDoc();
   }
 
-  // @Override
-  public boolean advanceExact(int targetParentDocID) throws IOException {
-    return advanceExact(targetParentDocID, false);
-  }
-
   /**
    * Advance the iterator to exactly {@code targetParentDocID} and return whether it has a value
    * derived from its child documents. {@code targetParentDocID} must be greater than or equal to
@@ -290,15 +297,13 @@ class ToParentDocValues extends DocIdSetIterator {
    * parent is treated as missing and this method returns {@code false}.
    *
    * @param targetParentDocID the parent document ID to advance to
-   * @param missingWithChildWithoutValue if {@code true}, treat the parent as missing when any of
-   *     its children lack a value
    * @return {@code true} if the target parent document has a (selected) value, {@code false}
    *     otherwise
    * @throws IOException if an I/O error occurs
    * @throws IllegalArgumentException if {@code targetParentDocID} is less than the current doc ID
    */
-  boolean advanceExact(int targetParentDocID, boolean missingWithChildWithoutValue)
-      throws IOException {
+  // @Override
+  public boolean advanceExact(int targetParentDocID) throws IOException {
     if (targetParentDocID < docID) {
       throw new IllegalArgumentException(
           "target must be after the current document: current="

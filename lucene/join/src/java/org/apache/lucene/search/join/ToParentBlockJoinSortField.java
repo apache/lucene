@@ -53,8 +53,8 @@ public class ToParentBlockJoinSortField extends SortField {
   private final Object childMissingValue;
 
   /**
-   * Create ToParentBlockJoinSortField. The parent document ordering is based on child document
-   * ordering (reverse). Missing values are treated as the default for the type.
+   * Create ToParentBlockJoinSortField. The parent and child document ordering is based on the flag
+   * reverse. Missing values are treated as the default for the type.
    *
    * @param field The sort field on the nested / child level.
    * @param type The sort type on the nested / child level.
@@ -204,7 +204,7 @@ public class ToParentBlockJoinSortField extends SortField {
     if (!(clazz.isInstance(missingValue))) {
       throw new IllegalArgumentException(
           "Missing value for "
-              + type.getClass().getName()
+              + type.getDeclaringClass().getName()
               + " must be a "
               + clazz.getName()
               + ", got "
