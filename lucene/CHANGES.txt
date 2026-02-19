@@ -68,6 +68,8 @@ New Features
 
 * GITHUB#14178: Add a Faiss-based vector format in the sandbox module. (Kaival Parikh)
 
+* GITHUB#15508: Use native vectorization in Lucene. (Ankur Goel, Shubham Chaudhary, Dawid Weiss)
+
 Improvements
 ---------------------
 
@@ -88,6 +90,8 @@ Improvements
 * GITHUB#15124: Use RamUsageEstimator to calculate size for non-accountable queries. (Sagar Upadhyaya)
 
 * GITHUB#15453: Avoid unnecessary sorting and instantiations in readMapOfStrings. (Benjamin Lerer)
+
+* GITHUB#15225: Improve package documentation for org.apache.lucene.util. (Syed Mohammad Saad)
 
 Optimizations
 ---------------------
@@ -364,7 +368,8 @@ Optimizations
 
 * GITHUB#15498: ExitableDirectoryReader keeps singleton SortedSetDocValues or SortedNumericDocValues as singletons. (Houston Putman)
 
-* GITHUB#15511, GITHUB#15696: Dynamic pruning for SORTED(_SET) fields with doc values skipper (Pan Guixin, Alan Woodward)
+* GITHUB#15511, GITHUB#15696, GITHUB#15709: Dynamic pruning for SORTED(_SET) fields with doc
+  values skipper (Pan Guixin, Alan Woodward)
 
 * GITHUB#15560: Avoid unnecessary getGraph() call. (Shubham Chaudhary)
 
@@ -415,6 +420,9 @@ Bug Fixes
 
 * GITHUB#15553: Fix MergedByteVectorValues lastOrd behavior to enable partitioning of vector values
 (Finn Roblin, Dooyong Kim)
+
+* GITHUB#15695: Fix Tessellation error for holes that share the same leftmost vertex with an outer ring vertex
+  (Robert Burris)
 
 Other
 ---------------------

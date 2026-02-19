@@ -489,7 +489,7 @@ public class TestVectorUtil extends LuceneTestCase {
   static final VectorizationProvider defaultedProvider =
       BaseVectorizationTestCase.defaultProvider();
   static final VectorizationProvider defOrPanamaProvider =
-      BaseVectorizationTestCase.maybePanamaProvider();
+      BaseVectorizationTestCase.maybePanamaOrNativeProvider();
 
   public void testBasicInt4BitDotProduct() {
     testBasicInt4BitDotProductImpl(VectorUtil::int4BitDotProduct);
