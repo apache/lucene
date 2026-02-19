@@ -25,7 +25,8 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
-import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -72,7 +73,11 @@ public class TestSwappedIndexFiles extends LuceneTestCase {
       conf.getCodec().compoundFormat().setShouldUseCompoundFile(true);
     }
 
-    RandomIndexWriter w = new RandomIndexWriter(random, dir, conf);
+    // NOTE: Do not use RandomIndexWriter here.
+    // This test depends on identical file layout between directories.
+    // RandomIndexWriter may mutate IndexWriterConfig via
+    // maybeChangeLiveIndexWriterConfig(), making the test nondeterministic.
+    IndexWriter w = new IndexWriter(dir, conf);
     w.addDocument(doc);
     w.close();
   }
