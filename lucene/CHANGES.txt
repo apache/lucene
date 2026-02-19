@@ -13,6 +13,8 @@ API Changes
 * GITHUB#15636: Introduce TermsEnum.preferSeekExact(). Update and delete processing obey this setting,
   allowing bloom or other approximate membership filters to apply in these paths. (Trevor McCulloch)
 
+* GITHUB#15723: Add hook for LRUQueryCache to allow custom population strategies (Nhat Nguyen)
+
 New Features
 ---------------------
 (No changes)
