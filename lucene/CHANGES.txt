@@ -140,6 +140,8 @@ Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
 
+* GITHUB#15729: Lucene90DocValuesProducer is not prefetching any data for DocValueSkippers anymore (Alexander Reelsen)
+
 Build
 ---------------------
 * GITHUB#15327: New low-level build options to detect abuse of LuceneTestCase.random():
