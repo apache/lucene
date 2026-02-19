@@ -184,6 +184,9 @@ API Changes
 * GITHUB#15636: Introduce TermsEnum.preferSeekExact(). Update and delete processing obey this setting,
   allowing bloom or other approximate membership filters to apply in these paths. (Trevor McCulloch)
 
+* GITHUB#15614: Added optional query bit size hint plumbing to KnnSearchStrategy.Hnsw,
+  including passthrough in Patience/seeded strategy wrapping. (Arup Chauhan)
+
 New Features
 ---------------------
 (No changes)
@@ -479,9 +482,6 @@ API Changes
 * GITHUB#15011: LeafReader#searchNearestVectors now accepts an AcceptDocs
   instance instead of a Bits instance to identify document IDs to filter.
   (Shubham Chaudhary, Adrien Grand)
-
-* GITHUB#15614: Added optional query bit size hint plumbing to KnnSearchStrategy.Hnsw,
-    including passthrough in Patience/seeded strategy wrapping. (Arup Chauhan)
 
 New Features
 ---------------------
