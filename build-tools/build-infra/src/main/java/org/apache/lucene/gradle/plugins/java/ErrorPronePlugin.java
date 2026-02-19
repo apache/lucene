@@ -510,6 +510,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "InsecureCryptoUsage:OFF", // TODO: new, not checked if applicable to Lucene
     "InstanceOfAndCastMatchWrongType:WARN",
     "InstantTemporalUnit:OFF", // we don't use Instant apis with strange temporal units
+    "InterruptedInCatchBlock:OFF", // I don't see the point of this.
     "IntFloatConversion:ERROR",
     "IntLiteralCast:OFF", // TODO: there are problems
     "IntLongMath:OFF", // noisy
@@ -721,6 +722,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "RedundantOverride:OFF", // TODO: new, not checked if applicable to Lucene
     "RedundantSetterCall:OFF", // we don't use protobuf
     "RedundantThrows:OFF", // TODO: new, not checked if applicable to Lucene
+    "RefactorSwitch:OFF", // switch-style. TODO: perhaps worth reviewing.
     "ReferenceEquality:OFF", // noisy
     "RefersToDaggerCodegen:OFF", // TODO: new, not checked if applicable to Lucene
     "RemoveUnusedImports:OFF", // TODO: new, not checked if applicable to Lucene
@@ -848,6 +850,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "UnnecessaryStringBuilder:WARN",
     "UnnecessaryTestMethodPrefix:OFF", // stylistic
     "UnnecessaryTypeArgument:ERROR",
+    "UnnamedVariable:OFF", // ecj does it already.
     "UnrecognisedJavadocTag:WARN",
     "UnsafeFinalization:OFF", // we don't use finalizers, deprecated for removal, fails build
     "UnsafeLocaleUsage:OFF", // TODO: new, not checked if applicable to Lucene

@@ -11,7 +11,7 @@ commons-compress = "1.28.0"
 # See ecj-lint.gradle (used for more linting).
 ecj = "3.44.0"
 # java linting
-errorprone = "2.46.0"
+errorprone = "2.47.0"
 # markdown documentation generation
 flexmark = "0.64.8"
 # @keep This is GJF version for java source code formatting
@@ -57,7 +57,7 @@ spatial4j = "0.8"
 # benchmark/ XML parsing
 xerces = "2.12.2"
 # external datasets decompression
-zstd = "1.5.7-6"
+zstd = "1.5.7-7"
 
 [libraries]
 antlr-core = { module = "org.antlr:antlr4", version.ref = "antlr" }

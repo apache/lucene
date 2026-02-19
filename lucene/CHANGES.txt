@@ -94,6 +94,8 @@ Improvements
 
 * GITHUB#15453: Avoid unnecessary sorting and instantiations in readMapOfStrings. (Benjamin Lerer)
 
+* GITHUB#15225: Improve package documentation for org.apache.lucene.util. (Syed Mohammad Saad)
+
 Optimizations
 ---------------------
 * GITHUB#15681: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
@@ -188,6 +190,8 @@ API Changes
 
 * GITHUB#15636: Introduce TermsEnum.preferSeekExact(). Update and delete processing obey this setting,
   allowing bloom or other approximate membership filters to apply in these paths. (Trevor McCulloch)
+
+* GITHUB#15723: Add hook for LRUQueryCache to allow custom population strategies (Nhat Nguyen)
 
 New Features
 ---------------------
