@@ -104,7 +104,7 @@ public class TestBlockJoinSelector extends LuceneTestCase {
     }
   }
 
-  private static boolean advanceExact(DocIdSetIterator sdv, int target) throws IOException {
+  static boolean advanceExact(DocIdSetIterator sdv, int target) throws IOException {
     return sdv instanceof SortedDocValues
         ? ((SortedDocValues) sdv).advanceExact(target)
         : ((NumericDocValues) sdv).advanceExact(target);
@@ -117,13 +117,14 @@ public class TestBlockJoinSelector extends LuceneTestCase {
     parents.set(6);
     parents.set(10);
     parents.set(15);
-    parents.set(19);
+    parents.set(18);
 
     final BitSet children = new FixedBitSet(20);
     children.set(2);
     children.set(3);
     children.set(4);
     children.set(12);
+    children.set(16);
     children.set(17);
 
     final int[] ords = new int[20];
@@ -132,18 +133,24 @@ public class TestBlockJoinSelector extends LuceneTestCase {
     ords[3] = 7;
     ords[4] = 3;
     ords[12] = 10;
-    ords[18] = 10;
+    ords[16] = 9;
+    ords[17] = 10;
+    ords[18] = 11;
+    ords[19] = 12;
 
     final SortedDocValues mins =
         BlockJoinSelector.wrap(
             DocValues.singleton(new CannedSortedDocValues(ords)),
             BlockJoinSelector.Type.MIN,
             parents,
-            toIter(children));
+            toIter(children),
+            false,
+            true);
     assertEquals(5, nextDoc(mins, 5));
     assertEquals(3, mins.ordValue());
     assertEquals(15, nextDoc(mins, 15));
     assertEquals(10, mins.ordValue());
+    assertEquals(18, nextDoc(mins, 18));
     assertNoMoreDoc(mins, 20);
 
     final SortedDocValues maxs =
@@ -151,12 +158,27 @@ public class TestBlockJoinSelector extends LuceneTestCase {
             DocValues.singleton(new CannedSortedDocValues(ords)),
             BlockJoinSelector.Type.MAX,
             parents,
-            toIter(children));
+            toIter(children),
+            true,
+            false);
     assertEquals(5, nextDoc(maxs, 5));
     assertEquals(7, maxs.ordValue());
     assertEquals(15, nextDoc(maxs, 15));
     assertEquals(10, maxs.ordValue());
+    assertEquals(18, nextDoc(maxs, 18));
     assertNoMoreDoc(maxs, 20);
+
+    final SortedDocValues withMissingValues =
+        BlockJoinSelector.wrap(
+            DocValues.singleton(new CannedSortedDocValues(ords)),
+            BlockJoinSelector.Type.MAX,
+            parents,
+            toIter(children),
+            false,
+            false);
+    assertFalse(advanceExact(withMissingValues, 5));
+    assertFalse(advanceExact(withMissingValues, 15));
+    assertTrue(advanceExact(withMissingValues, 18));
   }
 
   private static class CannedSortedDocValues extends SortedDocValues {

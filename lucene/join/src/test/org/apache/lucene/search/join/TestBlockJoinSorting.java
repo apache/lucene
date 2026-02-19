@@ -336,7 +336,7 @@ public class TestBlockJoinSorting extends LuceneTestCase {
             dir,
             newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(newLogMergePolicy()));
 
-    // Parent A (doc 2): children with sort_val 20 and 40 → MIN=20, MAX=40
+    // Parent A (doc 2): children with values
     List<Document> docs = new ArrayList<>();
     Document document = new Document();
     document.add(new StringField("child", "true", Field.Store.NO));
@@ -352,7 +352,7 @@ public class TestBlockJoinSorting extends LuceneTestCase {
     w.addDocuments(docs);
     w.commit();
 
-    // Parent B (doc 5): children with sort_val 10 and 30 → MIN=10, MAX=30
+    // Parent B (doc 5): children with values
     docs.clear();
     document = new Document();
     document.add(new StringField("child", "true", Field.Store.NO));
@@ -367,7 +367,7 @@ public class TestBlockJoinSorting extends LuceneTestCase {
     docs.add(document);
     w.addDocuments(docs);
 
-    // Parent C (doc 8): children without sort_val → parentMissingValue applies
+    // Parent C (doc 8): children without values
     docs.clear();
     document = new Document();
     document.add(new StringField("child", "true", Field.Store.NO));
@@ -391,7 +391,7 @@ public class TestBlockJoinSorting extends LuceneTestCase {
         new ToParentBlockJoinQuery(
             new TermQuery(new Term("child", "true")), parentFilter, ScoreMode.None);
 
-    // parentMissing=5, reverse=false (MIN, ascending): C(5), B(10), A(20)
+    // Sort by ascending, with smaller missing value
     ToParentBlockJoinSortField sortField =
         new ToParentBlockJoinSortField(
             "sort_val", SortField.Type.INT, false, 5, null, parentFilter, childFilter);
@@ -405,7 +405,7 @@ public class TestBlockJoinSorting extends LuceneTestCase {
     assertEquals(2, topDocs.scoreDocs[2].doc);
     assertEquals(20, (int) ((FieldDoc) topDocs.scoreDocs[2]).fields[0]);
 
-    // parentMissing=5, reverse=true (MAX, descending): A(40), B(30), C(5)
+    // Sort by descending, with smaller missing value
     sortField =
         new ToParentBlockJoinSortField(
             "sort_val", SortField.Type.INT, true, 5, null, parentFilter, childFilter);
@@ -419,7 +419,7 @@ public class TestBlockJoinSorting extends LuceneTestCase {
     assertEquals(8, topDocs.scoreDocs[2].doc);
     assertEquals(5, (int) ((FieldDoc) topDocs.scoreDocs[2]).fields[0]);
 
-    // parentMissing=100, reverse=false (MIN, ascending): B(10), A(20), C(100)
+    // Sort by ascending, with greater missing value
     sortField =
         new ToParentBlockJoinSortField(
             "sort_val", SortField.Type.INT, false, 100, null, parentFilter, childFilter);
@@ -433,7 +433,7 @@ public class TestBlockJoinSorting extends LuceneTestCase {
     assertEquals(8, topDocs.scoreDocs[2].doc);
     assertEquals(100, (int) ((FieldDoc) topDocs.scoreDocs[2]).fields[0]);
 
-    // parentMissing=100, reverse=true (MAX, descending): C(100), A(40), B(30)
+    // Sort descending with greater missing value
     sortField =
         new ToParentBlockJoinSortField(
             "sort_val", SortField.Type.INT, true, 100, null, parentFilter, childFilter);
@@ -460,11 +460,12 @@ public class TestBlockJoinSorting extends LuceneTestCase {
             dir,
             newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(newLogMergePolicy()));
 
-    // Parent A (doc 2): one child with sort_val=30, one child without sort_val
+    // Parent A (doc 2): one child with value, one child without
     List<Document> docs = new ArrayList<>();
     Document document = new Document();
     document.add(new StringField("child", "true", Field.Store.NO));
-    document.add(new NumericDocValuesField("sort_val", 30));
+    document.add(new NumericDocValuesField("sort_numeric_val", 30));
+    document.add(new SortedDocValuesField("sort_string_val", new BytesRef("30")));
     docs.add(document);
     document = new Document();
     document.add(new StringField("child", "true", Field.Store.NO));
@@ -475,15 +476,17 @@ public class TestBlockJoinSorting extends LuceneTestCase {
     w.addDocuments(docs);
     w.commit();
 
-    // Parent B (doc 5): children with sort_val=20 and sort_val=40
+    // Parent B (doc 5): all children with values
     docs.clear();
     document = new Document();
     document.add(new StringField("child", "true", Field.Store.NO));
-    document.add(new NumericDocValuesField("sort_val", 20));
+    document.add(new NumericDocValuesField("sort_numeric_val", 20));
+    document.add(new SortedDocValuesField("sort_string_val", new BytesRef("20")));
     docs.add(document);
     document = new Document();
     document.add(new StringField("child", "true", Field.Store.NO));
-    document.add(new NumericDocValuesField("sort_val", 40));
+    document.add(new NumericDocValuesField("sort_numeric_val", 40));
+    document.add(new SortedDocValuesField("sort_string_val", new BytesRef("40")));
     docs.add(document);
     document = new Document();
     document.add(new StringField("__type", "parent", Field.Store.NO));
@@ -501,11 +504,10 @@ public class TestBlockJoinSorting extends LuceneTestCase {
         new ToParentBlockJoinQuery(
             new TermQuery(new Term("child", "true")), parentFilter, ScoreMode.None);
 
-    // childMissing=5, reverse=false (MIN, ascending):
-    //   A=MIN(30, 5)=5, B=MIN(20, 40)=20 → [A(5), B(20)]
+    // Sort by ascending with a smaller missing value
     ToParentBlockJoinSortField sortField =
         new ToParentBlockJoinSortField(
-            "sort_val", SortField.Type.INT, false, null, 5, parentFilter, childFilter);
+            "sort_numeric_val", SortField.Type.INT, false, null, 5, parentFilter, childFilter);
     TopFieldDocs topDocs = searcher.search(query, 10, new Sort(sortField));
     assertEquals(2, topDocs.totalHits.value());
     assertEquals(2, topDocs.scoreDocs.length);
@@ -514,11 +516,10 @@ public class TestBlockJoinSorting extends LuceneTestCase {
     assertEquals(5, topDocs.scoreDocs[1].doc);
     assertEquals(20, (int) ((FieldDoc) topDocs.scoreDocs[1]).fields[0]);
 
-    // childMissing=5, reverse=true (MAX, descending):
-    //   A=MAX(30, 5)=30, B=MAX(20, 40)=40 → [B(40), A(30)]
+    // Sort by descending with a smaller missing value
     sortField =
         new ToParentBlockJoinSortField(
-            "sort_val", SortField.Type.INT, true, null, 5, parentFilter, childFilter);
+            "sort_numeric_val", SortField.Type.INT, true, null, 5, parentFilter, childFilter);
     topDocs = searcher.search(query, 10, new Sort(sortField));
     assertEquals(2, topDocs.totalHits.value());
     assertEquals(2, topDocs.scoreDocs.length);
@@ -527,11 +528,10 @@ public class TestBlockJoinSorting extends LuceneTestCase {
     assertEquals(2, topDocs.scoreDocs[1].doc);
     assertEquals(30, (int) ((FieldDoc) topDocs.scoreDocs[1]).fields[0]);
 
-    // childMissing=50, reverse=false (MIN, ascending):
-    //   A=MIN(30, 50)=30, B=MIN(20, 40)=20 → [B(20), A(30)]
+    // Sort by ascending with a greater missing value
     sortField =
         new ToParentBlockJoinSortField(
-            "sort_val", SortField.Type.INT, false, null, 50, parentFilter, childFilter);
+            "sort_numeric_val", SortField.Type.INT, false, null, 50, parentFilter, childFilter);
     topDocs = searcher.search(query, 10, new Sort(sortField));
     assertEquals(2, topDocs.totalHits.value());
     assertEquals(2, topDocs.scoreDocs.length);
@@ -540,11 +540,10 @@ public class TestBlockJoinSorting extends LuceneTestCase {
     assertEquals(2, topDocs.scoreDocs[1].doc);
     assertEquals(30, (int) ((FieldDoc) topDocs.scoreDocs[1]).fields[0]);
 
-    // childMissing=50, reverse=true (MAX, descending):
-    //   A=MAX(30, 50)=50, B=MAX(20, 40)=40 → [A(50), B(40)]
+    // Sort by descending with a greater missing value
     sortField =
         new ToParentBlockJoinSortField(
-            "sort_val", SortField.Type.INT, true, null, 50, parentFilter, childFilter);
+            "sort_numeric_val", SortField.Type.INT, true, null, 50, parentFilter, childFilter);
     topDocs = searcher.search(query, 10, new Sort(sortField));
     assertEquals(2, topDocs.totalHits.value());
     assertEquals(2, topDocs.scoreDocs.length);
@@ -552,6 +551,55 @@ public class TestBlockJoinSorting extends LuceneTestCase {
     assertEquals(50, (int) ((FieldDoc) topDocs.scoreDocs[0]).fields[0]);
     assertEquals(5, topDocs.scoreDocs[1].doc);
     assertEquals(40, (int) ((FieldDoc) topDocs.scoreDocs[1]).fields[0]);
+
+    // Sort by ascending with missing values first
+    sortField =
+        new ToParentBlockJoinSortField(
+            "sort_string_val", SortField.Type.STRING, false, null, null, parentFilter, childFilter);
+    topDocs = searcher.search(query, 10, new Sort(sortField));
+    assertEquals(2, topDocs.totalHits.value());
+    assertEquals(2, topDocs.scoreDocs.length);
+    assertEquals(2, topDocs.scoreDocs[0].doc);
+    assertNull(((FieldDoc) topDocs.scoreDocs[0]).fields[0]);
+    assertEquals(5, topDocs.scoreDocs[1].doc);
+    assertEquals("20", ((BytesRef) ((FieldDoc) topDocs.scoreDocs[1]).fields[0]).utf8ToString());
+
+    // Sort by descending with missing values last in child level and last in
+    sortField =
+        new ToParentBlockJoinSortField(
+            "sort_string_val",
+            SortField.Type.STRING,
+            false,
+            null,
+            SortField.STRING_LAST,
+            parentFilter,
+            childFilter);
+    topDocs = searcher.search(query, 10, new Sort(sortField));
+    assertEquals(2, topDocs.totalHits.value());
+    assertEquals(2, topDocs.scoreDocs.length);
+    assertEquals(5, topDocs.scoreDocs[0].doc);
+    assertEquals("20", ((BytesRef) ((FieldDoc) topDocs.scoreDocs[0]).fields[0]).utf8ToString());
+    assertEquals(2, topDocs.scoreDocs[1].doc);
+    assertEquals("30", ((BytesRef) ((FieldDoc) topDocs.scoreDocs[1]).fields[0]).utf8ToString());
+
+    // Sort by ascending with missing values first in child level and reverse order in parent
+    sortField =
+        new ToParentBlockJoinSortField(
+            "sort_string_val",
+            SortField.Type.STRING,
+            true,
+            false,
+            null,
+            SortField.STRING_FIRST,
+            parentFilter,
+            childFilter);
+    topDocs = searcher.search(query, 10, new Sort(sortField));
+    assertEquals(2, topDocs.totalHits.value());
+    assertEquals(2, topDocs.scoreDocs.length);
+    assertEquals(5, topDocs.scoreDocs[0].doc);
+    assertEquals("20", ((BytesRef) ((FieldDoc) topDocs.scoreDocs[0]).fields[0]).utf8ToString());
+    assertEquals(2, topDocs.scoreDocs[1].doc);
+    assertNull(((FieldDoc) topDocs.scoreDocs[1]).fields[0]);
 
     searcher.getIndexReader().close();
     dir.close();

@@ -99,10 +99,10 @@ public class ToParentBlockJoinSortField extends SortField {
    * @param field The sort field on the nested / child level.
    * @param type The sort type on the nested / child level.
    * @param reverse Whether natural order should be reversed on both child and parent levels.
-   * @param parentMissingValue The missing value for parent documents whose children do not have a
-   *     value for the sort field. For Type.STRING use {@link SortField#STRING_FIRST} or {@link
-   *     SortField#STRING_LAST}. For numeric types use the corresponding boxed type (e.g. {@link
-   *     Integer} for Type.INT). Pass {@code null} for default behavior.
+   * @param parentMissingValue The missing value for parent documents that have no child documents.
+   *     For Type.STRING use {@link SortField#STRING_FIRST} or {@link SortField#STRING_LAST}. For
+   *     numeric types use the corresponding boxed type (e.g. {@link Integer} for Type.INT). Pass
+   *     {@code null} for default behavior.
    * @param childMissingValue The missing value for child documents that lack the sort field. This
    *     value participates in the min/max selection among siblings. Type constraints are the same
    *     as for {@code parentMissingValue}. Pass {@code null} to skip children without a value.
@@ -117,13 +117,15 @@ public class ToParentBlockJoinSortField extends SortField {
       Object childMissingValue,
       BitSetProducer parentFilter,
       BitSetProducer childFilter) {
-    super(field, type, reverse, parentMissingValue);
-    validateType(type);
-    validateMissingValue(type, childMissingValue);
-    this.reverseChildren = reverse;
-    this.parentFilter = parentFilter;
-    this.childFilter = childFilter;
-    this.childMissingValue = childMissingValue;
+    this(
+        field,
+        type,
+        reverse,
+        reverse,
+        parentMissingValue,
+        childMissingValue,
+        parentFilter,
+        childFilter);
   }
 
   /**
@@ -154,21 +156,29 @@ public class ToParentBlockJoinSortField extends SortField {
       BitSetProducer parentFilter,
       BitSetProducer childFilter) {
     super(field, type, reverseParents, parentMissingValue);
-    validateType(type);
-    validateMissingValue(type, childMissingValue);
+    validate(type, childMissingValue);
     this.reverseChildren = reverseChildren;
     this.parentFilter = parentFilter;
     this.childFilter = childFilter;
     this.childMissingValue = childMissingValue;
   }
 
-  private static void validateType(Type type) {
+  private static void validate(Type type, Object childMissingValue) {
     switch (type) {
       case STRING:
+        validateMissingValue(type, String.class, childMissingValue);
+        break;
       case DOUBLE:
+        validateMissingValue(type, Double.class, childMissingValue);
+        break;
       case FLOAT:
+        validateMissingValue(type, Float.class, childMissingValue);
+        break;
       case LONG:
+        validateMissingValue(type, Long.class, childMissingValue);
+        break;
       case INT:
+        validateMissingValue(type, Integer.class, childMissingValue);
         break;
       case CUSTOM:
       case DOC:
@@ -180,47 +190,25 @@ public class ToParentBlockJoinSortField extends SortField {
     }
   }
 
-  private static void validateMissingValue(Type type, Object missingValue) {
+  private static <T> void validateMissingValue(Type type, Class<T> clazz, Object missingValue) {
     if (missingValue == null) {
       return;
     }
-    switch (type) {
-      case STRING:
-        if (missingValue != STRING_FIRST && missingValue != STRING_LAST) {
-          throw new IllegalArgumentException(
-              "For Type.STRING, missing value must be either STRING_FIRST or STRING_LAST");
-        }
-        break;
-      case INT:
-        if (!(missingValue instanceof Integer)) {
-          throw new IllegalArgumentException(
-              "Missing value for Type.INT must be an Integer, got "
-                  + missingValue.getClass().getName());
-        }
-        break;
-      case LONG:
-        if (!(missingValue instanceof Long)) {
-          throw new IllegalArgumentException(
-              "Missing value for Type.LONG must be a Long, got "
-                  + missingValue.getClass().getName());
-        }
-        break;
-      case FLOAT:
-        if (!(missingValue instanceof Float)) {
-          throw new IllegalArgumentException(
-              "Missing value for Type.FLOAT must be a Float, got "
-                  + missingValue.getClass().getName());
-        }
-        break;
-      case DOUBLE:
-        if (!(missingValue instanceof Double)) {
-          throw new IllegalArgumentException(
-              "Missing value for Type.DOUBLE must be a Double, got "
-                  + missingValue.getClass().getName());
-        }
-        break;
-      default:
-        throw new UnsupportedOperationException("Sort type " + type + " is not supported");
+    if (type == Type.STRING) {
+      if (missingValue != STRING_FIRST && missingValue != STRING_LAST) {
+        throw new IllegalArgumentException(
+            "For Type.STRING, missing value must be either STRING_FIRST or STRING_LAST");
+      }
+      return;
+    }
+    if (!(clazz.isInstance(missingValue))) {
+      throw new IllegalArgumentException(
+          "Missing value for "
+              + type.getClass().getName()
+              + " must be a "
+              + clazz.getName()
+              + ", got "
+              + missingValue.getClass().getName());
     }
   }
 
@@ -261,7 +249,13 @@ public class ToParentBlockJoinSortField extends SortField {
         if (children == null) {
           return DocValues.emptySorted();
         }
-        return BlockJoinSelector.wrap(sortedSet, type, parents, toIter(children));
+        return BlockJoinSelector.wrap(
+            sortedSet,
+            type,
+            parents,
+            toIter(children),
+            reverseChildren,
+            childMissingValue == STRING_LAST);
       }
     };
   }
@@ -284,7 +278,12 @@ public class ToParentBlockJoinSortField extends SortField {
             if (children == null) {
               return DocValues.emptyNumeric();
             }
-            return BlockJoinSelector.wrap(sortedNumeric, type, parents, toIter(children));
+            return BlockJoinSelector.wrap(
+                sortedNumeric,
+                type,
+                parents,
+                toIter(children),
+                childMissingValue == null ? null : Long.valueOf((Integer) childMissingValue));
           }
         };
       }
@@ -309,7 +308,8 @@ public class ToParentBlockJoinSortField extends SortField {
             if (children == null) {
               return DocValues.emptyNumeric();
             }
-            return BlockJoinSelector.wrap(sortedNumeric, type, parents, toIter(children));
+            return BlockJoinSelector.wrap(
+                sortedNumeric, type, parents, toIter(children), (Long) childMissingValue);
           }
         };
       }
@@ -335,7 +335,14 @@ public class ToParentBlockJoinSortField extends SortField {
               return DocValues.emptyNumeric();
             }
             return new FilterNumericDocValues(
-                BlockJoinSelector.wrap(sortedNumeric, type, parents, toIter(children))) {
+                BlockJoinSelector.wrap(
+                    sortedNumeric,
+                    type,
+                    parents,
+                    toIter(children),
+                    childMissingValue == null
+                        ? null
+                        : (long) NumericUtils.floatToSortableInt((Float) childMissingValue))) {
               @Override
               public long longValue() throws IOException {
                 // undo the numericutils sortability
@@ -367,7 +374,14 @@ public class ToParentBlockJoinSortField extends SortField {
               return DocValues.emptyNumeric();
             }
             return new FilterNumericDocValues(
-                BlockJoinSelector.wrap(sortedNumeric, type, parents, toIter(children))) {
+                BlockJoinSelector.wrap(
+                    sortedNumeric,
+                    type,
+                    parents,
+                    toIter(children),
+                    childMissingValue == null
+                        ? null
+                        : NumericUtils.doubleToSortableLong((Double) childMissingValue))) {
               @Override
               public long longValue() throws IOException {
                 // undo the numericutils sortability

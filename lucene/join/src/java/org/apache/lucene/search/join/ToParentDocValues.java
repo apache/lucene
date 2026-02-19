@@ -39,14 +39,19 @@ class ToParentDocValues extends DocIdSetIterator {
     private final BlockJoinSelector.Type selection;
     private int ord = -1;
     private final ToParentDocValues iter;
+    // When true, it treats a parent with at least one child with missing value as missing
+    private final boolean missingWithChildWithoutValue;
 
     private SortedDVs(
         SortedDocValues values,
         BlockJoinSelector.Type selection,
         BitSet parents,
-        DocIdSetIterator children) {
+        DocIdSetIterator children,
+        boolean reverse,
+        boolean sortMissingLast) {
       this.values = values;
       this.selection = selection;
+      this.missingWithChildWithoutValue = reverse == sortMissingLast;
       this.iter = new ToParentDocValues(values, parents, children, this);
     }
 
@@ -83,7 +88,7 @@ class ToParentDocValues extends DocIdSetIterator {
 
     @Override
     public boolean advanceExact(int targetParentDocID) throws IOException {
-      return iter.advanceExact(targetParentDocID);
+      return iter.advanceExact(targetParentDocID, missingWithChildWithoutValue);
     }
 
     @Override
@@ -111,6 +116,7 @@ class ToParentDocValues extends DocIdSetIterator {
     private final NumericDocValues values;
     private long value;
     private final BlockJoinSelector.Type selection;
+    private final Long missingValue;
 
     private final ToParentDocValues iter;
 
@@ -119,8 +125,18 @@ class ToParentDocValues extends DocIdSetIterator {
         BlockJoinSelector.Type selection,
         BitSet parents,
         DocIdSetIterator children) {
+      this(values, selection, parents, children, null);
+    }
+
+    private NumDV(
+        NumericDocValues values,
+        BlockJoinSelector.Type selection,
+        BitSet parents,
+        DocIdSetIterator children,
+        Long missingValue) {
       this.values = values;
       this.selection = selection;
+      this.missingValue = missingValue;
       iter = new ToParentDocValues(values, parents, children, this);
     }
 
@@ -160,6 +176,12 @@ class ToParentDocValues extends DocIdSetIterator {
 
     @Override
     public long longValue() {
+      if (missingValue != null && iter.hasChildWithMissingValue()) {
+        return switch (selection) {
+          case MIN -> Math.min(value, missingValue);
+          case MAX -> Math.max(value, missingValue);
+        };
+      }
       return value;
     }
 
@@ -183,14 +205,18 @@ class ToParentDocValues extends DocIdSetIterator {
 
   private final BitSet parents;
   private int docID = -1;
+  private boolean hasChildWithMissingValue = false;
   private final Accumulator collector;
   boolean seen = false;
-  boolean hasMissing = false;
-  private DocIdSetIterator childWithValues;
+  private final DocIdSetIterator childWithValues;
 
   @Override
   public int docID() {
     return docID;
+  }
+
+  boolean hasChildWithMissingValue() {
+    return hasChildWithMissingValue;
   }
 
   @Override
@@ -225,7 +251,7 @@ class ToParentDocValues extends DocIdSetIterator {
 
     docID = nextParentDocID;
     int prevParentDocID = parents.prevSetBit(docID - 1);
-    hasMissing = childrenWithValuesCount < getTotalChildrenCount(prevParentDocID);
+    hasChildWithMissingValue = childrenWithValuesCount < getTotalChildrenCount(prevParentDocID);
 
     return docID;
   }
@@ -249,6 +275,30 @@ class ToParentDocValues extends DocIdSetIterator {
 
   // @Override
   public boolean advanceExact(int targetParentDocID) throws IOException {
+    return advanceExact(targetParentDocID, false);
+  }
+
+  /**
+   * Advance the iterator to exactly {@code targetParentDocID} and return whether it has a value
+   * derived from its child documents. {@code targetParentDocID} must be greater than or equal to
+   * the current {@link #docID() doc ID}. After this method returns, {@link #docID()} returns {@code
+   * targetParentDocID}.
+   *
+   * <p>A parent document is considered to have a value when at least one of its child documents has
+   * a value. When {@code missingWithChildWithoutValue} is {@code true}, the parent is additionally
+   * required to have <em>all</em> its children carry a value; if any child is missing a value the
+   * parent is treated as missing and this method returns {@code false}.
+   *
+   * @param targetParentDocID the parent document ID to advance to
+   * @param missingWithChildWithoutValue if {@code true}, treat the parent as missing when any of
+   *     its children lack a value
+   * @return {@code true} if the target parent document has a (selected) value, {@code false}
+   *     otherwise
+   * @throws IOException if an I/O error occurs
+   * @throws IllegalArgumentException if {@code targetParentDocID} is less than the current doc ID
+   */
+  boolean advanceExact(int targetParentDocID, boolean missingWithChildWithoutValue)
+      throws IOException {
     if (targetParentDocID < docID) {
       throw new IllegalArgumentException(
           "target must be after the current document: current="
@@ -261,9 +311,8 @@ class ToParentDocValues extends DocIdSetIterator {
     if (targetParentDocID == previousDocId) {
       return seen; // ord != -1; rlly???
     }
-    docID = targetParentDocID;
     seen = false;
-    hasMissing = false;
+    hasChildWithMissingValue = false;
     // ord = -1;
     if (parents.get(targetParentDocID) == false) {
       return false;
@@ -294,7 +343,10 @@ class ToParentDocValues extends DocIdSetIterator {
       collector.increment();
       childrenWithValuesCount++;
     }
-    hasMissing = childrenWithValuesCount < totalChildren;
+    hasChildWithMissingValue = childrenWithValuesCount < totalChildren;
+    if (hasChildWithMissingValue && missingWithChildWithoutValue) {
+      return false;
+    }
     return true;
   }
 
@@ -312,8 +364,23 @@ class ToParentDocValues extends DocIdSetIterator {
     return new ToParentDocValues.NumDV(values, selection, parents2, children);
   }
 
+  static NumericDocValues wrap(
+      NumericDocValues values,
+      Type selection,
+      BitSet parents,
+      DocIdSetIterator children,
+      Long missingValue) {
+    return new ToParentDocValues.NumDV(values, selection, parents, children, missingValue);
+  }
+
   static SortedDocValues wrap(
-      SortedDocValues values, Type selection, BitSet parents2, DocIdSetIterator children) {
-    return new ToParentDocValues.SortedDVs(values, selection, parents2, children);
+      SortedDocValues values,
+      Type selection,
+      BitSet parents,
+      DocIdSetIterator children,
+      boolean reverse,
+      boolean sortMissingLast) {
+    return new ToParentDocValues.SortedDVs(
+        values, selection, parents, children, reverse, sortMissingLast);
   }
 }
