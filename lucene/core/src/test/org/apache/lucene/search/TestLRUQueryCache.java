@@ -1608,6 +1608,10 @@ public class TestLRUQueryCache extends LuceneTestCase {
     dir.close();
   }
 
+  /**
+   * Tests that we can override {@link LRUQueryCache#tryPopulateCache} to skip caching when multiple
+   * threads concurrently attempt to cache the same segment for the same query.
+   */
   public void testSkipCacheIfOngoing() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig();
