@@ -1686,7 +1686,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
 
     CountDownLatch latch = new CountDownLatch(numThreads);
     LRUQueryCache cache =
-        new LRUQueryCache(2, 10000, _ -> true, Float.POSITIVE_INFINITY) {
+        new LRUQueryCache(2, 10000, unused -> true, Float.POSITIVE_INFINITY) {
           final AtomicBoolean populated = new AtomicBoolean(false);
 
           @Override
