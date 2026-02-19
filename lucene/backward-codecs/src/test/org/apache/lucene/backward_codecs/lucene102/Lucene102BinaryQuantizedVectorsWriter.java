@@ -60,9 +60,11 @@ import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
+import org.apache.lucene.util.quantization.QuantizedVectorsWriter;
 
 /** Copied from Lucene, replace with Lucene's implementation sometime after Lucene 10 */
-class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
+class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter
+    implements QuantizedVectorsWriter {
   private static final long SHALLOW_RAM_BYTES_USED =
       shallowSizeOfInstance(Lucene102BinaryQuantizedVectorsWriter.class);
 
@@ -309,13 +311,14 @@ class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   @Override
-  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+  public void mergeOneFlatVectorField(FieldInfo fieldInfo, MergeState mergeState)
+      throws IOException {
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
       final float[] centroid;
       final float[] mergedCentroid = new float[fieldInfo.getVectorDimension()];
       int vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
       // Don't need access to the random vectors, we can just use the merged
-      rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
+      rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, mergeState);
       centroid = mergedCentroid;
       if (segmentWriteState.infoStream.isEnabled(BINARIZED_VECTOR_COMPONENT)) {
         segmentWriteState.infoStream.message(
@@ -346,7 +349,7 @@ class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           centroidDp,
           docsWithField);
     } else {
-      rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
+      rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, mergeState);
     }
   }
 
@@ -417,23 +420,21 @@ class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   @Override
   public CloseableRandomVectorScorerSupplier mergeOneFieldToIndex(
       FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
-      final float[] centroid;
-      final float cDotC;
-      final float[] mergedCentroid = new float[fieldInfo.getVectorDimension()];
-      int vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
+    assert fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32);
+    final float[] centroid;
+    final float cDotC;
+    final float[] mergedCentroid = new float[fieldInfo.getVectorDimension()];
+    int vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
 
-      // Don't need access to the random vectors, we can just use the merged
-      rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
-      centroid = mergedCentroid;
-      cDotC = vectorCount > 0 ? VectorUtil.dotProduct(centroid, centroid) : 0;
-      if (segmentWriteState.infoStream.isEnabled(BINARIZED_VECTOR_COMPONENT)) {
-        segmentWriteState.infoStream.message(
-            BINARIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
-      }
-      return mergeOneFieldToIndex(segmentWriteState, fieldInfo, mergeState, centroid, cDotC);
+    // Don't need access to the random vectors, we can just use the merged
+    rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
+    centroid = mergedCentroid;
+    cDotC = vectorCount > 0 ? VectorUtil.dotProduct(centroid, centroid) : 0;
+    if (segmentWriteState.infoStream.isEnabled(BINARIZED_VECTOR_COMPONENT)) {
+      segmentWriteState.infoStream.message(
+          BINARIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
     }
-    return rawVectorDelegate.mergeOneFieldToIndex(fieldInfo, mergeState);
+    return mergeOneFieldToIndex(segmentWriteState, fieldInfo, mergeState, centroid, cDotC);
   }
 
   private CloseableRandomVectorScorerSupplier mergeOneFieldToIndex(

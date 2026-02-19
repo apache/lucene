@@ -54,7 +54,11 @@ public class Lucene102BinaryFlatVectorsScorer implements FlatVectorsScorer {
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
       throws IOException {
-    throw new UnsupportedOperationException("Old codecs may only be used for reading");
+    if (vectorValues instanceof BinarizedByteVectorValues) {
+      throw new UnsupportedOperationException(
+          "getRandomVectorScorerSupplier(VectorSimilarityFunction,RandomAccessVectorValues) not implemented for binarized format");
+    }
+    return nonQuantizedDelegate.getRandomVectorScorerSupplier(similarityFunction, vectorValues);
   }
 
   @Override

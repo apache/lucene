@@ -63,6 +63,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
+import org.apache.lucene.util.quantization.QuantizedVectorsWriter;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
@@ -70,7 +71,8 @@ import org.apache.lucene.util.quantization.ScalarQuantizer;
  *
  * @lucene.experimental
  */
-public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
+public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWriter
+    implements QuantizedVectorsWriter {
 
   private static final long SHALLOW_RAM_BYTES_USED =
       shallowSizeOfInstance(Lucene99ScalarQuantizedVectorsWriter.class);
@@ -218,8 +220,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   }
 
   @Override
-  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
+  public void mergeOneFlatVectorField(FieldInfo fieldInfo, MergeState mergeState)
+      throws IOException {
+    rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, mergeState);
     // Since we know we will not be searching for additional indexing, we can just write the
     // vectors directly to the new segment.
     // No need to use temporary file as we don't have to re-open for reading
@@ -250,18 +253,13 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   @Override
   public CloseableRandomVectorScorerSupplier mergeOneFieldToIndex(
       FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
-      // Simply merge the underlying delegate, which just copies the raw vector data to a new
-      // segment file
-      rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
-      ScalarQuantizer mergedQuantizationState =
-          mergeAndRecalculateQuantiles(mergeState, fieldInfo, confidenceInterval, bits);
-      return mergeOneFieldToIndex(
-          segmentWriteState, fieldInfo, mergeState, mergedQuantizationState);
-    }
-    // We only merge the delegate, since the field type isn't float32, quantization wasn't
-    // supported, so bypass it.
-    return rawVectorDelegate.mergeOneFieldToIndex(fieldInfo, mergeState);
+    assert fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32);
+    // Simply merge the underlying delegate, which just copies the raw vector data to a new
+    // segment file
+    rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
+    ScalarQuantizer mergedQuantizationState =
+        mergeAndRecalculateQuantiles(mergeState, fieldInfo, confidenceInterval, bits);
+    return mergeOneFieldToIndex(segmentWriteState, fieldInfo, mergeState, mergedQuantizationState);
   }
 
   @Override

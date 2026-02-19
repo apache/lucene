@@ -301,6 +301,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
         state,
         maxConn,
         beamWidth,
+        flatVectorsFormat,
         flatVectorsFormat.fieldsWriter(state),
         numMergeWorkers,
         mergeExec,

@@ -54,6 +54,13 @@ public class Lucene102RWHnswBinaryQuantizedVectorsFormat
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene99HnswVectorsWriter(
-        state, maxConn, beamWidth, writeFormat.fieldsWriter(state), numMergeWorkers, mergeExec, 0);
+        state,
+        maxConn,
+        beamWidth,
+        writeFormat,
+        writeFormat.fieldsWriter(state),
+        numMergeWorkers,
+        mergeExec,
+        0);
   }
 }

@@ -59,13 +59,15 @@ import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
+import org.apache.lucene.util.quantization.QuantizedVectorsWriter;
 
 /**
  * Writes quantized vector values and metadata to index segments in the format for Lucene 10.4.
  *
  * @lucene.experimental
  */
-public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
+public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter
+    implements QuantizedVectorsWriter {
   private static final long SHALLOW_RAM_BYTES_USED =
       shallowSizeOfInstance(Lucene104ScalarQuantizedVectorsWriter.class);
 
@@ -327,9 +329,10 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   @Override
-  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+  public void mergeOneFlatVectorField(FieldInfo fieldInfo, MergeState mergeState)
+      throws IOException {
     if (!fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
-      rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
+      rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, mergeState);
       return;
     }
 
@@ -337,7 +340,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     final float[] mergedCentroid = new float[fieldInfo.getVectorDimension()];
     int vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
     // Don't need access to the random vectors, we can just use the merged
-    rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
+    rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, mergeState);
     centroid = mergedCentroid;
     if (segmentWriteState.infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
       segmentWriteState.infoStream.message(
@@ -443,9 +446,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   @Override
   public CloseableRandomVectorScorerSupplier mergeOneFieldToIndex(
       FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    if (!fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
-      return rawVectorDelegate.mergeOneFieldToIndex(fieldInfo, mergeState);
-    }
+    assert fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32);
 
     final float[] centroid;
     final float cDotC;
