@@ -199,6 +199,7 @@ Improvements
 Optimizations
 ---------------------
 * GITHUB#15637: Lazily allocate ByteArrayDataInputs in SegmentTermsEnumFrame#15637 (Misha Dmitriev)
+
 * GITHUB#15718 Skip per-document stored field reads on sorted indices when no stored fields are present (Francisco Fernández Castaño)
 
 Bug Fixes
