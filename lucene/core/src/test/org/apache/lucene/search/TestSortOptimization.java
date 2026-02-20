@@ -1071,6 +1071,72 @@ public class TestSortOptimization extends LuceneTestCase {
     dir.close();
   }
 
+  public void testStringSortOptimizationFieldMissingInSegmentBasedPostings() throws IOException {
+    testStringSortOptimizationFieldMissingInSegment(
+        (field, value) -> new KeywordField(field, value, Field.Store.NO));
+  }
+
+  public void testStringSortOptimizationFieldMissingInSegmentBasedDVSkipper() throws IOException {
+    testStringSortOptimizationFieldMissingInSegment(SortedDocValuesField::indexedField);
+  }
+
+  /**
+   * Test that when a segment doesn't contain the sort field at all (fieldInfo == null), the
+   * optimization still works. All docs in such a segment have missing values, and when missing
+   * values are non-competitive the entire segment should be skippable.
+   */
+  private void testStringSortOptimizationFieldMissingInSegment(
+      BiFunction<String, BytesRef, IndexableField> fieldsBuilder) throws IOException {
+    final Directory dir = newDirectory();
+    final IndexWriter writer =
+        new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+
+    // First segment: a small number of docs with the keyword field, enough to fill the top-N queue.
+    final int docsWithField = 20;
+    for (int i = 0; i < docsWithField; i++) {
+      final Document doc = new Document();
+      doc.add(fieldsBuilder.apply("my_field", new BytesRef(String.format("%05d", i))));
+      writer.addDocument(doc);
+    }
+    writer.flush();
+
+    // Second segment: many docs WITHOUT the keyword field. The field doesn't exist in this
+    // segment's FieldInfos at all, so every doc has a missing value for the sort field.
+    final int docsWithoutField = atLeast(10000);
+    for (int i = 0; i < docsWithoutField; i++) {
+      writer.addDocument(new Document());
+    }
+
+    final DirectoryReader reader = DirectoryReader.open(writer);
+    writer.close();
+
+    final int numDocs = docsWithField + docsWithoutField;
+    final int numHits = 5;
+
+    { // ascending sort with missing-last: once the queue fills from the first segment,
+      // all docs in the second segment have non-competitive missing values and should be skipped
+      SortField sortField =
+          KeywordField.newSortField(
+              "my_field", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
+      Sort sort = new Sort(sortField);
+      TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+    }
+
+    { // descending sort with missing-first: once the queue fills from the first segment,
+      // all docs in the second segment have non-competitive missing values and should be skipped
+      SortField sortField =
+          KeywordField.newSortField(
+              "my_field", true, SortedSetSelector.Type.MIN, SortField.STRING_FIRST);
+      Sort sort = new Sort(sortField);
+      TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
   private void doTestStringSortOptimization(DirectoryReader reader) throws IOException {
     final int numDocs = reader.numDocs();
     final int numHits = 5;
