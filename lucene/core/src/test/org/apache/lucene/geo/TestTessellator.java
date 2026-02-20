@@ -938,13 +938,19 @@ public class TestTessellator extends LuceneTestCase {
   public void testComplexPolygon62() throws Exception {
     String geoJson = GeoTestUtil.readShape("github-15657.geojson.gz");
     Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
-    checkMultiPolygon(polygons, 1e-11);
+    checkMultiPolygon(polygons, 0.0);
   }
 
   public void testComplexPolygon63() throws Exception {
     String geoJson = GeoTestUtil.readShape("github-15695.geojson.gz");
     Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
-    checkMultiPolygon(polygons, 1e-11);
+    checkMultiPolygon(polygons, 0.0);
+  }
+
+  public void testComplexPolygon64() throws Exception {
+    String geoJson = GeoTestUtil.readShape("github-15731.geojson.gz");
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    checkMultiPolygon(polygons, 0.0);
   }
 
   private static class TestCountingMonitor implements Tessellator.Monitor {
