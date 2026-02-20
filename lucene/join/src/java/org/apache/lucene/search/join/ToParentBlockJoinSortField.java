@@ -170,6 +170,7 @@ public class ToParentBlockJoinSortField extends SortField {
       case FLOAT -> validateMissingValue(type, Float.class, childMissingValue);
       case LONG -> validateMissingValue(type, Long.class, childMissingValue);
       case INT -> validateMissingValue(type, Integer.class, childMissingValue);
+      // $CASES-OMITTED$
       default -> throw new UnsupportedOperationException("Sort type " + type + " is not supported");
     }
   }
@@ -204,6 +205,7 @@ public class ToParentBlockJoinSortField extends SortField {
       case FLOAT -> getFloatComparator(numHits);
       case LONG -> getLongComparator(numHits);
       case INT -> getIntComparator(numHits);
+      // $CASES-OMITTED$
       default ->
           throw new UnsupportedOperationException("Sort type " + getType() + " is not supported");
     };
