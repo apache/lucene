@@ -267,6 +267,8 @@ API Changes
 
 * GITHUB#15502: Add `count()` method to `FilterWeight`  (Prudhvi Godithi)
 
+* GITHUB#15751: Prevent zero vectors in knn fields with cosine similarity configured (Vigya Sharma)
+
 New Features
 ---------------------
 * GITHUB#15328: VectorSimilarityFunction.getValues() now implements doubleVal allowing its
