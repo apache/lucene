@@ -165,28 +165,12 @@ public class ToParentBlockJoinSortField extends SortField {
 
   private static void validate(Type type, Object childMissingValue) {
     switch (type) {
-      case STRING:
-        validateMissingValue(type, String.class, childMissingValue);
-        break;
-      case DOUBLE:
-        validateMissingValue(type, Double.class, childMissingValue);
-        break;
-      case FLOAT:
-        validateMissingValue(type, Float.class, childMissingValue);
-        break;
-      case LONG:
-        validateMissingValue(type, Long.class, childMissingValue);
-        break;
-      case INT:
-        validateMissingValue(type, Integer.class, childMissingValue);
-        break;
-      case CUSTOM:
-      case DOC:
-      case REWRITEABLE:
-      case STRING_VAL:
-      case SCORE:
-      default:
-        throw new UnsupportedOperationException("Sort type " + type + " is not supported");
+      case STRING -> validateMissingValue(type, String.class, childMissingValue);
+      case DOUBLE -> validateMissingValue(type, Double.class, childMissingValue);
+      case FLOAT -> validateMissingValue(type, Float.class, childMissingValue);
+      case LONG -> validateMissingValue(type, Long.class, childMissingValue);
+      case INT -> validateMissingValue(type, Integer.class, childMissingValue);
+      default -> throw new UnsupportedOperationException("Sort type " + type + " is not supported");
     }
   }
 
@@ -214,25 +198,15 @@ public class ToParentBlockJoinSortField extends SortField {
 
   @Override
   public FieldComparator<?> getComparator(int numHits, Pruning pruning) {
-    switch (getType()) {
-      case STRING:
-        return getStringComparator(numHits);
-      case DOUBLE:
-        return getDoubleComparator(numHits);
-      case FLOAT:
-        return getFloatComparator(numHits);
-      case LONG:
-        return getLongComparator(numHits);
-      case INT:
-        return getIntComparator(numHits);
-      case CUSTOM:
-      case DOC:
-      case REWRITEABLE:
-      case STRING_VAL:
-      case SCORE:
-      default:
-        throw new UnsupportedOperationException("Sort type " + getType() + " is not supported");
-    }
+    return switch (getType()) {
+      case STRING -> getStringComparator(numHits);
+      case DOUBLE -> getDoubleComparator(numHits);
+      case FLOAT -> getFloatComparator(numHits);
+      case LONG -> getLongComparator(numHits);
+      case INT -> getIntComparator(numHits);
+      default ->
+          throw new UnsupportedOperationException("Sort type " + getType() + " is not supported");
+    };
   }
 
   private FieldComparator<?> getStringComparator(int numHits) {
