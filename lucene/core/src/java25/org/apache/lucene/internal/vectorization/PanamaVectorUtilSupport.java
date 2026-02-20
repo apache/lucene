@@ -610,11 +610,10 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
             prod8a.convertShape(ZERO_EXTEND_B2S, Int4Constants.SHORT_SPECIES, 0);
         acc1 = acc1.add(prod16a);
       }
-      Vector<Integer> intAcc0 = acc0.convert(S2I, 0);
-      Vector<Integer> intAcc1 = acc0.convert(S2I, 1);
-      Vector<Integer> intAcc2 = acc1.convert(S2I, 0);
-      Vector<Integer> intAcc3 = acc1.convert(S2I, 1);
-      sum += intAcc0.add(intAcc1).add(intAcc2).add(intAcc3).reinterpretAsInts().reduceLanes(ADD);
+      ShortVector accShort = acc0.add(acc1);
+      Vector<Integer> intAcc0 = accShort.convert(ZERO_EXTEND_S2I, 0);
+      Vector<Integer> intAcc1 = accShort.convert(ZERO_EXTEND_S2I, 1);
+      sum += intAcc0.add(intAcc1).reinterpretAsInts().reduceLanes(ADD);
     }
     return sum;
   }
@@ -1020,11 +1019,10 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
         Vector<Short> diff16a = diff8a.convertShape(B2S, Int4Constants.SHORT_SPECIES, 0);
         acc1 = acc1.add(diff16a.mul(diff16a));
       }
-      Vector<Integer> intAcc0 = acc0.convert(S2I, 0);
-      Vector<Integer> intAcc1 = acc0.convert(S2I, 1);
-      Vector<Integer> intAcc2 = acc1.convert(S2I, 0);
-      Vector<Integer> intAcc3 = acc1.convert(S2I, 1);
-      sum += intAcc0.add(intAcc1).add(intAcc2).add(intAcc3).reinterpretAsInts().reduceLanes(ADD);
+      ShortVector accShort = acc0.add(acc1);
+      Vector<Integer> intAcc0 = accShort.convert(ZERO_EXTEND_S2I, 0);
+      Vector<Integer> intAcc1 = accShort.convert(ZERO_EXTEND_S2I, 1);
+      sum += intAcc0.add(intAcc1).reinterpretAsInts().reduceLanes(ADD);
     }
     return sum;
   }
