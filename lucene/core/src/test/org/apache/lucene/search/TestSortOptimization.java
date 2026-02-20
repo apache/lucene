@@ -1095,7 +1095,7 @@ public class TestSortOptimization extends LuceneTestCase {
     final int docsWithField = 20;
     for (int i = 0; i < docsWithField; i++) {
       final Document doc = new Document();
-      doc.add(fieldsBuilder.apply("my_field", new BytesRef(String.format("%05d", i))));
+      doc.add(fieldsBuilder.apply("my_field", new BytesRef(Integer.toString(i))));
       writer.addDocument(doc);
     }
     writer.flush();
@@ -1123,6 +1123,20 @@ public class TestSortOptimization extends LuceneTestCase {
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
     }
 
+    { // descending sort with missing-last
+      SortField sortField =
+          KeywordField.newSortField(
+              "my_field", true, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
+      Sort sort = new Sort(sortField);
+      TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
+
+      sortField.setOptimizeSortWithIndexedData(false);
+      sort = new Sort(sortField);
+      TopDocs unpruned = assertSearchHits(reader, sort, numHits, null);
+
+      CheckHits.checkEqual(MatchAllDocsQuery.INSTANCE, topDocs.scoreDocs, unpruned.scoreDocs);
+    }
+
     { // descending sort with missing-first: once the queue fills from the first segment,
       // all docs in the second segment have non-competitive missing values and should be skipped
       SortField sortField =
@@ -1131,6 +1145,20 @@ public class TestSortOptimization extends LuceneTestCase {
       Sort sort = new Sort(sortField);
       TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
       assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+    }
+
+    { // ascending sort with missing-first
+      SortField sortField =
+          KeywordField.newSortField(
+              "my_field", false, SortedSetSelector.Type.MIN, SortField.STRING_FIRST);
+      Sort sort = new Sort(sortField);
+      TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
+
+      sortField.setOptimizeSortWithIndexedData(false);
+      sort = new Sort(sortField);
+      TopDocs unpruned = assertSearchHits(reader, sort, numHits, null);
+
+      CheckHits.checkEqual(MatchAllDocsQuery.INSTANCE, topDocs.scoreDocs, unpruned.scoreDocs);
     }
 
     reader.close();
