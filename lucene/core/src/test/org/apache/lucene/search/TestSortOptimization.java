@@ -49,6 +49,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
@@ -1088,8 +1089,9 @@ public class TestSortOptimization extends LuceneTestCase {
   private void testStringSortOptimizationFieldMissingInSegment(
       BiFunction<String, BytesRef, IndexableField> fieldsBuilder) throws IOException {
     final Directory dir = newDirectory();
+    // Use NoMergePolicy to ensure we have deterministic segment geometry
     final IndexWriter writer =
-        new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+        new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE));
 
     // First segment: a small number of docs with the keyword field, enough to fill the top-N queue.
     final int docsWithField = 20;
