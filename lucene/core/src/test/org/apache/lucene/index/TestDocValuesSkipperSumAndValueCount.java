@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.index;
 
-import java.io.IOException;
 import java.math.BigInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -234,8 +233,7 @@ public class TestDocValuesSkipperSumAndValueCount extends LuceneTestCase {
         expectedSum,
         globalSum);
 
-    assertTrue(
-        "sumHigh should be negative for large negative sums", skipper.sumHigh() < 0);
+    assertTrue("sumHigh should be negative for large negative sums", skipper.sumHigh() < 0);
 
     reader.close();
     writer.close();
@@ -375,8 +373,7 @@ public class TestDocValuesSkipperSumAndValueCount extends LuceneTestCase {
     long intervalValueCountTotal = 0;
     skipper.advance(0);
     while (skipper.minDocID(0) != DocIdSetIterator.NO_MORE_DOCS) {
-      intervalSumTotal =
-          intervalSumTotal.add(toBigInteger(skipper.sumHigh(0), skipper.sumLow(0)));
+      intervalSumTotal = intervalSumTotal.add(toBigInteger(skipper.sumHigh(0), skipper.sumLow(0)));
       intervalValueCountTotal += skipper.valueCount(0);
       skipper.advance(skipper.maxDocID(0) + 1);
     }

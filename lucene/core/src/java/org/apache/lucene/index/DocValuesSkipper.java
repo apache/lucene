@@ -101,8 +101,8 @@ public abstract class DocValuesSkipper {
   /**
    * Return the total count of values (not documents) in the interval at the given level.
    *
-   * <p><b>NOTE</b>: For single-valued fields, this equals {@link #docCount(int)}. For
-   * multi-valued fields, this is the sum of value counts across all documents.
+   * <p><b>NOTE</b>: For single-valued fields, this equals {@link #docCount(int)}. For multi-valued
+   * fields, this is the sum of value counts across all documents.
    */
   public abstract long valueCount(int level);
 

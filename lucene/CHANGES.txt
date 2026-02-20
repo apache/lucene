@@ -190,7 +190,8 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+* GITHUB##15737: Store pre-aggregated sum and value count in DocValuesSkipper (Ankit Jain)
+
 
 Improvements
 ---------------------
