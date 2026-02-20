@@ -899,6 +899,39 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
       }
 
       @Override
+      public long sumLow(int level) {
+        return sumLow();
+      }
+
+      @Override
+      public long sumHigh(int level) {
+        return sumHigh();
+      }
+
+      @Override
+      public long valueCount(int level) {
+        return valueCount();
+      }
+
+      @Override
+      public long sumLow() {
+        // SimpleText doesn't store pre-aggregated sums
+        return 0;
+      }
+
+      @Override
+      public long sumHigh() {
+        // SimpleText doesn't store pre-aggregated sums
+        return 0;
+      }
+
+      @Override
+      public long valueCount() {
+        // SimpleText doesn't store pre-aggregated value counts
+        return 0;
+      }
+
+      @Override
       public int minDocID(int level) {
         if (doc == -1) {
           return -1;

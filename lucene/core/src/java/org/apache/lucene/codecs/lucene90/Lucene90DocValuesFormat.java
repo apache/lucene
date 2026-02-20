@@ -201,7 +201,8 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   //   * 16 bytes: min / max value,
   //   * 8 bytes:  min / max docID
   //   * 4 bytes: number of documents
-  private static final long SKIP_INDEX_INTERVAL_BYTES = 29L;
+  //   * 24 bytes: sum (high + low) and value count
+  private static final long SKIP_INDEX_INTERVAL_BYTES = 53L;
   // number of intervals represented as a shift to create a new level, this is 1 << 3 == 8
   // intervals.
   static final int SKIP_INDEX_LEVEL_SHIFT = 3;

@@ -219,8 +219,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     long minValue = meta.readLong();
     int docCount = meta.readInt();
     int maxDocID = meta.readInt();
+    long sumHigh = meta.readLong();
+    long sumLow = meta.readLong();
+    long valueCount = meta.readLong();
 
-    return new DocValuesSkipperEntry(offset, length, minValue, maxValue, docCount, maxDocID);
+    return new DocValuesSkipperEntry(
+        offset, length, minValue, maxValue, docCount, maxDocID, sumHigh, sumLow, valueCount);
   }
 
   private void readNumeric(IndexInput meta, NumericEntry entry) throws IOException {
@@ -353,7 +357,15 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   }
 
   private record DocValuesSkipperEntry(
-      long offset, long length, long minValue, long maxValue, int docCount, int maxDocId) {}
+      long offset,
+      long length,
+      long minValue,
+      long maxValue,
+      int docCount,
+      int maxDocId,
+      long sumHigh,
+      long sumLow,
+      long valueCount) {}
 
   private static class NumericEntry {
     long[] table;
@@ -1884,6 +1896,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       final long[] minValue = new long[SKIP_INDEX_MAX_LEVEL];
       final long[] maxValue = new long[SKIP_INDEX_MAX_LEVEL];
       final int[] docCount = new int[SKIP_INDEX_MAX_LEVEL];
+      final long[] sumHigh = new long[SKIP_INDEX_MAX_LEVEL];
+      final long[] sumLow = new long[SKIP_INDEX_MAX_LEVEL];
+      final long[] valueCount = new long[SKIP_INDEX_MAX_LEVEL];
       int levels = 1;
 
       @Override
@@ -1913,6 +1928,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               maxValue[level] = input.readLong();
               minValue[level] = input.readLong();
               docCount[level] = input.readInt();
+              sumHigh[level] = input.readLong();
+              sumLow[level] = input.readLong();
+              valueCount[level] = input.readLong();
             }
             if (valid) {
               // adjust levels
@@ -1956,6 +1974,21 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       }
 
       @Override
+      public long sumLow(int level) {
+        return sumLow[level];
+      }
+
+      @Override
+      public long sumHigh(int level) {
+        return sumHigh[level];
+      }
+
+      @Override
+      public long valueCount(int level) {
+        return valueCount[level];
+      }
+
+      @Override
       public long minValue() {
         return entry.minValue;
       }
@@ -1968,6 +2001,21 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       @Override
       public int docCount() {
         return entry.docCount;
+      }
+
+      @Override
+      public long sumLow() {
+        return entry.sumLow;
+      }
+
+      @Override
+      public long sumHigh() {
+        return entry.sumHigh;
+      }
+
+      @Override
+      public long valueCount() {
+        return entry.valueCount;
       }
     };
   }
