@@ -21,6 +21,10 @@ gradle/wrapper/gradle-wrapper.jar
 /.classpath
 /.settings/
 
+# Kiro
+.vscode
+.kiro
+
 # Eclipse Gradle oddity
 **/bin/default/
 
