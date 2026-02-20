@@ -32,12 +32,15 @@ class ToParentDocValues extends DocIdSetIterator {
     void reset() throws IOException;
 
     void increment() throws IOException;
+
+    int getChildrenWithValuesCount();
   }
 
   private static final class SortedDVs extends SortedDocValues implements Accumulator {
     private final SortedDocValues values;
     private final BlockJoinSelector.Type selection;
     private int ord = -1;
+    private int childrenWithValuesCount = 0;
     private final ToParentDocValues iter;
 
     private SortedDVs(
@@ -61,6 +64,7 @@ class ToParentDocValues extends DocIdSetIterator {
     @Override
     public void reset() throws IOException {
       ord = values.ordValue();
+      childrenWithValuesCount = 1;
     }
 
     @Override
@@ -72,6 +76,7 @@ class ToParentDocValues extends DocIdSetIterator {
       } else {
         throw new AssertionError();
       }
+      childrenWithValuesCount++;
     }
 
     @Override
@@ -108,11 +113,17 @@ class ToParentDocValues extends DocIdSetIterator {
     public long cost() {
       return values.cost();
     }
+
+    @Override
+    public int getChildrenWithValuesCount() {
+      return childrenWithValuesCount;
+    }
   }
 
   private static final class NumDV extends NumericDocValues implements Accumulator {
     private final NumericDocValues values;
     private long value;
+    private int childrenWithValuesCount = 0;
     private final BlockJoinSelector.Type selection;
     private final Long missingValue;
 
@@ -141,20 +152,16 @@ class ToParentDocValues extends DocIdSetIterator {
     @Override
     public void reset() throws IOException {
       value = values.longValue();
+      childrenWithValuesCount = 1;
     }
 
     @Override
     public void increment() throws IOException {
       switch (selection) {
-        case MIN:
-          value = Math.min(value, values.longValue());
-          break;
-        case MAX:
-          value = Math.max(value, values.longValue());
-          break;
-        default:
-          throw new AssertionError();
+        case MIN -> value = Math.min(value, values.longValue());
+        case MAX -> value = Math.max(value, values.longValue());
       }
+      childrenWithValuesCount++;
     }
 
     @Override
@@ -192,6 +199,11 @@ class ToParentDocValues extends DocIdSetIterator {
     public long cost() {
       return values.cost();
     }
+
+    @Override
+    public int getChildrenWithValuesCount() {
+      return childrenWithValuesCount;
+    }
   }
 
   private ToParentDocValues(
@@ -203,12 +215,12 @@ class ToParentDocValues extends DocIdSetIterator {
       DocIdSetIterator values,
       BitSet parents,
       DocIdSetIterator children,
-      boolean missingWithChildWithoutValue,
+      boolean skipParentsWithMissingChildValues,
       Accumulator collect) {
     this.parents = parents;
     childWithValues = ConjunctionUtils.intersectIterators(Arrays.asList(children, values));
     this.collector = collect;
-    this.missingWithChildWithoutValue = missingWithChildWithoutValue;
+    this.skipParentsWithMissingChildValues = skipParentsWithMissingChildValues;
   }
 
   private final BitSet parents;
@@ -217,7 +229,7 @@ class ToParentDocValues extends DocIdSetIterator {
   private final Accumulator collector;
   boolean seen = false;
   private final DocIdSetIterator childWithValues;
-  boolean missingWithChildWithoutValue;
+  boolean skipParentsWithMissingChildValues;
 
   @Override
   public int docID() {
@@ -241,28 +253,27 @@ class ToParentDocValues extends DocIdSetIterator {
       return docID;
     }
 
-    assert parents.get(childWithValues.docID()) == false;
+    seen = false;
+    while (seen == false) {
+      assert parents.get(childWithValues.docID()) == false;
 
-    int nextParentDocID = parents.nextSetBit(childWithValues.docID());
-    collector.reset();
-    seen = true;
-    int childrenWithValuesCount = 1;
+      int nextParentDocID = parents.nextSetBit(childWithValues.docID());
+      collector.reset();
 
-    while (true) {
-      int childDocID = childWithValues.nextDoc();
-      assert childDocID != nextParentDocID;
-      if (childDocID > nextParentDocID) {
-        break;
+      while (true) {
+        int childDocID = childWithValues.nextDoc();
+        assert childDocID != nextParentDocID;
+        if (childDocID > nextParentDocID) {
+          break;
+        }
+        collector.increment();
       }
-      collector.increment();
-      childrenWithValuesCount++;
-    }
 
-    docID = nextParentDocID;
-    int prevParentDocID = parents.prevSetBit(docID - 1);
-    hasChildWithMissingValue = childrenWithValuesCount < getTotalChildrenCount(prevParentDocID);
-    if (hasChildWithMissingValue && missingWithChildWithoutValue) {
-      docID = nextDoc();
+      docID = nextParentDocID;
+      int prevParentDocID = parents.prevSetBit(docID - 1);
+      int totalChildren = docID - prevParentDocID - 1;
+      hasChildWithMissingValue = collector.getChildrenWithValuesCount() < totalChildren;
+      seen = hasChildWithMissingValue == false || skipParentsWithMissingChildValues == false;
     }
 
     return docID;
@@ -292,9 +303,9 @@ class ToParentDocValues extends DocIdSetIterator {
    * targetParentDocID}.
    *
    * <p>A parent document is considered to have a value when at least one of its child documents has
-   * a value. When {@code missingWithChildWithoutValue} is {@code true}, the parent is additionally
-   * required to have <em>all</em> its children carry a value; if any child is missing a value the
-   * parent is treated as missing and this method returns {@code false}.
+   * a value. When {@code skipParentsWithMissingChildValues} is {@code true}, the parent is
+   * additionally required to have <em>all</em> its children carry a value; if any child is missing
+   * a value the parent is treated as missing and this method returns {@code false}.
    *
    * @param targetParentDocID the parent document ID to advance to
    * @return {@code true} if the target parent document has a (selected) value, {@code false}
@@ -323,7 +334,7 @@ class ToParentDocValues extends DocIdSetIterator {
       return false;
     }
     int prevParentDocId = docID == 0 ? -1 : parents.prevSetBit(docID - 1);
-    int totalChildren = getTotalChildrenCount(prevParentDocId);
+    int totalChildren = docID - prevParentDocId - 1;
     int childDoc = childWithValues.docID();
     if (childDoc <= prevParentDocId) {
       childDoc = childWithValues.advance(prevParentDocId + 1);
@@ -332,31 +343,27 @@ class ToParentDocValues extends DocIdSetIterator {
       return false;
     }
 
-    int childrenWithValuesCount = 0;
+    boolean hasAtLeastOneChildWithValue = false;
     if (childWithValues.docID() < docID) {
       collector.reset();
-      seen = true;
-      childrenWithValuesCount = 1;
+      hasAtLeastOneChildWithValue = true;
       childWithValues.nextDoc();
     }
 
-    if (seen == false) {
+    if (hasAtLeastOneChildWithValue == false) {
       return false;
     }
 
     for (int doc = childWithValues.docID(); doc < docID; doc = childWithValues.nextDoc()) {
       collector.increment();
-      childrenWithValuesCount++;
     }
-    hasChildWithMissingValue = childrenWithValuesCount < totalChildren;
-    if (hasChildWithMissingValue && missingWithChildWithoutValue) {
+    hasChildWithMissingValue = collector.getChildrenWithValuesCount() < totalChildren;
+    if (hasChildWithMissingValue && skipParentsWithMissingChildValues) {
       return false;
     }
+    // We can only set the flag seen if the parent is not skipped
+    seen = true;
     return true;
-  }
-
-  private int getTotalChildrenCount(int prevParentDocID) {
-    return docID - prevParentDocID - 1;
   }
 
   @Override
