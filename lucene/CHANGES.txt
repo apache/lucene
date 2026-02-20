@@ -7,6 +7,10 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#XXXXX: Remove deprecated RegExp complement syntax support. The DEPRECATED_COMPLEMENT flag,
+  REGEXP_DEPRECATED_COMPLEMENT enum value, and makeDeprecatedComplement method have been removed.
+  Users should use complement bracket expressions ([^...]) instead. (Saurabh Singh)
+
 * GITHUB#15517: Remove newHashMap, newHashSet from CollectionUtil, and use HashMap.newHashMap, HashSet.newHashSet
   directly. (Zhou Hui)
 
