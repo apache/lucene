@@ -97,6 +97,7 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
         switch (fieldInfo.getVectorEncoding()) {
           case BYTE -> reader.getByteVectorValues(fieldInfo.name);
           case FLOAT32 -> reader.getFloatVectorValues(fieldInfo.name);
+          case FLOAT16 -> reader.getFloat16VectorValues(fieldInfo.name);
         };
 
     int candidateVectorCount = countLiveVectors(liveDocs, knnVectorValues);
@@ -174,6 +175,9 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
         case FLOAT32 ->
             vectorsIter =
                 graphReaders.get(i).reader.getFloatVectorValues(fieldInfo.name).iterator();
+        case FLOAT16 ->
+            vectorsIter =
+                graphReaders.get(i).reader.getFloat16VectorValues(fieldInfo.name).iterator();
       }
       newDocIdToOldOrdinals[i] = new IntIntHashMap(graphReaders.get(i).graphSize);
       MergeState.DocMap docMap = graphReaders.get(i).initDocMap();

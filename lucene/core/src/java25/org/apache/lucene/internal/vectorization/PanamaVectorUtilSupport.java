@@ -56,6 +56,9 @@ import org.apache.lucene.util.SuppressForbidden;
  */
 final class PanamaVectorUtilSupport implements VectorUtilSupport {
 
+  // Delegate for float16 (short[]) operations until JDK 27 provides Float16Vector support
+  private static final DefaultVectorUtilSupport FLOAT16_DELEGATE = new DefaultVectorUtilSupport();
+
   // preferred vector sizes, which can be altered for testing
   private static final VectorSpecies<Float> FLOAT_SPECIES;
   private static final VectorSpecies<Double> DOUBLE_SPECIES =
@@ -298,6 +301,28 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     FloatVector res1 = acc1.add(acc2);
     FloatVector res2 = acc3.add(acc4);
     return res1.add(res2).reduceLanes(ADD);
+  }
+
+  // float16 (short[]) operations delegate to scalar implementation until JDK 27
+
+  @Override
+  public float dotProduct(short[] a, short[] b) {
+    return FLOAT16_DELEGATE.dotProduct(a, b);
+  }
+
+  @Override
+  public float cosine(short[] a, short[] b) {
+    return FLOAT16_DELEGATE.cosine(a, b);
+  }
+
+  @Override
+  public float squareDistance(short[] a, short[] b) {
+    return FLOAT16_DELEGATE.squareDistance(a, b);
+  }
+
+  @Override
+  public short[] l2normalize(short[] v, boolean throwOnZero) {
+    return FLOAT16_DELEGATE.l2normalize(v, throwOnZero);
   }
 
   // Binary functions, these all follow a general pattern like this:

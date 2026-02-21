@@ -82,6 +82,8 @@ public abstract class QuantizedByteVectorValues extends ByteVectorValues impleme
    */
   public abstract VectorScorer scorer(float[] query) throws IOException;
 
+  public abstract VectorScorer scorer(short[] query) throws IOException;
+
   @Override
   public abstract QuantizedByteVectorValues copy() throws IOException;
 

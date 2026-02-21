@@ -32,6 +32,7 @@ import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
@@ -178,6 +179,39 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    FieldInfo info = readState.fieldInfos.fieldInfo(field);
+    if (info == null) {
+      // mirror the handling in Lucene90VectorReader#getVectorValues
+      // needed to pass TestSimpleTextKnnVectorsFormat#testDeleteAllVectorDocs
+      return null;
+    }
+    int dimension = info.getVectorDimension();
+    if (dimension == 0) {
+      throw new IllegalStateException(
+          "KNN vectors readers should not be called on fields that don't enable KNN vectors");
+    }
+    FieldEntry fieldEntry = fieldEntries.get(info.number);
+    if (fieldEntry == null) {
+      // mirror the handling in Lucene90VectorReader#getVectorValues
+      // needed to pass TestSimpleTextKnnVectorsFormat#testDeleteAllVectorDocs
+      return null;
+    }
+    if (dimension != fieldEntry.dimension) {
+      throw new IllegalStateException(
+          "Inconsistent vector dimension for field=\""
+              + field
+              + "\"; "
+              + dimension
+              + " != "
+              + fieldEntry.dimension);
+    }
+    IndexInput bytesSlice =
+        dataIn.slice("vector-data", fieldEntry.vectorDataOffset, fieldEntry.vectorDataLength);
+    return new SimpleTextFloat16VectorValues(fieldEntry, bytesSlice);
+  }
+
+  @Override
   public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     FloatVectorValues values = getFloatVectorValues(field);
@@ -232,6 +266,36 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       }
 
       byte[] vector = values.vectorValue(ord);
+      float score = vectorSimilarity.compare(vector, target);
+      knnCollector.collect(doc, score);
+      knnCollector.incVisitedCount(1);
+    }
+  }
+
+  @Override
+  public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    Float16VectorValues values = getFloat16VectorValues(field);
+    if (target.length != values.dimension()) {
+      throw new IllegalArgumentException(
+          "vector query dimension: "
+              + target.length
+              + " differs from field dimension: "
+              + values.dimension());
+    }
+    FieldInfo info = readState.fieldInfos.fieldInfo(field);
+    VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
+    for (int ord = 0; ord < values.size(); ord++) {
+      int doc = values.ordToDoc(ord);
+      if (acceptDocs.bits() != null && acceptDocs.bits().get(doc) == false) {
+        continue;
+      }
+
+      if (knnCollector.earlyTerminated()) {
+        break;
+      }
+
+      short[] vector = values.vectorValue(ord);
       float score = vectorSimilarity.compare(vector, target);
       knnCollector.collect(doc, score);
       knnCollector.incVisitedCount(1);
@@ -393,6 +457,103 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
 
     @Override
     public SimpleTextFloatVectorValues copy() {
+      return this;
+    }
+  }
+
+  private static class SimpleTextFloat16VectorValues extends Float16VectorValues {
+
+    private final BytesRefBuilder scratch = new BytesRefBuilder();
+    private final FieldEntry entry;
+    private final IndexInput in;
+    private final short[][] values;
+
+    int curOrd;
+
+    SimpleTextFloat16VectorValues(FieldEntry entry, IndexInput in) throws IOException {
+      this.entry = entry;
+      this.in = in;
+      values = new short[entry.size()][entry.dimension];
+      curOrd = -1;
+      readAllVectors();
+    }
+
+    private SimpleTextFloat16VectorValues(SimpleTextFloat16VectorValues other) {
+      this.entry = other.entry;
+      this.in = other.in.clone();
+      this.values = other.values;
+      this.curOrd = other.curOrd;
+    }
+
+    @Override
+    public int dimension() {
+      return entry.dimension;
+    }
+
+    @Override
+    public int size() {
+      return entry.size();
+    }
+
+    @Override
+    public short[] vectorValue(int ord) {
+      return values[ord];
+    }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return entry.ordToDoc[ord];
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return createSparseIterator();
+    }
+
+    @Override
+    public VectorScorer scorer(short[] target) {
+      if (size() == 0) {
+        return null;
+      }
+      SimpleTextFloat16VectorValues simpleTextFloat16VectorValues =
+          new SimpleTextFloat16VectorValues(this);
+      DocIndexIterator iterator = simpleTextFloat16VectorValues.iterator();
+      return new VectorScorer() {
+        @Override
+        public float score() throws IOException {
+          int ord = iterator.index();
+          return entry
+              .similarityFunction()
+              .compare(simpleTextFloat16VectorValues.vectorValue(ord), target);
+        }
+
+        @Override
+        public DocIdSetIterator iterator() {
+          return iterator;
+        }
+      };
+    }
+
+    private void readAllVectors() throws IOException {
+      for (short[] value : values) {
+        readVector(value);
+      }
+    }
+
+    private void readVector(short[] value) throws IOException {
+      SimpleTextUtil.readLine(in, scratch);
+      // skip leading "[" and strip trailing "]"
+      String s = new BytesRef(scratch.bytes(), 1, scratch.length() - 2).utf8ToString();
+      String[] shortStrings = s.split(",");
+      assert shortStrings.length == value.length
+          : " read " + s + " when expecting " + value.length + " shorts";
+      for (int i = 0; i < shortStrings.length; i++) {
+        value[i] = Short.parseShort(shortStrings[i]);
+      }
+    }
+
+    @Override
+    public SimpleTextFloat16VectorValues copy() {
       return this;
     }
   }

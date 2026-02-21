@@ -107,6 +107,15 @@ public class OptimizedScalarQuantizer {
       float additionalCorrection,
       int quantizedComponentSum) {}
 
+  public QuantizationResult[] multiScalarQuantize(
+      short[] vector, byte[][] destinations, byte[] bits, float[] centroid) {
+    float[] floatVector = new float[vector.length];
+    for (int i = 0; i < vector.length; i++) {
+      floatVector[i] = Float.float16ToFloat(vector[i]);
+    }
+    return multiScalarQuantize(floatVector, destinations, bits, centroid);
+  }
+
   /**
    * Quantize the vector to the multiple bit levels.
    *
@@ -173,6 +182,15 @@ public class OptimizedScalarQuantizer {
               sumQuery);
     }
     return results;
+  }
+
+  public QuantizationResult scalarQuantize(
+      short[] vector, byte[] destination, byte bits, float[] centroid) {
+    float[] floatVector = new float[vector.length];
+    for (int i = 0; i < vector.length; i++) {
+      floatVector[i] = Float.float16ToFloat(vector[i]);
+    }
+    return scalarQuantize(floatVector, destination, bits, centroid);
   }
 
   /**
@@ -262,6 +280,22 @@ public class OptimizedScalarQuantizer {
     for (int h = 0; h < quantized.length; h++) {
       double xi = (double) (quantized[h] & 0xFF) * step + lowerInterval;
       dequantized[h] = (float) (xi + centroid[h]);
+    }
+    return dequantized;
+  }
+
+  public static short[] deQuantize(
+      byte[] quantized,
+      short[] dequantized,
+      byte bits,
+      float lowerInterval,
+      float upperInterval,
+      float[] centroid) {
+    int nSteps = (1 << bits) - 1;
+    double step = (upperInterval - lowerInterval) / nSteps;
+    for (int h = 0; h < quantized.length; h++) {
+      double xi = (double) (quantized[h] & 0xFF) * step + lowerInterval;
+      dequantized[h] = Float.floatToFloat16((float) (xi + centroid[h]));
     }
     return dequantized;
   }

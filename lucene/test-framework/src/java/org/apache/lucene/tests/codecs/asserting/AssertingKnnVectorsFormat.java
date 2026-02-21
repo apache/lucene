@@ -28,6 +28,7 @@ import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
@@ -158,6 +159,20 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
+    public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+      FieldInfo fi = fis.fieldInfo(field);
+      assert fi != null
+          && fi.getVectorDimension() > 0
+          && fi.getVectorEncoding() == VectorEncoding.FLOAT16;
+      Float16VectorValues values = delegate.getFloat16VectorValues(field);
+      assert values != null;
+      assert values.iterator().docID() == -1;
+      assert values.size() >= 0;
+      assert values.dimension() > 0;
+      return values;
+    }
+
+    @Override
     public void search(
         String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
@@ -177,6 +192,18 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
       assert fi != null
           && fi.getVectorDimension() > 0
           && fi.getVectorEncoding() == VectorEncoding.BYTE;
+      acceptDocs = AssertingAcceptDocs.wrap(acceptDocs);
+      delegate.search(field, target, knnCollector, acceptDocs);
+    }
+
+    @Override
+    public void search(
+        String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+        throws IOException {
+      FieldInfo fi = fis.fieldInfo(field);
+      assert fi != null
+          && fi.getVectorDimension() > 0
+          && fi.getVectorEncoding() == VectorEncoding.FLOAT16;
       acceptDocs = AssertingAcceptDocs.wrap(acceptDocs);
       delegate.search(field, target, knnCollector, acceptDocs);
     }

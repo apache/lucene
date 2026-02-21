@@ -65,6 +65,17 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public float dotProduct(short[] a, short[] b) {
+    assert a.length == b.length : "Vector lengths must match";
+
+    float sum = 0f;
+    for (int i = 0; i < a.length; i++) {
+      sum = Float.float16ToFloat(a[i]) * Float.float16ToFloat(b[i]) + sum;
+    }
+    return sum;
+  }
+
+  @Override
   public float cosine(float[] a, float[] b) {
     float sum = 0.0f;
     float norm1 = 0.0f;
@@ -106,6 +117,22 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public float cosine(short[] a, short[] b) {
+    float sum = 0.0f;
+    float norm1 = 0.0f;
+    float norm2 = 0.0f;
+
+    for (int i = 0; i < a.length; i++) {
+      float f1 = Float.float16ToFloat(a[i]);
+      float f2 = Float.float16ToFloat(b[i]);
+      sum = fma(f1, f2, sum);
+      norm1 = fma(f1, f1, norm1);
+      norm2 = fma(f2, f2, norm2);
+    }
+    return (float) (sum / Math.sqrt((double) norm1 * (double) norm2));
+  }
+
+  @Override
   public float squareDistance(float[] a, float[] b) {
     float res = 0;
     int i = 0;
@@ -141,6 +168,16 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
     for (; i < a.length; i++) {
       float diff = a[i] - b[i];
       res = fma(diff, diff, res);
+    }
+    return res;
+  }
+
+  @Override
+  public float squareDistance(short[] a, short[] b) {
+    float res = 0f; // Accumulate in float32 for precision
+    for (int i = 0; i < a.length; i++) {
+      float diff = Float.float16ToFloat(a[i]) - Float.float16ToFloat(b[i]);
+      res += diff * diff;
     }
     return res;
   }
@@ -462,5 +499,26 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       arr[128 + i] = (l >>> 8) & 0xFF;
       arr[192 + i] = l & 0xFF;
     }
+  }
+
+  @Override
+  public short[] l2normalize(short[] v, boolean throwOnZero) {
+    double l1norm = this.dotProduct(v, v);
+    if (l1norm == 0) {
+      if (throwOnZero) {
+        throw new IllegalArgumentException("Cannot normalize a zero-length vector");
+      } else {
+        return v;
+      }
+    }
+    if (Math.abs(l1norm - 1.0d) <= EPSILON) {
+      return v;
+    }
+    int dim = v.length;
+    double l2norm = Math.sqrt(l1norm);
+    for (int i = 0; i < dim; i++) {
+      v[i] = Float.floatToFloat16(Float.float16ToFloat(v[i]) / (float) l2norm);
+    }
+    return v;
   }
 }

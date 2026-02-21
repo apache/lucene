@@ -67,6 +67,8 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
               }
             };
         break;
+      case FLOAT16:
+        throw new UnsupportedOperationException("FLOAT16 is not supported");
       default:
         throw new UnsupportedOperationException();
     }
@@ -105,6 +107,8 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
                   : bufferedByteVectorValues;
           writeField(fieldData.fieldInfo, byteVectorValues, maxDoc);
           break;
+        case FLOAT16:
+          throw new UnsupportedOperationException("FLOAT16 is not supported");
       }
     }
   }
@@ -207,6 +211,8 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
             MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
         writeField(fieldInfo, byteVectorValues, mergeState.segmentInfo.maxDoc());
         break;
+      case FLOAT16:
+        throw new UnsupportedOperationException("FLOAT16 is not supported");
     }
   }
 

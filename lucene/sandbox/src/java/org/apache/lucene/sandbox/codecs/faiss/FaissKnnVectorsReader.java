@@ -35,6 +35,7 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
@@ -165,6 +166,11 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    throw new UnsupportedOperationException("Float16 vectors not supported");
+  }
+
+  @Override
   public void search(
       String field, float[] vector, KnnCollector knnCollector, AcceptDocs acceptDocs) {
     FaissLibrary.Index index = indexMap.get(field);
@@ -179,6 +185,12 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
     // TODO: Support using SQ8 quantization, see:
     //  - https://github.com/opensearch-project/k-NN/pull/2425
     throw new UnsupportedOperationException("Byte vectors not supported");
+  }
+
+  @Override
+  public void search(String field, short[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
+    throw new UnsupportedOperationException("Float16 vectors not supported");
   }
 
   @Override

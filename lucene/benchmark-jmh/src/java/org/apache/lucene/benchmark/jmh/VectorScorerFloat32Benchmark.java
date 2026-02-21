@@ -348,5 +348,11 @@ public class VectorScorerFloat32Benchmark {
         VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, byte[] target) {
       throw new UnsupportedOperationException();
     }
+
+    @Override
+    public RandomVectorScorer getRandomVectorScorer(
+        VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, short[] target) {
+      throw new UnsupportedOperationException();
+    }
   }
 }

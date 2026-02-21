@@ -26,6 +26,7 @@ import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
@@ -181,6 +182,7 @@ public class FieldExistsQuery extends Query {
           iterator =
               switch (fieldInfo.getVectorEncoding()) {
                 case FLOAT32 -> context.reader().getFloatVectorValues(field).iterator();
+                case FLOAT16 -> context.reader().getFloat16VectorValues(field).iterator();
                 case BYTE -> context.reader().getByteVectorValues(field).iterator();
               };
         } else if (fieldInfo.getDocValuesType()
@@ -286,6 +288,11 @@ public class FieldExistsQuery extends Query {
         FloatVectorValues floatVectorValues = reader.getFloatVectorValues(field);
         assert floatVectorValues != null : "unexpected null float vector values";
         yield floatVectorValues.size();
+      }
+      case FLOAT16 -> {
+        Float16VectorValues float16VectorValues = reader.getFloat16VectorValues(field);
+        assert float16VectorValues != null : "unexpected null float vector values";
+        yield float16VectorValues.size();
       }
       case BYTE -> {
         ByteVectorValues byteVectorValues = reader.getByteVectorValues(field);

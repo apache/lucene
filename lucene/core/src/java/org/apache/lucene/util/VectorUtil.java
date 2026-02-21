@@ -76,6 +76,22 @@ public final class VectorUtil {
     return r;
   }
 
+  public static float dotProduct(short[] a, short[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    float result = IMPL.dotProduct(a, b);
+    assert Float.isFinite(result)
+        : "not finite: "
+            + result
+            + " from <"
+            + java.util.Arrays.toString(a)
+            + ","
+            + java.util.Arrays.toString(b)
+            + ">";
+    return result;
+  }
+
   /**
    * Returns the cosine similarity between the two vectors.
    *
@@ -98,6 +114,14 @@ public final class VectorUtil {
     return IMPL.cosine(a, b);
   }
 
+  /** Returns the cosine similarity between the two vectors. */
+  public static float cosine(short[] a, short[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.cosine(a, b);
+  }
+
   /**
    * Returns the sum of squared differences of the two vectors.
    *
@@ -110,6 +134,20 @@ public final class VectorUtil {
     float r = IMPL.squareDistance(a, b);
     assert Float.isFinite(r);
     return r;
+  }
+
+  /**
+   * Returns the sum of squared differences of the two vectors.
+   *
+   * @throws IllegalArgumentException if the vectors' dimensions differ.
+   */
+  public static float squareDistance(short[] a, short[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    float result = IMPL.squareDistance(a, b);
+    assert Float.isFinite(result);
+    return result;
   }
 
   /** Returns the sum of squared differences of the two vectors. */
@@ -170,6 +208,11 @@ public final class VectorUtil {
     return v;
   }
 
+  public static short[] l2normalize(short[] v) {
+    l2normalize(v, true);
+    return v;
+  }
+
   public static boolean isUnitVector(float[] v) {
     double squaredNorm = IMPL.dotProduct(v, v);
     return isUnitVector(squaredNorm);
@@ -188,6 +231,10 @@ public final class VectorUtil {
    * @throws IllegalArgumentException when the vector is all zero and throwOnZero is true
    */
   public static float[] l2normalize(float[] v, boolean throwOnZero) {
+    return IMPL.l2normalize(v, throwOnZero);
+  }
+
+  public static short[] l2normalize(short[] v, boolean throwOnZero) {
     return IMPL.l2normalize(v, throwOnZero);
   }
 

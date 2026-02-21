@@ -107,6 +107,51 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
 
+  @Override
+  public RandomVectorScorer getRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, short[] target)
+      throws IOException {
+    if (vectorValues instanceof QuantizedByteVectorValues qv) {
+      FlatVectorsScorer.checkDimensions(target.length, qv.dimension());
+      OptimizedScalarQuantizer quantizer = qv.getQuantizer();
+      Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding scalarEncoding = qv.getScalarEncoding();
+      byte[] scratch = new byte[scalarEncoding.getDiscreteDimensions(qv.dimension())];
+      final byte[] targetQuantized;
+      if (scalarEncoding.isAsymmetric() == false) {
+        targetQuantized = scratch;
+      } else {
+        // This is asymmetric quantization, we will pack the vector
+        targetQuantized = new byte[scalarEncoding.getQueryPackedLength(scratch.length)];
+      }
+      // We make a copy as the quantization process mutates the input
+      short[] copy = ArrayUtil.copyOfSubArray(target, 0, target.length);
+      if (similarityFunction == COSINE) {
+        VectorUtil.l2normalize(copy);
+      }
+      target = copy;
+      var targetCorrectiveTerms =
+          quantizer.scalarQuantize(
+              target, scratch, scalarEncoding.getQueryBits(), qv.getCentroid());
+      // for asymmetric encodings with 4-bit query, we need to transpose the nibbles for fast
+      // scoring comparisons
+      if (scalarEncoding
+              == Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE
+          || scalarEncoding
+              == Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.DIBIT_QUERY_NIBBLE) {
+        OptimizedScalarQuantizer.transposeHalfByte(scratch, targetQuantized);
+      }
+      return new RandomVectorScorer.AbstractRandomVectorScorer(qv) {
+        @Override
+        public float score(int node) throws IOException {
+          return quantizedScore(
+              targetQuantized, targetCorrectiveTerms, qv, node, similarityFunction);
+        }
+      };
+    }
+    // It is possible to get to this branch during initial indexing and flush
+    return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
+  }
+
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction,
       QuantizedByteVectorValues scoringVectors,

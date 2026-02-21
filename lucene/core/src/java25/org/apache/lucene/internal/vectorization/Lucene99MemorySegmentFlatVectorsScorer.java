@@ -45,6 +45,7 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
     return switch (vectorValues.getEncoding()) {
       case FLOAT32 -> getFloatScoringSupplier((FloatVectorValues) vectorValues, similarityType);
       case BYTE -> getByteScorerSupplier((ByteVectorValues) vectorValues, similarityType);
+      case FLOAT16 -> delegate.getRandomVectorScorerSupplier(similarityType, vectorValues);
     };
   }
 
@@ -95,6 +96,13 @@ public class Lucene99MemorySegmentFlatVectorsScorer implements FlatVectorsScorer
         return scorer.get();
       }
     }
+    return delegate.getRandomVectorScorer(similarityType, vectorValues, target);
+  }
+
+  @Override
+  public RandomVectorScorer getRandomVectorScorer(
+      VectorSimilarityFunction similarityType, KnnVectorValues vectorValues, short[] target)
+      throws IOException {
     return delegate.getRandomVectorScorer(similarityType, vectorValues, target);
   }
 

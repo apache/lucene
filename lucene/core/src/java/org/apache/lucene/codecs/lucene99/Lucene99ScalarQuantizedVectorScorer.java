@@ -85,6 +85,26 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
   }
 
   @Override
+  public RandomVectorScorer getRandomVectorScorer(
+      VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, short[] target)
+      throws IOException {
+    if (vectorValues instanceof QuantizedByteVectorValues quantizedByteVectorValues) {
+      ScalarQuantizer scalarQuantizer = quantizedByteVectorValues.getScalarQuantizer();
+      byte[] targetBytes = new byte[target.length];
+      float offsetCorrection =
+          quantizeQuery(target, targetBytes, similarityFunction, scalarQuantizer);
+      return fromVectorSimilarity(
+          targetBytes,
+          offsetCorrection,
+          similarityFunction,
+          scalarQuantizer.getConstantMultiplier(),
+          quantizedByteVectorValues);
+    }
+    // It is possible to get to this branch during initial indexing and flush
+    return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
+  }
+
+  @Override
   public String toString() {
     return "ScalarQuantizedVectorScorer(" + "nonQuantizedDelegate=" + nonQuantizedDelegate + ')';
   }
