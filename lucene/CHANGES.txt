@@ -60,6 +60,8 @@ API Changes
 
 * GITHUB#15480: Deprecate SortField#setMissingValue and add migration test toward immutability. (Syed Mohammad Saad)
 
+* GITHUB#15740: Add FieldMinMax utility to retrieve global min/max values of a numeric field across an IndexReader, unifying PointValues and DocValuesSkipper semantics and returning null when no values exist. (Syed Mohammad Saad)
+
 New Features
 ---------------------
 
