@@ -191,6 +191,43 @@ public class TestBlockJoinSelector extends LuceneTestCase {
     assertEquals(18, withMissingValues.nextDoc());
   }
 
+  public void testNextDocWithSkippedParents() throws IOException {
+    final BitSet parents = new FixedBitSet(20);
+    final BitSet children = new FixedBitSet(20);
+    parents.set(0);
+
+    children.set(1);
+    children.set(2);
+    parents.set(3);
+
+    children.set(4);
+    parents.set(5);
+
+    children.set(6);
+    children.set(7);
+    children.set(8);
+    children.set(9);
+    parents.set(10);
+
+    final int[] ords = new int[20];
+    Arrays.fill(ords, -1);
+    ords[1] = 5;
+    ords[4] = 7;
+    ords[5] = 3;
+    ords[8] = 10;
+
+    final SortedDocValues naturalOrder =
+        BlockJoinSelector.wrap(
+            DocValues.singleton(new CannedSortedDocValues(ords)),
+            BlockJoinSelector.Type.MIN,
+            parents,
+            toIter(children),
+            false,
+            false);
+    assertEquals(5, naturalOrder.nextDoc());
+    assertEquals(NO_MORE_DOCS, naturalOrder.nextDoc());
+  }
+
   private static class CannedSortedDocValues extends SortedDocValues {
     private final int[] ords;
     int docID = -1;

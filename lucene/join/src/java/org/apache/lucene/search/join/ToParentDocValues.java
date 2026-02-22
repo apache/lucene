@@ -248,13 +248,13 @@ class ToParentDocValues extends DocIdSetIterator {
     if (childWithValues.docID() < docID || docID == -1) {
       childWithValues.nextDoc();
     }
-    if (childWithValues.docID() == NO_MORE_DOCS) {
-      docID = NO_MORE_DOCS;
-      return docID;
-    }
 
     seen = false;
     while (seen == false) {
+      if (childWithValues.docID() == NO_MORE_DOCS) {
+        docID = NO_MORE_DOCS;
+        return docID;
+      }
       assert parents.get(childWithValues.docID()) == false;
 
       int nextParentDocID = parents.nextSetBit(childWithValues.docID());
