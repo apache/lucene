@@ -182,6 +182,7 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
     return TopDocs.merge(sort, 0, numHits, topDocs);
   }
 
+  /** Returns the collectors created by this manager. */
   @Deprecated
   public List<TopFieldCollector> getCollectors() {
     return collectors;
