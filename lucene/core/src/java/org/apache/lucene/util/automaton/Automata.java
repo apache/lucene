@@ -118,8 +118,10 @@ public final class Automata {
     return makeCharRange(c, c);
   }
 
-  /** Returns a new (deterministic) automaton that accepts potentially multiple codepoints of the
-   *  given value. */
+  /**
+   * Returns a new (deterministic) automaton that accepts potentially multiple codepoints of the
+   * given value.
+   */
   public static Automaton makeChar(int c, boolean caseInsensitive) {
     if (caseInsensitive) {
       return makeCharSet(toCaseInsensitiveChar(c));
@@ -570,13 +572,13 @@ public final class Automata {
 
   /** Returns a new (deterministic) automaton that accepts the single given string. */
   public static Automaton makeString(String s, boolean caseInsensitive) {
-    if(caseInsensitive) {
+    if (caseInsensitive) {
       Automaton a = new Automaton();
       int lastState = a.createState();
       for (int i = 0, cp = 0; i < s.length(); i += Character.charCount(cp)) {
         int state = a.createState();
         cp = s.codePointAt(i);
-        for(int alt : toCaseInsensitiveChar(cp)) {
+        for (int alt : toCaseInsensitiveChar(cp)) {
           a.addTransition(lastState, state, alt);
         }
         lastState = state;
@@ -694,7 +696,8 @@ public final class Automata {
   /**
    * This function handles uses the Unicode spec for generating case-insensitive alternates.
    *
-   * <p>See the {@link RegExp#CASE_INSENSITIVE} flag for details on case folding within the Unicode spec.
+   * <p>See the {@link RegExp#CASE_INSENSITIVE} flag for details on case folding within the Unicode
+   * spec.
    *
    * @param codepoint the Character code point to encode as an Automaton
    * @return the original codepoint and the set of alternates
