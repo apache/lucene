@@ -14,7 +14,7 @@ API Changes
 * GITHUB#15755: Deprecate Operations.minus() method. This slow operation has been moved to
   AutomatonTestUtil.minus() for testing purposes only. The method will be removed in Lucene 12.
   (Saurabh Singh)
-  
+
 * GITHUB#15762: Remove deprecated Operations.concatenate(Automaton, Automaton) and
   Operations.union(Automaton, Automaton) methods. Use the List/Collection variants instead.
   (Saurabh Singh)
