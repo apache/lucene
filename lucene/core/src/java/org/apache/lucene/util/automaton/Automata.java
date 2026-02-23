@@ -119,8 +119,8 @@ public final class Automata {
   }
 
   /**
-   * Returns a new (deterministic) automaton that accepts potentially multiple codepoints of the
-   * given value that are case-insensitive equivalents.
+   * Returns a new (deterministic and minimal) automaton that accepts potentially multiple
+   * codepoints of the given value that are case-insensitive equivalents.
    */
   public static Automaton makeCaseInsensitiveChar(int c) {
     return makeCharSet(toCaseInsensitiveChar(c));
@@ -567,8 +567,8 @@ public final class Automata {
   }
 
   /**
-   * Returns a new (deterministic) automaton that accepts the single given string and the
-   * case-insensitive equivalents.
+   * Returns a new (deterministic and minimal) automaton that accepts the single given string and
+   * the case-insensitive equivalents.
    */
   public static Automaton makeCaseInsensitiveString(String s) {
     Automaton a = new Automaton();
