@@ -199,15 +199,15 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
-
-Improvements
----------------------
 
 * GITHUB#15740: Add NumericFieldStats utility for retrieving global numeric field statistics
   (min, max, doc count) from index metadata structures. Migrate SortedNumericDocValuesRangeQuery
   to use this API, fixing the rewrite optimization for fields with PointValues but no skip index.
   (Salvatore Campagna)
+
+Improvements
+---------------------
+(No changes)
 
 Optimizations
 ---------------------
