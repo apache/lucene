@@ -103,7 +103,7 @@ public final class NumericFieldStats {
       if (skipper == null) {
         return null;
       }
-      if (min == null) {
+      if (min == null && max == null) {
         min = skipper.minValue();
         max = skipper.maxValue();
       } else {
