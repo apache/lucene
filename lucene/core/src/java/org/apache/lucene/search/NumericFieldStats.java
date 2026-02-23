@@ -62,8 +62,7 @@ public final class NumericFieldStats {
     return getStatsFromSkipper(reader, field);
   }
 
-  private static Stats getStatsFromPoints(IndexReader reader, String field)
-      throws IOException {
+  private static Stats getStatsFromPoints(IndexReader reader, String field) throws IOException {
     final byte[] minPacked = PointValues.getMinPackedValue(reader, field);
     final byte[] maxPacked = PointValues.getMaxPackedValue(reader, field);
     if (minPacked == null || maxPacked == null) {
@@ -73,8 +72,7 @@ public final class NumericFieldStats {
     return new Stats(decodeLong(minPacked), decodeLong(maxPacked), docCount);
   }
 
-  private static Stats getStatsFromSkipper(IndexReader reader, String field)
-      throws IOException {
+  private static Stats getStatsFromSkipper(IndexReader reader, String field) throws IOException {
     Long min = null;
     Long max = null;
     int docCount = 0;

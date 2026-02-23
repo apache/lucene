@@ -263,5 +263,4 @@ public class TestNumericFieldStats extends LuceneTestCase {
       }
     }
   }
-
 }

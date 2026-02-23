@@ -95,8 +95,7 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
     if (lowerValue > upperValue) {
       return MatchNoDocsQuery.INSTANCE;
     }
-    final Stats stats =
-        NumericFieldStats.getStats(indexSearcher.getIndexReader(), field);
+    final Stats stats = NumericFieldStats.getStats(indexSearcher.getIndexReader(), field);
     if (stats != null) {
       if (lowerValue > stats.max() || upperValue < stats.min()) {
         return MatchNoDocsQuery.INSTANCE;
