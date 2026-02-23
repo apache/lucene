@@ -355,7 +355,10 @@ public final class Operations {
    * @param determinizeWorkLimit maximum effort to spend determinizing the automaton. Set higher to
    *     allow more complex queries and lower to prevent memory exhaustion. {@link
    *     #DEFAULT_DETERMINIZE_WORK_LIMIT} is a good starting default.
+   * @deprecated This operation can be slow and is not recommended for production use. It will be
+   *     removed in Lucene 12.
    */
+  @Deprecated
   public static Automaton complement(Automaton a, int determinizeWorkLimit) {
     a = totalize(determinize(a, determinizeWorkLimit));
     int numStates = a.getNumStates();
