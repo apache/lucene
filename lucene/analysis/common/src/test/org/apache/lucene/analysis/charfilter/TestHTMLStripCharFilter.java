@@ -649,6 +649,42 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
     assertEquals("Test\n\n\n\nSome text.", result.toString().trim());
   }
 
+  public void testEqualsAtEndOfAttributeBug() throws IOException {
+    // Input: The first tag's attribute ends with =" followed by >
+    String input =
+        "<a href=\"https://www.example.com/?test=\">example</a> this gets discarded <a href=\"next\">example2</a>";
+
+    // Expected: "example this gets discarded example2" (Only tags should be stripped)
+    // Actual: "example2" (Content is discarded until the next double quote in the second tag is
+    // found)
+
+    Reader reader = new HTMLStripCharFilter(new StringReader(input));
+    StringBuilder sb = new StringBuilder();
+    char[] buffer = new char[1024];
+    int len;
+    while ((len = reader.read(buffer)) != -1) {
+      sb.append(buffer, 0, len);
+    }
+    String actual = sb.toString().trim().replaceAll("\\s+", " ");
+
+    // This fails because the output is just "example2"
+    assertEquals("example this gets discarded example2", actual);
+  }
+
+  public void testSpaceAfterEquals() throws IOException {
+    String input =
+        "<a href=\"https://www.example.com/?test= \">example</a> this gets discarded <a href=\"next\">example2</a>";
+    Reader reader = new HTMLStripCharFilter(new StringReader(input));
+    StringBuilder sb = new StringBuilder();
+    char[] buffer = new char[1024];
+    int len;
+    while ((len = reader.read(buffer)) != -1) {
+      sb.append(buffer, 0, len);
+    }
+    String actual = sb.toString().trim().replaceAll("\\s+", " ");
+    assertEquals("example this gets discarded example2", actual);
+  }
+
   public static void assertHTMLStripsTo(String input, String gold, Set<String> escapedTags)
       throws Exception {
     assertHTMLStripsTo(new StringReader(input), gold, escapedTags);
