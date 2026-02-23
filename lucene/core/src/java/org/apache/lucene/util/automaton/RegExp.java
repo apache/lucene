@@ -32,7 +32,6 @@ package org.apache.lucene.util.automaton;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -682,7 +681,7 @@ public class RegExp {
         break;
       case REGEXP_CHAR:
         if (check(ASCII_CASE_INSENSITIVE | CASE_INSENSITIVE)) {
-          a = Automata.makeCharSet(toCaseInsensitiveChar(c));
+          a = Automata.makeCaseInsensitiveChar(c);
         } else {
           a = Automata.makeChar(c);
         }
@@ -701,7 +700,7 @@ public class RegExp {
         break;
       case REGEXP_STRING:
         if (check(ASCII_CASE_INSENSITIVE | CASE_INSENSITIVE)) {
-          a = toCaseInsensitiveString();
+          a = Automata.makeCaseInsensitiveString(s);
         } else {
           a = Automata.makeString(s);
         }
@@ -789,17 +788,6 @@ public class RegExp {
       rangeStarts.add(transition.min);
       rangeEnds.add(transition.max);
     }
-  }
-
-  private Automaton toCaseInsensitiveString() {
-    List<Automaton> list = new ArrayList<>();
-
-    Iterator<Integer> iter = s.codePoints().iterator();
-    while (iter.hasNext()) {
-      int[] points = toCaseInsensitiveChar(iter.next());
-      list.add(Automata.makeCharSet(points));
-    }
-    return Operations.concatenate(list);
   }
 
   private void findLeaves(

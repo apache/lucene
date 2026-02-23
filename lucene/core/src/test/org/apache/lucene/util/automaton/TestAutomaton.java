@@ -1730,4 +1730,47 @@ public class TestAutomaton extends LuceneTestCase {
     AutomatonTestUtil.assertMinimalDFA(actual);
     assertTrue(AutomatonTestUtil.sameLanguage(expected, actual));
   }
+
+  public void testMakeCharCaseInsensitive() {
+    Automaton a = Automata.makeCaseInsensitiveChar('a');
+    assertTrue(Operations.run(a, "a"));
+    assertTrue(Operations.run(a, "A"));
+    assertFalse(Operations.run(a, "b"));
+
+    a = Automata.makeCaseInsensitiveChar('A');
+    assertTrue(Operations.run(a, "a"));
+    assertTrue(Operations.run(a, "A"));
+    assertFalse(Operations.run(a, "b"));
+
+    a = Automata.makeCaseInsensitiveChar('Σ');
+    assertTrue(Operations.run(a, "Σ"));
+    assertTrue(Operations.run(a, "σ"));
+    assertTrue(Operations.run(a, "ς"));
+
+    // German sharp S: 'ß' (U+00DF) and 'ẞ' (U+1E9E)
+    a = Automata.makeCaseInsensitiveChar(223);
+    assertTrue(Operations.run(a, Character.toString(223)));
+    assertTrue(Operations.run(a, Character.toString(7838)));
+
+    AutomatonTestUtil.assertMinimalDFA(a);
+    AutomatonTestUtil.assertNoDetachedStates(a);
+    assertTrue(AutomatonTestUtil.isFinite(a));
+  }
+
+  public void testMakeStringCaseInsensitiveSimple() {
+    Automaton a = Automata.makeCaseInsensitiveString("abc");
+    assertTrue(Operations.run(a, "abc"));
+    assertTrue(Operations.run(a, "AbC"));
+    assertFalse(Operations.run(a, "ab"));
+    assertFalse(Operations.run(a, "xyz"));
+
+    a = Automata.makeCaseInsensitiveString("Σίγμα");
+    assertTrue(Operations.run(a, "Σίγμα"));
+    assertTrue(Operations.run(a, "σίγμα"));
+    assertTrue(Operations.run(a, "ςίγμα"));
+
+    AutomatonTestUtil.assertMinimalDFA(a);
+    AutomatonTestUtil.assertNoDetachedStates(a);
+    assertTrue(AutomatonTestUtil.isFinite(a));
+  }
 }
