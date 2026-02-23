@@ -850,12 +850,13 @@ Improvements
 * GITHUB#14239: Hunspell's option to tolerate affix rule count mismatches was
   improved to tolerate more instances of this problem.  (Robert Muir)
 
-
 * GITHUB#14238: Improve test coverage of Dynamic Range Faceting. (John Houser)
 
 * GITHUB#14213: Allowing indexing stored-only StoredField directly from DataInput. (Tim Brooks)
 
 * GITHUB#14364: Completion FSTs to be loaded off-heap at all times. (Luca Cavanna)
+
+* GITHUB#15753: Add Case Insensitive makeChar and makeString to Automata. (John Wagster)
 
 Optimizations
 ---------------------
