@@ -33,6 +33,8 @@ import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MatchNoDocsQuery;
+import org.apache.lucene.search.NumericFieldStats;
+import org.apache.lucene.search.NumericFieldStats.MinMax;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -98,16 +100,17 @@ final class SortedNumericDocValuesRangeQuery extends Query {
     if (lowerValue > upperValue) {
       return new MatchNoDocsQuery();
     }
-    long globalMin = DocValuesSkipper.globalMinValue(indexSearcher, field);
-    long globalMax = DocValuesSkipper.globalMaxValue(indexSearcher, field);
-    if (lowerValue > globalMax || upperValue < globalMin) {
-      return new MatchNoDocsQuery();
-    }
-    if (lowerValue <= globalMin
-        && upperValue >= globalMax
-        && DocValuesSkipper.globalDocCount(indexSearcher, field)
-            == indexSearcher.getIndexReader().maxDoc()) {
-      return new MatchAllDocsQuery();
+    final MinMax minMax = NumericFieldStats.globalMinMax(indexSearcher, field);
+    if (minMax != null) {
+      if (lowerValue > minMax.max() || upperValue < minMax.min()) {
+        return new MatchNoDocsQuery();
+      }
+      if (lowerValue <= minMax.min()
+          && upperValue >= minMax.max()
+          && NumericFieldStats.globalDocCount(indexSearcher, field)
+              == indexSearcher.getIndexReader().maxDoc()) {
+        return new MatchAllDocsQuery();
+      }
     }
     return super.rewrite(indexSearcher);
   }
