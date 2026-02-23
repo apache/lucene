@@ -69,18 +69,6 @@ public final class Operations {
    *
    * <p>Complexity: linear in total number of states.
    *
-   * @deprecated use {@link #concatenate(List)} instead
-   */
-  @Deprecated
-  public static Automaton concatenate(Automaton a1, Automaton a2) {
-    return concatenate(Arrays.asList(a1, a2));
-  }
-
-  /**
-   * Returns an automaton that accepts the concatenation of the languages of the given automata.
-   *
-   * <p>Complexity: linear in total number of states.
-   *
    * @param list List of automata to be joined
    */
   public static Automaton concatenate(List<Automaton> list) {
@@ -472,18 +460,6 @@ public final class Operations {
     BitSet reachableFromAccept = getLiveStatesToAccept(a);
     reachableFromAccept.andNot(reachableFromInitial);
     return reachableFromAccept.isEmpty() == false;
-  }
-
-  /**
-   * Returns an automaton that accepts the union of the languages of the given automata.
-   *
-   * <p>Complexity: linear in number of states.
-   *
-   * @deprecated use {@link #union(Collection)} instead
-   */
-  @Deprecated
-  public static Automaton union(Automaton a1, Automaton a2) {
-    return union(Arrays.asList(a1, a2));
   }
 
   /**
