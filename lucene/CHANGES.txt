@@ -322,6 +322,8 @@ Improvements
 
 * GITHUB#15570: Disallow invalid offset 0 for LZ4 decompression (Marcono1234)
 
+* GITHUB#15753: Add Case Insensitive makeChar and makeString to Automata. (John Wagster)
+
 Optimizations
 ---------------------
 * GITHUB#15140: Optimize TopScoreDocCollector with TernaryLongHeap for improved performance over Binary-LongHeap. (Ramakrishna Chilaka)
@@ -855,8 +857,6 @@ Improvements
 * GITHUB#14213: Allowing indexing stored-only StoredField directly from DataInput. (Tim Brooks)
 
 * GITHUB#14364: Completion FSTs to be loaded off-heap at all times. (Luca Cavanna)
-
-* GITHUB#15753: Add Case Insensitive makeChar and makeString to Automata. (John Wagster)
 
 Optimizations
 ---------------------
