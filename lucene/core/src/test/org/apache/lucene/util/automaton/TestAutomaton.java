@@ -1730,55 +1730,45 @@ public class TestAutomaton extends LuceneTestCase {
   }
 
   public void testMakeCharCaseInsensitive() {
-    Automaton a = Automata.makeChar('a', true);
+    Automaton a = Automata.makeCaseInsensitiveChar('a');
     assertTrue(Operations.run(a, "a"));
     assertTrue(Operations.run(a, "A"));
     assertFalse(Operations.run(a, "b"));
 
-    a = Automata.makeChar('A', true);
+    a = Automata.makeCaseInsensitiveChar('A');
     assertTrue(Operations.run(a, "a"));
     assertTrue(Operations.run(a, "A"));
     assertFalse(Operations.run(a, "b"));
 
-    a = Automata.makeChar('a', false);
-    Automaton b = Automata.makeChar('a');
-    assertTrue(AutomatonTestUtil.sameLanguage(a, b));
-    assertTrue(Operations.run(a, "a"));
-    assertFalse(Operations.run(a, "A"));
-
-    a = Automata.makeChar('Σ', true);
+    a = Automata.makeCaseInsensitiveChar('Σ');
     assertTrue(Operations.run(a, "Σ"));
     assertTrue(Operations.run(a, "σ"));
     assertTrue(Operations.run(a, "ς"));
 
     // German sharp S: 'ß' (U+00DF) and 'ẞ' (U+1E9E)
-    a = Automata.makeChar(223, true);
+    a = Automata.makeCaseInsensitiveChar(223);
     assertTrue(Operations.run(a, Character.toString(223)));
     assertTrue(Operations.run(a, Character.toString(7838)));
 
-    assertTrue(a.isDeterministic());
-    assertFalse(Operations.hasDeadStates(a));
+    AutomatonTestUtil.assertMinimalDFA(a);
+    AutomatonTestUtil.assertNoDetachedStates(a);
+    assertTrue(AutomatonTestUtil.isFinite(a));
   }
 
   public void testMakeStringCaseInsensitiveSimple() {
-    Automaton a = Automata.makeString("abc", true);
+    Automaton a = Automata.makeCaseInsensitiveString("abc");
     assertTrue(Operations.run(a, "abc"));
     assertTrue(Operations.run(a, "AbC"));
     assertFalse(Operations.run(a, "ab"));
     assertFalse(Operations.run(a, "xyz"));
 
-    a = Automata.makeString("abc", false);
-    Automaton b = Automata.makeString("abc");
-    assertTrue(AutomatonTestUtil.sameLanguage(a, b));
-    assertTrue(Operations.run(a, "abc"));
-    assertFalse(Operations.run(a, "Abc"));
-
-    a = Automata.makeString("Σίγμα", true);
+    a = Automata.makeCaseInsensitiveString("Σίγμα");
     assertTrue(Operations.run(a, "Σίγμα"));
     assertTrue(Operations.run(a, "σίγμα"));
     assertTrue(Operations.run(a, "ςίγμα"));
 
-    assertTrue(a.isDeterministic());
-    assertFalse(Operations.hasDeadStates(a));
+    AutomatonTestUtil.assertMinimalDFA(a);
+    AutomatonTestUtil.assertNoDetachedStates(a);
+    assertTrue(AutomatonTestUtil.isFinite(a));
   }
 }

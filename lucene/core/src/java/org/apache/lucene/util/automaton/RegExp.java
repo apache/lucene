@@ -706,7 +706,7 @@ public class RegExp {
         break;
       case REGEXP_CHAR:
         if (check(ASCII_CASE_INSENSITIVE | CASE_INSENSITIVE)) {
-          a = Automata.makeChar(c, true);
+          a = Automata.makeCaseInsensitiveChar(c);
         } else {
           a = Automata.makeChar(c);
         }
@@ -725,7 +725,7 @@ public class RegExp {
         break;
       case REGEXP_STRING:
         if (check(ASCII_CASE_INSENSITIVE | CASE_INSENSITIVE)) {
-          a = Automata.makeString(s, true);
+          a = Automata.makeCaseInsensitiveString(s);
         } else {
           a = Automata.makeString(s);
         }

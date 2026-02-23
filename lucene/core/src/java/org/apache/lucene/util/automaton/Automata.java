@@ -120,14 +120,10 @@ public final class Automata {
 
   /**
    * Returns a new (deterministic) automaton that accepts potentially multiple codepoints of the
-   * given value.
+   * given value that are case-insensitive equivalents.
    */
-  public static Automaton makeChar(int c, boolean caseInsensitive) {
-    if (caseInsensitive) {
-      return makeCharSet(toCaseInsensitiveChar(c));
-    } else {
-      return makeChar(c);
-    }
+  public static Automaton makeCaseInsensitiveChar(int c) {
+    return makeCharSet(toCaseInsensitiveChar(c));
   }
 
   /** Appends the specified character to the specified state, returning a new state. */
@@ -570,30 +566,29 @@ public final class Automata {
     return a;
   }
 
-  /** Returns a new (deterministic) automaton that accepts the single given string. */
-  public static Automaton makeString(String s, boolean caseInsensitive) {
-    if (caseInsensitive) {
-      Automaton a = new Automaton();
-      int lastState = a.createState();
-      for (int i = 0, cp = 0; i < s.length(); i += Character.charCount(cp)) {
-        int state = a.createState();
-        cp = s.codePointAt(i);
-        for (int alt : toCaseInsensitiveChar(cp)) {
-          a.addTransition(lastState, state, alt);
-        }
-        lastState = state;
+  /**
+   * Returns a new (deterministic) automaton that accepts the single given string and the
+   * case-insensitive equivalents.
+   */
+  public static Automaton makeCaseInsensitiveString(String s) {
+    Automaton a = new Automaton();
+    int lastState = a.createState();
+    for (int i = 0, cp = 0; i < s.length(); i += Character.charCount(cp)) {
+      int state = a.createState();
+      cp = s.codePointAt(i);
+      for (int alt : toCaseInsensitiveChar(cp)) {
+        a.addTransition(lastState, state, alt);
       }
-
-      a.setAccept(lastState, true);
-      a.finishState();
-
-      assert a.isDeterministic();
-      assert Operations.hasDeadStates(a) == false;
-
-      return a;
-    } else {
-      return makeString(s);
+      lastState = state;
     }
+
+    a.setAccept(lastState, true);
+    a.finishState();
+
+    assert a.isDeterministic();
+    assert Operations.hasDeadStates(a) == false;
+
+    return a;
   }
 
   /** Returns a new (deterministic) automaton that accepts the single given binary term. */
