@@ -203,7 +203,7 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+* GITHUB#15757: Better skipper-based numeric sort pruning from the start of segments (Alan Woodward)
 
 Optimizations
 ---------------------
