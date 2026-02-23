@@ -7,6 +7,10 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#XXXXX: Remove deprecated RegExp complement syntax support. The DEPRECATED_COMPLEMENT flag,
+  REGEXP_DEPRECATED_COMPLEMENT enum value, and makeDeprecatedComplement method have been removed.
+  Users should use complement bracket expressions ([^...]) instead. (Saurabh Singh)
+
 * GITHUB#15517: Remove newHashMap, newHashSet from CollectionUtil, and use HashMap.newHashMap, HashSet.newHashSet
   directly. (Zhou Hui)
 
@@ -136,6 +140,9 @@ Bug Fixes
 * GITHUB#12561: UAX29URLEmailTokenizer matched emails with commas and invalid
   periods in the local part. (Eran Yarkon)
 
+* GITHUB#14971: Fix CachedExecutor thread pool leak in ConcurrentMergeScheduler
+  when IndexWriter initialization fails. (Su Beom)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -192,7 +199,11 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#15740: Add NumericFieldStats utility for retrieving global numeric field statistics
+  (min, max, doc count) from index metadata structures. Migrate SortedNumericDocValuesRangeQuery
+  to use this API, fixing the rewrite optimization for fields with PointValues but no skip index.
+  (Salvatore Campagna)
 
 Improvements
 ---------------------

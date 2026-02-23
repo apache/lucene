@@ -388,14 +388,7 @@ public class RegExp {
     /** An Automaton expression */
     REGEXP_AUTOMATON,
     /** An Interval expression */
-    REGEXP_INTERVAL,
-    /**
-     * The complement of an expression.
-     *
-     * @deprecated Will be removed in Lucene 11
-     */
-    @Deprecated
-    REGEXP_DEPRECATED_COMPLEMENT
+    REGEXP_INTERVAL
   }
 
   // -----  Syntax flags ( <= 0xff )  ------
@@ -486,18 +479,6 @@ public class RegExp {
    */
   public static final int CASE_INSENSITIVE_RANGE = 0x0400;
 
-  // -----  Deprecated flags ( > 0xffff )  ------
-
-  /**
-   * Allows regexp parsing of the complement (<code>~</code>).
-   *
-   * <p>Note that processing the complement can require exponential time, but will be bounded by an
-   * internal limit. Regexes exceeding the limit will fail with TooComplexToDeterminizeException.
-   *
-   * @deprecated This method will be removed in Lucene 11
-   */
-  @Deprecated public static final int DEPRECATED_COMPLEMENT = 0x10000;
-
   // Immutable parsed state
   /** The type of expression */
   public final Kind kind;
@@ -552,7 +533,7 @@ public class RegExp {
    * @exception IllegalArgumentException if an error occurred while parsing the regular expression
    */
   public RegExp(String s, int syntax_flags, int match_flags) throws IllegalArgumentException {
-    if ((syntax_flags & ~DEPRECATED_COMPLEMENT) > ALL) {
+    if (syntax_flags > ALL) {
       throw new IllegalArgumentException("Illegal syntax flag");
     }
 
@@ -697,12 +678,6 @@ public class RegExp {
         // this is just a list of characters (e.g. "a") or ranges (e.g. "b-d")
         a = exp1.toAutomaton(automata, automaton_provider);
         a = Operations.complement(a, Integer.MAX_VALUE);
-        break;
-      case REGEXP_DEPRECATED_COMPLEMENT:
-        // to ease transitions for users only, support arbitrary complement
-        // but bounded by DEFAULT_DETERMINIZE_WORK_LIMIT: must not be configurable.
-        a = exp1.toAutomaton(automata, automaton_provider);
-        a = Operations.complement(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
         break;
       case REGEXP_CHAR:
         if (check(ASCII_CASE_INSENSITIVE | CASE_INSENSITIVE)) {
@@ -896,7 +871,6 @@ public class RegExp {
         b.append("){").append(min).append(",").append(max).append("}");
         break;
       case REGEXP_COMPLEMENT:
-      case REGEXP_DEPRECATED_COMPLEMENT:
         b.append("~(");
         exp1.toStringBuilder(b);
         b.append(")");
@@ -973,7 +947,6 @@ public class RegExp {
       case REGEXP_OPTIONAL:
       case REGEXP_REPEAT:
       case REGEXP_COMPLEMENT:
-      case REGEXP_DEPRECATED_COMPLEMENT:
         b.append(indent);
         b.append(kind);
         b.append('\n');
@@ -1094,7 +1067,6 @@ public class RegExp {
       case REGEXP_REPEAT_MIN:
       case REGEXP_REPEAT_MINMAX:
       case REGEXP_COMPLEMENT:
-      case REGEXP_DEPRECATED_COMPLEMENT:
         exp1.getIdentifiers(set);
         break;
       case REGEXP_AUTOMATON:
@@ -1169,16 +1141,6 @@ public class RegExp {
 
   static RegExp makeComplement(int flags, RegExp exp) {
     return newContainerNode(flags, Kind.REGEXP_COMPLEMENT, exp, null);
-  }
-
-  /**
-   * Creates node that will compute complement of arbitrary expression.
-   *
-   * @deprecated Will be removed in Lucene 11
-   */
-  @Deprecated
-  static RegExp makeDeprecatedComplement(int flags, RegExp exp) {
-    return newContainerNode(flags, Kind.REGEXP_DEPRECATED_COMPLEMENT, exp, null);
   }
 
   static RegExp makeChar(int flags, int c) {
@@ -1329,9 +1291,7 @@ public class RegExp {
   }
 
   final RegExp parseComplExp() throws IllegalArgumentException {
-    if (check(DEPRECATED_COMPLEMENT) && match('~'))
-      return makeDeprecatedComplement(flags, parseComplExp());
-    else return parseCharClassExp();
+    return parseCharClassExp();
   }
 
   final RegExp parseCharClassExp() throws IllegalArgumentException {
