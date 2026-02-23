@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Objects;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.StringHelper;
@@ -115,6 +116,16 @@ public final class Automata {
   /** Returns a new (deterministic) automaton that accepts a single codepoint of the given value. */
   public static Automaton makeChar(int c) {
     return makeCharRange(c, c);
+  }
+
+  /** Returns a new (deterministic) automaton that accepts potentially multiple codepoints of the
+   *  given value. */
+  public static Automaton makeChar(int c, boolean caseInsensitive) {
+    if (caseInsensitive) {
+      return makeCharSet(toCaseInsensitiveChar(c));
+    } else {
+      return makeChar(c);
+    }
   }
 
   /** Appends the specified character to the specified state, returning a new state. */
@@ -557,6 +568,32 @@ public final class Automata {
     return a;
   }
 
+  /** Returns a new (deterministic) automaton that accepts the single given string. */
+  public static Automaton makeString(String s, boolean caseInsensitive) {
+    if(caseInsensitive) {
+      Automaton a = new Automaton();
+      int lastState = a.createState();
+      for (int i = 0, cp = 0; i < s.length(); i += Character.charCount(cp)) {
+        int state = a.createState();
+        cp = s.codePointAt(i);
+        for(int alt : toCaseInsensitiveChar(cp)) {
+          a.addTransition(lastState, state, alt);
+        }
+        lastState = state;
+      }
+
+      a.setAccept(lastState, true);
+      a.finishState();
+
+      assert a.isDeterministic();
+      assert Operations.hasDeadStates(a) == false;
+
+      return a;
+    } else {
+      return makeString(s);
+    }
+  }
+
   /** Returns a new (deterministic) automaton that accepts the single given binary term. */
   public static Automaton makeBinary(BytesRef term) {
     Automaton a = new Automaton();
@@ -652,5 +689,24 @@ public final class Automata {
    */
   public static Automaton makeBinaryStringUnion(BytesRefIterator utf8Strings) throws IOException {
     return StringsToAutomaton.build(utf8Strings, true);
+  }
+
+  /**
+   * This function handles uses the Unicode spec for generating case-insensitive alternates.
+   *
+   * <p>See the {@link RegExp#CASE_INSENSITIVE} flag for details on case folding within the Unicode spec.
+   *
+   * @param codepoint the Character code point to encode as an Automaton
+   * @return the original codepoint and the set of alternates
+   */
+  private static int[] toCaseInsensitiveChar(int codepoint) {
+    IntArrayList list = new IntArrayList();
+    CaseFolding.expand(
+        codepoint,
+        (int variant) -> {
+          list.add(variant);
+        });
+    list.sort();
+    return list.toArray();
   }
 }

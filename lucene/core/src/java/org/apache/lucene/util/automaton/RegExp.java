@@ -707,7 +707,7 @@ public class RegExp {
         break;
       case REGEXP_CHAR:
         if (check(ASCII_CASE_INSENSITIVE | CASE_INSENSITIVE)) {
-          a = Automata.makeCharSet(toCaseInsensitiveChar(c));
+          a = Automata.makeChar(c, true);
         } else {
           a = Automata.makeChar(c);
         }
@@ -726,7 +726,7 @@ public class RegExp {
         break;
       case REGEXP_STRING:
         if (check(ASCII_CASE_INSENSITIVE | CASE_INSENSITIVE)) {
-          a = toCaseInsensitiveString();
+          a = Automata.makeString(s, true);
         } else {
           a = Automata.makeString(s);
         }
@@ -814,17 +814,6 @@ public class RegExp {
       rangeStarts.add(transition.min);
       rangeEnds.add(transition.max);
     }
-  }
-
-  private Automaton toCaseInsensitiveString() {
-    List<Automaton> list = new ArrayList<>();
-
-    Iterator<Integer> iter = s.codePoints().iterator();
-    while (iter.hasNext()) {
-      int[] points = toCaseInsensitiveChar(iter.next());
-      list.add(Automata.makeCharSet(points));
-    }
-    return Operations.concatenate(list);
   }
 
   private void findLeaves(
