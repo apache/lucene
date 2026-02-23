@@ -207,7 +207,7 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+* GITHUB#15753: Add Case Insensitive makeChar and makeString to Automata. (John Wagster)
 
 Optimizations
 ---------------------
@@ -332,8 +332,6 @@ Improvements
 * GITHUB#15479: Add NumericDocValueRangeQuery base class to add accessor methods for field, lower and upper values (Alan Woodward)
 
 * GITHUB#15570: Disallow invalid offset 0 for LZ4 decompression (Marcono1234)
-
-* GITHUB#15753: Add Case Insensitive makeChar and makeString to Automata. (John Wagster)
 
 Optimizations
 ---------------------
