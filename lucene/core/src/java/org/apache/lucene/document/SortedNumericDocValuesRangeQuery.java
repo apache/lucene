@@ -33,7 +33,12 @@ import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MatchNoDocsQuery;
+<<<<<<< HEAD
 import org.apache.lucene.search.NumericDocValuesRangeQuery;
+=======
+import org.apache.lucene.search.NumericFieldStats;
+import org.apache.lucene.search.NumericFieldStats.MinMax;
+>>>>>>> f5404570ff (feat: add NumericFieldStats for unified global min/max retrieval)
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -93,16 +98,17 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
     if (lowerValue > upperValue) {
       return MatchNoDocsQuery.INSTANCE;
     }
-    long globalMin = DocValuesSkipper.globalMinValue(indexSearcher.getIndexReader(), field);
-    long globalMax = DocValuesSkipper.globalMaxValue(indexSearcher.getIndexReader(), field);
-    if (lowerValue > globalMax || upperValue < globalMin) {
-      return MatchNoDocsQuery.INSTANCE;
-    }
-    if (lowerValue <= globalMin
-        && upperValue >= globalMax
-        && DocValuesSkipper.globalDocCount(indexSearcher.getIndexReader(), field)
-            == indexSearcher.getIndexReader().maxDoc()) {
-      return MatchAllDocsQuery.INSTANCE;
+    final MinMax minMax = NumericFieldStats.globalMinMax(indexSearcher, field);
+    if (minMax != null) {
+      if (lowerValue > minMax.max() || upperValue < minMax.min()) {
+        return MatchNoDocsQuery.INSTANCE;
+      }
+      if (lowerValue <= minMax.min()
+          && upperValue >= minMax.max()
+          && NumericFieldStats.globalDocCount(indexSearcher, field)
+              == indexSearcher.getIndexReader().maxDoc()) {
+        return MatchAllDocsQuery.INSTANCE;
+      }
     }
     return super.rewrite(indexSearcher);
   }
