@@ -25,6 +25,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.BiFunction;
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FloatDocValuesField;
@@ -987,6 +989,76 @@ public class TestSortOptimization extends LuceneTestCase {
     // assert that the second sort with optimization collected less or equal hits
     assertTrue(collectedHits >= collectedHits2);
     // System.out.println(expectedCollectedHits + "\t" + collectedHits + "\t" + collectedHits2);
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testPointsPrunesOnSegmentEntry() throws IOException {
+    testPrunesOnSegmentEntry(
+        TestUtil.getDefaultCodec(),
+        2048,
+        (field, value) ->
+            List.of(new LongPoint(field, value), new NumericDocValuesField(field, value)));
+  }
+
+  public void testDVSkipperPrunesOnSegmentEntry() throws IOException {
+    testPrunesOnSegmentEntry(
+        TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(16)),
+        16,
+        (field, value) -> List.of(NumericDocValuesField.indexedField(field, value)));
+  }
+
+  /**
+   * Test that CompetitiveDISIBuilder enables pruning from the very start of a subsequent segment.
+   */
+  private void testPrunesOnSegmentEntry(
+      Codec codec, int blockSize, BiFunction<String, Integer, List<IndexableField>> fieldsBuilder)
+      throws IOException {
+    final Directory dir = newDirectory();
+    IndexWriterConfig config =
+        new IndexWriterConfig().setCodec(codec).setMergePolicy(NoMergePolicy.INSTANCE);
+    final IndexWriter writer = new IndexWriter(dir, config);
+
+    final int numHits = 5;
+    final int docsInFirstSegment = numHits * 2;
+    for (int i = 0; i < docsInFirstSegment; i++) {
+      final Document doc = new Document();
+      fieldsBuilder.apply("my_field", i).forEach(doc::add);
+      writer.addDocument(doc);
+    }
+    writer.flush();
+
+    // Many non-competitive values followed by one block of competitive values, so that pruning
+    // must be established on segment entry to skip the non-competitive docs.
+    final int nonCompetitiveBlocks = 20;
+    final int docsInNonCompetitiveBlocks = nonCompetitiveBlocks * blockSize;
+    for (int i = 0; i < docsInNonCompetitiveBlocks; i++) {
+      final Document doc = new Document();
+      fieldsBuilder.apply("my_field", 1000 + i).forEach(doc::add);
+      writer.addDocument(doc);
+    }
+    for (int i = 0; i < blockSize; i++) {
+      final Document doc = new Document();
+      fieldsBuilder.apply("my_field", i).forEach(doc::add);
+      writer.addDocument(doc);
+    }
+    writer.flush();
+
+    final DirectoryReader reader = DirectoryReader.open(writer);
+    writer.close();
+    assertEquals(2, reader.leaves().size());
+
+    final SortField sortField = new SortField("my_field", SortField.Type.LONG);
+    IndexSearcher searcher = new IndexSearcher(reader);
+    TopFieldDocs topDocs =
+        searcher.search(
+            MatchAllDocsQuery.INSTANCE,
+            new TopFieldCollectorManager(new Sort(sortField), numHits, 1));
+
+    assertEquals(numHits, topDocs.scoreDocs.length);
+    final int totalDocs = docsInFirstSegment + docsInNonCompetitiveBlocks + blockSize;
+    assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), totalDocs);
 
     reader.close();
     dir.close();
