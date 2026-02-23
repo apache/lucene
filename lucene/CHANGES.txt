@@ -7,7 +7,11 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-* GITHUB#XXXXX: Remove deprecated RegExp complement syntax support. The DEPRECATED_COMPLEMENT flag,
+* GITHUB#XXXXX: Deprecate Operations.minus() method. This slow operation has been moved to
+  AutomatonTestUtil.minus() for testing purposes only. The method will be removed in Lucene 12.
+  (Saurabh Singh)
+
+* GITHUB#15750: Remove deprecated RegExp complement syntax support. The DEPRECATED_COMPLEMENT flag,
   REGEXP_DEPRECATED_COMPLEMENT enum value, and makeDeprecatedComplement method have been removed.
   Users should use complement bracket expressions ([^...]) instead. (Saurabh Singh)
 

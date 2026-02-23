@@ -548,7 +548,7 @@ public class TestAutomaton extends LuceneTestCase {
     AutomatonTestUtil.assertCleanNFA(a); // this is why we have makeStringUnion()
     assertMatches(a, "foobar", "beebar", "boobar");
 
-    Automaton a4 = Operations.minus(a, a2, DEFAULT_DETERMINIZE_WORK_LIMIT);
+    Automaton a4 = AutomatonTestUtil.minus(a, a2, DEFAULT_DETERMINIZE_WORK_LIMIT);
     AutomatonTestUtil.assertCleanDFA(a4);
 
     assertTrue(Operations.run(a4, "foobar"));
@@ -556,7 +556,7 @@ public class TestAutomaton extends LuceneTestCase {
     assertTrue(Operations.run(a4, "beebar"));
     assertMatches(a4, "foobar", "beebar");
 
-    a4 = Operations.minus(a4, a1, DEFAULT_DETERMINIZE_WORK_LIMIT);
+    a4 = AutomatonTestUtil.minus(a4, a1, DEFAULT_DETERMINIZE_WORK_LIMIT);
     AutomatonTestUtil.assertCleanDFA(a4);
 
     assertFalse(Operations.run(a4, "foobar"));
@@ -564,7 +564,7 @@ public class TestAutomaton extends LuceneTestCase {
     assertTrue(Operations.run(a4, "beebar"));
     assertMatches(a4, "beebar");
 
-    a4 = Operations.minus(a4, a3, DEFAULT_DETERMINIZE_WORK_LIMIT);
+    a4 = AutomatonTestUtil.minus(a4, a3, DEFAULT_DETERMINIZE_WORK_LIMIT);
     AutomatonTestUtil.assertCleanDFA(a4);
 
     assertFalse(Operations.run(a4, "foobar"));
@@ -976,7 +976,7 @@ public class TestAutomaton extends LuceneTestCase {
                 assertTrue(removed);
               }
               Automaton a2 = unionTerms(toRemove);
-              a = Operations.minus(a, a2, Integer.MAX_VALUE);
+              a = AutomatonTestUtil.minus(a, a2, Integer.MAX_VALUE);
             }
           }
           break;
@@ -1016,7 +1016,7 @@ public class TestAutomaton extends LuceneTestCase {
               }
             }
             Automaton a2 = randomNoOp(Operations.union(as));
-            a = Operations.minus(a, a2, DEFAULT_DETERMINIZE_WORK_LIMIT);
+            a = AutomatonTestUtil.minus(a, a2, DEFAULT_DETERMINIZE_WORK_LIMIT);
           }
           break;
 
@@ -1131,7 +1131,9 @@ public class TestAutomaton extends LuceneTestCase {
           if (VERBOSE) {
             System.out.println("  op=remove the empty string");
           }
-          a = Operations.minus(a, Automata.makeEmptyString(), DEFAULT_DETERMINIZE_WORK_LIMIT);
+          a =
+              AutomatonTestUtil.minus(
+                  a, Automata.makeEmptyString(), DEFAULT_DETERMINIZE_WORK_LIMIT);
           terms.remove(newBytesRef());
           break;
 

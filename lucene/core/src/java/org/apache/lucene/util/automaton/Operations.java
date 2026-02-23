@@ -378,7 +378,10 @@ public final class Operations {
    * @param determinizeWorkLimit maximum effort to spend determinizing the automaton. Set higher to
    *     allow more complex queries and lower to prevent memory exhaustion. {@link
    *     #DEFAULT_DETERMINIZE_WORK_LIMIT} is a good starting default.
+   * @deprecated This operation can be slow and is not recommended for production use. For testing,
+   *     use {@code AutomatonTestUtil.minus()} instead. This method will be removed in Lucene 12.
    */
+  @Deprecated
   public static Automaton minus(Automaton a1, Automaton a2, int determinizeWorkLimit) {
     if (Operations.isEmpty(a1) || a1 == a2) {
       return Automata.makeEmpty();
