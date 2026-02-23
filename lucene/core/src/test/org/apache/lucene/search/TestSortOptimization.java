@@ -49,6 +49,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
@@ -1067,6 +1068,101 @@ public class TestSortOptimization extends LuceneTestCase {
     final DirectoryReader reader = DirectoryReader.open(writer);
     writer.close();
     doTestStringSortOptimization(reader);
+    reader.close();
+    dir.close();
+  }
+
+  public void testStringSortOptimizationFieldMissingInSegmentBasedPostings() throws IOException {
+    testStringSortOptimizationFieldMissingInSegment(
+        (field, value) -> new KeywordField(field, value, Field.Store.NO));
+  }
+
+  public void testStringSortOptimizationFieldMissingInSegmentBasedDVSkipper() throws IOException {
+    testStringSortOptimizationFieldMissingInSegment(SortedDocValuesField::indexedField);
+  }
+
+  /**
+   * Test that when a segment doesn't contain the sort field at all (fieldInfo == null), the
+   * optimization still works. All docs in such a segment have missing values, and when missing
+   * values are non-competitive the entire segment should be skippable.
+   */
+  private void testStringSortOptimizationFieldMissingInSegment(
+      BiFunction<String, BytesRef, IndexableField> fieldsBuilder) throws IOException {
+    final Directory dir = newDirectory();
+    // Use NoMergePolicy to ensure we have deterministic segment geometry
+    final IndexWriter writer =
+        new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE));
+
+    // First segment: a small number of docs with the keyword field, enough to fill the top-N queue.
+    final int docsWithField = 20;
+    for (int i = 0; i < docsWithField; i++) {
+      final Document doc = new Document();
+      doc.add(fieldsBuilder.apply("my_field", new BytesRef(Integer.toString(i))));
+      writer.addDocument(doc);
+    }
+    writer.flush();
+
+    // Second segment: many docs WITHOUT the keyword field. The field doesn't exist in this
+    // segment's FieldInfos at all, so every doc has a missing value for the sort field.
+    final int docsWithoutField = atLeast(10000);
+    for (int i = 0; i < docsWithoutField; i++) {
+      writer.addDocument(new Document());
+    }
+
+    final DirectoryReader reader = DirectoryReader.open(writer);
+    writer.close();
+
+    final int numDocs = docsWithField + docsWithoutField;
+    final int numHits = 5;
+
+    { // ascending sort with missing-last: once the queue fills from the first segment,
+      // all docs in the second segment have non-competitive missing values and should be skipped
+      SortField sortField =
+          KeywordField.newSortField(
+              "my_field", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
+      Sort sort = new Sort(sortField);
+      TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+    }
+
+    { // descending sort with missing-last
+      SortField sortField =
+          KeywordField.newSortField(
+              "my_field", true, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
+      Sort sort = new Sort(sortField);
+      TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
+
+      sortField.setOptimizeSortWithIndexedData(false);
+      sort = new Sort(sortField);
+      TopDocs unpruned = assertSearchHits(reader, sort, numHits, null);
+
+      CheckHits.checkEqual(MatchAllDocsQuery.INSTANCE, topDocs.scoreDocs, unpruned.scoreDocs);
+    }
+
+    { // descending sort with missing-first: once the queue fills from the first segment,
+      // all docs in the second segment have non-competitive missing values and should be skipped
+      SortField sortField =
+          KeywordField.newSortField(
+              "my_field", true, SortedSetSelector.Type.MIN, SortField.STRING_FIRST);
+      Sort sort = new Sort(sortField);
+      TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
+      assertNonCompetitiveHitsAreSkipped(topDocs.totalHits.value(), numDocs);
+    }
+
+    { // ascending sort with missing-first
+      SortField sortField =
+          KeywordField.newSortField(
+              "my_field", false, SortedSetSelector.Type.MIN, SortField.STRING_FIRST);
+      Sort sort = new Sort(sortField);
+      TopDocs topDocs = assertSearchHits(reader, sort, numHits, null);
+
+      sortField.setOptimizeSortWithIndexedData(false);
+      sort = new Sort(sortField);
+      TopDocs unpruned = assertSearchHits(reader, sort, numHits, null);
+
+      CheckHits.checkEqual(MatchAllDocsQuery.INSTANCE, topDocs.scoreDocs, unpruned.scoreDocs);
+    }
+
     reader.close();
     dir.close();
   }

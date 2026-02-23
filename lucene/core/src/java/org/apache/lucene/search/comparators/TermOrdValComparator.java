@@ -276,14 +276,20 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
           enableSkipping = false;
         }
       }
-      if (enableSkipping && terms != null) {
-        competitiveState =
-            new PostingsBasedCompetitiveState(context, field, dense, values.termsEnum());
-      } else if (enableSkipping && skipper != null) {
-        competitiveState = new SkipperBasedCompetitiveState(context, skipper);
+
+      if (enableSkipping) {
+        if (terms != null) {
+          competitiveState =
+              new PostingsBasedCompetitiveState(context, field, dense, values.termsEnum());
+        } else if (skipper != null) {
+          competitiveState = new SkipperBasedCompetitiveState(context, skipper);
+        } else {
+          competitiveState = new EmptyCompetitiveState(context);
+        }
       } else {
         competitiveState = null;
       }
+
       updateCompetitiveIterator();
     }
 
@@ -509,6 +515,18 @@ public class TermOrdValComparator extends FieldComparator<BytesRef> {
     }
 
     abstract void update(int minOrd, int maxOrd) throws IOException;
+  }
+
+  private static class EmptyCompetitiveState extends CompetitiveState {
+
+    EmptyCompetitiveState(LeafReaderContext context) {
+      super(context);
+    }
+
+    @Override
+    void update(int minOrd, int maxOrd) throws IOException {
+      iterator.update(DocIdSetIterator.empty());
+    }
   }
 
   private class PostingsBasedCompetitiveState extends CompetitiveState {

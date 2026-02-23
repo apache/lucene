@@ -7,6 +7,10 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#XXXXX: Remove deprecated RegExp complement syntax support. The DEPRECATED_COMPLEMENT flag,
+  REGEXP_DEPRECATED_COMPLEMENT enum value, and makeDeprecatedComplement method have been removed.
+  Users should use complement bracket expressions ([^...]) instead. (Saurabh Singh)
+
 * GITHUB#15517: Remove newHashMap, newHashSet from CollectionUtil, and use HashMap.newHashMap, HashSet.newHashSet
   directly. (Zhou Hui)
 
@@ -136,6 +140,9 @@ Bug Fixes
 * GITHUB#12561: UAX29URLEmailTokenizer matched emails with commas and invalid
   periods in the local part. (Eran Yarkon)
 
+* GITHUB#14971: Fix CachedExecutor thread pool leak in ConcurrentMergeScheduler
+  when IndexWriter initialization fails. (Su Beom)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -188,6 +195,8 @@ API Changes
 * GITHUB#15636: Introduce TermsEnum.preferSeekExact(). Update and delete processing obey this setting,
   allowing bloom or other approximate membership filters to apply in these paths. (Trevor McCulloch)
 
+* GITHUB#15723: Add hook for LRUQueryCache to allow custom population strategies (Nhat Nguyen)
+
 New Features
 ---------------------
 * GITHUB##15737: Store pre-aggregated sum and value count in DocValuesSkipper (Ankit Jain)
@@ -200,6 +209,10 @@ Improvements
 Optimizations
 ---------------------
 * GITHUB#15637: Lazily allocate ByteArrayDataInputs in SegmentTermsEnumFrame#15637 (Misha Dmitriev)
+
+* GITHUB#15718 Skip per-document stored field reads on sorted indices when no stored fields are present (Francisco Fernández Castaño)
+
+* GITHUB#15729: Lucene90DocValuesProducer is not prefetching any data for DocValueSkippers anymore (Alexander Reelsen)
 
 Bug Fixes
 ---------------------
@@ -368,7 +381,7 @@ Optimizations
 
 * GITHUB#15498: ExitableDirectoryReader keeps singleton SortedSetDocValues or SortedNumericDocValues as singletons. (Houston Putman)
 
-* GITHUB#15511, GITHUB#15696, GITHUB#15709: Dynamic pruning for SORTED(_SET) fields with doc
+* GITHUB#15511, GITHUB#15696, GITHUB#15709, GITHUB#15741: Dynamic pruning for SORTED(_SET) fields with doc
   values skipper (Pan Guixin, Alan Woodward)
 
 * GITHUB#15560: Avoid unnecessary getGraph() call. (Shubham Chaudhary)
