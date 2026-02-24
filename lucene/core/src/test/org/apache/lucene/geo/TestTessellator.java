@@ -953,6 +953,28 @@ public class TestTessellator extends LuceneTestCase {
     checkMultiPolygon(polygons, 0.0);
   }
 
+  public void testComplexPolygon65() throws Exception {
+    // Simplified extract of the top-left corner of github-15731.geojson.gz:
+    // shell replaced with a bounding rectangle from the top-left-most shell vertex
+    // to a bottom-right cutoff point, with two surviving holes.
+    String geoJson =
+        """
+        {"type": "Polygon", "coordinates": [
+          [
+            [-97.12583, 32.67035], [-97.12466, 32.67035], [-97.12466, 32.6691],
+            [-97.12583, 32.6691], [-97.12583, 32.67035]
+          ], [
+            [-97.125074, 32.669464], [-97.125051, 32.669857], [-97.124884, 32.669819],
+            [-97.124906, 32.669464], [-97.124922, 32.669464], [-97.125074, 32.669464]
+          ], [
+            [-97.124922, 32.669464], [-97.124716, 32.669445], [-97.124739, 32.669128],
+            [-97.124906, 32.669128], [-97.124922, 32.669464]
+          ]
+        ]}""";
+    Polygon[] polygons = Polygon.fromGeoJSON(geoJson);
+    checkMultiPolygon(polygons, 0.0);
+  }
+
   private static class TestCountingMonitor implements Tessellator.Monitor {
     private int count = 0;
     private int splitsStarted = 0;
