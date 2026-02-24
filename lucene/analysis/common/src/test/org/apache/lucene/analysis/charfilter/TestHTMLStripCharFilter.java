@@ -649,6 +649,16 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
     assertEquals("Test\n\n\n\nSome text.", result.toString().trim());
   }
 
+  public void testForIssue10520Regression() throws IOException {
+    String test =
+        "<!DOCTYPE html><html lang=\"en\"><head><title>Test</title></head><a href=\"https://www.somewhere.com?data=\">a link</a> some text <a href=\"https://www.elsewhere.com\">another link</a></html>";
+    Reader reader = new StringReader(test);
+    HTMLStripCharFilter filter = new HTMLStripCharFilter(reader);
+    StringWriter result = new StringWriter();
+    filter.transferTo(result);
+    assertEquals("Test\n\na link some text another link", result.toString().trim());
+  }
+
   public void testEqualsAtEndOfAttributeBug() throws IOException {
     // Input: The first tag's attribute ends with =" followed by >
     String input =
@@ -668,6 +678,23 @@ public class TestHTMLStripCharFilter extends BaseTokenStreamTestCase {
     String actual = sb.toString().trim().replaceAll("\\s+", " ");
 
     // This fails because the output is just "example2"
+    assertEquals("example this gets discarded example2", actual);
+  }
+
+  public void testSingleQuoteEqualsAtEndOfAttributeBug() throws IOException {
+    // Input: The first tag's attribute ends with =' followed by >
+    String input =
+        "<a href='https://www.example.com/?test='>example</a> this gets discarded <a href='next'>example2</a>";
+
+    Reader reader = new HTMLStripCharFilter(new StringReader(input));
+    StringBuilder sb = new StringBuilder();
+    char[] buffer = new char[1024];
+    int len;
+    while ((len = reader.read(buffer)) != -1) {
+      sb.append(buffer, 0, len);
+    }
+    String actual = sb.toString().trim().replaceAll("\\s+", " ");
+
     assertEquals("example this gets discarded example2", actual);
   }
 
