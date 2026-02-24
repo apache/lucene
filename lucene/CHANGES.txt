@@ -247,6 +247,8 @@ Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
 
+* GITHUB#15764: Added simpler TestTesselator test in support of fix GITHUB#15731. (Craig Taverner)
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes
