@@ -7,7 +7,19 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-* GITHUB#XXXXX: Remove deprecated RegExp complement syntax support. The DEPRECATED_COMPLEMENT flag,
+
+* GITHUB#15763: Deprecate Operations.complement() method. This operation can be slow and is not
+  recommended for production use. It will be removed in Lucene 12. (Saurabh Singh)
+
+* GITHUB#15755: Deprecate Operations.minus() method. This slow operation has been moved to
+  AutomatonTestUtil.minus() for testing purposes only. The method will be removed in Lucene 12.
+  (Saurabh Singh)
+
+* GITHUB#15762: Remove deprecated Operations.concatenate(Automaton, Automaton) and
+  Operations.union(Automaton, Automaton) methods. Use the List/Collection variants instead.
+  (Saurabh Singh)
+
+* GITHUB#15750: Remove deprecated RegExp complement syntax support. The DEPRECATED_COMPLEMENT flag,
   REGEXP_DEPRECATED_COMPLEMENT enum value, and makeDeprecatedComplement method have been removed.
   Users should use complement bracket expressions ([^...]) instead. (Saurabh Singh)
 
@@ -197,13 +209,21 @@ API Changes
 
 * GITHUB#15723: Add hook for LRUQueryCache to allow custom population strategies (Nhat Nguyen)
 
+* GITHUB#15751: Prevent zero vectors in knn fields with cosine similarity configured (Vigya Sharma)
+
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#15740: Add NumericFieldStats utility for retrieving global numeric field statistics
+  (min, max, doc count) from index metadata structures. Migrate SortedNumericDocValuesRangeQuery
+  to use this API, fixing the rewrite optimization for fields with PointValues but no skip index.
+  (Salvatore Campagna)
 
 Improvements
 ---------------------
 * GITHUB#15757: Better skipper-based numeric sort pruning from the start of segments (Alan Woodward)
+
+* GITHUB#15753: Add Case Insensitive makeChar and makeString to Automata. (John Wagster)
 
 Optimizations
 ---------------------
@@ -856,7 +876,6 @@ Improvements
 
 * GITHUB#14239: Hunspell's option to tolerate affix rule count mismatches was
   improved to tolerate more instances of this problem.  (Robert Muir)
-
 
 * GITHUB#14238: Improve test coverage of Dynamic Range Faceting. (John Houser)
 
