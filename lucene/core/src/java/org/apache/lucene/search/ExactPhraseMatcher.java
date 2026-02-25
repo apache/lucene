@@ -79,7 +79,7 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
     for (PhraseQuery.PostingsAndFreq posting : postings) {
       postingsAndPositions.add(new PostingsAndPosition(posting.postings, posting.position));
     }
-    this.postings = postingsAndPositions.toArray(new PostingsAndPosition[0]);
+    this.postings = postingsAndPositions.toArray(PostingsAndPosition[]::new);
   }
 
   @Override

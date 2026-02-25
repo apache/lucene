@@ -1200,7 +1200,7 @@ public class IndexWriter
       if (infoStream.isEnabled("IW")) {
         infoStream.message("IW", "init: hit exception on init; releasing write lock: " + t);
       }
-      IOUtils.closeWhileSuppressingExceptions(t, writeLock);
+      IOUtils.closeWhileSuppressingExceptions(t, config.getMergeScheduler(), writeLock);
       writeLock = null;
       throw t;
     }
@@ -6458,7 +6458,7 @@ public class IndexWriter
       throw t;
     }
 
-    return segStates.toArray(new BufferedUpdatesStream.SegmentState[0]);
+    return segStates.toArray(BufferedUpdatesStream.SegmentState[]::new);
   }
 
   /** Tests should override this to enable test points. Default is <code>false</code>. */

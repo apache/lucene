@@ -161,7 +161,7 @@ public class SimpleTextCompoundFormat extends CompoundFormat {
     String dataFile = IndexFileNames.segmentFileName(si.name, "", DATA_EXTENSION);
 
     int numFiles = si.files().size();
-    String[] names = si.files().toArray(new String[numFiles]);
+    String[] names = si.files().toArray(String[]::new);
     Arrays.sort(names);
     long[] startOffsets = new long[numFiles];
     long[] endOffsets = new long[numFiles];

@@ -84,6 +84,15 @@ Enhanced error messages will clearly indicate:
 This parameter has no replacement, TieredMergePolicy no longer bounds the
 number of segments that may be merged together.
 
+### Snowball dependency upgrade (Dutch stemmer)
+
+Snowball replaced the "Dutch" stemmer by the "Kraaij-Pohlmann" stemmer (previous called dutch-kp). As a result Lucene supports 2 Dutch stemmers:
+
+- DutchStemmer, which is now the "Kraaij-Pohlmann" stemmer.
+- Dutch_porterStemmer, which is the DutchStemmer from Lucene-10 and before.
+
+Opening an pre Lucene-11 index which is indexed using the DutchStemmer will succeed, but due to the different stemmer implementation a re-index is needed in order to make searching work correctly. Or replace DutchStemmer by Dutch_porterStemmer in your code.
+
 ### Query caching is now disabled by default
 
 Query caching is now disabled by default. To enable caching back, do something
@@ -110,6 +119,45 @@ Missing values should be configured in SortField constructor methods, as they ar
 
 MatchAllDocs and MatchNoDocs queries should use the INSTANCE final field instead of creating
 new objects. The constructors will be removed in the future.
+
+### APIs for configuring compound file creation thresholds have been updated and moved
+
+APIs for configuring compound file creation thresholds were part of merge policies before.
+They are now part of `CompoundFormat`. Previously, the compound file creation depended upon the size of the merged
+segment with respect to the total index size (determined by `CFSRatio` which was 10% by default). Lucene now uses fixed
+thresholds to decide whether a merged segment should be written as a compound file, the default thresholds are:
+
+- **64 MB** for size-based merge policies (e.g., `TieredMergePolicy`)
+- **65,536 documents** for document-count based merge policies (e.g., `LogDocMergePolicy`)
+
+These thresholds could be changed using `setCfsThresholdByteSize` and `setCfsThresholdDocSize` respectively.
+
+#### Migration
+
+If your code previously configured `getNoCFSRatio`, `getMaxCFSSegmentSizeMB`, `setMaxCFSSegmentSizeMB` and `setNoCFSRatio`
+on merge policies, you should change it as follows:
+
+##### Before
+
+```java
+TieredMergePolicy mp = new TieredMergePolicy();
+mp.setNoCFSRatio(0.0);
+mp.setMaxCFSSegmentSizeMB(512);
+IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+iwc.setMergePolicy(mp);
+mp.getNoCFSRatio();
+mp.getMaxCFSSegmentSizeMB();
+```
+
+##### After
+
+```java
+IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+iwc.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
+iwc.getConfig().getCodec().compoundFormat().setMaxCFSSegmentSizeMB(512);
+iwc.getConfig().getCodec().compoundFormat().getShouldUseCompoundFile();
+iwc.getConfig().getCodec().compoundFormat().getMaxCFSSegmentSizeMB();
+```
 
 ## Migration from Lucene 9.x to Lucene 10.0
 
@@ -202,18 +250,14 @@ These classes no longer take a `determinizeWorkLimit` and no longer determinize
 behind the scenes. It is the responsibility of the caller to call
 `Operations.determinize()` for DFA execution.
 
-### RegExp optional complement syntax has been deprecated
+### RegExp optional complement syntax has been removed (LUCENE-11)
 
-Support for the optional complement syntax (`~`) has been deprecated.
-The `COMPLEMENT` syntax flag has been removed and replaced by the
-`DEPRECATED_COMPLEMENT` flag. Users wanting to enable the deprecated
-complement support can do so by explicitly passing a syntax flags that
-has `DEPRECATED_COMPLEMENT` when creating a `RegExp`. For example:
-`new RegExp("~(foo)", RegExp.DEPRECATED_COMPLEMENT)`.
+Support for the optional complement syntax (`~`) that was deprecated in Lucene 10
+has been removed. The `DEPRECATED_COMPLEMENT` flag and `REGEXP_DEPRECATED_COMPLEMENT`
+enum value are no longer available.
 
-Alternatively, and quite commonly, a more simple _complement bracket expression_,
-`[^...]`, may be a suitable replacement, For example, `[^fo]` matches any
-character that is not an `f` or `o`.
+Users should migrate to using _complement bracket expressions_ (`[^...]`) instead.
+For example, `[^fo]` matches any character that is not an `f` or `o`.
 
 ### DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery removed in favor of FieldExistsQuery (LUCENE-10436)
 
