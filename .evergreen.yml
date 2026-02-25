@@ -1,0 +1,121 @@
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Don't run CI if only docs changed.
+ignore:
+  - "*.md"
+
+variables:
+  - &fetch_source
+    command: git.get_project
+    params:
+      directory: src
+
+  # OpenJDK 25 from https://jdk.java.net/25/
+  - &setup_jdk
+    command: shell.exec
+    type: setup
+    params:
+      working_dir: src
+      shell: bash
+      script: |
+        set -euo pipefail
+        ARCH=$(uname -m | sed 's/x86_64/x64/;s/arm64/aarch64/')
+        JDK_URL=$(printf "https://download.java.net/java/GA/jdk25.0.2/b1e0dfa218384cb9959bdcb897162d4e/10/GPL/openjdk-25.0.2_linux-%s_bin.tar.gz" "$ARCH")
+        curl -fsSL -o /tmp/jdk.tar.gz "$JDK_URL"
+        mkdir -p ${workdir}/java
+        tar -xzf /tmp/jdk.tar.gz -C ${workdir}/java --strip-components=1
+
+functions:
+  setup:
+    - *fetch_source
+    - *setup_jdk
+
+  # Runs all validation checks without tests.
+  # This is equivalent to the [Run gradle check (without tests)](hhttps://github.com/apache/lucene/blob/main/.github/workflows/run-checks-all.yml#L93-L94) Github Actions workflow from Lucene upstream.
+  # TODO (tianxiao): consider adding the validation tools (eclint, ast-grep) that Gradle check optionally uses.
+  run-checks:
+    - command: subprocess.exec
+      params:
+        working_dir: src
+        binary: bash
+        env:
+          JAVA_HOME: ${workdir}/java
+        args:
+          - "-c"
+          - |
+            export PATH="$JAVA_HOME/bin:$PATH"
+            ./gradlew check -x test "-Ptask.times=true"
+
+  # Runs all tests without any other validation checks.
+  # This is equivalent to the [Run gradle tests](https://github.com/apache/lucene/blob/main/.github/workflows/run-checks-all.yml#L139-L144) Github Actions workflow from Lucene upstream.
+  run-tests:
+    - command: subprocess.exec
+      params:
+        working_dir: src
+        binary: bash
+        env:
+          JAVA_HOME: ${workdir}/java
+          TEST_JVM_ARGS: "-XX:TieredStopAtLevel=1 -XX:+UseParallelGC -XX:ActiveProcessorCount=1"
+        args:
+          - "-c"
+          - |
+            export PATH="$JAVA_HOME/bin:$PATH"
+            ./gradlew displayGradleDiagnostics allOptions test \
+              "-Ptask.times=true" \
+              "-Pvalidation.errorprone=false"
+
+  attach-test-results:
+    - command: attach.xunit_results
+      params:
+        file: src/lucene/**/build/test-results/test/TEST-*.xml
+
+tasks:
+  - name: checks
+    tags: ["pr", "commit_queue"]
+    commands:
+      - func: setup
+      - func: run-checks
+
+  - name: tests
+    tags: ["pr", "commit_queue"]
+    commands:
+      - func: setup
+      - func: run-tests
+
+task_groups:
+  - name: tests_and_cleanup
+    tags: ["pr", "commit_queue"]
+    teardown_task:
+      - func: attach-test-results
+    tasks:
+      - tests
+
+buildvariants:
+  - name: ubuntu2204-large
+    display_name: "Lucene (x86_64)"
+    run_on:
+      - ubuntu2204-large
+    tasks:
+      - name: checks
+      - name: tests_and_cleanup
+
+  - name: ubuntu2204-arm64-large
+    display_name: "Lucene (ARM64)"
+    run_on:
+      - ubuntu2204-arm64-large
+    tasks:
+      - name: checks
+      - name: tests_and_cleanup
