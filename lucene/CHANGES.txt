@@ -175,7 +175,7 @@ Build
 * GITHUB#15629: Introduce prek for fast pre-commit/repository checks.
   Markdown files are now linted with local broken-link detection.
   Python and Shell scripts are now linted system-wide.
-  Install with `uvx prek install`
+  Install with `uv tool install prek; prek install`
   For more see help/precommit.txt or `./gradlew helpPrecommit` (Robert Muir)
 
 Other
