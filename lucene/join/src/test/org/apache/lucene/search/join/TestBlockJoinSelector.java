@@ -176,9 +176,12 @@ public class TestBlockJoinSelector extends LuceneTestCase {
             toIter(children),
             false,
             false);
-    assertFalse(withMissingValues.advanceExact(5));
-    assertFalse(withMissingValues.advanceExact(15));
+    assertTrue(withMissingValues.advanceExact(5));
+    assertEquals(-1, withMissingValues.ordValue());
+    assertTrue(withMissingValues.advanceExact(15));
+    assertEquals(-1, withMissingValues.ordValue());
     assertTrue(withMissingValues.advanceExact(18));
+    assertEquals(10, withMissingValues.ordValue());
 
     withMissingValues =
         BlockJoinSelector.wrap(
@@ -188,7 +191,10 @@ public class TestBlockJoinSelector extends LuceneTestCase {
             toIter(children),
             false,
             false);
+    assertEquals(5, withMissingValues.nextDoc());
+    assertEquals(15, withMissingValues.nextDoc());
     assertEquals(18, withMissingValues.nextDoc());
+    assertEquals(NO_MORE_DOCS, withMissingValues.nextDoc());
   }
 
   public void testNextDocWithSkippedParents() throws IOException {
@@ -224,7 +230,12 @@ public class TestBlockJoinSelector extends LuceneTestCase {
             toIter(children),
             false,
             false);
+    assertEquals(3, naturalOrder.nextDoc());
+    assertEquals(-1, naturalOrder.ordValue());
     assertEquals(5, naturalOrder.nextDoc());
+    assertEquals(7, naturalOrder.ordValue());
+    assertEquals(10, naturalOrder.nextDoc());
+    assertEquals(-1, naturalOrder.ordValue());
     assertEquals(NO_MORE_DOCS, naturalOrder.nextDoc());
   }
 
