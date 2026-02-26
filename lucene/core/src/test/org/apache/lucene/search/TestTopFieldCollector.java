@@ -723,7 +723,8 @@ public class TestTopFieldCollector extends LuceneTestCase {
     int callsPerThread = 1000;
     int expectedTotal = numThreads * callsPerThread;
     ExecutorService executor =
-        Executors.newFixedThreadPool(numThreads, new NamedThreadFactory("testConcurrentNewCollector"));
+        Executors.newFixedThreadPool(
+            numThreads, new NamedThreadFactory("testConcurrentNewCollector"));
     CountDownLatch startLatch = new CountDownLatch(1);
     AtomicReference<Throwable> error = new AtomicReference<>();
     List<Future<?>> futures = new ArrayList<>();
