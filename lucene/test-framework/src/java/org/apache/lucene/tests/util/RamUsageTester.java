@@ -40,6 +40,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Predicate;
 import java.util.function.ToLongFunction;
@@ -293,6 +294,8 @@ public final class RamUsageTester {
 
               // Ignorable JDK classes.
               a(ByteOrder.class, v -> 0);
+              // Avoid reflective access to Striped64 internals (LongAdder.cells) under JPMS.
+              a(LongAdder.class, v -> 0);
             }
 
             @SuppressWarnings("unchecked")
