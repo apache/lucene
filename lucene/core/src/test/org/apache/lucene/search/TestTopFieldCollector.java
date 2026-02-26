@@ -52,6 +52,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.NamedThreadFactory;
 
 public class TestTopFieldCollector extends LuceneTestCase {
   private IndexSearcher is;
@@ -721,7 +722,8 @@ public class TestTopFieldCollector extends LuceneTestCase {
     int numThreads = 8;
     int callsPerThread = 1000;
     int expectedTotal = numThreads * callsPerThread;
-    ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+    ExecutorService executor =
+        Executors.newFixedThreadPool(numThreads, new NamedThreadFactory("testConcurrentNewCollector"));
     CountDownLatch startLatch = new CountDownLatch(1);
     AtomicReference<Throwable> error = new AtomicReference<>();
     List<Future<?>> futures = new ArrayList<>();
