@@ -38,6 +38,7 @@ import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
+import org.apache.lucene.codecs.lucene99.Lucene99EmptyFlatVectorWriter;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
@@ -63,6 +64,16 @@ import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 /**
  * Writes quantized vector values and metadata to index segments in the format for Lucene 10.4.
  *
+ * <p>This writer creates two sets of full-precision vector files:
+ *
+ * <ul>
+ *   <li>Standard files (.vec, .vemf) - contain actual full-precision vectors
+ *   <li>Empty placeholder files (*_empty.vec, *_empty.vemf) - contain only metadata with 0 vectors
+ * </ul>
+ *
+ * <p>At read time, the reader can choose which set to use. This allows dropping full-precision
+ * vectors to save space while maintaining index compatibility.
+ *
  * @lucene.experimental
  */
 public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
@@ -74,6 +85,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private final IndexOutput meta, vectorData;
   private final ScalarEncoding encoding;
   private final FlatVectorsWriter rawVectorDelegate;
+  private final FlatVectorsWriter emptyPlaceholderVectorWriter;
   private final Lucene104ScalarQuantizedVectorScorer vectorsScorer;
   private boolean finished;
 
@@ -101,6 +113,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
             Lucene104ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION);
     this.rawVectorDelegate = rawVectorDelegate;
     try {
+      this.emptyPlaceholderVectorWriter = new Lucene99EmptyFlatVectorWriter(state);
       meta = state.directory.createOutput(metaFileName, state.context);
       vectorData = state.directory.createOutput(vectorDataFileName, state.context);
 
@@ -125,6 +138,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   @Override
   public FlatFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
     FlatFieldVectorsWriter<?> rawVectorDelegate = this.rawVectorDelegate.addField(fieldInfo);
+    this.emptyPlaceholderVectorWriter.addField(fieldInfo);
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
       @SuppressWarnings("unchecked")
       FieldWriter fieldWriter =
@@ -138,6 +152,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   @Override
   public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
     rawVectorDelegate.flush(maxDoc, sortMap);
+    emptyPlaceholderVectorWriter.flush(maxDoc, sortMap);
+
     for (FieldWriter field : fields) {
       // after raw vectors are written, normalize vectors for clustering and quantization
       if (VectorSimilarityFunction.COSINE == field.fieldInfo.getVectorSimilarityFunction()) {
@@ -316,6 +332,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
     finished = true;
     rawVectorDelegate.finish();
+    emptyPlaceholderVectorWriter.finish();
     if (meta != null) {
       // write end of fields marker
       meta.writeInt(-1);
@@ -604,7 +621,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(meta, vectorData, rawVectorDelegate);
+    IOUtils.close(meta, vectorData, rawVectorDelegate, emptyPlaceholderVectorWriter);
   }
 
   static float[] getCentroid(KnnVectorsReader vectorsReader, String fieldName) {

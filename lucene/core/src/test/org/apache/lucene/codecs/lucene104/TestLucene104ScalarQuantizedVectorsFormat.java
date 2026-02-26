@@ -17,7 +17,7 @@
 package org.apache.lucene.codecs.lucene104;
 
 import static java.lang.String.format;
-import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene99.Lucene99EmptyFlatVectorWriter.EMPTY_VECTOR_SUFFIX;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
@@ -25,11 +25,9 @@ import static org.hamcrest.Matchers.oneOf;
 import java.io.IOException;
 import java.util.Locale;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
-import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DirectoryReader;
@@ -46,9 +44,6 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
@@ -223,76 +218,27 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
     return encoding.getBits();
   }
 
-  /** Simulates empty raw vectors by modifying index files. */
+  /** Simulates empty raw vectors by swapping with pre-written empty vector files. */
   @Override
   protected void simulateEmptyRawVectors(Directory dir) throws Exception {
+    final String RAW_VECTOR_EXTENSION = ".vec";
+    final String VECTOR_META_EXTENSION = ".vemf";
     final String[] indexFiles = dir.listAll();
-    final String RAW_VECTOR_EXTENSION = "vec";
-    final String VECTOR_META_EXTENSION = "vemf";
 
     for (String file : indexFiles) {
-      if (file.endsWith("." + RAW_VECTOR_EXTENSION)) {
-        replaceWithEmptyVectorFile(dir, file);
-      } else if (file.endsWith("." + VECTOR_META_EXTENSION)) {
-        updateVectorMetadataFile(dir, file);
+      if (file.endsWith(RAW_VECTOR_EXTENSION) && !file.contains(EMPTY_VECTOR_SUFFIX)) {
+        swapWithEmptyFile(dir, file, RAW_VECTOR_EXTENSION);
+      } else if (file.endsWith(VECTOR_META_EXTENSION) && !file.contains(EMPTY_VECTOR_SUFFIX)) {
+        swapWithEmptyFile(dir, file, VECTOR_META_EXTENSION);
       }
     }
   }
 
-  /** Replaces a raw vector file with an empty one that has valid header/footer. */
-  private void replaceWithEmptyVectorFile(Directory dir, String fileName) throws Exception {
-    byte[] indexHeader;
-    try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
-      indexHeader = CodecUtil.readIndexHeader(in);
-    }
+  /** Replaces a file with its empty counterpart. */
+  private void swapWithEmptyFile(Directory dir, String fileName, String extension)
+      throws Exception {
+    String emptyFileName = fileName.replace(extension, EMPTY_VECTOR_SUFFIX + extension);
     dir.deleteFile(fileName);
-    try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
-      // Write header
-      out.writeBytes(indexHeader, 0, indexHeader.length);
-      // Write footer (no content in between)
-      CodecUtil.writeFooter(out);
-    }
-  }
-
-  /** Updates vector metadata file to indicate zero vector length. */
-  private void updateVectorMetadataFile(Directory dir, String fileName) throws Exception {
-    // Read original metadata
-    byte[] indexHeader;
-    int fieldNumber, vectorEncoding, vectorSimilarityFunction, dimension;
-    long vectorStartPos;
-
-    try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
-      indexHeader = CodecUtil.readIndexHeader(in);
-      fieldNumber = in.readInt();
-      vectorEncoding = in.readInt();
-      vectorSimilarityFunction = in.readInt();
-      vectorStartPos = in.readVLong();
-      in.readVLong(); // Skip original vector length
-      dimension = in.readVInt();
-    }
-
-    // Create updated metadata file
-    dir.deleteFile(fileName);
-    try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
-      // Write header
-      out.writeBytes(indexHeader, 0, indexHeader.length);
-
-      // Write metadata with zero vector length
-      out.writeInt(fieldNumber);
-      out.writeInt(vectorEncoding);
-      out.writeInt(vectorSimilarityFunction);
-      out.writeVLong(vectorStartPos);
-      out.writeVLong(0); // Set vector length to 0
-      out.writeVInt(dimension);
-      out.writeInt(0);
-
-      // Write configuration
-      OrdToDocDISIReaderConfiguration.writeStoredMeta(
-          DIRECT_MONOTONIC_BLOCK_SHIFT, out, null, 0, 0, null);
-
-      // Mark end of fields and write footer
-      out.writeInt(-1);
-      CodecUtil.writeFooter(out);
-    }
+    dir.rename(emptyFileName, fileName);
   }
 }
