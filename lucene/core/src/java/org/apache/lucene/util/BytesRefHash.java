@@ -178,18 +178,12 @@ public final class BytesRefHash implements Accountable {
    */
   public int[] compact() {
     assert bytesStart != null : "bytesStart is null - not initialized";
-    int upto = 0;
-    for (int i = 0; i < hashSize; i++) {
-      if (ids[i] != -1) {
-        ids[upto] = ids[i] & hashMask;
-        if (upto < i) {
-          ids[i] = -1;
-        }
-        upto++;
-      }
-    }
 
-    assert upto == count;
+    for (int i = 0; i < count; i++) {
+      ids[i] = i;
+    }
+    Arrays.fill(ids, count, hashSize, -1);
+
     lastCount = count;
     return ids;
   }
