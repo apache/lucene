@@ -39,6 +39,8 @@ Optimizations
 
 * GITHUB#15729: Lucene90DocValuesProducer is not prefetching any data for DocValueSkippers anymore (Alexander Reelsen)
 
+* GITHUB#15742: Optimize int4 dotProduct and squareDistance computations by replacing vector conversions with reinterpret casting + bit manipulation. (Trevor McCulloch, Kaival Parikh)
+
 Bug Fixes
 ---------------------
 * GITHUB#15668: Fix UnsupportedOperationException in WeightedSpanTermExtractor by
