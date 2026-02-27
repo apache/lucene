@@ -185,17 +185,9 @@ public class NeighborArray {
             ? descSortFindRightMostInsertionPoint(tmpScore, sortedNodeSize)
             : ascSortFindRightMostInsertionPoint(tmpScore, sortedNodeSize);
     System.arraycopy(
-        nodes,
-        insertionPoint,
-        nodes,
-        insertionPoint + 1,
-        sortedNodeSize - insertionPoint);
+        nodes, insertionPoint, nodes, insertionPoint + 1, sortedNodeSize - insertionPoint);
     System.arraycopy(
-        scores,
-        insertionPoint,
-        scores,
-        insertionPoint + 1,
-        sortedNodeSize - insertionPoint);
+        scores, insertionPoint, scores, insertionPoint + 1, sortedNodeSize - insertionPoint);
     nodes[insertionPoint] = tmpNode;
     scores[insertionPoint] = tmpScore;
     ++sortedNodeSize;
