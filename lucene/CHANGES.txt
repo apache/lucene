@@ -233,6 +233,8 @@ Optimizations
 
 * GITHUB#15729: Lucene90DocValuesProducer is not prefetching any data for DocValueSkippers anymore (Alexander Reelsen)
 
+* GITHUB#15772: improve BytesRefHash.sort performance by rearranging ids#15772 (tyronecai)
+
 Bug Fixes
 ---------------------
 * GITHUB#15668: Fix UnsupportedOperationException in WeightedSpanTermExtractor by
