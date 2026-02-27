@@ -179,7 +179,7 @@ public final class BytesRefHash implements Accountable {
   public int[] compact() {
     assert bytesStart != null : "bytesStart is null - not initialized";
 
-    // id is a sequence number when bytes added to the pool
+    // id is the sequence number when bytes added to the pool
     for (int i = 0; i < count; i++) {
       ids[i] = i;
     }
