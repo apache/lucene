@@ -239,7 +239,6 @@ Optimizations
 
 * GITHUB#15775: Improve BytesRefHash.sort performance by retrieve byte directly from the pool. (tyronecai)
 
-
 Bug Fixes
 ---------------------
 * GITHUB#15668: Fix UnsupportedOperationException in WeightedSpanTermExtractor by
