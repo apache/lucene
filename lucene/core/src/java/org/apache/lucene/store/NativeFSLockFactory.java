@@ -135,7 +135,7 @@ public final class NativeFSLockFactory extends FSLockFactory {
   }
 
   // TODO: kind of bogus we even pass channel:
-  // FileLock has an accessor, but mockfs doesn't yet mock the locks, too scary atm.
+  // FileLock has an accessor, but mockfs doesnt yet mock the locks, too scary atm.
 
   static final class NativeFSLock extends Lock {
     final FileLock lock;
@@ -186,8 +186,8 @@ public final class NativeFSLockFactory extends FSLockFactory {
       if (closed) {
         return;
       }
-      // NOTE: we don't validate, as unlike SimpleFSLockFactory, we can't break other's locks.
-      // First release the lock, then the channel
+      // NOTE: we don't validate, as unlike SimpleFSLockFactory, we can't break others locks
+      // first release the lock, then the channel
       try (FileChannel channel = this.channel;
           FileLock lock = this.lock) {
         assert lock != null;
