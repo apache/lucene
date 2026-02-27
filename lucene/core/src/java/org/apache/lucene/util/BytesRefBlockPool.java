@@ -169,6 +169,38 @@ public class BytesRefBlockPool implements Accountable {
     return Arrays.equals(bytes, offset, offset + length, b.bytes, b.offset, b.offset + b.length);
   }
 
+  /**
+   * Get the byte at the given start and given offset. This is equivalent of doing:
+   *
+   * <pre>
+   *     BytesRef bytes = new BytesRef();
+   *     fillBytesRef(bytes, start);
+   *     if (bytes.length <= i ) { return -1; }
+   *     return bytes.bytes[bytes.offset + i] & 0xFF;
+   *  </pre>
+   *
+   * It just saves the work of filling the BytesRef.
+   */
+  public int byteAt(int start, int i) {
+    final byte[] bytes = byteBlockPool.getBuffer(start >> BYTE_BLOCK_SHIFT);
+    int pos = start & BYTE_BLOCK_MASK;
+    final int length;
+    final int offset;
+    if ((bytes[pos] & 0x80) == 0) {
+      // length is 1 byte
+      length = bytes[pos];
+      offset = pos + 1;
+    } else {
+      // length is 2 bytes
+      length = ((short) BitUtil.VH_BE_SHORT.get(bytes, pos)) & 0x7FFF;
+      offset = pos + 2;
+    }
+    if (length <= i) {
+      return -1;
+    }
+    return bytes[offset + i] & 0xFF;
+  }
+
   @Override
   public long ramBytesUsed() {
     return BASE_RAM_BYTES + byteBlockPool.ramBytesUsed();
