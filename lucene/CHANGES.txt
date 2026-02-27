@@ -59,6 +59,8 @@ Other
 
 * GITHUB#15764: Added simpler TestTesselator test in support of fix GITHUB#15731. (Craig Taverner)
 
+* GITHUB#15767: Fix random test failures in LegacyBaseDocValuesFormatTestCase caused by missing commit. (Alan Woodward)
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes
