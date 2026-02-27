@@ -20,6 +20,8 @@ package org.apache.lucene.util.hnsw;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.function.LongConsumer;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.RamUsageEstimator;
 
@@ -75,7 +77,7 @@ public class NeighborArray {
           : "Nodes are added in an incorrect order! Comparing "
               + newScore
               + " to "
-              + Arrays.toString(ArrayUtil.copyOfSubArray(scores, 0, size));
+              + IntStream.range(0, size).mapToObj(i -> "" + scores[i]).collect(Collectors.joining(", ", "[", "]"));
     }
     growArrays();
     nodes[size] = newNode;
