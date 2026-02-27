@@ -333,7 +333,7 @@ public final class BytesRefHash implements Accountable {
    *     ByteBlockPool#BYTE_BLOCK_SIZE}
    */
   public int add(BytesRef bytes) {
-    assert bytesStart != null : "Bytesstart is null - not initialized";
+    assert bytesStart != null : "bytesStart is null - not initialized";
     final int hashcode = doHash(bytes.bytes, bytes.offset, bytes.length);
     // final position
     final int hashPos = findHash(bytes, hashcode);
@@ -400,7 +400,7 @@ public final class BytesRefHash implements Accountable {
    * textStart) in TermsHashPerField.
    */
   public int addByPoolOffset(int offset) {
-    assert bytesStart != null : "Bytesstart is null - not initialized";
+    assert bytesStart != null : "bytesStart is null - not initialized";
     // final position
     int code = offset;
     int hashPos = offset & hashMask;
