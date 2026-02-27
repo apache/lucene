@@ -113,7 +113,7 @@ public class NeighborArray {
   }
 
   private void alertOnHeapMemoryUsageChange(int newLength, int previousLength) {
-    if (newLength > previousLength && onHeapMemoryUsageListener != null) {
+    if (onHeapMemoryUsageListener != null) {
       int lengthDelta = newLength - previousLength;
       onHeapMemoryUsageListener.accept(
           (long) (lengthDelta) * Integer.BYTES + (long) (lengthDelta) * Float.BYTES);
