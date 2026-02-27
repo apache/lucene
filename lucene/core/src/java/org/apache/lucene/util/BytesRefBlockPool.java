@@ -170,12 +170,12 @@ public class BytesRefBlockPool implements Accountable {
   }
 
   /**
-   * Get the byte at the given start and given offset. This is equivalent of doing:
+   * Retrieve the byte at the given start and i. This is equivalent of doing:
    *
    * <pre>
    *     BytesRef bytes = new BytesRef();
    *     fillBytesRef(bytes, start);
-   *     if (bytes.length <= i ) { return -1; }
+   *     if (bytes.length <= i) { return -1; }
    *     return bytes.bytes[bytes.offset + i] & 0xFF;
    *  </pre>
    *
