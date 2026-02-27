@@ -30,8 +30,7 @@ public class TestNeighborArray extends LuceneTestCase {
 
     if (TEST_ASSERTS_ENABLED) {
       AssertionError ex = expectThrows(AssertionError.class, () -> neighbors.addInOrder(2, 0.9f));
-      assert ex.getMessage().startsWith("Nodes are added in an incorrect order!")
-          : ex.getMessage();
+      assert ex.getMessage().startsWith("Nodes are added in an incorrect order!") : ex.getMessage();
     }
 
     neighbors.insertSorted(3, 0.9f);
@@ -82,8 +81,7 @@ public class TestNeighborArray extends LuceneTestCase {
 
     if (TEST_ASSERTS_ENABLED) {
       AssertionError ex = expectThrows(AssertionError.class, () -> neighbors.addInOrder(2, 0.15f));
-      assert ex.getMessage().startsWith("Nodes are added in an incorrect order!")
-          : ex.getMessage();
+      assert ex.getMessage().startsWith("Nodes are added in an incorrect order!") : ex.getMessage();
     }
 
     neighbors.insertSorted(3, 0.3f);

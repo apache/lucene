@@ -77,7 +77,9 @@ public class NeighborArray {
           : "Nodes are added in an incorrect order! Comparing "
               + newScore
               + " to "
-              + IntStream.range(0, size).mapToObj(i -> "" + scores[i]).collect(Collectors.joining(", ", "[", "]"));
+              + IntStream.range(0, size)
+                  .mapToObj(i -> "" + scores[i])
+                  .collect(Collectors.joining(", ", "[", "]"));
     }
     growArrays();
     nodes[size] = newNode;
