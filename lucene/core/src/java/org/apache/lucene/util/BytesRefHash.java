@@ -212,7 +212,7 @@ public final class BytesRefHash implements Accountable {
 
           private int k;
 
-          // gain performance by direct get byte from pool
+          // gain performance by directly retrieve byte from pool
           @Override
           protected int byteAt(int i, int k) {
             return pool.byteAt(bytesStart[compact[i]], k);
