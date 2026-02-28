@@ -157,6 +157,11 @@ Bug Fixes
 * GITHUB#14971: Fix CachedExecutor thread pool leak in ConcurrentMergeScheduler
   when IndexWriter initialization fails. (Su Beom)
 
+* GITHUB#15781: Fix incorrect parameter names in GradientFormatter error messages. Validation of
+  maxForegroundColor and maxBackgroundColor incorrectly referenced "minForegroundColor" and
+  "minBackgroundColor" in their error messages. Also removed dead code and a redundant
+  zero-check. (Vinay Krishna Pudyodu)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
