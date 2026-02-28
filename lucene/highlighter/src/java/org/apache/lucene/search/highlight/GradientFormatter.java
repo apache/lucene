@@ -58,7 +58,7 @@ public class GradientFormatter implements Formatter {
       }
       if (maxForegroundColor.length() != 7) {
         throw new IllegalArgumentException(
-            "minForegroundColor is not 7 bytes long eg a hex " + "RGB value such as #FFFFFF");
+            "maxForegroundColor is not 7 bytes long eg a hex " + "RGB value such as #FFFFFF");
       }
       fgRMin = hexToInt(minForegroundColor.substring(1, 3));
       fgGMin = hexToInt(minForegroundColor.substring(3, 5));
@@ -77,7 +77,7 @@ public class GradientFormatter implements Formatter {
       }
       if (maxBackgroundColor.length() != 7) {
         throw new IllegalArgumentException(
-            "minBackgroundColor is not 7 bytes long eg a hex " + "RGB value such as #FFFFFF");
+            "maxBackgroundColor is not 7 bytes long eg a hex " + "RGB value such as #FFFFFF");
       }
       bgRMin = hexToInt(minBackgroundColor.substring(1, 3));
       bgGMin = hexToInt(minBackgroundColor.substring(3, 5));
@@ -87,14 +87,11 @@ public class GradientFormatter implements Formatter {
       bgGMax = hexToInt(maxBackgroundColor.substring(3, 5));
       bgBMax = hexToInt(maxBackgroundColor.substring(5, 7));
     }
-    //        this.corpusReader = corpusReader;
     this.maxScore = maxScore;
-    //        totalNumDocs = corpusReader.numDocs();
   }
 
   @Override
   public String highlightTerm(String originalText, TokenGroup tokenGroup) {
-    if (tokenGroup.getTotalScore() == 0) return originalText;
     float score = tokenGroup.getTotalScore();
     if (score == 0) {
       return originalText;
