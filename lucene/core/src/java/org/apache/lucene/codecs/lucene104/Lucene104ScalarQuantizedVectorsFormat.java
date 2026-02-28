@@ -89,6 +89,8 @@ import org.apache.lucene.index.SegmentWriteState;
  *   <li><b>float</b> the centroid square magnitude
  *   <li>The sparse vector information, if required, mapping vector ordinal to doc ID
  * </ul>
+ *
+ * @lucene.experimental
  */
 public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   public static final String QUANTIZED_VECTOR_COMPONENT = "QVEC";

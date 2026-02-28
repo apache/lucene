@@ -24,7 +24,11 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 
-/** Scalar quantized byte vector values */
+/**
+ * Scalar quantized byte vector values
+ *
+ * @lucene.experimental
+ */
 public abstract class QuantizedByteVectorValues extends ByteVectorValues implements HasIndexSlice {
 
   /**
