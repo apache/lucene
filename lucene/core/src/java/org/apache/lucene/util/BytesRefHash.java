@@ -441,6 +441,17 @@ public final class BytesRefHash implements Accountable {
     bytesUsed.addAndGet(Integer.BYTES * (long) newSize);
     final int[] newHash = new int[newSize];
     Arrays.fill(newHash, -1);
+
+    // calculate all hash values sequentially at once,
+    // which is much faster than out-of-order computation
+    int[] hashcodes = null;
+    if (hashOnData) {
+      hashcodes = new int[count];
+      for (int i = 0; i < count; i++) {
+        hashcodes[i] = pool.hash(bytesStart[i]);
+      }
+    }
+    
     for (int i = 0; i < hashSize; i++) {
       int e0 = ids[i];
       if (e0 != -1) {
@@ -448,7 +459,7 @@ public final class BytesRefHash implements Accountable {
         final int hashcode;
         int code;
         if (hashOnData) {
-          hashcode = code = pool.hash(bytesStart[e0]);
+          hashcode = code = hashcodes[e0];
         } else {
           code = bytesStart[e0];
           hashcode = 0;
