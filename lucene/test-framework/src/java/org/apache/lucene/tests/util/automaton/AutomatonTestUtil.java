@@ -21,9 +21,9 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.tests.util.TestUtil;
@@ -189,7 +189,7 @@ public class AutomatonTestUtil extends Assert {
       leadsToAccept = new HashMap<>();
       final Map<Integer, List<ArrivingTransition>> allArriving = new HashMap<>();
 
-      final LinkedList<Integer> q = new LinkedList<>();
+      final Queue<Integer> q = new ArrayDeque<>();
       final Set<Integer> seen = new HashSet<>();
 
       // reverse map the transitions, so we can quickly look
@@ -213,7 +213,7 @@ public class AutomatonTestUtil extends Assert {
       // Breadth-first search, from accept states,
       // backwards:
       while (q.isEmpty() == false) {
-        final int s = q.removeFirst();
+        final int s = q.remove();
         List<ArrivingTransition> arriving = allArriving.get(s);
         if (arriving != null) {
           for (ArrivingTransition at : arriving) {
@@ -448,7 +448,7 @@ public class AutomatonTestUtil extends Assert {
     int[] points = a.getStartPoints();
     // subset construction
     Map<Set<Integer>, Set<Integer>> sets = new HashMap<>();
-    LinkedList<Set<Integer>> worklist = new LinkedList<>();
+    Queue<Set<Integer>> worklist = new ArrayDeque<>();
     Map<Set<Integer>, Integer> newstate = new HashMap<>();
     sets.put(initialset, initialset);
     worklist.add(initialset);
@@ -457,7 +457,7 @@ public class AutomatonTestUtil extends Assert {
     newstate.put(initialset, 0);
     Transition t = new Transition();
     while (worklist.size() > 0) {
-      Set<Integer> s = worklist.removeFirst();
+      Set<Integer> s = worklist.remove();
       int r = newstate.get(s);
       for (int q : s) {
         if (a.isAccept(q)) {

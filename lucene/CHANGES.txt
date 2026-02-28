@@ -89,6 +89,8 @@ New Features
 Improvements
 ---------------------
 
+* GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
+
 * GITHUB#15682: Use ArrayDeque instead of LinkedList in CompoundWordTokenFilterBase.java. (Renato Haeberli)
 
 * GITHUB#15568: Add markdown support for javadocs and modernize highlighting a bit. (Dawid Weiss)
@@ -235,10 +237,14 @@ Optimizations
 
 * GITHUB#15772: improve BytesRefHash.sort performance by rearranging ids#15772 (tyronecai)
 
+* GITHUB#15742: Optimize int4 dotProduct and squareDistance computations by replacing vector conversions with reinterpret casting + bit manipulation. (Trevor McCulloch, Kaival Parikh)
+
 Bug Fixes
 ---------------------
 * GITHUB#15668: Fix UnsupportedOperationException in WeightedSpanTermExtractor by
   implementing getFieldInfos in DelegatingLeafReader. (Simranjeet Singh)
+
+* GITHUB#15590: Fix race and improve performance of HNSW graph building (Viliam Durina)
 
 * GITHUB#15702: Fix Potential NullPointException in BytesRefHash initialization#15702 (tyronecai)
 
@@ -250,6 +256,8 @@ Other
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
 
 * GITHUB#15764: Added simpler TestTesselator test in support of fix GITHUB#15731. (Craig Taverner)
+
+* GITHUB#15767: Fix random test failures in LegacyBaseDocValuesFormatTestCase caused by missing commit. (Alan Woodward)
 
 ======================= Lucene 10.4.0 =======================
 
