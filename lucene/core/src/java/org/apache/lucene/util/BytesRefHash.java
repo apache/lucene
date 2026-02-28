@@ -451,7 +451,7 @@ public final class BytesRefHash implements Accountable {
         hashcodes[i] = pool.hash(bytesStart[i]);
       }
     }
-    
+
     for (int i = 0; i < hashSize; i++) {
       int e0 = ids[i];
       if (e0 != -1) {
