@@ -40,47 +40,13 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
    *
    * @param field a field that has been indexed as a {@link KnnByteVectorField}.
    * @param target the target of the search.
-   * @param traversalSimilarity (lower) similarity score for graph traversal.
-   * @param resultSimilarity (higher) similarity score for result collection.
-   * @param filter a filter applied before the vector search.
-   */
-  public ByteVectorSimilarityQuery(
-      String field,
-      byte[] target,
-      float traversalSimilarity,
-      float resultSimilarity,
-      Query filter) {
-    super(field, traversalSimilarity, resultSimilarity, filter);
-    this.target = Objects.requireNonNull(target, "target");
-  }
-
-  /**
-   * Search for all (approximate) byte vectors above a similarity threshold using {@link
-   * VectorSimilarityCollector}.
-   *
-   * @param field a field that has been indexed as a {@link KnnByteVectorField}.
-   * @param target the target of the search.
-   * @param traversalSimilarity (lower) similarity score for graph traversal.
-   * @param resultSimilarity (higher) similarity score for result collection.
-   */
-  public ByteVectorSimilarityQuery(
-      String field, byte[] target, float traversalSimilarity, float resultSimilarity) {
-    this(field, target, traversalSimilarity, resultSimilarity, null);
-  }
-
-  /**
-   * Search for all (approximate) byte vectors above a similarity threshold using {@link
-   * VectorSimilarityCollector}. If a filter is applied, it traverses as many nodes as the cost of
-   * the filter, and then falls back to exact search if results are incomplete.
-   *
-   * @param field a field that has been indexed as a {@link KnnByteVectorField}.
-   * @param target the target of the search.
    * @param resultSimilarity similarity score for result collection.
    * @param filter a filter applied before the vector search.
    */
   public ByteVectorSimilarityQuery(
       String field, byte[] target, float resultSimilarity, Query filter) {
-    this(field, target, resultSimilarity, resultSimilarity, filter);
+    super(field, resultSimilarity, filter);
+    this.target = Objects.requireNonNull(target, "target");
   }
 
   /**
@@ -92,7 +58,7 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
    * @param resultSimilarity similarity score for result collection.
    */
   public ByteVectorSimilarityQuery(String field, byte[] target, float resultSimilarity) {
-    this(field, target, resultSimilarity, resultSimilarity, null);
+    this(field, target, resultSimilarity, null);
   }
 
   @Override
@@ -121,11 +87,10 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
   public String toString(String field) {
     return String.format(
         Locale.ROOT,
-        "%s[field=%s target=[%d...] traversalSimilarity=%f resultSimilarity=%f filter=%s]",
+        "%s[field=%s target=[%d...] resultSimilarity=%f filter=%s]",
         getClass().getSimpleName(),
         field,
         target[0],
-        traversalSimilarity,
         resultSimilarity,
         filter);
   }

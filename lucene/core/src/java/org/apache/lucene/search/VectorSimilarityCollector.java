@@ -25,44 +25,38 @@ import java.util.List;
  * @lucene.experimental
  */
 class VectorSimilarityCollector extends AbstractKnnCollector {
-  private final float traversalSimilarity, resultSimilarity;
-  private float maxSimilarity;
+  private float traversalSimilarity;
+  private final float resultSimilarity;
   private final List<ScoreDoc> scoreDocList;
 
   /**
-   * Perform a similarity-based graph search. The graph is traversed till better scoring nodes are
-   * available, or the best candidate is below {@link #traversalSimilarity}. All traversed nodes
-   * above {@link #resultSimilarity} are collected.
+   * Perform a similarity-based graph search. The similarity for graph traversal is adaptive, and
+   * exponentially decaying with lower-scoring traversed nodes.
    *
-   * @param traversalSimilarity (lower) similarity score for graph traversal.
-   * @param resultSimilarity (higher) similarity score for result collection.
+   * @param resultSimilarity similarity score for result collection.
    * @param visitLimit limit on number of nodes to visit.
    */
-  public VectorSimilarityCollector(
-      float traversalSimilarity, float resultSimilarity, long visitLimit) {
+  public VectorSimilarityCollector(float resultSimilarity, long visitLimit) {
     // TODO: add search strategy support
     super(1, visitLimit, AbstractVectorSimilarityQuery.DEFAULT_STRATEGY);
-    if (traversalSimilarity > resultSimilarity) {
-      throw new IllegalArgumentException("traversalSimilarity should be <= resultSimilarity");
-    }
-    this.traversalSimilarity = traversalSimilarity;
+    this.traversalSimilarity = -Float.MAX_VALUE;
     this.resultSimilarity = resultSimilarity;
-    this.maxSimilarity = Float.NEGATIVE_INFINITY;
     this.scoreDocList = new ArrayList<>();
   }
 
   @Override
   public boolean collect(int docId, float similarity) {
-    maxSimilarity = Math.max(maxSimilarity, similarity);
     if (similarity >= resultSimilarity) {
       scoreDocList.add(new ScoreDoc(docId, similarity));
+    } else if (similarity > traversalSimilarity) {
+      traversalSimilarity = (float) (((double) traversalSimilarity + similarity) / 2);
     }
     return true;
   }
 
   @Override
   public float minCompetitiveSimilarity() {
-    return Math.min(traversalSimilarity, maxSimilarity);
+    return traversalSimilarity;
   }
 
   @Override

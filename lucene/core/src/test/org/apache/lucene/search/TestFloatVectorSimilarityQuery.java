@@ -59,24 +59,14 @@ public class TestFloatVectorSimilarityQuery
 
   @Override
   FloatVectorSimilarityQuery getVectorQuery(
-      String field,
-      float[] vector,
-      float traversalSimilarity,
-      float resultSimilarity,
-      Query filter) {
-    return new FloatVectorSimilarityQuery(
-        field, vector, traversalSimilarity, resultSimilarity, filter);
+      String field, float[] vector, float resultSimilarity, Query filter) {
+    return new FloatVectorSimilarityQuery(field, vector, resultSimilarity, filter);
   }
 
   @Override
   FloatVectorSimilarityQuery getThrowingVectorQuery(
-      String field,
-      float[] vector,
-      float traversalSimilarity,
-      float resultSimilarity,
-      Query filter) {
-    return new FloatVectorSimilarityQuery(
-        field, vector, traversalSimilarity, resultSimilarity, filter) {
+      String field, float[] vector, float resultSimilarity, Query filter) {
+    return new FloatVectorSimilarityQuery(field, vector, resultSimilarity, filter) {
       @Override
       VectorScorer createVectorScorer(LeafReaderContext context) {
         throw new UnsupportedOperationException();

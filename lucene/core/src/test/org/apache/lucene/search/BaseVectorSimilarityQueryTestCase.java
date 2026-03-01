@@ -67,11 +67,9 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
   abstract F getVectorField(String name, V vector, VectorSimilarityFunction function);
 
-  abstract Q getVectorQuery(
-      String field, V vector, float traversalSimilarity, float resultSimilarity, Query filter);
+  abstract Q getVectorQuery(String field, V vector, float resultSimilarity, Query filter);
 
-  abstract Q getThrowingVectorQuery(
-      String field, V vector, float traversalSimilarity, float resultSimilarity, Query filter);
+  abstract Q getThrowingVectorQuery(String field, V vector, float resultSimilarity, Query filter);
 
   public void testEquals() {
     String field1 = "f1", field2 = "f2";
@@ -82,40 +80,30 @@ abstract class BaseVectorSimilarityQueryTestCase<
       vector2 = getRandomVector(dim);
     } while (checkEquals(vector1, vector2));
 
-    float traversalSimilarity1 = 0.3f, traversalSimilarity2 = 0.4f;
     float resultSimilarity1 = 0.4f, resultSimilarity2 = 0.5f;
 
     Query filter1 = new TermQuery(new Term("t1", "v1"));
     Query filter2 = new TermQuery(new Term("t2", "v2"));
 
-    Query query = getVectorQuery(field1, vector1, traversalSimilarity1, resultSimilarity1, filter1);
+    Query query = getVectorQuery(field1, vector1, resultSimilarity1, filter1);
 
     // Everything is equal
-    assertEquals(
-        query, getVectorQuery(field1, vector1, traversalSimilarity1, resultSimilarity1, filter1));
+    assertEquals(query, getVectorQuery(field1, vector1, resultSimilarity1, filter1));
 
     // Null check
     assertNotEquals(query, null);
 
     // Different field
-    assertNotEquals(
-        query, getVectorQuery(field2, vector1, traversalSimilarity1, resultSimilarity1, filter1));
+    assertNotEquals(query, getVectorQuery(field2, vector1, resultSimilarity1, filter1));
 
     // Different vector
-    assertNotEquals(
-        query, getVectorQuery(field1, vector2, traversalSimilarity1, resultSimilarity1, filter1));
-
-    // Different traversalSimilarity
-    assertNotEquals(
-        query, getVectorQuery(field1, vector1, traversalSimilarity2, resultSimilarity1, filter1));
+    assertNotEquals(query, getVectorQuery(field1, vector2, resultSimilarity1, filter1));
 
     // Different resultSimilarity
-    assertNotEquals(
-        query, getVectorQuery(field1, vector1, traversalSimilarity1, resultSimilarity2, filter1));
+    assertNotEquals(query, getVectorQuery(field1, vector1, resultSimilarity2, filter1));
 
     // Different filter
-    assertNotEquals(
-        query, getVectorQuery(field1, vector1, traversalSimilarity1, resultSimilarity1, filter2));
+    assertNotEquals(query, getVectorQuery(field1, vector1, resultSimilarity1, filter2));
   }
 
   public void testEmptyIndex() throws IOException {
@@ -127,12 +115,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
       IndexSearcher searcher = newSearcher(reader);
 
       Query query =
-          getVectorQuery(
-              vectorField,
-              getRandomVector(dim),
-              Float.NEGATIVE_INFINITY,
-              Float.NEGATIVE_INFINITY,
-              null);
+          getVectorQuery(vectorField, getRandomVector(dim), Float.NEGATIVE_INFINITY, null);
 
       // Check that no vectors are found
       assertEquals(0, searcher.count(query));
@@ -147,24 +130,14 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
       // All vectors are above -Infinity
       Query query1 =
-          getVectorQuery(
-              vectorField,
-              getRandomVector(dim),
-              Float.NEGATIVE_INFINITY,
-              Float.NEGATIVE_INFINITY,
-              null);
+          getVectorQuery(vectorField, getRandomVector(dim), Float.NEGATIVE_INFINITY, null);
 
       // Check that all vectors are found
       assertEquals(numDocs, searcher.count(query1));
 
       // No vectors are above +Infinity
       Query query2 =
-          getVectorQuery(
-              vectorField,
-              getRandomVector(dim),
-              Float.POSITIVE_INFINITY,
-              Float.POSITIVE_INFINITY,
-              null);
+          getVectorQuery(vectorField, getRandomVector(dim), Float.POSITIVE_INFINITY, null);
 
       // Check that no vectors are found
       assertEquals(0, searcher.count(query2));
@@ -183,12 +156,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
       IndexSearcher searcher = newSearcher(reader);
 
       Query query =
-          getVectorQuery(
-              vectorField,
-              getRandomVector(dim),
-              Float.NEGATIVE_INFINITY,
-              Float.NEGATIVE_INFINITY,
-              filter);
+          getVectorQuery(vectorField, getRandomVector(dim), Float.NEGATIVE_INFINITY, filter);
 
       ScoreDoc[] scoreDocs = searcher.search(query, numDocs).scoreDocs;
       for (ScoreDoc scoreDoc : scoreDocs) {
@@ -210,12 +178,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
       // Non-existent field
       Query filter1 = new TermQuery(new Term("random_field", "random_value"));
       Query query1 =
-          getVectorQuery(
-              vectorField,
-              getRandomVector(dim),
-              Float.NEGATIVE_INFINITY,
-              Float.NEGATIVE_INFINITY,
-              filter1);
+          getVectorQuery(vectorField, getRandomVector(dim), Float.NEGATIVE_INFINITY, filter1);
 
       // Check that no vectors are found
       assertEquals(0, searcher.count(query1));
@@ -223,12 +186,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
       // Field exists, but value of -1 is not indexed
       Query filter2 = IntField.newExactQuery(idField, -1);
       Query query2 =
-          getVectorQuery(
-              vectorField,
-              getRandomVector(dim),
-              Float.NEGATIVE_INFINITY,
-              Float.NEGATIVE_INFINITY,
-              filter2);
+          getVectorQuery(vectorField, getRandomVector(dim), Float.NEGATIVE_INFINITY, filter2);
 
       // Check that no vectors are found
       assertEquals(0, searcher.count(query2));
@@ -244,12 +202,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
       IndexSearcher searcher = newSearcher(reader);
 
       Query query =
-          getVectorQuery(
-              vectorField,
-              getRandomVector(newDim),
-              Float.NEGATIVE_INFINITY,
-              Float.NEGATIVE_INFINITY,
-              null);
+          getVectorQuery(vectorField, getRandomVector(newDim), Float.NEGATIVE_INFINITY, null);
 
       // Check that an exception for differing dimensions is thrown
       IllegalArgumentException e =
@@ -271,22 +224,11 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
       // Non-existent field
       Query query1 =
-          getVectorQuery(
-              "random_field",
-              getRandomVector(dim),
-              Float.NEGATIVE_INFINITY,
-              Float.NEGATIVE_INFINITY,
-              null);
+          getVectorQuery("random_field", getRandomVector(dim), Float.NEGATIVE_INFINITY, null);
       assertEquals(0, searcher.count(query1));
 
       // Indexed as int field
-      Query query2 =
-          getVectorQuery(
-              idField,
-              getRandomVector(dim),
-              Float.NEGATIVE_INFINITY,
-              Float.NEGATIVE_INFINITY,
-              null);
+      Query query2 = getVectorQuery(idField, getRandomVector(dim), Float.NEGATIVE_INFINITY, null);
       assertEquals(0, searcher.count(query2));
     }
   }
@@ -308,12 +250,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
         IndexSearcher searcher = newSearcher(reader);
 
         Query query =
-            getVectorQuery(
-                vectorField,
-                getRandomVector(dim),
-                Float.NEGATIVE_INFINITY,
-                Float.NEGATIVE_INFINITY,
-                null);
+            getVectorQuery(vectorField, getRandomVector(dim), Float.NEGATIVE_INFINITY, null);
 
         ScoreDoc[] scoreDocs = searcher.search(query, numDocs).scoreDocs;
         for (ScoreDoc scoreDoc : scoreDocs) {
@@ -339,12 +276,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
         IndexSearcher searcher = newSearcher(reader);
 
         Query query =
-            getVectorQuery(
-                vectorField,
-                getRandomVector(dim),
-                Float.NEGATIVE_INFINITY,
-                Float.NEGATIVE_INFINITY,
-                null);
+            getVectorQuery(vectorField, getRandomVector(dim), Float.NEGATIVE_INFINITY, null);
 
         // Check that no vectors are found
         assertEquals(0, searcher.count(query));
@@ -362,12 +294,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
       IndexSearcher searcher = newSearcher(reader);
 
       Query query1 =
-          getVectorQuery(
-              vectorField,
-              getRandomVector(dim),
-              Float.NEGATIVE_INFINITY,
-              Float.NEGATIVE_INFINITY,
-              null);
+          getVectorQuery(vectorField, getRandomVector(dim), Float.NEGATIVE_INFINITY, null);
       ScoreDoc[] scoreDocs1 = searcher.search(query1, numDocs).scoreDocs;
 
       Query query2 = new BoostQuery(query1, boost);
@@ -416,8 +343,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
 
-      Query query =
-          getVectorQuery(vectorField, queryVector, Float.NEGATIVE_INFINITY, resultSimilarity, null);
+      Query query = getVectorQuery(vectorField, queryVector, resultSimilarity, null);
 
       ScoreDoc[] scoreDocs = searcher.search(query, numDocs).scoreDocs;
       for (ScoreDoc scoreDoc : scoreDocs) {
@@ -450,16 +376,17 @@ abstract class BaseVectorSimilarityQueryTestCase<
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
 
-      Query query =
-          getThrowingVectorQuery(
-              vectorField, queryVector, resultSimilarity, resultSimilarity, filter);
+      Query query = getThrowingVectorQuery(vectorField, queryVector, resultSimilarity, filter);
 
       // Falls back to exact search
       expectThrows(UnsupportedOperationException.class, () -> searcher.count(query));
     }
   }
 
+  @Monster("indexes and searches a large number of vectors")
   public void testApproximate() throws IOException {
+    numDocs = 1000;
+
     // Non-restrictive filter, along with similarity to visit a small number of nodes
     int numFiltered = numDocs - 1;
     int targetVisited = random().nextInt(1, numFiltered / 10);
@@ -487,9 +414,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
       try (IndexReader reader = DirectoryReader.open(indexStore)) {
         IndexSearcher searcher = newSearcher(reader);
 
-        Query query =
-            getThrowingVectorQuery(
-                vectorField, queryVector, resultSimilarity, resultSimilarity, filter);
+        Query query = getThrowingVectorQuery(vectorField, queryVector, resultSimilarity, filter);
 
         // Does not fall back to exact search
         assertTrue(searcher.count(query) <= numFiltered);
@@ -512,12 +437,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
       Query query =
           new CountingQuery(
-              getVectorQuery(
-                  vectorField,
-                  queryVector,
-                  Float.NEGATIVE_INFINITY,
-                  Float.NEGATIVE_INFINITY,
-                  null));
+              getVectorQuery(vectorField, queryVector, Float.NEGATIVE_INFINITY, null));
       assertEquals(numDocs, searcher.count(query)); // Expect some results without timeout
 
       searcher.setTimeout(() -> true); // Immediately timeout
@@ -534,12 +454,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
       Query filter = IntField.newSetQuery(idField, getFiltered(numFiltered));
       Query filteredQuery =
           new CountingQuery(
-              getVectorQuery(
-                  vectorField,
-                  queryVector,
-                  Float.NEGATIVE_INFINITY,
-                  Float.NEGATIVE_INFINITY,
-                  filter));
+              getVectorQuery(vectorField, queryVector, Float.NEGATIVE_INFINITY, filter));
 
       searcher.setTimeout(() -> false); // Set a timeout which is never met
       assertEquals(numFiltered, searcher.count(filteredQuery));
