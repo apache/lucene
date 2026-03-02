@@ -38,6 +38,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Predicate;
 import java.util.function.ToLongFunction;
@@ -289,8 +290,13 @@ public final class RamUsageTester {
               a(File.class, v -> charArraySize(v.toString().length()));
               a(Path.class, v -> charArraySize(v.toString().length()));
 
-              // Ignorable JDK classes.
+              // Ignorable JDK classes. LongAdder (and Striped64) do not open their
+              // internal fields to reflection; use shallow size only.
               a(ByteOrder.class, _ -> 0);
+
+              // For LongAdder, assume it has the size of a single long, as we can't access its internal fields and it
+              // is designed to be space efficient when not contended.
+              a(LongAdder.class, _ -> Long.SIZE);
             }
 
             @SuppressWarnings("unchecked")
