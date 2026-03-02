@@ -65,6 +65,9 @@ Other
 
 * GITHUB#15767: Fix random test failures in LegacyBaseDocValuesFormatTestCase caused by missing commit. (Alan Woodward)
 
+* GITHUB#15783: Refactor QuantizedVectorsReader to be able to access lucene 104 quantized values through this API.
+  (Ignacio Vera)
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes

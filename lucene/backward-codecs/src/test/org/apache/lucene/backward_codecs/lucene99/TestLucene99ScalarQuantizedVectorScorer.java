@@ -49,7 +49,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.LegacyQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
@@ -99,8 +99,8 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
       try (IndexInput in = dir.openInput(fileName, IOContext.DEFAULT)) {
         Lucene99ScalarQuantizedVectorScorer scorer =
             new Lucene99ScalarQuantizedVectorScorer(new DefaultFlatVectorScorer());
-        QuantizedByteVectorValues values =
-            new QuantizedByteVectorValues() {
+        LegacyQuantizedByteVectorValues values =
+            new LegacyQuantizedByteVectorValues() {
               @Override
               public int dimension() {
                 return 32;
@@ -127,7 +127,7 @@ public class TestLucene99ScalarQuantizedVectorScorer extends LuceneTestCase {
               }
 
               @Override
-              public QuantizedByteVectorValues copy() throws IOException {
+              public LegacyQuantizedByteVectorValues copy() throws IOException {
                 return this;
               }
 

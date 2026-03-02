@@ -34,7 +34,7 @@ import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.LegacyQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsScorer {
@@ -50,7 +50,7 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
       throws IOException {
-    if (vectorValues instanceof QuantizedByteVectorValues quantized
+    if (vectorValues instanceof LegacyQuantizedByteVectorValues quantized
         && quantized.getSlice() instanceof MemorySegmentAccessInput input) {
       return new RandomVectorScorerSupplierImpl(similarityFunction, quantized, input);
     }
@@ -61,7 +61,7 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
   public RandomVectorScorer getRandomVectorScorer(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, float[] target)
       throws IOException {
-    if (vectorValues instanceof QuantizedByteVectorValues quantized
+    if (vectorValues instanceof LegacyQuantizedByteVectorValues quantized
         && quantized.getSlice() instanceof MemorySegmentAccessInput input) {
       return new RandomVectorScorerImpl(similarityFunction, quantized, input, target);
     }
@@ -94,7 +94,7 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
 
     RandomVectorScorerBase(
         VectorSimilarityFunction similarityFunction,
-        QuantizedByteVectorValues values,
+        LegacyQuantizedByteVectorValues values,
         MemorySegmentAccessInput input) {
       super(values);
 
@@ -204,7 +204,7 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
 
     RandomVectorScorerImpl(
         VectorSimilarityFunction similarityFunction,
-        QuantizedByteVectorValues values,
+        LegacyQuantizedByteVectorValues values,
         MemorySegmentAccessInput input,
         float[] target) {
       super(similarityFunction, values, input);
@@ -250,7 +250,7 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
 
   private record RandomVectorScorerSupplierImpl(
       VectorSimilarityFunction similarityFunction,
-      QuantizedByteVectorValues values,
+      LegacyQuantizedByteVectorValues values,
       MemorySegmentAccessInput input)
       implements RandomVectorScorerSupplier {
 
@@ -272,7 +272,7 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
 
     UpdateableRandomVectorScorerImpl(
         VectorSimilarityFunction similarityFunction,
-        QuantizedByteVectorValues values,
+        LegacyQuantizedByteVectorValues values,
         MemorySegmentAccessInput input) {
       super(similarityFunction, values, input);
     }

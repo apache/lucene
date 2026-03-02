@@ -16,18 +16,32 @@
  */
 package org.apache.lucene.util.quantization;
 
-import java.io.Closeable;
 import java.io.IOException;
-import org.apache.lucene.util.Accountable;
+import org.apache.lucene.codecs.lucene95.HasIndexSlice;
+import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.store.IndexInput;
 
 /**
- * Quantized vector reader
+ * A version of {@link ByteVectorValues} for Scalar quantization scores.
  *
  * @lucene.experimental
  */
-public interface QuantizedVectorsReader extends Closeable, Accountable {
+public abstract class BaseQuantizedByteVectorValues extends ByteVectorValues
+    implements HasIndexSlice {
 
-  BaseQuantizedByteVectorValues getQuantizedVectorValues(String fieldName) throws IOException;
+  /**
+   * Return a {@link VectorScorer} for the given query vector.
+   *
+   * @param query the query vector
+   * @return a {@link VectorScorer} instance or null
+   */
+  public VectorScorer scorer(float[] query) throws IOException {
+    throw new UnsupportedOperationException();
+  }
 
-  ScalarQuantizer getQuantizationState(String fieldName);
+  @Override
+  public IndexInput getSlice() {
+    return null;
+  }
 }
