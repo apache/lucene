@@ -195,10 +195,7 @@ public class BytesRefBlockPool implements Accountable {
       length = ((short) BitUtil.VH_BE_SHORT.get(bytes, pos)) & 0x7FFF;
       offset = pos + 2;
     }
-    if (length <= i) {
-      return -1;
-    }
-    return bytes[offset + i] & 0xFF;
+    return i < length ? (bytes[offset + i] & 0xFF) : -1;
   }
 
   @Override
