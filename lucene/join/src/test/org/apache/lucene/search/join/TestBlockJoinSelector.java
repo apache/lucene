@@ -266,6 +266,21 @@ public class TestBlockJoinSelector extends LuceneTestCase {
     assertEquals(10, naturalOrder.nextDoc());
     assertEquals(-1, naturalOrder.ordValue());
     assertEquals(NO_MORE_DOCS, naturalOrder.nextDoc());
+
+    final SortedDocValues reverseOrder =
+        BlockJoinSelector.wrap(
+            DocValues.singleton(new CannedSortedDocValues(ords)),
+            BlockJoinSelector.Type.MAX,
+            parents,
+            toIter(children),
+            true);
+    assertEquals(3, reverseOrder.nextDoc());
+    assertEquals(Integer.MAX_VALUE, reverseOrder.ordValue());
+    assertEquals(5, reverseOrder.nextDoc());
+    assertEquals(7, reverseOrder.ordValue());
+    assertEquals(10, reverseOrder.nextDoc());
+    assertEquals(Integer.MAX_VALUE, reverseOrder.ordValue());
+    assertEquals(NO_MORE_DOCS, reverseOrder.nextDoc());
   }
 
   private static class CannedSortedDocValues extends SortedDocValues {
