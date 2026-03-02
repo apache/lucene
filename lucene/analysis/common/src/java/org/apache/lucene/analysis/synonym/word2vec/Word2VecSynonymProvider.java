@@ -21,8 +21,9 @@ import static org.apache.lucene.util.hnsw.HnswGraphBuilder.DEFAULT_BEAM_WIDTH;
 import static org.apache.lucene.util.hnsw.HnswGraphBuilder.DEFAULT_MAX_CONN;
 
 import java.io.IOException;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.ArrayDeque;
+import java.util.Collection;
+import java.util.Deque;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnCollector;
@@ -35,7 +36,7 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 
 /**
- * The Word2VecSynonymProvider generates the list of sysnonyms of a term.
+ * The Word2VecSynonymProvider generates the list of synonyms of a term.
  *
  * @lucene.experimental
  */
@@ -66,14 +67,14 @@ public class Word2VecSynonymProvider {
     this.hnswGraph = builder.build(word2VecModel.size());
   }
 
-  public List<TermAndBoost> getSynonyms(
+  public Collection<TermAndBoost> getSynonyms(
       BytesRef term, int maxSynonymsPerTerm, float minAcceptedSimilarity) throws IOException {
 
     if (term == null) {
       throw new IllegalArgumentException("Term must not be null");
     }
 
-    LinkedList<TermAndBoost> result = new LinkedList<>();
+    Deque<TermAndBoost> result = new ArrayDeque<>();
     float[] query = word2VecModel.vectorValue(term);
     if (query != null) {
       RandomVectorScorer scorer =

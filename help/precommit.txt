@@ -13,7 +13,8 @@ uvx prek
 
 To install a precommit hook so this happens automatically:
 
-uvx prek install
+uv tool install prek
+prek install
 
 To exhaustively force-check all files (like CI does):
 

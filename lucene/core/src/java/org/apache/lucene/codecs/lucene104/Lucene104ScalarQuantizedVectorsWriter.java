@@ -36,7 +36,6 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
-import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
@@ -60,6 +59,8 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.apache.lucene.util.quantization.QuantizedVectorsWriter;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
  * Writes quantized vector values and metadata to index segments in the format for Lucene 10.4.
@@ -500,12 +501,12 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter
       DocsWithFieldSet docsWithField =
           encoding.isAsymmetric()
               ? writeBinarizedVectorAndQueryData(
-                  tempQuantizedVectorData,
-                  encoding,
-                  tempScoreQuantizedVectorData,
-                  floatVectorValues,
-                  centroid,
-                  quantizer)
+              tempQuantizedVectorData,
+              encoding,
+              tempScoreQuantizedVectorData,
+              floatVectorValues,
+              centroid,
+              quantizer)
               : writeVectorData(
                   tempQuantizedVectorData,
                   new QuantizedFloatVectorValues(floatVectorValues, quantizer, encoding, centroid));
@@ -569,7 +570,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter
       RandomVectorScorerSupplier scorerSupplier =
           scoreVectorValues == null
               ? vectorsScorer.getRandomVectorScorerSupplier(
-                  fieldInfo.getVectorSimilarityFunction(), vectorValues)
+              fieldInfo.getVectorSimilarityFunction(), vectorValues)
               : vectorsScorer.getRandomVectorScorerSupplier(
                   fieldInfo.getVectorSimilarityFunction(), scoreVectorValues, vectorValues);
       return new QuantizedCloseableRandomVectorScorerSupplier(

@@ -59,7 +59,7 @@ import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.BaseQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
@@ -419,7 +419,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
-  public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
+  public BaseQuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
     if (flatVectorsReader instanceof QuantizedVectorsReader) {
       return ((QuantizedVectorsReader) flatVectorsReader).getQuantizedVectorValues(field);
     }
