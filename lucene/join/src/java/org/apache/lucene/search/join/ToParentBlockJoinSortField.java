@@ -226,12 +226,7 @@ public class ToParentBlockJoinSortField extends SortField {
           return DocValues.emptySorted();
         }
         return BlockJoinSelector.wrap(
-            sortedSet,
-            type,
-            parents,
-            toIter(children),
-            reverseChildren,
-            childMissingValue == STRING_LAST);
+            sortedSet, type, parents, toIter(children), childMissingValue == STRING_LAST);
       }
     };
   }

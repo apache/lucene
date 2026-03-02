@@ -144,7 +144,6 @@ public class TestBlockJoinSelector extends LuceneTestCase {
             BlockJoinSelector.Type.MIN,
             parents,
             toIter(children),
-            false,
             true);
     assertEquals(5, nextDoc(mins, 5));
     assertEquals(3, mins.ordValue());
@@ -159,7 +158,6 @@ public class TestBlockJoinSelector extends LuceneTestCase {
             BlockJoinSelector.Type.MAX,
             parents,
             toIter(children),
-            true,
             false);
     assertEquals(5, nextDoc(maxs, 5));
     assertEquals(7, maxs.ordValue());
@@ -171,17 +169,32 @@ public class TestBlockJoinSelector extends LuceneTestCase {
     SortedDocValues withMissingValues =
         BlockJoinSelector.wrap(
             DocValues.singleton(new CannedSortedDocValues(ords)),
-            BlockJoinSelector.Type.MAX,
+            BlockJoinSelector.Type.MIN,
             parents,
             toIter(children),
-            false,
             false);
-    assertTrue(withMissingValues.advanceExact(5));
+    assertEquals(5, nextDoc(withMissingValues, 5));
     assertEquals(-1, withMissingValues.ordValue());
-    assertTrue(withMissingValues.advanceExact(15));
+    assertEquals(15, nextDoc(withMissingValues, 15));
     assertEquals(-1, withMissingValues.ordValue());
-    assertTrue(withMissingValues.advanceExact(18));
+    assertEquals(18, nextDoc(withMissingValues, 18));
+    assertEquals(9, withMissingValues.ordValue());
+    assertNoMoreDoc(withMissingValues, 20);
+
+    withMissingValues =
+        BlockJoinSelector.wrap(
+            DocValues.singleton(new CannedSortedDocValues(ords)),
+            BlockJoinSelector.Type.MIN,
+            parents,
+            toIter(children),
+            true);
+    assertEquals(5, nextDoc(withMissingValues, 5));
+    assertEquals(3, withMissingValues.ordValue());
+    assertEquals(15, nextDoc(withMissingValues, 15));
     assertEquals(10, withMissingValues.ordValue());
+    assertEquals(18, nextDoc(withMissingValues, 18));
+    assertEquals(9, withMissingValues.ordValue());
+    assertNoMoreDoc(withMissingValues, 20);
 
     withMissingValues =
         BlockJoinSelector.wrap(
@@ -189,12 +202,29 @@ public class TestBlockJoinSelector extends LuceneTestCase {
             BlockJoinSelector.Type.MAX,
             parents,
             toIter(children),
-            false,
             false);
-    assertEquals(5, withMissingValues.nextDoc());
-    assertEquals(15, withMissingValues.nextDoc());
-    assertEquals(18, withMissingValues.nextDoc());
-    assertEquals(NO_MORE_DOCS, withMissingValues.nextDoc());
+    assertEquals(5, nextDoc(withMissingValues, 5));
+    assertEquals(7, withMissingValues.ordValue());
+    assertEquals(15, nextDoc(withMissingValues, 15));
+    assertEquals(10, withMissingValues.ordValue());
+    assertEquals(18, nextDoc(withMissingValues, 18));
+    assertEquals(10, withMissingValues.ordValue());
+    assertNoMoreDoc(withMissingValues, 20);
+
+    withMissingValues =
+        BlockJoinSelector.wrap(
+            DocValues.singleton(new CannedSortedDocValues(ords)),
+            BlockJoinSelector.Type.MAX,
+            parents,
+            toIter(children),
+            true);
+    assertEquals(5, nextDoc(withMissingValues, 5));
+    assertEquals(Integer.MAX_VALUE, withMissingValues.ordValue());
+    assertEquals(15, nextDoc(withMissingValues, 15));
+    assertEquals(Integer.MAX_VALUE, withMissingValues.ordValue());
+    assertEquals(18, nextDoc(withMissingValues, 18));
+    assertEquals(10, withMissingValues.ordValue());
+    assertNoMoreDoc(withMissingValues, 20);
   }
 
   public void testNextDocWithSkippedParents() throws IOException {
@@ -228,7 +258,6 @@ public class TestBlockJoinSelector extends LuceneTestCase {
             BlockJoinSelector.Type.MIN,
             parents,
             toIter(children),
-            false,
             false);
     assertEquals(3, naturalOrder.nextDoc());
     assertEquals(-1, naturalOrder.ordValue());

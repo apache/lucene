@@ -39,8 +39,7 @@ class ToParentDocValues extends DocIdSetIterator {
   private static final class SortedDVs extends SortedDocValues implements Accumulator {
     private final SortedDocValues values;
     private final BlockJoinSelector.Type selection;
-    private final boolean reverse;
-    private final boolean sortMissingLast;
+    private final int missingOrd;
     private int ord = -1;
     private int childrenWithValuesCount = 0;
     private final ToParentDocValues iter;
@@ -50,12 +49,10 @@ class ToParentDocValues extends DocIdSetIterator {
         BlockJoinSelector.Type selection,
         BitSet parents,
         DocIdSetIterator children,
-        boolean reverse,
         boolean sortMissingLast) {
       this.values = values;
       this.selection = selection;
-      this.reverse = reverse;
-      this.sortMissingLast = sortMissingLast;
+      this.missingOrd = sortMissingLast ? Integer.MAX_VALUE : -1;
       this.iter = new ToParentDocValues(values, parents, children, this);
     }
 
@@ -97,8 +94,11 @@ class ToParentDocValues extends DocIdSetIterator {
 
     @Override
     public int ordValue() {
-      if (iter.hasChildWithMissingValue() && (reverse == sortMissingLast)) {
-        return sortMissingLast ? Integer.MAX_VALUE : -1;
+      if (iter.hasChildWithMissingValue()) {
+        return switch (selection) {
+          case MIN -> Math.min(ord, missingOrd);
+          case MAX -> Math.max(ord, missingOrd);
+        };
       }
       return ord;
     }
@@ -358,9 +358,7 @@ class ToParentDocValues extends DocIdSetIterator {
       Type selection,
       BitSet parents,
       DocIdSetIterator children,
-      boolean reverse,
       boolean sortMissingLast) {
-    return new ToParentDocValues.SortedDVs(
-        values, selection, parents, children, reverse, sortMissingLast);
+    return new ToParentDocValues.SortedDVs(values, selection, parents, children, sortMissingLast);
   }
 }

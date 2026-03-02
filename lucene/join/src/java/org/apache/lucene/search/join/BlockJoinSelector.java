@@ -98,7 +98,6 @@ public class BlockJoinSelector {
       Type selection,
       BitSet parents,
       DocIdSetIterator children,
-      boolean reverse,
       boolean sortMissingLast) {
     SortedDocValues values;
     switch (selection) {
@@ -111,7 +110,7 @@ public class BlockJoinSelector {
       default:
         throw new AssertionError();
     }
-    return wrap(values, selection, parents, children, reverse, sortMissingLast);
+    return wrap(values, selection, parents, children, sortMissingLast);
   }
 
   /**
@@ -124,13 +123,12 @@ public class BlockJoinSelector {
       Type selection,
       BitSet parents,
       DocIdSetIterator children,
-      boolean reverse,
       boolean sortMissingLast) {
     if (values.docID() != -1) {
       throw new IllegalArgumentException(
           "values iterator was already consumed: values.docID=" + values.docID());
     }
-    return ToParentDocValues.wrap(values, selection, parents, children, reverse, sortMissingLast);
+    return ToParentDocValues.wrap(values, selection, parents, children, sortMissingLast);
   }
 
   /** creates an iterator for the given bitset */
