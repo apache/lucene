@@ -294,7 +294,7 @@ public class LRUQueryCache implements QueryCache, Accountable {
     }
   }
 
-  CacheAndCount get(Query key, IndexReader.CacheHelper cacheHelper) {
+  protected CacheAndCount get(Query key, IndexReader.CacheHelper cacheHelper) {
     assert key instanceof BoostQuery == false;
     assert key instanceof ConstantScoreQuery == false;
     final IndexReader.CacheKey readerKey = cacheHelper.getKey();
@@ -536,6 +536,26 @@ public class LRUQueryCache implements QueryCache, Accountable {
     } else {
       return cacheIntoRoaringDocIdSet(scorer, maxDoc);
     }
+  }
+
+  /**
+   * Populates the cache for the given scorer and leaf reader context.
+   *
+   * <p>Subclasses can override this method to implement custom caching strategies, such as
+   * deferring cache population to a background thread or skipping it when other threads are already
+   * populating the cache. This can be useful for intra-segment searches.
+   *
+   * @return the cached result if available; otherwise {@code null}
+   */
+  protected CacheAndCount tryPopulateCache(
+      IndexReader.CacheHelper cacheKey,
+      Weight weight,
+      ScorerSupplier scorerSupplier,
+      LeafReaderContext context)
+      throws IOException {
+    final CacheAndCount cached = cacheImpl(scorerSupplier.bulkScorer(), context.reader().maxDoc());
+    putIfAbsent(weight.getQuery(), cached, cacheKey);
+    return cached;
   }
 
   private static CacheAndCount cacheIntoBitSet(BulkScorer scorer, int maxDoc) throws IOException {
@@ -832,9 +852,11 @@ public class LRUQueryCache implements QueryCache, Accountable {
               if (cost / skipCacheFactor > leadCost) {
                 return supplier.get(leadCost).iterator();
               }
-
-              CacheAndCount cached = cacheImpl(supplier.bulkScorer(), maxDoc);
-              putIfAbsent(in.getQuery(), cached, cacheHelper);
+              CacheAndCount cached = tryPopulateCache(cacheHelper, in, supplier, context);
+              // cache is not available, use uncached iterator
+              if (cached == null) {
+                return supplier.get(leadCost).iterator();
+              }
               DocIdSetIterator disi = cached.iterator();
               if (disi == null) {
                 // docIdSet.iterator() is allowed to return null when empty but we want a non-null

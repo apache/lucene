@@ -7,6 +7,22 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+
+* GITHUB#15763: Deprecate Operations.complement() method. This operation can be slow and is not
+  recommended for production use. It will be removed in Lucene 12. (Saurabh Singh)
+
+* GITHUB#15755: Deprecate Operations.minus() method. This slow operation has been moved to
+  AutomatonTestUtil.minus() for testing purposes only. The method will be removed in Lucene 12.
+  (Saurabh Singh)
+
+* GITHUB#15762: Remove deprecated Operations.concatenate(Automaton, Automaton) and
+  Operations.union(Automaton, Automaton) methods. Use the List/Collection variants instead.
+  (Saurabh Singh)
+
+* GITHUB#15750: Remove deprecated RegExp complement syntax support. The DEPRECATED_COMPLEMENT flag,
+  REGEXP_DEPRECATED_COMPLEMENT enum value, and makeDeprecatedComplement method have been removed.
+  Users should use complement bracket expressions ([^...]) instead. (Saurabh Singh)
+
 * GITHUB#15517: Remove newHashMap, newHashSet from CollectionUtil, and use HashMap.newHashMap, HashSet.newHashSet
   directly. (Zhou Hui)
 
@@ -68,10 +84,14 @@ New Features
 
 * GITHUB#14178: Add a Faiss-based vector format in the sandbox module. (Kaival Parikh)
 
-* GITHUB#14792: Introduced OffHeapQuantizedFloatVectorValues class to access float vectors when only quantized byte vectors are available in the index. (Pulkit Gupta)
+* GITHUB#15508: Use native vectorization in Lucene. (Ankur Goel, Shubham Chaudhary, Dawid Weiss)
 
 Improvements
 ---------------------
+
+* GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
+
+* GITHUB#15682: Use ArrayDeque instead of LinkedList in CompoundWordTokenFilterBase.java. (Renato Haeberli)
 
 * GITHUB#15568: Add markdown support for javadocs and modernize highlighting a bit. (Dawid Weiss)
 
@@ -89,8 +109,12 @@ Improvements
 
 * GITHUB#15453: Avoid unnecessary sorting and instantiations in readMapOfStrings. (Benjamin Lerer)
 
+* GITHUB#15225: Improve package documentation for org.apache.lucene.util. (Syed Mohammad Saad)
+
 Optimizations
 ---------------------
+* GITHUB#15681: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
+
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
 
 * GITHUB#14011: Reduce allocation rate in HNSW concurrent merge. (Viliam Durina)
@@ -101,6 +125,8 @@ Optimizations
 * GITHUB#15043: Vectorize L2 normalize function. (Ramakrishna Chilaka)
 
 * GITHUB#15085, GITHUB#15092: Hunspell suggestions: Ensure candidate roots are not worse before updating. (Ilia Permiashkin)
+
+* GITHUB#15597: Reduce memory usage of NeighborArray (Viliam Durina)
 
 Bug Fixes
 ---------------------
@@ -128,6 +154,9 @@ Bug Fixes
 * GITHUB#12561: UAX29URLEmailTokenizer matched emails with commas and invalid
   periods in the local part. (Eran Yarkon)
 
+* GITHUB#14971: Fix CachedExecutor thread pool leak in ConcurrentMergeScheduler
+  when IndexWriter initialization fails. (Su Beom)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -148,7 +177,7 @@ Build
 * GITHUB#15629: Introduce prek for fast pre-commit/repository checks.
   Markdown files are now linted with local broken-link detection.
   Python and Shell scripts are now linted system-wide.
-  Install with `uvx prek install`
+  Install with `uv tool install prek; prek install`
   For more see help/precommit.txt or `./gradlew helpPrecommit` (Robert Muir)
 
 Other
@@ -169,6 +198,66 @@ Other
 
 * GITHUB#14607: Index open performs version check on each segment, ignores indexCreatedVersionMajor (Rahul Goswami)
 * GITHUB#15454: Restore binary readability for 8.x indexes like previously and throw IndexFormatTooOldException for an older default codec not found on classpath (Rahul Goswami)
+
+======================= Lucene 10.5.0 =======================
+
+API Changes
+---------------------
+* GITHUB#15663: Allow subclasses of NumericComparator to implement their own
+  CompetitiveDISIBuilder subtypes. (Alan Woodward)
+
+* GITHUB#15636: Introduce TermsEnum.preferSeekExact(). Update and delete processing obey this setting,
+  allowing bloom or other approximate membership filters to apply in these paths. (Trevor McCulloch)
+
+* GITHUB#15723: Add hook for LRUQueryCache to allow custom population strategies (Nhat Nguyen)
+
+* GITHUB#15751: Prevent zero vectors in knn fields with cosine similarity configured (Vigya Sharma)
+
+New Features
+---------------------
+
+* GITHUB#15740: Add NumericFieldStats utility for retrieving global numeric field statistics
+  (min, max, doc count) from index metadata structures. Migrate SortedNumericDocValuesRangeQuery
+  to use this API, fixing the rewrite optimization for fields with PointValues but no skip index.
+  (Salvatore Campagna)
+
+Improvements
+---------------------
+* GITHUB#15757: Better skipper-based numeric sort pruning from the start of segments (Alan Woodward)
+
+* GITHUB#15753: Add Case Insensitive makeChar and makeString to Automata. (John Wagster)
+
+Optimizations
+---------------------
+* GITHUB#15637: Lazily allocate ByteArrayDataInputs in SegmentTermsEnumFrame#15637 (Misha Dmitriev)
+
+* GITHUB#15718 Skip per-document stored field reads on sorted indices when no stored fields are present (Francisco Fernández Castaño)
+
+* GITHUB#15729: Lucene90DocValuesProducer is not prefetching any data for DocValueSkippers anymore (Alexander Reelsen)
+
+* GITHUB#15772: improve BytesRefHash.sort performance by rearranging ids#15772 (tyronecai)
+
+* GITHUB#15742: Optimize int4 dotProduct and squareDistance computations by replacing vector conversions with reinterpret casting + bit manipulation. (Trevor McCulloch, Kaival Parikh)
+
+Bug Fixes
+---------------------
+* GITHUB#15668: Fix UnsupportedOperationException in WeightedSpanTermExtractor by
+  implementing getFieldInfos in DelegatingLeafReader. (Simranjeet Singh)
+
+* GITHUB#15590: Fix race and improve performance of HNSW graph building (Viliam Durina)
+
+* GITHUB#15702: Fix Potential NullPointException in BytesRefHash initialization#15702 (tyronecai)
+
+* GITHUB#15731: Fix tessellator failure when a hole is touching another hole in the middle of a segment. In this case
+  we might fail to detect it and choose a wrong bridge to eliminate the hole. (Ignacio Vera)
+
+Other
+---------------------
+* GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
+
+* GITHUB#15764: Added simpler TestTesselator test in support of fix GITHUB#15731. (Craig Taverner)
+
+* GITHUB#15767: Fix random test failures in LegacyBaseDocValuesFormatTestCase caused by missing commit. (Alan Woodward)
 
 ======================= Lucene 10.4.0 =======================
 
@@ -257,6 +346,8 @@ New Features
 
  * GITHUB#15518: Add support for post-collection faceting to the new faceting API in the sandbox module. (Egor Potemkin)
 
+ * GITHUB#14792: Introduced OffHeapQuantizedFloatVectorValues class to access float vectors when only quantized byte vectors are available in the index. (Pulkit Gupta)
+
  * GITHUB#15591: Add SegmentOrder helper class to re-order segments at query time to align with sorts. (Alan Woodward)
 
 Improvements
@@ -324,13 +415,12 @@ Optimizations
 
 * GITHUB#15498: ExitableDirectoryReader keeps singleton SortedSetDocValues or SortedNumericDocValues as singletons. (Houston Putman)
 
-* GITHUB#15511: Dynamic pruning for SORTED(_SET) fields with doc values skipper (Pan Guixin)
+* GITHUB#15511, GITHUB#15696, GITHUB#15709, GITHUB#15741: Dynamic pruning for SORTED(_SET) fields with doc
+  values skipper (Pan Guixin, Alan Woodward)
 
 * GITHUB#15560: Avoid unnecessary getGraph() call. (Shubham Chaudhary)
 
 * GITHUB#15582: Avoid copying bitset that's subsequently cleared (Viliam Durina)
-
-* GITHUB#15592: Optimize DocIdSetIteratorAcceptDocs#cost. (Shubham Chaudhary)
 
 * GITHUB#15618: SegmentTermsEnumFrame: avoid unnecessary array allocations that waste memory (Misha Dmitriev)
 
@@ -344,6 +434,10 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#15442: Preserve boost values when merging overlapping phrases in
+  FastVectorHighlighter so highlight scoring fully reflects query boosts.
+  (Yang Feng)
+
 * GITHUB#14161: PointInSetQuery's constructor now throws IllegalArgumentException
   instead of UnsupportedOperationException when values are out of order. (Shubham Sharma)
 
@@ -372,6 +466,12 @@ Bug Fixes
 
 * GITHUB#15554: Fix tessellator failure by preferring the shared vertex that is the leftmost vertex of the hole
   (Ignacio Vera)
+
+* GITHUB#15553: Fix MergedByteVectorValues lastOrd behavior to enable partitioning of vector values
+(Finn Roblin, Dooyong Kim)
+
+* GITHUB#15695: Fix Tessellation error for holes that share the same leftmost vertex with an outer ring vertex
+  (Robert Burris)
 
 Other
 ---------------------
@@ -793,7 +893,6 @@ Improvements
 
 * GITHUB#14239: Hunspell's option to tolerate affix rule count mismatches was
   improved to tolerate more instances of this problem.  (Robert Muir)
-
 
 * GITHUB#14238: Improve test coverage of Dynamic Range Faceting. (John Houser)
 

@@ -196,7 +196,7 @@ public class SimpleWKTShapeParser {
     while (nextCloserOrComma(stream).equals(COMMA)) {
       lines.add(parseLine(stream));
     }
-    return lines.toArray(new Line[0]);
+    return lines.toArray(Line[]::new);
   }
 
   /** parses the hole of a polygon */
@@ -227,7 +227,7 @@ public class SimpleWKTShapeParser {
       return new Polygon(
           lats.stream().mapToDouble(i -> i).toArray(),
           lons.stream().mapToDouble(i -> i).toArray(),
-          holes.toArray(new Polygon[0]));
+          holes.toArray(Polygon[]::new));
     }
     return new Polygon(
         lats.stream().mapToDouble(i -> i).toArray(), lons.stream().mapToDouble(i -> i).toArray());
@@ -245,7 +245,7 @@ public class SimpleWKTShapeParser {
     while (nextCloserOrComma(stream).equals(COMMA)) {
       polygons.add(parsePolygon(stream));
     }
-    return polygons.toArray(new Polygon[0]);
+    return polygons.toArray(Polygon[]::new);
   }
 
   /** parses an ENVELOPE */
@@ -275,7 +275,7 @@ public class SimpleWKTShapeParser {
     while (nextCloserOrComma(stream).equals(COMMA)) {
       geometries.add(parseGeometry(stream, null));
     }
-    return geometries.toArray(new Object[0]);
+    return geometries.toArray(Object[]::new);
   }
 
   /** next word in the stream */

@@ -144,7 +144,7 @@ public class TestUnifiedHighlighterTermVec extends UnifiedHighlighterTestBase {
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(numDocs, topDocs.totalHits.value());
     Map<String, String[]> fieldToSnippets =
-        highlighter.highlightFields(fields.toArray(new String[numTvFields]), query, topDocs);
+        highlighter.highlightFields(fields.toArray(String[]::new), query, topDocs);
     String[] expectedSnippetsByDoc = new String[numDocs];
     Arrays.fill(expectedSnippetsByDoc, "some <b>test</b> text");
     for (String field : fields) {

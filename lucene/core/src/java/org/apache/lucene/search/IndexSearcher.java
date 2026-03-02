@@ -1004,7 +1004,7 @@ public class IndexSearcher {
     private final int maxDocs;
 
     public LeafSlice(List<LeafReaderContextPartition> partitions) {
-      this(partitions.toArray(new LeafReaderContextPartition[0]));
+      this(partitions.toArray(LeafReaderContextPartition[]::new));
     }
 
     private static LeafSlice entireSegments(List<LeafReaderContext> contexts) {

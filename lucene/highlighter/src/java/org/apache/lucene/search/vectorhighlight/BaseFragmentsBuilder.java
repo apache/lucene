@@ -168,7 +168,7 @@ public abstract class BaseFragmentsBuilder implements FragmentsBuilder {
       fragments.add(
           makeFragment(buffer, nextValueIndex, values, fragInfo, preTags, postTags, encoder));
     }
-    return fragments.toArray(new String[fragments.size()]);
+    return fragments.toArray(String[]::new);
   }
 
   protected Field[] getFields(IndexReader reader, int docId, final String fieldName)

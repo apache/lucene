@@ -171,8 +171,12 @@ public final class VectorUtil {
   }
 
   public static boolean isUnitVector(float[] v) {
-    double l1norm = IMPL.dotProduct(v, v);
-    return Math.abs(l1norm - 1.0d) <= EPSILON;
+    double squaredNorm = IMPL.dotProduct(v, v);
+    return isUnitVector(squaredNorm);
+  }
+
+  public static boolean isUnitVector(double squaredNorm) {
+    return Math.abs(squaredNorm - 1.0d) <= EPSILON;
   }
 
   /**
@@ -435,6 +439,26 @@ public final class VectorUtil {
       }
     }
     return v;
+  }
+
+  /** Returns true if all dimensions of provided vector are zero, false otherwise. */
+  public static boolean isZeroVector(float[] v) {
+    for (float value : v) {
+      if (value != 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /** Returns true if all dimensions of provided vector are zero, false otherwise. */
+  public static boolean isZeroVector(byte[] v) {
+    for (float value : v) {
+      if (value != 0) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**

@@ -18,13 +18,14 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Queue;
 import org.apache.lucene.index.LeafReaderContext;
 
 /**
@@ -73,10 +74,10 @@ public class NamedMatches implements Matches {
   /** Finds all {@link NamedMatches} in a {@link Matches} tree */
   public static List<NamedMatches> findNamedMatches(Matches matches) {
     List<NamedMatches> nm = new ArrayList<>();
-    List<Matches> toProcess = new LinkedList<>();
+    Queue<Matches> toProcess = new ArrayDeque<>();
     toProcess.add(matches);
     while (toProcess.size() > 0) {
-      matches = toProcess.remove(0);
+      matches = toProcess.remove();
       if (matches instanceof NamedMatches) {
         nm.add((NamedMatches) matches);
       }
