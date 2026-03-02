@@ -307,9 +307,9 @@ public class FloatArrayList implements Iterable<FloatCursor>, Cloneable, Account
   }
 
   /**
-   * Sets the number of stored elements to zero. Releases and initializes the internal storage array
-   * to default values. To clear the list without cleaning the buffer, simply set the {@link
-   * #elementsCount} field to zero.
+   * Sets the number of stored elements to zero. Initializes the internal storage array to default
+   * values. To clear the list without cleaning the buffer, simply set the {@link #elementsCount}
+   * field to zero.
    */
   public void clear() {
     Arrays.fill(buffer, 0, elementsCount, 0f);

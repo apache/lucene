@@ -56,7 +56,11 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
-/** Reader for scalar quantized vectors in the Lucene 10.4 format. */
+/**
+ * Reader for scalar quantized vectors in the Lucene 10.4 format.
+ *
+ * @lucene.experimental
+ */
 public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     implements QuantizedVectorsReader {
 

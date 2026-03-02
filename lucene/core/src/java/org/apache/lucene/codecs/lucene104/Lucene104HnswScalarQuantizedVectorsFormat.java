@@ -40,6 +40,8 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
 /**
  * A vectors format that uses HNSW graph to store and search for vectors. But vectors are binary
  * quantized using {@link Lucene104ScalarQuantizedVectorsFormat} before being stored in the graph.
+ *
+ * @lucene.experimental
  */
 public class Lucene104HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
 
