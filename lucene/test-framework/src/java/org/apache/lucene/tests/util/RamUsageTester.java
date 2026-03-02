@@ -290,8 +290,7 @@ public final class RamUsageTester {
               a(File.class, v -> charArraySize(v.toString().length()));
               a(Path.class, v -> charArraySize(v.toString().length()));
 
-              // Ignorable JDK classes. LongAdder (and Striped64) do not open their
-              // internal fields to reflection; use shallow size only.
+              // Ignorable JDK classes.
               a(ByteOrder.class, _ -> 0);
 
               // For LongAdder, assume it has the size of a single long, as we can't access its internal fields and it
