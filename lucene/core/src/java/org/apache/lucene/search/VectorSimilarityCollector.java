@@ -25,13 +25,14 @@ import java.util.List;
  * @lucene.experimental
  */
 class VectorSimilarityCollector extends AbstractKnnCollector {
-  private float traversalSimilarity;
   private final float resultSimilarity;
   private final List<ScoreDoc> scoreDocList;
+  private float minCompetitiveSimilarity;
 
   /**
-   * Perform a similarity-based graph search. The similarity for graph traversal is adaptive, and
-   * exponentially decaying with lower-scoring traversed nodes.
+   * Perform a similarity-based graph search. The buffer for graph traversal is adaptive: starts
+   * with a high value, and exponentially decays towards scores of nodes traversed, but not
+   * collected during graph search.
    *
    * @param resultSimilarity similarity score for result collection.
    * @param visitLimit limit on number of nodes to visit.
@@ -39,24 +40,24 @@ class VectorSimilarityCollector extends AbstractKnnCollector {
   public VectorSimilarityCollector(float resultSimilarity, long visitLimit) {
     // TODO: add search strategy support
     super(1, visitLimit, AbstractVectorSimilarityQuery.DEFAULT_STRATEGY);
-    this.traversalSimilarity = -Float.MAX_VALUE;
     this.resultSimilarity = resultSimilarity;
     this.scoreDocList = new ArrayList<>();
+    this.minCompetitiveSimilarity = -Float.MAX_VALUE;
   }
 
   @Override
   public boolean collect(int docId, float similarity) {
     if (similarity >= resultSimilarity) {
       scoreDocList.add(new ScoreDoc(docId, similarity));
-    } else if (similarity > traversalSimilarity) {
-      traversalSimilarity = (float) (((double) traversalSimilarity + similarity) / 2);
+      return false; // do not update minCompetitiveSimilarity
     }
-    return true;
+    minCompetitiveSimilarity = (float) (((double) minCompetitiveSimilarity + similarity) / 2);
+    return true; // update minCompetitiveSimilarity
   }
 
   @Override
   public float minCompetitiveSimilarity() {
-    return traversalSimilarity;
+    return minCompetitiveSimilarity;
   }
 
   @Override
