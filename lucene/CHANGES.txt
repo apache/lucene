@@ -110,10 +110,6 @@ Optimizations
 
 Bug Fixes
 ---------------------
-* GITHUB#15727: Add separately configurable missing values to ToParentBlockJoinSortField for parent and children sorting;
-  and fix incorrect handling of children missing values. Children with missing values now correctly participate in the
-  min/max selection according to the configured missing value. (Mary Gouseti)
-
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
@@ -208,6 +204,10 @@ Bug Fixes
   implementing getFieldInfos in DelegatingLeafReader. (Simranjeet Singh)
 
 * GITHUB#15702: Fix Potential NullPointException in BytesRefHash initialization#15702 (tyronecai)
+
+* GITHUB#15727: Add separately configurable missing values to ToParentBlockJoinSortField for parent and children sorting;
+  and fix incorrect handling of children missing values. Children with missing values now correctly participate in the
+  min/max selection according to the configured missing value. (Mary Gouseti)
 
 Other
 ---------------------
