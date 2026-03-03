@@ -17,10 +17,10 @@
 package org.apache.lucene.classification;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -180,7 +180,7 @@ public class BM25NBClassifier implements Classifier<BytesRef> {
    * @throws IOException if tokenization fails
    */
   private String[] tokenize(String text) throws IOException {
-    Collection<String> result = new LinkedList<>();
+    Collection<String> result = new ArrayDeque<>();
     for (String textFieldName : textFieldNames) {
       try (TokenStream tokenStream = analyzer.tokenStream(textFieldName, text)) {
         CharTermAttribute charTermAttribute = tokenStream.addAttribute(CharTermAttribute.class);

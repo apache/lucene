@@ -1000,7 +1000,7 @@ public abstract class LuceneTestCase extends Assert {
   /** create a new index writer config with random defaults using the specified random */
   public static IndexWriterConfig newIndexWriterConfig(Random r, Analyzer a) {
     IndexWriterConfig c = new IndexWriterConfig(a);
-    configureRandom(r, c.getCodec().compoundFormat());
+    configureRandomCompoundFormat(r, c.getCodec().compoundFormat());
     c.setSimilarity(classEnvRule.similarity);
     if (INFOSTREAM) {
       // Even though TestRuleSetupAndRestoreClassEnv calls
@@ -1031,17 +1031,17 @@ public abstract class LuceneTestCase extends Assert {
       int maxThreadCount = TestUtil.nextInt(r, 1, 4);
       int maxMergeCount = TestUtil.nextInt(r, maxThreadCount, maxThreadCount + 4);
       cms.setMaxMergesAndThreads(maxMergeCount, maxThreadCount);
-      if (random().nextBoolean()) {
+      if (r.nextBoolean()) {
         cms.disableAutoIOThrottle();
         assertFalse(cms.getAutoIOThrottle());
       }
-      cms.setForceMergeMBPerSec(10 + 10 * random().nextDouble());
+      cms.setForceMergeMBPerSec(10 + 10 * r.nextDouble());
       c.setMergeScheduler(cms);
     } else {
       // Always use consistent settings, else CMS's dynamic (SSD or not)
       // defaults can change, hurting reproducibility:
       ConcurrentMergeScheduler cms =
-          randomBoolean() ? new TestConcurrentMergeScheduler() : new ConcurrentMergeScheduler();
+          r.nextBoolean() ? new TestConcurrentMergeScheduler() : new ConcurrentMergeScheduler();
 
       // Only 1 thread can run at once (should maybe help reproducibility),
       // with up to 3 pending merges before segment-producing threads are
@@ -1089,7 +1089,7 @@ public abstract class LuceneTestCase extends Assert {
         break;
     }
 
-    c.setMaxFullFlushMergeWaitMillis(rarely() ? atLeast(r, 1000) : atLeast(r, 200));
+    c.setMaxFullFlushMergeWaitMillis(rarely(r) ? atLeast(r, 1000) : atLeast(r, 200));
     return c;
   }
 
@@ -1131,7 +1131,7 @@ public abstract class LuceneTestCase extends Assert {
   public static LogMergePolicy newLogMergePolicy(Random r) {
     LogMergePolicy logmp = r.nextBoolean() ? new LogDocMergePolicy() : new LogByteSizeMergePolicy();
     logmp.setCalibrateSizeByDeletes(r.nextBoolean());
-    logmp.setTargetSearchConcurrency(TestUtil.nextInt(random(), 1, 16));
+    logmp.setTargetSearchConcurrency(TestUtil.nextInt(r, 1, 16));
     if (rarely(r)) {
       logmp.setMergeFactor(TestUtil.nextInt(r, 2, 9));
     } else {
@@ -1140,8 +1140,8 @@ public abstract class LuceneTestCase extends Assert {
     return logmp;
   }
 
-  private static void configureRandom(Random r, CompoundFormat compoundFormat) {
-    compoundFormat.setShouldUseCompoundFile(random().nextBoolean());
+  private static void configureRandomCompoundFormat(Random r, CompoundFormat compoundFormat) {
+    compoundFormat.setShouldUseCompoundFile(r.nextBoolean());
 
     if (rarely(r)) {
       compoundFormat.setMaxCFSSegmentSizeMB(0.2 + r.nextDouble() * 2.0);
@@ -1170,7 +1170,7 @@ public abstract class LuceneTestCase extends Assert {
       tmp.setTargetSearchConcurrency(TestUtil.nextInt(r, 2, 20));
     }
 
-    tmp.setDeletesPctAllowed(20 + random().nextDouble() * 30);
+    tmp.setDeletesPctAllowed(20 + r.nextDouble() * 30);
     return tmp;
   }
 
@@ -1247,7 +1247,7 @@ public abstract class LuceneTestCase extends Assert {
       if (ms instanceof ConcurrentMergeScheduler cms) {
         int maxThreadCount = TestUtil.nextInt(r, 1, 4);
         int maxMergeCount = TestUtil.nextInt(r, maxThreadCount, maxThreadCount + 4);
-        boolean enableAutoIOThrottle = random().nextBoolean();
+        boolean enableAutoIOThrottle = r.nextBoolean();
         if (enableAutoIOThrottle) {
           cms.enableAutoIOThrottle();
         } else {
@@ -1260,7 +1260,7 @@ public abstract class LuceneTestCase extends Assert {
 
     if (rarely(r)) {
       MergePolicy mp = c.getMergePolicy();
-      configureRandom(r, c.getCodec().compoundFormat());
+      configureRandomCompoundFormat(r, c.getCodec().compoundFormat());
       if (mp instanceof LogMergePolicy logmp) {
         logmp.setCalibrateSizeByDeletes(r.nextBoolean());
         if (rarely(r)) {
@@ -1281,8 +1281,8 @@ public abstract class LuceneTestCase extends Assert {
         } else {
           tmp.setSegmentsPerTier(TestUtil.nextInt(r, 10, 50));
         }
-        configureRandom(r, c.getCodec().compoundFormat());
-        tmp.setDeletesPctAllowed(20 + random().nextDouble() * 30);
+        configureRandomCompoundFormat(r, c.getCodec().compoundFormat());
+        tmp.setDeletesPctAllowed(20 + r.nextDouble() * 30);
       }
       didChange = true;
     }
