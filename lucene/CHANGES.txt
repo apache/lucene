@@ -241,6 +241,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
+  HTML when an attribute value ends with an equals sign. (Seungmin123)
+
 * GITHUB#15668: Fix UnsupportedOperationException in WeightedSpanTermExtractor by
   implementing getFieldInfos in DelegatingLeafReader. (Simranjeet Singh)
 
