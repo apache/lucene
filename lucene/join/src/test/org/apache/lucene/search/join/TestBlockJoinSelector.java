@@ -117,13 +117,14 @@ public class TestBlockJoinSelector extends LuceneTestCase {
     parents.set(6);
     parents.set(10);
     parents.set(15);
-    parents.set(19);
+    parents.set(18);
 
     final BitSet children = new FixedBitSet(20);
     children.set(2);
     children.set(3);
     children.set(4);
     children.set(12);
+    children.set(16);
     children.set(17);
 
     final int[] ords = new int[20];
@@ -132,18 +133,23 @@ public class TestBlockJoinSelector extends LuceneTestCase {
     ords[3] = 7;
     ords[4] = 3;
     ords[12] = 10;
-    ords[18] = 10;
+    ords[16] = 9;
+    ords[17] = 10;
+    ords[18] = 11;
+    ords[19] = 12;
 
     final SortedDocValues mins =
         BlockJoinSelector.wrap(
             DocValues.singleton(new CannedSortedDocValues(ords)),
             BlockJoinSelector.Type.MIN,
             parents,
-            toIter(children));
+            toIter(children),
+            true);
     assertEquals(5, nextDoc(mins, 5));
     assertEquals(3, mins.ordValue());
     assertEquals(15, nextDoc(mins, 15));
     assertEquals(10, mins.ordValue());
+    assertEquals(18, nextDoc(mins, 18));
     assertNoMoreDoc(mins, 20);
 
     final SortedDocValues maxs =
@@ -151,12 +157,130 @@ public class TestBlockJoinSelector extends LuceneTestCase {
             DocValues.singleton(new CannedSortedDocValues(ords)),
             BlockJoinSelector.Type.MAX,
             parents,
-            toIter(children));
+            toIter(children),
+            false);
     assertEquals(5, nextDoc(maxs, 5));
     assertEquals(7, maxs.ordValue());
     assertEquals(15, nextDoc(maxs, 15));
     assertEquals(10, maxs.ordValue());
+    assertEquals(18, nextDoc(maxs, 18));
     assertNoMoreDoc(maxs, 20);
+
+    SortedDocValues withMissingValues =
+        BlockJoinSelector.wrap(
+            DocValues.singleton(new CannedSortedDocValues(ords)),
+            BlockJoinSelector.Type.MIN,
+            parents,
+            toIter(children),
+            false);
+    assertEquals(5, nextDoc(withMissingValues, 5));
+    assertEquals(-1, withMissingValues.ordValue());
+    assertEquals(15, nextDoc(withMissingValues, 15));
+    assertEquals(-1, withMissingValues.ordValue());
+    assertEquals(18, nextDoc(withMissingValues, 18));
+    assertEquals(9, withMissingValues.ordValue());
+    assertNoMoreDoc(withMissingValues, 20);
+
+    withMissingValues =
+        BlockJoinSelector.wrap(
+            DocValues.singleton(new CannedSortedDocValues(ords)),
+            BlockJoinSelector.Type.MIN,
+            parents,
+            toIter(children),
+            true);
+    assertEquals(5, nextDoc(withMissingValues, 5));
+    assertEquals(3, withMissingValues.ordValue());
+    assertEquals(15, nextDoc(withMissingValues, 15));
+    assertEquals(10, withMissingValues.ordValue());
+    assertEquals(18, nextDoc(withMissingValues, 18));
+    assertEquals(9, withMissingValues.ordValue());
+    assertNoMoreDoc(withMissingValues, 20);
+
+    withMissingValues =
+        BlockJoinSelector.wrap(
+            DocValues.singleton(new CannedSortedDocValues(ords)),
+            BlockJoinSelector.Type.MAX,
+            parents,
+            toIter(children),
+            false);
+    assertEquals(5, nextDoc(withMissingValues, 5));
+    assertEquals(7, withMissingValues.ordValue());
+    assertEquals(15, nextDoc(withMissingValues, 15));
+    assertEquals(10, withMissingValues.ordValue());
+    assertEquals(18, nextDoc(withMissingValues, 18));
+    assertEquals(10, withMissingValues.ordValue());
+    assertNoMoreDoc(withMissingValues, 20);
+
+    withMissingValues =
+        BlockJoinSelector.wrap(
+            DocValues.singleton(new CannedSortedDocValues(ords)),
+            BlockJoinSelector.Type.MAX,
+            parents,
+            toIter(children),
+            true);
+    assertEquals(5, nextDoc(withMissingValues, 5));
+    assertEquals(Integer.MAX_VALUE, withMissingValues.ordValue());
+    assertEquals(15, nextDoc(withMissingValues, 15));
+    assertEquals(Integer.MAX_VALUE, withMissingValues.ordValue());
+    assertEquals(18, nextDoc(withMissingValues, 18));
+    assertEquals(10, withMissingValues.ordValue());
+    assertNoMoreDoc(withMissingValues, 20);
+  }
+
+  public void testNextDocWithSkippedParents() throws IOException {
+    final BitSet parents = new FixedBitSet(20);
+    final BitSet children = new FixedBitSet(20);
+    parents.set(0);
+
+    children.set(1);
+    children.set(2);
+    parents.set(3);
+
+    children.set(4);
+    parents.set(5);
+
+    children.set(6);
+    children.set(7);
+    children.set(8);
+    children.set(9);
+    parents.set(10);
+
+    final int[] ords = new int[20];
+    Arrays.fill(ords, -1);
+    ords[1] = 5;
+    ords[4] = 7;
+    ords[5] = 3;
+    ords[8] = 10;
+
+    final SortedDocValues naturalOrder =
+        BlockJoinSelector.wrap(
+            DocValues.singleton(new CannedSortedDocValues(ords)),
+            BlockJoinSelector.Type.MIN,
+            parents,
+            toIter(children),
+            false);
+    assertEquals(3, naturalOrder.nextDoc());
+    assertEquals(-1, naturalOrder.ordValue());
+    assertEquals(5, naturalOrder.nextDoc());
+    assertEquals(7, naturalOrder.ordValue());
+    assertEquals(10, naturalOrder.nextDoc());
+    assertEquals(-1, naturalOrder.ordValue());
+    assertEquals(NO_MORE_DOCS, naturalOrder.nextDoc());
+
+    final SortedDocValues reverseOrder =
+        BlockJoinSelector.wrap(
+            DocValues.singleton(new CannedSortedDocValues(ords)),
+            BlockJoinSelector.Type.MAX,
+            parents,
+            toIter(children),
+            true);
+    assertEquals(3, reverseOrder.nextDoc());
+    assertEquals(Integer.MAX_VALUE, reverseOrder.ordValue());
+    assertEquals(5, reverseOrder.nextDoc());
+    assertEquals(7, reverseOrder.ordValue());
+    assertEquals(10, reverseOrder.nextDoc());
+    assertEquals(Integer.MAX_VALUE, reverseOrder.ordValue());
+    assertEquals(NO_MORE_DOCS, reverseOrder.nextDoc());
   }
 
   private static class CannedSortedDocValues extends SortedDocValues {
@@ -262,7 +386,8 @@ public class TestBlockJoinSelector extends LuceneTestCase {
             DocValues.singleton(new CannedNumericDocValues(longs, docsWithValue)),
             BlockJoinSelector.Type.MIN,
             parents,
-            toIter(children));
+            toIter(children),
+            null);
     assertEquals(5, nextDoc(mins, 5));
     assertEquals(3, mins.longValue());
     assertEquals(15, nextDoc(mins, 15));
@@ -274,7 +399,8 @@ public class TestBlockJoinSelector extends LuceneTestCase {
             DocValues.singleton(new CannedNumericDocValues(longs, docsWithValue)),
             BlockJoinSelector.Type.MAX,
             parents,
-            toIter(children));
+            toIter(children),
+            null);
     assertEquals(5, nextDoc(maxs, 5));
     assertEquals(7, maxs.longValue());
     assertEquals(15, nextDoc(maxs, 15));
