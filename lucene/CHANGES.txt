@@ -52,6 +52,10 @@ Bug Fixes
 
 * GITHUB#15702: Fix Potential NullPointException in BytesRefHash initialization#15702 (tyronecai)
 
+* GITHUB#15727: Add separately configurable missing values to ToParentBlockJoinSortField for parent and children sorting;
+  and fix incorrect handling of children missing values. Children with missing values now correctly participate in the
+  min/max selection according to the configured missing value. (Mary Gouseti)
+
 * GITHUB#15731: Fix tessellator failure when a hole is touching another hole in the middle of a segment. In this case
   we might fail to detect it and choose a wrong bridge to eliminate the hole. (Ignacio Vera)
 
