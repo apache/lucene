@@ -74,6 +74,8 @@ API Changes
 
 * GITHUB#15295 : Switched to a fixed CFS threshold (Shubham Sharma)
 
+* GITHUB#15793 : Coordinate DocValuesSkipper across fields for multi-range conjunctions
+
 New Features
 ---------------------
 
