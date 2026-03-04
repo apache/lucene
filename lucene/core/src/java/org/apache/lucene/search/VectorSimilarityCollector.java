@@ -22,6 +22,17 @@ import java.util.List;
 /**
  * Perform a similarity-based graph search.
  *
+ * <p>Note: Some functions of this class deviate from {@link KnnCollector}, and should be used with
+ * queries that are aware of the differences (like {@link ByteVectorSimilarityQuery} and {@link
+ * FloatVectorSimilarityQuery}).
+ *
+ * <ul>
+ *   <li>{@link #k()} does NOT provide a good estimate of the number of collected results.
+ *   <li>{@link #topDocs()} does NOT return docs sorted in descending order of scores.
+ *   <li>{@link #collect(int, float)} does NOT return true / false based on whether the document was
+ *       collected.
+ * </ul>
+ *
  * @lucene.experimental
  */
 class VectorSimilarityCollector extends AbstractKnnCollector {
@@ -47,12 +58,13 @@ class VectorSimilarityCollector extends AbstractKnnCollector {
 
   @Override
   public boolean collect(int docId, float similarity) {
+    // Returns true / false based on whether minCompetitiveSimilarity has been updated
     if (similarity >= resultSimilarity) {
       scoreDocList.add(new ScoreDoc(docId, similarity));
-      return false; // do not update minCompetitiveSimilarity
+      return false;
     }
     minCompetitiveSimilarity = (float) (((double) minCompetitiveSimilarity + similarity) / 2);
-    return true; // update minCompetitiveSimilarity
+    return true;
   }
 
   @Override
