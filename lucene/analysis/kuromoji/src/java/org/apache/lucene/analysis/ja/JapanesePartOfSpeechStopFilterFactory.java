@@ -29,7 +29,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
 /**
  * Factory for {@link org.apache.lucene.analysis.ja.JapanesePartOfSpeechStopFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_ja" class="solr.TextField"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.JapaneseTokenizerFactory"/&gt;
@@ -37,7 +37,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
  *             tags="stopTags.txt"/&gt;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;
- * </pre>
+ * </code></pre>
  *
  * @since 3.6.0
  * @lucene.spi {@value #NAME}

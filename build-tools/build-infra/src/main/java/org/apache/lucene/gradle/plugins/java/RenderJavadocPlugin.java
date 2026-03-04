@@ -566,12 +566,11 @@ public class RenderJavadocPlugin extends LuceneGradlePlugin {
             getTaskResources(),
             "table_padding.css",
             "custom_styles.css",
-            "prettify/prettify.css");
+            "prettify/prism.css");
 
         // append prettify to scripts
         Provider<RegularFile> customScript = getOutputDir().file("script-files/lucene-script.js");
-        concat(
-            customScript, getTaskResources().dir("prettify"), "prettify.js", "inject-javadocs.js");
+        concat(customScript, getTaskResources().dir("prettify"), "prism.js");
 
         opts.add(List.of("--add-script", customScript.get().getAsFile().toString()));
         opts.add(List.of("--add-stylesheet", customCss.get().getAsFile().toString()));

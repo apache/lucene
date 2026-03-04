@@ -171,8 +171,12 @@ public final class VectorUtil {
   }
 
   public static boolean isUnitVector(float[] v) {
-    double l1norm = IMPL.dotProduct(v, v);
-    return Math.abs(l1norm - 1.0d) <= EPSILON;
+    double squaredNorm = IMPL.dotProduct(v, v);
+    return isUnitVector(squaredNorm);
+  }
+
+  public static boolean isUnitVector(double squaredNorm) {
+    return Math.abs(squaredNorm - 1.0d) <= EPSILON;
   }
 
   /**
@@ -245,12 +249,12 @@ public final class VectorUtil {
    * Dot product computed over uint4 (values between [0,15]) bytes. The second vector is considered
    * "packed" (i.e. every byte representing two values). The following packing is assumed:
    *
-   * <pre class="prettyprint lang-java">
+   * <pre><code class="language-java">
    *   packed[0] = (raw[0] * 16) | raw[packed.length];
    *   packed[1] = (raw[1] * 16) | raw[packed.length + 1];
    *   ...
    *   packed[packed.length - 1] = (raw[packed.length - 1] * 16) | raw[2 * packed.length - 1];
-   * </pre>
+   * </code></pre>
    *
    * @param unpacked the unpacked vector, of even length
    * @param packed the packed vector, of length {@code (unpacked.length + 1) / 2}
@@ -293,6 +297,25 @@ public final class VectorUtil {
           "vector dimensions incompatible: " + q.length + "!= " + 4 + " x " + d.length);
     }
     return IMPL.int4BitDotProduct(q, d);
+  }
+
+  /**
+   * Dot product computed over int4 (values between [0,15]) bytes and a dibit (2-bit) vector.
+   *
+   * <p>The int4 query vector is expected to be transposed (4 stripes, each containing one bit plane
+   * of all dimensions). The dibit document vector is expected to be transposed (2 stripes: lower
+   * bits first, then upper bits).
+   *
+   * @param q the int4 query vector (transposed, 4 stripes)
+   * @param d the dibit document vector (transposed, 2 stripes)
+   * @return the dot product
+   */
+  public static long int4DibitDotProduct(byte[] q, byte[] d) {
+    if (q.length != d.length * 2) {
+      throw new IllegalArgumentException(
+          "vector dimensions incompatible: " + q.length + "!= " + 2 + " x " + d.length);
+    }
+    return IMPL.int4DibitDotProduct(q, d);
   }
 
   /**
@@ -416,6 +439,26 @@ public final class VectorUtil {
       }
     }
     return v;
+  }
+
+  /** Returns true if all dimensions of provided vector are zero, false otherwise. */
+  public static boolean isZeroVector(float[] v) {
+    for (float value : v) {
+      if (value != 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /** Returns true if all dimensions of provided vector are zero, false otherwise. */
+  public static boolean isZeroVector(byte[] v) {
+    for (float value : v) {
+      if (value != 0) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /**

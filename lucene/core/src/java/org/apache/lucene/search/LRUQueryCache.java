@@ -69,7 +69,7 @@ import org.apache.lucene.util.RoaringDocIdSet;
  * <p>A default query cache and policy instance is used in IndexSearcher. If you want to replace
  * those defaults it is typically done like this:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   final int maxNumberOfCachedQueries = 256;
  *   final long maxRamBytesUsed = 50 * 1024L * 1024L; // 50MB
  *   // these cache and policy instances can be shared across several queries and readers
@@ -78,7 +78,7 @@ import org.apache.lucene.util.RoaringDocIdSet;
  *   final QueryCachingPolicy defaultCachingPolicy = new UsageTrackingQueryCachingPolicy();
  *   indexSearcher.setQueryCache(queryCache);
  *   indexSearcher.setQueryCachingPolicy(defaultCachingPolicy);
- * </pre>
+ * </code></pre>
  *
  * This cache exposes some global statistics ({@link #getHitCount() hit count}, {@link
  * #getMissCount() miss count}, {@link #getCacheSize() number of cache entries}, {@link
@@ -482,6 +482,26 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     }
   }
 
+  /**
+   * Populates the cache for the given scorer and leaf reader context.
+   *
+   * <p>Subclasses can override this method to implement custom caching strategies, such as
+   * deferring cache population to a background thread or skipping it when other threads are already
+   * populating the cache. This can be useful for intra-segment searches.
+   *
+   * @return the cached result if available; otherwise {@code null}
+   */
+  protected CacheAndCount tryPopulateCache(
+      IndexReader.CacheHelper cacheKey,
+      Weight weight,
+      ScorerSupplier scorerSupplier,
+      LeafReaderContext context)
+      throws IOException {
+    final CacheAndCount cached = cacheImpl(scorerSupplier.bulkScorer(), context.reader().maxDoc());
+    putIfAbsent(weight.getQuery(), cached, cacheKey);
+    return cached;
+  }
+
   private static CacheAndCount cacheIntoBitSet(BulkScorer scorer, int maxDoc) throws IOException {
     final FixedBitSet bitSet = new FixedBitSet(maxDoc);
     int[] count = new int[1];
@@ -718,9 +738,11 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
               if (cost / skipCacheFactor > leadCost) {
                 return supplier.get(leadCost).iterator();
               }
-
-              CacheAndCount cached = cacheImpl(supplier.bulkScorer(), maxDoc);
-              putIfAbsent(in.getQuery(), cached, cacheHelper);
+              CacheAndCount cached = tryPopulateCache(cacheHelper, in, supplier, context);
+              // cache is not available, use uncached iterator
+              if (cached == null) {
+                return supplier.get(leadCost).iterator();
+              }
               DocIdSetIterator disi = cached.iterator();
               if (disi == null) {
                 // docIdSet.iterator() is allowed to return null when empty but we want a non-null

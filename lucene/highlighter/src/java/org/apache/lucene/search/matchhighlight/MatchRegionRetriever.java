@@ -43,6 +43,7 @@ import org.apache.lucene.search.FilterMatchesIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.MatchesIterator;
+import org.apache.lucene.search.MatchesUtils;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -397,6 +398,10 @@ public class MatchRegionRetriever {
       ToIntFunction<String> maxHitsPerField,
       Map<String, List<OffsetRange>> outputHighlights)
       throws IOException {
+    if (queryAffectedHighlightedFields.isEmpty()) {
+      return;
+    }
+
     Matches matches = weight.matches(leafReaderContext, contextDocId);
     if (matches == null) {
       return;
@@ -404,7 +409,7 @@ public class MatchRegionRetriever {
 
     for (String field : queryAffectedHighlightedFields) {
       MatchesIterator matchesIterator = matches.getMatches(field);
-      if (matchesIterator == null) {
+      if (matchesIterator == null || matchesIterator == MatchesUtils.MATCH_WITH_NO_TERMS) {
         // No matches on this field, even though the field was part of the query. This may be
         // possible
         // with complex queries that source non-text fields (have no "hit regions" in any textual

@@ -27,7 +27,7 @@ import org.apache.lucene.util.Accountable;
  */
 public interface QuantizedVectorsReader extends Closeable, Accountable {
 
-  QuantizedByteVectorValues getQuantizedVectorValues(String fieldName) throws IOException;
+  BaseQuantizedByteVectorValues getQuantizedVectorValues(String fieldName) throws IOException;
 
   ScalarQuantizer getQuantizationState(String fieldName);
 }

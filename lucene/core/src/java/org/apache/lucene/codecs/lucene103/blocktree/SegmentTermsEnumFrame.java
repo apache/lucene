@@ -45,15 +45,15 @@ final class SegmentTermsEnumFrame {
   long fpEnd;
   long totalSuffixBytes; // for stats
 
-  byte[] suffixBytes = new byte[128];
-  final ByteArrayDataInput suffixesReader = new ByteArrayDataInput();
+  byte[] suffixBytes;
+  ByteArrayDataInput suffixesReader;
 
   byte[] suffixLengthBytes;
   final ByteArrayDataInput suffixLengthsReader;
 
-  byte[] statBytes = new byte[64];
+  byte[] statBytes;
   int statsSingletonRunLength = 0;
-  final ByteArrayDataInput statsReader = new ByteArrayDataInput();
+  ByteArrayDataInput statsReader;
 
   long rewindPos;
 
@@ -95,8 +95,8 @@ final class SegmentTermsEnumFrame {
   final BlockTermState state;
 
   // metadata buffer
-  byte[] bytes = new byte[32];
-  final ByteArrayDataInput bytesReader = new ByteArrayDataInput();
+  byte[] bytes;
+  ByteArrayDataInput bytesReader;
 
   private final SegmentTermsEnum ste;
 
@@ -105,7 +105,6 @@ final class SegmentTermsEnumFrame {
     this.ord = ord;
     this.state = ste.fr.parent.postingsReader.newTermState();
     this.state.totalTermFreq = -1;
-    suffixLengthBytes = new byte[32];
     suffixLengthsReader = new ByteArrayDataInput();
   }
 
@@ -192,7 +191,7 @@ final class SegmentTermsEnumFrame {
     final long codeL = ste.in.readVLong();
     isLeafBlock = (codeL & 0x04) != 0;
     final int numSuffixBytes = (int) (codeL >>> 3);
-    if (suffixBytes.length < numSuffixBytes) {
+    if (suffixBytes == null || suffixBytes.length < numSuffixBytes) {
       suffixBytes = new byte[ArrayUtil.oversize(numSuffixBytes, 1)];
     }
     try {
@@ -201,12 +200,16 @@ final class SegmentTermsEnumFrame {
       throw new CorruptIndexException(e.getMessage(), ste.in, e);
     }
     compressionAlg.read(ste.in, suffixBytes, numSuffixBytes);
-    suffixesReader.reset(suffixBytes, 0, numSuffixBytes);
+    if (suffixesReader == null) {
+      suffixesReader = new ByteArrayDataInput(suffixBytes, 0, numSuffixBytes);
+    } else {
+      suffixesReader.reset(suffixBytes, 0, numSuffixBytes);
+    }
 
     int numSuffixLengthBytes = ste.in.readVInt();
     allEqual = (numSuffixLengthBytes & 0x01) != 0;
     numSuffixLengthBytes >>>= 1;
-    if (suffixLengthBytes.length < numSuffixLengthBytes) {
+    if (suffixLengthBytes == null || suffixLengthBytes.length < numSuffixLengthBytes) {
       suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
     }
     if (allEqual) {
@@ -227,11 +230,15 @@ final class SegmentTermsEnumFrame {
 
     // stats
     int numBytes = ste.in.readVInt();
-    if (statBytes.length < numBytes) {
+    if (statBytes == null || statBytes.length < numBytes) {
       statBytes = new byte[ArrayUtil.oversize(numBytes, 1)];
     }
     ste.in.readBytes(statBytes, 0, numBytes);
-    statsReader.reset(statBytes, 0, numBytes);
+    if (statsReader == null) {
+      statsReader = new ByteArrayDataInput(statBytes, 0, numBytes);
+    } else {
+      statsReader.reset(statBytes, 0, numBytes);
+    }
     statsSingletonRunLength = 0;
     metaDataUpto = 0;
 
@@ -243,11 +250,15 @@ final class SegmentTermsEnumFrame {
     // that's rare so won't help much
     // metadata
     numBytes = ste.in.readVInt();
-    if (bytes.length < numBytes) {
+    if (bytes == null || bytes.length < numBytes) {
       bytes = new byte[ArrayUtil.oversize(numBytes, 1)];
     }
     ste.in.readBytes(bytes, 0, numBytes);
-    bytesReader.reset(bytes, 0, numBytes);
+    if (bytesReader == null) {
+      bytesReader = new ByteArrayDataInput(bytes, 0, numBytes);
+    } else {
+      bytesReader.reset(bytes, 0, numBytes);
+    }
 
     // Sub-blocks of a single floor block are always
     // written one after another -- tail recurse:

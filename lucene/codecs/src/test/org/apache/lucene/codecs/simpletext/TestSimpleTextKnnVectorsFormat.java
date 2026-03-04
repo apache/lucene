@@ -41,4 +41,9 @@ public class TestSimpleTextKnnVectorsFormat extends BaseKnnVectorsFormatTestCase
   public void testSortedIndexBytes() throws Exception {
     // unimplemented
   }
+
+  @Override
+  protected boolean supportsFloatVectorFallback() {
+    return false;
+  }
 }

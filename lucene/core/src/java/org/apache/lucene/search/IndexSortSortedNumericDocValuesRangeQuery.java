@@ -56,13 +56,13 @@ import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
  * give constant scores. As an example, an {@link IndexSortSortedNumericDocValuesRangeQuery} might
  * be constructed as follows:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   String field = "field";
  *   long lowerValue = 0, long upperValue = 10;
  *   Query fallbackQuery = LongPoint.newRangeQuery(field, lowerValue, upperValue);
  *   Query rangeQuery = new IndexSortSortedNumericDocValuesRangeQuery(
  *       field, lowerValue, upperValue, fallbackQuery);
- * </pre>
+ * </code></pre>
  *
  * @lucene.experimental
  */

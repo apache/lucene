@@ -59,7 +59,7 @@ import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.BaseQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
@@ -335,15 +335,15 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     // Take into account if quantized? E.g. some scorer cost?
     // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
     // size as that is illogical
-    HnswGraph graph = getGraph(fieldEntry);
-    int filteredDocCount = Math.min(acceptDocs.cost(), graph.size());
+    int graphSize = (fieldEntry.vectorIndexLength() == 0) ? 0 : fieldEntry.size();
+    int filteredDocCount = Math.min(acceptDocs.cost(), graphSize);
     Bits accepted = acceptDocs.bits();
     final Bits acceptedOrds = scorer.getAcceptOrds(accepted);
     int numVectors = scorer.maxOrd();
     boolean doHnsw = knnCollector.k() < numVectors;
     // The approximate number of vectors that would be visited if we did not filter
-    int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graph.size());
-    if (unfilteredVisit >= filteredDocCount || graph.size() == 0) {
+    int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graphSize);
+    if (unfilteredVisit >= filteredDocCount || graphSize == 0) {
       doHnsw = false;
     }
     if (doHnsw) {
@@ -419,7 +419,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
-  public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
+  public BaseQuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
     if (flatVectorsReader instanceof QuantizedVectorsReader) {
       return ((QuantizedVectorsReader) flatVectorsReader).getQuantizedVectorValues(field);
     }

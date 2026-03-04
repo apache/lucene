@@ -19,6 +19,8 @@ package org.apache.lucene.search;
 import static org.apache.lucene.util.RamUsageEstimator.HASHTABLE_RAM_BYTES_PER_ENTRY;
 import static org.apache.lucene.util.RamUsageEstimator.LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY;
 import static org.apache.lucene.util.RamUsageEstimator.QUERY_DEFAULT_RAM_BYTES_USED;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
@@ -37,9 +39,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -75,6 +79,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -1671,6 +1676,198 @@ public class TestLRUQueryCache extends LuceneTestCase {
     w.close();
     dir.close();
     cache.close();
+  }
+
+  /**
+   * Tests that we can override {@link LRUQueryCache#tryPopulateCache} to skip caching when multiple
+   * threads concurrently attempt to cache the same segment for the same query.
+   */
+  public void testSkipCacheIfOngoing() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig();
+    IndexWriter w = new IndexWriter(dir, iwc);
+    int numThreads = RandomNumbers.randomIntBetween(random(), 2, 6);
+    int numDocs = numThreads * 100;
+    for (int i = 0; i < numDocs; i++) {
+      var doc = new Document();
+      doc.add(new StringField("doc", Integer.toString(i), Store.NO));
+      w.addDocument(doc);
+    }
+    DirectoryReader reader = DirectoryReader.open(w);
+    assertThat(reader.leaves(), hasSize(1));
+    LeafReaderContext singleLeaf = reader.leaves().get(0);
+
+    AtomicInteger visited = new AtomicInteger(0);
+
+    class TrackingScorer extends Scorer {
+      final Scorer scorer;
+
+      TrackingScorer(Scorer scorer) {
+        this.scorer = scorer;
+      }
+
+      @Override
+      public int docID() {
+        return scorer.docID();
+      }
+
+      @Override
+      public DocIdSetIterator iterator() {
+        DocIdSetIterator disi = scorer.iterator();
+        return new DocIdSetIterator() {
+          @Override
+          public int docID() {
+            return disi.docID();
+          }
+
+          @Override
+          public int nextDoc() throws IOException {
+            int docId = disi.nextDoc();
+            if (docId < numDocs) {
+              visited.incrementAndGet();
+            }
+            return docId;
+          }
+
+          @Override
+          public int advance(int target) throws IOException {
+            int docId = disi.advance(target);
+            if (docId < numDocs) {
+              visited.incrementAndGet();
+            }
+            return docId;
+          }
+
+          @Override
+          public long cost() {
+            return disi.cost();
+          }
+        };
+      }
+
+      @Override
+      public float getMaxScore(int upTo) throws IOException {
+        return scorer.getMaxScore(upTo);
+      }
+
+      @Override
+      public float score() throws IOException {
+        return scorer.score();
+      }
+    }
+
+    Weight weight =
+        new ConstantScoreWeight(new MatchAllDocsQuery(), 1.0f) {
+          @Override
+          public ScorerSupplier scorerSupplier(LeafReaderContext context) {
+            return new ScorerSupplier() {
+              @Override
+              public Scorer get(long leadCost) throws IOException {
+                Scorer scorer =
+                    ConstantScoreScorerSupplier.matchAll(0f, ScoreMode.COMPLETE_NO_SCORES, numDocs)
+                        .get(leadCost);
+                return new TrackingScorer(scorer);
+              }
+
+              @Override
+              public BulkScorer bulkScorer() {
+                return new BulkScorer() {
+                  @Override
+                  public int score(LeafCollector collector, Bits acceptDocs, int min, int max) {
+                    for (int doc = min; doc < max; doc++) {
+                      if (doc < numDocs) {
+                        visited.incrementAndGet();
+                      } else {
+                        return DocIdSetIterator.NO_MORE_DOCS;
+                      }
+                    }
+                    return max;
+                  }
+
+                  @Override
+                  public long cost() {
+                    return 0;
+                  }
+                };
+              }
+
+              @Override
+              public long cost() {
+                return 0;
+              }
+            };
+          }
+
+          @Override
+          public boolean isCacheable(LeafReaderContext ctx) {
+            return true;
+          }
+
+          @Override
+          public int count(LeafReaderContext context) {
+            return context.reader().numDocs();
+          }
+        };
+
+    CountDownLatch latch = new CountDownLatch(numThreads);
+    LRUQueryCache cache =
+        new LRUQueryCache(2, 10000, _ -> true, Float.POSITIVE_INFINITY) {
+          final AtomicBoolean populated = new AtomicBoolean(false);
+
+          @Override
+          protected CacheAndCount tryPopulateCache(
+              IndexReader.CacheHelper cacheKey,
+              Weight weight,
+              ScorerSupplier scorerSupplier,
+              LeafReaderContext context)
+              throws IOException {
+            try {
+              latch.countDown();
+              assertTrue(latch.await(5, TimeUnit.SECONDS));
+            } catch (Exception e) {
+              throw new AssertionError(e);
+            }
+            if (populated.compareAndSet(false, true)) {
+              return super.tryPopulateCache(cacheKey, weight, scorerSupplier, context);
+            } else {
+              return null;
+            }
+          }
+        };
+    final Weight cachingWeight = cache.doCache(weight, ALWAYS_CACHE);
+    Thread[] threads = new Thread[numThreads];
+    for (int t = 0; t < numThreads; t++) {
+      int from = t * 100;
+      int to = Math.min(from + 100, numDocs);
+      threads[t] =
+          new Thread(
+              () -> {
+                try {
+                  BulkScorer bulkScorer = cachingWeight.scorerSupplier(singleLeaf).bulkScorer();
+                  bulkScorer.score(
+                      new LeafCollector() {
+                        @Override
+                        public void setScorer(Scorable scorer) {}
+
+                        @Override
+                        public void collect(int doc) {}
+                      },
+                      null,
+                      from,
+                      to);
+                } catch (Exception e) {
+                  throw new AssertionError(e);
+                }
+              });
+      threads[t].start();
+    }
+    for (Thread thread : threads) {
+      thread.join();
+    }
+    assertThat(visited.get(), lessThanOrEqualTo(numThreads * 100 + numDocs));
+    reader.close();
+    w.close();
+    dir.close();
   }
 
   // A query that returns null from Weight.getCacheHelper

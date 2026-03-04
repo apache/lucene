@@ -90,7 +90,7 @@ public class TestMaxTermFrequency extends LuceneTestCase {
     }
     expected.add(max);
     Collections.shuffle(terms, random());
-    return Arrays.toString(terms.toArray(new String[terms.size()]));
+    return Arrays.toString(terms.toArray(String[]::new));
   }
 
   /** Simple similarity that encodes maxTermFrequency directly as a byte */

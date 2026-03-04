@@ -23,13 +23,13 @@ import org.apache.lucene.analysis.CharFilterFactory;
 /**
  * Factory for {@link org.apache.lucene.analysis.ja.JapaneseIterationMarkCharFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_ja" class="solr.TextField" positionIncrementGap="100" autoGeneratePhraseQueries="false"&gt;
  *   &lt;analyzer&gt;
  *     &lt;charFilter class="solr.JapaneseIterationMarkCharFilterFactory normalizeKanji="true" normalizeKana="true"/&gt;
  *     &lt;tokenizer class="solr.JapaneseTokenizerFactory"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @since 4.0.0
  * @lucene.spi {@value #NAME}

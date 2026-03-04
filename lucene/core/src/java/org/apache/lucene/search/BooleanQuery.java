@@ -203,7 +203,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
    * Returns an iterator on the clauses in this query. It implements the {@link Iterable} interface
    * to make it possible to do:
    *
-   * <pre class="prettyprint">for (BooleanClause clause : booleanQuery) {}</pre>
+   * <pre><code class="language-java">for (BooleanClause clause : booleanQuery) {}</code></pre>
    */
   @Override
   public final Iterator<BooleanClause> iterator() {
@@ -641,6 +641,42 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
         rewritten.setMinimumNumberShouldMatch(Math.max(1, inner.getMinimumNumberShouldMatch()));
         return rewritten.build();
       }
+    }
+
+    // Coordinate multiple required NumericDocValuesRangeQuery clauses on different fields
+    // into a single MultiFieldDocValuesRangeQuery that coordinates their skip lists.
+    List<BooleanClause> rangeClauses = new ArrayList<>();
+    Set<String> rangeFields = new HashSet<>();
+    for (BooleanClause clause : clauses) {
+      if (clause.isRequired() && clause.query() instanceof NumericDocValuesRangeQuery nrq) {
+        rangeClauses.add(clause);
+        rangeFields.add(nrq.getField());
+      }
+    }
+    // Need 2+ range clauses on distinct fields
+    if (rangeClauses.size() >= 2 && rangeFields.size() == rangeClauses.size()) {
+      // Build the field ranges and the fallback conjunction
+      List<MultiFieldDocValuesRangeQuery.FieldRange> fieldRanges = new ArrayList<>();
+      BooleanQuery.Builder fallbackBuilder = new BooleanQuery.Builder();
+      for (BooleanClause rc : rangeClauses) {
+        NumericDocValuesRangeQuery nrq = (NumericDocValuesRangeQuery) rc.query();
+        fieldRanges.add(
+            new MultiFieldDocValuesRangeQuery.FieldRange(
+                nrq.getField(), nrq.lowerValue(), nrq.upperValue()));
+        fallbackBuilder.add(rc.query(), Occur.FILTER);
+      }
+      Query coordinated = new MultiFieldDocValuesRangeQuery(fieldRanges, fallbackBuilder.build());
+
+      // Rebuild: coordinated query as FILTER + all non-range clauses
+      BooleanQuery.Builder builder =
+          new BooleanQuery.Builder().setMinimumNumberShouldMatch(getMinimumNumberShouldMatch());
+      builder.add(coordinated, Occur.FILTER);
+      for (BooleanClause clause : clauses) {
+        if (!rangeClauses.contains(clause)) {
+          builder.add(clause);
+        }
+      }
+      return builder.build();
     }
 
     return super.rewrite(indexSearcher);

@@ -31,7 +31,7 @@ import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
  * the TokenStream chain as you want it. To use this with LowerCaseTokenizer, for example, you'd
  * write an analyzer like this: <br>
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * class MyAnalyzer extends Analyzer {
  *   {@literal @Override}
  *   protected TokenStreamComponents createComponents(String fieldName) {
@@ -39,7 +39,7 @@ import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
  *     return new TokenStreamComponents(source, new PorterStemFilter(source));
  *   }
  * }
- * </pre>
+ * </code></pre>
  *
  * <p>Note: This filter is aware of the {@link KeywordAttribute}. To prevent certain terms from
  * being passed to the stemmer {@link KeywordAttribute#isKeyword()} should be set to <code>true

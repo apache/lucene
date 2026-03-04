@@ -47,14 +47,14 @@ import org.apache.lucene.util.automaton.ByteRunAutomaton;
  * <p>For instance in the following example, both {@code q1} and {@code q2} would yield the same
  * scores:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * Query q1 = new TermInSetQuery("field", new BytesRef("foo"), new BytesRef("bar"));
  *
  * BooleanQuery bq = new BooleanQuery();
  * bq.add(new TermQuery(new Term("field", "foo")), Occur.SHOULD);
  * bq.add(new TermQuery(new Term("field", "bar")), Occur.SHOULD);
  * Query q2 = new ConstantScoreQuery(bq);
- * </pre>
+ * </code></pre>
  *
  * <p>Unless a custom {@link MultiTermQuery.RewriteMethod} is provided, this query executes like a
  * regular disjunction where there are few terms. However, when there are many terms, instead of

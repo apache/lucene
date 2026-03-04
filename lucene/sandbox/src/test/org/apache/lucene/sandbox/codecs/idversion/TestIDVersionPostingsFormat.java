@@ -694,7 +694,7 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
     while (idsSeen.size() < numIDs) {
       idsSeen.add(idsSource.next());
     }
-    final String[] ids = idsSeen.toArray(new String[numIDs]);
+    final String[] ids = idsSeen.toArray(String[]::new);
 
     final Object[] locks = new Object[ids.length];
     for (int i = 0; i < locks.length; i++) {
