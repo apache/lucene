@@ -97,6 +97,7 @@ import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import junit.framework.AssertionFailedError;
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.codecs.CompoundFormat;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.bitvectors.HnswBitVectorsFormat;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
@@ -999,6 +1000,7 @@ public abstract class LuceneTestCase extends Assert {
   /** create a new index writer config with random defaults using the specified random */
   public static IndexWriterConfig newIndexWriterConfig(Random r, Analyzer a) {
     IndexWriterConfig c = new IndexWriterConfig(a);
+    configureRandomCompoundFormat(r, c.getCodec().compoundFormat());
     c.setSimilarity(classEnvRule.similarity);
     if (INFOSTREAM) {
       // Even though TestRuleSetupAndRestoreClassEnv calls
@@ -1029,17 +1031,17 @@ public abstract class LuceneTestCase extends Assert {
       int maxThreadCount = TestUtil.nextInt(r, 1, 4);
       int maxMergeCount = TestUtil.nextInt(r, maxThreadCount, maxThreadCount + 4);
       cms.setMaxMergesAndThreads(maxMergeCount, maxThreadCount);
-      if (random().nextBoolean()) {
+      if (r.nextBoolean()) {
         cms.disableAutoIOThrottle();
         assertFalse(cms.getAutoIOThrottle());
       }
-      cms.setForceMergeMBPerSec(10 + 10 * random().nextDouble());
+      cms.setForceMergeMBPerSec(10 + 10 * r.nextDouble());
       c.setMergeScheduler(cms);
     } else {
       // Always use consistent settings, else CMS's dynamic (SSD or not)
       // defaults can change, hurting reproducibility:
       ConcurrentMergeScheduler cms =
-          randomBoolean() ? new TestConcurrentMergeScheduler() : new ConcurrentMergeScheduler();
+          r.nextBoolean() ? new TestConcurrentMergeScheduler() : new ConcurrentMergeScheduler();
 
       // Only 1 thread can run at once (should maybe help reproducibility),
       // with up to 3 pending merges before segment-producing threads are
@@ -1087,7 +1089,7 @@ public abstract class LuceneTestCase extends Assert {
         break;
     }
 
-    c.setMaxFullFlushMergeWaitMillis(rarely() ? atLeast(r, 1000) : atLeast(r, 200));
+    c.setMaxFullFlushMergeWaitMillis(rarely(r) ? atLeast(r, 1000) : atLeast(r, 200));
     return c;
   }
 
@@ -1129,27 +1131,22 @@ public abstract class LuceneTestCase extends Assert {
   public static LogMergePolicy newLogMergePolicy(Random r) {
     LogMergePolicy logmp = r.nextBoolean() ? new LogDocMergePolicy() : new LogByteSizeMergePolicy();
     logmp.setCalibrateSizeByDeletes(r.nextBoolean());
-    logmp.setTargetSearchConcurrency(TestUtil.nextInt(random(), 1, 16));
+    logmp.setTargetSearchConcurrency(TestUtil.nextInt(r, 1, 16));
     if (rarely(r)) {
       logmp.setMergeFactor(TestUtil.nextInt(r, 2, 9));
     } else {
       logmp.setMergeFactor(TestUtil.nextInt(r, 10, 50));
     }
-    configureRandom(r, logmp);
     return logmp;
   }
 
-  private static void configureRandom(Random r, MergePolicy mergePolicy) {
-    if (r.nextBoolean()) {
-      mergePolicy.setNoCFSRatio(0.1 + r.nextDouble() * 0.8);
-    } else {
-      mergePolicy.setNoCFSRatio(r.nextBoolean() ? 1.0 : 0.0);
-    }
+  private static void configureRandomCompoundFormat(Random r, CompoundFormat compoundFormat) {
+    compoundFormat.setShouldUseCompoundFile(r.nextBoolean());
 
     if (rarely(r)) {
-      mergePolicy.setMaxCFSSegmentSizeMB(0.2 + r.nextDouble() * 2.0);
+      compoundFormat.setMaxCFSSegmentSizeMB(0.2 + r.nextDouble() * 2.0);
     } else {
-      mergePolicy.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
+      compoundFormat.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     }
   }
 
@@ -1173,22 +1170,8 @@ public abstract class LuceneTestCase extends Assert {
       tmp.setTargetSearchConcurrency(TestUtil.nextInt(r, 2, 20));
     }
 
-    configureRandom(r, tmp);
-    tmp.setDeletesPctAllowed(20 + random().nextDouble() * 30);
+    tmp.setDeletesPctAllowed(20 + r.nextDouble() * 30);
     return tmp;
-  }
-
-  public static MergePolicy newLogMergePolicy(boolean useCFS) {
-    MergePolicy logmp = newLogMergePolicy();
-    logmp.setNoCFSRatio(useCFS ? 1.0 : 0.0);
-    return logmp;
-  }
-
-  public static LogMergePolicy newLogMergePolicy(boolean useCFS, int mergeFactor) {
-    LogMergePolicy logmp = newLogMergePolicy();
-    logmp.setNoCFSRatio(useCFS ? 1.0 : 0.0);
-    logmp.setMergeFactor(mergeFactor);
-    return logmp;
   }
 
   public static LogMergePolicy newLogMergePolicy(int mergeFactor) {
@@ -1264,7 +1247,7 @@ public abstract class LuceneTestCase extends Assert {
       if (ms instanceof ConcurrentMergeScheduler cms) {
         int maxThreadCount = TestUtil.nextInt(r, 1, 4);
         int maxMergeCount = TestUtil.nextInt(r, maxThreadCount, maxThreadCount + 4);
-        boolean enableAutoIOThrottle = random().nextBoolean();
+        boolean enableAutoIOThrottle = r.nextBoolean();
         if (enableAutoIOThrottle) {
           cms.enableAutoIOThrottle();
         } else {
@@ -1277,7 +1260,7 @@ public abstract class LuceneTestCase extends Assert {
 
     if (rarely(r)) {
       MergePolicy mp = c.getMergePolicy();
-      configureRandom(r, mp);
+      configureRandomCompoundFormat(r, c.getCodec().compoundFormat());
       if (mp instanceof LogMergePolicy logmp) {
         logmp.setCalibrateSizeByDeletes(r.nextBoolean());
         if (rarely(r)) {
@@ -1298,8 +1281,8 @@ public abstract class LuceneTestCase extends Assert {
         } else {
           tmp.setSegmentsPerTier(TestUtil.nextInt(r, 10, 50));
         }
-        configureRandom(r, tmp);
-        tmp.setDeletesPctAllowed(20 + random().nextDouble() * 30);
+        configureRandomCompoundFormat(r, c.getCodec().compoundFormat());
+        tmp.setDeletesPctAllowed(20 + r.nextDouble() * 30);
       }
       didChange = true;
     }
@@ -3219,7 +3202,6 @@ public abstract class LuceneTestCase extends Assert {
       // and might use many per-field codecs. turn on CFS for IW flushes
       // and ensure CFS ratio is reasonable to keep it contained.
       conf.setUseCompoundFile(true);
-      mp.setNoCFSRatio(Math.max(0.25d, mp.getNoCFSRatio()));
     }
     return conf;
   }

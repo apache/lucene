@@ -556,7 +556,7 @@ public final class MoreLikeThis {
     if (fieldNames == null) {
       // gather list of valid fields from lucene
       Collection<String> fields = FieldInfos.getIndexedFields(ir);
-      fieldNames = fields.toArray(new String[fields.size()]);
+      fieldNames = fields.toArray(String[]::new);
     }
 
     return createQuery(retrieveTerms(docNum));
@@ -570,7 +570,7 @@ public final class MoreLikeThis {
     if (fieldNames == null) {
       // gather list of valid fields from lucene
       Collection<String> fields = FieldInfos.getIndexedFields(ir);
-      fieldNames = fields.toArray(new String[fields.size()]);
+      fieldNames = fields.toArray(String[]::new);
     }
     return createQuery(retrieveTerms(filteredDocument));
   }

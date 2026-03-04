@@ -25,7 +25,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -499,7 +498,7 @@ public class TestKnnGraph extends LuceneTestCase {
   private static void assertConnected(int[][] graph) {
     List<Integer> nodes = new ArrayList<>();
     Set<Integer> visited = new HashSet<>();
-    List<Integer> queue = new LinkedList<>();
+    List<Integer> queue = new ArrayList<>();
     for (int i = 0; i < graph.length; i++) {
       if (graph[i] != null) {
         nodes.add(i);

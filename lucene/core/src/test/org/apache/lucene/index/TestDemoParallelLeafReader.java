@@ -739,13 +739,6 @@ public class TestDemoParallelLeafReader extends LuceneTestCase {
       }
 
       @Override
-      public boolean useCompoundFile(
-          SegmentInfos segments, SegmentCommitInfo newSegment, MergeContext mergeContext)
-          throws IOException {
-        return in.useCompoundFile(segments, newSegment, mergeContext);
-      }
-
-      @Override
       public String toString() {
         return "ReindexingMergePolicy(" + in + ")";
       }

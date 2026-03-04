@@ -138,7 +138,7 @@ public final class BytesRefHash implements Accountable {
     bytesStart = bytesStartArray.init();
     final Counter bytesUsed = bytesStartArray.bytesUsed();
     this.bytesUsed = bytesUsed == null ? Counter.newCounter() : bytesUsed;
-    bytesUsed.addAndGet(hashSize * (long) Integer.BYTES);
+    this.bytesUsed.addAndGet(hashSize * (long) Integer.BYTES);
   }
 
   /**
@@ -178,18 +178,13 @@ public final class BytesRefHash implements Accountable {
    */
   public int[] compact() {
     assert bytesStart != null : "bytesStart is null - not initialized";
-    int upto = 0;
-    for (int i = 0; i < hashSize; i++) {
-      if (ids[i] != -1) {
-        ids[upto] = ids[i] & hashMask;
-        if (upto < i) {
-          ids[i] = -1;
-        }
-        upto++;
-      }
-    }
 
-    assert upto == count;
+    // id is the sequence number when bytes added to the pool
+    for (int i = 0; i < count; i++) {
+      ids[i] = i;
+    }
+    Arrays.fill(ids, count, hashSize, -1);
+
     lastCount = count;
     return ids;
   }
@@ -333,7 +328,7 @@ public final class BytesRefHash implements Accountable {
    *     ByteBlockPool#BYTE_BLOCK_SIZE}
    */
   public int add(BytesRef bytes) {
-    assert bytesStart != null : "Bytesstart is null - not initialized";
+    assert bytesStart != null : "bytesStart is null - not initialized";
     final int hashcode = doHash(bytes.bytes, bytes.offset, bytes.length);
     // final position
     final int hashPos = findHash(bytes, hashcode);
@@ -400,7 +395,7 @@ public final class BytesRefHash implements Accountable {
    * textStart) in TermsHashPerField.
    */
   public int addByPoolOffset(int offset) {
-    assert bytesStart != null : "Bytesstart is null - not initialized";
+    assert bytesStart != null : "bytesStart is null - not initialized";
     // final position
     int code = offset;
     int hashPos = offset & hashMask;

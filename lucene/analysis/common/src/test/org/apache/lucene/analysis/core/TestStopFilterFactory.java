@@ -96,7 +96,6 @@ public class TestStopFilterFactory extends BaseTokenStreamFactoryTestCase {
                   // implicit default words file
                   "format",
                   "bogus");
-              fail();
             });
     msg = expected.getMessage();
     assertTrue(msg, msg.contains("can not be specified"));
