@@ -850,6 +850,7 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
       this.maxSize = maxSize;
     }
 
+    // Package private for testing
     Iterable<QueryCacheKey> keys() {
       return cache.keySet();
     }
