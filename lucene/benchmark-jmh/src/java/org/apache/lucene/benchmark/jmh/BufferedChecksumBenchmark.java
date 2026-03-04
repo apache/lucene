@@ -71,6 +71,10 @@ public class BufferedChecksumBenchmark {
   @Param({"1", "2", "4", "5", "8", "64", "128", "256", "384", "512", "768", "1024", "1536", "2048", "4096"})
   private int dataSize;
 
+  // Current default is 1024, test with 2048 to evaluate buffer size increase
+  @Param({"1024", "2048"})
+  private int bufferSize;
+
   private byte[] data;
 
   private BufferedChecksum reusedBufferedCRC32C;
@@ -88,8 +92,8 @@ public class BufferedChecksumBenchmark {
 
   @Setup(Level.Iteration)
   public void setupReused() {
-    reusedBufferedCRC32C = new BufferedChecksum(new CRC32C());
-    reusedBufferedCRC32 = new BufferedChecksum(new CRC32());
+    reusedBufferedCRC32C = new BufferedChecksum(new CRC32C(), bufferSize);
+    reusedBufferedCRC32 = new BufferedChecksum(new CRC32(), bufferSize);
     reusedDirectCRC32C = new CRC32C();
     reusedDirectCRC32 = new CRC32();
   }
