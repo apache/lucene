@@ -36,14 +36,21 @@ import org.openjdk.jmh.annotations.Warmup;
 /**
  * Benchmark to measure BufferedChecksum performance with realistic Lucene usage patterns.
  *
- * <p>Tests reused instances (real-world scenario) where BufferedChecksum objects are created
- * once per IndexOutput and reused across many writes.
+ * <p>Tests two real Lucene code paths:
  *
- * <p>Key scenarios:
  * <ul>
- *   <li>Small writes: Postings with VInt encoding (1-5 bytes per write, many writes)
- *   <li>Bulk writes: Vectors, doc values, stored fields (single large write)
+ *   <li>SmallWrites (byte-at-a-time): Models {@code BufferedChecksumIndexInput.readByte()} which
+ *       calls {@code digest.update(b)} for each byte. This is the hot path for reading postings
+ *       (VInt/VLong encoding), field infos, segment metadata, and any DataInput that reads one byte
+ *       at a time.
+ *   <li>BulkWrite (single array): Models {@code BufferedChecksumIndexInput.readBytes()} which calls
+ *       {@code digest.update(b, off, len)} for a chunk. Also models the write side where
+ *       OutputStreamIndexOutput flushes its buffer through CheckedOutputStream. This covers vectors,
+ *       doc values, stored fields, and any bulk read/write path.
  * </ul>
+ *
+ * <p>dataSize represents the total bytes checksummed per operation. Fine-grained values around
+ * typical Lucene data sizes and the buffer boundary (1024) give the most useful signal.
  */
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)
@@ -53,26 +60,19 @@ import org.openjdk.jmh.annotations.Warmup;
 @Fork(value = 1)
 public class BufferedChecksumBenchmark {
 
-  // Realistic Lucene write sizes?
-  // - Postings/VInt: 1-5 bytes (many small writes)
+  // Realistic Lucene data sizes:
+  // - VInt/VLong: 1-5 bytes per call (postings, metadata)
   // - Norms: 1-8 bytes
-  // - Metadata/Field infos: 20-200 bytes
+  // - Field infos / metadata: 20-200 bytes
   // - Doc values: 100-1000 bytes
-  // - Vectors (embeddings): 384, 768, 1536 bytes (common dimensions × 4 bytes/float)
-  // - Stored fields/compressed blocks: 500-4000 bytes
-  @Param({"5", "64", "128", "384", "768", "1536", "4096"})
+  // - Vectors (embeddings): 384, 768, 1536 bytes
+  // - Stored fields / compressed blocks: 500-4000 bytes
+  // - Around the buffer boundary (1024) for boundary effects
+  @Param({"1", "2", "4", "5", "8", "64", "128", "256", "384", "512", "768", "1024", "1536", "2048", "4096"})
   private int dataSize;
-
-  // Current default is 1024, test with larger sizes
-  @Param({"1024", "2048"})
-  private int bufferSize;
-
-  @Param({"1", "5"})
-  private int smallWriteSize;
 
   private byte[] data;
 
-  // Reused instances to measure real-world performance
   private BufferedChecksum reusedBufferedCRC32C;
   private BufferedChecksum reusedBufferedCRC32;
   private CRC32C reusedDirectCRC32C;
@@ -88,12 +88,13 @@ public class BufferedChecksumBenchmark {
 
   @Setup(Level.Iteration)
   public void setupReused() {
-    reusedBufferedCRC32C = new BufferedChecksum(new CRC32C(), bufferSize);
-    reusedBufferedCRC32 = new BufferedChecksum(new CRC32(), bufferSize);
+    reusedBufferedCRC32C = new BufferedChecksum(new CRC32C());
+    reusedBufferedCRC32 = new BufferedChecksum(new CRC32());
     reusedDirectCRC32C = new CRC32C();
     reusedDirectCRC32 = new CRC32();
   }
 
+  // ---- Byte-at-a-time: models BufferedChecksumIndexInput.readByte() path ----
 
   @Benchmark
   public long bufferedCRC32CSmallWrites() {
@@ -102,49 +103,6 @@ public class BufferedChecksumBenchmark {
       reusedBufferedCRC32C.update(data[i]);
     }
     return reusedBufferedCRC32C.getValue();
-  }
-
-  @Benchmark
-  public long bufferedCRC32CSmallArrayWrites() {
-    reusedBufferedCRC32C.reset();
-    for (int i = 0; i < data.length; i += smallWriteSize) {
-      int len = Math.min(smallWriteSize, data.length - i);
-      reusedBufferedCRC32C.update(data, i, len);
-    }
-    return reusedBufferedCRC32C.getValue();
-  }
-
-  @Benchmark
-  public long bufferedCRC32CBulkWrite() {
-    reusedBufferedCRC32C.reset();
-    reusedBufferedCRC32C.update(data, 0, data.length);
-    return reusedBufferedCRC32C.getValue();
-  }
-
-  @Benchmark
-  public long directCRC32CSmallWrites() {
-    reusedDirectCRC32C.reset();
-    for (int i = 0; i < data.length; i++) {
-      reusedDirectCRC32C.update(data[i]);
-    }
-    return reusedDirectCRC32C.getValue();
-  }
-
-  @Benchmark
-  public long directCRC32CSmallArrayWrites() {
-    reusedDirectCRC32C.reset();
-    for (int i = 0; i < data.length; i += smallWriteSize) {
-      int len = Math.min(smallWriteSize, data.length - i);
-      reusedDirectCRC32C.update(data, i, len);
-    }
-    return reusedDirectCRC32C.getValue();
-  }
-
-  @Benchmark
-  public long directCRC32CBulkWrite() {
-    reusedDirectCRC32C.reset();
-    reusedDirectCRC32C.update(data, 0, data.length);
-    return reusedDirectCRC32C.getValue();
   }
 
   @Benchmark
@@ -157,20 +115,12 @@ public class BufferedChecksumBenchmark {
   }
 
   @Benchmark
-  public long bufferedCRC32SmallArrayWrites() {
-    reusedBufferedCRC32.reset();
-    for (int i = 0; i < data.length; i += smallWriteSize) {
-      int len = Math.min(smallWriteSize, data.length - i);
-      reusedBufferedCRC32.update(data, i, len);
+  public long directCRC32CSmallWrites() {
+    reusedDirectCRC32C.reset();
+    for (int i = 0; i < data.length; i++) {
+      reusedDirectCRC32C.update(data[i]);
     }
-    return reusedBufferedCRC32.getValue();
-  }
-
-  @Benchmark
-  public long bufferedCRC32BulkWrite() {
-    reusedBufferedCRC32.reset();
-    reusedBufferedCRC32.update(data, 0, data.length);
-    return reusedBufferedCRC32.getValue();
+    return reusedDirectCRC32C.getValue();
   }
 
   @Benchmark
@@ -182,14 +132,27 @@ public class BufferedChecksumBenchmark {
     return reusedDirectCRC32.getValue();
   }
 
+  // ---- Bulk write: models BufferedChecksumIndexInput.readBytes() / OutputStreamIndexOutput flush ----
+
   @Benchmark
-  public long directCRC32SmallArrayWrites() {
-    reusedDirectCRC32.reset();
-    for (int i = 0; i < data.length; i += smallWriteSize) {
-      int len = Math.min(smallWriteSize, data.length - i);
-      reusedDirectCRC32.update(data, i, len);
-    }
-    return reusedDirectCRC32.getValue();
+  public long bufferedCRC32CBulkWrite() {
+    reusedBufferedCRC32C.reset();
+    reusedBufferedCRC32C.update(data, 0, data.length);
+    return reusedBufferedCRC32C.getValue();
+  }
+
+  @Benchmark
+  public long bufferedCRC32BulkWrite() {
+    reusedBufferedCRC32.reset();
+    reusedBufferedCRC32.update(data, 0, data.length);
+    return reusedBufferedCRC32.getValue();
+  }
+
+  @Benchmark
+  public long directCRC32CBulkWrite() {
+    reusedDirectCRC32C.reset();
+    reusedDirectCRC32C.update(data, 0, data.length);
+    return reusedDirectCRC32C.getValue();
   }
 
   @Benchmark
