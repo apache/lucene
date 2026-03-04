@@ -277,9 +277,11 @@ public class TestBlockJoin extends LuceneTestCase {
             newIndexWriterConfig()
                 .setCodec(
                     new AssertingCodec() {
+                      KnnVectorsFormat knnVectorsFormat = TestUtil.getDefaultKnnVectorsFormat();
+
                       @Override
                       public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                        return TestUtil.getDefaultKnnVectorsFormat();
+                        return knnVectorsFormat;
                       }
                     })
                 .setMergePolicy(newMergePolicy(random(), false)));
