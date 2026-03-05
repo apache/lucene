@@ -113,6 +113,7 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
       KnnVectorsWriter writer = getInstance(fieldInfo);
+      assert writer == getInstance(fieldInfo) : "Expected same instance for writer";
       return writer.addField(fieldInfo);
     }
 
@@ -125,12 +126,16 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public void mergeFlatVectors(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-      getInstance(fieldInfo).mergeFlatVectors(fieldInfo, mergeState);
+      KnnVectorsWriter writer = getInstance(fieldInfo);
+      assert writer == getInstance(fieldInfo) : "Expected same instance for writer";
+      writer.mergeFlatVectors(fieldInfo, mergeState);
     }
 
     @Override
     public void mergeVectorIndex(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-      getInstance(fieldInfo).mergeVectorIndex(fieldInfo, mergeState);
+      KnnVectorsWriter writer = getInstance(fieldInfo);
+      assert writer == getInstance(fieldInfo) : "Expected same instance for writer";
+      writer.mergeVectorIndex(fieldInfo, mergeState);
     }
 
     @Override

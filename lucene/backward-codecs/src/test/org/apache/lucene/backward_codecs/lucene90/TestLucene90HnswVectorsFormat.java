@@ -42,9 +42,11 @@ public class TestLucene90HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
     int beamWidth = randomIntBetween(DEFAULT_BEAM_WIDTH - 50, DEFAULT_BEAM_WIDTH + 50);
     Codec customCodec =
         new Lucene90Codec() {
+          KnnVectorsFormat knnVectorsFormat = new Lucene90RWHnswVectorsFormat(maxConn, beamWidth);
+
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene90RWHnswVectorsFormat(maxConn, beamWidth);
+            return knnVectorsFormat;
           }
         };
     String expectedString =

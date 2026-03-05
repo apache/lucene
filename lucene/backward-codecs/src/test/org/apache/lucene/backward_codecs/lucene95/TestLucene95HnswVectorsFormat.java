@@ -29,9 +29,11 @@ public class TestLucene95HnswVectorsFormat extends BaseKnnVectorsFormatTestCase 
   public void testToString() {
     Lucene95RWCodec customCodec =
         new Lucene95RWCodec() {
+          KnnVectorsFormat knnVectorsFormat = new Lucene95RWHnswVectorsFormat(10, 20);
+
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return new Lucene95RWHnswVectorsFormat(10, 20);
+            return knnVectorsFormat;
           }
         };
     String expectedString =
