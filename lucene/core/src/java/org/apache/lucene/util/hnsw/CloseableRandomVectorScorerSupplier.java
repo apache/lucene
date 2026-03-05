@@ -31,7 +31,7 @@ public interface CloseableRandomVectorScorerSupplier extends Closeable, RandomVe
 
   int totalVectorCount();
 
-  static CloseableRandomVectorScorerSupplier wrap(
+  static CloseableRandomVectorScorerSupplier create(
       RandomVectorScorerSupplier supplier, int totalVectorCount, Closeable onClose) {
     return new CloseableRandomVectorScorerSupplier() {
       @Override

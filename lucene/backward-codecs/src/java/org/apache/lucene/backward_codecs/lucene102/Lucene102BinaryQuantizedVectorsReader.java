@@ -412,7 +412,7 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
                   docsWithField.cardinality()),
               vectorValues);
       final String finalTempScoreQuantizedVectorName = tempScoreQuantizedVectorName;
-      return CloseableRandomVectorScorerSupplier.wrap(
+      return CloseableRandomVectorScorerSupplier.create(
           scorerSupplier,
           vectorValues.size(),
           () -> {

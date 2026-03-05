@@ -355,7 +355,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
       FieldInfo fieldInfo, Directory directory, IOContext context) throws IOException {
     LegacyQuantizedByteVectorValues quantizedByteVectorValues =
         getQuantizedVectorValues(fieldInfo.name);
-    return CloseableRandomVectorScorerSupplier.wrap(
+    return CloseableRandomVectorScorerSupplier.create(
         vectorScorer.getRandomVectorScorerSupplier(
             fieldInfo.getVectorSimilarityFunction(), quantizedByteVectorValues),
         quantizedByteVectorValues.size(),

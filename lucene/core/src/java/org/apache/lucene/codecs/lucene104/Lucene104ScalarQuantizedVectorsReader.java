@@ -482,7 +482,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
             vectorScorer.getRandomVectorScorerSupplier(
                 fieldInfo.getVectorSimilarityFunction(), scoreVectorValues, vectorValues);
         final String finalTempScoreQuantizedVectorName = tempScoreQuantizedVectorName;
-        return CloseableRandomVectorScorerSupplier.wrap(
+        return CloseableRandomVectorScorerSupplier.create(
             scorerSupplier,
             vectorValues.size(),
             () -> {
@@ -497,7 +497,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       RandomVectorScorerSupplier supplier =
           vectorScorer.getRandomVectorScorerSupplier(
               fieldInfo.getVectorSimilarityFunction(), vectorValues);
-      return CloseableRandomVectorScorerSupplier.wrap(supplier, vectorValues.size(), () -> {});
+      return CloseableRandomVectorScorerSupplier.create(supplier, vectorValues.size(), () -> {});
     }
   }
 
