@@ -52,7 +52,6 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -67,7 +66,7 @@ import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
-import org.apache.lucene.util.quantization.QuantizedVectorsWriter;
+import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 
 /**
  * Writes vector values and knn graphs to index segments.
@@ -418,77 +417,45 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    if (flatVectorWriter instanceof QuantizedVectorsWriter quantizedVectorsWriter
-        && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
-      return mergeOneQuantizeField(
-          fieldInfo,
-          mergeState,
-          quantizedVectorsWriter.mergeOneFieldToIndex(fieldInfo, mergeState));
-    } else {
-      return mergeOneFieldTwoSteps(fieldInfo, mergeState);
-    }
+  public void mergeFlatVectors(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    flatVectorWriter.mergeFlatVectors(fieldInfo, mergeState);
   }
 
-  private IORunnable mergeOneQuantizeField(
-      FieldInfo fieldInfo,
-      MergeState mergeState,
-      CloseableRandomVectorScorerSupplier scorerSupplier)
-      throws IOException {
-    int totalVectorCount = scorerSupplier == null ? 0 : scorerSupplier.totalVectorCount();
-    try {
-      if (totalVectorCount > 0 && shouldCreateGraph(tinySegmentsThreshold, totalVectorCount)) {
-        KnnVectorValues mergedVectorValues = null;
+  @Override
+  public void mergeVectorIndex(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    // Lazily finish flat writer and open a reader for the written segment
+    ensureFlatReaderOpen();
+    // Get the vector values and scorer supplier from the written segment
+    KnnVectorValues vectorValues =
         switch (fieldInfo.getVectorEncoding()) {
-          case BYTE ->
-              mergedVectorValues =
-                  KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
-          case FLOAT32 ->
-              mergedVectorValues =
-                  KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
+          case BYTE -> flatVectorsReader.getByteVectorValues(fieldInfo.name);
+          case FLOAT32 -> flatVectorsReader.getFloatVectorValues(fieldInfo.name);
+        };
+    int totalVectorCount = vectorValues == null ? 0 : vectorValues.size();
+    if (totalVectorCount > 0 && shouldCreateGraph(tinySegmentsThreshold, totalVectorCount)) {
+      if (flatVectorsReader instanceof QuantizedVectorsReader quantizedVectorsReader
+          && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
+        CloseableRandomVectorScorerSupplier scorerSupplier =
+            quantizedVectorsReader.buildScoreSupplierForMerge(
+                fieldInfo, segmentWriteState.directory, segmentWriteState.context);
+        try {
+          buildAndWriteGraph(fieldInfo, mergeState, vectorValues, scorerSupplier, totalVectorCount);
+        } catch (Throwable t) {
+          IOUtils.closeWhileSuppressingExceptions(t, scorerSupplier);
+          throw t;
         }
-        buildAndWriteGraph(
-            fieldInfo, mergeState, mergedVectorValues, scorerSupplier, totalVectorCount);
+        IOUtils.close(scorerSupplier);
       } else {
-        writeMeta(fieldInfo, vectorIndex.getFilePointer(), 0L, totalVectorCount, null, null);
-      }
-    } catch (Throwable t) {
-      IOUtils.closeWhileSuppressingExceptions(t, scorerSupplier);
-      throw t;
-    }
-    IOUtils.close(scorerSupplier);
-    return null;
-  }
-
-  private IORunnable mergeOneFieldTwoSteps(FieldInfo fieldInfo, MergeState mergeState)
-      throws IOException {
-    // Phase 1: write flat vectors directly to the segment
-    flatVectorWriter.mergeOneField(fieldInfo, mergeState);
-
-    // Return phase 2 work: build HNSW graph using the written segment data
-    return () -> {
-      // Lazily finish flat writer and open a reader for the written segment
-      ensureFlatReaderOpen();
-
-      // Get the vector values and scorer supplier from the written segment
-      KnnVectorValues vectorValues =
-          switch (fieldInfo.getVectorEncoding()) {
-            case BYTE -> flatVectorsReader.getByteVectorValues(fieldInfo.name);
-            case FLOAT32 -> flatVectorsReader.getFloatVectorValues(fieldInfo.name);
-          };
-      int totalVectorCount = vectorValues == null ? 0 : vectorValues.size();
-
-      if (totalVectorCount > 0 && shouldCreateGraph(tinySegmentsThreshold, totalVectorCount)) {
         RandomVectorScorerSupplier scorerSupplier =
             flatVectorsReader
                 .getFlatVectorScorer()
                 .getRandomVectorScorerSupplier(
                     fieldInfo.getVectorSimilarityFunction(), vectorValues);
         buildAndWriteGraph(fieldInfo, mergeState, vectorValues, scorerSupplier, totalVectorCount);
-      } else {
-        writeMeta(fieldInfo, vectorIndex.getFilePointer(), 0L, totalVectorCount, null, null);
       }
-    };
+    } else {
+      writeMeta(fieldInfo, vectorIndex.getFilePointer(), 0L, totalVectorCount, null, null);
+    }
   }
 
   private void buildAndWriteGraph(

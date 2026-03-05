@@ -53,7 +53,6 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
-import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
@@ -64,7 +63,6 @@ import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.BaseQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.LegacyQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
-import org.apache.lucene.util.quantization.QuantizedVectorsWriter;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
@@ -72,8 +70,7 @@ import org.apache.lucene.util.quantization.ScalarQuantizer;
  *
  * @lucene.experimental
  */
-public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWriter
-    implements QuantizedVectorsWriter {
+public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
   private static final long SHALLOW_RAM_BYTES_USED =
       shallowSizeOfInstance(Lucene99ScalarQuantizedVectorsWriter.class);
@@ -221,9 +218,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   }
 
   @Override
-  public void mergeOneFlatVectorField(FieldInfo fieldInfo, MergeState mergeState)
-      throws IOException {
-    rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, mergeState);
+  public void mergeFlatVectors(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    rawVectorDelegate.mergeFlatVectors(fieldInfo, mergeState);
     // Since we know we will not be searching for additional indexing, we can just write the
     // vectors directly to the new segment.
     // No need to use temporary file as we don't have to re-open for reading
@@ -249,18 +245,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
           mergedQuantizationState.getUpperQuantile(),
           docsWithField);
     }
-  }
-
-  @Override
-  public CloseableRandomVectorScorerSupplier mergeOneFieldToIndex(
-      FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    assert fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32);
-    // Simply merge the underlying delegate, which just copies the raw vector data to a new
-    // segment file
-    rawVectorDelegate.mergeOneField(fieldInfo, mergeState);
-    ScalarQuantizer mergedQuantizationState =
-        mergeAndRecalculateQuantiles(mergeState, fieldInfo, confidenceInterval, bits);
-    return mergeOneFieldToIndex(segmentWriteState, fieldInfo, mergeState, mergedQuantizationState);
   }
 
   @Override
@@ -452,81 +436,6 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
       offsetBuffer.putFloat(offsetCorrection);
       quantizedVectorData.writeBytes(offsetBuffer.array(), offsetBuffer.array().length);
       offsetBuffer.rewind();
-    }
-  }
-
-  private ScalarQuantizedCloseableRandomVectorScorerSupplier mergeOneFieldToIndex(
-      SegmentWriteState segmentWriteState,
-      FieldInfo fieldInfo,
-      MergeState mergeState,
-      ScalarQuantizer mergedQuantizationState)
-      throws IOException {
-    if (segmentWriteState.infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
-      segmentWriteState.infoStream.message(
-          QUANTIZED_VECTOR_COMPONENT,
-          "quantized field="
-              + " confidenceInterval="
-              + confidenceInterval
-              + " minQuantile="
-              + mergedQuantizationState.getLowerQuantile()
-              + " maxQuantile="
-              + mergedQuantizationState.getUpperQuantile());
-    }
-    long vectorDataOffset = quantizedVectorData.alignFilePointer(Float.BYTES);
-    IndexOutput tempQuantizedVectorData =
-        segmentWriteState.directory.createTempOutput(
-            quantizedVectorData.getName(), "temp", segmentWriteState.context);
-    IndexInput quantizationDataInput = null;
-    try {
-      MergedQuantizedVectorValues byteVectorValues =
-          MergedQuantizedVectorValues.mergeQuantizedByteVectorValues(
-              fieldInfo, mergeState, mergedQuantizationState);
-      DocsWithFieldSet docsWithField =
-          writeQuantizedVectorData(tempQuantizedVectorData, byteVectorValues, bits, compress);
-      CodecUtil.writeFooter(tempQuantizedVectorData);
-      IOUtils.close(tempQuantizedVectorData);
-      quantizationDataInput =
-          segmentWriteState.directory.openInput(
-              tempQuantizedVectorData.getName(), segmentWriteState.context);
-      quantizedVectorData.copyBytes(
-          quantizationDataInput, quantizationDataInput.length() - CodecUtil.footerLength());
-      long vectorDataLength = quantizedVectorData.getFilePointer() - vectorDataOffset;
-      CodecUtil.retrieveChecksum(quantizationDataInput);
-      writeMeta(
-          fieldInfo,
-          segmentWriteState.segmentInfo.maxDoc(),
-          vectorDataOffset,
-          vectorDataLength,
-          confidenceInterval,
-          bits,
-          compress,
-          mergedQuantizationState.getLowerQuantile(),
-          mergedQuantizationState.getUpperQuantile(),
-          docsWithField);
-      final IndexInput finalQuantizationDataInput = quantizationDataInput;
-      quantizationDataInput = null;
-
-      return new ScalarQuantizedCloseableRandomVectorScorerSupplier(
-          () -> {
-            IOUtils.close(finalQuantizationDataInput);
-            segmentWriteState.directory.deleteFile(tempQuantizedVectorData.getName());
-          },
-          docsWithField.cardinality(),
-          vectorsScorer.getRandomVectorScorerSupplier(
-              fieldInfo.getVectorSimilarityFunction(),
-              new OffHeapQuantizedByteVectorValues.DenseOffHeapVectorValues(
-                  fieldInfo.getVectorDimension(),
-                  docsWithField.cardinality(),
-                  mergedQuantizationState,
-                  compress,
-                  fieldInfo.getVectorSimilarityFunction(),
-                  vectorsScorer,
-                  finalQuantizationDataInput)));
-    } catch (Throwable t) {
-      IOUtils.closeWhileSuppressingExceptions(t, tempQuantizedVectorData, quantizationDataInput);
-      IOUtils.deleteFilesSuppressingExceptions(
-          t, segmentWriteState.directory, tempQuantizedVectorData.getName());
-      throw t;
     }
   }
 

@@ -39,7 +39,6 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOFunction;
-import org.apache.lucene.util.IORunnable;
 
 /** Writes vectors to an index. */
 public abstract class KnnVectorsWriter implements Accountable, Closeable {
@@ -57,21 +56,17 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   public abstract void finish() throws IOException;
 
   /**
-   * Merges flat vectors for a single field, returning a runnable for any deferred work (e.g., HNSW
-   * graph construction). The default implementation merges naively the vectors and returns {@code
-   * null} (no deferred work).
+   * Merges flat vector values for a single field into this writer.
    *
-   * <p>Subclasses should override this method may implement a two-phase merge strategy where flat
-   * vectors are written in the first phase and additional indexing structures (like HNSW graphs)
-   * are built in the second phase using the already-written flat vector data.
+   * <p>This method writes the raw vector values for {@code fieldInfo} and does not construct any
+   * auxiliary search structures. Implementations that build vector indexes should do so in {@link
+   * #mergeVectorIndex(FieldInfo, MergeState)}.
    *
-   * @param fieldInfo the field to merge
-   * @param mergeState the merge state
-   * @return a runnable to execute in phase 2, or {@code null} if there is no deferred work
-   * @throws IOException if an I/O error occurs
+   * @param fieldInfo field to merge
+   * @param mergeState merge context
    */
   @SuppressWarnings("unchecked")
-  public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+  public void mergeFlatVectors(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     switch (fieldInfo.getVectorEncoding()) {
       case BYTE -> {
         KnnFieldVectorsWriter<byte[]> byteWriter =
@@ -94,16 +89,30 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
         }
       }
     }
-    return null;
   }
+
+  /**
+   * Merges auxiliary vector index structures for a single field.
+   *
+   * <p>This method is called after {@link #mergeFlatVectors(FieldInfo, MergeState)} has been
+   * invoked for all vector fields in the merge. Implementations may build or merge structures that
+   * depend on the merged flat vectors (for example, HNSW graphs). Formats that only store flat
+   * vectors may implement this as a no-op.
+   *
+   * @param fieldInfo field to merge
+   * @param mergeState merge context
+   */
+  public abstract void mergeVectorIndex(FieldInfo fieldInfo, MergeState mergeState)
+      throws IOException;
 
   /**
    * Merges the segment vectors for all fields using a two-phase strategy:
    *
    * <ol>
-   *   <li>Phase 1: Merge flat vectors for all fields by calling {@link #mergeOneField(FieldInfo,
-   *       MergeState)}, collecting deferred work (runnables) for each field.
-   *   <li>Phase 2: Execute the deferred runnables (e.g., HNSW graph construction) using the flat
+   *   <li>Phase 1: Merge all flat vectors for all fields by calling {@link
+   *       #mergeFlatVectors(FieldInfo, MergeState)}.
+   *   <li>Phase 2: Merge all vector indices for all fields by calling {@link
+   *       #mergeVectorIndex(FieldInfo, MergeState)}. Implementors may take advantage of the flat
    *       vector data written in phase 1.
    * </ol>
    */
@@ -116,28 +125,31 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
     }
 
-    // Phase 1: merge flat vectors for all fields, collecting deferred work
-    List<IORunnable> deferredWork = new ArrayList<>();
+    // Phase 1: merge flat vectors for all fields
+    List<FieldInfo> fields = new ArrayList<>();
     for (FieldInfo fieldInfo : mergeState.mergeFieldInfos) {
       if (fieldInfo.hasVectorValues()) {
         if (mergeState.infoStream.isEnabled("VV")) {
-          mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
+          mergeState.infoStream.message("VV", "merging flat vectors" + mergeState.segmentInfo);
         }
-
-        IORunnable deferred = mergeOneField(fieldInfo, mergeState);
-        if (deferred != null) {
-          deferredWork.add(deferred);
-        }
-
+        mergeFlatVectors(fieldInfo, mergeState);
+        fields.add(fieldInfo);
         if (mergeState.infoStream.isEnabled("VV")) {
           mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
         }
       }
     }
 
-    // Phase 2: execute deferred work (e.g., graph construction using the written flat vectors)
-    for (IORunnable runnable : deferredWork) {
-      runnable.run();
+    // Phase 2: merge vector indices for all fields
+    for (FieldInfo fieldInfo : fields) {
+      if (mergeState.infoStream.isEnabled("VV")) {
+        mergeState.infoStream.message("VV", "merging vector index" + mergeState.segmentInfo);
+      }
+      assert fieldInfo.hasVectorValues() : "Expected fieldInfo to have vector values";
+      mergeVectorIndex(fieldInfo, mergeState);
+      if (mergeState.infoStream.isEnabled("VV")) {
+        mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
+      }
     }
 
     finish();

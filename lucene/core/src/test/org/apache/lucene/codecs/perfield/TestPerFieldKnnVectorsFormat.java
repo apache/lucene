@@ -55,7 +55,6 @@ import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.index.RandomCodec;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.IORunnable;
 import org.hamcrest.MatcherAssert;
 
 /** Basic tests of PerFieldDocValuesFormat */
@@ -285,10 +284,16 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         }
 
         @Override
-        public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState)
+        public void mergeFlatVectors(FieldInfo fieldInfo, MergeState mergeState)
             throws IOException {
           fieldsWritten.add(fieldInfo.name);
-          return writer.mergeOneField(fieldInfo, mergeState);
+          writer.mergeFlatVectors(fieldInfo, mergeState);
+        }
+
+        @Override
+        public void mergeVectorIndex(FieldInfo fieldInfo, MergeState mergeState)
+            throws IOException {
+          writer.mergeVectorIndex(fieldInfo, mergeState);
         }
 
         @Override

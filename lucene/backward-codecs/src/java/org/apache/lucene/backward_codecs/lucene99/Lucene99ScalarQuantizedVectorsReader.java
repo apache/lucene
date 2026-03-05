@@ -41,12 +41,14 @@ import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.quantization.LegacyQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
@@ -346,6 +348,18 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   public ScalarQuantizer getQuantizationState(String field) {
     final FieldEntry fieldEntry = getFieldEntry(field);
     return fieldEntry.scalarQuantizer;
+  }
+
+  @Override
+  public CloseableRandomVectorScorerSupplier buildScoreSupplierForMerge(
+      FieldInfo fieldInfo, Directory directory, IOContext context) throws IOException {
+    LegacyQuantizedByteVectorValues quantizedByteVectorValues =
+        getQuantizedVectorValues(fieldInfo.name);
+    return CloseableRandomVectorScorerSupplier.wrap(
+        vectorScorer.getRandomVectorScorerSupplier(
+            fieldInfo.getVectorSimilarityFunction(), quantizedByteVectorValues),
+        quantizedByteVectorValues.size(),
+        () -> {});
   }
 
   private record FieldEntry(

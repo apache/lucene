@@ -41,7 +41,6 @@ import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.internal.hppc.ObjectCursor;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
-import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
@@ -125,8 +124,13 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-      return getInstance(fieldInfo).mergeOneField(fieldInfo, mergeState);
+    public void mergeFlatVectors(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+      getInstance(fieldInfo).mergeFlatVectors(fieldInfo, mergeState);
+    }
+
+    @Override
+    public void mergeVectorIndex(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+      getInstance(fieldInfo).mergeVectorIndex(fieldInfo, mergeState);
     }
 
     @Override

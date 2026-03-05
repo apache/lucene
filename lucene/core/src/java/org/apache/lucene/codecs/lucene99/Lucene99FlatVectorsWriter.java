@@ -218,8 +218,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   }
 
   @Override
-  public void mergeOneFlatVectorField(FieldInfo fieldInfo, MergeState mergeState)
-      throws IOException {
+  public void mergeFlatVectors(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     // Since we know we will not be searching for additional indexing, we can just write the
     // the vectors directly to the new segment.
     VectorEncoding encoding = fieldInfo.getVectorEncoding();

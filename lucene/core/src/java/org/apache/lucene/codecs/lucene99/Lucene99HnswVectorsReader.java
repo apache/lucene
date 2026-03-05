@@ -43,6 +43,7 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
@@ -54,6 +55,7 @@ import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
@@ -430,6 +432,16 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   public ScalarQuantizer getQuantizationState(String field) {
     if (flatVectorsReader instanceof QuantizedVectorsReader) {
       return ((QuantizedVectorsReader) flatVectorsReader).getQuantizationState(field);
+    }
+    return null;
+  }
+
+  @Override
+  public CloseableRandomVectorScorerSupplier buildScoreSupplierForMerge(
+      FieldInfo fieldInfo, Directory directory, IOContext context) throws IOException {
+    if (flatVectorsReader instanceof QuantizedVectorsReader) {
+      return ((QuantizedVectorsReader) flatVectorsReader)
+          .buildScoreSupplierForMerge(fieldInfo, directory, context);
     }
     return null;
   }

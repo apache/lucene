@@ -16,12 +16,16 @@
  */
 package org.apache.lucene.backward_codecs.lucene102;
 
+import static org.apache.lucene.backward_codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.QUERY_BITS;
 import static org.apache.lucene.backward_codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.VECTOR_DATA_EXTENSION;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.discretize;
+import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.transposeHalfByte;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -31,10 +35,12 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -43,19 +49,28 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.quantization.BaseQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
+import org.apache.lucene.util.quantization.QuantizedVectorsReader;
+import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /** Reader for binary quantized vectors in the Lucene 10.2 format. */
-public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
+public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
+    implements QuantizedVectorsReader {
 
   private static final long SHALLOW_SIZE =
       RamUsageEstimator.shallowSizeOfInstance(Lucene102BinaryQuantizedVectorsReader.class);
@@ -342,6 +357,107 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
     return FieldEntry.create(input, vectorEncoding, info.getVectorSimilarityFunction());
   }
 
+  @Override
+  public BaseQuantizedByteVectorValues getQuantizedVectorValues(String fieldName)
+      throws IOException {
+    return null;
+  }
+
+  @Override
+  public ScalarQuantizer getQuantizationState(String fieldName) {
+    return null;
+  }
+
+  @Override
+  public CloseableRandomVectorScorerSupplier buildScoreSupplierForMerge(
+      FieldInfo fieldInfo, Directory directory, IOContext context) throws IOException {
+    assert fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32);
+    OptimizedScalarQuantizer quantizer =
+        new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
+    String tempScoreQuantizedVectorName = null;
+    FloatVectorValues floatVectorValues = rawVectorsReader.getFloatVectorValues(fieldInfo.name);
+    float[] centroid = getCentroid(fieldInfo.name);
+    float cDotC = VectorUtil.dotProduct(centroid, centroid);
+    DocsWithFieldSet docsWithField;
+    try (IndexOutput tempScoreQuantizedVector =
+        directory.createTempOutput(fieldInfo.name, "temp", context)) {
+      tempScoreQuantizedVectorName = tempScoreQuantizedVector.getName();
+      docsWithField =
+          writeBinarizedQueryData(tempScoreQuantizedVector, floatVectorValues, centroid, quantizer);
+      CodecUtil.writeFooter(tempScoreQuantizedVector);
+    } catch (Throwable t) {
+      if (tempScoreQuantizedVectorName != null) {
+        IOUtils.deleteFilesSuppressingExceptions(t, directory, tempScoreQuantizedVectorName);
+      }
+      throw t;
+    }
+    IndexInput quantizedScoreDataInput = directory.openInput(tempScoreQuantizedVectorName, context);
+    try {
+      OffHeapBinarizedVectorValues vectorValues =
+          new OffHeapBinarizedVectorValues.DenseOffHeapVectorValues(
+              fieldInfo.getVectorDimension(),
+              docsWithField.cardinality(),
+              centroid,
+              cDotC,
+              quantizer,
+              fieldInfo.getVectorSimilarityFunction(),
+              vectorScorer,
+              quantizedScoreDataInput);
+      RandomVectorScorerSupplier scorerSupplier =
+          vectorScorer.getRandomVectorScorerSupplier(
+              fieldInfo.getVectorSimilarityFunction(),
+              new OffHeapBinarizedQueryVectorValues(
+                  quantizedScoreDataInput,
+                  fieldInfo.getVectorDimension(),
+                  docsWithField.cardinality()),
+              vectorValues);
+      final String finalTempScoreQuantizedVectorName = tempScoreQuantizedVectorName;
+      return CloseableRandomVectorScorerSupplier.wrap(
+          scorerSupplier,
+          vectorValues.size(),
+          () -> {
+            IOUtils.close(quantizedScoreDataInput);
+            IOUtils.deleteFilesIgnoringExceptions(directory, finalTempScoreQuantizedVectorName);
+          });
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, quantizedScoreDataInput);
+      throw t;
+    }
+  }
+
+  static DocsWithFieldSet writeBinarizedQueryData(
+      IndexOutput binarizedQueryData,
+      FloatVectorValues floatVectorValues,
+      float[] centroid,
+      OptimizedScalarQuantizer binaryQuantizer)
+      throws IOException {
+    int discretizedDimension = discretize(floatVectorValues.dimension(), 64);
+    DocsWithFieldSet docsWithField = new DocsWithFieldSet();
+    byte[] quantizationScratch = new byte[floatVectorValues.dimension()];
+    byte[] toQuery = new byte[(discretizedDimension / 8) * QUERY_BITS];
+    KnnVectorValues.DocIndexIterator iterator = floatVectorValues.iterator();
+    for (int docV = iterator.nextDoc(); docV != NO_MORE_DOCS; docV = iterator.nextDoc()) {
+      // write index vector
+      OptimizedScalarQuantizer.QuantizationResult r =
+          binaryQuantizer.scalarQuantize(
+              floatVectorValues.vectorValue(iterator.index()),
+              quantizationScratch,
+              QUERY_BITS,
+              centroid);
+      docsWithField.add(docV);
+
+      // pack and store the 4bit query vector
+      transposeHalfByte(quantizationScratch, toQuery);
+      binarizedQueryData.writeBytes(toQuery, toQuery.length);
+      binarizedQueryData.writeInt(Float.floatToIntBits(r.lowerInterval()));
+      binarizedQueryData.writeInt(Float.floatToIntBits(r.upperInterval()));
+      binarizedQueryData.writeInt(Float.floatToIntBits(r.additionalCorrection()));
+      assert r.quantizedComponentSum() >= 0 && r.quantizedComponentSum() <= 0xffff;
+      binarizedQueryData.writeShort((short) r.quantizedComponentSum());
+    }
+    return docsWithField;
+  }
+
   private record FieldEntry(
       VectorSimilarityFunction similarityFunction,
       VectorEncoding vectorEncoding,
@@ -446,6 +562,75 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader {
 
     BinarizedByteVectorValues getQuantizedVectorValues() throws IOException {
       return quantizedVectorValues;
+    }
+  }
+
+  // When accessing vectorValue method, targerOrd here means a row ordinal.
+  static class OffHeapBinarizedQueryVectorValues {
+    private final IndexInput slice;
+    private final int dimension;
+    private final int size;
+    protected final byte[] binaryValue;
+    protected final ByteBuffer byteBuffer;
+    private final int byteSize;
+    protected final float[] correctiveValues;
+    private int lastOrd = -1;
+    private int quantizedComponentSum;
+
+    OffHeapBinarizedQueryVectorValues(IndexInput data, int dimension, int size) {
+      this.slice = data;
+      this.dimension = dimension;
+      this.size = size;
+      // 4x the quantized binary dimensions
+      int binaryDimensions = (discretize(dimension, 64) / 8) * QUERY_BITS;
+      this.byteBuffer = ByteBuffer.allocate(binaryDimensions);
+      this.binaryValue = byteBuffer.array();
+      // + 1 for the quantized sum
+      this.correctiveValues = new float[3];
+      this.byteSize = binaryDimensions + Float.BYTES * 3 + Short.BYTES;
+    }
+
+    public OptimizedScalarQuantizer.QuantizationResult getCorrectiveTerms(int targetOrd)
+        throws IOException {
+      if (lastOrd == targetOrd) {
+        return new OptimizedScalarQuantizer.QuantizationResult(
+            correctiveValues[0], correctiveValues[1], correctiveValues[2], quantizedComponentSum);
+      }
+      vectorValue(targetOrd);
+      return new OptimizedScalarQuantizer.QuantizationResult(
+          correctiveValues[0], correctiveValues[1], correctiveValues[2], quantizedComponentSum);
+    }
+
+    public int size() {
+      return size;
+    }
+
+    public int quantizedLength() {
+      return binaryValue.length;
+    }
+
+    public int dimension() {
+      return dimension;
+    }
+
+    public OffHeapBinarizedQueryVectorValues copy() throws IOException {
+      return new OffHeapBinarizedQueryVectorValues(slice.clone(), dimension, size);
+    }
+
+    public IndexInput getSlice() {
+      return slice;
+    }
+
+    public byte[] vectorValue(int targetOrd) throws IOException {
+      if (lastOrd == targetOrd) {
+        return binaryValue;
+      }
+      slice.seek((long) targetOrd * byteSize);
+      slice.readBytes(binaryValue, 0, binaryValue.length);
+      slice.readFloats(correctiveValues, 0, 3);
+      quantizedComponentSum = Short.toUnsignedInt(slice.readShort());
+      lastOrd = targetOrd;
+      return binaryValue;
     }
   }
 }
