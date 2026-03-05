@@ -182,8 +182,4 @@ public class TestLucene102HnswBinaryQuantizedVectorsFormat extends BaseKnnVector
   protected boolean supportsFloatVectorFallback() {
     return false;
   }
-
-  public void testSearchWithVisitedLimit() throws Exception {
-    super.testSearchWithVisitedLimit();
-  }
 }
