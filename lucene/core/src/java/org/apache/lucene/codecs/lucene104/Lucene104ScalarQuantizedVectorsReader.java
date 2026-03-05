@@ -433,7 +433,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   }
 
   @Override
-  public CloseableRandomVectorScorerSupplier buildScoreSupplierForMerge(
+  public CloseableRandomVectorScorerSupplier getRandomVectorScorerSupplierForMerge(
       FieldInfo fieldInfo, Directory directory, IOContext context) throws IOException {
     FieldEntry fi = fields.get(fieldInfo.name);
     if (fi == null) {

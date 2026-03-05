@@ -46,6 +46,6 @@ public interface QuantizedVectorsReader extends Closeable, Accountable {
    *     temporary file handle to read over the newly merged vectors
    * @throws IOException if an I/O error occurs when merging
    */
-  CloseableRandomVectorScorerSupplier buildScoreSupplierForMerge(
+  CloseableRandomVectorScorerSupplier getRandomVectorScorerSupplierForMerge(
       FieldInfo fieldInfo, Directory directory, IOContext context) throws IOException;
 }

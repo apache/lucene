@@ -437,11 +437,11 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
-  public CloseableRandomVectorScorerSupplier buildScoreSupplierForMerge(
+  public CloseableRandomVectorScorerSupplier getRandomVectorScorerSupplierForMerge(
       FieldInfo fieldInfo, Directory directory, IOContext context) throws IOException {
     if (flatVectorsReader instanceof QuantizedVectorsReader) {
       return ((QuantizedVectorsReader) flatVectorsReader)
-          .buildScoreSupplierForMerge(fieldInfo, directory, context);
+          .getRandomVectorScorerSupplierForMerge(fieldInfo, directory, context);
     }
     return null;
   }

@@ -369,7 +369,7 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
   }
 
   @Override
-  public CloseableRandomVectorScorerSupplier buildScoreSupplierForMerge(
+  public CloseableRandomVectorScorerSupplier getRandomVectorScorerSupplierForMerge(
       FieldInfo fieldInfo, Directory directory, IOContext context) throws IOException {
     assert fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32);
     OptimizedScalarQuantizer quantizer =

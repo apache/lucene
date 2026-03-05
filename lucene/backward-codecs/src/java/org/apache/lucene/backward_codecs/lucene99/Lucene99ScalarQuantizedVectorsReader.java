@@ -351,7 +351,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   }
 
   @Override
-  public CloseableRandomVectorScorerSupplier buildScoreSupplierForMerge(
+  public CloseableRandomVectorScorerSupplier getRandomVectorScorerSupplierForMerge(
       FieldInfo fieldInfo, Directory directory, IOContext context) throws IOException {
     LegacyQuantizedByteVectorValues quantizedByteVectorValues =
         getQuantizedVectorValues(fieldInfo.name);
