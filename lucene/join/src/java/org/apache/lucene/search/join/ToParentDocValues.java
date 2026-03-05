@@ -32,21 +32,27 @@ class ToParentDocValues extends DocIdSetIterator {
     void reset() throws IOException;
 
     void increment() throws IOException;
+
+    int getChildrenWithValuesCount();
   }
 
   private static final class SortedDVs extends SortedDocValues implements Accumulator {
     private final SortedDocValues values;
     private final BlockJoinSelector.Type selection;
+    private final int missingOrd;
     private int ord = -1;
+    private int childrenWithValuesCount = 0;
     private final ToParentDocValues iter;
 
     private SortedDVs(
         SortedDocValues values,
         BlockJoinSelector.Type selection,
         BitSet parents,
-        DocIdSetIterator children) {
+        DocIdSetIterator children,
+        boolean sortMissingLast) {
       this.values = values;
       this.selection = selection;
+      this.missingOrd = sortMissingLast ? Integer.MAX_VALUE : -1;
       this.iter = new ToParentDocValues(values, parents, children, this);
     }
 
@@ -58,17 +64,17 @@ class ToParentDocValues extends DocIdSetIterator {
     @Override
     public void reset() throws IOException {
       ord = values.ordValue();
+      childrenWithValuesCount = 1;
     }
 
     @Override
     public void increment() throws IOException {
-      if (selection == BlockJoinSelector.Type.MIN) {
-        ord = Math.min(ord, values.ordValue());
-      } else if (selection == BlockJoinSelector.Type.MAX) {
-        ord = Math.max(ord, values.ordValue());
-      } else {
-        throw new AssertionError();
+      assert selection != null;
+      switch (selection) {
+        case MIN -> ord = Math.min(ord, values.ordValue());
+        case MAX -> ord = Math.max(ord, values.ordValue());
       }
+      childrenWithValuesCount++;
     }
 
     @Override
@@ -88,6 +94,12 @@ class ToParentDocValues extends DocIdSetIterator {
 
     @Override
     public int ordValue() {
+      if (iter.hasChildWithMissingValue()) {
+        return switch (selection) {
+          case MIN -> Math.min(ord, missingOrd);
+          case MAX -> Math.max(ord, missingOrd);
+        };
+      }
       return ord;
     }
 
@@ -105,12 +117,19 @@ class ToParentDocValues extends DocIdSetIterator {
     public long cost() {
       return values.cost();
     }
+
+    @Override
+    public int getChildrenWithValuesCount() {
+      return childrenWithValuesCount;
+    }
   }
 
   private static final class NumDV extends NumericDocValues implements Accumulator {
     private final NumericDocValues values;
     private long value;
+    private int childrenWithValuesCount = 0;
     private final BlockJoinSelector.Type selection;
+    private final Long missingValue;
 
     private final ToParentDocValues iter;
 
@@ -119,28 +138,34 @@ class ToParentDocValues extends DocIdSetIterator {
         BlockJoinSelector.Type selection,
         BitSet parents,
         DocIdSetIterator children) {
+      this(values, selection, parents, children, null);
+    }
+
+    private NumDV(
+        NumericDocValues values,
+        BlockJoinSelector.Type selection,
+        BitSet parents,
+        DocIdSetIterator children,
+        Long missingValue) {
       this.values = values;
       this.selection = selection;
+      this.missingValue = missingValue;
       iter = new ToParentDocValues(values, parents, children, this);
     }
 
     @Override
     public void reset() throws IOException {
       value = values.longValue();
+      childrenWithValuesCount = 1;
     }
 
     @Override
     public void increment() throws IOException {
       switch (selection) {
-        case MIN:
-          value = Math.min(value, values.longValue());
-          break;
-        case MAX:
-          value = Math.max(value, values.longValue());
-          break;
-        default:
-          throw new AssertionError();
+        case MIN -> value = Math.min(value, values.longValue());
+        case MAX -> value = Math.max(value, values.longValue());
       }
+      childrenWithValuesCount++;
     }
 
     @Override
@@ -160,6 +185,12 @@ class ToParentDocValues extends DocIdSetIterator {
 
     @Override
     public long longValue() {
+      if (missingValue != null && iter.hasChildWithMissingValue()) {
+        return switch (selection) {
+          case MIN -> Math.min(value, missingValue);
+          case MAX -> Math.max(value, missingValue);
+        };
+      }
       return value;
     }
 
@@ -172,6 +203,11 @@ class ToParentDocValues extends DocIdSetIterator {
     public long cost() {
       return values.cost();
     }
+
+    @Override
+    public int getChildrenWithValuesCount() {
+      return childrenWithValuesCount;
+    }
   }
 
   private ToParentDocValues(
@@ -183,13 +219,18 @@ class ToParentDocValues extends DocIdSetIterator {
 
   private final BitSet parents;
   private int docID = -1;
+  private boolean hasChildWithMissingValue = false;
   private final Accumulator collector;
   boolean seen = false;
-  private DocIdSetIterator childWithValues;
+  private final DocIdSetIterator childWithValues;
 
   @Override
   public int docID() {
     return docID;
+  }
+
+  boolean hasChildWithMissingValue() {
+    return hasChildWithMissingValue;
   }
 
   @Override
@@ -221,6 +262,9 @@ class ToParentDocValues extends DocIdSetIterator {
     }
 
     docID = nextParentDocID;
+    int prevParentDocID = parents.prevSetBit(docID - 1);
+    int totalChildren = docID - prevParentDocID - 1;
+    hasChildWithMissingValue = collector.getChildrenWithValuesCount() < totalChildren;
 
     return docID;
   }
@@ -258,11 +302,13 @@ class ToParentDocValues extends DocIdSetIterator {
     }
     docID = targetParentDocID;
     seen = false;
+    hasChildWithMissingValue = false;
     // ord = -1;
     if (parents.get(targetParentDocID) == false) {
       return false;
     }
     int prevParentDocId = docID == 0 ? -1 : parents.prevSetBit(docID - 1);
+    int totalChildren = docID - prevParentDocId - 1;
     int childDoc = childWithValues.docID();
     if (childDoc <= prevParentDocId) {
       childDoc = childWithValues.advance(prevParentDocId + 1);
@@ -284,6 +330,7 @@ class ToParentDocValues extends DocIdSetIterator {
     for (int doc = childWithValues.docID(); doc < docID; doc = childWithValues.nextDoc()) {
       collector.increment();
     }
+    hasChildWithMissingValue = collector.getChildrenWithValuesCount() < totalChildren;
     return true;
   }
 
@@ -297,8 +344,21 @@ class ToParentDocValues extends DocIdSetIterator {
     return new ToParentDocValues.NumDV(values, selection, parents2, children);
   }
 
+  static NumericDocValues wrap(
+      NumericDocValues values,
+      Type selection,
+      BitSet parents,
+      DocIdSetIterator children,
+      Long missingValue) {
+    return new ToParentDocValues.NumDV(values, selection, parents, children, missingValue);
+  }
+
   static SortedDocValues wrap(
-      SortedDocValues values, Type selection, BitSet parents2, DocIdSetIterator children) {
-    return new ToParentDocValues.SortedDVs(values, selection, parents2, children);
+      SortedDocValues values,
+      Type selection,
+      BitSet parents,
+      DocIdSetIterator children,
+      boolean sortMissingLast) {
+    return new ToParentDocValues.SortedDVs(values, selection, parents, children, sortMissingLast);
   }
 }

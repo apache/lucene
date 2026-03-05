@@ -241,12 +241,19 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
+  HTML when an attribute value ends with an equals sign. (Seungmin123)
+
 * GITHUB#15668: Fix UnsupportedOperationException in WeightedSpanTermExtractor by
   implementing getFieldInfos in DelegatingLeafReader. (Simranjeet Singh)
 
 * GITHUB#15590: Fix race and improve performance of HNSW graph building (Viliam Durina)
 
 * GITHUB#15702: Fix Potential NullPointException in BytesRefHash initialization#15702 (tyronecai)
+
+* GITHUB#15727: Add separately configurable missing values to ToParentBlockJoinSortField for parent and children sorting;
+  and fix incorrect handling of children missing values. Children with missing values now correctly participate in the
+  min/max selection according to the configured missing value. (Mary Gouseti)
 
 * GITHUB#15731: Fix tessellator failure when a hole is touching another hole in the middle of a segment. In this case
   we might fail to detect it and choose a wrong bridge to eliminate the hole. (Ignacio Vera)
