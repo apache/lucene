@@ -20,6 +20,7 @@ import static org.apache.lucene.backward_codecs.lucene102.Lucene102BinaryQuantiz
 import static org.apache.lucene.backward_codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.VECTOR_DATA_EXTENSION;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
+import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.discretize;
 import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.transposeHalfByte;
@@ -211,7 +212,7 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
   }
 
   @Override
-  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+  public BinarizedVectorValues getFloatVectorValues(String field) throws IOException {
     FieldEntry fi = fields.get(field);
     if (fi == null) {
       return null;
@@ -358,8 +359,7 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
   }
 
   @Override
-  public BaseQuantizedByteVectorValues getQuantizedVectorValues(String fieldName)
-      throws IOException {
+  public BaseQuantizedByteVectorValues getQuantizedVectorValues(String fieldName) {
     return null;
   }
 
@@ -375,9 +375,13 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
     OptimizedScalarQuantizer quantizer =
         new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
     String tempScoreQuantizedVectorName = null;
-    FloatVectorValues floatVectorValues = rawVectorsReader.getFloatVectorValues(fieldInfo.name);
     float[] centroid = getCentroid(fieldInfo.name);
-    float cDotC = VectorUtil.dotProduct(centroid, centroid);
+    BinarizedVectorValues vectorValues = getFloatVectorValues(fieldInfo.name);
+    FloatVectorValues floatVectorValues = vectorValues.rawVectorValues;
+    if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
+      floatVectorValues = new NormalizedFloatVectorValues(floatVectorValues);
+    }
+
     DocsWithFieldSet docsWithField;
     try (IndexOutput tempScoreQuantizedVector =
         directory.createTempOutput(fieldInfo.name, "temp", context)) {
@@ -393,16 +397,6 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
     }
     IndexInput quantizedScoreDataInput = directory.openInput(tempScoreQuantizedVectorName, context);
     try {
-      OffHeapBinarizedVectorValues vectorValues =
-          new OffHeapBinarizedVectorValues.DenseOffHeapVectorValues(
-              fieldInfo.getVectorDimension(),
-              docsWithField.cardinality(),
-              centroid,
-              cDotC,
-              quantizer,
-              fieldInfo.getVectorSimilarityFunction(),
-              vectorScorer,
-              quantizedScoreDataInput);
       RandomVectorScorerSupplier scorerSupplier =
           vectorScorer.getRandomVectorScorerSupplier(
               fieldInfo.getVectorSimilarityFunction(),
@@ -410,7 +404,7 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
                   quantizedScoreDataInput,
                   fieldInfo.getVectorDimension(),
                   docsWithField.cardinality()),
-              vectorValues);
+              vectorValues.quantizedVectorValues);
       final String finalTempScoreQuantizedVectorName = tempScoreQuantizedVectorName;
       return CloseableRandomVectorScorerSupplier.create(
           scorerSupplier,
@@ -421,6 +415,7 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
           });
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, quantizedScoreDataInput);
+      IOUtils.deleteFilesSuppressingExceptions(t, directory, tempScoreQuantizedVectorName);
       throw t;
     }
   }
@@ -631,6 +626,48 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
       quantizedComponentSum = Short.toUnsignedInt(slice.readShort());
       lastOrd = targetOrd;
       return binaryValue;
+    }
+  }
+
+  static final class NormalizedFloatVectorValues extends FloatVectorValues {
+    private final FloatVectorValues values;
+    private final float[] normalizedVector;
+
+    NormalizedFloatVectorValues(FloatVectorValues values) {
+      this.values = values;
+      this.normalizedVector = new float[values.dimension()];
+    }
+
+    @Override
+    public int dimension() {
+      return values.dimension();
+    }
+
+    @Override
+    public int size() {
+      return values.size();
+    }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return values.ordToDoc(ord);
+    }
+
+    @Override
+    public float[] vectorValue(int ord) throws IOException {
+      System.arraycopy(values.vectorValue(ord), 0, normalizedVector, 0, normalizedVector.length);
+      VectorUtil.l2normalize(normalizedVector);
+      return normalizedVector;
+    }
+
+    @Override
+    public DocIndexIterator iterator() {
+      return values.iterator();
+    }
+
+    @Override
+    public NormalizedFloatVectorValues copy() throws IOException {
+      return new NormalizedFloatVectorValues(values.copy());
     }
   }
 }

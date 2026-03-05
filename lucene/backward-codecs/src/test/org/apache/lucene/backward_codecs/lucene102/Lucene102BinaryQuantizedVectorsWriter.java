@@ -19,13 +19,11 @@ package org.apache.lucene.backward_codecs.lucene102;
 import static org.apache.lucene.backward_codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.BINARIZED_VECTOR_COMPONENT;
 import static org.apache.lucene.backward_codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.backward_codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.INDEX_BITS;
-import static org.apache.lucene.backward_codecs.lucene102.Lucene102BinaryQuantizedVectorsFormat.QUERY_BITS;
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
 import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.discretize;
 import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.packAsBinary;
-import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.transposeHalfByte;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -339,39 +337,6 @@ class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
           centroidDp,
           docsWithField);
     }
-  }
-
-  static DocsWithFieldSet writeBinarizedQueryData(
-      IndexOutput binarizedQueryData,
-      FloatVectorValues floatVectorValues,
-      float[] centroid,
-      OptimizedScalarQuantizer binaryQuantizer)
-      throws IOException {
-    int discretizedDimension = discretize(floatVectorValues.dimension(), 64);
-    DocsWithFieldSet docsWithField = new DocsWithFieldSet();
-    byte[] quantizationScratch = new byte[floatVectorValues.dimension()];
-    byte[] toQuery = new byte[(discretizedDimension / 8) * QUERY_BITS];
-    KnnVectorValues.DocIndexIterator iterator = floatVectorValues.iterator();
-    for (int docV = iterator.nextDoc(); docV != NO_MORE_DOCS; docV = iterator.nextDoc()) {
-      // write index vector
-      OptimizedScalarQuantizer.QuantizationResult r =
-          binaryQuantizer.scalarQuantize(
-              floatVectorValues.vectorValue(iterator.index()),
-              quantizationScratch,
-              QUERY_BITS,
-              centroid);
-      docsWithField.add(docV);
-
-      // pack and store the 4bit query vector
-      transposeHalfByte(quantizationScratch, toQuery);
-      binarizedQueryData.writeBytes(toQuery, toQuery.length);
-      binarizedQueryData.writeInt(Float.floatToIntBits(r.lowerInterval()));
-      binarizedQueryData.writeInt(Float.floatToIntBits(r.upperInterval()));
-      binarizedQueryData.writeInt(Float.floatToIntBits(r.additionalCorrection()));
-      assert r.quantizedComponentSum() >= 0 && r.quantizedComponentSum() <= 0xffff;
-      binarizedQueryData.writeShort((short) r.quantizedComponentSum());
-    }
-    return docsWithField;
   }
 
   static DocsWithFieldSet writeBinarizedVectorData(
