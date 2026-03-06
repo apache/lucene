@@ -60,15 +60,10 @@ import org.openjdk.jmh.annotations.Warmup;
 @Fork(value = 1)
 public class BufferedChecksumBenchmark {
 
-  // Realistic Lucene data sizes:
-  // - VInt/VLong: 1-5 bytes per call (postings, metadata)
-  // - Norms: 1-8 bytes
-  // - Field infos / metadata: 20-200 bytes
-  // - Doc values: 100-1000 bytes
-  // - Vectors (embeddings): 384, 768, 1536 bytes
-  // - Stored fields / compressed blocks: 500-4000 bytes
-  // - Around the buffer boundary (1024) for boundary effects
-  @Param({"1", "2", "4", "5", "8", "64", "128", "256", "384", "512", "768", "1024", "1536", "2048", "4096"})
+  // Fine-grained sizes around the DIRECT_THRESHOLD boundary (64-384) to find the
+  // exact crossover where direct native CRC32 beats arraycopy + deferred flush.
+  // Also includes typical Lucene data sizes and buffer boundaries.
+  @Param({"1", "4", "8", "32", "64", "96", "128", "160", "192", "224", "256", "320", "384", "512", "768", "1024", "1536", "2048", "4096"})
   private int dataSize;
 
   // Current default is 1024, test with 2048 to evaluate buffer size increase
