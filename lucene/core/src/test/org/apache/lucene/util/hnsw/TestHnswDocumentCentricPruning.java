@@ -116,6 +116,57 @@ public class TestHnswDocumentCentricPruning extends HnswGraphTestCase<float[]> {
   @Override @Ignore public void testHnswGraphBuilderInitializationFromGraph_withOffsetZero() {}
   @Override @Ignore public void testHnswGraphBuilderInitializationFromGraph_withNonZeroOffset() {}
 
+  public void testExtremeMultiVectorPruning() throws IOException {
+    int nDoc = 20;
+    int vectorsPerDoc = 3000;
+    int totalVectors = nDoc * vectorsPerDoc;
+    int dim = 16;
+
+    float[][] vectors = new float[totalVectors][dim];
+    int[] ordToDoc = new int[totalVectors];
+    for (int i = 0; i < nDoc; i++) {
+      float[] base = randomVector(dim);
+      for (int j = 0; j < vectorsPerDoc; j++) {
+        int ord = i * vectorsPerDoc + j;
+        // Chunks are very similar but not identical to ensure graph connectivity
+        vectors[ord] = base.clone();
+        for(int d=0; d<dim; d++) vectors[ord][d] += (random().nextFloat() * 0.01f);
+        ordToDoc[ord] = i;
+      }
+    }
+
+    MockVectorValues vectorValues = new MockVectorValues(vectors, ordToDoc);
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectorValues);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, 42);
+    OnHeapHnswGraph hnsw = builder.build(vectorValues.size());
+
+    float[] target = vectors[0];
+    RandomVectorScorer scorer = buildScorer(vectorValues, target);
+
+    // Search for Top-3 Documents
+    int k = 3;
+
+    // 1. Standard search
+    KnnCollector standardCollector = new TopKnnCollector(k, Integer.MAX_VALUE);
+    HnswGraphSearcher.search(scorer, standardCollector, hnsw, null);
+    long standardVisited = standardCollector.visitedCount();
+
+    // 2. Document-Centric Search
+    KnnCollector baseCollector = new TopKnnCollector(k, Integer.MAX_VALUE);
+    DistinctDocKnnCollector distinctCollector = new DistinctDocKnnCollector(baseCollector, vectorValues);
+    HnswGraphSearcher.search(scorer, distinctCollector, hnsw, null);
+    long distinctVisited = distinctCollector.visitedCount();
+
+    System.out.println("\n--- Extreme Multi-Vector Results (20 Docs, 3000 Chunks each, K=3) ---");
+    System.out.println("Standard HNSW Visited: " + standardVisited);
+    System.out.println("Document-Centric Visited: " + distinctVisited);
+    double reduction = (1.0 - ((double)distinctVisited / standardVisited)) * 100.0;
+    System.out.println("Reduction in Node Visits: " + String.format("%.2f%%", reduction));
+    System.out.println("--------------------------------------------------------------------\n");
+
+    assertTrue("Significant reduction expected", distinctVisited < standardVisited);
+  }
+
   public void testShortCircuitPruning() throws IOException {
     int nDoc = 1000;
     int vectorsPerDoc = 5;
