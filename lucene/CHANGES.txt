@@ -548,6 +548,10 @@ API Changes
   instance instead of a Bits instance to identify document IDs to filter.
   (Shubham Chaudhary, Adrien Grand)
 
+* GITHUB#XXXX: Add ReaderUtil#partitionByLeaf to partition sorted global
+  doc IDs by leaf reader. (Zihan Xu)
+
+
 New Features
 ---------------------
 * GITHUB#15015: MultiIndexMergeScheduler: a production multi-tenant merge scheduler (Shawn Yarbrough)

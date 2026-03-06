@@ -89,4 +89,49 @@ public final class ReaderUtil {
     }
     return hi;
   }
+
+  /**
+   * Partitions sorted global doc IDs by leaf.
+   *
+   * @param sortedDocIds global doc IDs, must be sorted ascending
+   * @param leaves the index reader's leaves
+   * @return array indexed by leaf ord, containing global doc IDs for that leaf (empty if no hits)
+   */
+  public static int[][] partitionByLeaf(int[] sortedDocIds, List<LeafReaderContext> leaves) {
+    int numLeaves = leaves.size();
+    int[][] result = new int[numLeaves][];
+    if (sortedDocIds.length == 0) {
+      for (int i = 0; i < numLeaves; i++) {
+        result[i] = new int[0];
+      }
+      return result;
+    }
+    // Pass 1: Count and allocate
+    int hitsCount = 0;
+    int leafIdx = 0;
+    LeafReaderContext leaf = leaves.get(0);
+    int leafEnd = leaf.docBase + leaf.reader().maxDoc();
+    for (int docId : sortedDocIds) {
+      while (docId >= leafEnd) {
+        result[leafIdx] = new int[hitsCount];
+        hitsCount = 0;
+        leafIdx++;
+        leaf = leaves.get(leafIdx);
+        leafEnd = leaf.docBase + leaf.reader().maxDoc();
+      }
+      hitsCount++;
+    }
+    result[leafIdx] = new int[hitsCount];
+    // Fill remaining empty leaves
+    for (int i = leafIdx + 1; i < numLeaves; i++) {
+      result[i] = new int[0];
+    }
+    // Pass 2: Copy docIds to result arrays
+    int srcPos = 0;
+    for (int[] leafDocs : result) {
+      System.arraycopy(sortedDocIds, srcPos, leafDocs, 0, leafDocs.length);
+      srcPos += leafDocs.length;
+    }
+    return result;
+  }
 }
