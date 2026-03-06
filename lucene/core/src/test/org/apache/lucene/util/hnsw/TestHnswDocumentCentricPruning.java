@@ -228,7 +228,7 @@ public class TestHnswDocumentCentricPruning extends HnswGraphTestCase<float[]> {
     int vectorsPerDoc = 5;
     int totalVectors = nDoc * vectorsPerDoc;
     int dim = 16;
-    
+
     float[][] vectors = new float[totalVectors][dim];
     int[] ordToDoc = new int[totalVectors];
     for (int i = 0; i < nDoc; i++) {
@@ -239,7 +239,7 @@ public class TestHnswDocumentCentricPruning extends HnswGraphTestCase<float[]> {
         ordToDoc[ord] = i;
       }
     }
-    
+
     MockVectorValues vectorValues = new MockVectorValues(vectors, ordToDoc);
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectorValues);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, 42);
@@ -264,7 +264,7 @@ public class TestHnswDocumentCentricPruning extends HnswGraphTestCase<float[]> {
       System.out.println("Distinct (Short-Circuit) visited: " + distinctVisited);
     }
 
-    assertTrue("Short-circuiting should reduce visits. Standard: " + standardVisited + ", Distinct: " + distinctVisited, 
+    assertTrue("Short-circuiting should reduce visits. Standard: " + standardVisited + ", Distinct: " + distinctVisited,
                distinctVisited <= standardVisited);
   }
 
@@ -282,7 +282,7 @@ public class TestHnswDocumentCentricPruning extends HnswGraphTestCase<float[]> {
     @Override public FloatVectorValues copy() { return new MockVectorValues(values, ordToDoc); }
     @Override public int ordToDoc(int ord) { return ordToDoc[ord]; }
     @Override public VectorEncoding getEncoding() { return VectorEncoding.FLOAT32; }
-    
+
     @Override
     public float[] vectorValue(int ord) {
       return values[ord];
