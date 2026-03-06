@@ -43,6 +43,7 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.AcceptDocs;
@@ -50,7 +51,6 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
-import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
@@ -370,7 +370,7 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
 
   @Override
   public CloseableRandomVectorScorerSupplier getRandomVectorScorerSupplierForMerge(
-      FieldInfo fieldInfo, Directory directory, IOContext context) throws IOException {
+      FieldInfo fieldInfo, SegmentWriteState segmentWriteState) throws IOException {
     assert fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32);
     OptimizedScalarQuantizer quantizer =
         new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
@@ -384,18 +384,22 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
 
     DocsWithFieldSet docsWithField;
     try (IndexOutput tempScoreQuantizedVector =
-        directory.createTempOutput(fieldInfo.name, "temp", context)) {
+        segmentWriteState.directory.createTempOutput(
+            segmentWriteState.segmentInfo.name, "queries", segmentWriteState.context)) {
       tempScoreQuantizedVectorName = tempScoreQuantizedVector.getName();
       docsWithField =
           writeBinarizedQueryData(tempScoreQuantizedVector, floatVectorValues, centroid, quantizer);
       CodecUtil.writeFooter(tempScoreQuantizedVector);
     } catch (Throwable t) {
       if (tempScoreQuantizedVectorName != null) {
-        IOUtils.deleteFilesSuppressingExceptions(t, directory, tempScoreQuantizedVectorName);
+        IOUtils.deleteFilesSuppressingExceptions(
+            t, segmentWriteState.directory, tempScoreQuantizedVectorName);
       }
       throw t;
     }
-    IndexInput quantizedScoreDataInput = directory.openInput(tempScoreQuantizedVectorName, context);
+    IndexInput quantizedScoreDataInput =
+        segmentWriteState.directory.openInput(
+            tempScoreQuantizedVectorName, segmentWriteState.context);
     try {
       RandomVectorScorerSupplier scorerSupplier =
           vectorScorer.getRandomVectorScorerSupplier(
@@ -411,11 +415,13 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
           vectorValues.size(),
           () -> {
             IOUtils.close(quantizedScoreDataInput);
-            IOUtils.deleteFilesIgnoringExceptions(directory, finalTempScoreQuantizedVectorName);
+            IOUtils.deleteFilesIgnoringExceptions(
+                segmentWriteState.directory, finalTempScoreQuantizedVectorName);
           });
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, quantizedScoreDataInput);
-      IOUtils.deleteFilesSuppressingExceptions(t, directory, tempScoreQuantizedVectorName);
+      IOUtils.deleteFilesSuppressingExceptions(
+          t, segmentWriteState.directory, tempScoreQuantizedVectorName);
       throw t;
     }
   }

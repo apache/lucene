@@ -35,6 +35,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
@@ -43,7 +44,6 @@ import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.DataInput;
-import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FileDataHint;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
@@ -438,10 +438,10 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   @Override
   public CloseableRandomVectorScorerSupplier getRandomVectorScorerSupplierForMerge(
-      FieldInfo fieldInfo, Directory directory, IOContext context) throws IOException {
+      FieldInfo fieldInfo, SegmentWriteState segmentWriteState) throws IOException {
     if (flatVectorsReader instanceof QuantizedVectorsReader) {
       return ((QuantizedVectorsReader) flatVectorsReader)
-          .getRandomVectorScorerSupplierForMerge(fieldInfo, directory, context);
+          .getRandomVectorScorerSupplierForMerge(fieldInfo, segmentWriteState);
     }
     return null;
   }

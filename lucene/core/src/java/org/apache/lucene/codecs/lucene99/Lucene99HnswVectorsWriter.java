@@ -437,7 +437,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
           && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
         CloseableRandomVectorScorerSupplier scorerSupplier =
             quantizedVectorsReader.getRandomVectorScorerSupplierForMerge(
-                fieldInfo, segmentWriteState.directory, segmentWriteState.context);
+                fieldInfo, segmentWriteState);
         try {
           buildAndWriteGraph(fieldInfo, mergeState, vectorValues, scorerSupplier, totalVectorCount);
         } catch (Throwable t) {
