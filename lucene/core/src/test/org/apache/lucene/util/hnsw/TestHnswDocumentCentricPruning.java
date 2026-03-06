@@ -18,6 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import java.util.Locale;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FloatVectorValues;
@@ -170,7 +171,7 @@ public class TestHnswDocumentCentricPruning extends HnswGraphTestCase<float[]> {
       System.out.println("Standard HNSW Visited: " + standardVisited);
       System.out.println("Document-Centric Visited: " + distinctVisited);
       double reduction = (1.0 - ((double) distinctVisited / standardVisited)) * 100.0;
-      System.out.println("Reduction in Node Visits: " + String.format("%.2f%%", reduction));
+      System.out.println("Reduction in Node Visits: " + String.format(Locale.ROOT, "%.2f%%", reduction));
       System.out.println("----------------------------------------------------------\n");
     }
 
@@ -225,7 +226,7 @@ public class TestHnswDocumentCentricPruning extends HnswGraphTestCase<float[]> {
       System.out.println("Standard HNSW Visited: " + standardVisited);
       System.out.println("Document-Centric Visited: " + distinctVisited);
       double reduction = (1.0 - ((double) distinctVisited / standardVisited)) * 100.0;
-      System.out.println("Reduction in Node Visits: " + String.format("%.2f%%", reduction));
+      System.out.println("Reduction in Node Visits: " + String.format(Locale.ROOT, "%.2f%%", reduction));
       System.out.println(
           "----------------------------------------------------------------------\n");
     }
