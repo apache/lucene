@@ -23,8 +23,8 @@ import org.apache.lucene.index.KnnVectorValues;
 
 /**
  * A {@link KnnCollector} that ensures only the best representative vector for each document is
- * collected. This is useful for multi-vector search (e.g. Late Interaction) where a single
- * document may have multiple vectors indexed.
+ * collected. This is useful for multi-vector search (e.g. Late Interaction) where a single document
+ * may have multiple vectors indexed.
  */
 public class DistinctDocKnnCollector extends KnnCollector.Decorator {
 

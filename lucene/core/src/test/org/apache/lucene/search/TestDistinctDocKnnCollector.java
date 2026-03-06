@@ -31,7 +31,8 @@ public class TestDistinctDocKnnCollector extends LuceneTestCase {
     // Setup mapping: ord 0 and 1 belong to Doc 100
     // ord 2 belongs to Doc 200
     MockKnnVectorValues vectorValues = new MockKnnVectorValues(new int[] {100, 100, 200});
-    DistinctDocKnnCollector distinctCollector = new DistinctDocKnnCollector(collector, vectorValues);
+    DistinctDocKnnCollector distinctCollector =
+        new DistinctDocKnnCollector(collector, vectorValues);
 
     // 1. Initial state: both should be scored
     assertTrue(distinctCollector.shouldScore(0));
@@ -42,7 +43,9 @@ public class TestDistinctDocKnnCollector extends LuceneTestCase {
     assertEquals(0.9f, distinctCollector.minCompetitiveSimilarity(), 0.001f);
 
     // 3. ord 1 (Doc 100) should now be short-circuited
-    assertFalse("ord 1 should be short-circuited as Doc 100 is satisfied", distinctCollector.shouldScore(1));
+    assertFalse(
+        "ord 1 should be short-circuited as Doc 100 is satisfied",
+        distinctCollector.shouldScore(1));
 
     // 4. ord 2 (Doc 200) should still be scored
     assertTrue(distinctCollector.shouldScore(2));
@@ -60,9 +63,24 @@ public class TestDistinctDocKnnCollector extends LuceneTestCase {
       return ordToDoc[ord];
     }
 
-    @Override public int dimension() { return 0; }
-    @Override public int size() { return ordToDoc.length; }
-    @Override public KnnVectorValues copy() { return this; }
-    @Override public VectorEncoding getEncoding() { return VectorEncoding.FLOAT32; }
+    @Override
+    public int dimension() {
+      return 0;
+    }
+
+    @Override
+    public int size() {
+      return ordToDoc.length;
+    }
+
+    @Override
+    public KnnVectorValues copy() {
+      return this;
+    }
+
+    @Override
+    public VectorEncoding getEncoding() {
+      return VectorEncoding.FLOAT32;
+    }
   }
 }

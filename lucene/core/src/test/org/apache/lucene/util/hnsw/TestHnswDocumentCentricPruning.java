@@ -111,10 +111,16 @@ public class TestHnswDocumentCentricPruning extends HnswGraphTestCase<float[]> {
     return new float[] {1f, 0f};
   }
 
-  // Disable inherited tests that assume 1:1 ordinal-to-doc mapping or specific initialization patterns
+  // Disable inherited tests that assume 1:1 ordinal-to-doc mapping or specific initialization
+  // patterns
   // that don't apply to our custom multi-vector mock
-  @Override @Ignore public void testHnswGraphBuilderInitializationFromGraph_withOffsetZero() {}
-  @Override @Ignore public void testHnswGraphBuilderInitializationFromGraph_withNonZeroOffset() {}
+  @Override
+  @Ignore
+  public void testHnswGraphBuilderInitializationFromGraph_withOffsetZero() {}
+
+  @Override
+  @Ignore
+  public void testHnswGraphBuilderInitializationFromGraph_withNonZeroOffset() {}
 
   public void testExtremeMultiVectorPruning() throws IOException {
     int nDoc = 20;
@@ -130,7 +136,7 @@ public class TestHnswDocumentCentricPruning extends HnswGraphTestCase<float[]> {
         int ord = i * vectorsPerDoc + j;
         // Chunks are very similar but not identical to ensure graph connectivity
         vectors[ord] = base.clone();
-        for(int d=0; d<dim; d++) vectors[ord][d] += (random().nextFloat() * 0.01f);
+        for (int d = 0; d < dim; d++) vectors[ord][d] += (random().nextFloat() * 0.01f);
         ordToDoc[ord] = i;
       }
     }
@@ -154,7 +160,8 @@ public class TestHnswDocumentCentricPruning extends HnswGraphTestCase<float[]> {
 
     // 2. Document-Centric Search
     KnnCollector baseCollector = new TopKnnCollector(k, visitedLimit);
-    DistinctDocKnnCollector distinctCollector = new DistinctDocKnnCollector(baseCollector, vectorValues);
+    DistinctDocKnnCollector distinctCollector =
+        new DistinctDocKnnCollector(baseCollector, vectorValues);
     HnswGraphSearcher.search(scorer, distinctCollector, hnsw, null);
     long distinctVisited = distinctCollector.visitedCount();
 
@@ -162,7 +169,7 @@ public class TestHnswDocumentCentricPruning extends HnswGraphTestCase<float[]> {
       System.out.println("\n--- Multi-Vector Results (20 Docs, 100 Chunks each, K=3) ---");
       System.out.println("Standard HNSW Visited: " + standardVisited);
       System.out.println("Document-Centric Visited: " + distinctVisited);
-      double reduction = (1.0 - ((double)distinctVisited / standardVisited)) * 100.0;
+      double reduction = (1.0 - ((double) distinctVisited / standardVisited)) * 100.0;
       System.out.println("Reduction in Node Visits: " + String.format("%.2f%%", reduction));
       System.out.println("----------------------------------------------------------\n");
     }
@@ -207,17 +214,20 @@ public class TestHnswDocumentCentricPruning extends HnswGraphTestCase<float[]> {
 
     // 2. Document-Centric Search
     KnnCollector baseCollector = new TopKnnCollector(k, visitedLimit);
-    DistinctDocKnnCollector distinctCollector = new DistinctDocKnnCollector(baseCollector, vectorValues);
+    DistinctDocKnnCollector distinctCollector =
+        new DistinctDocKnnCollector(baseCollector, vectorValues);
     HnswGraphSearcher.search(scorer, distinctCollector, hnsw, null);
     long distinctVisited = distinctCollector.visitedCount();
 
     if (VERBOSE) {
-      System.out.println("\n--- Massive Multi-Vector Results (500 Docs, 3000 Chunks each, K=100) ---");
+      System.out.println(
+          "\n--- Massive Multi-Vector Results (500 Docs, 3000 Chunks each, K=100) ---");
       System.out.println("Standard HNSW Visited: " + standardVisited);
       System.out.println("Document-Centric Visited: " + distinctVisited);
       double reduction = (1.0 - ((double) distinctVisited / standardVisited)) * 100.0;
       System.out.println("Reduction in Node Visits: " + String.format("%.2f%%", reduction));
-      System.out.println("----------------------------------------------------------------------\n");
+      System.out.println(
+          "----------------------------------------------------------------------\n");
     }
 
     assertTrue("Significant reduction expected", distinctVisited < standardVisited);
@@ -255,7 +265,8 @@ public class TestHnswDocumentCentricPruning extends HnswGraphTestCase<float[]> {
 
     // 2. Document-Centric Search (with short-circuit)
     KnnCollector baseCollector = new TopKnnCollector(10, Integer.MAX_VALUE);
-    DistinctDocKnnCollector distinctCollector = new DistinctDocKnnCollector(baseCollector, vectorValues);
+    DistinctDocKnnCollector distinctCollector =
+        new DistinctDocKnnCollector(baseCollector, vectorValues);
     HnswGraphSearcher.search(scorer, distinctCollector, hnsw, null);
     long distinctVisited = distinctCollector.visitedCount();
 
@@ -264,8 +275,12 @@ public class TestHnswDocumentCentricPruning extends HnswGraphTestCase<float[]> {
       System.out.println("Distinct (Short-Circuit) visited: " + distinctVisited);
     }
 
-    assertTrue("Short-circuiting should reduce visits. Standard: " + standardVisited + ", Distinct: " + distinctVisited,
-               distinctVisited <= standardVisited);
+    assertTrue(
+        "Short-circuiting should reduce visits. Standard: "
+            + standardVisited
+            + ", Distinct: "
+            + distinctVisited,
+        distinctVisited <= standardVisited);
   }
 
   private static class MockVectorValues extends FloatVectorValues {
@@ -277,11 +292,30 @@ public class TestHnswDocumentCentricPruning extends HnswGraphTestCase<float[]> {
       this.ordToDoc = ordToDoc;
     }
 
-    @Override public int dimension() { return values[0].length; }
-    @Override public int size() { return values.length; }
-    @Override public FloatVectorValues copy() { return new MockVectorValues(values, ordToDoc); }
-    @Override public int ordToDoc(int ord) { return ordToDoc[ord]; }
-    @Override public VectorEncoding getEncoding() { return VectorEncoding.FLOAT32; }
+    @Override
+    public int dimension() {
+      return values[0].length;
+    }
+
+    @Override
+    public int size() {
+      return values.length;
+    }
+
+    @Override
+    public FloatVectorValues copy() {
+      return new MockVectorValues(values, ordToDoc);
+    }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return ordToDoc[ord];
+    }
+
+    @Override
+    public VectorEncoding getEncoding() {
+      return VectorEncoding.FLOAT32;
+    }
 
     @Override
     public float[] vectorValue(int ord) {
