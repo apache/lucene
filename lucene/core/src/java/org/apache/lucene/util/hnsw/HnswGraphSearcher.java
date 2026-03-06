@@ -244,6 +244,9 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
           if (visited.getAndSet(friendOrd)) {
             continue;
           }
+          if (collector.shouldScore(friendOrd) == false) {
+            continue;
+          }
           if (collector.earlyTerminated()) {
             return new int[] {UNK_EP};
           }
@@ -326,6 +329,10 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
       while ((friendOrd = graphNextNeighbor(graph)) != NO_MORE_DOCS) {
         assert friendOrd < size : "friendOrd=" + friendOrd + "; size=" + size;
         if (visited.getAndSet(friendOrd)) {
+          continue;
+        }
+
+        if (results.shouldScore(friendOrd) == false) {
           continue;
         }
 

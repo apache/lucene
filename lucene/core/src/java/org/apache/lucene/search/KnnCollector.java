@@ -94,6 +94,17 @@ public interface KnnCollector {
   KnnSearchStrategy getSearchStrategy();
 
   /**
+   * Returns true if the provided ordinal should be scored. This allows for short-circuiting the
+   * search if the document associated with the ordinal has already been satisfied.
+   *
+   * @param ordinal the ordinal to check
+   * @return true if the ordinal should be scored, false otherwise
+   */
+  default boolean shouldScore(int ordinal) {
+    return true;
+  }
+
+  /**
    * KnnCollector.Decorator is the base class for decorators of KnnCollector objects, which extend
    * the object with new behaviors.
    *
@@ -149,6 +160,11 @@ public interface KnnCollector {
     @Override
     public KnnSearchStrategy getSearchStrategy() {
       return collector.getSearchStrategy();
+    }
+
+    @Override
+    public boolean shouldScore(int ordinal) {
+      return collector.shouldScore(ordinal);
     }
   }
 }
