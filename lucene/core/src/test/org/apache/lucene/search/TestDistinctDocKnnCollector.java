@@ -27,7 +27,7 @@ public class TestDistinctDocKnnCollector extends LuceneTestCase {
   public void testShortCircuit() throws IOException {
     int k = 1;
     TopKnnCollector collector = new TopKnnCollector(k, Integer.MAX_VALUE);
-    
+
     // Setup mapping: ord 0 and 1 belong to Doc 100
     // ord 2 belongs to Doc 200
     MockKnnVectorValues vectorValues = new MockKnnVectorValues(new int[] {100, 100, 200});
@@ -43,7 +43,7 @@ public class TestDistinctDocKnnCollector extends LuceneTestCase {
 
     // 3. ord 1 (Doc 100) should now be short-circuited
     assertFalse("ord 1 should be short-circuited as Doc 100 is satisfied", distinctCollector.shouldScore(1));
-    
+
     // 4. ord 2 (Doc 200) should still be scored
     assertTrue(distinctCollector.shouldScore(2));
   }

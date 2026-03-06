@@ -77,6 +77,10 @@ API Changes
 New Features
 ---------------------
 
+* GITHUB#15800: Introduce Document-Centric Short-Circuiting for HNSW Multi-Vector Search.
+  By leveraging ordToDoc mapping, search can now skip redundant scoring of vectors belonging
+  to documents already in the Top-K. (Kristian Rickert)
+
 * GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
   PolishSnowballAnalyzer in the stempel package) (Justas Sakalauskas, Dawid Weiss)
 
