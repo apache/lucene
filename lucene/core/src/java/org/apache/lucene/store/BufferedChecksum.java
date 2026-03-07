@@ -60,7 +60,7 @@ public class BufferedChecksum implements Checksum {
 
   @Override
   public void update(byte[] b, int off, int len) {
-    if (len >= DIRECT_THRESHOLD) {
+    if (len >= buffer.length) { // TEMP: old behavior for baseline benchmark
       flush();
       in.update(b, off, len);
     } else {
