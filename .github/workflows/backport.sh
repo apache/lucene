@@ -87,24 +87,23 @@ echo "🌿 Caching branch information..."
 ALL_BRANCHES=$(git for-each-ref --format='%(refname:strip=3)' refs/remotes/origin | grep -v '^HEAD$' | sort)
 declare -ra TARGET_BRANCH_TEMPLATES=(
   "branch_{{major}}x"
-  "branch_{{version_us}}"
-  "release/{{version}}"
-  "v{{version}}"
-  "{{version}}"
-  "{{version}}-stable"
+  "branch_{{major}}_{{minor}}"
 )
 
 find_target_branch() {
   local version="$1"
   local major
-  local version_us="${version//\./_}"
+  local minor=""
 
   major=$(echo "$version" | sed -E 's/^([0-9]+).*/\1/')
+  if [[ "$version" =~ ^[0-9]+\.([0-9]+) ]]; then
+    minor="${BASH_REMATCH[1]}"
+  fi
 
   for template in "${TARGET_BRANCH_TEMPLATES[@]}"; do
     local candidate="${template//\{\{version\}\}/$version}"
-    candidate="${candidate//\{\{version_us\}\}/$version_us}"
     candidate="${candidate//\{\{major\}\}/$major}"
+    candidate="${candidate//\{\{minor\}\}/$minor}"
 
     local target
     target=$(echo "$ALL_BRANCHES" | grep -Fx "$candidate" | head -1 || true)
@@ -113,8 +112,6 @@ find_target_branch() {
       return 0
     fi
   done
-
-  echo "$ALL_BRANCHES" | awk -v v="$version" 'index($0, v) > 0 { print; exit }'
 }
 
 declare -a requested_versions=()
@@ -168,8 +165,12 @@ if [ ${#failed_versions[@]} -gt 0 ]; then
   for version in "${failed_versions[@]}"; do
     failed_list="${failed_list}- \`${version}\`"$'\n'
     major=$(echo "$version" | sed -E 's/^([0-9]+).*/\1/')
-    version_us="${version//\./_}"
-    attempted_patterns="${attempted_patterns}- \`branch_${major}x\`, \`branch_${version_us}\`, \`release/${version}\`, \`v${version}\`, \`${version}\`, \`${version}-stable\`"$'\n'
+    if [[ "$version" =~ ^[0-9]+\.([0-9]+) ]]; then
+      minor="${BASH_REMATCH[1]}"
+      attempted_patterns="${attempted_patterns}- \`branch_${major}x\`, \`branch_${major}_${minor}\`"$'\n'
+    else
+      attempted_patterns="${attempted_patterns}- \`branch_${major}x\`"$'\n'
+    fi
   done
 
   create_comment "❌ **Backport failed for some versions - Missing target branches**
@@ -181,9 +182,7 @@ $failed_list
 
 **Expected patterns:**
 - \`branch_{major}x\` (Lucene style)
-- \`branch_{version_with_underscores}\`
-- \`release/{version}\`
-- \`v{version}\`
+- \`branch_{major}_{minor}\` (Lucene release branch style)
 
 **Attempted branch names per missing version:**
 $attempted_patterns
