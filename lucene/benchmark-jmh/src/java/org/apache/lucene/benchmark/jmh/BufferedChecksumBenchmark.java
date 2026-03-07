@@ -70,7 +70,13 @@ public class BufferedChecksumBenchmark {
   @Param({"1024", "2048"})
   private int bufferSize;
 
+  /** Total bytes to accumulate in realistic benchmarks before calling getValue(). */
+  private static final int TOTAL_BYTES = 1024 * 1024; // 1MB
+
   private byte[] data;
+
+  /** Number of update() calls to reach ~1MB in realistic benchmarks. */
+  private int iterations;
 
   private BufferedChecksum reusedBufferedCRC32C;
   private BufferedChecksum reusedBufferedCRC32;
@@ -83,6 +89,7 @@ public class BufferedChecksumBenchmark {
     for (int i = 0; i < dataSize; i++) {
       data[i] = (byte) i;
     }
+    iterations = Math.max(1, TOTAL_BYTES / dataSize);
   }
 
   @Setup(Level.Iteration)
@@ -159,5 +166,43 @@ public class BufferedChecksumBenchmark {
     reusedDirectCRC32.reset();
     reusedDirectCRC32.update(data, 0, data.length);
     return reusedDirectCRC32.getValue();
+  }
+
+  // ---- Realistic: N updates then one getValue() — models real Lucene checksum pattern ----
+
+  @Benchmark
+  public long bufferedCRC32RealisticBulkWrite() {
+    reusedBufferedCRC32.reset();
+    for (int i = 0; i < iterations; i++) {
+      reusedBufferedCRC32.update(data, 0, data.length);
+    }
+    return reusedBufferedCRC32.getValue();
+  }
+
+  @Benchmark
+  public long bufferedCRC32CRealisticBulkWrite() {
+    reusedBufferedCRC32C.reset();
+    for (int i = 0; i < iterations; i++) {
+      reusedBufferedCRC32C.update(data, 0, data.length);
+    }
+    return reusedBufferedCRC32C.getValue();
+  }
+
+  @Benchmark
+  public long directCRC32RealisticBulkWrite() {
+    reusedDirectCRC32.reset();
+    for (int i = 0; i < iterations; i++) {
+      reusedDirectCRC32.update(data, 0, data.length);
+    }
+    return reusedDirectCRC32.getValue();
+  }
+
+  @Benchmark
+  public long directCRC32CRealisticBulkWrite() {
+    reusedDirectCRC32C.reset();
+    for (int i = 0; i < iterations; i++) {
+      reusedDirectCRC32C.update(data, 0, data.length);
+    }
+    return reusedDirectCRC32C.getValue();
   }
 }
