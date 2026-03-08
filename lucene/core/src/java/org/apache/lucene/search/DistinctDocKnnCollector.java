@@ -25,6 +25,10 @@ import org.apache.lucene.index.KnnVectorValues;
  * A {@link KnnCollector} that ensures only the best representative vector for each document is
  * collected. This is useful for multi-vector search (e.g. Late Interaction) where a single
  * document may have multiple vectors indexed.
+ *
+ * <p>To maintain 100% MaxSim recall parity with standard HNSW, this collector always performs
+ * vector scoring but uses the {@link #shouldExploreNeighbors(int)} hook to signal that neighbor
+ * exploration for a document can be short-circuited once it is globally competitive.
  */
 public class DistinctDocKnnCollector extends KnnCollector.Decorator {
 
@@ -49,20 +53,26 @@ public class DistinctDocKnnCollector extends KnnCollector.Decorator {
     Float existingScore = docToMaxScore.get(docId);
     if (existingScore != null && similarity <= existingScore) {
       // We already have a better or equal representative for this document.
-      // We don't need to update the delegate TopKnnCollector because its TopDocs
-      // will already contain this docId (via a different ordinal) with an equal or better score.
-      return false;
+      // We return true to signify the vector was "processed" but we don't update the heap.
+      return true;
     }
 
     // Update our internal max score for this document
     docToMaxScore.put(docId, similarity);
     
-    // Delegate collection. Note: This might evict a DIFFERENT document.
+    // Delegate collection. The TopKnnCollector will handle the heap logic.
     return super.collect(ordinal, similarity);
   }
 
+  /**
+   * For Document-Centric search, we use this hook to signal whether the HNSW searcher
+   * should explore the neighbors of this ordinal.
+   * 
+   * If the document is already in our Top-K results with a highly competitive score,
+   * we can skip following its neighbors to save CPU without affecting recall.
+   */
   @Override
-  public boolean shouldScore(int ordinal) {
+  public boolean shouldExploreNeighbors(int ordinal) {
     int docId = vectorValues.ordToDoc(ordinal);
 
     Float existingScore = docToMaxScore.get(docId);
@@ -70,16 +80,10 @@ public class DistinctDocKnnCollector extends KnnCollector.Decorator {
       return true;
     }
 
-    // RECALL-SAFE SHORT-CIRCUIT:
-    // If we already have a score for this document, and that score is already
-    // "competitive enough" that finding a better chunk for the SAME document
-    // is unlikely to change the FINAL set of Top-K documents.
-    
-    // For 100% Recall Parity, we can only skip if existingScore >= 1.0f (or max possible).
-    // However, we can use minCompetitiveSimilarity() as a heuristic floor.
-    // If the doc is already in our heap with a score > minCompetitiveSimilarity,
-    // we have already satisfied the requirement of "getting this document into the top-K".
-    
+    // EXPLORATION SHORT-CIRCUIT:
+    // If the document already has a representative in the Top-K that is 
+    // better than the current minimum competitive similarity, we can prune
+    // the graph exploration from THIS chunk.
     return existingScore < minCompetitiveSimilarity();
   }
 }

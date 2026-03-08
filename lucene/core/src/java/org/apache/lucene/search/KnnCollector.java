@@ -94,13 +94,14 @@ public interface KnnCollector {
   KnnSearchStrategy getSearchStrategy();
 
   /**
-   * Returns true if the provided ordinal should be scored. This allows for short-circuiting the
-   * search if the document associated with the ordinal has already been satisfied.
+   * Returns true if the provided ordinal should have its neighbors explored. This allows for
+   * short-circuiting the graph traversal if the document associated with the ordinal has already
+   * been satisfied.
    *
    * @param ordinal the ordinal to check
-   * @return true if the ordinal should be scored, false otherwise
+   * @return true if neighbors should be explored, false otherwise
    */
-  default boolean shouldScore(int ordinal) {
+  default boolean shouldExploreNeighbors(int ordinal) {
     return true;
   }
 
@@ -163,8 +164,8 @@ public interface KnnCollector {
     }
 
     @Override
-    public boolean shouldScore(int ordinal) {
-      return collector.shouldScore(ordinal);
+    public boolean shouldExploreNeighbors(int ordinal) {
+      return collector.shouldExploreNeighbors(ordinal);
     }
   }
 }

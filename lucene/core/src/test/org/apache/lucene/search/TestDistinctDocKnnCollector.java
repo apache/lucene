@@ -35,8 +35,8 @@ public class TestDistinctDocKnnCollector extends LuceneTestCase {
         new DistinctDocKnnCollector(collector, vectorValues);
 
     // 1. Initial state: both should be scored
-    assertTrue(distinctCollector.shouldScore(0));
-    assertTrue(distinctCollector.shouldScore(1));
+    assertTrue(distinctCollector.shouldExploreNeighbors(0));
+    assertTrue(distinctCollector.shouldExploreNeighbors(1));
 
     // 2. Collect ord 0 with high similarity
     distinctCollector.collect(0, 0.9f);
@@ -45,10 +45,10 @@ public class TestDistinctDocKnnCollector extends LuceneTestCase {
     // 3. ord 1 (Doc 100) should now be short-circuited
     assertFalse(
         "ord 1 should be short-circuited as Doc 100 is satisfied",
-        distinctCollector.shouldScore(1));
+        distinctCollector.shouldExploreNeighbors(1));
 
     // 4. ord 2 (Doc 200) should still be scored
-    assertTrue(distinctCollector.shouldScore(2));
+    assertTrue(distinctCollector.shouldExploreNeighbors(2));
   }
 
   private static class MockKnnVectorValues extends KnnVectorValues {
