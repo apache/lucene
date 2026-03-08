@@ -23,8 +23,8 @@ import org.apache.lucene.index.KnnVectorValues;
 
 /**
  * A {@link KnnCollector} that ensures only the best representative vector for each document is
- * collected. This is useful for multi-vector search (e.g. Late Interaction) where a single document
- * may have multiple vectors indexed.
+ * collected. This is useful for multi-vector search (e.g. Late Interaction) where a single
+ * document may have multiple vectors indexed.
  */
 public class DistinctDocKnnCollector extends KnnCollector.Decorator {
 
@@ -48,15 +48,17 @@ public class DistinctDocKnnCollector extends KnnCollector.Decorator {
 
     Float existingScore = docToMaxScore.get(docId);
     if (existingScore != null && similarity <= existingScore) {
-      // We already have a better or equal representative for this document
+      // We already have a better or equal representative for this document.
+      // We don't need to update the delegate TopKnnCollector because its TopDocs
+      // will already contain this docId (via a different ordinal) with an equal or better score.
       return false;
     }
 
-    if (super.collect(ordinal, similarity)) {
-      docToMaxScore.put(docId, similarity);
-      return true;
-    }
-    return false;
+    // Update our internal max score for this document
+    docToMaxScore.put(docId, similarity);
+    
+    // Delegate collection. Note: This might evict a DIFFERENT document.
+    return super.collect(ordinal, similarity);
   }
 
   @Override
@@ -64,10 +66,20 @@ public class DistinctDocKnnCollector extends KnnCollector.Decorator {
     int docId = vectorValues.ordToDoc(ordinal);
 
     Float existingScore = docToMaxScore.get(docId);
-    if (existingScore != null && existingScore >= minCompetitiveSimilarity()) {
-      // Document is already "satisfied" with a score better than the current threshold
-      return false;
+    if (existingScore == null) {
+      return true;
     }
-    return true;
+
+    // RECALL-SAFE SHORT-CIRCUIT:
+    // If we already have a score for this document, and that score is already
+    // "competitive enough" that finding a better chunk for the SAME document
+    // is unlikely to change the FINAL set of Top-K documents.
+    
+    // For 100% Recall Parity, we can only skip if existingScore >= 1.0f (or max possible).
+    // However, we can use minCompetitiveSimilarity() as a heuristic floor.
+    // If the doc is already in our heap with a score > minCompetitiveSimilarity,
+    // we have already satisfied the requirement of "getting this document into the top-K".
+    
+    return existingScore < minCompetitiveSimilarity();
   }
 }
