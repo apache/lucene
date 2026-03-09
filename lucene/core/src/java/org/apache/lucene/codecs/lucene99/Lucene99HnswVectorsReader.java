@@ -560,8 +560,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       dataIn.seek(graphLevelNodeOffsets.get(targetIndex + graphLevelNodeIndexOffsets[level]));
       arcCount = dataIn.readVInt();
       assert arcCount <= currentNeighborsBuffer.length : "too many neighbors: " + arcCount;
-      int sum = 0;
       if (arcCount > 0) {
+        int sum = 0;
         if (version >= VERSION_GROUPVARINT) {
           GroupVIntUtil.readGroupVInts(dataIn, currentNeighborsBuffer, arcCount);
           for (int i = 0; i < arcCount; i++) {
