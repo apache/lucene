@@ -17,25 +17,44 @@
 
 package org.apache.lucene.search;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.lucene.index.KnnVectorValues;
 
 /**
- * A {@link KnnCollector} that manages a heap of Top-D unique documents rather than K vectors. This
- * is useful for multi-vector search (e.g. Late Interaction) where a single document may have
- * multiple vectors indexed and the goal is to find the top source documents.
+ * A {@link KnnCollector} that collects the Top-D unique documents rather than K vectors. This is
+ * useful for multi-vector search (e.g. Late Interaction, RAG with chunked documents) where a single
+ * document may have multiple vectors indexed and the goal is to find the top source documents.
+ *
+ * <p>The collector tracks the maximum similarity score across all vectors (chunks) belonging to
+ * each document. Only one entry per unique document is passed to the underlying collector's heap,
+ * preventing duplicate documents from consuming heap slots. The {@link #topDocs()} method returns
+ * results with accurate per-document max scores.
  */
 public class DistinctDocKnnCollector extends KnnCollector.Decorator {
 
   private final KnnVectorValues vectorValues;
-  private final Map<Integer, Float> docToMaxScore = new HashMap<>();
+  private final Map<Integer, DocEntry> docEntries = new HashMap<>();
   private final int d;
+
+  /** Tracks the best ordinal and maximum similarity score for a single document. */
+  private static class DocEntry {
+    float maxScore;
+    int bestOrdinal;
+
+    DocEntry(float score, int ordinal) {
+      this.maxScore = score;
+      this.bestOrdinal = ordinal;
+    }
+  }
 
   /**
    * Create a new DistinctDocKnnCollector.
    *
-   * @param collector the underlying collector to wrap
+   * @param collector the underlying collector to wrap (its k is used as D, the number of desired
+   *     unique documents)
    * @param vectorValues the vector values for the current segment, used for ordToDoc mapping
    */
   public DistinctDocKnnCollector(KnnCollector collector, KnnVectorValues vectorValues) {
@@ -48,40 +67,55 @@ public class DistinctDocKnnCollector extends KnnCollector.Decorator {
   public boolean collect(int ordinal, float similarity) {
     int docId = vectorValues.ordToDoc(ordinal);
 
-    Float existingScore = docToMaxScore.get(docId);
-    if (existingScore != null) {
-      if (similarity > existingScore) {
-        // We found a better representative for a document already in our tracking map.
-        // We update the map and then delegate to the underlying collector.
-        // Note: The underlying TopKnnCollector will handle whether this ordinal
-        // actually makes it into its internal vector heap.
-        docToMaxScore.put(docId, similarity);
-        return super.collect(ordinal, similarity);
+    DocEntry entry = docEntries.get(docId);
+    if (entry != null) {
+      // Document already tracked — update max score if this vector is better.
+      if (similarity > entry.maxScore) {
+        entry.maxScore = similarity;
+        entry.bestOrdinal = ordinal;
       }
-      // Current chunk is not better than what we already have for this doc.
+      // Don't pass duplicate documents to the underlying collector's heap.
       return true;
     }
 
-    // New document encountered.
-    docToMaxScore.put(docId, similarity);
+    // New document encountered — add to tracking and pass to underlying collector.
+    docEntries.put(docId, new DocEntry(similarity, ordinal));
     return super.collect(ordinal, similarity);
   }
 
   @Override
   public float minCompetitiveSimilarity() {
-    // If we have fewer than D unique documents, we aren't competitive yet.
-    if (docToMaxScore.size() < d) {
+    if (docEntries.size() < d) {
       return Float.NEGATIVE_INFINITY;
     }
-    // Note: In a true Top-D Document Collector, we would return the score of the
-    // D-th best document here to enable HNSW pruning.
-    // For now, we delegate to the TopKnnCollector's vector-based floor.
+    // The underlying heap has at most one entry per unique document (the first-seen score).
+    // This threshold is conservative (first-seen ≤ max), which is safe for recall.
     return super.minCompetitiveSimilarity();
   }
 
   @Override
-  public boolean shouldExploreNeighbors(int ordinal) {
-    // We've conceded that neighbor pruning is unsafe for 100% MaxSim recall.
-    return true;
+  public TopDocs topDocs() {
+    // Build results from our own document tracking with accurate max scores,
+    // rather than from the underlying heap which only has first-seen scores.
+    List<Map.Entry<Integer, DocEntry>> sorted = new ArrayList<>(docEntries.entrySet());
+    sorted.sort((a, b) -> Float.compare(b.getValue().maxScore, a.getValue().maxScore));
+
+    int resultSize = Math.min(d, sorted.size());
+    ScoreDoc[] scoreDocs = new ScoreDoc[resultSize];
+    for (int i = 0; i < resultSize; i++) {
+      Map.Entry<Integer, DocEntry> e = sorted.get(i);
+      scoreDocs[i] = new ScoreDoc(e.getValue().bestOrdinal, e.getValue().maxScore);
+    }
+
+    TotalHits.Relation relation =
+        earlyTerminated()
+            ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
+            : TotalHits.Relation.EQUAL_TO;
+    return new TopDocs(new TotalHits(visitedCount(), relation), scoreDocs);
+  }
+
+  /** Returns the number of unique documents collected so far. */
+  public int distinctDocCount() {
+    return docEntries.size();
   }
 }

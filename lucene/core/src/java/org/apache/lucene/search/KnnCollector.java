@@ -94,18 +94,6 @@ public interface KnnCollector {
   KnnSearchStrategy getSearchStrategy();
 
   /**
-   * Returns true if the provided ordinal should have its neighbors explored. This allows for
-   * short-circuiting the graph traversal if the document associated with the ordinal has already
-   * been satisfied.
-   *
-   * @param ordinal the ordinal to check
-   * @return true if neighbors should be explored, false otherwise
-   */
-  default boolean shouldExploreNeighbors(int ordinal) {
-    return true;
-  }
-
-  /**
    * KnnCollector.Decorator is the base class for decorators of KnnCollector objects, which extend
    * the object with new behaviors.
    *
@@ -161,11 +149,6 @@ public interface KnnCollector {
     @Override
     public KnnSearchStrategy getSearchStrategy() {
       return collector.getSearchStrategy();
-    }
-
-    @Override
-    public boolean shouldExploreNeighbors(int ordinal) {
-      return collector.shouldExploreNeighbors(ordinal);
     }
   }
 }
