@@ -52,6 +52,8 @@ public class QuickPatchThreadsFilter implements ThreadFilter {
       return true;
     }
 
-    return false;
+    // Also filter out JNA Cleaner threads, which is static per-JVM and not under the
+    // control of a test suite.
+    return t.getName().equals("JNA Cleaner");
   }
 }
