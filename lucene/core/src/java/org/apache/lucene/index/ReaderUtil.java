@@ -98,6 +98,7 @@ public final class ReaderUtil {
    * @return array indexed by leaf ord, containing global doc IDs for that leaf (empty if no hits)
    */
   public static int[][] partitionByLeaf(int[] sortedDocIds, List<LeafReaderContext> leaves) {
+    assert isSorted(sortedDocIds) : "sortedDocIds must be sorted ascending";
     int numLeaves = leaves.size();
     int[][] result = new int[numLeaves][];
     if (sortedDocIds.length == 0) {
@@ -133,5 +134,12 @@ public final class ReaderUtil {
       srcPos += leafDocs.length;
     }
     return result;
+  }
+
+  private static boolean isSorted(int[] a) {
+    for (int i = 1; i < a.length; i++) {
+      if (a[i] < a[i - 1]) return false;
+    }
+    return true;
   }
 }

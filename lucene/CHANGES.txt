@@ -213,6 +213,9 @@ API Changes
 
 * GITHUB#15751: Prevent zero vectors in knn fields with cosine similarity configured (Vigya Sharma)
 
+* GITHUB#15803: Add ReaderUtil#partitionByLeaf to partition sorted global
+  doc IDs by leaf reader. (Zihan Xu)
+
 New Features
 ---------------------
 
@@ -547,10 +550,6 @@ API Changes
 * GITHUB#15011: LeafReader#searchNearestVectors now accepts an AcceptDocs
   instance instead of a Bits instance to identify document IDs to filter.
   (Shubham Chaudhary, Adrien Grand)
-
-* GITHUB#15803: Add ReaderUtil#partitionByLeaf to partition sorted global
-  doc IDs by leaf reader. (Zihan Xu)
-
 
 New Features
 ---------------------
