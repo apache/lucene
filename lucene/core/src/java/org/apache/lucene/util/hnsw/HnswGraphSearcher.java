@@ -244,9 +244,6 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
           if (visited.getAndSet(friendOrd)) {
             continue;
           }
-          if (collector.shouldExploreNeighbors(friendOrd) == false) {
-            continue;
-          }
           if (collector.earlyTerminated()) {
             return new int[] {UNK_EP};
           }
@@ -348,9 +345,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
           int node = bulkNodes[i];
           float score = bulkScores[i];
           if (score >= minAcceptedSimilarity) {
-            if (results.shouldExploreNeighbors(node)) {
-              candidates.add(node, score);
-            }
+            candidates.add(node, score);
             if (acceptOrds == null || acceptOrds.get(node)) {
               if (results.collect(node, score)) {
                 float oldMinAcceptedSimilarity = minAcceptedSimilarity;

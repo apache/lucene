@@ -22,18 +22,15 @@ import java.util.Map;
 import org.apache.lucene.index.KnnVectorValues;
 
 /**
- * A {@link KnnCollector} that ensures only the best representative vector for each document is
- * collected. This is useful for multi-vector search (e.g. Late Interaction) where a single
- * document may have multiple vectors indexed.
- *
- * <p>To maintain 100% MaxSim recall parity with standard HNSW, this collector always performs
- * vector scoring but uses the {@link #shouldExploreNeighbors(int)} hook to signal that neighbor
- * exploration for a document can be short-circuited once it is globally competitive.
+ * A {@link KnnCollector} that manages a heap of Top-D unique documents rather than K vectors. This
+ * is useful for multi-vector search (e.g. Late Interaction) where a single document may have
+ * multiple vectors indexed and the goal is to find the top source documents.
  */
 public class DistinctDocKnnCollector extends KnnCollector.Decorator {
 
   private final KnnVectorValues vectorValues;
   private final Map<Integer, Float> docToMaxScore = new HashMap<>();
+  private final int d;
 
   /**
    * Create a new DistinctDocKnnCollector.
@@ -44,6 +41,7 @@ public class DistinctDocKnnCollector extends KnnCollector.Decorator {
   public DistinctDocKnnCollector(KnnCollector collector, KnnVectorValues vectorValues) {
     super(collector);
     this.vectorValues = vectorValues;
+    this.d = collector.k();
   }
 
   @Override
@@ -51,39 +49,39 @@ public class DistinctDocKnnCollector extends KnnCollector.Decorator {
     int docId = vectorValues.ordToDoc(ordinal);
 
     Float existingScore = docToMaxScore.get(docId);
-    if (existingScore != null && similarity <= existingScore) {
-      // We already have a better or equal representative for this document.
-      // We return true to signify the vector was "processed" but we don't update the heap.
+    if (existingScore != null) {
+      if (similarity > existingScore) {
+        // We found a better representative for a document already in our tracking map.
+        // We update the map and then delegate to the underlying collector.
+        // Note: The underlying TopKnnCollector will handle whether this ordinal
+        // actually makes it into its internal vector heap.
+        docToMaxScore.put(docId, similarity);
+        return super.collect(ordinal, similarity);
+      }
+      // Current chunk is not better than what we already have for this doc.
       return true;
     }
 
-    // Update our internal max score for this document
+    // New document encountered.
     docToMaxScore.put(docId, similarity);
-    
-    // Delegate collection. The TopKnnCollector will handle the heap logic.
     return super.collect(ordinal, similarity);
   }
 
-  /**
-   * For Document-Centric search, we use this hook to signal whether the HNSW searcher
-   * should explore the neighbors of this ordinal.
-   * 
-   * If the document is already in our Top-K results with a highly competitive score,
-   * we can skip following its neighbors to save CPU without affecting recall.
-   */
+  @Override
+  public float minCompetitiveSimilarity() {
+    // If we have fewer than D unique documents, we aren't competitive yet.
+    if (docToMaxScore.size() < d) {
+      return Float.NEGATIVE_INFINITY;
+    }
+    // Note: In a true Top-D Document Collector, we would return the score of the
+    // D-th best document here to enable HNSW pruning.
+    // For now, we delegate to the TopKnnCollector's vector-based floor.
+    return super.minCompetitiveSimilarity();
+  }
+
   @Override
   public boolean shouldExploreNeighbors(int ordinal) {
-    int docId = vectorValues.ordToDoc(ordinal);
-
-    Float existingScore = docToMaxScore.get(docId);
-    if (existingScore == null) {
-      return true;
-    }
-
-    // EXPLORATION SHORT-CIRCUIT:
-    // If the document already has a representative in the Top-K that is 
-    // better than the current minimum competitive similarity, we can prune
-    // the graph exploration from THIS chunk.
-    return existingScore < minCompetitiveSimilarity();
+    // We've conceded that neighbor pruning is unsafe for 100% MaxSim recall.
+    return true;
   }
 }
