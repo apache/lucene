@@ -108,6 +108,9 @@ public class ScoreDocSortBenchmark {
   @Param({"10", "50", "100", "500", "1000", "10000"})
   int size;
 
+  @Param({"random", "nearly_sorted", "reversed"})
+  String distribution;
+
   /** Template array; copied before each invocation so every sort sees the same random order. */
   private ScoreDoc[] template;
 
@@ -123,8 +126,35 @@ public class ScoreDocSortBenchmark {
       float score = (float) rng.nextDouble(0.0, 10.0);
       template[i] = new ScoreDoc(doc, score);
     }
+
+    if (distribution.equals("nearly_sorted")) {
+      Arrays.sort(template, BY_DOC_ASC);
+      // swap ~5% of adjacent pairs to introduce mild disorder
+      int numSwaps = (int) (size * 0.05);
+      for (int i = 0; i < numSwaps; i++) {
+        int idx = rng.nextInt(size - 1);
+        ScoreDoc tmp = template[idx];
+        template[idx] = template[idx + 1];
+        template[idx + 1] = tmp;
+      }
+    } else if (distribution.equals("reversed")) {
+      Arrays.sort(template, BY_DOC_ASC);
+      for (int i = 0; i < size / 2; i++) {
+        ScoreDoc tmp = template[i];
+        template[i] = template[size - 1 - i];
+        template[size - 1 - i] = tmp;
+      }
+    }
   }
 
+  /**
+   * setupInvocation performs a shallow copy of the template.
+   *
+   * <p>Note: using Level.Invocation introduces overhead that JMH cannot easily subtract. For very
+   * small sizes (e.g. size=10), this overhead might be comparable to the benchmarked sort itself.
+   * We accept this because each invocation must start with the same unsorted array to ensure
+   * reproducibility across different sorting algorithms.
+   */
   @Setup(Level.Invocation)
   public void setupInvocation() {
     work = new ScoreDoc[size];
@@ -135,6 +165,8 @@ public class ScoreDocSortBenchmark {
 
   @Benchmark
   public void jdkSortLambda(Blackhole bh) {
+    // intentionally inline — tests whether JIT handles inline lambda differently than static
+    // comparator
     Arrays.sort(work, (a, b) -> Integer.compare(a.doc, b.doc));
     bh.consume(work);
   }
@@ -287,7 +319,7 @@ public class ScoreDocSortBenchmark {
     bh.consume(sorted);
   }
 
-  // ---- 9. Extract doc IDs, sort with int[] when bits fit, else long[] ----
+  // ---- 10. Extract doc IDs, sort with int[] when bits fit, else long[] ----
 
   // bits needed to represent values in [0, max)
   private static int bitsNeeded(int max) {
@@ -296,6 +328,14 @@ public class ScoreDocSortBenchmark {
 
   @Benchmark
   public void jdkSortPrimitiveExtractAdaptive(Blackhole bh) {
+    /**
+     * Documentation of int vs long paths given MAX_DOC = 5,000,000:
+     *
+     * <ul>
+     *   <li>sizes 10, 50, 100, 500 take the int[] path (23 + 9 <= 32 bits)
+     *   <li>sizes 1,000, 10,000 take the long[] path (23 + 10 > 32 bits)
+     * </ul>
+     */
     int len = work.length;
     int docBits = bitsNeeded(MAX_DOC);
     int indexBits = bitsNeeded(len);
