@@ -203,11 +203,8 @@ def sparkline_svg(raw_samples, width=120, height=24, num_bins=20):
         bar_h = (count / max_count) * height
         x = i * bar_w
         y = height - bar_h
-        # Color from green (low) to red (high)
-        t = i / max(num_bins - 1, 1)
-        r = int(40 + 180 * t)
-        g = int(160 - 80 * t)
-        b = int(80 - 60 * t)
+        # Monochrome sparkline to avoid confusion with heatmap colors
+        r, g, b = 102, 136, 170
         bars.append(
             f'<rect x="{x:.1f}" y="{y:.1f}" width="{bar_w:.1f}" '
             f'height="{bar_h:.1f}" fill="rgb({r},{g},{b})" />'
@@ -345,6 +342,9 @@ def build_html(entries, config, method_sources):
         click_hint += ' ' + ' and '.join(parts) + '.'
 
     out.append(f'<p>Click column headers to sort.{click_hint}</p>')
+    out.append('<p><label style="font-size: 0.9em; user-select: none; cursor: pointer;">'
+               '<input type="checkbox" id="rel-toggle"> Show relative (&times;fastest)'
+               '</label></p>')
     out.append('<div class="main-area"><div class="left-col">')
     out.append('<table id="t"><thead><tr>')
 
@@ -366,10 +366,11 @@ def build_html(entries, config, method_sources):
                 key = f"{method}|{p}"
                 cls = ' clickable' if (has_raw or has_source) else ''
                 spark = sparkline_svg(e['raw']) if e['raw'] else ''
+                rel = score / col_min[p] if col_min[p] > 0 else 1.0
                 out.append(
-                    f'<td class="{cls}" data-v="{score}" data-key="{h(key)}"'
+                    f'<td class="{cls}" data-v="{score}" data-rel="{rel:.2f}&times;" data-key="{h(key)}"'
                     f' style="background:rgb({r},{g},{b})">'
-                    f'{score:.3f} <span class="err">&plusmn; {error:.3f}</span>'
+                    f'<span class="val-text">{score:.3f}</span> <span class="err">&plusmn; {error:.3f}</span>'
                     f'{spark}</td>'
                 )
             else:
@@ -397,8 +398,22 @@ function updateHash() {
   if (sortCol >= 0) {
     hash += ';sort=' + sortCol + ',' + (sortAsc ? 'asc' : 'desc');
   }
+  if (document.getElementById('rel-toggle').checked) {
+    hash += ';rel=1';
+  }
   history.replaceState(null, '', hash ? '#' + hash : location.pathname);
 }
+
+document.getElementById('rel-toggle').addEventListener('change', e => {
+  const showRel = e.target.checked;
+  table.querySelectorAll('td.clickable').forEach(td => {
+    const textSpan = td.querySelector('.val-text');
+    if (textSpan) {
+      textSpan.textContent = showRel ? td.dataset.rel : parseFloat(td.dataset.v).toFixed(3);
+    }
+  });
+  updateHash();
+});
 
 function applySort(col, asc) {
   sortCol = col;
@@ -485,6 +500,11 @@ if (location.hash.length > 1) {
     const m = parts[i].match(/^sort=(\d+),(asc|desc)$/);
     if (m) {
       applySort(parseInt(m[1]), m[2] === 'asc');
+    }
+    if (parts[i] === 'rel=1') {
+      const toggle = document.getElementById('rel-toggle');
+      toggle.checked = true;
+      toggle.dispatchEvent(new Event('change'));
     }
   }
   if (cellKey) {
