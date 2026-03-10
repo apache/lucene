@@ -23,4 +23,7 @@ echo "=== Running JMH ===" >&2
 exec "$JAVA_HOME/bin/java" \
   --module-path "$ROOT_DIR/lucene/benchmark-jmh/build/benchmarks" \
   --module org.apache.lucene.benchmark.jmh \
+  --sun-misc-unsafe-memory-access=allow \
+  -rf json -rff results.json \
+  -t 8 \
   "$@"
