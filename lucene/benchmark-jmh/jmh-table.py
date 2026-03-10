@@ -390,29 +390,48 @@ def build_html(entries, config, method_sources):
 const table = document.getElementById('t');
 const headers = table.querySelectorAll('th');
 let sortCol = -1, sortAsc = true;
+let activeKey = '';
+
+function updateHash() {
+  let hash = activeKey || '';
+  if (sortCol >= 0) {
+    hash += ';sort=' + sortCol + ',' + (sortAsc ? 'asc' : 'desc');
+  }
+  history.replaceState(null, '', hash ? '#' + hash : location.pathname);
+}
+
+function applySort(col, asc) {
+  sortCol = col;
+  sortAsc = asc;
+  headers.forEach(h => { const a = h.querySelector('.arrow'); if (a) a.remove(); });
+  const th = table.querySelector(`th[data-col="${col}"]`);
+  if (th) {
+    const arrow = document.createElement('span');
+    arrow.className = 'arrow';
+    arrow.textContent = sortAsc ? '\u25B2' : '\u25BC';
+    th.appendChild(arrow);
+  }
+  const tbody = table.querySelector('tbody');
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  rows.sort((a, b) => {
+    if (col === 0) {
+      const av = a.children[0].textContent, bv = b.children[0].textContent;
+      return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
+    }
+    const av = parseFloat(a.children[col].dataset.v);
+    const bv = parseFloat(b.children[col].dataset.v);
+    return sortAsc ? av - bv : bv - av;
+  });
+  rows.forEach(r => tbody.appendChild(r));
+}
 
 headers.forEach(th => {
   th.addEventListener('click', e => {
     e.stopPropagation();
     const col = parseInt(th.dataset.col);
-    if (sortCol === col) { sortAsc = !sortAsc; } else { sortCol = col; sortAsc = true; }
-    headers.forEach(h => { const a = h.querySelector('.arrow'); if (a) a.remove(); });
-    const arrow = document.createElement('span');
-    arrow.className = 'arrow';
-    arrow.textContent = sortAsc ? '\u25B2' : '\u25BC';
-    th.appendChild(arrow);
-    const tbody = table.querySelector('tbody');
-    const rows = Array.from(tbody.querySelectorAll('tr'));
-    rows.sort((a, b) => {
-      if (col === 0) {
-        const av = a.children[0].textContent, bv = b.children[0].textContent;
-        return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
-      }
-      const av = parseFloat(a.children[col].dataset.v);
-      const bv = parseFloat(b.children[col].dataset.v);
-      return sortAsc ? av - bv : bv - av;
-    });
-    rows.forEach(r => tbody.appendChild(r));
+    const asc = (sortCol === col) ? !sortAsc : true;
+    applySort(col, asc);
+    updateHash();
   });
 });
 
@@ -422,10 +441,10 @@ function activateCell(key) {
   if (!td) return;
   table.querySelectorAll('td.selected').forEach(el => el.classList.remove('selected'));
   td.classList.add('selected');
+  activeKey = key;
   const [method, param] = key.split('|');
 
-  // Update URL hash (without scrolling)
-  history.replaceState(null, '', '#' + key);
+  updateHash();
 
   // Show source code
   const srcPanel = document.getElementById('source-panel');
@@ -457,9 +476,20 @@ table.querySelector('tbody').addEventListener('click', e => {
   activateCell(td.dataset.key);
 });
 
-// On page load, activate cell from URL hash if present
+// On page load, restore state from URL hash
 if (location.hash.length > 1) {
-  activateCell(decodeURIComponent(location.hash.slice(1)));
+  const raw = decodeURIComponent(location.hash.slice(1));
+  const parts = raw.split(';');
+  const cellKey = parts[0] || '';
+  for (let i = 1; i < parts.length; i++) {
+    const m = parts[i].match(/^sort=(\d+),(asc|desc)$/);
+    if (m) {
+      applySort(parseInt(m[1]), m[2] === 'asc');
+    }
+  }
+  if (cellKey) {
+    activateCell(cellKey);
+  }
 }
 
 // Pick the best display unit and scale factor.
