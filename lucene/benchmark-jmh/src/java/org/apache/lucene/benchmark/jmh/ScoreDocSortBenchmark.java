@@ -24,6 +24,7 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.IntroSorter;
+import org.apache.lucene.util.LSBRadixSorter;
 import org.apache.lucene.util.TimSorter;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -260,7 +261,15 @@ public class ScoreDocSortBenchmark {
     bh.consume(work);
   }
 
-  // ---- 8. Extract doc IDs, sort with JDK Arrays.sort (primitive long[]), reorder ----
+  // ---- 8. JDK Arrays.parallelSort with static comparator ----
+
+  @Benchmark
+  public void jdkParallelSort(Blackhole bh) {
+    Arrays.parallelSort(work, BY_DOC_ASC);
+    bh.consume(work);
+  }
+
+  // ---- 9. Extract doc IDs, sort with JDK Arrays.sort (primitive long[]), reorder ----
 
   @Benchmark
   public void jdkSortPrimitiveExtractLong(Blackhole bh) {
@@ -305,6 +314,101 @@ public class ScoreDocSortBenchmark {
       bh.consume(sorted);
     } else {
       // fall back to long[]
+      long[] packed = new long[len];
+      for (int i = 0; i < len; i++) {
+        packed[i] = ((long) work[i].doc << 32) | (i & 0xFFFFFFFFL);
+      }
+      Arrays.sort(packed);
+      ScoreDoc[] sorted = new ScoreDoc[len];
+      for (int i = 0; i < len; i++) {
+        sorted[i] = work[(int) packed[i]];
+      }
+      bh.consume(sorted);
+    }
+  }
+
+  // ---- 11. Extract doc IDs, sort with LSBRadixSorter when bits fit, else JDK long[] ----
+
+  @Benchmark
+  public void lsbRadixSortExtract(Blackhole bh) {
+    int len = work.length;
+    int docBits = bitsNeeded(MAX_DOC);
+    int indexBits = bitsNeeded(len);
+    if (docBits + indexBits <= 32) {
+      int[] packed = new int[len];
+      for (int i = 0; i < len; i++) {
+        packed[i] = (work[i].doc << indexBits) | i;
+      }
+      new LSBRadixSorter().sort(docBits + indexBits, packed, len);
+      int indexMask = (1 << indexBits) - 1;
+      ScoreDoc[] sorted = new ScoreDoc[len];
+      for (int i = 0; i < len; i++) {
+        sorted[i] = work[packed[i] & indexMask];
+      }
+      bh.consume(sorted);
+    } else {
+      // fallback to long[] + Arrays.sort
+      long[] packed = new long[len];
+      for (int i = 0; i < len; i++) {
+        packed[i] = ((long) work[i].doc << 32) | (i & 0xFFFFFFFFL);
+      }
+      Arrays.sort(packed);
+      ScoreDoc[] sorted = new ScoreDoc[len];
+      for (int i = 0; i < len; i++) {
+        sorted[i] = work[(int) packed[i]];
+      }
+      bh.consume(sorted);
+    }
+  }
+
+  // ---- 12. Extract doc IDs, manual 2-pass radix sort (16-bit) ----
+
+  @Benchmark
+  public void radixSort2Pass(Blackhole bh) {
+    int len = work.length;
+    int docBits = bitsNeeded(MAX_DOC);
+    int indexBits = bitsNeeded(len);
+    if (docBits + indexBits <= 32) {
+      int[] packed = new int[len];
+      for (int i = 0; i < len; i++) {
+        packed[i] = (work[i].doc << indexBits) | i;
+      }
+
+      // 2-pass 16-bit radix sort
+      int[] bucket = new int[65536];
+      int[] workArray = new int[len];
+
+      // Pass 1: lower 16 bits
+      for (int i = 0; i < len; i++) {
+        bucket[packed[i] & 0xFFFF]++;
+      }
+      for (int i = 1; i < 65536; i++) {
+        bucket[i] += bucket[i - 1];
+      }
+      for (int i = len - 1; i >= 0; i--) {
+        workArray[--bucket[packed[i] & 0xFFFF]] = packed[i];
+      }
+
+      // Pass 2: upper 16 bits
+      Arrays.fill(bucket, 0);
+      for (int i = 0; i < len; i++) {
+        bucket[(workArray[i] >>> 16) & 0xFFFF]++;
+      }
+      for (int i = 1; i < 65536; i++) {
+        bucket[i] += bucket[i - 1];
+      }
+      for (int i = len - 1; i >= 0; i--) {
+        packed[--bucket[(workArray[i] >>> 16) & 0xFFFF]] = workArray[i];
+      }
+
+      int indexMask = (1 << indexBits) - 1;
+      ScoreDoc[] sorted = new ScoreDoc[len];
+      for (int i = 0; i < len; i++) {
+        sorted[i] = work[packed[i] & indexMask];
+      }
+      bh.consume(sorted);
+    } else {
+      // long fallback
       long[] packed = new long[len];
       for (int i = 0; i < len; i++) {
         packed[i] = ((long) work[i].doc << 32) | (i & 0xFFFFFFFFL);
