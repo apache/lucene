@@ -382,14 +382,16 @@ headers.forEach(th => {
   });
 });
 
-// Cell click: histogram + source
-table.querySelector('tbody').addEventListener('click', e => {
-  const td = e.target.closest('td.clickable');
+// Activate a cell by its data-key: highlight, show source + histogram, update hash
+function activateCell(key) {
+  const td = table.querySelector(`td[data-key="${CSS.escape(key)}"]`);
   if (!td) return;
   table.querySelectorAll('td.selected').forEach(el => el.classList.remove('selected'));
   td.classList.add('selected');
-  const key = td.dataset.key;
   const [method, param] = key.split('|');
+
+  // Update URL hash (without scrolling)
+  history.replaceState(null, '', '#' + key);
 
   // Show source code
   const srcPanel = document.getElementById('source-panel');
@@ -409,7 +411,22 @@ table.querySelector('tbody').addEventListener('click', e => {
   } else {
     document.getElementById('hist-panel').innerHTML = '';
   }
+
+  // Scroll histogram into view
+  document.getElementById('hist-panel').scrollIntoView({behavior: 'smooth', block: 'nearest'});
+}
+
+// Cell click
+table.querySelector('tbody').addEventListener('click', e => {
+  const td = e.target.closest('td.clickable');
+  if (!td) return;
+  activateCell(td.dataset.key);
 });
+
+// On page load, activate cell from URL hash if present
+if (location.hash.length > 1) {
+  activateCell(decodeURIComponent(location.hash.slice(1)));
+}
 
 // Pick the best display unit and scale factor.
 function pickDisplayUnit(values) {
