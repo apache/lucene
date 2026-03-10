@@ -42,7 +42,7 @@ import org.openjdk.jmh.infra.Blackhole;
 /**
  * Benchmark comparing different sort implementations for sorting ScoreDoc[] by ascending doc ID.
  * Simulates realistic ScoreDoc arrays with random doc IDs drawn from a large index and random
- * scores.
+ * scores. Use jmh-table.py to visualize JSON results as an interactive HTML report.
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -54,8 +54,7 @@ import org.openjdk.jmh.infra.Blackhole;
     jvmArgsAppend = {"-Xmx1g", "-Xms1g", "-XX:+AlwaysPreTouch"})
 public class ScoreDocSortBenchmark {
 
-  private static final Comparator<ScoreDoc> BY_DOC_ASC =
-      (a, b) -> Integer.compare(a.doc, b.doc);
+  private static final Comparator<ScoreDoc> BY_DOC_ASC = (a, b) -> Integer.compare(a.doc, b.doc);
 
   @Param({"10", "100", "1000", "10000"})
   int size;
