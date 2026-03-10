@@ -44,17 +44,19 @@ import org.openjdk.jmh.infra.Blackhole;
  * doc ID. Simulates realistic ScoreDoc arrays with random doc IDs drawn from a 5M-doc index and
  * random scores.
  *
- * <h2>Building</h2>
+ * <h2>Running</h2>
+ *
+ * Use {@code run-benchmark.sh} which automatically recompiles if sources changed, then runs JMH:
+ *
+ * <pre>{@code
+ * ./lucene/benchmark-jmh/run-benchmark.sh ScoreDocSortBenchmark \
+ *   -rf json -rff results.json
+ * }</pre>
+ *
+ * <p>Or build and run manually:
  *
  * <pre>{@code
  * ./gradlew :lucene:benchmark-jmh:assemble
- * }</pre>
- *
- * <h2>Running</h2>
- *
- * Run with JSON output so that per-iteration raw data is captured:
- *
- * <pre>{@code
  * java --module-path lucene/benchmark-jmh/build/benchmarks \
  *   --module org.apache.lucene.benchmark.jmh \
  *   ScoreDocSortBenchmark \
@@ -64,8 +66,7 @@ import org.openjdk.jmh.infra.Blackhole;
  * <h2>Visualizing results</h2>
  *
  * The companion {@code jmh-table.py} script (in the same directory as this source file) converts
- * JMH JSON output into an interactive HTML report. Pass the benchmark source file as an optional
- * argument to include source code in the report:
+ * JMH JSON output into an interactive HTML report:
  *
  * <pre>{@code
  * python3 lucene/benchmark-jmh/jmh-table.py \
