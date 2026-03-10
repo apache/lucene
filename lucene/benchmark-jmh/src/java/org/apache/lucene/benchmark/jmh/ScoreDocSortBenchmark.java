@@ -125,10 +125,7 @@ public class ScoreDocSortBenchmark {
 
   @Setup(Level.Invocation)
   public void setupInvocation() {
-    work = new ScoreDoc[size];
-    for (int i = 0; i < size; i++) {
-      work[i] = template[i]; // shallow copy – same ScoreDoc objects, different array
-    }
+    work = Arrays.copyOf(template, size); // shallow copy – same ScoreDoc objects, different array
   }
 
   // ---- 1. JDK Arrays.sort with lambda ----
