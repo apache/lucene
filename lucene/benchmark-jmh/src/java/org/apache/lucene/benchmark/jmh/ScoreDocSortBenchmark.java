@@ -94,13 +94,15 @@ import org.openjdk.jmh.infra.Blackhole;
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Thread)
 @Warmup(iterations = 5, time = 1)
-@Measurement(iterations = 20, time = 1)
+@Measurement(iterations = 5, time = 1)
 @Fork(
     value = 10,
     jvmArgsAppend = {"-Xmx1g", "-Xms1g", "-XX:+AlwaysPreTouch"})
 public class ScoreDocSortBenchmark {
 
   private static final Comparator<ScoreDoc> BY_DOC_ASC = (a, b) -> Integer.compare(a.doc, b.doc);
+
+  private static final int MAX_DOC = 5_000_000;
 
   @Param({"10", "50", "100", "500", "1000", "10000"})
   int size;
@@ -114,10 +116,9 @@ public class ScoreDocSortBenchmark {
   @Setup(Level.Trial)
   public void setupTrial() {
     SplittableRandom rng = new SplittableRandom(0xCAFEBABE);
-    int maxDoc = 5_000_000; // realistic large index size
     template = new ScoreDoc[size];
     for (int i = 0; i < size; i++) {
-      int doc = rng.nextInt(maxDoc);
+      int doc = rng.nextInt(MAX_DOC);
       float score = (float) rng.nextDouble(0.0, 10.0);
       template[i] = new ScoreDoc(doc, score);
     }
@@ -125,7 +126,8 @@ public class ScoreDocSortBenchmark {
 
   @Setup(Level.Invocation)
   public void setupInvocation() {
-    work = Arrays.copyOf(template, size); // shallow copy – same ScoreDoc objects, different array
+    work = new ScoreDoc[size];
+    System.arraycopy(template, 0, work, 0, size);
   }
 
   // ---- 1. JDK Arrays.sort with lambda ----
@@ -278,7 +280,7 @@ public class ScoreDocSortBenchmark {
 
   // ---- 9. Extract doc IDs, sort with int[] when bits fit, else long[] ----
 
-  /** bits needed to represent values in [0, max) */
+  // bits needed to represent values in [0, max)
   private static int bitsNeeded(int max) {
     return 32 - Integer.numberOfLeadingZeros(max - 1);
   }
@@ -286,8 +288,7 @@ public class ScoreDocSortBenchmark {
   @Benchmark
   public void jdkSortPrimitiveExtractAdaptive(Blackhole bh) {
     int len = work.length;
-    int maxDoc = 5_000_000; // must match setupTrial
-    int docBits = bitsNeeded(maxDoc);
+    int docBits = bitsNeeded(MAX_DOC);
     int indexBits = bitsNeeded(len);
     if (docBits + indexBits <= 32) {
       // pack into int[]: doc in upper bits, index in lower bits
