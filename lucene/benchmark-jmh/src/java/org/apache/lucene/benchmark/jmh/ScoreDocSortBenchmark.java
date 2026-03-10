@@ -101,7 +101,7 @@ public class ScoreDocSortBenchmark {
 
   private static final Comparator<ScoreDoc> BY_DOC_ASC = (a, b) -> Integer.compare(a.doc, b.doc);
 
-  @Param({"10", "100", "1000", "10000"})
+  @Param({"10", "50", "100", "500", "1000", "10000"})
   int size;
 
   /** Template array; copied before each invocation so every sort sees the same random order. */
@@ -263,9 +263,9 @@ public class ScoreDocSortBenchmark {
   // ---- 8. Extract doc IDs, sort with JDK Arrays.sort (primitive long[]), reorder ----
 
   @Benchmark
-  public void jdkSortPrimitiveExtract(Blackhole bh) {
+  public void jdkSortPrimitiveExtractLong(Blackhole bh) {
     int len = work.length;
-    // Build parallel array of (doc, originalIndex) packed into a long for a single-array sort
+    // pack (doc, originalIndex) into a long: doc in upper 32, index in lower 32
     long[] packed = new long[len];
     for (int i = 0; i < len; i++) {
       packed[i] = ((long) work[i].doc << 32) | (i & 0xFFFFFFFFL);
@@ -276,5 +276,46 @@ public class ScoreDocSortBenchmark {
       sorted[i] = work[(int) packed[i]];
     }
     bh.consume(sorted);
+  }
+
+  // ---- 9. Extract doc IDs, sort with int[] when bits fit, else long[] ----
+
+  /** bits needed to represent values in [0, max) */
+  private static int bitsNeeded(int max) {
+    return 32 - Integer.numberOfLeadingZeros(max - 1);
+  }
+
+  @Benchmark
+  public void jdkSortPrimitiveExtractAdaptive(Blackhole bh) {
+    int len = work.length;
+    int maxDoc = 5_000_000; // must match setupTrial
+    int docBits = bitsNeeded(maxDoc);
+    int indexBits = bitsNeeded(len);
+    if (docBits + indexBits <= 32) {
+      // pack into int[]: doc in upper bits, index in lower bits
+      int[] packed = new int[len];
+      for (int i = 0; i < len; i++) {
+        packed[i] = (work[i].doc << indexBits) | i;
+      }
+      Arrays.sort(packed);
+      int indexMask = (1 << indexBits) - 1;
+      ScoreDoc[] sorted = new ScoreDoc[len];
+      for (int i = 0; i < len; i++) {
+        sorted[i] = work[packed[i] & indexMask];
+      }
+      bh.consume(sorted);
+    } else {
+      // fall back to long[]
+      long[] packed = new long[len];
+      for (int i = 0; i < len; i++) {
+        packed[i] = ((long) work[i].doc << 32) | (i & 0xFFFFFFFFL);
+      }
+      Arrays.sort(packed);
+      ScoreDoc[] sorted = new ScoreDoc[len];
+      for (int i = 0; i < len; i++) {
+        sorted[i] = work[(int) packed[i]];
+      }
+      bh.consume(sorted);
+    }
   }
 }
