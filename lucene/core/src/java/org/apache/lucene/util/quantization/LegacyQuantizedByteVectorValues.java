@@ -16,18 +16,24 @@
  */
 package org.apache.lucene.util.quantization;
 
-import java.io.Closeable;
 import java.io.IOException;
-import org.apache.lucene.util.Accountable;
 
 /**
- * Quantized vector reader
+ * A version of {@link BaseQuantizedByteVectorValues}, but additionally retrieving score correction
+ * offset for Scalar quantization scores.
  *
  * @lucene.experimental
  */
-public interface QuantizedVectorsReader extends Closeable, Accountable {
+public abstract class LegacyQuantizedByteVectorValues extends BaseQuantizedByteVectorValues {
 
-  BaseQuantizedByteVectorValues getQuantizedVectorValues(String fieldName) throws IOException;
+  public ScalarQuantizer getScalarQuantizer() {
+    throw new UnsupportedOperationException();
+  }
 
-  ScalarQuantizer getQuantizationState(String fieldName);
+  public abstract float getScoreCorrectionConstant(int ord) throws IOException;
+
+  @Override
+  public LegacyQuantizedByteVectorValues copy() throws IOException {
+    return this;
+  }
 }
