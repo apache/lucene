@@ -638,9 +638,15 @@ function drawHistogram(key, samples) {
 
 
 if __name__ == '__main__':
-    # Optional positional arg: path to Java source file
-    source_path = sys.argv[1] if len(sys.argv) > 1 else None
+    if len(sys.argv) < 2:
+        print("Usage: jmh-table.py <BenchmarkSource.java> < results.json > results.html",
+              file=sys.stderr)
+        sys.exit(1)
+    source_path = sys.argv[1]
     method_sources = extract_methods(source_path)
+    if not method_sources:
+        print(f"No @Benchmark methods found in {source_path}", file=sys.stderr)
+        sys.exit(1)
 
     text = sys.stdin.read().strip()
     if not text:
