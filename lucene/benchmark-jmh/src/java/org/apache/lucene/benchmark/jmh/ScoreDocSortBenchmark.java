@@ -40,9 +40,54 @@ import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
 /**
- * Benchmark comparing different sort implementations for sorting ScoreDoc[] by ascending doc ID.
- * Simulates realistic ScoreDoc arrays with random doc IDs drawn from a large index and random
- * scores. Use jmh-table.py to visualize JSON results as an interactive HTML report.
+ * Benchmark comparing different sort implementations for sorting {@link ScoreDoc}[] by ascending
+ * doc ID. Simulates realistic ScoreDoc arrays with random doc IDs drawn from a 5M-doc index and
+ * random scores.
+ *
+ * <h2>Building</h2>
+ *
+ * <pre>{@code
+ * ./gradlew :lucene:benchmark-jmh:assemble
+ * }</pre>
+ *
+ * <h2>Running</h2>
+ *
+ * Run with JSON output so that per-iteration raw data is captured:
+ *
+ * <pre>{@code
+ * java --module-path lucene/benchmark-jmh/build/benchmarks \
+ *   --module org.apache.lucene.benchmark.jmh \
+ *   ScoreDocSortBenchmark \
+ *   -rf json -rff results.json
+ * }</pre>
+ *
+ * <h2>Visualizing results</h2>
+ *
+ * The companion {@code jmh-table.py} script (in the same directory as this source file) converts
+ * JMH JSON output into an interactive HTML report. Pass the benchmark source file as an optional
+ * argument to include source code in the report:
+ *
+ * <pre>{@code
+ * python3 lucene/benchmark-jmh/jmh-table.py \
+ *   lucene/benchmark-jmh/src/java/org/apache/lucene/benchmark/jmh/ScoreDocSortBenchmark.java \
+ *   < results.json > results.html
+ * }</pre>
+ *
+ * <p>The HTML report provides:
+ *
+ * <ul>
+ *   <li>A heatmap table with algorithms as rows and array sizes as columns. Green cells are the
+ *       fastest, red cells are the slowest within each column.
+ *   <li>Inline sparkline histograms in each cell showing the distribution of raw iteration samples,
+ *       making outliers immediately visible.
+ *   <li>Click any column header to sort the table by that column (click again to reverse).
+ *   <li>Click any data cell to show a full histogram below the table with detailed statistics
+ *       (mean, median, stddev, p5/p95, range) and the benchmark method source code to the right.
+ *   <li>Clicking a cell updates the URL hash (e.g. {@code #introSorterAnonymous|1000}) so you can
+ *       share a direct link to a specific result.
+ *   <li>A configuration banner at the top showing JMH settings (mode, forks, threads, warmup,
+ *       measurement iterations, JVM args).
+ * </ul>
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
