@@ -58,8 +58,21 @@ public class TestMemoryAccountingBitsetCollector extends LuceneTestCase {
     dir.close();
   }
 
-  public void testMemoryAccountingBitsetCollectorMemoryLimit() {
+  public void testMemoryAccountingBitsetCollectorMemoryLimit() throws Exception {
     long perCollectorMemoryLimit = 150;
+    CollectorMemoryTracker tracker =
+        new CollectorMemoryTracker("testMemoryTracker", perCollectorMemoryLimit);
+    MemoryAccountingBitsetCollectorManager bitsetCollectorManager =
+        new MemoryAccountingBitsetCollectorManager(tracker);
+    IndexSearcher searcher = new IndexSearcher(reader);
+    expectThrows(
+        IllegalStateException.class,
+        () -> searcher.search(MatchAllDocsQuery.INSTANCE, bitsetCollectorManager));
+  }
+
+  public void testConcurrentMemoryLimit() throws Exception {
+    // For collector with collecting only 1 doc, 80 bytes are required.
+    long perCollectorMemoryLimit = 79;
     CollectorMemoryTracker tracker =
         new CollectorMemoryTracker("testMemoryTracker", perCollectorMemoryLimit);
     MemoryAccountingBitsetCollectorManager bitsetCollectorManager =

@@ -24,8 +24,8 @@ import org.apache.lucene.util.FixedBitSet;
 /**
  * CollectorManager for MemoryAccountingBitsetCollector that supports concurrent search.
  *
- * <p>Creates multiple collectors for concurrent execution, merges their bitsets and accumulate
- * their memory bytes used
+ * <p>Creates multiple collectors for concurrent execution, each collector only allocates bitset for
+ * segments it processes, then merges with proper offset in reduce().
  */
 public class MemoryAccountingBitsetCollectorManager
     implements CollectorManager<MemoryAccountingBitsetCollector, FixedBitSet> {
@@ -40,7 +40,8 @@ public class MemoryAccountingBitsetCollectorManager
   @Override
   public MemoryAccountingBitsetCollector newCollector() {
     return new MemoryAccountingBitsetCollector(
-        new CollectorMemoryTracker(tracker.getName() + "-collector", tracker.getMemoryLimit()));
+        new CollectorMemoryTracker(tracker.getName() + "-collector", tracker.getMemoryLimit()),
+        true);
   }
 
   @Override
@@ -50,27 +51,36 @@ public class MemoryAccountingBitsetCollectorManager
     }
 
     if (collectors.size() == 1) {
-      MemoryAccountingBitsetCollector collector = collectors.stream().findFirst().get();
+      MemoryAccountingBitsetCollector collector = collectors.iterator().next();
       this.totalBytesUsed = collector.tracker.getBytes();
-      return collector.bitSet;
+
+      if (collector.getMinDocBase() == 0) {
+        return collector.bitSet;
+      }
+
+      FixedBitSet result = new FixedBitSet(collector.getMaxDocEnd());
+      int length = collector.getMaxDocEnd() - collector.getMinDocBase();
+      FixedBitSet.orRange(collector.bitSet, 0, result, collector.getMinDocBase(), length);
+      return result;
     }
 
-    int maxLength = 0;
-    MemoryAccountingBitsetCollector largest = null;
+    // Find global doc range across all collectors
+    int globalMinDocBase = Integer.MAX_VALUE;
+    int globalMaxDocEnd = 0;
     for (MemoryAccountingBitsetCollector collector : collectors) {
-      int bitSetLength = collector.bitSet.length();
-      if (largest == null || bitSetLength > maxLength) {
-        maxLength = bitSetLength;
-        largest = collector;
-      }
+      globalMinDocBase = Math.min(globalMinDocBase, collector.getMinDocBase());
+      globalMaxDocEnd = Math.max(globalMaxDocEnd, collector.getMaxDocEnd());
+      long collectorBytes = collector.tracker.getBytes();
+      this.totalBytesUsed += collectorBytes;
     }
 
-    FixedBitSet result = largest.bitSet;
+    FixedBitSet result = new FixedBitSet(globalMaxDocEnd);
+
     for (MemoryAccountingBitsetCollector collector : collectors) {
-      if (collector != largest) {
-        result.or(collector.bitSet);
+      if (collector.bitSet != null && collector.bitSet.length() > 0) {
+        int length = collector.getMaxDocEnd() - collector.getMinDocBase();
+        FixedBitSet.orRange(collector.bitSet, 0, result, collector.getMinDocBase(), length);
       }
-      this.totalBytesUsed += collector.tracker.getBytes();
     }
 
     return result;
