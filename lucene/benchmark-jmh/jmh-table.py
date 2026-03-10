@@ -76,6 +76,14 @@ def parse_jmh_json(data):
         if i == 0:
             mode_map = {'avgt': 'Average Time', 'thrpt': 'Throughput',
                         'sample': 'Sampling', 'ss': 'Single Shot'}
+            # split jvmArgs into harness args (module-path, module-main)
+            # vs benchmark args (user/annotation provided like -Xmx, -XX:)
+            all_jvm_args = result.get('jvmArgs', [])
+            harness_prefixes = ('--module-path', '-Djdk.module.main', '-Djmh.')
+            harness_args = [a for a in all_jvm_args
+                            if any(a.startswith(p) for p in harness_prefixes)]
+            benchmark_args = [a for a in all_jvm_args
+                              if not any(a.startswith(p) for p in harness_prefixes)]
             config = {
                 'mode': mode_map.get(result.get('mode', ''), result.get('mode', '?')),
                 'forks': result.get('forks', '?'),
@@ -84,7 +92,13 @@ def parse_jmh_json(data):
                 'warmupTime': result.get('warmupTime', '?'),
                 'measurementIterations': result.get('measurementIterations', '?'),
                 'measurementTime': result.get('measurementTime', '?'),
-                'jvmArgs': result.get('jvmArgs', []),
+                'harnessJvmArgs': harness_args,
+                'benchmarkJvmArgs': benchmark_args,
+                'jvm': result.get('jvm', ''),
+                'jdkVersion': result.get('jdkVersion', ''),
+                'vmName': result.get('vmName', ''),
+                'vmVersion': result.get('vmVersion', ''),
+                'jmhVersion': result.get('jmhVersion', ''),
             }
     return entries, config
 
@@ -293,9 +307,29 @@ def build_html(entries, config, method_sources):
             ('Warmup', f"{config.get('warmupIterations','?')} iter \u00d7 {config.get('warmupTime','?')}"),
             ('Measurement', f"{config.get('measurementIterations','?')} iter \u00d7 {config.get('measurementTime','?')}"),
         ]
-        jvm_args = config.get('jvmArgs', [])
-        if jvm_args:
-            items.append(('JVM args', ' '.join(str(a) for a in jvm_args)))
+        # JVM identity
+        jvm = config.get('jvm', '')
+        jdk_ver = config.get('jdkVersion', '')
+        vm_name = config.get('vmName', '')
+        vm_ver = config.get('vmVersion', '')
+        jvm_desc = ' '.join(s for s in [vm_name, vm_ver] if s)
+        if jdk_ver:
+            jvm_desc = f"JDK {jdk_ver}, {jvm_desc}" if jvm_desc else f"JDK {jdk_ver}"
+        if jvm:
+            jvm_desc += f" ({jvm})" if jvm_desc else jvm
+        if jvm_desc:
+            items.append(('JVM', jvm_desc))
+        jmh_ver = config.get('jmhVersion', '')
+        if jmh_ver:
+            items.append(('JMH version', jmh_ver))
+        # benchmark JVM args (from @Fork annotation, e.g. -Xmx, -XX:)
+        bench_args = config.get('benchmarkJvmArgs', [])
+        if bench_args:
+            items.append(('Fork JVM args', ' '.join(bench_args)))
+        # harness JVM args (module-path, module-main, etc.)
+        harness_args = config.get('harnessJvmArgs', [])
+        if harness_args:
+            items.append(('Harness JVM args', ' '.join(harness_args)))
         for label, val in items:
             out.append(f'<tr><td class="label">{h(label)}</td><td class="val">{h(val)}</td></tr>')
         out.append('</table>')
