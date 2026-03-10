@@ -249,10 +249,10 @@ def build_html(entries, config, method_sources):
 <style>
   body {{ font-family: system-ui, sans-serif; margin: 2rem; background: #fafafa; }}
   .config {{ background: #f0f0f0; border: 1px solid #ccc; border-radius: 4px;
-             padding: 10px 16px; margin-bottom: 1.5rem; font-size: 0.9em;
-             display: inline-block; }}
-  .config span {{ margin-right: 1.5em; }}
-  .config .label {{ color: #666; }}
+             margin-bottom: 1.5rem; font-size: 0.9em;
+             border-collapse: collapse; }}
+  .config td {{ padding: 4px 12px; border: none; }}
+  .config .label {{ color: #666; text-align: right; }}
   .config .val {{ font-weight: 600; }}
   .main-area {{ display: flex; gap: 2rem; align-items: flex-start; }}
   .left-col {{ flex-shrink: 0; }}
@@ -285,20 +285,20 @@ def build_html(entries, config, method_sources):
 
     # Config banner
     if config:
-        out.append('<div class="config">')
+        out.append('<table class="config">')
         items = [
-            ('Mode', config.get('mode', '?')),
-            ('Forks', config.get('forks', '?')),
-            ('Threads', config.get('threads', '?')),
-            ('Warmup', f"{config.get('warmupIterations','?')} iter &times; {config.get('warmupTime','?')}"),
-            ('Measurement', f"{config.get('measurementIterations','?')} iter &times; {config.get('measurementTime','?')}"),
+            ('Mode', str(config.get('mode', '?'))),
+            ('Forks', str(config.get('forks', '?'))),
+            ('Threads', str(config.get('threads', '?'))),
+            ('Warmup', f"{config.get('warmupIterations','?')} iter \u00d7 {config.get('warmupTime','?')}"),
+            ('Measurement', f"{config.get('measurementIterations','?')} iter \u00d7 {config.get('measurementTime','?')}"),
         ]
         jvm_args = config.get('jvmArgs', [])
         if jvm_args:
             items.append(('JVM args', ' '.join(str(a) for a in jvm_args)))
         for label, val in items:
-            out.append(f'<span><span class="label">{h(label)}:</span> <span class="val">{h(str(val))}</span></span>')
-        out.append('</div>')
+            out.append(f'<tr><td class="label">{h(label)}</td><td class="val">{h(val)}</td></tr>')
+        out.append('</table>')
 
     click_hint = ''
     if has_raw or has_source:
