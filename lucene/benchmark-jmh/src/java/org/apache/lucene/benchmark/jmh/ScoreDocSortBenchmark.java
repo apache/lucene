@@ -92,7 +92,7 @@ import org.openjdk.jmh.infra.Blackhole;
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
-@State(Scope.Benchmark)
+@State(Scope.Thread)
 @Warmup(iterations = 5, time = 1)
 @Measurement(iterations = 20, time = 1)
 @Fork(
