@@ -21,6 +21,7 @@ import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.HexFormat;
 import java.util.Properties;
 
 /**
@@ -488,7 +489,7 @@ public abstract class StringHelper {
       return "(null)";
     } else {
       StringBuilder sb = new StringBuilder();
-      sb.append(new BigInteger(1, id).toString(Character.MAX_RADIX));
+      sb.append(HexFormat.of().formatHex(id));
       if (id.length != ID_LENGTH) {
         sb.append(" (INVALID FORMAT)");
       }
