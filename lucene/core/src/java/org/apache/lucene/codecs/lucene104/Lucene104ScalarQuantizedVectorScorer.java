@@ -30,6 +30,8 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
  * Vector scorer over OptimizedScalarQuantized vectors
@@ -61,7 +63,7 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     if (vectorValues instanceof QuantizedByteVectorValues qv) {
       FlatVectorsScorer.checkDimensions(target.length, qv.dimension());
       OptimizedScalarQuantizer quantizer = qv.getQuantizer();
-      Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding scalarEncoding = qv.getScalarEncoding();
+      ScalarEncoding scalarEncoding = qv.getScalarEncoding();
       byte[] scratch = new byte[scalarEncoding.getDiscreteDimensions(qv.dimension())];
       final byte[] targetQuantized;
       if (scalarEncoding.isAsymmetric() == false) {
@@ -81,10 +83,8 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
               target, scratch, scalarEncoding.getQueryBits(), qv.getCentroid());
       // for asymmetric encodings with 4-bit query, we need to transpose the nibbles for fast
       // scoring comparisons
-      if (scalarEncoding
-              == Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE
-          || scalarEncoding
-              == Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.DIBIT_QUERY_NIBBLE) {
+      if (scalarEncoding == ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE
+          || scalarEncoding == ScalarEncoding.DIBIT_QUERY_NIBBLE) {
         OptimizedScalarQuantizer.transposeHalfByte(scratch, targetQuantized);
       }
       return new RandomVectorScorer.AbstractRandomVectorScorer(qv) {
