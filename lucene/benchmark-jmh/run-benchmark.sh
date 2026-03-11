@@ -25,5 +25,4 @@ exec "$JAVA_HOME/bin/java" \
   --module org.apache.lucene.benchmark.jmh \
   -jvmArgs "--sun-misc-unsafe-memory-access=allow --module-path=/l/trunk/lucene/benchmark-jmh/build/benchmarks -Djdk.module.main=org.apache.lucene.benchmark.jmh" \
   -rf json -rff results.json \
-  -t 8 \
   "$@"
