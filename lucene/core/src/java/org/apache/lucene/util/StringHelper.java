@@ -457,7 +457,6 @@ public abstract class StringHelper {
     //     what impact that has on the period, whereas the simple ++ (mod 2^128)
     //     we use here is guaranteed to have the full period.
 
-
     BigInteger next = nextId.getAndUpdate(n -> n.add(BigInteger.ONE).and(mask128));
     byte[] bits = next.toByteArray();
 
