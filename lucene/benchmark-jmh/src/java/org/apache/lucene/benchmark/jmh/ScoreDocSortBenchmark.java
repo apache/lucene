@@ -449,8 +449,10 @@ public class ScoreDocSortBenchmark {
     int len = work.length;
     int docBits = bitsNeeded(MAX_DOC);
     int indexBits = bitsNeeded(len);
-    if (docBits + indexBits <= 32) {
+    if (docBits + indexBits <= 31) {
       // pack into int[]: doc in upper bits, index in lower bits
+      // <= 31 (not 32) because Arrays.sort uses signed comparison,
+      // so bit 31 must stay clear to avoid sign-bit corruption
       int[] packed = new int[len];
       for (int i = 0; i < len; i++) {
         packed[i] = (work[i].doc << indexBits) | i;
@@ -483,8 +485,8 @@ public class ScoreDocSortBenchmark {
      * Documentation of int vs long paths given MAX_DOC = 5,000,000:
      *
      * <ul>
-     *   <li>sizes 10, 50, 100, 500 take the int[] path (23 + 9 <= 32 bits)
-     *   <li>sizes 1,000, 10,000 take the long[] path (23 + 10 > 32 bits)
+     *   <li>sizes 10, 50, 100 take the int[] path (23 + 7 = 30 <= 31 bits)
+     *   <li>sizes 500, 1,000, 10,000 take the long[] path (23 + 9 = 32 > 31 bits)
      * </ul>
      */
     bh.consume(runJdkSortPrimitiveExtractAdaptive(work));
