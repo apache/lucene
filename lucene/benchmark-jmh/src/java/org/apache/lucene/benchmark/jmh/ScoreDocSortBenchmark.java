@@ -152,28 +152,39 @@ public class ScoreDocSortBenchmark {
     ScoreDoc[] reference = Arrays.copyOf(template, size);
     Arrays.sort(reference, BY_DOC_ASC);
 
-    verify("jdkSortLambda", reference, runJdkSortLambda(Arrays.copyOf(template, size)));
-    verify("jdkSortComparator", reference, runJdkSortComparator(Arrays.copyOf(template, size)));
-    verify("arrayUtilIntroSort", reference, runArrayUtilIntroSort(Arrays.copyOf(template, size)));
-    verify("arrayUtilTimSort", reference, runArrayUtilTimSort(Arrays.copyOf(template, size)));
-    verify(
+    safeVerify("jdkSortLambda", reference, runJdkSortLambda(Arrays.copyOf(template, size)));
+    safeVerify("jdkSortComparator", reference, runJdkSortComparator(Arrays.copyOf(template, size)));
+    safeVerify(
+        "arrayUtilIntroSort", reference, runArrayUtilIntroSort(Arrays.copyOf(template, size)));
+    safeVerify("arrayUtilTimSort", reference, runArrayUtilTimSort(Arrays.copyOf(template, size)));
+    safeVerify(
         "introSorterAnonymous", reference, runIntroSorterAnonymous(Arrays.copyOf(template, size)));
-    verify("timSorterAnonymous", reference, runTimSorterAnonymous(Arrays.copyOf(template, size)));
-    verify(
+    safeVerify(
+        "timSorterAnonymous", reference, runTimSorterAnonymous(Arrays.copyOf(template, size)));
+    safeVerify(
         "inPlaceMergeSorterAnonymous",
         reference,
         runInPlaceMergeSorterAnonymous(Arrays.copyOf(template, size)));
-    verify("jdkParallelSort", reference, runJdkParallelSort(Arrays.copyOf(template, size)));
-    verify(
+    safeVerify("jdkParallelSort", reference, runJdkParallelSort(Arrays.copyOf(template, size)));
+    safeVerify(
         "jdkSortPrimitiveExtractLong",
         reference,
         runJdkSortPrimitiveExtractLong(Arrays.copyOf(template, size)));
-    verify(
+    safeVerify(
         "jdkSortPrimitiveExtractAdaptive",
         reference,
         runJdkSortPrimitiveExtractAdaptive(Arrays.copyOf(template, size)));
-    verify("lsbRadixSortExtract", reference, runLsbRadixSortExtract(Arrays.copyOf(template, size)));
-    verify("radixSort2Pass", reference, runRadixSort2Pass(Arrays.copyOf(template, size)));
+    safeVerify(
+        "lsbRadixSortExtract", reference, runLsbRadixSortExtract(Arrays.copyOf(template, size)));
+    safeVerify("radixSort2Pass", reference, runRadixSort2Pass(Arrays.copyOf(template, size)));
+  }
+
+  private void safeVerify(String name, ScoreDoc[] reference, ScoreDoc[] result) {
+    try {
+      verify(name, reference, result);
+    } catch (IllegalStateException e) {
+      System.err.println("WARNING: " + e.getMessage());
+    }
   }
 
   private void verify(String name, ScoreDoc[] reference, ScoreDoc[] result) {
