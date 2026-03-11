@@ -109,7 +109,8 @@ public class ScoreDocSortBenchmark {
   @Param({"10", "50", "100", "500", "1000", "10000"})
   int size;
 
-  @Param({"random", "nearly_sorted", "reversed"})
+  // add "nearly_sorted", "reversed" to test other distributions
+  @Param({"random"})
   String distribution;
 
   /** Template array; copied before each invocation so every sort sees the same random order. */
