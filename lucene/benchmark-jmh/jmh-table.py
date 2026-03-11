@@ -23,6 +23,7 @@ import sys
 import re
 import json
 import html
+import math
 
 
 def parse_jmh_text(text):
@@ -295,8 +296,11 @@ def build_html(entries, config, method_sources):
                     e = grid[d][m][s]
                     score = e['score']
                     lo, hi = stats[d][s]['min'], stats[d][s]['max']
-                    span = hi - lo
-                    t = (score - lo) / span if span > 0 else 0
+                    if lo > 0 and hi > lo:
+                        t = math.log(score / lo) / math.log(hi / lo)
+                    else:
+                        span = hi - lo
+                        t = (score - lo) / span if span > 0 else 0
                     r, g, b = lerp_color(t)
                     rel = score / lo if lo > 0 else 1.0
                     data_js[d][m][s] = {
@@ -702,14 +706,16 @@ function drawHistogram(dist, method, size, samples) {
 
 
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("Usage: jmh-table.py <BenchmarkSource.java> < results.json > results.html",
-              file=sys.stderr)
-        sys.exit(1)
-    source_path = sys.argv[1]
-    method_sources = extract_methods(source_path)
+    import argparse
+    parser = argparse.ArgumentParser(description='Parse JMH JSON/text output into an interactive HTML table.')
+    parser.add_argument('source', help='Path to Java source file containing @Benchmark methods')
+    parser.add_argument('--skip', nargs='+', default=[], metavar='ALGO',
+                        help='Algorithm names to exclude (substring match, case-insensitive)')
+    args = parser.parse_args()
+
+    method_sources = extract_methods(args.source)
     if not method_sources:
-        print(f"No @Benchmark methods found in {source_path}", file=sys.stderr)
+        print(f"No @Benchmark methods found in {args.source}", file=sys.stderr)
         sys.exit(1)
 
     text = sys.stdin.read().strip()
@@ -724,5 +730,10 @@ if __name__ == '__main__':
         entries, config = parse_jmh_json(data)
     else:
         entries, config = parse_jmh_text(text)
+
+    if args.skip:
+        skip_lower = [s.lower() for s in args.skip]
+        entries = [e for e in entries
+                   if not any(sk in e['method'].lower() for sk in skip_lower)]
 
     print(build_html(entries, config, method_sources))

@@ -171,15 +171,18 @@ public class ScoreDocSortBenchmark {
         "jdkSortPrimitiveExtractAdaptive",
         reference,
         runJdkSortPrimitiveExtractAdaptive(Arrays.copyOf(template, size)));
-    verify(
-        "lsbRadixSortExtract", reference, runLsbRadixSortExtract(Arrays.copyOf(template, size)));
+    verify("lsbRadixSortExtract", reference, runLsbRadixSortExtract(Arrays.copyOf(template, size)));
     verify("radixSort2Pass", reference, runRadixSort2Pass(Arrays.copyOf(template, size)));
   }
 
   private void verify(String name, ScoreDoc[] reference, ScoreDoc[] result) {
     if (result.length != reference.length) {
       throw new IllegalStateException(
-          name + " failed: length mismatch. expected " + reference.length + " but got " + result.length);
+          name
+              + " failed: length mismatch. expected "
+              + reference.length
+              + " but got "
+              + result.length);
     }
     for (int i = 0; i < result.length; i++) {
       if (i > 0 && result[i].doc < result[i - 1].doc) {
@@ -212,7 +215,8 @@ public class ScoreDocSortBenchmark {
     for (ScoreDoc sd : result) {
       Integer c = counts.get(sd);
       if (c == null) {
-        throw new IllegalStateException(name + " failed: result contains unknown ScoreDoc instance");
+        throw new IllegalStateException(
+            name + " failed: result contains unknown ScoreDoc instance");
       }
       if (c == 1) {
         counts.remove(sd);
@@ -523,7 +527,7 @@ public class ScoreDocSortBenchmark {
     bh.consume(runLsbRadixSortExtract(work));
   }
 
-  // ---- 12. Extract doc IDs, manual 2-pass radix sort (16-bit) ----
+  // ---- 12. Extract doc IDs, manual 4-pass radix sort (8-bit) ----
 
   private ScoreDoc[] runRadixSort2Pass(ScoreDoc[] work) {
     int len = work.length;
@@ -535,37 +539,40 @@ public class ScoreDocSortBenchmark {
         packed[i] = (work[i].doc << indexBits) | i;
       }
 
-      // 2-pass 16-bit radix sort
-      int[] bucket = new int[65536];
+      int totalBits = docBits + indexBits;
+      int[] bucket = new int[256];
       int[] workArray = new int[len];
 
-      // pass 1: lower 16 bits
-      for (int i = 0; i < len; i++) {
-        bucket[packed[i] & 0xFFFF]++;
-      }
-      for (int i = 1; i < 65536; i++) {
-        bucket[i] += bucket[i - 1];
-      }
-      for (int i = len - 1; i >= 0; i--) {
-        workArray[--bucket[packed[i] & 0xFFFF]] = packed[i];
+      // up to 4 passes over 8-bit radix, skip unnecessary high passes
+      int passes = (totalBits + 7) >>> 3; // ceil(totalBits / 8)
+      for (int pass = 0; pass < passes; pass++) {
+        int shift = pass * 8;
+        int[] src = (pass % 2 == 0) ? packed : workArray;
+        int[] dst = (pass % 2 == 0) ? workArray : packed;
+
+        // histogram
+        for (int i = 0; i < len; i++) {
+          bucket[(src[i] >>> shift) & 0xFF]++;
+        }
+        // prefix sum
+        for (int i = 1; i < 256; i++) {
+          bucket[i] += bucket[i - 1];
+        }
+        // scatter
+        for (int i = len - 1; i >= 0; i--) {
+          dst[--bucket[(src[i] >>> shift) & 0xFF]] = src[i];
+        }
+
+        Arrays.fill(bucket, 0);
       }
 
-      // pass 2: upper 16 bits
-      Arrays.fill(bucket, 0);
-      for (int i = 0; i < len; i++) {
-        bucket[(workArray[i] >>> 16) & 0xFFFF]++;
-      }
-      for (int i = 1; i < 65536; i++) {
-        bucket[i] += bucket[i - 1];
-      }
-      for (int i = len - 1; i >= 0; i--) {
-        packed[--bucket[(workArray[i] >>> 16) & 0xFFFF]] = workArray[i];
-      }
+      // if odd number of passes, result is in workArray
+      int[] sorted_packed = (passes % 2 == 0) ? packed : workArray;
 
       int indexMask = (1 << indexBits) - 1;
       ScoreDoc[] sorted = new ScoreDoc[len];
       for (int i = 0; i < len; i++) {
-        sorted[i] = work[packed[i] & indexMask];
+        sorted[i] = work[sorted_packed[i] & indexMask];
       }
       return sorted;
     } else {
