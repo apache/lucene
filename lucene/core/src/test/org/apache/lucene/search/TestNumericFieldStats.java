@@ -25,6 +25,8 @@ import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.search.NumericFieldStats.Stats;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -215,30 +217,33 @@ public class TestNumericFieldStats extends LuceneTestCase {
   }
 
   public void testGetStatsMultipleSegments() throws IOException {
-    try (Directory dir = newDirectory();
-        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
-      final Document doc1 = new Document();
-      doc1.add(new LongField("field", 100L, Field.Store.NO));
-      w.addDocument(doc1);
-      w.commit();
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig config = newIndexWriterConfig();
+      config.setMergePolicy(NoMergePolicy.INSTANCE);
+      try (IndexWriter w = new IndexWriter(dir, config)) {
+        final Document doc1 = new Document();
+        doc1.add(new LongField("field", 100L, Field.Store.NO));
+        w.addDocument(doc1);
+        w.commit();
 
-      final Document doc2 = new Document();
-      doc2.add(new LongField("field", 50L, Field.Store.NO));
-      w.addDocument(doc2);
-      w.commit();
+        final Document doc2 = new Document();
+        doc2.add(new LongField("field", 50L, Field.Store.NO));
+        w.addDocument(doc2);
+        w.commit();
 
-      final Document doc3 = new Document();
-      doc3.add(new LongField("field", 200L, Field.Store.NO));
-      w.addDocument(doc3);
-      w.commit();
+        final Document doc3 = new Document();
+        doc3.add(new LongField("field", 200L, Field.Store.NO));
+        w.addDocument(doc3);
+        w.commit();
 
-      try (IndexReader reader = DirectoryReader.open(w)) {
-        assertTrue(reader.leaves().size() > 1);
-        final Stats stats = NumericFieldStats.getStats(reader, "field");
-        assertNotNull(stats);
-        assertEquals(50L, stats.min());
-        assertEquals(200L, stats.max());
-        assertEquals(3, stats.docCount());
+        try (IndexReader reader = DirectoryReader.open(w)) {
+          assertTrue(reader.leaves().size() > 1);
+          final Stats stats = NumericFieldStats.getStats(reader, "field");
+          assertNotNull(stats);
+          assertEquals(50L, stats.min());
+          assertEquals(200L, stats.max());
+          assertEquals(3, stats.docCount());
+        }
       }
     }
   }
