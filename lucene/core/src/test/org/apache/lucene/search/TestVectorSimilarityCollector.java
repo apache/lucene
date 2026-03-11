@@ -19,11 +19,21 @@ package org.apache.lucene.search;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestVectorSimilarityCollector extends LuceneTestCase {
+  public void testIllegalDecayFactor() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new VectorSimilarityCollector(0, Math.nextDown(0f), Integer.MAX_VALUE));
+
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new VectorSimilarityCollector(0, Math.nextUp(1f), Integer.MAX_VALUE));
+  }
+
   public void testResultCollection() {
     float resultSimilarity = 0.5f;
 
     VectorSimilarityCollector collector =
-        new VectorSimilarityCollector(resultSimilarity, Integer.MAX_VALUE);
+        new VectorSimilarityCollector(resultSimilarity, 1f, Integer.MAX_VALUE);
     int[] nodes = {1, 5, 10, 4, 8, 3, 2, 6, 7, 9};
     float[] scores = {0.1f, 0.2f, 0.3f, 0.5f, 0.2f, 0.6f, 0.9f, 0.3f, 0.7f, 0.8f};
 

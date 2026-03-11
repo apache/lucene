@@ -20,7 +20,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Perform a similarity-based graph search.
+ * Perform a similarity-based graph search to find all (approximate) vectors above a similarity
+ * threshold.
+ *
+ * <p>The buffer for graph traversal is adaptive: starts with a high value, and decays towards
+ * scores of nodes traversed but not collected, with a provided factor. The decay factor should lie
+ * in {@code [0, 1]}; with higher values producing better recall using more graph exploration.
  *
  * <p>Note: Some functions of this class deviate from {@link KnnCollector}, and should be used with
  * queries that are aware of the differences (like {@link ByteVectorSimilarityQuery} and {@link
@@ -36,24 +41,29 @@ import java.util.List;
  * @lucene.experimental
  */
 class VectorSimilarityCollector extends AbstractKnnCollector {
-  private final float resultSimilarity;
+  private final float resultSimilarity, decay;
   private final List<ScoreDoc> scoreDocList;
   private float minCompetitiveSimilarity;
 
   /**
-   * Perform a similarity-based graph search. The buffer for graph traversal is adaptive: starts
-   * with a high value, and exponentially decays towards scores of nodes traversed, but not
-   * collected during graph search.
+   * Perform a similarity-based graph search.
    *
    * @param resultSimilarity similarity score for result collection.
+   * @param decay decay factor for graph traversal buffer.
    * @param visitLimit limit on number of nodes to visit.
    */
-  public VectorSimilarityCollector(float resultSimilarity, long visitLimit) {
+  public VectorSimilarityCollector(float resultSimilarity, float decay, long visitLimit) {
     // TODO: add search strategy support
     super(1, visitLimit, AbstractVectorSimilarityQuery.DEFAULT_STRATEGY);
+
+    if (decay < 0 || decay > 1) {
+      throw new IllegalArgumentException("decay must lie in range [0,1]; got " + decay);
+    }
+
     this.resultSimilarity = resultSimilarity;
+    this.decay = decay;
     this.scoreDocList = new ArrayList<>();
-    this.minCompetitiveSimilarity = -Float.MAX_VALUE;
+    this.minCompetitiveSimilarity = Float.NEGATIVE_INFINITY;
   }
 
   @Override
@@ -63,7 +73,21 @@ class VectorSimilarityCollector extends AbstractKnnCollector {
       scoreDocList.add(new ScoreDoc(docId, similarity));
       return false;
     }
-    minCompetitiveSimilarity = (float) (((double) minCompetitiveSimilarity + similarity) / 2);
+
+    if (decay == 1) {
+      // maximum exploration
+      return false;
+
+    } else if (minCompetitiveSimilarity == Float.NEGATIVE_INFINITY) {
+      // start with a large buffer
+      minCompetitiveSimilarity = -Float.MAX_VALUE;
+
+    } else {
+      // decay buffer towards score of current node
+      minCompetitiveSimilarity =
+          (float) (similarity + ((double) minCompetitiveSimilarity - similarity) * decay);
+    }
+
     return true;
   }
 

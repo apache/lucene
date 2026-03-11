@@ -42,12 +42,28 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
    * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
    * @param target the target of the search.
    * @param resultSimilarity similarity score for result collection.
+   * @param decay decay factor for graph traversal buffer.
+   * @param filter a filter applied before the vector search.
+   */
+  public FloatVectorSimilarityQuery(
+      String field, float[] target, float resultSimilarity, float decay, Query filter) {
+    super(field, resultSimilarity, decay, filter);
+    this.target = VectorUtil.checkFinite(Objects.requireNonNull(target, "target"));
+  }
+
+  /**
+   * Search for all (approximate) float vectors above a similarity threshold using {@link
+   * VectorSimilarityCollector}. If a filter is applied, it traverses as many nodes as the cost of
+   * the filter, and then falls back to exact search if results are incomplete.
+   *
+   * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
+   * @param target the target of the search.
+   * @param resultSimilarity similarity score for result collection.
    * @param filter a filter applied before the vector search.
    */
   public FloatVectorSimilarityQuery(
       String field, float[] target, float resultSimilarity, Query filter) {
-    super(field, resultSimilarity, filter);
-    this.target = VectorUtil.checkFinite(Objects.requireNonNull(target, "target"));
+    this(field, target, resultSimilarity, DEFAULT_DECAY, filter);
   }
 
   /**
@@ -89,11 +105,12 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
   public String toString(String field) {
     return String.format(
         Locale.ROOT,
-        "%s[field=%s target=[%f...] resultSimilarity=%f filter=%s]",
+        "%s[field=%s target=[%f...] resultSimilarity=%f decay=%f filter=%s]",
         getClass().getSimpleName(),
         field,
         target[0],
         resultSimilarity,
+        decay,
         filter);
   }
 
