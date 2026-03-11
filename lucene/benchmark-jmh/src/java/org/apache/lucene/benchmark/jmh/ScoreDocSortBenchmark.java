@@ -18,6 +18,7 @@ package org.apache.lucene.benchmark.jmh;
 
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.SplittableRandom;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.search.ScoreDoc;
@@ -145,6 +146,83 @@ public class ScoreDocSortBenchmark {
         template[size - 1 - i] = tmp;
       }
     }
+
+    // verification - runs once up front per trial (per parameter set)
+    ScoreDoc[] reference = Arrays.copyOf(template, size);
+    Arrays.sort(reference, BY_DOC_ASC);
+
+    verify("jdkSortLambda", reference, runJdkSortLambda(Arrays.copyOf(template, size)));
+    verify("jdkSortComparator", reference, runJdkSortComparator(Arrays.copyOf(template, size)));
+    verify("arrayUtilIntroSort", reference, runArrayUtilIntroSort(Arrays.copyOf(template, size)));
+    verify("arrayUtilTimSort", reference, runArrayUtilTimSort(Arrays.copyOf(template, size)));
+    verify(
+        "introSorterAnonymous", reference, runIntroSorterAnonymous(Arrays.copyOf(template, size)));
+    verify("timSorterAnonymous", reference, runTimSorterAnonymous(Arrays.copyOf(template, size)));
+    verify(
+        "inPlaceMergeSorterAnonymous",
+        reference,
+        runInPlaceMergeSorterAnonymous(Arrays.copyOf(template, size)));
+    verify("jdkParallelSort", reference, runJdkParallelSort(Arrays.copyOf(template, size)));
+    verify(
+        "jdkSortPrimitiveExtractLong",
+        reference,
+        runJdkSortPrimitiveExtractLong(Arrays.copyOf(template, size)));
+    verify(
+        "jdkSortPrimitiveExtractAdaptive",
+        reference,
+        runJdkSortPrimitiveExtractAdaptive(Arrays.copyOf(template, size)));
+    verify(
+        "lsbRadixSortExtract", reference, runLsbRadixSortExtract(Arrays.copyOf(template, size)));
+    verify("radixSort2Pass", reference, runRadixSort2Pass(Arrays.copyOf(template, size)));
+  }
+
+  private void verify(String name, ScoreDoc[] reference, ScoreDoc[] result) {
+    if (result.length != reference.length) {
+      throw new IllegalStateException(
+          name + " failed: length mismatch. expected " + reference.length + " but got " + result.length);
+    }
+    for (int i = 0; i < result.length; i++) {
+      if (i > 0 && result[i].doc < result[i - 1].doc) {
+        throw new IllegalStateException(
+            name
+                + " failed: not sorted at index "
+                + i
+                + ". "
+                + result[i - 1].doc
+                + " > "
+                + result[i].doc);
+      }
+      // check if doc matches reference (handles duplicates correctly since both are doc-sorted)
+      if (result[i].doc != reference[i].doc) {
+        throw new IllegalStateException(
+            name
+                + " failed: doc mismatch at index "
+                + i
+                + ". expected "
+                + reference[i].doc
+                + " but got "
+                + result[i].doc);
+      }
+    }
+    // integrity check: ensure we didn't lose or duplicate objects
+    IdentityHashMap<ScoreDoc, Integer> counts = new IdentityHashMap<>();
+    for (ScoreDoc sd : template) {
+      counts.merge(sd, 1, Integer::sum);
+    }
+    for (ScoreDoc sd : result) {
+      Integer c = counts.get(sd);
+      if (c == null) {
+        throw new IllegalStateException(name + " failed: result contains unknown ScoreDoc instance");
+      }
+      if (c == 1) {
+        counts.remove(sd);
+      } else {
+        counts.put(sd, c - 1);
+      }
+    }
+    if (counts.isEmpty() == false) {
+      throw new IllegalStateException(name + " failed: result missing ScoreDoc instances");
+    }
   }
 
   /**
@@ -163,42 +241,57 @@ public class ScoreDocSortBenchmark {
 
   // ---- 1. JDK Arrays.sort with lambda ----
 
+  private ScoreDoc[] runJdkSortLambda(ScoreDoc[] work) {
+    Arrays.sort(work, (a, b) -> Integer.compare(a.doc, b.doc));
+    return work;
+  }
+
   @Benchmark
   public void jdkSortLambda(Blackhole bh) {
     // intentionally inline — tests whether JIT handles inline lambda differently than static
     // comparator
-    Arrays.sort(work, (a, b) -> Integer.compare(a.doc, b.doc));
-    bh.consume(work);
+    bh.consume(runJdkSortLambda(work));
   }
 
   // ---- 2. JDK Arrays.sort with static comparator ----
 
+  private ScoreDoc[] runJdkSortComparator(ScoreDoc[] work) {
+    Arrays.sort(work, BY_DOC_ASC);
+    return work;
+  }
+
   @Benchmark
   public void jdkSortComparator(Blackhole bh) {
-    Arrays.sort(work, BY_DOC_ASC);
-    bh.consume(work);
+    bh.consume(runJdkSortComparator(work));
   }
 
   // ---- 3. ArrayUtil.introSort (wraps ArrayIntroSorter) ----
 
+  private ScoreDoc[] runArrayUtilIntroSort(ScoreDoc[] work) {
+    ArrayUtil.introSort(work, BY_DOC_ASC);
+    return work;
+  }
+
   @Benchmark
   public void arrayUtilIntroSort(Blackhole bh) {
-    ArrayUtil.introSort(work, BY_DOC_ASC);
-    bh.consume(work);
+    bh.consume(runArrayUtilIntroSort(work));
   }
 
   // ---- 4. ArrayUtil.timSort (wraps ArrayTimSorter) ----
 
+  private ScoreDoc[] runArrayUtilTimSort(ScoreDoc[] work) {
+    ArrayUtil.timSort(work, BY_DOC_ASC);
+    return work;
+  }
+
   @Benchmark
   public void arrayUtilTimSort(Blackhole bh) {
-    ArrayUtil.timSort(work, BY_DOC_ASC);
-    bh.consume(work);
+    bh.consume(runArrayUtilTimSort(work));
   }
 
   // ---- 5. Anonymous IntroSorter ----
 
-  @Benchmark
-  public void introSorterAnonymous(Blackhole bh) {
+  private ScoreDoc[] runIntroSorterAnonymous(ScoreDoc[] work) {
     final ScoreDoc[] arr = work;
     new IntroSorter() {
       ScoreDoc pivot;
@@ -225,13 +318,17 @@ public class ScoreDocSortBenchmark {
         return Integer.compare(arr[i].doc, arr[j].doc);
       }
     }.sort(0, arr.length);
-    bh.consume(work);
+    return arr;
+  }
+
+  @Benchmark
+  public void introSorterAnonymous(Blackhole bh) {
+    bh.consume(runIntroSorterAnonymous(work));
   }
 
   // ---- 6. Anonymous TimSorter ----
 
-  @Benchmark
-  public void timSorterAnonymous(Blackhole bh) {
+  private ScoreDoc[] runTimSorterAnonymous(ScoreDoc[] work) {
     final ScoreDoc[] arr = work;
     final int len = arr.length;
     new TimSorter(len / 2) {
@@ -269,13 +366,17 @@ public class ScoreDocSortBenchmark {
         return Integer.compare(tmp[i].doc, arr[j].doc);
       }
     }.sort(0, len);
-    bh.consume(work);
+    return arr;
+  }
+
+  @Benchmark
+  public void timSorterAnonymous(Blackhole bh) {
+    bh.consume(runTimSorterAnonymous(work));
   }
 
   // ---- 7. Anonymous InPlaceMergeSorter ----
 
-  @Benchmark
-  public void inPlaceMergeSorterAnonymous(Blackhole bh) {
+  private ScoreDoc[] runInPlaceMergeSorterAnonymous(ScoreDoc[] work) {
     final ScoreDoc[] arr = work;
     new InPlaceMergeSorter() {
       @Override
@@ -290,21 +391,29 @@ public class ScoreDocSortBenchmark {
         return Integer.compare(arr[i].doc, arr[j].doc);
       }
     }.sort(0, arr.length);
-    bh.consume(work);
+    return arr;
+  }
+
+  @Benchmark
+  public void inPlaceMergeSorterAnonymous(Blackhole bh) {
+    bh.consume(runInPlaceMergeSorterAnonymous(work));
   }
 
   // ---- 8. JDK Arrays.parallelSort with static comparator ----
 
+  private ScoreDoc[] runJdkParallelSort(ScoreDoc[] work) {
+    Arrays.parallelSort(work, BY_DOC_ASC);
+    return work;
+  }
+
   @Benchmark
   public void jdkParallelSort(Blackhole bh) {
-    Arrays.parallelSort(work, BY_DOC_ASC);
-    bh.consume(work);
+    bh.consume(runJdkParallelSort(work));
   }
 
   // ---- 9. Extract doc IDs, sort with JDK Arrays.sort (primitive long[]), reorder ----
 
-  @Benchmark
-  public void jdkSortPrimitiveExtractLong(Blackhole bh) {
+  private ScoreDoc[] runJdkSortPrimitiveExtractLong(ScoreDoc[] work) {
     int len = work.length;
     // pack (doc, originalIndex) into a long: doc in upper 32, index in lower 32
     long[] packed = new long[len];
@@ -316,7 +425,12 @@ public class ScoreDocSortBenchmark {
     for (int i = 0; i < len; i++) {
       sorted[i] = work[(int) packed[i]];
     }
-    bh.consume(sorted);
+    return sorted;
+  }
+
+  @Benchmark
+  public void jdkSortPrimitiveExtractLong(Blackhole bh) {
+    bh.consume(runJdkSortPrimitiveExtractLong(work));
   }
 
   // ---- 10. Extract doc IDs, sort with int[] when bits fit, else long[] ----
@@ -326,16 +440,7 @@ public class ScoreDocSortBenchmark {
     return 32 - Integer.numberOfLeadingZeros(max - 1);
   }
 
-  @Benchmark
-  public void jdkSortPrimitiveExtractAdaptive(Blackhole bh) {
-    /**
-     * Documentation of int vs long paths given MAX_DOC = 5,000,000:
-     *
-     * <ul>
-     *   <li>sizes 10, 50, 100, 500 take the int[] path (23 + 9 <= 32 bits)
-     *   <li>sizes 1,000, 10,000 take the long[] path (23 + 10 > 32 bits)
-     * </ul>
-     */
+  private ScoreDoc[] runJdkSortPrimitiveExtractAdaptive(ScoreDoc[] work) {
     int len = work.length;
     int docBits = bitsNeeded(MAX_DOC);
     int indexBits = bitsNeeded(len);
@@ -351,7 +456,7 @@ public class ScoreDocSortBenchmark {
       for (int i = 0; i < len; i++) {
         sorted[i] = work[packed[i] & indexMask];
       }
-      bh.consume(sorted);
+      return sorted;
     } else {
       // fall back to long[]
       long[] packed = new long[len];
@@ -363,14 +468,26 @@ public class ScoreDocSortBenchmark {
       for (int i = 0; i < len; i++) {
         sorted[i] = work[(int) packed[i]];
       }
-      bh.consume(sorted);
+      return sorted;
     }
+  }
+
+  @Benchmark
+  public void jdkSortPrimitiveExtractAdaptive(Blackhole bh) {
+    /**
+     * Documentation of int vs long paths given MAX_DOC = 5,000,000:
+     *
+     * <ul>
+     *   <li>sizes 10, 50, 100, 500 take the int[] path (23 + 9 <= 32 bits)
+     *   <li>sizes 1,000, 10,000 take the long[] path (23 + 10 > 32 bits)
+     * </ul>
+     */
+    bh.consume(runJdkSortPrimitiveExtractAdaptive(work));
   }
 
   // ---- 11. Extract doc IDs, sort with LSBRadixSorter when bits fit, else JDK long[] ----
 
-  @Benchmark
-  public void lsbRadixSortExtract(Blackhole bh) {
+  private ScoreDoc[] runLsbRadixSortExtract(ScoreDoc[] work) {
     int len = work.length;
     int docBits = bitsNeeded(MAX_DOC);
     int indexBits = bitsNeeded(len);
@@ -385,7 +502,7 @@ public class ScoreDocSortBenchmark {
       for (int i = 0; i < len; i++) {
         sorted[i] = work[packed[i] & indexMask];
       }
-      bh.consume(sorted);
+      return sorted;
     } else {
       // fallback to long[] + Arrays.sort
       long[] packed = new long[len];
@@ -397,14 +514,18 @@ public class ScoreDocSortBenchmark {
       for (int i = 0; i < len; i++) {
         sorted[i] = work[(int) packed[i]];
       }
-      bh.consume(sorted);
+      return sorted;
     }
+  }
+
+  @Benchmark
+  public void lsbRadixSortExtract(Blackhole bh) {
+    bh.consume(runLsbRadixSortExtract(work));
   }
 
   // ---- 12. Extract doc IDs, manual 2-pass radix sort (16-bit) ----
 
-  @Benchmark
-  public void radixSort2Pass(Blackhole bh) {
+  private ScoreDoc[] runRadixSort2Pass(ScoreDoc[] work) {
     int len = work.length;
     int docBits = bitsNeeded(MAX_DOC);
     int indexBits = bitsNeeded(len);
@@ -418,7 +539,7 @@ public class ScoreDocSortBenchmark {
       int[] bucket = new int[65536];
       int[] workArray = new int[len];
 
-      // Pass 1: lower 16 bits
+      // pass 1: lower 16 bits
       for (int i = 0; i < len; i++) {
         bucket[packed[i] & 0xFFFF]++;
       }
@@ -429,7 +550,7 @@ public class ScoreDocSortBenchmark {
         workArray[--bucket[packed[i] & 0xFFFF]] = packed[i];
       }
 
-      // Pass 2: upper 16 bits
+      // pass 2: upper 16 bits
       Arrays.fill(bucket, 0);
       for (int i = 0; i < len; i++) {
         bucket[(workArray[i] >>> 16) & 0xFFFF]++;
@@ -446,7 +567,7 @@ public class ScoreDocSortBenchmark {
       for (int i = 0; i < len; i++) {
         sorted[i] = work[packed[i] & indexMask];
       }
-      bh.consume(sorted);
+      return sorted;
     } else {
       // long fallback
       long[] packed = new long[len];
@@ -458,7 +579,12 @@ public class ScoreDocSortBenchmark {
       for (int i = 0; i < len; i++) {
         sorted[i] = work[(int) packed[i]];
       }
-      bh.consume(sorted);
+      return sorted;
     }
+  }
+
+  @Benchmark
+  public void radixSort2Pass(Blackhole bh) {
+    bh.consume(runRadixSort2Pass(work));
   }
 }
