@@ -79,6 +79,8 @@ def parse_jmh_json(data):
         if i == 0:
             mode_map = {'avgt': 'Average Time', 'thrpt': 'Throughput',
                         'sample': 'Sampling', 'ss': 'Single Shot'}
+            # split jvmArgs into harness args (module-path, module-main)
+            # vs benchmark args (user/annotation provided like -Xmx, -XX:)
             all_jvm_args = result.get('jvmArgs', [])
             harness_prefixes = ('--module-path', '-Djdk.module.main', '-Djmh.')
             harness_args = [a for a in all_jvm_args
@@ -397,7 +399,6 @@ def build_html(entries, config, method_sources):
         out.append(f'<th data-col="{i+1}">size={h(s)}<br><small>{h(unit)}</small></th>')
     out.append('</tr></thead><tbody>')
 
-    default_dist = 'random' if 'random' in dists else dists[0]
     for method in methods:
         out.append('<tr>')
         out.append(f'<td>{h(method)}</td>')
@@ -556,29 +557,6 @@ if (location.hash.length > 1) {
   updateTable();
 }
 
-// Histogram drawing logic (similar to previous version but uses dist/method/size)
-function drawHistogram(dist, method, size, samples) {
-  const panel = document.getElementById('hist-panel');
-  const n = samples.length;
-  const du = pickDisplayUnit(samples);
-  const vals = samples.map(v => v * du.scale);
-  const displayUnit = du.label;
-  const sorted = [...vals].sort((a, b) => a - b);
-  const mean = vals.reduce((a, b) => a + b, 0) / n;
-  const min = sorted[0], max = sorted[n - 1];
-  const statPrec = smartPrecision(max - min, 20);
-
-  panel.innerHTML = `
-    <h3>${method} &mdash; size=${size} (${dist})</h3>
-    <div class="stats">
-      ${n} samples &nbsp;|&nbsp; mean: ${mean.toFixed(statPrec)} ${displayUnit} &nbsp;|&nbsp; 
-      range: [${min.toFixed(statPrec)}, ${max.toFixed(statPrec)}]
-    </div>
-    <canvas id="hist-canvas" width="700" height="300"></canvas>
-  `;
-  // ... (rest of drawHistogram canvas logic omitted for brevity, keeping same implementation)
-}
-""")
 // Pick the best display unit and scale factor.
 function pickDisplayUnit(values) {
   const mean = values.reduce((a, b) => a + b, 0) / values.length;
@@ -607,9 +585,8 @@ function fmtVal(v, prec) {
   return v.toFixed(prec);
 }
 
-function drawHistogram(key, samples) {
+function drawHistogram(dist, method, size, samples) {
   const panel = document.getElementById('hist-panel');
-  const [method, param] = key.split('|');
   const n = samples.length;
 
   const du = pickDisplayUnit(samples);
@@ -642,7 +619,7 @@ function drawHistogram(key, samples) {
   const ch = H - pad.top - pad.bottom;
 
   panel.innerHTML = `
-    <h3>${method} &mdash; size=${param}</h3>
+    <h3>${method} &mdash; size=${size} (${dist})</h3>
     <div class="stats">
       ${n} samples &nbsp;|&nbsp;
       mean: ${fmtVal(mean, statPrec)} ${displayUnit} &nbsp;|&nbsp;
