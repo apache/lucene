@@ -50,6 +50,14 @@ public abstract class KnnVectorValues {
   }
 
   /**
+   * Prefetches the provided ordinals
+   *
+   * @param ordsToPrefetch a list of ordinals to prefetch
+   * @param numOrds number of ords to prefetch from ordsToPrefetch array
+   */
+  public void prefetch(final int[] ordsToPrefetch, int numOrds) throws IOException {}
+
+  /**
    * Creates a new copy of this {@link KnnVectorValues}. This is helpful when you need to access
    * different values at once, to avoid overwriting the underlying vector returned.
    */
