@@ -11,7 +11,7 @@ commons-compress = "1.28.0"
 # See ecj-lint.gradle (used for more linting).
 ecj = "3.44.0"
 # java linting
-errorprone = "2.47.0"
+errorprone = "2.48.0"
 # markdown documentation generation
 flexmark = "0.64.8"
 # @keep This is GJF version for java source code formatting
@@ -98,11 +98,11 @@ zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
 [plugins]
 benmanes-versions = "com.github.ben-manes.versions:0.53.0"
 carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.0"
-carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.2.0"
-errorprone = "net.ltgt.errorprone:5.0.0"
+carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.2.1"
+errorprone = "net.ltgt.errorprone:5.1.0"
 forbiddenapis = "de.thetaphi.forbiddenapis:3.10"
 jacocolog = "org.barfuin.gradle.jacocolog:4.0.1"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
-spotless = "com.diffplug.spotless:8.2.1"
+spotless = "com.diffplug.spotless:8.3.0"
 undercouch-download = "de.undercouch.download:5.7.0"
 versionCatalogUpdate = "nl.littlerobots.version-catalog-update:1.1.0"
