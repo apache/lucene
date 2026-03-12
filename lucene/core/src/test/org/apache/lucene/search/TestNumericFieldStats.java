@@ -31,7 +31,6 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.search.NumericFieldStats.Stats;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
 
 public class TestNumericFieldStats extends LuceneTestCase {
