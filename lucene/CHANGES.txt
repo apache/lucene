@@ -25,6 +25,9 @@ New Features
   to use this API, fixing the rewrite optimization for fields with PointValues but no skip index.
   (Salvatore Campagna)
 
+* GITHUB#15722: Add interface to do prefetch on KnnVectorValues and an example implementation to use prefetch
+  in Scorer (Navneet Verma)
+
 Improvements
 ---------------------
 * GITHUB#15757: Better skipper-based numeric sort pruning from the start of segments (Alan Woodward)
