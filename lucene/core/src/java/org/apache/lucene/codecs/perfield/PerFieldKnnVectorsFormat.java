@@ -41,6 +41,7 @@ import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.internal.hppc.ObjectCursor;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
@@ -113,7 +114,6 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
       KnnVectorsWriter writer = getInstance(fieldInfo);
-      assert writer == getInstance(fieldInfo) : "Expected same instance for writer";
       return writer.addField(fieldInfo);
     }
 
@@ -125,17 +125,8 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void mergeFlatVectors(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-      KnnVectorsWriter writer = getInstance(fieldInfo);
-      assert writer == getInstance(fieldInfo) : "Expected same instance for writer";
-      writer.mergeFlatVectors(fieldInfo, mergeState);
-    }
-
-    @Override
-    public void mergeVectorIndex(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-      KnnVectorsWriter writer = getInstance(fieldInfo);
-      assert writer == getInstance(fieldInfo) : "Expected same instance for writer";
-      writer.mergeVectorIndex(fieldInfo, mergeState);
+    public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+      return getInstance(fieldInfo).mergeOneField(fieldInfo, mergeState);
     }
 
     @Override

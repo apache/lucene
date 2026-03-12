@@ -45,6 +45,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -385,7 +386,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void mergeFlatVectors(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+  public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     // we are merging the flat vectors and constructing the index in this method.
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     IndexOutput tempVectorData =
@@ -485,10 +486,8 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
             segmentWriteState.directory, tempVectorData.getName());
       }
     }
+    return null;
   }
-
-  @Override
-  public void mergeVectorIndex(FieldInfo fieldInfo, MergeState mergeState) throws IOException {}
 
   private void writeGraph(OnHeapHnswGraph graph) throws IOException {
     if (graph == null) return;

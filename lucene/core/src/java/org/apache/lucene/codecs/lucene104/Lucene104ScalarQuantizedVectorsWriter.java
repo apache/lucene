@@ -319,17 +319,16 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   @Override
-  public void mergeFlatVectors(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+  public void mergeOneFlatVectorField(FieldInfo fieldInfo, MergeState mergeState)
+      throws IOException {
+    // Don't need access to the random vectors, we can just use the merged
+    rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, mergeState);
     if (!fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
-      rawVectorDelegate.mergeFlatVectors(fieldInfo, mergeState);
       return;
     }
-
     final float[] centroid;
     final float[] mergedCentroid = new float[fieldInfo.getVectorDimension()];
     int vectorCount = mergeAndRecalculateCentroids(mergeState, fieldInfo, mergedCentroid);
-    // Don't need access to the random vectors, we can just use the merged
-    rawVectorDelegate.mergeFlatVectors(fieldInfo, mergeState);
     centroid = mergedCentroid;
     if (segmentWriteState.infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
       segmentWriteState.infoStream.message(

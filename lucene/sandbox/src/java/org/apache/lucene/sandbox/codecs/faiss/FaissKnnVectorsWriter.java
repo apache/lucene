@@ -39,6 +39,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.IntToIntFunction;
 
@@ -96,12 +97,8 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void mergeFlatVectors(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    rawVectorsWriter.mergeFlatVectors(fieldInfo, mergeState);
-  }
-
-  @Override
-  public void mergeVectorIndex(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+  public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    rawVectorsWriter.mergeOneFlatVectorField(fieldInfo, mergeState);
     switch (fieldInfo.getVectorEncoding()) {
       case BYTE ->
           // TODO: Support using SQ8 quantization, see:
@@ -113,6 +110,7 @@ final class FaissKnnVectorsWriter extends KnnVectorsWriter {
         writeFloatField(fieldInfo, merged, doc -> doc);
       }
     }
+    return null;
   }
 
   @Override

@@ -300,9 +300,10 @@ class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   }
 
   @Override
-  public void mergeFlatVectors(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+  public void mergeOneFlatVectorField(FieldInfo fieldInfo, MergeState mergeState)
+      throws IOException {
     // Don't need access to the random vectors, we can just use the merged
-    rawVectorDelegate.mergeFlatVectors(fieldInfo, mergeState);
+    rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, mergeState);
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
       final float[] centroid;
       final float[] mergedCentroid = new float[fieldInfo.getVectorDimension()];

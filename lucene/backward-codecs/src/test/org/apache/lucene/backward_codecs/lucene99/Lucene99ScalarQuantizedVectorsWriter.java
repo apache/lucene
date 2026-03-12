@@ -218,8 +218,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   }
 
   @Override
-  public void mergeFlatVectors(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    rawVectorDelegate.mergeFlatVectors(fieldInfo, mergeState);
+  public void mergeOneFlatVectorField(FieldInfo fieldInfo, MergeState mergeState)
+      throws IOException {
+    rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, mergeState);
     // Since we know we will not be searching for additional indexing, we can just write the
     // vectors directly to the new segment.
     // No need to use temporary file as we don't have to re-open for reading

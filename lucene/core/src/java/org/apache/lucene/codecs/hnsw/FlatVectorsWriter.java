@@ -21,6 +21,7 @@ import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
+import org.apache.lucene.util.IORunnable;
 
 /**
  * Vectors' writer for a field that allows additional indexing logic to be implemented by the caller
@@ -54,7 +55,12 @@ public abstract class FlatVectorsWriter extends KnnVectorsWriter {
   public abstract FlatFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException;
 
   @Override
-  public final void mergeVectorIndex(FieldInfo fieldInfo, MergeState mergeState) {
-    // no-op
+  public final IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState)
+      throws IOException {
+    mergeOneFlatVectorField(fieldInfo, mergeState);
+    return null;
   }
+
+  public abstract void mergeOneFlatVectorField(FieldInfo fieldInfo, MergeState mergeState)
+      throws IOException;
 }
