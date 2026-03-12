@@ -413,7 +413,6 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
 
   @Override
   public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    // we are merging the flat vectors and constructing the index in this method.
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(

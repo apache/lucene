@@ -52,11 +52,9 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     IndexWriterConfig iwConfig = newIndexWriterConfig(analyzer);
     iwConfig.setCodec(
         new AssertingCodec() {
-          KnnVectorsFormat knnVectorsFormat = TestUtil.getDefaultKnnVectorsFormat();
-
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return knnVectorsFormat;
+            return TestUtil.getDefaultKnnVectorsFormat();
           }
         });
     iwConfig.setMergePolicy(newLogMergePolicy());
