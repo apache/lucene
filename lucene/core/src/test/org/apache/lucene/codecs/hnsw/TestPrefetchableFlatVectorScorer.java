@@ -55,7 +55,8 @@ public class TestPrefetchableFlatVectorScorer extends LuceneTestCase {
             "getReturnType() difference",
             superClassMethod.getReturnType(),
             subClassMethod.getReturnType());
-      } catch (NoSuchMethodException _) {
+      } catch (NoSuchMethodException ignored) {
+        assertNotNull(ignored); // useless dereference to satisfy ecjLintTest
         fail(implClass + " needs to override '" + superClassMethod + "'");
       }
     }
