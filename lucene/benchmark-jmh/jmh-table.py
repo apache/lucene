@@ -58,6 +58,7 @@ def parse_jmh_json(data):
     """Parse JMH JSON output. Returns (entries, config_dict)."""
     entries = []
     config = {}
+    total_sec = 0
     for i, result in enumerate(data):
         bench = result['benchmark'].rsplit('.', 1)[-1]
         params = result.get('params', {})
@@ -77,6 +78,26 @@ def parse_jmh_json(data):
             'unit': pm['scoreUnit'],
             'raw': raw,
         })
+        
+        # Estimate total time for this benchmark
+        forks = result.get('forks', 0)
+        wi = result.get('warmupIterations', 0)
+        wt = result.get('warmupTime', '0 s')
+        mi = result.get('measurementIterations', 0)
+        mt = result.get('measurementTime', '0 s')
+        
+        def to_sec(t_str):
+            try:
+                val, unit = t_str.split()
+                val = float(val)
+                if unit == 'ms': return val / 1000
+                if unit == 's': return val
+                if unit == 'min': return val * 60
+                return 0
+            except: return 0
+            
+        total_sec += forks * (wi * to_sec(wt) + mi * to_sec(mt))
+
         if i == 0:
             mode_map = {'avgt': 'Average Time', 'thrpt': 'Throughput',
                         'sample': 'Sampling', 'ss': 'Single Shot'}
@@ -104,6 +125,15 @@ def parse_jmh_json(data):
                 'vmVersion': result.get('vmVersion', ''),
                 'jmhVersion': result.get('jmhVersion', ''),
             }
+            
+    if config:
+        if total_sec > 3600:
+            config['totalTime'] = f"{total_sec/3600:.1f} hours"
+        elif total_sec > 60:
+            config['totalTime'] = f"{total_sec/60:.1f} mins"
+        else:
+            config['totalTime'] = f"{total_sec:.1f} s"
+
     return entries, config
 
 
@@ -366,6 +396,8 @@ def build_html(entries, config, method_sources):
             ('Warmup', f"{config.get('warmupIterations','?')} iter \u00d7 {config.get('warmupTime','?')}"),
             ('Measurement', f"{config.get('measurementIterations','?')} iter \u00d7 {config.get('measurementTime','?')}"),
         ]
+        if config.get('totalTime'):
+            items.append(('Total time (approx)', config.get('totalTime')))
         jvm_desc = ' '.join(s for s in [config.get('vmName', ''), config.get('vmVersion', '')] if s)
         if config.get('jdkVersion'): jvm_desc = f"JDK {config.get('jdkVersion')}, {jvm_desc}"
         if jvm_desc: items.append(('JVM', jvm_desc))
