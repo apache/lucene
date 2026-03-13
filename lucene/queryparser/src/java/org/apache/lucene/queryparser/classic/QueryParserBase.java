@@ -386,6 +386,7 @@ public abstract class QueryParserBase extends QueryBuilder
    *
    * @param k3 the k3 saturation parameter, or a negative value to disable saturation
    */
+  @Override
   public void setK3(float k3) {
     this.k3 = k3;
   }
@@ -396,6 +397,7 @@ public abstract class QueryParserBase extends QueryBuilder
    *
    * @see #setK3(float)
    */
+  @Override
   public float getK3() {
     return k3;
   }
