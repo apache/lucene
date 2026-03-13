@@ -29,15 +29,19 @@ import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.Bits;
 
 /**
- * Search for all (approximate) vectors above a similarity threshold.
+ * Search for all (approximate) vectors above a similarity threshold using {@link
+ * VectorSimilarityCollector}.
  *
  * @lucene.experimental
  */
 abstract class AbstractVectorSimilarityQuery extends Query {
   // TODO, switch to optionally use the new strategy
   static final KnnSearchStrategy.Hnsw DEFAULT_STRATEGY = new KnnSearchStrategy.Hnsw(0);
+  static final float DEFAULT_DECAY = 0.5f;
+
   protected final String field;
-  protected final float traversalSimilarity, resultSimilarity;
+  protected final float resultSimilarity;
+  protected final float decay;
   protected final Query filter;
 
   /**
@@ -46,24 +50,19 @@ abstract class AbstractVectorSimilarityQuery extends Query {
    * the filter, and then falls back to exact search if results are incomplete.
    *
    * @param field a field that has been indexed as a vector field.
-   * @param traversalSimilarity (lower) similarity score for graph traversal.
-   * @param resultSimilarity (higher) similarity score for result collection.
+   * @param resultSimilarity similarity score for result collection.
+   * @param decay decay factor for graph traversal buffer.
    * @param filter a filter applied before the vector search.
    */
-  AbstractVectorSimilarityQuery(
-      String field, float traversalSimilarity, float resultSimilarity, Query filter) {
-    if (traversalSimilarity > resultSimilarity) {
-      throw new IllegalArgumentException("traversalSimilarity should be <= resultSimilarity");
-    }
+  AbstractVectorSimilarityQuery(String field, float resultSimilarity, float decay, Query filter) {
     this.field = Objects.requireNonNull(field, "field");
-    this.traversalSimilarity = traversalSimilarity;
     this.resultSimilarity = resultSimilarity;
+    this.decay = decay;
     this.filter = filter;
   }
 
   protected KnnCollectorManager getKnnCollectorManager() {
-    return (visitLimit, _, _) ->
-        new VectorSimilarityCollector(traversalSimilarity, resultSimilarity, visitLimit);
+    return (visitLimit, _, _) -> new VectorSimilarityCollector(resultSimilarity, decay, visitLimit);
   }
 
   abstract VectorScorer createVectorScorer(LeafReaderContext context) throws IOException;
@@ -185,17 +184,15 @@ abstract class AbstractVectorSimilarityQuery extends Query {
   public boolean equals(Object o) {
     return sameClassAs(o)
         && Objects.equals(field, ((AbstractVectorSimilarityQuery) o).field)
-        && Float.compare(
-                ((AbstractVectorSimilarityQuery) o).traversalSimilarity, traversalSimilarity)
-            == 0
         && Float.compare(((AbstractVectorSimilarityQuery) o).resultSimilarity, resultSimilarity)
             == 0
+        && Float.compare(((AbstractVectorSimilarityQuery) o).decay, decay) == 0
         && Objects.equals(filter, ((AbstractVectorSimilarityQuery) o).filter);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(field, traversalSimilarity, resultSimilarity, filter);
+    return Objects.hash(field, resultSimilarity, decay, filter);
   }
 
   private static class VectorSimilarityScorerSupplier extends ScorerSupplier {

@@ -231,6 +231,13 @@ Improvements
 
 * GITHUB#15753: Add Case Insensitive makeChar and makeString to Automata. (John Wagster)
 
+* GITHUB#15784: Adaptive HNSW graph traversal in [Byte|Float]VectorSimilarityQuery. The buffer for graph traversal
+  (i.e. `resultSimilarity` - `minCompetitiveSimilarity`) is now adaptive: starts with a high value, and decays towards
+  scores of nodes traversed but not collected (i.e. with score < `resultSimilarity`), with a provided factor. The decay
+  factor should lie in [0, 1]; with higher values producing better recall using more graph exploration. Earlier, this
+  buffer was controlled by an explicit parameter (set as `resultSimilarity` - `traversalSimilarity`), which is now
+  deprecated. (Kaival Parikh)
+
 Optimizations
 ---------------------
 * GITHUB#15637: Lazily allocate ByteArrayDataInputs in SegmentTermsEnumFrame#15637 (Misha Dmitriev)
