@@ -41,9 +41,9 @@ public class TestVectorSimilarityCollector extends LuceneTestCase {
       resultScores[i] = scoreDocs[i].score;
     }
 
-    // All nodes above resultSimilarity appear in order of collection
-    assertArrayEquals(new int[] {4, 3, 2, 7, 9}, resultNodes);
-    assertArrayEquals(new float[] {0.5f, 0.6f, 0.9f, 0.7f, 0.8f}, resultScores, 1e-3f);
+    // All nodes above resultSimilarity appear in order of increasing doc id
+    assertArrayEquals(new int[] {2, 3, 4, 7, 9}, resultNodes);
+    assertArrayEquals(new float[] {0.9f, 0.6f, 0.5f, 0.7f, 0.8f}, resultScores, 1e-3f);
 
     // Min competitive similarity is minimum of traversalSimilarity or best result encountered
     assertArrayEquals(

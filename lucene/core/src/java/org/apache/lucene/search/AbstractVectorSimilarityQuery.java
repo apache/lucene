@@ -17,16 +17,21 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.IOSupplier;
 
 /**
  * Search for all (approximate) vectors above a similarity threshold.
@@ -78,93 +83,146 @@ abstract class AbstractVectorSimilarityQuery extends Query {
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
+
+    final Weight filterWeight;
+    if (filter != null) {
+      Query rewrittenFilter = filter.rewrite(searcher);
+      if (rewrittenFilter instanceof MatchAllDocsQuery) {
+        // same as no filter
+        filterWeight = null;
+      } else {
+        final Query filterQuery =
+            new BooleanQuery.Builder()
+                .add(rewrittenFilter, BooleanClause.Occur.FILTER)
+                .add(new FieldExistsQuery(field), BooleanClause.Occur.FILTER)
+                .build()
+                .rewrite(searcher);
+        filterWeight = searcher.createWeight(filterQuery, ScoreMode.COMPLETE_NO_SCORES, 1f);
+      }
+    } else {
+      filterWeight = null;
+    }
+
+    final QueryTimeout queryTimeout = searcher.getTimeout();
+    final TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager =
+        new TimeLimitingKnnCollectorManager(getKnnCollectorManager(), queryTimeout);
+
+    final List<LeafReaderContext> contexts = searcher.getLeafContexts();
+    final IntObjectHashMap<AcceptDocs> acceptDocsList = new IntObjectHashMap<>(contexts.size());
+    final List<Callable<TopDocs>> tasks = new ArrayList<>(contexts.size());
+    for (LeafReaderContext context : contexts) {
+      @SuppressWarnings("resource")
+      final LeafReader leafReader = context.reader();
+      final Bits liveDocs = leafReader.getLiveDocs();
+      final int maxDoc = leafReader.maxDoc();
+
+      final AcceptDocs acceptDocs;
+      final int visitLimit;
+      if (filterWeight == null) {
+        acceptDocs = AcceptDocs.fromLiveDocs(liveDocs, maxDoc);
+        visitLimit = Integer.MAX_VALUE;
+      } else {
+        final IOSupplier<DocIdSetIterator> filteredDocs =
+            () -> {
+              final Scorer filterScorer = filterWeight.scorer(context);
+              if (filterScorer == null) {
+                return DocIdSetIterator.empty();
+              }
+              return filterScorer.iterator();
+            };
+        acceptDocs = AcceptDocs.fromIteratorSupplier(filteredDocs, liveDocs, maxDoc);
+        visitLimit = acceptDocs.cost();
+      }
+      acceptDocsList.put(context.ord, acceptDocs);
+
+      if (visitLimit == 0) {
+        // If there are no live matching docs
+        tasks.add(() -> TopDocsCollector.EMPTY_TOPDOCS);
+      } else {
+        // Perform an approximate search
+        tasks.add(
+            () ->
+                approximateSearch(
+                    context, acceptDocs, visitLimit, timeLimitingKnnCollectorManager));
+      }
+    }
+    final List<TopDocs> completed = searcher.getTaskExecutor().invokeAll(tasks);
+    final IntObjectHashMap<TopDocs> results = new IntObjectHashMap<>(contexts.size());
+    for (int i = 0; i < contexts.size(); i++) {
+      results.put(contexts.get(i).ord, completed.get(i));
+    }
+
     return new Weight(this) {
-      final Weight filterWeight =
-          filter == null
-              ? null
-              : searcher.createWeight(searcher.rewrite(filter), ScoreMode.COMPLETE_NO_SCORES, 1);
-
-      final QueryTimeout queryTimeout = searcher.getTimeout();
-      final TimeLimitingKnnCollectorManager timeLimitingKnnCollectorManager =
-          new TimeLimitingKnnCollectorManager(getKnnCollectorManager(), queryTimeout);
-
       @Override
       public Explanation explain(LeafReaderContext context, int doc) throws IOException {
-        if (filterWeight != null) {
-          Scorer filterScorer = filterWeight.scorer(context);
-          if (filterScorer == null || filterScorer.iterator().advance(doc) > doc) {
-            return Explanation.noMatch("Doc does not match the filter");
+        Scorer scorer = scorer(context);
+        if (scorer != null && scorer.iterator().advance(doc) == doc) {
+          float score = scorer.score();
+          if (scorer instanceof CachedScorer) {
+            return Explanation.match(
+                scorer.score(),
+                String.format(
+                    Locale.ROOT, "Doc found from approximate search with score=%f", score));
+          } else if (scorer instanceof ExactScorer) {
+            return Explanation.match(
+                scorer.score(),
+                String.format(
+                    Locale.ROOT,
+                    "Doc found from exact search with score=%f, after approximate search fallback",
+                    score));
           }
         }
 
-        VectorScorer scorer = createVectorScorer(context);
-        if (scorer == null) {
-          return Explanation.noMatch("Not indexed as the correct vector field");
+        if (filterWeight != null) {
+          Explanation filterExplanation = filterWeight.explain(context, doc);
+          if (filterExplanation.isMatch() == false) {
+            return Explanation.noMatch(
+                String.format(Locale.ROOT, "Doc did not match filter=%s", filter),
+                filterExplanation);
+          }
         }
-        DocIdSetIterator iterator = scorer.iterator();
-        int docId = iterator.advance(doc);
-        if (docId == doc) {
-          float score = scorer.score();
+
+        VectorScorer vectorScorer = createVectorScorer(context);
+        if (vectorScorer == null) {
+          return Explanation.noMatch(
+              String.format(
+                  Locale.ROOT, "field=%s not indexed with the correct vector type", field));
+        } else if (vectorScorer.iterator().advance(doc) == doc) {
+          float score = vectorScorer.score();
           if (score >= resultSimilarity) {
-            return Explanation.match(boost * score, "Score above threshold");
+            return Explanation.noMatch(
+                String.format(
+                    Locale.ROOT,
+                    "Doc should have matched with score=%f, but missed from approximate search",
+                    score));
           } else {
-            return Explanation.noMatch("Score below threshold");
+            return Explanation.noMatch(
+                String.format(Locale.ROOT, "Doc with score=%f below similarity threshold", score));
           }
         } else {
-          return Explanation.noMatch("No vector found for doc");
+          return Explanation.noMatch("Doc does not have a vector");
         }
       }
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        LeafReader leafReader = context.reader();
-        Bits liveDocs = leafReader.getLiveDocs();
-
-        // If there is no filter
-        if (filterWeight == null) {
-          // Return exhaustive results
-          TopDocs results =
-              approximateSearch(
-                  context,
-                  AcceptDocs.fromLiveDocs(liveDocs, leafReader.maxDoc()),
-                  Integer.MAX_VALUE,
-                  timeLimitingKnnCollectorManager);
-          return VectorSimilarityScorerSupplier.fromScoreDocs(boost, results.scoreDocs);
-        } else {
-          AcceptDocs acceptDocs =
-              AcceptDocs.fromIteratorSupplier(
-                  () -> {
-                    Scorer scorer = filterWeight.scorer(context);
-                    if (scorer == null) {
-                      return DocIdSetIterator.empty();
-                    } else {
-                      return scorer.iterator();
-                    }
-                  },
-                  liveDocs,
-                  leafReader.maxDoc());
-
-          int cardinality = acceptDocs.cost();
-          if (cardinality == 0) {
-            // If there are no live matching docs
+        final Scorer scorer;
+        final TopDocs result = results.get(context.ord);
+        if (result.totalHits.relation() == TotalHits.Relation.EQUAL_TO
+            // Return partial results only when timeout is met
+            || (queryTimeout != null && queryTimeout.shouldExit())) {
+          if (result.scoreDocs.length == 0) {
             return null;
           }
-
-          // Perform an approximate search
-          TopDocs results =
-              approximateSearch(context, acceptDocs, cardinality, timeLimitingKnnCollectorManager);
-
-          if (results.totalHits.relation() == TotalHits.Relation.EQUAL_TO
-              // Return partial results only when timeout is met
-              || (queryTimeout != null && queryTimeout.shouldExit())) {
-            // Return an iterator over the collected results
-            return VectorSimilarityScorerSupplier.fromScoreDocs(boost, results.scoreDocs);
-          } else {
-            // Return a lazy-loading iterator
-            return VectorSimilarityScorerSupplier.fromAcceptDocs(
-                boost, createVectorScorer(context), acceptDocs.iterator(), resultSimilarity);
-          }
+          // Return cached results
+          scorer = new CachedScorer(result.scoreDocs, boost);
+        } else {
+          // Return a lazy-loading iterator
+          AcceptDocs acceptDocs = acceptDocsList.get(context.ord);
+          scorer =
+              new ExactScorer(acceptDocs, createVectorScorer(context), resultSimilarity, boost);
         }
+        return new DefaultScorerSupplier(scorer);
       }
 
       @Override
@@ -198,25 +256,13 @@ abstract class AbstractVectorSimilarityQuery extends Query {
     return Objects.hash(field, traversalSimilarity, resultSimilarity, filter);
   }
 
-  private static class VectorSimilarityScorerSupplier extends ScorerSupplier {
-    final DocIdSetIterator iterator;
-    final float[] cachedScore;
+  private static class CachedScorer extends Scorer {
+    private final DocIdSetIterator iterator;
+    private final float[] currentScore;
 
-    VectorSimilarityScorerSupplier(DocIdSetIterator iterator, float[] cachedScore) {
-      this.iterator = iterator;
-      this.cachedScore = cachedScore;
-    }
-
-    static VectorSimilarityScorerSupplier fromScoreDocs(float boost, ScoreDoc[] scoreDocs) {
-      if (scoreDocs.length == 0) {
-        return null;
-      }
-
-      // Sort in ascending order of docid
-      Arrays.sort(scoreDocs, Comparator.comparingInt(scoreDoc -> scoreDoc.doc));
-
-      float[] cachedScore = new float[1];
-      DocIdSetIterator iterator =
+    private CachedScorer(ScoreDoc[] scoreDocs, float boost) {
+      this.currentScore = new float[1];
+      this.iterator =
           new DocIdSetIterator() {
             int index = -1;
 
@@ -227,7 +273,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
               } else if (index >= scoreDocs.length) {
                 return NO_MORE_DOCS;
               } else {
-                cachedScore[0] = boost * scoreDocs[index].score;
+                currentScore[0] = scoreDocs[index].score * boost;
                 return scoreDocs[index].doc;
               }
             }
@@ -243,7 +289,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
               index =
                   Arrays.binarySearch(
                       scoreDocs,
-                      new ScoreDoc(target, 0),
+                      new ScoreDoc(target, Float.NaN),
                       Comparator.comparingInt(scoreDoc -> scoreDoc.doc));
               if (index < 0) {
                 index = -1 - index;
@@ -256,64 +302,72 @@ abstract class AbstractVectorSimilarityQuery extends Query {
               return scoreDocs.length;
             }
           };
-
-      return new VectorSimilarityScorerSupplier(iterator, cachedScore);
     }
 
-    static VectorSimilarityScorerSupplier fromAcceptDocs(
-        float boost, VectorScorer scorer, DocIdSetIterator acceptDocs, float threshold) {
-      if (scorer == null) {
-        return null;
-      }
+    @Override
+    public int docID() {
+      return iterator.docID();
+    }
 
-      float[] cachedScore = new float[1];
-      DocIdSetIterator vectorIterator = scorer.iterator();
+    @Override
+    public DocIdSetIterator iterator() {
+      return iterator;
+    }
+
+    @Override
+    public float getMaxScore(int upTo) {
+      return Float.POSITIVE_INFINITY;
+    }
+
+    @Override
+    public float score() {
+      return currentScore[0];
+    }
+  }
+
+  private static class ExactScorer extends Scorer {
+    private final DocIdSetIterator iterator;
+    private final float[] currentScore;
+
+    private ExactScorer(
+        AcceptDocs acceptDocs, VectorScorer vectorScorer, float resultSimilarity, float boost)
+        throws IOException {
+      this.currentScore = new float[1];
       DocIdSetIterator conjunction =
-          ConjunctionDISI.createConjunction(List.of(vectorIterator, acceptDocs), List.of());
-      DocIdSetIterator iterator =
+          ConjunctionDISI.createConjunction(
+              List.of(acceptDocs.iterator(), vectorScorer.iterator()), List.of());
+      this.iterator =
           new FilteredDocIdSetIterator(conjunction) {
             @Override
             protected boolean match(int doc) throws IOException {
-              // Advance the scorer
-              assert doc == vectorIterator.docID();
-              // Compute the dot product
-              float score = scorer.score();
-              cachedScore[0] = score * boost;
-              return score >= threshold;
+              float score = vectorScorer.score();
+              if (score >= resultSimilarity) {
+                currentScore[0] = score * boost;
+                return true;
+              }
+              return false;
             }
           };
-
-      return new VectorSimilarityScorerSupplier(iterator, cachedScore);
     }
 
     @Override
-    public Scorer get(long leadCost) {
-      return new Scorer() {
-        @Override
-        public int docID() {
-          return iterator.docID();
-        }
-
-        @Override
-        public DocIdSetIterator iterator() {
-          return iterator;
-        }
-
-        @Override
-        public float getMaxScore(int upTo) {
-          return Float.POSITIVE_INFINITY;
-        }
-
-        @Override
-        public float score() {
-          return cachedScore[0];
-        }
-      };
+    public int docID() {
+      return iterator.docID();
     }
 
     @Override
-    public long cost() {
-      return iterator.cost();
+    public DocIdSetIterator iterator() {
+      return iterator;
+    }
+
+    @Override
+    public float getMaxScore(int upTo) {
+      return Float.POSITIVE_INFINITY;
+    }
+
+    @Override
+    public float score() {
+      return currentScore[0];
     }
   }
 }
