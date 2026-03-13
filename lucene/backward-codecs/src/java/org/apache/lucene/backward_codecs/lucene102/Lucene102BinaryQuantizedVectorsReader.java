@@ -566,7 +566,7 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
     }
   }
 
-  // When accessing vectorValue method, targerOrd here means a row ordinal.
+  // When accessing vectorValue method, targetOrd here means a row ordinal.
   static class OffHeapBinarizedQueryVectorValues {
     private final IndexInput slice;
     private final int dimension;

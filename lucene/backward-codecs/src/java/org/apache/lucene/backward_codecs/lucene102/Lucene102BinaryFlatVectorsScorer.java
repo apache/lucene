@@ -55,10 +55,6 @@ public class Lucene102BinaryFlatVectorsScorer implements FlatVectorsScorer {
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
       throws IOException {
-    if (vectorValues instanceof BinarizedByteVectorValues) {
-      throw new UnsupportedOperationException(
-          "getRandomVectorScorerSupplier(VectorSimilarityFunction,RandomAccessVectorValues) not implemented for binarized format");
-    }
     return nonQuantizedDelegate.getRandomVectorScorerSupplier(similarityFunction, vectorValues);
   }
 
