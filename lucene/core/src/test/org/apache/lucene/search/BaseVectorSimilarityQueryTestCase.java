@@ -23,7 +23,6 @@ import static org.hamcrest.Matchers.either;
 import static org.hamcrest.Matchers.greaterThan;
 import static org.hamcrest.Matchers.lessThan;
 
-import org.apache.lucene.tests.util.LuceneTestCase.AwaitsFix;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -49,6 +48,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.AwaitsFix;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.hnsw.HnswUtil;
 
