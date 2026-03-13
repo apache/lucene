@@ -74,6 +74,8 @@ API Changes
 
 * GITHUB#15295 : Switched to a fixed CFS threshold (Shubham Sharma)
 
+* GITHUB#15480: Deprecate SortField#setMissingValue and add migration test toward immutability. (Syed Mohammad Saad)
+
 New Features
 ---------------------
 
