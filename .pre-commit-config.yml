@@ -1,0 +1,204 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/j178/prek/refs/heads/master/prek.schema.json
+minimum_prek_version: 0.2.29
+default_install_hook_types:
+  - pre-commit
+default_stages:
+  - pre-commit
+# define priority: 0 for linters that don't modify sources
+# leave fixers with priority: null so they run sequentially
+repos:
+  # "Built-in Fast Hooks" from prek.
+  - repo: builtin
+    hooks:
+      - id: check-added-large-files
+        name: Check for large files
+        priority: 0
+
+      - id: check-case-conflict
+        name: Check for files that would conflict in case-insensitive filesystems
+        priority: 0
+
+      - id: trailing-whitespace
+        name: Fix trailing whitespace
+        types: [ text ]
+        exclude:
+          glob:
+            - lucene/analysis/common/src/java/org/apache/lucene/analysis/charfilter/HTMLStripCharFilter.java
+
+      - id: end-of-file-fixer
+        name: Fix newline at EOF
+        exclude:
+          glob:
+            # generated file
+            - versions.lock
+            # generated file
+            - lucene/analysis/common/src/resources/org/apache/lucene/analysis/snowball/*_stop.txt
+            # TODO: do this one later with more free RAM
+            - lucene/analysis/common/src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex
+
+      - id: fix-byte-order-marker
+        name: Fix UTF-8 byte order marker
+
+      - id: check-json
+        name: Check JSON files
+        priority: 0
+        types: [ json ]
+
+      - id: check-toml
+        name: Check TOML files
+        priority: 0
+        types: [ toml ]
+
+      - id: check-yaml
+        name: Check YAML files
+        priority: 0
+        types: [ yaml ]
+        args: [ --allow-multiple-documents ]
+
+      - id: check-xml
+        name: Check XML files
+        priority: 0
+        types: [ xml ]
+
+      - id: mixed-line-ending
+        name: Fix line endings
+        types: [ text ]
+
+      - id: check-merge-conflict
+        name: Check for merge conflicts
+        priority: 0
+
+      - id: detect-private-key
+        name: Check for private keys
+        priority: 0
+
+      - id: check-executables-have-shebangs
+        name: Check that (non-binary) executables have a shebang
+        priority: 0
+
+  - repo: local
+    hooks:
+      - id: shellcheck
+        name: Check Shell Scripts
+        priority: 0
+        language: system
+        entry: uv
+        args: [ 'run', 'shellcheck', '--format', 'gcc' ]
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+        types: [ shell ]
+        exclude:
+          glob:
+            # TODO: fix these shell scripts
+            - dev-tools/test-patch/*.sh
+            - gradle/regenerate/snowball/snowball.sh
+            - gradlew
+            - lucene/distribution/src/binary-release/bin/luke.sh
+
+      - id: actionlint
+        name: Check Github Actions
+        priority: 0
+        language: system
+        entry: uv
+        args: [ 'run', 'actionlint' ]
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+        # run across all actions if any are touched
+        pass_filenames: false
+        files:
+          glob:
+            - .github/**/*.yml
+
+      - id: zizmor
+        name: Check Github Actions Security
+        priority: 0
+        language: system
+        entry: uv
+        args: [ 'run', 'zizmor', '--pedantic', '--offline', '.' ]
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+        # run across all actions if any are touched
+        pass_filenames: false
+        files:
+          glob:
+            - .github/**/*.yml
+
+      - id: rumdl
+        name: Fix Markdown
+        language: system
+        entry: uv
+        args: [ 'run', 'rumdl', 'check', '--fix' ]
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+        types: [ 'markdown']
+        require_serial: true
+
+      - id: ruff-check
+        name: Fix Python
+        language: system
+        entry: uv
+        args: [ 'run', 'ruff', 'check', '--fix', '--force-exclude' ]
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+        types_or: [ python, pyi, jupyter ]
+        require_serial: true
+
+      - id: ruff-format
+        language: system
+        name: Fix Python formatting
+        entry: uv
+        args: [ 'run', 'ruff', 'format', '--force-exclude' ]
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+        types_or: [ python, pyi, jupyter ]
+        require_serial: true
+
+      - id: test-ast-grep
+        name: Check ast-grep rules
+        priority: 0
+        language: system
+        entry: uv
+        args: [ 'run', 'ast-grep', '-c', './gradle/validation/ast-grep/sgconfig.yml', 'test', '--skip-snapshot-tests' ]
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+        # run across all rules if any are touched
+        pass_filenames: false
+        files:
+          glob:
+            - gradle/validation/ast-grep/**/*.yml
+
+      - id: ast-grep
+        name: Check Sources with ast-grep
+        priority: 0
+        language: system
+        entry: uv
+        args: [ 'run', 'ast-grep', '-c', './gradle/validation/ast-grep/sgconfig.yml', 'scan', '--format', 'github' ]
+        types_or: [ 'css', 'html', 'java', 'javascript', 'yaml']
+        require_serial: true
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+  # self-checks for this configuration file
+  - repo: meta
+    hooks:
+      - id: check-hooks-apply
+        name: Check prek hooks match at least one file
+        priority: 0
+        files:
+          glob:
+            .pre-commit-config.yml
+
+      - id: check-useless-excludes
+        name: Check prek excludes match include pattern
+        priority: 0
+        files:
+          glob:
+            .pre-commit-config.yml

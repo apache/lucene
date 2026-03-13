@@ -16,7 +16,8 @@
  */
 package org.apache.lucene.queryparser.flexible.core.config;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
+import java.util.Collection;
 import org.apache.lucene.queryparser.flexible.core.processors.QueryNodeProcessor;
 import org.apache.lucene.queryparser.flexible.core.util.StringUtils;
 
@@ -37,7 +38,7 @@ import org.apache.lucene.queryparser.flexible.core.util.StringUtils;
  */
 public abstract class QueryConfigHandler extends AbstractQueryConfig {
 
-  private final LinkedList<FieldConfigListener> listeners = new LinkedList<>();
+  private final Collection<FieldConfigListener> listeners = new ArrayList<>();
 
   /**
    * Returns an implementation of {@link FieldConfig} for a specific field name. If the implemented

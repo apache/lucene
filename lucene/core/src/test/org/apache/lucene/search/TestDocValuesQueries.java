@@ -29,6 +29,7 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -720,6 +721,32 @@ public class TestDocValuesQueries extends LuceneTestCase {
                 .getClass()
                 .toString(),
             containsString("SortedNumericDocValuesRangeQuery"));
+      }
+    }
+  }
+
+  public void testRewriteWorksWithPointsButNoSkipIndex() throws IOException {
+    try (Directory dir = newDirectory()) {
+      try (RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
+        for (int i = 0; i < 100; i++) {
+          final Document doc = new Document();
+          doc.add(new LongField("field", 100 + i, Field.Store.NO));
+          iw.addDocument(doc);
+        }
+        iw.commit();
+        try (IndexReader reader = iw.getReader()) {
+          final IndexSearcher searcher = new IndexSearcher(reader);
+          // Query range [0, 50] is entirely below field range [100, 199]
+          Query query = SortedNumericDocValuesField.newSlowRangeQuery("field", 0, 50);
+          Query rewritten = searcher.rewrite(query);
+          assertThat(rewritten, instanceOf(MatchNoDocsQuery.class));
+
+          // Query range [0, 250] covers entire field range [100, 199]
+          // and all docs have a value
+          query = SortedNumericDocValuesField.newSlowRangeQuery("field", 0, 250);
+          rewritten = searcher.rewrite(query);
+          assertThat(rewritten, instanceOf(MatchAllDocsQuery.class));
+        }
       }
     }
   }

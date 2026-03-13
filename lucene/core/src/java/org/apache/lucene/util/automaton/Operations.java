@@ -69,18 +69,6 @@ public final class Operations {
    *
    * <p>Complexity: linear in total number of states.
    *
-   * @deprecated use {@link #concatenate(List)} instead
-   */
-  @Deprecated
-  public static Automaton concatenate(Automaton a1, Automaton a2) {
-    return concatenate(Arrays.asList(a1, a2));
-  }
-
-  /**
-   * Returns an automaton that accepts the concatenation of the languages of the given automata.
-   *
-   * <p>Complexity: linear in total number of states.
-   *
    * @param list List of automata to be joined
    */
   public static Automaton concatenate(List<Automaton> list) {
@@ -355,7 +343,10 @@ public final class Operations {
    * @param determinizeWorkLimit maximum effort to spend determinizing the automaton. Set higher to
    *     allow more complex queries and lower to prevent memory exhaustion. {@link
    *     #DEFAULT_DETERMINIZE_WORK_LIMIT} is a good starting default.
+   * @deprecated This operation can be slow and is not recommended for production use. It will be
+   *     removed in Lucene 12.
    */
+  @Deprecated
   public static Automaton complement(Automaton a, int determinizeWorkLimit) {
     a = totalize(determinize(a, determinizeWorkLimit));
     int numStates = a.getNumStates();
@@ -378,7 +369,10 @@ public final class Operations {
    * @param determinizeWorkLimit maximum effort to spend determinizing the automaton. Set higher to
    *     allow more complex queries and lower to prevent memory exhaustion. {@link
    *     #DEFAULT_DETERMINIZE_WORK_LIMIT} is a good starting default.
+   * @deprecated This operation can be slow and is not recommended for production use. For testing,
+   *     use {@code AutomatonTestUtil.minus()} instead. This method will be removed in Lucene 12.
    */
+  @Deprecated
   public static Automaton minus(Automaton a1, Automaton a2, int determinizeWorkLimit) {
     if (Operations.isEmpty(a1) || a1 == a2) {
       return Automata.makeEmpty();
@@ -472,18 +466,6 @@ public final class Operations {
     BitSet reachableFromAccept = getLiveStatesToAccept(a);
     reachableFromAccept.andNot(reachableFromInitial);
     return reachableFromAccept.isEmpty() == false;
-  }
-
-  /**
-   * Returns an automaton that accepts the union of the languages of the given automata.
-   *
-   * <p>Complexity: linear in number of states.
-   *
-   * @deprecated use {@link #union(Collection)} instead
-   */
-  @Deprecated
-  public static Automaton union(Automaton a1, Automaton a2) {
-    return union(Arrays.asList(a1, a2));
   }
 
   /**

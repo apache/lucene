@@ -17,9 +17,10 @@
 package org.apache.lucene.analysis.shingle;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.Objects;
+import java.util.Queue;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -60,7 +61,7 @@ public final class ShingleFilter extends TokenFilter {
    * The sequence of input stream tokens (or filler tokens, if necessary) that will be composed to
    * form output shingles.
    */
-  private LinkedList<InputWindowToken> inputWindow = new LinkedList<>();
+  private Queue<InputWindowToken> inputWindow = new ArrayDeque<>();
 
   /** The number of input tokens in the next output token. This is the "n" in "token n-grams". */
   private CircularSequence gramSize;
@@ -290,7 +291,7 @@ public final class ShingleFilter extends TokenFilter {
         }
       }
       if (!isAllFiller && builtGramSize == gramSize.getValue()) {
-        inputWindow.getFirst().attSource.copyTo(this);
+        inputWindow.element().attSource.copyTo(this);
         posIncrAtt.setPositionIncrement(isOutputHere ? 0 : 1);
         termAtt.setEmpty().append(gramBuilder);
         if (gramSize.getValue() > 1) {
@@ -416,7 +417,7 @@ public final class ShingleFilter extends TokenFilter {
   private void shiftInputWindow() throws IOException {
     InputWindowToken firstToken = null;
     if (inputWindow.size() > 0) {
-      firstToken = inputWindow.removeFirst();
+      firstToken = inputWindow.remove();
     }
     while (inputWindow.size() < maxShingleSize) {
       if (null != firstToken) { // recycle the firstToken, if available

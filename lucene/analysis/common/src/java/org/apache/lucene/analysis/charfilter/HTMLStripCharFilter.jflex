@@ -110,8 +110,8 @@ EventAttributeSuffixes = ( [aA][bB][oO][rR][tT]                 |
 SingleQuoted = ( "'" ( "\\'" | [^']* )* "'" )
 DoubleQuoted = ( "\"" ( "\\\"" | [^\"]* )* "\"" )
 ServerSideInclude = ( "<!--#" ( [^'\"] | {SingleQuoted} | {DoubleQuoted} )* "-->" )
-EventAttribute = [oO][nN] {EventAttributeSuffixes} \s* "=" \s* ( {SingleQuoted} | {DoubleQuoted} )
-OpenTagAttribute = {Name} \s* "=" \s* ( {SingleQuoted} | {DoubleQuoted} )
+EventAttribute = \s+ [oO][nN] {EventAttributeSuffixes} \s* "=" \s* ( {SingleQuoted} | {DoubleQuoted} )
+OpenTagAttribute = \s+ {Name} \s* "=" \s* ( {SingleQuoted} | {DoubleQuoted} )
 OpenTagContent = ( {EventAttribute} | [^<>] | {ServerSideInclude} | {OpenTagAttribute} )*
 
 InlineElment = ( [aAbBiIqQsSuU]                   |
@@ -655,7 +655,7 @@ InlineElment = ( [aAbBiIqQsSuU]                   |
     inputSegment.clear();
     yybegin(YYINITIAL);
   }
-  \s* [bB][rR] ( ( "="\s* | \s+ ) {OpenTagContent} )? \s* "/"? ">" {
+  \s* [bB][rR] ( "="\s* {OpenTagContent} | {OpenTagContent} )? \s* "/"? ">" {
     yybegin(YYINITIAL);
     if (escapeBR) {
       inputSegment.write(zzBuffer, zzStartRead, yylength());
@@ -670,7 +670,7 @@ InlineElment = ( [aAbBiIqQsSuU]                   |
       return BR_START_TAG_REPLACEMENT;
     }
   }
-  \s* [sS][cC][rR][iI][pP][tT] ( \s+ {OpenTagContent} )? \s*  ">" {
+  \s* [sS][cC][rR][iI][pP][tT] ( {OpenTagContent} )? \s*  ">" {
     yybegin(SCRIPT);
     if (escapeSCRIPT) {
       inputSegment.write(zzBuffer, zzStartRead, yylength());
@@ -679,7 +679,7 @@ InlineElment = ( [aAbBiIqQsSuU]                   |
       return outputSegment.nextChar();
     }
   }
-  \s* [sS][tT][yY][lL][eE] ( \s+ {OpenTagContent} )? \s* ">" {
+  \s* [sS][tT][yY][lL][eE] ( {OpenTagContent} )? \s* ">" {
     yybegin(STYLE);
     if (escapeSTYLE) {
       inputSegment.write(zzBuffer, zzStartRead, yylength());
@@ -712,7 +712,7 @@ InlineElment = ( [aAbBiIqQsSuU]                   |
 }
 
 <START_TAG_TAIL_INCLUDE> {
-   ( ( "="\s* | \s+ ) {OpenTagContent} )? \s* "/"? ">" {
+   ( "="\s* {OpenTagContent} | {OpenTagContent} )? \s* "/"? ">" {
      inputSegment.write(zzBuffer, zzStartRead, yylength());
      outputSegment = inputSegment;
      yybegin(YYINITIAL);
@@ -721,7 +721,7 @@ InlineElment = ( [aAbBiIqQsSuU]                   |
 }
 
 <START_TAG_TAIL_EXCLUDE> {
-   ( ( "="\s* | \s+ ) {OpenTagContent} )? \s* "/"? ">" {
+   ( "="\s* {OpenTagContent} | {OpenTagContent} )? \s* "/"? ">" {
     // add (previously matched input length) + (this match length) [ - (substitution length) = 0 ]
     cumulativeDiff += inputSegment.length() + yylength();
     // position the correction at (already output length) [ + (substitution length) = 0 ]
@@ -733,7 +733,7 @@ InlineElment = ( [aAbBiIqQsSuU]                   |
 }
 
 <START_TAG_TAIL_SUBSTITUTE> {
-  ( ( "="\s* | \s+ ) {OpenTagContent} )? \s*  "/"? ">" {
+  ( "="\s* {OpenTagContent} | {OpenTagContent} )? \s*  "/"? ">" {
     // add (previously matched input length) + (this match length) - (substitution length)
     cumulativeDiff += inputSegment.length() + yylength() - 1;
     // position the correction at (already output length) + (substitution length)

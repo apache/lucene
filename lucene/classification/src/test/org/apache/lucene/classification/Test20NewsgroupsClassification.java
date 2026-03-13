@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
@@ -114,7 +114,7 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
     }
 
     IndexReader reader = null;
-    List<Classifier<BytesRef>> classifiers = new LinkedList<>();
+    List<Classifier<BytesRef>> classifiers = new ArrayList<>();
     try {
       Analyzer analyzer = new StandardAnalyzer();
       if (index) {
@@ -316,7 +316,7 @@ public final class Test20NewsgroupsClassification extends LuceneTestCase {
               TimeUnit.MILLISECONDS,
               new LinkedBlockingQueue<>(),
               new NamedThreadFactory(getClass().getName()));
-      List<Future<String>> futures = new LinkedList<>();
+      List<Future<String>> futures = new ArrayList<>();
       for (Classifier<BytesRef> classifier : classifiers) {
         testClassifier(reader, testReader, service, futures, classifier);
       }

@@ -156,7 +156,7 @@ public class PhraseQuery extends Query {
 
     /** Build a phrase query based on the terms that have been added. */
     public PhraseQuery build() {
-      Term[] terms = this.terms.toArray(new Term[0]);
+      Term[] terms = this.terms.toArray(Term[]::new);
       return new PhraseQuery(slop, terms, positions.toArray());
     }
   }

@@ -31,8 +31,8 @@ public class TestFeatureDoubleValues extends LuceneTestCase {
 
   public void testFeature() throws IOException {
     Directory dir = newDirectory();
-    IndexWriterConfig config =
-        newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean()));
+    IndexWriterConfig config = newIndexWriterConfig().setMergePolicy(newLogMergePolicy());
+    config.getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir, config);
     Document doc = new Document();
     doc.add(new FeatureField("field", "name", 30F));
@@ -66,8 +66,8 @@ public class TestFeatureDoubleValues extends LuceneTestCase {
 
   public void testFeatureMissing() throws IOException {
     Directory dir = newDirectory();
-    IndexWriterConfig config =
-        newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean()));
+    IndexWriterConfig config = newIndexWriterConfig().setMergePolicy(newLogMergePolicy());
+    config.getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir, config);
     Document doc = new Document();
     writer.addDocument(doc);
@@ -99,8 +99,8 @@ public class TestFeatureDoubleValues extends LuceneTestCase {
 
   public void testFeatureMissingFieldInSegment() throws IOException {
     Directory dir = newDirectory();
-    IndexWriterConfig config =
-        newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean()));
+    IndexWriterConfig config = newIndexWriterConfig().setMergePolicy(newLogMergePolicy());
+    config.getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir, config);
     Document doc = new Document();
     writer.addDocument(doc);
@@ -122,8 +122,8 @@ public class TestFeatureDoubleValues extends LuceneTestCase {
 
   public void testFeatureMissingFeatureNameInSegment() throws IOException {
     Directory dir = newDirectory();
-    IndexWriterConfig config =
-        newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean()));
+    IndexWriterConfig config = newIndexWriterConfig().setMergePolicy(newLogMergePolicy());
+    config.getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir, config);
     Document doc = new Document();
     doc.add(new FeatureField("field", "different_name", 0.5F));
@@ -146,8 +146,8 @@ public class TestFeatureDoubleValues extends LuceneTestCase {
 
   public void testFeatureMultipleMissing() throws IOException {
     Directory dir = newDirectory();
-    IndexWriterConfig config =
-        newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean()));
+    IndexWriterConfig config = newIndexWriterConfig().setMergePolicy(newLogMergePolicy());
+    config.getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir, config);
     Document doc = new Document();
     writer.addDocument(doc);

@@ -1,0 +1,17 @@
+{
+  "problemMatcher": [
+    {
+      "owner": "ruff-check",
+      "pattern": [
+        {
+          "code": 4,
+          "column": 3,
+          "file": 1,
+          "line": 2,
+          "message": 5,
+          "regexp": "^Error: (.*):(\\d+):(\\d+): (\\w+) (.*)$"
+        }
+      ]
+    }
+  ]
+}

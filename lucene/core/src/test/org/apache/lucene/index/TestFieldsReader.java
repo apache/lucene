@@ -73,8 +73,8 @@ public class TestFieldsReader extends LuceneTestCase {
     dir = newDirectory();
     IndexWriterConfig conf =
         newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(newLogMergePolicy());
-    conf.getMergePolicy().setNoCFSRatio(0.0);
     IndexWriter writer = new IndexWriter(dir, conf);
+    writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
     writer.addDocument(testDoc);
     writer.close();
   }

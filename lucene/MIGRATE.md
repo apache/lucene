@@ -36,18 +36,21 @@ Starting with Lucene 11.0.0, the index upgrade policy has been relaxed to allow 
 
 #### Upgrade Scenarios
 
-**Scenario 1: No format breaks (wider upgrade span)**
+##### Scenario 1: No format breaks (wider upgrade span)
+
 - Index created with Lucene 10.x can be opened directly in Lucene 11.x, 12.x, 13.x, 14.x (as long as MIN_SUPPORTED_MAJOR stays ≤ 10)
 - Simply open the index with the new version; segments will be upgraded gradually through normal merging
 - Optional: Call `forceMerge()` or use `UpgradeIndexMergePolicy` to upgrade segment formats immediately
 - **Important**: You still only get one upgrade per index lifetime. Once MIN_SUPPORTED_MAJOR is bumped above 10, the index becomes unopenable and must be reindexed.
 
-**Scenario 2: Format breaks occur**
+##### Scenario 2: Format breaks occur
+
 - If a major version introduces incompatible format changes, `MIN_SUPPORTED_MAJOR` will be bumped
 - Indexes created before the new minimum will throw `IndexFormatTooOldException`
 - Full reindexing is required for such indexes
 
-**Scenario 3: After using your upgrade**
+##### Scenario 3: After using your upgrade
+
 - Index created with Lucene 10.x, successfully opened with Lucene 14.x
 - The index's creation version is still 10 (this never changes)
 - When Lucene 15+ bumps MIN_SUPPORTED_MAJOR above 10, this index becomes unopenable
@@ -72,6 +75,7 @@ try (Directory dir = FSDirectory.open(indexPath)) {
 #### Error Handling
 
 Enhanced error messages will clearly indicate:
+
 - Whether the index creation version is below `MIN_SUPPORTED_MAJOR` (reindex required)
 - Whether segments are too old to read directly (sequential upgrade required)
 
@@ -80,12 +84,21 @@ Enhanced error messages will clearly indicate:
 This parameter has no replacement, TieredMergePolicy no longer bounds the
 number of segments that may be merged together.
 
+### Snowball dependency upgrade (Dutch stemmer)
+
+Snowball replaced the "Dutch" stemmer by the "Kraaij-Pohlmann" stemmer (previous called dutch-kp). As a result Lucene supports 2 Dutch stemmers:
+
+- DutchStemmer, which is now the "Kraaij-Pohlmann" stemmer.
+- Dutch_porterStemmer, which is the DutchStemmer from Lucene-10 and before.
+
+Opening an pre Lucene-11 index which is indexed using the DutchStemmer will succeed, but due to the different stemmer implementation a re-index is needed in order to make searching work correctly. Or replace DutchStemmer by Dutch_porterStemmer in your code.
+
 ### Query caching is now disabled by default
 
 Query caching is now disabled by default. To enable caching back, do something
 like below in a static initialization block:
 
-```
+```java
 int maxCachedQueries = 1_000;
 long maxRamBytesUsed = 50 * 1024 * 1024; // 50MB
 IndexSearcher.setDefaultQueryCache(new LRUQueryCache(maxCachedQueries, maxRamBytesUsed));
@@ -107,6 +120,45 @@ Missing values should be configured in SortField constructor methods, as they ar
 MatchAllDocs and MatchNoDocs queries should use the INSTANCE final field instead of creating
 new objects. The constructors will be removed in the future.
 
+### APIs for configuring compound file creation thresholds have been updated and moved
+
+APIs for configuring compound file creation thresholds were part of merge policies before.
+They are now part of `CompoundFormat`. Previously, the compound file creation depended upon the size of the merged
+segment with respect to the total index size (determined by `CFSRatio` which was 10% by default). Lucene now uses fixed
+thresholds to decide whether a merged segment should be written as a compound file, the default thresholds are:
+
+- **64 MB** for size-based merge policies (e.g., `TieredMergePolicy`)
+- **65,536 documents** for document-count based merge policies (e.g., `LogDocMergePolicy`)
+
+These thresholds could be changed using `setCfsThresholdByteSize` and `setCfsThresholdDocSize` respectively.
+
+#### Migration
+
+If your code previously configured `getNoCFSRatio`, `getMaxCFSSegmentSizeMB`, `setMaxCFSSegmentSizeMB` and `setNoCFSRatio`
+on merge policies, you should change it as follows:
+
+##### Before
+
+```java
+TieredMergePolicy mp = new TieredMergePolicy();
+mp.setNoCFSRatio(0.0);
+mp.setMaxCFSSegmentSizeMB(512);
+IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+iwc.setMergePolicy(mp);
+mp.getNoCFSRatio();
+mp.getMaxCFSSegmentSizeMB();
+```
+
+##### After
+
+```java
+IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+iwc.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
+iwc.getConfig().getCodec().compoundFormat().setMaxCFSSegmentSizeMB(512);
+iwc.getConfig().getCodec().compoundFormat().getShouldUseCompoundFile();
+iwc.getConfig().getCodec().compoundFormat().getMaxCFSSegmentSizeMB();
+```
+
 ## Migration from Lucene 9.x to Lucene 10.0
 
 ### DataInput#readVLong() may now read negative vlongs
@@ -122,13 +174,24 @@ As part of GITHUB#13820, GITHUB#13825, GITHUB#13830, this issue corrects DataInp
 to be public and not-final, allowing subclasses to override it. This change also removes the protected
 DataInput.readGroupVInt method: subclasses should delegate or reimplement it entirely.
 
+### Scoring and ranking across major versions
+
+Lucene does not guarantee identical scoring or document ranking behavior across
+major version upgrades. Changes may occur due to improvements or modifications
+in Similarity implementations, query execution, or related internals.
+
+Applications that require stable ranking behavior across upgrades should
+explicitly configure the Similarity used for indexing and searching rather than
+relying on defaults. Reviewing `CHANGES.txt` for intervening major versions is
+recommended when upgrading.
+
 ### OpenNLP dependency upgrade
 
-[Apache OpenNLP](https://opennlp.apache.org) 2.x opens the door to accessing various models via the ONNX runtime.  To migrate you will need to update any deprecated OpenNLP methods that you may be using.
+[Apache OpenNLP](https://opennlp.apache.org) 2.x opens the door to accessing various models via the ONNX runtime. To migrate you will need to update any deprecated OpenNLP methods that you may be using.
 
 ### Snowball dependency upgrade
 
-Snowball has folded the "German2" stemmer into their "German" stemmer, so there's no "German2" anymore.  For Lucene APIs (TokenFilter, TokenFilterFactory) that accept String, "German2" will be mapped to "German" to avoid breaking users. If you were previously creating German2Stemmer instances, you'll need to change your code to create GermanStemmer instances instead.  For more information see https://snowballstem.org/algorithms/german2/stemmer.html
+Snowball has folded the "German2" stemmer into their "German" stemmer, so there's no "German2" anymore. For Lucene APIs (TokenFilter, TokenFilterFactory) that accept String, "German2" will be mapped to "German" to avoid breaking users. If you were previously creating German2Stemmer instances, you'll need to change your code to create GermanStemmer instances instead. For more information see <https://snowballstem.org/algorithms/german2/stemmer.html>
 
 ### Romanian analysis
 
@@ -155,6 +218,7 @@ Instead, call storedFields()/termVectors() to return an instance which can fetch
 and will be garbage-collected as usual.
 
 For example:
+
 ```java
 TopDocs hits = searcher.search(query, 10);
 StoredFields storedFields = reader.storedFields();
@@ -186,18 +250,14 @@ These classes no longer take a `determinizeWorkLimit` and no longer determinize
 behind the scenes. It is the responsibility of the caller to call
 `Operations.determinize()` for DFA execution.
 
-### RegExp optional complement syntax has been deprecated
+### RegExp optional complement syntax has been removed (LUCENE-11)
 
-Support for the optional complement syntax (`~`) has been deprecated.
-The `COMPLEMENT` syntax flag has been removed and replaced by the
-`DEPRECATED_COMPLEMENT` flag. Users wanting to enable the deprecated
-complement support can do so by explicitly passing a syntax flags that
-has `DEPRECATED_COMPLEMENT` when creating a `RegExp`. For example:
-`new RegExp("~(foo)", RegExp.DEPRECATED_COMPLEMENT)`.
+Support for the optional complement syntax (`~`) that was deprecated in Lucene 10
+has been removed. The `DEPRECATED_COMPLEMENT` flag and `REGEXP_DEPRECATED_COMPLEMENT`
+enum value are no longer available.
 
-Alternatively, and quite commonly, a more simple _complement bracket expression_,
-`[^...]`, may be a suitable replacement, For example, `[^fo]` matches any
-character that is not an `f` or `o`.
+Users should migrate to using _complement bracket expressions_ (`[^...]`) instead.
+For example, `[^fo]` matches any character that is not an `f` or `o`.
 
 ### DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery removed in favor of FieldExistsQuery (LUCENE-10436)
 
@@ -229,7 +289,6 @@ for the currently-positioned document (doing so will result in undefined behavio
 `Directory#openChecksumInput` no longer takes in `IOContext` as a parameter, and will always use value
 `IOContext.READONCE` for opening internally, as that's the only valid usage pattern for checksum input.
 Callers should remove the parameter when calling this method.
-
 
 ### DaciukMihovAutomatonBuilder is renamed to StringsToAutomaton and made package-private
 
@@ -300,7 +359,7 @@ access the members using method calls instead of field accesses. Affected classe
 - `TermAndVector` (GITHUB#13772)
 - Many basic Lucene classes, including `CollectionStatistics`, `TermStatistics` and `LeafMetadata` (GITHUB#13328)
 
-### Boolean flags on IOContext replaced with a new ReadAdvice enum.
+### Boolean flags on IOContext replaced with a new ReadAdvice enum
 
 The `readOnce`, `load` and `random` flags on `IOContext` have been replaced with a new `ReadAdvice`
 enum.
@@ -324,6 +383,7 @@ To migrate, use a provided `CollectorManager` implementation that suits your use
 to follow the new API pattern. The straight forward approach would be to instantiate the single-threaded `Collector` in a wrapper `CollectorManager`.
 
 For example
+
 ```java
 public class CustomCollectorManager implements CollectorManager<CustomCollector, List<Object>> {
     @Override
@@ -354,12 +414,12 @@ List<Object> results = searcher.search(query, new CustomCollectorManager());
 
 1. `IntField(String name, int value)`. Use `IntField(String, int, Field.Store)` with `Field.Store#NO` instead.
 2. `DoubleField(String name, double value)`. Use `DoubleField(String, double, Field.Store)` with `Field.Store#NO` instead.
-2. `FloatField(String name, float value)`. Use `FloatField(String, float, Field.Store)` with `Field.Store#NO` instead.
-3. `LongField(String name, long value)`. Use `LongField(String, long, Field.Store)` with `Field.Store#NO` instead.
-4. `LongPoint#newDistanceFeatureQuery(String field, float weight, long origin, long pivotDistance)`. Use `LongField#newDistanceFeatureQuery` instead
-5. `BooleanQuery#TooManyClauses`, `BooleanQuery#getMaxClauseCount()`, `BooleanQuery#setMaxClauseCount()`. Use `IndexSearcher#TooManyClauses`, `IndexSearcher#getMaxClauseCount()`, `IndexSearcher#setMaxClauseCount()` instead
-6. `ByteBuffersDataInput#size()`. Use `ByteBuffersDataInput#length()` instead
-7. `SortedSetDocValuesFacetField#label`. `FacetsConfig#pathToString(String[])` can be applied to path as a replacement if string path is desired.
+3. `FloatField(String name, float value)`. Use `FloatField(String, float, Field.Store)` with `Field.Store#NO` instead.
+4. `LongField(String name, long value)`. Use `LongField(String, long, Field.Store)` with `Field.Store#NO` instead.
+5. `LongPoint#newDistanceFeatureQuery(String field, float weight, long origin, long pivotDistance)`. Use `LongField#newDistanceFeatureQuery` instead
+6. `BooleanQuery#TooManyClauses`, `BooleanQuery#getMaxClauseCount()`, `BooleanQuery#setMaxClauseCount()`. Use `IndexSearcher#TooManyClauses`, `IndexSearcher#getMaxClauseCount()`, `IndexSearcher#setMaxClauseCount()` instead
+7. `ByteBuffersDataInput#size()`. Use `ByteBuffersDataInput#length()` instead
+8. `SortedSetDocValuesFacetField#label`. `FacetsConfig#pathToString(String[])` can be applied to path as a replacement if string path is desired.
 
 ### Auto I/O throttling disabled by default in ConcurrentMergeScheduler (GITHUB#13293)
 
@@ -438,7 +498,6 @@ to the new coordinates:
 |org.apache.lucene:lucene-analyzers-phonetic  |org.apache.lucene:lucene-analysis-phonetic  |
 |org.apache.lucene:lucene-analyzers-smartcn   |org.apache.lucene:lucene-analysis-smartcn   |
 |org.apache.lucene:lucene-analyzers-stempel   |org.apache.lucene:lucene-analysis-stempel   |
-
 
 ### LucenePackage class removed (LUCENE-10260)
 
@@ -563,7 +622,7 @@ User dictionary now strictly validates if the (concatenated) segment is the same
 unexpected runtime exceptions or behaviours.
 For example, these entries are not allowed at all and an exception is thrown when loading the dictionary file.
 
-```
+```text
 # concatenated "日本経済新聞" does not match the surface form "日経新聞"
 日経新聞,日本 経済 新聞,ニホン ケイザイ シンブン,カスタム名詞
 
@@ -631,7 +690,7 @@ is discouraged in favor of the default `MMapDirectory`.
 ### Similarity.SimScorer.computeXXXFactor methods removed (LUCENE-8014)
 
 `SpanQuery` and `PhraseQuery` now always calculate their slops as
-`(1.0 / (1.0 + distance))`.  Payload factor calculation is performed by
+`(1.0 / (1.0 + distance))`. Payload factor calculation is performed by
 `PayloadDecoder` in the `lucene-queries` module.
 
 ### Scorer must produce positive scores (LUCENE-7996)
@@ -645,9 +704,9 @@ As a side-effect of this change, negative boosts are now rejected and
 
 ### CustomScoreQuery, BoostedQuery and BoostingQuery removed (LUCENE-8099)
 
-Instead use `FunctionScoreQuery` and a `DoubleValuesSource` implementation.  `BoostedQuery`
+Instead use `FunctionScoreQuery` and a `DoubleValuesSource` implementation. `BoostedQuery`
 and `BoostingQuery` may be replaced by calls to `FunctionScoreQuery.boostByValue()` and
-`FunctionScoreQuery.boostByQuery()`.  To replace more complex calculations in
+`FunctionScoreQuery.boostByQuery()`. To replace more complex calculations in
 `CustomScoreQuery`, use the `lucene-expressions` module:
 
 ```java
@@ -665,7 +724,6 @@ Changing `IndexOptions` for a field on the fly will now result into an
 `IllegalArgumentException`. If a field is indexed
 (`FieldType.indexOptions() != IndexOptions.NONE`) then all documents must have
 the same index options for that field.
-
 
 ### IndexSearcher.createNormalizedWeight() removed (LUCENE-8242)
 
@@ -744,7 +802,7 @@ Lucene.
 ### LeafCollector.setScorer() now takes a Scorable rather than a Scorer (LUCENE-6228)
 
 `Scorer` has a number of methods that should never be called from `Collector`s, for example
-those that advance the underlying iterators.  To hide these, `LeafCollector.setScorer()`
+those that advance the underlying iterators. To hide these, `LeafCollector.setScorer()`
 now takes a `Scorable`, an abstract class that scorers can extend, with methods
 `docId()` and `score()`.
 
@@ -981,10 +1039,10 @@ removed in favour of the newly introduced `search(LeafReaderContextPartition[] p
 ### Indexing vectors with 8 bit scalar quantization is no longer supported but 7 and 4 bit quantization still work (GITHUB#13519)
 
 8 bit scalar vector quantization is no longer supported: it was buggy
-starting in 9.11 (GITHUB#13197).  4 and 7 bit quantization are still
-supported.  Existing (9.11) Lucene indices that previously used 8 bit
+starting in 9.11 (GITHUB#13197). 4 and 7 bit quantization are still
+supported. Existing (9.11) Lucene indices that previously used 8 bit
 quantization can still be read/searched but the results from
-`KNN*VectorQuery` are silently buggy.  Further 8 bit quantized vector
+`KNN*VectorQuery` are silently buggy. Further 8 bit quantized vector
 indexing into such (9.11) indices is not permitted, so your path
 forward if you wish to continue using the same 9.11 index is to index
 additional vectors into the same field with either 4 or 7 bit

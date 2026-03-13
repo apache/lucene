@@ -122,7 +122,8 @@ class AssertingLeafCollector extends FilterLeafCollector {
         assert docID() != -1;
         assert docID() != NO_MORE_DOCS;
         int nextNonMatchingDocID = in.docIDRunEnd();
-        assert nextNonMatchingDocID > docID();
+        assert nextNonMatchingDocID > docID()
+            : "docIDRunEnd=" + nextNonMatchingDocID + ", docID=" + docID();
         return nextNonMatchingDocID;
       }
     };

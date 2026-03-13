@@ -176,7 +176,7 @@ public class MultiCollector implements Collector {
     private final boolean skipNonCompetitiveScores;
 
     private MultiLeafCollector(List<LeafCollector> collectors, boolean skipNonCompetitive) {
-      this.collectors = collectors.toArray(new LeafCollector[collectors.size()]);
+      this.collectors = collectors.toArray(LeafCollector[]::new);
       this.skipNonCompetitiveScores = skipNonCompetitive;
       this.minScores = this.skipNonCompetitiveScores ? new float[this.collectors.length] : null;
     }

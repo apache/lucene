@@ -17,7 +17,7 @@
 
 package org.apache.lucene.internal.vectorization;
 
-import static org.apache.lucene.util.VectorUtil.EPSILON;
+import static org.apache.lucene.util.VectorUtil.isUnitVector;
 
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Constants;
@@ -432,19 +432,20 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   @Override
   public float[] l2normalize(float[] v, boolean throwOnZero) {
-    double l1norm = this.dotProduct(v, v);
-    if (l1norm == 0) {
+    double squaredNorm = this.dotProduct(v, v);
+    if (squaredNorm == 0) {
       if (throwOnZero) {
         throw new IllegalArgumentException("Cannot normalize a zero-length vector");
       } else {
         return v;
       }
     }
-    if (Math.abs(l1norm - 1.0d) <= EPSILON) {
+    if (isUnitVector(squaredNorm)) {
       return v;
     }
+
     int dim = v.length;
-    double l2norm = Math.sqrt(l1norm);
+    double l2norm = Math.sqrt(squaredNorm);
     for (int i = 0; i < dim; i++) {
       v[i] /= (float) l2norm;
     }

@@ -71,34 +71,13 @@ public final class NoMergePolicy extends MergePolicy {
   }
 
   @Override
-  public boolean useCompoundFile(
-      SegmentInfos segments, SegmentCommitInfo newSegment, MergeContext mergeContext) {
-    return newSegment.info.getUseCompoundFile();
-  }
-
-  @Override
   protected long size(SegmentCommitInfo info, MergeContext context) throws IOException {
     return Long.MAX_VALUE;
   }
 
   @Override
-  public double getNoCFSRatio() {
-    return super.getNoCFSRatio();
-  }
-
-  @Override
-  public double getMaxCFSSegmentSizeMB() {
-    return super.getMaxCFSSegmentSizeMB();
-  }
-
-  @Override
-  public void setMaxCFSSegmentSizeMB(double v) {
-    super.setMaxCFSSegmentSizeMB(v);
-  }
-
-  @Override
-  public void setNoCFSRatio(double noCFSRatio) {
-    super.setNoCFSRatio(noCFSRatio);
+  public SizeUnit getSizeUnit() {
+    return super.getSizeUnit();
   }
 
   @Override

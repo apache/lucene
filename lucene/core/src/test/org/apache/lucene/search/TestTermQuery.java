@@ -57,7 +57,7 @@ public class TestTermQuery extends LuceneTestCase {
     try (MultiReader multiReader = new MultiReader()) {
       context = multiReader.getContext();
       IndexSearcher searcher = new IndexSearcher(context);
-      QueryUtils.checkEqual(
+      QueryUtils.checkUnequal(
           new TermQuery(new Term("foo", "bar")),
           new TermQuery(
               new Term("foo", "bar"), TermStates.build(searcher, new Term("foo", "bar"), true)));

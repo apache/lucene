@@ -332,26 +332,22 @@ public class TestBytesRefHash extends LuceneTestCase {
     }
   }
 
-  @Test(expected = MaxBytesLengthExceededException.class)
+  @Test
   public void testLargeValue() {
     int[] sizes =
-        new int[] {
-          random().nextInt(5),
-          ByteBlockPool.BYTE_BLOCK_SIZE - 33 + random().nextInt(31),
-          ByteBlockPool.BYTE_BLOCK_SIZE - 1 + random().nextInt(37)
-        };
+        new int[] {random().nextInt(5), ByteBlockPool.BYTE_BLOCK_SIZE - 33 + random().nextInt(31)};
     BytesRef ref = new BytesRef();
     for (int i = 0; i < sizes.length; i++) {
       ref.bytes = new byte[sizes[i]];
       ref.offset = 0;
       ref.length = sizes[i];
-      try {
-        assertEquals(i, hash.add(ref));
-      } catch (MaxBytesLengthExceededException e) {
-        if (i < sizes.length - 1) fail("unexpected exception at size: " + sizes[i]);
-        throw e;
-      }
+      assertEquals(i, hash.add(ref));
     }
+
+    ref.bytes = new byte[ByteBlockPool.BYTE_BLOCK_SIZE - 1 + random().nextInt(37)];
+    ref.offset = 0;
+    ref.length = ref.bytes.length;
+    expectThrows(MaxBytesLengthExceededException.class, () -> hash.add(ref));
   }
 
   /** Test method for {@link org.apache.lucene.util.BytesRefHash#addByPoolOffset(int)} . */

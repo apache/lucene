@@ -51,7 +51,7 @@ import org.apache.lucene.util.packed.PackedInts;
  *       <p>When the postings are long enough, Lucene104PostingsFormat will try to encode most
  *       integer data as a packed block.
  *       <p>Take a term with 259 documents as an example, the first 256 document ids are encoded as
- *       two packed blocks, while the remaining 3 are encoded as one VInt block.
+ *       one packed block, while the remaining 3 are encoded as one VInt block.
  *       <p>Different kinds of data are always encoded separately into different packed blocks, but
  *       may possibly be interleaved into the same VInt block.
  *       <p>This strategy is applied to pairs: &lt;document number, frequency&gt;, &lt;position,

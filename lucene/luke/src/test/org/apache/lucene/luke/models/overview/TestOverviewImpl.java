@@ -121,16 +121,16 @@ public class TestOverviewImpl extends OverviewTestBase {
     assertEquals("f2", result.get(0).getField());
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testGetTopTerms_illegal_numterms() {
     OverviewImpl overview = new OverviewImpl(reader, indexDir.toString());
-    overview.getTopTerms("f2", -1);
+    expectThrows(IllegalArgumentException.class, () -> overview.getTopTerms("f2", -1));
   }
 
-  @Test(expected = AlreadyClosedException.class)
+  @Test
   public void testClose() throws Exception {
     OverviewImpl overview = new OverviewImpl(reader, indexDir.toString());
     reader.close();
-    overview.getNumFields();
+    expectThrows(AlreadyClosedException.class, () -> overview.getNumFields());
   }
 }

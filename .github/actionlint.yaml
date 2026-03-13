@@ -21,4 +21,3 @@ paths:
       - 'shellcheck reported issue in this script: SC2129:.+'
       # TODO: another style issue
       - 'shellcheck reported issue in this script: SC2236:.+'
-

@@ -69,6 +69,13 @@
     <!-- NOTE: please insert releases in numeric order, NOT chronologically. -->
     <release>
       <Version>
+        <name>lucene-10.4.0</name>
+        <created>2026-02-25</created>
+        <revision>10.4.0</revision>
+      </Version>
+    </release>
+    <release>
+      <Version>
         <name>lucene-10.3.2</name>
         <created>2025-11-17</created>
         <revision>10.3.2</revision>

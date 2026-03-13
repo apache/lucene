@@ -53,7 +53,7 @@ public class TestAllFilesDetectMismatchedChecksum extends LuceneTestCase {
     conf.setCodec(TestUtil.getDefaultCodec());
     // Disable CFS, which makes it harder to test due to its double checksumming
     conf.setUseCompoundFile(false);
-    conf.getMergePolicy().setNoCFSRatio(0.0);
+    conf.getCodec().compoundFormat().setShouldUseCompoundFile(false);
 
     RandomIndexWriter riw = new RandomIndexWriter(random(), dir, conf);
     Document doc = new Document();

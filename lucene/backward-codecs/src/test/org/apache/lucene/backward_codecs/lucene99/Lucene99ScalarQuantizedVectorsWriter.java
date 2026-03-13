@@ -61,7 +61,8 @@ import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.BaseQuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.LegacyQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
@@ -713,7 +714,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
    */
   public static DocsWithFieldSet writeQuantizedVectorData(
       IndexOutput output,
-      QuantizedByteVectorValues quantizedByteVectorValues,
+      LegacyQuantizedByteVectorValues quantizedByteVectorValues,
       byte bits,
       boolean compress)
       throws IOException {
@@ -883,10 +884,10 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   }
 
   static class QuantizedByteVectorValueSub extends DocIDMerger.Sub {
-    private final QuantizedByteVectorValues values;
+    private final LegacyQuantizedByteVectorValues values;
     private final KnnVectorValues.DocIndexIterator iterator;
 
-    QuantizedByteVectorValueSub(MergeState.DocMap docMap, QuantizedByteVectorValues values) {
+    QuantizedByteVectorValueSub(MergeState.DocMap docMap, LegacyQuantizedByteVectorValues values) {
       super(docMap);
       this.values = values;
       iterator = values.iterator();
@@ -903,8 +904,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
   }
 
-  /** Returns a merged view over all the segment's {@link QuantizedByteVectorValues}. */
-  static class MergedQuantizedVectorValues extends QuantizedByteVectorValues {
+  /** Returns a merged view over all the segment's {@link BaseQuantizedByteVectorValues}. */
+  static class MergedQuantizedVectorValues extends LegacyQuantizedByteVectorValues {
     public static MergedQuantizedVectorValues mergeQuantizedByteVectorValues(
         FieldInfo fieldInfo, MergeState mergeState, ScalarQuantizer scalarQuantizer)
         throws IOException {
@@ -941,7 +942,8 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
                 new QuantizedByteVectorValueSub(
                     mergeState.docMaps[i],
                     new OffsetCorrectedQuantizedByteVectorValues(
-                        reader.getQuantizedVectorValues(fieldInfo.name),
+                        (LegacyQuantizedByteVectorValues)
+                            reader.getQuantizedVectorValues(fieldInfo.name),
                         fieldInfo.getVectorSimilarityFunction(),
                         scalarQuantizer,
                         reader.getQuantizationState(fieldInfo.name)));
@@ -1038,7 +1040,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
   }
 
-  static class QuantizedFloatVectorValues extends QuantizedByteVectorValues {
+  static class QuantizedFloatVectorValues extends LegacyQuantizedByteVectorValues {
     private final FloatVectorValues values;
     private final ScalarQuantizer quantizer;
     private final byte[] quantizedVector;
@@ -1143,14 +1145,15 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
   }
 
-  static final class OffsetCorrectedQuantizedByteVectorValues extends QuantizedByteVectorValues {
+  static final class OffsetCorrectedQuantizedByteVectorValues
+      extends LegacyQuantizedByteVectorValues {
 
-    private final QuantizedByteVectorValues in;
+    private final LegacyQuantizedByteVectorValues in;
     private final VectorSimilarityFunction vectorSimilarityFunction;
     private final ScalarQuantizer scalarQuantizer, oldScalarQuantizer;
 
     OffsetCorrectedQuantizedByteVectorValues(
-        QuantizedByteVectorValues in,
+        LegacyQuantizedByteVectorValues in,
         VectorSimilarityFunction vectorSimilarityFunction,
         ScalarQuantizer scalarQuantizer,
         ScalarQuantizer oldScalarQuantizer) {

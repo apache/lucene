@@ -147,16 +147,14 @@ public final class StandardDirectoryReader extends DirectoryReader {
 
       writer.incRefDeleter(segmentInfos);
 
-      StandardDirectoryReader result =
-          new StandardDirectoryReader(
-              dir,
-              readers.toArray(new SegmentReader[readers.size()]),
-              writer,
-              segmentInfos,
-              writer.getConfig().getLeafSorter(),
-              applyAllDeletes,
-              writeAllDeletes);
-      return result;
+      return new StandardDirectoryReader(
+          dir,
+          readers.toArray(SegmentReader[]::new),
+          writer,
+          segmentInfos,
+          writer.getConfig().getLeafSorter(),
+          applyAllDeletes,
+          writeAllDeletes);
     } catch (Throwable t) {
       try {
         IOUtils.applyToAll(readers, SegmentReader::decRef);

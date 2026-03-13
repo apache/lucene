@@ -58,7 +58,8 @@ public class TestReqOptSumScorer extends LuceneTestCase {
             newIndexWriterConfig()
                 .setMergePolicy(
                     // retain doc id order
-                    newLogMergePolicy(random().nextBoolean())));
+                    newLogMergePolicy()));
+    w.w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     Document doc = new Document();
     doc.add(new StringField("f", "foo", Store.NO));
     w.addDocument(doc);
