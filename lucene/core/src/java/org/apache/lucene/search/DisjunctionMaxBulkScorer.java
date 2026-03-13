@@ -46,6 +46,7 @@ final class DisjunctionMaxBulkScorer extends BulkScorer {
   private final float[] windowScores = new float[WINDOW_SIZE];
   private final PriorityQueue<BulkScorerAndNext> scorers;
   private final SimpleScorable topLevelScorable = new SimpleScorable();
+  private int currentWindowSize = 1;
 
   DisjunctionMaxBulkScorer(List<BulkScorer> scorers) {
     if (scorers.size() < 2) {
@@ -64,7 +65,7 @@ final class DisjunctionMaxBulkScorer extends BulkScorer {
 
     while (top.next < max) {
       final int windowMin = Math.max(top.next, min);
-      final int windowMax = MathUtil.unsignedMin(max, windowMin + WINDOW_SIZE);
+      final int windowMax = MathUtil.unsignedMin(max, windowMin + currentWindowSize);
 
       // First compute matches / scores in the window
       do {
@@ -103,6 +104,10 @@ final class DisjunctionMaxBulkScorer extends BulkScorer {
         int doc = windowMin + windowDoc;
         topLevelScorable.score = windowScores[windowDoc];
         collector.collect(doc);
+      }
+
+      if (currentWindowSize < WINDOW_SIZE) {
+        currentWindowSize = Math.min(currentWindowSize << 1, WINDOW_SIZE);
       }
 
       // Finally clean up state

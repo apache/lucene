@@ -454,6 +454,10 @@ Optimizations
 * GITHUB#15607: Utilize bulk scoring for diversity checking when building HNSW vector indices. This results
   in some performance improvements during indexing and segment merges. (Ben Trent)
 
+* GITHUB#15658: DisjunctionMaxBulkScorer now uses progressive window sizing sub-scorers to be skipped
+  sooner when their scores are no longer competitive (Shimpei Kodama)
+
+
 Bug Fixes
 ---------------------
 * GITHUB#15442: Preserve boost values when merging overlapping phrases in
