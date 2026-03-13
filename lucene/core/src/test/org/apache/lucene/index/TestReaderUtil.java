@@ -17,8 +17,12 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
@@ -61,7 +65,8 @@ public class TestReaderUtil extends LuceneTestCase {
 
   public void testPartitionByLeafMultipleSegments() throws IOException {
     try (Directory dir = newDirectory();
-        IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig())) {
+        IndexWriter writer =
+            new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
       for (int i = 0; i < 10; i++) {
         writer.addDocument(new Document());
       }
@@ -90,9 +95,10 @@ public class TestReaderUtil extends LuceneTestCase {
     }
   }
 
-  public void testPartitionByLeafSkipsEmptySegments() throws IOException {
+  public void testPartitionByLeafSkipsSegmentsWithNoHits() throws IOException {
     try (Directory dir = newDirectory();
-        IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig())) {
+        IndexWriter writer =
+            new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
       // Create 3 segments
       for (int seg = 0; seg < 3; seg++) {
         for (int i = 0; i < 10; i++) {
@@ -113,6 +119,97 @@ public class TestReaderUtil extends LuceneTestCase {
         assertArrayEquals(new int[] {3}, result[0]);
         assertEquals(0, result[1].length); // middle segment has no hits
         assertArrayEquals(new int[] {25}, result[2]);
+      }
+    }
+  }
+
+  public void testPartitionByLeafRandomized() throws IOException {
+    for (int iter = 0; iter < 100; iter++) {
+      int numSegments = random().nextInt(10) + 1;
+      int totalDocs = 0;
+      int[] docsPerSegment = new int[numSegments];
+      for (int i = 0; i < numSegments; i++) {
+        docsPerSegment[i] = random().nextInt(100) + 1;
+        totalDocs += docsPerSegment[i];
+      }
+
+      try (Directory dir = newDirectory();
+          IndexWriter writer =
+              new IndexWriter(
+                  dir, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
+        for (int seg = 0; seg < numSegments; seg++) {
+          for (int i = 0; i < docsPerSegment[seg]; i++) {
+            writer.addDocument(new Document());
+          }
+          writer.commit();
+        }
+
+        try (DirectoryReader reader = DirectoryReader.open(writer)) {
+          List<LeafReaderContext> leaves = reader.leaves();
+          assertEquals(numSegments, leaves.size());
+
+          // Generate random hits (0 to totalDocs inclusive - covers empty and all-match)
+          int numHits = random().nextInt(totalDocs + 1);
+          Set<Integer> hitSet = new HashSet<>();
+          while (hitSet.size() < numHits) {
+            hitSet.add(random().nextInt(totalDocs));
+          }
+          int[] docIds = hitSet.stream().mapToInt(Integer::intValue).sorted().toArray();
+
+          int[][] result = ReaderUtil.partitionByLeaf(docIds, leaves);
+
+          // Verify: result length matches leaves
+          assertEquals(numSegments, result.length);
+
+          // Verify: total hits preserved
+          int totalResultDocs = Arrays.stream(result).mapToInt(a -> a.length).sum();
+          assertEquals(docIds.length, totalResultDocs);
+
+          // Verify: each doc in correct leaf and sorted
+          for (int leafIdx = 0; leafIdx < result.length; leafIdx++) {
+            int[] leafDocs = result[leafIdx];
+            LeafReaderContext leaf = leaves.get(leafIdx);
+            int docBase = leaf.docBase;
+            int maxDoc = leaf.reader().maxDoc();
+            for (int i = 0; i < leafDocs.length; i++) {
+              int docId = leafDocs[i];
+              assertTrue(docId >= docBase && docId < docBase + maxDoc);
+              if (i > 0) {
+                assertTrue(leafDocs[i] > leafDocs[i - 1]);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  public void testPartitionByLeafScoreDoc() throws IOException {
+    try (Directory dir = newDirectory();
+        IndexWriter writer =
+            new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
+      for (int i = 0; i < 10; i++) {
+        writer.addDocument(new Document());
+      }
+      writer.commit();
+
+      for (int i = 0; i < 10; i++) {
+        writer.addDocument(new Document());
+      }
+      writer.commit();
+
+      try (DirectoryReader reader = DirectoryReader.open(writer)) {
+        List<LeafReaderContext> leaves = reader.leaves();
+        assertEquals(2, leaves.size());
+
+        // ScoreDocs in non-sorted order (as they might come from ranking)
+        ScoreDoc[] hits = {new ScoreDoc(18, 1.0f), new ScoreDoc(5, 0.9f), new ScoreDoc(12, 0.8f)};
+        int[][] result = ReaderUtil.partitionByLeaf(hits, leaves);
+
+        assertEquals(2, result.length);
+        // Should be sorted within each leaf
+        assertArrayEquals(new int[] {5}, result[0]);
+        assertArrayEquals(new int[] {12, 18}, result[1]);
       }
     }
   }
