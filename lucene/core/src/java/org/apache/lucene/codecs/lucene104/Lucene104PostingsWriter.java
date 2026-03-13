@@ -483,7 +483,7 @@ public class Lucene104PostingsWriter extends PushPostingsWriterBase {
       level0FreqNormAccumulator.clear();
     }
 
-    if ((docCount & LEVEL1_MASK) == 0) { // true every 32 blocks (4,096 docs)
+    if ((docCount & LEVEL1_MASK) == 0) { // true every 32 blocks (8,192 docs)
       writeLevel1SkipData();
       level1LastDocID = docID;
       level1CompetitiveFreqNormAccumulator.clear();
