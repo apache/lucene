@@ -227,6 +227,8 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#15711: DirectoryTaxonomyReader.getBulkPath() now uses getPathFromCache. (Shubham Sharma)
+
 * GITHUB#15757: Better skipper-based numeric sort pruning from the start of segments (Alan Woodward)
 
 * GITHUB#15753: Add Case Insensitive makeChar and makeString to Automata. (John Wagster)
