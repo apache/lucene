@@ -401,24 +401,29 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
       directoryReader = DirectoryReader.open(directory);
       try (IndexReader reader = new TestReader(getOnlyLeafReader(directoryReader))) {
         LeafReader leafReader = reader.leaves().getFirst().reader();
-        assertThat(
-            leafReader.getSortedSetDocValues("sortedset"),
-            Matchers.instanceOf(SingletonSortedSetDocValues.class));
-        assertThat(
-            leafReader.getSortedNumericDocValues("sortednumeric"),
-            Matchers.instanceOf(SingletonSortedNumericDocValues.class));
+        // Verify that single-valued SortedSetDocValues behaves as singleton
+        SortedSetDocValues ssdv = leafReader.getSortedSetDocValues("sortedset");
+        assertTrue(ssdv.advanceExact(0));
+        assertEquals(1, ssdv.docValueCount());
+        // Verify that single-valued SortedNumericDocValues behaves as singleton
+        SortedNumericDocValues sndv = leafReader.getSortedNumericDocValues("sortednumeric");
+        assertTrue(sndv.advanceExact(0));
+        assertEquals(1, sndv.docValueCount());
       }
       exitableDirectoryReader =
           new ExitableDirectoryReader(DirectoryReader.open(directory), infiniteQueryTimeout());
       try (IndexReader extitableReader =
           new TestReader(getOnlyLeafReader(exitableDirectoryReader))) {
         LeafReader exitableLeafReader = extitableReader.leaves().getFirst().reader();
-        assertThat(
-            exitableLeafReader.getSortedSetDocValues("sortedset"),
-            Matchers.instanceOf(SingletonSortedSetDocValues.class));
-        assertThat(
-            exitableLeafReader.getSortedNumericDocValues("sortednumeric"),
-            Matchers.instanceOf(SingletonSortedNumericDocValues.class));
+        // Verify that single-valued SortedSetDocValues still behaves as singleton after wrapping
+        SortedSetDocValues ssdv = exitableLeafReader.getSortedSetDocValues("sortedset");
+        assertTrue(ssdv.advanceExact(0));
+        assertEquals(1, ssdv.docValueCount());
+        // Verify that single-valued SortedNumericDocValues still behaves as singleton after wrapping
+        SortedNumericDocValues sndv =
+            exitableLeafReader.getSortedNumericDocValues("sortednumeric");
+        assertTrue(sndv.advanceExact(0));
+        assertEquals(1, sndv.docValueCount());
       }
     }
   }
