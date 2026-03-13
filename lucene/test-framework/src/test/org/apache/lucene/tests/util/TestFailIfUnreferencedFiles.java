@@ -18,6 +18,7 @@ package org.apache.lucene.tests.util;
 
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.util.Collections;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -40,7 +41,7 @@ public class TestFailIfUnreferencedFiles extends WithNestedTests {
     public void testDummy() throws Exception {
       MockDirectoryWrapper dir = LuceneTestCase.newMockDirectory();
       dir.setAssertNoUnrefencedFilesOnClose(true);
-      IndexWriter iw = new IndexWriter(dir, new IndexWriterConfig(null));
+      IndexWriter iw = new IndexWriter(dir, new IndexWriterConfig((Analyzer) null));
       iw.addDocument(new Document());
       iw.close();
       IndexOutput output = dir.createOutput("_hello.world", IOContext.DEFAULT);

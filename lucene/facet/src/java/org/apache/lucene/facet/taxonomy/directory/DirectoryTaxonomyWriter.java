@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiConsumer;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -237,7 +238,7 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
 
     // Make sure we use a MergePolicy which always merges adjacent segments and thus
     // keeps the doc IDs ordered as well (this is crucial for the taxonomy index).
-    return new IndexWriterConfig(null)
+    return new IndexWriterConfig((Analyzer) null)
         .setOpenMode(openMode)
         .setMergePolicy(new LogByteSizeMergePolicy());
   }

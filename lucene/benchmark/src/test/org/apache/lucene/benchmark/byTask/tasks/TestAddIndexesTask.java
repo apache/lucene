@@ -18,6 +18,7 @@ package org.apache.lucene.benchmark.byTask.tasks;
 
 import java.nio.file.Path;
 import java.util.Properties;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.benchmark.BenchmarkTestCase;
 import org.apache.lucene.benchmark.byTask.PerfRunData;
 import org.apache.lucene.benchmark.byTask.utils.Config;
@@ -45,7 +46,7 @@ public class TestAddIndexesTask extends BenchmarkTestCase {
     inputDir = testDir.resolve("input");
     Directory tmpDir = newFSDirectory(inputDir);
     try {
-      IndexWriter writer = new IndexWriter(tmpDir, new IndexWriterConfig(null));
+      IndexWriter writer = new IndexWriter(tmpDir, new IndexWriterConfig((Analyzer) null));
       for (int i = 0; i < 10; i++) {
         writer.addDocument(new Document());
       }
