@@ -1119,7 +1119,7 @@ public class IndexWriter
       // start with previous field numbers, but new FieldInfos
       // NOTE: this is correct even for an NRT reader because we'll pull FieldInfos even for the
       // un-committed segments:
-      globalFieldNumberMap = getFieldNumberMap();
+      globalFieldNumberMap = getFieldNumberMap(reader);
       if (create == false
           && conf.getParentField() != null
           && globalFieldNumberMap.getFieldNames().isEmpty() == false
@@ -1258,17 +1258,28 @@ public class IndexWriter
   }
 
   /**
-   * Loads or returns the already loaded global field number map for this {@link SegmentInfos}. If
-   * this {@link SegmentInfos} has no global field number map, the returned instance is empty.
+   * Loads the global field number map for this {@link SegmentInfos}. If this {@link SegmentInfos}
+   * has no global field number map the returned instance is empty.
+   *
+   * <p>If the a {@code reader} is given, then instead of reading the field info file (.fnm), the
+   * field infos from its leaves are used.
    */
-  private FieldNumbers getFieldNumberMap() throws IOException {
+  private FieldNumbers getFieldNumberMap(StandardDirectoryReader reader) throws IOException {
     final FieldNumbers map =
         new FieldNumbers(config.getSoftDeletesField(), config.getParentField());
 
-    for (SegmentCommitInfo info : segmentInfos) {
-      FieldInfos fis = readFieldInfos(info);
-      for (FieldInfo fi : fis) {
-        map.addOrGet(fi);
+    if (reader == null) {
+      for (SegmentCommitInfo info : segmentInfos) {
+        FieldInfos fis = readFieldInfos(info);
+        for (FieldInfo fi : fis) {
+          map.addOrGet(fi);
+        }
+      }
+    } else {
+      for (LeafReaderContext leafContext : reader.leaves()) {
+        for (FieldInfo fi : leafContext.reader().getFieldInfos()) {
+          map.addOrGet(fi);
+        }
       }
     }
     return map;
