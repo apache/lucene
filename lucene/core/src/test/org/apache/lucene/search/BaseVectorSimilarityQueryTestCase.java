@@ -48,7 +48,6 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.LuceneTestCase.AwaitsFix;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.hnsw.HnswUtil;
 
@@ -292,7 +291,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
     }
   }
 
-  @AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/15816")
+  @LuceneTestCase.AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/15816")
   public void testSomeDeletes() throws IOException {
     // Delete a sub-range from 0 to numDocs
     int startIndex = random().nextInt(numDocs);
