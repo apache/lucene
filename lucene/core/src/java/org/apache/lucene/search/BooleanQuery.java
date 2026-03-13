@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -129,7 +128,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
 
   private BooleanQuery(int minimumNumberShouldMatch, BooleanClause[] clauses) {
     this.minimumNumberShouldMatch = minimumNumberShouldMatch;
-    this.clauses = Collections.unmodifiableList(Arrays.asList(clauses));
+    this.clauses = List.of(clauses);
     clauseSets = new EnumMap<>(Occur.class);
     // duplicates matter for SHOULD and MUST
     clauseSets.put(Occur.SHOULD, new Multiset<>());
