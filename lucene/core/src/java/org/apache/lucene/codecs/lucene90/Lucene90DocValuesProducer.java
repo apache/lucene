@@ -16,7 +16,8 @@
  */
 package org.apache.lucene.codecs.lucene90;
 
-import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_INDEX_JUMP_LENGTH_PER_LEVEL;
+import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_INDEX_JUMP_LENGTH_PER_LEVEL_V0;
+import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_INDEX_JUMP_LENGTH_PER_LEVEL_V1;
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_INDEX_MAX_LEVEL;
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SHIFT;
 
@@ -219,8 +220,21 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     long minValue = meta.readLong();
     int docCount = meta.readInt();
     int maxDocID = meta.readInt();
+    long sumHigh;
+    long sumLow;
+    long valueCount;
+    if (version >= Lucene90DocValuesFormat.VERSION_SUM_AND_VALUE_COUNT) {
+      sumHigh = meta.readLong();
+      sumLow = meta.readLong();
+      valueCount = meta.readLong();
+    } else {
+      sumHigh = 0;
+      sumLow = 0;
+      valueCount = 0;
+    }
 
-    return new DocValuesSkipperEntry(offset, length, minValue, maxValue, docCount, maxDocID);
+    return new DocValuesSkipperEntry(
+        offset, length, minValue, maxValue, docCount, maxDocID, sumHigh, sumLow, valueCount);
   }
 
   private void readNumeric(IndexInput meta, NumericEntry entry) throws IOException {
@@ -353,7 +367,15 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   }
 
   private record DocValuesSkipperEntry(
-      long offset, long length, long minValue, long maxValue, int docCount, int maxDocId) {}
+      long offset,
+      long length,
+      long minValue,
+      long maxValue,
+      int docCount,
+      int maxDocId,
+      long sumHigh,
+      long sumLow,
+      long valueCount) {}
 
   private static class NumericEntry {
     long[] table;
@@ -1865,6 +1887,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     final DocValuesSkipperEntry entry = skippers.get(field.number);
 
     final IndexInput input = data.slice("doc value skipper", entry.offset, entry.length);
+    final boolean hasSumAndValueCount =
+        version >= Lucene90DocValuesFormat.VERSION_SUM_AND_VALUE_COUNT;
+    final long[] jumpLengths =
+        hasSumAndValueCount
+            ? SKIP_INDEX_JUMP_LENGTH_PER_LEVEL_V1
+            : SKIP_INDEX_JUMP_LENGTH_PER_LEVEL_V0;
     // TODO: should we write to disk the actual max level for this segment?
     return new DocValuesSkipper() {
       final int[] minDocID = new int[SKIP_INDEX_MAX_LEVEL];
@@ -1879,6 +1907,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       final long[] minValue = new long[SKIP_INDEX_MAX_LEVEL];
       final long[] maxValue = new long[SKIP_INDEX_MAX_LEVEL];
       final int[] docCount = new int[SKIP_INDEX_MAX_LEVEL];
+      final long[] sumHigh = new long[SKIP_INDEX_MAX_LEVEL];
+      final long[] sumLow = new long[SKIP_INDEX_MAX_LEVEL];
+      final long[] valueCount = new long[SKIP_INDEX_MAX_LEVEL];
       int levels = 1;
 
       @Override
@@ -1900,7 +1931,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             // check if current interval is competitive or we can jump to the next position
             for (int level = levels - 1; level >= 0; level--) {
               if ((maxDocID[level] = input.readInt()) < target) {
-                input.skipBytes(SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level]); // the jump for the level
+                input.skipBytes(jumpLengths[level]); // the jump for the level
                 valid = false;
                 break;
               }
@@ -1908,6 +1939,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               maxValue[level] = input.readLong();
               minValue[level] = input.readLong();
               docCount[level] = input.readInt();
+              if (hasSumAndValueCount) {
+                sumHigh[level] = input.readLong();
+                sumLow[level] = input.readLong();
+                valueCount[level] = input.readLong();
+              }
             }
             if (valid) {
               // adjust levels
@@ -1951,6 +1987,21 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       }
 
       @Override
+      public long sumLow(int level) {
+        return sumLow[level];
+      }
+
+      @Override
+      public long sumHigh(int level) {
+        return sumHigh[level];
+      }
+
+      @Override
+      public long valueCount(int level) {
+        return valueCount[level];
+      }
+
+      @Override
       public long minValue() {
         return entry.minValue;
       }
@@ -1963,6 +2014,21 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       @Override
       public int docCount() {
         return entry.docCount;
+      }
+
+      @Override
+      public long sumLow() {
+        return entry.sumLow;
+      }
+
+      @Override
+      public long sumHigh() {
+        return entry.sumHigh;
+      }
+
+      @Override
+      public long valueCount() {
+        return entry.valueCount;
       }
     };
   }

@@ -215,6 +215,7 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#15737: Store pre-aggregated sum and value count in DocValuesSkipper (Ankit Jain)
 
 * GITHUB#15740, GITHUB#15817: Add NumericFieldStats utility for retrieving global numeric field
   statistics (min, max, doc count) from index metadata structures. Migrate
