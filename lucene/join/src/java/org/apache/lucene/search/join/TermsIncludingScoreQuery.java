@@ -132,7 +132,7 @@ class TermsIncludingScoreQuery extends Query implements Accountable {
     if (scoreMode.needsScores() == false) {
       // We don't need scores then quickly change the query:
       TermsQuery termsQuery =
-          new TermsQuery(toField, terms, fromField, fromQuery, topReaderContextId);
+          new TermsQuery(toField, terms, ords, fromField, fromQuery, topReaderContextId);
       return searcher
           .rewrite(termsQuery)
           .createWeight(searcher, org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES, boost);
