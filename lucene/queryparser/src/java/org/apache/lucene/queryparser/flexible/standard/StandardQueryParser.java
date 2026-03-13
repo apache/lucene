@@ -574,4 +574,29 @@ public class StandardQueryParser extends QueryParserHelper
   public void setDateResolutionMap(Map<CharSequence, DateTools.Resolution> dateRes) {
     getQueryConfigHandler().set(ConfigurationKeys.FIELD_DATE_RESOLUTION_MAP, dateRes);
   }
+
+  /**
+   * Sets BM25's k3 parameter for query-side term frequency saturation. Note: the flexible standard
+   * query parser does not currently apply k3 saturation during query building. This method stores
+   * the value for API compatibility with {@link CommonQueryParserConfiguration}.
+   *
+   * @param k3 the k3 saturation parameter, or a negative value to disable saturation
+   */
+  @Override
+  public void setK3(float k3) {
+    this.k3 = k3;
+  }
+
+  /**
+   * Returns BM25's k3 parameter for query-side term frequency saturation. A negative value means
+   * saturation is disabled.
+   *
+   * @see #setK3(float)
+   */
+  @Override
+  public float getK3() {
+    return k3;
+  }
+
+  private float k3 = -1f;
 }
