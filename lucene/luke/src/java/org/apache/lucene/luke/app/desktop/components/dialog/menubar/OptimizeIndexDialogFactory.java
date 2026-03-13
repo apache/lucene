@@ -215,11 +215,9 @@ public final class OptimizeIndexDialogFactory implements DialogOpener.DialogFact
               setProgress(0);
               statusLbl.setText("Running...");
               indicatorLbl.setVisible(true);
-              TextAreaPrintStream ps;
-              try {
-                ps = new TextAreaPrintStream(logArea);
+
+              try (TextAreaPrintStream ps = new TextAreaPrintStream(logArea)) {
                 toolsModel.optimize(expungeCB.isSelected(), (int) maxSegSpnr.getValue(), ps);
-                ps.flush();
               } catch (Exception e) {
                 statusLbl.setText(MessageUtils.getLocalizedMessage("message.error.unknown"));
                 throw e;
