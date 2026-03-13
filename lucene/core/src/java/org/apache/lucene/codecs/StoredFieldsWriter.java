@@ -155,7 +155,14 @@ public abstract class StoredFieldsWriter implements Closeable, Accountable {
       docCount++;
     }
     finish(docCount);
+    finishMerge(mergeState);
     return docCount;
+  }
+
+  private void finishMerge(MergeState mergeState) throws IOException {
+    for (int i = 0; i < mergeState.storedFieldsReaders.length; i++) {
+      mergeState.storedFieldsReaders[i].finishMerge();
+    }
   }
 
   /**
