@@ -63,6 +63,11 @@ public class TestOpenNLPPOSFilterFactory extends BaseTokenStreamTestCase {
     "NN", "NN", "CD", "VBZ", "CD", "NNS", ".", "NN", "NN", "CD", ",", "CD", "NNS", "."
   };
 
+  private static final String[] SENTENCES_posTags_UD = {
+    "NOUN", "NOUN", "NUM", "VERB", "NUM", "NOUN", "PUNCT", "NOUN", "NOUN", "NUM", "PUNCT", "NUM",
+    "NOUN", "PUNCT"
+  };
+
   private static final String NO_BREAK = "No period";
   private static final String[] NO_BREAK_terms = {"No", "period"};
   private static final int[] NO_BREAK_startOffsets = {0, 3};
@@ -126,6 +131,46 @@ public class TestOpenNLPPOSFilterFactory extends BaseTokenStreamTestCase {
         null,
         true,
         toPayloads(SENTENCES_posTags));
+  }
+
+  public void testPOSUD() throws Exception {
+    CustomAnalyzer analyzer =
+        CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
+            .withTokenizer(
+                "opennlp", "tokenizerModel", tokenizerModelFile, "sentenceModel", sentenceModelFile)
+            .addTokenFilter(
+                "opennlpPOS", "posTaggerModel", posTaggerModelFile, "posTagFormat", "UD")
+            .build();
+    assertAnalyzesTo(
+        analyzer,
+        SENTENCES,
+        SENTENCES_punc,
+        SENTENCES_startOffsets,
+        SENTENCES_endOffsets,
+        SENTENCES_posTags_UD,
+        null,
+        null,
+        true);
+
+    analyzer =
+        CustomAnalyzer.builder(new ClasspathResourceLoader(getClass()))
+            .withTokenizer(
+                "opennlp", "tokenizerModel", tokenizerModelFile, "sentenceModel", sentenceModelFile)
+            .addTokenFilter(
+                "opennlpPOS", "posTaggerModel", posTaggerModelFile, "posTagFormat", "UD")
+            .addTokenFilter(TypeAsPayloadTokenFilterFactory.class)
+            .build();
+    assertAnalyzesTo(
+        analyzer,
+        SENTENCES,
+        SENTENCES_punc,
+        SENTENCES_startOffsets,
+        SENTENCES_endOffsets,
+        null,
+        null,
+        null,
+        true,
+        toPayloads(SENTENCES_posTags_UD));
   }
 
   public void testNoBreak() throws Exception {
