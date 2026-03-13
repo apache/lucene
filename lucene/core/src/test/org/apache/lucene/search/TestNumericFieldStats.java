@@ -17,8 +17,11 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.InetAddressPoint;
 import org.apache.lucene.document.IntField;
 import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
@@ -30,8 +33,53 @@ import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.search.NumericFieldStats.Stats;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.BytesRef;
 
 public class TestNumericFieldStats extends LuceneTestCase {
+
+  private static Field newCustomWidthPoint(String name, int numBytes, long value) {
+    FieldType type = new FieldType();
+    type.setDimensions(1, numBytes);
+    type.freeze();
+    byte[] packed = new byte[numBytes];
+    for (int i = numBytes - 1; i >= 0; i--) {
+      packed[i] = (byte) (value & 0xFF);
+      value >>= 8;
+    }
+    packed[0] ^= (byte) 0x80;
+    return new Field(name, new BytesRef(packed), type);
+  }
+
+  private static long minValueForWidth(int numBytes) {
+    return -(1L << (numBytes * 8 - 1));
+  }
+
+  private static long maxValueForWidth(int numBytes) {
+    return (1L << (numBytes * 8 - 1)) - 1;
+  }
+
+  public void testGetStatsWithAllByteWidths() throws IOException {
+    for (int numBytes = 1; numBytes <= Long.BYTES; numBytes++) {
+      long min = minValueForWidth(numBytes);
+      long max = maxValueForWidth(numBytes);
+      try (Directory dir = newDirectory();
+          IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+        for (long value : new long[] {min, 0, max}) {
+          final Document doc = new Document();
+          doc.add(newCustomWidthPoint("field", numBytes, value));
+          w.addDocument(doc);
+        }
+        w.commit();
+        try (IndexReader reader = DirectoryReader.open(w)) {
+          final Stats stats = NumericFieldStats.getStats(reader, "field");
+          assertNotNull("numBytes=" + numBytes, stats);
+          assertEquals("numBytes=" + numBytes, min, stats.min());
+          assertEquals("numBytes=" + numBytes, max, stats.max());
+          assertEquals("numBytes=" + numBytes, 3, stats.docCount());
+        }
+      }
+    }
+  }
 
   public void testGetStatsWithLongField() throws IOException {
     try (Directory dir = newDirectory();
@@ -265,6 +313,19 @@ public class TestNumericFieldStats extends LuceneTestCase {
         assertEquals(100L, stats.min());
         assertEquals(100L, stats.max());
         assertEquals(1, stats.docCount());
+      }
+    }
+  }
+
+  public void testGetStatsReturnsNullForWidePointValues() throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      final Document doc = new Document();
+      doc.add(new InetAddressPoint("field", InetAddress.getByName("192.168.0.1")));
+      w.addDocument(doc);
+      w.commit();
+      try (IndexReader reader = DirectoryReader.open(w)) {
+        assertNull(NumericFieldStats.getStats(reader, "field"));
       }
     }
   }

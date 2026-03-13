@@ -216,9 +216,10 @@ API Changes
 New Features
 ---------------------
 
-* GITHUB#15740: Add NumericFieldStats utility for retrieving global numeric field statistics
-  (min, max, doc count) from index metadata structures. Migrate SortedNumericDocValuesRangeQuery
-  to use this API, fixing the rewrite optimization for fields with PointValues but no skip index.
+* GITHUB#15740, GITHUB#15817: Add NumericFieldStats utility for retrieving global numeric field
+  statistics (min, max, doc count) from index metadata structures. Migrate
+  SortedNumericDocValuesRangeQuery to use this API, fixing the rewrite optimization for fields
+  with PointValues but no skip index. Support all packed value lengths from 1 to 8 bytes.
   (Salvatore Campagna)
 
 * GITHUB#15722: Add interface to do prefetch on KnnVectorValues and an example implementation to use prefetch
