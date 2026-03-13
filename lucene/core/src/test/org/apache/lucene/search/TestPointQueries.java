@@ -170,12 +170,180 @@ public class TestPointQueries extends LuceneTestCase {
     doc.add(new LongPoint("point", 3));
     w.addDocument(doc);
 
+    doc = new Document();
+    doc.add(new LongPoint("point", 4));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 5));
+    w.addDocument(doc);
+
     DirectoryReader r = DirectoryReader.open(w);
     IndexSearcher s = new IndexSearcher(r);
     assertEquals(2, s.count(LongPoint.newRangeQuery("point", -8L, 1L)));
     assertEquals(3, s.count(LongPoint.newRangeQuery("point", -7L, 3L)));
     assertEquals(1, s.count(LongPoint.newExactQuery("point", -7L)));
     assertEquals(0, s.count(LongPoint.newExactQuery("point", -6L)));
+    w.close();
+    r.close();
+    dir.close();
+  }
+
+  public void testSparseValuesWithSoredDimIntersectVisitor() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+
+    Document doc = new Document();
+    doc.add(new LongPoint("point", -7));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 2));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 2));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 3));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 3));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 3));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 4));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 5));
+    w.addDocument(doc);
+
+    DirectoryReader r = DirectoryReader.open(w);
+    IndexSearcher s = new IndexSearcher(r);
+    assertEquals(6, s.search(LongPoint.newRangeQuery("point", 0L, 4L), 10).scoreDocs.length);
+    assertEquals(1, s.search(LongPoint.newRangeQuery("point", -8L, 1L), 10).scoreDocs.length);
+    w.close();
+    r.close();
+    dir.close();
+  }
+
+  public void testSparseValuesWithSoredDimInverseIntersectVisitor() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+
+    Document doc = new Document();
+    doc.add(new LongPoint("point", -7));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 2));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 2));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 3));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 3));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 4));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 5));
+    w.addDocument(doc);
+
+    DirectoryReader r = DirectoryReader.open(w);
+    IndexSearcher s = new IndexSearcher(r);
+    assertEquals(5, s.search(LongPoint.newRangeQuery("point", 0L, 4L), 10).scoreDocs.length);
+    assertEquals(1, s.search(LongPoint.newRangeQuery("point", -8L, 1L), 10).scoreDocs.length);
+    w.close();
+    r.close();
+    dir.close();
+  }
+
+  public void testCompressedWithSoredDimIntersectVisitor() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+
+    Document doc = new Document();
+    doc.add(new LongPoint("point", -7));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 0));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 1));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 3));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 4));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 5));
+    w.addDocument(doc);
+
+    DirectoryReader r = DirectoryReader.open(w);
+    IndexSearcher s = new IndexSearcher(r);
+
+    assertEquals(4, s.search(LongPoint.newRangeQuery("point", 0L, 4L), 10).scoreDocs.length);
+    assertEquals(3, s.search(LongPoint.newRangeQuery("point", -8L, 1L), 10).scoreDocs.length);
+
+    w.close();
+    r.close();
+    dir.close();
+  }
+
+  public void testCompressedWithSoredDimInverseIntersectVisitor() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+
+    Document doc = new Document();
+    doc.add(new LongPoint("point", -7));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 0));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 3));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 4));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new LongPoint("point", 5));
+    w.addDocument(doc);
+
+    DirectoryReader r = DirectoryReader.open(w);
+    IndexSearcher s = new IndexSearcher(r);
+
+    assertEquals(3, s.search(LongPoint.newRangeQuery("point", 0L, 4L), 10).scoreDocs.length);
+    assertEquals(2, s.search(LongPoint.newRangeQuery("point", -8L, 1L), 10).scoreDocs.length);
+
     w.close();
     r.close();
     dir.close();
