@@ -245,6 +245,8 @@ Optimizations
 
 * GITHUB#15024: Improve prefix sum computation in Lucene99HnswVectorsReader for faster neighbor decoding. (Luis Negrin)
 
+* GITHUB#15779: Improve BytesRefHash.add performance by optimize rehash operation (tyronecai)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
