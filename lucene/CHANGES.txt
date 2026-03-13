@@ -86,6 +86,8 @@ New Features
 
 * GITHUB#15508: Use native vectorization in Lucene. (Ankur Goel, Shubham Chaudhary, Dawid Weiss)
 
+* GITHUB#14969: Add metadata support to Nori Korean analyzer tokens, allowing users to attach additional information to dictionary words. (twosom)
+
 Improvements
 ---------------------
 

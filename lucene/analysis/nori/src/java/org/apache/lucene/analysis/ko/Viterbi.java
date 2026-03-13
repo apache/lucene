@@ -23,6 +23,7 @@ import org.apache.lucene.analysis.ko.dict.KoMorphData;
 import org.apache.lucene.analysis.ko.dict.TokenInfoDictionary;
 import org.apache.lucene.analysis.ko.dict.UnknownDictionary;
 import org.apache.lucene.analysis.ko.dict.UserDictionary;
+import org.apache.lucene.analysis.ko.dict.UserMorphData;
 import org.apache.lucene.analysis.morph.ConnectionCosts;
 import org.apache.lucene.analysis.morph.Dictionary;
 import org.apache.lucene.analysis.morph.GraphvizFormatter;
@@ -248,6 +249,10 @@ final class Viterbi
         if (token.getPOSType() == POS.Type.MORPHEME
             || mode == KoreanTokenizer.DecompoundMode.NONE) {
           if (shouldFilterToken(token) == false) {
+            if (token.getMorphAtts() instanceof UserMorphData userMorphData) {
+              final String metadata = userMorphData.metadatas[token.getWordId()];
+              token.setMetadata(metadata);
+            }
             pending.add(token);
             if (VERBOSE) {
               System.out.println("    add token=" + pending.get(pending.size() - 1));
@@ -264,9 +269,11 @@ final class Viterbi
             int endOffset = backWordPos + length;
             int posLen = 0;
             // decompose the compound
+            String metadata = null;
             for (int i = morphemes.length - 1; i >= 0; i--) {
               final KoMorphData.Morpheme morpheme = morphemes[i];
               final Token compoundToken;
+              metadata = morpheme.metadata();
               if (token.getPOSType() == POS.Type.COMPOUND) {
                 assert endOffset - morpheme.surfaceForm().length() >= 0;
                 compoundToken =
@@ -275,7 +282,8 @@ final class Viterbi
                         morpheme.surfaceForm(),
                         endOffset - morpheme.surfaceForm().length(),
                         endOffset,
-                        backType);
+                        backType,
+                        metadata);
               } else {
                 compoundToken =
                     new DecompoundToken(
@@ -283,7 +291,8 @@ final class Viterbi
                         morpheme.surfaceForm(),
                         token.getStartOffset(),
                         token.getEndOffset(),
-                        backType);
+                        backType,
+                        metadata);
               }
               if (i == 0 && mode == KoreanTokenizer.DecompoundMode.MIXED) {
                 compoundToken.setPositionIncrement(0);
@@ -297,6 +306,7 @@ final class Viterbi
             }
             if (mode == KoreanTokenizer.DecompoundMode.MIXED) {
               token.setPositionLength(Math.max(1, posLen));
+              token.setMetadata(metadata);
               pending.add(token);
               if (VERBOSE) {
                 System.out.println("    add token=" + pending.get(pending.size() - 1));
