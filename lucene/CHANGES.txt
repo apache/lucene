@@ -86,6 +86,8 @@ New Features
 
 * GITHUB#15508: Use native vectorization in Lucene. (Ankur Goel, Shubham Chaudhary, Dawid Weiss)
 
+* GITHUB#15818: Add BM25 k3 query-term frequency saturation to classic query parser. (Sagar Upadhyaya)
+
 Improvements
 ---------------------
 
