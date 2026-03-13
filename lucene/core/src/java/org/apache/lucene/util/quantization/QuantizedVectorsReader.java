@@ -18,7 +18,10 @@ package org.apache.lucene.util.quantization;
 
 import java.io.Closeable;
 import java.io.IOException;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 
 /**
  * Quantized vector reader
@@ -30,4 +33,17 @@ public interface QuantizedVectorsReader extends Closeable, Accountable {
   BaseQuantizedByteVectorValues getQuantizedVectorValues(String fieldName) throws IOException;
 
   ScalarQuantizer getQuantizationState(String fieldName);
+
+  /**
+   * Provides a scorer for merging this quantized vector reader. This way any additional merging
+   * logic can be implemented by the user of this class.
+   *
+   * @param fieldInfo fieldInfo of the field to merge
+   * @param segmentWriteState the SegmentWriteState to write temporary files if needed
+   * @return a scorer over the newly merged flat vectors, which should be closed as it may hold
+   *     temporary file handles to read over auxiliary data structures
+   * @throws IOException if an I/O error occurs when merging
+   */
+  CloseableRandomVectorScorerSupplier getRandomVectorScorerSupplierForMerge(
+      FieldInfo fieldInfo, SegmentWriteState segmentWriteState) throws IOException;
 }

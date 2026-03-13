@@ -39,6 +39,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOFunction;
+import org.apache.lucene.util.IORunnable;
 
 /** Writes vectors to an index. */
 public abstract class KnnVectorsWriter implements Accountable, Closeable {
@@ -52,9 +53,25 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   /** Flush all buffered data on disk * */
   public abstract void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException;
 
-  /** Write field for merging */
+  /** Called once at the end before close */
+  public abstract void finish() throws IOException;
+
+  /**
+   * Merges vectors for a single field, returning a runnable for any deferred work (e.g., HNSW graph
+   * construction). The default implementation merges naively the vectors and returns {@code null}
+   * (no deferred work).
+   *
+   * <p>Subclasses should override this method may implement a two-phase merge strategy where flat
+   * vectors are written in the first phase and additional indexing structures (like HNSW graphs)
+   * are built in the second phase using the already-written flat vector data.
+   *
+   * @param fieldInfo the field to merge
+   * @param mergeState the merge state
+   * @return a runnable to execute in phase 2, or {@code null} if there is no deferred work
+   * @throws IOException if an I/O error occurs
+   */
   @SuppressWarnings("unchecked")
-  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+  public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     switch (fieldInfo.getVectorEncoding()) {
       case BYTE -> {
         KnnFieldVectorsWriter<byte[]> byteWriter =
@@ -77,15 +94,18 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
         }
       }
     }
+    return null;
   }
 
-  /** Called once at the end before close */
-  public abstract void finish() throws IOException;
-
   /**
-   * Merges the segment vectors for all fields. This default implementation delegates to {@link
-   * #mergeOneField}, passing a {@link KnnVectorsReader} that combines the vector values and ignores
-   * deleted documents.
+   * Merges the segment vectors for all fields using a two-phase strategy:
+   *
+   * <ol>
+   *   <li>Phase 1: Merge flat vectors for all fields by calling {@link #mergeOneField(FieldInfo,
+   *       MergeState)}, collecting deferred work (runnables) for each field.
+   *   <li>Phase 2: Execute the deferred runnables (e.g., HNSW graph construction) using the flat
+   *       vector data written in phase 1.
+   * </ol>
    */
   public final void merge(MergeState mergeState) throws IOException {
     for (int i = 0; i < mergeState.fieldInfos.length; i++) {
@@ -96,19 +116,30 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
     }
 
+    // Phase 1: merge flat vectors for all fields, collecting deferred work
+    List<IORunnable> deferredWork = new ArrayList<>();
     for (FieldInfo fieldInfo : mergeState.mergeFieldInfos) {
       if (fieldInfo.hasVectorValues()) {
         if (mergeState.infoStream.isEnabled("VV")) {
           mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
         }
 
-        mergeOneField(fieldInfo, mergeState);
+        IORunnable deferred = mergeOneField(fieldInfo, mergeState);
+        if (deferred != null) {
+          deferredWork.add(deferred);
+        }
 
         if (mergeState.infoStream.isEnabled("VV")) {
           mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
         }
       }
     }
+
+    // Phase 2: execute deferred work (e.g., graph construction using the written flat vectors)
+    for (IORunnable runnable : deferredWork) {
+      runnable.run();
+    }
+
     finish();
   }
 
