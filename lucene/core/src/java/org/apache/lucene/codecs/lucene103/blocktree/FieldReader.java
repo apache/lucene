@@ -17,10 +17,15 @@
 package org.apache.lucene.codecs.lucene103.blocktree;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.List;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.store.ByteBuffersDataInput;
+import org.apache.lucene.store.ByteBuffersIndexInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
@@ -84,7 +89,20 @@ public final class FieldReader extends Terms {
   }
 
   private TrieReader newReader() throws IOException {
-    return new TrieReader(indexIn.slice("trie index", indexStart, indexEnd - indexStart), rootFP);
+    // Load the trie index into heap memory to avoid memory-mapped file overhead.
+    // Each RandomAccessInput read on mmap triggers Panama Foreign Memory API bounds checks
+    // (checkValidStateRaw), which is expensive for high-frequency seekExact calls (e.g., _id
+    // lookups during indexing). Loading on-heap matches the lucene90 FST behavior where the
+    // term index was always heap-resident.
+    long length = indexEnd - indexStart;
+    IndexInput slice = indexIn.slice("trie index", indexStart, length);
+    byte[] bytes = new byte[(int) length];
+    slice.readBytes(bytes, 0, bytes.length);
+    slice.close();
+    ByteBuffersDataInput bbdi =
+        new ByteBuffersDataInput(List.of(ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)));
+    ByteBuffersIndexInput heapInput = new ByteBuffersIndexInput(bbdi, "heap trie index");
+    return new TrieReader(heapInput, rootFP);
   }
 
   @Override

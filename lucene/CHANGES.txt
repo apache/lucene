@@ -113,6 +113,10 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#15820: Load lucene103 blocktree trie index on-heap to avoid memory-mapped file overhead
+  on seekExact calls, restoring lucene90 FST-like performance for high-frequency _id lookups.
+  (Sarah Syarofina)
+
 * GITHUB#15681: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
