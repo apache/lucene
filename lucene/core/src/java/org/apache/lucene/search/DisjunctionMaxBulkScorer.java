@@ -54,7 +54,7 @@ final class DisjunctionMaxBulkScorer extends BulkScorer {
     this.scorers =
         PriorityQueue.usingComparator(scorers.size(), Comparator.comparingInt(b -> b.next));
     for (BulkScorer scorer : scorers) {
-      this.scorers.add(new BulkScorerAndNext(scorer));
+      this.scorers.addNoShift(new BulkScorerAndNext(scorer));
     }
   }
 
@@ -85,7 +85,7 @@ final class DisjunctionMaxBulkScorer extends BulkScorer {
                   @Override
                   public void collect(int doc) throws IOException {
                     final int delta = doc - windowMin;
-                    windowMatches.set(doc - windowMin);
+                    windowMatches.set(delta);
                     windowScores[delta] = Math.max(windowScores[delta], scorer.score());
                   }
                 },

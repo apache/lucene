@@ -190,6 +190,18 @@ public class PriorityQueue<T> implements Iterable<T> {
   }
 
   /**
+   * Adds an Object to a PriorityQueue without upHeap. Note: only use it when all elements have a
+   * same value.
+   */
+  public final void addNoShift(T element) {
+    // TODO: Check element equalsTo lastElement, if we can get the comparator.
+
+    int index = size + 1;
+    heap[index] = element;
+    size = index;
+  }
+
+  /**
    * Adds an Object to a PriorityQueue in log(size) time. It returns the object (if any) that was
    * dropped off the heap because it was full. This can be the given parameter (in case it is
    * smaller than the full heap's minimum, and couldn't be added), or another object that was
