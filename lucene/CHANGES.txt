@@ -157,6 +157,8 @@ Bug Fixes
 * GITHUB#14971: Fix CachedExecutor thread pool leak in ConcurrentMergeScheduler
   when IndexWriter initialization fails. (Su Beom)
 
+* GITHUB#15781: Fix incorrect parameter names in GradientFormatter error messages. (Vinay Krishna Pudyodu)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
