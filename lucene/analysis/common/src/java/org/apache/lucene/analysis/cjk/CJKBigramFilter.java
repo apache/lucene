@@ -360,7 +360,7 @@ public final class CJKBigramFilter extends TokenFilter {
     termAtt.setLength(len);
     offsetAtt.setOffset(startOffset[index], endOffset[index]);
     typeAtt.setType(SINGLE_TYPE);
-    if (!outputUnigrams && deferredPosInc > 0) {
+    if (deferredPosInc > 0) {
       posIncAtt.setPositionIncrement(1 + deferredPosInc);
       deferredPosInc = 0;
     }
