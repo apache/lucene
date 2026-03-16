@@ -718,7 +718,6 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
    */
   private static final int HYBRID_NUM_FILLER = 196;
 
-  private static final int HYBRID_NUM_DOCS = 4 + HYBRID_NUM_FILLER;
   private static final float[] QUERY_A = normalize(new float[] {1.0f, 0.0f, 0.0f});
 
   private Directory hybridDir;
