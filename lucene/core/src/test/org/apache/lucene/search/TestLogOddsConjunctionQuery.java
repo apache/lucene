@@ -1067,6 +1067,144 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     testDir.close();
   }
 
+  /**
+   * BooleanQuery SHOULD (OR): two independent hybrid queries combined with OR semantics. A document
+   * matching either hybrid should appear; a document matching both should score highest.
+   */
+  public void testBooleanShouldWithHybrid() throws Exception {
+    buildHybridIndex();
+    try {
+      // Hybrid 1: text "lucene" + vector near QUERY_A
+      Query textLucene = new TermQuery(new Term("body", "lucene"));
+      Query vecA = new KnnFloatVectorQuery("embedding", QUERY_A, 10);
+      LogOddsConjunctionQuery hybrid1 =
+          new LogOddsConjunctionQuery(Arrays.asList(textLucene, vecA), 0.5f);
+
+      // Hybrid 2: text "cooking" + vector near QUERY_A
+      Query textCooking = new TermQuery(new Term("body", "cooking"));
+      LogOddsConjunctionQuery hybrid2 =
+          new LogOddsConjunctionQuery(Arrays.asList(textCooking, vecA), 0.5f);
+
+      // OR: match either hybrid
+      BooleanQuery orQuery =
+          new BooleanQuery.Builder()
+              .add(hybrid1, BooleanClause.Occur.SHOULD)
+              .add(hybrid2, BooleanClause.Occur.SHOULD)
+              .build();
+
+      ScoreDoc[] hits = hybridSearcher.search(orQuery, 20).scoreDocs;
+      assertTrue("should have hits", hits.length > 0);
+
+      // doc0 matches hybrid1 (text "lucene" + near vector), should appear
+      // doc2 matches hybrid2 (text "cooking" + near vector), should appear
+      boolean foundDoc0 = false;
+      boolean foundDoc2 = false;
+      for (ScoreDoc hit : hits) {
+        if (hit.doc == 0) foundDoc0 = true;
+        if (hit.doc == 2) foundDoc2 = true;
+        assertTrue("score should be > 0", hit.score > 0f);
+      }
+      assertTrue("doc0 (lucene + near vector) should appear", foundDoc0);
+      assertTrue("doc2 (cooking + near vector) should appear", foundDoc2);
+    } finally {
+      closeHybridIndex();
+    }
+  }
+
+  /**
+   * Vector AND vector: BooleanQuery MUST requires both vector queries to match. Only documents
+   * appearing in both KNN result sets pass the conjunction.
+   */
+  public void testVectorAndVector() throws Exception {
+    // Two query vectors pointing in different directions
+    float[] queryX = normalize(new float[] {1.0f, 0.0f});
+    float[] queryY = normalize(new float[] {0.0f, 1.0f});
+
+    Directory testDir = newDirectory();
+    IndexWriterConfig config = new IndexWriterConfig();
+    config.setCodec(TestUtil.getDefaultCodec());
+    IndexWriter writer = new IndexWriter(testDir, config);
+
+    // doc0: near both queryX and queryY (diagonal)
+    Document doc0 = new Document();
+    doc0.add(new KnnFloatVectorField("emb",
+        normalize(new float[] {0.7f, 0.7f}), VectorSimilarityFunction.COSINE));
+    writer.addDocument(doc0);
+
+    // doc1: near queryX only
+    Document doc1 = new Document();
+    doc1.add(new KnnFloatVectorField("emb",
+        normalize(new float[] {0.95f, 0.05f}), VectorSimilarityFunction.COSINE));
+    writer.addDocument(doc1);
+
+    // doc2: near queryY only
+    Document doc2 = new Document();
+    doc2.add(new KnnFloatVectorField("emb",
+        normalize(new float[] {0.05f, 0.95f}), VectorSimilarityFunction.COSINE));
+    writer.addDocument(doc2);
+
+    writer.forceMerge(1);
+    writer.close();
+    IndexReader testReader = DirectoryReader.open(testDir);
+    IndexSearcher testSearcher = newSearcher(testReader);
+
+    Query vecX = new KnnFloatVectorQuery("emb", queryX, 3);
+    Query vecY = new KnnFloatVectorQuery("emb", queryY, 3);
+
+    // MUST both match (AND semantics at document level)
+    BooleanQuery vecAnd =
+        new BooleanQuery.Builder()
+            .add(vecX, BooleanClause.Occur.MUST)
+            .add(vecY, BooleanClause.Occur.MUST)
+            .build();
+
+    ScoreDoc[] hits = testSearcher.search(vecAnd, 3).scoreDocs;
+
+    // All three docs are in both KNN top-3 (only 3 docs total), so all match.
+    // doc0 (diagonal, close to both) should rank first since both sub-scores are decent.
+    // doc1 scores high on vecX but low on vecY; doc2 the reverse.
+    assertEquals("all 3 docs should match", 3, hits.length);
+    assertEquals("doc0 (near both vectors) should rank first", 0, hits[0].doc);
+
+    testReader.close();
+    testDir.close();
+  }
+
+  /**
+   * Vector NOT: exclude documents matching a vector query from text search results. Uses MUST_NOT
+   * with a KNN query to filter out semantically similar documents.
+   */
+  public void testVectorNot() throws Exception {
+    buildHybridIndex();
+    try {
+      Query textQuery = new TermQuery(new Term("body", "lucene"));
+      // KNN returns docs with vectors near QUERY_A, including doc0
+      Query vecNear = new KnnFloatVectorQuery("embedding", QUERY_A, 10);
+
+      // Text MUST, vector MUST_NOT: find text matches that are NOT semantically near QUERY_A
+      BooleanQuery textNotVector =
+          new BooleanQuery.Builder()
+              .add(textQuery, BooleanClause.Occur.MUST)
+              .add(vecNear, BooleanClause.Occur.MUST_NOT)
+              .build();
+
+      ScoreDoc[] hits = hybridSearcher.search(textNotVector, 10).scoreDocs;
+
+      // doc0 matches text AND vector (near QUERY_A), so it should be excluded
+      // doc1 matches text but its vector is orthogonal to QUERY_A
+      for (ScoreDoc hit : hits) {
+        assertNotEquals("doc0 should be excluded (near QUERY_A)", 0, hit.doc);
+      }
+
+      // doc1 should survive: it matches text, and its vector is far from QUERY_A
+      // (but only if KNN didn't include doc1 in its top-k)
+      // Note: doc1's vector is orthogonal, so with enough fillers it may or may not
+      // be in KNN top-10. We only assert doc0 exclusion, which is deterministic.
+    } finally {
+      closeHybridIndex();
+    }
+  }
+
   /** L2-normalize a float vector. */
   private static float[] normalize(float[] v) {
     double norm = 0;
