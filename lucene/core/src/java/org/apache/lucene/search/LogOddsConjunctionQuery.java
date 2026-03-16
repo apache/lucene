@@ -29,7 +29,7 @@ import org.apache.lucene.index.LeafReaderContext;
 /**
  * A query that combines sub-query probability scores via log-odds conjunction. Sub-queries are
  * expected to produce scores in (0, 1) representing probabilities (e.g., from {@link
- * org.apache.lucene.search.similarities.BayesianBM25Similarity}).
+ * BayesianScoreQuery} wrapping a BM25 query, or KNN cosine similarity).
  *
  * <p>The combination formula resolves the shrinkage problem of naive probabilistic AND by:
  *

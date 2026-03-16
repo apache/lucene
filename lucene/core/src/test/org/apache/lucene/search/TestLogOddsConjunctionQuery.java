@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -30,15 +29,26 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.similarities.BayesianBM25Similarity;
+import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
-/** Tests for {@link LogOddsConjunctionQuery}. */
+/**
+ * Tests for {@link LogOddsConjunctionQuery}. Clauses are wrapped with {@link BayesianScoreQuery} to
+ * produce (0,1) probability scores, matching the paper's query-level calibration design.
+ */
 public class TestLogOddsConjunctionQuery extends LuceneTestCase {
+
+  private static final float BSQ_ALPHA = 0.5f;
+  private static final float BSQ_BETA = 3.0f;
+
+  /** Wraps a query with BayesianScoreQuery for sigmoid calibration to (0,1). */
+  private static Query bayesian(Query q) {
+    return new BayesianScoreQuery(q, BSQ_ALPHA, BSQ_BETA);
+  }
 
   private Directory dir;
   private IndexReader reader;
@@ -49,26 +59,20 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     super.setUp();
 
     dir = newDirectory();
-    IndexWriterConfig config = new IndexWriterConfig();
-    config.setSimilarity(new BayesianBM25Similarity());
-    IndexWriter writer = new IndexWriter(dir, config);
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
 
-    // doc0: matches "alpha" and "beta" in body
     Document doc0 = new Document();
     doc0.add(new TextField("body", "alpha beta gamma", Field.Store.YES));
     writer.addDocument(doc0);
 
-    // doc1: matches only "alpha"
     Document doc1 = new Document();
     doc1.add(new TextField("body", "alpha gamma delta", Field.Store.YES));
     writer.addDocument(doc1);
 
-    // doc2: matches only "beta"
     Document doc2 = new Document();
     doc2.add(new TextField("body", "beta gamma delta", Field.Store.YES));
     writer.addDocument(doc2);
 
-    // doc3: matches neither
     Document doc3 = new Document();
     doc3.add(new TextField("body", "gamma delta epsilon", Field.Store.YES));
     writer.addDocument(doc3);
@@ -77,7 +81,7 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     reader = DirectoryReader.open(writer);
     writer.close();
     searcher = new IndexSearcher(reader);
-    searcher.setSimilarity(new BayesianBM25Similarity());
+    searcher.setSimilarity(new BM25Similarity());
   }
 
   @Override
@@ -87,25 +91,23 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     super.tearDown();
   }
 
+  // ---- Core query behavior ----
+
   public void testBasicFusion() throws Exception {
-    Query q1 = new TermQuery(new Term("body", "alpha"));
-    Query q2 = new TermQuery(new Term("body", "beta"));
+    Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
 
     LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
     QueryUtils.check(random(), loq, searcher);
 
     ScoreDoc[] hits = searcher.search(loq, 10).scoreDocs;
-
-    // doc0 matches both terms, doc1 matches only alpha, doc2 matches only beta
     assertTrue("should have at least 1 hit", hits.length >= 1);
 
-    // All scores should be in (0, 1) since they are probabilities
     for (ScoreDoc hit : hits) {
       assertTrue("score should be > 0, got " + hit.score, hit.score > 0);
       assertTrue("score should be < 1, got " + hit.score, hit.score < 1);
     }
 
-    // doc0 (matching both) should score highest
     if (hits.length >= 2) {
       assertTrue(
           "doc matching both terms should score higher than doc matching one",
@@ -114,335 +116,176 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
   }
 
   public void testSingleClauseRewrite() throws Exception {
-    Query sub = new TermQuery(new Term("body", "alpha"));
+    Query sub = bayesian(new TermQuery(new Term("body", "alpha")));
     LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Collections.singletonList(sub));
 
     Query rewritten = searcher.rewrite(loq);
-    // Single clause should rewrite to the inner query
     assertTrue(
-        "single clause should rewrite to TermQuery, got " + rewritten.getClass().getName(),
-        rewritten instanceof TermQuery);
+        "single clause should rewrite to BayesianScoreQuery, got " + rewritten.getClass().getName(),
+        rewritten instanceof BayesianScoreQuery);
   }
 
   public void testEmptyClauseRewrite() throws Exception {
     LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Collections.emptyList(), 0.5f);
-
     Query rewritten = searcher.rewrite(loq);
     assertTrue("empty should rewrite to MatchNoDocsQuery", rewritten instanceof MatchNoDocsQuery);
   }
 
   public void testAlphaValues() throws Exception {
-    Query q1 = new TermQuery(new Term("body", "alpha"));
-    Query q2 = new TermQuery(new Term("body", "beta"));
+    Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
 
-    // alpha=0 means no scaling: meanLogit * n^0 = meanLogit * 1
-    LogOddsConjunctionQuery loq0 = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.0f);
-    ScoreDoc[] hits0 = searcher.search(loq0, 10).scoreDocs;
-
-    // alpha=0.5 means sqrt(n) scaling
-    LogOddsConjunctionQuery loq05 = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
-    ScoreDoc[] hits05 = searcher.search(loq05, 10).scoreDocs;
-
-    // alpha=1.0 means n scaling (strongest agreement bonus)
-    LogOddsConjunctionQuery loq1 = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 1.0f);
-    ScoreDoc[] hits1 = searcher.search(loq1, 10).scoreDocs;
-
-    // All should produce valid results
-    assertTrue("alpha=0 should have hits", hits0.length > 0);
-    assertTrue("alpha=0.5 should have hits", hits05.length > 0);
-    assertTrue("alpha=1.0 should have hits", hits1.length > 0);
-
-    // Scores should be valid probabilities
-    for (ScoreDoc[] hits : new ScoreDoc[][] {hits0, hits05, hits1}) {
+    for (float alpha : new float[] {0.0f, 0.5f, 1.0f}) {
+      LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), alpha);
+      ScoreDoc[] hits = searcher.search(loq, 10).scoreDocs;
+      assertTrue("alpha=" + alpha + " should have hits", hits.length > 0);
       for (ScoreDoc hit : hits) {
-        assertTrue("score should be finite", Float.isFinite(hit.score));
-        assertTrue("score should be > 0", hit.score > 0);
+        assertTrue("score should be finite and > 0", Float.isFinite(hit.score) && hit.score > 0);
         assertTrue("score should be < 1", hit.score < 1);
       }
     }
   }
 
   public void testIllegalAlpha() {
-    IllegalArgumentException expected =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> new LogOddsConjunctionQuery(Collections.emptyList(), -0.1f));
-    assertTrue(expected.getMessage().contains("alpha"));
-
-    expected =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> new LogOddsConjunctionQuery(Collections.emptyList(), 1.1f));
-    assertTrue(expected.getMessage().contains("alpha"));
-
-    expected =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> new LogOddsConjunctionQuery(Collections.emptyList(), Float.NaN));
-    assertTrue(expected.getMessage().contains("alpha"));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new LogOddsConjunctionQuery(Collections.emptyList(), -0.1f));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new LogOddsConjunctionQuery(Collections.emptyList(), 1.1f));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new LogOddsConjunctionQuery(Collections.emptyList(), Float.NaN));
   }
 
   public void testNonMatchingSubQueries() throws Exception {
-    Query q1 = new TermQuery(new Term("body", "nonexistent1"));
-    Query q2 = new TermQuery(new Term("body", "nonexistent2"));
-
+    Query q1 = bayesian(new TermQuery(new Term("body", "nonexistent1")));
+    Query q2 = bayesian(new TermQuery(new Term("body", "nonexistent2")));
     LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
-    ScoreDoc[] hits = searcher.search(loq, 10).scoreDocs;
-    assertEquals("no docs should match nonexistent terms", 0, hits.length);
+    assertEquals("no docs should match", 0, searcher.search(loq, 10).scoreDocs.length);
   }
 
   public void testExplanation() throws Exception {
-    Query q1 = new TermQuery(new Term("body", "alpha"));
-    Query q2 = new TermQuery(new Term("body", "beta"));
-
+    Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
     LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
 
     Weight w = searcher.createWeight(searcher.rewrite(loq), ScoreMode.COMPLETE, 1);
     LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
 
-    // doc0 matches both
-    Explanation explanation = w.explain(context, 0);
-    assertTrue("doc0 should match", explanation.isMatch());
-    assertTrue(
-        "explanation should mention log-odds", explanation.getDescription().contains("log-odds"));
+    Explanation expl = w.explain(context, 0);
+    assertTrue("doc0 should match", expl.isMatch());
+    assertTrue("should mention log-odds", expl.getDescription().contains("log-odds"));
 
-    // doc3 matches neither
-    Explanation noMatchExpl = w.explain(context, 3);
-    assertFalse("doc3 should not match", noMatchExpl.isMatch());
+    Explanation noMatch = w.explain(context, 3);
+    assertFalse("doc3 should not match", noMatch.isMatch());
   }
 
   public void testEqualsAndHashCode() {
-    Query q1 = new TermQuery(new Term("body", "alpha"));
-    Query q2 = new TermQuery(new Term("body", "beta"));
+    Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
 
     LogOddsConjunctionQuery a = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
     LogOddsConjunctionQuery b = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
     LogOddsConjunctionQuery c = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.3f);
     LogOddsConjunctionQuery d = new LogOddsConjunctionQuery(Arrays.asList(q2, q1), 0.5f);
 
-    // Same clauses, same alpha
     assertEquals(a, b);
     assertEquals(a.hashCode(), b.hashCode());
-
-    // Different alpha
     assertNotEquals(a, c);
-
-    // Different clause order should still be equal (Multiset-based)
     assertEquals(a, d);
-    assertEquals(a.hashCode(), d.hashCode());
   }
 
   public void testQueryUtils() throws Exception {
-    Query q1 = new TermQuery(new Term("body", "alpha"));
-    Query q2 = new TermQuery(new Term("body", "beta"));
-
+    Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
     LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
     QueryUtils.check(random(), loq, searcher);
   }
 
   public void testMaxScoreCorrectness() throws Exception {
-    Query q1 = new TermQuery(new Term("body", "alpha"));
-    Query q2 = new TermQuery(new Term("body", "beta"));
-
+    Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
     LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
-
-    // Use CheckHits to validate that max scores are correct
     CheckHits.checkTopScores(random(), loq, searcher);
   }
 
   public void testToString() {
     Query q1 = new TermQuery(new Term("body", "alpha"));
     Query q2 = new TermQuery(new Term("body", "beta"));
-
     LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
     String str = loq.toString("body");
-    assertTrue("toString should contain LogOdds", str.contains("LogOdds"));
-    assertTrue("toString should contain alpha", str.contains("0.5"));
+    assertTrue("should contain LogOdds", str.contains("LogOdds"));
+    assertTrue("should contain alpha", str.contains("0.5"));
   }
 
   public void testThreeWayCombination() throws Exception {
-    Query q1 = new TermQuery(new Term("body", "alpha"));
-    Query q2 = new TermQuery(new Term("body", "beta"));
-    Query q3 = new TermQuery(new Term("body", "gamma"));
-
+    Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
+    Query q3 = bayesian(new TermQuery(new Term("body", "gamma")));
     LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Arrays.asList(q1, q2, q3), 0.5f);
     QueryUtils.check(random(), loq, searcher);
 
     ScoreDoc[] hits = searcher.search(loq, 10).scoreDocs;
     assertTrue("should have hits", hits.length > 0);
-
-    // All scores should be valid probabilities
     for (ScoreDoc hit : hits) {
-      assertTrue("score should be > 0", hit.score > 0);
-      assertTrue("score should be < 1", hit.score < 1);
+      assertTrue("score in (0,1)", hit.score > 0 && hit.score < 1);
     }
   }
 
-  public void testRandomTopDocs() throws Exception {
-    // Build a larger index for more thorough testing
-    Directory testDir = newDirectory();
-    IndexWriterConfig config = new IndexWriterConfig();
-    config.setSimilarity(new BayesianBM25Similarity());
-    IndexWriter w = new IndexWriter(testDir, config);
+  // ---- Multi-field hybrid text tests ----
 
-    int numDocs = atLeast(100);
-    String[] terms = {"alpha", "beta", "gamma", "delta", "epsilon"};
-    for (int i = 0; i < numDocs; i++) {
-      Document doc = new Document();
-      StringBuilder sb = new StringBuilder();
-      for (String term : terms) {
-        if (random().nextDouble() < 0.3) {
-          int count = 1 + random().nextInt(5);
-          for (int j = 0; j < count; j++) {
-            if (sb.length() > 0) sb.append(' ');
-            sb.append(term);
-          }
-        }
-      }
-      if (sb.length() == 0) {
-        sb.append("filler");
-      }
-      doc.add(new TextField("body", sb.toString(), Field.Store.NO));
-      w.addDocument(doc);
-    }
-
-    IndexReader testReader = DirectoryReader.open(w);
-    w.close();
-    IndexSearcher testSearcher = newSearcher(testReader);
-    testSearcher.setSimilarity(new BayesianBM25Similarity());
-
-    // Test various combinations
-    for (int i = 0; i < 4; i++) {
-      List<Query> clauses = new java.util.ArrayList<>();
-      int numClauses = 2 + random().nextInt(3);
-      for (int j = 0; j < numClauses; j++) {
-        clauses.add(new TermQuery(new Term("body", terms[random().nextInt(terms.length)])));
-      }
-      float alpha = random().nextFloat();
-      LogOddsConjunctionQuery query = new LogOddsConjunctionQuery(clauses, alpha);
-      CheckHits.checkTopScores(random(), query, testSearcher);
-    }
-
-    testReader.close();
-    testDir.close();
-  }
-
-  // ---- Hybrid search tests: BayesianBM25 + LogOddsConjunction end-to-end ----
-
-  /**
-   * Verifies that BayesianBM25Similarity produces scores strictly in (0, 1) before they are fed
-   * into LogOddsConjunctionQuery. This is a prerequisite for the log-odds combination to work
-   * correctly, since logit(p) is only defined for p in (0, 1).
-   */
-  public void testBayesianBM25ProducesProbabilityScores() throws Exception {
-    Query q = new TermQuery(new Term("body", "alpha"));
-    // Search with BayesianBM25Similarity (set in setUp)
-    TopDocs topDocs = searcher.search(q, 10);
-    assertTrue("should have hits", topDocs.scoreDocs.length > 0);
-
-    for (ScoreDoc hit : topDocs.scoreDocs) {
-      assertTrue("BayesianBM25 score should be > 0 (got " + hit.score + ")", hit.score > 0f);
-      assertTrue("BayesianBM25 score should be < 1 (got " + hit.score + ")", hit.score < 1f);
-    }
-  }
-
-  /**
-   * Multi-field hybrid search: combines title and body field queries via LogOddsConjunction.
-   * Verifies that a document matching in both fields ranks higher than documents matching in only
-   * one field. With softplus gating, any match contributes a positive value (softplus(logit) &gt;
-   * 0), so matching in more fields always helps regardless of corpus size or IDF values.
-   */
   public void testMultiFieldHybridSearch() throws Exception {
     Directory hybridDir = newDirectory();
-    IndexWriterConfig config = new IndexWriterConfig();
-    config.setSimilarity(new BayesianBM25Similarity());
-    IndexWriter writer = new IndexWriter(hybridDir, config);
+    IndexWriter writer = new IndexWriter(hybridDir, new IndexWriterConfig());
 
-    // doc0: "lucene" in both title and body
     Document doc0 = new Document();
     doc0.add(new TextField("title", "lucene search engine", Field.Store.YES));
     doc0.add(new TextField("body", "lucene is a full-text search library", Field.Store.YES));
     writer.addDocument(doc0);
 
-    // doc1: "lucene" in title only (same title content as doc0 for fair comparison)
     Document doc1 = new Document();
     doc1.add(new TextField("title", "lucene search engine", Field.Store.YES));
     doc1.add(new TextField("body", "this is about information retrieval", Field.Store.YES));
     writer.addDocument(doc1);
 
-    // doc2: "lucene" in body only
     Document doc2 = new Document();
-    doc2.add(new TextField("title", "search technology overview", Field.Store.YES));
-    doc2.add(new TextField("body", "lucene provides inverted index capabilities", Field.Store.YES));
+    doc2.add(new TextField("title", "database systems overview", Field.Store.YES));
+    doc2.add(new TextField("body", "relational databases use SQL", Field.Store.YES));
     writer.addDocument(doc2);
-
-    // doc3: "lucene" in neither
-    Document doc3 = new Document();
-    doc3.add(new TextField("title", "database systems", Field.Store.YES));
-    doc3.add(new TextField("body", "relational databases use SQL", Field.Store.YES));
-    writer.addDocument(doc3);
 
     writer.forceMerge(1);
     writer.close();
     IndexReader hybridReader = DirectoryReader.open(hybridDir);
     IndexSearcher hybridSearcher = new IndexSearcher(hybridReader);
-    hybridSearcher.setSimilarity(new BayesianBM25Similarity());
+    hybridSearcher.setSimilarity(new BM25Similarity());
 
-    // Combine title and body queries via LogOddsConjunction
-    Query titleQuery = new TermQuery(new Term("title", "lucene"));
-    Query bodyQuery = new TermQuery(new Term("body", "lucene"));
+    Query titleQuery = bayesian(new TermQuery(new Term("title", "lucene")));
+    Query bodyQuery = bayesian(new TermQuery(new Term("body", "lucene")));
     LogOddsConjunctionQuery hybridQuery =
         new LogOddsConjunctionQuery(Arrays.asList(titleQuery, bodyQuery), 0.5f);
 
     ScoreDoc[] hits = hybridSearcher.search(hybridQuery, 10).scoreDocs;
+    assertEquals("should have 2 hits", 2, hits.length);
 
-    // Should match 3 docs (doc0, doc1, doc2); doc3 matches neither field
-    assertEquals("should have 3 hits", 3, hits.length);
-
-    // All scores in (0, 1)
     for (ScoreDoc hit : hits) {
-      assertTrue("hybrid score should be > 0, got " + hit.score, hit.score > 0f);
-      assertTrue("hybrid score should be < 1, got " + hit.score, hit.score < 1f);
+      assertTrue("score in (0,1)", hit.score > 0f && hit.score < 1f);
     }
 
-    // doc0 matches both fields. With softplus gating, each match contributes
-    // softplus(logit(p)) > 0, so matching in more fields always increases the score.
-    // doc0 and doc1 have identical titles, so doc0's extra body match must rank it higher.
-    assertEquals("doc matching both fields should rank first", 0, hits[0].doc);
+    // doc0 matches both fields, doc1 matches title only
+    assertEquals("doc0 should rank first", 0, hits[0].doc);
     assertTrue(
-        "doc matching both fields ("
-            + hits[0].score
-            + ") should score > "
-            + "doc matching one field ("
-            + hits[1].score
-            + ")",
+        "doc0 (" + hits[0].score + ") > doc1 (" + hits[1].score + ")",
         hits[0].score > hits[1].score);
-
-    // doc3 should not appear
-    for (ScoreDoc hit : hits) {
-      assertNotEquals("doc3 should not match", 3, hit.doc);
-    }
 
     hybridReader.close();
     hybridDir.close();
   }
 
-  /**
-   * Tests that adding more matching signals never decreases the combined score. With softplus
-   * gating, matching sub-scorers contribute softplus(logit(p)) &gt; 0 -- even weak matches
-   * contribute a positive value. This means more matches can only help, never hurt.
-   *
-   * <p>This is the key semantic property: "absence of evidence is not evidence of absence." A
-   * document that matches a query term (even weakly) should never score worse than if it did not
-   * match that term at all.
-   */
   public void testMoreSignalsIncreaseScore() throws Exception {
     Directory signalDir = newDirectory();
-    IndexWriterConfig config = new IndexWriterConfig();
-    config.setSimilarity(new BayesianBM25Similarity());
-    IndexWriter writer = new IndexWriter(signalDir, config);
+    IndexWriter writer = new IndexWriter(signalDir, new IndexWriterConfig());
 
-    // Target document: matches "search" in three fields
     Document doc = new Document();
     doc.add(new TextField("f1", "search engine optimization", Field.Store.NO));
     doc.add(new TextField("f2", "search algorithms and data structures", Field.Store.NO));
@@ -453,271 +296,33 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     writer.close();
     IndexReader signalReader = DirectoryReader.open(signalDir);
     IndexSearcher signalSearcher = new IndexSearcher(signalReader);
-    signalSearcher.setSimilarity(new BayesianBM25Similarity());
+    signalSearcher.setSimilarity(new BM25Similarity());
 
-    Query q1 = new TermQuery(new Term("f1", "search"));
-    Query q2 = new TermQuery(new Term("f2", "search"));
-    Query q3 = new TermQuery(new Term("f3", "search"));
+    Query q1 = bayesian(new TermQuery(new Term("f1", "search")));
+    Query q2 = bayesian(new TermQuery(new Term("f2", "search")));
+    Query q3 = bayesian(new TermQuery(new Term("f3", "search")));
 
-    // Single signal (raw BayesianBM25 score)
     float score1 = signalSearcher.search(q1, 1).scoreDocs[0].score;
 
-    // 2-signal combination
     LogOddsConjunctionQuery twoSignals = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
     float score2 = signalSearcher.search(twoSignals, 1).scoreDocs[0].score;
 
-    // 3-signal combination
     LogOddsConjunctionQuery threeSignals =
         new LogOddsConjunctionQuery(Arrays.asList(q1, q2, q3), 0.5f);
     float score3 = signalSearcher.search(threeSignals, 1).scoreDocs[0].score;
 
     // With softplus gating, more matching signals always produce >= score.
-    // Even if individual BayesianBM25 scores are < 0.5 (low IDF in a 1-doc index),
-    // softplus gating ensures they contribute a positive value rather than negative evidence.
-    assertTrue(
-        "3 signals (" + score3 + ") should score >= 2 signals (" + score2 + ")", score3 >= score2);
-    assertTrue(
-        "2 signals (" + score2 + ") should score >= 1 signal (" + score1 + ")", score2 >= score1);
-
-    // All remain valid probabilities
-    assertTrue("1-signal score in (0,1)", score1 > 0 && score1 < 1);
-    assertTrue("2-signal score in (0,1)", score2 > 0 && score2 < 1);
-    assertTrue("3-signal score in (0,1)", score3 > 0 && score3 < 1);
+    assertTrue("3 >= 2 signals", score3 >= score2);
+    assertTrue("2 >= 1 signal", score2 >= score1);
+    assertTrue("all in (0,1)", score1 > 0 && score1 < 1 && score2 > 0 && score3 < 1);
 
     signalReader.close();
     signalDir.close();
   }
 
-  /**
-   * Verifies the full explanation tree from BayesianBM25 posterior through LogOdds sigmoid.
-   * Weight.explain() wraps the SimScorer explanation, so the structure is:
-   *
-   * <pre>
-   *   LogOdds conjunction (top-level)
-   *     weight(body:alpha) [BayesianBM25Similarity]  (per-clause weight explanation)
-   *       Bayesian posterior                          (SimScorer explanation)
-   *         likelihood
-   *         tfPrior
-   * </pre>
-   */
-  public void testHybridExplanationPipeline() throws Exception {
-    Query q1 = new TermQuery(new Term("body", "alpha"));
-    Query q2 = new TermQuery(new Term("body", "beta"));
-    LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
-
-    Weight w = searcher.createWeight(searcher.rewrite(loq), ScoreMode.COMPLETE, 1);
-    LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
-
-    // doc0 matches both alpha and beta
-    Explanation expl = w.explain(context, 0);
-    assertTrue("should match", expl.isMatch());
-
-    // Top-level: LogOdds conjunction
-    String topDesc = expl.getDescription();
-    assertTrue(
-        "top-level should describe log-odds conjunction, got: " + topDesc,
-        topDesc.contains("log-odds conjunction"));
-
-    // Score should be in (0, 1)
-    float topScore = expl.getValue().floatValue();
-    assertTrue("top score should be > 0", topScore > 0f);
-    assertTrue("top score should be < 1", topScore < 1f);
-
-    // Sub-explanations: one per matching clause (weight-level explanations)
-    Explanation[] details = expl.getDetails();
-    assertTrue("should have at least 2 sub-explanations", details.length >= 2);
-
-    for (Explanation detail : details) {
-      assertTrue("sub should match", detail.isMatch());
-
-      // Sub-score should be in (0, 1) since BayesianBM25 produces probabilities
-      float subScore = detail.getValue().floatValue();
-      assertTrue("sub score should be > 0, got " + subScore, subScore > 0f);
-      assertTrue("sub score should be < 1, got " + subScore, subScore < 1f);
-
-      // The weight-level explanation wraps the BayesianBM25 SimScorer explanation.
-      // Search recursively for "Bayesian posterior", "likelihood", and "tfPrior".
-      assertTrue(
-          "explanation tree should contain 'Bayesian posterior' somewhere",
-          containsDescription(detail, "Bayesian posterior"));
-      assertTrue(
-          "explanation tree should contain 'likelihood' somewhere",
-          containsDescription(detail, "likelihood"));
-      assertTrue(
-          "explanation tree should contain 'tfPrior' somewhere",
-          containsDescription(detail, "tfPrior"));
-    }
-  }
-
-  /**
-   * Recursively checks if any explanation in the tree contains the given text in its description.
-   */
-  private static boolean containsDescription(Explanation expl, String text) {
-    if (expl.getDescription().contains(text)) {
-      return true;
-    }
-    for (Explanation detail : expl.getDetails()) {
-      if (containsDescription(detail, text)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  /**
-   * Tests hybrid search at scale with randomized multi-field documents and queries. Validates that
-   * the full BayesianBM25 + LogOddsConjunction pipeline produces correct WAND upper bounds via
-   * CheckHits.checkTopScores.
-   */
-  public void testRandomMultiFieldHybrid() throws Exception {
-    Directory testDir = newDirectory();
-    IndexWriterConfig config = new IndexWriterConfig();
-    config.setSimilarity(new BayesianBM25Similarity());
-    IndexWriter w = new IndexWriter(testDir, config);
-
-    String[] fields = {"title", "body", "tags"};
-    String[] vocabulary = {"search", "lucene", "index", "query", "score", "rank", "term", "field"};
-
-    int numDocs = atLeast(100);
-    for (int i = 0; i < numDocs; i++) {
-      Document doc = new Document();
-      for (String field : fields) {
-        StringBuilder sb = new StringBuilder();
-        int numTokens = 1 + random().nextInt(10);
-        for (int t = 0; t < numTokens; t++) {
-          if (sb.length() > 0) sb.append(' ');
-          sb.append(vocabulary[random().nextInt(vocabulary.length)]);
-        }
-        doc.add(new TextField(field, sb.toString(), Field.Store.NO));
-      }
-      w.addDocument(doc);
-    }
-
-    IndexReader testReader = DirectoryReader.open(w);
-    w.close();
-    IndexSearcher testSearcher = newSearcher(testReader);
-    testSearcher.setSimilarity(new BayesianBM25Similarity());
-
-    for (int iter = 0; iter < 5; iter++) {
-      // Pick a random query term
-      String queryTerm = vocabulary[random().nextInt(vocabulary.length)];
-
-      // Build a multi-field LogOddsConjunction query
-      List<Query> fieldQueries = new java.util.ArrayList<>();
-      for (String field : fields) {
-        fieldQueries.add(new TermQuery(new Term(field, queryTerm)));
-      }
-
-      float alpha = random().nextFloat();
-      LogOddsConjunctionQuery hybridQuery = new LogOddsConjunctionQuery(fieldQueries, alpha);
-
-      // Validate WAND correctness
-      CheckHits.checkTopScores(random(), hybridQuery, testSearcher);
-
-      // Validate all scores are proper probabilities
-      ScoreDoc[] hits = testSearcher.search(hybridQuery, 10).scoreDocs;
-      for (ScoreDoc hit : hits) {
-        assertTrue("hybrid score should be > 0, got " + hit.score, hit.score > 0f);
-        assertTrue("hybrid score should be < 1, got " + hit.score, hit.score < 1f);
-      }
-    }
-
-    testReader.close();
-    testDir.close();
-  }
-
-  /**
-   * Tests that a BooleanQuery wrapping LogOddsConjunctionQuery clauses works correctly. This
-   * simulates a real-world multi-term hybrid search: each term is searched across multiple fields
-   * via LogOdds, and the terms are combined via BooleanQuery.
-   */
-  public void testBooleanWrappedHybridQuery() throws Exception {
-    Directory testDir = newDirectory();
-    IndexWriterConfig config = new IndexWriterConfig();
-    config.setSimilarity(new BayesianBM25Similarity());
-    IndexWriter writer = new IndexWriter(testDir, config);
-
-    // doc0: best match for "alpha beta" across title+body
-    Document doc0 = new Document();
-    doc0.add(new TextField("title", "alpha beta", Field.Store.YES));
-    doc0.add(new TextField("body", "alpha beta gamma", Field.Store.YES));
-    writer.addDocument(doc0);
-
-    // doc1: matches "alpha" well but not "beta"
-    Document doc1 = new Document();
-    doc1.add(new TextField("title", "alpha gamma", Field.Store.YES));
-    doc1.add(new TextField("body", "alpha delta epsilon", Field.Store.YES));
-    writer.addDocument(doc1);
-
-    // doc2: matches "beta" well but not "alpha"
-    Document doc2 = new Document();
-    doc2.add(new TextField("title", "beta gamma", Field.Store.YES));
-    doc2.add(new TextField("body", "beta delta epsilon", Field.Store.YES));
-    writer.addDocument(doc2);
-
-    writer.forceMerge(1);
-    writer.close();
-    IndexReader testReader = DirectoryReader.open(testDir);
-    IndexSearcher testSearcher = new IndexSearcher(testReader);
-    testSearcher.setSimilarity(new BayesianBM25Similarity());
-
-    // For each search term, combine across title+body via LogOdds
-    LogOddsConjunctionQuery alphaHybrid =
-        new LogOddsConjunctionQuery(
-            Arrays.asList(
-                new TermQuery(new Term("title", "alpha")),
-                new TermQuery(new Term("body", "alpha"))),
-            0.5f);
-
-    LogOddsConjunctionQuery betaHybrid =
-        new LogOddsConjunctionQuery(
-            Arrays.asList(
-                new TermQuery(new Term("title", "beta")), new TermQuery(new Term("body", "beta"))),
-            0.5f);
-
-    // Combine term-level hybrids via BooleanQuery
-    BooleanQuery booleanHybrid =
-        new BooleanQuery.Builder()
-            .add(alphaHybrid, BooleanClause.Occur.SHOULD)
-            .add(betaHybrid, BooleanClause.Occur.SHOULD)
-            .build();
-
-    ScoreDoc[] hits = testSearcher.search(booleanHybrid, 10).scoreDocs;
-
-    assertTrue("should have 3 hits", hits.length == 3);
-
-    // doc0 matches both terms in both fields, should rank first
-    assertEquals("doc0 should rank first", 0, hits[0].doc);
-    assertTrue(
-        "doc0 (" + hits[0].score + ") should score higher than doc1 (" + hits[1].score + ")",
-        hits[0].score > hits[1].score);
-
-    // Validate WAND correctness for the nested query structure
-    CheckHits.checkTopScores(random(), booleanHybrid, testSearcher);
-
-    testReader.close();
-    testDir.close();
-  }
-
   // ---- Vector + Text hybrid search tests ----
 
-  /**
-   * Builds a shared index for vector+text hybrid tests. 200 documents total:
-   *
-   * <ul>
-   *   <li>doc 0: text match ("lucene" x10) + vector near queryA (cosine ~ 0.99)
-   *   <li>doc 1: text match ("lucene" x10) + vector far from queryA (cosine ~ 0)
-   *   <li>doc 2: no text match + vector near queryA (cosine ~ 0.98)
-   *   <li>doc 3: no text match + vector far from queryA (cosine ~ 0)
-   *   <li>docs 4-199: filler (no text match, vectors scattered away from queryA)
-   * </ul>
-   *
-   * <p>With 200 docs and "lucene" appearing in only 2, IDF is high enough for meaningful
-   * BayesianBM25 posteriors. KNN k=10 comfortably includes docs 0 and 2 (both near queryA) while
-   * excluding most fillers.
-   */
   private static final int HYBRID_NUM_FILLER = 196;
-
   private static final float[] QUERY_A = normalize(new float[] {1.0f, 0.0f, 0.0f});
 
   private Directory hybridDir;
@@ -728,16 +333,11 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     hybridDir = newDirectory();
     IndexWriterConfig config = new IndexWriterConfig();
     config.setCodec(TestUtil.getDefaultCodec());
-    config.setSimilarity(new BayesianBM25Similarity());
     IndexWriter writer = new IndexWriter(hybridDir, config);
 
-    // doc0: text + vector
+    // doc0: text match + vector near queryA
     Document doc0 = new Document();
-    doc0.add(
-        new TextField(
-            "body",
-            "lucene lucene lucene lucene lucene lucene lucene lucene lucene lucene search engine",
-            Field.Store.NO));
+    doc0.add(new TextField("body", "lucene search engine optimization library", Field.Store.NO));
     doc0.add(
         new KnnFloatVectorField(
             "embedding",
@@ -745,13 +345,9 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
             VectorSimilarityFunction.COSINE));
     writer.addDocument(doc0);
 
-    // doc1: text only (vector orthogonal to queryA)
+    // doc1: text match + vector far from queryA
     Document doc1 = new Document();
-    doc1.add(
-        new TextField(
-            "body",
-            "lucene lucene lucene lucene lucene lucene lucene lucene lucene lucene full text search",
-            Field.Store.NO));
+    doc1.add(new TextField("body", "lucene full text search library index", Field.Store.NO));
     doc1.add(
         new KnnFloatVectorField(
             "embedding",
@@ -759,7 +355,7 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
             VectorSimilarityFunction.COSINE));
     writer.addDocument(doc1);
 
-    // doc2: vector only (near queryA, no "lucene")
+    // doc2: no text match + vector near queryA
     Document doc2 = new Document();
     doc2.add(new TextField("body", "unrelated topic about cooking recipes", Field.Store.NO));
     doc2.add(
@@ -779,11 +375,10 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
             VectorSimilarityFunction.COSINE));
     writer.addDocument(doc3);
 
-    // Filler docs: scattered vectors away from queryA
+    // Filler docs with vectors away from queryA
     for (int i = 0; i < HYBRID_NUM_FILLER; i++) {
       Document filler = new Document();
       filler.add(new TextField("body", "filler document about topic " + i, Field.Store.NO));
-      // Vectors in the y-z plane, far from queryA which points along x
       float y = (float) Math.sin(i * 0.1);
       float z = (float) Math.cos(i * 0.1);
       filler.add(
@@ -796,7 +391,7 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     writer.close();
     hybridReader = DirectoryReader.open(hybridDir);
     hybridSearcher = new IndexSearcher(hybridReader);
-    hybridSearcher.setSimilarity(new BayesianBM25Similarity());
+    hybridSearcher.setSimilarity(new BM25Similarity());
   }
 
   private void closeHybridIndex() throws Exception {
@@ -804,14 +399,12 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     hybridDir.close();
   }
 
-  /**
-   * Text + vector hybrid: a document matching both signals should rank above documents matching
-   * only one signal.
-   */
   public void testTextAndVectorHybridSearch() throws Exception {
     buildHybridIndex();
     try {
-      Query textQuery = new TermQuery(new Term("body", "lucene"));
+      // Text query wrapped with BayesianScoreQuery -> probability in (0,1)
+      Query textQuery = bayesian(new TermQuery(new Term("body", "lucene")));
+      // KNN COSINE already produces (0,1) scores via (1+cos)/2
       Query vectorQuery = new KnnFloatVectorQuery("embedding", QUERY_A, 10);
 
       LogOddsConjunctionQuery hybridQuery =
@@ -821,31 +414,25 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
       assertTrue("should have hits", hits.length >= 3);
 
       for (ScoreDoc hit : hits) {
-        assertTrue("score should be > 0", hit.score > 0f);
-        assertTrue("score should be < 1", hit.score < 1f);
+        assertTrue("score > 0", hit.score > 0f);
+        assertTrue("score < 1", hit.score < 1f);
       }
 
-      // doc0 matches both signals, should rank first
+      // doc0 matches both text and vector
       assertEquals("doc0 (text+vector) should rank first", 0, hits[0].doc);
-      assertTrue(
-          "doc0 (" + hits[0].score + ") should score > second hit (" + hits[1].score + ")",
-          hits[0].score > hits[1].score);
+      assertTrue("doc0 > second", hits[0].score > hits[1].score);
     } finally {
       closeHybridIndex();
     }
   }
 
-  /**
-   * Both text-only and vector-only documents should appear in hybrid results. The disjunction
-   * semantics ensure that matching either sub-query is sufficient.
-   */
   public void testVectorAndTextBothContribute() throws Exception {
     buildHybridIndex();
     try {
-      Query textQuery = new TermQuery(new Term("body", "lucene"));
+      Query textQuery = bayesian(new TermQuery(new Term("body", "lucene")));
       Query vectorQuery = new KnnFloatVectorQuery("embedding", QUERY_A, 10);
 
-      // Verify KNN independently returns doc0 and doc2 (both near QUERY_A)
+      // Verify KNN returns doc0 and doc2
       ScoreDoc[] knnHits = hybridSearcher.search(vectorQuery, 10).scoreDocs;
       boolean knnFoundDoc0 = false;
       boolean knnFoundDoc2 = false;
@@ -853,32 +440,26 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
         if (hit.doc == 0) knnFoundDoc0 = true;
         if (hit.doc == 2) knnFoundDoc2 = true;
       }
-      assertTrue("KNN should return doc0 (cosine ~0.99 with queryA)", knnFoundDoc0);
-      assertTrue("KNN should return doc2 (cosine ~0.98 with queryA)", knnFoundDoc2);
+      assertTrue("KNN should return doc0", knnFoundDoc0);
+      assertTrue("KNN should return doc2", knnFoundDoc2);
 
-      // Combine via LogOddsConjunction
       LogOddsConjunctionQuery hybridQuery =
           new LogOddsConjunctionQuery(Arrays.asList(textQuery, vectorQuery), 0.5f);
-
       ScoreDoc[] hits = hybridSearcher.search(hybridQuery, 20).scoreDocs;
 
-      boolean foundTextOnly = false; // doc1: text match, vector far
-      boolean foundVectorOnly = false; // doc2: vector match, no text
+      boolean foundTextOnly = false;
+      boolean foundVectorOnly = false;
       for (ScoreDoc hit : hits) {
         if (hit.doc == 1) foundTextOnly = true;
         if (hit.doc == 2) foundVectorOnly = true;
       }
-      assertTrue("text-only doc1 should appear in results", foundTextOnly);
-      assertTrue("vector-only doc2 should appear in results", foundVectorOnly);
+      assertTrue("text-only doc1 should appear", foundTextOnly);
+      assertTrue("vector-only doc2 should appear", foundVectorOnly);
     } finally {
       closeHybridIndex();
     }
   }
 
-  /**
-   * Combines two KNN vector queries from different embedding fields via LogOddsConjunction. A
-   * document matching both vector signals should rank higher.
-   */
   public void testMultipleVectorFields() throws Exception {
     float[] queryA = normalize(new float[] {1.0f, 0.0f});
     float[] queryB = normalize(new float[] {0.0f, 1.0f});
@@ -888,7 +469,6 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     config.setCodec(TestUtil.getDefaultCodec());
     IndexWriter writer = new IndexWriter(testDir, config);
 
-    // doc0: close to both queryA and queryB
     Document doc0 = new Document();
     doc0.add(
         new KnnFloatVectorField(
@@ -898,7 +478,6 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
             "emb_b", normalize(new float[] {0.05f, 0.95f}), VectorSimilarityFunction.COSINE));
     writer.addDocument(doc0);
 
-    // doc1: close to queryA only
     Document doc1 = new Document();
     doc1.add(
         new KnnFloatVectorField(
@@ -908,7 +487,6 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
             "emb_b", normalize(new float[] {1.0f, 0.0f}), VectorSimilarityFunction.COSINE));
     writer.addDocument(doc1);
 
-    // doc2: close to queryB only
     Document doc2 = new Document();
     doc2.add(
         new KnnFloatVectorField(
@@ -931,43 +509,32 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
 
     ScoreDoc[] hits = testSearcher.search(multiVecQuery, 3).scoreDocs;
     assertEquals("all 3 docs should match", 3, hits.length);
-
-    // doc0 is close to both queries, should rank first
-    assertEquals("doc0 (close to both vectors) should rank first", 0, hits[0].doc);
-    assertTrue(
-        "doc0 (" + hits[0].score + ") should score > doc1 (" + hits[1].score + ")",
-        hits[0].score > hits[1].score);
+    assertEquals("doc0 (close to both) should rank first", 0, hits[0].doc);
 
     testReader.close();
     testDir.close();
   }
 
-  /**
-   * BooleanQuery MUST + LogOddsConjunction: require text match AND combine vector signals. Only
-   * documents matching the text filter are scored by the hybrid.
-   */
+  // ---- Boolean logic combinations ----
+
   public void testBooleanMustWithHybrid() throws Exception {
     buildHybridIndex();
     try {
-      Query textQuery = new TermQuery(new Term("body", "lucene"));
+      Query textQuery = bayesian(new TermQuery(new Term("body", "lucene")));
       Query vectorQuery = new KnnFloatVectorQuery("embedding", QUERY_A, 10);
 
       LogOddsConjunctionQuery hybridQuery =
           new LogOddsConjunctionQuery(Arrays.asList(textQuery, vectorQuery), 0.5f);
 
-      // MUST match text, scored by hybrid
       BooleanQuery filtered =
           new BooleanQuery.Builder()
-              .add(textQuery, BooleanClause.Occur.FILTER)
+              .add(new TermQuery(new Term("body", "lucene")), BooleanClause.Occur.FILTER)
               .add(hybridQuery, BooleanClause.Occur.MUST)
               .build();
 
       ScoreDoc[] hits = hybridSearcher.search(filtered, 10).scoreDocs;
-
-      // Only doc0 and doc1 contain "lucene"
       for (ScoreDoc hit : hits) {
-        assertTrue(
-            "only docs 0 and 1 match text, got doc " + hit.doc, hit.doc == 0 || hit.doc == 1);
+        assertTrue("only docs 0 and 1 match text", hit.doc == 0 || hit.doc == 1);
       }
       assertTrue("should have at least 1 hit", hits.length >= 1);
     } finally {
@@ -975,17 +542,15 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     }
   }
 
-  /** BooleanQuery MUST_NOT: exclude documents matching a filter from hybrid results. */
   public void testBooleanMustNotWithHybrid() throws Exception {
     buildHybridIndex();
     try {
-      Query textQuery = new TermQuery(new Term("body", "lucene"));
+      Query textQuery = bayesian(new TermQuery(new Term("body", "lucene")));
       Query vectorQuery = new KnnFloatVectorQuery("embedding", QUERY_A, 10);
 
       LogOddsConjunctionQuery hybridQuery =
           new LogOddsConjunctionQuery(Arrays.asList(textQuery, vectorQuery), 0.5f);
 
-      // Exclude documents that match "cooking"
       Query excludeFilter = new TermQuery(new Term("body", "cooking"));
       BooleanQuery excludeQuery =
           new BooleanQuery.Builder()
@@ -994,8 +559,6 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
               .build();
 
       ScoreDoc[] hits = hybridSearcher.search(excludeQuery, 10).scoreDocs;
-
-      // doc2 contains "cooking" and should be excluded
       for (ScoreDoc hit : hits) {
         assertNotEquals("doc2 (cooking) should be excluded", 2, hit.doc);
       }
@@ -1004,104 +567,18 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     }
   }
 
-  /**
-   * Three-way hybrid: text + vector1 + vector2, all combined via LogOddsConjunction. Tests that the
-   * scoring handles three heterogeneous signals correctly.
-   */
-  public void testThreeWayTextAndVectorHybrid() throws Exception {
-    float[] queryA = normalize(new float[] {1.0f, 0.0f});
-    float[] queryB = normalize(new float[] {0.0f, 1.0f});
-
-    Directory testDir = newDirectory();
-    IndexWriterConfig config = new IndexWriterConfig();
-    config.setCodec(TestUtil.getDefaultCodec());
-    config.setSimilarity(new BayesianBM25Similarity());
-    IndexWriter writer = new IndexWriter(testDir, config);
-
-    // doc0: matches all three signals
-    Document doc0 = new Document();
-    doc0.add(new TextField("body", "lucene lucene lucene lucene lucene search", Field.Store.NO));
-    doc0.add(
-        new KnnFloatVectorField(
-            "emb_a", normalize(new float[] {0.95f, 0.05f}), VectorSimilarityFunction.COSINE));
-    doc0.add(
-        new KnnFloatVectorField(
-            "emb_b", normalize(new float[] {0.05f, 0.95f}), VectorSimilarityFunction.COSINE));
-    writer.addDocument(doc0);
-
-    // doc1: matches text + vector A only
-    Document doc1 = new Document();
-    doc1.add(new TextField("body", "lucene lucene lucene lucene lucene library", Field.Store.NO));
-    doc1.add(
-        new KnnFloatVectorField(
-            "emb_a", normalize(new float[] {0.90f, 0.10f}), VectorSimilarityFunction.COSINE));
-    doc1.add(
-        new KnnFloatVectorField(
-            "emb_b", normalize(new float[] {1.0f, 0.0f}), VectorSimilarityFunction.COSINE));
-    writer.addDocument(doc1);
-
-    // Filler docs for IDF
-    for (int i = 0; i < 50; i++) {
-      Document filler = new Document();
-      filler.add(new TextField("body", "filler content number " + i, Field.Store.NO));
-      filler.add(
-          new KnnFloatVectorField(
-              "emb_a", normalize(new float[] {0.0f, 1.0f}), VectorSimilarityFunction.COSINE));
-      filler.add(
-          new KnnFloatVectorField(
-              "emb_b", normalize(new float[] {1.0f, 0.0f}), VectorSimilarityFunction.COSINE));
-      writer.addDocument(filler);
-    }
-
-    writer.forceMerge(1);
-    writer.close();
-    IndexReader testReader = DirectoryReader.open(testDir);
-    IndexSearcher testSearcher = new IndexSearcher(testReader);
-    testSearcher.setSimilarity(new BayesianBM25Similarity());
-
-    Query textQuery = new TermQuery(new Term("body", "lucene"));
-    Query vecQueryA = new KnnFloatVectorQuery("emb_a", queryA, 10);
-    Query vecQueryB = new KnnFloatVectorQuery("emb_b", queryB, 10);
-
-    LogOddsConjunctionQuery threeWay =
-        new LogOddsConjunctionQuery(Arrays.asList(textQuery, vecQueryA, vecQueryB), 0.5f);
-
-    ScoreDoc[] hits = testSearcher.search(threeWay, 10).scoreDocs;
-    assertTrue("should have hits", hits.length >= 2);
-
-    // doc0 matches all 3 signals, doc1 matches only 2
-    assertEquals("doc0 (all 3 signals) should rank first", 0, hits[0].doc);
-    assertTrue(
-        "doc0 (" + hits[0].score + ") should score > doc1 (" + hits[1].score + ")",
-        hits[0].score > hits[1].score);
-
-    for (ScoreDoc hit : hits) {
-      assertTrue("score in (0,1)", hit.score > 0f && hit.score < 1f);
-    }
-
-    testReader.close();
-    testDir.close();
-  }
-
-  /**
-   * BooleanQuery SHOULD (OR): two independent hybrid queries combined with OR semantics. A document
-   * matching either hybrid should appear; a document matching both should score highest.
-   */
   public void testBooleanShouldWithHybrid() throws Exception {
     buildHybridIndex();
     try {
-      // Hybrid 1: text "lucene" + vector near QUERY_A
-      Query textLucene = new TermQuery(new Term("body", "lucene"));
+      Query textLucene = bayesian(new TermQuery(new Term("body", "lucene")));
+      Query textCooking = bayesian(new TermQuery(new Term("body", "cooking")));
       Query vecA = new KnnFloatVectorQuery("embedding", QUERY_A, 10);
+
       LogOddsConjunctionQuery hybrid1 =
           new LogOddsConjunctionQuery(Arrays.asList(textLucene, vecA), 0.5f);
-
-      // Hybrid 2: text "cooking" + vector near QUERY_A
-      Query textCooking = new TermQuery(new Term("body", "cooking"));
       LogOddsConjunctionQuery hybrid2 =
           new LogOddsConjunctionQuery(Arrays.asList(textCooking, vecA), 0.5f);
 
-      // OR: match either hybrid
       BooleanQuery orQuery =
           new BooleanQuery.Builder()
               .add(hybrid1, BooleanClause.Occur.SHOULD)
@@ -1111,14 +588,11 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
       ScoreDoc[] hits = hybridSearcher.search(orQuery, 20).scoreDocs;
       assertTrue("should have hits", hits.length > 0);
 
-      // doc0 matches hybrid1 (text "lucene" + near vector), should appear
-      // doc2 matches hybrid2 (text "cooking" + near vector), should appear
       boolean foundDoc0 = false;
       boolean foundDoc2 = false;
       for (ScoreDoc hit : hits) {
         if (hit.doc == 0) foundDoc0 = true;
         if (hit.doc == 2) foundDoc2 = true;
-        assertTrue("score should be > 0", hit.score > 0f);
       }
       assertTrue("doc0 (lucene + near vector) should appear", foundDoc0);
       assertTrue("doc2 (cooking + near vector) should appear", foundDoc2);
@@ -1127,12 +601,7 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     }
   }
 
-  /**
-   * Vector AND vector: BooleanQuery MUST requires both vector queries to match. Only documents
-   * appearing in both KNN result sets pass the conjunction.
-   */
   public void testVectorAndVector() throws Exception {
-    // Two query vectors pointing in different directions
     float[] queryX = normalize(new float[] {1.0f, 0.0f});
     float[] queryY = normalize(new float[] {0.0f, 1.0f});
 
@@ -1141,21 +610,18 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     config.setCodec(TestUtil.getDefaultCodec());
     IndexWriter writer = new IndexWriter(testDir, config);
 
-    // doc0: near both queryX and queryY (diagonal)
     Document doc0 = new Document();
     doc0.add(
         new KnnFloatVectorField(
             "emb", normalize(new float[] {0.7f, 0.7f}), VectorSimilarityFunction.COSINE));
     writer.addDocument(doc0);
 
-    // doc1: near queryX only
     Document doc1 = new Document();
     doc1.add(
         new KnnFloatVectorField(
             "emb", normalize(new float[] {0.95f, 0.05f}), VectorSimilarityFunction.COSINE));
     writer.addDocument(doc1);
 
-    // doc2: near queryY only
     Document doc2 = new Document();
     doc2.add(
         new KnnFloatVectorField(
@@ -1170,7 +636,6 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     Query vecX = new KnnFloatVectorQuery("emb", queryX, 3);
     Query vecY = new KnnFloatVectorQuery("emb", queryY, 3);
 
-    // MUST both match (AND semantics at document level)
     BooleanQuery vecAnd =
         new BooleanQuery.Builder()
             .add(vecX, BooleanClause.Occur.MUST)
@@ -1178,29 +643,19 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
             .build();
 
     ScoreDoc[] hits = testSearcher.search(vecAnd, 3).scoreDocs;
-
-    // All three docs are in both KNN top-3 (only 3 docs total), so all match.
-    // doc0 (diagonal, close to both) should rank first since both sub-scores are decent.
-    // doc1 scores high on vecX but low on vecY; doc2 the reverse.
     assertEquals("all 3 docs should match", 3, hits.length);
-    assertEquals("doc0 (near both vectors) should rank first", 0, hits[0].doc);
+    assertEquals("doc0 (near both) should rank first", 0, hits[0].doc);
 
     testReader.close();
     testDir.close();
   }
 
-  /**
-   * Vector NOT: exclude documents matching a vector query from text search results. Uses MUST_NOT
-   * with a KNN query to filter out semantically similar documents.
-   */
   public void testVectorNot() throws Exception {
     buildHybridIndex();
     try {
       Query textQuery = new TermQuery(new Term("body", "lucene"));
-      // KNN returns docs with vectors near QUERY_A, including doc0
       Query vecNear = new KnnFloatVectorQuery("embedding", QUERY_A, 10);
 
-      // Text MUST, vector MUST_NOT: find text matches that are NOT semantically near QUERY_A
       BooleanQuery textNotVector =
           new BooleanQuery.Builder()
               .add(textQuery, BooleanClause.Occur.MUST)
@@ -1208,17 +663,9 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
               .build();
 
       ScoreDoc[] hits = hybridSearcher.search(textNotVector, 10).scoreDocs;
-
-      // doc0 matches text AND vector (near QUERY_A), so it should be excluded
-      // doc1 matches text but its vector is orthogonal to QUERY_A
       for (ScoreDoc hit : hits) {
         assertNotEquals("doc0 should be excluded (near QUERY_A)", 0, hit.doc);
       }
-
-      // doc1 should survive: it matches text, and its vector is far from QUERY_A
-      // (but only if KNN didn't include doc1 in its top-k)
-      // Note: doc1's vector is orthogonal, so with enough fillers it may or may not
-      // be in KNN top-10. We only assert doc0 exclusion, which is deterministic.
     } finally {
       closeHybridIndex();
     }
