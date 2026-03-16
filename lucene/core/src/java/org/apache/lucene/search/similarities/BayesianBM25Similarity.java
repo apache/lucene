@@ -34,7 +34,7 @@ import org.apache.lucene.util.SmallFloat;
  *
  * <pre>
  *   likelihood = sigmoid(alpha * (bm25 - beta))
- *   tfPrior    = clamp(0.2 + 0.7 * min(1, freq / 10), 0.1, 0.9)
+ *   tfPrior    = clamp(base + range * min(1, freq / saturation), 0.1, 0.9)
  *   posterior  = (likelihood * tfPrior) / (likelihood * tfPrior + (1 - likelihood) * (1 - tfPrior))
  * </pre>
  *
@@ -163,6 +163,15 @@ public class BayesianBM25Similarity extends Similarity {
     return Explanation.match((float) idf, "idf, sum of:", details);
   }
 
+  /** Numerator for auto-estimated alpha: effectiveAlpha = AUTO_ALPHA_NUMERATOR / weight. */
+  private static final float AUTO_ALPHA_NUMERATOR = 2.0f;
+
+  /** Multiplier for auto-estimated beta: effectiveBeta = weight * AUTO_BETA_MULTIPLIER. */
+  private static final float AUTO_BETA_MULTIPLIER = 0.5f;
+
+  /** Floor for weight to avoid division by zero in auto-alpha estimation. */
+  private static final float WEIGHT_FLOOR = 1e-6f;
+
   @Override
   public final SimScorer scorer(
       float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
@@ -180,9 +189,9 @@ public class BayesianBM25Similarity extends Similarity {
     float weight = boost * idf.getValue().floatValue();
 
     float effectiveAlpha =
-        (alpha != null) ? alpha : 2.0f / Math.max(weight, 1e-6f);
+        (alpha != null) ? alpha : AUTO_ALPHA_NUMERATOR / Math.max(weight, WEIGHT_FLOOR);
     float effectiveBeta =
-        (beta != null) ? beta : weight * 0.5f;
+        (beta != null) ? beta : weight * AUTO_BETA_MULTIPLIER;
 
     return new BayesianBM25Scorer(boost, k1, b, idf, avgdl, cache, weight, effectiveAlpha, effectiveBeta);
   }
@@ -207,6 +216,24 @@ public class BayesianBM25Similarity extends Similarity {
 
   /** Scorer for BayesianBM25. */
   private static class BayesianBM25Scorer extends SimScorer {
+    /** Minimum prior probability when term frequency is zero. */
+    private static final float TF_PRIOR_BASE = 0.2f;
+
+    /** Maximum prior probability when term frequency reaches saturation. */
+    private static final float TF_PRIOR_MAX = 0.9f;
+
+    /** Derived range: TF_PRIOR_MAX - TF_PRIOR_BASE. */
+    private static final float TF_PRIOR_RANGE = TF_PRIOR_MAX - TF_PRIOR_BASE;
+
+    /** Term frequency at which the prior saturates to TF_PRIOR_MAX. */
+    private static final float TF_SATURATION_FREQ = 10f;
+
+    /** Absolute lower bound for the prior probability (safety clamp). */
+    private static final float PRIOR_CLAMP_MIN = 0.1f;
+
+    /** Absolute upper bound for the prior probability (safety clamp). */
+    private static final float PRIOR_CLAMP_MAX = 0.9f;
+
     private final float boost;
     private final float k1;
     private final float b;
@@ -243,8 +270,8 @@ public class BayesianBM25Similarity extends Similarity {
     }
 
     private float computeTfPrior(float freq) {
-      float raw = 0.2f + 0.7f * Math.min(1f, freq / 10f);
-      return Math.max(0.1f, Math.min(0.9f, raw));
+      float raw = TF_PRIOR_BASE + TF_PRIOR_RANGE * Math.min(1f, freq / TF_SATURATION_FREQ);
+      return Math.max(PRIOR_CLAMP_MIN, Math.min(PRIOR_CLAMP_MAX, raw));
     }
 
     private float computePosterior(float likelihood, float prior) {
@@ -320,7 +347,8 @@ public class BayesianBM25Similarity extends Similarity {
       Explanation tfPriorExpl =
           Explanation.match(
               tfPrior,
-              "tfPrior, computed as clamp(0.2 + 0.7 * min(1, freq / 10), 0.1, 0.9) from:",
+              "tfPrior, computed as clamp(base + range * min(1, freq / saturation), "
+                  + PRIOR_CLAMP_MIN + ", " + PRIOR_CLAMP_MAX + ") from:",
               freq);
 
       return Explanation.match(
