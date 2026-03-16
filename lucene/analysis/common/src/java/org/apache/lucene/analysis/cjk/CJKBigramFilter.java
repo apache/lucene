@@ -197,7 +197,7 @@ public final class CJKBigramFilter extends TokenFilter {
           // otherwise, we clear the buffer and start over.
 
           if (offsetAtt.startOffset() != lastEndOffset) { // unaligned, clear queue
-            if (!outputUnigrams && hadBigrams) {
+            if (hadBigrams) {
               deferredPosInc++;
               hadBigrams = false;
             }
@@ -219,7 +219,7 @@ public final class CJKBigramFilter extends TokenFilter {
 
           // not a CJK type: we just return these as-is.
 
-          if (!outputUnigrams && hadBigrams) {
+          if (hadBigrams) {
             deferredPosInc++;
             hadBigrams = false;
           }
@@ -338,11 +338,10 @@ public final class CJKBigramFilter extends TokenFilter {
       posLengthAtt.setPositionLength(2);
     } else {
       // Apply any deferred position increment from a previous CJK segment boundary.
-      // A bigram spans two character positions but only advances by 1, so after a segment
-      // boundary the next token needs an extra +1 to keep positions aligned with the
-      // outputUnigrams=true case.
-      posIncAtt.setPositionIncrement(1 + deferredPosInc);
-      deferredPosInc = 0;
+      if (deferredPosInc > 0) {
+        posIncAtt.setPositionIncrement(1 + deferredPosInc);
+        deferredPosInc = 0;
+      }
       hadBigrams = true;
     }
     index++;
