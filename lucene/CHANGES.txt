@@ -216,10 +216,14 @@ API Changes
 New Features
 ---------------------
 
-* GITHUB#15740: Add NumericFieldStats utility for retrieving global numeric field statistics
-  (min, max, doc count) from index metadata structures. Migrate SortedNumericDocValuesRangeQuery
-  to use this API, fixing the rewrite optimization for fields with PointValues but no skip index.
+* GITHUB#15740, GITHUB#15817: Add NumericFieldStats utility for retrieving global numeric field
+  statistics (min, max, doc count) from index metadata structures. Migrate
+  SortedNumericDocValuesRangeQuery to use this API, fixing the rewrite optimization for fields
+  with PointValues but no skip index. Support all packed value lengths from 1 to 8 bytes.
   (Salvatore Campagna)
+
+* GITHUB#15722: Add interface to do prefetch on KnnVectorValues and an example implementation to use prefetch
+  in Scorer (Navneet Verma)
 
 Improvements
 ---------------------
@@ -238,6 +242,8 @@ Optimizations
 * GITHUB#15772: improve BytesRefHash.sort performance by rearranging ids#15772 (tyronecai)
 
 * GITHUB#15742: Optimize int4 dotProduct and squareDistance computations by replacing vector conversions with reinterpret casting + bit manipulation. (Trevor McCulloch, Kaival Parikh)
+
+* GITHUB#15024: Improve prefix sum computation in Lucene99HnswVectorsReader for faster neighbor decoding. (Luis Negrin)
 
 Bug Fixes
 ---------------------
@@ -270,6 +276,10 @@ Other
 
 * GITHUB#15783: Refactor QuantizedVectorsReader to be able to access lucene 104 quantized values through this API.
   (Ignacio Vera)
+
+* GITHUB#15807: Replace BigInteger allocation in StringHelper.idToString with HexFormat. (Sagar Upadhyaya)
+
+* GITHUB#15799: Exclude JNA Cleaner from thread leak detection by LuceneTestCase. (Alan Woodward)
 
 ======================= Lucene 10.4.0 =======================
 
