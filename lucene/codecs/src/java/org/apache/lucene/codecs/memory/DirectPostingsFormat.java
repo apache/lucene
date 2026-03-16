@@ -277,8 +277,7 @@ public final class DirectPostingsFormat extends PostingsFormat {
       }
 
       public int[] get() {
-        final int[] arr = new int[upto];
-        System.arraycopy(ints, 0, arr, 0, upto);
+        final int[] arr = ArrayUtil.copyOfSubArray(ints, 0, upto);
         upto = 0;
         return arr;
       }
@@ -444,10 +443,9 @@ public final class DirectPostingsFormat extends PostingsFormat {
                   if (hasPayloads) {
                     BytesRef payload = docsAndPositionsEnum.getPayload();
                     if (payload != null) {
-                      byte[] payloadBytes = new byte[payload.length];
-                      System.arraycopy(
-                          payload.bytes, payload.offset, payloadBytes, 0, payload.length);
-                      payloads[upto][pos] = payloadBytes;
+                      payloads[upto][pos] =
+                          ArrayUtil.copyOfSubArray(
+                              payload.bytes, payload.offset, payload.offset + payload.length);
                     }
                   }
                   posUpto++;
@@ -477,8 +475,7 @@ public final class DirectPostingsFormat extends PostingsFormat {
 
       // System.out.println(skipCount + " skips: " + field);
 
-      this.termBytes = new byte[termOffset];
-      System.arraycopy(termBytes, 0, this.termBytes, 0, termOffset);
+      this.termBytes = ArrayUtil.copyOfSubArray(termBytes, 0, termOffset);
 
       // Pack skips:
       this.skips = new int[skipCount];

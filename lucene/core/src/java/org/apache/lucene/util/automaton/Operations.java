@@ -1390,9 +1390,7 @@ public final class Operations {
 
     if (upto < states.length) {
       // There were dead states
-      int[] newStates = new int[upto];
-      System.arraycopy(states, 0, newStates, 0, upto);
-      states = newStates;
+      states = ArrayUtil.copyOfSubArray(states, 0, upto);
     }
 
     // Reverse the order:
