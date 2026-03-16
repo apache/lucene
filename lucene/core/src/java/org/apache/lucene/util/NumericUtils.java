@@ -257,8 +257,7 @@ public final class NumericUtils {
    * @see #bigIntToSortableBytes(BigInteger, int, byte[], int)
    */
   public static BigInteger sortableBytesToBigInt(byte[] encoded, int offset, int length) {
-    byte[] bigIntBytes = new byte[length];
-    System.arraycopy(encoded, offset, bigIntBytes, 0, length);
+    byte[] bigIntBytes = ArrayUtil.copyOfSubArray(encoded, offset, offset + length);
     // Flip the sign bit back to the original
     bigIntBytes[0] ^= 0x80;
     return new BigInteger(bigIntBytes);

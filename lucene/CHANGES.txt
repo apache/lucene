@@ -281,6 +281,8 @@ Other
 
 * GITHUB#15799: Exclude JNA Cleaner from thread leak detection by LuceneTestCase. (Alan Woodward)
 
+* GITHUB#15826: Use ArrayUtil#copyOfSubArray to simplify manual array copy patterns. (Zhang Chao)
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes
