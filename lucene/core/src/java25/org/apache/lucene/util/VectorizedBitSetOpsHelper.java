@@ -42,7 +42,8 @@ final class VectorizedBitSetOpsHelper implements VectorizedBitSetOps.VectorHelpe
     final int loopBound = SPECIES.loopBound(len);
     LongVector acc = LongVector.zero(SPECIES);
     for (; i < loopBound; i += VL) {
-      acc = acc.add(LongVector.fromArray(SPECIES, a, start + i).lanewise(VectorOperators.BIT_COUNT));
+      acc =
+          acc.add(LongVector.fromArray(SPECIES, a, start + i).lanewise(VectorOperators.BIT_COUNT));
     }
     long count = acc.reduceLanes(VectorOperators.ADD);
     for (; i < len; i++) {
