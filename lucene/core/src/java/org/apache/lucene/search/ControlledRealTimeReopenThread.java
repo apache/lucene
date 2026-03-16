@@ -16,18 +16,19 @@
  */
 package org.apache.lucene.search;
 
+import static java.util.concurrent.TimeUnit.NANOSECONDS;
+
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.util.ThreadInterruptedException;
 
 /**
- * Utility class that runs a thread to manage periodicc reopens of a {@link ReferenceManager}, with
- * methods to wait for a specific index changes to become visible. When a given search request needs
- * to see a specific index change, call the {#waitForGeneration} to wait for that change to be
+ * A thread that manages periodic reopening of a {@link ReferenceManager}, with methods to wait for
+ * a specific index generation to become visible. When a given search request needs to see a
+ * specific index change, call {@link #waitForGeneration(long)} to wait for that change to be
  * visible. Note that this will only scale well if most searches do not need to wait for a specific
  * index generation.
  *
@@ -38,23 +39,26 @@ public class ControlledRealTimeReopenThread<T> extends Thread implements Closeab
   private final long targetMaxStaleNS;
   private final long targetMinStaleNS;
   private final IndexWriter writer;
-  private volatile boolean finish;
-  private volatile long waitingGen;
-  private volatile long searchingGen;
-  private long refreshStartGen;
 
-  private final ReentrantLock reopenLock = new ReentrantLock();
-  private final Condition reopenCond = reopenLock.newCondition();
+  private volatile boolean finish;
+  private final AtomicLong waitingGen = new AtomicLong(0);
+  private volatile long searchingGen;
+
+  /// Releasing a permit to this semaphore is a signal to the background thread to check again.
+  private final Semaphore reloadRequests = new Semaphore(0);
 
   /**
-   * Create ControlledRealTimeReopenThread, to periodically reopen the {@link ReferenceManager}.
+   * Create a new thread instance.
+   *
+   * <p>Potentially mark it as {@linkplain #setDaemon(boolean) a daemon} and {@link #start()} it
+   * subsequently. Call {@link #close()} to cleanly stop this thread.
    *
    * @param targetMaxStaleSec Maximum time until a new reader must be opened; this sets the upper
    *     bound on how slowly reopens may occur, when no caller is waiting for a specific generation
    *     to become visible.
-   * @param targetMinStaleSec Mininum time until a new reader can be opened; this sets the lower
-   *     bound on how quickly reopens may occur, when a caller is waiting for a specific generation
-   *     to become visible.
+   * @param targetMinStaleSec Minimum time until a new reader can be opened; if a refresh occurred
+   *     recently, it will wait at least this time until another refresh, even if a thread is
+   *     waiting for it.
    */
   public ControlledRealTimeReopenThread(
       IndexWriter writer,
@@ -77,6 +81,8 @@ public class ControlledRealTimeReopenThread<T> extends Thread implements Closeab
   }
 
   private class HandleRefresh implements ReferenceManager.RefreshListener {
+    private long refreshStartGen;
+
     @Override
     public void beforeRefresh() {
       // Save the gen as of when we started the reopen; the
@@ -94,19 +100,13 @@ public class ControlledRealTimeReopenThread<T> extends Thread implements Closeab
     }
   }
 
+  /** Stop this thread. Blocks until it terminates. */
   @Override
-  public synchronized void close() {
-    // System.out.println("NRT: set finish");
-
+  public void close() {
     finish = true;
 
-    // So thread wakes up and notices it should finish:
-    reopenLock.lock();
-    try {
-      reopenCond.signal();
-    } finally {
-      reopenLock.unlock();
-    }
+    // Wake up the background thread.
+    reloadRequests.release();
 
     try {
       join();
@@ -116,14 +116,18 @@ public class ControlledRealTimeReopenThread<T> extends Thread implements Closeab
 
     // Max it out so any waiting search threads will return:
     searchingGen = Long.MAX_VALUE;
-    notifyAll();
+
+    // Wake up waiters.
+    synchronized (this) {
+      notifyAll();
+    }
   }
 
   /**
    * Waits for the target generation to become visible in the searcher. If the current searcher is
-   * older than the target generation, this method will block until the searcher is reopened, by
-   * another via {@link ReferenceManager#maybeRefresh} or until the {@link ReferenceManager} is
-   * closed.
+   * older than the target generation, this method will block until the searcher is reopened by
+   * another thread calling {@link ReferenceManager#maybeRefresh}, or until the {@link
+   * ReferenceManager} is closed.
    *
    * @param targetGen the generation to wait for
    */
@@ -133,43 +137,37 @@ public class ControlledRealTimeReopenThread<T> extends Thread implements Closeab
 
   /**
    * Waits for the target generation to become visible in the searcher, up to a maximum specified
-   * milli-seconds. If the current searcher is older than the target generation, this method will
-   * block until the searcher has been reopened by another thread via {@link
+   * milliseconds. If the current searcher is older than the target generation, this method will
+   * block until the searcher has been reopened by another thread calling {@link
    * ReferenceManager#maybeRefresh}, the given waiting time has elapsed, or until the {@link
    * ReferenceManager} is closed.
    *
-   * <p>NOTE: if the waiting time elapses before the requested target generation is available the
-   * current {@link SearcherManager} is returned instead.
+   * <p>NOTE: if the waiting time elapses before the requested target generation is available, false
+   * is returned.
    *
    * @param targetGen the generation to wait for
    * @param maxMS maximum milliseconds to wait, or -1 to wait indefinitely
-   * @return true if the targetGeneration is now available, or false if maxMS wait time was exceeded
+   * @return true if the targetGen is now available, or false if maxMS wait time was exceeded or
+   *     this instance was closed. True might also be returned if this call returned due to a {@link
+   *     #close()}
    */
   public synchronized boolean waitForGeneration(long targetGen, int maxMS)
       throws InterruptedException {
     if (targetGen > searchingGen) {
+      waitingGen.updateAndGet(v -> Math.max(v, targetGen));
+
       // Notify the reopen thread that the waitingGen has
       // changed, so it may wake up and realize it should
       // not sleep for much or any longer before reopening:
-      reopenLock.lock();
+      reloadRequests.release();
 
-      // Need to find waitingGen inside lock as it's used to determine
-      // stale time
-      waitingGen = Math.max(waitingGen, targetGen);
-
-      try {
-        reopenCond.signal();
-      } finally {
-        reopenLock.unlock();
-      }
-
-      long startMS = TimeUnit.NANOSECONDS.toMillis(System.nanoTime());
+      long startNS = System.nanoTime();
 
       while (targetGen > searchingGen) {
         if (maxMS < 0) {
           wait();
         } else {
-          long msLeft = (startMS + maxMS) - TimeUnit.NANOSECONDS.toMillis(System.nanoTime());
+          long msLeft = maxMS - NANOSECONDS.toMillis(System.nanoTime() - startNS);
           if (msLeft <= 0) {
             return false;
           } else {
@@ -184,52 +182,33 @@ public class ControlledRealTimeReopenThread<T> extends Thread implements Closeab
 
   @Override
   public void run() {
-    // TODO: maybe use private thread ticktock timer, in
-    // case clock shift messes up nanoTime?
     long lastReopenStartNS = System.nanoTime();
 
-    // System.out.println("reopen: start");
     while (!finish) {
 
-      // TODO: try to guestimate how long reopen might
-      // take based on past data?
+      // TODO: try to guesstimate how long reopen might take based on past data?
 
-      // Loop until we've waiting long enough before the
-      // next reopen:
-      while (!finish) {
+      // True if we have someone waiting for reopened searcher:
+      boolean hasWaiting = waitingGen.get() > searchingGen;
+      final long nextReopenStartNS =
+          lastReopenStartNS + (hasWaiting ? targetMinStaleNS : targetMaxStaleNS);
 
-        // Need lock before finding out if has waiting
-        reopenLock.lock();
+      final long sleepNS = nextReopenStartNS - System.nanoTime();
+
+      if (sleepNS > 0) {
         try {
-          // True if we have someone waiting for reopened searcher:
-          boolean hasWaiting = waitingGen > searchingGen;
-          final long nextReopenStartNS =
-              lastReopenStartNS + (hasWaiting ? targetMinStaleNS : targetMaxStaleNS);
-
-          final long sleepNS = nextReopenStartNS - System.nanoTime();
-
-          if (sleepNS > 0) {
-            reopenCond.awaitNanos(sleepNS);
-          } else {
-            break;
-          }
-        } catch (InterruptedException _) {
-          Thread.currentThread().interrupt();
-          return;
-        } finally {
-          reopenLock.unlock();
+          reloadRequests.tryAcquire(sleepNS, NANOSECONDS);
+          reloadRequests.drainPermits();
+        } catch (InterruptedException e) {
+          throw new ThreadInterruptedException(e);
         }
-      }
-
-      if (finish) {
-        break;
-      }
-
-      lastReopenStartNS = System.nanoTime();
-      try {
-        manager.maybeRefreshBlocking();
-      } catch (IOException ioe) {
-        throw new RuntimeException(ioe);
+      } else {
+        lastReopenStartNS = System.nanoTime();
+        try {
+          manager.maybeRefreshBlocking();
+        } catch (IOException ioe) {
+          throw new RuntimeException(ioe);
+        }
       }
     }
   }
