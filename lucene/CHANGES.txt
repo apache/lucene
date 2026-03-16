@@ -113,6 +113,9 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#15832: Vectorize popcount-based FixedBitSet operations using the Java Vector API,
+  with a conservative small-bitset fallback threshold. (Prithvi S)
+
 * GITHUB#15681: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)

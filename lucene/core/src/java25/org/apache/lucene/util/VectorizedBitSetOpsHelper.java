@@ -102,4 +102,3 @@ final class VectorizedBitSetOpsHelper implements VectorizedBitSetOps.VectorHelpe
     return count;
   }
 }
-
