@@ -144,8 +144,7 @@ public class TestBayesianBM25Similarity extends BaseSimilarityTestCase {
 
   public void testScoreRange() {
     BayesianBM25Similarity sim = new BayesianBM25Similarity();
-    CollectionStatistics collStats =
-        new CollectionStatistics("field", 10000, 10000, 50000, 10000);
+    CollectionStatistics collStats = new CollectionStatistics("field", 10000, 10000, 50000, 10000);
     TermStatistics termStats = new TermStatistics(new BytesRef("term"), 100, 500);
 
     Similarity.SimScorer scorer = sim.scorer(1.0f, collStats, termStats);
@@ -167,8 +166,7 @@ public class TestBayesianBM25Similarity extends BaseSimilarityTestCase {
 
   public void testTfPriorMonotonicity() {
     BayesianBM25Similarity sim = new BayesianBM25Similarity();
-    CollectionStatistics collStats =
-        new CollectionStatistics("field", 10000, 10000, 50000, 10000);
+    CollectionStatistics collStats = new CollectionStatistics("field", 10000, 10000, 50000, 10000);
     TermStatistics termStats = new TermStatistics(new BytesRef("term"), 100, 500);
 
     Similarity.SimScorer scorer = sim.scorer(1.0f, collStats, termStats);
@@ -202,8 +200,7 @@ public class TestBayesianBM25Similarity extends BaseSimilarityTestCase {
   }
 
   public void testExplicitParameters() {
-    BayesianBM25Similarity sim =
-        new BayesianBM25Similarity(1.5f, 0.8f, 2.0f, 1.0f, true);
+    BayesianBM25Similarity sim = new BayesianBM25Similarity(1.5f, 0.8f, 2.0f, 1.0f, true);
     assertEquals(1.5f, sim.getK1(), 0f);
     assertEquals(0.8f, sim.getB(), 0f);
     assertEquals(Float.valueOf(2.0f), sim.getAlpha());

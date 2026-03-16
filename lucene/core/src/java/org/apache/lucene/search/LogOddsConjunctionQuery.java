@@ -268,9 +268,7 @@ public final class LogOddsConjunctionQuery extends Query implements Iterable<Que
               }
               return subquery.toString(field);
             })
-        .collect(
-            Collectors.joining(
-                " & ", "LogOdds(", ")^" + alpha));
+        .collect(Collectors.joining(" & ", "LogOdds(", ")^" + alpha));
   }
 
   @Override

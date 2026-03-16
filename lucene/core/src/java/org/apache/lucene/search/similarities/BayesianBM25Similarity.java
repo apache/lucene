@@ -101,9 +101,7 @@ public class BayesianBM25Similarity extends Similarity {
     this(k1, b, null, null, true);
   }
 
-  /**
-   * BayesianBM25 with default BM25 parameters (k1=1.2, b=0.75) and auto-estimated alpha/beta.
-   */
+  /** BayesianBM25 with default BM25 parameters (k1=1.2, b=0.75) and auto-estimated alpha/beta. */
   public BayesianBM25Similarity() {
     this(1.2f, 0.75f, null, null, true);
   }
@@ -190,16 +188,17 @@ public class BayesianBM25Similarity extends Similarity {
 
     float effectiveAlpha =
         (alpha != null) ? alpha : AUTO_ALPHA_NUMERATOR / Math.max(weight, WEIGHT_FLOOR);
-    float effectiveBeta =
-        (beta != null) ? beta : weight * AUTO_BETA_MULTIPLIER;
+    float effectiveBeta = (beta != null) ? beta : weight * AUTO_BETA_MULTIPLIER;
 
-    return new BayesianBM25Scorer(boost, k1, b, idf, avgdl, cache, weight, effectiveAlpha, effectiveBeta);
+    return new BayesianBM25Scorer(
+        boost, k1, b, idf, avgdl, cache, weight, effectiveAlpha, effectiveBeta);
   }
 
   /**
    * Numerically stable sigmoid function.
    *
    * <p>Uses the split formulation to avoid overflow:
+   *
    * <pre>
    *   x >= 0: 1 / (1 + exp(-x))
    *   x <  0: exp(x) / (1 + exp(x))
@@ -335,10 +334,7 @@ public class BayesianBM25Similarity extends Similarity {
       List<Explanation> bm25Subs = new ArrayList<>(explainConstantFactors());
       bm25Subs.add(explainTF(freq, encodedNorm));
       Explanation bm25Expl =
-          Explanation.match(
-              bm25,
-              "bm25, computed as boost * idf * tf from:",
-              bm25Subs);
+          Explanation.match(bm25, "bm25, computed as boost * idf * tf from:", bm25Subs);
 
       // Likelihood sub-explanation
       Explanation likelihoodExpl =
@@ -354,7 +350,10 @@ public class BayesianBM25Similarity extends Similarity {
           Explanation.match(
               tfPrior,
               "tfPrior, computed as clamp(base + range * min(1, freq / saturation), "
-                  + PRIOR_CLAMP_MIN + ", " + PRIOR_CLAMP_MAX + ") from:",
+                  + PRIOR_CLAMP_MIN
+                  + ", "
+                  + PRIOR_CLAMP_MAX
+                  + ") from:",
               freq);
 
       return Explanation.match(

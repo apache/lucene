@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -32,7 +31,6 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.similarities.BayesianBM25Similarity;
-import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.search.QueryUtils;
@@ -127,13 +125,10 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
   }
 
   public void testEmptyClauseRewrite() throws Exception {
-    LogOddsConjunctionQuery loq =
-        new LogOddsConjunctionQuery(Collections.emptyList(), 0.5f);
+    LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Collections.emptyList(), 0.5f);
 
     Query rewritten = searcher.rewrite(loq);
-    assertTrue(
-        "empty should rewrite to MatchNoDocsQuery",
-        rewritten instanceof MatchNoDocsQuery);
+    assertTrue("empty should rewrite to MatchNoDocsQuery", rewritten instanceof MatchNoDocsQuery);
   }
 
   public void testAlphaValues() throws Exception {
@@ -209,8 +204,7 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     Explanation explanation = w.explain(context, 0);
     assertTrue("doc0 should match", explanation.isMatch());
     assertTrue(
-        "explanation should mention log-odds",
-        explanation.getDescription().contains("log-odds"));
+        "explanation should mention log-odds", explanation.getDescription().contains("log-odds"));
 
     // doc3 matches neither
     Explanation noMatchExpl = w.explain(context, 3);
@@ -271,8 +265,7 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     Query q2 = new TermQuery(new Term("body", "beta"));
     Query q3 = new TermQuery(new Term("body", "gamma"));
 
-    LogOddsConjunctionQuery loq =
-        new LogOddsConjunctionQuery(Arrays.asList(q1, q2, q3), 0.5f);
+    LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Arrays.asList(q1, q2, q3), 0.5f);
     QueryUtils.check(random(), loq, searcher);
 
     ScoreDoc[] hits = searcher.search(loq, 10).scoreDocs;
@@ -348,18 +341,16 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     assertTrue("should have hits", topDocs.scoreDocs.length > 0);
 
     for (ScoreDoc hit : topDocs.scoreDocs) {
-      assertTrue(
-          "BayesianBM25 score should be > 0 (got " + hit.score + ")", hit.score > 0f);
-      assertTrue(
-          "BayesianBM25 score should be < 1 (got " + hit.score + ")", hit.score < 1f);
+      assertTrue("BayesianBM25 score should be > 0 (got " + hit.score + ")", hit.score > 0f);
+      assertTrue("BayesianBM25 score should be < 1 (got " + hit.score + ")", hit.score < 1f);
     }
   }
 
   /**
    * Multi-field hybrid search: combines title and body field queries via LogOddsConjunction.
    * Verifies that a document matching in both fields ranks higher than documents matching in only
-   * one field. With softplus gating, any match contributes a positive value (softplus(logit) &gt; 0),
-   * so matching in more fields always helps regardless of corpus size or IDF values.
+   * one field. With softplus gating, any match contributes a positive value (softplus(logit) &gt;
+   * 0), so matching in more fields always helps regardless of corpus size or IDF values.
    */
   public void testMultiFieldHybridSearch() throws Exception {
     Directory hybridDir = newDirectory();
@@ -419,8 +410,12 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     // doc0 and doc1 have identical titles, so doc0's extra body match must rank it higher.
     assertEquals("doc matching both fields should rank first", 0, hits[0].doc);
     assertTrue(
-        "doc matching both fields (" + hits[0].score + ") should score > "
-            + "doc matching one field (" + hits[1].score + ")",
+        "doc matching both fields ("
+            + hits[0].score
+            + ") should score > "
+            + "doc matching one field ("
+            + hits[1].score
+            + ")",
         hits[0].score > hits[1].score);
 
     // doc3 should not appear
@@ -437,9 +432,9 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
    * gating, matching sub-scorers contribute softplus(logit(p)) &gt; 0 -- even weak matches
    * contribute a positive value. This means more matches can only help, never hurt.
    *
-   * <p>This is the key semantic property: "absence of evidence is not evidence of absence."
-   * A document that matches a query term (even weakly) should never score worse than if it
-   * did not match that term at all.
+   * <p>This is the key semantic property: "absence of evidence is not evidence of absence." A
+   * document that matches a query term (even weakly) should never score worse than if it did not
+   * match that term at all.
    */
   public void testMoreSignalsIncreaseScore() throws Exception {
     Directory signalDir = newDirectory();
@@ -468,8 +463,7 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     float score1 = signalSearcher.search(q1, 1).scoreDocs[0].score;
 
     // 2-signal combination
-    LogOddsConjunctionQuery twoSignals =
-        new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
+    LogOddsConjunctionQuery twoSignals = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
     float score2 = signalSearcher.search(twoSignals, 1).scoreDocs[0].score;
 
     // 3-signal combination
@@ -481,11 +475,9 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     // Even if individual BayesianBM25 scores are < 0.5 (low IDF in a 1-doc index),
     // softplus gating ensures they contribute a positive value rather than negative evidence.
     assertTrue(
-        "3 signals (" + score3 + ") should score >= 2 signals (" + score2 + ")",
-        score3 >= score2);
+        "3 signals (" + score3 + ") should score >= 2 signals (" + score2 + ")", score3 >= score2);
     assertTrue(
-        "2 signals (" + score2 + ") should score >= 1 signal (" + score1 + ")",
-        score2 >= score1);
+        "2 signals (" + score2 + ") should score >= 1 signal (" + score1 + ")", score2 >= score1);
 
     // All remain valid probabilities
     assertTrue("1-signal score in (0,1)", score1 > 0 && score1 < 1);
@@ -557,7 +549,9 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     }
   }
 
-  /** Recursively checks if any explanation in the tree contains the given text in its description. */
+  /**
+   * Recursively checks if any explanation in the tree contains the given text in its description.
+   */
   private static boolean containsDescription(Explanation expl, String text) {
     if (expl.getDescription().contains(text)) {
       return true;
@@ -623,10 +617,8 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
       // Validate all scores are proper probabilities
       ScoreDoc[] hits = testSearcher.search(hybridQuery, 10).scoreDocs;
       for (ScoreDoc hit : hits) {
-        assertTrue(
-            "hybrid score should be > 0, got " + hit.score, hit.score > 0f);
-        assertTrue(
-            "hybrid score should be < 1, got " + hit.score, hit.score < 1f);
+        assertTrue("hybrid score should be > 0, got " + hit.score, hit.score > 0f);
+        assertTrue("hybrid score should be < 1, got " + hit.score, hit.score < 1f);
       }
     }
 
@@ -680,8 +672,7 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     LogOddsConjunctionQuery betaHybrid =
         new LogOddsConjunctionQuery(
             Arrays.asList(
-                new TermQuery(new Term("title", "beta")),
-                new TermQuery(new Term("body", "beta"))),
+                new TermQuery(new Term("title", "beta")), new TermQuery(new Term("body", "beta"))),
             0.5f);
 
     // Combine term-level hybrids via BooleanQuery
@@ -726,6 +717,7 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
    * excluding most fillers.
    */
   private static final int HYBRID_NUM_FILLER = 196;
+
   private static final int HYBRID_NUM_DOCS = 4 + HYBRID_NUM_FILLER;
   private static final float[] QUERY_A = normalize(new float[] {1.0f, 0.0f, 0.0f});
 
@@ -742,34 +734,50 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
 
     // doc0: text + vector
     Document doc0 = new Document();
-    doc0.add(new TextField("body",
-        "lucene lucene lucene lucene lucene lucene lucene lucene lucene lucene search engine",
-        Field.Store.NO));
-    doc0.add(new KnnFloatVectorField("embedding",
-        normalize(new float[] {0.95f, 0.05f, 0.0f}), VectorSimilarityFunction.COSINE));
+    doc0.add(
+        new TextField(
+            "body",
+            "lucene lucene lucene lucene lucene lucene lucene lucene lucene lucene search engine",
+            Field.Store.NO));
+    doc0.add(
+        new KnnFloatVectorField(
+            "embedding",
+            normalize(new float[] {0.95f, 0.05f, 0.0f}),
+            VectorSimilarityFunction.COSINE));
     writer.addDocument(doc0);
 
     // doc1: text only (vector orthogonal to queryA)
     Document doc1 = new Document();
-    doc1.add(new TextField("body",
-        "lucene lucene lucene lucene lucene lucene lucene lucene lucene lucene full text search",
-        Field.Store.NO));
-    doc1.add(new KnnFloatVectorField("embedding",
-        normalize(new float[] {0.0f, 0.0f, 1.0f}), VectorSimilarityFunction.COSINE));
+    doc1.add(
+        new TextField(
+            "body",
+            "lucene lucene lucene lucene lucene lucene lucene lucene lucene lucene full text search",
+            Field.Store.NO));
+    doc1.add(
+        new KnnFloatVectorField(
+            "embedding",
+            normalize(new float[] {0.0f, 0.0f, 1.0f}),
+            VectorSimilarityFunction.COSINE));
     writer.addDocument(doc1);
 
     // doc2: vector only (near queryA, no "lucene")
     Document doc2 = new Document();
     doc2.add(new TextField("body", "unrelated topic about cooking recipes", Field.Store.NO));
-    doc2.add(new KnnFloatVectorField("embedding",
-        normalize(new float[] {0.90f, 0.10f, 0.0f}), VectorSimilarityFunction.COSINE));
+    doc2.add(
+        new KnnFloatVectorField(
+            "embedding",
+            normalize(new float[] {0.90f, 0.10f, 0.0f}),
+            VectorSimilarityFunction.COSINE));
     writer.addDocument(doc2);
 
     // doc3: neither
     Document doc3 = new Document();
     doc3.add(new TextField("body", "gardening tips for spring planting", Field.Store.NO));
-    doc3.add(new KnnFloatVectorField("embedding",
-        normalize(new float[] {0.0f, 1.0f, 0.0f}), VectorSimilarityFunction.COSINE));
+    doc3.add(
+        new KnnFloatVectorField(
+            "embedding",
+            normalize(new float[] {0.0f, 1.0f, 0.0f}),
+            VectorSimilarityFunction.COSINE));
     writer.addDocument(doc3);
 
     // Filler docs: scattered vectors away from queryA
@@ -779,8 +787,9 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
       // Vectors in the y-z plane, far from queryA which points along x
       float y = (float) Math.sin(i * 0.1);
       float z = (float) Math.cos(i * 0.1);
-      filler.add(new KnnFloatVectorField("embedding",
-          normalize(new float[] {0.0f, y, z}), VectorSimilarityFunction.COSINE));
+      filler.add(
+          new KnnFloatVectorField(
+              "embedding", normalize(new float[] {0.0f, y, z}), VectorSimilarityFunction.COSINE));
       writer.addDocument(filler);
     }
 
@@ -854,8 +863,8 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
 
       ScoreDoc[] hits = hybridSearcher.search(hybridQuery, 20).scoreDocs;
 
-      boolean foundTextOnly = false;  // doc1: text match, vector far
-      boolean foundVectorOnly = false;  // doc2: vector match, no text
+      boolean foundTextOnly = false; // doc1: text match, vector far
+      boolean foundVectorOnly = false; // doc2: vector match, no text
       for (ScoreDoc hit : hits) {
         if (hit.doc == 1) foundTextOnly = true;
         if (hit.doc == 2) foundVectorOnly = true;
@@ -868,8 +877,8 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
   }
 
   /**
-   * Combines two KNN vector queries from different embedding fields via LogOddsConjunction.
-   * A document matching both vector signals should rank higher.
+   * Combines two KNN vector queries from different embedding fields via LogOddsConjunction. A
+   * document matching both vector signals should rank higher.
    */
   public void testMultipleVectorFields() throws Exception {
     float[] queryA = normalize(new float[] {1.0f, 0.0f});
@@ -882,26 +891,32 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
 
     // doc0: close to both queryA and queryB
     Document doc0 = new Document();
-    doc0.add(new KnnFloatVectorField("emb_a",
-        normalize(new float[] {0.95f, 0.05f}), VectorSimilarityFunction.COSINE));
-    doc0.add(new KnnFloatVectorField("emb_b",
-        normalize(new float[] {0.05f, 0.95f}), VectorSimilarityFunction.COSINE));
+    doc0.add(
+        new KnnFloatVectorField(
+            "emb_a", normalize(new float[] {0.95f, 0.05f}), VectorSimilarityFunction.COSINE));
+    doc0.add(
+        new KnnFloatVectorField(
+            "emb_b", normalize(new float[] {0.05f, 0.95f}), VectorSimilarityFunction.COSINE));
     writer.addDocument(doc0);
 
     // doc1: close to queryA only
     Document doc1 = new Document();
-    doc1.add(new KnnFloatVectorField("emb_a",
-        normalize(new float[] {0.90f, 0.10f}), VectorSimilarityFunction.COSINE));
-    doc1.add(new KnnFloatVectorField("emb_b",
-        normalize(new float[] {1.0f, 0.0f}), VectorSimilarityFunction.COSINE));
+    doc1.add(
+        new KnnFloatVectorField(
+            "emb_a", normalize(new float[] {0.90f, 0.10f}), VectorSimilarityFunction.COSINE));
+    doc1.add(
+        new KnnFloatVectorField(
+            "emb_b", normalize(new float[] {1.0f, 0.0f}), VectorSimilarityFunction.COSINE));
     writer.addDocument(doc1);
 
     // doc2: close to queryB only
     Document doc2 = new Document();
-    doc2.add(new KnnFloatVectorField("emb_a",
-        normalize(new float[] {0.0f, 1.0f}), VectorSimilarityFunction.COSINE));
-    doc2.add(new KnnFloatVectorField("emb_b",
-        normalize(new float[] {0.10f, 0.90f}), VectorSimilarityFunction.COSINE));
+    doc2.add(
+        new KnnFloatVectorField(
+            "emb_a", normalize(new float[] {0.0f, 1.0f}), VectorSimilarityFunction.COSINE));
+    doc2.add(
+        new KnnFloatVectorField(
+            "emb_b", normalize(new float[] {0.10f, 0.90f}), VectorSimilarityFunction.COSINE));
     writer.addDocument(doc2);
 
     writer.forceMerge(1);
@@ -929,8 +944,8 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
   }
 
   /**
-   * BooleanQuery MUST + LogOddsConjunction: require text match AND combine vector signals.
-   * Only documents matching the text filter are scored by the hybrid.
+   * BooleanQuery MUST + LogOddsConjunction: require text match AND combine vector signals. Only
+   * documents matching the text filter are scored by the hybrid.
    */
   public void testBooleanMustWithHybrid() throws Exception {
     buildHybridIndex();
@@ -952,8 +967,8 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
 
       // Only doc0 and doc1 contain "lucene"
       for (ScoreDoc hit : hits) {
-        assertTrue("only docs 0 and 1 match text, got doc " + hit.doc,
-            hit.doc == 0 || hit.doc == 1);
+        assertTrue(
+            "only docs 0 and 1 match text, got doc " + hit.doc, hit.doc == 0 || hit.doc == 1);
       }
       assertTrue("should have at least 1 hit", hits.length >= 1);
     } finally {
@@ -961,9 +976,7 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     }
   }
 
-  /**
-   * BooleanQuery MUST_NOT: exclude documents matching a filter from hybrid results.
-   */
+  /** BooleanQuery MUST_NOT: exclude documents matching a filter from hybrid results. */
   public void testBooleanMustNotWithHybrid() throws Exception {
     buildHybridIndex();
     try {
@@ -993,8 +1006,8 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
   }
 
   /**
-   * Three-way hybrid: text + vector1 + vector2, all combined via LogOddsConjunction. Tests that
-   * the scoring handles three heterogeneous signals correctly.
+   * Three-way hybrid: text + vector1 + vector2, all combined via LogOddsConjunction. Tests that the
+   * scoring handles three heterogeneous signals correctly.
    */
   public void testThreeWayTextAndVectorHybrid() throws Exception {
     float[] queryA = normalize(new float[] {1.0f, 0.0f});
@@ -1008,32 +1021,36 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
 
     // doc0: matches all three signals
     Document doc0 = new Document();
-    doc0.add(new TextField("body",
-        "lucene lucene lucene lucene lucene search", Field.Store.NO));
-    doc0.add(new KnnFloatVectorField("emb_a",
-        normalize(new float[] {0.95f, 0.05f}), VectorSimilarityFunction.COSINE));
-    doc0.add(new KnnFloatVectorField("emb_b",
-        normalize(new float[] {0.05f, 0.95f}), VectorSimilarityFunction.COSINE));
+    doc0.add(new TextField("body", "lucene lucene lucene lucene lucene search", Field.Store.NO));
+    doc0.add(
+        new KnnFloatVectorField(
+            "emb_a", normalize(new float[] {0.95f, 0.05f}), VectorSimilarityFunction.COSINE));
+    doc0.add(
+        new KnnFloatVectorField(
+            "emb_b", normalize(new float[] {0.05f, 0.95f}), VectorSimilarityFunction.COSINE));
     writer.addDocument(doc0);
 
     // doc1: matches text + vector A only
     Document doc1 = new Document();
-    doc1.add(new TextField("body",
-        "lucene lucene lucene lucene lucene library", Field.Store.NO));
-    doc1.add(new KnnFloatVectorField("emb_a",
-        normalize(new float[] {0.90f, 0.10f}), VectorSimilarityFunction.COSINE));
-    doc1.add(new KnnFloatVectorField("emb_b",
-        normalize(new float[] {1.0f, 0.0f}), VectorSimilarityFunction.COSINE));
+    doc1.add(new TextField("body", "lucene lucene lucene lucene lucene library", Field.Store.NO));
+    doc1.add(
+        new KnnFloatVectorField(
+            "emb_a", normalize(new float[] {0.90f, 0.10f}), VectorSimilarityFunction.COSINE));
+    doc1.add(
+        new KnnFloatVectorField(
+            "emb_b", normalize(new float[] {1.0f, 0.0f}), VectorSimilarityFunction.COSINE));
     writer.addDocument(doc1);
 
     // Filler docs for IDF
     for (int i = 0; i < 50; i++) {
       Document filler = new Document();
       filler.add(new TextField("body", "filler content number " + i, Field.Store.NO));
-      filler.add(new KnnFloatVectorField("emb_a",
-          normalize(new float[] {0.0f, 1.0f}), VectorSimilarityFunction.COSINE));
-      filler.add(new KnnFloatVectorField("emb_b",
-          normalize(new float[] {1.0f, 0.0f}), VectorSimilarityFunction.COSINE));
+      filler.add(
+          new KnnFloatVectorField(
+              "emb_a", normalize(new float[] {0.0f, 1.0f}), VectorSimilarityFunction.COSINE));
+      filler.add(
+          new KnnFloatVectorField(
+              "emb_b", normalize(new float[] {1.0f, 0.0f}), VectorSimilarityFunction.COSINE));
       writer.addDocument(filler);
     }
 
@@ -1127,20 +1144,23 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
 
     // doc0: near both queryX and queryY (diagonal)
     Document doc0 = new Document();
-    doc0.add(new KnnFloatVectorField("emb",
-        normalize(new float[] {0.7f, 0.7f}), VectorSimilarityFunction.COSINE));
+    doc0.add(
+        new KnnFloatVectorField(
+            "emb", normalize(new float[] {0.7f, 0.7f}), VectorSimilarityFunction.COSINE));
     writer.addDocument(doc0);
 
     // doc1: near queryX only
     Document doc1 = new Document();
-    doc1.add(new KnnFloatVectorField("emb",
-        normalize(new float[] {0.95f, 0.05f}), VectorSimilarityFunction.COSINE));
+    doc1.add(
+        new KnnFloatVectorField(
+            "emb", normalize(new float[] {0.95f, 0.05f}), VectorSimilarityFunction.COSINE));
     writer.addDocument(doc1);
 
     // doc2: near queryY only
     Document doc2 = new Document();
-    doc2.add(new KnnFloatVectorField("emb",
-        normalize(new float[] {0.05f, 0.95f}), VectorSimilarityFunction.COSINE));
+    doc2.add(
+        new KnnFloatVectorField(
+            "emb", normalize(new float[] {0.05f, 0.95f}), VectorSimilarityFunction.COSINE));
     writer.addDocument(doc2);
 
     writer.forceMerge(1);

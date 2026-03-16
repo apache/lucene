@@ -33,10 +33,10 @@ import java.util.List;
  *   score       = sigmoid(scaledLogit)
  * </pre>
  *
- * <p>Softplus gating ({@code log(1 + exp(x))}) is applied to logit values before aggregation.
- * This distinguishes "absence of evidence" (non-matching sub-scorer, contributes 0) from "evidence
- * of absence" (matching sub-scorer with weak probability, contributes a small positive value).
- * A matching sub-scorer always contributes more than a non-matching one, preserving the ordering
+ * <p>Softplus gating ({@code log(1 + exp(x))}) is applied to logit values before aggregation. This
+ * distinguishes "absence of evidence" (non-matching sub-scorer, contributes 0) from "evidence of
+ * absence" (matching sub-scorer with weak probability, contributes a small positive value). A
+ * matching sub-scorer always contributes more than a non-matching one, preserving the ordering
  * among weak matches while ensuring that no match is ever penalized.
  *
  * <p>Non-matching sub-scorers contribute logit(0.5) = 0 (neutral evidence).
@@ -62,11 +62,7 @@ final class LogOddsConjunctionScorer extends DisjunctionScorer {
    * @param leadCost the lead cost for iteration
    */
   LogOddsConjunctionScorer(
-      List<Scorer> subScorers,
-      int totalClauses,
-      float alpha,
-      ScoreMode scoreMode,
-      long leadCost)
+      List<Scorer> subScorers, int totalClauses, float alpha, ScoreMode scoreMode, long leadCost)
       throws IOException {
     super(subScorers, scoreMode, leadCost);
     this.subScorers = subScorers;
@@ -99,9 +95,9 @@ final class LogOddsConjunctionScorer extends DisjunctionScorer {
   }
 
   /**
-   * Softplus function: log(1 + exp(x)). Always positive, smooth approximation of ReLU.
-   * For large positive x, approaches x. For large negative x, approaches 0 from above.
-   * At x=0, returns log(2) ~ 0.693.
+   * Softplus function: log(1 + exp(x)). Always positive, smooth approximation of ReLU. For large
+   * positive x, approaches x. For large negative x, approaches 0 from above. At x=0, returns log(2)
+   * ~ 0.693.
    *
    * <p>Uses a numerically stable formulation: for x &gt; 20, softplus(x) ~ x.
    */
