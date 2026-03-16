@@ -50,6 +50,7 @@ final class VectorizedBitSetOps {
       Class<?> helperClass = Class.forName("org.apache.lucene.util.VectorizedBitSetOpsHelper");
       return (VectorHelper) helperClass.getDeclaredConstructor().newInstance();
     } catch (Throwable t) {
+      assert t != null;
       return ScalarVectorHelper.INSTANCE;
     }
   }
