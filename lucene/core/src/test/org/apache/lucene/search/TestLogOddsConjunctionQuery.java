@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -29,12 +30,14 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.similarities.BayesianBM25Similarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 /** Tests for {@link LogOddsConjunctionQuery}. */
 public class TestLogOddsConjunctionQuery extends LuceneTestCase {
@@ -389,8 +392,8 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     writer.addDocument(doc3);
 
     writer.forceMerge(1);
-    IndexReader hybridReader = DirectoryReader.open(writer);
     writer.close();
+    IndexReader hybridReader = DirectoryReader.open(hybridDir);
     IndexSearcher hybridSearcher = new IndexSearcher(hybridReader);
     hybridSearcher.setSimilarity(new BayesianBM25Similarity());
 
@@ -452,8 +455,8 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     writer.addDocument(doc);
 
     writer.forceMerge(1);
-    IndexReader signalReader = DirectoryReader.open(writer);
     writer.close();
+    IndexReader signalReader = DirectoryReader.open(signalDir);
     IndexSearcher signalSearcher = new IndexSearcher(signalReader);
     signalSearcher.setSimilarity(new BayesianBM25Similarity());
 
@@ -661,8 +664,8 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     writer.addDocument(doc2);
 
     writer.forceMerge(1);
-    IndexReader testReader = DirectoryReader.open(writer);
     writer.close();
+    IndexReader testReader = DirectoryReader.open(testDir);
     IndexSearcher testSearcher = new IndexSearcher(testReader);
     testSearcher.setSimilarity(new BayesianBM25Similarity());
 
@@ -703,5 +706,378 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
 
     testReader.close();
     testDir.close();
+  }
+
+  // ---- Vector + Text hybrid search tests ----
+
+  /**
+   * Builds a shared index for vector+text hybrid tests. 200 documents total:
+   *
+   * <ul>
+   *   <li>doc 0: text match ("lucene" x10) + vector near queryA (cosine ~ 0.99)
+   *   <li>doc 1: text match ("lucene" x10) + vector far from queryA (cosine ~ 0)
+   *   <li>doc 2: no text match + vector near queryA (cosine ~ 0.98)
+   *   <li>doc 3: no text match + vector far from queryA (cosine ~ 0)
+   *   <li>docs 4-199: filler (no text match, vectors scattered away from queryA)
+   * </ul>
+   *
+   * <p>With 200 docs and "lucene" appearing in only 2, IDF is high enough for meaningful
+   * BayesianBM25 posteriors. KNN k=10 comfortably includes docs 0 and 2 (both near queryA) while
+   * excluding most fillers.
+   */
+  private static final int HYBRID_NUM_FILLER = 196;
+  private static final int HYBRID_NUM_DOCS = 4 + HYBRID_NUM_FILLER;
+  private static final float[] QUERY_A = normalize(new float[] {1.0f, 0.0f, 0.0f});
+
+  private Directory hybridDir;
+  private IndexReader hybridReader;
+  private IndexSearcher hybridSearcher;
+
+  private void buildHybridIndex() throws Exception {
+    hybridDir = newDirectory();
+    IndexWriterConfig config = new IndexWriterConfig();
+    config.setCodec(TestUtil.getDefaultCodec());
+    config.setSimilarity(new BayesianBM25Similarity());
+    IndexWriter writer = new IndexWriter(hybridDir, config);
+
+    // doc0: text + vector
+    Document doc0 = new Document();
+    doc0.add(new TextField("body",
+        "lucene lucene lucene lucene lucene lucene lucene lucene lucene lucene search engine",
+        Field.Store.NO));
+    doc0.add(new KnnFloatVectorField("embedding",
+        normalize(new float[] {0.95f, 0.05f, 0.0f}), VectorSimilarityFunction.COSINE));
+    writer.addDocument(doc0);
+
+    // doc1: text only (vector orthogonal to queryA)
+    Document doc1 = new Document();
+    doc1.add(new TextField("body",
+        "lucene lucene lucene lucene lucene lucene lucene lucene lucene lucene full text search",
+        Field.Store.NO));
+    doc1.add(new KnnFloatVectorField("embedding",
+        normalize(new float[] {0.0f, 0.0f, 1.0f}), VectorSimilarityFunction.COSINE));
+    writer.addDocument(doc1);
+
+    // doc2: vector only (near queryA, no "lucene")
+    Document doc2 = new Document();
+    doc2.add(new TextField("body", "unrelated topic about cooking recipes", Field.Store.NO));
+    doc2.add(new KnnFloatVectorField("embedding",
+        normalize(new float[] {0.90f, 0.10f, 0.0f}), VectorSimilarityFunction.COSINE));
+    writer.addDocument(doc2);
+
+    // doc3: neither
+    Document doc3 = new Document();
+    doc3.add(new TextField("body", "gardening tips for spring planting", Field.Store.NO));
+    doc3.add(new KnnFloatVectorField("embedding",
+        normalize(new float[] {0.0f, 1.0f, 0.0f}), VectorSimilarityFunction.COSINE));
+    writer.addDocument(doc3);
+
+    // Filler docs: scattered vectors away from queryA
+    for (int i = 0; i < HYBRID_NUM_FILLER; i++) {
+      Document filler = new Document();
+      filler.add(new TextField("body", "filler document about topic " + i, Field.Store.NO));
+      // Vectors in the y-z plane, far from queryA which points along x
+      float y = (float) Math.sin(i * 0.1);
+      float z = (float) Math.cos(i * 0.1);
+      filler.add(new KnnFloatVectorField("embedding",
+          normalize(new float[] {0.0f, y, z}), VectorSimilarityFunction.COSINE));
+      writer.addDocument(filler);
+    }
+
+    writer.forceMerge(1);
+    writer.close();
+    hybridReader = DirectoryReader.open(hybridDir);
+    hybridSearcher = new IndexSearcher(hybridReader);
+    hybridSearcher.setSimilarity(new BayesianBM25Similarity());
+  }
+
+  private void closeHybridIndex() throws Exception {
+    hybridReader.close();
+    hybridDir.close();
+  }
+
+  /**
+   * Text + vector hybrid: a document matching both signals should rank above documents matching
+   * only one signal.
+   */
+  public void testTextAndVectorHybridSearch() throws Exception {
+    buildHybridIndex();
+    try {
+      Query textQuery = new TermQuery(new Term("body", "lucene"));
+      Query vectorQuery = new KnnFloatVectorQuery("embedding", QUERY_A, 10);
+
+      LogOddsConjunctionQuery hybridQuery =
+          new LogOddsConjunctionQuery(Arrays.asList(textQuery, vectorQuery), 0.5f);
+
+      ScoreDoc[] hits = hybridSearcher.search(hybridQuery, 10).scoreDocs;
+      assertTrue("should have hits", hits.length >= 3);
+
+      for (ScoreDoc hit : hits) {
+        assertTrue("score should be > 0", hit.score > 0f);
+        assertTrue("score should be < 1", hit.score < 1f);
+      }
+
+      // doc0 matches both signals, should rank first
+      assertEquals("doc0 (text+vector) should rank first", 0, hits[0].doc);
+      assertTrue(
+          "doc0 (" + hits[0].score + ") should score > second hit (" + hits[1].score + ")",
+          hits[0].score > hits[1].score);
+    } finally {
+      closeHybridIndex();
+    }
+  }
+
+  /**
+   * Both text-only and vector-only documents should appear in hybrid results. The disjunction
+   * semantics ensure that matching either sub-query is sufficient.
+   */
+  public void testVectorAndTextBothContribute() throws Exception {
+    buildHybridIndex();
+    try {
+      Query textQuery = new TermQuery(new Term("body", "lucene"));
+      Query vectorQuery = new KnnFloatVectorQuery("embedding", QUERY_A, 10);
+
+      // Verify KNN independently returns doc0 and doc2 (both near QUERY_A)
+      ScoreDoc[] knnHits = hybridSearcher.search(vectorQuery, 10).scoreDocs;
+      boolean knnFoundDoc0 = false;
+      boolean knnFoundDoc2 = false;
+      for (ScoreDoc hit : knnHits) {
+        if (hit.doc == 0) knnFoundDoc0 = true;
+        if (hit.doc == 2) knnFoundDoc2 = true;
+      }
+      assertTrue("KNN should return doc0 (cosine ~0.99 with queryA)", knnFoundDoc0);
+      assertTrue("KNN should return doc2 (cosine ~0.98 with queryA)", knnFoundDoc2);
+
+      // Combine via LogOddsConjunction
+      LogOddsConjunctionQuery hybridQuery =
+          new LogOddsConjunctionQuery(Arrays.asList(textQuery, vectorQuery), 0.5f);
+
+      ScoreDoc[] hits = hybridSearcher.search(hybridQuery, 20).scoreDocs;
+
+      boolean foundTextOnly = false;  // doc1: text match, vector far
+      boolean foundVectorOnly = false;  // doc2: vector match, no text
+      for (ScoreDoc hit : hits) {
+        if (hit.doc == 1) foundTextOnly = true;
+        if (hit.doc == 2) foundVectorOnly = true;
+      }
+      assertTrue("text-only doc1 should appear in results", foundTextOnly);
+      assertTrue("vector-only doc2 should appear in results", foundVectorOnly);
+    } finally {
+      closeHybridIndex();
+    }
+  }
+
+  /**
+   * Combines two KNN vector queries from different embedding fields via LogOddsConjunction.
+   * A document matching both vector signals should rank higher.
+   */
+  public void testMultipleVectorFields() throws Exception {
+    float[] queryA = normalize(new float[] {1.0f, 0.0f});
+    float[] queryB = normalize(new float[] {0.0f, 1.0f});
+
+    Directory testDir = newDirectory();
+    IndexWriterConfig config = new IndexWriterConfig();
+    config.setCodec(TestUtil.getDefaultCodec());
+    IndexWriter writer = new IndexWriter(testDir, config);
+
+    // doc0: close to both queryA and queryB
+    Document doc0 = new Document();
+    doc0.add(new KnnFloatVectorField("emb_a",
+        normalize(new float[] {0.95f, 0.05f}), VectorSimilarityFunction.COSINE));
+    doc0.add(new KnnFloatVectorField("emb_b",
+        normalize(new float[] {0.05f, 0.95f}), VectorSimilarityFunction.COSINE));
+    writer.addDocument(doc0);
+
+    // doc1: close to queryA only
+    Document doc1 = new Document();
+    doc1.add(new KnnFloatVectorField("emb_a",
+        normalize(new float[] {0.90f, 0.10f}), VectorSimilarityFunction.COSINE));
+    doc1.add(new KnnFloatVectorField("emb_b",
+        normalize(new float[] {1.0f, 0.0f}), VectorSimilarityFunction.COSINE));
+    writer.addDocument(doc1);
+
+    // doc2: close to queryB only
+    Document doc2 = new Document();
+    doc2.add(new KnnFloatVectorField("emb_a",
+        normalize(new float[] {0.0f, 1.0f}), VectorSimilarityFunction.COSINE));
+    doc2.add(new KnnFloatVectorField("emb_b",
+        normalize(new float[] {0.10f, 0.90f}), VectorSimilarityFunction.COSINE));
+    writer.addDocument(doc2);
+
+    writer.forceMerge(1);
+    writer.close();
+    IndexReader testReader = DirectoryReader.open(testDir);
+    IndexSearcher testSearcher = newSearcher(testReader);
+
+    Query vecQueryA = new KnnFloatVectorQuery("emb_a", queryA, 3);
+    Query vecQueryB = new KnnFloatVectorQuery("emb_b", queryB, 3);
+
+    LogOddsConjunctionQuery multiVecQuery =
+        new LogOddsConjunctionQuery(Arrays.asList(vecQueryA, vecQueryB), 0.5f);
+
+    ScoreDoc[] hits = testSearcher.search(multiVecQuery, 3).scoreDocs;
+    assertEquals("all 3 docs should match", 3, hits.length);
+
+    // doc0 is close to both queries, should rank first
+    assertEquals("doc0 (close to both vectors) should rank first", 0, hits[0].doc);
+    assertTrue(
+        "doc0 (" + hits[0].score + ") should score > doc1 (" + hits[1].score + ")",
+        hits[0].score > hits[1].score);
+
+    testReader.close();
+    testDir.close();
+  }
+
+  /**
+   * BooleanQuery MUST + LogOddsConjunction: require text match AND combine vector signals.
+   * Only documents matching the text filter are scored by the hybrid.
+   */
+  public void testBooleanMustWithHybrid() throws Exception {
+    buildHybridIndex();
+    try {
+      Query textQuery = new TermQuery(new Term("body", "lucene"));
+      Query vectorQuery = new KnnFloatVectorQuery("embedding", QUERY_A, 10);
+
+      LogOddsConjunctionQuery hybridQuery =
+          new LogOddsConjunctionQuery(Arrays.asList(textQuery, vectorQuery), 0.5f);
+
+      // MUST match text, scored by hybrid
+      BooleanQuery filtered =
+          new BooleanQuery.Builder()
+              .add(textQuery, BooleanClause.Occur.FILTER)
+              .add(hybridQuery, BooleanClause.Occur.MUST)
+              .build();
+
+      ScoreDoc[] hits = hybridSearcher.search(filtered, 10).scoreDocs;
+
+      // Only doc0 and doc1 contain "lucene"
+      for (ScoreDoc hit : hits) {
+        assertTrue("only docs 0 and 1 match text, got doc " + hit.doc,
+            hit.doc == 0 || hit.doc == 1);
+      }
+      assertTrue("should have at least 1 hit", hits.length >= 1);
+    } finally {
+      closeHybridIndex();
+    }
+  }
+
+  /**
+   * BooleanQuery MUST_NOT: exclude documents matching a filter from hybrid results.
+   */
+  public void testBooleanMustNotWithHybrid() throws Exception {
+    buildHybridIndex();
+    try {
+      Query textQuery = new TermQuery(new Term("body", "lucene"));
+      Query vectorQuery = new KnnFloatVectorQuery("embedding", QUERY_A, 10);
+
+      LogOddsConjunctionQuery hybridQuery =
+          new LogOddsConjunctionQuery(Arrays.asList(textQuery, vectorQuery), 0.5f);
+
+      // Exclude documents that match "cooking"
+      Query excludeFilter = new TermQuery(new Term("body", "cooking"));
+      BooleanQuery excludeQuery =
+          new BooleanQuery.Builder()
+              .add(hybridQuery, BooleanClause.Occur.MUST)
+              .add(excludeFilter, BooleanClause.Occur.MUST_NOT)
+              .build();
+
+      ScoreDoc[] hits = hybridSearcher.search(excludeQuery, 10).scoreDocs;
+
+      // doc2 contains "cooking" and should be excluded
+      for (ScoreDoc hit : hits) {
+        assertNotEquals("doc2 (cooking) should be excluded", 2, hit.doc);
+      }
+    } finally {
+      closeHybridIndex();
+    }
+  }
+
+  /**
+   * Three-way hybrid: text + vector1 + vector2, all combined via LogOddsConjunction. Tests that
+   * the scoring handles three heterogeneous signals correctly.
+   */
+  public void testThreeWayTextAndVectorHybrid() throws Exception {
+    float[] queryA = normalize(new float[] {1.0f, 0.0f});
+    float[] queryB = normalize(new float[] {0.0f, 1.0f});
+
+    Directory testDir = newDirectory();
+    IndexWriterConfig config = new IndexWriterConfig();
+    config.setCodec(TestUtil.getDefaultCodec());
+    config.setSimilarity(new BayesianBM25Similarity());
+    IndexWriter writer = new IndexWriter(testDir, config);
+
+    // doc0: matches all three signals
+    Document doc0 = new Document();
+    doc0.add(new TextField("body",
+        "lucene lucene lucene lucene lucene search", Field.Store.NO));
+    doc0.add(new KnnFloatVectorField("emb_a",
+        normalize(new float[] {0.95f, 0.05f}), VectorSimilarityFunction.COSINE));
+    doc0.add(new KnnFloatVectorField("emb_b",
+        normalize(new float[] {0.05f, 0.95f}), VectorSimilarityFunction.COSINE));
+    writer.addDocument(doc0);
+
+    // doc1: matches text + vector A only
+    Document doc1 = new Document();
+    doc1.add(new TextField("body",
+        "lucene lucene lucene lucene lucene library", Field.Store.NO));
+    doc1.add(new KnnFloatVectorField("emb_a",
+        normalize(new float[] {0.90f, 0.10f}), VectorSimilarityFunction.COSINE));
+    doc1.add(new KnnFloatVectorField("emb_b",
+        normalize(new float[] {1.0f, 0.0f}), VectorSimilarityFunction.COSINE));
+    writer.addDocument(doc1);
+
+    // Filler docs for IDF
+    for (int i = 0; i < 50; i++) {
+      Document filler = new Document();
+      filler.add(new TextField("body", "filler content number " + i, Field.Store.NO));
+      filler.add(new KnnFloatVectorField("emb_a",
+          normalize(new float[] {0.0f, 1.0f}), VectorSimilarityFunction.COSINE));
+      filler.add(new KnnFloatVectorField("emb_b",
+          normalize(new float[] {1.0f, 0.0f}), VectorSimilarityFunction.COSINE));
+      writer.addDocument(filler);
+    }
+
+    writer.forceMerge(1);
+    writer.close();
+    IndexReader testReader = DirectoryReader.open(testDir);
+    IndexSearcher testSearcher = new IndexSearcher(testReader);
+    testSearcher.setSimilarity(new BayesianBM25Similarity());
+
+    Query textQuery = new TermQuery(new Term("body", "lucene"));
+    Query vecQueryA = new KnnFloatVectorQuery("emb_a", queryA, 10);
+    Query vecQueryB = new KnnFloatVectorQuery("emb_b", queryB, 10);
+
+    LogOddsConjunctionQuery threeWay =
+        new LogOddsConjunctionQuery(Arrays.asList(textQuery, vecQueryA, vecQueryB), 0.5f);
+
+    ScoreDoc[] hits = testSearcher.search(threeWay, 10).scoreDocs;
+    assertTrue("should have hits", hits.length >= 2);
+
+    // doc0 matches all 3 signals, doc1 matches only 2
+    assertEquals("doc0 (all 3 signals) should rank first", 0, hits[0].doc);
+    assertTrue(
+        "doc0 (" + hits[0].score + ") should score > doc1 (" + hits[1].score + ")",
+        hits[0].score > hits[1].score);
+
+    for (ScoreDoc hit : hits) {
+      assertTrue("score in (0,1)", hit.score > 0f && hit.score < 1f);
+    }
+
+    testReader.close();
+    testDir.close();
+  }
+
+  /** L2-normalize a float vector. */
+  private static float[] normalize(float[] v) {
+    double norm = 0;
+    for (float x : v) {
+      norm += x * x;
+    }
+    norm = Math.sqrt(norm);
+    float[] result = new float[v.length];
+    for (int i = 0; i < v.length; i++) {
+      result[i] = (float) (v[i] / norm);
+    }
+    return result;
   }
 }

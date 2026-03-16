@@ -266,25 +266,25 @@ public class BayesianBM25Similarity extends Similarity {
     }
 
     private float computeBM25(float freq, float normInverse) {
+      // Monotonicity-preserving formulation (same as BM25Similarity)
       return weight - weight / (1f + freq * normInverse);
     }
 
-    private float computeTfPrior(float freq) {
-      float raw = TF_PRIOR_BASE + TF_PRIOR_RANGE * Math.min(1f, freq / TF_SATURATION_FREQ);
+    private double computeTfPrior(double freq) {
+      double raw = TF_PRIOR_BASE + TF_PRIOR_RANGE * Math.min(1.0, freq / TF_SATURATION_FREQ);
       return Math.max(PRIOR_CLAMP_MIN, Math.min(PRIOR_CLAMP_MAX, raw));
-    }
-
-    private float computePosterior(float likelihood, float prior) {
-      float numerator = likelihood * prior;
-      float denominator = numerator + (1f - likelihood) * (1f - prior);
-      return numerator / denominator;
     }
 
     private float doScore(float freq, float normInverse) {
       float bm25 = computeBM25(freq, normInverse);
-      float likelihood = sigmoid(effectiveAlpha * (bm25 - effectiveBeta));
-      float tfPrior = computeTfPrior(freq);
-      return computePosterior(likelihood, tfPrior);
+      // Use double for the Bayesian transform to avoid float rounding errors
+      // that could break monotonicity (posterior involves L*p / (L*p + (1-L)*(1-p))
+      // where small rounding differences in the products can invert ordering).
+      double L = sigmoid(effectiveAlpha * (bm25 - effectiveBeta));
+      double p = computeTfPrior(freq);
+      double numerator = L * p;
+      double denominator = numerator + (1.0 - L) * (1.0 - p);
+      return (float) (numerator / denominator);
     }
 
     @Override
@@ -321,9 +321,15 @@ public class BayesianBM25Similarity extends Similarity {
       float freqValue = freq.getValue().floatValue();
 
       float bm25 = computeBM25(freqValue, normInverse);
-      float likelihood = sigmoid(effectiveAlpha * (bm25 - effectiveBeta));
-      float tfPrior = computeTfPrior(freqValue);
-      float posterior = computePosterior(likelihood, tfPrior);
+      // Use the same double-precision computation as doScore to ensure the
+      // explanation value matches the score exactly.
+      double L = sigmoid(effectiveAlpha * (bm25 - effectiveBeta));
+      double p = computeTfPrior(freqValue);
+      double numerator = L * p;
+      double denominator = numerator + (1.0 - L) * (1.0 - p);
+      float likelihood = (float) L;
+      float tfPrior = (float) p;
+      float posterior = (float) (numerator / denominator);
 
       // BM25 sub-explanation
       List<Explanation> bm25Subs = new ArrayList<>(explainConstantFactors());
