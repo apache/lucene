@@ -47,7 +47,6 @@ final class LogOddsConjunctionScorer extends DisjunctionScorer {
 
   private final List<Scorer> subScorers;
   private final int totalClauses;
-  private final float alpha;
   private final float scalingFactor;
 
   private final DisjunctionScoreBlockBoundaryPropagator disjunctionBlockPropagator;
@@ -67,7 +66,6 @@ final class LogOddsConjunctionScorer extends DisjunctionScorer {
     super(subScorers, scoreMode, leadCost);
     this.subScorers = subScorers;
     this.totalClauses = totalClauses;
-    this.alpha = alpha;
     this.scalingFactor = (float) Math.pow(totalClauses, alpha);
     if (scoreMode == ScoreMode.TOP_SCORES) {
       this.disjunctionBlockPropagator = new DisjunctionScoreBlockBoundaryPropagator(subScorers);
