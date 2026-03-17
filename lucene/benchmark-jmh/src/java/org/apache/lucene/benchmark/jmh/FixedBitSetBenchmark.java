@@ -35,14 +35,14 @@ import org.openjdk.jmh.annotations.Warmup;
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Thread)
-@Warmup(iterations = 5, time = 1)
-@Measurement(iterations = 8, time = 1)
+@Warmup(iterations = 4, time = 1)
+@Measurement(iterations = 5, time = 1)
 @Fork(
     value = 3,
     jvmArgsAppend = {"-Xms2g", "-Xmx2g", "-XX:+AlwaysPreTouch"})
 public class FixedBitSetBenchmark {
 
-  // Includes sizes below/at/above the vectorization threshold.
+  // Includes sizes below/at/above the vectorization threshold (64 longs = 4096 bits).
   @Param({"512", "1024", "4096", "65536", "1048576"})
   public int numBits;
 
@@ -58,7 +58,13 @@ public class FixedBitSetBenchmark {
   }
 
   @Benchmark
-  public int cardinality() {
+  public int cardinalityScalar() {
+    return a.cardinality();
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public int cardinalityVector() {
     return a.cardinality();
   }
 

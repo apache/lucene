@@ -29,18 +29,6 @@ final class PanamaBitSetUtilSupport implements BitSetUtilSupport {
           long.class, VectorShape.forBitSize(PanamaVectorConstants.PREFERRED_VECTOR_BITSIZE));
   private static final int VL = LONG_SPECIES.length();
 
-  private static final boolean ENABLED;
-
-  static {
-    boolean enabled = false;
-    try {
-      enabled = Boolean.parseBoolean(System.getProperty("lucene.useVectorizedBitSetOps", "false"));
-    } catch (SecurityException _) {
-      // ignored
-    }
-    ENABLED = enabled;
-  }
-
   /**
    * Minimum number of longs (words) before using SIMD; below this the dispatch overhead isn't worth
    * it.
@@ -49,7 +37,7 @@ final class PanamaBitSetUtilSupport implements BitSetUtilSupport {
 
   @Override
   public long popCount(long[] a, int start, int len) {
-    if (ENABLED == false || len < MIN_WORDS) {
+    if (len < MIN_WORDS) {
       long count = 0;
       for (int i = 0; i < len; i++) {
         count += Long.bitCount(a[start + i]);
