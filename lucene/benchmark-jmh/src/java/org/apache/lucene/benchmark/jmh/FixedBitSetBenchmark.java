@@ -31,7 +31,6 @@ import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
-import org.openjdk.jmh.infra.Blackhole;
 
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
@@ -51,70 +50,16 @@ public class FixedBitSetBenchmark {
   public double density;
 
   private FixedBitSet a;
-  private FixedBitSet b;
-  private FixedBitSet work;
-  private long[] aBits;
-  private long[] workBits;
 
   @Setup(Level.Trial)
   public void setup() {
     a = new FixedBitSet(numBits);
-    b = new FixedBitSet(numBits);
-    work = new FixedBitSet(numBits);
-    aBits = a.getBits();
-    workBits = work.getBits();
-
     fillRandom(a, 0xC0FFEE, density);
-    fillRandom(b, 0xBADC0DE, density);
-  }
-
-  @Setup(Level.Invocation)
-  public void resetWork() {
-    System.arraycopy(aBits, 0, workBits, 0, workBits.length);
   }
 
   @Benchmark
   public int cardinality() {
     return a.cardinality();
-  }
-
-  @Benchmark
-  public long intersectionCount() {
-    return FixedBitSet.intersectionCount(a, b);
-  }
-
-  @Benchmark
-  public long unionCount() {
-    return FixedBitSet.unionCount(a, b);
-  }
-
-  @Benchmark
-  public long andNotCount() {
-    return FixedBitSet.andNotCount(a, b);
-  }
-
-  @Benchmark
-  public void and(Blackhole bh) {
-    work.and(b);
-    bh.consume(work);
-  }
-
-  @Benchmark
-  public void or(Blackhole bh) {
-    work.or(b);
-    bh.consume(work);
-  }
-
-  @Benchmark
-  public void xor(Blackhole bh) {
-    work.xor(b);
-    bh.consume(work);
-  }
-
-  @Benchmark
-  public void andNot(Blackhole bh) {
-    work.andNot(b);
-    bh.consume(work);
   }
 
   private static void fillRandom(FixedBitSet set, long seed, double density) {

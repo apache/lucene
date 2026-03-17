@@ -32,10 +32,12 @@ public final class NativeVectorizationProvider extends VectorizationProvider {
       new PanamaVectorizationProvider();
 
   private final VectorUtilSupport vectorUtilSupport;
+  private final BitSetUtilSupport bitSetUtilSupport;
 
   NativeVectorizationProvider() {
     vectorUtilSupport =
         new NativeVectorUtilSupport(delegateVectorUtilProvider.getVectorUtilSupport());
+    bitSetUtilSupport = delegateVectorUtilProvider.getBitSetUtilSupport();
     logIncubatorSetup();
   }
 
@@ -60,6 +62,11 @@ public final class NativeVectorizationProvider extends VectorizationProvider {
   @Override
   public VectorUtilSupport getVectorUtilSupport() {
     return vectorUtilSupport;
+  }
+
+  @Override
+  public BitSetUtilSupport getBitSetUtilSupport() {
+    return bitSetUtilSupport;
   }
 
   @Override

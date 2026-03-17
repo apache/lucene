@@ -19,6 +19,7 @@ package org.apache.lucene.util;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
@@ -96,16 +97,11 @@ public final class FixedBitSet extends BitSet {
   public static long intersectionCount(FixedBitSet a, FixedBitSet b) {
     // Depends on the ghost bits being clear!
     final int numCommonWords = Math.min(a.numWords, b.numWords);
-
-    if (VectorizedBitSetOps.shouldUseVectorized(numCommonWords)) {
-      return VectorizedBitSetOps.intersectionCount(a.bits, b.bits, numCommonWords);
-    } else {
-      long tot = 0;
-      for (int i = 0; i < numCommonWords; ++i) {
-        tot += Long.bitCount(a.bits[i] & b.bits[i]);
-      }
-      return tot;
+    long tot = 0;
+    for (int i = 0; i < numCommonWords; ++i) {
+      tot += Long.bitCount(a.bits[i] & b.bits[i]);
     }
+    return tot;
   }
 
   /** Returns the popcount or cardinality of the union of the two sets. Neither set is modified. */
@@ -114,30 +110,16 @@ public final class FixedBitSet extends BitSet {
     final int numCommonWords = Math.min(a.numWords, b.numWords);
 
     long tot = 0;
-    if (VectorizedBitSetOps.shouldUseVectorized(numCommonWords)) {
-      tot = VectorizedBitSetOps.unionCount(a.bits, b.bits, numCommonWords);
-    } else {
-      for (int i = 0; i < numCommonWords; ++i) {
-        tot += Long.bitCount(a.bits[i] | b.bits[i]);
-      }
+    for (int i = 0; i < numCommonWords; ++i) {
+      tot += Long.bitCount(a.bits[i] | b.bits[i]);
     }
 
-    if (a.numWords > numCommonWords
-        && VectorizedBitSetOps.shouldUseVectorized(a.numWords - numCommonWords)) {
-      tot += VectorizedBitSetOps.popCount(a.bits, numCommonWords, a.numWords - numCommonWords);
-    } else {
-      for (int i = numCommonWords; i < a.numWords; ++i) {
-        tot += Long.bitCount(a.bits[i]);
-      }
+    for (int i = numCommonWords; i < a.numWords; ++i) {
+      tot += Long.bitCount(a.bits[i]);
     }
 
-    if (b.numWords > numCommonWords
-        && VectorizedBitSetOps.shouldUseVectorized(b.numWords - numCommonWords)) {
-      tot += VectorizedBitSetOps.popCount(b.bits, numCommonWords, b.numWords - numCommonWords);
-    } else {
-      for (int i = numCommonWords; i < b.numWords; ++i) {
-        tot += Long.bitCount(b.bits[i]);
-      }
+    for (int i = numCommonWords; i < b.numWords; ++i) {
+      tot += Long.bitCount(b.bits[i]);
     }
 
     return tot;
@@ -152,21 +134,12 @@ public final class FixedBitSet extends BitSet {
     final int numCommonWords = Math.min(a.numWords, b.numWords);
 
     long tot = 0;
-    if (VectorizedBitSetOps.shouldUseVectorized(numCommonWords)) {
-      tot = VectorizedBitSetOps.andNotCount(a.bits, b.bits, numCommonWords);
-    } else {
-      for (int i = 0; i < numCommonWords; ++i) {
-        tot += Long.bitCount(a.bits[i] & ~b.bits[i]);
-      }
+    for (int i = 0; i < numCommonWords; ++i) {
+      tot += Long.bitCount(a.bits[i] & ~b.bits[i]);
     }
 
-    if (a.numWords > numCommonWords
-        && VectorizedBitSetOps.shouldUseVectorized(a.numWords - numCommonWords)) {
-      tot += VectorizedBitSetOps.popCount(a.bits, numCommonWords, a.numWords - numCommonWords);
-    } else {
-      for (int i = numCommonWords; i < a.numWords; ++i) {
-        tot += Long.bitCount(a.bits[i]);
-      }
+    for (int i = numCommonWords; i < a.numWords; ++i) {
+      tot += Long.bitCount(a.bits[i]);
     }
 
     return tot;
@@ -249,15 +222,8 @@ public final class FixedBitSet extends BitSet {
   @Override
   public int cardinality() {
     // Depends on the ghost bits being clear!
-    if (VectorizedBitSetOps.shouldUseVectorized(numWords)) {
-      return Math.toIntExact(VectorizedBitSetOps.popCount(bits, numWords));
-    } else {
-      long tot = 0;
-      for (int i = 0; i < numWords; ++i) {
-        tot += Long.bitCount(bits[i]);
-      }
-      return Math.toIntExact(tot);
-    }
+    return Math.toIntExact(
+        VectorizationProvider.getInstance().getBitSetUtilSupport().popCount(bits, 0, numWords));
   }
 
   /**

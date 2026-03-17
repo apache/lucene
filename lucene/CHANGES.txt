@@ -113,8 +113,8 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#15832: Vectorize popcount-based FixedBitSet operations using the Java Vector API,
-  with a conservative small-bitset fallback threshold. (Prithvi S)
+* GITHUB#15832: Add an opt-in SIMD implementation for popcount-based FixedBitSet operations using the
+  Java Vector API, with a conservative small-bitset fallback threshold. (Prithvi Sivasankar)
 
 * GITHUB#15681: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 

@@ -26,6 +26,14 @@ import org.apache.lucene.store.IndexInput;
 final class DefaultVectorizationProvider extends VectorizationProvider {
 
   private final VectorUtilSupport vectorUtilSupport;
+  private static final BitSetUtilSupport BITSET_UTIL_SUPPORT =
+      (a, start, len) -> {
+        long count = 0;
+        for (int i = 0; i < len; i++) {
+          count += Long.bitCount(a[start + i]);
+        }
+        return count;
+      };
 
   DefaultVectorizationProvider() {
     vectorUtilSupport = new DefaultVectorUtilSupport();
@@ -34,6 +42,11 @@ final class DefaultVectorizationProvider extends VectorizationProvider {
   @Override
   public VectorUtilSupport getVectorUtilSupport() {
     return vectorUtilSupport;
+  }
+
+  @Override
+  public BitSetUtilSupport getBitSetUtilSupport() {
+    return BITSET_UTIL_SUPPORT;
   }
 
   @Override

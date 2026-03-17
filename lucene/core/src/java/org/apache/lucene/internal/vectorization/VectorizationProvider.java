@@ -106,6 +106,9 @@ public abstract class VectorizationProvider {
    */
   public abstract VectorUtilSupport getVectorUtilSupport();
 
+  /** Returns a singleton (stateless) {@link BitSetUtilSupport} to support bitset computations. */
+  public abstract BitSetUtilSupport getBitSetUtilSupport();
+
   /** Returns a FlatVectorsScorer that supports the Lucene99 format. */
   public abstract FlatVectorsScorer getLucene99FlatVectorsScorer();
 
@@ -210,6 +213,7 @@ public abstract class VectorizationProvider {
       Set.of(
           "org.apache.lucene.benchmark.jmh.VectorUtilBenchmark",
           "org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil",
+          "org.apache.lucene.util.FixedBitSet",
           "org.apache.lucene.util.VectorUtil",
           "org.apache.lucene.codecs.lucene104.Lucene104PostingsReader",
           "org.apache.lucene.codecs.lucene104.PostingIndexInput",

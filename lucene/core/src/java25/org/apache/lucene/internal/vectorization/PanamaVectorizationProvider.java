@@ -35,6 +35,7 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
   // constructor of this class. Put them in PanamaVectorConstants instead.
 
   private final VectorUtilSupport vectorUtilSupport;
+  private final BitSetUtilSupport bitSetUtilSupport;
 
   PanamaVectorizationProvider() {
     // hack to work around for JDK-8309727:
@@ -52,6 +53,7 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
     }
 
     this.vectorUtilSupport = new PanamaVectorUtilSupport();
+    this.bitSetUtilSupport = new PanamaBitSetUtilSupport();
 
     logIncubatorSetup();
   }
@@ -71,6 +73,11 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
   @Override
   public VectorUtilSupport getVectorUtilSupport() {
     return vectorUtilSupport;
+  }
+
+  @Override
+  public BitSetUtilSupport getBitSetUtilSupport() {
+    return bitSetUtilSupport;
   }
 
   @Override
