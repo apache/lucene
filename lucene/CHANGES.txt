@@ -117,6 +117,7 @@ Optimizations
   Java Vector API, with a conservative small-bitset fallback threshold. (Prithvi Sivasankar)
 
 * GITHUB#15681: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
+* GITHUB#15681, GITHUB#15833: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
 
@@ -201,6 +202,9 @@ Other
 
 * GITHUB#14607: Index open performs version check on each segment, ignores indexCreatedVersionMajor (Rahul Goswami)
 * GITHUB#15454: Restore binary readability for 8.x indexes like previously and throw IndexFormatTooOldException for an older default codec not found on classpath (Rahul Goswami)
+
+GITHUB#15821: Pass immutable list directly from BooleanQuery.Builder to private constructor,
+  avoiding unnecessary list→array→list conversions. (Sagar Upadhyaya)
 
 ======================= Lucene 10.5.0 =======================
 
