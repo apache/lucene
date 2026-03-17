@@ -155,28 +155,30 @@ New Features
   `Lucene104HnswScalarQuantizedVectorsFormat` replaces the now legacy `Lucene99HnswScalarQuantizedVectorsFormat`
    (Trevor McCulloch)
 
- * GITHUB#15271, GITHUB#15353: Extend `Lucene104ScalarQuantizedVectorsFormat` and `Lucene104HnswScalarQuantizedVectorsFormat` to
-   allow asymmetric quantization. The initially supported bits are single bit with 4 bit queries. This is a replacement
-   for the now legacy `Lucene102HnswBinaryQuantizedVectorsFormat` and `Lucene102BinaryQuantizedVectorsFormat`. To use
-   the new format for asymmetric binary quantization,
-   `Lucene104HnswScalarQuantizedVectorsFormat(ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE, int, int)`
-    (Ben Trent)
-
- * GITHUB#15564: Further extend `Lucene104ScalarQuantizedVectorsFormat` and `Lucene104HnswScalarQuantizedVectorsFormat` to
-   allow asymmetric quantization with 2 bits and 4 bit queries. This can provide increased recall over single bit
-   with little additional storage cost and latency.
+* GITHUB#15271, GITHUB#15353: Extend `Lucene104ScalarQuantizedVectorsFormat` and `Lucene104HnswScalarQuantizedVectorsFormat` to
+  allow asymmetric quantization. The initially supported bits are single bit with 4 bit queries. This is a replacement
+  for the now legacy `Lucene102HnswBinaryQuantizedVectorsFormat` and `Lucene102BinaryQuantizedVectorsFormat`. To use
+  the new format for asymmetric binary quantization,
+  `Lucene104HnswScalarQuantizedVectorsFormat(ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE, int, int)`
    (Ben Trent)
 
- * GITHUB#15415: Add fallback support to Lucene104ScalarQuantizedVectorsFormat getFloatVectorValues when there are
-   no full-precision vectors present (Pulkit Gupta)
+* GITHUB#15564: Further extend `Lucene104ScalarQuantizedVectorsFormat` and `Lucene104HnswScalarQuantizedVectorsFormat` to
+  allow asymmetric quantization with 2 bits and 4 bit queries. This can provide increased recall over single bit
+  with little additional storage cost and latency.
+  (Ben Trent)
 
- * GITHUB#15468: Add support for `@SuppressAssertingFormats` annotation for fine-grained control over `AssertingCodec` formats (Prudhvi Godithi)
+* GITHUB#15415: Add fallback support to Lucene104ScalarQuantizedVectorsFormat getFloatVectorValues when there are
+  no full-precision vectors present (Pulkit Gupta)
 
- * GITHUB#15518: Add support for post-collection faceting to the new faceting API in the sandbox module. (Egor Potemkin)
+* GITHUB#15468: Add support for `@SuppressAssertingFormats` annotation for fine-grained control over `AssertingCodec` formats (Prudhvi Godithi)
 
- * GITHUB#14792: Introduced OffHeapQuantizedFloatVectorValues class to access float vectors when only quantized byte vectors are available in the index. (Pulkit Gupta)
- 
- * GITHUB#15591: Add SegmentOrder helper class to re-order segments at query time to align with sorts. (Alan Woodward)
+* GITHUB#15518: Add support for post-collection faceting to the new faceting API in the sandbox module. (Egor Potemkin)
+
+* GITHUB#15620: Add Temporal Merge Policy for time-series data
+
+* GITHUB#14792: Introduced OffHeapQuantizedFloatVectorValues class to access float vectors when only quantized byte vectors are available in the index. (Pulkit Gupta)
+
+* GITHUB#15591: Add SegmentOrder helper class to re-order segments at query time to align with sorts. (Alan Woodward)
 
 Improvements
 ---------------------
