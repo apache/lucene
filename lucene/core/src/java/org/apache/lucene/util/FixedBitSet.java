@@ -96,8 +96,8 @@ public final class FixedBitSet extends BitSet {
    */
   public static long intersectionCount(FixedBitSet a, FixedBitSet b) {
     // Depends on the ghost bits being clear!
-    final int numCommonWords = Math.min(a.numWords, b.numWords);
     long tot = 0;
+    final int numCommonWords = Math.min(a.numWords, b.numWords);
     for (int i = 0; i < numCommonWords; ++i) {
       tot += Long.bitCount(a.bits[i] & b.bits[i]);
     }
@@ -107,8 +107,8 @@ public final class FixedBitSet extends BitSet {
   /** Returns the popcount or cardinality of the union of the two sets. Neither set is modified. */
   public static long unionCount(FixedBitSet a, FixedBitSet b) {
     // Depends on the ghost bits being clear!
-    final int numCommonWords = Math.min(a.numWords, b.numWords);
     long tot = 0;
+    final int numCommonWords = Math.min(a.numWords, b.numWords);
     for (int i = 0; i < numCommonWords; ++i) {
       tot += Long.bitCount(a.bits[i] | b.bits[i]);
     }
@@ -127,8 +127,8 @@ public final class FixedBitSet extends BitSet {
    */
   public static long andNotCount(FixedBitSet a, FixedBitSet b) {
     // Depends on the ghost bits being clear!
-    final int numCommonWords = Math.min(a.numWords, b.numWords);
     long tot = 0;
+    final int numCommonWords = Math.min(a.numWords, b.numWords);
     for (int i = 0; i < numCommonWords; ++i) {
       tot += Long.bitCount(a.bits[i] & ~b.bits[i]);
     }
