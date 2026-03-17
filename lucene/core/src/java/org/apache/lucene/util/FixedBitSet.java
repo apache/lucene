@@ -19,6 +19,7 @@ package org.apache.lucene.util;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
+import org.apache.lucene.internal.vectorization.BitSetUtilSupport;
 import org.apache.lucene.internal.vectorization.VectorizationProvider;
 import org.apache.lucene.search.DocIdSetIterator;
 
@@ -41,6 +42,9 @@ public final class FixedBitSet extends BitSet {
   private final long[] bits; // Array of longs holding the bits
   private final int numBits; // The number of bits in use
   private final int numWords; // The exact number of longs needed to hold numBits (<= bits.length)
+
+  private static final BitSetUtilSupport POPCOUNT_IMPL =
+      VectorizationProvider.getInstance().getBitSetUtilSupport();
 
   /// Ensure the given `bits` can store a value at `desiredBit` index. If the current [#length()] is
   /// sufficient, `bits` is simply returned. Otherwise, a new, larger bitset is allocated, with
@@ -215,8 +219,7 @@ public final class FixedBitSet extends BitSet {
   @Override
   public int cardinality() {
     // Depends on the ghost bits being clear!
-    return Math.toIntExact(
-        VectorizationProvider.getInstance().getBitSetUtilSupport().popCount(bits, 0, numWords));
+    return Math.toIntExact(POPCOUNT_IMPL.popCount(bits, 0, numWords));
   }
 
   /**
