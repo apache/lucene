@@ -159,7 +159,7 @@ final class ConjunctionDISI extends FilterDocIdSetIterator {
 
     lead1 = iterators.get(0);
     lead2 = iterators.get(1);
-    others = iterators.subList(2, iterators.size()).toArray(new DocIdSetIterator[0]);
+    others = iterators.subList(2, iterators.size()).toArray(DocIdSetIterator[]::new);
   }
 
   private int doNext(int doc) throws IOException {
