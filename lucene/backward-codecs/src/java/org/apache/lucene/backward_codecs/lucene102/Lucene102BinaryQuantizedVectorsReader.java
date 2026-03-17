@@ -160,7 +160,7 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
               + fieldEntry.dimension);
     }
 
-    int binaryDims = discretize(dimension, 64) / 8;
+    int binaryDims = discretize(dimension, Long.SIZE) / Byte.SIZE;
     long numQuantizedVectorBytes =
         Math.multiplyExact((binaryDims + (Float.BYTES * 3) + Short.BYTES), (long) fieldEntry.size);
     if (numQuantizedVectorBytes != fieldEntry.vectorDataLength) {
@@ -583,7 +583,7 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
       this.dimension = dimension;
       this.size = size;
       // 4x the quantized binary dimensions
-      int binaryDimensions = (discretize(dimension, 64) / 8) * QUERY_BITS;
+      int binaryDimensions = (discretize(dimension, Long.SIZE) / Byte.SIZE) * QUERY_BITS;
       this.byteBuffer = ByteBuffer.allocate(binaryDimensions);
       this.binaryValue = byteBuffer.array();
       // + 1 for the quantized sum
