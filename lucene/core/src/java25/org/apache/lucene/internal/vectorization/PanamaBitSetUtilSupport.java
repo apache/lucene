@@ -41,7 +41,10 @@ final class PanamaBitSetUtilSupport implements BitSetUtilSupport {
     ENABLED = enabled;
   }
 
-  /** Minimum number of longs (words) before using SIMD; below this the dispatch overhead isn't worth it. */
+  /**
+   * Minimum number of longs (words) before using SIMD; below this the dispatch overhead isn't worth
+   * it.
+   */
   private static final int MIN_WORDS = 64; // 4096 bits
 
   @Override
@@ -59,8 +62,7 @@ final class PanamaBitSetUtilSupport implements BitSetUtilSupport {
     for (; i < loopBound; i += VL) {
       acc =
           acc.add(
-              LongVector.fromArray(LONG_SPECIES, a, start + i)
-                  .lanewise(VectorOperators.BIT_COUNT));
+              LongVector.fromArray(LONG_SPECIES, a, start + i).lanewise(VectorOperators.BIT_COUNT));
     }
     long count = acc.reduceLanes(VectorOperators.ADD);
     for (; i < len; i++) {
@@ -69,4 +71,3 @@ final class PanamaBitSetUtilSupport implements BitSetUtilSupport {
     return count;
   }
 }
-

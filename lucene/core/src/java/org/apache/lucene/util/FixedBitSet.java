@@ -108,20 +108,16 @@ public final class FixedBitSet extends BitSet {
   public static long unionCount(FixedBitSet a, FixedBitSet b) {
     // Depends on the ghost bits being clear!
     final int numCommonWords = Math.min(a.numWords, b.numWords);
-
     long tot = 0;
     for (int i = 0; i < numCommonWords; ++i) {
       tot += Long.bitCount(a.bits[i] | b.bits[i]);
     }
-
     for (int i = numCommonWords; i < a.numWords; ++i) {
       tot += Long.bitCount(a.bits[i]);
     }
-
     for (int i = numCommonWords; i < b.numWords; ++i) {
       tot += Long.bitCount(b.bits[i]);
     }
-
     return tot;
   }
 
@@ -132,16 +128,13 @@ public final class FixedBitSet extends BitSet {
   public static long andNotCount(FixedBitSet a, FixedBitSet b) {
     // Depends on the ghost bits being clear!
     final int numCommonWords = Math.min(a.numWords, b.numWords);
-
     long tot = 0;
     for (int i = 0; i < numCommonWords; ++i) {
       tot += Long.bitCount(a.bits[i] & ~b.bits[i]);
     }
-
     for (int i = numCommonWords; i < a.numWords; ++i) {
       tot += Long.bitCount(a.bits[i]);
     }
-
     return tot;
   }
 
@@ -628,9 +621,7 @@ public final class FixedBitSet extends BitSet {
   }
 
   private void andNot(final int otherOffsetWords, final long[] otherArr, final int otherNumWords) {
-    int numWordsToProcess = Math.min(numWords - otherOffsetWords, otherNumWords);
-
-    int pos = numWordsToProcess;
+    int pos = Math.min(numWords - otherOffsetWords, otherNumWords);
     final long[] thisArr = this.bits;
     while (--pos >= 0) {
       thisArr[pos + otherOffsetWords] &= ~otherArr[pos];

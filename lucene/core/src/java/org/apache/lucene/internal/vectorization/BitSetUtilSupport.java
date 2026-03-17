@@ -21,4 +21,3 @@ public interface BitSetUtilSupport {
   /** Returns the number of set bits in {@code a[start..start+len)}. */
   long popCount(long[] a, int start, int len);
 }
-
