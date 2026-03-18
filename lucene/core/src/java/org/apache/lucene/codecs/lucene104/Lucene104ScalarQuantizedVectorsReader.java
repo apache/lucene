@@ -440,68 +440,67 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       return null;
     }
     QuantizedByteVectorValues vectorValues = getQuantizedVectorValues(fieldInfo.name);
-    if (fi.scalarEncoding.isAsymmetric()) {
-      FloatVectorValues floatVectorValues = getFloatVectorValues(fieldInfo.name);
-      OptimizedScalarQuantizer quantizer =
-          new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
-      String tempScoreQuantizedVectorName = null;
-      DocsWithFieldSet docsWithField;
-      try (IndexOutput tempScoreQuantizedVector =
-          segmentWriteState.directory.createTempOutput(
-              segmentWriteState.segmentInfo.name, "queries", segmentWriteState.context)) {
-        tempScoreQuantizedVectorName = tempScoreQuantizedVector.getName();
-        docsWithField =
-            writeBinarizedQueryData(
-                vectorValues,
-                fi.scalarEncoding,
-                tempScoreQuantizedVector,
-                floatVectorValues,
-                quantizer);
-        CodecUtil.writeFooter(tempScoreQuantizedVector);
-      } catch (Throwable t) {
-        if (tempScoreQuantizedVectorName != null) {
-          IOUtils.deleteFilesSuppressingExceptions(
-              t, segmentWriteState.directory, tempScoreQuantizedVectorName);
-        }
-        throw t;
-      }
-      IndexInput quantizedScoreDataInput =
-          segmentWriteState.directory.openInput(
-              tempScoreQuantizedVectorName, segmentWriteState.context);
-      try {
-        OffHeapScalarQuantizedVectorValues scoreVectorValues =
-            new OffHeapScalarQuantizedVectorValues.DenseOffHeapVectorValues(
-                true,
-                fieldInfo.getVectorDimension(),
-                docsWithField.cardinality(),
-                vectorValues.getCentroid(),
-                vectorValues.getCentroidDP(),
-                quantizer,
-                fi.scalarEncoding,
-                fieldInfo.getVectorSimilarityFunction(),
-                vectorScorer,
-                quantizedScoreDataInput);
-        RandomVectorScorerSupplier scorerSupplier =
-            vectorScorer.getRandomVectorScorerSupplier(
-                fieldInfo.getVectorSimilarityFunction(), scoreVectorValues, vectorValues);
-        final String finalTempScoreQuantizedVectorName = tempScoreQuantizedVectorName;
-        return CloseableRandomVectorScorerSupplier.create(
-            scorerSupplier,
-            vectorValues.size(),
-            () -> {
-              IOUtils.close(quantizedScoreDataInput);
-              IOUtils.deleteFilesIgnoringExceptions(
-                  segmentWriteState.directory, finalTempScoreQuantizedVectorName);
-            });
-      } catch (Throwable t) {
-        IOUtils.closeWhileSuppressingExceptions(t, quantizedScoreDataInput);
-        throw t;
-      }
-    } else {
+    if (fi.scalarEncoding.isAsymmetric() == false) {
       RandomVectorScorerSupplier supplier =
           vectorScorer.getRandomVectorScorerSupplier(
               fieldInfo.getVectorSimilarityFunction(), vectorValues);
       return CloseableRandomVectorScorerSupplier.create(supplier, vectorValues.size(), () -> {});
+    }
+    FloatVectorValues floatVectorValues = getFloatVectorValues(fieldInfo.name);
+    OptimizedScalarQuantizer quantizer =
+        new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
+    String tempScoreQuantizedVectorName = null;
+    DocsWithFieldSet docsWithField;
+    try (IndexOutput tempScoreQuantizedVector =
+        segmentWriteState.directory.createTempOutput(
+            segmentWriteState.segmentInfo.name, "queries", segmentWriteState.context)) {
+      tempScoreQuantizedVectorName = tempScoreQuantizedVector.getName();
+      docsWithField =
+          writeBinarizedQueryData(
+              vectorValues,
+              fi.scalarEncoding,
+              tempScoreQuantizedVector,
+              floatVectorValues,
+              quantizer);
+      CodecUtil.writeFooter(tempScoreQuantizedVector);
+    } catch (Throwable t) {
+      if (tempScoreQuantizedVectorName != null) {
+        IOUtils.deleteFilesSuppressingExceptions(
+            t, segmentWriteState.directory, tempScoreQuantizedVectorName);
+      }
+      throw t;
+    }
+    IndexInput quantizedScoreDataInput =
+        segmentWriteState.directory.openInput(
+            tempScoreQuantizedVectorName, segmentWriteState.context);
+    try {
+      OffHeapScalarQuantizedVectorValues scoreVectorValues =
+          new OffHeapScalarQuantizedVectorValues.DenseOffHeapVectorValues(
+              true,
+              fieldInfo.getVectorDimension(),
+              docsWithField.cardinality(),
+              vectorValues.getCentroid(),
+              vectorValues.getCentroidDP(),
+              quantizer,
+              fi.scalarEncoding,
+              fieldInfo.getVectorSimilarityFunction(),
+              vectorScorer,
+              quantizedScoreDataInput);
+      RandomVectorScorerSupplier scorerSupplier =
+          vectorScorer.getRandomVectorScorerSupplier(
+              fieldInfo.getVectorSimilarityFunction(), scoreVectorValues, vectorValues);
+      final String finalTempScoreQuantizedVectorName = tempScoreQuantizedVectorName;
+      return CloseableRandomVectorScorerSupplier.create(
+          scorerSupplier,
+          vectorValues.size(),
+          () -> {
+            IOUtils.close(quantizedScoreDataInput);
+            IOUtils.deleteFilesIgnoringExceptions(
+                segmentWriteState.directory, finalTempScoreQuantizedVectorName);
+          });
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, quantizedScoreDataInput);
+      throw t;
     }
   }
 
