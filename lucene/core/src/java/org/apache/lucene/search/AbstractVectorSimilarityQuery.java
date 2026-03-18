@@ -122,7 +122,17 @@ abstract class AbstractVectorSimilarityQuery extends Query {
 
         // If there is no filter
         if (filterWeight == null) {
-          // Return exhaustive results
+          if (traversalSimilarity == Float.NEGATIVE_INFINITY && queryTimeout == null) {
+            // When traversalSimilarity is -∞ and there is no timeout, the intent is to
+            // find all vectors above resultSimilarity. The approximate graph search may
+            // miss nodes in this case, so use exact search to guarantee completeness.
+            return VectorSimilarityScorerSupplier.fromAcceptDocs(
+                boost,
+                createVectorScorer(context),
+                DocIdSetIterator.all(leafReader.maxDoc()),
+                resultSimilarity);
+          }
+          // Return results via approximate graph search
           TopDocs results =
               approximateSearch(
                   context,
