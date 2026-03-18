@@ -113,9 +113,7 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#15832: Accelerate FixedBitSet.cardinality() on AVX-512 hardware
-  using the Panama Vector API via VectorizationProvider (Java 25+).
-  (Prithvi Sivasankar)
+* GITHUB#15832: Accelerate FixedBitSet.cardinality() on AVX-512 hardware using the Panama Vector API via VectorizationProvider (Java 25+). (Prithvi S)
 
 * GITHUB#15681: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 * GITHUB#15681, GITHUB#15833: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
