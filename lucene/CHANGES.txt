@@ -213,8 +213,8 @@ API Changes
 
 * GITHUB#15751: Prevent zero vectors in knn fields with cosine similarity configured (Vigya Sharma)
 
-* GITHUB#15803: Add ReaderUtil#partitionByLeaf to partition sorted global
-  doc IDs by leaf reader. (Zihan Xu)
+* GITHUB#15803: Add ReaderUtil#partitionByLeaf to partition doc IDs from
+  ScoreDoc hits by leaf reader. (Zihan Xu)
 
 New Features
 ---------------------

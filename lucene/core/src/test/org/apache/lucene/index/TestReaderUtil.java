@@ -35,7 +35,7 @@ public class TestReaderUtil extends LuceneTestCase {
       writer.addDocument(new Document());
       try (DirectoryReader reader = DirectoryReader.open(writer)) {
         List<LeafReaderContext> leaves = reader.leaves();
-        int[][] result = ReaderUtil.partitionByLeaf(new int[0], leaves);
+        int[][] result = ReaderUtil.partitionByLeaf(new ScoreDoc[0], leaves);
         assertEquals(leaves.size(), result.length);
         for (int[] leaf : result) {
           assertEquals(0, leaf.length);
@@ -54,11 +54,13 @@ public class TestReaderUtil extends LuceneTestCase {
         List<LeafReaderContext> leaves = reader.leaves();
         assertEquals(1, leaves.size());
 
-        int[] docIds = {0, 3, 5, 9};
-        int[][] result = ReaderUtil.partitionByLeaf(docIds, leaves);
+        ScoreDoc[] hits = {
+          new ScoreDoc(0, 1f), new ScoreDoc(3, 1f), new ScoreDoc(5, 1f), new ScoreDoc(9, 1f)
+        };
+        int[][] result = ReaderUtil.partitionByLeaf(hits, leaves);
 
         assertEquals(1, result.length);
-        assertArrayEquals(docIds, result[0]);
+        assertArrayEquals(new int[] {0, 3, 5, 9}, result[0]);
       }
     }
   }
@@ -83,8 +85,10 @@ public class TestReaderUtil extends LuceneTestCase {
         assertEquals(2, leaves.size());
 
         // Hits in both segments
-        int[] docIds = {2, 9, 10, 18};
-        int[][] result = ReaderUtil.partitionByLeaf(docIds, leaves);
+        ScoreDoc[] hits = {
+          new ScoreDoc(2, 1f), new ScoreDoc(9, 1f), new ScoreDoc(10, 1f), new ScoreDoc(18, 1f)
+        };
+        int[][] result = ReaderUtil.partitionByLeaf(hits, leaves);
 
         assertEquals(2, result.length);
         // First segment: docs 0-9
@@ -112,8 +116,8 @@ public class TestReaderUtil extends LuceneTestCase {
         assertEquals(3, leaves.size());
 
         // Hits only in first and third segment (skip middle)
-        int[] docIds = {3, 25};
-        int[][] result = ReaderUtil.partitionByLeaf(docIds, leaves);
+        ScoreDoc[] hits = {new ScoreDoc(3, 1f), new ScoreDoc(25, 1f)};
+        int[][] result = ReaderUtil.partitionByLeaf(hits, leaves);
 
         assertEquals(3, result.length);
         assertArrayEquals(new int[] {3}, result[0]);
@@ -154,9 +158,13 @@ public class TestReaderUtil extends LuceneTestCase {
           while (hitSet.size() < numHits) {
             hitSet.add(random().nextInt(totalDocs));
           }
-          int[] docIds = hitSet.stream().mapToInt(Integer::intValue).sorted().toArray();
+          int[] docIds = hitSet.stream().mapToInt(Integer::intValue).toArray();
+          ScoreDoc[] hits = new ScoreDoc[docIds.length];
+          for (int i = 0; i < docIds.length; i++) {
+            hits[i] = new ScoreDoc(docIds[i], 1f);
+          }
 
-          int[][] result = ReaderUtil.partitionByLeaf(docIds, leaves);
+          int[][] result = ReaderUtil.partitionByLeaf(hits, leaves);
 
           // Verify: result length matches leaves
           assertEquals(numSegments, result.length);
@@ -180,36 +188,6 @@ public class TestReaderUtil extends LuceneTestCase {
             }
           }
         }
-      }
-    }
-  }
-
-  public void testPartitionByLeafScoreDoc() throws IOException {
-    try (Directory dir = newDirectory();
-        IndexWriter writer =
-            new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE))) {
-      for (int i = 0; i < 10; i++) {
-        writer.addDocument(new Document());
-      }
-      writer.commit();
-
-      for (int i = 0; i < 10; i++) {
-        writer.addDocument(new Document());
-      }
-      writer.commit();
-
-      try (DirectoryReader reader = DirectoryReader.open(writer)) {
-        List<LeafReaderContext> leaves = reader.leaves();
-        assertEquals(2, leaves.size());
-
-        // ScoreDocs in non-sorted order (as they might come from ranking)
-        ScoreDoc[] hits = {new ScoreDoc(18, 1.0f), new ScoreDoc(5, 0.9f), new ScoreDoc(12, 0.8f)};
-        int[][] result = ReaderUtil.partitionByLeaf(hits, leaves);
-
-        assertEquals(2, result.length);
-        // Should be sorted within each leaf
-        assertArrayEquals(new int[] {5}, result[0]);
-        assertArrayEquals(new int[] {12, 18}, result[1]);
       }
     }
   }

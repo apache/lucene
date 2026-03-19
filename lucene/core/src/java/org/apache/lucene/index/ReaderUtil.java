@@ -103,34 +103,20 @@ public final class ReaderUtil {
    * @return array indexed by leaf ord, containing global doc IDs for that leaf (empty if no hits)
    */
   public static int[][] partitionByLeaf(ScoreDoc[] hits, List<LeafReaderContext> leaves) {
-    int[] docIds = new int[hits.length];
+    int[] sortedDocIds = new int[hits.length];
     for (int i = 0; i < hits.length; i++) {
-      docIds[i] = hits[i].doc;
+      sortedDocIds[i] = hits[i].doc;
     }
-    Arrays.sort(docIds);
-    return partitionByLeaf(docIds, leaves);
-  }
-
-  /**
-   * Partitions sorted global doc IDs by leaf.
-   *
-   * @param sortedDocIds global doc IDs, must be sorted ascending
-   * @param leaves the index reader's leaves
-   * @return array indexed by leaf ord, containing global doc IDs for that leaf (empty if no hits)
-   */
-  public static int[][] partitionByLeaf(int[] sortedDocIds, List<LeafReaderContext> leaves) {
-    assert isSorted(sortedDocIds) : "docIds must be sorted";
+    Arrays.sort(sortedDocIds);
     int numLeaves = leaves.size();
     int[][] result = new int[numLeaves][];
     if (sortedDocIds.length == 0) {
-      for (int i = 0; i < numLeaves; i++) {
-        result[i] = EMPTY_INT_ARRAY;
-      }
+      Arrays.fill(result, EMPTY_INT_ARRAY);
       return result;
     }
     int leafStart = 0;
     int leafIdx = 0;
-    LeafReaderContext leaf = leaves.get(0);
+    LeafReaderContext leaf = leaves.getFirst();
     int leafEnd = leaf.docBase + leaf.reader().maxDoc();
     for (int i = 0; i < sortedDocIds.length; i++) {
       int docId = sortedDocIds[i];
@@ -148,27 +134,13 @@ public final class ReaderUtil {
         leafEnd = leaf.docBase + leaf.reader().maxDoc();
       }
     }
-    // Handle last leaf
+    // Handle remaining docIDs
     int count = sortedDocIds.length - leafStart;
-    if (count == 0) {
-      result[leafIdx] = EMPTY_INT_ARRAY;
-    } else {
-      result[leafIdx] = new int[count];
-      System.arraycopy(sortedDocIds, leafStart, result[leafIdx], 0, count);
-    }
+    assert count > 0;
+    result[leafIdx] = new int[count];
+    System.arraycopy(sortedDocIds, leafStart, result[leafIdx], 0, count);
     // Fill remaining empty leaves
-    for (int i = leafIdx + 1; i < numLeaves; i++) {
-      result[i] = EMPTY_INT_ARRAY;
-    }
+    Arrays.fill(result, leafIdx + 1, numLeaves, EMPTY_INT_ARRAY);
     return result;
-  }
-
-  private static boolean isSorted(int[] a) {
-    for (int i = 1; i < a.length; i++) {
-      if (a[i] < a[i - 1]) {
-        throw new AssertionError("docId " + a[i] + " appears after " + a[i - 1]);
-      }
-    }
-    return true;
   }
 }
