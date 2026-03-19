@@ -202,11 +202,11 @@ public class PatternParser extends DefaultHandler {
     StringBuilder res = new StringBuilder();
     for (int i = 0; i < ex.size(); i++) {
       Object item = ex.get(i);
-      if (item instanceof String) {
-        res.append((String) item);
+      if (item instanceof String s) {
+        res.append(s);
       } else {
-        if (((Hyphen) item).noBreak != null) {
-          res.append(((Hyphen) item).noBreak);
+        if (item instanceof Hyphen h && h.noBreak != null) {
+          res.append(h.noBreak);
         }
       }
     }

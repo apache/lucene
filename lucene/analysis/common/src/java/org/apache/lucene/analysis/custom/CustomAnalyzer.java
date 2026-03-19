@@ -616,8 +616,8 @@ public final class CustomAnalyzer extends Analyzer {
     }
 
     <T> T applyResourceLoader(T factory) throws IOException {
-      if (factory instanceof ResourceLoaderAware) {
-        ((ResourceLoaderAware) factory).inform(loader);
+      if (factory instanceof ResourceLoaderAware rla) {
+        rla.inform(loader);
       }
       return factory;
     }

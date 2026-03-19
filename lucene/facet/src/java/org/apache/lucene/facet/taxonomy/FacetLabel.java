@@ -120,23 +120,21 @@ public class FacetLabel implements Comparable<FacetLabel> {
 
   @Override
   public boolean equals(Object obj) {
-    if (obj instanceof FacetLabel == false) {
-      return false;
-    }
-
-    FacetLabel other = (FacetLabel) obj;
-    if (length != other.length) {
-      return false; // not same length, cannot be equal
-    }
-
-    // CategoryPaths are more likely to differ at the last components, so start
-    // from last-first
-    for (int i = length - 1; i >= 0; i--) {
-      if (!components[i].equals(other.components[i])) {
-        return false;
+    if (obj instanceof FacetLabel other) {
+      if (length != other.length) {
+        return false; // not same length, cannot be equal
       }
+
+      // CategoryPaths are more likely to differ at the last components, so start
+      // from last-first
+      for (int i = length - 1; i >= 0; i--) {
+        if (!components[i].equals(other.components[i])) {
+          return false;
+        }
+      }
+      return true;
     }
-    return true;
+    return false;
   }
 
   @Override
