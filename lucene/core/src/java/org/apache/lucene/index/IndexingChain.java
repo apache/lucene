@@ -598,13 +598,11 @@ final class IndexingChain implements Accountable {
         IndexableFieldType fieldType = field.fieldType();
         PerField pf =
             getOrAddPerField(
-                    fieldName, false
+                fieldName, false
                 /* we never add reserved fields during indexing should be done during DWPT setup*/ );
         if (pf.reserved) {
           throw new IllegalArgumentException(
-              "\""
-                  + fieldName
-                  + "\" is a reserved field and should not be added to any document");
+              "\"" + fieldName + "\" is a reserved field and should not be added to any document");
         }
         if (pf.fieldGen != fieldGen) { // first time we see this field in this document
           fields[fieldCount++] = pf;
@@ -676,8 +674,8 @@ final class IndexingChain implements Accountable {
     }
   }
 
-  private static void deoptimizeSchemaValidation(int docID, PerField pf, IndexableFieldType fieldType,
-                                                 String fieldName) {
+  private static void deoptimizeSchemaValidation(
+      int docID, PerField pf, IndexableFieldType fieldType, String fieldName) {
     // Multi-valued field with a different field type than the cached frozen type.
     // Replay the schema contribution from the earlier skipped values (all had the
     // same frozen type), then invalidate the cache.
@@ -1186,9 +1184,7 @@ final class IndexingChain implements Accountable {
       // Only cache a new frozen field type if no prior cache exists.
       // If a prior cache existed but didn't match, null it out to force validation this document.
       frozenFieldType =
-          frozenFieldType == null && fieldType instanceof FieldType ft && ft.isFrozen()
-              ? ft
-              : null;
+          frozenFieldType == null && fieldType instanceof FieldType ft && ft.isFrozen() ? ft : null;
     }
 
     void setFieldInfo(FieldInfo fieldInfo) {
