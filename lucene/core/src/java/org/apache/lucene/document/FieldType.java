@@ -96,6 +96,11 @@ public class FieldType implements IndexableFieldType {
     this.frozen = true;
   }
 
+    /**
+     * Returns the frozen FieldTypes's state.
+     *
+     * @return <code>true</code> if this FieldType is frozen against future modifications.
+     */
   public boolean isFrozen() {
     return frozen;
   }
