@@ -212,8 +212,8 @@ public final class IndexUtils {
       if (reader != null) {
         reader.close();
         log.info("IndexReader successfully closed.");
-        if (reader instanceof DirectoryReader) {
-          Directory dir = ((DirectoryReader) reader).directory();
+        if (reader instanceof DirectoryReader dr) {
+          Directory dir = dr.directory();
           dir.close();
           log.info("Directory successfully closed.");
         }
@@ -409,8 +409,8 @@ public final class IndexUtils {
    * @param reader - index reader
    */
   public static Bits getLiveDocs(IndexReader reader) {
-    if (reader instanceof LeafReader) {
-      return ((LeafReader) reader).getLiveDocs();
+    if (reader instanceof LeafReader leafReader) {
+      return leafReader.getLiveDocs();
     } else {
       return MultiBits.getLiveDocs(reader);
     }
@@ -422,8 +422,8 @@ public final class IndexUtils {
    * @param reader - index reader
    */
   public static FieldInfos getFieldInfos(IndexReader reader) {
-    if (reader instanceof LeafReader) {
-      return ((LeafReader) reader).getFieldInfos();
+    if (reader instanceof LeafReader leafReader) {
+      return leafReader.getFieldInfos();
     } else {
       return FieldInfos.getMergedFieldInfos(reader);
     }
@@ -458,8 +458,8 @@ public final class IndexUtils {
    * @throws IOException - if there is a low level IO error.
    */
   public static Terms getTerms(IndexReader reader, String field) throws IOException {
-    if (reader instanceof LeafReader) {
-      return ((LeafReader) reader).terms(field);
+    if (reader instanceof LeafReader leafReader) {
+      return leafReader.terms(field);
     } else {
       return MultiTerms.getTerms(reader, field);
     }
@@ -474,8 +474,8 @@ public final class IndexUtils {
    */
   public static BinaryDocValues getBinaryDocValues(IndexReader reader, String field)
       throws IOException {
-    if (reader instanceof LeafReader) {
-      return ((LeafReader) reader).getBinaryDocValues(field);
+    if (reader instanceof LeafReader leafReader) {
+      return leafReader.getBinaryDocValues(field);
     } else {
       return MultiDocValues.getBinaryValues(reader, field);
     }
@@ -490,8 +490,8 @@ public final class IndexUtils {
    */
   public static NumericDocValues getNumericDocValues(IndexReader reader, String field)
       throws IOException {
-    if (reader instanceof LeafReader) {
-      return ((LeafReader) reader).getNumericDocValues(field);
+    if (reader instanceof LeafReader leafReader) {
+      return leafReader.getNumericDocValues(field);
     } else {
       return MultiDocValues.getNumericValues(reader, field);
     }
@@ -506,8 +506,8 @@ public final class IndexUtils {
    */
   public static SortedNumericDocValues getSortedNumericDocValues(IndexReader reader, String field)
       throws IOException {
-    if (reader instanceof LeafReader) {
-      return ((LeafReader) reader).getSortedNumericDocValues(field);
+    if (reader instanceof LeafReader leafReader) {
+      return leafReader.getSortedNumericDocValues(field);
     } else {
       return MultiDocValues.getSortedNumericValues(reader, field);
     }
@@ -522,8 +522,8 @@ public final class IndexUtils {
    */
   public static SortedDocValues getSortedDocValues(IndexReader reader, String field)
       throws IOException {
-    if (reader instanceof LeafReader) {
-      return ((LeafReader) reader).getSortedDocValues(field);
+    if (reader instanceof LeafReader leafReader) {
+      return leafReader.getSortedDocValues(field);
     } else {
       return MultiDocValues.getSortedValues(reader, field);
     }
@@ -538,8 +538,8 @@ public final class IndexUtils {
    */
   public static SortedSetDocValues getSortedSetDocvalues(IndexReader reader, String field)
       throws IOException {
-    if (reader instanceof LeafReader) {
-      return ((LeafReader) reader).getSortedSetDocValues(field);
+    if (reader instanceof LeafReader leafReader) {
+      return leafReader.getSortedSetDocValues(field);
     } else {
       return MultiDocValues.getSortedSetValues(reader, field);
     }

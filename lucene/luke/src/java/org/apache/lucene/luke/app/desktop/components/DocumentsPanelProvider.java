@@ -1166,25 +1166,16 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
       } else {
         sb.append("#");
         // try faking it
-        Number numeric = f.getNumericValue();
-        if (numeric instanceof Integer) {
-          sb.append("i32");
-        } else if (numeric instanceof Long) {
-          sb.append("i64");
-        } else if (numeric instanceof Float) {
-          sb.append("f32");
-        } else if (numeric instanceof Double) {
-          sb.append("f64");
-        } else if (numeric instanceof Short) {
-          sb.append("i16");
-        } else if (numeric instanceof Byte) {
-          sb.append("i08");
-        } else if (numeric instanceof BigDecimal) {
-          sb.append("b^d");
-        } else if (numeric instanceof BigInteger) {
-          sb.append("b^i");
-        } else {
-          sb.append("???");
+        switch (f.getNumericValue()) {
+          case Integer _ -> sb.append("i32");
+          case Long _ -> sb.append("i64");
+          case Float _ -> sb.append("f32");
+          case Double _ -> sb.append("f64");
+          case Short _ -> sb.append("i16");
+          case Byte _ -> sb.append("i08");
+          case BigDecimal _ -> sb.append("b^d");
+          case BigInteger _ -> sb.append("b^i");
+          default -> sb.append("???");
         }
       }
       // has term vector?

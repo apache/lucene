@@ -96,8 +96,8 @@ public final class OverviewImpl extends LukeModel implements Overview {
 
   @Override
   public Optional<Long> getIndexVersion() {
-    if (reader instanceof DirectoryReader) {
-      return Optional.of(((DirectoryReader) reader).getVersion());
+    if (reader instanceof DirectoryReader dr) {
+      return Optional.of(dr.getVersion());
     }
     return Optional.empty();
   }
