@@ -157,7 +157,7 @@ Bug Fixes
 * GITHUB#14971: Fix CachedExecutor thread pool leak in ConcurrentMergeScheduler
   when IndexWriter initialization fails. (Su Beom)
 
-* GITHUB#15836: Use exact search in VectorSimilarityQuery when traversalSimilarity is infinity to
+* GITHUB#15836: Use exact search in VectorSimilarityQuery when traversalSimilarity is -infinity to
   guarantee completeness. (Sagar Upadhyaya)
 
 Changes in Runtime Behavior
