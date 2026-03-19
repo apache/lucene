@@ -124,6 +124,30 @@ public interface LeafCollector {
   }
 
   /**
+   * Bulk-collect doc IDs.
+   *
+   * <p>Note: The provided int[] may be reused across calls and should be consumed immediately.
+   *
+   * <p>Note: The provided int[] typically only holds a small subset of query matches. This method
+   * may be called multiple times per segment.
+   *
+   * <p>Like {@link #collect(int)}, it is guaranteed that doc IDs get collected in order, ie. doc
+   * IDs are collected in order within a int[], and if called twice, all doc IDs from the second
+   * int[] will be greater than all doc IDs from the first int[].
+   *
+   * <p>It is legal for callers to mix calls to {@link #collect(int[], int)}, {@link
+   * #collect(DocIdStream)} and {@link #collect(int)}.
+   *
+   * <p>The default implementation calls {@code for(int i = 0; i < count; ++i) { collect(docs[i]);
+   * }; }.
+   */
+  default void collect(int[] docs, int count) throws IOException {
+    for (int i = 0; i < count; ++i) {
+      collect(docs[i]);
+    }
+  }
+
+  /**
    * Optionally returns an iterator over competitive documents.
    *
    * <p>Collectors should delegate this method to their comparators if their comparators provide the
