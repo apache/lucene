@@ -123,14 +123,14 @@ abstract class AbstractVectorSimilarityQuery extends Query {
         // If there is no filter
         if (filterWeight == null) {
           if (traversalSimilarity == Float.NEGATIVE_INFINITY && queryTimeout == null) {
-            // When traversalSimilarity is -∞ and there is no timeout, the intent is to
-            // find all vectors above resultSimilarity. The approximate graph search may
-            // miss nodes in this case, so use exact search to guarantee completeness.
+            // When traversalSimilarity is -∞, the intent is to find all vectors above
+            // resultSimilarity. The approximate graph search may miss nodes, so use exact search
+            // to guarantee completeness. When a timeout is set, we fall through to the approximate
+            // graph search which checks the timeout during traversal via
+            // TimeLimitingKnnCollectorManager.
+            AcceptDocs acceptDocs = AcceptDocs.fromLiveDocs(liveDocs, leafReader.maxDoc());
             return VectorSimilarityScorerSupplier.fromAcceptDocs(
-                boost,
-                createVectorScorer(context),
-                DocIdSetIterator.all(leafReader.maxDoc()),
-                resultSimilarity);
+                boost, createVectorScorer(context), acceptDocs.iterator(), resultSimilarity);
           }
           // Return results via approximate graph search
           TopDocs results =
