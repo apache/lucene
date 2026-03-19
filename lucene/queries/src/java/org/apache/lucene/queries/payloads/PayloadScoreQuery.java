@@ -17,6 +17,7 @@
 package org.apache.lucene.queries.payloads;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.apache.lucene.index.LeafReaderContext;
@@ -26,6 +27,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.queries.spans.FilterSpans;
 import org.apache.lucene.queries.spans.SpanCollector;
+import org.apache.lucene.queries.spans.SpanOrQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queries.spans.SpanScorer;
 import org.apache.lucene.queries.spans.SpanWeight;
@@ -193,6 +195,33 @@ public class PayloadScoreQuery extends SpanQuery {
       }
       NumericDocValues norms = context.reader().getNormValues(field);
       PayloadSpans payloadSpans = new PayloadSpans(spans, decoder);
+      // When the inner weight is SpanOrWeight, use per-clause scorers so that
+      // getSpanScore() is consistent with innerWeight.explain()
+      if (innerWeight instanceof SpanOrQuery.SpanOrWeight spanOrWeight) {
+        List<SpanScorer> perClause = spanOrWeight.createPerClauseScorers(context);
+        if (perClause == null) {
+          return null;
+        }
+        final var scorer =
+            new PayloadSpanScorer(payloadSpans, innerWeight.getSimScorer(), norms) {
+              @Override
+              protected float getSpanScore() throws IOException {
+                // Advance each per-clause sub-scorer to the current doc and sum scores.
+                int doc = docID();
+                float sum = 0;
+                for (SpanScorer sub : perClause) {
+                  if (sub.docID() < doc) {
+                    sub.iterator().advance(doc);
+                  }
+                  if (sub.docID() == doc) {
+                    sum += sub.score();
+                  }
+                }
+                return sum;
+              }
+            };
+        return new DefaultScorerSupplier(scorer);
+      }
       final var scorer = new PayloadSpanScorer(payloadSpans, innerWeight.getSimScorer(), norms);
       return new DefaultScorerSupplier(scorer);
     }
