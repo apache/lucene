@@ -86,7 +86,7 @@ final class IndexingChain implements Accountable {
   private int totalFieldCount;
   private long nextFieldGen;
 
-  private PerField parentPf;
+  private final PerField parentPf;
 
   // Holds fields seen in each document
   private PerField[] fields = new PerField[1];
