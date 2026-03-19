@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -40,9 +39,9 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
@@ -87,6 +86,8 @@ final class IndexingChain implements Accountable {
   private int totalFieldCount;
   private long nextFieldGen;
 
+  private PerField parentPf;
+
   // Holds fields seen in each document
   private PerField[] fields = new PerField[1];
   private PerField[] docFields = new PerField[2];
@@ -95,6 +96,7 @@ final class IndexingChain implements Accountable {
   private final LiveIndexWriterConfig indexWriterConfig;
   private final int indexCreatedVersionMajor;
   private final Consumer<Throwable> abortingExceptionConsumer;
+  private final NumericDocValuesField parentField;
   private boolean hasHitAbortingException;
 
   IndexingChain(
@@ -140,6 +142,15 @@ final class IndexingChain implements Accountable {
         new FreqProxTermsWriter(
             intBlockAllocator, byteBlockAllocator, bytesUsed, termVectorsWriter);
     docValuesBytePool = new ByteBlockPool(byteBlockAllocator);
+    if (indexWriterConfig.getParentField() != null) {
+      this.parentField = new NumericDocValuesField(indexWriterConfig.getParentField(), -1);
+      parentPf = getOrAddPerField(this.parentField.name(), true);
+      parentPf.maybeCacheFrozenFieldType(this.parentField.fieldType());
+      updateDocFieldSchema(this.parentField.name(), parentPf.schema, this.parentField.fieldType());
+    } else {
+      this.parentField = null;
+      this.parentPf = null;
+    }
   }
 
   private void onAbortingException(Throwable th) {
@@ -549,7 +560,9 @@ final class IndexingChain implements Accountable {
     }
   }
 
-  void processDocument(int docID, Iterable<? extends IndexableField> document) throws IOException {
+  void processDocument(
+      int docID, Iterable<? extends IndexableField> document, boolean lastDocInBlock)
+      throws IOException {
     // number of unique fields by names (collapses multiple field instances by the same name)
     int fieldCount = 0;
     int indexedFieldCount = 0; // number of unique fields indexed with postings
@@ -565,45 +578,58 @@ final class IndexingChain implements Accountable {
     termsHash.startDocument();
     startStoredFields(docID);
     try {
+      boolean needInitOrValidate = false;
+
+      // Handle the parent field first (before document fields) .Its schema was already
+      // set up in the constructor, so we only need to set the docID and trigger
+      // initializeFieldInfo on first encounter in this segment.
+      if (lastDocInBlock && parentPf != null) {
+        parentPf.schema.resetJustDocId(docID);
+        if (parentPf.fieldInfo == null) {
+          fields[fieldCount++] = parentPf;
+          needInitOrValidate = true;
+        }
+      }
+
       // 1st pass over doc fields – verify that doc schema matches the index schema
       // build schema for each unique doc field
       for (IndexableField field : document) {
+        String fieldName = field.name();
         IndexableFieldType fieldType = field.fieldType();
-        final boolean isReserved = field.getClass() == ReservedField.class;
         PerField pf =
             getOrAddPerField(
-                field.name(), false
+                    fieldName, false
                 /* we never add reserved fields during indexing should be done during DWPT setup*/ );
-        if (pf.reserved != isReserved) {
+        if (pf.reserved) {
           throw new IllegalArgumentException(
               "\""
-                  + field.name()
+                  + fieldName
                   + "\" is a reserved field and should not be added to any document");
         }
         if (pf.fieldGen != fieldGen) { // first time we see this field in this document
           fields[fieldCount++] = pf;
           pf.fieldGen = fieldGen;
-          pf.reset(docID);
+          pf.reset(docID, fieldType);
+        } else if (pf.frozenFieldType != null && fieldType != pf.frozenFieldType) {
+          deoptimizeSchemaValidation(docID, pf, fieldType, fieldName);
         }
         if (docFieldIdx >= docFields.length) oversizeDocFields();
         docFields[docFieldIdx++] = pf;
-        updateDocFieldSchema(field.name(), pf.schema, fieldType);
-      }
-      // For each field, if it's the first time we see this field in this segment,
-      // initialize its FieldInfo.
-      // If we have already seen this field, verify that its schema
-      // within the current doc matches its schema in the index.
-      for (int i = 0; i < fieldCount; i++) {
-        PerField pf = fields[i];
-        if (pf.fieldInfo == null) {
-          initializeFieldInfo(pf);
-        } else {
-          pf.schema.assertSameSchema(pf.fieldInfo);
+        if (pf.frozenFieldType == null || pf.fieldInfo == null) {
+          needInitOrValidate = true;
+          updateDocFieldSchema(fieldName, pf.schema, fieldType);
         }
       }
 
-      // 2nd pass over doc fields – index each field
-      // also count the number of unique fields indexed with postings
+      if (needInitOrValidate) {
+        initAndValidateFields(fieldCount);
+      }
+
+      // 2nd pass – index parent field first, then document fields
+      if (lastDocInBlock && parentPf != null) {
+        // Parent doc is never indexed so does not need to be tracked for finsh()
+        processField(docID, parentField, parentPf);
+      }
       docFieldIdx = 0;
       for (IndexableField field : document) {
         if (processField(docID, field, docFields[docFieldIdx])) {
@@ -630,6 +656,34 @@ final class IndexingChain implements Accountable {
         }
       }
     }
+  }
+
+  private void initAndValidateFields(int fieldCount) throws IOException {
+    // For each field, if it's the first time we see this field in this segment,
+    // initialize its FieldInfo.
+    // If we have already seen this field, verify that its schema
+    // within the current doc matches its schema in the index.
+    for (int i = 0; i < fieldCount; i++) {
+      PerField pf = fields[i];
+      if (pf.frozenFieldType != null && pf.fieldInfo != null) {
+        continue;
+      }
+      if (pf.fieldInfo == null) {
+        initializeFieldInfo(pf);
+      } else {
+        pf.schema.assertSameSchema(pf.fieldInfo);
+      }
+    }
+  }
+
+  private static void deoptimizeSchemaValidation(int docID, PerField pf, IndexableFieldType fieldType,
+                                                 String fieldName) {
+    // Multi-valued field with a different field type than the cached frozen type.
+    // Replay the schema contribution from the earlier skipped values (all had the
+    // same frozen type), then invalidate the cache.
+    FieldType previousFrozenType = pf.frozenFieldType;
+    pf.reset(docID, fieldType);
+    updateDocFieldSchema(fieldName, pf.schema, previousFrozenType);
   }
 
   private void oversizeDocFields() {
@@ -1099,6 +1153,8 @@ final class IndexingChain implements Accountable {
     private final Analyzer analyzer;
     private boolean first; // first in a document
 
+    private FieldType frozenFieldType;
+
     PerField(
         String fieldName,
         int indexCreatedVersionMajor,
@@ -1116,9 +1172,23 @@ final class IndexingChain implements Accountable {
       this.reserved = reserved;
     }
 
-    void reset(int docId) {
+    void reset(int docId, IndexableFieldType fieldType) {
       first = true;
-      schema.reset(docId);
+      if (fieldType == frozenFieldType) {
+        schema.resetJustDocId(docId);
+      } else {
+        maybeCacheFrozenFieldType(fieldType);
+        schema.reset(docId);
+      }
+    }
+
+    void maybeCacheFrozenFieldType(IndexableFieldType fieldType) {
+      // Only cache a new frozen field type if no prior cache exists.
+      // If a prior cache existed but didn't match, null it out to force validation this document.
+      frozenFieldType =
+          frozenFieldType == null && fieldType instanceof FieldType ft && ft.isFrozen()
+              ? ft
+              : null;
     }
 
     void setFieldInfo(FieldInfo fieldInfo) {
@@ -1535,8 +1605,12 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void reset(int doc) {
+    void resetJustDocId(int doc) {
       docID = doc;
+    }
+
+    void reset(int doc) {
+      resetJustDocId(doc);
       omitNorms = false;
       storeTermVector = false;
       indexOptions = IndexOptions.NONE;
@@ -1563,79 +1637,6 @@ final class IndexingChain implements Accountable {
       assertSame(
           "point index dimension", fi.getPointIndexDimensionCount(), pointIndexDimensionCount);
       assertSame("point num bytes", fi.getPointNumBytes(), pointNumBytes);
-    }
-  }
-
-  /**
-   * Wraps the given field in a reserved field and registers it as reserved. Only DWPT should do
-   * this to mark fields as private / reserved to prevent this fieldname to be used from the outside
-   * of the IW / DWPT eco-system
-   */
-  <T extends IndexableField> ReservedField<T> markAsReserved(T field) {
-    getOrAddPerField(field.name(), true);
-    return new ReservedField<>(field);
-  }
-
-  static final class ReservedField<T extends IndexableField> implements IndexableField {
-
-    private final T delegate;
-
-    private ReservedField(T delegate) {
-      this.delegate = delegate;
-    }
-
-    T getDelegate() {
-      return delegate;
-    }
-
-    @Override
-    public String name() {
-      return delegate.name();
-    }
-
-    @Override
-    public IndexableFieldType fieldType() {
-      return delegate.fieldType();
-    }
-
-    @Override
-    public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
-      return delegate.tokenStream(analyzer, reuse);
-    }
-
-    @Override
-    public BytesRef binaryValue() {
-      return delegate.binaryValue();
-    }
-
-    @Override
-    public String stringValue() {
-      return delegate.stringValue();
-    }
-
-    @Override
-    public CharSequence getCharSequenceValue() {
-      return delegate.getCharSequenceValue();
-    }
-
-    @Override
-    public Reader readerValue() {
-      return delegate.readerValue();
-    }
-
-    @Override
-    public Number numericValue() {
-      return delegate.numericValue();
-    }
-
-    @Override
-    public StoredValue storedValue() {
-      return delegate.storedValue();
-    }
-
-    @Override
-    public InvertableType invertableType() {
-      return delegate.invertableType();
     }
   }
 }

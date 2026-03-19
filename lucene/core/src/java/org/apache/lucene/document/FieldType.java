@@ -96,6 +96,10 @@ public class FieldType implements IndexableFieldType {
     this.frozen = true;
   }
 
+  public boolean isFrozen() {
+    return frozen;
+  }
+
   /**
    * {@inheritDoc}
    *
