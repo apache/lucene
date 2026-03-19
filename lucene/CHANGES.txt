@@ -88,6 +88,8 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#15823: Implement method to convert and add all collection elements to a PriorityQueue,
+  and leverage it in DisjunctionMaxBulkScorer's constructor. (Zhou Hui)
 
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
 

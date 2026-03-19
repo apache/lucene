@@ -43,6 +43,11 @@ public class PriorityQueue<T> implements Iterable<T> {
     boolean lessThan(T a, T b);
   }
 
+  /** Element supplier that convert S to T. */
+  public interface ElementSupplier<T, S> {
+    T get(S s);
+  }
+
   /** Create a {@code PriorityQueue} that orders elements using the specified {@code lessThan} */
   public static <T> PriorityQueue<T> usingLessThan(int maxSize, LessThan<? super T> lessThan) {
     return new PriorityQueue<>(maxSize, lessThan);
@@ -175,6 +180,32 @@ public class PriorityQueue<T> implements Iterable<T> {
   }
 
   /**
+   * Similar to {@link #addAll(Collection)}, but supply an {@link ElementSupplier} to convert origin
+   * element to target element. This is useful when source elements does not fit target elements.
+   */
+  public <S> void addAll(Collection<S> elements, ElementSupplier<T, S> elementSupplier) {
+    if (this.size + elements.size() > this.maxSize) {
+      throw new ArrayIndexOutOfBoundsException(
+          "Cannot add "
+              + elements.size()
+              + " elements to a queue with remaining capacity: "
+              + (maxSize - size));
+    }
+
+    // Heap with size S always takes first S elements of the array,
+    // and thus it's safe to fill array further - no actual non-sentinel value will be overwritten.
+    for (S element : elements) {
+      this.heap[size + 1] = elementSupplier.get(element);
+      this.size++;
+    }
+
+    // The loop goes down to 1 as heap is 1-based not 0-based.
+    for (int i = (size >>> 1); i >= 1; i--) {
+      downHeap(i);
+    }
+  }
+
+  /**
    * Adds an Object to a PriorityQueue in log(size) time. If one tries to add more objects than
    * maxSize from initialize an {@link ArrayIndexOutOfBoundsException} is thrown.
    *
@@ -187,18 +218,6 @@ public class PriorityQueue<T> implements Iterable<T> {
     size = index;
     upHeap(index);
     return heap[1];
-  }
-
-  /**
-   * Adds an Object to a PriorityQueue without upHeap. Note: only use it when all elements have a
-   * same value.
-   */
-  public final void addNoShift(T element) {
-    // TODO: Check element equalsTo lastElement, if we can get the comparator.
-
-    int index = size + 1;
-    heap[index] = element;
-    size = index;
   }
 
   /**

@@ -53,9 +53,7 @@ final class DisjunctionMaxBulkScorer extends BulkScorer {
     }
     this.scorers =
         PriorityQueue.usingComparator(scorers.size(), Comparator.comparingInt(b -> b.next));
-    for (BulkScorer scorer : scorers) {
-      this.scorers.addNoShift(new BulkScorerAndNext(scorer));
-    }
+    this.scorers.addAll(scorers, (BulkScorerAndNext::new));
   }
 
   @Override
