@@ -103,17 +103,17 @@ public final class ReaderUtil {
    * @return array indexed by leaf ord, containing global doc IDs for that leaf (empty if no hits)
    */
   public static int[][] partitionByLeaf(ScoreDoc[] hits, List<LeafReaderContext> leaves) {
+    int numLeaves = leaves.size();
+    int[][] result = new int[numLeaves][];
+    if (hits.length == 0) {
+      Arrays.fill(result, EMPTY_INT_ARRAY);
+      return result;
+    }
     int[] sortedDocIds = new int[hits.length];
     for (int i = 0; i < hits.length; i++) {
       sortedDocIds[i] = hits[i].doc;
     }
     Arrays.sort(sortedDocIds);
-    int numLeaves = leaves.size();
-    int[][] result = new int[numLeaves][];
-    if (sortedDocIds.length == 0) {
-      Arrays.fill(result, EMPTY_INT_ARRAY);
-      return result;
-    }
     int leafStart = 0;
     int leafIdx = 0;
     LeafReaderContext leaf = leaves.getFirst();
