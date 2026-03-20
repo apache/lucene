@@ -9,8 +9,7 @@ Description of dev-tools/ contents:
 
 | Directory         | Description     |
 | ----------------- | --------------- |
-| [aws-jmh/]        | Scripts for running microbenchmarks across different ec2 instance types. |
-| [doap/]           | Lucene project descriptors in DOAP RDF format. |
-| [missing-doclet/] | JavaDoc validation doclet subproject. |
-| [scripts/]        | Odds and ends for building releases, etc. |
-| [test-patch/]     | Scripts for automatically validating patches. |
+| [aws-jmh/](aws-jmh)        | Scripts for running microbenchmarks across different ec2 instance types. |
+| [doap/](doap)           | Lucene project descriptors in DOAP RDF format. |
+| [scripts/](scripts)        | Odds and ends for building releases, etc. |
+| [test-patch/](test-patch)     | Scripts for automatically validating patches. |
