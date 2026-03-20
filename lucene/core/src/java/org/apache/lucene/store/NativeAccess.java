@@ -39,7 +39,7 @@ abstract class NativeAccess {
    * MacOS.
    */
   public static Optional<NativeAccess> getImplementation() {
-    if (Constants.LINUX || Constants.MAC_OS_X) {
+    if (Constants.JRE_IS_64BIT && (Constants.LINUX || Constants.MAC_OS_X)) {
       return PosixNativeAccess.getInstance();
     }
     return Optional.empty();
