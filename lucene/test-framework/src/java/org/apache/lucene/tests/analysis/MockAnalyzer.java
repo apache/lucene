@@ -46,6 +46,7 @@ public final class MockAnalyzer extends Analyzer {
   private final CharacterRunAutomaton runAutomaton;
   private final boolean lowerCase;
   private final CharacterRunAutomaton filter;
+  private final Integer customTermFreq;
   private int positionIncrementGap;
   private Integer offsetGap;
   private final Random random;
@@ -65,38 +66,63 @@ public final class MockAnalyzer extends Analyzer {
       Random random,
       CharacterRunAutomaton runAutomaton,
       boolean lowerCase,
-      CharacterRunAutomaton filter) {
+      CharacterRunAutomaton filter,
+      Integer customTermFreq) {
     super(PER_FIELD_REUSE_STRATEGY);
     // TODO: this should be solved in a different way; Random should not be shared (!).
     this.random = new Random(random.nextLong());
     this.runAutomaton = runAutomaton;
     this.lowerCase = lowerCase;
     this.filter = filter;
+    this.customTermFreq = customTermFreq;
   }
 
   /**
-   * Calls {@link #MockAnalyzer(Random, CharacterRunAutomaton, boolean, CharacterRunAutomaton)
-   * MockAnalyzer(random, runAutomaton, lowerCase, MockTokenFilter.EMPTY_STOPSET, false}).
+   * Calls {@link #MockAnalyzer(Random, CharacterRunAutomaton, boolean, CharacterRunAutomaton, Integer)
+   * MockAnalyzer(random, runAutomaton, lowerCase, MockTokenFilter.EMPTY_STOPSET, null}).
+   */
+  public MockAnalyzer(Random random, CharacterRunAutomaton runAutomaton, boolean lowerCase, CharacterRunAutomaton filter) {
+    this(random, runAutomaton, lowerCase, filter, null);
+  }
+
+  /**
+   * Calls {@link #MockAnalyzer(Random, CharacterRunAutomaton, boolean, CharacterRunAutomaton, Integer)
+   * MockAnalyzer(random, runAutomaton, lowerCase, MockTokenFilter.EMPTY_STOPSET, null}).
    */
   public MockAnalyzer(Random random, CharacterRunAutomaton runAutomaton, boolean lowerCase) {
-    this(random, runAutomaton, lowerCase, MockTokenFilter.EMPTY_STOPSET);
+    this(random, runAutomaton, lowerCase, MockTokenFilter.EMPTY_STOPSET, null);
+  }
+
+  /**
+   * Create a Whitespace-lowercasing analyzer with no stopwords removal and custom term frequencies.
+   *
+   * <p>Calls {@link #MockAnalyzer(Random, CharacterRunAutomaton, boolean, CharacterRunAutomaton, Integer)
+   * MockAnalyzer(random, MockTokenizer.WHITESPACE, true, MockTokenFilter.EMPTY_STOPSET, customTermFreq}).
+   */
+  public MockAnalyzer(Random random, int customTermFreq) {
+    this(random, MockTokenizer.WHITESPACE, true, MockTokenFilter.EMPTY_STOPSET, customTermFreq);
   }
 
   /**
    * Create a Whitespace-lowercasing analyzer with no stopwords removal.
    *
-   * <p>Calls {@link #MockAnalyzer(Random, CharacterRunAutomaton, boolean, CharacterRunAutomaton)
-   * MockAnalyzer(random, MockTokenizer.WHITESPACE, true, MockTokenFilter.EMPTY_STOPSET, false}).
+   * <p>Calls {@link #MockAnalyzer(Random, CharacterRunAutomaton, boolean, CharacterRunAutomaton, Integer)
+   * MockAnalyzer(random, MockTokenizer.WHITESPACE, true, MockTokenFilter.EMPTY_STOPSET, null}).
    */
   public MockAnalyzer(Random random) {
-    this(random, MockTokenizer.WHITESPACE, true);
+    this(random, MockTokenizer.WHITESPACE, true, MockTokenFilter.EMPTY_STOPSET, null);
   }
 
   @Override
   public TokenStreamComponents createComponents(String fieldName) {
     MockTokenizer tokenizer = new MockTokenizer(runAutomaton, lowerCase, maxTokenLength);
     tokenizer.setEnableChecks(enableChecks);
-    MockTokenFilter filt = new MockTokenFilter(tokenizer, filter);
+    MockTokenFilter filt;
+    if (customTermFreq != null) {
+      filt = new MockTokenFilter(tokenizer, filter, random.nextBoolean());
+    }  else {
+      filt = new MockTokenFilter(tokenizer, filter);
+    }
     return new TokenStreamComponents(tokenizer, maybePayload(filt, fieldName));
   }
 

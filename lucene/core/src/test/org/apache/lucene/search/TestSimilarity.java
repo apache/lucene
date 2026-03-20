@@ -127,6 +127,83 @@ public class TestSimilarity extends LuceneTestCase {
     store.close();
   }
 
+  public void testSimilarityCustomTf() throws Exception {
+    Directory store = newDirectory();
+    RandomIndexWriter writer =
+        new RandomIndexWriter(
+            random(),
+            store,
+            newIndexWriterConfig(new MockAnalyzer(random(), Integer.MAX_VALUE))
+                .setSimilarity(new SimpleSimilarity())
+                .setMergePolicy(newMergePolicy(random(), false)));
+
+    FieldType fieldType = new FieldType(TextField.TYPE_STORED);
+    fieldType.putAttribute(FieldInfo.IS_TERM_DOC_FIELD, "true");
+    fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+
+    Document d1 = new Document();
+    d1.add(new Field("field", "a c", fieldType));
+
+    Document d2 = new Document();
+    d2.add(new Field("field", "a c b", fieldType));
+
+    writer.addDocument(d1);
+    writer.addDocument(d2);
+    IndexReader reader = writer.getReader();
+    writer.close();
+
+    IndexSearcher searcher = newSearcher(reader);
+    searcher.setSimilarity(new SimpleSimilarity());
+
+    Term a = new Term("field", "a");
+    Term b = new Term("field", "b");
+    Term c = new Term("field", "c");
+
+    assertScore(searcher, new TermQuery(b), 1.0f);
+
+    BooleanQuery.Builder bq = new BooleanQuery.Builder();
+    bq.add(new TermQuery(a), BooleanClause.Occur.SHOULD);
+    bq.add(new TermQuery(b), BooleanClause.Occur.SHOULD);
+    // System.out.println(bq.toString("field"));
+    searcher.search(
+        bq.build(),
+        new CollectorManager<SimpleCollector, Void>() {
+          @Override
+          public SimpleCollector newCollector() {
+            return new ScoreAssertingCollector() {
+              private int base = 0;
+
+              @Override
+              public void collect(int doc) throws IOException {
+                // System.out.println("Doc=" + doc + " score=" + score);
+                assertEquals((float) doc + base + 1, scorer.score(), 0);
+              }
+
+              @Override
+              protected void doSetNextReader(LeafReaderContext context) {
+                base = context.docBase;
+              }
+            };
+          }
+
+          @Override
+          public Void reduce(Collection<SimpleCollector> collectors) {
+            return null;
+          }
+        });
+
+    PhraseQuery pq = new PhraseQuery(a.field(), a.bytes(), c.bytes());
+    // System.out.println(pq.toString("field"));
+    assertScore(searcher, pq, 1.0f);
+
+    pq = new PhraseQuery(2, a.field(), a.bytes(), b.bytes());
+    // System.out.println(pq.toString("field"));
+    assertScore(searcher, pq, 0.5f);
+
+    reader.close();
+    store.close();
+  }
+
   private static void assertScore(IndexSearcher searcher, Query query, float score)
       throws IOException {
     searcher.search(

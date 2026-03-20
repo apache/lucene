@@ -1556,7 +1556,7 @@ public abstract class LuceneTestCase extends Assert {
       newType.setStored(true); // randomly store it
     }
     if (newType.indexOptions() != IndexOptions.NONE) {
-      if (!newType.storeTermVectors() && random.nextBoolean()) {
+      if (!newType.storeTermVectors() && random.nextBoolean() && false) {
         newType.setStoreTermVectors(true);
         if (!newType.storeTermVectorPositions()) {
           newType.setStoreTermVectorPositions(random.nextBoolean());
@@ -1570,13 +1570,18 @@ public abstract class LuceneTestCase extends Assert {
         if (value instanceof String && !newType.storeTermVectorOffsets()) {
           newType.setStoreTermVectorOffsets(random.nextBoolean());
         }
-        if (value instanceof String && rarely(random())) {
-          // sometimes (rarely) test termdoc fields
-          newType.putAttribute(FieldInfo.IS_TERM_DOC_FIELD, "true");
-        }
         if (VERBOSE) {
           System.out.println("NOTE: LuceneTestCase: upgrade name=" + name + " type=" + newType);
         }
+      }
+    }
+    // nocommit dial back the frequency of this:
+    if (!newType.storeTermVectors() && true /*random.nextBoolean()*/) {
+      // can't use TERM_DOC with term vectors
+      if (value instanceof String /* && rarely(random()) */) {
+        // sometimes (rarely) test termdoc fields
+        newType.putAttribute(FieldInfo.IS_TERM_DOC_FIELD, "true");
+        newType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
       }
     }
     newType.freeze();

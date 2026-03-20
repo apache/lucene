@@ -25,6 +25,7 @@ import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.analysis.tokenattributes.TermFrequencyAttribute;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
 import org.apache.lucene.util.automaton.Operations;
 
@@ -87,6 +88,8 @@ public final class MockTokenFilter extends TokenFilter {
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   private final PositionIncrementAttribute posIncrAtt =
       addAttribute(PositionIncrementAttribute.class);
+  private final TermFrequencyAttribute termFreqAtt;
+  private final boolean testLargeTermFreqs;
   private int skippedPositions;
 
   /**
@@ -98,7 +101,24 @@ public final class MockTokenFilter extends TokenFilter {
   public MockTokenFilter(TokenStream input, CharacterRunAutomaton filter) {
     super(input);
     this.filter = filter;
+    termFreqAtt = null;
+    testLargeTermFreqs = false;
   }
+
+  /**
+   * Create a new MockTokenFilter that will generate custom term frequencies.
+   *
+   * @param input TokenStream to filter
+   * @param filter DFA representing the terms that should be removed.
+   * @param testLargeTermFreqs whether the custom term freqs should be large numbers
+   */
+  public MockTokenFilter(TokenStream input, CharacterRunAutomaton filter, boolean testLargeTermFreqs) {
+    super(input);
+    this.filter = filter;
+    this.testLargeTermFreqs = testLargeTermFreqs;
+    termFreqAtt = addAttribute(TermFrequencyAttribute.class);
+  }
+
 
   @Override
   public boolean incrementToken() throws IOException {
@@ -110,6 +130,15 @@ public final class MockTokenFilter extends TokenFilter {
     while (input.incrementToken()) {
       if (!filter.run(termAtt.buffer(), 0, termAtt.length())) {
         posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + skippedPositions);
+        if (termFreqAtt != null) {
+          if (testLargeTermFreqs) {
+            // big values
+            termFreqAtt.setTermFrequency(Integer.MAX_VALUE - 100);
+          } else {
+            // small values
+            termFreqAtt.setTermFrequency(17);
+          }
+        }
         return true;
       }
       skippedPositions += posIncrAtt.getPositionIncrement();
