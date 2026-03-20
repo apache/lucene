@@ -4,9 +4,9 @@ requires-python = ">=3.12"
 
 [[package]]
 name = "actionlint-py"
-version = "1.7.10.24"
+version = "1.7.11.24"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/9c/01/790379bf4cab91a272421a39b3d80f4a0d1a1ed753c00176be28b7d6adc6/actionlint_py-1.7.10.24.tar.gz", hash = "sha256:bac4e74e944c692fc7c65661009caebf14621bb33d937127ee5df8ac0693736a", size = 12057, upload-time = "2026-01-01T17:06:36.282Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6e/c7/9c673ac323c200d2e45579c15b78ddcdc140b1ad4918addcb0559ef7c90a/actionlint_py-1.7.11.24.tar.gz", hash = "sha256:5f6dffa97101d87f034e935c08eca6158cd46ed5b0d60c2fe65dcab3f6d4959e", size = 12055, upload-time = "2026-02-15T16:52:55.011Z" }
 
 [[package]]
 name = "ast-grep-cli"
@@ -43,7 +43,7 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "actionlint-py", specifier = "==1.7.10.24" },
+    { name = "actionlint-py", specifier = "==1.7.11.24" },
     { name = "ast-grep-cli", specifier = "==0.40.5" },
     { name = "prek", specifier = "==0.3.1" },
     { name = "ruff", specifier = "==0.15.6" },
