@@ -28,6 +28,14 @@ import java.util.Optional;
 import java.util.logging.Logger;
 
 final class PosixNativeAccess extends NativeAccess {
+  private enum PosixNativeAccessSingletonHolder {
+    INSTANCE(constructInstance());
+    private Optional<NativeAccess> posixNativeAccess;
+
+    PosixNativeAccessSingletonHolder(Optional<NativeAccess> posixNativeAccess) {
+      this.posixNativeAccess = posixNativeAccess;
+    }
+  }
 
   private static final Logger LOG = Logger.getLogger(PosixNativeAccess.class.getName());
 
@@ -48,29 +56,23 @@ final class PosixNativeAccess extends NativeAccess {
   /** Don't need these pages. */
   public static final int POSIX_MADV_DONTNEED = 4;
 
-  private static final MethodHandle MH$posix_madvise;
-  private static final int PAGE_SIZE;
+  private final MethodHandle MH$posix_madvise;
+  private final int PAGE_SIZE;
 
-  private static final Optional<NativeAccess> INSTANCE;
-
-  private PosixNativeAccess() {}
-
-  static Optional<NativeAccess> getInstance() {
-    return INSTANCE;
-  }
-
-  static {
+  private PosixNativeAccess() throws Throwable {
     final Linker linker = Linker.nativeLinker();
     final SymbolLookup stdlib = linker.defaultLookup();
-    MethodHandle adviseHandle = null;
-    int pagesize = -1;
-    PosixNativeAccess instance = null;
+    MH$posix_madvise = lookupMadvise(linker, stdlib);
+    PAGE_SIZE = (int) lookupGetPageSize(linker, stdlib).invokeExact();
+  }
+
+  static Optional<NativeAccess> getInstance() {
+    return PosixNativeAccessSingletonHolder.INSTANCE.posixNativeAccess;
+  }
+
+  private static Optional<NativeAccess> constructInstance() {
     try {
-      adviseHandle = lookupMadvise(linker, stdlib);
-      pagesize = (int) lookupGetPageSize(linker, stdlib).invokeExact();
-      instance = new PosixNativeAccess();
-    } catch (UnsupportedOperationException uoe) {
-      LOG.warning(uoe.getMessage());
+      return Optional.of(new PosixNativeAccess());
     } catch (IllegalCallerException _) {
       LOG.warning(
           String.format(
@@ -79,14 +81,12 @@ final class PosixNativeAccess extends NativeAccess {
                   + "pass the following on command line: --enable-native-access=%s",
               Optional.ofNullable(PosixNativeAccess.class.getModule().getName())
                   .orElse("ALL-UNNAMED")));
-    } catch (RuntimeException | Error e) {
-      throw e;
     } catch (Throwable e) {
-      throw new AssertionError(e);
+      LOG.warning(
+          String.format(
+              Locale.ENGLISH, "could not enable native access, cause: %s", e.getMessage()));
     }
-    MH$posix_madvise = adviseHandle;
-    PAGE_SIZE = pagesize;
-    INSTANCE = Optional.ofNullable(instance);
+    return Optional.empty();
   }
 
   private static MethodHandle lookupMadvise(Linker linker, SymbolLookup stdlib) {
