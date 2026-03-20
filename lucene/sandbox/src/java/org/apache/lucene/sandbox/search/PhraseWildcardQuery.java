@@ -323,10 +323,9 @@ public class PhraseWildcardQuery extends Query {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof PhraseWildcardQuery)) {
+    if (!(o instanceof PhraseWildcardQuery pwq)) {
       return false;
     }
-    PhraseWildcardQuery pwq = (PhraseWildcardQuery) o;
     return slop == pwq.slop && phraseTerms.equals(pwq.phraseTerms);
   }
 
@@ -778,10 +777,9 @@ public class PhraseWildcardQuery extends Query {
 
     @Override
     public boolean equals(Object o) {
-      if (!(o instanceof SingleTerm)) {
+      if (!(o instanceof SingleTerm singleTerm)) {
         return false;
       }
-      SingleTerm singleTerm = (SingleTerm) o;
       return term.equals(singleTerm.term);
     }
 
@@ -831,10 +829,9 @@ public class PhraseWildcardQuery extends Query {
 
     @Override
     public boolean equals(Object o) {
-      if (!(o instanceof MultiTerm)) {
+      if (!(o instanceof MultiTerm multiTerm)) {
         return false;
       }
-      MultiTerm multiTerm = (MultiTerm) o;
       return query.equals(multiTerm.query);
     }
 

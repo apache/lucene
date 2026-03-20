@@ -62,11 +62,11 @@ public interface SerializableObject {
   public static PlanetObject readPlanetObject(final InputStream inputStream) throws IOException {
     final PlanetModel pm = new PlanetModel(inputStream);
     final SerializableObject so = readObject(pm, inputStream);
-    if (!(so instanceof PlanetObject)) {
+    if (!(so instanceof PlanetObject po)) {
       throw new IOException(
           "Type of object is not expected PlanetObject: " + so.getClass().getName());
     }
-    return (PlanetObject) so;
+    return po;
   }
 
   /**
@@ -131,11 +131,11 @@ public interface SerializableObject {
       // Invoke it
       final Object object = c.newInstance(planetModel, inputStream);
       // check whether caste will work
-      if (!(object instanceof SerializableObject)) {
+      if (!(object instanceof SerializableObject so)) {
         throw new IOException(
             "Object " + clazz.getName() + " does not implement SerializableObject");
       }
-      return (SerializableObject) object;
+      return so;
     } catch (InstantiationException e) {
       throw new IOException(
           "Instantiation exception for class " + clazz.getName() + ": " + e.getMessage(), e);
@@ -165,11 +165,11 @@ public interface SerializableObject {
       // Invoke it
       final Object object = c.newInstance(inputStream);
       // check whether caste will work
-      if (!(object instanceof SerializableObject)) {
+      if (!(object instanceof SerializableObject so)) {
         throw new IOException(
             "Object " + clazz.getName() + " does not implement SerializableObject");
       }
-      return (SerializableObject) object;
+      return so;
     } catch (InstantiationException e) {
       throw new IOException(
           "Instantiation exception for class " + clazz.getName() + ": " + e.getMessage(), e);
