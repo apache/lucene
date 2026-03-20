@@ -176,8 +176,8 @@ public final class FeatureField extends Field {
   @Override
   public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
     FeatureTokenStream stream;
-    if (reuse instanceof FeatureTokenStream) {
-      stream = (FeatureTokenStream) reuse;
+    if (reuse instanceof FeatureTokenStream fts) {
+      stream = fts;
     } else {
       stream = new FeatureTokenStream();
     }

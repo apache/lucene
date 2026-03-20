@@ -78,8 +78,8 @@ public class NamedMatches implements Matches {
     toProcess.add(matches);
     while (toProcess.size() > 0) {
       matches = toProcess.remove();
-      if (matches instanceof NamedMatches) {
-        nm.add((NamedMatches) matches);
+      if (matches instanceof NamedMatches namedMatches) {
+        nm.add(namedMatches);
       }
       toProcess.addAll(matches.getSubMatches());
     }

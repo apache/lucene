@@ -47,8 +47,8 @@ public class FlagsAttributeImpl extends AttributeImpl implements FlagsAttribute 
       return true;
     }
 
-    if (other instanceof FlagsAttributeImpl) {
-      return ((FlagsAttributeImpl) other).flags == flags;
+    if (other instanceof FlagsAttributeImpl fai) {
+      return fai.flags == flags;
     }
 
     return false;

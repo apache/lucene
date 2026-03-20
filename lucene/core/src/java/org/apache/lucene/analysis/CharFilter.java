@@ -71,8 +71,8 @@ public abstract class CharFilter extends Reader {
   /** Chains the corrected offset through the input CharFilter(s). */
   public final int correctOffset(int currentOff) {
     final int corrected = correct(currentOff);
-    return (input instanceof CharFilter)
-        ? ((CharFilter) input).correctOffset(corrected)
+    return (input instanceof CharFilter charFilter)
+        ? charFilter.correctOffset(corrected)
         : corrected;
   }
 }

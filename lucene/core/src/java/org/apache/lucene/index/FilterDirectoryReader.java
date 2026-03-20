@@ -36,8 +36,8 @@ public abstract class FilterDirectoryReader extends DirectoryReader {
    * FilterDirectoryReader}.
    */
   public static DirectoryReader unwrap(DirectoryReader reader) {
-    while (reader instanceof FilterDirectoryReader) {
-      reader = ((FilterDirectoryReader) reader).getDelegate();
+    while (reader instanceof FilterDirectoryReader fdr) {
+      reader = fdr.getDelegate();
     }
     return reader;
   }

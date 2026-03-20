@@ -410,7 +410,7 @@ public final class Version {
 
   @Override
   public boolean equals(Object o) {
-    return o != null && o instanceof Version && ((Version) o).encodedValue == encodedValue;
+    return o != null && o instanceof Version v && v.encodedValue == encodedValue;
   }
 
   // Used only by assert:

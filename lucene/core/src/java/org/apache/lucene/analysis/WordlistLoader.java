@@ -314,8 +314,6 @@ public class WordlistLoader {
   }
 
   private static BufferedReader getBufferedReader(Reader reader) {
-    return (reader instanceof BufferedReader)
-        ? (BufferedReader) reader
-        : new BufferedReader(reader);
+    return (reader instanceof BufferedReader br) ? br : new BufferedReader(reader);
   }
 }

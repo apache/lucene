@@ -257,8 +257,9 @@ final class Rectangle2D implements Component2D {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof Rectangle2D)) return false;
-    Rectangle2D that = (Rectangle2D) o;
+    if (!(o instanceof Rectangle2D that)) {
+      return false;
+    }
     return Double.compare(minX, that.minX) == 0
         && Double.compare(maxX, that.maxX) == 0
         && Double.compare(minY, that.minY) == 0

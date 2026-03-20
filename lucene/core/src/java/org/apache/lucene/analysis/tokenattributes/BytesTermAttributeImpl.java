@@ -70,8 +70,9 @@ public class BytesTermAttributeImpl extends AttributeImpl
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof BytesTermAttributeImpl)) return false;
-    BytesTermAttributeImpl that = (BytesTermAttributeImpl) o;
+    if (!(o instanceof BytesTermAttributeImpl that)) {
+      return false;
+    }
     return Objects.equals(bytes, that.bytes);
   }
 
