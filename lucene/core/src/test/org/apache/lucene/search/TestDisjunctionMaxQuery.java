@@ -95,6 +95,53 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
     nonAnalyzedType.setTokenized(false);
   }
 
+  public void testDisjunctionMaxQuery() throws Exception {
+    TestSimilarity testSimilarity = new TestSimilarity();
+
+    Directory dir = newDirectory();
+    RandomIndexWriter writer =
+        new RandomIndexWriter(
+            random(),
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setSimilarity(testSimilarity)
+                .setMergePolicy(newLogMergePolicy()));
+
+    Document d1 = new Document();
+    d1.add(newTextField("name", "d1", Field.Store.YES));
+    writer.addDocument(d1);
+
+    Document d2 = new Document();
+    d2.add(newTextField("name", "d2", Field.Store.YES));
+    writer.addDocument(d2);
+
+    Document d3 = new Document();
+    d3.add(newTextField("name", "d3", Field.Store.YES));
+    writer.addDocument(d3);
+
+    writer.forceMerge(1);
+
+    IndexReader reader = getOnlyLeafReader(writer.getReader());
+    IndexSearcher searcher = new IndexSearcher(reader);
+    searcher.setSimilarity(testSimilarity);
+
+    TermQuery termQuery1 = new TermQuery(new Term("name", "d1"));
+    //    TermQuery termQuery2 = new TermQuery(new Term("name", "d2"));
+    TermQuery termQuery31 = new TermQuery(new Term("name", "d3"));
+    TermQuery termQuery32 = new TermQuery(new Term("name", "d3"));
+
+    DisjunctionMaxQuery disjunctionMaxQuery =
+        new DisjunctionMaxQuery(Arrays.asList(termQuery1, termQuery31, termQuery32), 0.0f);
+
+    TopDocs topDocs = searcher.search(disjunctionMaxQuery, 10);
+
+    assertEquals(2, topDocs.scoreDocs.length);
+
+    writer.close();
+    reader.close();
+    dir.close();
+  }
+
   @Override
   public void setUp() throws Exception {
     super.setUp();

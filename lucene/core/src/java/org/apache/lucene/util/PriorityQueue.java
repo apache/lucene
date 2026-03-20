@@ -21,6 +21,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
+import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
@@ -41,11 +42,6 @@ public class PriorityQueue<T> implements Iterable<T> {
   @FunctionalInterface
   public interface LessThan<T> {
     boolean lessThan(T a, T b);
-  }
-
-  /** Element supplier that convert S to T. */
-  public interface ElementSupplier<T, S> {
-    T get(S s);
   }
 
   /** Create a {@code PriorityQueue} that orders elements using the specified {@code lessThan} */
@@ -180,10 +176,12 @@ public class PriorityQueue<T> implements Iterable<T> {
   }
 
   /**
-   * Similar to {@link #addAll(Collection)}, but supply an {@link ElementSupplier} to convert origin
-   * element to target element. This is useful when source elements does not fit target elements.
+   * Similar to {@link #addAll(Collection)}, but supply an {@link Function} to convert element. This
+   * method should be preferred over calling {@link #addAll(Collection)}, when the type of param
+   * elements is different from the type of this {@link PriorityQueue}, since it doesn't require the
+   * caller to do the conversion at the call site.
    */
-  public <S> void addAll(Collection<S> elements, ElementSupplier<T, S> elementSupplier) {
+  public <S> void addAll(Collection<S> elements, Function<S, T> elementConverter) {
     if (this.size + elements.size() > this.maxSize) {
       throw new ArrayIndexOutOfBoundsException(
           "Cannot add "
@@ -195,7 +193,7 @@ public class PriorityQueue<T> implements Iterable<T> {
     // Heap with size S always takes first S elements of the array,
     // and thus it's safe to fill array further - no actual non-sentinel value will be overwritten.
     for (S element : elements) {
-      this.heap[size + 1] = elementSupplier.get(element);
+      this.heap[size + 1] = elementConverter.apply(element);
       this.size++;
     }
 

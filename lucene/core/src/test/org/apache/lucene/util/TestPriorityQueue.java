@@ -21,6 +21,7 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -157,6 +158,21 @@ public class TestPriorityQueue extends LuceneTestCase {
     assertThat(pq.insertWithOverflow(i6), equalTo(i6)); // i6 should not have been inserted
     assertThat(pq.size(), equalTo(size));
     assertThat(pq.top(), equalTo(2));
+  }
+
+  public void testAddAllWithConverter() {
+    PriorityQueue<Integer> pq = new IntegerQueue(6);
+    List<String> elements = new ArrayList<>();
+    for (String s : Arrays.asList("a", "b", "c", "d", "e", "f")) {
+      if (random().nextBoolean()) {
+        elements.addFirst(s);
+      } else {
+        elements.addLast(s);
+      }
+    }
+
+    pq.addAll(elements, String::hashCode);
+    assertEquals("a".hashCode(), pq.top().intValue());
   }
 
   public void testAddAllToEmptyQueue() {
