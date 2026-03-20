@@ -30,7 +30,7 @@ import java.util.logging.Logger;
 final class PosixNativeAccess extends NativeAccess {
   private enum PosixNativeAccessSingletonHolder {
     INSTANCE(constructInstance());
-    private Optional<NativeAccess> posixNativeAccess;
+    private final Optional<NativeAccess> posixNativeAccess;
 
     PosixNativeAccessSingletonHolder(Optional<NativeAccess> posixNativeAccess) {
       this.posixNativeAccess = posixNativeAccess;
