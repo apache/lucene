@@ -40,6 +40,8 @@ import java.util.List;
  * among weak matches while ensuring that no match is ever penalized.
  *
  * <p>Non-matching sub-scorers contribute logit(0.5) = 0 (neutral evidence).
+ *
+ * @lucene.experimental
  */
 final class LogOddsConjunctionScorer extends DisjunctionScorer {
   private static final float CLAMP_MIN = 1e-7f;
@@ -75,7 +77,7 @@ final class LogOddsConjunctionScorer extends DisjunctionScorer {
   }
 
   static float clampProbability(float p) {
-    return Math.max(CLAMP_MIN, Math.min(CLAMP_MAX, p));
+    return Math.clamp(p, CLAMP_MIN, CLAMP_MAX);
   }
 
   static float logit(float p) {

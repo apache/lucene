@@ -31,6 +31,8 @@ import org.apache.lucene.index.LeafReaderContext;
  *
  * <p>The alpha parameter controls the sigmoid steepness (score sensitivity), and beta controls the
  * midpoint (decision boundary). These can be set manually or estimated from the score distribution.
+ *
+ * @lucene.experimental
  */
 public final class BayesianScoreQuery extends Query {
 

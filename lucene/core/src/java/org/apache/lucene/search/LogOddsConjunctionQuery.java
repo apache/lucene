@@ -44,6 +44,7 @@ import org.apache.lucene.index.LeafReaderContext;
  * the sqrt(n) scaling law from "From Bayesian Inference to Neural Computation".
  *
  * @see LogOddsConjunctionScorer
+ * @lucene.experimental
  */
 public final class LogOddsConjunctionQuery extends Query implements Iterable<Query> {
 

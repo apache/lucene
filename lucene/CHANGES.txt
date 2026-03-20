@@ -77,12 +77,6 @@ API Changes
 New Features
 ---------------------
 
-* GITHUB#15827: Add BayesianScoreQuery and LogOddsConjunctionQuery for probabilistic hybrid
-  search. BayesianScoreQuery wraps any query and applies sigmoid calibration to transform scores
-  into probabilities. LogOddsConjunctionQuery combines multiple probability signals (text, vector,
-  or mixed) via log-odds conjunction with softplus gating and sqrt(n) confidence scaling.
-  (Jaepil Jeong)
-
 * GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
   PolishSnowballAnalyzer in the stempel package) (Justas Sakalauskas, Dawid Weiss)
 
@@ -230,6 +224,12 @@ New Features
 
 * GITHUB#15722: Add interface to do prefetch on KnnVectorValues and an example implementation to use prefetch
   in Scorer (Navneet Verma)
+
+* GITHUB#15827: Add BayesianScoreQuery and LogOddsConjunctionQuery for probabilistic hybrid
+  search. BayesianScoreQuery wraps any query and applies sigmoid calibration to transform scores
+  into probabilities. LogOddsConjunctionQuery combines multiple probability signals (text, vector,
+  or mixed) via log-odds conjunction with softplus gating and sqrt(n) confidence scaling.
+  (Jaepil Jeong)
 
 Improvements
 ---------------------
