@@ -16,7 +16,7 @@ dev = [
   # validates bash
   "shellcheck-py==0.11.0.1",
   # validates markdown
-  "rumdl==0.1.7",
+  "rumdl==0.1.47",
   # validates python
   "ruff==0.15.6",
   # validates various
