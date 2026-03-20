@@ -12,7 +12,7 @@ dev = [
   # validates github actions
   "zizmor==1.22.0",
   # validates github actions
-  "actionlint-py==1.7.10.24",
+  "actionlint-py==1.7.11.24",
   # validates bash
   "shellcheck-py==0.11.0.1",
   # validates markdown
