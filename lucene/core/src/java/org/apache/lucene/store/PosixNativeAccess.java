@@ -60,12 +60,12 @@ final class PosixNativeAccess extends NativeAccess {
   }
 
   static {
-    final Linker linker = Linker.nativeLinker();
-    final SymbolLookup stdlib = linker.defaultLookup();
     MethodHandle adviseHandle = null;
     int pagesize = -1;
     PosixNativeAccess instance = null;
     try {
+      final Linker linker = Linker.nativeLinker();
+      final SymbolLookup stdlib = linker.defaultLookup();
       adviseHandle = lookupMadvise(linker, stdlib);
       pagesize = (int) lookupGetPageSize(linker, stdlib).invokeExact();
       instance = new PosixNativeAccess();
