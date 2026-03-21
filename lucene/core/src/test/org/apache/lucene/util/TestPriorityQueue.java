@@ -160,7 +160,7 @@ public class TestPriorityQueue extends LuceneTestCase {
     assertThat(pq.top(), equalTo(2));
   }
 
-  public void testAddAllWithConverter() {
+  public void testAddAllWithTransformer() {
     PriorityQueue<Integer> pq = new IntegerQueue(6);
     List<String> elements = new ArrayList<>();
     for (String s : Arrays.asList("a", "b", "c", "d", "e", "f")) {
