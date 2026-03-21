@@ -72,7 +72,7 @@ public final class Constants {
       HotspotVMOptions.get("UseJVMCICompiler").map(Boolean::valueOf).orElse(false);
 
   /** True iff running on a 64bit JVM */
-  public static final boolean JRE_IS_64BIT = (ValueLayout.ADDRESS.byteSize() == 8L);
+  public static final boolean JRE_IS_64BIT = (ValueLayout.ADDRESS.byteSize() == Long.BYTES);
 
   /** true if FMA likely means a cpu instruction and not BigDecimal logic. */
   private static final boolean HAS_FMA =
