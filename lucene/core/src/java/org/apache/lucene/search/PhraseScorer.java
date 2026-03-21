@@ -52,7 +52,6 @@ class PhraseScorer extends Scorer {
     return new TwoPhaseIterator(approximation) {
       @Override
       public boolean matches() throws IOException {
-        matcher.reset();
         if (scoreMode == ScoreMode.TOP_SCORES && minCompetitiveScore > 0) {
           float maxFreq = matcher.maxFreq();
           long norm = 1L;
@@ -64,6 +63,7 @@ class PhraseScorer extends Scorer {
             return false;
           }
         }
+        matcher.reset();
         freq = 0;
         return matcher.nextMatch();
       }

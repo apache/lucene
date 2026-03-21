@@ -79,6 +79,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
 
   private boolean positioned;
   private int matchLength;
+  private boolean freqsLoaded;
 
   public SloppyPhraseMatcher(
       PhraseQuery.PostingsAndFreq[] postings,
@@ -167,18 +168,29 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
 
   @Override
   float maxFreq() throws IOException {
-    // every term position in each postings list can be at the head of at most
-    // one matching phrase, so the maximum possible phrase freq is the sum of
-    // the freqs of the postings lists.
+    // Load freqs eagerly so maxFreq() can be called before reset() in TOP_SCORES
+    // mode. PhraseScorer uses this to short-circuit non-competitive documents
+    // before paying the cost of reset() + initPhrasePositions().
     float maxFreq = 0;
     for (PhrasePositions phrasePosition : phrasePositions) {
-      maxFreq += phrasePosition.postings.freq();
+      phrasePosition.freq = phrasePosition.postings.freq();
+      maxFreq += phrasePosition.freq;
     }
+    freqsLoaded = true;
     return maxFreq;
   }
 
   @Override
   public void reset() throws IOException {
+    if (freqsLoaded) {
+      // Freqs already loaded by maxFreq().
+      freqsLoaded = false;
+    } else {
+      // Freqs not yet loaded. Load them now.
+      for (PhrasePositions phrasePosition : phrasePositions) {
+        phrasePosition.freq = phrasePosition.postings.freq();
+      }
+    }
     this.positioned = initPhrasePositions();
     this.matchLength = Integer.MAX_VALUE;
     this.leadPosition = Integer.MAX_VALUE;
