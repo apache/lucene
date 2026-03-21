@@ -70,7 +70,7 @@ final class PosixNativeAccess extends NativeAccess {
       pagesize = (int) lookupGetPageSize(linker, stdlib).invokeExact();
       instance = new PosixNativeAccess();
     } catch (UnsupportedOperationException uoe) {
-      LOG.warning(uoe.getMessage());
+      LOG.warning("Cannot initialize native function bindings: " + uoe.getMessage());
     } catch (IllegalCallerException _) {
       LOG.warning(
           String.format(
@@ -79,7 +79,10 @@ final class PosixNativeAccess extends NativeAccess {
                   + "pass the following on command line: --enable-native-access=%s",
               Optional.ofNullable(PosixNativeAccess.class.getModule().getName())
                   .orElse("ALL-UNNAMED")));
-    } catch (RuntimeException | Error e) {
+    } catch (RuntimeException re) {
+      LOG.warning(
+          "Cannot initialize native function bindings (linker is incompatible): " + re.toString());
+    } catch (Error e) {
       throw e;
     } catch (Throwable e) {
       throw new AssertionError(e);
