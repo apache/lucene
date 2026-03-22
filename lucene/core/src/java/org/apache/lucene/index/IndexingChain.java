@@ -1312,6 +1312,9 @@ final class IndexingChain implements Accountable {
             }
             // Document will be deleted above:
             throw new IllegalArgumentException(msg, e);
+          } catch (TermsHashPerField.DuplicateTermException e) {
+            throw new IllegalArgumentException(
+                "Document update skipped due to duplicate termdoc term", e);
           } catch (Throwable th) {
             onAbortingException(th);
             throw th;

@@ -21,6 +21,7 @@ import static org.apache.lucene.util.automaton.Automata.makeString;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.function.Function;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -89,7 +90,7 @@ public final class MockTokenFilter extends TokenFilter {
   private final PositionIncrementAttribute posIncrAtt =
       addAttribute(PositionIncrementAttribute.class);
   private final TermFrequencyAttribute termFreqAtt;
-  private final boolean testLargeTermFreqs;
+  private final Function<CharSequence, Integer> customTermFreq;
   private int skippedPositions;
 
   /**
@@ -102,7 +103,7 @@ public final class MockTokenFilter extends TokenFilter {
     super(input);
     this.filter = filter;
     termFreqAtt = null;
-    testLargeTermFreqs = false;
+    customTermFreq = null;
   }
 
   /**
@@ -110,15 +111,21 @@ public final class MockTokenFilter extends TokenFilter {
    *
    * @param input TokenStream to filter
    * @param filter DFA representing the terms that should be removed.
-   * @param testLargeTermFreqs whether the custom term freqs should be large numbers
+   * @param customTermFreq optional method mapping term to score
    */
-  public MockTokenFilter(TokenStream input, CharacterRunAutomaton filter, boolean testLargeTermFreqs) {
+  public MockTokenFilter(
+      TokenStream input,
+      CharacterRunAutomaton filter,
+      Function<CharSequence, Integer> customTermFreq) {
     super(input);
     this.filter = filter;
-    this.testLargeTermFreqs = testLargeTermFreqs;
-    termFreqAtt = addAttribute(TermFrequencyAttribute.class);
+    this.customTermFreq = customTermFreq;
+    if (customTermFreq != null) {
+      termFreqAtt = addAttribute(TermFrequencyAttribute.class);
+    } else {
+      termFreqAtt = null;
+    }
   }
-
 
   @Override
   public boolean incrementToken() throws IOException {
@@ -131,13 +138,7 @@ public final class MockTokenFilter extends TokenFilter {
       if (!filter.run(termAtt.buffer(), 0, termAtt.length())) {
         posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + skippedPositions);
         if (termFreqAtt != null) {
-          if (testLargeTermFreqs) {
-            // big values
-            termFreqAtt.setTermFrequency(Integer.MAX_VALUE - 100);
-          } else {
-            // small values
-            termFreqAtt.setTermFrequency(17);
-          }
+          termFreqAtt.setTermFrequency(customTermFreq.apply(termAtt));
         }
         return true;
       }

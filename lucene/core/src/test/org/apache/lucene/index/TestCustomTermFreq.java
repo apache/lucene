@@ -71,40 +71,82 @@ public class TestCustomTermFreq extends LuceneTestCase {
   }
 
   public void testSingletonTermsOneDoc() throws Exception {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
 
-    Document doc = new Document();
-    FieldType fieldType = getFieldType();
-    Field field =
-        new Field(
-            "field",
-            new CannedTermFreqs(new String[] {"foo", "bar"}, new int[] {42, 128}),
-            fieldType);
-    doc.add(field);
-    w.addDocument(doc);
-    IndexReader r = DirectoryReader.open(w);
-    PostingsEnum postings =
-        MultiTerms.getTermPostingsEnum(r, "field", newBytesRef("bar"), (int) PostingsEnum.FREQS);
-    assertNotNull(postings);
-    assertEquals(0, postings.nextDoc());
-    assertEquals(128, postings.freq());
-    assertEquals(NO_MORE_DOCS, postings.nextDoc());
+      Document doc = new Document();
+      FieldType fieldType = getTermDocFieldType();
+      Field field =
+          new Field(
+              "field",
+              new CannedTermFreqs(new String[] {"foo", "bar"}, new int[] {42, 128}),
+              fieldType);
+      doc.add(field);
+      w.addDocument(doc);
+      try (IndexReader r = DirectoryReader.open(w)) {
+        PostingsEnum postings =
+            MultiTerms.getTermPostingsEnum(
+                r, "field", newBytesRef("bar"), (int) PostingsEnum.FREQS);
+        assertNotNull(postings);
+        assertEquals(0, postings.nextDoc());
+        assertEquals(128, postings.freq());
+        assertEquals(NO_MORE_DOCS, postings.nextDoc());
 
-    postings =
-        MultiTerms.getTermPostingsEnum(r, "field", newBytesRef("foo"), (int) PostingsEnum.FREQS);
-    assertNotNull(postings);
-    assertEquals(0, postings.nextDoc());
-    assertEquals(42, postings.freq());
-    assertEquals(NO_MORE_DOCS, postings.nextDoc());
-
-    IOUtils.close(r, w, dir);
+        postings =
+            MultiTerms.getTermPostingsEnum(
+                r, "field", newBytesRef("foo"), (int) PostingsEnum.FREQS);
+        assertNotNull(postings);
+        assertEquals(0, postings.nextDoc());
+        assertEquals(42, postings.freq());
+        assertEquals(NO_MORE_DOCS, postings.nextDoc());
+      }
+    }
   }
 
-  private static FieldType getFieldType() {
+  public void testRepeatedTerms() throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+
+      Document doc = new Document();
+      FieldType fieldType = getTermDocFieldType();
+      Field field =
+          new Field(
+              "field",
+              new CannedTermFreqs(new String[] {"foo", "foo"}, new int[] {42, 128}),
+              fieldType);
+      doc.add(field);
+      IllegalArgumentException e =
+          expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
+      assertEquals("Document update skipped due to duplicate termdoc term", e.getMessage());
+      TermsHashPerField.DuplicateTermException dte =
+          (TermsHashPerField.DuplicateTermException) e.getCause();
+      assertEquals("field 'field' has duplicate term 'foo'", dte.getMessage());
+
+      // ensure IndexWriter remains open and doc was skipped
+      field =
+          new Field("field", new CannedTermFreqs(new String[] {"foo"}, new int[] {42}), fieldType);
+      Document okDoc = new Document();
+      okDoc.add(field);
+      w.addDocument(okDoc);
+      try (IndexReader r = DirectoryReader.open(w)) {
+        assertEquals(1, r.numDocs());
+      }
+    }
+  }
+
+  private static FieldType getTermDocFieldType() {
     FieldType fieldType = new FieldType(TextField.TYPE_NOT_STORED);
     fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
     fieldType.putAttribute("isTermDocField", "true");
+    return fieldType;
+  }
+
+  private static FieldType getLegacyFieldType() {
+    // It is possible to store custom term frequencies in fields that are *not* labeled as term-doc
+    // fields. These will sum term frequencies rather than counts and have more places where they
+    // may overflow these aggregates.
+    FieldType fieldType = new FieldType(TextField.TYPE_NOT_STORED);
+    fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
     return fieldType;
   }
 
@@ -113,7 +155,7 @@ public class TestCustomTermFreq extends LuceneTestCase {
     IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
 
     Document doc = new Document();
-    FieldType fieldType = getFieldType();
+    FieldType fieldType = getTermDocFieldType();
     Field field =
         new Field(
             "field",
@@ -154,35 +196,37 @@ public class TestCustomTermFreq extends LuceneTestCase {
   }
 
   public void testRepeatTermsOneDoc() throws Exception {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
+    // With legacy field type, we sum the individual term freqs
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+      Document doc = new Document();
+      FieldType fieldType = getLegacyFieldType();
+      Field field =
+          new Field(
+              "field",
+              new CannedTermFreqs(
+                  new String[] {"foo", "bar", "foo", "bar"}, new int[] {42, 128, 17, 100}),
+              fieldType);
+      doc.add(field);
+      w.addDocument(doc);
+      try (IndexReader r = DirectoryReader.open(w)) {
+        PostingsEnum postings =
+            MultiTerms.getTermPostingsEnum(
+                r, "field", newBytesRef("bar"), (int) PostingsEnum.FREQS);
+        assertNotNull(postings);
+        assertEquals(0, postings.nextDoc());
+        assertEquals(228, postings.freq());
+        assertEquals(NO_MORE_DOCS, postings.nextDoc());
 
-    Document doc = new Document();
-    FieldType fieldType = getFieldType();
-    Field field =
-        new Field(
-            "field",
-            new CannedTermFreqs(
-                new String[] {"foo", "bar", "foo", "bar"}, new int[] {42, 128, 17, 100}),
-            fieldType);
-    doc.add(field);
-    w.addDocument(doc);
-    IndexReader r = DirectoryReader.open(w);
-    PostingsEnum postings =
-        MultiTerms.getTermPostingsEnum(r, "field", newBytesRef("bar"), (int) PostingsEnum.FREQS);
-    assertNotNull(postings);
-    assertEquals(0, postings.nextDoc());
-    assertEquals(228, postings.freq());
-    assertEquals(NO_MORE_DOCS, postings.nextDoc());
-
-    postings =
-        MultiTerms.getTermPostingsEnum(r, "field", newBytesRef("foo"), (int) PostingsEnum.FREQS);
-    assertNotNull(postings);
-    assertEquals(0, postings.nextDoc());
-    assertEquals(59, postings.freq());
-    assertEquals(NO_MORE_DOCS, postings.nextDoc());
-
-    IOUtils.close(r, w, dir);
+        postings =
+            MultiTerms.getTermPostingsEnum(
+                r, "field", newBytesRef("foo"), (int) PostingsEnum.FREQS);
+        assertNotNull(postings);
+        assertEquals(0, postings.nextDoc());
+        assertEquals(59, postings.freq());
+        assertEquals(NO_MORE_DOCS, postings.nextDoc());
+      }
+    }
   }
 
   public void testRepeatTermsTwoDocs() throws Exception {
@@ -190,7 +234,7 @@ public class TestCustomTermFreq extends LuceneTestCase {
     IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
 
     Document doc = new Document();
-    FieldType fieldType = getFieldType();
+    FieldType fieldType = getLegacyFieldType();
     Field field =
         new Field(
             "field",
@@ -201,7 +245,6 @@ public class TestCustomTermFreq extends LuceneTestCase {
     w.addDocument(doc);
 
     doc = new Document();
-    fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
     field =
         new Field(
             "field",
@@ -238,7 +281,7 @@ public class TestCustomTermFreq extends LuceneTestCase {
     IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
 
     Document doc = new Document();
-    FieldType fieldType = getFieldType();
+    FieldType fieldType = getLegacyFieldType();
     Field field =
         new Field(
             "field",
@@ -249,7 +292,6 @@ public class TestCustomTermFreq extends LuceneTestCase {
     w.addDocument(doc);
 
     doc = new Document();
-    fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
     field =
         new Field(
             "field",
@@ -268,6 +310,39 @@ public class TestCustomTermFreq extends LuceneTestCase {
     assertEquals(368, termsEnum.totalTermFreq());
 
     IOUtils.close(r, w, dir);
+  }
+
+  public void testTotalTermFreqTermDoc() throws Exception {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+
+      Document doc = new Document();
+      FieldType fieldType = getTermDocFieldType();
+      Field field =
+          new Field(
+              "field",
+              new CannedTermFreqs(new String[] {"foo", "bar"}, new int[] {42, 128}),
+              fieldType);
+      doc.add(field);
+      w.addDocument(doc);
+
+      doc = new Document();
+      field =
+          new Field(
+              "field",
+              new CannedTermFreqs(new String[] {"foo", "bar"}, new int[] {50, 60}),
+              fieldType);
+      doc.add(field);
+      w.addDocument(doc);
+
+      try (IndexReader r = DirectoryReader.open(w)) {
+        TermsEnum termsEnum = MultiTerms.getTerms(r, "field").iterator();
+        assertTrue(termsEnum.seekExact(newBytesRef("foo")));
+        assertEquals(92, termsEnum.totalTermFreq());
+        assertTrue(termsEnum.seekExact(newBytesRef("bar")));
+        assertEquals(188, termsEnum.totalTermFreq());
+      }
+    }
   }
 
   // you can't index proximity with custom term freqs:
@@ -359,9 +434,8 @@ public class TestCustomTermFreq extends LuceneTestCase {
         IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
 
       // Using the termdoc field type enables us to store large term frequencies that would
-      // otherwise
-      // overflow totalTermFreq
-      FieldType fieldType = getFieldType();
+      // otherwise overflow totalTermFreq
+      FieldType fieldType = getTermDocFieldType();
 
       Document doc2 = new Document();
       Field field =
@@ -400,7 +474,7 @@ public class TestCustomTermFreq extends LuceneTestCase {
     IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
 
     Document doc = new Document();
-    FieldType fieldType = getFieldType();
+    FieldType fieldType = getTermDocFieldType();
     fieldType.setStoreTermVectors(true);
     fieldType.setStoreTermVectorPositions(true);
     Field field =
@@ -427,7 +501,7 @@ public class TestCustomTermFreq extends LuceneTestCase {
     IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
 
     Document doc = new Document();
-    FieldType fieldType = getFieldType();
+    FieldType fieldType = getTermDocFieldType();
     fieldType.setStoreTermVectors(true);
     fieldType.setStoreTermVectorOffsets(true);
     Field field =
@@ -454,13 +528,12 @@ public class TestCustomTermFreq extends LuceneTestCase {
     IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
 
     Document doc = new Document();
-    FieldType fieldType = getFieldType();
+    FieldType fieldType = getTermDocFieldType();
     fieldType.setStoreTermVectors(true);
     Field field =
         new Field(
             "field",
-            new CannedTermFreqs(
-                new String[] {"foo", "bar", "foo", "bar"}, new int[] {42, 128, 17, 100}),
+            new CannedTermFreqs(new String[] {"foo", "bar"}, new int[] {42, 128}),
             fieldType);
     doc.add(field);
     w.addDocument(doc);
@@ -470,8 +543,7 @@ public class TestCustomTermFreq extends LuceneTestCase {
     field =
         new Field(
             "field",
-            new CannedTermFreqs(
-                new String[] {"foo", "bar", "foo", "bar"}, new int[] {50, 60, 70, 80}),
+            new CannedTermFreqs(new String[] {"foo", "bar"}, new int[] {50, 60}),
             fieldType);
     doc.add(field);
     w.addDocument(doc);
@@ -481,37 +553,37 @@ public class TestCustomTermFreq extends LuceneTestCase {
     Fields fields = r.termVectors().get(0);
     TermsEnum termsEnum = fields.terms("field").iterator();
     assertTrue(termsEnum.seekExact(newBytesRef("bar")));
-    assertEquals(228, termsEnum.totalTermFreq());
+    assertEquals(128, termsEnum.totalTermFreq());
     PostingsEnum postings = termsEnum.postings(null);
     assertNotNull(postings);
     assertEquals(0, postings.nextDoc());
-    assertEquals(228, postings.freq());
+    assertEquals(128, postings.freq());
     assertEquals(NO_MORE_DOCS, postings.nextDoc());
 
     assertTrue(termsEnum.seekExact(newBytesRef("foo")));
-    assertEquals(59, termsEnum.totalTermFreq());
+    assertEquals(42, termsEnum.totalTermFreq());
     postings = termsEnum.postings(null);
     assertNotNull(postings);
     assertEquals(0, postings.nextDoc());
-    assertEquals(59, postings.freq());
+    assertEquals(42, postings.freq());
     assertEquals(NO_MORE_DOCS, postings.nextDoc());
 
     fields = r.termVectors().get(1);
     termsEnum = fields.terms("field").iterator();
     assertTrue(termsEnum.seekExact(newBytesRef("bar")));
-    assertEquals(140, termsEnum.totalTermFreq());
+    assertEquals(60, termsEnum.totalTermFreq());
     postings = termsEnum.postings(null);
     assertNotNull(postings);
     assertEquals(0, postings.nextDoc());
-    assertEquals(140, postings.freq());
+    assertEquals(60, postings.freq());
     assertEquals(NO_MORE_DOCS, postings.nextDoc());
 
     assertTrue(termsEnum.seekExact(newBytesRef("foo")));
-    assertEquals(120, termsEnum.totalTermFreq());
+    assertEquals(50, termsEnum.totalTermFreq());
     postings = termsEnum.postings(null);
     assertNotNull(postings);
     assertEquals(0, postings.nextDoc());
-    assertEquals(120, postings.freq());
+    assertEquals(50, postings.freq());
     assertEquals(NO_MORE_DOCS, postings.nextDoc());
 
     IOUtils.close(r, w, dir);
@@ -546,20 +618,19 @@ public class TestCustomTermFreq extends LuceneTestCase {
     IndexWriter w = new IndexWriter(dir, iwc);
 
     Document doc = new Document();
-    FieldType fieldType = getFieldType();
+    FieldType fieldType = getTermDocFieldType();
     Field field =
         new Field(
             "field",
-            new CannedTermFreqs(
-                new String[] {"foo", "bar", "foo", "bar"}, new int[] {42, 128, 17, 100}),
+            new CannedTermFreqs(new String[] {"foo", "bar"}, new int[] {42, 128}),
             fieldType);
     doc.add(field);
     w.addDocument(doc);
     FieldInvertState fis = NeverForgetsSimilarity.INSTANCE.lastState;
-    assertEquals(228, fis.getMaxTermFrequency());
+    assertEquals(128, fis.getMaxTermFrequency());
     assertEquals(2, fis.getUniqueTermCount());
     assertEquals(0, fis.getNumOverlap());
-    assertEquals(4, fis.getLength());
+    assertEquals(2, fis.getLength());
 
     IOUtils.close(w, dir);
   }

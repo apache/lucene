@@ -19,6 +19,7 @@ package org.apache.lucene.tests.analysis;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
+import java.util.function.Function;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -46,7 +47,7 @@ public final class MockAnalyzer extends Analyzer {
   private final CharacterRunAutomaton runAutomaton;
   private final boolean lowerCase;
   private final CharacterRunAutomaton filter;
-  private final Integer customTermFreq;
+  private final Function<CharSequence, Integer> customTermFreq;
   private int positionIncrementGap;
   private Integer offsetGap;
   private final Random random;
@@ -67,7 +68,7 @@ public final class MockAnalyzer extends Analyzer {
       CharacterRunAutomaton runAutomaton,
       boolean lowerCase,
       CharacterRunAutomaton filter,
-      Integer customTermFreq) {
+      Function<CharSequence, Integer> customTermFreq) {
     super(PER_FIELD_REUSE_STRATEGY);
     // TODO: this should be solved in a different way; Random should not be shared (!).
     this.random = new Random(random.nextLong());
@@ -78,16 +79,20 @@ public final class MockAnalyzer extends Analyzer {
   }
 
   /**
-   * Calls {@link #MockAnalyzer(Random, CharacterRunAutomaton, boolean, CharacterRunAutomaton, Integer)
-   * MockAnalyzer(random, runAutomaton, lowerCase, MockTokenFilter.EMPTY_STOPSET, null}).
+   * Calls {@link #MockAnalyzer(Random, CharacterRunAutomaton, boolean, CharacterRunAutomaton,
+   * Function) MockAnalyzer(random, runAutomaton, lowerCase, MockTokenFilter.EMPTY_STOPSET, null}).
    */
-  public MockAnalyzer(Random random, CharacterRunAutomaton runAutomaton, boolean lowerCase, CharacterRunAutomaton filter) {
+  public MockAnalyzer(
+      Random random,
+      CharacterRunAutomaton runAutomaton,
+      boolean lowerCase,
+      CharacterRunAutomaton filter) {
     this(random, runAutomaton, lowerCase, filter, null);
   }
 
   /**
-   * Calls {@link #MockAnalyzer(Random, CharacterRunAutomaton, boolean, CharacterRunAutomaton, Integer)
-   * MockAnalyzer(random, runAutomaton, lowerCase, MockTokenFilter.EMPTY_STOPSET, null}).
+   * Calls {@link #MockAnalyzer(Random, CharacterRunAutomaton, boolean, CharacterRunAutomaton,
+   * Function) MockAnalyzer(random, runAutomaton, lowerCase, MockTokenFilter.EMPTY_STOPSET, null}).
    */
   public MockAnalyzer(Random random, CharacterRunAutomaton runAutomaton, boolean lowerCase) {
     this(random, runAutomaton, lowerCase, MockTokenFilter.EMPTY_STOPSET, null);
@@ -96,18 +101,20 @@ public final class MockAnalyzer extends Analyzer {
   /**
    * Create a Whitespace-lowercasing analyzer with no stopwords removal and custom term frequencies.
    *
-   * <p>Calls {@link #MockAnalyzer(Random, CharacterRunAutomaton, boolean, CharacterRunAutomaton, Integer)
-   * MockAnalyzer(random, MockTokenizer.WHITESPACE, true, MockTokenFilter.EMPTY_STOPSET, customTermFreq}).
+   * <p>Calls {@link #MockAnalyzer(Random, CharacterRunAutomaton, boolean, CharacterRunAutomaton,
+   * Function) MockAnalyzer(random, MockTokenizer.WHITESPACE, true, MockTokenFilter.EMPTY_STOPSET,
+   * customTermFreq}).
    */
-  public MockAnalyzer(Random random, int customTermFreq) {
+  public MockAnalyzer(Random random, Function<CharSequence, Integer> customTermFreq) {
     this(random, MockTokenizer.WHITESPACE, true, MockTokenFilter.EMPTY_STOPSET, customTermFreq);
   }
 
   /**
    * Create a Whitespace-lowercasing analyzer with no stopwords removal.
    *
-   * <p>Calls {@link #MockAnalyzer(Random, CharacterRunAutomaton, boolean, CharacterRunAutomaton, Integer)
-   * MockAnalyzer(random, MockTokenizer.WHITESPACE, true, MockTokenFilter.EMPTY_STOPSET, null}).
+   * <p>Calls {@link #MockAnalyzer(Random, CharacterRunAutomaton, boolean, CharacterRunAutomaton,
+   * Function) MockAnalyzer(random, MockTokenizer.WHITESPACE, true, MockTokenFilter.EMPTY_STOPSET,
+   * null}).
    */
   public MockAnalyzer(Random random) {
     this(random, MockTokenizer.WHITESPACE, true, MockTokenFilter.EMPTY_STOPSET, null);
@@ -118,11 +125,7 @@ public final class MockAnalyzer extends Analyzer {
     MockTokenizer tokenizer = new MockTokenizer(runAutomaton, lowerCase, maxTokenLength);
     tokenizer.setEnableChecks(enableChecks);
     MockTokenFilter filt;
-    if (customTermFreq != null) {
-      filt = new MockTokenFilter(tokenizer, filter, random.nextBoolean());
-    }  else {
-      filt = new MockTokenFilter(tokenizer, filter);
-    }
+    filt = new MockTokenFilter(tokenizer, filter, customTermFreq);
     return new TokenStreamComponents(tokenizer, maybePayload(filt, fieldName));
   }
 

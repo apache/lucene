@@ -23,7 +23,6 @@ import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.search.CollectionStatistics;
@@ -66,8 +65,13 @@ public abstract class BaseSimilarityTestCase extends LuceneTestCase {
     fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
     IndexableField field = newField("field", "value", fieldType);
     RandomIndexWriter writer;
-    if (field.fieldType().getAttributes() != null && field.fieldType().getAttributes().get(FieldInfo.IS_TERM_DOC_FIELD).equals("true")) {
-      writer = new RandomIndexWriter(random(), DIR, new MockAnalyzer(random(), random().nextBoolean() ? 100 : Integer.MAX_VALUE));
+    if (field.fieldType().getAttributes() != null
+        && field.fieldType().getAttributes().get(FieldInfo.IS_TERM_DOC_FIELD).equals("true")) {
+      writer =
+          new RandomIndexWriter(
+              random(),
+              DIR,
+              new MockAnalyzer(random(), _ -> random().nextBoolean() ? 100 : Integer.MAX_VALUE));
     } else {
       writer = new RandomIndexWriter(random(), DIR);
     }

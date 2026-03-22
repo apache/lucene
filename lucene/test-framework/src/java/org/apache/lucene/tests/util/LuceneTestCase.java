@@ -1578,11 +1578,6 @@ public abstract class LuceneTestCase extends Assert {
     // nocommit dial back the frequency of this:
     if (!newType.storeTermVectors() && true /*random.nextBoolean()*/) {
       // can't use TERM_DOC with term vectors
-      if (value instanceof String /* && rarely(random()) */) {
-        // sometimes (rarely) test termdoc fields
-        newType.putAttribute(FieldInfo.IS_TERM_DOC_FIELD, "true");
-        newType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
-      }
     }
     newType.freeze();
     fieldToType.put(name, newType);

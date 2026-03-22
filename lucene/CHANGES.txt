@@ -567,6 +567,9 @@ API Changes
   instance instead of a Bits instance to identify document IDs to filter.
   (Shubham Chaudhary, Adrien Grand)
 
+* GITHUB#15584: Add support for termdoc fields that use custom term freqs: IndexWriter counts their terms
+                rather than summing their freqs.
+
 New Features
 ---------------------
 * GITHUB#15015: MultiIndexMergeScheduler: a production multi-tenant merge scheduler (Shawn Yarbrough)
