@@ -109,8 +109,8 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
 
   public void testMadviseAvail() throws Exception {
     assertEquals(
-        "madvise should be supported on Linux and Macos",
-        Constants.LINUX || Constants.MAC_OS_X,
+        "madvise should be supported on Linux and Macos (64 bit)",
+        Constants.JRE_IS_64BIT && (Constants.LINUX || Constants.MAC_OS_X),
         MMapDirectory.supportsMadvise());
   }
 
