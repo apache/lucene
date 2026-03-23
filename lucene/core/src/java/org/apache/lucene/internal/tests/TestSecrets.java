@@ -32,6 +32,16 @@ import org.apache.lucene.store.FilterIndexInput;
  */
 public final class TestSecrets {
 
+  private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
+
+  private static void ensureInitialized(Class<?> clazz) {
+    try {
+      LOOKUP.ensureInitialized(clazz);
+    } catch (IllegalAccessException e) {
+      throw new AssertionError(e);
+    }
+  }
+
   @SuppressWarnings("NonFinalStaticField")
   private static IndexPackageAccess indexPackageAccess;
 
@@ -129,14 +139,6 @@ public final class TestSecrets {
     TestSecrets.filterIndexInputAccess = filterIndexInputAccess;
   }
 
-  private static void ensureInitialized(Class<?> clazz) {
-    try {
-      MethodHandles.lookup().ensureInitialized(clazz);
-    } catch (IllegalAccessException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   private static void ensureNull(Object ob) {
     if (ob != null) {
       throw new AssertionError(
@@ -154,7 +156,8 @@ public final class TestSecrets {
                         .map(StackFrame::getClassName)
                         .allMatch(c -> Objects.equals(c, allowedCaller.getName())));
     if (!validCaller) {
-      throw new AssertionError("The accessor can only be set by " + allowedCaller.getName() + ".");
+      throw new UnsupportedOperationException(
+          "The accessor can only be set by " + allowedCaller.getName() + ".");
     }
   }
 
