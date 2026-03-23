@@ -16,16 +16,16 @@
  */
 package org.apache.lucene.internal.tests;
 
+import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.TimeUnit;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import java.io.IOException;
-import java.nio.file.Paths;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.TimeUnit;
 
 public class TestTestSecrets extends LuceneTestCase {
 
@@ -53,9 +53,8 @@ public class TestTestSecrets extends LuceneTestCase {
     String classpath = System.getProperty("java.class.path");
 
     // Execute the DeadlockTest#main in a new JVM process (for isolation)
-    ProcessBuilder builder = new ProcessBuilder(
-        javaBin, "-cp", classpath, DeadlockTest.class.getName()
-    ).inheritIO();
+    ProcessBuilder builder =
+        new ProcessBuilder(javaBin, "-cp", classpath, DeadlockTest.class.getName()).inheritIO();
     boolean finished;
     Process process = builder.start();
     // If the process doesn't finish within 10 seconds, consider it deadlocked
@@ -76,25 +75,29 @@ public class TestTestSecrets extends LuceneTestCase {
       // Set a CyclicBarrier to make the two threads start as simultaneously as possible
       final CyclicBarrier barrier = new CyclicBarrier(2);
 
-      Thread indexThread = new Thread(() -> {
-        System.out.println("Thread #1 - Trigger to initialize IndexWriter");
-        try {
-          barrier.await();
-          Class.forName("org.apache.lucene.index.IndexWriter");
-        } catch (Exception e) {
-          System.err.println("Exception in Thread #1: " + e);
-        }
-      });
+      Thread indexThread =
+          new Thread(
+              () -> {
+                System.out.println("Thread #1 - Trigger to initialize IndexWriter");
+                try {
+                  barrier.await();
+                  Class.forName("org.apache.lucene.index.IndexWriter");
+                } catch (Exception e) {
+                  System.err.println("Exception in Thread #1: " + e);
+                }
+              });
 
-      Thread searchThread = new Thread(() -> {
-        System.out.println("Thread #2 - Trigger to initialize SegmentReader");
-        try {
-          barrier.await();
-          Class.forName("org.apache.lucene.index.SegmentReader");
-        } catch (Exception e) {
-          System.err.println("Exception in Thread #2: " + e);
-        }
-      });
+      Thread searchThread =
+          new Thread(
+              () -> {
+                System.out.println("Thread #2 - Trigger to initialize SegmentReader");
+                try {
+                  barrier.await();
+                  Class.forName("org.apache.lucene.index.SegmentReader");
+                } catch (Exception e) {
+                  System.err.println("Exception in Thread #2: " + e);
+                }
+              });
 
       indexThread.start();
       searchThread.start();
