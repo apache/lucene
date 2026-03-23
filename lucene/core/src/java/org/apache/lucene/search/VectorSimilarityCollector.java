@@ -17,6 +17,8 @@
 package org.apache.lucene.search;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -67,14 +69,15 @@ class VectorSimilarityCollector extends AbstractKnnCollector {
 
   @Override
   public TopDocs topDocs() {
-    // Results are not returned in a sorted order to prevent unnecessary calculations (because we do
-    // not need to maintain the topK)
+    // Results are returned in sorted order of doc id
+    ScoreDoc[] scoreDocs = scoreDocList.toArray(ScoreDoc[]::new);
+    Arrays.sort(scoreDocs, Comparator.comparingInt(scoreDoc -> scoreDoc.doc));
+
     TotalHits.Relation relation =
         earlyTerminated()
             ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
             : TotalHits.Relation.EQUAL_TO;
-    return new TopDocs(
-        new TotalHits(visitedCount(), relation), scoreDocList.toArray(ScoreDoc[]::new));
+    return new TopDocs(new TotalHits(visitedCount(), relation), scoreDocs);
   }
 
   @Override
