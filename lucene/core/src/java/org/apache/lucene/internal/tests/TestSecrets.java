@@ -17,8 +17,8 @@
 package org.apache.lucene.internal.tests;
 
 import java.lang.StackWalker.StackFrame;
+import java.lang.invoke.MethodHandles;
 import java.util.Objects;
-import java.util.function.Consumer;
 import org.apache.lucene.index.ConcurrentMergeScheduler;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -31,20 +31,6 @@ import org.apache.lucene.store.FilterIndexInput;
  * initialized once on startup.
  */
 public final class TestSecrets {
-
-  private static final Consumer<Class<?>> ensureInitialized =
-      clazz -> {
-        try {
-          // A no-op forName here has a side-effect of ensuring the class is loaded and
-          // initialized.
-          // This only happens once. We could just leverage the JLS and invoke a static
-          // method (or a constructor) on the target class but the method below seems simpler.
-          // TODO: In Java 15 there's MethodHandles.lookup().ensureInitialized(clazz)
-          Class.forName(clazz.getName());
-        } catch (ClassNotFoundException e) {
-          throw new RuntimeException(e);
-        }
-      };
 
   @SuppressWarnings("NonFinalStaticField")
   private static IndexPackageAccess indexPackageAccess;
@@ -67,7 +53,7 @@ public final class TestSecrets {
   public static IndexPackageAccess getIndexPackageAccess() {
     ensureCallerForGetter();
     if (indexWriterAccess == null) {
-      ensureInitialized.accept(IndexWriter.class);
+      ensureInitialized(IndexWriter.class);
     }
     return Objects.requireNonNull(indexPackageAccess);
   }
@@ -76,7 +62,7 @@ public final class TestSecrets {
   public static ConcurrentMergeSchedulerAccess getConcurrentMergeSchedulerAccess() {
     ensureCallerForGetter();
     if (cmsAccess == null) {
-      ensureInitialized.accept(ConcurrentMergeScheduler.class);
+      ensureInitialized(ConcurrentMergeScheduler.class);
     }
     return Objects.requireNonNull(cmsAccess);
   }
@@ -85,7 +71,7 @@ public final class TestSecrets {
   public static SegmentReaderAccess getSegmentReaderAccess() {
     ensureCallerForGetter();
     if (segmentReaderAccess == null) {
-      ensureInitialized.accept(SegmentReader.class);
+      ensureInitialized(SegmentReader.class);
     }
     return Objects.requireNonNull(segmentReaderAccess);
   }
@@ -94,7 +80,7 @@ public final class TestSecrets {
   public static IndexWriterAccess getIndexWriterAccess() {
     ensureCallerForGetter();
     if (indexWriterAccess == null) {
-      ensureInitialized.accept(IndexWriter.class);
+      ensureInitialized(IndexWriter.class);
     }
     return Objects.requireNonNull(indexWriterAccess);
   }
@@ -103,7 +89,7 @@ public final class TestSecrets {
   public static FilterIndexInputAccess getFilterInputIndexAccess() {
     ensureCallerForGetter();
     if (filterIndexInputAccess == null) {
-      ensureInitialized.accept(FilterIndexInput.class);
+      ensureInitialized(FilterIndexInput.class);
     }
     return Objects.requireNonNull(filterIndexInputAccess);
   }
@@ -143,6 +129,14 @@ public final class TestSecrets {
     TestSecrets.filterIndexInputAccess = filterIndexInputAccess;
   }
 
+  private static void ensureInitialized(Class<?> clazz) {
+    try {
+      MethodHandles.lookup().ensureInitialized(clazz);
+    } catch (IllegalAccessException e) {
+      throw new RuntimeException(e);
+    }
+  }
+
   private static void ensureNull(Object ob) {
     if (ob != null) {
       throw new AssertionError(
@@ -152,13 +146,13 @@ public final class TestSecrets {
 
   private static void ensureCallerForSetter(Class<?> allowedCaller) {
     final boolean validCaller =
-        StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
+        StackWalker.getInstance()
             .walk(
                 s ->
                     s.skip(2)
                         .limit(1)
-                        .map(StackFrame::getDeclaringClass)
-                        .allMatch(c -> c == allowedCaller));
+                        .map(StackFrame::getClassName)
+                        .allMatch(c -> Objects.equals(c, allowedCaller.getName())));
     if (!validCaller) {
       throw new AssertionError("The accessor can only be set by " + allowedCaller.getName() + ".");
     }
