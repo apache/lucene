@@ -31,4 +31,20 @@ public abstract class LongValues {
    * @return true if there is a value for this document
    */
   public abstract boolean advanceExact(int doc) throws IOException;
+
+  /**
+   * An empty LongValues instance that always returns {@code false} from {@link #advanceExact(int)}
+   */
+  public static final LongValues EMPTY =
+      new LongValues() {
+        @Override
+        public long longValue() throws IOException {
+          throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public boolean advanceExact(int doc) throws IOException {
+          return false;
+        }
+      };
 }
