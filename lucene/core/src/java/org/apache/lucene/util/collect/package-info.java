@@ -15,38 +15,5 @@
  * limitations under the License.
  */
 
+/** Collection interfaces and implementations, and other utilities for collections. */
 package org.apache.lucene.util.collect;
-
-import java.util.Iterator;
-import java.util.function.Function;
-
-/**
- * An iterator that transforms a backing iterator; for internal use. This avoids the object overhead
- * of constructing a {@link Function} for internal methods.
- *
- * @lucene.experimental
- */
-abstract class TransformedIterator<F, T> implements Iterator<T> {
-  final Iterator<? extends F> backingIterator;
-
-  TransformedIterator(Iterator<? extends F> backingIterator) {
-    this.backingIterator = backingIterator;
-  }
-
-  abstract T transform(F from);
-
-  @Override
-  public final boolean hasNext() {
-    return backingIterator.hasNext();
-  }
-
-  @Override
-  public final T next() {
-    return transform(backingIterator.next());
-  }
-
-  @Override
-  public final void remove() {
-    backingIterator.remove();
-  }
-}

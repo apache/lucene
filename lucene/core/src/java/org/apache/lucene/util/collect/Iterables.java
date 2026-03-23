@@ -14,14 +14,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.lucene.util.collect;
 
 import java.util.Iterator;
 import java.util.Spliterator;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
+/**
+ * This class only contains a static method that return an object of type {@code Iterable} for now.
+ * We can implement other method if necessary.
+ *
+ * @lucene.experimental
+ */
 public final class Iterables {
   private Iterables() {}
 
@@ -32,8 +38,6 @@ public final class Iterables {
    * <p>The returned iterable's iterator supports {@code remove()} if {@code fromIterable}'s
    * iterator does. After a successful {@code remove()} call, {@code fromIterable} no longer
    * contains the corresponding element.
-   *
-   * <p><b>{@code Stream} equivalent:</b> {@link Stream#map}
    */
   public static <F, T> Iterable<T> transform(
       Iterable<F> fromIterable, Function<? super F, ? extends T> function) {

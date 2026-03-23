@@ -14,11 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.lucene.util.collect;
 
 import java.util.Iterator;
 import java.util.function.Function;
 
+/**
+ * This class only contains a static method that return an object of type {@code Iterator} for now.
+ * We can implement other method if necessary.
+ *
+ * @lucene.experimental
+ */
 public final class Iterators {
   private Iterators() {}
 
