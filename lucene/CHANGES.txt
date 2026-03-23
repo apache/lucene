@@ -156,7 +156,7 @@ Bug Fixes
 * GITHUB#14971: Fix CachedExecutor thread pool leak in ConcurrentMergeScheduler
   when IndexWriter initialization fails. (Su Beom)
 
-* GITHUB#14971: Fix luke terms export failure on Windows when field names contain characters forbidden in file name (Binlong Gao)
+* GITHUB#15838: Fix luke terms export failure on Windows when field names contain characters forbidden in file name (Binlong Gao)
 
 Changes in Runtime Behavior
 ---------------------
