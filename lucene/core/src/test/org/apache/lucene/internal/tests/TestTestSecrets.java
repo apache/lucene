@@ -16,7 +16,16 @@
  */
 package org.apache.lucene.internal.tests;
 
+import org.apache.lucene.document.Document;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.store.ByteBuffersDirectory;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import java.io.IOException;
+import java.nio.file.Paths;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.TimeUnit;
 
 public class TestTestSecrets extends LuceneTestCase {
 
@@ -36,5 +45,71 @@ public class TestTestSecrets extends LuceneTestCase {
     expectThrows(AssertionError.class, () -> TestSecrets.setConcurrentMergeSchedulerAccess(null));
     expectThrows(AssertionError.class, () -> TestSecrets.setIndexPackageAccess(null));
     expectThrows(AssertionError.class, () -> TestSecrets.setSegmentReaderAccess(null));
+  }
+
+  public void testDeadlock() throws Exception {
+    String javaHome = System.getProperty("java.home");
+    String javaBin = Paths.get(javaHome, "bin", "java").toString();
+    String classpath = System.getProperty("java.class.path");
+
+    // Execute the DeadlockTest#main in a new JVM process (for isolation)
+    ProcessBuilder builder = new ProcessBuilder(
+        javaBin, "-cp", classpath, DeadlockTest.class.getName()
+    ).inheritIO();
+    boolean finished;
+    Process process = builder.start();
+    // If the process doesn't finish within 10 seconds, consider it deadlocked
+    finished = process.waitFor(10, TimeUnit.SECONDS);
+
+    if (!finished) {
+      process.destroyForcibly();
+    }
+
+    // If 'finished' is false, it means timeout (deadlock occurred)
+    assertTrue("Deadlock occurred in TestSecrets", finished);
+  }
+
+  public static class DeadlockTest {
+
+    static void main() throws InterruptedException, IOException {
+      System.out.println("Test started!");
+      // Set a CyclicBarrier to make the two threads start as simultaneously as possible
+      final CyclicBarrier barrier = new CyclicBarrier(2);
+
+      Thread indexThread = new Thread(() -> {
+        System.out.println("Thread #1 - Trigger to initialize IndexWriter");
+        try {
+          barrier.await();
+          Class.forName("org.apache.lucene.index.IndexWriter");
+        } catch (Exception e) {
+          System.err.println("Exception in Thread #1: " + e);
+        }
+      });
+
+      Thread searchThread = new Thread(() -> {
+        System.out.println("Thread #2 - Trigger to initialize SegmentReader");
+        try {
+          barrier.await();
+          Class.forName("org.apache.lucene.index.SegmentReader");
+        } catch (Exception e) {
+          System.err.println("Exception in Thread #2: " + e);
+        }
+      });
+
+      indexThread.start();
+      searchThread.start();
+
+      try (Directory directory = new ByteBuffersDirectory()) {
+        System.out.println("Created Directory object");
+        try (IndexWriter indexWriter = new IndexWriter(directory, new IndexWriterConfig())) {
+          System.out.println("Created IndexWriter object");
+          indexWriter.addDocument(new Document());
+          System.out.println("Called addDocument");
+        }
+      }
+      indexThread.join();
+      searchThread.join();
+      System.out.println("Test finished!");
+    }
   }
 }

@@ -31,26 +31,20 @@ import org.apache.lucene.store.FilterIndexInput;
  * initialized once on startup.
  */
 public final class TestSecrets {
-  static {
-    Consumer<Class<?>> ensureInitialized =
-        clazz -> {
-          try {
-            // A no-op forName here has a side-effect of ensuring the class is loaded and
-            // initialized.
-            // This only happens once. We could just leverage the JLS and invoke a static
-            // method (or a constructor) on the target class but the method below seems simpler.
-            // TODO: In Java 15 there's MethodHandles.lookup().ensureInitialized(clazz)
-            Class.forName(clazz.getName());
-          } catch (ClassNotFoundException e) {
-            throw new RuntimeException(e);
-          }
-        };
 
-    ensureInitialized.accept(ConcurrentMergeScheduler.class);
-    ensureInitialized.accept(SegmentReader.class);
-    ensureInitialized.accept(IndexWriter.class);
-    ensureInitialized.accept(FilterIndexInput.class);
-  }
+  private static final Consumer<Class<?>> ensureInitialized =
+      clazz -> {
+        try {
+          // A no-op forName here has a side-effect of ensuring the class is loaded and
+          // initialized.
+          // This only happens once. We could just leverage the JLS and invoke a static
+          // method (or a constructor) on the target class but the method below seems simpler.
+          // TODO: In Java 15 there's MethodHandles.lookup().ensureInitialized(clazz)
+          Class.forName(clazz.getName());
+        } catch (ClassNotFoundException e) {
+          throw new RuntimeException(e);
+        }
+      };
 
   @SuppressWarnings("NonFinalStaticField")
   private static IndexPackageAccess indexPackageAccess;
@@ -71,60 +65,80 @@ public final class TestSecrets {
 
   /** Return the accessor to internal secrets for an {@link IndexReader}. */
   public static IndexPackageAccess getIndexPackageAccess() {
-    ensureCaller();
+    ensureCallerForGetter();
+    if (indexWriterAccess == null) {
+      ensureInitialized.accept(IndexWriter.class);
+    }
     return Objects.requireNonNull(indexPackageAccess);
   }
 
   /** Return the accessor to internal secrets for an {@link ConcurrentMergeScheduler}. */
   public static ConcurrentMergeSchedulerAccess getConcurrentMergeSchedulerAccess() {
-    ensureCaller();
+    ensureCallerForGetter();
+    if (cmsAccess == null) {
+      ensureInitialized.accept(ConcurrentMergeScheduler.class);
+    }
     return Objects.requireNonNull(cmsAccess);
   }
 
   /** Return the accessor to internal secrets for an {@link SegmentReader}. */
   public static SegmentReaderAccess getSegmentReaderAccess() {
-    ensureCaller();
+    ensureCallerForGetter();
+    if (segmentReaderAccess == null) {
+      ensureInitialized.accept(SegmentReader.class);
+    }
     return Objects.requireNonNull(segmentReaderAccess);
   }
 
   /** Return the accessor to internal secrets for an {@link IndexWriter}. */
   public static IndexWriterAccess getIndexWriterAccess() {
-    ensureCaller();
+    ensureCallerForGetter();
+    if (indexWriterAccess == null) {
+      ensureInitialized.accept(IndexWriter.class);
+    }
     return Objects.requireNonNull(indexWriterAccess);
   }
 
   /** Return the accessor to internal secrets for an {@link FilterIndexInput}. */
   public static FilterIndexInputAccess getFilterInputIndexAccess() {
-    ensureCaller();
+    ensureCallerForGetter();
+    if (filterIndexInputAccess == null) {
+      ensureInitialized.accept(FilterIndexInput.class);
+    }
     return Objects.requireNonNull(filterIndexInputAccess);
   }
 
   /** For internal initialization only. */
   public static void setIndexWriterAccess(IndexWriterAccess indexWriterAccess) {
+    ensureCallerForSetter(IndexWriter.class);
     ensureNull(TestSecrets.indexWriterAccess);
     TestSecrets.indexWriterAccess = indexWriterAccess;
   }
 
   /** For internal initialization only. */
   public static void setIndexPackageAccess(IndexPackageAccess indexPackageAccess) {
+    ensureCallerForSetter(IndexWriter.class);
     ensureNull(TestSecrets.indexPackageAccess);
     TestSecrets.indexPackageAccess = indexPackageAccess;
   }
 
   /** For internal initialization only. */
   public static void setConcurrentMergeSchedulerAccess(ConcurrentMergeSchedulerAccess cmsAccess) {
+    ensureCallerForSetter(ConcurrentMergeScheduler.class);
     ensureNull(TestSecrets.cmsAccess);
     TestSecrets.cmsAccess = cmsAccess;
   }
 
   /** For internal initialization only. */
   public static void setSegmentReaderAccess(SegmentReaderAccess segmentReaderAccess) {
+    ensureCallerForSetter(SegmentReader.class);
     ensureNull(TestSecrets.segmentReaderAccess);
     TestSecrets.segmentReaderAccess = segmentReaderAccess;
   }
 
   /** For internal initialization only. */
   public static void setFilterInputIndexAccess(FilterIndexInputAccess filterIndexInputAccess) {
+    ensureCallerForSetter(FilterIndexInput.class);
     ensureNull(TestSecrets.filterIndexInputAccess);
     TestSecrets.filterIndexInputAccess = filterIndexInputAccess;
   }
@@ -136,7 +150,21 @@ public final class TestSecrets {
     }
   }
 
-  private static void ensureCaller() {
+  private static void ensureCallerForSetter(Class<?> allowedCaller) {
+    final boolean validCaller =
+        StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE)
+            .walk(
+                s ->
+                    s.skip(2)
+                        .limit(1)
+                        .map(StackFrame::getDeclaringClass)
+                        .allMatch(c -> c == allowedCaller));
+    if (!validCaller) {
+      throw new AssertionError("The accessor can only be set by " + allowedCaller.getName() + ".");
+    }
+  }
+
+  private static void ensureCallerForGetter() {
     final boolean validCaller =
         StackWalker.getInstance()
             .walk(
