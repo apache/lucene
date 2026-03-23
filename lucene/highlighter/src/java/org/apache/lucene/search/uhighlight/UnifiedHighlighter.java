@@ -51,6 +51,7 @@ import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermVectors;
+import org.apache.lucene.queries.function.FunctionQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
@@ -1182,6 +1183,12 @@ public class UnifiedHighlighter {
         highlightFlags);
   }
 
+  protected boolean isIgnorableQuery(Query q) {
+    return q instanceof MatchAllDocsQuery
+        || q instanceof MatchNoDocsQuery
+        || q instanceof FunctionQuery;
+  }
+
   protected boolean hasUnrecognizedQuery(Predicate<String> fieldMatcher, Query query) {
     boolean[] hasUnknownLeaf = new boolean[1];
     query.visit(
@@ -1195,7 +1202,7 @@ public class UnifiedHighlighter {
           @Override
           public void visitLeaf(Query query) {
             if (MultiTermHighlighting.canExtractAutomataFromLeafQuery(query) == false) {
-              if (!(query instanceof MatchAllDocsQuery || query instanceof MatchNoDocsQuery)) {
+              if (!UnifiedHighlighter.this.isIgnorableQuery(query)) {
                 hasUnknownLeaf[0] = true;
               }
             }
