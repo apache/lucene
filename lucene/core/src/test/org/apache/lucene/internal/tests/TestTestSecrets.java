@@ -71,7 +71,7 @@ public class TestTestSecrets extends LuceneTestCase {
 
   public static class DeadlockTest {
 
-    static void main() throws InterruptedException, IOException {
+    public static void main() throws InterruptedException, IOException {
       System.out.println("Test started!");
       // Set a CyclicBarrier to make the two threads start as simultaneously as possible
       final CyclicBarrier barrier = new CyclicBarrier(2);
