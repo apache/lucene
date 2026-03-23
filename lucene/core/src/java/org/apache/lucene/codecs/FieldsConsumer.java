@@ -92,6 +92,15 @@ public abstract class FieldsConsumer implements Closeable {
             mergeState,
             new MultiFields(fields.toArray(Fields[]::new), slices.toArray(ReaderSlice[]::new)));
     write(mergedFields, norms);
+    finishMerge(mergeState);
+  }
+
+  private void finishMerge(MergeState mergeState) throws IOException {
+    for (FieldsProducer reader : mergeState.fieldsProducers) {
+      if (reader != null) {
+        reader.finishMerge();
+      }
+    }
   }
 
   // NOTE: strange but necessary so javadocs linting is happy:
