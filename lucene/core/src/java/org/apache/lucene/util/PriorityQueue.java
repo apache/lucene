@@ -176,37 +176,6 @@ public class PriorityQueue<T> implements Iterable<T> {
     }
   }
 
-  //  /**
-  //   * Similar to {@link #addAll(Collection)}, but supply an {@link Function} to convert element.
-  // This
-  //   * method should be preferred over calling {@link #addAll(Collection)}, when the type of param
-  //   * elements is different from the type of this {@link PriorityQueue}, since it doesn't require
-  // the
-  //   * caller to do the conversion at the call site.
-  //   */
-  //  public <S> void addAll(Collection<S> elements, Function<S, T> elementConverter) {
-  //    if (this.size + elements.size() > this.maxSize) {
-  //      throw new ArrayIndexOutOfBoundsException(
-  //          "Cannot add "
-  //              + elements.size()
-  //              + " elements to a queue with remaining capacity: "
-  //              + (maxSize - size));
-  //    }
-  //
-  //    // Heap with size S always takes first S elements of the array,
-  //    // and thus it's safe to fill array further - no actual non-sentinel value will be
-  // overwritten.
-  //    for (S element : elements) {
-  //      this.heap[size + 1] = elementConverter.apply(element);
-  //      this.size++;
-  //    }
-  //
-  //    // The loop goes down to 1 as heap is 1-based not 0-based.
-  //    for (int i = (size >>> 1); i >= 1; i--) {
-  //      downHeap(i);
-  //    }
-  //  }
-
   /**
    * Similar to {@link #addAll(Collection)}, but supply an {@link Function} to transform element.
    * This method should be preferred over calling {@link #addAll(Collection)}, when the type of
