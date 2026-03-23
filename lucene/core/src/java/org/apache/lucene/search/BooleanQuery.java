@@ -18,7 +18,6 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumMap;
@@ -118,7 +117,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
      * Create a new {@link BooleanQuery} based on the parameters that have been set on this builder.
      */
     public BooleanQuery build() {
-      return new BooleanQuery(minimumNumberShouldMatch, clauses.toArray(new BooleanClause[0]));
+      return new BooleanQuery(minimumNumberShouldMatch, List.copyOf(clauses));
     }
   }
 
@@ -127,9 +126,9 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
   // WARNING: Do not let clauseSets escape from this class as it breaks immutability:
   private final Map<Occur, Collection<Query>> clauseSets; // used for equals/hashCode
 
-  private BooleanQuery(int minimumNumberShouldMatch, BooleanClause[] clauses) {
+  private BooleanQuery(int minimumNumberShouldMatch, List<BooleanClause> clauses) {
     this.minimumNumberShouldMatch = minimumNumberShouldMatch;
-    this.clauses = Collections.unmodifiableList(Arrays.asList(clauses));
+    this.clauses = clauses;
     clauseSets = new EnumMap<>(Occur.class);
     // duplicates matter for SHOULD and MUST
     clauseSets.put(Occur.SHOULD, new Multiset<>());
