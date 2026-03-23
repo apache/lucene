@@ -111,7 +111,9 @@ public final class LZ4 {
 
       // matchs
       final int matchDec = compressed.readShort() & 0xFFFF;
-      assert matchDec > 0;
+      if (matchDec == 0) {
+        throw new IOException("offset 0 is invalid");
+      }
 
       int matchLen = token & 0x0F;
       if (matchLen == 0x0F) {

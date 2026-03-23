@@ -29,13 +29,13 @@ import org.apache.lucene.analysis.TokenStream;
  * <br>
  * In Solr this might be configured such as
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  *     &lt;analyzer type="index"&gt;
  *       &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
  *       &lt;-- other filters --&gt;
  *       &lt;filter class="solr.DropIfFlaggedFilterFactory" dropFlags="9"/&gt;
  *     &lt;/analyzer&gt;
- * </pre>
+ * </code></pre>
  *
  * The above would drop any token that had the first and fourth bit set.
  *

@@ -27,11 +27,11 @@ import org.apache.lucene.search.similarities.Similarity; // javadocs
  * Factory class used by {@link SearcherManager} to create new IndexSearchers. The default
  * implementation just creates an IndexSearcher with no custom behavior:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   public IndexSearcher newSearcher(IndexReader r) throws IOException {
  *     return new IndexSearcher(r);
  *   }
- * </pre>
+ * </code></pre>
  *
  * You can pass your own factory instead if you want custom behavior, such as:
  *

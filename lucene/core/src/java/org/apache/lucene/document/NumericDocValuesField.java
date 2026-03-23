@@ -25,9 +25,9 @@ import org.apache.lucene.search.Query;
  * Field that stores a per-document <code>long</code> value for scoring, sorting or value retrieval.
  * Here's an example usage:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   document.add(new NumericDocValuesField(name, 22L));
- * </pre>
+ * </code></pre>
  *
  * <p>If you also need to store the value, you should add a separate {@link StoredField} instance.
  */

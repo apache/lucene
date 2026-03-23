@@ -35,7 +35,7 @@
  *
  * <p>Here is a sample code used to run the TREC 2006 queries 701-850 on the .Gov2 collection:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *     File topicsFile = new File("topics-701-850.txt");
  *     File qrelsFile = new File("qrels-701-850.txt");
  *     IndexReader ir = DirectoryReader.open(directory):
@@ -67,7 +67,7 @@
  *     // print an average sum of the results
  *     QualityStats avg = QualityStats.average(stats);
  *     avg.log("SUMMARY",2,logger, "  ");
- * </pre>
+ * </code></pre>
  *
  * <p>Some immediate ways to modify this program to your needs are:
  *

@@ -1354,10 +1354,10 @@ public class TestJoinUtil extends LuceneTestCase {
 
         Set<ScoreMode> scoreModes = EnumSet.allOf(ScoreMode.class);
         ScoreMode scoreMode1 =
-            scoreModes.toArray(new ScoreMode[0])[random().nextInt(scoreModes.size())];
+            scoreModes.toArray(ScoreMode[]::new)[random().nextInt(scoreModes.size())];
         scoreModes.remove(scoreMode1);
         ScoreMode scoreMode2 =
-            scoreModes.toArray(new ScoreMode[0])[random().nextInt(scoreModes.size())];
+            scoreModes.toArray(ScoreMode[]::new)[random().nextInt(scoreModes.size())];
 
         final Query x;
         try (IndexReader r = w.getReader()) {

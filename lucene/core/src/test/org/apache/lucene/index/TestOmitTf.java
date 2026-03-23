@@ -141,8 +141,8 @@ public class TestOmitTf extends LuceneTestCase {
                 .setMergePolicy(newLogMergePolicy()));
     LogMergePolicy lmp = (LogMergePolicy) writer.getConfig().getMergePolicy();
     lmp.setMergeFactor(2);
-    lmp.setNoCFSRatio(0.0);
     Document d = new Document();
+    writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
 
     Field f1 = newField("f1", "This field has term freqs", omitType);
     d.add(f1);

@@ -1414,10 +1414,10 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
       // offset + pos + posLength + type
       assertTokenStreamContents(
           ts,
-          tokens.toArray(new String[tokens.size()]),
+          tokens.toArray(String[]::new),
           toIntArray(startOffsets),
           toIntArray(endOffsets),
-          types.toArray(new String[types.size()]),
+          types.toArray(String[]::new),
           toIntArray(positions),
           toIntArray(positionLengths),
           text.length(),
@@ -1426,10 +1426,10 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
       // offset + pos + type
       assertTokenStreamContents(
           ts,
-          tokens.toArray(new String[tokens.size()]),
+          tokens.toArray(String[]::new),
           toIntArray(startOffsets),
           toIntArray(endOffsets),
-          types.toArray(new String[types.size()]),
+          types.toArray(String[]::new),
           toIntArray(positions),
           null,
           text.length(),
@@ -1438,7 +1438,7 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
       // offset + pos + posLength
       assertTokenStreamContents(
           ts,
-          tokens.toArray(new String[tokens.size()]),
+          tokens.toArray(String[]::new),
           toIntArray(startOffsets),
           toIntArray(endOffsets),
           null,
@@ -1450,7 +1450,7 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
       // offset + pos
       assertTokenStreamContents(
           ts,
-          tokens.toArray(new String[tokens.size()]),
+          tokens.toArray(String[]::new),
           toIntArray(startOffsets),
           toIntArray(endOffsets),
           null,
@@ -1462,7 +1462,7 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
       // offset
       assertTokenStreamContents(
           ts,
-          tokens.toArray(new String[tokens.size()]),
+          tokens.toArray(String[]::new),
           toIntArray(startOffsets),
           toIntArray(endOffsets),
           null,
@@ -1472,7 +1472,7 @@ public abstract class BaseTokenStreamTestCase extends LuceneTestCase {
           graphOffsetsAreCorrect);
     } else {
       // terms only
-      assertTokenStreamContents(ts, tokens.toArray(new String[tokens.size()]));
+      assertTokenStreamContents(ts, tokens.toArray(String[]::new));
     }
 
     a.normalize("dummy", text);

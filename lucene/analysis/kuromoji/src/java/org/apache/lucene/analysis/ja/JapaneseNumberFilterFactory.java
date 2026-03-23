@@ -23,14 +23,14 @@ import org.apache.lucene.analysis.TokenStream;
 /**
  * Factory for {@link JapaneseNumberFilter}. <br>
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_ja" class="solr.TextField"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.JapaneseTokenizerFactory" discardPunctuation="false"/&gt;
  *     &lt;filter class="solr.JapaneseNumberFilterFactory"/&gt;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;
- * </pre>
+ * </code></pre>
  *
  * <p>It is important that punctuation is not discarded by the tokenizer so use {@code
  * discardPunctuation="false"} in your {@link JapaneseTokenizerFactory}.

@@ -458,13 +458,13 @@ public class IndexSearcher {
    *
    * <p>Example:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * TopDocs hits = searcher.search(query, 10);
    * StoredFields storedFields = searcher.storedFields();
    * for (ScoreDoc hit : hits.scoreDocs) {
    *   Document doc = storedFields.document(hit.doc);
    * }
-   * </pre>
+   * </code></pre>
    *
    * @throws IOException If there is a low-level IO error
    * @see IndexReader#storedFields()
@@ -1004,7 +1004,7 @@ public class IndexSearcher {
     private final int maxDocs;
 
     public LeafSlice(List<LeafReaderContextPartition> partitions) {
-      this(partitions.toArray(new LeafReaderContextPartition[0]));
+      this(partitions.toArray(LeafReaderContextPartition[]::new));
     }
 
     private static LeafSlice entireSegments(List<LeafReaderContext> contexts) {

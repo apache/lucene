@@ -29,7 +29,7 @@ import org.apache.lucene.util.BitUtil;
  * <p>Unlike PackedInts, it optimizes for read i/o operations and supports &gt; 2B values. Example
  * usage:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   int bitsPerValue = DirectWriter.bitsRequired(100); // values up to and including 100
  *   IndexOutput output = dir.createOutput("packed", IOContext.DEFAULT);
  *   DirectWriter writer = DirectWriter.getInstance(output, numberOfValues, bitsPerValue);
@@ -38,7 +38,7 @@ import org.apache.lucene.util.BitUtil;
  *   }
  *   writer.finish();
  *   output.close();
- * </pre>
+ * </code></pre>
  *
  * @see DirectReader
  */

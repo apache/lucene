@@ -71,14 +71,14 @@
  * org.apache.lucene.search.vectorhighlight.FieldQuery.QueryPhraseMap} from the user query. <code>
  * QueryPhraseMap</code> consists of the following members:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * public class QueryPhraseMap {
  *   boolean terminal;
  *   int slop;   // valid if terminal == true and phraseHighlight == true
  *   float boost;  // valid if terminal == true
  *   Map&lt;String, QueryPhraseMap&gt; subMap;
  * }
- * </pre>
+ * </code></pre>
  *
  * <p><code>QueryPhraseMap</code> has subMap. The key of the subMap is a term text in the user query
  * and the value is a subsequent <code>QueryPhraseMap</code>. If the query is a term (not phrase),
@@ -157,7 +157,7 @@
  * <p>The calculation for each <code>FieldFragList.WeightedFragInfo.totalBoost</code> (weight)
  * depends on the implementation of <code>FieldFragList.add( ... )</code>:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   public void add( int startOffset, int endOffset, List&lt;WeightedPhraseInfo&gt; phraseInfoList ) {
  *     float totalBoost = 0;
  *     List&lt;SubInfo&gt; subInfos = new ArrayList&lt;SubInfo&gt;();
@@ -168,16 +168,16 @@
  *     getFragInfos().add( new WeightedFragInfo( startOffset, endOffset, subInfos, totalBoost ) );
  *   }
  *
- * </pre>
+ * </code></pre>
  *
  * The used implementation of <code>FieldFragList</code> is noted in <code>
  * BaseFragListBuilder.createFieldFragList( ... )</code>:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   public FieldFragList createFieldFragList( FieldPhraseList fieldPhraseList, int fragCharSize ){
  *     return createFieldFragList( fieldPhraseList, new SimpleFieldFragList( fragCharSize ), fragCharSize );
  *   }
- * </pre>
+ * </code></pre>
  *
  * <p>Currently there are basically to approaches available:
  *

@@ -17,12 +17,14 @@
 package org.apache.lucene.index;
 
 import java.io.Closeable;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.store.AlreadyClosedException;
@@ -55,16 +57,16 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
   // eligible DWPTs and
   // mark them as flushable putting them in the flushQueue ready for other threads (ie. indexing
   // threads) to help flushing
-  private final Queue<DocumentsWriterPerThread> flushQueue = new LinkedList<>();
+  private final Queue<DocumentsWriterPerThread> flushQueue = new ArrayDeque<>();
   // only for safety reasons if a DWPT is close to the RAM limit
-  private final Queue<DocumentsWriterPerThread> blockedFlushes = new LinkedList<>();
+  private final Queue<DocumentsWriterPerThread> blockedFlushes = new ArrayDeque<>();
   // flushingWriters holds all currently flushing writers. There might be writers in this list that
   // are also in the flushQueue which means that writers in the flushingWriters list are not
   // necessarily
   // already actively flushing. They are only in the state of flushing and might be picked up in the
   // future by
   // polling the flushQueue
-  private final List<DocumentsWriterPerThread> flushingWriters = new ArrayList<>();
+  private final Set<DocumentsWriterPerThread> flushingWriters = new HashSet<>();
 
   private double maxConfiguredRamBuffer = 0;
   private long peakActiveBytes = 0; // only with assert

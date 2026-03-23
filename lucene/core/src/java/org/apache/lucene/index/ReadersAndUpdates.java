@@ -553,8 +553,7 @@ final class ReadersAndUpdates {
         scratch = new FixedBitSet(bitSet.length());
       } else {
         // It's OK even if bitset.length() == 0 according the contract.
-        scratch = FixedBitSet.ensureCapacity(scratch, bitSet.length() - 1);
-        scratch.clear();
+        scratch = FixedBitSet.ensureCapacityAndClear(scratch, bitSet.length() - 1);
       }
 
       onDiskDocValues.intoBitSet(upTo, scratch, offset);
@@ -682,7 +681,7 @@ final class ReadersAndUpdates {
             byName.put(fi.name, fi);
           }
         }
-        fieldInfos = new FieldInfos(byName.values().toArray(new FieldInfo[0]));
+        fieldInfos = new FieldInfos(byName.values().toArray(FieldInfo[]::new));
         final DocValuesFormat docValuesFormat = codec.docValuesFormat();
 
         handleDVUpdates(

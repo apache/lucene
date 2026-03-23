@@ -38,9 +38,9 @@ import org.apache.lucene.util.BytesRef;
  *
  * <p>Example indexing usage:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * document.add(new SuggestField(name, "suggestion", 4));
- * </pre>
+ * </code></pre>
  *
  * To perform document suggestions based on the field, use {@link
  * SuggestIndexSearcher#suggest(CompletionQuery, int, boolean)}

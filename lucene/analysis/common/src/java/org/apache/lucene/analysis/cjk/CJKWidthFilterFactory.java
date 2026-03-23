@@ -23,7 +23,7 @@ import org.apache.lucene.analysis.TokenStream;
 /**
  * Factory for {@link CJKWidthFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_cjk" class="solr.TextField"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.StandardTokenizerFactory"/&gt;
@@ -31,7 +31,7 @@ import org.apache.lucene.analysis.TokenStream;
  *     &lt;filter class="solr.LowerCaseFilterFactory"/&gt;
  *     &lt;filter class="solr.CJKBigramFilterFactory"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @since 3.6.0
  * @lucene.spi {@value #NAME}

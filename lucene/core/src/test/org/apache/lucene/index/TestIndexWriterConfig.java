@@ -284,10 +284,10 @@ public class TestIndexWriterConfig extends LuceneTestCase {
   public void testLiveChangeToCFS() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-    iwc.setMergePolicy(newLogMergePolicy(true));
+    iwc.setMergePolicy(newLogMergePolicy());
     // Start false:
     iwc.setUseCompoundFile(false);
-    iwc.getMergePolicy().setNoCFSRatio(0.0d);
+    iwc.getCodec().compoundFormat().setShouldUseCompoundFile(false);
     IndexWriter w = new IndexWriter(dir, iwc);
     // Change to true:
     w.getConfig().setUseCompoundFile(true);
@@ -307,10 +307,8 @@ public class TestIndexWriterConfig extends LuceneTestCase {
     // no compound files after merge
     assertFalse("Expected Non-CFS after merge", w.newestSegment().info.getUseCompoundFile());
 
-    MergePolicy lmp = w.getConfig().getMergePolicy();
-    lmp.setNoCFSRatio(1.0);
-    lmp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
-
+    w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(true);
+    w.getConfig().getCodec().compoundFormat().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     w.addDocument(doc);
     w.forceMerge(1);
     w.commit();

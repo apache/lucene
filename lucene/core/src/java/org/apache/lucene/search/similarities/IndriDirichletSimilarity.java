@@ -24,10 +24,10 @@ import org.apache.lucene.search.Explanation;
  * Bayesian smoothing using Dirichlet priors as implemented in the Indri Search engine
  * (http://www.lemurproject.org/indri.php). Indri Dirichelet Smoothing!
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * tf_E + mu*P(t|D) P(t|E)= documentLength + documentMu
  * mu*P(t|C) + tf_D where P(t|D)= doclen + mu
- * </pre>
+ * </code></pre>
  *
  * <p>A larger value for mu, produces more smoothing. Smoothing is most important for short
  * documents where the probabilities are more granular.

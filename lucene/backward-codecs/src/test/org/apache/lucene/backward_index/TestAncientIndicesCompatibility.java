@@ -199,7 +199,7 @@ public class TestAncientIndicesCompatibility extends LuceneTestCase {
       checker.setInfoStream(new PrintStream(bos, false, UTF_8));
       checker.setLevel(CheckIndex.Level.MIN_LEVEL_FOR_INTEGRITY_CHECKS);
       CheckIndex.Status indexStatus = checker.checkIndex();
-      if (version.startsWith("8.") || version.startsWith("9.")) {
+      if (version.startsWith("9.")) {
         assertTrue(indexStatus.clean);
       } else {
         assertFalse(indexStatus.clean);

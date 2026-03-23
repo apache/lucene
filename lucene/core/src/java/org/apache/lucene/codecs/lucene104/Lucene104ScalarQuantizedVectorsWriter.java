@@ -22,6 +22,7 @@ import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
 import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.packAsBinary;
+import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.transposeDibit;
 import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.transposeHalfByte;
 
 import java.io.Closeable;
@@ -35,7 +36,6 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
-import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
@@ -58,6 +58,8 @@ import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
  * Writes quantized vector values and metadata to index segments in the format for Lucene 10.4.
@@ -196,7 +198,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     byte[] vector =
         switch (encoding) {
           case UNSIGNED_BYTE, SEVEN_BIT -> scratch;
-          case PACKED_NIBBLE, SINGLE_BIT_QUERY_NIBBLE ->
+          case PACKED_NIBBLE, SINGLE_BIT_QUERY_NIBBLE, DIBIT_QUERY_NIBBLE ->
               new byte[encoding.getDocPackedLength(scratch.length)];
         };
     for (int i = 0; i < fieldData.getVectors().size(); i++) {
@@ -206,6 +208,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       switch (encoding) {
         case PACKED_NIBBLE -> OffHeapScalarQuantizedVectorValues.packNibbles(scratch, vector);
         case SINGLE_BIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.packAsBinary(scratch, vector);
+        case DIBIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.transposeDibit(scratch, vector);
         case UNSIGNED_BYTE, SEVEN_BIT -> {}
       }
       vectorData.writeBytes(vector, vector.length);
@@ -256,7 +259,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     byte[] vector =
         switch (encoding) {
           case UNSIGNED_BYTE, SEVEN_BIT -> scratch;
-          case PACKED_NIBBLE, SINGLE_BIT_QUERY_NIBBLE ->
+          case PACKED_NIBBLE, SINGLE_BIT_QUERY_NIBBLE, DIBIT_QUERY_NIBBLE ->
               new byte[encoding.getDocPackedLength(scratch.length)];
         };
     for (int ordinal : ordMap) {
@@ -266,6 +269,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       switch (encoding) {
         case PACKED_NIBBLE -> OffHeapScalarQuantizedVectorValues.packNibbles(scratch, vector);
         case SINGLE_BIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.packAsBinary(scratch, vector);
+        case DIBIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.transposeDibit(scratch, vector);
         case UNSIGNED_BYTE, SEVEN_BIT -> {}
       }
       vectorData.writeBytes(vector, vector.length);
@@ -412,8 +416,13 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
               quantizationScratch,
               new byte[] {encoding.getBits(), encoding.getQueryBits()},
               centroid);
-      // pack and store document bit vector
-      packAsBinary(quantizationScratch[0], toIndex);
+      // pack and store document vector based on encoding type
+      switch (encoding) {
+        case SINGLE_BIT_QUERY_NIBBLE -> packAsBinary(quantizationScratch[0], toIndex);
+        case DIBIT_QUERY_NIBBLE -> transposeDibit(quantizationScratch[0], toIndex);
+        case PACKED_NIBBLE, UNSIGNED_BYTE, SEVEN_BIT ->
+            throw new IllegalArgumentException("Unsupported asymmetric encoding: " + encoding);
+      }
       binarizedVectorData.writeBytes(toIndex, toIndex.length);
       binarizedVectorData.writeInt(Float.floatToIntBits(r[0].lowerInterval()));
       binarizedVectorData.writeInt(Float.floatToIntBits(r[0].upperInterval()));
@@ -798,7 +807,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       this.packed =
           switch (encoding) {
             case UNSIGNED_BYTE, SEVEN_BIT -> this.quantized;
-            case PACKED_NIBBLE, SINGLE_BIT_QUERY_NIBBLE ->
+            case PACKED_NIBBLE, SINGLE_BIT_QUERY_NIBBLE, DIBIT_QUERY_NIBBLE ->
                 new byte[encoding.getDocPackedLength(quantized.length)];
           };
       this.centroid = centroid;
@@ -873,6 +882,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       switch (encoding) {
         case PACKED_NIBBLE -> OffHeapScalarQuantizedVectorValues.packNibbles(quantized, packed);
         case SINGLE_BIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.packAsBinary(quantized, packed);
+        case DIBIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.transposeDibit(quantized, packed);
         case UNSIGNED_BYTE, SEVEN_BIT -> {}
       }
     }

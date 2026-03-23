@@ -76,7 +76,7 @@ abstract class ParentGoogleJavaFormatTask extends DefaultTask {
   @Internal
   protected abstract RegularFileProperty getFileStateCache();
 
-  private Function<File, String> fileToKey;
+  private final Function<File, String> fileToKey;
 
   public ParentGoogleJavaFormatTask(ProjectLayout layout, String gjfTask) {
     getOutputChangeListFile()

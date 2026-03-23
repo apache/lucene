@@ -24,7 +24,7 @@ import org.apache.lucene.util.SparseFixedBitSet;
 
 /**
  * This file contains unicode properties used by various {@link CharTokenizer}s. The data was
- * generated using ICU4J v78.1.0.0, unicode version: 17.0.0.0.
+ * generated using ICU4J v78.2.0.0, unicode version: 17.0.0.0.
  */
 public final class UnicodeProps {
   private UnicodeProps() {}

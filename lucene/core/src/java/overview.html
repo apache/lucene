@@ -30,37 +30,37 @@ to check if the results are what we expect):</p>
 code comes from org.apache.lucene.TestDemo.
 See LUCENE-8481 for reasons why it's out of sync with the code.
 -->
-<pre class="prettyprint">
-    Analyzer analyzer = new StandardAnalyzer();
+<pre><code class="language-java">
+Analyzer analyzer = new StandardAnalyzer();
 
-    Path indexPath = Files.createTempDirectory("tempIndex");
-    try (Directory directory = FSDirectory.open(indexPath)) {
-      IndexWriterConfig config = new IndexWriterConfig(analyzer);
-      try (IndexWriter iwriter = new IndexWriter(directory, config)) {
-        Document doc = new Document();
-        String text = "This is the text to be indexed.";
-        doc.add(new Field("fieldname", text, TextField.TYPE_STORED));
-        iwriter.addDocument(doc);
-      }
+Path indexPath = Files.createTempDirectory("tempIndex");
+try (Directory directory = FSDirectory.open(indexPath)) {
+  IndexWriterConfig config = new IndexWriterConfig(analyzer);
+  try (IndexWriter iwriter = new IndexWriter(directory, config)) {
+    Document doc = new Document();
+    String text = "This is the text to be indexed.";
+    doc.add(new Field("fieldname", text, TextField.TYPE_STORED));
+    iwriter.addDocument(doc);
+  }
 
-      // Now search the index:
-      try (DirectoryReader ireader = DirectoryReader.open(directory)) {
-        IndexSearcher isearcher = new IndexSearcher(ireader);
-        // Parse a simple query that searches for "text":
-        QueryParser parser = new QueryParser("fieldname", analyzer);
-        Query query = parser.parse("text");
-        ScoreDoc[] hits = isearcher.search(query, 10).scoreDocs;
-        assertEquals(1, hits.length);
-        // Iterate through the results:
-        StoredFields storedFields = isearcher.storedFields();
-        for (int i = 0; i &lt; hits.length; i++) {
-          Document hitDoc = storedFields.document(hits[i].doc);
-          assertEquals("This is the text to be indexed.", hitDoc.get("fieldname"));
-        }
-      }
-    } finally {
-      IOUtils.rm(indexPath);
-    }</pre>
+  // Now search the index:
+  try (DirectoryReader ireader = DirectoryReader.open(directory)) {
+    IndexSearcher isearcher = new IndexSearcher(ireader);
+    // Parse a simple query that searches for "text":
+    QueryParser parser = new QueryParser("fieldname", analyzer);
+    Query query = parser.parse("text");
+    ScoreDoc[] hits = isearcher.search(query, 10).scoreDocs;
+    assertEquals(1, hits.length);
+    // Iterate through the results:
+    StoredFields storedFields = isearcher.storedFields();
+    for (int i = 0; i &lt; hits.length; i++) {
+      Document hitDoc = storedFields.document(hits[i].doc);
+      assertEquals("This is the text to be indexed.", hitDoc.get("fieldname"));
+    }
+  }
+} finally {
+  IOUtils.rm(indexPath);
+}</code></pre>
 <!-- ======================================================== -->
 
 

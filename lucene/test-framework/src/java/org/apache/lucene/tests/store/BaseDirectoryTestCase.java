@@ -55,6 +55,7 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.FileSwitchDirectory;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
@@ -1628,8 +1629,15 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
 
   private void testIsLoaded(int startOffset) throws IOException {
     try (Directory dir = getDirectory(createTempDir())) {
-      if (FilterDirectory.unwrap(dir) instanceof MMapDirectory mMapDirectory) {
-        mMapDirectory.setPreload(MMapDirectory.ALL_FILES);
+      Directory inner = FilterDirectory.unwrap(dir);
+      if (inner instanceof FileSwitchDirectory fsd) {
+        // We check the secondary directory based on the assumption that the file in this test will
+        // always route there.
+        inner = FilterDirectory.unwrap(fsd.getSecondaryDir());
+      }
+      MMapDirectory mMapDir = inner instanceof MMapDirectory mmap ? mmap : null;
+      if (mMapDir != null) {
+        mMapDir.setPreload(MMapDirectory.ALL_FILES);
       }
       final int totalLength = startOffset + TestUtil.nextInt(random(), 16384, 65536);
       byte[] arr = new byte[totalLength];
@@ -1649,7 +1657,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
 
         if (Constants.WINDOWS) {
           // On Windows, we temporarily don't care until this is fixed: #14050
-        } else if (FilterDirectory.unwrap(dir) instanceof MMapDirectory
+        } else if (mMapDir != null
             // direct IO wraps MMap but does not support isLoaded
             && !(dir.getClass().getName().contains("DirectIO"))) {
           assertTrue(loaded.isPresent());

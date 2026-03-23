@@ -320,7 +320,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     Throwable priorE = null;
     int format = -1;
     try {
-      // NOTE: as long as we want to throw indexformattooold (vs corruptindexexception), we need
+      // NOTE: as we want to throw IndexFormatTooOld (vs CorruptIndexException), we need
       // to read the magic ourselves.
       int magic = CodecUtil.readBEInt(input);
       if (magic != CodecUtil.CODEC_MAGIC) {
@@ -728,7 +728,7 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
     return generation;
   }
 
-  /** Returns last succesfully read or written generation. */
+  /** Returns the last successfully read or written generation. */
   public long getLastGeneration() {
     return lastGeneration;
   }

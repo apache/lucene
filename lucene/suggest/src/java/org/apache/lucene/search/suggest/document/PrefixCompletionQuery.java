@@ -32,9 +32,9 @@ import org.apache.lucene.search.suggest.BitsProducer;
  * <p>Example usage of querying an analyzed prefix 'sugg' against a field 'suggest_field' is as
  * follows:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *  CompletionQuery query = new PrefixCompletionQuery(analyzer, new Term("suggest_field", "sugg"));
- * </pre>
+ * </code></pre>
  *
  * @lucene.experimental
  */

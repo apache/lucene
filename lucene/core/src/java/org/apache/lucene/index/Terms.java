@@ -135,9 +135,6 @@ public abstract class Terms {
   /** Returns true if documents in this field store payloads. */
   public abstract boolean hasPayloads();
 
-  /** Zero-length array of {@link Terms}. */
-  public static final Terms[] EMPTY_ARRAY = new Terms[0];
-
   /**
    * Returns the smallest term (in lexicographic order) in the field. Note that, just like other
    * term measures, this measure does not take deleted documents into account. This returns null

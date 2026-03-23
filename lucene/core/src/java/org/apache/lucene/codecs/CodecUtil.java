@@ -454,7 +454,7 @@ public final class CodecUtil {
    *
    * <p>Example usage:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * try (ChecksumIndexInput input = ...) {
    *   Throwable priorE = null;
    *   try {
@@ -465,7 +465,7 @@ public final class CodecUtil {
    *     CodecUtil.checkFooter(input, priorE);
    *   }
    * }
-   * </pre>
+   * </code></pre>
    */
   public static void checkFooter(ChecksumIndexInput in, Throwable priorException)
       throws IOException {

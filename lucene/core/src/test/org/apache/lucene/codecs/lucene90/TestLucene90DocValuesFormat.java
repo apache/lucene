@@ -611,7 +611,8 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
     conf.setMaxBufferedDocs(maxBufferedDocs);
     conf.setRAMBufferSizeMB(-1);
-    conf.setMergePolicy(newLogMergePolicy(random().nextBoolean()));
+    conf.setMergePolicy(newLogMergePolicy());
+    conf.getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     return new IndexWriter(dir, conf);
   }
 
@@ -643,7 +644,8 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
     conf.setMaxBufferedDocs(atLeast(Lucene90DocValuesFormat.NUMERIC_BLOCK_SIZE));
     conf.setRAMBufferSizeMB(-1);
-    conf.setMergePolicy(newLogMergePolicy(random().nextBoolean()));
+    conf.setMergePolicy(newLogMergePolicy());
+    conf.getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     IndexWriter writer = new IndexWriter(dir, conf);
 
     final int numDocs = atLeast(Lucene90DocValuesFormat.NUMERIC_BLOCK_SIZE * 3);
@@ -713,7 +715,8 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
     IndexWriterConfig conf = newIndexWriterConfig(new MockAnalyzer(random()));
     conf.setMaxBufferedDocs(atLeast(Lucene90DocValuesFormat.NUMERIC_BLOCK_SIZE));
     conf.setRAMBufferSizeMB(-1);
-    conf.setMergePolicy(newLogMergePolicy(random().nextBoolean()));
+    conf.setMergePolicy(newLogMergePolicy());
+    conf.getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     IndexWriter writer = new IndexWriter(dir, conf);
     Document doc = new Document();
     Field storedField = newStringField("stored", "", Field.Store.YES);

@@ -78,7 +78,7 @@
  * <p>Typical usage for the generic two-pass grouping search looks like this using the grouping
  * convenience utility (optionally using caching for the second pass search):
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   GroupingSearch groupingSearch = new GroupingSearch("author");
  *   groupingSearch.setGroupSort(groupSort);
  *   groupingSearch.setFillSortFields(fillFields);
@@ -99,13 +99,13 @@
  *   if (requiredTotalGroupCount) {
  *     int totalGroupCount = result.totalGroupCount;
  *   }
- * </pre>
+ * </code></pre>
  *
  * <p>To use the single-pass <code>BlockGroupingCollector</code>, first, at indexing time, you must
  * ensure all docs in each group are added as a block, and you have some way to find the last
  * document of each group. One simple way to do this is to add a marker binary field:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   // Create Documents from your source:
  *   List&lt;Document&gt; oneGroup = ...;
  *
@@ -119,22 +119,22 @@
  *   // example, each group could have a "groupID" field, with the same
  *   // value for all docs in this group:
  *   writer.addDocuments(oneGroup);
- * </pre>
+ * </code></pre>
  *
  * Then, at search time:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   Query groupEndDocs = new TermQuery(new Term("groupEnd", "x"));
  *   BlockGroupingCollector c = new BlockGroupingCollector(groupSort, groupOffset+topNGroups, needsScores, groupEndDocs);
  *   s.search(new TermQuery(new Term("content", searchTerm)), c);
  *   TopGroups groupsResult = c.getTopGroups(withinGroupSort, groupOffset, docOffset, docOffset+docsPerGroup, fillFields);
  *
  *   // Render groupsResult...
- * </pre>
+ * </code></pre>
  *
  * Or alternatively use the <code>GroupingSearch</code> convenience utility:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   // Per search:
  *   GroupingSearch groupingSearch = new GroupingSearch(groupEndDocs);
  *   groupingSearch.setGroupSort(groupSort);
@@ -143,7 +143,7 @@
  *   TopGroups groupsResult = groupingSearch.search(indexSearcher, query, groupOffset, groupLimit);
  *
  *   // Render groupsResult...
- * </pre>
+ * </code></pre>
  *
  * Note that the <code>groupValue</code> of each <code>GroupDocs</code> will be <code>null</code>,
  * so if you need to present this value you'll have to separately retrieve it (for example using
@@ -156,7 +156,7 @@
  * the <code>GroupingSearch</code> convenience utility, but when if one only wants to compute the
  * most relevant documents per group it is better to just use the collector as done here below.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   TermGroupSelector grouper = new TermGroupSelector(groupField);
  *   AllGroupHeadsCollector c = AllGroupHeadsCollector.newCollector(grouper, sortWithinGroup);
  *   s.search(new TermQuery(new Term("content", searchTerm)), c);
@@ -165,6 +165,6 @@
  *   // Return all group heads as FixedBitSet.
  *   int maxDoc = s.maxDoc();
  *   FixedBitSet groupHeadsBitSet = c.retrieveGroupHeads(maxDoc)
- * </pre>
+ * </code></pre>
  */
 package org.apache.lucene.search.grouping;

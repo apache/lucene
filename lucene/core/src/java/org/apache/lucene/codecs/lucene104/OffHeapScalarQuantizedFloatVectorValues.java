@@ -34,6 +34,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
  * Reads quantized vector values from the index input and returns float vector values after
@@ -68,14 +69,14 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
   private int lastOrd = -1;
   final float[] correctiveValues;
   int quantizedComponentSum;
-  final Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding encoding;
+  final ScalarEncoding encoding;
   final float[] centroid;
 
   OffHeapScalarQuantizedFloatVectorValues(
       int dimension,
       int size,
       float[] centroid,
-      Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding encoding,
+      ScalarEncoding encoding,
       VectorSimilarityFunction similarityFunction,
       FlatVectorsScorer vectorsScorer,
       IndexInput slice) {
@@ -123,6 +124,8 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
           OffHeapScalarQuantizedVectorValues.unpackNibbles(byteValue, unpackedByteVectorValue);
       case SINGLE_BIT_QUERY_NIBBLE ->
           OptimizedScalarQuantizer.unpackBinary(byteValue, unpackedByteVectorValue);
+      case DIBIT_QUERY_NIBBLE ->
+          OptimizedScalarQuantizer.untransposeDibit(byteValue, unpackedByteVectorValue);
       case UNSIGNED_BYTE, SEVEN_BIT -> {
         deQuantize(
             byteValue,
@@ -176,7 +179,7 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
       OrdToDocDISIReaderConfiguration configuration,
       int dimension,
       int size,
-      Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding encoding,
+      ScalarEncoding encoding,
       VectorSimilarityFunction similarityFunction,
       FlatVectorsScorer vectorsScorer,
       float[] centroid,
@@ -217,7 +220,7 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
         int dimension,
         int size,
         float[] centroid,
-        Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding encoding,
+        ScalarEncoding encoding,
         VectorSimilarityFunction similarityFunction,
         FlatVectorsScorer vectorsScorer,
         IndexInput slice) {
@@ -279,7 +282,7 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
         int dimension,
         int size,
         float[] centroid,
-        Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding encoding,
+        ScalarEncoding encoding,
         IndexInput dataIn,
         VectorSimilarityFunction similarityFunction,
         FlatVectorsScorer vectorsScorer,
@@ -370,7 +373,7 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
           dimension,
           0,
           null,
-          Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.UNSIGNED_BYTE,
+          ScalarEncoding.UNSIGNED_BYTE,
           similarityFunction,
           vectorsScorer,
           null);

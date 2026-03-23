@@ -39,12 +39,12 @@ import org.apache.lucene.util.ResourceLoaderAware;
  *
  * <p>To use the default set of per-script rules:
  *
- * <pre class="prettyprint" >
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_icu" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.ICUTokenizerFactory"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * <p>You can customize this tokenizer's behavior by specifying per-script rule files, which are
  * compiled by the ICU RuleBasedBreakIterator. See the <a
@@ -57,13 +57,13 @@ import org.apache.lucene.util.ResourceLoaderAware;
  * followed by a colon, then a resource path. E.g. to specify rules for Latin (script code "Latn")
  * and Cyrillic (script code "Cyrl"):
  *
- * <pre class="prettyprint" >
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_icu_custom" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.ICUTokenizerFactory" cjkAsWords="true"
  *                rulefiles="Latn:my.Latin.rules.rbbi,Cyrl:my.Cyrillic.rules.rbbi"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @since 3.1
  * @lucene.spi {@value #NAME}

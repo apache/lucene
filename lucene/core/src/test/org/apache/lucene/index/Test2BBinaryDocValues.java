@@ -54,9 +54,10 @@ public class Test2BBinaryDocValues extends LuceneTestCase {
                 .setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH)
                 .setRAMBufferSizeMB(256.0)
                 .setMergeScheduler(new ConcurrentMergeScheduler())
-                .setMergePolicy(newLogMergePolicy(false, 10))
+                .setMergePolicy(newLogMergePolicy(10))
                 .setOpenMode(IndexWriterConfig.OpenMode.CREATE)
                 .setCodec(TestUtil.getDefaultCodec()));
+    w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
 
     Document doc = new Document();
     byte[] bytes = new byte[4];
@@ -117,9 +118,10 @@ public class Test2BBinaryDocValues extends LuceneTestCase {
                 .setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH)
                 .setRAMBufferSizeMB(256.0)
                 .setMergeScheduler(new ConcurrentMergeScheduler())
-                .setMergePolicy(newLogMergePolicy(false, 10))
+                .setMergePolicy(newLogMergePolicy(10))
                 .setOpenMode(IndexWriterConfig.OpenMode.CREATE)
                 .setCodec(TestUtil.getDefaultCodec()));
+    w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
 
     Document doc = new Document();
     byte[] bytes = new byte[4];

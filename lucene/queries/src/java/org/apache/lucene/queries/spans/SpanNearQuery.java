@@ -18,8 +18,8 @@ package org.apache.lucene.queries.spans;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,7 +45,7 @@ public class SpanNearQuery extends SpanQuery implements Cloneable {
   public static class Builder {
     private final boolean ordered;
     private final String field;
-    private final List<SpanQuery> clauses = new LinkedList<>();
+    private final Collection<SpanQuery> clauses = new ArrayList<>();
     private int slop;
 
     /**
@@ -61,7 +61,7 @@ public class SpanNearQuery extends SpanQuery implements Cloneable {
 
     /** Add a new clause */
     public Builder addClause(SpanQuery clause) {
-      if (Objects.equals(clause.getField(), field) == false)
+      if (!Objects.equals(clause.getField(), field))
         throw new IllegalArgumentException(
             "Cannot add clause " + clause + " to SpanNearQuery for field " + field);
       this.clauses.add(clause);

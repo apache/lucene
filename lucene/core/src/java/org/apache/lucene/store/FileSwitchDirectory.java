@@ -135,7 +135,7 @@ public class FileSwitchDirectory extends Directory {
     if (exc != null && files.isEmpty()) {
       throw exc;
     }
-    String[] result = files.toArray(new String[files.size()]);
+    String[] result = files.toArray(String[]::new);
     Arrays.sort(result);
     return result;
   }

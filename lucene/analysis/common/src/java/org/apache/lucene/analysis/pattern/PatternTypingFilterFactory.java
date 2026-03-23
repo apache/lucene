@@ -33,7 +33,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
  * itself this filter is not very useful. Normally it is combined with a filter that reacts to types
  * or flags.
  *
- * <pre class="prettyprint" >
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_taf" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
@@ -42,7 +42,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
  *     &lt;filter class="solr.TypeAsSynonymFilterFactory" prefix="__TAS__"
  *               ignore="word,&amp;lt;ALPHANUM&amp;gt;,&amp;lt;NUM&amp;gt;,&amp;lt;SOUTHEAST_ASIAN&amp;gt;,&amp;lt;IDEOGRAPHIC&amp;gt;,&amp;lt;HIRAGANA&amp;gt;,&amp;lt;KATAKANA&amp;gt;,&amp;lt;HANGUL&amp;gt;,&amp;lt;EMOJI&amp;gt;"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * <p>Note that a configuration such as above may interfere with multi-word synonyms. The patterns
  * file has the format:

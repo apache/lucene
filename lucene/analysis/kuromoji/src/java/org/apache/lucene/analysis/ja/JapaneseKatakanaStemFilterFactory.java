@@ -23,7 +23,7 @@ import org.apache.lucene.analysis.TokenStream;
 /**
  * Factory for {@link JapaneseKatakanaStemFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_ja" class="solr.TextField"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.JapaneseTokenizerFactory"/&gt;
@@ -31,7 +31,7 @@ import org.apache.lucene.analysis.TokenStream;
  *             minimumLength="4"/&gt;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;
- * </pre>
+ * </code></pre>
  *
  * @since 3.6.0
  * @lucene.spi {@value #NAME}

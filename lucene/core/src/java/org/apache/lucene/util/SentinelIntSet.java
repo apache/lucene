@@ -28,13 +28,13 @@ import java.util.Arrays;
  *
  * <p>To iterate over the integers held in this set, simply use code like this:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * SentinelIntSet set = ...
  * for (int v : set.keys) {
  *   if (v == set.emptyVal)
  *     continue;
  *   //use v...
- * }</pre>
+ * }</code></pre>
  *
  * @lucene.internal
  */

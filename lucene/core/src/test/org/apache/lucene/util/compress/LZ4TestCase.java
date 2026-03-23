@@ -143,7 +143,8 @@ public abstract class LZ4TestCase extends LuceneTestCase {
 
     // Now restore and compare bytes
     byte[] restored = new byte[length + random().nextInt(10)];
-    LZ4.decompress(new ByteArrayDataInput(compressed), length, restored, 0);
+    int restoreOffsetEnd = LZ4.decompress(new ByteArrayDataInput(compressed), length, restored, 0);
+    assertEquals(length, restoreOffsetEnd);
     assertArrayEquals(
         ArrayUtil.copyOfSubArray(data, offset, offset + length),
         ArrayUtil.copyOfSubArray(restored, 0, length));
@@ -151,7 +152,9 @@ public abstract class LZ4TestCase extends LuceneTestCase {
     // Now restore with an offset
     int restoreOffset = TestUtil.nextInt(random(), 1, 10);
     restored = new byte[restoreOffset + length + random().nextInt(10)];
-    LZ4.decompress(new ByteArrayDataInput(compressed), length, restored, restoreOffset);
+    restoreOffsetEnd =
+        LZ4.decompress(new ByteArrayDataInput(compressed), length, restored, restoreOffset);
+    assertEquals(length, restoreOffsetEnd - restoreOffset);
     assertArrayEquals(
         ArrayUtil.copyOfSubArray(data, offset, offset + length),
         ArrayUtil.copyOfSubArray(restored, restoreOffset, restoreOffset + length));

@@ -23,12 +23,9 @@ import org.apache.lucene.analysis.TokenStream;
 /**
  * Factory for {@link FingerprintFilter}.
  *
- * <pre class="prettyprint">
- * The {@code maxOutputTokenSize} property is optional and defaults to {@code 1024}.
- * The {@code separator} property is optional and defaults to the space character.
- * See
- * {@link FingerprintFilter} for an explanation of its use.
- * </pre>
+ * <p>The {@code maxOutputTokenSize} property is optional and defaults to {@code 1024}. The {@code
+ * separator} property is optional and defaults to the space character. See {@link
+ * FingerprintFilter} for an explanation of its use.
  *
  * @since 5.4.0
  * @lucene.spi {@value #NAME}

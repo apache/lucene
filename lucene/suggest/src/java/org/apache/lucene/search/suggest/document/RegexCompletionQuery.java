@@ -34,9 +34,9 @@ import org.apache.lucene.util.automaton.RegExp;
  * <p>Example usage of querying a prefix of 'sug' and 'sub' as a regular expression against a
  * suggest field 'suggest_field':
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *  CompletionQuery query = new RegexCompletionQuery(new Term("suggest_field", "su[g|b]"));
- * </pre>
+ * </code></pre>
  *
  * <p>See {@link RegExp} for the supported regular expression syntax
  *

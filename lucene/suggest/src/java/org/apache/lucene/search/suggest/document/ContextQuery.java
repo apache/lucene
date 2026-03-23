@@ -47,12 +47,12 @@ import org.apache.lucene.util.fst.Util;
  *
  * <p>Example of using a {@link CompletionQuery} with boosted contexts:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *  CompletionQuery completionQuery = ...;
  *  ContextQuery query = new ContextQuery(completionQuery);
  *  query.addContext("context1", 2);
  *  query.addContext("context2", 1);
- * </pre>
+ * </code></pre>
  *
  * <p>NOTE:
  *

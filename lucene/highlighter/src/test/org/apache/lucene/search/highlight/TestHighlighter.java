@@ -41,6 +41,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
@@ -2231,6 +2232,23 @@ public class TestHighlighter extends BaseTokenStreamTestCase implements Formatte
       String result = h.getBestFragment(stream, text);
       assertEquals("random <B>words</B> and words", result); // only highlight first "word"
     }
+  }
+
+  public void testSortedNumericDocValuesRangeQuery() throws IOException {
+    Query query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("text", "compensation")), Occur.MUST)
+            .add(
+                SortedNumericDocValuesField.newSlowRangeQuery(
+                    "date_of_review", 20190210L, 20260210L),
+                Occur.FILTER)
+            .build();
+
+    WeightedSpanTermExtractor extractor = new WeightedSpanTermExtractor();
+    Map<String, WeightedSpanTerm> terms =
+        extractor.getWeightedSpanTerms(
+            query, 1, new CannedTokenStream(new Token("compensation", 0, 12)), "text");
+    assertTrue("Term 'compensation' should be extracted", terms.containsKey("compensation"));
   }
 
   @Override

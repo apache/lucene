@@ -14,12 +14,8 @@ your code so that it complies with the convention and passes gradle
 
 IMPORTANT: wildcard imports are banned but google java format doesn't
 detect or fix this. There is a check for wildcard imports implemented
-on top of the ast-grep tool (https://ast-grep.github.io/). This tool is
-optional. If you'd like to run it locally on gradle's 'check' task,
-install ast-grep locally and add this build option to
-build-options.local.properties:
-
-lucene.tool.ast-grep=ast-grep
+as a precommit check: you can run it via `uvx prek`. See precommit.txt
+help file for detailed instructions.
 
 IMPORTANT: There is *no* way to mark sections of the code as excluded
 from formatting. This is by design and cannot be altered. In the vast
@@ -53,4 +49,3 @@ the lucene.spotlessGradleScripts option to false - either on command line
 using -Plucene.spotlessGradleScripts=false, in your local
 build-options.local.properties or by any other means build options can be
 set.
-

@@ -17,7 +17,6 @@
 package org.apache.lucene.codecs.lucene104;
 
 import java.io.IOException;
-import java.util.Optional;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
@@ -25,6 +24,7 @@ import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
 import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
  * The quantization format used here is a per-vector optimized scalar quantization. These ideas are
@@ -89,6 +89,8 @@ import org.apache.lucene.index.SegmentWriteState;
  *   <li><b>float</b> the centroid square magnitude
  *   <li>The sparse vector information, if required, mapping vector ordinal to doc ID
  * </ul>
+ *
+ * @lucene.experimental
  */
 public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   public static final String QUANTIZED_VECTOR_COMPONENT = "QVEC";
@@ -109,133 +111,6 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
       new Lucene104ScalarQuantizedVectorScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   private final ScalarEncoding encoding;
-
-  /**
-   * Allowed encodings for scalar quantization.
-   *
-   * <p>This specifies how many bits are used per dimension and also dictates packing of dimensions
-   * into a byte stream.
-   */
-  public enum ScalarEncoding {
-    /** Each dimension is quantized to 8 bits and treated as an unsigned value. */
-    UNSIGNED_BYTE(0, (byte) 8, 8),
-    /** Each dimension is quantized to 4 bits two values are packed into each output byte. */
-    PACKED_NIBBLE(1, (byte) 4, 4),
-    /**
-     * Each dimension is quantized to 7 bits and treated as a signed value.
-     *
-     * <p>This is intended for backwards compatibility with older iterations of scalar quantization.
-     * This setting will produce an index the same size as {@link #UNSIGNED_BYTE} but will produce
-     * less accurate vector comparisons.
-     */
-    SEVEN_BIT(2, (byte) 7, 8),
-    /**
-     * Each dimension is quantized to a single bit and packed into bytes. During query time, the
-     * query vector is quantized to 4 bits per dimension.
-     *
-     * <p>This is the most space efficient encoding, and will produce an index 8x smaller than
-     * {@link #UNSIGNED_BYTE}. However, this comes at the cost of accuracy.
-     */
-    SINGLE_BIT_QUERY_NIBBLE(3, (byte) 1, 1, (byte) 4, 4);
-
-    public static ScalarEncoding fromNumBits(int bits) {
-      for (ScalarEncoding encoding : values()) {
-        if (encoding.bits == bits) {
-          return encoding;
-        }
-      }
-      throw new IllegalArgumentException("No encoding for " + bits + " bits");
-    }
-
-    /** The number used to identify this encoding on the wire, rather than relying on ordinal. */
-    private final int wireNumber;
-
-    private final byte bits, queryBits;
-    private final int bitsPerDim, queryBitsPerDim;
-
-    ScalarEncoding(int wireNumber, byte bits, int bitsPerDim) {
-      this.wireNumber = wireNumber;
-      this.bits = bits;
-      this.queryBits = bits;
-      this.bitsPerDim = bitsPerDim;
-      this.queryBitsPerDim = bitsPerDim;
-    }
-
-    ScalarEncoding(int wireNumber, byte bits, int bitsPerDim, byte queryBits, int queryBitsPerDim) {
-      this.wireNumber = wireNumber;
-      this.bits = bits;
-      this.queryBits = queryBits;
-      this.bitsPerDim = bitsPerDim;
-      this.queryBitsPerDim = queryBitsPerDim;
-    }
-
-    boolean isAsymmetric() {
-      return bits != queryBits;
-    }
-
-    int getWireNumber() {
-      return wireNumber;
-    }
-
-    /** Return the number of bits used per dimension. */
-    public byte getBits() {
-      return bits;
-    }
-
-    public byte getQueryBits() {
-      return queryBits;
-    }
-
-    /** Return the number of dimensions rounded up to fit into whole bytes. */
-    public int getDiscreteDimensions(int dimensions) {
-      if (queryBits == bits) {
-        int totalBits = dimensions * bitsPerDim;
-        return (totalBits + 7) / 8 * 8 / bitsPerDim;
-      }
-      int queryDiscretized = (dimensions * queryBitsPerDim + 7) / 8 * 8 / queryBitsPerDim;
-      int docDiscretized = (dimensions * bitsPerDim + 7) / 8 * 8 / bitsPerDim;
-      int maxDiscretized = Math.max(queryDiscretized, docDiscretized);
-      assert maxDiscretized % (8.0 / queryBitsPerDim) == 0
-          : "bad discretized=" + maxDiscretized + " for dim=" + dimensions;
-      assert maxDiscretized % (8.0 / bitsPerDim) == 0
-          : "bad discretized=" + maxDiscretized + " for dim=" + dimensions;
-      return maxDiscretized;
-    }
-
-    /** Return the number of dimensions that can be packed into a single byte. */
-    public int getDocBitsPerDim() {
-      return this.bitsPerDim;
-    }
-
-    public int getQueryBitsPerDim() {
-      return this.queryBitsPerDim;
-    }
-
-    /** Return the number of bytes required to store a packed vector of the given dimensions. */
-    public int getDocPackedLength(int dimensions) {
-      int discretized = getDiscreteDimensions(dimensions);
-      // how many bytes do we need to store the quantized vector?
-      int totalBits = discretized * bitsPerDim;
-      return (totalBits + 7) / 8;
-    }
-
-    public int getQueryPackedLength(int dimensions) {
-      int discretized = getDiscreteDimensions(dimensions);
-      // how many bytes do we need to store the quantized vector?
-      int totalBits = discretized * queryBitsPerDim;
-      return (totalBits + 7) / 8;
-    }
-
-    /** Returns the encoding for the given wire number, or empty if unknown. */
-    public static Optional<ScalarEncoding> fromWireNumber(int wireNumber) {
-      for (ScalarEncoding encoding : values()) {
-        if (encoding.wireNumber == wireNumber) {
-          return Optional.of(encoding);
-        }
-      }
-      return Optional.empty();
-    }
-  }
 
   /** Creates a new instance with UNSIGNED_BYTE encoding. */
   public Lucene104ScalarQuantizedVectorsFormat() {
