@@ -156,8 +156,6 @@ Bug Fixes
 * GITHUB#14971: Fix CachedExecutor thread pool leak in ConcurrentMergeScheduler
   when IndexWriter initialization fails. (Su Beom)
 
-* GITHUB#12419, GITHUB#15119: Fix circular dependency deadlock in TestSecrets initialization (Namgyu Kim)
-
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -269,6 +267,8 @@ Bug Fixes
   we might fail to detect it and choose a wrong bridge to eliminate the hole. (Ignacio Vera)
 
 * GITHUB#15656: Fix wrong BitSet result in MemoryAccountingBitsetCollector (Binlong Gao)
+
+* GITHUB#12419, GITHUB#15119: Fix circular dependency deadlock in TestSecrets initialization (Namgyu Kim)
 
 Other
 ---------------------
