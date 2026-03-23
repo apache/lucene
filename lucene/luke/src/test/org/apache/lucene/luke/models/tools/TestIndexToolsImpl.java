@@ -34,12 +34,11 @@ public class TestIndexToolsImpl extends LuceneTestCase {
 
   private IndexReader reader;
   private Directory dir;
-  private Path indexDir;
 
   @Override
   public void setUp() throws Exception {
     super.setUp();
-    indexDir = createTempDir("testIndex");
+    Path indexDir = createTempDir("testIndex");
     dir = newFSDirectory(indexDir);
     RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
 
@@ -60,12 +59,12 @@ public class TestIndexToolsImpl extends LuceneTestCase {
   }
 
   @Test
-  public void testExportTermsWithForbiddenCharsInFieldName() throws IOException {
+  public void testExportTerms() throws IOException {
     IndexToolsImpl tools = new IndexToolsImpl(reader, false, false);
     Path destDir = createTempDir("exportTerms");
 
+    // test with field name containing forbidden chars
     String result = tools.exportTerms(destDir.toString(), "Regex:BR_CAR_PLATE", "\t");
-
     Path exported = Path.of(result);
     assertTrue("Exported file should exist", Files.exists(exported));
     String filename = exported.getFileName().toString();
@@ -73,47 +72,25 @@ public class TestIndexToolsImpl extends LuceneTestCase {
     assertTrue("Filename should start with terms_", filename.startsWith("terms_"));
     assertTrue(
         "Filename should contain sanitized field name", filename.contains("Regex_BR_CAR_PLATE"));
+    assertTrue(
+        "Exported content should contain the term", Files.readString(exported).contains("value1"));
 
-    String content = Files.readString(exported);
-    assertTrue("Exported content should contain the term", content.contains("value1"));
-  }
-
-  @Test
-  public void testExportTermsWithNormalFieldName() throws IOException {
-    IndexToolsImpl tools = new IndexToolsImpl(reader, false, false);
-    Path destDir = createTempDir("exportTerms");
-
-    String result = tools.exportTerms(destDir.toString(), "normal_field", "\t");
-
-    Path exported = Path.of(result);
-    assertTrue("Exported file should exist", Files.exists(exported));
-    String filename = exported.getFileName().toString();
-    assertTrue("Filename should contain original field name", filename.contains("normal_field"));
-
-    String content = Files.readString(exported);
-    assertTrue("Exported content should contain the term", content.contains("value2"));
-  }
-
-  @Test
-  public void testExportTermsWithMultipleForbiddenChars() throws IOException {
-    IndexToolsImpl tools = new IndexToolsImpl(reader, false, false);
-    Path destDir = createTempDir("exportTerms");
-
+    // throw exception when getting terms if multiple forbidden chars are in the field name and
+    // the field doesn't exist
     LukeException ex =
         expectThrows(
             LukeException.class,
             () -> tools.exportTerms(destDir.toString(), "a<b>c:d\"e|f?g*h", "\t"));
     assertTrue(ex.getMessage().contains("does not contain any terms"));
-  }
 
-  @Test
-  public void testExportTermsNonExistentField() {
-    IndexToolsImpl tools = new IndexToolsImpl(reader, false, false);
-    Path destDir = createTempDir("exportTerms");
-
-    LukeException ex =
-        expectThrows(
-            LukeException.class, () -> tools.exportTerms(destDir.toString(), "nonexistent", "\t"));
-    assertTrue(ex.getMessage().contains("does not contain any terms"));
+    // test normal case
+    result = tools.exportTerms(destDir.toString(), "normal_field", "\t");
+    exported = Path.of(result);
+    assertTrue("Exported file should exist", Files.exists(exported));
+    assertTrue(
+        "Filename should contain original field name",
+        exported.getFileName().toString().contains("normal_field"));
+    assertTrue(
+        "Exported content should contain the term", Files.readString(exported).contains("value2"));
   }
 }
