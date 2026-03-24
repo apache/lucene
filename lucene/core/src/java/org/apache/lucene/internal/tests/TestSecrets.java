@@ -141,7 +141,7 @@ public final class TestSecrets {
 
   private static void ensureNull(Object ob) {
     if (ob != null) {
-      throw new AssertionError(
+      throw new UnsupportedOperationException(
           "The accessor is already set. It can only be called from inside Lucene Core.");
     }
   }
