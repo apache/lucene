@@ -2,13 +2,10 @@
 
 set -euo pipefail
 
-echo "📊 Fetching PR data..."
-PR_DATA=$(gh pr view "$PR_NUMBER" --json labels,milestone,title)
-PR_LABELS=$(echo "$PR_DATA" | jq -r '.labels[].name | select(test("^backport/"; "i"))')
-PR_MILESTONE=$(echo "$PR_DATA" | jq -r '.milestone.title // ""')
-PR_TITLE=$(echo "$PR_DATA" | jq -r '.title // "Unknown title"')
-PR_MERGE_COMMIT_SHA="${PR_MERGE_COMMIT_SHA:-unknown}"
+REPOSITORY="${REPOSITORY:?REPOSITORY must be set}"
 DRY_RUN="${BACKPORT_DRY_RUN:-true}"
+PUSH_BEFORE_SHA="${PUSH_BEFORE_SHA:-}"
+PUSH_AFTER_SHA="${PUSH_AFTER_SHA:-}"
 
 normalize_version() {
   local raw="$1"
@@ -26,23 +23,6 @@ is_valid_sha() {
   [[ "$sha" =~ ^[0-9a-f]{7,40}$ ]]
 }
 
-create_comment() {
-  if [ "$DRY_RUN" = "true" ]; then
-    echo "[dry-run] Would comment on PR #$PR_NUMBER:"
-    echo "$1"
-    return 0
-  fi
-  gh pr comment "$PR_NUMBER" --body "$1"
-}
-
-add_label() {
-  if [ "$DRY_RUN" = "true" ]; then
-    echo "[dry-run] Would add label '$1' on PR #$PR_NUMBER"
-    return 0
-  fi
-  gh pr edit "$PR_NUMBER" --add-label "$1" 2>/dev/null || true
-}
-
 publish_outputs() {
   local has_targets="$1"
   local targets_json="$2"
@@ -58,22 +38,30 @@ publish_outputs() {
   fi
 }
 
-if [ -z "$PR_LABELS" ] && [ -z "$PR_MILESTONE" ]; then
-  echo "ℹ️ No backport labels or milestone found. Nothing to do."
-  publish_outputs "false" "[]"
-  exit 0
-fi
+create_comment() {
+  local pr_number="$1"
+  local body="$2"
 
-if [ "$DRY_RUN" != "true" ] && ! is_valid_sha "$PR_MERGE_COMMIT_SHA"; then
-  create_comment "❌ **Automatic backports skipped**
+  if [ "$DRY_RUN" = "true" ]; then
+    echo "[dry-run] Would comment on PR #$pr_number:"
+    echo "$body"
+    return 0
+  fi
 
-Invalid merge commit SHA was provided by workflow context: \`$PR_MERGE_COMMIT_SHA\`.
+  gh pr comment "$pr_number" --repo "$REPOSITORY" --body "$body"
+}
 
-Backports are skipped for safety."
-  add_label "backport-failed"
-  publish_outputs "false" "[]"
-  exit 0
-fi
+add_label() {
+  local pr_number="$1"
+  local label="$2"
+
+  if [ "$DRY_RUN" = "true" ]; then
+    echo "[dry-run] Would add label '$label' on PR #$pr_number"
+    return 0
+  fi
+
+  gh pr edit "$pr_number" --repo "$REPOSITORY" --add-label "$label" 2>/dev/null || true
+}
 
 echo "🏷️ Ensuring backport labels exist..."
 if [ "$DRY_RUN" = "true" ]; then
@@ -85,95 +73,162 @@ fi
 
 echo "🌿 Caching branch information..."
 ALL_BRANCHES=$(git for-each-ref --format='%(refname:strip=3)' refs/remotes/origin | grep -v '^HEAD$' | sort)
-declare -ra TARGET_BRANCH_TEMPLATES=(
-  "branch_{{major}}x"
-  "branch_{{major}}_{{minor}}"
-)
 
 find_target_branch() {
   local version="$1"
   local major
   local minor=""
+  local stable_branch
+  local release_branch
 
   major=$(echo "$version" | sed -E 's/^([0-9]+).*/\1/')
   if [[ "$version" =~ ^[0-9]+\.([0-9]+) ]]; then
     minor="${BASH_REMATCH[1]}"
   fi
 
-  for template in "${TARGET_BRANCH_TEMPLATES[@]}"; do
-    local candidate="${template//\{\{version\}\}/$version}"
-    candidate="${candidate//\{\{major\}\}/$major}"
-    candidate="${candidate//\{\{minor\}\}/$minor}"
+  stable_branch="branch_${major}x"
+  if echo "$ALL_BRANCHES" | grep -Fxq "$stable_branch"; then
+    echo "$stable_branch"
+    return 0
+  fi
 
-    local target
-    target=$(echo "$ALL_BRANCHES" | grep -Fx "$candidate" | head -1 || true)
-    if [ -n "$target" ]; then
-      echo "$target"
+  if [ -n "$minor" ]; then
+    release_branch="branch_${major}_${minor}"
+    if echo "$ALL_BRANCHES" | grep -Fxq "$release_branch"; then
+      echo "$release_branch"
       return 0
     fi
-  done
+  fi
 }
 
-declare -a requested_versions=()
-if [ -n "$PR_MILESTONE" ]; then
-  normalized_milestone=$(normalize_version "$PR_MILESTONE")
-  if [ -n "$normalized_milestone" ]; then
-    requested_versions+=("$normalized_milestone")
-  fi
+resolve_pr_number() {
+  local commit_sha="$1"
+  gh api -H "Accept: application/vnd.github+json" \
+    "repos/${REPOSITORY}/commits/${commit_sha}/pulls" \
+    --jq 'map(select(.merged_at != null))[0].number // ""'
+}
+
+if [ -z "$PUSH_AFTER_SHA" ]; then
+  echo "ℹ️ Push payload did not provide an after SHA. Nothing to do."
+  publish_outputs "false" "[]"
+  exit 0
 fi
 
-while IFS= read -r label; do
-  [ -z "$label" ] && continue
-  normalized_label=$(normalize_version "${label#*/}")
-  if [ -n "$normalized_label" ]; then
-    requested_versions+=("$normalized_label")
+if [ -n "$PUSH_BEFORE_SHA" ] && [[ ! "$PUSH_BEFORE_SHA" =~ ^0+$ ]]; then
+  requested_commit_shas=$(git rev-list --reverse "${PUSH_BEFORE_SHA}..${PUSH_AFTER_SHA}")
+else
+  requested_commit_shas="$PUSH_AFTER_SHA"
+fi
+
+if [ -z "$requested_commit_shas" ]; then
+  echo "ℹ️ No commits found in pushed range. Nothing to do."
+  publish_outputs "false" "[]"
+  exit 0
+fi
+
+declare -a targets=()
+declare -A seen_prs=()
+
+while IFS= read -r commit_sha; do
+  [ -n "$commit_sha" ] || continue
+
+  echo "📊 Resolving merged pull request from commit ${commit_sha}..."
+  pr_number=$(resolve_pr_number "$commit_sha")
+  if [ -z "$pr_number" ]; then
+    echo "ℹ️ No merged pull request associated with commit ${commit_sha}. Skipping."
+    continue
   fi
-done <<< "$PR_LABELS"
 
-declare -a deduped_requested_versions=()
-declare -A seen_versions=()
-for version in "${requested_versions[@]}"; do
-  [ -n "$version" ] || continue
-  if [ -z "${seen_versions[$version]:-}" ]; then
-    seen_versions[$version]=1
-    deduped_requested_versions+=("$version")
+  if [ -n "${seen_prs[$pr_number]:-}" ]; then
+    echo "ℹ️ PR #$pr_number already processed in this push. Skipping duplicate commit ${commit_sha}."
+    continue
   fi
-done
+  seen_prs[$pr_number]=1
 
-echo "📋 Requested versions: ${deduped_requested_versions[*]}"
+  echo "📊 Fetching PR #$pr_number data..."
+  pr_data=$(gh pr view "$pr_number" --repo "$REPOSITORY" --json labels,milestone,title)
+  pr_labels=$(echo "$pr_data" | jq -r '.labels[].name | select(test("^backport/"; "i"))')
+  pr_milestone=$(echo "$pr_data" | jq -r '.milestone.title // ""')
+  pr_title=$(echo "$pr_data" | jq -r '.title // "Unknown title"')
 
-declare -a valid_backports=()
-declare -a failed_versions=()
-
-echo "🔍 Pre-validating target branches..."
-for version in "${deduped_requested_versions[@]}"; do
-  target=$(find_target_branch "$version")
-
-  if [ -n "$target" ]; then
-    valid_backports+=("$version:$target")
-    echo "✅ $version -> $target"
-  else
-    failed_versions+=("$version")
-    echo "❌ $version -> NOT FOUND"
+  if [ -z "$pr_labels" ] && [ -z "$pr_milestone" ]; then
+    echo "ℹ️ PR #$pr_number has no backport labels or milestone. Skipping."
+    continue
   fi
-done
 
-if [ ${#failed_versions[@]} -gt 0 ]; then
-  available_sample=$(echo "$ALL_BRANCHES" | head -5 | tr '\n' ', ' | sed 's/,$//')
-  failed_list=""
-  attempted_patterns=""
-  for version in "${failed_versions[@]}"; do
-    failed_list="${failed_list}- \`${version}\`"$'\n'
-    major=$(echo "$version" | sed -E 's/^([0-9]+).*/\1/')
-    if [[ "$version" =~ ^[0-9]+\.([0-9]+) ]]; then
-      minor="${BASH_REMATCH[1]}"
-      attempted_patterns="${attempted_patterns}- \`branch_${major}x\`, \`branch_${major}_${minor}\`"$'\n'
-    else
-      attempted_patterns="${attempted_patterns}- \`branch_${major}x\`"$'\n'
+  if [ "$DRY_RUN" != "true" ] && ! is_valid_sha "$commit_sha"; then
+    create_comment "$pr_number" "❌ **Automatic backports skipped**
+
+Invalid merge commit SHA was provided by workflow context: \`${commit_sha}\`.
+
+Backports are skipped for safety."
+    add_label "$pr_number" "backport-failed"
+    continue
+  fi
+
+  declare -a requested_versions=()
+  if [ -n "$pr_milestone" ]; then
+    normalized_milestone=$(normalize_version "$pr_milestone")
+    if [ -n "$normalized_milestone" ]; then
+      requested_versions+=("$normalized_milestone")
+    fi
+  fi
+
+  while IFS= read -r label; do
+    [ -z "$label" ] && continue
+    normalized_label=$(normalize_version "${label#*/}")
+    if [ -n "$normalized_label" ]; then
+      requested_versions+=("$normalized_label")
+    fi
+  done <<< "$pr_labels"
+
+  declare -a deduped_requested_versions=()
+  declare -A seen_versions=()
+  for version in "${requested_versions[@]}"; do
+    [ -n "$version" ] || continue
+    if [ -z "${seen_versions[$version]:-}" ]; then
+      seen_versions[$version]=1
+      deduped_requested_versions+=("$version")
     fi
   done
 
-  create_comment "❌ **Backport failed for some versions - Missing target branches**
+  echo "📋 PR #$pr_number requested versions: ${deduped_requested_versions[*]}"
+
+  declare -a failed_versions=()
+  for version in "${deduped_requested_versions[@]}"; do
+    target_branch=$(find_target_branch "$version")
+    if [ -n "$target_branch" ]; then
+      echo "✅ PR #$pr_number $version -> $target_branch"
+      target_json=$(jq -cn \
+        --argjson pr_number "$pr_number" \
+        --arg pr_title "$pr_title" \
+        --arg merge_commit_sha "$commit_sha" \
+        --arg version "$version" \
+        --arg target "$target_branch" \
+        '{pr_number: $pr_number, pr_title: $pr_title, merge_commit_sha: $merge_commit_sha, version: $version, target: $target}')
+      targets+=("$target_json")
+    else
+      echo "❌ PR #$pr_number $version -> NOT FOUND"
+      failed_versions+=("$version")
+    fi
+  done
+
+  if [ ${#failed_versions[@]} -gt 0 ]; then
+    available_sample=$(echo "$ALL_BRANCHES" | head -5 | tr '\n' ', ' | sed 's/,$//')
+    failed_list=""
+    attempted_patterns=""
+    for version in "${failed_versions[@]}"; do
+      failed_list="${failed_list}- \`${version}\`"$'\n'
+      major=$(echo "$version" | sed -E 's/^([0-9]+).*/\1/')
+      if [[ "$version" =~ ^[0-9]+\.([0-9]+) ]]; then
+        minor="${BASH_REMATCH[1]}"
+        attempted_patterns="${attempted_patterns}- \`branch_${major}x\`, \`branch_${major}_${minor}\`"$'\n'
+      else
+        attempted_patterns="${attempted_patterns}- \`branch_${major}x\`"$'\n'
+      fi
+    done
+
+    create_comment "$pr_number" "❌ **Backport failed for some versions - Missing target branches**
 
 Could not find target branches for:
 $failed_list
@@ -190,39 +245,44 @@ $attempted_patterns
 Please create the missing branches or update the backport labels/milestone.
 
 **Note:** Valid backports will still be processed."
-  add_label "backport-failed"
-fi
+    add_label "$pr_number" "backport-failed"
+  fi
+done <<< "$requested_commit_shas"
 
-if [ ${#valid_backports[@]} -eq 0 ]; then
-  echo "❌ No valid backports found."
+if [ ${#targets[@]} -eq 0 ]; then
+  echo "❌ No valid backports found in this push."
   publish_outputs "false" "[]"
   exit 0
 fi
 
-targets_json=$(printf '%s\n' "${valid_backports[@]}" \
-  | jq -R 'select(length > 0) | split(":") | {version: .[0], target: .[1]}' \
-  | jq -cs '.')
+targets_json=$(printf '%s\n' "${targets[@]}" | jq -cs '.')
 
-echo "✅ Prepared ${#valid_backports[@]} valid backport target(s)."
-  if [ "$DRY_RUN" = "true" ]; then
+echo "✅ Prepared ${#targets[@]} valid backport target(s)."
+if [ "$DRY_RUN" = "true" ]; then
   echo "[dry-run] Planned targets: $targets_json"
-  for backport in "${valid_backports[@]}"; do
-    IFS=':' read -r version target <<< "$backport"
-    backport_branch="backport-${PR_NUMBER}-to-${target}"
+  while IFS= read -r target; do
+    [ -n "$target" ] || continue
+    pr_number=$(echo "$target" | jq -r '.pr_number')
+    pr_title=$(echo "$target" | jq -r '.pr_title')
+    merge_commit_sha=$(echo "$target" | jq -r '.merge_commit_sha')
+    version=$(echo "$target" | jq -r '.version')
+    target_branch=$(echo "$target" | jq -r '.target')
+    backport_branch="backport-${pr_number}-to-${target_branch}"
+
     echo "[dry-run] -----------------------------------------------------------------"
-    echo "[dry-run] target_branch=${target}, version=${version}, merge_commit=${PR_MERGE_COMMIT_SHA}"
+    echo "[dry-run] pr_number=${pr_number}, target_branch=${target_branch}, version=${version}, merge_commit=${merge_commit_sha}"
     echo "[dry-run] Would run equivalent git operations:"
-    echo "[dry-run]   git checkout -b ${backport_branch} origin/${target}"
-    echo "[dry-run]   git cherry-pick -x ${PR_MERGE_COMMIT_SHA}"
+    echo "[dry-run]   git checkout -b ${backport_branch} origin/${target_branch}"
+    echo "[dry-run]   git cherry-pick -x ${merge_commit_sha}"
     echo "[dry-run]   git push origin ${backport_branch}"
     echo "[dry-run] Would run equivalent PR creation:"
-    echo "[dry-run]   gh pr create --base ${target} --head ${backport_branch} --title \"[Backport ${target}] ${PR_TITLE}\" --label backport"
+    echo "[dry-run]   gh pr create --base ${target_branch} --head ${backport_branch} --title \"[Backport ${target_branch}] ${pr_title}\" --label backport"
     echo "[dry-run]   PR body payload:"
-    echo "[dry-run]     ## 🔄 Automatic Backport"
-    echo "[dry-run]     Backport of #${PR_NUMBER} to \`${target}\`."
-    echo "[dry-run]     **Target:** \`${target}\`"
+    echo "[dry-run]     ## Automatic Backport"
+    echo "[dry-run]     Backport of #${pr_number} to \`${target_branch}\`."
+    echo "[dry-run]     **Target:** \`${target_branch}\`"
     echo "[dry-run]     **Version:** \`${version}\`"
-  done
+  done <<< "$(printf '%s\n' "${targets[@]}")"
 fi
 
 publish_outputs "true" "$targets_json"
