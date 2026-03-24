@@ -259,9 +259,7 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
   private static <T> T invokeOrDelegate(MethodHandle mh, Supplier<T> delegate, Object... args) {
     if (mh != null) {
       try {
-        // TODO: This is slow and we should avoid dynamic invocations and improve the test coverage
-        // (https://github.com/apache/lucene/issues/15840)
-        return (T) mh.invokeWithArguments(args);
+        return (T) mh.asSpreader(Object[].class, args.length).invokeExact(args);
       } catch (Throwable ex) {
         throw new AssertionError("should not reach here", ex);
       }
