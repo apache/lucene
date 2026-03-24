@@ -32,9 +32,13 @@ public class TestTestSecrets extends LuceneTestCase {
   }
 
   public void testCannotSet() {
-    expectThrows(AssertionError.class, () -> TestSecrets.setIndexWriterAccess(null));
-    expectThrows(AssertionError.class, () -> TestSecrets.setConcurrentMergeSchedulerAccess(null));
-    expectThrows(AssertionError.class, () -> TestSecrets.setIndexPackageAccess(null));
-    expectThrows(AssertionError.class, () -> TestSecrets.setSegmentReaderAccess(null));
+    expectThrows(UnsupportedOperationException.class, () -> TestSecrets.setIndexWriterAccess(null));
+    expectThrows(
+        UnsupportedOperationException.class,
+        () -> TestSecrets.setConcurrentMergeSchedulerAccess(null));
+    expectThrows(
+        UnsupportedOperationException.class, () -> TestSecrets.setIndexPackageAccess(null));
+    expectThrows(
+        UnsupportedOperationException.class, () -> TestSecrets.setSegmentReaderAccess(null));
   }
 }
