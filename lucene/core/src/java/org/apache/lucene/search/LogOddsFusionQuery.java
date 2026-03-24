@@ -27,9 +27,9 @@ import java.util.stream.Collectors;
 import org.apache.lucene.index.LeafReaderContext;
 
 /**
- * A query that combines sub-query probability scores via log-odds fusion. Sub-queries are
- * expected to produce scores in (0, 1) representing probabilities (e.g., from {@link
- * BayesianScoreQuery} wrapping a BM25 query, or KNN cosine similarity).
+ * A query that combines sub-query probability scores via log-odds fusion. Sub-queries are expected
+ * to produce scores in (0, 1) representing probabilities (e.g., from {@link BayesianScoreQuery}
+ * wrapping a BM25 query, or KNN cosine similarity).
  *
  * <p>The combination formula resolves the shrinkage problem of naive probabilistic AND by:
  *
@@ -211,9 +211,7 @@ public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
         float score = LogOddsFusionScorer.sigmoid(scaledLogit);
 
         return Explanation.match(
-            score,
-            "log-odds fusion, computed as sigmoid(meanLogit * n^alpha) from:",
-            subsOnMatch);
+            score, "log-odds fusion, computed as sigmoid(meanLogit * n^alpha) from:", subsOnMatch);
       } else {
         return Explanation.noMatch("No matching clause", subsOnNoMatch);
       }

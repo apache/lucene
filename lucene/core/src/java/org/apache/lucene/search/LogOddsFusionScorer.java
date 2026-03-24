@@ -20,8 +20,8 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * Scorer for {@link LogOddsFusionQuery}. Combines sub-scorer outputs (assumed to be
- * probabilities in (0, 1)) via log-odds fusion with multiplicative confidence scaling.
+ * Scorer for {@link LogOddsFusionQuery}. Combines sub-scorer outputs (assumed to be probabilities
+ * in (0, 1)) via log-odds fusion with multiplicative confidence scaling.
  *
  * <p>The scoring formula is:
  *

@@ -307,8 +307,7 @@ public class TestLogOddsFusionQuery extends LuceneTestCase {
     LogOddsFusionQuery twoSignals = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f);
     float score2 = signalSearcher.search(twoSignals, 1).scoreDocs[0].score;
 
-    LogOddsFusionQuery threeSignals =
-        new LogOddsFusionQuery(Arrays.asList(q1, q2, q3), 0.5f);
+    LogOddsFusionQuery threeSignals = new LogOddsFusionQuery(Arrays.asList(q1, q2, q3), 0.5f);
     float score3 = signalSearcher.search(threeSignals, 1).scoreDocs[0].score;
 
     // With softplus gating, more matching signals always produce >= score.
@@ -574,10 +573,8 @@ public class TestLogOddsFusionQuery extends LuceneTestCase {
       Query textCooking = bayesian(new TermQuery(new Term("body", "cooking")));
       Query vecA = new KnnFloatVectorQuery("embedding", QUERY_A, 10);
 
-      LogOddsFusionQuery hybrid1 =
-          new LogOddsFusionQuery(Arrays.asList(textLucene, vecA), 0.5f);
-      LogOddsFusionQuery hybrid2 =
-          new LogOddsFusionQuery(Arrays.asList(textCooking, vecA), 0.5f);
+      LogOddsFusionQuery hybrid1 = new LogOddsFusionQuery(Arrays.asList(textLucene, vecA), 0.5f);
+      LogOddsFusionQuery hybrid2 = new LogOddsFusionQuery(Arrays.asList(textCooking, vecA), 0.5f);
 
       BooleanQuery orQuery =
           new BooleanQuery.Builder()
