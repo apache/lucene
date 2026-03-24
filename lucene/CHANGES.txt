@@ -209,7 +209,6 @@ Other
 * GITHUB#15844: Detect JVM bitness using Panama's ValueLayout#ADDRESS instead
   of undocumented system properties.  (Uwe Schindler)
 
-
 ======================= Lucene 10.5.0 =======================
 
 API Changes
@@ -282,6 +281,9 @@ Bug Fixes
 * GITHUB#15844: Prevent class initialization failure when JVM has no support for
   native code at all (wrong platform); disable native code on 32 bit platforms.
   (Uwe Schindler, thanks to Christian Ortlepp for finding the issue)
+
+* GITHUB#12419, GITHUB#15119, GITHUB#15864: Fix circular dependency deadlock in
+  TestSecrets initialization (Namgyu Kim, Uwe Schindler)
 
 Other
 ---------------------
