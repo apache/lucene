@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs;
+package org.apache.lucene.index;
 
 import com.carrotsearch.randomizedtesting.LifecycleScope;
 import com.carrotsearch.randomizedtesting.RandomizedContext;
@@ -38,8 +38,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.SegmentReader;
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.DocValuesFormat;
+import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
@@ -52,7 +53,7 @@ import org.junit.runner.RunWith;
  * initialization when spawned as subprocess (and please let default codecs alive)! */
 
 @RunWith(RandomizedRunner.class)
-public class TestCodecLoadingDeadlock extends Assert {
+public class TestClassloadingDeadlock extends Assert {
   private static final int MAX_TIME_SECONDS = 30;
 
   @Test

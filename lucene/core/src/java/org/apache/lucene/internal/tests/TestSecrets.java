@@ -173,7 +173,7 @@ public final class TestSecrets {
                             c ->
                                 c.startsWith("org.apache.lucene.tests.")
                                     || c.equals(
-                                        "org.apache.lucene.codecs.TestCodecLoadingDeadlock")));
+                                        "org.apache.lucene.index.TestClassloadingDeadlock")));
     if (!validCaller) {
       throw new UnsupportedOperationException(
           "Lucene TestSecrets can only be used by the test-framework.");
