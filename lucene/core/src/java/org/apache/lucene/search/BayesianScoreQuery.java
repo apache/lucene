@@ -27,7 +27,7 @@ import org.apache.lucene.index.LeafReaderContext;
  * <p>This implements the query-level Bayesian transform from "Bayesian BM25": the inner query
  * (typically a multi-term BooleanQuery with BM25Similarity) produces a raw score, and this wrapper
  * maps it to a probability in (0, 1) suitable for combination with other probability signals via
- * {@link LogOddsConjunctionQuery}.
+ * {@link LogOddsFusionQuery}.
  *
  * <p>The alpha parameter controls the sigmoid steepness (score sensitivity), and beta controls the
  * midpoint (decision boundary). These can be set manually or estimated from the score distribution.

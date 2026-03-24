@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 import org.apache.lucene.index.LeafReaderContext;
 
 /**
- * A query that combines sub-query probability scores via log-odds conjunction. Sub-queries are
+ * A query that combines sub-query probability scores via log-odds fusion. Sub-queries are
  * expected to produce scores in (0, 1) representing probabilities (e.g., from {@link
  * BayesianScoreQuery} wrapping a BM25 query, or KNN cosine similarity).
  *
@@ -43,23 +43,23 @@ import org.apache.lucene.index.LeafReaderContext;
  * <p>The alpha parameter controls the confidence scaling exponent. The default alpha=0.5 implements
  * the sqrt(n) scaling law from "From Bayesian Inference to Neural Computation".
  *
- * @see LogOddsConjunctionScorer
+ * @see LogOddsFusionScorer
  * @lucene.experimental
  */
-public final class LogOddsConjunctionQuery extends Query implements Iterable<Query> {
+public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
 
   private final Multiset<Query> clauses = new Multiset<>();
   private final List<Query> orderedClauses;
   private final float alpha;
 
   /**
-   * Creates a new LogOddsConjunctionQuery.
+   * Creates a new LogOddsFusionQuery.
    *
    * @param clauses the sub-queries to combine
    * @param alpha confidence scaling exponent (0.5 = sqrt(n) law)
    * @throws IllegalArgumentException if alpha is not in [0, 1]
    */
-  public LogOddsConjunctionQuery(Collection<? extends Query> clauses, float alpha) {
+  public LogOddsFusionQuery(Collection<? extends Query> clauses, float alpha) {
     Objects.requireNonNull(clauses, "Collection of Queries must not be null");
     if (Float.isNaN(alpha) || alpha < 0 || alpha > 1) {
       throw new IllegalArgumentException("alpha must be in [0, 1], got " + alpha);
@@ -70,11 +70,11 @@ public final class LogOddsConjunctionQuery extends Query implements Iterable<Que
   }
 
   /**
-   * Creates a new LogOddsConjunctionQuery with default alpha=0.5 (sqrt(n) scaling law).
+   * Creates a new LogOddsFusionQuery with default alpha=0.5 (sqrt(n) scaling law).
    *
    * @param clauses the sub-queries to combine
    */
-  public LogOddsConjunctionQuery(Collection<? extends Query> clauses) {
+  public LogOddsFusionQuery(Collection<? extends Query> clauses) {
     this(clauses, 0.5f);
   }
 
@@ -93,15 +93,15 @@ public final class LogOddsConjunctionQuery extends Query implements Iterable<Que
     return alpha;
   }
 
-  /** Weight for LogOddsConjunctionQuery. */
-  protected class LogOddsConjunctionWeight extends Weight {
+  /** Weight for LogOddsFusionQuery. */
+  protected class LogOddsFusionWeight extends Weight {
 
     protected final ArrayList<Weight> weights = new ArrayList<>();
     private final ScoreMode scoreMode;
 
-    public LogOddsConjunctionWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+    public LogOddsFusionWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
         throws IOException {
-      super(LogOddsConjunctionQuery.this);
+      super(LogOddsFusionQuery.this);
       for (Query clauseQuery : clauses) {
         weights.add(searcher.createWeight(clauseQuery, scoreMode, boost));
       }
@@ -146,7 +146,7 @@ public final class LogOddsConjunctionQuery extends Query implements Iterable<Que
             for (ScorerSupplier ss : scorerSuppliers) {
               scorers.add(ss.get(leadCost));
             }
-            return new LogOddsConjunctionScorer(scorers, totalClauses, alpha, scoreMode, leadCost);
+            return new LogOddsFusionScorer(scorers, totalClauses, alpha, scoreMode, leadCost);
           }
 
           @Override
@@ -197,7 +197,7 @@ public final class LogOddsConjunctionQuery extends Query implements Iterable<Que
           match = true;
           subsOnMatch.add(e);
           float subScore = e.getValue().floatValue();
-          logitSum += LogOddsConjunctionScorer.softplus(LogOddsConjunctionScorer.logit(subScore));
+          logitSum += LogOddsFusionScorer.softplus(LogOddsFusionScorer.logit(subScore));
         } else if (match == false) {
           subsOnNoMatch.add(e);
         }
@@ -208,11 +208,11 @@ public final class LogOddsConjunctionQuery extends Query implements Iterable<Que
         float meanLogit = (float) (logitSum / totalClauses);
         float scalingFactor = (float) Math.pow(totalClauses, alpha);
         float scaledLogit = meanLogit * scalingFactor;
-        float score = LogOddsConjunctionScorer.sigmoid(scaledLogit);
+        float score = LogOddsFusionScorer.sigmoid(scaledLogit);
 
         return Explanation.match(
             score,
-            "log-odds conjunction, computed as sigmoid(meanLogit * n^alpha) from:",
+            "log-odds fusion, computed as sigmoid(meanLogit * n^alpha) from:",
             subsOnMatch);
       } else {
         return Explanation.noMatch("No matching clause", subsOnNoMatch);
@@ -223,13 +223,13 @@ public final class LogOddsConjunctionQuery extends Query implements Iterable<Que
   @Override
   public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
       throws IOException {
-    return new LogOddsConjunctionWeight(searcher, scoreMode, boost);
+    return new LogOddsFusionWeight(searcher, scoreMode, boost);
   }
 
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     if (clauses.isEmpty()) {
-      return new MatchNoDocsQuery("empty LogOddsConjunctionQuery");
+      return new MatchNoDocsQuery("empty LogOddsFusionQuery");
     }
 
     if (clauses.size() == 1) {
@@ -245,7 +245,7 @@ public final class LogOddsConjunctionQuery extends Query implements Iterable<Que
     }
 
     if (actuallyRewritten) {
-      return new LogOddsConjunctionQuery(rewrittenClauses, alpha);
+      return new LogOddsFusionQuery(rewrittenClauses, alpha);
     }
 
     return super.rewrite(indexSearcher);
@@ -277,7 +277,7 @@ public final class LogOddsConjunctionQuery extends Query implements Iterable<Que
     return sameClassAs(other) && equalsTo(getClass().cast(other));
   }
 
-  private boolean equalsTo(LogOddsConjunctionQuery other) {
+  private boolean equalsTo(LogOddsFusionQuery other) {
     return alpha == other.alpha && Objects.equals(clauses, other.clauses);
   }
 

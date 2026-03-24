@@ -37,10 +37,10 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
 /**
- * Tests for {@link LogOddsConjunctionQuery}. Clauses are wrapped with {@link BayesianScoreQuery} to
+ * Tests for {@link LogOddsFusionQuery}. Clauses are wrapped with {@link BayesianScoreQuery} to
  * produce (0,1) probability scores, matching the paper's query-level calibration design.
  */
-public class TestLogOddsConjunctionQuery extends LuceneTestCase {
+public class TestLogOddsFusionQuery extends LuceneTestCase {
 
   private static final float BSQ_ALPHA = 0.5f;
   private static final float BSQ_BETA = 3.0f;
@@ -97,7 +97,7 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
     Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
 
-    LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
+    LogOddsFusionQuery loq = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f);
     QueryUtils.check(random(), loq, searcher);
 
     ScoreDoc[] hits = searcher.search(loq, 10).scoreDocs;
@@ -117,7 +117,7 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
 
   public void testSingleClauseRewrite() throws Exception {
     Query sub = bayesian(new TermQuery(new Term("body", "alpha")));
-    LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Collections.singletonList(sub));
+    LogOddsFusionQuery loq = new LogOddsFusionQuery(Collections.singletonList(sub));
 
     Query rewritten = searcher.rewrite(loq);
     assertTrue(
@@ -126,7 +126,7 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
   }
 
   public void testEmptyClauseRewrite() throws Exception {
-    LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Collections.emptyList(), 0.5f);
+    LogOddsFusionQuery loq = new LogOddsFusionQuery(Collections.emptyList(), 0.5f);
     Query rewritten = searcher.rewrite(loq);
     assertTrue("empty should rewrite to MatchNoDocsQuery", rewritten instanceof MatchNoDocsQuery);
   }
@@ -136,7 +136,7 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
 
     for (float alpha : new float[] {0.0f, 0.5f, 1.0f}) {
-      LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), alpha);
+      LogOddsFusionQuery loq = new LogOddsFusionQuery(Arrays.asList(q1, q2), alpha);
       ScoreDoc[] hits = searcher.search(loq, 10).scoreDocs;
       assertTrue("alpha=" + alpha + " should have hits", hits.length > 0);
       for (ScoreDoc hit : hits) {
@@ -149,26 +149,26 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
   public void testIllegalAlpha() {
     expectThrows(
         IllegalArgumentException.class,
-        () -> new LogOddsConjunctionQuery(Collections.emptyList(), -0.1f));
+        () -> new LogOddsFusionQuery(Collections.emptyList(), -0.1f));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new LogOddsConjunctionQuery(Collections.emptyList(), 1.1f));
+        () -> new LogOddsFusionQuery(Collections.emptyList(), 1.1f));
     expectThrows(
         IllegalArgumentException.class,
-        () -> new LogOddsConjunctionQuery(Collections.emptyList(), Float.NaN));
+        () -> new LogOddsFusionQuery(Collections.emptyList(), Float.NaN));
   }
 
   public void testNonMatchingSubQueries() throws Exception {
     Query q1 = bayesian(new TermQuery(new Term("body", "nonexistent1")));
     Query q2 = bayesian(new TermQuery(new Term("body", "nonexistent2")));
-    LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
+    LogOddsFusionQuery loq = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f);
     assertEquals("no docs should match", 0, searcher.search(loq, 10).scoreDocs.length);
   }
 
   public void testExplanation() throws Exception {
     Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
     Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
-    LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
+    LogOddsFusionQuery loq = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f);
 
     Weight w = searcher.createWeight(searcher.rewrite(loq), ScoreMode.COMPLETE, 1);
     LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
@@ -185,10 +185,10 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
     Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
 
-    LogOddsConjunctionQuery a = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
-    LogOddsConjunctionQuery b = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
-    LogOddsConjunctionQuery c = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.3f);
-    LogOddsConjunctionQuery d = new LogOddsConjunctionQuery(Arrays.asList(q2, q1), 0.5f);
+    LogOddsFusionQuery a = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f);
+    LogOddsFusionQuery b = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f);
+    LogOddsFusionQuery c = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.3f);
+    LogOddsFusionQuery d = new LogOddsFusionQuery(Arrays.asList(q2, q1), 0.5f);
 
     assertEquals(a, b);
     assertEquals(a.hashCode(), b.hashCode());
@@ -199,21 +199,21 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
   public void testQueryUtils() throws Exception {
     Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
     Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
-    LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
+    LogOddsFusionQuery loq = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f);
     QueryUtils.check(random(), loq, searcher);
   }
 
   public void testMaxScoreCorrectness() throws Exception {
     Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
     Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
-    LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
+    LogOddsFusionQuery loq = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f);
     CheckHits.checkTopScores(random(), loq, searcher);
   }
 
   public void testToString() {
     Query q1 = new TermQuery(new Term("body", "alpha"));
     Query q2 = new TermQuery(new Term("body", "beta"));
-    LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
+    LogOddsFusionQuery loq = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f);
     String str = loq.toString("body");
     assertTrue("should contain LogOdds", str.contains("LogOdds"));
     assertTrue("should contain alpha", str.contains("0.5"));
@@ -223,7 +223,7 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
     Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
     Query q3 = bayesian(new TermQuery(new Term("body", "gamma")));
-    LogOddsConjunctionQuery loq = new LogOddsConjunctionQuery(Arrays.asList(q1, q2, q3), 0.5f);
+    LogOddsFusionQuery loq = new LogOddsFusionQuery(Arrays.asList(q1, q2, q3), 0.5f);
     QueryUtils.check(random(), loq, searcher);
 
     ScoreDoc[] hits = searcher.search(loq, 10).scoreDocs;
@@ -262,8 +262,8 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
 
     Query titleQuery = bayesian(new TermQuery(new Term("title", "lucene")));
     Query bodyQuery = bayesian(new TermQuery(new Term("body", "lucene")));
-    LogOddsConjunctionQuery hybridQuery =
-        new LogOddsConjunctionQuery(Arrays.asList(titleQuery, bodyQuery), 0.5f);
+    LogOddsFusionQuery hybridQuery =
+        new LogOddsFusionQuery(Arrays.asList(titleQuery, bodyQuery), 0.5f);
 
     ScoreDoc[] hits = hybridSearcher.search(hybridQuery, 10).scoreDocs;
     assertEquals("should have 2 hits", 2, hits.length);
@@ -304,11 +304,11 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
 
     float score1 = signalSearcher.search(q1, 1).scoreDocs[0].score;
 
-    LogOddsConjunctionQuery twoSignals = new LogOddsConjunctionQuery(Arrays.asList(q1, q2), 0.5f);
+    LogOddsFusionQuery twoSignals = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f);
     float score2 = signalSearcher.search(twoSignals, 1).scoreDocs[0].score;
 
-    LogOddsConjunctionQuery threeSignals =
-        new LogOddsConjunctionQuery(Arrays.asList(q1, q2, q3), 0.5f);
+    LogOddsFusionQuery threeSignals =
+        new LogOddsFusionQuery(Arrays.asList(q1, q2, q3), 0.5f);
     float score3 = signalSearcher.search(threeSignals, 1).scoreDocs[0].score;
 
     // With softplus gating, more matching signals always produce >= score.
@@ -407,8 +407,8 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
       // KNN COSINE already produces (0,1) scores via (1+cos)/2
       Query vectorQuery = new KnnFloatVectorQuery("embedding", QUERY_A, 10);
 
-      LogOddsConjunctionQuery hybridQuery =
-          new LogOddsConjunctionQuery(Arrays.asList(textQuery, vectorQuery), 0.5f);
+      LogOddsFusionQuery hybridQuery =
+          new LogOddsFusionQuery(Arrays.asList(textQuery, vectorQuery), 0.5f);
 
       ScoreDoc[] hits = hybridSearcher.search(hybridQuery, 10).scoreDocs;
       assertTrue("should have hits", hits.length >= 3);
@@ -443,8 +443,8 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
       assertTrue("KNN should return doc0", knnFoundDoc0);
       assertTrue("KNN should return doc2", knnFoundDoc2);
 
-      LogOddsConjunctionQuery hybridQuery =
-          new LogOddsConjunctionQuery(Arrays.asList(textQuery, vectorQuery), 0.5f);
+      LogOddsFusionQuery hybridQuery =
+          new LogOddsFusionQuery(Arrays.asList(textQuery, vectorQuery), 0.5f);
       ScoreDoc[] hits = hybridSearcher.search(hybridQuery, 20).scoreDocs;
 
       boolean foundTextOnly = false;
@@ -504,8 +504,8 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
     Query vecQueryA = new KnnFloatVectorQuery("emb_a", queryA, 3);
     Query vecQueryB = new KnnFloatVectorQuery("emb_b", queryB, 3);
 
-    LogOddsConjunctionQuery multiVecQuery =
-        new LogOddsConjunctionQuery(Arrays.asList(vecQueryA, vecQueryB), 0.5f);
+    LogOddsFusionQuery multiVecQuery =
+        new LogOddsFusionQuery(Arrays.asList(vecQueryA, vecQueryB), 0.5f);
 
     ScoreDoc[] hits = testSearcher.search(multiVecQuery, 3).scoreDocs;
     assertEquals("all 3 docs should match", 3, hits.length);
@@ -523,8 +523,8 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
       Query textQuery = bayesian(new TermQuery(new Term("body", "lucene")));
       Query vectorQuery = new KnnFloatVectorQuery("embedding", QUERY_A, 10);
 
-      LogOddsConjunctionQuery hybridQuery =
-          new LogOddsConjunctionQuery(Arrays.asList(textQuery, vectorQuery), 0.5f);
+      LogOddsFusionQuery hybridQuery =
+          new LogOddsFusionQuery(Arrays.asList(textQuery, vectorQuery), 0.5f);
 
       BooleanQuery filtered =
           new BooleanQuery.Builder()
@@ -548,8 +548,8 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
       Query textQuery = bayesian(new TermQuery(new Term("body", "lucene")));
       Query vectorQuery = new KnnFloatVectorQuery("embedding", QUERY_A, 10);
 
-      LogOddsConjunctionQuery hybridQuery =
-          new LogOddsConjunctionQuery(Arrays.asList(textQuery, vectorQuery), 0.5f);
+      LogOddsFusionQuery hybridQuery =
+          new LogOddsFusionQuery(Arrays.asList(textQuery, vectorQuery), 0.5f);
 
       Query excludeFilter = new TermQuery(new Term("body", "cooking"));
       BooleanQuery excludeQuery =
@@ -574,10 +574,10 @@ public class TestLogOddsConjunctionQuery extends LuceneTestCase {
       Query textCooking = bayesian(new TermQuery(new Term("body", "cooking")));
       Query vecA = new KnnFloatVectorQuery("embedding", QUERY_A, 10);
 
-      LogOddsConjunctionQuery hybrid1 =
-          new LogOddsConjunctionQuery(Arrays.asList(textLucene, vecA), 0.5f);
-      LogOddsConjunctionQuery hybrid2 =
-          new LogOddsConjunctionQuery(Arrays.asList(textCooking, vecA), 0.5f);
+      LogOddsFusionQuery hybrid1 =
+          new LogOddsFusionQuery(Arrays.asList(textLucene, vecA), 0.5f);
+      LogOddsFusionQuery hybrid2 =
+          new LogOddsFusionQuery(Arrays.asList(textCooking, vecA), 0.5f);
 
       BooleanQuery orQuery =
           new BooleanQuery.Builder()

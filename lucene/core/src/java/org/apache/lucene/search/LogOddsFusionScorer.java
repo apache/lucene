@@ -20,8 +20,8 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * Scorer for {@link LogOddsConjunctionQuery}. Combines sub-scorer outputs (assumed to be
- * probabilities in (0, 1)) via log-odds conjunction with multiplicative confidence scaling.
+ * Scorer for {@link LogOddsFusionQuery}. Combines sub-scorer outputs (assumed to be
+ * probabilities in (0, 1)) via log-odds fusion with multiplicative confidence scaling.
  *
  * <p>The scoring formula is:
  *
@@ -43,7 +43,7 @@ import java.util.List;
  *
  * @lucene.experimental
  */
-final class LogOddsConjunctionScorer extends DisjunctionScorer {
+final class LogOddsFusionScorer extends DisjunctionScorer {
   private static final float CLAMP_MIN = 1e-7f;
   private static final float CLAMP_MAX = 1f - 1e-7f;
 
@@ -54,7 +54,7 @@ final class LogOddsConjunctionScorer extends DisjunctionScorer {
   private final DisjunctionScoreBlockBoundaryPropagator disjunctionBlockPropagator;
 
   /**
-   * Creates a new LogOddsConjunctionScorer.
+   * Creates a new LogOddsFusionScorer.
    *
    * @param subScorers the sub scorers to combine
    * @param totalClauses the total number of clauses (including non-matching)
@@ -62,7 +62,7 @@ final class LogOddsConjunctionScorer extends DisjunctionScorer {
    * @param scoreMode the score mode
    * @param leadCost the lead cost for iteration
    */
-  LogOddsConjunctionScorer(
+  LogOddsFusionScorer(
       List<Scorer> subScorers, int totalClauses, float alpha, ScoreMode scoreMode, long leadCost)
       throws IOException {
     super(subScorers, scoreMode, leadCost);
