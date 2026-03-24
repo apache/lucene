@@ -169,7 +169,11 @@ public final class TestSecrets {
                     s.skip(2)
                         .limit(1)
                         .map(StackFrame::getClassName)
-                        .allMatch(c -> c.startsWith("org.apache.lucene.tests.")));
+                        .allMatch(
+                            c ->
+                                c.startsWith("org.apache.lucene.tests.")
+                                    || c.equals(
+                                        "org.apache.lucene.codecs.TestCodecLoadingDeadlock")));
     if (!validCaller) {
       throw new UnsupportedOperationException(
           "Lucene TestSecrets can only be used by the test-framework.");
