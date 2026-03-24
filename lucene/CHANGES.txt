@@ -76,6 +76,9 @@ Bug Fixes
   native code at all (wrong platform); disable native code on 32 bit platforms.
   (Uwe Schindler, thanks to Christian Ortlepp for finding the issue)
 
+* GITHUB#15836: Use exact search in VectorSimilarityQuery when traversalSimilarity is -infinity to
+  guarantee completeness. (Sagar Upadhyaya)
+
 * GITHUB#12419, GITHUB#15119, GITHUB#15864: Fix circular dependency deadlock in
   TestSecrets initialization (Namgyu Kim, Uwe Schindler)
 
