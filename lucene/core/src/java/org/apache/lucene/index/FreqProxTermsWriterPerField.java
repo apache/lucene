@@ -20,7 +20,6 @@ import java.io.IOException;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
 import org.apache.lucene.analysis.tokenattributes.PayloadAttribute;
 import org.apache.lucene.analysis.tokenattributes.TermFrequencyAttribute;
-import org.apache.lucene.index.TermsHashPerField.DuplicateTermException;
 import org.apache.lucene.util.BytesRef;
 
 // TODO: break into separate freq and prox writers as
