@@ -171,7 +171,7 @@ public abstract class VectorizationProvider {
     return new DefaultVectorizationProvider();
   }
 
-  static VectorizationProvider lookup(String className) {
+  private static VectorizationProvider lookup(String className) {
     try {
       // we use method handles with lookup, so we do not need to deal with setAccessible as we
       // have private access through the lookup:
