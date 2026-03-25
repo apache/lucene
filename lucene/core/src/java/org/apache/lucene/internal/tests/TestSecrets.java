@@ -145,7 +145,7 @@ public final class TestSecrets {
                 s.skip(2)
                     .limit(1)
                     .map(StackFrame::getClassName)
-                        .allMatch(allowedCaller.getName()::equals));
+                    .allMatch(allowedCaller.getName()::equals));
     if (!validCaller || needsNull != null) {
       throw new IllegalCallerException(
           "The accessor can only be set once by " + allowedCaller.getName() + ".");
