@@ -156,7 +156,7 @@ Bug Fixes
 * GITHUB#14971: Fix CachedExecutor thread pool leak in ConcurrentMergeScheduler
   when IndexWriter initialization fails. (Su Beom)
 
-* GITHUB#14971: Fix luke terms export failure on Windows when field names contain characters forbidden in file name (Binlong Gao)
+* GITHUB#15838: Fix luke terms export failure on Windows when field names contain characters forbidden in file name (Binlong Gao)
 
 Changes in Runtime Behavior
 ---------------------
@@ -194,14 +194,20 @@ Other
 * GITHUB#14613: Rewrite APIJAR extractor to use Java 24 classfile API and kill ASM dependency also for build system.  (Uwe Schindler)
 
 * GITHUB#14705: Use Comparators for some PriorityQueue implementations. (Simon Cooper)
+
 * GITHUB#14761: Use more Comparators for PriorityQueue implementations. (Simon Cooper)
+
 * GITHUB#14817: Refactor some complex uses of PriorityQueue to use Comparators. (Simon Cooper)
 
 * GITHUB#14607: Index open performs version check on each segment, ignores indexCreatedVersionMajor (Rahul Goswami)
+
 * GITHUB#15454: Restore binary readability for 8.x indexes like previously and throw IndexFormatTooOldException for an older default codec not found on classpath (Rahul Goswami)
 
-GITHUB#15821: Pass immutable list directly from BooleanQuery.Builder to private constructor,
+* GITHUB#15821: Pass immutable list directly from BooleanQuery.Builder to private constructor,
   avoiding unnecessary list→array→list conversions. (Sagar Upadhyaya)
+
+* GITHUB#15844: Detect JVM bitness using Panama's ValueLayout#ADDRESS instead
+  of undocumented system properties.  (Uwe Schindler)
 
 ======================= Lucene 10.5.0 =======================
 
@@ -216,6 +222,9 @@ API Changes
 * GITHUB#15723: Add hook for LRUQueryCache to allow custom population strategies (Nhat Nguyen)
 
 * GITHUB#15751: Prevent zero vectors in knn fields with cosine similarity configured (Vigya Sharma)
+
+* GITHUB#15803: Add ReaderUtil#partitionByLeaf to partition doc IDs from
+  ScoreDoc hits by leaf reader. (Zihan Xu)
 
 New Features
 ---------------------
@@ -249,6 +258,8 @@ Optimizations
 
 * GITHUB#15024: Improve prefix sum computation in Lucene99HnswVectorsReader for faster neighbor decoding. (Luis Negrin)
 
+* GITHUB#15779: Improve BytesRefHash.add performance by optimize rehash operation (tyronecai)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
@@ -269,6 +280,16 @@ Bug Fixes
   we might fail to detect it and choose a wrong bridge to eliminate the hole. (Ignacio Vera)
 
 * GITHUB#15656: Fix wrong BitSet result in MemoryAccountingBitsetCollector (Binlong Gao)
+
+* GITHUB#15844: Prevent class initialization failure when JVM has no support for
+  native code at all (wrong platform); disable native code on 32 bit platforms.
+  (Uwe Schindler, thanks to Christian Ortlepp for finding the issue)
+
+* GITHUB#15836: Use exact search in VectorSimilarityQuery when traversalSimilarity is -infinity to
+  guarantee completeness. (Sagar Upadhyaya)
+
+* GITHUB#12419, GITHUB#15119, GITHUB#15864: Fix circular dependency deadlock in
+  TestSecrets initialization (Namgyu Kim, Uwe Schindler)
 
 Other
 ---------------------

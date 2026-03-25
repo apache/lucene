@@ -497,8 +497,10 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                             ":lucene:distribution.tests",
                             ":lucene:test-framework" ->
                             "ALL-UNNAMED";
+                        case ":lucene:sandbox" -> "org.apache.lucene.core,ALL-UNNAMED";
                         default -> "org.apache.lucene.core";
                       });
+              task.jvmArgs("--illegal-native-access=deny");
 
               var loggingFileProvider =
                   project.getObjects().newInstance(LoggingFileArgumentProvider.class);
