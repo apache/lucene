@@ -285,6 +285,9 @@ Bug Fixes
 * GITHUB#12419, GITHUB#15119, GITHUB#15864: Fix circular dependency deadlock in
   TestSecrets initialization (Namgyu Kim, Uwe Schindler)
 
+* GITHUB#15867: Use IllegalCallerException to signal wrong caller in internal classes
+  (VectorizationProvider, TestSecrets).  (Uwe Schindler)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
