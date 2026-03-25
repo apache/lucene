@@ -20,16 +20,12 @@ import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WO
 
 import java.io.StringReader;
 import java.text.DateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.TimeZone;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -105,14 +101,6 @@ public abstract class QueryParserBase extends QueryBuilder
 
   boolean autoGeneratePhraseQueries;
   int determinizeWorkLimit = DEFAULT_DETERMINIZE_WORK_LIMIT;
-
-  /**
-   * BM25's k3 parameter for query-side term frequency saturation. When duplicate terms appear in
-   * the query string, their boost is computed as ((k3 + 1) * qtf) / (k3 + qtf) instead of a linear
-   * sum of qtf. A negative value (the default) disables saturation and preserves the existing
-   * linear boost behavior for backward compatibility.
-   */
-  float k3 = -1f;
 
   // So the generated QueryParser(CharStream) won't error out
   protected QueryParserBase() {
@@ -373,33 +361,6 @@ public abstract class QueryParserBase extends QueryBuilder
    */
   public int getDeterminizeWorkLimit() {
     return determinizeWorkLimit;
-  }
-
-  /**
-   * Sets BM25's k3 parameter for query-side term frequency saturation. When duplicate terms appear
-   * in the query string, their combined boost is computed using the BM25 saturation formula: ((k3 +
-   * 1) * qtf) / (k3 + qtf), where qtf is the number of times the term appears in the query.
-   *
-   * <p>Common values from IR literature are 7 or 8. A negative value (the default) disables
-   * saturation and preserves the existing linear boost behavior where duplicate terms have their
-   * boosts summed.
-   *
-   * @param k3 the k3 saturation parameter, or a negative value to disable saturation
-   */
-  @Override
-  public void setK3(float k3) {
-    this.k3 = k3;
-  }
-
-  /**
-   * Returns BM25's k3 parameter for query-side term frequency saturation. A negative value means
-   * saturation is disabled (linear boost summing).
-   *
-   * @see #setK3(float)
-   */
-  @Override
-  public float getK3() {
-    return k3;
   }
 
   protected void addClause(List<BooleanClause> clauses, int conj, int mods, Query q) {
@@ -700,71 +661,11 @@ public abstract class QueryParserBase extends QueryBuilder
       return null; // all clause words were filtered away by the analyzer.
     }
 
-    if (k3 >= 0) {
-      clauses = applySaturation(clauses);
-    }
-
     BooleanQuery.Builder query = newBooleanQuery();
     for (final BooleanClause clause : clauses) {
       query.add(clause);
     }
     return query.build();
-  }
-
-  /**
-   * Applies BM25 k3 saturation to duplicate terms in the clause list. Duplicate SHOULD and MUST
-   * clauses are collapsed into a single clause with a saturated boost computed as ((k3 + 1) * qtf)
-   * / (k3 + qtf), where qtf is the number of occurrences of the term in the query.
-   *
-   * <p>Non-scoring clauses (FILTER, MUST_NOT) are passed through unchanged.
-   */
-  private List<BooleanClause> applySaturation(List<BooleanClause> clauses) {
-    // Count occurrences of each scoring clause query. LinkedHashMap preserves insertion order
-    // so the rebuilt list maintains the original clause ordering.
-    Map<Query, Integer> counts = new LinkedHashMap<>();
-    boolean hasDuplicates = false;
-
-    for (BooleanClause clause : clauses) {
-      if (clause.occur() == Occur.SHOULD || clause.occur() == Occur.MUST) {
-        int prev = counts.getOrDefault(clause.query(), 0);
-        counts.put(clause.query(), prev + 1);
-        if (prev > 0) hasDuplicates = true;
-      }
-    }
-
-    if (!hasDuplicates) {
-      return clauses;
-    }
-
-    // Rebuild with saturated boosts for duplicates, skipping subsequent occurrences
-    List<BooleanClause> result = new ArrayList<>();
-    Set<Query> seen = new HashSet<>();
-
-    for (BooleanClause clause : clauses) {
-      if (clause.occur() == Occur.SHOULD || clause.occur() == Occur.MUST) {
-        if (seen.add(clause.query())) {
-          result.add(saturateClause(clause, counts.get(clause.query())));
-        }
-      } else {
-        // FILTER, MUST_NOT — pass through unchanged
-        result.add(clause);
-      }
-    }
-
-    return result;
-  }
-
-  /**
-   * Returns a clause with BM25 k3 saturated boost if qtf &gt; 1, or the original clause if qtf ==
-   * 1.
-   */
-  private BooleanClause saturateClause(BooleanClause clause, int qtf) {
-    if (qtf <= 1) {
-      return clause;
-    }
-    float weight = ((k3 + 1f) * qtf) / (k3 + qtf);
-    Query boosted = new BoostQuery(clause.query(), weight);
-    return new BooleanClause(boosted, clause.occur());
   }
 
   /**

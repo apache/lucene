@@ -44,8 +44,9 @@ public class BM25Similarity extends Similarity {
    * @param k3 Controls query-side term frequency saturation. When duplicate terms appear in a
    *     query, their boost is computed as ((k3 + 1) * qtf) / (k3 + qtf) instead of linear summing.
    *     A negative value disables saturation (linear behavior). Common values are 7 or 8.
-   * @throws IllegalArgumentException if {@code k1} is infinite or negative, or if {@code b} is not
-   *     within the range {@code [0..1]}
+   * @throws IllegalArgumentException if {@code k1} is infinite or negative
+   * @throws IllegalArgumentException if {@code b} is not within the range {@code [0..1]}
+   * @throws IllegalArgumentException if {@code k3} is NaN or infinite
    */
   public BM25Similarity(float k1, float b, boolean discountOverlaps, float k3) {
     super(discountOverlaps);
@@ -55,6 +56,10 @@ public class BM25Similarity extends Similarity {
     }
     if (Float.isNaN(b) || b < 0 || b > 1) {
       throw new IllegalArgumentException("illegal b value: " + b + ", must be between 0 and 1");
+    }
+    if (Float.isNaN(k3) || Float.isInfinite(k3)) {
+      throw new IllegalArgumentException(
+          "illegal k3 value: " + k3 + ", must be a finite value (negative to disable)");
     }
     this.k1 = k1;
     this.b = b;

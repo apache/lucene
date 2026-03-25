@@ -133,24 +133,4 @@ public interface CommonQueryParserConfiguration {
    * @param dateResolution the default {@link Resolution}
    */
   public void setDateResolution(DateTools.Resolution dateResolution);
-
-  /**
-   * Sets BM25's k3 parameter for query-side term frequency saturation. When duplicate terms appear
-   * in the query string, their combined boost is computed using the BM25 saturation formula: ((k3 +
-   * 1) * qtf) / (k3 + qtf), where qtf is the number of times the term appears in the query.
-   *
-   * <p>Common values from IR literature are 7 or 8. A negative value (the default) disables
-   * saturation and preserves the existing linear boost behavior.
-   *
-   * @param k3 the k3 saturation parameter, or a negative value to disable saturation
-   */
-  public void setK3(float k3);
-
-  /**
-   * Returns BM25's k3 parameter for query-side term frequency saturation. A negative value means
-   * saturation is disabled.
-   *
-   * @see #setK3(float)
-   */
-  public float getK3();
 }

@@ -1042,8 +1042,8 @@ public class TestQueryParser extends QueryParserTestBase {
 
   public void testK3DefaultDisabled() throws Exception {
     QueryParser qp = getParser(new MockAnalyzer(random()));
-    assertEquals(-1f, qp.getK3(), 0f);
-    // With k3 disabled (default), duplicate terms produce linear boost sum via BooleanQuery.rewrite
+    // Parser no longer has k3 — it always produces raw duplicate clauses.
+    // With default BM25Similarity (k3 disabled), BooleanQuery.rewrite produces linear boost sum.
     Query q = qp.parse("a a a b");
     assertTrue(q instanceof BooleanQuery);
     BooleanQuery bq = (BooleanQuery) q;
@@ -1053,80 +1053,108 @@ public class TestQueryParser extends QueryParserTestBase {
 
   public void testK3SaturationDuplicateShould() throws Exception {
     QueryParser qp = getParser(new MockAnalyzer(random()));
-    qp.setK3(8f);
     // "a a a b" with OR operator: 'a' appears 3 times, 'b' once
     Query q = qp.parse("a a a b");
     assertTrue(q instanceof BooleanQuery);
-    BooleanQuery bq = (BooleanQuery) q;
-    // Should be deduplicated to 2 clauses: boosted 'a' + 'b'
-    assertEquals(2, bq.clauses().size());
+    // Parser produces 4 raw clauses (no dedup)
+    assertEquals(4, ((BooleanQuery) q).clauses().size());
 
-    // Find the 'a' clause — it should be a BoostQuery with saturated weight
-    boolean foundA = false;
-    boolean foundB = false;
-    for (BooleanClause clause : bq.clauses()) {
-      assertEquals(BooleanClause.Occur.SHOULD, clause.occur());
-      if (clause.query() instanceof BoostQuery boostQuery) {
-        // This is the saturated 'a': ((8+1)*3)/(8+3) = 27/11 ≈ 2.4545
-        assertTrue(boostQuery.getQuery() instanceof TermQuery);
-        assertEquals("a", ((TermQuery) boostQuery.getQuery()).getTerm().text());
-        float expectedWeight = ((8f + 1f) * 3f) / (8f + 3f);
-        assertEquals(expectedWeight, boostQuery.getBoost(), 0.001f);
-        foundA = true;
-      } else if (clause.query() instanceof TermQuery termQuery) {
-        // 'b' appears once, no boost
-        assertEquals("b", termQuery.getTerm().text());
-        foundB = true;
+    // Now rewrite with BM25Similarity(k3=8) to trigger saturation
+    try (Directory dir = newDirectory()) {
+      try (RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
+        w.addDocument(new Document());
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        searcher.setSimilarity(
+            new org.apache.lucene.search.similarities.BM25Similarity(1.2f, 0.75f, true, 8f));
+        Query rewritten = searcher.rewrite(q);
+        assertTrue(rewritten instanceof BooleanQuery);
+        BooleanQuery bq = (BooleanQuery) rewritten;
+        // Should be deduplicated to 2 clauses: boosted 'a' + 'b'
+        assertEquals(2, bq.clauses().size());
+
+        // Find the 'a' clause — it should be a BoostQuery with saturated weight
+        boolean foundA = false;
+        boolean foundB = false;
+        for (BooleanClause clause : bq.clauses()) {
+          assertEquals(BooleanClause.Occur.SHOULD, clause.occur());
+          if (clause.query() instanceof BoostQuery boostQuery) {
+            // This is the saturated 'a': ((8+1)*3)/(8+3) = 27/11 ≈ 2.4545
+            assertTrue(boostQuery.getQuery() instanceof TermQuery);
+            assertEquals("a", ((TermQuery) boostQuery.getQuery()).getTerm().text());
+            float expectedWeight = ((8f + 1f) * 3f) / (8f + 3f);
+            assertEquals(expectedWeight, boostQuery.getBoost(), 0.001f);
+            foundA = true;
+          } else if (clause.query() instanceof TermQuery termQuery) {
+            // 'b' appears once, no boost
+            assertEquals("b", termQuery.getTerm().text());
+            foundB = true;
+          }
+        }
+        assertTrue("Expected saturated 'a' clause", foundA);
+        assertTrue("Expected 'b' clause", foundB);
       }
     }
-    assertTrue("Expected saturated 'a' clause", foundA);
-    assertTrue("Expected 'b' clause", foundB);
   }
 
   public void testK3SaturationDuplicateMust() throws Exception {
     QueryParser qp = getParser(new MockAnalyzer(random()));
     qp.setDefaultOperator(Operator.AND);
-    qp.setK3(7f);
     // "a a b" with AND operator: 'a' appears 2 times
     Query q = qp.parse("a a b");
     assertTrue(q instanceof BooleanQuery);
-    BooleanQuery bq = (BooleanQuery) q;
-    // Should be deduplicated to 2 clauses
-    assertEquals(2, bq.clauses().size());
 
-    for (BooleanClause clause : bq.clauses()) {
-      assertEquals(BooleanClause.Occur.MUST, clause.occur());
-      if (clause.query() instanceof BoostQuery boostQuery) {
-        // 'a' with qtf=2: ((7+1)*2)/(7+2) = 16/9 ≈ 1.7778
-        float expectedWeight = ((7f + 1f) * 2f) / (7f + 2f);
-        assertEquals(expectedWeight, boostQuery.getBoost(), 0.001f);
+    // Rewrite with BM25Similarity(k3=7)
+    try (Directory dir = newDirectory()) {
+      try (RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
+        w.addDocument(new Document());
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        searcher.setSimilarity(
+            new org.apache.lucene.search.similarities.BM25Similarity(1.2f, 0.75f, true, 7f));
+        Query rewritten = searcher.rewrite(q);
+        assertTrue(rewritten instanceof BooleanQuery);
+        BooleanQuery bq = (BooleanQuery) rewritten;
+        // Should be deduplicated to 2 clauses
+        assertEquals(2, bq.clauses().size());
+
+        for (BooleanClause clause : bq.clauses()) {
+          assertEquals(BooleanClause.Occur.MUST, clause.occur());
+          if (clause.query() instanceof BoostQuery boostQuery) {
+            // 'a' with qtf=2: ((7+1)*2)/(7+2) = 16/9 ≈ 1.7778
+            float expectedWeight = ((7f + 1f) * 2f) / (7f + 2f);
+            assertEquals(expectedWeight, boostQuery.getBoost(), 0.001f);
+          }
+        }
       }
     }
   }
 
   public void testK3NoDuplicatesNoChange() throws Exception {
     QueryParser qp = getParser(new MockAnalyzer(random()));
-    qp.setK3(8f);
-    // No duplicates — should produce normal clauses with no boost
+    // No duplicates — should produce normal clauses with no boost even after rewrite
     Query q = qp.parse("a b c");
-    assertTrue(q instanceof BooleanQuery);
-    BooleanQuery bq = (BooleanQuery) q;
-    assertEquals(3, bq.clauses().size());
-    for (BooleanClause clause : bq.clauses()) {
-      assertTrue(
-          "Expected plain TermQuery, got " + clause.query().getClass(),
-          clause.query() instanceof TermQuery);
-    }
-  }
 
-  public void testK3SetterGetter() throws Exception {
-    QueryParser qp = getParser(new MockAnalyzer(random()));
-    assertEquals(-1f, qp.getK3(), 0f);
-    qp.setK3(8f);
-    assertEquals(8f, qp.getK3(), 0f);
-    qp.setK3(0f);
-    assertEquals(0f, qp.getK3(), 0f);
-    qp.setK3(-1f);
-    assertEquals(-1f, qp.getK3(), 0f);
+    try (Directory dir = newDirectory()) {
+      try (RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
+        w.addDocument(new Document());
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        searcher.setSimilarity(
+            new org.apache.lucene.search.similarities.BM25Similarity(1.2f, 0.75f, true, 8f));
+        Query rewritten = searcher.rewrite(q);
+        assertTrue(rewritten instanceof BooleanQuery);
+        BooleanQuery bq = (BooleanQuery) rewritten;
+        assertEquals(3, bq.clauses().size());
+        for (BooleanClause clause : bq.clauses()) {
+          assertTrue(
+              "Expected plain TermQuery, got " + clause.query().getClass(),
+              clause.query() instanceof TermQuery);
+        }
+      }
+    }
   }
 }
