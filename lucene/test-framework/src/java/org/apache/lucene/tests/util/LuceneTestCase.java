@@ -2868,8 +2868,8 @@ public abstract class LuceneTestCase extends Assert {
     }
   }
 
-  private static final StackWalker SW_NO_METHODS = StackWalker.getInstance(Option.DROP_METHOD_INFO);
-  private static final StackWalker SW_WITH_METHODS = StackWalker.getInstance();
+  private static final StackWalker SW_NO_METHODS = StackWalker.getInstance(Option.DROP_METHOD_INFO),
+      SW_WITH_METHODS = StackWalker.getInstance();
 
   /** Inspects stack trace to figure out if a method of a specific class called us. */
   public static boolean callStackContains(Class<?> clazz, String methodName) {

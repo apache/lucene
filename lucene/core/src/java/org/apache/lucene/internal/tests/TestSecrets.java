@@ -35,8 +35,10 @@ import org.apache.lucene.store.FilterIndexInput;
 public final class TestSecrets {
 
   private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
-  private static final StackWalker STACKWALKER =
+  private static final StackWalker SW_CLASSNAME =
       StackWalker.getInstance(Set.of(Option.DROP_METHOD_INFO), 3);
+  private static final StackWalker SW_CLASSREF =
+      StackWalker.getInstance(Set.of(Option.DROP_METHOD_INFO, Option.RETAIN_CLASS_REFERENCE), 3);
 
   private static void ensureInitialized(Class<?> clazz) {
     try {
@@ -140,12 +142,12 @@ public final class TestSecrets {
 
   private static void ensureCallerForSetter(Class<?> allowedCaller, Object needsNull) {
     final boolean validCaller =
-        STACKWALKER.walk(
+        SW_CLASSREF.walk(
             s ->
                 s.skip(2)
                     .limit(1)
-                    .map(StackFrame::getClassName)
-                    .allMatch(allowedCaller.getName()::equals));
+                    .map(StackFrame::getDeclaringClass)
+                    .allMatch(allowedCaller::equals));
     if (!validCaller || needsNull != null) {
       throw new IllegalCallerException(
           "The accessor can only be set once by " + allowedCaller.getName() + ".");
@@ -154,7 +156,7 @@ public final class TestSecrets {
 
   private static void ensureCallerForGetter() {
     final boolean validCaller =
-        STACKWALKER.walk(
+        SW_CLASSNAME.walk(
             s ->
                 s.skip(2)
                     .limit(1)
