@@ -17,6 +17,8 @@
 
 package org.apache.lucene.search.grouping;
 
+import static org.apache.lucene.search.grouping.TopGroups.nonNANmax;
+
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Objects;
@@ -34,8 +36,6 @@ import org.apache.lucene.search.TopFieldCollector;
 import org.apache.lucene.search.TopFieldCollectorManager;
 import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.util.ArrayUtil;
-
-import static org.apache.lucene.search.grouping.TopGroups.nonNANmax;
 
 /**
  * A second-pass collector that collects the TopDocs for each group, and returns them as a {@link
