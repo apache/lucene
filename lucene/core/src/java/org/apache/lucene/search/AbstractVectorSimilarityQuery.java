@@ -121,7 +121,15 @@ abstract class AbstractVectorSimilarityQuery extends Query {
 
         // If there is no filter
         if (filterWeight == null) {
-          // Return exhaustive results
+          if (traversalSimilarity == Float.NEGATIVE_INFINITY) {
+            // When traversalSimilarity is -∞, the intent is to find all vectors above
+            // resultSimilarity. The approximate graph search may miss nodes,
+            // so use exact search to guarantee completeness.
+            AcceptDocs acceptDocs = AcceptDocs.fromLiveDocs(liveDocs, leafReader.maxDoc());
+            return VectorSimilarityScorerSupplier.fromAcceptDocs(
+                boost, createVectorScorer(context), acceptDocs.iterator(), resultSimilarity);
+          }
+          // Return results via approximate graph search
           TopDocs results =
               approximateSearch(
                   context,
@@ -147,6 +155,13 @@ abstract class AbstractVectorSimilarityQuery extends Query {
           if (cardinality == 0) {
             // If there are no live matching docs
             return null;
+          }
+
+          if (traversalSimilarity == Float.NEGATIVE_INFINITY) {
+            // When traversalSimilarity is -∞, skip approximate search and go straight
+            // to exact search over the filtered docs.
+            return VectorSimilarityScorerSupplier.fromAcceptDocs(
+                boost, createVectorScorer(context), acceptDocs.iterator(), resultSimilarity);
           }
 
           // Perform an approximate search

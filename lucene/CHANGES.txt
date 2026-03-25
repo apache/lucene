@@ -76,7 +76,6 @@ API Changes
 
 New Features
 ---------------------
-
 * GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
   PolishSnowballAnalyzer in the stempel package) (Justas Sakalauskas, Dawid Weiss)
 
@@ -113,7 +112,7 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#15681: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
+* GITHUB#15681, GITHUB#15833: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
 
@@ -157,6 +156,8 @@ Bug Fixes
 * GITHUB#14971: Fix CachedExecutor thread pool leak in ConcurrentMergeScheduler
   when IndexWriter initialization fails. (Su Beom)
 
+* GITHUB#15838: Fix luke terms export failure on Windows when field names contain characters forbidden in file name (Binlong Gao)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -193,11 +194,20 @@ Other
 * GITHUB#14613: Rewrite APIJAR extractor to use Java 24 classfile API and kill ASM dependency also for build system.  (Uwe Schindler)
 
 * GITHUB#14705: Use Comparators for some PriorityQueue implementations. (Simon Cooper)
+
 * GITHUB#14761: Use more Comparators for PriorityQueue implementations. (Simon Cooper)
+
 * GITHUB#14817: Refactor some complex uses of PriorityQueue to use Comparators. (Simon Cooper)
 
 * GITHUB#14607: Index open performs version check on each segment, ignores indexCreatedVersionMajor (Rahul Goswami)
+
 * GITHUB#15454: Restore binary readability for 8.x indexes like previously and throw IndexFormatTooOldException for an older default codec not found on classpath (Rahul Goswami)
+
+* GITHUB#15821: Pass immutable list directly from BooleanQuery.Builder to private constructor,
+  avoiding unnecessary list→array→list conversions. (Sagar Upadhyaya)
+
+* GITHUB#15844: Detect JVM bitness using Panama's ValueLayout#ADDRESS instead
+  of undocumented system properties.  (Uwe Schindler)
 
 ======================= Lucene 10.5.0 =======================
 
@@ -213,13 +223,20 @@ API Changes
 
 * GITHUB#15751: Prevent zero vectors in knn fields with cosine similarity configured (Vigya Sharma)
 
+* GITHUB#15803: Add ReaderUtil#partitionByLeaf to partition doc IDs from
+  ScoreDoc hits by leaf reader. (Zihan Xu)
+
 New Features
 ---------------------
 
-* GITHUB#15740: Add NumericFieldStats utility for retrieving global numeric field statistics
-  (min, max, doc count) from index metadata structures. Migrate SortedNumericDocValuesRangeQuery
-  to use this API, fixing the rewrite optimization for fields with PointValues but no skip index.
+* GITHUB#15740, GITHUB#15817: Add NumericFieldStats utility for retrieving global numeric field
+  statistics (min, max, doc count) from index metadata structures. Migrate
+  SortedNumericDocValuesRangeQuery to use this API, fixing the rewrite optimization for fields
+  with PointValues but no skip index. Support all packed value lengths from 1 to 8 bytes.
   (Salvatore Campagna)
+
+* GITHUB#15722: Add interface to do prefetch on KnnVectorValues and an example implementation to use prefetch
+  in Scorer (Navneet Verma)
 
 Improvements
 ---------------------
@@ -248,6 +265,8 @@ Optimizations
 
 * GITHUB#15024: Improve prefix sum computation in Lucene99HnswVectorsReader for faster neighbor decoding. (Luis Negrin)
 
+* GITHUB#15779: Improve BytesRefHash.add performance by optimize rehash operation (tyronecai)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
@@ -269,6 +288,16 @@ Bug Fixes
 
 * GITHUB#15656: Fix wrong BitSet result in MemoryAccountingBitsetCollector (Binlong Gao)
 
+* GITHUB#15844: Prevent class initialization failure when JVM has no support for
+  native code at all (wrong platform); disable native code on 32 bit platforms.
+  (Uwe Schindler, thanks to Christian Ortlepp for finding the issue)
+
+* GITHUB#15836: Use exact search in VectorSimilarityQuery when traversalSimilarity is -infinity to
+  guarantee completeness. (Sagar Upadhyaya)
+
+* GITHUB#12419, GITHUB#15119, GITHUB#15864: Fix circular dependency deadlock in
+  TestSecrets initialization (Namgyu Kim, Uwe Schindler)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
@@ -280,7 +309,11 @@ Other
 * GITHUB#15783: Refactor QuantizedVectorsReader to be able to access lucene 104 quantized values through this API.
   (Ignacio Vera)
 
+* GITHUB#15807: Replace BigInteger allocation in StringHelper.idToString with HexFormat. (Sagar Upadhyaya)
+
 * GITHUB#15799: Exclude JNA Cleaner from thread leak detection by LuceneTestCase. (Alan Woodward)
+
+* GITHUB#15826: Use ArrayUtil#copyOfSubArray to simplify manual array copy patterns. (Zhang Chao)
 
 ======================= Lucene 10.4.0 =======================
 
@@ -350,24 +383,26 @@ New Features
   `Lucene104HnswScalarQuantizedVectorsFormat` replaces the now legacy `Lucene99HnswScalarQuantizedVectorsFormat`
    (Trevor McCulloch)
 
- * GITHUB#15271, GITHUB#15353: Extend `Lucene104ScalarQuantizedVectorsFormat` and `Lucene104HnswScalarQuantizedVectorsFormat` to
-   allow asymmetric quantization. The initially supported bits are single bit with 4 bit queries. This is a replacement
-   for the now legacy `Lucene102HnswBinaryQuantizedVectorsFormat` and `Lucene102BinaryQuantizedVectorsFormat`. To use
-   the new format for asymmetric binary quantization,
-   `Lucene104HnswScalarQuantizedVectorsFormat(ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE, int, int)`
-    (Ben Trent)
-
- * GITHUB#15564: Further extend `Lucene104ScalarQuantizedVectorsFormat` and `Lucene104HnswScalarQuantizedVectorsFormat` to
-   allow asymmetric quantization with 2 bits and 4 bit queries. This can provide increased recall over single bit
-   with little additional storage cost and latency.
+* GITHUB#15271, GITHUB#15353: Extend `Lucene104ScalarQuantizedVectorsFormat` and `Lucene104HnswScalarQuantizedVectorsFormat` to
+  allow asymmetric quantization. The initially supported bits are single bit with 4 bit queries. This is a replacement
+  for the now legacy `Lucene102HnswBinaryQuantizedVectorsFormat` and `Lucene102BinaryQuantizedVectorsFormat`. To use
+  the new format for asymmetric binary quantization,
+  `Lucene104HnswScalarQuantizedVectorsFormat(ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE, int, int)`
    (Ben Trent)
 
- * GITHUB#15415: Add fallback support to Lucene104ScalarQuantizedVectorsFormat getFloatVectorValues when there are
-   no full-precision vectors present (Pulkit Gupta)
+* GITHUB#15564: Further extend `Lucene104ScalarQuantizedVectorsFormat` and `Lucene104HnswScalarQuantizedVectorsFormat` to
+  allow asymmetric quantization with 2 bits and 4 bit queries. This can provide increased recall over single bit
+  with little additional storage cost and latency.
+  (Ben Trent)
 
- * GITHUB#15468: Add support for `@SuppressAssertingFormats` annotation for fine-grained control over `AssertingCodec` formats (Prudhvi Godithi)
+* GITHUB#15415: Add fallback support to Lucene104ScalarQuantizedVectorsFormat getFloatVectorValues when there are
+  no full-precision vectors present (Pulkit Gupta)
 
- * GITHUB#15518: Add support for post-collection faceting to the new faceting API in the sandbox module. (Egor Potemkin)
+* GITHUB#15468: Add support for `@SuppressAssertingFormats` annotation for fine-grained control over `AssertingCodec` formats (Prudhvi Godithi)
+
+* GITHUB#15518: Add support for post-collection faceting to the new faceting API in the sandbox module. (Egor Potemkin)
+
+* GITHUB#15620: Add Temporal Merge Policy for time-series data
 
  * GITHUB#14792: Introduced OffHeapQuantizedFloatVectorValues class to access float vectors when only quantized byte vectors are available in the index. (Pulkit Gupta)
 
