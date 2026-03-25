@@ -294,7 +294,7 @@ Bug Fixes
 * GITHUB#12419, GITHUB#15119, GITHUB#15864: Fix circular dependency deadlock in
   TestSecrets initialization (Namgyu Kim, Uwe Schindler)
 
-* GITHUB#15867: Use IllegalCallerException to signal wrong caller in internal classes
+* GITHUB#15878: Fix existential quantification bug in caller checks
   (VectorizationProvider, TestSecrets).  (Uwe Schindler)
 
 Other
@@ -313,6 +313,9 @@ Other
 * GITHUB#15799: Exclude JNA Cleaner from thread leak detection by LuceneTestCase. (Alan Woodward)
 
 * GITHUB#15826: Use ArrayUtil#copyOfSubArray to simplify manual array copy patterns. (Zhang Chao)
+
+* GITHUB#15867: Use IllegalCallerException to signal wrong caller in internal classes
+  (VectorizationProvider, TestSecrets).  (Uwe Schindler)
 
 ======================= Lucene 10.4.0 =======================
 
