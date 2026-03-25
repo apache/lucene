@@ -55,6 +55,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.PrintStream;
+import java.lang.StackWalker.Option;
 import java.lang.StackWalker.StackFrame;
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
@@ -2867,17 +2868,19 @@ public abstract class LuceneTestCase extends Assert {
     }
   }
 
+  private static final StackWalker SW_NO_METHODS = StackWalker.getInstance(Option.DROP_METHOD_INFO);
+  private static final StackWalker SW_WITH_METHODS = StackWalker.getInstance();
+
   /** Inspects stack trace to figure out if a method of a specific class called us. */
   public static boolean callStackContains(Class<?> clazz, String methodName) {
     final String className = clazz.getName();
-    return StackWalker.getInstance()
-        .walk(
-            s ->
-                s.skip(1) // exclude this utility method
-                    .anyMatch(
-                        f ->
-                            className.equals(f.getClassName())
-                                && methodName.equals(f.getMethodName())));
+    return SW_WITH_METHODS.walk(
+        s ->
+            s.skip(1) // exclude this utility method
+                .anyMatch(
+                    f ->
+                        className.equals(f.getClassName())
+                            && methodName.equals(f.getMethodName())));
   }
 
   /**
@@ -2885,22 +2888,20 @@ public abstract class LuceneTestCase extends Assert {
    * called us.
    */
   public static boolean callStackContainsAnyOf(String... methodNames) {
-    return StackWalker.getInstance()
-        .walk(
-            s ->
-                s.skip(1) // exclude this utility method
-                    .map(StackFrame::getMethodName)
-                    .anyMatch(Set.of(methodNames)::contains));
+    return SW_WITH_METHODS.walk(
+        s ->
+            s.skip(1) // exclude this utility method
+                .map(StackFrame::getMethodName)
+                .anyMatch(Set.of(methodNames)::contains));
   }
 
   /** Inspects stack trace if the given class called us. */
   public static boolean callStackContains(Class<?> clazz) {
-    return StackWalker.getInstance()
-        .walk(
-            s ->
-                s.skip(1) // exclude this utility method
-                    .map(StackFrame::getClassName)
-                    .anyMatch(clazz.getName()::equals));
+    return SW_NO_METHODS.walk(
+        s ->
+            s.skip(1) // exclude this utility method
+                .map(StackFrame::getClassName)
+                .anyMatch(clazz.getName()::equals));
   }
 
   /** A runnable that can throw any checked exception. */
