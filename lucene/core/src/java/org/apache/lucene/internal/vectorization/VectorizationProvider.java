@@ -100,8 +100,7 @@ public abstract class VectorizationProvider {
    * Returns the default instance of the provider matching vectorization possibilities of actual
    * runtime.
    *
-   * @throws UnsupportedOperationException if the singleton getter is not called from known Lucene
-   *     classes.
+   * @throws IllegalCallerException if the singleton getter is not called from known Lucene classes.
    */
   public static VectorizationProvider getInstance() {
     ensureCaller();
@@ -232,7 +231,7 @@ public abstract class VectorizationProvider {
                         .map(StackFrame::getClassName)
                         .allMatch(VALID_CALLERS::contains));
     if (!validCaller) {
-      throw new UnsupportedOperationException(
+      throw new IllegalCallerException(
           "VectorizationProvider is internal and can only be used by known Lucene classes.");
     }
   }
