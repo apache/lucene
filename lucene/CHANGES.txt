@@ -291,6 +291,8 @@ Bug Fixes
 * GITHUB#12419, GITHUB#15119, GITHUB#15864: Fix circular dependency deadlock in
   TestSecrets initialization (Namgyu Kim, Uwe Schindler)
 
+* GITHUB#15656: Fix TopGroupsCollector#getTopGroups() returning NaN maxScore when a group has no hits (Binlong Gao)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)

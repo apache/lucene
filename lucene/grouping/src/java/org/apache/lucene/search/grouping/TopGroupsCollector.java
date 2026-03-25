@@ -35,6 +35,8 @@ import org.apache.lucene.search.TopFieldCollectorManager;
 import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.util.ArrayUtil;
 
+import static org.apache.lucene.search.grouping.TopGroups.nonNANmax;
+
 /**
  * A second-pass collector that collects the TopDocs for each group, and returns them as a {@link
  * TopGroups} object
@@ -204,7 +206,7 @@ public class TopGroupsCollector<T> extends SecondPassGroupingCollector<T> {
               topDocs.scoreDocs,
               group.groupValue,
               group.sortValues);
-      maxScore = Math.max(maxScore, groupMaxScore);
+      maxScore = nonNANmax(maxScore, groupMaxScore);
     }
 
     return new TopGroups<>(
