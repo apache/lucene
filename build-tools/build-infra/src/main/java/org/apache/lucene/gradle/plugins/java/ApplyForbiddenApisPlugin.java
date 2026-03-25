@@ -36,6 +36,7 @@ import org.gradle.api.artifacts.result.ResolvedDependencyResult;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskCollection;
 import org.gradle.api.tasks.TaskContainer;
@@ -205,7 +206,9 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
     var allSignatureFiles = project.files(signatureFiles);
     var existingSignatureFiles = allSignatureFiles.filter(File::exists);
 
-    task.getInputs().files(existingSignatureFiles);
+    task.getInputs()
+        .files(existingSignatureFiles)
+        .withPathSensitivity(PathSensitivity.RELATIVE);
     task.setSignaturesFiles(task.getSignaturesFiles().plus(existingSignatureFiles));
 
     addBuiltInSignatures(task, allDependenciesProvider);

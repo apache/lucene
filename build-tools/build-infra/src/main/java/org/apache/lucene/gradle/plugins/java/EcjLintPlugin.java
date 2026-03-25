@@ -35,6 +35,8 @@ import org.gradle.api.Task;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
+import org.gradle.api.tasks.ClasspathNormalizer;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskProvider;
 import org.gradle.process.CommandLineArgumentProvider;
@@ -120,7 +122,8 @@ public class EcjLintPlugin extends LuceneGradlePlugin {
     args.add("-proc:none");
     args.add("-nowarn");
     args.add("-enableJavadoc");
-    args.addAll(List.of("-properties", javadocPrefsPath.toAbsolutePath().toString()));
+    // Note: -properties path is added at execution time (in doFirst) to avoid
+    // absolute paths in the cache key. The file content is tracked separately.
 
     // We depend on modular paths.
     ModularPathsExtension modularPaths =
@@ -133,15 +136,22 @@ public class EcjLintPlugin extends LuceneGradlePlugin {
     // Collect modular dependencies and their transitive dependencies to module path.
     CommandLineArgumentProvider compilationArguments = modularPaths.getCompilationArguments();
     // this isn't exactly right but the returned CommandLineArgumentProvider isn't serializable...
-    task.getInputs().files(sourceSet.getCompileClasspath());
+    task.getInputs()
+        .files(sourceSet.getCompileClasspath())
+        .withNormalizer(ClasspathNormalizer.class);
 
     // Collect classpath locations
     FileCollection classpathArguments = modularPaths.getCompilationClasspath().filter(File::exists);
-    task.getInputs().files(classpathArguments);
+    task.getInputs().files(classpathArguments).withNormalizer(ClasspathNormalizer.class);
 
     // Input sources.
     var inputSources = sourceSet.getJava().getAsFileTree();
-    task.getInputs().files(inputSources);
+    task.getInputs().files(inputSources).withPathSensitivity(PathSensitivity.RELATIVE);
+
+    // Track the javadoc prefs file as an input with relative path sensitivity.
+    task.getInputs()
+        .file(javadocPrefsPath.toFile())
+        .withPathSensitivity(PathSensitivity.RELATIVE);
 
     // Add all arguments so far as inputs.
     task.getInputs().property("args", args);
@@ -163,6 +173,7 @@ public class EcjLintPlugin extends LuceneGradlePlugin {
     task.doFirst(
         _ -> {
           List<String> allArgs = new ArrayList<>(args);
+          allArgs.addAll(List.of("-properties", javadocPrefsPath.toAbsolutePath().toString()));
 
           compilationArguments.asArguments().forEach(allArgs::add);
           if (!classpathArguments.isEmpty()) {
