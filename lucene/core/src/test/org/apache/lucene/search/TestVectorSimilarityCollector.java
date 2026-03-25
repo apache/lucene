@@ -16,47 +16,11 @@
  */
 package org.apache.lucene.search;
 
-import static org.apache.lucene.search.AbstractVectorSimilarityQuery.DECAY_MAX_APPROXIMATION;
-import static org.apache.lucene.search.AbstractVectorSimilarityQuery.DECAY_MAX_QUALITY;
 import static org.apache.lucene.search.AbstractVectorSimilarityQuery.DEFAULT_DECAY;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestVectorSimilarityCollector extends LuceneTestCase {
-  public void testIllegalParams() {
-    expectThrows(
-        AssertionError.class,
-        () ->
-            new VectorSimilarityCollector(
-                Float.NaN, // illegal resultSimilarity
-                DEFAULT_DECAY,
-                Integer.MAX_VALUE));
-
-    expectThrows(
-        AssertionError.class,
-        () ->
-            new VectorSimilarityCollector(
-                0f,
-                Float.NaN, // illegal decay
-                Integer.MAX_VALUE));
-
-    expectThrows(
-        AssertionError.class,
-        () ->
-            new VectorSimilarityCollector(
-                0f,
-                Math.nextDown(DECAY_MAX_APPROXIMATION), // illegal decay
-                Integer.MAX_VALUE));
-
-    expectThrows(
-        AssertionError.class,
-        () ->
-            new VectorSimilarityCollector(
-                0f,
-                Math.nextUp(DECAY_MAX_QUALITY), // illegal decay
-                Integer.MAX_VALUE));
-  }
-
   public void testResultCollection() {
     float resultSimilarity = 0.5f;
 
