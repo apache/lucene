@@ -21,8 +21,8 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestTestSecrets extends LuceneTestCase {
 
   public void testCallerOfGetter() {
-    final UnsupportedOperationException expected =
-        expectThrows(UnsupportedOperationException.class, TestTestSecrets::illegalCaller);
+    final IllegalCallerException expected =
+        expectThrows(IllegalCallerException.class, TestTestSecrets::illegalCaller);
     assertEquals(
         "Lucene TestSecrets can only be used by the test-framework.", expected.getMessage());
   }
@@ -32,13 +32,10 @@ public class TestTestSecrets extends LuceneTestCase {
   }
 
   public void testCannotSet() {
-    expectThrows(UnsupportedOperationException.class, () -> TestSecrets.setIndexWriterAccess(null));
+    expectThrows(IllegalCallerException.class, () -> TestSecrets.setIndexWriterAccess(null));
     expectThrows(
-        UnsupportedOperationException.class,
-        () -> TestSecrets.setConcurrentMergeSchedulerAccess(null));
-    expectThrows(
-        UnsupportedOperationException.class, () -> TestSecrets.setIndexPackageAccess(null));
-    expectThrows(
-        UnsupportedOperationException.class, () -> TestSecrets.setSegmentReaderAccess(null));
+        IllegalCallerException.class, () -> TestSecrets.setConcurrentMergeSchedulerAccess(null));
+    expectThrows(IllegalCallerException.class, () -> TestSecrets.setIndexPackageAccess(null));
+    expectThrows(IllegalCallerException.class, () -> TestSecrets.setSegmentReaderAccess(null));
   }
 }
