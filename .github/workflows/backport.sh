@@ -18,11 +18,6 @@ normalize_version() {
   echo "$normalized"
 }
 
-is_valid_sha() {
-  local sha="$1"
-  [[ "$sha" =~ ^[0-9a-f]{7,40}$ ]]
-}
-
 publish_outputs() {
   local has_targets="$1"
   local targets_json="$2"
@@ -101,11 +96,11 @@ find_target_branch() {
   fi
 }
 
-resolve_pr_number() {
+resolve_pr_data() {
   local commit_sha="$1"
   gh api -H "Accept: application/vnd.github+json" \
     "repos/${REPOSITORY}/commits/${commit_sha}/pulls" \
-    --jq 'map(select(.merged_at != null))[0].number // ""'
+    --jq 'map(select(.merged_at != null))[0] // empty'
 }
 
 if [ -z "$PUSH_AFTER_SHA" ]; then
@@ -127,42 +122,24 @@ if [ -z "$requested_commit_shas" ]; then
 fi
 
 declare -a targets=()
-declare -A seen_prs=()
 
 while IFS= read -r commit_sha; do
   [ -n "$commit_sha" ] || continue
 
   echo "📊 Resolving merged pull request from commit ${commit_sha}..."
-  pr_number=$(resolve_pr_number "$commit_sha")
-  if [ -z "$pr_number" ]; then
+  pr_data=$(resolve_pr_data "$commit_sha")
+  if [ -z "$pr_data" ]; then
     echo "ℹ️ No merged pull request associated with commit ${commit_sha}. Skipping."
     continue
   fi
 
-  if [ -n "${seen_prs[$pr_number]:-}" ]; then
-    echo "ℹ️ PR #$pr_number already processed in this push. Skipping duplicate commit ${commit_sha}."
-    continue
-  fi
-  seen_prs[$pr_number]=1
-
-  echo "📊 Fetching PR #$pr_number data..."
-  pr_data=$(gh pr view "$pr_number" --repo "$REPOSITORY" --json labels,milestone,title)
+  pr_number=$(echo "$pr_data" | jq -r '.number')
   pr_labels=$(echo "$pr_data" | jq -r '.labels[].name | select(test("^backport/"; "i"))')
   pr_milestone=$(echo "$pr_data" | jq -r '.milestone.title // ""')
   pr_title=$(echo "$pr_data" | jq -r '.title // "Unknown title"')
 
   if [ -z "$pr_labels" ] && [ -z "$pr_milestone" ]; then
     echo "ℹ️ PR #$pr_number has no backport labels or milestone. Skipping."
-    continue
-  fi
-
-  if [ "$DRY_RUN" != "true" ] && ! is_valid_sha "$commit_sha"; then
-    create_comment "$pr_number" "❌ **Automatic backports skipped**
-
-Invalid merge commit SHA was provided by workflow context: \`${commit_sha}\`.
-
-Backports are skipped for safety."
-    add_label "$pr_number" "backport-failed"
     continue
   fi
 
