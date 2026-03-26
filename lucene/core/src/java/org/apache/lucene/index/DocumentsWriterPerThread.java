@@ -24,6 +24,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -32,6 +33,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.DocumentsWriterDeleteQueue.DeleteSlice;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
@@ -138,7 +140,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
   private int[] deleteDocIDs = new int[0];
   private int numDeletedDocIds = 0;
   private final int indexMajorVersionCreated;
-  private final boolean hasParentField;
+  private final IndexingChain.ReservedField<NumericDocValuesField> parentField;
 
   DocumentsWriterPerThread(
       int indexMajorVersionCreated,
@@ -195,7 +197,13 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
             fieldInfos,
             indexWriterConfig,
             this::onAbortingException);
-    this.hasParentField = indexWriterConfig.getParentField() != null;
+    if (indexWriterConfig.getParentField() != null) {
+      this.parentField =
+          indexingChain.markAsReserved(
+              new NumericDocValuesField(indexWriterConfig.getParentField(), -1));
+    } else {
+      this.parentField = null;
+    }
   }
 
   final void testPoint(String message) {
@@ -241,10 +249,12 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
         final Iterator<? extends Iterable<? extends IndexableField>> iterator = docs.iterator();
         while (iterator.hasNext()) {
           Iterable<? extends IndexableField> doc = iterator.next();
-          final boolean isLastDoc = iterator.hasNext() == false;
-          if (hasParentField == false
-              && segmentInfo.getIndexSort() != null
-              && isLastDoc == false
+          if (parentField != null) {
+            if (iterator.hasNext() == false) {
+              doc = addParentField(doc, parentField);
+            }
+          } else if (segmentInfo.getIndexSort() != null
+              && iterator.hasNext()
               && indexMajorVersionCreated >= Version.LUCENE_10_0_0.major) {
             // sort is configured but parent field is missing, yet we have a doc-block
             // yet we must not fail if this index was created in an earlier version where this
@@ -261,7 +271,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
           // vs non-aborting exceptions):
           reserveOneDoc();
           try {
-            indexingChain.processDocument(numDocsInRAM++, doc, isLastDoc);
+            indexingChain.processDocument(numDocsInRAM++, doc);
           } finally {
             onNewDocOnRAM.run();
           }
@@ -282,6 +292,34 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
     } finally {
       maybeAbort("updateDocuments", flushNotifications);
     }
+  }
+
+  private Iterable<? extends IndexableField> addParentField(
+      Iterable<? extends IndexableField> doc, IndexableField parentField) {
+    return () -> {
+      final Iterator<? extends IndexableField> first = doc.iterator();
+      return new Iterator<>() {
+        IndexableField additionalField = parentField;
+
+        @Override
+        public boolean hasNext() {
+          return additionalField != null || first.hasNext();
+        }
+
+        @Override
+        public IndexableField next() {
+          if (additionalField != null) {
+            IndexableField field = additionalField;
+            additionalField = null;
+            return field;
+          }
+          if (first.hasNext()) {
+            return first.next();
+          }
+          throw new NoSuchElementException();
+        }
+      };
+    };
   }
 
   private long finishDocuments(DocumentsWriterDeleteQueue.Node<?> deleteNode, int docIdUpTo) {
