@@ -199,7 +199,10 @@ public final class IndexToolsImpl extends LukeModel implements IndexTools {
 
   @Override
   public String exportTerms(String destDir, String field, String delimiter) {
-    String filename = "terms_" + field + "_" + System.currentTimeMillis() + ".out";
+    // Sanitize field name for use in file name: replace forbidden characters on Windows
+    // (< > : " /\ | ? *) with '_' to avoid file creation failure.
+    String sanitizedFieldName = field.replaceAll("[<>:\"/\\\\|?*]", "_");
+    String filename = "terms_" + sanitizedFieldName + "_" + System.currentTimeMillis() + ".out";
     Path path = Paths.get(destDir, filename);
     try {
       Terms terms = MultiTerms.getTerms(reader, field);

@@ -93,13 +93,7 @@ public final class Document implements Iterable<IndexableField> {
    * of that document has to be added.
    */
   public void removeFields(String name) {
-    Iterator<IndexableField> it = fields.iterator();
-    while (it.hasNext()) {
-      IndexableField field = it.next();
-      if (field.name().equals(name)) {
-        it.remove();
-      }
-    }
+    fields.removeIf(field -> field.name().equals(name));
   }
 
   /**

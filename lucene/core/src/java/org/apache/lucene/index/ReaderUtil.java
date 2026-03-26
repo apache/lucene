@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.index;
 
+import java.util.Arrays;
 import java.util.List;
+import org.apache.lucene.search.ScoreDoc;
 
 /**
  * Common util methods for dealing with {@link IndexReader}s and {@link IndexReaderContext}s.
@@ -24,6 +26,8 @@ import java.util.List;
  * @lucene.internal
  */
 public final class ReaderUtil {
+
+  private static final int[] EMPTY_INT_ARRAY = new int[0];
 
   private ReaderUtil() {} // no instance
 
@@ -88,5 +92,55 @@ public final class ReaderUtil {
       }
     }
     return hi;
+  }
+
+  /**
+   * Partitions global doc IDs from ScoreDoc array by leaf. Extracts doc IDs, sorts them, and
+   * partitions across leaves.
+   *
+   * @param hits the ScoreDoc array (typically from TopDocs.scoreDocs)
+   * @param leaves the index reader's leaves
+   * @return array indexed by leaf ord, containing global doc IDs for that leaf (empty if no hits)
+   */
+  public static int[][] partitionByLeaf(ScoreDoc[] hits, List<LeafReaderContext> leaves) {
+    int numLeaves = leaves.size();
+    int[][] result = new int[numLeaves][];
+    if (hits.length == 0) {
+      Arrays.fill(result, EMPTY_INT_ARRAY);
+      return result;
+    }
+    int[] sortedDocIds = new int[hits.length];
+    for (int i = 0; i < hits.length; i++) {
+      sortedDocIds[i] = hits[i].doc;
+    }
+    Arrays.sort(sortedDocIds);
+    int leafStart = 0;
+    int leafIdx = 0;
+    LeafReaderContext leaf = leaves.getFirst();
+    int leafEnd = leaf.docBase + leaf.reader().maxDoc();
+    for (int i = 0; i < sortedDocIds.length; i++) {
+      int docId = sortedDocIds[i];
+      while (docId >= leafEnd) {
+        int count = i - leafStart;
+        if (count == 0) {
+          result[leafIdx] = EMPTY_INT_ARRAY;
+        } else {
+          result[leafIdx] = new int[count];
+          System.arraycopy(sortedDocIds, leafStart, result[leafIdx], 0, count);
+        }
+        leafStart = i;
+        leafIdx++;
+        leaf = leaves.get(leafIdx);
+        leafEnd = leaf.docBase + leaf.reader().maxDoc();
+      }
+    }
+    // Handle remaining docIDs
+    int count = sortedDocIds.length - leafStart;
+    assert count > 0;
+    result[leafIdx] = new int[count];
+    System.arraycopy(sortedDocIds, leafStart, result[leafIdx], 0, count);
+    // Fill remaining empty leaves
+    Arrays.fill(result, leafIdx + 1, numLeaves, EMPTY_INT_ARRAY);
+    return result;
   }
 }

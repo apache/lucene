@@ -21,7 +21,9 @@ import java.math.BigInteger;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.Arrays;
+import java.util.HexFormat;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Methods for manipulating strings.
@@ -360,11 +362,9 @@ public abstract class StringHelper {
   }
 
   // Holds 128 bit unsigned value:
-  @SuppressWarnings("NonFinalStaticField")
-  private static BigInteger nextId;
+  private static final AtomicReference<BigInteger> nextId;
 
   private static final BigInteger mask128;
-  private static final Object idLock = new Object();
 
   static {
     // 128 bit unsigned mask
@@ -435,7 +435,7 @@ public abstract class StringHelper {
     BigInteger unsignedX1 = BigInteger.valueOf(x1).and(mask64);
 
     // Concatentate bits of x0 and x1, as unsigned 128 bit integer:
-    nextId = unsignedX0.shiftLeft(64).or(unsignedX1);
+    nextId = new AtomicReference<>(unsignedX0.shiftLeft(64).or(unsignedX1));
   }
 
   /** length in bytes of an ID */
@@ -458,11 +458,8 @@ public abstract class StringHelper {
     //     what impact that has on the period, whereas the simple ++ (mod 2^128)
     //     we use here is guaranteed to have the full period.
 
-    byte[] bits;
-    synchronized (idLock) {
-      bits = nextId.toByteArray();
-      nextId = nextId.add(BigInteger.ONE).and(mask128);
-    }
+    BigInteger next = nextId.getAndUpdate(n -> n.add(BigInteger.ONE).and(mask128));
+    byte[] bits = next.toByteArray();
 
     // toByteArray() always returns a sign bit, so it may require an extra byte (always zero)
     if (bits.length > ID_LENGTH) {
@@ -488,7 +485,7 @@ public abstract class StringHelper {
       return "(null)";
     } else {
       StringBuilder sb = new StringBuilder();
-      sb.append(new BigInteger(1, id).toString(Character.MAX_RADIX));
+      sb.append(HexFormat.of().formatHex(id));
       if (id.length != ID_LENGTH) {
         sb.append(" (INVALID FORMAT)");
       }

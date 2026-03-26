@@ -1,0 +1,106 @@
+name: Backport PR
+
+on:
+  pull_request:
+    types: [closed]
+
+permissions: {}
+
+jobs:
+  prepare:
+    name: Prepare Backport Targets
+    if: github.event.pull_request.merged == true
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # Reads repository workflow script and remote branch refs.
+      pull-requests: write # Adds comments/labels to the source pull request.
+    outputs:
+      dry_run: ${{ steps.plan.outputs.dry_run }}
+      has_targets: ${{ steps.plan.outputs.has_targets }}
+      targets: ${{ steps.plan.outputs.targets }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
+
+      - name: Plan backports
+        id: plan
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_MERGE_COMMIT_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          BACKPORT_DRY_RUN: ${{ vars.BACKPORT_DRY_RUN || 'true' }}
+        run: ./.github/workflows/backport.sh
+
+  backport:
+    name: Create Backport Pull Requests
+    needs: prepare
+    if: needs.prepare.outputs.has_targets == 'true' && needs.prepare.outputs.dry_run != 'true'
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Pushes generated backport branches.
+      pull-requests: write # Creates backport pull requests and comments on failures.
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.prepare.outputs.targets) }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+          persist-credentials: false
+
+      - name: Cherry-pick with approved action
+        id: cherry_pick
+        continue-on-error: true
+        uses: carloscastrojumo/github-cherry-pick-action@503773289f4a459069c832dc628826685b75b4b3 # v1.0.10
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ matrix.target }}
+          cherry-pick-branch: backport-${{ github.event.pull_request.number }}-to-${{ matrix.target }}
+          title: '[Backport ${{ matrix.target }}] {old_title}'
+          body: |
+            ## 🔄 Automatic Backport
+
+            Backport of #{old_pull_request_id} to `${{ matrix.target }}`.
+
+            **Target:** `${{ matrix.target }}`
+            **Version:** `${{ matrix.version }}`
+          labels: |
+            backport
+          inherit_labels: 'false'
+
+      - name: Handle failed action backport
+        if: steps.cherry_pick.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          TARGET_BRANCH: ${{ matrix.target }}
+        run: |
+          body="❌ **Backport to \`${TARGET_BRANCH}\` failed**"$'\n\n'"Automatic cherry-pick action failed for this target. Please inspect workflow logs and backport manually if needed."
+          gh pr comment "$PR_NUMBER" --body "$body"
+          gh pr edit "$PR_NUMBER" --add-label "backport-failed" 2>/dev/null || true
+
+  dry-run-report:
+    name: Report Dry-Run Plan
+    needs: prepare
+    if: needs.prepare.outputs.has_targets == 'true' && needs.prepare.outputs.dry_run == 'true'
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Report dry-run targets
+        env:
+          PLANNED_TARGETS: ${{ needs.prepare.outputs.targets }}
+        run: |
+          echo "Backport dry-run mode is enabled."
+          printf 'Planned targets: %s\n' "$PLANNED_TARGETS"

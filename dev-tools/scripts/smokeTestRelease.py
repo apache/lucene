@@ -938,7 +938,7 @@ def verifyDeployedPOMsCoordinates(artifacts: list[str], version: str):
 
 
 def crawl(downloadedFiles: list[str], urlString: str, targetDir: str, exclusions: set[str] | None = None):
-  exclude: set[str] = exclusions if exclusions else set()
+  exclude: set[str] = exclusions or set()
   for text, subURL in getDirEntries(urlString):
     if text not in exclude:
       path = os.path.join(targetDir, text)

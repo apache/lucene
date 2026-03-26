@@ -1356,9 +1356,9 @@ final class IndexingChain implements Accountable {
           try {
             termsHashPerField.add(invertState.termAttribute.getBytesRef(), docID);
           } catch (MaxBytesLengthExceededException e) {
-            byte[] prefix = new byte[30];
             BytesRef bigTerm = invertState.termAttribute.getBytesRef();
-            System.arraycopy(bigTerm.bytes, bigTerm.offset, prefix, 0, 30);
+            byte[] prefix =
+                ArrayUtil.copyOfSubArray(bigTerm.bytes, bigTerm.offset, bigTerm.offset + 30);
             String msg =
                 "Document contains at least one immense term in field=\""
                     + fieldInfo.name
@@ -1429,8 +1429,9 @@ final class IndexingChain implements Accountable {
       try {
         termsHashPerField.add(binaryValue, docID);
       } catch (MaxBytesLengthExceededException e) {
-        byte[] prefix = new byte[30];
-        System.arraycopy(binaryValue.bytes, binaryValue.offset, prefix, 0, 30);
+        byte[] prefix =
+            ArrayUtil.copyOfSubArray(
+                binaryValue.bytes, binaryValue.offset, binaryValue.offset + 30);
         String msg =
             "Document contains at least one immense term in field=\""
                 + fieldInfo.name

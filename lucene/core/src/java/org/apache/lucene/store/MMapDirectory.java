@@ -36,7 +36,6 @@ import java.util.function.Function;
 import java.util.logging.Logger;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.util.Constants;
-import org.apache.lucene.util.Unwrappable;
 
 /**
  * File-based {@link Directory} implementation that uses mmap for reading, and {@link
@@ -321,9 +320,6 @@ public class MMapDirectory extends FSDirectory {
     ensureCanRead(name);
     Path path = directory.resolve(name);
     final String resourceDescription = "MemorySegmentIndexInput(path=\"" + path.toString() + "\")";
-
-    // Work around for JDK-8259028: we need to unwrap our test-only file system layers
-    path = Unwrappable.unwrapAll(path);
 
     final boolean confined = context.hints().contains(ReadOnceHint.INSTANCE);
     Function<IOContext, ReadAdvice> toReadAdvice =
