@@ -603,7 +603,9 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
     @Internal
     public abstract DirectoryProperty getTempDir();
 
-    /** java.io.tmpdir for forked test JVMs. Marked @Internal to avoid absolute paths in cache key. */
+    /**
+     * java.io.tmpdir for forked test JVMs. Marked @Internal to avoid absolute paths in cache key.
+     */
     @Internal
     public abstract DirectoryProperty getJavaTmpDir();
 

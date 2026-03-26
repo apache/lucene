@@ -206,9 +206,7 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
     var allSignatureFiles = project.files(signatureFiles);
     var existingSignatureFiles = allSignatureFiles.filter(File::exists);
 
-    task.getInputs()
-        .files(existingSignatureFiles)
-        .withPathSensitivity(PathSensitivity.RELATIVE);
+    task.getInputs().files(existingSignatureFiles).withPathSensitivity(PathSensitivity.RELATIVE);
     task.setSignaturesFiles(task.getSignaturesFiles().plus(existingSignatureFiles));
 
     addBuiltInSignatures(task, allDependenciesProvider);

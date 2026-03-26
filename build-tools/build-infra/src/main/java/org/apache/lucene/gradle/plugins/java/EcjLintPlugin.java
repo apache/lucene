@@ -149,9 +149,7 @@ public class EcjLintPlugin extends LuceneGradlePlugin {
     task.getInputs().files(inputSources).withPathSensitivity(PathSensitivity.RELATIVE);
 
     // Track the javadoc prefs file as an input with relative path sensitivity.
-    task.getInputs()
-        .file(javadocPrefsPath.toFile())
-        .withPathSensitivity(PathSensitivity.RELATIVE);
+    task.getInputs().file(javadocPrefsPath.toFile()).withPathSensitivity(PathSensitivity.RELATIVE);
 
     // Add all arguments so far as inputs.
     task.getInputs().property("args", args);
