@@ -181,6 +181,11 @@ Build
   Install with `uv tool install prek; prek install`
   For more see help/precommit.txt or `./gradlew helpPrecommit` (Robert Muir)
 
+* Improve build cache compatibility for test, ecjLint, and forbiddenApis tasks.
+  Use path-sensitive annotations and argument providers instead of embedding absolute
+  paths in cache keys, improving cache hit rates across different project locations.
+  (Gasper Kojek)
+
 Other
 ---------------------
 
