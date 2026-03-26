@@ -25,6 +25,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.PriorityQueue;
+import org.apache.lucene.util.collect.Iterables;
 
 /** Bulk scorer for {@link DisjunctionMaxQuery} when the tie-break multiplier is zero. */
 final class DisjunctionMaxBulkScorer extends BulkScorer {
@@ -53,7 +54,7 @@ final class DisjunctionMaxBulkScorer extends BulkScorer {
     }
     this.scorers =
         PriorityQueue.usingComparator(scorers.size(), Comparator.comparingInt(b -> b.next));
-    this.scorers.addAll(scorers, BulkScorerAndNext::new);
+    this.scorers.addAll(Iterables.transform(scorers, BulkScorerAndNext::new));
   }
 
   @Override

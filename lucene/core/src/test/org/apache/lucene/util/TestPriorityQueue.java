@@ -30,6 +30,7 @@ import java.util.NoSuchElementException;
 import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.collect.Iterables;
 import org.hamcrest.Matchers;
 
 public class TestPriorityQueue extends LuceneTestCase {
@@ -171,7 +172,7 @@ public class TestPriorityQueue extends LuceneTestCase {
       }
     }
 
-    pq.addAll(elements, String::hashCode);
+    pq.addAll(Iterables.transform(elements, String::hashCode));
     assertEquals("a".hashCode(), pq.top().intValue());
   }
 
