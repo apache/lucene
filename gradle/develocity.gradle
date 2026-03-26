@@ -36,6 +36,7 @@ buildCache {
     }
 
     remote(develocity.buildCache) {
-        enabled = false
+        enabled = true
+        push = isCIBuild
     }
 }
