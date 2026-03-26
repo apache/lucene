@@ -579,9 +579,7 @@ final class IndexingChain implements Accountable {
                 /* we never add reserved fields during indexing should be done during DWPT setup*/ );
         if (pf.reserved != isReserved) {
           throw new IllegalArgumentException(
-              "\""
-                  + fieldName
-                  + "\" is a reserved field and should not be added to any document");
+              "\"" + fieldName + "\" is a reserved field and should not be added to any document");
         }
         if (pf.fieldGen != fieldGen) { // first time we see this field in this document
           fields[fieldCount++] = pf;
@@ -1127,7 +1125,10 @@ final class IndexingChain implements Accountable {
     private final Analyzer analyzer;
     private boolean first; // first in a document
 
-    /** Allows IndexingChain to skip schema validation if fields keep using the same frozen field type */
+    /**
+     * Allows IndexingChain to skip schema validation if fields keep using the same frozen field
+     * type
+     */
     private FieldType frozenFieldType;
 
     PerField(
@@ -1152,14 +1153,15 @@ final class IndexingChain implements Accountable {
       if (fieldType == frozenFieldType) {
         schema.resetJustDocId(docId);
       } else {
-        cacheOrResetFrozenFieldType(fieldType);
+        cacheOrRemoveFrozenFieldType(fieldType);
         schema.reset(docId);
       }
     }
 
-    void cacheOrResetFrozenFieldType(IndexableFieldType fieldType) {
+    void cacheOrRemoveFrozenFieldType(IndexableFieldType fieldType) {
       // Only cache a new frozen field type if no prior cached field type exists.
-      // If a prior cached field type existed but didn't match, null it out to force validation of this document.
+      // If a prior cached field type existed but didn't match, null it out to force validation of
+      // this document.
       frozenFieldType =
           frozenFieldType == null && fieldType instanceof FieldType ft && ft.isFrozen() ? ft : null;
     }
