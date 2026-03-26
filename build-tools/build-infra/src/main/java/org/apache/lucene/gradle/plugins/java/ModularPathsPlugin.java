@@ -32,6 +32,7 @@ import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.ClasspathNormalizer;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.bundling.Jar;
@@ -101,7 +102,9 @@ public class ModularPathsPlugin extends LuceneGradlePlugin {
                     // on the task itself... but I don't know how to implement this on an
                     // existing class.
                     // this is a workaround but should work just fine though.
-                    task.getInputs().files(modularPaths.getCompileModulePathConfiguration());
+                    task.getInputs()
+                        .files(modularPaths.getCompileModulePathConfiguration())
+                        .withNormalizer(ClasspathNormalizer.class);
 
                     // LUCENE-10327: don't allow gradle to emit an empty sourcepath as it would
                     // break
