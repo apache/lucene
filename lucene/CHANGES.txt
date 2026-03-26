@@ -181,6 +181,9 @@ Build
   Install with `uv tool install prek; prek install`
   For more see help/precommit.txt or `./gradlew helpPrecommit` (Robert Muir)
 
+* Enable remote build cache backed by Develocity, with push limited to CI builds.
+  (Gasper Kojek)
+
 Other
 ---------------------
 
