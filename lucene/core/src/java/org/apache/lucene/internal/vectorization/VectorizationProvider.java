@@ -18,6 +18,7 @@
 package org.apache.lucene.internal.vectorization;
 
 import java.io.IOException;
+import java.lang.StackWalker.Option;
 import java.lang.StackWalker.StackFrame;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -214,15 +215,14 @@ public abstract class VectorizationProvider {
           "org.apache.lucene.codecs.lucene104.PostingIndexInput",
           "org.apache.lucene.tests.util.TestSysoutsLimits");
 
+  private static final StackWalker STACKWALKER =
+      StackWalker.getInstance(Set.of(Option.DROP_METHOD_INFO), 3);
+
   private static void ensureCaller() {
     final boolean validCaller =
-        StackWalker.getInstance()
-            .walk(
-                s ->
-                    s.skip(2)
-                        .limit(1)
-                        .map(StackFrame::getClassName)
-                        .anyMatch(VALID_CALLERS::contains));
+        STACKWALKER.walk(
+            s ->
+                s.skip(2).limit(1).map(StackFrame::getClassName).anyMatch(VALID_CALLERS::contains));
     if (!validCaller) {
       throw new IllegalCallerException(
           "VectorizationProvider is internal and can only be used by known Lucene classes.");

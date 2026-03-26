@@ -37,5 +37,6 @@ public class TestTestSecrets extends LuceneTestCase {
         IllegalCallerException.class, () -> TestSecrets.setConcurrentMergeSchedulerAccess(null));
     expectThrows(IllegalCallerException.class, () -> TestSecrets.setIndexPackageAccess(null));
     expectThrows(IllegalCallerException.class, () -> TestSecrets.setSegmentReaderAccess(null));
+    expectThrows(IllegalCallerException.class, () -> TestSecrets.setFilterInputIndexAccess(null));
   }
 }

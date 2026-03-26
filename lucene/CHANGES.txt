@@ -209,6 +209,9 @@ Other
 * GITHUB#15844: Detect JVM bitness using Panama's ValueLayout#ADDRESS instead
   of undocumented system properties.  (Uwe Schindler)
 
+* GITHUB#15867: Use StackWalker without method info for caller checks in internal classes and tests.
+  (Uwe Schindler)
+
 ======================= Lucene 10.5.0 =======================
 
 API Changes
