@@ -88,8 +88,10 @@ New Features
 
 Improvements
 ---------------------
-* GITHUB#15823: Implement method to convert and add all collection elements to a PriorityQueue,
-  and leverage it in DisjunctionMaxBulkScorer's constructor. (Zhou Hui)
+* GITHUB#15823: Add Iterables, Iterators, etc., to implement transform function.
+  Change the input type of elements in PriorityQueue#addAll from Collection to Iterable.
+  Call PriorityQueue#addAll with scorers wrapped by Iterables#transform in DisjunctionMaxBulkScorer's constructor.
+  (Zhou Hui)
 
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
 
