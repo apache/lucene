@@ -293,6 +293,9 @@ Bug Fixes
 
 * GITHUB#15873: Fix TopGroupsCollector#getTopGroups() returning NaN maxScore when a group has no hits (Binlong Gao)
 
+* GITHUB#15878: Fix existential quantification bug in caller checks
+  (VectorizationProvider, TestSecrets).  (Uwe Schindler)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
@@ -309,6 +312,9 @@ Other
 * GITHUB#15799: Exclude JNA Cleaner from thread leak detection by LuceneTestCase. (Alan Woodward)
 
 * GITHUB#15826: Use ArrayUtil#copyOfSubArray to simplify manual array copy patterns. (Zhang Chao)
+
+* GITHUB#15867: Use IllegalCallerException to signal wrong caller in internal classes
+  (VectorizationProvider, TestSecrets).  (Uwe Schindler)
 
 ======================= Lucene 10.4.0 =======================
 
