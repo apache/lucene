@@ -186,7 +186,7 @@ public class TestSimilarity extends LuceneTestCase {
               @Override
               public void collect(int doc) throws IOException {
                 // System.out.println("Doc=" + doc + " score=" + scorer.score());
-                assertEquals(scores[doc], scorer.score(), 0);
+                assertEquals(scores[base + doc], scorer.score(), 0);
               }
 
               @Override
