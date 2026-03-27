@@ -29,7 +29,7 @@ All issues/PRs associated with a milestone must be resolved before the release, 
 
 Once the release is done, the Milestone should be closed then a new Milestone for the next release should be created.
 
-You can see the list of current active (opened) Milestones here. https://github.com/apache/lucene/milestones
+You can see the list of current active (opened) Milestones here. <https://github.com/apache/lucene/milestones>
 
 See [GitHub documentation](https://docs.github.com/en/issues/using-labels-and-milestones-to-track-work/about-milestones) for more details.
 

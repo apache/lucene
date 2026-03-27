@@ -171,7 +171,7 @@ final class Lucene90CompoundReader extends CompoundDirectory {
   @Override
   public String[] listAll() {
     ensureOpen();
-    String[] res = entries.keySet().toArray(new String[entries.size()]);
+    String[] res = entries.keySet().toArray(String[]::new);
 
     // Add the segment name
     for (int i = 0; i < res.length; i++) {

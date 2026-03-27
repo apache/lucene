@@ -1,4 +1,4 @@
 {
-    "lucene/analysis/common/src/java/org/apache/lucene/analysis/util/UnicodeProps.java": "5c79acd87a0065356d766df7f2527a3747775ad1",
-    "property:icuConfig": "78.2"
+    "lucene/analysis/common/src/java/org/apache/lucene/analysis/util/UnicodeProps.java": "ce2e13dce70f6e4b1127856d2d322594356cd911",
+    "property:icuConfig": "78.3"
 }

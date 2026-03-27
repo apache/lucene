@@ -1200,7 +1200,7 @@ public class IndexWriter
       if (infoStream.isEnabled("IW")) {
         infoStream.message("IW", "init: hit exception on init; releasing write lock: " + t);
       }
-      IOUtils.closeWhileSuppressingExceptions(t, writeLock);
+      IOUtils.closeWhileSuppressingExceptions(t, config.getMergeScheduler(), writeLock);
       writeLock = null;
       throw t;
     }
@@ -3481,7 +3481,13 @@ public class IndexWriter
     boolean useCompoundFile;
     synchronized (this) {
       merge.checkAborted();
-      useCompoundFile = mergePolicy.useCompoundFile(segmentInfos, merge.getMergeInfo(), this);
+      useCompoundFile =
+          merge
+              .getMergeInfo()
+              .info
+              .getCodec()
+              .compoundFormat()
+              .useCompoundFile(mergePolicy.size(merge.getMergeInfo(), this), mergePolicy);
     }
 
     // Now create the compound file if needed
@@ -5337,7 +5343,13 @@ public class IndexWriter
       // this segment:
       boolean useCompoundFile;
       synchronized (this) { // Guard segmentInfos
-        useCompoundFile = mergePolicy.useCompoundFile(segmentInfos, merge.info, this);
+        useCompoundFile =
+            merge
+                .getMergeInfo()
+                .info
+                .getCodec()
+                .compoundFormat()
+                .useCompoundFile(mergePolicy.size(merge.getMergeInfo(), this), mergePolicy);
       }
 
       if (useCompoundFile) {
@@ -6446,7 +6458,7 @@ public class IndexWriter
       throw t;
     }
 
-    return segStates.toArray(new BufferedUpdatesStream.SegmentState[0]);
+    return segStates.toArray(BufferedUpdatesStream.SegmentState[]::new);
   }
 
   /** Tests should override this to enable test points. Default is <code>false</code>. */

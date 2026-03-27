@@ -49,7 +49,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.VectorUtil;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.LegacyQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 import org.junit.Before;
 
@@ -180,7 +180,7 @@ public class TestLucene99ScalarQuantizedVectorsFormat extends BaseKnnVectorsForm
           knnVectorsReader = knnVectorsReader.unwrapReaderForField("f");
           if (knnVectorsReader instanceof Lucene99ScalarQuantizedVectorsReader quantizedReader) {
             assertNotNull(quantizedReader.getQuantizationState("f"));
-            QuantizedByteVectorValues quantizedByteVectorValues =
+            LegacyQuantizedByteVectorValues quantizedByteVectorValues =
                 quantizedReader.getQuantizedVectorValues("f");
             int docId = -1;
             KnnVectorValues.DocIndexIterator iter = quantizedByteVectorValues.iterator();

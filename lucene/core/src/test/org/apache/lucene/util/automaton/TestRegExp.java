@@ -25,7 +25,6 @@ import static org.hamcrest.Matchers.not;
 import java.util.Locale;
 import java.util.regex.Pattern;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.BytesRef;
 
 public class TestRegExp extends LuceneTestCase {
@@ -331,20 +330,5 @@ public class TestRegExp extends LuceneTestCase {
 
   public void testRegExpNoStackOverflow() {
     new RegExp("(a)|".repeat(50000) + "(a)");
-  }
-
-  /**
-   * Tests the deprecate complement flag. Keep the simple test only, no random tests to let it cause
-   * us pain.
-   *
-   * @deprecated Remove in Lucene 11
-   */
-  @Deprecated
-  public void testDeprecatedComplement() {
-    Automaton expected =
-        Operations.complement(
-            Automata.makeString("abcd"), Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-    Automaton actual = new RegExp("~(abcd)", RegExp.DEPRECATED_COMPLEMENT).toAutomaton();
-    assertTrue(AutomatonTestUtil.sameLanguage(expected, actual));
   }
 }

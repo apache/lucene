@@ -157,7 +157,7 @@ public abstract class AcceptDocs {
 
   /**
    * Impl backed by a {@link DocIdSetIterator}, which lazily creates a {@link BitSet} if {@link
-   * #bits()} is called. Otherwise, returns the cost of underlying iterator.
+   * #cost()} or {@link #bits()} are called.
    */
   private static class DocIdSetIteratorAcceptDocs extends AcceptDocs {
 
@@ -189,10 +189,8 @@ public abstract class AcceptDocs {
 
     @Override
     public int cost() throws IOException {
-      if (acceptBitSet != null) {
-        return cardinality;
-      }
-      return Math.toIntExact(iterator().cost());
+      createBitSetAcceptDocsIfNecessary();
+      return cardinality;
     }
 
     @Override
@@ -200,8 +198,8 @@ public abstract class AcceptDocs {
       if (acceptBitSet != null) {
         return new BitSetIterator(acceptBitSet, cardinality);
       }
-      return AcceptDocs.getFilteredDocIdSetIterator(
-          Objects.requireNonNull(iteratorSupplier.get()), liveDocs);
+      DocIdSetIterator iterator = Objects.requireNonNull(iteratorSupplier.get());
+      return AcceptDocs.getFilteredDocIdSetIterator(iterator, liveDocs);
     }
   }
 

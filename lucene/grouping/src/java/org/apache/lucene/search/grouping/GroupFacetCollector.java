@@ -19,7 +19,6 @@ package org.apache.lucene.search.grouping;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.NavigableSet;
 import java.util.TreeSet;
@@ -182,7 +181,7 @@ public abstract class GroupFacetCollector extends SimpleCollector {
      * @return a list of facet entries to be rendered based on the specified offset and limit
      */
     public List<FacetEntry> getFacetEntries(int offset, int limit) {
-      List<FacetEntry> entries = new LinkedList<>();
+      List<FacetEntry> entries = new ArrayList<>();
 
       int skipped = 0;
       int included = 0;

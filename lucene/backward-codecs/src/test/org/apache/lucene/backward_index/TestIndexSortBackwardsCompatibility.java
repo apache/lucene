@@ -153,8 +153,6 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
   @Override
   protected void createIndex(Directory directory) throws IOException {
     LogByteSizeMergePolicy mp = new LogByteSizeMergePolicy();
-    mp.setNoCFSRatio(1.0);
-    mp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     MockAnalyzer analyzer = new MockAnalyzer(random());
 
     // Don't filter out tokens that are too short because we use those tokens in assertions (#14344)
@@ -162,6 +160,8 @@ public class TestIndexSortBackwardsCompatibility extends BackwardsCompatibilityT
 
     // TODO: remove randomness
     IndexWriterConfig conf = new IndexWriterConfig(analyzer);
+    conf.getCodec().compoundFormat().setShouldUseCompoundFile(true);
+    conf.getCodec().compoundFormat().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     conf.setMergePolicy(mp);
     conf.setUseCompoundFile(false);
     conf.setCodec(TestUtil.getDefaultCodec());

@@ -48,8 +48,9 @@ public class Test2BPoints extends LuceneTestCase {
             .setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH)
             .setRAMBufferSizeMB(256.0)
             .setMergeScheduler(new ConcurrentMergeScheduler())
-            .setMergePolicy(newLogMergePolicy(false, 10))
+            .setMergePolicy(newLogMergePolicy(10))
             .setOpenMode(IndexWriterConfig.OpenMode.CREATE);
+    iwc.getCodec().compoundFormat().setShouldUseCompoundFile(false);
 
     ((ConcurrentMergeScheduler) iwc.getMergeScheduler()).setMaxMergesAndThreads(6, 3);
 
@@ -96,9 +97,9 @@ public class Test2BPoints extends LuceneTestCase {
             .setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH)
             .setRAMBufferSizeMB(256.0)
             .setMergeScheduler(new ConcurrentMergeScheduler())
-            .setMergePolicy(newLogMergePolicy(false, 10))
+            .setMergePolicy(newLogMergePolicy(10))
             .setOpenMode(IndexWriterConfig.OpenMode.CREATE);
-
+    iwc.getCodec().compoundFormat().setShouldUseCompoundFile(false);
     ((ConcurrentMergeScheduler) iwc.getMergeScheduler()).setMaxMergesAndThreads(6, 3);
 
     IndexWriter w = new IndexWriter(dir, iwc);

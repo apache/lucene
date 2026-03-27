@@ -215,6 +215,7 @@ public class TestNumericComparator extends LuceneTestCase {
     comparator1.hitsThresholdReached = true;
     comparator1.bottom = bottom;
     var leafComparator = comparator1.getLeafComparator(leafContext);
+    leafComparator.setScorer(null);
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, leafComparator.competitiveIterator().nextDoc());
   }
 
@@ -229,6 +230,7 @@ public class TestNumericComparator extends LuceneTestCase {
     comparator1.hitsThresholdReached = true;
     comparator1.bottom = bottom;
     var leafComparator = comparator1.getLeafComparator(leafContext);
+    leafComparator.setScorer(null);
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, leafComparator.competitiveIterator().nextDoc());
   }
 
@@ -243,6 +245,7 @@ public class TestNumericComparator extends LuceneTestCase {
     comparator1.hitsThresholdReached = true;
     comparator1.bottom = bottom;
     var leafComparator = comparator1.getLeafComparator(leafContext);
+    leafComparator.setScorer(null);
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, leafComparator.competitiveIterator().nextDoc());
   }
 
@@ -257,6 +260,7 @@ public class TestNumericComparator extends LuceneTestCase {
     comparator1.hitsThresholdReached = true;
     comparator1.bottom = bottom;
     var leafComparator = comparator1.getLeafComparator(leafContext);
+    leafComparator.setScorer(null);
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, leafComparator.competitiveIterator().nextDoc());
   }
 }

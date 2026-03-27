@@ -31,8 +31,6 @@ import org.apache.lucene.util.BytesRefBuilder;
  */
 class TermsEnumIndex {
 
-  static final TermsEnumIndex[] EMPTY_ARRAY = new TermsEnumIndex[0];
-
   /**
    * Copy the first 8 bytes of the given term as a comparable unsigned long. In case the term has
    * less than 8 bytes, missing bytes will be replaced with zeroes. Note that two terms that produce

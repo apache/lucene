@@ -226,9 +226,7 @@ public final class PagedBytes implements Accountable {
       throw new IllegalStateException("cannot freeze when copy(BytesRef, BytesRef) was used");
     }
     if (trim && upto < blockSize) {
-      final byte[] newBlock = new byte[upto];
-      System.arraycopy(currentBlock, 0, newBlock, 0, upto);
-      currentBlock = newBlock;
+      currentBlock = ArrayUtil.copyOfSubArray(currentBlock, 0, upto);
     }
     if (currentBlock == null) {
       currentBlock = EMPTY_BYTES;

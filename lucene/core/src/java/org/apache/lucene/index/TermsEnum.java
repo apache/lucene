@@ -189,6 +189,17 @@ public abstract class TermsEnum implements BytesRefIterator {
   public abstract TermState termState() throws IOException;
 
   /**
+   * Expert: prefer using seekExact() to seekCeil().
+   *
+   * <p>This is consumed within Lucene when performing key lookups for update and delete operations.
+   * Override this for implementations that use an approximate membership filter to ensure that the
+   * membership filter is consulted.
+   */
+  public boolean preferSeekExact() {
+    return false;
+  }
+
+  /**
    * An empty TermsEnum for quickly returning an empty instance e.g. in {@link
    * org.apache.lucene.search.MultiTermQuery}
    *
@@ -196,11 +207,10 @@ public abstract class TermsEnum implements BytesRefIterator {
    * Attributes to it. This should not be a problem, as the enum is always empty and the existence
    * of unused Attributes does not matter.
    */
-  // Avoid refactoring that results in a dependency on a subclass, like BaseTermsEnum.
-  // See: https://github.com/apache/lucene/issues/15317
+  // Avoid refactoring that results in a dependency on a subclass, like
+  // BaseTermsEnum. See: https://github.com/apache/lucene/issues/15317
   public static final TermsEnum EMPTY =
       new TermsEnum() {
-
         private AttributeSource atts;
 
         @Override

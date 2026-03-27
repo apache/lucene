@@ -3,31 +3,31 @@
 # expressions/ grammars
 antlr = "4.13.2"
 # test assertions
-assertj = "3.27.6"
+assertj = "3.27.7"
 # analysis/phonetic/ algorithms, gradle build checksums
-commons-codec = "1.20.0"
+commons-codec = "1.21.0"
 # benchmark/ bzip2 compression
 commons-compress = "1.28.0"
 # See ecj-lint.gradle (used for more linting).
 ecj = "3.44.0"
 # java linting
-errorprone = "2.46.0"
+errorprone = "2.48.0"
 # markdown documentation generation
 flexmark = "0.64.8"
 # @keep This is GJF version for java source code formatting
 googleJavaFormat = "1.33.0-markdown"
 # gradle build support
-groovy = "5.0.3"
+groovy = "5.0.4"
 # test assertions
 hamcrest = "3.0"
 # analysis/icu/, gradle regeneration unicode support
-icu4j = "78.2"
+icu4j = "78.3"
 # queryparsers/ grammars
 javacc = "7.0.13"
 # analysis/ tokenizer grammars
 jflex = "1.9.1"
 # build infra only (diff of changes from google java format tasks)
-jgit = "7.5.0.202512021534-r"
+jgit = "7.6.0.202603022253-r"
 # benchmark-jmh/ microbenchmarks
 jmh = "1.37"
 # spatial-extras/ support
@@ -35,7 +35,7 @@ jts = "1.20.0"
 # unit tests
 junit = "4.13.2"
 # @keep Minimum gradle version to run the build
-minGradle = "9.2.1"
+minGradle = "9.4.0"
 # @keep This is the minimum required Java version.
 minJava = "25"
 # analysis/morfologik polish support
@@ -49,7 +49,7 @@ opennlp = "2.5.7"
 # distribution.tests/ process management
 procfork = "1.0.6"
 # unit tests
-randomizedtesting = "2.8.3"
+randomizedtesting = "2.8.4"
 # spatial-extras/ support
 s2-geometry = "1.0.0"
 # spatial-extras/ support
@@ -57,7 +57,7 @@ spatial4j = "0.8"
 # benchmark/ XML parsing
 xerces = "2.12.2"
 # external datasets decompression
-zstd = "1.5.7-6"
+zstd = "1.5.7-7"
 
 [libraries]
 antlr-core = { module = "org.antlr:antlr4", version.ref = "antlr" }
@@ -97,12 +97,12 @@ zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
 
 [plugins]
 benmanes-versions = "com.github.ben-manes.versions:0.53.0"
-carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.0"
-carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.1.0"
-errorprone = "net.ltgt.errorprone:4.4.0"
+carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.1"
+carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.2.1"
+errorprone = "net.ltgt.errorprone:5.1.0"
 forbiddenapis = "de.thetaphi.forbiddenapis:3.10"
-jacocolog = "org.barfuin.gradle.jacocolog:3.1.0"
+jacocolog = "org.barfuin.gradle.jacocolog:4.0.1"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
-spotless = "com.diffplug.spotless:8.1.0"
-undercouch-download = "de.undercouch.download:5.6.0"
-versionCatalogUpdate = "nl.littlerobots.version-catalog-update:1.0.1"
+spotless = "com.diffplug.spotless:8.3.0"
+undercouch-download = "de.undercouch.download:5.7.0"
+versionCatalogUpdate = "nl.littlerobots.version-catalog-update:1.1.0"

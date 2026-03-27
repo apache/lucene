@@ -60,6 +60,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
@@ -686,19 +687,6 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         for (int i = 0; i < dimension; i++) {
           vector[i] = i % 2 == 0 ? 42 : 7;
         }
-        // This is to consistently ensure we take the exactSearch path and make the #cost not random
-        // when we don't cache in PointRangeQuery
-        searcher.setQueryCachingPolicy(
-            new QueryCachingPolicy() {
-
-              @Override
-              public void onUse(Query query) {}
-
-              @Override
-              public boolean shouldCache(Query query) throws IOException {
-                return true;
-              }
-            });
         Query filter4 = IntPoint.newRangeQuery("tag", 250, 256);
         expectThrows(
             UnsupportedOperationException.class,
@@ -1158,8 +1146,8 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
           BitSetIterator bitSetIterator =
               new BitSetIterator(docs, docs.approximateCardinality()) {
                 @Override
-                public long cost() {
-                  throw new UnsupportedOperationException("reusing BitSetIterator cost");
+                public BitSet getBitSet() {
+                  throw new UnsupportedOperationException("reusing BitSet is not supported");
                 }
               };
           final var scorer = new ConstantScoreScorer(score(), scoreMode, bitSetIterator);

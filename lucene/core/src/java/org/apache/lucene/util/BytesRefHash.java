@@ -138,7 +138,7 @@ public final class BytesRefHash implements Accountable {
     bytesStart = bytesStartArray.init();
     final Counter bytesUsed = bytesStartArray.bytesUsed();
     this.bytesUsed = bytesUsed == null ? Counter.newCounter() : bytesUsed;
-    bytesUsed.addAndGet(hashSize * (long) Integer.BYTES);
+    this.bytesUsed.addAndGet(hashSize * (long) Integer.BYTES);
   }
 
   /**
@@ -178,18 +178,13 @@ public final class BytesRefHash implements Accountable {
    */
   public int[] compact() {
     assert bytesStart != null : "bytesStart is null - not initialized";
-    int upto = 0;
-    for (int i = 0; i < hashSize; i++) {
-      if (ids[i] != -1) {
-        ids[upto] = ids[i] & hashMask;
-        if (upto < i) {
-          ids[i] = -1;
-        }
-        upto++;
-      }
-    }
 
-    assert upto == count;
+    // id is the sequence number when bytes added to the pool
+    for (int i = 0; i < count; i++) {
+      ids[i] = i;
+    }
+    Arrays.fill(ids, count, hashSize, -1);
+
     lastCount = count;
     return ids;
   }
@@ -333,7 +328,7 @@ public final class BytesRefHash implements Accountable {
    *     ByteBlockPool#BYTE_BLOCK_SIZE}
    */
   public int add(BytesRef bytes) {
-    assert bytesStart != null : "Bytesstart is null - not initialized";
+    assert bytesStart != null : "bytesStart is null - not initialized";
     final int hashcode = doHash(bytes.bytes, bytes.offset, bytes.length);
     // final position
     final int hashPos = findHash(bytes, hashcode);
@@ -400,7 +395,7 @@ public final class BytesRefHash implements Accountable {
    * textStart) in TermsHashPerField.
    */
   public int addByPoolOffset(int offset) {
-    assert bytesStart != null : "Bytesstart is null - not initialized";
+    assert bytesStart != null : "bytesStart is null - not initialized";
     // final position
     int code = offset;
     int hashPos = offset & hashMask;
@@ -438,40 +433,37 @@ public final class BytesRefHash implements Accountable {
   private void rehash(final int newSize, boolean hashOnData) {
     final int newMask = newSize - 1;
     final int newHighMask = ~newMask;
-    bytesUsed.addAndGet(Integer.BYTES * (long) newSize);
-    final int[] newHash = new int[newSize];
-    Arrays.fill(newHash, -1);
-    for (int i = 0; i < hashSize; i++) {
-      int e0 = ids[i];
-      if (e0 != -1) {
-        e0 &= hashMask;
-        final int hashcode;
-        int code;
-        if (hashOnData) {
-          hashcode = code = pool.hash(bytesStart[e0]);
-        } else {
-          code = bytesStart[e0];
-          hashcode = 0;
-        }
+    bytesUsed.addAndGet(Integer.BYTES * (long) (newSize - ids.length));
 
-        int hashPos = code & newMask;
-        assert hashPos >= 0;
+    ids = new int[newSize];
+    Arrays.fill(ids, -1);
 
-        // Conflict; use linear probe to find an open slot
-        // (see LUCENE-5604):
-        while (newHash[hashPos] != -1) {
-          code++;
-          hashPos = code & newMask;
-        }
-
-        newHash[hashPos] = e0 | (hashcode & newHighMask);
+    // rebuild ids from terms in pool pointed by bytesStart
+    for (int id = 0; id < count; id++) {
+      final int hashcode;
+      int code;
+      if (hashOnData) {
+        hashcode = code = pool.hash(bytesStart[id]);
+      } else {
+        code = bytesStart[id];
+        hashcode = 0;
       }
+
+      int hashPos = code & newMask;
+      assert hashPos >= 0;
+
+      // Conflict; use linear probe to find an open slot
+      // (see LUCENE-5604):
+      while (ids[hashPos] != -1) {
+        code++;
+        hashPos = code & newMask;
+      }
+
+      ids[hashPos] = id | (hashcode & newHighMask);
     }
 
     hashMask = newMask;
     highMask = newHighMask;
-    bytesUsed.addAndGet(Integer.BYTES * (long) -ids.length);
-    ids = newHash;
     hashSize = newSize;
     hashHalfSize = newSize / 2;
   }

@@ -734,6 +734,37 @@ public class TestField extends LuceneTestCase {
     }
   }
 
+  public void testKnnFieldZeroVectors() throws Exception {
+    float[] v = new float[5];
+    IllegalArgumentException zeroError =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> new KnnFloatVectorField("knnFloats", v, VectorSimilarityFunction.COSINE));
+    assertTrue(zeroError.getMessage().contains("zero vector not allowed"));
+
+    FieldType fieldType = KnnFloatVectorField.createFieldType(5, VectorSimilarityFunction.COSINE);
+    zeroError =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> new KnnFloatVectorField("knnFloats", v, fieldType));
+    assertTrue(zeroError.getMessage().contains("zero vector not allowed"));
+
+    byte[] bv = new byte[5];
+    zeroError =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> new KnnByteVectorField("knnBytes", bv, VectorSimilarityFunction.COSINE));
+    assertTrue(zeroError.getMessage().contains("zero vector not allowed"));
+
+    FieldType byteFieldType =
+        KnnByteVectorField.createFieldType(5, VectorSimilarityFunction.COSINE);
+    zeroError =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> new KnnByteVectorField("knnBytes", bv, byteFieldType));
+    assertTrue(zeroError.getMessage().contains("zero vector not allowed"));
+  }
+
   private void trySetByteValue(Field f) {
     expectThrows(
         IllegalArgumentException.class,

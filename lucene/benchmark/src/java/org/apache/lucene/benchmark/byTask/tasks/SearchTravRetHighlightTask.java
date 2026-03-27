@@ -278,7 +278,7 @@ public class SearchTravRetHighlightTask extends SearchTravTask {
     UnifiedHighlighter highlighter;
     IndexSearcher lastSearcher;
     UnifiedHighlighter.OffsetSource offsetSource; // null means auto select
-    String[] fields = hlFields.toArray(new String[hlFields.size()]);
+    String[] fields = hlFields.toArray(String[]::new);
     int[] maxPassages;
 
     UnifiedHLImpl(final UnifiedHighlighter.OffsetSource offsetSource) {

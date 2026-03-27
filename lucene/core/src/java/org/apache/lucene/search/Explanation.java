@@ -97,7 +97,7 @@ public final class Explanation {
 
   /** The sub-nodes of this explanation node. */
   public Explanation[] getDetails() {
-    return details.toArray(new Explanation[0]);
+    return details.toArray(Explanation[]::new);
   }
 
   /** Render an explanation as text. */

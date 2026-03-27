@@ -1243,11 +1243,7 @@ public class TestIndexWriter extends LuceneTestCase {
       // handles open.
       FSDirectory dir = new NIOFSDirectory(indexPath);
 
-      MergePolicy mergePolicy = newLogMergePolicy(true);
-
-      // This test expects all of its segments to be in CFS
-      mergePolicy.setNoCFSRatio(1.0);
-      mergePolicy.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
+      MergePolicy mergePolicy = newLogMergePolicy();
 
       IndexWriter w =
           new IndexWriter(
@@ -1255,6 +1251,9 @@ public class TestIndexWriter extends LuceneTestCase {
               newIndexWriterConfig(new MockAnalyzer(random()))
                   .setMergePolicy(mergePolicy)
                   .setUseCompoundFile(true));
+      // This test expects all of its segments to be in CFS
+      w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(true);
+      w.getConfig().getCodec().compoundFormat().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
       Document doc = new Document();
       doc.add(newTextField("field", "go", Field.Store.NO));
       w.addDocument(doc);
@@ -1462,7 +1461,7 @@ public class TestIndexWriter extends LuceneTestCase {
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setRAMBufferSizeMB(0.01)
                 .setMergePolicy(newLogMergePolicy()));
-    indexWriter.getConfig().getMergePolicy().setNoCFSRatio(0.0);
+    indexWriter.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
 
     String BIG =
         "alskjhlaksjghlaksjfhalksvjepgjioefgjnsdfjgefgjhelkgjhqewlrkhgwlekgrhwelkgjhwelkgrhwlkejg";
