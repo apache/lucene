@@ -183,7 +183,7 @@ public final class BayesianScoreQuery extends Query {
         }
 
         @Override
-        public void setTopLevelScoringClause() {
+        public void setTopLevelScoringClause() throws IOException {
           innerSupplier.setTopLevelScoringClause();
         }
       };

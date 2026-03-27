@@ -162,7 +162,7 @@ public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
           }
 
           @Override
-          public void setTopLevelScoringClause() {
+          public void setTopLevelScoringClause() throws IOException {
             for (ScorerSupplier ss : scorerSuppliers) {
               ss.setTopLevelScoringClause();
             }
