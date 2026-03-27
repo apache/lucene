@@ -226,8 +226,8 @@ public class FSTCompiler<T> {
    * @throws IllegalStateException if the DataOutput does not implement FSTReader
    */
   public FSTReader getFSTReader() {
-    if (dataOutput instanceof FSTReader) {
-      return (FSTReader) dataOutput;
+    if (dataOutput instanceof FSTReader fstReader) {
+      return fstReader;
     }
     throw new IllegalStateException(
         "The DataOutput must implement FSTReader, but got " + dataOutput);
@@ -960,8 +960,8 @@ public class FSTCompiler<T> {
     fst.metadata.startNode = newStartNode;
     fst.metadata.numBytes = numBytesWritten;
     // freeze the dataOutput if applicable
-    if (dataOutput instanceof ReadWriteDataOutput) {
-      ((ReadWriteDataOutput) dataOutput).freeze();
+    if (dataOutput instanceof ReadWriteDataOutput rwdo) {
+      rwdo.freeze();
     }
   }
 
@@ -1035,8 +1035,8 @@ public class FSTCompiler<T> {
 
   public long fstRamBytesUsed() {
     long ramBytesUsed = scratchBytes.ramBytesUsed();
-    if (dataOutput instanceof Accountable) {
-      ramBytesUsed += ((Accountable) dataOutput).ramBytesUsed();
+    if (dataOutput instanceof Accountable accountable) {
+      ramBytesUsed += accountable.ramBytesUsed();
     }
     return ramBytesUsed;
   }

@@ -420,16 +420,16 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   @Override
   public BaseQuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
-    if (flatVectorsReader instanceof QuantizedVectorsReader) {
-      return ((QuantizedVectorsReader) flatVectorsReader).getQuantizedVectorValues(field);
+    if (flatVectorsReader instanceof QuantizedVectorsReader qvr) {
+      return qvr.getQuantizedVectorValues(field);
     }
     return null;
   }
 
   @Override
   public ScalarQuantizer getQuantizationState(String field) {
-    if (flatVectorsReader instanceof QuantizedVectorsReader) {
-      return ((QuantizedVectorsReader) flatVectorsReader).getQuantizationState(field);
+    if (flatVectorsReader instanceof QuantizedVectorsReader qvr) {
+      return qvr.getQuantizationState(field);
     }
     return null;
   }

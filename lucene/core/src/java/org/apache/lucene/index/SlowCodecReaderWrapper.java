@@ -49,8 +49,8 @@ public final class SlowCodecReaderWrapper {
    * (slow) view is returned.
    */
   public static CodecReader wrap(final LeafReader reader) throws IOException {
-    if (reader instanceof CodecReader) {
-      return (CodecReader) reader;
+    if (reader instanceof CodecReader cr) {
+      return cr;
     } else {
       // simulate it slowly, over the leafReader api:
       reader.checkIntegrity();
@@ -202,8 +202,8 @@ public final class SlowCodecReaderWrapper {
       }
 
       static SegmentReader segmentReader(LeafReader reader) {
-        if (reader instanceof SegmentReader) {
-          return (SegmentReader) reader;
+        if (reader instanceof SegmentReader sr) {
+          return sr;
         } else if (reader instanceof final FilterLeafReader fReader) {
           return segmentReader(FilterLeafReader.unwrap(fReader));
         } else if (reader instanceof final FilterCodecReader fReader) {

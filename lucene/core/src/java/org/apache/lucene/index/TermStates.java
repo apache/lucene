@@ -260,7 +260,7 @@ public final class TermStates {
 
   @Override
   public boolean equals(Object obj) {
-    return obj instanceof TermStates && ((TermStates) obj).docFreq == docFreq;
+    return obj instanceof TermStates ts && ts.docFreq == docFreq;
   }
 
   @Override

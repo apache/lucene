@@ -226,14 +226,14 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       // method could run in exponential time with the depth of the query as
       // every new level would rewrite 2x more than its parent level.
       Query rewritten = query;
-      if (rewritten instanceof BoostQuery) {
-        rewritten = ((BoostQuery) rewritten).getQuery();
+      if (rewritten instanceof BoostQuery bq) {
+        rewritten = bq.getQuery();
       }
-      if (rewritten instanceof ConstantScoreQuery) {
-        rewritten = ((ConstantScoreQuery) rewritten).getQuery();
+      if (rewritten instanceof ConstantScoreQuery csq) {
+        rewritten = csq.getQuery();
       }
-      if (rewritten instanceof BooleanQuery) {
-        rewritten = ((BooleanQuery) rewritten).rewriteNoScoring();
+      if (rewritten instanceof BooleanQuery bq2) {
+        rewritten = bq2.rewriteNoScoring();
       }
       BooleanClause.Occur occur = clause.occur();
       if (occur == Occur.SHOULD && keepShould == false) {
@@ -308,8 +308,8 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
         if (occur == Occur.FILTER || occur == Occur.MUST_NOT) {
           // Clauses that are not involved in scoring can get some extra simplifications
           rewritten = new ConstantScoreQuery(query).rewrite(indexSearcher);
-          if (rewritten instanceof ConstantScoreQuery) {
-            rewritten = ((ConstantScoreQuery) rewritten).getQuery();
+          if (rewritten instanceof ConstantScoreQuery csq) {
+            rewritten = csq.getQuery();
           }
         } else {
           rewritten = query.rewrite(indexSearcher);
@@ -429,8 +429,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       Map<Query, Double> shouldClauses = new HashMap<>();
       for (Query query : clauseSets.get(Occur.SHOULD)) {
         double boost = 1;
-        while (query instanceof BoostQuery) {
-          BoostQuery bq = (BoostQuery) query;
+        while (query instanceof BoostQuery bq) {
           boost *= bq.getBoost();
           query = bq.getQuery();
         }
@@ -461,8 +460,7 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       Map<Query, Double> mustClauses = new HashMap<>();
       for (Query query : clauseSets.get(Occur.MUST)) {
         double boost = 1;
-        while (query instanceof BoostQuery) {
-          BoostQuery bq = (BoostQuery) query;
+        while (query instanceof BoostQuery bq) {
           boost *= bq.getBoost();
           query = bq.getQuery();
         }

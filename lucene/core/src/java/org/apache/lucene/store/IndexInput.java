@@ -159,9 +159,9 @@ public abstract class IndexInput extends DataInput implements Closeable {
    */
   public RandomAccessInput randomAccessSlice(long offset, long length) throws IOException {
     final IndexInput slice = slice("randomaccess", offset, length);
-    if (slice instanceof RandomAccessInput) {
+    if (slice instanceof RandomAccessInput rai) {
       // slice() already supports random access
-      return (RandomAccessInput) slice;
+      return rai;
     } else {
       // return default impl
       return new RandomAccessInput() {

@@ -236,8 +236,8 @@ public class HnswUtil {
       CodecReader codecReader = (CodecReader) FilterLeafReader.unwrap(ctx.reader());
       KnnVectorsReader vectorsReader =
           codecReader.getVectorReader().unwrapReaderForField(vectorField);
-      if (vectorsReader instanceof HnswGraphProvider) {
-        HnswGraph graph = ((HnswGraphProvider) vectorsReader).getGraph(vectorField);
+      if (vectorsReader instanceof HnswGraphProvider hgp) {
+        HnswGraph graph = hgp.getGraph(vectorField);
         if (isRooted(graph) == false) {
           return false;
         }
