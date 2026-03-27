@@ -1163,7 +1163,12 @@ final class IndexingChain implements Accountable {
       // If a prior cached field type existed but didn't match, null it out to force validation of
       // this document.
       frozenFieldType =
-          frozenFieldType == null && fieldType instanceof FieldType ft && ft.isFrozen() ? ft : null;
+          frozenFieldType == null
+                  && fieldInfo == null
+                  && fieldType instanceof FieldType ft
+                  && ft.isFrozen()
+              ? ft
+              : null;
     }
 
     void setFieldInfo(FieldInfo fieldInfo) {
