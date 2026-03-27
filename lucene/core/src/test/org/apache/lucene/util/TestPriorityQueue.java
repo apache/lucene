@@ -30,7 +30,6 @@ import java.util.NoSuchElementException;
 import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.collect.Iterables;
 import org.hamcrest.Matchers;
 
 public class TestPriorityQueue extends LuceneTestCase {
@@ -161,7 +160,7 @@ public class TestPriorityQueue extends LuceneTestCase {
     assertThat(pq.top(), equalTo(2));
   }
 
-  public void testAddAllWithTransformer() {
+  public void testAddAllWithStream() {
     PriorityQueue<Integer> pq = new IntegerQueue(6);
     List<String> elements = new ArrayList<>();
     for (String s : Arrays.asList("a", "b", "c", "d", "e", "f")) {
@@ -172,8 +171,27 @@ public class TestPriorityQueue extends LuceneTestCase {
       }
     }
 
-    pq.addAll(Iterables.transform(elements, String::hashCode));
+    pq.addAll(elements.stream().map(String::hashCode));
     assertEquals("a".hashCode(), pq.top().intValue());
+  }
+
+  public void testAddAllWithStreamNotFitIntoQueue() {
+    PriorityQueue<Integer> pq = new IntegerQueue(5);
+    List<String> elements = new ArrayList<>();
+    for (String s : Arrays.asList("a", "b", "c", "d", "e", "f")) {
+      if (random().nextBoolean()) {
+        elements.addFirst(s);
+      } else {
+        elements.addLast(s);
+      }
+    }
+
+    assertThrows(
+        "Cannot add 6 elements to a queue with remaining capacity: 5",
+        ArrayIndexOutOfBoundsException.class,
+        () -> pq.addAll(elements.stream().map(String::hashCode)));
+    // Partly added.
+    assertEquals(5, pq.size());
   }
 
   public void testAddAllToEmptyQueue() {
