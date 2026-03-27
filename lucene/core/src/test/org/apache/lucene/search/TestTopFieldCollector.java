@@ -22,9 +22,16 @@ import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.sameInstance;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
@@ -45,6 +52,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.NamedThreadFactory;
 
 public class TestTopFieldCollector extends LuceneTestCase {
   private IndexSearcher is;
@@ -701,6 +709,45 @@ public class TestTopFieldCollector extends LuceneTestCase {
 
     indexReader.close();
     dir.close();
+  }
+
+  /**
+   * Test that concurrent newCollector() calls are thread-safe. See <a
+   * href="https://github.com/apache/lucene/issues/15605">GitHub issue #15605</a>
+   */
+  @SuppressWarnings("deprecation")
+  public void testConcurrentNewCollector() throws Exception {
+    Sort sort = new Sort(SortField.FIELD_SCORE);
+    TopFieldCollectorManager manager = new TopFieldCollectorManager(sort, 10, null, 100);
+    int numThreads = 8;
+    int callsPerThread = 1000;
+    int expectedTotal = numThreads * callsPerThread;
+    ExecutorService executor =
+        Executors.newFixedThreadPool(
+            numThreads, new NamedThreadFactory("testConcurrentNewCollector"));
+    CountDownLatch startLatch = new CountDownLatch(1);
+    AtomicReference<Throwable> error = new AtomicReference<>();
+    List<Future<?>> futures = new ArrayList<>();
+    for (int i = 0; i < numThreads; i++) {
+      futures.add(
+          executor.submit(
+              () -> {
+                try {
+                  startLatch.await();
+                  for (int j = 0; j < callsPerThread; j++) {
+                    manager.newCollector();
+                  }
+                } catch (Throwable t) {
+                  error.compareAndSet(null, t);
+                }
+              }));
+    }
+    startLatch.countDown();
+    for (Future<?> f : futures) {
+      f.get();
+    }
+    executor.shutdown();
+    assertEquals(expectedTotal, manager.getCollectors().size());
   }
 
   public void testRelationVsTopDocsCount() throws Exception {
