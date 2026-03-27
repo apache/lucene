@@ -34,6 +34,7 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
   final boolean hasFreq;
   final boolean hasProx;
   final boolean hasOffsets;
+  final boolean isTermDoc;
   PayloadAttribute payloadAttribute;
   OffsetAttribute offsetAttribute;
   TermFrequencyAttribute termFreqAtt;
@@ -62,6 +63,7 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
     hasFreq = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
     hasProx = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
     hasOffsets = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
+    isTermDoc = fieldInfo.isTermDocField();
   }
 
   @Override
@@ -190,6 +192,9 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
       }
       fieldState.uniqueTermCount++;
     } else {
+      if (isTermDoc) {
+        throw new DuplicateTermException("field '" + getFieldName() + "' has duplicate term");
+      }
       postings.termFreqs[termID] = Math.addExact(postings.termFreqs[termID], getTermFreq());
       fieldState.maxTermFrequency =
           Math.max(fieldState.maxTermFrequency, postings.termFreqs[termID]);
@@ -212,7 +217,6 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
                 + "\": cannot index positions while using custom TermFrequencyAttribute");
       }
     }
-
     return freq;
   }
 

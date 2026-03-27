@@ -21,10 +21,12 @@ import static org.apache.lucene.util.automaton.Automata.makeString;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.function.Function;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.analysis.tokenattributes.TermFrequencyAttribute;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
 import org.apache.lucene.util.automaton.Operations;
 
@@ -87,6 +89,8 @@ public final class MockTokenFilter extends TokenFilter {
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   private final PositionIncrementAttribute posIncrAtt =
       addAttribute(PositionIncrementAttribute.class);
+  private final TermFrequencyAttribute termFreqAtt;
+  private final Function<CharSequence, Integer> customTermFreq;
   private int skippedPositions;
 
   /**
@@ -98,6 +102,29 @@ public final class MockTokenFilter extends TokenFilter {
   public MockTokenFilter(TokenStream input, CharacterRunAutomaton filter) {
     super(input);
     this.filter = filter;
+    termFreqAtt = null;
+    customTermFreq = null;
+  }
+
+  /**
+   * Create a new MockTokenFilter that will generate custom term frequencies.
+   *
+   * @param input TokenStream to filter
+   * @param filter DFA representing the terms that should be removed.
+   * @param customTermFreq optional method mapping term to score
+   */
+  public MockTokenFilter(
+      TokenStream input,
+      CharacterRunAutomaton filter,
+      Function<CharSequence, Integer> customTermFreq) {
+    super(input);
+    this.filter = filter;
+    this.customTermFreq = customTermFreq;
+    if (customTermFreq != null) {
+      termFreqAtt = addAttribute(TermFrequencyAttribute.class);
+    } else {
+      termFreqAtt = null;
+    }
   }
 
   @Override
@@ -110,6 +137,9 @@ public final class MockTokenFilter extends TokenFilter {
     while (input.incrementToken()) {
       if (!filter.run(termAtt.buffer(), 0, termAtt.length())) {
         posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + skippedPositions);
+        if (termFreqAtt != null) {
+          termFreqAtt.setTermFrequency(customTermFreq.apply(termAtt));
+        }
         return true;
       }
       skippedPositions += posIncrAtt.getPositionIncrement();

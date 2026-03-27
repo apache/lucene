@@ -29,6 +29,13 @@ import java.util.Objects;
  */
 public final class FieldInfo {
 
+  /**
+   * #putAttribute(IS_TERM_DOC_FIELD, "true") to indicate that the field's term frequencies are
+   * custom scores and that IndexWriter should count term occurrences rather than summing term
+   * scores encoded as frequencies.
+   */
+  public static final String IS_TERM_DOC_FIELD = "isTermDocField";
+
   /** Field's name */
   public final String name;
 
@@ -69,6 +76,8 @@ public final class FieldInfo {
   private final boolean softDeletesField;
 
   private final boolean isParentField;
+
+  private final boolean isTermDocField;
 
   /**
    * Sole constructor.
@@ -122,6 +131,7 @@ public final class FieldInfo {
     this.vectorSimilarityFunction = vectorSimilarityFunction;
     this.softDeletesField = softDeletesField;
     this.isParentField = isParentField;
+    this.isTermDocField = "true".equals(attributes.get(IS_TERM_DOC_FIELD));
     this.checkConsistency();
   }
 
@@ -712,5 +722,13 @@ public final class FieldInfo {
    */
   public boolean isParentField() {
     return isParentField;
+  }
+
+  /**
+   * Returns true if the field has custom term frequencies indexed that are to be treated as opaque
+   * values, while the term frequency for statistical and scoring purposes is treated as 1.
+   */
+  public boolean isTermDocField() {
+    return isTermDocField;
   }
 }

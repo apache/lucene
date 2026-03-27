@@ -1272,8 +1272,13 @@ final class IndexingChain implements Accountable {
           invertState.lastStartOffset = startOffset;
 
           try {
-            invertState.length =
-                Math.addExact(invertState.length, invertState.termFreqAttribute.getTermFrequency());
+            if (fieldInfo.isTermDocField()) {
+              invertState.length = Math.addExact(invertState.length, 1);
+            } else {
+              invertState.length =
+                  Math.addExact(
+                      invertState.length, invertState.termFreqAttribute.getTermFrequency());
+            }
           } catch (ArithmeticException ae) {
             throw new IllegalArgumentException(
                 "too many tokens for field \"" + field.name() + "\"", ae);
@@ -1307,6 +1312,9 @@ final class IndexingChain implements Accountable {
             }
             // Document will be deleted above:
             throw new IllegalArgumentException(msg, e);
+          } catch (TermsHashPerField.DuplicateTermException e) {
+            throw new IllegalArgumentException(
+                "Document update skipped due to duplicate termdoc term", e);
           } catch (Throwable th) {
             onAbortingException(th);
             throw th;

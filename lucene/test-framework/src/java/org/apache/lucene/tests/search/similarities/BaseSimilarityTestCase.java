@@ -21,6 +21,9 @@ import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
@@ -30,6 +33,7 @@ import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.Similarity.BulkSimScorer;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -56,11 +60,23 @@ public abstract class BaseSimilarityTestCase extends LuceneTestCase {
   public static void beforeClass() throws Exception {
     // with norms
     DIR = newDirectory();
-    RandomIndexWriter writer = new RandomIndexWriter(random(), DIR);
-    Document doc = new Document();
     FieldType fieldType = new FieldType(TextField.TYPE_NOT_STORED);
     fieldType.setOmitNorms(true);
-    doc.add(newField("field", "value", fieldType));
+    fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+    IndexableField field = newField("field", "value", fieldType);
+    RandomIndexWriter writer;
+    if (field.fieldType().getAttributes() != null
+        && field.fieldType().getAttributes().get(FieldInfo.IS_TERM_DOC_FIELD).equals("true")) {
+      writer =
+          new RandomIndexWriter(
+              random(),
+              DIR,
+              new MockAnalyzer(random(), _ -> random().nextBoolean() ? 100 : Integer.MAX_VALUE));
+    } else {
+      writer = new RandomIndexWriter(random(), DIR);
+    }
+    Document doc = new Document();
+    doc.add(field);
     writer.addDocument(doc);
     READER = getOnlyLeafReader(writer.getReader());
     writer.close();

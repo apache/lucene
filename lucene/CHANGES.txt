@@ -374,6 +374,9 @@ API Changes
 
 * GITHUB#15502: Add `count()` method to `FilterWeight`  (Prudhvi Godithi)
 
+* GITHUB#15584: Add support for termdoc fields that use custom term freqs: IndexWriter counts their terms
+                rather than summing their freqs.
+
 New Features
 ---------------------
 * GITHUB#15328: VectorSimilarityFunction.getValues() now implements doubleVal allowing its
@@ -602,6 +605,9 @@ API Changes
 * GITHUB#15011: LeafReader#searchNearestVectors now accepts an AcceptDocs
   instance instead of a Bits instance to identify document IDs to filter.
   (Shubham Chaudhary, Adrien Grand)
+
+* GITHUB#15584: Add support for termdoc fields that use custom term freqs: IndexWriter counts their terms
+                rather than summing their freqs.
 
 New Features
 ---------------------
