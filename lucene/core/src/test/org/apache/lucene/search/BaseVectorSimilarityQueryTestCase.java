@@ -291,6 +291,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
     }
   }
 
+  @LuceneTestCase.AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/15816")
   public void testSomeDeletes() throws IOException {
     // Delete a sub-range from 0 to numDocs
     int startIndex = random().nextInt(numDocs);
