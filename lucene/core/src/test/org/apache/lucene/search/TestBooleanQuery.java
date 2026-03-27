@@ -34,6 +34,8 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
@@ -1414,5 +1416,221 @@ public class TestBooleanQuery extends LuceneTestCase {
     assertThrows(
         UnsupportedOperationException.class,
         () -> bq.clauses().add(new BooleanClause(MatchNoDocsQuery.INSTANCE, Occur.SHOULD)));
+  }
+
+  /** Helper to check if a rewritten query contains a MultiFieldDocValuesRangeQuery clause. */
+  private boolean containsMultiFieldCoordination(Query rewritten) {
+    if (rewritten instanceof BooleanQuery bq) {
+      for (BooleanClause clause : bq.clauses()) {
+        if (clause.query() instanceof MultiFieldDocValuesRangeQuery) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * Two required numeric range queries on different fields should be coordinated into a
+   * MultiFieldDocValuesRangeQuery.
+   */
+  public void testRewriteCoordinatesTwoRangeFilters() throws IOException {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, new IndexWriterConfig())) {
+      Document doc = new Document();
+      doc.add(new NumericDocValuesField("price", 100));
+      doc.add(new NumericDocValuesField("qty", 5));
+      w.addDocument(doc);
+      w.forceMerge(1);
+
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        IndexSearcher searcher = newSearcher(reader);
+        BooleanQuery bq =
+            new BooleanQuery.Builder()
+                .add(SortedNumericDocValuesField.newSlowRangeQuery("price", 50, 200), Occur.FILTER)
+                .add(SortedNumericDocValuesField.newSlowRangeQuery("qty", 1, 10), Occur.FILTER)
+                .build();
+
+        Query rewritten = bq.rewrite(searcher);
+        assertTrue(
+            "Two required range filters on different fields should coordinate",
+            containsMultiFieldCoordination(rewritten));
+      }
+    }
+  }
+
+  /** A single range query should NOT trigger coordination. */
+  public void testRewriteNoCoordinationForSingleRange() throws IOException {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, new IndexWriterConfig())) {
+      Document doc = new Document();
+      doc.add(new NumericDocValuesField("price", 100));
+      w.addDocument(doc);
+      w.forceMerge(1);
+
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        IndexSearcher searcher = newSearcher(reader);
+        BooleanQuery bq =
+            new BooleanQuery.Builder()
+                .add(SortedNumericDocValuesField.newSlowRangeQuery("price", 50, 200), Occur.FILTER)
+                .build();
+
+        Query rewritten = bq.rewrite(searcher);
+        assertFalse(
+            "Single range query should not be coordinated",
+            containsMultiFieldCoordination(rewritten));
+      }
+    }
+  }
+
+  /** Two range queries on the SAME field should NOT be coordinated (need distinct fields). */
+  public void testRewriteNoCoordinationForSameField() throws IOException {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, new IndexWriterConfig())) {
+      Document doc = new Document();
+      doc.add(new NumericDocValuesField("price", 100));
+      w.addDocument(doc);
+      w.forceMerge(1);
+
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        IndexSearcher searcher = newSearcher(reader);
+        BooleanQuery bq =
+            new BooleanQuery.Builder()
+                .add(SortedNumericDocValuesField.newSlowRangeQuery("price", 50, 200), Occur.FILTER)
+                .add(SortedNumericDocValuesField.newSlowRangeQuery("price", 100, 300), Occur.FILTER)
+                .build();
+
+        Query rewritten = bq.rewrite(searcher);
+        assertFalse(
+            "Two range queries on the same field should not be coordinated",
+            containsMultiFieldCoordination(rewritten));
+      }
+    }
+  }
+
+  /** SHOULD range clauses should NOT trigger coordination (only required clauses qualify). */
+  public void testRewriteNoCoordinationForShouldClauses() throws IOException {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, new IndexWriterConfig())) {
+      Document doc = new Document();
+      doc.add(new NumericDocValuesField("price", 100));
+      doc.add(new NumericDocValuesField("qty", 5));
+      w.addDocument(doc);
+      w.forceMerge(1);
+
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        IndexSearcher searcher = newSearcher(reader);
+        BooleanQuery bq =
+            new BooleanQuery.Builder()
+                .add(SortedNumericDocValuesField.newSlowRangeQuery("price", 50, 200), Occur.SHOULD)
+                .add(SortedNumericDocValuesField.newSlowRangeQuery("qty", 1, 10), Occur.SHOULD)
+                .build();
+
+        Query rewritten = bq.rewrite(searcher);
+        assertFalse(
+            "SHOULD range clauses should not be coordinated",
+            containsMultiFieldCoordination(rewritten));
+      }
+    }
+  }
+
+  /** Non-range clauses should be preserved alongside the coordinated query. */
+  public void testRewritePreservesNonRangeClauses() throws IOException {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, new IndexWriterConfig())) {
+      Document doc = new Document();
+      doc.add(new NumericDocValuesField("price", 100));
+      doc.add(new NumericDocValuesField("qty", 5));
+      doc.add(new StringField("status", "active", Field.Store.NO));
+      w.addDocument(doc);
+      w.forceMerge(1);
+
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        IndexSearcher searcher = newSearcher(reader);
+        TermQuery termClause = new TermQuery(new Term("status", "active"));
+        BooleanQuery bq =
+            new BooleanQuery.Builder()
+                .add(SortedNumericDocValuesField.newSlowRangeQuery("price", 50, 200), Occur.FILTER)
+                .add(SortedNumericDocValuesField.newSlowRangeQuery("qty", 1, 10), Occur.FILTER)
+                .add(termClause, Occur.MUST)
+                .build();
+
+        Query rewritten = bq.rewrite(searcher);
+        assertTrue(
+            "Should still coordinate range clauses when mixed with non-range",
+            containsMultiFieldCoordination(rewritten));
+
+        // The non-range clause should still be present
+        BooleanQuery rewrittenBq = (BooleanQuery) rewritten;
+        boolean foundTermClause = false;
+        for (BooleanClause clause : rewrittenBq.clauses()) {
+          if (clause.query() instanceof TermQuery) {
+            foundTermClause = true;
+            assertEquals(Occur.MUST, clause.occur());
+          }
+        }
+        assertTrue("Non-range TermQuery clause should be preserved", foundTermClause);
+      }
+    }
+  }
+
+  /** Rewriting an already-coordinated query should not re-coordinate (no infinite loop). */
+  public void testRewriteDoesNotReCoordinate() throws IOException {
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, new IndexWriterConfig())) {
+      Document doc = new Document();
+      doc.add(new NumericDocValuesField("price", 100));
+      doc.add(new NumericDocValuesField("qty", 5));
+      w.addDocument(doc);
+      w.forceMerge(1);
+
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        IndexSearcher searcher = newSearcher(reader);
+        BooleanQuery bq =
+            new BooleanQuery.Builder()
+                .add(SortedNumericDocValuesField.newSlowRangeQuery("price", 50, 200), Occur.FILTER)
+                .add(SortedNumericDocValuesField.newSlowRangeQuery("qty", 1, 10), Occur.FILTER)
+                .build();
+
+        Query firstRewrite = bq.rewrite(searcher);
+        assertTrue(containsMultiFieldCoordination(firstRewrite));
+
+        // Rewriting again should be stable — no StackOverflowError, no double-wrapping.
+        // The second rewrite may simplify the BooleanQuery (e.g. single-clause unwrap),
+        // but it must NOT produce a second MultiFieldDocValuesRangeQuery.
+        Query secondRewrite = firstRewrite.rewrite(searcher);
+
+        // Walk the full rewrite chain to a fixed point — must terminate (no infinite loop)
+        Query current = secondRewrite;
+        for (int i = 0; i < 100; i++) {
+          Query next = current.rewrite(searcher);
+          if (next == current) break;
+          current = next;
+        }
+        // If we got here without StackOverflowError, the guard works.
+
+        // Count MultiFieldDocValuesRangeQuery at any depth — should be at most 1
+        int coordCount = countMultiFieldQueries(current);
+        assertTrue(
+            "Rewrite chain should contain at most 1 MultiFieldDocValuesRangeQuery, found "
+                + coordCount,
+            coordCount <= 1);
+      }
+    }
+  }
+
+  /** Recursively count MultiFieldDocValuesRangeQuery instances in a query tree. */
+  private int countMultiFieldQueries(Query q) {
+    if (q instanceof MultiFieldDocValuesRangeQuery) {
+      return 1;
+    }
+    if (q instanceof BooleanQuery bq) {
+      int count = 0;
+      for (BooleanClause clause : bq.clauses()) {
+        count += countMultiFieldQueries(clause.query());
+      }
+      return count;
+    }
+    return 0;
   }
 }
