@@ -85,6 +85,8 @@ New Features
 
 * GITHUB#15508: Use native vectorization in Lucene. (Ankur Goel, Shubham Chaudhary, Dawid Weiss)
 
+* GITHUB#15224: Add asynchronous prefetching to DirectIO directories. (Ben Trent)
+
 Improvements
 ---------------------
 
