@@ -108,6 +108,8 @@ Improvements
 
 * GITHUB#15453: Avoid unnecessary sorting and instantiations in readMapOfStrings. (Benjamin Lerer)
 
+* GITHUB#15574: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
+
 * GITHUB#15225: Improve package documentation for org.apache.lucene.util. (Syed Mohammad Saad)
 
 Optimizations
