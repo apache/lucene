@@ -585,12 +585,12 @@ final class IndexingChain implements Accountable {
           fields[fieldCount++] = pf;
           pf.fieldGen = fieldGen;
           pf.reset(docID, fieldType);
-        } else if (pf.frozenFieldType != null && fieldType != pf.frozenFieldType) {
-          deoptimizeSchemaValidation(docID, pf, fieldType, fieldName);
+        } else if (pf.multiValueForcesDeoptimize(fieldType)) {
+          pf.deoptimizeSchemaValidation(docID);
         }
         if (docFieldIdx >= docFields.length) oversizeDocFields();
         docFields[docFieldIdx++] = pf;
-        if (pf.frozenFieldType == null || pf.fieldInfo == null) {
+        if (pf.validatedFrozenFieldType == null) {
           needInitOrValidate = true;
           updateDocFieldSchema(fieldName, pf.schema, fieldType);
         }
@@ -637,25 +637,25 @@ final class IndexingChain implements Accountable {
     // within the current doc matches its schema in the index.
     for (int i = 0; i < fieldCount; i++) {
       PerField pf = fields[i];
-      if (pf.frozenFieldType != null && pf.fieldInfo != null) {
+      if (pf.validatedFrozenFieldType != null) {
+        assert pf.fieldInfo != null;
         continue;
       }
       if (pf.fieldInfo == null) {
         initializeFieldInfo(pf);
+        pf.trySetValidatedFrozenFieldType();
       } else {
         pf.schema.assertSameSchema(pf.fieldInfo);
       }
     }
   }
 
-  private static void deoptimizeSchemaValidation(
-      int docID, PerField pf, IndexableFieldType fieldType, String fieldName) {
-    // Multi-valued field with a different field type than the cached frozen type.
-    // Replay the schema contribution from the earlier skipped values (all had the
-    // same frozen type), then invalidate the cache.
-    FieldType previousFrozenType = pf.frozenFieldType;
-    pf.reset(docID, fieldType);
-    updateDocFieldSchema(fieldName, pf.schema, previousFrozenType);
+  private static void deoptimizeSchemaValidation(int docID, PerField pf) {
+    // Multi-valued field with a different field type than the validated frozen type.
+    // Invalidate the cache and full-reset the schema. No need to replay the frozen type's
+    // schema since it was already validated against fieldInfo.
+    pf.validatedFrozenFieldType = null;
+    pf.schema.reset(docID);
   }
 
   private void oversizeDocFields() {
@@ -1129,7 +1129,8 @@ final class IndexingChain implements Accountable {
      * Allows IndexingChain to skip schema validation if fields keep using the same frozen field
      * type
      */
-    private FieldType frozenFieldType;
+    private FieldType validatedFrozenFieldType;
+    private IndexableFieldType lastFieldType;
 
     PerField(
         String fieldName,
@@ -1150,25 +1151,28 @@ final class IndexingChain implements Accountable {
 
     void reset(int docId, IndexableFieldType fieldType) {
       first = true;
-      if (fieldType == frozenFieldType) {
+      lastFieldType = fieldType;
+      if (fieldType == validatedFrozenFieldType) {
         schema.resetJustDocId(docId);
       } else {
-        cacheOrRemoveFrozenFieldType(fieldType);
-        schema.reset(docId);
+        deoptimizeSchemaValidation(docId);
       }
     }
 
-    void cacheOrRemoveFrozenFieldType(IndexableFieldType fieldType) {
-      // Only cache a new frozen field type if no prior cached field type exists.
-      // If a prior cached field type existed but didn't match, null it out to force validation of
-      // this document.
-      frozenFieldType =
-          frozenFieldType == null
-                  && fieldInfo == null
-                  && fieldType instanceof FieldType ft
-                  && ft.isFrozen()
-              ? ft
-              : null;
+    boolean multiValueForcesDeoptimize(IndexableFieldType fieldType) {
+      return validatedFrozenFieldType != null && fieldType != validatedFrozenFieldType;
+    }
+
+    void deoptimizeSchemaValidation(int docId) {
+      validatedFrozenFieldType = null;
+      schema.reset(docId);
+    }
+
+    void trySetValidatedFrozenFieldType() {
+      assert fieldInfo != null;
+      if (lastFieldType instanceof FieldType ft && ft.isFrozen()) {
+        validatedFrozenFieldType = ft;
+      }
     }
 
     void setFieldInfo(FieldInfo fieldInfo) {
