@@ -45,6 +45,8 @@ import org.apache.lucene.util.ThreadInterruptedException;
  * @lucene.experimental
  */
 public final class TaskExecutor {
+  public static final TaskExecutor DIRECT_TASK_EXECUTOR = new TaskExecutor(Runnable::run);
+
   private final Executor executor;
 
   /**
