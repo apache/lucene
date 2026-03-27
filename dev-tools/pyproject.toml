@@ -22,3 +22,6 @@ dev = [
   # validates various
   "ast-grep-cli==0.41.1",
 ]
+
+[tool.uv]
+required-version = ">=0.9.27"
