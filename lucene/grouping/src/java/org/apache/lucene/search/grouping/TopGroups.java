@@ -95,7 +95,7 @@ public class TopGroups<T> {
    * @param b - another value
    * @return ignoring any NaN return the greater of a and b
    */
-  private static float nonNANmax(float a, float b) {
+  static float nonNANmax(float a, float b) {
     if (Float.isNaN(a)) return b;
     if (Float.isNaN(b)) return a;
     return Math.max(a, b);
