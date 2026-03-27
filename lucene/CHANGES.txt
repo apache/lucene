@@ -110,6 +110,8 @@ Improvements
 
 * GITHUB#15225: Improve package documentation for org.apache.lucene.util. (Syed Mohammad Saad)
 
+* GTIHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
+
 Optimizations
 ---------------------
 * GITHUB#15681, GITHUB#15833: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
