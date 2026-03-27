@@ -211,6 +211,18 @@ public final class SegmentInfo {
     return Collections.unmodifiableSet(setFiles);
   }
 
+  public String toString(int delCount) {
+    StringBuilder s = new StringBuilder();
+    s.append(name).append('(').append(version == null ? "?" : version).append(')').append(':');
+    char cfs = getUseCompoundFile() ? 'c' : 'C';
+    s.append(cfs);
+    s.append(maxDoc);
+    if (delCount != 0) {
+      s.append('/').append(delCount);
+    }
+    return s.toString();
+  }
+
   @Override
   public String toString() {
     return toString(0);
@@ -225,17 +237,9 @@ public final class SegmentInfo {
    * has 45 documents; it has 4 deletions (this part is left off when there are no deletions); it is
    * sorted by the timestamp field in descending order (this part is omitted for unsorted segments).
    */
-  public String toString(int delCount) {
+  public String toStringVerbose() {
     StringBuilder s = new StringBuilder();
-    s.append(name).append('(').append(version == null ? "?" : version).append(')').append(':');
-    char cfs = getUseCompoundFile() ? 'c' : 'C';
-    s.append(cfs);
-
-    s.append(maxDoc);
-
-    if (delCount != 0) {
-      s.append('/').append(delCount);
-    }
+    s.append(toString(0));
 
     if (indexSort != null) {
       s.append(":[indexSort=");

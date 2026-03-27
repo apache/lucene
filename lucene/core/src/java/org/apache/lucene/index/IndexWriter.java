@@ -2844,7 +2844,7 @@ public class IndexWriter
       ensureOpen(false);
 
       if (infoStream.isEnabled("IW")) {
-        infoStream.message("IW", "publishFlushedSegment " + newSegment);
+        infoStream.message("IW", "publishFlushedSegment " + newSegment.toStringVerbose());
       }
 
       if (globalPacket != null && globalPacket.any()) {

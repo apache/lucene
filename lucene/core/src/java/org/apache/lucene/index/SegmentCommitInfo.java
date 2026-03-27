@@ -349,7 +349,19 @@ public class SegmentCommitInfo {
 
   /** Returns a description of this segment. */
   public String toString(int pendingDelCount) {
-    String s = info.toString(delCount + pendingDelCount);
+    return info.toString(delCount + pendingDelCount);
+  }
+
+  @Override
+  public String toString() {
+    return info.toString();
+  }
+
+  public String toStringVerbose() {
+    String s = info.toStringVerbose();
+    if (this.id != null) {
+      s += " :id=" + StringHelper.idToString(id);
+    }
     if (delGen != -1) {
       s += ":delGen=" + delGen;
     }
@@ -365,13 +377,7 @@ public class SegmentCommitInfo {
     if (this.id != null) {
       s += " :id=" + StringHelper.idToString(id);
     }
-
     return s;
-  }
-
-  @Override
-  public String toString() {
-    return toString(0);
   }
 
   @Override
