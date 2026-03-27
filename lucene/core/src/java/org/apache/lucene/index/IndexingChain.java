@@ -586,7 +586,9 @@ final class IndexingChain implements Accountable {
           pf.fieldGen = fieldGen;
           pf.reset(docID, fieldType);
         } else if (pf.multiValueForcesDeoptimize(fieldType)) {
-          pf.deoptimizeSchemaValidation(docID);
+          // Multi-valued field with a different field type than the cached frozen type.
+          // Drop the validated frozen field type to force the validation path.
+          pf.validatedFrozenFieldType = null;
         }
         if (docFieldIdx >= docFields.length) oversizeDocFields();
         docFields[docFieldIdx++] = pf;
@@ -648,14 +650,6 @@ final class IndexingChain implements Accountable {
         pf.schema.assertSameSchema(pf.fieldInfo);
       }
     }
-  }
-
-  private static void deoptimizeSchemaValidation(int docID, PerField pf) {
-    // Multi-valued field with a different field type than the validated frozen type.
-    // Invalidate the cache and full-reset the schema. No need to replay the frozen type's
-    // schema since it was already validated against fieldInfo.
-    pf.validatedFrozenFieldType = null;
-    pf.schema.reset(docID);
   }
 
   private void oversizeDocFields() {
@@ -1130,7 +1124,8 @@ final class IndexingChain implements Accountable {
      * type
      */
     private FieldType validatedFrozenFieldType;
-    private IndexableFieldType lastFieldType;
+
+    private IndexableFieldType candidateFieldType;
 
     PerField(
         String fieldName,
@@ -1151,11 +1146,18 @@ final class IndexingChain implements Accountable {
 
     void reset(int docId, IndexableFieldType fieldType) {
       first = true;
-      lastFieldType = fieldType;
+      if (fieldInfo == null) {
+        // The first time we encounter this field in a segment propose a frozen field to optimize
+        // the validation step. This will be promoted in trySetValidatedFrozenFieldType if it is
+        // frozen and valid.
+        candidateFieldType = fieldType;
+      }
       if (fieldType == validatedFrozenFieldType) {
         schema.resetJustDocId(docId);
       } else {
-        deoptimizeSchemaValidation(docId);
+        // Encountered new FieldType. Deoptimize the schema validation skip.
+        validatedFrozenFieldType = null;
+        schema.reset(docId);
       }
     }
 
@@ -1163,16 +1165,12 @@ final class IndexingChain implements Accountable {
       return validatedFrozenFieldType != null && fieldType != validatedFrozenFieldType;
     }
 
-    void deoptimizeSchemaValidation(int docId) {
-      validatedFrozenFieldType = null;
-      schema.reset(docId);
-    }
-
     void trySetValidatedFrozenFieldType() {
       assert fieldInfo != null;
-      if (lastFieldType instanceof FieldType ft && ft.isFrozen()) {
+      if (candidateFieldType instanceof FieldType ft && ft.isFrozen()) {
         validatedFrozenFieldType = ft;
       }
+      candidateFieldType = null;
     }
 
     void setFieldInfo(FieldInfo fieldInfo) {
