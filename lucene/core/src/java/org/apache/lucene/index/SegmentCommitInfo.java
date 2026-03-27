@@ -352,12 +352,14 @@ public class SegmentCommitInfo {
     return info.toString(delCount + pendingDelCount);
   }
 
+  /** Returns a description of this segment. */
   @Override
   public String toString() {
     return info.toString();
   }
 
-  public String toStringVerbose() {
+  /** Returns a more verbose description of this segment for use in infostream logging */
+  String toStringVerbose() {
     String s = info.toStringVerbose();
     if (this.id != null) {
       s += " :id=" + StringHelper.idToString(id);
