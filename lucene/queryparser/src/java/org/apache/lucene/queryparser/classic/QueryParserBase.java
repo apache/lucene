@@ -660,7 +660,6 @@ public abstract class QueryParserBase extends QueryBuilder
     if (clauses.isEmpty()) {
       return null; // all clause words were filtered away by the analyzer.
     }
-
     BooleanQuery.Builder query = newBooleanQuery();
     for (final BooleanClause clause : clauses) {
       query.add(clause);
