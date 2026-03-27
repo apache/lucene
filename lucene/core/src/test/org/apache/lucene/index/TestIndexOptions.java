@@ -176,6 +176,7 @@ public class TestIndexOptions extends LuceneTestCase {
     for (int i = 0; i < numDocs; i++) {
       w.addDocument(Collections.singleton(new Field("foo", "bar" + i, ft)));
     }
+    w.forceMerge(1);
     try (LeafReader r = getOnlyLeafReader(DirectoryReader.open(w))) {
       assertEquals(numDocs, r.maxDoc());
       assertEquals(
