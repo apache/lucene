@@ -31,6 +31,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.similarities.Similarity;
 
 /**
  * A Query that matches documents matching boolean combinations of other queries, e.g. {@link
@@ -424,24 +425,41 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
     }
 
-    // Deduplicate SHOULD clauses by summing up their boosts
+    // Deduplicate SHOULD clauses. Tracks total boost per query and which clauses have
+    // explicit boosts. Uses Similarity.computeQueryTermWeight for unweighted duplicates
+    // (e.g. "a a a"), falls back to linear boost sum when explicit boosts are present
+    // (e.g. "a^2 a^3").
     if (clauseSets.get(Occur.SHOULD).size() > 0 && minimumNumberShouldMatch <= 1) {
-      Map<Query, Double> shouldClauses = new HashMap<>();
+      Map<Query, Double> shouldBoosts = new HashMap<>();
+      Set<Query> boostedClauses = new HashSet<>();
       for (Query query : clauseSets.get(Occur.SHOULD)) {
         double boost = 1;
+        boolean hasBoosted = false;
         while (query instanceof BoostQuery) {
           BoostQuery bq = (BoostQuery) query;
           boost *= bq.getBoost();
           query = bq.getQuery();
+          hasBoosted = true;
         }
-        shouldClauses.put(query, shouldClauses.getOrDefault(query, 0d) + boost);
+        shouldBoosts.merge(query, boost, Double::sum);
+        if (hasBoosted) {
+          boostedClauses.add(query);
+        }
       }
-      if (shouldClauses.size() != clauseSets.get(Occur.SHOULD).size()) {
+      if (shouldBoosts.size() != clauseSets.get(Occur.SHOULD).size()) {
+        Similarity similarity = indexSearcher.getSimilarity();
         BooleanQuery.Builder builder =
             new BooleanQuery.Builder().setMinimumNumberShouldMatch(minimumNumberShouldMatch);
-        for (Map.Entry<Query, Double> entry : shouldClauses.entrySet()) {
+        for (Map.Entry<Query, Double> entry : shouldBoosts.entrySet()) {
           Query query = entry.getKey();
-          float boost = entry.getValue().floatValue();
+          double boostSum = entry.getValue();
+          // Only apply similarity-based query term weighting when all occurrences have the
+          // default boost of 1.0 (the common case from query parsers). When explicit boosts
+          // are present (e.g. programmatic BoostQuery), preserve the original linear sum.
+          float boost =
+              boostedClauses.contains(query)
+                  ? (float) boostSum
+                  : similarity.computeQueryTermWeight(Math.toIntExact(Math.round(boostSum)));
           if (boost != 1f) {
             query = new BoostQuery(query, boost);
           }
@@ -456,24 +474,38 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
     }
 
-    // Deduplicate MUST clauses by summing up their boosts
+    // Deduplicate MUST clauses — same approach as SHOULD above.
     if (clauseSets.get(Occur.MUST).size() > 0) {
-      Map<Query, Double> mustClauses = new HashMap<>();
+      Map<Query, Double> mustBoosts = new HashMap<>();
+      Set<Query> boostedClauses = new HashSet<>();
       for (Query query : clauseSets.get(Occur.MUST)) {
         double boost = 1;
+        boolean hasBoosted = false;
         while (query instanceof BoostQuery) {
           BoostQuery bq = (BoostQuery) query;
           boost *= bq.getBoost();
           query = bq.getQuery();
+          hasBoosted = true;
         }
-        mustClauses.put(query, mustClauses.getOrDefault(query, 0d) + boost);
+        mustBoosts.merge(query, boost, Double::sum);
+        if (hasBoosted) {
+          boostedClauses.add(query);
+        }
       }
-      if (mustClauses.size() != clauseSets.get(Occur.MUST).size()) {
+      if (mustBoosts.size() != clauseSets.get(Occur.MUST).size()) {
+        Similarity similarity = indexSearcher.getSimilarity();
         BooleanQuery.Builder builder =
             new BooleanQuery.Builder().setMinimumNumberShouldMatch(minimumNumberShouldMatch);
-        for (Map.Entry<Query, Double> entry : mustClauses.entrySet()) {
+        for (Map.Entry<Query, Double> entry : mustBoosts.entrySet()) {
           Query query = entry.getKey();
-          float boost = entry.getValue().floatValue();
+          // Only apply similarity-based query term weighting when all occurrences have the
+          // default boost of 1.0 (the common case from query parsers). When explicit boosts
+          // are present (e.g. programmatic BoostQuery), preserve the original linear sum.
+          double boostSum = entry.getValue();
+          float boost =
+              boostedClauses.contains(query)
+                  ? (float) boostSum
+                  : similarity.computeQueryTermWeight(Math.toIntExact(Math.round(boostSum)));
           if (boost != 1f) {
             query = new BoostQuery(query, boost);
           }
