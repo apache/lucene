@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -46,6 +45,32 @@ final class DisjunctionMaxBulkScorer extends BulkScorer {
   private final float[] windowScores = new float[WINDOW_SIZE];
   private final PriorityQueue<BulkScorerAndNext> scorers;
   private final SimpleScorable topLevelScorable = new SimpleScorable();
+  private int windowMin;
+
+  /**
+   * Reusable inner {@link LeafCollector} that collects matches into the window bitset and scores
+   * array. This avoids allocating a new anonymous collector object per sub-scorer per window.
+   */
+  private final LeafCollector innerCollector =
+      new LeafCollector() {
+
+        private Scorable scorer;
+
+        @Override
+        public void setScorer(Scorable scorer) throws IOException {
+          this.scorer = scorer;
+          if (topLevelScorable.minCompetitiveScore != 0f) {
+            scorer.setMinCompetitiveScore(topLevelScorable.minCompetitiveScore);
+          }
+        }
+
+        @Override
+        public void collect(int doc) throws IOException {
+          final int delta = doc - windowMin;
+          windowMatches.set(delta);
+          windowScores[delta] = Math.max(windowScores[delta], scorer.score());
+        }
+      };
 
   DisjunctionMaxBulkScorer(List<BulkScorer> scorers) {
     if (scorers.size() < 2) {
@@ -63,51 +88,27 @@ final class DisjunctionMaxBulkScorer extends BulkScorer {
     BulkScorerAndNext top = scorers.top();
 
     while (top.next < max) {
-      final int windowMin = Math.max(top.next, min);
+      windowMin = Math.max(top.next, min);
       final int windowMax = MathUtil.unsignedMin(max, windowMin + WINDOW_SIZE);
 
       // First compute matches / scores in the window
       do {
-        top.next =
-            top.scorer.score(
-                new LeafCollector() {
-
-                  private Scorable scorer;
-
-                  @Override
-                  public void setScorer(Scorable scorer) throws IOException {
-                    this.scorer = scorer;
-                    if (topLevelScorable.minCompetitiveScore != 0f) {
-                      scorer.setMinCompetitiveScore(topLevelScorable.minCompetitiveScore);
-                    }
-                  }
-
-                  @Override
-                  public void collect(int doc) throws IOException {
-                    final int delta = doc - windowMin;
-                    windowMatches.set(doc - windowMin);
-                    windowScores[delta] = Math.max(windowScores[delta], scorer.score());
-                  }
-                },
-                acceptDocs,
-                windowMin,
-                windowMax);
+        top.next = top.scorer.score(innerCollector, acceptDocs, windowMin, windowMax);
         top = scorers.updateTop();
       } while (top.next < windowMax);
 
-      // Then replay
+      // Then replay, resetting windowScores entries inline to avoid a full Arrays.fill
       collector.setScorer(topLevelScorable);
       for (int windowDoc = windowMatches.nextSetBit(0);
           windowDoc != DocIdSetIterator.NO_MORE_DOCS;
           windowDoc = windowMatches.nextSetBit(windowDoc + 1)) {
-        int doc = windowMin + windowDoc;
         topLevelScorable.score = windowScores[windowDoc];
-        collector.collect(doc);
+        windowScores[windowDoc] = 0f;
+        collector.collect(windowMin + windowDoc);
       }
 
-      // Finally clean up state
+      // Only the bitset needs clearing; windowScores entries were reset during replay above.
       windowMatches.clear();
-      Arrays.fill(windowScores, 0f);
     }
 
     return top.next;
