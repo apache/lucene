@@ -102,13 +102,12 @@ public final class DoubleRange extends Range {
 
   @Override
   public boolean equals(Object _that) {
-    if (_that instanceof DoubleRange == false) {
-      return false;
+    if (_that instanceof DoubleRange that) {
+      return that.label.equals(this.label)
+          && Double.compare(that.min, this.min) == 0
+          && Double.compare(that.max, this.max) == 0;
     }
-    DoubleRange that = (DoubleRange) _that;
-    return that.label.equals(this.label)
-        && Double.compare(that.min, this.min) == 0
-        && Double.compare(that.max, this.max) == 0;
+    return false;
   }
 
   @Override

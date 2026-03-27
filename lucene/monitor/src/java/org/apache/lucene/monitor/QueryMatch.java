@@ -67,8 +67,7 @@ public class QueryMatch {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof QueryMatch)) return false;
-    QueryMatch that = (QueryMatch) o;
+    if (!(o instanceof QueryMatch that)) return false;
     return Objects.equals(queryId, that.queryId);
   }
 

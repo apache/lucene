@@ -124,8 +124,7 @@ public class SearchGroup<T> {
 
     // Only for assert
     private boolean neverEquals(Object _other) {
-      if (_other instanceof MergedGroup) {
-        MergedGroup<?> other = (MergedGroup<?>) _other;
+      if (_other instanceof MergedGroup<?> other) {
         if (groupValue == null) {
           assert other.groupValue != null;
         } else {
@@ -141,8 +140,7 @@ public class SearchGroup<T> {
       // same groupValue
       assert neverEquals(_other);
 
-      if (_other instanceof MergedGroup) {
-        MergedGroup<?> other = (MergedGroup<?>) _other;
+      if (_other instanceof MergedGroup<?> other) {
         if (groupValue == null) {
           return other.groupValue == null;
         } else {

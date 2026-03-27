@@ -199,8 +199,8 @@ public class SynonymGraphFilterFactory extends TokenFilterFactory implements Res
     Class<? extends TokenizerFactory> clazz = loader.findClass(cname, TokenizerFactory.class);
     try {
       TokenizerFactory tokFactory = clazz.getConstructor(Map.class).newInstance(tokArgs);
-      if (tokFactory instanceof ResourceLoaderAware) {
-        ((ResourceLoaderAware) tokFactory).inform(loader);
+      if (tokFactory instanceof ResourceLoaderAware rla) {
+        rla.inform(loader);
       }
       return tokFactory;
     } catch (Exception e) {
@@ -212,8 +212,8 @@ public class SynonymGraphFilterFactory extends TokenFilterFactory implements Res
     Class<? extends Analyzer> clazz = loader.findClass(cname, Analyzer.class);
     try {
       Analyzer analyzer = clazz.getConstructor().newInstance();
-      if (analyzer instanceof ResourceLoaderAware) {
-        ((ResourceLoaderAware) analyzer).inform(loader);
+      if (analyzer instanceof ResourceLoaderAware rla) {
+        rla.inform(loader);
       }
       return analyzer;
     } catch (Exception e) {

@@ -62,10 +62,8 @@ final class CachingExpressionValueSource extends ExpressionValueSource {
       String externalName = expression.variables[i];
       DoubleValues values = valuesCache.get(externalName);
       if (values == null) {
-        if (variables[i] instanceof CachingExpressionValueSource) {
-          values =
-              ((CachingExpressionValueSource) variables[i])
-                  .getValuesWithCache(readerContext, scores, valuesCache);
+        if (variables[i] instanceof CachingExpressionValueSource cachingSource) {
+          values = cachingSource.getValuesWithCache(readerContext, scores, valuesCache);
         } else {
           values = variables[i].getValues(readerContext, scores);
         }

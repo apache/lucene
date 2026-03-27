@@ -77,8 +77,8 @@ public abstract class ConditionalTokenFilterFactory extends TokenFilterFactory
   public final void inform(ResourceLoader loader) throws IOException {
     if (innerFilters == null) return;
     for (TokenFilterFactory factory : innerFilters) {
-      if (factory instanceof ResourceLoaderAware) {
-        ((ResourceLoaderAware) factory).inform(loader);
+      if (factory instanceof ResourceLoaderAware rla) {
+        rla.inform(loader);
       }
     }
     doInform(loader);

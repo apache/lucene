@@ -111,8 +111,8 @@ public class ConfusionMatrixGenerator {
                 if (assignedClass != null) {
                   counter++;
                   String classified =
-                      assignedClass instanceof BytesRef
-                          ? ((BytesRef) assignedClass).utf8ToString()
+                      assignedClass instanceof BytesRef bytesRef
+                          ? bytesRef.utf8ToString()
                           : assignedClass.toString();
 
                   String correctAnswer;

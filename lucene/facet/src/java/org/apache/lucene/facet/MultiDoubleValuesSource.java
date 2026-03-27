@@ -107,8 +107,8 @@ public abstract class MultiDoubleValuesSource implements SegmentCacheable {
    * wrapped with {@link #fromSingleValued(DoubleValuesSource)}, or null.
    */
   public static DoubleValuesSource unwrapSingleton(MultiDoubleValuesSource in) {
-    if (in instanceof SingleValuedAsMultiValued) {
-      return ((SingleValuedAsMultiValued) in).in;
+    if (in instanceof SingleValuedAsMultiValued s) {
+      return s.in;
     } else {
       return null;
     }

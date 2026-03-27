@@ -434,14 +434,13 @@ public class AnalyzerFactoryTask extends PerfTask {
       } catch (Exception e) {
         throw new RuntimeException("Line #" + lineno(stok) + ": ", e);
       }
-      if (instance instanceof ResourceLoaderAware) {
+      if (instance instanceof ResourceLoaderAware rla) {
         Path baseDir = Paths.get(getRunData().getConfig().get("work.dir", "work"));
         if (!Files.isDirectory(baseDir)) {
           baseDir = Paths.get(".");
         }
-        ((ResourceLoaderAware) instance)
-            .inform(
-                new FilesystemResourceLoader(baseDir, AnalyzerFactoryTask.class.getClassLoader()));
+        rla.inform(
+            new FilesystemResourceLoader(baseDir, AnalyzerFactoryTask.class.getClassLoader()));
       }
       if (CharFilterFactory.class.isAssignableFrom(clazz)) {
         charFilterFactories.add((CharFilterFactory) instance);
