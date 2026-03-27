@@ -32,6 +32,12 @@ New Features
 * GITHUB#15722: Add interface to do prefetch on KnnVectorValues and an example implementation to use prefetch
   in Scorer (Navneet Verma)
 
+* GITHUB#15827: Add BayesianScoreQuery and LogOddsFusionQuery for probabilistic hybrid
+  search. BayesianScoreQuery wraps any query and applies sigmoid calibration to transform scores
+  into probabilities. LogOddsFusionQuery combines multiple probability signals (text, vector,
+  or mixed) via log-odds fusion with softplus gating and sqrt(n) confidence scaling.
+  (Jaepil Jeong)
+
 Improvements
 ---------------------
 * GITHUB#15757: Better skipper-based numeric sort pruning from the start of segments (Alan Woodward)
