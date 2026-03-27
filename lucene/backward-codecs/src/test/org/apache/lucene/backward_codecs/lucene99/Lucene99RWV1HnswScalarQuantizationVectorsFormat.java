@@ -55,6 +55,7 @@ class Lucene99RWV1HnswScalarQuantizationVectorsFormat
         state,
         Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
         Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
+        flatVectorsFormat,
         flatVectorsFormat.fieldsWriter(state),
         1,
         null,

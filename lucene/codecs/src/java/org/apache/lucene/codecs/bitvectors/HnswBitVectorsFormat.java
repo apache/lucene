@@ -41,6 +41,7 @@ import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.search.TaskExecutor;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
@@ -138,6 +139,7 @@ public final class HnswBitVectorsFormat extends KnnVectorsFormat {
             state,
             maxConn,
             beamWidth,
+            flatVectorsFormat,
             flatVectorsFormat.fieldsWriter(state),
             numMergeWorkers,
             mergeExec));
@@ -172,8 +174,8 @@ public final class HnswBitVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-      delegate.mergeOneField(fieldInfo, mergeState);
+    public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+      return delegate.mergeOneField(fieldInfo, mergeState);
     }
 
     @Override
