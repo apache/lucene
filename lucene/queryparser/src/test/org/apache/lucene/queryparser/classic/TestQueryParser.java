@@ -872,7 +872,6 @@ public class TestQueryParser extends QueryParserTestBase {
     Analyzer a = new ASCIIAnalyzer();
     QueryParser parser = new QueryParser(FIELD, a);
     assertTrue(isAHit(parser.parse("mö*tley"), "moatley", a));
-
     // need to have at least one genuine wildcard to trigger the wildcard analysis
     // hence the * before the y
     assertTrue(isAHit(parser.parse("mö\\*tl*y"), "mo*tley", a));
