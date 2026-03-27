@@ -153,7 +153,8 @@ public class TopGroups<T> {
     final GroupDocs<T>[] mergedGroupDocs = new GroupDocs[numGroups];
 
     final TopDocs[] shardTopDocs;
-    if (docSort.equals(Sort.RELEVANCE)) {
+    final boolean sortByRelevance = docSort.equals(Sort.RELEVANCE);
+    if (sortByRelevance) {
       shardTopDocs = new TopDocs[shardGroups.length];
     } else {
       shardTopDocs = new TopFieldDocs[shardGroups.length];
@@ -187,7 +188,7 @@ public class TopGroups<T> {
         }
         */
 
-        if (docSort.equals(Sort.RELEVANCE)) {
+        if (sortByRelevance) {
           shardTopDocs[shardIDX] =
               new TopDocs(shardGroupDocs.totalHits(), shardGroupDocs.scoreDocs());
         } else {
@@ -200,15 +201,21 @@ public class TopGroups<T> {
           shardTopDocs[shardIDX].scoreDocs[i].shardIndex = shardIDX;
         }
 
-        maxScore = nonNANmax(maxScore, shardGroupDocs.maxScore());
+        if (!sortByRelevance) {
+          maxScore = nonNANmax(maxScore, shardGroupDocs.maxScore());
+        }
         assert shardGroupDocs.totalHits().relation() == Relation.EQUAL_TO;
         totalHits += shardGroupDocs.totalHits().value();
         scoreSum += shardGroupDocs.score();
       }
 
       final TopDocs mergedTopDocs;
-      if (docSort.equals(Sort.RELEVANCE)) {
+      if (sortByRelevance) {
         mergedTopDocs = TopDocs.merge(docOffset + docTopN, shardTopDocs);
+        // When sorting by relevance, the highest-scoring doc is first, so we can
+        // derive maxScore directly instead of accumulating across shards.
+        maxScore =
+            mergedTopDocs.scoreDocs.length == 0 ? Float.NaN : mergedTopDocs.scoreDocs[0].score;
       } else {
         mergedTopDocs = TopDocs.merge(docSort, docOffset + docTopN, (TopFieldDocs[]) shardTopDocs);
       }
