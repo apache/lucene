@@ -1038,6 +1038,9 @@ public class FSTCompiler<T> {
     if (dataOutput instanceof Accountable) {
       ramBytesUsed += ((Accountable) dataOutput).ramBytesUsed();
     }
+    if (suffixDedupCache != null) {
+      ramBytesUsed += suffixDedupCache.ramBytesUsed();
+    }
     return ramBytesUsed;
   }
 
