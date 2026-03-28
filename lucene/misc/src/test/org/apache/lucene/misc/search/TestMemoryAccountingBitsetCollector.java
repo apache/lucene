@@ -28,6 +28,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 
 public class TestMemoryAccountingBitsetCollector extends LuceneTestCase {
 
@@ -57,31 +58,43 @@ public class TestMemoryAccountingBitsetCollector extends LuceneTestCase {
     dir.close();
   }
 
-  public void testMemoryAccountingBitsetCollectorMemoryLimit() {
+  public void testMemoryAccountingBitsetCollectorMemoryLimit() throws Exception {
     long perCollectorMemoryLimit = 150;
     CollectorMemoryTracker tracker =
         new CollectorMemoryTracker("testMemoryTracker", perCollectorMemoryLimit);
-    MemoryAccountingBitsetCollector bitSetCollector = new MemoryAccountingBitsetCollector(tracker);
-
+    MemoryAccountingBitsetCollectorManager bitsetCollectorManager =
+        new MemoryAccountingBitsetCollectorManager(tracker);
     IndexSearcher searcher = new IndexSearcher(reader);
     expectThrows(
         IllegalStateException.class,
-        () -> {
-          searcher.search(MatchAllDocsQuery.INSTANCE, bitSetCollector);
-        });
+        () -> searcher.search(MatchAllDocsQuery.INSTANCE, bitsetCollectorManager));
+  }
+
+  public void testConcurrentMemoryLimit() throws Exception {
+    // For collector with collecting only 1 doc, 80 bytes are required.
+    long perCollectorMemoryLimit = 79;
+    CollectorMemoryTracker tracker =
+        new CollectorMemoryTracker("testMemoryTracker", perCollectorMemoryLimit);
+    MemoryAccountingBitsetCollectorManager bitsetCollectorManager =
+        new MemoryAccountingBitsetCollectorManager(tracker);
+    IndexSearcher searcher = newSearcher(reader);
+    expectThrows(
+        IllegalStateException.class,
+        () -> searcher.search(MatchAllDocsQuery.INSTANCE, bitsetCollectorManager));
   }
 
   public void testCollectedResult() throws Exception {
     CollectorMemoryTracker tracker =
         new CollectorMemoryTracker("testMemoryTracker", Long.MAX_VALUE);
-    MemoryAccountingBitsetCollector collector = new MemoryAccountingBitsetCollector(tracker);
+    MemoryAccountingBitsetCollectorManager bitsetCollectorManager =
+        new MemoryAccountingBitsetCollectorManager(tracker);
 
-    IndexSearcher searcher = new IndexSearcher(reader);
-    searcher.search(MatchAllDocsQuery.INSTANCE, collector);
+    IndexSearcher searcher = newSearcher(reader);
+    FixedBitSet result = searcher.search(MatchAllDocsQuery.INSTANCE, bitsetCollectorManager);
 
-    assertEquals(1000, collector.bitSet.cardinality());
+    assertEquals(1000, result.cardinality());
     for (int i = 0; i < 1000; i++) {
-      assertTrue(collector.bitSet.get(i));
+      assertTrue(result.get(i));
     }
   }
 }
