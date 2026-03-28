@@ -133,7 +133,8 @@ public abstract class Similarity {
    *
    * <p><b>WARNING</b>: The default implementation is used by Lucene's supplied Similarity classes,
    * which means you can change the Similarity at runtime without reindexing. If you override this
-   * method, you'll need to re-index documents for it to take effect.
+   * method, you'll need to re-index documents for it to take effect. Also be sure to override
+   * {@link #decodeNorm(long)}.
    *
    * <p>Matches in longer fields are less precise, so implementations of this method usually set
    * smaller values when <code>state.getLength()</code> is large, and larger values when <code>
@@ -160,6 +161,18 @@ public abstract class Similarity {
       numTerms = state.getLength();
     }
     return SmallFloat.intToByte4(numTerms);
+  }
+
+  /**
+   * Decodes the normalization value as computed by {@link #computeNorm(FieldInvertState)}. The
+   * meaning is Similarity-dependent. The default meaning is the field length measured in positions,
+   * approximated.
+   *
+   * @lucene.experimental
+   * @param norm from {@link org.apache.lucene.index.NumericDocValues#longValue()} of the norm.
+   */
+  public long decodeNorm(long norm) {
+    return SmallFloat.byte4ToInt((byte) norm);
   }
 
   /**

@@ -19,8 +19,10 @@ package org.apache.lucene.queries.function;
 
 import java.io.IOException;
 import java.util.Objects;
+import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
@@ -30,10 +32,11 @@ import org.apache.lucene.search.DoubleValuesSource;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
+import org.apache.lucene.search.similarities.Similarity;
 
 /**
- * Class exposing static helper methods for generating DoubleValuesSource instances over some
- * IndexReader statistics
+ * Static helper methods for generating {@link DoubleValuesSource} and {@link LongValuesSource}
+ * instances over some IndexReader statistics
  */
 public final class IndexReaderFunctions {
 
@@ -301,6 +304,18 @@ public final class IndexReaderFunctions {
     return new IndexReaderDoubleValuesSource(r -> r.getDocCount(field), "docCount(" + field + ")");
   }
 
+  /**
+   * Creates a value source that returns what the {@link Similarity} puts in the norm for this
+   * field. The default meaning is the field's position length, approximated.
+   *
+   * @see Similarity#computeNorm(FieldInvertState)
+   * @see Similarity#decodeNorm(long)
+   * @see org.apache.lucene.index.LeafReader#getNormValues(String)
+   */
+  public static LongValuesSource norm(String field) {
+    return new NormValuesSource(field);
+  }
+
   @FunctionalInterface
   private interface ReaderFunction {
     double apply(IndexReader reader) throws IOException;
@@ -411,6 +426,67 @@ public final class IndexReaderFunctions {
     @Override
     public boolean isCacheable(LeafReaderContext ctx) {
       return false;
+    }
+  }
+
+  private static class NormValuesSource extends LongValuesSource {
+    private final String field;
+    private Similarity similarity;
+
+    private NormValuesSource(String field) {
+      this.field = Objects.requireNonNull(field);
+    }
+
+    @Override
+    public LongValuesSource rewrite(IndexSearcher searcher) throws IOException {
+      this.similarity = searcher.getSimilarity(); // isn't field-specific
+      return this;
+    }
+
+    @Override
+    public LongValues getValues(LeafReaderContext ctx, DoubleValues scores) throws IOException {
+      final NumericDocValues norms = ctx.reader().getNormValues(field);
+      if (norms == null) {
+        return LongValues.EMPTY;
+      }
+
+      return new LongValues() {
+        @Override
+        public long longValue() throws IOException {
+          return similarity.decodeNorm(norms.longValue());
+        }
+
+        @Override
+        public boolean advanceExact(int doc) throws IOException {
+          return norms.advanceExact(doc);
+        }
+      };
+    }
+
+    @Override
+    public boolean needsScores() {
+      return false;
+    }
+
+    @Override
+    public boolean isCacheable(LeafReaderContext ctx) {
+      return true;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (!(o instanceof NormValuesSource that)) return false;
+      return field.equals(that.field);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(getClass(), field);
+    }
+
+    @Override
+    public String toString() {
+      return "norm(" + field + ")";
     }
   }
 }
