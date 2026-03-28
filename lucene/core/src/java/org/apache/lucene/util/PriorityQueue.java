@@ -201,10 +201,8 @@ public class PriorityQueue<T> implements Iterable<T> {
             this.size++;
           });
 
-    } catch (
-        @SuppressWarnings("unused")
-        ArrayIndexOutOfBoundsException e) {
-      throw new ArrayIndexOutOfBoundsException(
+    } catch (ArrayIndexOutOfBoundsException _) {
+      throw new IndexOutOfBoundsException(
           "no remaining capacity, but " + remainingSize + " elements were added into the queue");
     } finally {
       // The loop goes down to 1 as heap is 1-based not 0-based.
