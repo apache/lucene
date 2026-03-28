@@ -129,6 +129,11 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#15812: CJKBigramFilter now produces consistent token positions regardless of the
+  outputUnigrams setting. Previously, when outputUnigrams=false, bigrams did not account for
+  spanning two character positions, causing position mismatches after word breaks that broke
+  phrase queries in combined unigram+bigram indexing strategies. (Sarah Syarofina)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
