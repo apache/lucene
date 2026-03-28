@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.search.grouping;
 
+import java.util.Collection;
 import java.util.HashMap;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -100,17 +101,21 @@ public class TestAllGroupsCollector extends LuceneTestCase {
     IndexSearcher indexSearcher = newSearcher(w.getReader());
     w.close();
 
-    AllGroupsCollector<?> allGroupsCollector = createRandomCollector(groupField);
-    indexSearcher.search(new TermQuery(new Term("content", "random")), allGroupsCollector);
-    assertEquals(4, allGroupsCollector.getGroupCount());
+    AllGroupsCollectorManager allGroupsCollectorManager = createRandomCollectorManager(groupField);
+    Collection<?> groups =
+        indexSearcher.search(
+            new TermQuery(new Term("content", "random")), allGroupsCollectorManager);
+    assertEquals(4, groups.size());
 
-    allGroupsCollector = createRandomCollector(groupField);
-    indexSearcher.search(new TermQuery(new Term("content", "some")), allGroupsCollector);
-    assertEquals(3, allGroupsCollector.getGroupCount());
+    allGroupsCollectorManager = createRandomCollectorManager(groupField);
+    groups =
+        indexSearcher.search(new TermQuery(new Term("content", "some")), allGroupsCollectorManager);
+    assertEquals(3, groups.size());
 
-    allGroupsCollector = createRandomCollector(groupField);
-    indexSearcher.search(new TermQuery(new Term("content", "blob")), allGroupsCollector);
-    assertEquals(2, allGroupsCollector.getGroupCount());
+    allGroupsCollectorManager = createRandomCollectorManager(groupField);
+    groups =
+        indexSearcher.search(new TermQuery(new Term("content", "blob")), allGroupsCollectorManager);
+    assertEquals(2, groups.size());
 
     indexSearcher.getIndexReader().close();
     dir.close();
@@ -121,12 +126,12 @@ public class TestAllGroupsCollector extends LuceneTestCase {
     doc.add(new SortedDocValuesField(groupField, new BytesRef(value)));
   }
 
-  private AllGroupsCollector<?> createRandomCollector(String groupField) {
+  private AllGroupsCollectorManager createRandomCollectorManager(String groupField) {
     if (random().nextBoolean()) {
-      return new AllGroupsCollector<>(new TermGroupSelector(groupField));
+      return new AllGroupsCollectorManager(groupField);
     } else {
       ValueSource vs = new BytesRefFieldSource(groupField);
-      return new AllGroupsCollector<>(new ValueSourceGroupSelector(vs, new HashMap<>()));
+      return new AllGroupsCollectorManager(vs, new HashMap<>());
     }
   }
 }
