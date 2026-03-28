@@ -88,9 +88,6 @@ New Features
 
 Improvements
 ---------------------
-* GITHUB#15823: Implement method to add all stream elements into a PriorityQueue.
-  Call PriorityQueue#addAll with mapped stream in DisjunctionMaxBulkScorer's constructor. (Zhou Hui)
-
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
 
 * GITHUB#15682: Use ArrayDeque instead of LinkedList in CompoundWordTokenFilterBase.java. (Renato Haeberli)
@@ -225,6 +222,9 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#15823: Implement method to add all stream elements into a PriorityQueue.
+  Call PriorityQueue#addAll with mapped stream in DisjunctionMaxBulkScorer's constructor. (Zhou Hui)
+
 * GITHUB#15757: Better skipper-based numeric sort pruning from the start of segments (Alan Woodward)
 
 * GITHUB#15753: Add Case Insensitive makeChar and makeString to Automata. (John Wagster)
