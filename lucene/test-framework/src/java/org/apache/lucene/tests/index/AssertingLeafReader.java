@@ -1443,6 +1443,30 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
+    public long sumLow(int level) {
+      assertThread("Doc values skipper", creationThread);
+      assert iterating() : "Unpositioned iterator";
+      Objects.checkIndex(level, numLevels());
+      return in.sumLow(level);
+    }
+
+    @Override
+    public long sumHigh(int level) {
+      assertThread("Doc values skipper", creationThread);
+      assert iterating() : "Unpositioned iterator";
+      Objects.checkIndex(level, numLevels());
+      return in.sumHigh(level);
+    }
+
+    @Override
+    public long valueCount(int level) {
+      assertThread("Doc values skipper", creationThread);
+      assert iterating() : "Unpositioned iterator";
+      Objects.checkIndex(level, numLevels());
+      return in.valueCount(level);
+    }
+
+    @Override
     public long minValue() {
       assertThread("Doc values skipper", creationThread);
       return in.minValue();
@@ -1458,6 +1482,24 @@ public class AssertingLeafReader extends FilterLeafReader {
     public int docCount() {
       assertThread("Doc values skipper", creationThread);
       return in.docCount();
+    }
+
+    @Override
+    public long sumLow() {
+      assertThread("Doc values skipper", creationThread);
+      return in.sumLow();
+    }
+
+    @Override
+    public long sumHigh() {
+      assertThread("Doc values skipper", creationThread);
+      return in.sumHigh();
+    }
+
+    @Override
+    public long valueCount() {
+      assertThread("Doc values skipper", creationThread);
+      return in.valueCount();
     }
   }
 

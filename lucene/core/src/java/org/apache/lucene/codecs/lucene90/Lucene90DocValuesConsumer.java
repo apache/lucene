@@ -194,12 +194,18 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     int docCount;
     long minValue;
     long maxValue;
+    long sumHigh;
+    long sumLow;
+    long valueCount;
 
     SkipAccumulator(int docID) {
       minDocID = docID;
       minValue = Long.MAX_VALUE;
       maxValue = Long.MIN_VALUE;
       docCount = 0;
+      sumHigh = 0;
+      sumLow = 0;
+      valueCount = 0;
     }
 
     boolean isDone(int skipIndexIntervalSize, int valueCount, long nextValue, int nextDoc) {
@@ -219,6 +225,20 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     void accumulate(long value) {
       minValue = Math.min(minValue, value);
       maxValue = Math.max(maxValue, value);
+      // 128-bit addition: add a signed long to (sumHigh, sumLow)
+      long newLow = sumLow + value;
+      // Detect carry/borrow using unsigned overflow detection
+      if (value >= 0) {
+        if (Long.compareUnsigned(newLow, sumLow) < 0) {
+          sumHigh++;
+        }
+      } else {
+        if (Long.compareUnsigned(newLow, sumLow) >= 0) {
+          sumHigh--;
+        }
+      }
+      sumLow = newLow;
+      valueCount++;
     }
 
     void accumulate(SkipAccumulator other) {
@@ -227,6 +247,16 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       minValue = Math.min(minValue, other.minValue);
       maxValue = Math.max(maxValue, other.maxValue);
       docCount += other.docCount;
+      // 128-bit addition: add (other.sumHigh, other.sumLow) to (sumHigh, sumLow)
+      long newLow = sumLow + other.sumLow;
+      if (Long.compareUnsigned(newLow, sumLow) < 0
+          || Long.compareUnsigned(newLow, other.sumLow) < 0) {
+        // unsigned overflow means carry
+        sumHigh++;
+      }
+      sumLow = newLow;
+      sumHigh += other.sumHigh;
+      valueCount += other.valueCount;
     }
 
     void nextDoc(int docID) {
@@ -251,6 +281,9 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     long globalMaxValue = Long.MIN_VALUE;
     long globalMinValue = Long.MAX_VALUE;
     int globalDocCount = 0;
+    long globalSumHigh = 0;
+    long globalSumLow = 0;
+    long globalValueCount = 0;
     int maxDocId = -1;
     final List<SkipAccumulator> accumulators = new ArrayList<>();
     SkipAccumulator accumulator = null;
@@ -262,6 +295,15 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
         globalMaxValue = Math.max(globalMaxValue, accumulator.maxValue);
         globalMinValue = Math.min(globalMinValue, accumulator.minValue);
         globalDocCount += accumulator.docCount;
+        // 128-bit addition for global sum
+        long newLow = globalSumLow + accumulator.sumLow;
+        if (Long.compareUnsigned(newLow, globalSumLow) < 0
+            || Long.compareUnsigned(newLow, accumulator.sumLow) < 0) {
+          globalSumHigh++;
+        }
+        globalSumLow = newLow;
+        globalSumHigh += accumulator.sumHigh;
+        globalValueCount += accumulator.valueCount;
         maxDocId = accumulator.maxDocID;
         accumulator = null;
         if (accumulators.size() == maxAccumulators) {
@@ -284,6 +326,15 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       globalMaxValue = Math.max(globalMaxValue, accumulator.maxValue);
       globalMinValue = Math.min(globalMinValue, accumulator.minValue);
       globalDocCount += accumulator.docCount;
+      // 128-bit addition for global sum
+      long newLow = globalSumLow + accumulator.sumLow;
+      if (Long.compareUnsigned(newLow, globalSumLow) < 0
+          || Long.compareUnsigned(newLow, accumulator.sumLow) < 0) {
+        globalSumHigh++;
+      }
+      globalSumLow = newLow;
+      globalSumHigh += accumulator.sumHigh;
+      globalValueCount += accumulator.valueCount;
       maxDocId = accumulator.maxDocID;
       writeLevels(accumulators);
     }
@@ -295,6 +346,9 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     assert globalDocCount <= maxDocId + 1;
     meta.writeInt(globalDocCount);
     meta.writeInt(maxDocId);
+    meta.writeLong(globalSumHigh);
+    meta.writeLong(globalSumLow);
+    meta.writeLong(globalValueCount);
   }
 
   private void writeLevels(List<SkipAccumulator> accumulators) throws IOException {
@@ -319,6 +373,9 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
         data.writeLong(accumulator.maxValue);
         data.writeLong(accumulator.minValue);
         data.writeInt(accumulator.docCount);
+        data.writeLong(accumulator.sumHigh);
+        data.writeLong(accumulator.sumLow);
+        data.writeLong(accumulator.valueCount);
       }
     }
   }
