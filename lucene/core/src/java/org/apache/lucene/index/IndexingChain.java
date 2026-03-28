@@ -550,8 +550,8 @@ final class IndexingChain implements Accountable {
   }
 
   void processDocument(int docID, Iterable<? extends IndexableField> document) throws IOException {
-    // number of unique fields by names (collapses multiple field instances by the same name)
-    int fieldCount = 0;
+    // number of unique fields by name which need to be init in segment or full validation
+    int fieldsNeedInitOrValidate = 0;
     int indexedFieldCount = 0; // number of unique fields indexed with postings
     long fieldGen = nextFieldGen++;
     int docFieldIdx = 0;
@@ -565,8 +565,6 @@ final class IndexingChain implements Accountable {
     termsHash.startDocument();
     startStoredFields(docID);
     try {
-      boolean needInitOrValidate = false;
-
       // 1st pass over doc fields – verify that doc schema matches the index schema
       // build schema for each unique doc field
       for (IndexableField field : document) {
@@ -582,24 +580,26 @@ final class IndexingChain implements Accountable {
               "\"" + fieldName + "\" is a reserved field and should not be added to any document");
         }
         if (pf.fieldGen != fieldGen) { // first time we see this field in this document
-          fields[fieldCount++] = pf;
           pf.fieldGen = fieldGen;
           pf.reset(docID, fieldType);
+          if (pf.validatedFrozenFieldType == null) {
+            fields[fieldsNeedInitOrValidate++] = pf;
+          }
         } else if (pf.multiValueForcesDeoptimize(fieldType)) {
           // Multi-valued field with a different field type than the cached frozen type.
           // Drop the validated frozen field type to force the validation path.
           pf.validatedFrozenFieldType = null;
+          fields[fieldsNeedInitOrValidate++] = pf;
         }
         if (docFieldIdx >= docFields.length) oversizeDocFields();
         docFields[docFieldIdx++] = pf;
         if (pf.validatedFrozenFieldType == null) {
-          needInitOrValidate = true;
           updateDocFieldSchema(fieldName, pf.schema, fieldType);
         }
       }
 
-      if (needInitOrValidate) {
-        initAndValidateFields(fieldCount);
+      if (fieldsNeedInitOrValidate > 0) {
+        initAndValidateFields(fieldsNeedInitOrValidate);
       }
 
       // 2nd pass over doc fields – index each field
@@ -639,10 +639,6 @@ final class IndexingChain implements Accountable {
     // within the current doc matches its schema in the index.
     for (int i = 0; i < fieldCount; i++) {
       PerField pf = fields[i];
-      if (pf.validatedFrozenFieldType != null) {
-        assert pf.fieldInfo != null;
-        continue;
-      }
       if (pf.fieldInfo == null) {
         initializeFieldInfo(pf);
         pf.trySetValidatedFrozenFieldType();
