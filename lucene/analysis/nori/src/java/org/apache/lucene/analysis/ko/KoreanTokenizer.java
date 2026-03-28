@@ -25,6 +25,7 @@ import org.apache.lucene.analysis.ko.dict.TokenInfoDictionary;
 import org.apache.lucene.analysis.ko.dict.TokenInfoFST;
 import org.apache.lucene.analysis.ko.dict.UnknownDictionary;
 import org.apache.lucene.analysis.ko.dict.UserDictionary;
+import org.apache.lucene.analysis.ko.tokenattributes.MetadataAttribute;
 import org.apache.lucene.analysis.ko.tokenattributes.PartOfSpeechAttribute;
 import org.apache.lucene.analysis.ko.tokenattributes.ReadingAttribute;
 import org.apache.lucene.analysis.morph.GraphvizFormatter;
@@ -77,6 +78,7 @@ public final class KoreanTokenizer extends Tokenizer {
   private final Viterbi viterbi;
 
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
+  private final MetadataAttribute metadataAtt = addAttribute(MetadataAttribute.class);
   private final OffsetAttribute offsetAtt = addAttribute(OffsetAttribute.class);
   private final PositionIncrementAttribute posIncAtt =
       addAttribute(PositionIncrementAttribute.class);
@@ -233,6 +235,7 @@ public final class KoreanTokenizer extends Tokenizer {
     // System.out.println("off=" + token.getOffset() + " len=" + length + " vs " +
     // token.getSurfaceForm().length);
     termAtt.copyBuffer(token.getSurfaceForm(), token.getOffset(), length);
+    metadataAtt.setToken(token);
     offsetAtt.setOffset(correctOffset(token.getStartOffset()), correctOffset(token.getEndOffset()));
     posAtt.setToken(token);
     readingAtt.setToken(token);

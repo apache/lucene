@@ -23,6 +23,7 @@ import org.apache.lucene.analysis.morph.TokenType;
 public class DictionaryToken extends Token {
   private final int wordId;
   private final KoMorphData morphAtts;
+  private String metadata = null;
 
   public DictionaryToken(
       TokenType type,
@@ -107,5 +108,22 @@ public class DictionaryToken extends Token {
   @Override
   public KoMorphData.Morpheme[] getMorphemes() {
     return morphAtts.getMorphemes(wordId, getSurfaceForm(), getOffset(), getLength());
+  }
+
+  @Override
+  public String getMetadata() {
+    return this.metadata;
+  }
+
+  public void setMetadata(String metadata) {
+    this.metadata = metadata;
+  }
+
+  public int getWordId() {
+    return wordId;
+  }
+
+  public KoMorphData getMorphAtts() {
+    return morphAtts;
   }
 }
