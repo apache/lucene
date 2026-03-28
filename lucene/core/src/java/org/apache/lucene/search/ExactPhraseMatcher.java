@@ -50,6 +50,7 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
   private final PostingsAndPosition[] postings;
   private final DocIdSetIterator approximation;
   private final ImpactsDISI impactsApproximation;
+  private boolean freqsLoaded;
 
   /** Expert: Creates ExactPhraseMatcher instance */
   public ExactPhraseMatcher(
@@ -93,12 +94,38 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
   }
 
   @Override
-  float maxFreq() {
-    int minFreq = postings[0].freq;
+  float maxFreq() throws IOException {
+    // Load freqs eagerly so maxFreq() can be called before reset() in TOP_SCORES
+    // mode. PhraseScorer uses this to short-circuit non-competitive documents
+    // before paying the cost of reset() + nextMatch().
+    int minFreq = postings[0].postings.freq();
+    postings[0].freq = minFreq;
     for (int i = 1; i < postings.length; i++) {
-      minFreq = Math.min(minFreq, postings[i].freq);
+      int f = postings[i].postings.freq();
+      postings[i].freq = f;
+      minFreq = Math.min(minFreq, f);
     }
+    freqsLoaded = true;
     return minFreq;
+  }
+
+  @Override
+  public void reset() throws IOException {
+    if (freqsLoaded) {
+      // Freqs already loaded by maxFreq(). Only reset position state.
+      freqsLoaded = false;
+      for (PostingsAndPosition posting : postings) {
+        posting.pos = -1;
+        posting.upTo = 0;
+      }
+    } else {
+      // Freqs not yet loaded. Original single-loop path.
+      for (PostingsAndPosition posting : postings) {
+        posting.freq = posting.postings.freq();
+        posting.pos = -1;
+        posting.upTo = 0;
+      }
+    }
   }
 
   /**
@@ -116,15 +143,6 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
       }
     }
     return true;
-  }
-
-  @Override
-  public void reset() throws IOException {
-    for (PostingsAndPosition posting : postings) {
-      posting.freq = posting.postings.freq();
-      posting.pos = -1;
-      posting.upTo = 0;
-    }
   }
 
   @Override
