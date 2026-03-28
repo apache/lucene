@@ -188,7 +188,7 @@ public class PriorityQueue<T> implements Iterable<T> {
    *
    * <p>If one tries to add more objects than the maxSize passed in the constructor, an {@link
    * ArrayIndexOutOfBoundsException} is thrown. Which may result in parts of elements added into the
-   * queue.
+   * queue, but the heap is still stay in correct state.
    */
   public void addAll(Stream<T> elements) {
     // Heap with size S always takes first S elements of the array,
