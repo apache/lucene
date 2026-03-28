@@ -135,11 +135,13 @@ abstract class AbstractKnnVectorQuery extends Query {
         TopDocs perLeaf = perLeafResults.get(ctx.ord);
         if (perLeaf.scoreDocs.length > 0
             && perLeaf.scoreDocs[perLeaf.scoreDocs.length - 1].score >= minTopKScore) {
-          // All this leaf's hits are at or above the global topK min score; explore it further
+          // All this leaf's hits are at or above the global topK min score; explore it
+          // further
           ++reentryCount;
           tasks.add(() -> searchLeaf(ctx, filterWeight, knnCollectorManagerPhase2));
         } else {
-          // This leaf is tapped out; discard the context from the active list so we maintain
+          // This leaf is tapped out; discard the context from the active list so we
+          // maintain
           // correspondence between tasks and leaves
           ctxIter.remove();
         }
@@ -216,30 +218,35 @@ abstract class AbstractKnnVectorQuery extends Query {
     if (ctx.parent != null) {
       float leafProportion = ctx.reader().maxDoc() / (float) ctx.parent.reader().maxDoc();
       perLeafTopK = perLeafTopKCalculation(k, leafProportion);
-      // We don't have a good way to estimate perLeafTopK here, so just do approximate search
+      // We don't have a good way to estimate perLeafTopK here, so just do approximate
+      // search
     } else {
       perLeafTopK = k;
     }
 
     if (cost <= perLeafTopK) {
-      // If there are <= perLeafTopK possible matches, short-circuit and perform exact search, since
+      // If there are <= perLeafTopK possible matches, short-circuit and perform exact
+      // search, since
       // HNSW must always visit at least perLeafTopK documents
       return exactSearch(ctx, acceptDocs.iterator(), queryTimeout);
     }
 
     // Perform the approximate kNN search
-    // We pass cost + 1 here to account for the edge case when we explore exactly cost vectors
+    // We pass cost + 1 here to account for the edge case when we explore exactly
+    // cost vectors
     TopDocs results = approximateSearch(ctx, acceptDocs, cost + 1, timeLimitingKnnCollectorManager);
 
     if ((results.totalHits.relation() == TotalHits.Relation.EQUAL_TO
-            // We know that there are more than `perLeafTopK` available docs, if we didn't even get
+            // We know that there are more than `perLeafTopK` available docs, if we didn't
+            // even get
             // `perLeafTopK` something weird happened, and we need to drop to exact search
             && results.scoreDocs.length >= perLeafTopK)
         // Return partial results only when timeout is met
         || (queryTimeout != null && queryTimeout.shouldExit())) {
       return results;
     } else {
-      // We stopped the kNN search because it visited too many nodes, so fall back to exact search
+      // We stopped the kNN search because it visited too many nodes, so fall back to
+      // exact search
       return exactSearch(ctx, acceptDocs.iterator(), queryTimeout);
     }
   }
@@ -267,7 +274,8 @@ abstract class AbstractKnnVectorQuery extends Query {
         @SuppressWarnings("resource")
         float leafProportion = context.reader().maxDoc() / (float) context.parent.reader().maxDoc();
         int perLeafTopK = perLeafTopKCalculation(k, leafProportion);
-        // if we divided by zero above, leafProportion can be NaN and then this would be 0
+        // if we divided by zero above, leafProportion can be NaN and then this would be
+        // 0
         assert perLeafTopK > 0;
         return delegate.newOptimisticCollector(visitedLimit, searchStrategy, context, perLeafTopK);
       }
@@ -277,9 +285,12 @@ abstract class AbstractKnnVectorQuery extends Query {
   }
 
   /*
-   * Returns perLeafTopK, the expected number (K * leafProportion) of hits in a leaf with the given
-   * proportion of the entire index, plus three standard deviations of a binomial distribution. Math
-   * says there is a 95% probability that this segment's contribution to the global top K hits are
+   * Returns perLeafTopK, the expected number (K * leafProportion) of hits in a
+   * leaf with the given
+   * proportion of the entire index, plus three standard deviations of a binomial
+   * distribution. Math
+   * says there is a 95% probability that this segment's contribution to the
+   * global top K hits are
    * <= perLeafTopK.
    */
   private static int perLeafTopKCalculation(int k, float leafProportion) {
@@ -298,7 +309,8 @@ abstract class AbstractKnnVectorQuery extends Query {
   abstract VectorScorer createVectorScorer(LeafReaderContext context, FieldInfo fi)
       throws IOException;
 
-  // We allow this to be overridden so that tests can check what search strategy is used
+  // We allow this to be overridden so that tests can check what search strategy
+  // is used
   protected TopDocs exactSearch(
       LeafReaderContext context, DocIdSetIterator acceptIterator, QueryTimeout queryTimeout)
       throws IOException {
@@ -401,7 +413,8 @@ abstract class AbstractKnnVectorQuery extends Query {
       if (vectorIterator instanceof IndexedDISI indexedDISI) {
         vectorIterator = IndexedDISI.asDocIndexIterator(indexedDISI);
       }
-      // Most underlying iterators are indexed, so we can map the seed docs to the vector docs
+      // Most underlying iterators are indexed, so we can map the seed docs to the
+      // vector docs
       if (vectorIterator instanceof KnnVectorValues.DocIndexIterator indexIterator) {
         DocIdSetIterator seedDocs =
             new SeededKnnVectorQuery.MappedDISI(

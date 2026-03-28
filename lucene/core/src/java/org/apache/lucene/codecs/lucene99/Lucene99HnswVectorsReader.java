@@ -329,6 +329,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     if (fieldEntry.size() == 0 || knnCollector.k() == 0) {
       return;
     }
+    if (acceptDocs == null) {
+      acceptDocs = AcceptDocs.fromLiveDocs(null, fieldEntry.size());
+    }
     final RandomVectorScorer scorer = scorerSupplier.get();
     final KnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
