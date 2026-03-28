@@ -18,6 +18,7 @@
 package org.apache.lucene.internal.vectorization;
 
 import java.io.IOException;
+import java.lang.StackWalker.Option;
 import java.lang.StackWalker.StackFrame;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -87,8 +88,7 @@ public abstract class VectorizationProvider {
    * Returns the default instance of the provider matching vectorization possibilities of actual
    * runtime.
    *
-   * @throws UnsupportedOperationException if the singleton getter is not called from known Lucene
-   *     classes.
+   * @throws IllegalCallerException if the singleton getter is not called from known Lucene classes.
    */
   public static VectorizationProvider getInstance() {
     ensureCaller();
@@ -171,7 +171,7 @@ public abstract class VectorizationProvider {
     return new DefaultVectorizationProvider();
   }
 
-  static VectorizationProvider lookup(String className) {
+  private static VectorizationProvider lookup(String className) {
     try {
       // we use method handles with lookup, so we do not need to deal with setAccessible as we
       // have private access through the lookup:
@@ -215,17 +215,16 @@ public abstract class VectorizationProvider {
           "org.apache.lucene.codecs.lucene104.PostingIndexInput",
           "org.apache.lucene.tests.util.TestSysoutsLimits");
 
+  private static final StackWalker STACKWALKER =
+      StackWalker.getInstance(Set.of(Option.DROP_METHOD_INFO), 3);
+
   private static void ensureCaller() {
     final boolean validCaller =
-        StackWalker.getInstance()
-            .walk(
-                s ->
-                    s.skip(2)
-                        .limit(1)
-                        .map(StackFrame::getClassName)
-                        .allMatch(VALID_CALLERS::contains));
+        STACKWALKER.walk(
+            s ->
+                s.skip(2).limit(1).map(StackFrame::getClassName).anyMatch(VALID_CALLERS::contains));
     if (!validCaller) {
-      throw new UnsupportedOperationException(
+      throw new IllegalCallerException(
           "VectorizationProvider is internal and can only be used by known Lucene classes.");
     }
   }
