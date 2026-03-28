@@ -21,6 +21,7 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -157,6 +158,57 @@ public class TestPriorityQueue extends LuceneTestCase {
     assertThat(pq.insertWithOverflow(i6), equalTo(i6)); // i6 should not have been inserted
     assertThat(pq.size(), equalTo(size));
     assertThat(pq.top(), equalTo(2));
+  }
+
+  public void testAddAllWithStream() {
+    PriorityQueue<Integer> pq = new IntegerQueue(6);
+    List<String> elements = new ArrayList<>();
+    for (String s : Arrays.asList("a", "b", "c", "d", "e", "f")) {
+      if (random().nextBoolean()) {
+        elements.addFirst(s);
+      } else {
+        elements.addLast(s);
+      }
+    }
+
+    pq.addAll(elements.stream().map(String::hashCode));
+    assertEquals("a".hashCode(), pq.top().intValue());
+  }
+
+  public void testAddAllWithStreamNotFitIntoQueue() {
+    PriorityQueue<Integer> pq = new IntegerQueue(10);
+    List<String> elements = new ArrayList<>();
+    for (String s : Arrays.asList("a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k")) {
+      if (random().nextBoolean()) {
+        elements.addFirst(s);
+      } else {
+        elements.addLast(s);
+      }
+    }
+
+    assertThrows(
+        "Cannot add 11 elements to a queue with remaining capacity: 10",
+        IndexOutOfBoundsException.class,
+        () -> pq.addAll(elements.stream().map(String::hashCode)));
+    // Partly added.
+    assertEquals(10, pq.size());
+    assertHeap(pq);
+  }
+
+  private void assertHeap(PriorityQueue<Integer> pq) {
+    // TODO: Maybe change getHeapArray return type T[].
+    Object[] heapArray = pq.getHeapArray();
+    // The loop goes down to 1 as heap is 1-based not 0-based.
+    for (int i = (heapArray.length >>> 1); i >= 1; i--) {
+      int left = i << 1;
+      int right = left + 1;
+      if (right < heapArray.length) {
+        assert (Integer) heapArray[i] < (Integer) heapArray[right];
+        assert (Integer) heapArray[i] < (Integer) heapArray[left];
+      } else if (left < heapArray.length) {
+        assert (Integer) heapArray[i] < (Integer) heapArray[left];
+      }
+    }
   }
 
   public void testAddAllToEmptyQueue() {
