@@ -31,7 +31,6 @@ import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 /** A score supplier of vectors whose element size is byte. */
 public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
     implements RandomVectorScorerSupplier {
-  final int vectorByteSize;
   final int maxOrd;
   final int dims;
   final MemorySegment seg;
@@ -62,7 +61,6 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
   Lucene99MemorySegmentFloatVectorScorerSupplier(MemorySegment seg, FloatVectorValues values) {
     this.seg = seg;
     this.values = values;
-    this.vectorByteSize = values.getVectorByteLength();
     this.maxOrd = values.size();
     this.dims = values.dimension();
   }
@@ -282,8 +280,8 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
     @Override
     public float score(int node) {
       checkOrdinal(node);
-      long queryAddr = (long) queryOrd * vectorByteSize;
-      long addr = (long) node * vectorByteSize;
+      long queryAddr = values.address(queryOrd);
+      long addr = values.address(node);
       var raw = vectorOp(seg, queryAddr, addr, dims);
       return normalizeRawScore(raw);
     }
@@ -291,14 +289,14 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
     @Override
     public float bulkScore(int[] nodes, float[] scores, int numNodes) {
       int i = 0;
-      long queryAddr = (long) queryOrd * vectorByteSize;
+      long queryAddr = values.address(queryOrd);
       float maxScore = Float.NEGATIVE_INFINITY;
       final int limit = numNodes & ~3;
       for (; i < limit; i += 4) {
-        long offset1 = (long) nodes[i] * vectorByteSize;
-        long offset2 = (long) nodes[i + 1] * vectorByteSize;
-        long offset3 = (long) nodes[i + 2] * vectorByteSize;
-        long offset4 = (long) nodes[i + 3] * vectorByteSize;
+        long offset1 = values.address(nodes[i]);
+        long offset2 = values.address(nodes[i + 1]);
+        long offset3 = values.address(nodes[i + 2]);
+        long offset4 = values.address(nodes[i + 3]);
         vectorOp(seg, scratchScores, queryAddr, offset1, offset2, offset3, offset4, dims);
         scores[i + 0] = normalizeRawScore(scratchScores[0]);
         maxScore = Math.max(maxScore, scores[i + 0]);
@@ -312,9 +310,9 @@ public abstract sealed class Lucene99MemorySegmentFloatVectorScorerSupplier
       // Handle remaining 1–3 nodes in bulk (if any)
       int remaining = numNodes - i;
       if (remaining > 0) {
-        long addr1 = (long) nodes[i] * vectorByteSize;
-        long addr2 = (remaining > 1) ? (long) nodes[i + 1] * vectorByteSize : addr1;
-        long addr3 = (remaining > 2) ? (long) nodes[i + 2] * vectorByteSize : addr1;
+        long addr1 = values.address(nodes[i]);
+        long addr2 = (remaining > 1) ? values.address(nodes[i + 1]) : addr1;
+        long addr3 = (remaining > 2) ? values.address(nodes[i + 2]) : addr1;
         vectorOp(seg, scratchScores, queryAddr, addr1, addr2, addr3, addr1, dims);
         scores[i] = normalizeRawScore(scratchScores[0]);
         maxScore = Math.max(maxScore, scores[i]);

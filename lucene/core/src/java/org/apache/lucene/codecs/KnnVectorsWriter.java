@@ -79,6 +79,11 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     }
   }
 
+  // TODO: make abstract
+  public void finishMerge(int maxDoc) throws IOException {
+    // no-op
+  }
+
   /** Called once at the end before close */
   public abstract void finish() throws IOException;
 
@@ -109,6 +114,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
         }
       }
     }
+
+    finishMerge(mergeState.segmentInfo.maxDoc());
     finish();
   }
 
