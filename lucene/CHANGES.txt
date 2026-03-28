@@ -330,6 +330,8 @@ Other
 * GITHUB#15867: Use IllegalCallerException to signal wrong caller in internal classes
   (VectorizationProvider, TestSecrets).  (Uwe Schindler)
 
+* GITHUB#15885: Slenderize SegmentInfo.toString() and use beefy version in infostream only once
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes

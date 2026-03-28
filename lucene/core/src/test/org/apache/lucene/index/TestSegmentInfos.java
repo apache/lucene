@@ -184,7 +184,8 @@ public class TestSegmentInfos extends LuceneTestCase {
             Sort.INDEXORDER);
     assertEquals(
         "TEST(" + Version.LATEST.toString() + ")" + ":C10000" + ":[indexSort=<doc>]",
-        si.toString());
+        si.toStringVerbose());
+    assertEquals("TEST(" + Version.LATEST.toString() + ")" + ":C10000", si.toString());
 
     // diagnostics O, attributes X
     si =
@@ -210,7 +211,8 @@ public class TestSegmentInfos extends LuceneTestCase {
             + ":[diagnostics="
             + diagnostics
             + "]",
-        si.toString());
+        si.toStringVerbose());
+    assertEquals("TEST(" + Version.LATEST.toString() + ")" + ":C10000", si.toString());
 
     // diagnostics X, attributes O
     si =
@@ -236,7 +238,8 @@ public class TestSegmentInfos extends LuceneTestCase {
             + ":[attributes="
             + attributes
             + "]",
-        si.toString());
+        si.toStringVerbose());
+    assertEquals("TEST(" + Version.LATEST.toString() + ")" + ":C10000", si.toString());
 
     // diagnostics O, attributes O
     si =
@@ -265,7 +268,8 @@ public class TestSegmentInfos extends LuceneTestCase {
             + ":[attributes="
             + attributes
             + "]",
-        si.toString());
+        si.toStringVerbose());
+    assertEquals("TEST(" + Version.LATEST.toString() + ")" + ":C10000", si.toString());
 
     dir.close();
   }

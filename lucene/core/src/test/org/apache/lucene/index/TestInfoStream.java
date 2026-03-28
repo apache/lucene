@@ -17,6 +17,10 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.store.Directory;
@@ -85,5 +89,49 @@ public class TestInfoStream extends LuceneTestCase {
     iw.close();
     dir.close();
     assertTrue(seenTestPoint.get());
+  }
+
+  public void testMergeSmallIndex() throws Exception {
+    // examine info stream output from IW, MP, MS
+    IndexWriterConfig iwc = new IndexWriterConfig(null);
+    Set<String> components = Set.of("IW", "MP", "MS", "BD", "BU");
+    List<String> infoStream = new ArrayList<>();
+    iwc.setInfoStream(
+        new InfoStream() {
+          @Override
+          public void close() throws IOException {}
+
+          @Override
+          public void message(String component, String message) {
+            if (components.contains(component)) {
+              infoStream.add(String.format(Locale.ROOT, "[%s] %s\n", component, message));
+            }
+          }
+
+          @Override
+          public boolean isEnabled(String component) {
+            return components.contains(component);
+          }
+        });
+    try (Directory dir = newDirectory();
+        IndexWriter iw = new IndexWriter(dir, iwc)) {
+      iw.addDocument(new Document());
+      iw.commit();
+      iw.addDocument(new Document());
+      iw.addDocument(new Document());
+      try (IndexReader reader = DirectoryReader.open(iw)) {
+        assertTrue(iw.tryDeleteDocument(reader, 2) > 0);
+      }
+      iw.commit();
+      iw.forceMerge(1);
+    }
+    for (String message : infoStream) {
+      // we don't want to be printing full diagnostics every time a segment is mentioned in the log,
+      // only when it is first flushed
+      if (message.contains("diagnostics")) {
+        assertTrue(message.startsWith("[IW] publishFlushedSegment"));
+      }
+      // System.out.print(message);
+    }
   }
 }

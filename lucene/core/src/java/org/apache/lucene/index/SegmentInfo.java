@@ -211,31 +211,38 @@ public final class SegmentInfo {
     return Collections.unmodifiableSet(setFiles);
   }
 
-  @Override
-  public String toString() {
-    return toString(0);
-  }
-
   /**
    * Used for debugging. Format may suddenly change.
    *
-   * <p>Current format looks like <code>_a(3.1):c45/4:[sorter=&lt;long: "timestamp"&gt;!]</code>,
-   * which means the segment's name is <code>_a</code>; it was created with Lucene 3.1 (or '?' if
-   * it's unknown); it's using compound file format (would be <code>C</code> if not compound); it
-   * has 45 documents; it has 4 deletions (this part is left off when there are no deletions); it is
-   * sorted by the timestamp field in descending order (this part is omitted for unsorted segments).
+   * <p>Current format looks like <code>_a(3.1):c45/4</code>, which means the segment's name is
+   * <code>_a</code>; it was created with Lucene 3.1 (or '?' if it's unknown); it's using compound
+   * file format (would be <code>C</code> if not compound); it has 45 documents; it has 4 deletions
+   * (this part is left off when there are no deletions).
    */
   public String toString(int delCount) {
     StringBuilder s = new StringBuilder();
     s.append(name).append('(').append(version == null ? "?" : version).append(')').append(':');
     char cfs = getUseCompoundFile() ? 'c' : 'C';
     s.append(cfs);
-
     s.append(maxDoc);
-
     if (delCount != 0) {
       s.append('/').append(delCount);
     }
+    return s.toString();
+  }
+
+  @Override
+  public String toString() {
+    return toString(0);
+  }
+
+  /**
+   * Logged by InfoStream when the segment is first flushed. Format may change. Appends more
+   * information to the basic toString().
+   */
+  String toStringVerbose() {
+    StringBuilder s = new StringBuilder();
+    s.append(toString(0));
 
     if (indexSort != null) {
       s.append(":[indexSort=");
