@@ -22,6 +22,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.index.BaseCompositeReader;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
@@ -106,7 +107,8 @@ public class MultiPassIndexSplitter {
         }
       }
       IndexWriter w =
-          new IndexWriter(outputs[i], new IndexWriterConfig(null).setOpenMode(OpenMode.CREATE));
+          new IndexWriter(
+              outputs[i], new IndexWriterConfig((Analyzer) null).setOpenMode(OpenMode.CREATE));
       System.err.println("Writing part " + (i + 1) + " ...");
       // pass the subreaders directly, as our wrapper's numDocs/hasDeletetions are not up-to-date
       final List<? extends FakeDeleteLeafIndexReader> sr = input.getSequentialSubReadersWrapper();
