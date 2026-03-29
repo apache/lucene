@@ -131,7 +131,7 @@ public class SortField {
   private FieldComparatorSource comparatorSource;
 
   // Used for 'sortMissingFirst/Last'
-  protected final Object missingValue;
+  protected Object missingValue;
 
   // Indicates if sort should be optimized with indexed data. Set to true by default.
   @Deprecated private boolean optimizeSortWithIndexedData = true;
@@ -330,6 +330,17 @@ public class SortField {
    */
   public Object getMissingValue() {
     return missingValue;
+  }
+
+  /**
+   * Sets the value to use for documents that don't have a value.
+   *
+   * @deprecated Use {@link #SortField(String, Type, boolean, Object)} to supply missing values at
+   *     construction time. This method will be removed in Lucene 11.
+   */
+  @Deprecated
+  public void setMissingValue(Object missingValue) {
+    this.missingValue = missingValue;
   }
 
   // Sets field & type, and ensures field is not NULL unless
