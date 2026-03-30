@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
@@ -73,11 +74,21 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
   public static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
 
-  /** Sole constructor */
   public Lucene104ScalarQuantizedVectorsReader(
       SegmentReadState state,
       FlatVectorsReader rawVectorsReader,
       Lucene104ScalarQuantizedVectorScorer vectorsScorer)
+      throws IOException {
+    // Quantized vectors are accessed randomly from their node ID stored in the HNSW
+    // graph.
+    this(state, rawVectorsReader, vectorsScorer, DataAccessHint.RANDOM);
+  }
+
+  public Lucene104ScalarQuantizedVectorsReader(
+      SegmentReadState state,
+      FlatVectorsReader rawVectorsReader,
+      Lucene104ScalarQuantizedVectorScorer vectorsScorer,
+      DataAccessHint accessHint)
       throws IOException {
     super(vectorsScorer);
     this.vectorScorer = vectorsScorer;
@@ -105,16 +116,18 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       } finally {
         CodecUtil.checkFooter(meta, priorE);
       }
+
+      final IOContext.FileOpenHint[] hints =
+          Stream.of(FileTypeHint.DATA, FileDataHint.KNN_VECTORS, accessHint)
+              .filter(Objects::nonNull)
+              .toArray(IOContext.FileOpenHint[]::new);
       quantizedVectorData =
           openDataInput(
               state,
               versionMeta,
               VECTOR_DATA_EXTENSION,
               Lucene104ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
-              // Quantized vectors are accessed randomly from their node ID stored in the HNSW
-              // graph.
-              state.context.withHints(
-                  FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
+              state.context.withHints(hints));
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;

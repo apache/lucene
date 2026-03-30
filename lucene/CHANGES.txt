@@ -336,6 +336,8 @@ Other
 * GITHUB#15867: Use IllegalCallerException to signal wrong caller in internal classes
   (VectorizationProvider, TestSecrets).  (Uwe Schindler)
 
+* GITHUB#15891: Add the ability to pass DataAccessHints in Lucene104ScalarQuantizedVectorsReader (Navneet Verma)
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes
