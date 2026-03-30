@@ -425,9 +425,9 @@ public abstract class QueryParserBase extends QueryBuilder
       return;
     }
     boolean allNestedTermQueries = false;
-    if (q instanceof BooleanQuery boolQ) {
+    if (q instanceof BooleanQuery bq) {
       allNestedTermQueries = true;
-      for (BooleanClause clause : boolQ.clauses()) {
+      for (BooleanClause clause : bq.clauses()) {
         if (!(clause.query() instanceof TermQuery)) {
           allNestedTermQueries = false;
           break;

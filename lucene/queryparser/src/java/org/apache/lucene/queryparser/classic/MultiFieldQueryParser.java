@@ -149,8 +149,8 @@ public class MultiFieldQueryParser extends QueryParser {
       for (int i = 0; i < fields.length; i++) {
         Query q = super.getFieldQuery(fields[i], queryText, quoted);
         if (q != null) {
-          if (q instanceof BooleanQuery boolQ) {
-            maxTerms = Math.max(maxTerms, boolQ.clauses().size());
+          if (q instanceof BooleanQuery bq) {
+            maxTerms = Math.max(maxTerms, bq.clauses().size());
           } else {
             maxTerms = Math.max(1, maxTerms);
           }
@@ -162,8 +162,8 @@ public class MultiFieldQueryParser extends QueryParser {
         for (int i = 0; i < fields.length; i++) {
           if (fieldQueries[i] != null) {
             Query q = null;
-            if (fieldQueries[i] instanceof BooleanQuery boolQ) {
-              List<BooleanClause> nestedClauses = boolQ.clauses();
+            if (fieldQueries[i] instanceof BooleanQuery bq) {
+              List<BooleanClause> nestedClauses = bq.clauses();
               if (termNum < nestedClauses.size()) {
                 q = nestedClauses.get(termNum).query();
               }

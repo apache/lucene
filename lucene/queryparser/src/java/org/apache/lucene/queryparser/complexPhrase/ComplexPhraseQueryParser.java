@@ -287,14 +287,14 @@ public class ComplexPhraseQueryParser extends QueryParser {
           numNegatives++;
         }
 
-        while (qc instanceof BoostQuery boostQ) {
-          qc = boostQ.getQuery();
+        while (qc instanceof BoostQuery boostQuery) {
+          qc = boostQuery.getQuery();
         }
 
         if (qc instanceof BooleanQuery || qc instanceof SynonymQuery) {
           ArrayList<SpanQuery> sc = new ArrayList<>();
           BooleanQuery booleanClause =
-              qc instanceof BooleanQuery boolQ ? boolQ : convert((SynonymQuery) qc);
+              qc instanceof BooleanQuery booleanQuery ? booleanQuery : convert((SynonymQuery) qc);
           addComplexPhraseClause(sc, booleanClause);
           if (sc.size() > 0) {
             allSpanClauses[i] = sc.get(0);
