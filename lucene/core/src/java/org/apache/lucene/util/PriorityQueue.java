@@ -196,7 +196,7 @@ public class PriorityQueue<T> implements Iterable<T> {
     // Heap with size S always takes first S elements of the array,
     // and thus it's safe to fill array further - no actual non-sentinel value will be overwritten.
     try {
-      elements.forEach(
+      elements.forEachOrdered(
           element -> {
             this.heap[size + 1] = element;
             this.size++;
