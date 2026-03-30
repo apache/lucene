@@ -131,7 +131,7 @@ public class TopGroupsCollectorManager<T>
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    TopGroups<T>[] shardGroups = (TopGroups<T>[]) shardGroupsList.toArray(new TopGroups[0]);
+    TopGroups<T>[] shardGroups = (TopGroups<T>[]) shardGroupsList.toArray(TopGroups[]::new);
     return TopGroups.merge(
         shardGroups, groupSort, sortWithinGroup, 0, maxDocsPerGroup, scoreMergeMode);
   }
