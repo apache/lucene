@@ -132,16 +132,7 @@ public class SearchGroup<T> {
       // same groupValue
       assert neverEquals(_other);
 
-      if (_other instanceof MergedGroup) {
-        MergedGroup<?> other = (MergedGroup<?>) _other;
-        if (groupValue == null) {
-          return other.groupValue == null;
-        } else {
-          return groupValue.equals(other.groupValue);
-        }
-      } else {
-        return false;
-      }
+      return _other instanceof MergedGroup<?> other && Objects.equals(groupValue, other.groupValue);
     }
 
     @Override
