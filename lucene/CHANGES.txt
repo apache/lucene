@@ -112,7 +112,6 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#15886: Cache frozen FieldType to skip redundant schema validation. (Tim Brooks)
 
 * GITHUB#15681, GITHUB#15833: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 
@@ -277,6 +276,8 @@ Optimizations
 * GITHUB#15024: Improve prefix sum computation in Lucene99HnswVectorsReader for faster neighbor decoding. (Luis Negrin)
 
 * GITHUB#15779: Improve BytesRefHash.add performance by optimize rehash operation (tyronecai)
+
+* GITHUB#15886: Cache frozen FieldType to skip redundant schema validation. (Tim Brooks)
 
 Bug Fixes
 ---------------------
