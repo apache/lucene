@@ -193,17 +193,12 @@ public class PriorityQueue<T> implements Iterable<T> {
   public void addAll(Stream<T> elements) {
     // Heap with size S always takes first S elements of the array,
     // and thus it's safe to fill array further - no actual non-sentinel value will be overwritten.
-    final int remainingSize = maxSize - this.size;
     try {
       elements.forEach(
           element -> {
             this.heap[size + 1] = element;
             this.size++;
           });
-
-    } catch (ArrayIndexOutOfBoundsException _) {
-      throw new IndexOutOfBoundsException(
-          "no remaining capacity, but " + remainingSize + " elements were added into the queue");
     } finally {
       // The loop goes down to 1 as heap is 1-based not 0-based.
       for (int i = (size >>> 1); i >= 1; i--) {

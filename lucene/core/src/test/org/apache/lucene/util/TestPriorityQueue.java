@@ -188,7 +188,7 @@ public class TestPriorityQueue extends LuceneTestCase {
 
     assertThrows(
         "Cannot add 11 elements to a queue with remaining capacity: 10",
-        IndexOutOfBoundsException.class,
+        ArrayIndexOutOfBoundsException.class,
         () -> pq.addAll(elements.stream().map(String::hashCode)));
     // Partly added.
     assertEquals(10, pq.size());
@@ -203,10 +203,10 @@ public class TestPriorityQueue extends LuceneTestCase {
       int left = i << 1;
       int right = left + 1;
       if (right < heapArray.length) {
-        assert (Integer) heapArray[i] < (Integer) heapArray[right];
-        assert (Integer) heapArray[i] < (Integer) heapArray[left];
+        assert (Integer) heapArray[i] <= (Integer) heapArray[right];
+        assert (Integer) heapArray[i] <= (Integer) heapArray[left];
       } else if (left < heapArray.length) {
-        assert (Integer) heapArray[i] < (Integer) heapArray[left];
+        assert (Integer) heapArray[i] <= (Integer) heapArray[left];
       }
     }
   }
