@@ -183,6 +183,11 @@ Build
   Install with `uv tool install prek; prek install`
   For more see help/precommit.txt or `./gradlew helpPrecommit` (Robert Muir)
 
+* Improve build cache compatibility for test, ecjLint, and forbiddenApis tasks.
+  Use path-sensitive annotations and argument providers instead of embedding absolute
+  paths in cache keys, improving cache hit rates across different project locations.
+  (Gasper Kojek)
+
 Other
 ---------------------
 
@@ -243,8 +248,16 @@ New Features
 * GITHUB#15722: Add interface to do prefetch on KnnVectorValues and an example implementation to use prefetch
   in Scorer (Navneet Verma)
 
+* GITHUB#15827: Add BayesianScoreQuery and LogOddsFusionQuery for probabilistic hybrid
+  search. BayesianScoreQuery wraps any query and applies sigmoid calibration to transform scores
+  into probabilities. LogOddsFusionQuery combines multiple probability signals (text, vector,
+  or mixed) via log-odds fusion with softplus gating and sqrt(n) confidence scaling.
+  (Jaepil Jeong)
+
 Improvements
 ---------------------
+* GITHUB#15711: DirectoryTaxonomyReader.getBulkPath() now uses getPathFromCache. (Shubham Sharma)
+
 * GITHUB#15757: Better skipper-based numeric sort pruning from the start of segments (Alan Woodward)
 
 * GITHUB#15753: Add Case Insensitive makeChar and makeString to Automata. (John Wagster)
