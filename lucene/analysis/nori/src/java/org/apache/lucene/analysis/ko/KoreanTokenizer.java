@@ -19,7 +19,6 @@ package org.apache.lucene.analysis.ko;
 import java.io.IOException;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.ko.dict.ConnectionCosts;
-import org.apache.lucene.analysis.ko.dict.DictionaryBuilder;
 import org.apache.lucene.analysis.ko.dict.KoMorphData;
 import org.apache.lucene.analysis.ko.dict.TokenInfoDictionary;
 import org.apache.lucene.analysis.ko.dict.TokenInfoFST;
@@ -132,13 +131,41 @@ public final class KoreanTokenizer extends Tokenizer {
         userDictionary,
         mode,
         outputUnknownUnigrams,
-        discardPunctuation);
+        discardPunctuation,
+        false);
   }
 
   /**
-   * Create a new KoreanTokenizer supplying a custom system dictionary and unknown dictionary. This
-   * constructor provides an entry point for users that want to construct custom language models
-   * that can be used as input to {@link DictionaryBuilder}.
+   * Create a new KoreanTokenizer using the system and unknown dictionaries shipped with Lucene.
+   *
+   * @param factory the AttributeFactory to use
+   * @param userDictionary Optional: if non-null, user dictionary.
+   * @param mode Decompound mode.
+   * @param outputUnknownUnigrams if true outputs unigrams for unknown words.
+   * @param discardPunctuation true if punctuation tokens should be dropped from the output.
+   * @param keepDecimalPoint true if decimal points in numbers should be kept as part of the number.
+   */
+  public KoreanTokenizer(
+      AttributeFactory factory,
+      UserDictionary userDictionary,
+      DecompoundMode mode,
+      boolean outputUnknownUnigrams,
+      boolean discardPunctuation,
+      boolean keepDecimalPoint) {
+    this(
+        factory,
+        TokenInfoDictionary.getInstance(),
+        UnknownDictionary.getInstance(),
+        ConnectionCosts.getInstance(),
+        userDictionary,
+        mode,
+        outputUnknownUnigrams,
+        discardPunctuation,
+        keepDecimalPoint);
+  }
+
+  /**
+   * Create a new KoreanTokenizer using the system and unknown dictionaries shipped with Lucene.
    *
    * @param factory the AttributeFactory to use
    * @param systemDictionary a custom known token dictionary
@@ -148,6 +175,7 @@ public final class KoreanTokenizer extends Tokenizer {
    * @param mode Decompound mode.
    * @param outputUnknownUnigrams if true outputs unigrams for unknown words.
    * @param discardPunctuation true if punctuation tokens should be dropped from the output.
+   * @param keepDecimalPoint true if decimal points in numbers should be kept as part of the number.
    * @lucene.experimental
    */
   @IgnoreRandomChains(reason = "Parameters are too complex to be tested")
@@ -159,7 +187,8 @@ public final class KoreanTokenizer extends Tokenizer {
       UserDictionary userDictionary,
       DecompoundMode mode,
       boolean outputUnknownUnigrams,
-      boolean discardPunctuation) {
+      boolean discardPunctuation,
+      boolean keepDecimalPoint) {
     super(factory);
     TokenInfoFST fst = systemDictionary.getFST();
     FST.BytesReader fstReader = fst.getBytesReader();
@@ -183,7 +212,8 @@ public final class KoreanTokenizer extends Tokenizer {
             unkDictionary.getCharacterDefinition(),
             discardPunctuation,
             mode,
-            outputUnknownUnigrams);
+            outputUnknownUnigrams,
+            keepDecimalPoint);
     viterbi.resetBuffer(input);
     viterbi.resetState();
   }

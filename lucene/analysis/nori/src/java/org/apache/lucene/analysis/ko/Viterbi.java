@@ -45,6 +45,7 @@ final class Viterbi
   private final boolean discardPunctuation;
   private final KoreanTokenizer.DecompoundMode mode;
   private final boolean outputUnknownUnigrams;
+  private final boolean keepDecimalPoint;
 
   private GraphvizFormatter<KoMorphData> dotOut;
 
@@ -60,7 +61,8 @@ final class Viterbi
       CharacterDefinition characterDefinition,
       boolean discardPunctuation,
       KoreanTokenizer.DecompoundMode mode,
-      boolean outputUnknownUnigrams) {
+      boolean outputUnknownUnigrams,
+      boolean keepDecimalPoint) {
     super(
         fst, fstReader, dictionary, userFST, userFSTReader, userDictionary, costs, Position.class);
     this.unkDictionary = unkDictionary;
@@ -70,6 +72,7 @@ final class Viterbi
     this.outputUnknownUnigrams = outputUnknownUnigrams;
     this.enableSpacePenaltyFactor = true;
     this.outputLongestUserEntryOnly = true;
+    this.keepDecimalPoint = keepDecimalPoint;
     dictionaryMap.put(TokenType.KNOWN, dictionary);
     dictionaryMap.put(TokenType.UNKNOWN, unkDictionary);
     dictionaryMap.put(TokenType.USER, userDictionary);
@@ -88,7 +91,8 @@ final class Viterbi
         unknownWordLength = 1;
       } else {
         // Extract unknown word. Characters with the same script are considered to be part of
-        // unknown word
+        // unknown word.
+        // Also handles decimal points in numbers if keepDecimalPoint is true.
         unknownWordLength = 1;
         Character.UnicodeScript scriptCode = Character.UnicodeScript.of(firstCharacter);
         final boolean isPunct = isPunctuation(firstCharacter);
@@ -106,16 +110,21 @@ final class Viterbi
                   // Non-spacing marks inherit the script of their base character,
                   // following recommendations from UTR #24.
                   || chType == Character.NON_SPACING_MARK;
+          if (sameScript && characterDefinition.isGroup(ch)) {
+            // Check if current character matches the start character's type (punctuation/digit).
+            boolean matchBasic =
+                isPunctuation(ch, chType) == isPunct && Character.isDigit(ch) == isDigit;
 
-          if (sameScript
-              // split on punctuation
-              && isPunctuation(ch, chType) == isPunct
-              // split on digit
-              && Character.isDigit(ch) == isDigit
-              && characterDefinition.isGroup(ch)) {
-            unknownWordLength++;
-          } else {
-            break;
+            // Handle decimal points: if current char is '.' and is followed by a digit,
+            // treat it as part of the number.
+            final boolean isDecimalPoint =
+                this.keepDecimalPoint && ch == '.' && Character.isDigit(buffer.get(posAhead + 1));
+
+            if (matchBasic || isDecimalPoint) {
+              unknownWordLength++;
+            } else {
+              break;
+            }
           }
           // Update the script code and character class if the original script
           // is Inherited or Common.

@@ -39,7 +39,8 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
       analyzerUnigram,
       analyzerDecompound,
       analyzerDecompoundKeep,
-      analyzerReading;
+      analyzerReading,
+      analyzerWithKeepDecimalPoint;
 
   public static UserDictionary readDict() {
     InputStream is = TestKoreanTokenizer.class.getResourceAsStream("userdict.txt");
@@ -79,6 +80,17 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
             Tokenizer tokenizer =
                 new KoreanTokenizer(
                     newAttributeFactory(), userDictionary, DecompoundMode.NONE, false, false);
+            return new TokenStreamComponents(tokenizer, tokenizer);
+          }
+        };
+    analyzerWithKeepDecimalPoint =
+        new Analyzer() {
+          @Override
+          protected TokenStreamComponents createComponents(String fieldName) {
+            Tokenizer tokenizer =
+                new KoreanTokenizer(
+                    newAttributeFactory(), userDictionary, DecompoundMode.NONE, false, true, true);
+
             return new TokenStreamComponents(tokenizer, tokenizer);
           }
         };
@@ -141,6 +153,56 @@ public class TestKoreanTokenizer extends BaseTokenStreamTestCase {
         new int[] {0, 2, 3},
         new int[] {1, 3, 6},
         new int[] {1, 1, 1});
+  }
+
+  public void testFloatingPointNumberWithKeepDecimalPoint() throws IOException {
+    assertAnalyzesTo(
+        analyzerWithKeepDecimalPoint,
+        "10.1 인치 모니터",
+        new String[] {"10.1", "인치", "모니터"},
+        new int[] {0, 5, 8},
+        new int[] {4, 7, 11},
+        new int[] {1, 1, 1});
+
+    assertAnalyzesTo(
+        analyzerWithKeepDecimalPoint,
+        "가격은 10.1달러이다.",
+        new String[] {"가격", "은", "10.1", "달러", "이", "다"},
+        new int[] {0, 2, 4, 8, 10, 11},
+        new int[] {2, 3, 8, 10, 11, 12},
+        new int[] {1, 1, 1, 1, 1, 1});
+
+    assertAnalyzesTo(
+        analyzerWithKeepDecimalPoint,
+        "10..1",
+        new String[] {"10", "1"},
+        new int[] {0, 4},
+        new int[] {2, 5},
+        new int[] {1, 1});
+
+    assertAnalyzesTo(
+        analyzerWithKeepDecimalPoint,
+        "10. 1",
+        new String[] {"10", "1"},
+        new int[] {0, 4},
+        new int[] {2, 5},
+        new int[] {1, 1});
+
+    assertAnalyzesTo(
+        analyzerWithKeepDecimalPoint,
+        "10.1.2",
+        new String[] {"10.1.2"},
+        new int[] {0},
+        new int[] {6},
+        new int[] {1});
+
+    assertAnalyzesTo(
+        analyzerWithKeepDecimalPoint,
+        "10.1.",
+        new String[] {"10.1"},
+        new int[] {0},
+        new int[] {4},
+        new int[] {1});
   }
 
   public void testSpaces() throws IOException {
