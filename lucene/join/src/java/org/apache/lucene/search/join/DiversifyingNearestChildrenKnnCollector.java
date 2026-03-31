@@ -286,10 +286,9 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
      * at position {@code j} (i.e. a is "less than" b in the min-heap ordering). Lower score loses
      * first; ties are broken by higher child id losing first.
      */
-    private boolean isLessThan(int k, int j) {
-      float scoreK = scores[k], scoreJ = scores[j];
+    private boolean isLessThan(float scoreK, int childIdK,float scoreJ, int childIdJ) {
       if (scoreK != scoreJ) return scoreK < scoreJ;
-      return childNodes[k] > childNodes[j];
+      return childIdK > childIdJ;
     }
 
     private void upHeap(int origPos) {
@@ -298,7 +297,7 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
       int savedParent = parentNodes[i];
       float savedScore = scores[i];
       int j = i >>> 1;
-      while (j > 0 && isLessThan(i, j)) {
+      while (j > 0 && isLessThan(savedScore, savedChild, scores[j],childNodes[j])) {
         childNodes[i] = childNodes[j];
         parentNodes[i] = parentNodes[j];
         scores[i] = scores[j];
@@ -322,10 +321,10 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
       float savedScore = scores[i];
       int j = i << 1; // left child
       int k = j + 1;
-      if (k <= size && isLessThan(k, j)) {
+      if (k <= size && isLessThan(scores[k], childNodes[k], scores[j],childNodes[j])) {
         j = k;
       }
-      while (j <= size && isLessThan(j, i)) {
+      while (j <= size && isLessThan(scores[j], childNodes[j], savedScore,savedChild)) {
         childNodes[i] = childNodes[j];
         parentNodes[i] = parentNodes[j];
         scores[i] = scores[j];
@@ -335,7 +334,7 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
         i = j;
         j = i << 1;
         k = j + 1;
-        if (k <= size && isLessThan(k, j)) {
+        if (k <= size && isLessThan(scores[k], childNodes[k], scores[j],childNodes[j])) {
           j = k;
         }
       }
@@ -356,17 +355,17 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
       float savedScore = scores[i];
       int j = i << 1; // left child
       int k = j + 1;
-      if (k <= size && isLessThan(k, j)) {
+      if (k <= size && isLessThan(scores[k], childNodes[k], scores[j],childNodes[j])) {
         j = k;
       }
-      while (j <= size && isLessThan(j, i)) {
+      while (j <= size && isLessThan(scores[j], childNodes[j], savedScore,savedChild)) {
         childNodes[i] = childNodes[j];
         parentNodes[i] = parentNodes[j];
         scores[i] = scores[j];
         i = j;
         j = i << 1;
         k = j + 1;
-        if (k <= size && isLessThan(k, j)) {
+        if (k <= size && isLessThan(scores[k], childNodes[k], scores[j],childNodes[j])) {
           j = k;
         }
       }
