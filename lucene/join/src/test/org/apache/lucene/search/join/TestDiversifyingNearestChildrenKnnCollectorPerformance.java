@@ -26,18 +26,14 @@ import org.apache.lucene.util.BitSet;
 /**
  * Performance and correctness tests for {@link DiversifyingNearestChildrenKnnCollector}.
  *
- * <p>Correctness tests verify behaviour at and around the {@code LINEAR_SCAN_THRESHOLD} boundary
- * (k=32 uses linear scan; k=33 uses {@code IntIntHashMap}), as well as dense-update and overflow
- * scenarios that exercise every code path in the refactored heap.
+ * <p>Correctness tests verify behaviour
  *
  * <p>Throughput tests print ops/sec figures to stdout so you can compare runs before and after a
  * change. They are annotated {@code @Nightly} and are skipped in normal CI; run them explicitly
  * with:
  *
  * <pre>
- *   ./gradlew -p lucene/join test \
- *     --tests TestDiversifyingNearestChildrenKnnCollectorPerformance \
- *     -Ptests.verbose=true -Ptests.filter=@Nightly
+ *   ./gradlew -p lucene/join test --tests TestDiversifyingNearestChildrenKnnCollectorPerformance -Ptests.verbose=true -Ptests.filter=@Nightly
  * </pre>
  */
 public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends LuceneTestCase {
@@ -47,19 +43,18 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
     int[] parentDocIds = new int[numParents];
     for (int p = 1; p <= numParents; p++) {
       // layout: [child_0 … child_{C-1}, parent_C], repeated
-      //e.g. with 3 children per parent: [0,1,2,3, 4,5,6,7, 8,9,10,11, ...] → parent doc ids are
-        // 3,7,11,...
+      // e.g. with 3 children per parent: [0,1,2,3, 4,5,6,7, 8,9,10,11, ...] → parent doc ids are
+      // 3,7,11,...
       parentDocIds[p - 1] = p * (childrenPerParent + 1) - 1;
     }
-    int totalDocs = numParents * (childrenPerParent + 1); //children + 1 parent per block
+    int totalDocs = numParents * (childrenPerParent + 1); // children + 1 parent per block
     return BitSet.of(
         new TestToParentJoinKnnResults.IntArrayDocIdSetIterator(parentDocIds, numParents),
         totalDocs + 1);
   }
 
   /** Collects all children in order and returns topDocs. */
-  private static TopDocs collectAll(int k, BitSet parents, int[] childIds, float[] scores)
-      throws IOException {
+  private static TopDocs collectAll(int k, BitSet parents, int[] childIds, float[] scores) {
     DiversifyingNearestChildrenKnnCollector collector =
         new DiversifyingNearestChildrenKnnCollector(k, Integer.MAX_VALUE, parents);
     for (int i = 0; i < childIds.length; i++) {
@@ -68,10 +63,6 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
     return collector.topDocs();
   }
 
-  /**
-   * k=32 uses linear-scan parent lookup; k=33 uses the hash-map path. Each is validated
-   * independently against a brute-force expected answer.
-   */
   public void testLinearScanAndHashMapReturnSameResults() throws IOException {
     int numParents = 200;
     int childrenPerParent = 3;
@@ -86,18 +77,18 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
       scores[childIndex] = (childIndex + 1) * 0.1f;
     }
 
-      for (int childIndex = childrenPerParent; childIndex < totalChildren; childIndex++) {
+    for (int childIndex = childrenPerParent; childIndex < totalChildren; childIndex++) {
       int parentCounter = childIndex / childrenPerParent;
       int previousParentDocId = (parentCounter) * (childrenPerParent + 1) - 1;
-      int offset = (childIndex+1) % childrenPerParent;
-      if(offset == 0) {
+      int offset = (childIndex + 1) % childrenPerParent;
+      if (offset == 0) {
         offset = childrenPerParent;
       }
       childIds[childIndex] = previousParentDocId + offset;
       scores[childIndex] = (childIndex + 1) * 0.1f;
     }
 
-// Brute-force: best (child, score) per parent, sorted by score desc, take top-k
+    // Brute-force: best (child, score) per parent, sorted by score desc, take top-k
     int[] bestChild = new int[numParents];
     float[] bestScore = new float[numParents];
     java.util.Arrays.fill(bestScore, Float.NEGATIVE_INFINITY);
@@ -109,16 +100,16 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
       }
     }
 
-    for (int k : new int[] {32, 33}) {
+    for (int k : new int[] {10, 50, 100}) {
       TopDocs topDocs = collectAll(k, parents, childIds, scores);
       assertEquals("size k=" + k, Math.min(k, numParents), topDocs.scoreDocs.length);
-      int parentIndex = numParents-1;
+      int parentIndex = numParents - 1;
       for (int i = 0; i < topDocs.scoreDocs.length; i++) {
         int actualDocId = topDocs.scoreDocs[i].doc;
         float actualScore = topDocs.scoreDocs[i].score;
         assertEquals("wrong result set for k=" + k, bestChild[parentIndex], actualDocId);
-        assertEquals("wrong result set for k=" + k, bestScore[parentIndex], actualScore,0f);
-        parentIndex --;
+        assertEquals("wrong result set for k=" + k, bestScore[parentIndex], actualScore, 0f);
+        parentIndex--;
       }
     }
   }

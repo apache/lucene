@@ -116,17 +116,14 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
   }
 
   /**
-   * A minimum binary heap inspired by {@link org.apache.lucene.util.LongHeap}. Uses three parallel
-   * primitive arrays ({@code childNodes}, {@code parentNodes}, {@code scores}) instead of an object
-   * array to avoid per-element allocation and pointer-chasing on the HNSW critical path.
+   * This is a minimum binary heap, inspired by {@link org.apache.lucene.util.LongHeap}. But instead
+   * of encoding and using `long` values. Node ids and scores are kept separate. Additionally, this
+   * prevents duplicate nodes from being added.
    *
-   * <p>An {@link IntIntHashMap} tracks parentId → heap position for O(1) parent lookup.
-   *
-   * <p>For every node added, its score is updated if the newly provided score is better. Every time
-   * a node's stored score is updated, the heap's order is restored.
+   * <p>So, for every node added, we will update its score if the newly provided score is better.
+   * Every time we update a node's stored score, we ensure the heap's order.
    */
   private static class NodeIdCachingHeap {
-
     private final int maxSize;
 
     // Parallel primitive arrays; index 0 is unused (heap is 1-based).
@@ -135,18 +132,21 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
     private float[] scores;
     private int size = 0;
 
-    // Maps parentId -> heap position.
+    // Used to keep track of nodeId -> positionInHeap. This way when new scores are added for a
+    // node, the heap can be
+    // updated efficiently.
     private final IntIntHashMap nodeIdHeapIndex;
     private boolean closed = false;
 
     public NodeIdCachingHeap(int maxSize) {
+      final int heapSize;
       if (maxSize < 1 || maxSize >= ArrayUtil.MAX_ARRAY_LENGTH) {
         // Throw exception to prevent confusing OOME:
         throw new IllegalArgumentException(
             "maxSize must be > 0 and < " + (ArrayUtil.MAX_ARRAY_LENGTH - 1) + "; got: " + maxSize);
       }
       // NOTE: we add +1 because all access to heap is 1-based not 0-based.  heap[0] is unused.
-      int heapSize = maxSize + 1;
+      heapSize = maxSize + 1;
       this.maxSize = maxSize;
       this.childNodes = new int[heapSize];
       this.parentNodes = new int[heapSize];
@@ -195,11 +195,11 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
     }
 
     /**
-     * Adds a value to the heap in log(size) time. If the number of values would exceed the heap's
+     * Adds a value to an heap in log(size) time. If the number of values would exceed the heap's
      * maxSize, the least value is discarded.
      *
-     * <p>If {@code node}'s parent already exists in the heap, this updates its stored score and
-     * child if the new score is better.
+     * <p>If `node` already exists in the heap, this will return true if the stored score is updated
+     * OR the heap is not currently at the maxSize.
      *
      * @return whether the value was added or updated
      */
@@ -251,7 +251,7 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
       downHeap(1);
     }
 
-    /** Returns the number of elements currently stored in the heap. */
+    /** Returns the number of elements currently stored in the PriorityQueue. */
     public final int size() {
       return size;
     }
