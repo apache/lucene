@@ -169,7 +169,7 @@ public class MMapDirectory extends FSDirectory {
         return Optional.of(Constants.DEFAULT_READADVICE);
       };
 
-  private BiFunction<String, IOContext, Optional<ReadAdvice>> readAdvice =
+  protected BiFunction<String, IOContext, Optional<ReadAdvice>> readAdvice =
       (_, _) -> Optional.empty();
 
   private BiPredicate<String, IOContext> preload = NO_FILES;
