@@ -281,14 +281,14 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
     }
 
     /**
-     * Returns true if the element at heap position {@code a} should be evicted before the element
-     * at position {@code b} (i.e. a is "less than" b in the min-heap ordering). Lower score loses
+     * Returns true if the element at heap position {@code k} should be evicted before the element
+     * at position {@code j} (i.e. a is "less than" b in the min-heap ordering). Lower score loses
      * first; ties are broken by higher child id losing first.
      */
-    private boolean isLessThan(int a, int b) {
-      float sa = scores[a], sb = scores[b];
-      if (sa != sb) return sa < sb;
-      return childNodes[a] > childNodes[b];
+    private boolean isLessThan(int k, int j) {
+      float scoreK = scores[k], scoreJ = scores[j];
+      if (scoreK != scoreJ) return scoreK < scoreJ;
+      return childNodes[k] > childNodes[j];
     }
 
     private void upHeap(int origPos) {
@@ -299,13 +299,13 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
       int j = i >>> 1;
       while (j > 0) {
         // Is the saved element less than its parent at j?
-        float sj = scores[j];
-        boolean savedLess = (savedScore != sj) ? savedScore < sj : savedChild > childNodes[j];
-        if (!savedLess) break;
+        float scoreJ = scores[j];
+        boolean savedChildIsLess = (savedScore != scoreJ) ? savedScore < scoreJ : savedChild > childNodes[j];
+        if (!savedChildIsLess) break;
         // Move parent down to i
         childNodes[i] = childNodes[j];
         parentNodes[i] = parentNodes[j];
-        scores[i] = sj;
+        scores[i] = scoreJ;
         if (!useLinearScan) nodeIdHeapIndex.put(parentNodes[i], i);
         i = j;
         j = j >>> 1;
@@ -325,13 +325,13 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
       if (k <= size && isLessThan(k, j)) j = k; // choose smaller child
       while (j <= size) {
         // Is the child at j less than the saved element?
-        float sj = scores[j];
-        boolean childLess = (sj != savedScore) ? sj < savedScore : childNodes[j] > savedChild;
-        if (!childLess) break;
+        float scoreJ = scores[j];
+        boolean childIsLess = (scoreJ != savedScore) ? scoreJ < savedScore : childNodes[j] > savedChild;
+        if (!childIsLess) break;
         // Move child up to i
         childNodes[i] = childNodes[j];
         parentNodes[i] = parentNodes[j];
-        scores[i] = sj;
+        scores[i] = scoreJ;
         if (!useLinearScan) nodeIdHeapIndex.put(parentNodes[i], i);
         i = j;
         j = i << 1;
@@ -355,12 +355,12 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
       int k = j + 1;
       if (k <= size && isLessThan(k, j)) j = k;
       while (j <= size) {
-        float sj = scores[j];
-        boolean childLess = (sj != savedScore) ? sj < savedScore : childNodes[j] > savedChild;
-        if (!childLess) break;
+        float scoreJ = scores[j];
+        boolean childIsLess = (scoreJ != savedScore) ? scoreJ < savedScore : childNodes[j] > savedChild;
+        if (!childIsLess) break;
         childNodes[i] = childNodes[j];
         parentNodes[i] = parentNodes[j];
-        scores[i] = sj;
+        scores[i] = scoreJ;
         i = j;
         j = i << 1;
         k = j + 1;
