@@ -192,10 +192,10 @@ public class TestPriorityQueue extends LuceneTestCase {
         () -> pq.addAll(elements.stream().map(String::hashCode)));
     // Partly added.
     assertEquals(10, pq.size());
-    assertHeap(pq);
+    assertTrue(assertHeap(pq));
   }
 
-  private void assertHeap(PriorityQueue<Integer> pq) {
+  private boolean assertHeap(PriorityQueue<Integer> pq) {
     // TODO: Maybe change getHeapArray return type T[].
     Object[] heapArray = pq.getHeapArray();
     // The loop goes down to 1 as heap is 1-based not 0-based.
@@ -203,12 +203,19 @@ public class TestPriorityQueue extends LuceneTestCase {
       int left = i << 1;
       int right = left + 1;
       if (right < heapArray.length) {
-        assert (Integer) heapArray[i] <= (Integer) heapArray[right];
-        assert (Integer) heapArray[i] <= (Integer) heapArray[left];
+        if ((Integer) heapArray[i] > (Integer) heapArray[right]) {
+          return false;
+        }
+        if ((Integer) heapArray[i] > (Integer) heapArray[left]) {
+          return false;
+        }
       } else if (left < heapArray.length) {
-        assert (Integer) heapArray[i] <= (Integer) heapArray[left];
+        if ((Integer) heapArray[i] > (Integer) heapArray[left]) {
+          return false;
+        }
       }
     }
+    return true;
   }
 
   public void testAddAllToEmptyQueue() {
