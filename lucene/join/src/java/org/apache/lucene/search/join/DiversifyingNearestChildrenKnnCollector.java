@@ -130,13 +130,13 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
   private static class NodeIdCachingHeap {
 
     /**
-     * Below this heap capacity the parent position is found by linear scan instead of a hash map.
-     * A linear scan over 32 ints fits within a single cache line and avoids hash computation.
+     * Below this heap capacity the parent position is found by linear scan instead of a hash map. A
+     * linear scan over 32 ints fits within a couple of cache line (l1 cache of the cpu) and avoids
+     * hash computation.
      */
     private static final int LINEAR_SCAN_THRESHOLD = 32;
 
     private final int maxSize;
-    // When true, parent lookup uses a linear scan; the nodeIdHeapIndex is null.
     private final boolean useLinearScan;
 
     // Parallel primitive arrays; index 0 is unused (heap is 1-based).
@@ -215,9 +215,10 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
           if (parentNodes[i] == parentNode) return i;
         }
         return -1;
+      } else {
+        int cursor = nodeIdHeapIndex.indexOf(parentNode);
+        return cursor >= 0 ? nodeIdHeapIndex.indexGet(cursor) : -1;
       }
-      int cursor = nodeIdHeapIndex.indexOf(parentNode);
-      return cursor >= 0 ? nodeIdHeapIndex.indexGet(cursor) : -1;
     }
 
     /**
@@ -297,23 +298,22 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
       int savedParent = parentNodes[i];
       float savedScore = scores[i];
       int j = i >>> 1;
-      while (j > 0) {
-        // Is the saved element less than its parent at j?
-        float scoreJ = scores[j];
-        boolean savedChildIsLess = (savedScore != scoreJ) ? savedScore < scoreJ : savedChild > childNodes[j];
-        if (!savedChildIsLess) break;
-        // Move parent down to i
+      while (j > 0 && isLessThan(i, j)) {
         childNodes[i] = childNodes[j];
         parentNodes[i] = parentNodes[j];
-        scores[i] = scoreJ;
-        if (!useLinearScan) nodeIdHeapIndex.put(parentNodes[i], i);
+        scores[i] = scores[j];
+        if (!useLinearScan) {
+          nodeIdHeapIndex.put(parentNodes[i], i);
+        }
         i = j;
         j = j >>> 1;
+      }
+      if (!useLinearScan) {
+        nodeIdHeapIndex.put(savedParent, i);
       }
       childNodes[i] = savedChild;
       parentNodes[i] = savedParent;
       scores[i] = savedScore;
-      if (!useLinearScan) nodeIdHeapIndex.put(savedParent, i);
     }
 
     private int downHeap(int i) {
@@ -322,26 +322,29 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
       float savedScore = scores[i];
       int j = i << 1; // left child
       int k = j + 1;
-      if (k <= size && isLessThan(k, j)) j = k; // choose smaller child
-      while (j <= size) {
-        // Is the child at j less than the saved element?
-        float scoreJ = scores[j];
-        boolean childIsLess = (scoreJ != savedScore) ? scoreJ < savedScore : childNodes[j] > savedChild;
-        if (!childIsLess) break;
-        // Move child up to i
+      if (k <= size && isLessThan(k, j)) {
+        j = k;
+      }
+      while (j <= size && isLessThan(j, i)) {
         childNodes[i] = childNodes[j];
         parentNodes[i] = parentNodes[j];
-        scores[i] = scoreJ;
-        if (!useLinearScan) nodeIdHeapIndex.put(parentNodes[i], i);
+        scores[i] = scores[j];
+        if (!useLinearScan) {
+          nodeIdHeapIndex.put(parentNodes[i], i);
+        }
         i = j;
         j = i << 1;
         k = j + 1;
-        if (k <= size && isLessThan(k, j)) j = k;
+        if (k <= size && isLessThan(k, j)) {
+          j = k;
+        }
+      }
+      if (!useLinearScan) {
+        nodeIdHeapIndex.put(savedParent, i);
       }
       childNodes[i] = savedChild;
       parentNodes[i] = savedParent;
       scores[i] = savedScore;
-      if (!useLinearScan) nodeIdHeapIndex.put(savedParent, i);
       return i;
     }
 
@@ -353,18 +356,19 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
       float savedScore = scores[i];
       int j = i << 1; // left child
       int k = j + 1;
-      if (k <= size && isLessThan(k, j)) j = k;
-      while (j <= size) {
-        float scoreJ = scores[j];
-        boolean childIsLess = (scoreJ != savedScore) ? scoreJ < savedScore : childNodes[j] > savedChild;
-        if (!childIsLess) break;
+      if (k <= size && isLessThan(k, j)) {
+        j = k;
+      }
+      while (j <= size && isLessThan(j, i)) {
         childNodes[i] = childNodes[j];
         parentNodes[i] = parentNodes[j];
-        scores[i] = scoreJ;
+        scores[i] = scores[j];
         i = j;
         j = i << 1;
         k = j + 1;
-        if (k <= size && isLessThan(k, j)) j = k;
+        if (k <= size && isLessThan(k, j)) {
+          j = k;
+        }
       }
       childNodes[i] = savedChild;
       parentNodes[i] = savedParent;
