@@ -58,6 +58,8 @@ Improvements
 
 * GITHUB#15976: Store DocValuesSkipper data in their own file. (Alan Woodward)
 
+* GITHUB#15574: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
+
 Optimizations
 ---------------------
 * GITHUB#15861: Optimise PhraseScorer by short circuiting non competitive documents in TOP_SCORES mode. (Prithvi S)
