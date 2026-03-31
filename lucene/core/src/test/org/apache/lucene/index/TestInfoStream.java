@@ -125,13 +125,19 @@ public class TestInfoStream extends LuceneTestCase {
       iw.commit();
       iw.forceMerge(1);
     }
+    boolean foundInit = false;
     for (String message : infoStream) {
       // we don't want to be printing full diagnostics every time a segment is mentioned in the log,
       // only when it is first flushed
       if (message.contains("diagnostics")) {
         assertTrue(message.startsWith("[IW] publishFlushedSegment"));
       }
+      if (message.contains("init segments")) {
+        assertEquals("[IW] init segments: \n", message);
+        foundInit = true;
+      }
       // System.out.print(message);
     }
+    assertTrue("init message not found", foundInit);
   }
 }

@@ -1111,7 +1111,7 @@ public class IndexWriter
         rollbackSegments = segmentInfos.createBackupSegmentInfos();
       }
       if (infoStream.isEnabled("IW")) {
-        infoStream.message("IW", " initial segments: " + segmentInfos.toStringVerbose());
+        infoStream.message("IW", "init " + segmentInfos.toStringVerbose());
       }
       commitUserData = new HashMap<>(segmentInfos.getUserData()).entrySet();
 
