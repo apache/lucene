@@ -261,10 +261,14 @@ public class TestPriorityQueue extends LuceneTestCase {
       pq.add(random.nextInt());
     }
 
+    assertEquals(11, pq.size());
     assertThrows(
         "Cannot add 11 elements to a queue with remaining capacity: 9",
         ArrayIndexOutOfBoundsException.class,
         () -> pq.addAll(list));
+    // Partly added.
+    assertEquals(20, pq.size());
+    assertTrue(assertHeap(pq));
   }
 
   /** Randomly add some elements, comparing against the reference java.util.PriorityQueue. */

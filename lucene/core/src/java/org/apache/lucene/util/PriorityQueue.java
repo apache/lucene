@@ -153,27 +153,24 @@ public class PriorityQueue<T> implements Iterable<T> {
    * faster.
    *
    * <p>If one tries to add more objects than the maxSize passed in the constructor, an {@link
-   * ArrayIndexOutOfBoundsException} is thrown.
+   * ArrayIndexOutOfBoundsException} is thrown. Which may result in parts of elements added into the
+   * queue, but the heap is still stay in correct state. In this case, if caller wants to readd or
+   * {@link #updateTop(Object)} with remaining elements, it should skip(continue) consumed elements
+   * with the delta size of queue.
    */
   public void addAll(Collection<T> elements) {
-    if (this.size + elements.size() > this.maxSize) {
-      throw new ArrayIndexOutOfBoundsException(
-          "Cannot add "
-              + elements.size()
-              + " elements to a queue with remaining capacity: "
-              + (maxSize - size));
-    }
-
     // Heap with size S always takes first S elements of the array,
     // and thus it's safe to fill array further - no actual non-sentinel value will be overwritten.
-    for (T element : elements) {
-      this.heap[size + 1] = element;
-      this.size++;
-    }
-
-    // The loop goes down to 1 as heap is 1-based not 0-based.
-    for (int i = (size >>> 1); i >= 1; i--) {
-      downHeap(i);
+    try {
+      for (T element : elements) {
+        this.heap[size + 1] = element;
+        this.size++;
+      }
+    } finally {
+      // The loop goes down to 1 as heap is 1-based not 0-based.
+      for (int i = (size >>> 1); i >= 1; i--) {
+        downHeap(i);
+      }
     }
   }
 
