@@ -63,7 +63,7 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
     return collector.topDocs();
   }
 
-  public void collect_shouldReturnSameAsBruteForceOrdering() throws IOException {
+  public void testCollect_shouldReturnSameAsBruteForceOrdering() throws IOException {
     int numParents = 200;
     int childrenPerParent = 3;
     BitSet parents = parentBitSet(numParents, childrenPerParent);
