@@ -267,37 +267,28 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
 
   @Nightly
   public void testThroughput_SmallK_LinearScan() throws IOException {
-    // k=10: exercises the linear-scan parent-lookup path (k <= LINEAR_SCAN_THRESHOLD=32)
-    benchmark("small-k linear-scan", 10, 10_000, 10);
+    benchmark("small-k", 10, 10_000, 10);
   }
 
   @Nightly
   public void testThroughput_ThresholdK_LinearScan() throws IOException {
-    // k=32: last value that still uses linear scan
-    benchmark("threshold-k linear-scan", 32, 10_000, 10);
-  }
-
-  @Nightly
-  public void testThroughput_SmallK_HashMap() throws IOException {
-    // k=33: first value that uses IntIntHashMap
-    benchmark("threshold+1-k hash-map", 33, 10_000, 10);
+    benchmark("medium-k", 32, 10_000, 10);
   }
 
   @Nightly
   public void testThroughput_MediumK_HashMap() throws IOException {
-    // k=100: typical medium-sized KNN search
-    benchmark("medium-k hash-map", 100, 10_000, 10);
+    benchmark("high-k", 100, 10_000, 10);
   }
 
   @Nightly
   public void testThroughput_DenseUpdates_LinearScan() throws IOException {
     // Many children per parent → heavy updateElement() pressure, small k
-    benchmark("dense-updates linear-scan", 10, 1_000, 100);
+    benchmark("dense-updates", 10, 1_000, 100);
   }
 
   @Nightly
   public void testThroughput_DenseUpdates_HashMap() throws IOException {
     // Many children per parent → heavy updateElement() pressure, large k
-    benchmark("dense-updates hash-map", 100, 1_000, 100);
+    benchmark("dense-updates high k", 100, 1_000, 100);
   }
 }
