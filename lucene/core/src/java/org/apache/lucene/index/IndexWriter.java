@@ -1047,7 +1047,6 @@ public class IndexWriter
         // Must clone because we don't want the incoming NRT reader to "see" any changes this writer
         // now makes:
         segmentInfos = reader.segmentInfos.clone();
-
         SegmentInfos lastCommit;
         try {
           lastCommit = SegmentInfos.readCommit(directoryOrig, segmentInfos.getSegmentsFileName());
@@ -1111,7 +1110,9 @@ public class IndexWriter
 
         rollbackSegments = segmentInfos.createBackupSegmentInfos();
       }
-
+      if (infoStream.isEnabled("IW")) {
+        infoStream.message("IW", " initial segments: " + segmentInfos.toStringVerbose());
+      }
       commitUserData = new HashMap<>(segmentInfos.getUserData()).entrySet();
 
       pendingNumDocs.set(segmentInfos.totalMaxDoc());

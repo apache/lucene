@@ -218,6 +218,9 @@ public final class SegmentInfo {
    * <code>_a</code>; it was created with Lucene 3.1 (or '?' if it's unknown); it's using compound
    * file format (would be <code>C</code> if not compound); it has 45 documents; it has 4 deletions
    * (this part is left off when there are no deletions).
+   *
+   * There is also {@link #toStringVerbose()} that includes more info about the segment. It is be
+   * used to print detailed info when the segment is first written or read.
    */
   public String toString(int delCount) {
     StringBuilder s = new StringBuilder();

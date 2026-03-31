@@ -376,9 +376,6 @@ public class SegmentCommitInfo {
     if (softDelCount > 0) {
       s += " :softDel=" + softDelCount;
     }
-    if (this.id != null) {
-      s += " :id=" + StringHelper.idToString(id);
-    }
     return s;
   }
 
