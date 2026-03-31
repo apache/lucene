@@ -63,7 +63,7 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
     return collector.topDocs();
   }
 
-  public void testLinearScanAndHashMapReturnSameResults() throws IOException {
+  public void collect_shouldReturnSameAsBruteForceOrdering() throws IOException {
     int numParents = 200;
     int childrenPerParent = 3;
     BitSet parents = parentBitSet(numParents, childrenPerParent);
@@ -206,7 +206,7 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
    * Runs {@code MEASURE_ITERS} full collect+drain cycles and prints throughput to stdout.
    *
    * @param label short description printed in the output line
-   * @param k heap capacity (chooses linear-scan vs hash-map path)
+   * @param k heap capacity
    * @param numParents number of parent docs
    * @param childrenPerParent children per parent (controls update vs insert pressure)
    */
@@ -257,28 +257,28 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
   }
 
   @Nightly
-  public void testThroughput_SmallK_LinearScan() throws IOException {
+  public void testThroughput_SmallK_SmallK() throws IOException {
     benchmark("small-k", 10, 10_000, 10);
   }
 
   @Nightly
-  public void testThroughput_ThresholdK_LinearScan() throws IOException {
+  public void testThroughput_ThresholdK_MediumK() throws IOException {
     benchmark("medium-k", 32, 10_000, 10);
   }
 
   @Nightly
-  public void testThroughput_MediumK_HashMap() throws IOException {
+  public void testThroughput_MediumK_HighK() throws IOException {
     benchmark("high-k", 100, 10_000, 10);
   }
 
   @Nightly
-  public void testThroughput_DenseUpdates_LinearScan() throws IOException {
+  public void testThroughput_DenseUpdates_smallK() throws IOException {
     // Many children per parent → heavy updateElement() pressure, small k
     benchmark("dense-updates", 10, 1_000, 100);
   }
 
   @Nightly
-  public void testThroughput_DenseUpdates_HashMap() throws IOException {
+  public void testThroughput_DenseUpdates_highK() throws IOException {
     // Many children per parent → heavy updateElement() pressure, large k
     benchmark("dense-updates high k", 100, 1_000, 100);
   }
