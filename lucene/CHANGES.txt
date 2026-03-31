@@ -219,6 +219,8 @@ Other
 * GITHUB#15867: Use StackWalker without method info for caller checks in internal classes and tests.
   (Uwe Schindler)
 
+* GITHUB#15893: Refactor to move common SHOULD/MUST dedup logic inside BooleanQuery into a common function. (Sagar Upadhyaya)
+
 ======================= Lucene 10.5.0 =======================
 
 API Changes
