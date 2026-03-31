@@ -278,7 +278,7 @@ Optimizations
 
 * GITHUB#15779: Improve BytesRefHash.add performance by optimize rehash operation (tyronecai)
 
-* GITHUB#15128: Skip heavy TreeSet opts for the first group in SearchGroup#merge (Binlong Gao)
+* GITHUB#15896: Skip heavy TreeSet opts for the first group in SearchGroup#merge (Binlong Gao)
 
 Bug Fixes
 ---------------------
