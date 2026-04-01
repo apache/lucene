@@ -163,8 +163,8 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
   // Throughput benchmarks (annotated @Nightly, not run in normal CI)
   // ---------------------------------------------------------------------------
 
-  private static final int WARMUP_ITERS = 5;
-  private static final int MEASURE_ITERS = 20;
+  private static final int WARMUP_ITERATIONS = 5;
+  private static final int MEASURE_ITERATIONS = 20;
 
   /**
    * Runs {@code MEASURE_ITERS} full collect+drain cycles and prints throughput to stdout.
@@ -178,20 +178,11 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
       throws IOException {
     BitSet parents = parentBitSet(numParents, childrenPerParent);
     int totalChildren = numParents * childrenPerParent;
-    int[] childIds = new int[totalChildren];
-    float[] scores = new float[totalChildren];
-    int ci = 0;
-    for (int p = 0; p < numParents; p++) {
-      int parentDoc = (p + 1) * (childrenPerParent + 1) - 1;
-      for (int c = 0; c < childrenPerParent; c++) {
-        childIds[ci] = parentDoc - childrenPerParent + c;
-        scores[ci] = (float) (ci % 1000) / 1000f;
-        ci++;
-      }
-    }
+    int[] childIds = buildChildIds(numParents, childrenPerParent);
+    float[] scores = buildChildScores(numParents, childrenPerParent);
 
     // Warmup (results discarded)
-    for (int iter = 0; iter < WARMUP_ITERS; iter++) {
+    for (int iter = 0; iter < WARMUP_ITERATIONS; iter++) {
       DiversifyingNearestChildrenKnnCollector collector =
           new DiversifyingNearestChildrenKnnCollector(k, Integer.MAX_VALUE, parents);
       for (int i = 0; i < totalChildren; i++) {
@@ -202,7 +193,7 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
 
     // Measured
     long totalNanos = 0;
-    for (int iter = 0; iter < MEASURE_ITERS; iter++) {
+    for (int iter = 0; iter < MEASURE_ITERATIONS; iter++) {
       DiversifyingNearestChildrenKnnCollector collector =
           new DiversifyingNearestChildrenKnnCollector(k, Integer.MAX_VALUE, parents);
       long t0 = System.nanoTime();
@@ -213,7 +204,7 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
       totalNanos += System.nanoTime() - t0;
     }
 
-    long avgNs = totalNanos / MEASURE_ITERS;
+    long avgNs = totalNanos / MEASURE_ITERATIONS;
     double opsPerSec = (double) totalChildren * 1_000_000_000L / avgNs;
     System.out.printf(
         "%-42s  k=%4d  children=%7d  avg=%6.2f ms  %.2f M collect/sec%n",
