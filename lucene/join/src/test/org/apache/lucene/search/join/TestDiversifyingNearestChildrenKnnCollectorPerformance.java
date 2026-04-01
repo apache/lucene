@@ -62,18 +62,11 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
     return collector.topDocs();
   }
 
-  public void testCollect_shouldReturnSameAsBruteForceOrdering() throws IOException {
-    int numParents = 200;
-    int childrenPerParent = 3;
-    BitSet parents = parentBitSet(numParents, childrenPerParent);
-
+  private int[] buildChildIds(int numParents, int childrenPerParent) {
     int totalChildren = numParents * childrenPerParent;
     int[] childIds = new int[totalChildren];
-    float[] scores = new float[totalChildren];
-    // Strictly-increasing scores: last child of each parent is always the best.
     for (int childIndex = 0; childIndex < childrenPerParent; childIndex++) {
       childIds[childIndex] = childIndex;
-      scores[childIndex] = (childIndex + 1) * 0.1f;
     }
 
     for (int childIndex = childrenPerParent; childIndex < totalChildren; childIndex++) {
@@ -84,8 +77,27 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
         offset = childrenPerParent;
       }
       childIds[childIndex] = previousParentDocId + offset;
+    }
+    return childIds;
+  }
+
+  private float[] buildChildScores(int numParents, int childrenPerParent) {
+    int totalChildren = numParents * childrenPerParent;
+    float[] scores = new float[totalChildren];
+    for (int childIndex = 0; childIndex < totalChildren; childIndex++) {
       scores[childIndex] = (childIndex + 1) * 0.1f;
     }
+    return scores;
+  }
+
+  public void testCollect_shouldReturnSameAsBruteForceOrdering() throws IOException {
+    int numParents = 200;
+    int childrenPerParent = 10;
+    BitSet parents = parentBitSet(numParents, childrenPerParent);
+
+    int totalChildren = numParents * childrenPerParent;
+    int[] childIds = buildChildIds(numParents, childrenPerParent);
+    float[] scores = buildChildScores(numParents, childrenPerParent);
 
     // Brute-force: best (child, score) per parent, sorted by score desc, take top-k
     int[] bestChild = new int[numParents];
@@ -113,53 +125,6 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
     }
   }
 
-  /**
-   * When many children map to the same parent, only the best-scoring child per parent must appear
-   * in the result. Tests the {@code updateElement} path.
-   */
-  public void testBestChildPerParentIsRetained() throws IOException {
-    // 5 parents, 20 children each → heavy updateElement() pressure on a small heap
-    int numParents = 5;
-    int childrenPerParent = 20;
-    BitSet parents = parentBitSet(numParents, childrenPerParent);
-
-    int[] childIds = new int[numParents * childrenPerParent];
-    float[] scores = new float[childIds.length];
-    // Track expected best child and score per parent
-    int[] bestChild = new int[numParents];
-    float[] bestScore = new float[numParents];
-    java.util.Arrays.fill(bestScore, Float.NEGATIVE_INFINITY);
-
-    int ci = 0;
-    for (int p = 0; p < numParents; p++) {
-      int parentDoc = (p + 1) * (childrenPerParent + 1) - 1;
-      for (int c = 0; c < childrenPerParent; c++) {
-        int childDoc = parentDoc - childrenPerParent + c;
-        float score = (float) (ci % 100) / 100f; // deterministic, varied
-        childIds[ci] = childDoc;
-        scores[ci] = score;
-        if (score > bestScore[p]) {
-          bestScore[p] = score;
-          bestChild[p] = childDoc;
-        }
-        ci++;
-      }
-    }
-
-    TopDocs topDocs = collectAll(numParents, parents, childIds, scores);
-    assertEquals(numParents, topDocs.scoreDocs.length);
-
-    // Each result doc must be the best child of its parent
-    java.util.Set<Integer> resultDocs = new java.util.HashSet<>();
-    for (var sd : topDocs.scoreDocs) {
-      resultDocs.add(sd.doc);
-    }
-    for (int p = 0; p < numParents; p++) {
-      assertTrue(
-          "expected best child " + bestChild[p] + " for parent " + p + " in results",
-          resultDocs.contains(bestChild[p]));
-    }
-  }
 
   /**
    * When the heap is full (size == k) and a better candidate arrives for a new parent, the
@@ -167,24 +132,24 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
    */
   public void testOverflowEvictsLowestScore() throws IOException {
     // k=3, 6 parents → last 3 parents must evict first 3 if their scores are higher
-    int k = 3;
+    int topK = 3;
     int numParents = 6;
-    BitSet parents = parentBitSet(numParents, 1 /* one child per parent */);
+    int childrenPerParent = 1;
+    BitSet parents = parentBitSet(numParents, childrenPerParent);
 
     // Scores: first k parents get low scores, next k get high scores
-    int[] childIds = new int[numParents];
+    int[] childIds = buildChildIds(numParents, childrenPerParent);
     float[] scores = new float[numParents];
     for (int p = 0; p < numParents; p++) {
-      childIds[p] = p * 2; // child doc ids (parent at p*2+1)
-      scores[p] = p < k ? 0.1f * (p + 1) : 0.9f - 0.1f * (p - k);
+      scores[p] = p < topK ? 0.1f * (p + 1) : 0.9f - 0.1f * (p - topK);
     }
 
-    TopDocs topDocs = collectAll(k, parents, childIds, scores);
-    assertEquals(k, topDocs.scoreDocs.length);
+    TopDocs topDocs = collectAll(topK, parents, childIds, scores);
+    assertEquals(topK, topDocs.scoreDocs.length);
 
     // All returned scores must be >= the lowest score of the high-score group
     float minHighScore = Float.MAX_VALUE;
-    for (int p = k; p < numParents; p++) {
+    for (int p = topK; p < numParents; p++) {
       minHighScore = Math.min(minHighScore, scores[p]);
     }
     for (var sd : topDocs.scoreDocs) {
