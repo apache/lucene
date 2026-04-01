@@ -132,6 +132,10 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#15908: Fix MMapDirectory.getSharedArenaMaxPermitsSysprop() to use
+  RefCountedSharedArena.DEFAULT_MAX_PERMITS instead of a hardcoded value, so that
+  the default change from GITHUB#15078 takes effect. (Huaixinww)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
