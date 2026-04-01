@@ -85,10 +85,10 @@ public class IncrementalHnswGraphMerger implements HnswGraphMerger {
   public IncrementalHnswGraphMerger addReader(
       KnnVectorsReader reader, MergeState.DocMap docMap, Bits liveDocs) throws IOException {
     numReaders++;
-    if (!(reader instanceof HnswGraphProvider)) {
+    if (!(reader instanceof HnswGraphProvider hgp)) {
       return this;
     }
-    HnswGraph graph = ((HnswGraphProvider) reader).getGraph(fieldInfo.name);
+    HnswGraph graph = hgp.getGraph(fieldInfo.name);
     if (graph == null || graph.size() == 0) {
       return this;
     }
