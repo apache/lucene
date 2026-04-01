@@ -3345,7 +3345,11 @@ public class IndexWriter
         writer.addIndexesReaderMerge(merge);
         success = true;
         if (infoStream != null && infoStream.isEnabled("IW")) {
-          infoStream.message("IW", "merged new segment " + merge.info.toStringVerbose());
+          if (merge.info == null) {
+            infoStream.message("IW", "dropped 100% deleted segment");
+          } else {
+            infoStream.message("IW", "merged new segment " + merge.info.toStringVerbose());
+          }
         }
       } catch (Throwable t) {
         handleMergeException(t, merge);
