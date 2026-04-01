@@ -16,9 +16,11 @@
  */
 package org.apache.lucene.internal.tests;
 
+import java.lang.StackWalker.Option;
 import java.lang.StackWalker.StackFrame;
 import java.lang.invoke.MethodHandles;
 import java.util.Objects;
+import java.util.Set;
 import org.apache.lucene.index.ConcurrentMergeScheduler;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -33,6 +35,10 @@ import org.apache.lucene.store.FilterIndexInput;
 public final class TestSecrets {
 
   private static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
+  private static final StackWalker SW_CLASSNAME =
+      StackWalker.getInstance(Set.of(Option.DROP_METHOD_INFO), 3);
+  private static final StackWalker SW_CLASSREF =
+      StackWalker.getInstance(Set.of(Option.DROP_METHOD_INFO, Option.RETAIN_CLASS_REFERENCE), 3);
 
   private static void ensureInitialized(Class<?> clazz) {
     try {
@@ -106,76 +112,61 @@ public final class TestSecrets {
 
   /** For internal initialization only. */
   public static void setIndexWriterAccess(IndexWriterAccess indexWriterAccess) {
-    ensureCallerForSetter(IndexWriter.class);
-    ensureNull(TestSecrets.indexWriterAccess);
+    ensureCallerForSetter(IndexWriter.class, TestSecrets.indexWriterAccess);
     TestSecrets.indexWriterAccess = indexWriterAccess;
   }
 
   /** For internal initialization only. */
   public static void setIndexPackageAccess(IndexPackageAccess indexPackageAccess) {
-    ensureCallerForSetter(IndexWriter.class);
-    ensureNull(TestSecrets.indexPackageAccess);
+    ensureCallerForSetter(IndexWriter.class, TestSecrets.indexPackageAccess);
     TestSecrets.indexPackageAccess = indexPackageAccess;
   }
 
   /** For internal initialization only. */
   public static void setConcurrentMergeSchedulerAccess(ConcurrentMergeSchedulerAccess cmsAccess) {
-    ensureCallerForSetter(ConcurrentMergeScheduler.class);
-    ensureNull(TestSecrets.cmsAccess);
+    ensureCallerForSetter(ConcurrentMergeScheduler.class, TestSecrets.cmsAccess);
     TestSecrets.cmsAccess = cmsAccess;
   }
 
   /** For internal initialization only. */
   public static void setSegmentReaderAccess(SegmentReaderAccess segmentReaderAccess) {
-    ensureCallerForSetter(SegmentReader.class);
-    ensureNull(TestSecrets.segmentReaderAccess);
+    ensureCallerForSetter(SegmentReader.class, TestSecrets.segmentReaderAccess);
     TestSecrets.segmentReaderAccess = segmentReaderAccess;
   }
 
   /** For internal initialization only. */
   public static void setFilterInputIndexAccess(FilterIndexInputAccess filterIndexInputAccess) {
-    ensureCallerForSetter(FilterIndexInput.class);
-    ensureNull(TestSecrets.filterIndexInputAccess);
+    ensureCallerForSetter(FilterIndexInput.class, TestSecrets.filterIndexInputAccess);
     TestSecrets.filterIndexInputAccess = filterIndexInputAccess;
   }
 
-  private static void ensureNull(Object ob) {
-    if (ob != null) {
-      throw new UnsupportedOperationException(
-          "The accessor is already set. It can only be called from inside Lucene Core.");
-    }
-  }
-
-  private static void ensureCallerForSetter(Class<?> allowedCaller) {
+  private static void ensureCallerForSetter(Class<?> allowedCaller, Object needsNull) {
     final boolean validCaller =
-        StackWalker.getInstance()
-            .walk(
-                s ->
-                    s.skip(2)
-                        .limit(1)
-                        .map(StackFrame::getClassName)
-                        .allMatch(c -> Objects.equals(c, allowedCaller.getName())));
-    if (!validCaller) {
-      throw new UnsupportedOperationException(
-          "The accessor can only be set by " + allowedCaller.getName() + ".");
+        SW_CLASSREF.walk(
+            s ->
+                s.skip(2)
+                    .limit(1)
+                    .map(StackFrame::getDeclaringClass)
+                    .anyMatch(allowedCaller::equals));
+    if (!validCaller || needsNull != null) {
+      throw new IllegalCallerException(
+          "The accessor can only be set once by " + allowedCaller.getName() + ".");
     }
   }
 
   private static void ensureCallerForGetter() {
     final boolean validCaller =
-        StackWalker.getInstance()
-            .walk(
-                s ->
-                    s.skip(2)
-                        .limit(1)
-                        .map(StackFrame::getClassName)
-                        .allMatch(
-                            c ->
-                                c.startsWith("org.apache.lucene.tests.")
-                                    || c.equals(
-                                        "org.apache.lucene.index.TestClassloadingDeadlock")));
+        SW_CLASSNAME.walk(
+            s ->
+                s.skip(2)
+                    .limit(1)
+                    .map(StackFrame::getClassName)
+                    .anyMatch(
+                        c ->
+                            c.startsWith("org.apache.lucene.tests.")
+                                || c.equals("org.apache.lucene.index.TestClassloadingDeadlock")));
     if (!validCaller) {
-      throw new UnsupportedOperationException(
+      throw new IllegalCallerException(
           "Lucene TestSecrets can only be used by the test-framework.");
     }
   }

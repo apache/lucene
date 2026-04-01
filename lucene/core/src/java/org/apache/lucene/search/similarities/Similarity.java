@@ -163,6 +163,22 @@ public abstract class Similarity {
   }
 
   /**
+   * Computes the weight for a query term based on how many times it appears in the query. This is
+   * used during query rewriting to compute the boost for duplicate query terms.
+   *
+   * <p>The default implementation returns {@code queryTermFrequency} as a float, which preserves
+   * the existing linear boost behavior. Subclasses may override this to apply saturation (e.g.
+   * BM25's k3 parameter).
+   *
+   * @param queryTermFrequency the number of times a term appears in the query
+   * @return the computed weight for this query term frequency
+   * @lucene.experimental
+   */
+  public float computeQueryTermWeight(int queryTermFrequency) {
+    return (float) queryTermFrequency;
+  }
+
+  /**
    * Compute any collection-level weight (e.g. IDF, average document length, etc) needed for scoring
    * a query.
    *
