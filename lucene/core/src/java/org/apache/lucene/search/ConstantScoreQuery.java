@@ -45,12 +45,12 @@ public final class ConstantScoreQuery extends Query {
 
     // Do some extra simplifications that are legal since scores are not needed on the wrapped
     // query.
-    if (rewritten instanceof BoostQuery) {
-      rewritten = ((BoostQuery) rewritten).getQuery();
-    } else if (rewritten instanceof ConstantScoreQuery) {
-      rewritten = ((ConstantScoreQuery) rewritten).getQuery();
-    } else if (rewritten instanceof BooleanQuery) {
-      rewritten = ((BooleanQuery) rewritten).rewriteNoScoring();
+    if (rewritten instanceof BoostQuery bq) {
+      rewritten = bq.getQuery();
+    } else if (rewritten instanceof ConstantScoreQuery csq) {
+      rewritten = csq.getQuery();
+    } else if (rewritten instanceof BooleanQuery boolQ) {
+      rewritten = boolQ.rewriteNoScoring();
     }
 
     if (rewritten.getClass() == MatchNoDocsQuery.class) {

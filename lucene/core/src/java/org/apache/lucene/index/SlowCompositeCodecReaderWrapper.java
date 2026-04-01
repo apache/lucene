@@ -427,8 +427,8 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
           // uncached, or not a multi dv
           SortedDocValues dv =
               MultiDocValues.getSortedValues(new MultiReader(codecReaders), field.name);
-          if (dv instanceof MultiSortedDocValues) {
-            map = ((MultiSortedDocValues) dv).mapping;
+          if (dv instanceof MultiSortedDocValues msdv) {
+            map = msdv.mapping;
             cachedOrdMaps.put(field.name, map);
           }
           return dv;
@@ -463,8 +463,8 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
           // uncached, or not a multi dv
           SortedSetDocValues dv =
               MultiDocValues.getSortedSetValues(new MultiReader(codecReaders), field.name);
-          if (dv instanceof MultiSortedSetDocValues) {
-            map = ((MultiSortedSetDocValues) dv).mapping;
+          if (dv instanceof MultiSortedSetDocValues mssdv) {
+            map = mssdv.mapping;
             cachedOrdMaps.put(field.name, map);
           }
           return dv;

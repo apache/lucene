@@ -502,8 +502,8 @@ public class LRUQueryCache implements QueryCache, Accountable {
 
   @Override
   public Weight doCache(Weight weight, QueryCachingPolicy policy) {
-    while (weight instanceof CachingWrapperWeight) {
-      weight = ((CachingWrapperWeight) weight).in;
+    while (weight instanceof CachingWrapperWeight cww) {
+      weight = cww.in;
     }
 
     return new CachingWrapperWeight(weight, policy);
