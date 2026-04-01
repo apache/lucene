@@ -20,7 +20,6 @@ package org.apache.lucene.search.join;
 import java.io.IOException;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
 import org.apache.lucene.util.BitSet;
 
 /**
