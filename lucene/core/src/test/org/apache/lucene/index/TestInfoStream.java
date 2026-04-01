@@ -126,11 +126,19 @@ public class TestInfoStream extends LuceneTestCase {
       iw.forceMerge(1);
     }
     boolean foundInit = false;
+    int flushedCount = 0;
+    int mergedCount = 0;
     for (String message : infoStream) {
       // we don't want to be printing full diagnostics every time a segment is mentioned in the log,
       // only when it is first flushed
       if (message.contains("diagnostics")) {
-        assertTrue(message.startsWith("[IW] publishFlushedSegment"));
+        if (message.startsWith("[IW] publishFlushedSegment")) {
+          flushedCount++;
+        } else if (message.startsWith("[IW] merged new segment")) {
+          mergedCount++;
+        } else {
+          fail("message contains diagnostics: " + message);
+        }
       }
       if (message.contains("init segments")) {
         assertEquals("[IW] init segments: \n", message);
@@ -139,5 +147,7 @@ public class TestInfoStream extends LuceneTestCase {
       // System.out.print(message);
     }
     assertTrue("init message not found", foundInit);
+    assertEquals(2, flushedCount);
+    assertEquals(1, mergedCount);
   }
 }

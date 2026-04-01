@@ -3344,6 +3344,9 @@ public class IndexWriter
       try {
         writer.addIndexesReaderMerge(merge);
         success = true;
+        if (infoStream != null && infoStream.isEnabled("IW")) {
+          infoStream.message("IW", "merged new segment " + merge.info.toStringVerbose());
+        }
       } catch (Throwable t) {
         handleMergeException(t, merge);
       } finally {
@@ -4776,6 +4779,7 @@ public class IndexWriter
 
     if (merge.info != null && merge.isAborted() == false) {
       if (infoStream.isEnabled("IW")) {
+        infoStream.message("IW", "merged new segment " + merge.info.toStringVerbose());
         infoStream.message(
             "IW",
             "merge time "
