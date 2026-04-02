@@ -456,6 +456,14 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
       // Falls back to exact search
       expectThrows(UnsupportedOperationException.class, () -> searcher.count(query));
+
+      // When traversalSimilarity is -∞ without a filter, exact search should be used directly
+      Query exactQuery =
+          getThrowingVectorQuery(
+              vectorField, queryVector, Float.NEGATIVE_INFINITY, Float.NEGATIVE_INFINITY, null);
+
+      // Falls back to exact search because traversalSimilarity is -∞
+      expectThrows(UnsupportedOperationException.class, () -> searcher.count(exactQuery));
     }
   }
 
@@ -510,15 +518,13 @@ abstract class BaseVectorSimilarityQueryTestCase<
       // This query is cacheable, explicitly prevent it
       searcher.setQueryCache(null);
 
+      // Use Math.nextUp(Float.NEGATIVE_INFINITY) to ensure approximate graph search is used,
+      // since Float.NEGATIVE_INFINITY now triggers exact search which bypasses graph traversal
+      float nearNegInf = Math.nextUp(Float.NEGATIVE_INFINITY);
+
       Query query =
-          new CountingQuery(
-              getVectorQuery(
-                  vectorField,
-                  queryVector,
-                  Float.NEGATIVE_INFINITY,
-                  Float.NEGATIVE_INFINITY,
-                  null));
-      assertEquals(numDocs, searcher.count(query)); // Expect some results without timeout
+          new CountingQuery(getVectorQuery(vectorField, queryVector, nearNegInf, nearNegInf, null));
+      assertEquals(numDocs, searcher.count(query)); // Expect all results without timeout
 
       searcher.setTimeout(() -> true); // Immediately timeout
       assertEquals(0, searcher.count(query)); // Expect no results with the timeout
@@ -534,12 +540,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
       Query filter = IntField.newSetQuery(idField, getFiltered(numFiltered));
       Query filteredQuery =
           new CountingQuery(
-              getVectorQuery(
-                  vectorField,
-                  queryVector,
-                  Float.NEGATIVE_INFINITY,
-                  Float.NEGATIVE_INFINITY,
-                  filter));
+              getVectorQuery(vectorField, queryVector, nearNegInf, nearNegInf, filter));
 
       searcher.setTimeout(() -> false); // Set a timeout which is never met
       assertEquals(numFiltered, searcher.count(filteredQuery));
