@@ -74,6 +74,8 @@ API Changes
 
 * GITHUB#15295 : Switched to a fixed CFS threshold (Shubham Sharma)
 
+* GITHUB#15627 : Deferred lambda in TermStates.java according to prefetch (Shubham Sharma)
+
 New Features
 ---------------------
 * GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
@@ -85,9 +87,10 @@ New Features
 
 * GITHUB#15508: Use native vectorization in Lucene. (Ankur Goel, Shubham Chaudhary, Dawid Weiss)
 
+* GITHUB#15818: Add BM25 k3 query-term frequency saturation to BM25Similarity. (Sagar Upadhyaya)
+
 Improvements
 ---------------------
-
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
 
 * GITHUB#15682: Use ArrayDeque instead of LinkedList in CompoundWordTokenFilterBase.java. (Renato Haeberli)
@@ -107,6 +110,8 @@ Improvements
 * GITHUB#15124: Use RamUsageEstimator to calculate size for non-accountable queries. (Sagar Upadhyaya)
 
 * GITHUB#15453: Avoid unnecessary sorting and instantiations in readMapOfStrings. (Benjamin Lerer)
+
+* GITHUB#15574: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
 
 * GITHUB#15225: Improve package documentation for org.apache.lucene.util. (Syed Mohammad Saad)
 
@@ -181,6 +186,11 @@ Build
   Install with `uv tool install prek; prek install`
   For more see help/precommit.txt or `./gradlew helpPrecommit` (Robert Muir)
 
+* Improve build cache compatibility for test, ecjLint, and forbiddenApis tasks.
+  Use path-sensitive annotations and argument providers instead of embedding absolute
+  paths in cache keys, improving cache hit rates across different project locations.
+  (Gasper Kojek)
+
 Other
 ---------------------
 
@@ -208,6 +218,9 @@ Other
 
 * GITHUB#15844: Detect JVM bitness using Panama's ValueLayout#ADDRESS instead
   of undocumented system properties.  (Uwe Schindler)
+
+* GITHUB#15867: Use StackWalker without method info for caller checks in internal classes and tests.
+  (Uwe Schindler)
 
 ======================= Lucene 10.5.0 =======================
 
@@ -238,8 +251,19 @@ New Features
 * GITHUB#15722: Add interface to do prefetch on KnnVectorValues and an example implementation to use prefetch
   in Scorer (Navneet Verma)
 
+* GITHUB#15827: Add BayesianScoreQuery and LogOddsFusionQuery for probabilistic hybrid
+  search. BayesianScoreQuery wraps any query and applies sigmoid calibration to transform scores
+  into probabilities. LogOddsFusionQuery combines multiple probability signals (text, vector,
+  or mixed) via log-odds fusion with softplus gating and sqrt(n) confidence scaling.
+  (Jaepil Jeong)
+
 Improvements
 ---------------------
+* GITHUB#15823: Implement method to add all stream elements into a PriorityQueue.
+  Call PriorityQueue#addAll with mapped stream in DisjunctionMaxBulkScorer's constructor. (Zhou Hui)
+
+* GITHUB#15711: DirectoryTaxonomyReader.getBulkPath() now uses getPathFromCache. (Shubham Sharma)
+
 * GITHUB#15757: Better skipper-based numeric sort pruning from the start of segments (Alan Woodward)
 
 * GITHUB#15753: Add Case Insensitive makeChar and makeString to Automata. (John Wagster)
@@ -298,6 +322,9 @@ Bug Fixes
 * GITHUB#12419, GITHUB#15119, GITHUB#15864: Fix circular dependency deadlock in
   TestSecrets initialization (Namgyu Kim, Uwe Schindler)
 
+* GITHUB#15878: Fix existential quantification bug in caller checks
+  (VectorizationProvider, TestSecrets).  (Uwe Schindler)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
@@ -314,6 +341,13 @@ Other
 * GITHUB#15799: Exclude JNA Cleaner from thread leak detection by LuceneTestCase. (Alan Woodward)
 
 * GITHUB#15826: Use ArrayUtil#copyOfSubArray to simplify manual array copy patterns. (Zhang Chao)
+
+* GITHUB#15867: Use IllegalCallerException to signal wrong caller in internal classes
+  (VectorizationProvider, TestSecrets).  (Uwe Schindler)
+
+* GITHUB#15885: Slenderize SegmentInfo.toString() and use beefy version in infostream only once
+
+* GITHUB#15891: Add the ability to pass DataAccessHints in Lucene104ScalarQuantizedVectorsReader (Navneet Verma)
 
 ======================= Lucene 10.4.0 =======================
 
