@@ -18,7 +18,7 @@ dev = [
   # validates markdown
   "rumdl==0.1.47",
   # validates python
-  "ruff==0.15.6",
+  "ruff==0.15.7",
   # validates various
   "ast-grep-cli==0.41.1",
 ]
