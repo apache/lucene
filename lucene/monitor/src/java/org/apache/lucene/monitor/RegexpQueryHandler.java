@@ -94,35 +94,35 @@ public class RegexpQueryHandler implements CustomQueryHandler {
 
   @Override
   public QueryTree handleQuery(Query q, TermWeightor termWeightor) {
-    if (q instanceof RegexpQuery query) {
-      String regexp = parseOutRegexp(query.toString(""));
-      String selected = selectLongestSubstring(regexp);
-      Term term = new Term(query.getField(), selected + ngramSuffix);
-      double weight = termWeightor.applyAsDouble(term);
-      return new QueryTree() {
-        @Override
-        public double weight() {
-          return weight;
-        }
-
-        @Override
-        public void collectTerms(BiConsumer<String, BytesRef> termCollector) {
-          termCollector.accept(term.field(), term.bytes());
-          termCollector.accept(term.field(), wildcardTokenBytes);
-        }
-
-        @Override
-        public boolean advancePhase(double minWeight) {
-          return false;
-        }
-
-        @Override
-        public String toString(int depth) {
-          return space(depth) + "WILDCARD_NGRAM[" + term.toString() + "]^" + weight;
-        }
-      };
+    if (!(q instanceof RegexpQuery query)) {
+      return null;
     }
-    return null;
+    String regexp = parseOutRegexp(query.toString(""));
+    String selected = selectLongestSubstring(regexp);
+    Term term = new Term(query.getField(), selected + ngramSuffix);
+    double weight = termWeightor.applyAsDouble(term);
+    return new QueryTree() {
+      @Override
+      public double weight() {
+        return weight;
+      }
+
+      @Override
+      public void collectTerms(BiConsumer<String, BytesRef> termCollector) {
+        termCollector.accept(term.field(), term.bytes());
+        termCollector.accept(term.field(), wildcardTokenBytes);
+      }
+
+      @Override
+      public boolean advancePhase(double minWeight) {
+        return false;
+      }
+
+      @Override
+      public String toString(int depth) {
+        return space(depth) + "WILDCARD_NGRAM[" + term.toString() + "]^" + weight;
+      }
+    };
   }
 
   private static String parseOutRegexp(String rep) {

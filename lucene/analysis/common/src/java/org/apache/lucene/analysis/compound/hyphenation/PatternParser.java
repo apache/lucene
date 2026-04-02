@@ -205,8 +205,8 @@ public class PatternParser extends DefaultHandler {
       if (item instanceof String s) {
         res.append(s);
       } else {
-        if (item instanceof Hyphen h && h.noBreak != null) {
-          res.append(h.noBreak);
+        if (((Hyphen) item).noBreak != null) {
+          res.append(((Hyphen) item).noBreak);
         }
       }
     }
