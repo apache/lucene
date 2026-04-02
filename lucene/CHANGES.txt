@@ -318,6 +318,9 @@ Bug Fixes
 * GITHUB#15878: Fix existential quantification bug in caller checks
   (VectorizationProvider, TestSecrets).  (Uwe Schindler)
 
+* GITHUB#15899, GITHUB#15900: Make TruncateTokenFilter truncate on codepoints not
+  chars and no longer produce half surrogates.  (Uwe Schindler, Michael Sokolov)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
