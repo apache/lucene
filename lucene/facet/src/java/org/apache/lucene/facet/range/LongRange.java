@@ -91,10 +91,10 @@ public final class LongRange extends Range {
 
   @Override
   public boolean equals(Object _that) {
-    if (_that instanceof LongRange that) {
-      return that.label.equals(this.label) && that.min == this.min && that.max == this.max;
+    if (!(_that instanceof LongRange that)) {
+      return false;
     }
-    return false;
+    return that.label.equals(this.label) && that.min == this.min && that.max == this.max;
   }
 
   @Override

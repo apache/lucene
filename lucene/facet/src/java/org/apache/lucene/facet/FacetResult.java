@@ -70,12 +70,12 @@ public final class FacetResult {
 
   @Override
   public boolean equals(Object _other) {
-    if (_other instanceof FacetResult other) {
-      return value.equals(other.value)
-          && childCount == other.childCount
-          && Arrays.equals(labelValues, other.labelValues);
+    if (!(_other instanceof FacetResult other)) {
+      return false;
     }
-    return false;
+    return value.equals(other.value)
+        && childCount == other.childCount
+        && Arrays.equals(labelValues, other.labelValues);
   }
 
   @Override

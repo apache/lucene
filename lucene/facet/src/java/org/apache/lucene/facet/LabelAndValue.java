@@ -48,10 +48,10 @@ public final class LabelAndValue {
 
   @Override
   public boolean equals(Object _other) {
-    if (_other instanceof LabelAndValue other) {
-      return label.equals(other.label) && value.equals(other.value);
+    if (!(_other instanceof LabelAndValue other)) {
+      return false;
     }
-    return false;
+    return label.equals(other.label) && value.equals(other.value);
   }
 
   @Override
