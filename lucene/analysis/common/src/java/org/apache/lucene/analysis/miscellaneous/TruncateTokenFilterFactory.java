@@ -21,8 +21,16 @@ import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
 
 /**
- * Factory for {@link org.apache.lucene.analysis.miscellaneous.TruncateTokenFilter}. The following
- * type is recommended for "<i>diacritics-insensitive search</i>" for Turkish.
+ * Factory for {@link org.apache.lucene.analysis.miscellaneous.TruncateTokenFilter}.
+ *
+ * <p>Fixed prefix truncation, as a stemming method, produces good results on Turkish language. It
+ * is reported that F5, using first 5 characters, produced best results in <a
+ * href="https://doi.org/10.1002/asi.20750">Information Retrieval on Turkish Texts</a>
+ *
+ * <p>Since Lucene 10.5, the filter correctly handles codepoints and truncates after {@code
+ * prefixLength} codepoints, no longer producing incomplete surrogate pairs.
+ *
+ * <p>The following type is recommended for "<i>diacritics-insensitive search</i>" for Turkish:
  *
  * <pre><code class="language-xml">
  * &lt;fieldType name="text_tr_ascii_f5" class="solr.TextField" positionIncrementGap="100"&gt;
