@@ -196,7 +196,6 @@ public class TestPriorityQueue extends LuceneTestCase {
   }
 
   private boolean assertHeap(PriorityQueue<Integer> pq) {
-    // TODO: Maybe change getHeapArray return type T[].
     Object[] heapArray = pq.getHeapArray();
     // The loop goes down to 1 as heap is 1-based not 0-based.
     for (int i = (heapArray.length >>> 1); i >= 1; i--) {
