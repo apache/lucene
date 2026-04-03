@@ -212,22 +212,23 @@ public class PartitionByLeafBenchmark {
       return result;
     }
     int from = 0;
-    for (int leafIdx = 0; leafIdx < numLeaves; leafIdx++) {
+    int leafIdx = 0;
+    for (; leafIdx < numLeaves && from < sortedDocIds.length; leafIdx++) {
       int leafEnd = leafDocBase[leafIdx] + docsPerLeaf;
-      // Find insertion point of leafEnd in sortedDocIds[from..length)
+      if (sortedDocIds[from] >= leafEnd) {
+        result[leafIdx] = EMPTY_INT_ARRAY;
+        continue;
+      }
       int to = Arrays.binarySearch(sortedDocIds, from, sortedDocIds.length, leafEnd);
       if (to < 0) {
         to = -to - 1;
       }
       int count = to - from;
-      if (count == 0) {
-        result[leafIdx] = EMPTY_INT_ARRAY;
-      } else {
-        result[leafIdx] = new int[count];
-        System.arraycopy(sortedDocIds, from, result[leafIdx], 0, count);
-      }
+      result[leafIdx] = new int[count];
+      System.arraycopy(sortedDocIds, from, result[leafIdx], 0, count);
       from = to;
     }
+    Arrays.fill(result, leafIdx, numLeaves, EMPTY_INT_ARRAY);
     return result;
   }
 }
