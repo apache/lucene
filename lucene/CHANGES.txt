@@ -382,6 +382,10 @@ Other
 
 * GITHUB#15951: Fix WindowsFS onClose race condition (Szymon Bialkowski)
 
+* GITHUB#xx: Optimize ReaderUtil#partitionByLeaf to use binary search on leaf
+  boundaries instead of linear scan. Add JMH benchmark for partition strategies.
+  (Greg Miller)
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes
