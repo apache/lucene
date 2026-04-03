@@ -501,29 +501,11 @@ public class MMapDirectory extends FSDirectory {
     }
   }
 
-  private static int getSharedArenaMaxPermitsSysprop() {
-    int ret = 1024; // default value
-    try {
-      String str = System.getProperty(SHARED_ARENA_MAX_PERMITS_SYSPROP);
-      if (str != null) {
-        ret = Integer.parseInt(str);
-      }
-    } catch (@SuppressWarnings("unused") NumberFormatException | SecurityException ignored) {
-      Logger.getLogger(MMapDirectory.class.getName())
-          .warning(
-              "Cannot read sysprop "
-                  + SHARED_ARENA_MAX_PERMITS_SYSPROP
-                  + ", so the default value will be used.");
-    }
-    return ret;
-  }
-
   @SuppressWarnings("unchecked")
   private static <A> MMapIndexInputProvider<A> lookupProvider() {
     if (checkMemorySegmentsSysprop() == false) {
       return (MMapIndexInputProvider<A>) new MappedByteBufferIndexInputProvider();
     }
-    final var maxPermits = getSharedArenaMaxPermitsSysprop();
     final var lookup = MethodHandles.lookup();
     final int runtimeVersion = Runtime.version().feature();
     if (runtimeVersion >= 19) {
@@ -531,10 +513,9 @@ public class MMapDirectory extends FSDirectory {
         final var cls = lookup.findClass("org.apache.lucene.store.MemorySegmentIndexInputProvider");
         // we use method handles, so we do not need to deal with setAccessible as we have private
         // access through the lookup:
-        final var constr =
-            lookup.findConstructor(cls, MethodType.methodType(void.class, int.class));
+        final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
         try {
-          return (MMapIndexInputProvider<A>) constr.invoke(maxPermits);
+          return (MMapIndexInputProvider<A>) constr.invoke();
         } catch (RuntimeException | Error e) {
           throw e;
         } catch (Throwable th) {
