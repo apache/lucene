@@ -28,9 +28,10 @@ import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
  * reported that F5, using first 5 characters, produced best results in <a
  * href="https://doi.org/10.1002/asi.20750">Information Retrieval on Turkish Texts</a>
  *
- * <p>Since Lucene 10.5, the filter is able to correctly handles codepoints and truncates after the
+ * <p>Since Lucene 10.5, the filter is able to correctly handle codepoints and truncates after the
  * given number of codepoints, no longer producing incomplete surrogate pairs. Use the modern
- * factory methods to enable this mode.
+ * factory method {@link #truncateAfterCodePoints(TokenStream, int)} to enable this mode. Legacy
+ * behaviour is still available with {@link #truncateAfterChars(TokenStream, int)}
  */
 public final class TruncateTokenFilter extends TokenFilter {
 

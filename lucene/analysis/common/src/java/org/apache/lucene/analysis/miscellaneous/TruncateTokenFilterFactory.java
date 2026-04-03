@@ -31,9 +31,9 @@ import org.apache.lucene.util.Version;
  *
  * <p>Since Lucene 10.5, the filter correctly handles codepoints and truncates after {@code
  * truncateAfterCodePoints} codepoints, no longer producing incomplete surrogate pairs. For
- * backwards compatibility the old {@code prefixLength} is still supported and truncates after
- * utf-16/java characters. If no argument is given it uses a prefix length of 5 java characters and
- * does not respect codepoints. In case you change that behaviour, reindex may be required if your
+ * backwards compatibility the old {@code prefixLength} is still supported and its behaviour depends
+ * on the {@code luceneMatchVersion} parameter. If no parameter is given, it uses a prefix length of
+ * 5. In case you change to the more modern codepoint behaviour, reindexing may be required if your
  * documents contain surrogate pairs (like emojis).
  *
  * <p>The following type is recommended for "<i>diacritics-insensitive search</i>" for Turkish:
