@@ -19,6 +19,7 @@ package org.apache.lucene.benchmark.jmh;
 import java.util.Arrays;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IntroSorter;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -98,13 +99,13 @@ public class PartitionByLeafBenchmark {
       pool[i] = pool[j];
       pool[j] = tmp;
     }
-    mainDocIds = Arrays.copyOf(pool, numDocIds);
+    mainDocIds = ArrayUtil.copyOfSubArray(pool, 0, numDocIds);
   }
 
   @Setup(Level.Invocation)
   public void setupInvocation() {
     // Fresh unsorted copy each invocation since sort is in-place
-    docIds = Arrays.copyOf(mainDocIds, mainDocIds.length);
+    docIds = ArrayUtil.copyArray(mainDocIds);
   }
 
   @Benchmark
