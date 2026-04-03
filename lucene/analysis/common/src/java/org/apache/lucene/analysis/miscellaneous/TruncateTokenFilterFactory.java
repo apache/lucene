@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.function.BiFunction;
 import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.util.Version;
 
 /**
  * Factory for {@link org.apache.lucene.analysis.miscellaneous.TruncateTokenFilter}.
@@ -62,26 +63,24 @@ public class TruncateTokenFilterFactory extends TokenFilterFactory {
   public static final String TRUNCATE_AFTER_CODEPOINTS_KEY = "truncateAfterCodePoints";
   public static final String TRUNCATE_AFTER_CHARS_KEY = "truncateAfterChars";
 
-  private static final Map<String, BiFunction<TokenStream, Integer, TruncateTokenFilter>>
-      PARAM_MAPPING =
-          Map.of(
-              TRUNCATE_AFTER_CODEPOINTS_KEY, TruncateTokenFilter::truncateAfterCodePoints,
-              TRUNCATE_AFTER_CHARS_KEY, TruncateTokenFilter::truncateAfterChars,
-              PREFIX_LENGTH_KEY, TruncateTokenFilter::truncateAfterChars);
-
   private final int truncateAfter;
   private final BiFunction<TokenStream, Integer, TruncateTokenFilter> factory;
 
   public TruncateTokenFilterFactory(Map<String, String> args) {
     super(args);
-    var avail = PARAM_MAPPING.keySet().stream().filter(args::containsKey).toList();
+    Map<String, BiFunction<TokenStream, Integer, TruncateTokenFilter>> paramMapping =
+        Map.of(
+            TRUNCATE_AFTER_CODEPOINTS_KEY, TruncateTokenFilter::truncateAfterCodePoints,
+            TRUNCATE_AFTER_CHARS_KEY, TruncateTokenFilter::truncateAfterChars,
+            PREFIX_LENGTH_KEY, this::legacyPrefixLengthFactory);
+    var avail = paramMapping.keySet().stream().filter(args::containsKey).toList();
     if (avail.size() > 1) {
       throw new IllegalArgumentException(
-          "Can only give one of the following parameters: " + PARAM_MAPPING.keySet());
+          "Can only give one of the following parameters: " + paramMapping.keySet());
     }
     String param = avail.stream().findFirst().orElse(PREFIX_LENGTH_KEY);
     this.truncateAfter = getInt(args, param, 5);
-    this.factory = PARAM_MAPPING.get(param);
+    this.factory = paramMapping.get(param);
     if (truncateAfter < 1) {
       throw new IllegalArgumentException(
           param + " parameter must be a positive number: " + truncateAfter);
@@ -89,6 +88,12 @@ public class TruncateTokenFilterFactory extends TokenFilterFactory {
     if (!args.isEmpty()) {
       throw new IllegalArgumentException("Unknown parameter(s): " + args);
     }
+  }
+
+  private TruncateTokenFilter legacyPrefixLengthFactory(TokenStream input, int prefixChars) {
+    return (luceneMatchVersion.onOrAfter(Version.LUCENE_10_5_0))
+        ? TruncateTokenFilter.truncateAfterCodePoints(input, prefixChars)
+        : TruncateTokenFilter.truncateAfterChars(input, prefixChars);
   }
 
   /** Default ctor for compatibility with SPI */

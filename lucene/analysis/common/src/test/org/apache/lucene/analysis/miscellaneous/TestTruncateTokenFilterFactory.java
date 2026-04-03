@@ -21,6 +21,7 @@ import java.io.StringReader;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.tests.analysis.BaseTokenStreamFactoryTestCase;
 import org.apache.lucene.tests.analysis.MockTokenizer;
+import org.apache.lucene.util.Version;
 
 /** Simple tests to ensure the simple truncation filter factory is working. */
 public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCase {
@@ -37,8 +38,8 @@ public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCa
     tokenizer.setReader(reader);
     TokenStream stream =
         (param == null
-                ? tokenFilterFactory("truncate")
-                : tokenFilterFactory("Truncate", param, "5"))
+                ? tokenFilterFactory("truncate", Version.LUCENE_10_0_0)
+                : tokenFilterFactory("Truncate", Version.LUCENE_10_0_0, param, "5"))
             .create(tokenizer);
     assertTokenStreamContents(
         stream,
@@ -56,14 +57,21 @@ public class TestTruncateTokenFilterFactory extends BaseTokenStreamFactoryTestCa
   }
 
   public void testCodePointTruncating() throws Exception {
+    testCodePointTruncating(TruncateTokenFilterFactory.TRUNCATE_AFTER_CODEPOINTS_KEY);
+    testCodePointTruncating(TruncateTokenFilterFactory.PREFIX_LENGTH_KEY);
+    testCodePointTruncating(null);
+  }
+
+  public void testCodePointTruncating(String param) throws Exception {
     Reader reader =
         new StringReader(
             "abcdefg 1234567 ABCDEFG abcde abc 12345 123 1234😃5 1 😃 😃12345 😃😃 😃😃😃 😃😃😃😃 😃😃😃😃😃 😃😃😃😃😃😃");
     var tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
     tokenizer.setReader(reader);
     TokenStream stream =
-        tokenFilterFactory(
-                "Truncate", TruncateTokenFilterFactory.TRUNCATE_AFTER_CODEPOINTS_KEY, "5")
+        (param == null
+                ? tokenFilterFactory("truncate", Version.LATEST)
+                : tokenFilterFactory("Truncate", Version.LATEST, param, "5"))
             .create(tokenizer);
     assertTokenStreamContents(
         stream,
