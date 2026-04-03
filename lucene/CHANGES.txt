@@ -106,6 +106,10 @@ Bug Fixes
 * GITHUB#15878: Fix existential quantification bug in caller checks
   (VectorizationProvider, TestSecrets).  (Uwe Schindler)
 
+* GITHUB#15908: Fix MMapDirectory.getSharedArenaMaxPermitsSysprop() to use
+  RefCountedSharedArena.DEFAULT_MAX_PERMITS instead of a hardcoded value, so that
+  the default change from GITHUB#15078 takes effect. (Huaixinww)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)

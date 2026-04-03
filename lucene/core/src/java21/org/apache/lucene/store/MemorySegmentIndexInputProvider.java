@@ -38,9 +38,9 @@ final class MemorySegmentIndexInputProvider
   private final Optional<NativeAccess> nativeAccess;
   private final int sharedArenaMaxPermits;
 
-  MemorySegmentIndexInputProvider(int maxPermits) {
+  MemorySegmentIndexInputProvider() {
     this.nativeAccess = NativeAccess.getImplementation();
-    this.sharedArenaMaxPermits = checkMaxPermits(maxPermits);
+    this.sharedArenaMaxPermits = checkMaxPermits(getSharedArenaMaxPermitsSysprop());
   }
 
   @Override
@@ -146,6 +146,23 @@ final class MemorySegmentIndexInputProvider
   @Override
   public ConcurrentHashMap<String, RefCountedSharedArena> attachment() {
     return new ConcurrentHashMap<>();
+  }
+
+  private static int getSharedArenaMaxPermitsSysprop() {
+    int ret = RefCountedSharedArena.DEFAULT_MAX_PERMITS;
+    try {
+      String str = System.getProperty(MMapDirectory.SHARED_ARENA_MAX_PERMITS_SYSPROP);
+      if (str != null) {
+        ret = Integer.parseInt(str);
+      }
+    } catch (@SuppressWarnings("unused") NumberFormatException | SecurityException ignored) {
+      Logger.getLogger(MemorySegmentIndexInputProvider.class.getName())
+          .warning(
+              "Cannot read sysprop "
+                  + MMapDirectory.SHARED_ARENA_MAX_PERMITS_SYSPROP
+                  + ", so the default value will be used.");
+    }
+    return ret;
   }
 
   private static int checkMaxPermits(int maxPermits) {
