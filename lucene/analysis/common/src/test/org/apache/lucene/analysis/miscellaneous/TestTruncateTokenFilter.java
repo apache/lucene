@@ -95,8 +95,10 @@ public class TestTruncateTokenFilter extends BaseTokenStreamTestCase {
         int len2 = Character.codePointCount(termAtt2, 0, termAtt2.length());
         if (len1 <= truncateLength) {
           assertEquals(len1, len2);
+          assertEquals(termAtt1.toString(), termAtt2.toString());
         } else {
           assertEquals(truncateLength, len2);
+          assertTrue(termAtt1.toString().startsWith(termAtt2.toString()));
         }
       }
       assertFalse(ts1.incrementToken());
