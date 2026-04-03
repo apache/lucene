@@ -39,9 +39,11 @@ import org.openjdk.jmh.infra.Blackhole;
  * Benchmark strategies for ReaderUtil#partitionByLeaf:
  *
  * <ul>
- *   <li>arraysSortOnly: Arrays#sort on int[] then partition
+ *   <li>arraysSortOnly: Arrays#sort on int[] then linear-scan partition
  *   <li>introSortWithOrdinals: IntroSorter sorting docIDs + ordinals as parallel arrays then
- *       partition
+ *       linear-scan partition
+ *   <li>arraysSortBinarySearchPartition: Arrays#sort on int[] then binary-search partition using
+ *       leaf boundaries
  * </ul>
  */
 @BenchmarkMode(Mode.Throughput)
@@ -61,7 +63,7 @@ public class PartitionByLeafBenchmark {
   int numDocIds;
 
   /** Number of leaves in the test index. */
-  @Param({"5", "50", "200"})
+  @Param({"5", "10", "20", "50", "200"})
   int numLeaves;
 
   /** Doc IDs to partition (shuffled before each test). */
@@ -158,6 +160,14 @@ public class PartitionByLeafBenchmark {
     bh.consume(ordinals);
   }
 
+  @Benchmark
+  public void arraysSortBinarySearchPartition(Blackhole bh) {
+    int[] sorted = docIds;
+    Arrays.sort(sorted);
+    int[][] result = partitionSortedBinarySearch(sorted);
+    bh.consume(result);
+  }
+
   /** Partition sorted doc IDs across leaves. Mirrors the logic in ReaderUtil#partitionByLeaf. */
   private int[][] partitionSorted(int[] sortedDocIds) {
     int[][] result = new int[numLeaves][];
@@ -187,6 +197,37 @@ public class PartitionByLeafBenchmark {
     result[leafIdx] = new int[count];
     System.arraycopy(sortedDocIds, leafStart, result[leafIdx], 0, count);
     Arrays.fill(result, leafIdx + 1, numLeaves, EMPTY_INT_ARRAY);
+    return result;
+  }
+
+  /**
+   * Partition sorted doc IDs across leaves using binary search on leaf boundaries. For each leaf,
+   * binary search for its end boundary in the sorted doc IDs to find the slice belonging to that
+   * leaf. Each successive search is bounded by the previous result.
+   */
+  private int[][] partitionSortedBinarySearch(int[] sortedDocIds) {
+    int[][] result = new int[numLeaves][];
+    if (sortedDocIds.length == 0) {
+      Arrays.fill(result, EMPTY_INT_ARRAY);
+      return result;
+    }
+    int from = 0;
+    for (int leafIdx = 0; leafIdx < numLeaves; leafIdx++) {
+      int leafEnd = leafDocBase[leafIdx] + docsPerLeaf;
+      // Find insertion point of leafEnd in sortedDocIds[from..length)
+      int to = Arrays.binarySearch(sortedDocIds, from, sortedDocIds.length, leafEnd);
+      if (to < 0) {
+        to = -to - 1;
+      }
+      int count = to - from;
+      if (count == 0) {
+        result[leafIdx] = EMPTY_INT_ARRAY;
+      } else {
+        result[leafIdx] = new int[count];
+        System.arraycopy(sortedDocIds, from, result[leafIdx], 0, count);
+      }
+      from = to;
+    }
     return result;
   }
 }
