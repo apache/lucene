@@ -48,7 +48,9 @@ import org.openjdk.jmh.infra.Blackhole;
 @State(Scope.Benchmark)
 @Warmup(iterations = 5, time = 1)
 @Measurement(iterations = 5, time = 1)
-@Fork(value = 3, jvmArgsAppend = {"-Xmx1g", "-Xms1g", "-XX:+AlwaysPreTouch"})
+@Fork(
+    value = 3,
+    jvmArgsAppend = {"-Xmx1g", "-Xms1g", "-XX:+AlwaysPreTouch"})
 public class PartitionByLeafBenchmark {
 
   private static final int[] EMPTY_INT_ARRAY = new int[0];
@@ -155,9 +157,7 @@ public class PartitionByLeafBenchmark {
     bh.consume(ordinals);
   }
 
-  /**
-   * Partition sorted doc IDs across leaves. Mirrors the logic in ReaderUtil#partitionByLeaf.
-   */
+  /** Partition sorted doc IDs across leaves. Mirrors the logic in ReaderUtil#partitionByLeaf. */
   private int[][] partitionSorted(int[] sortedDocIds) {
     int[][] result = new int[numLeaves][];
     if (sortedDocIds.length == 0) {
