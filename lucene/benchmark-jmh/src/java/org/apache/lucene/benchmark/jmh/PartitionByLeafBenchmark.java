@@ -1,0 +1,191 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package org.apache.lucene.benchmark.jmh;
+
+import java.util.Arrays;
+import java.util.Random;
+import java.util.concurrent.TimeUnit;
+import org.apache.lucene.util.IntroSorter;
+import org.openjdk.jmh.annotations.Benchmark;
+import org.openjdk.jmh.annotations.BenchmarkMode;
+import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
+import org.openjdk.jmh.annotations.Measurement;
+import org.openjdk.jmh.annotations.Mode;
+import org.openjdk.jmh.annotations.OutputTimeUnit;
+import org.openjdk.jmh.annotations.Param;
+import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
+import org.openjdk.jmh.annotations.State;
+import org.openjdk.jmh.annotations.Warmup;
+import org.openjdk.jmh.infra.Blackhole;
+
+/**
+ * Benchmark strategies for ReaderUtil#partitionByLeaf:
+ *
+ * <ul>
+ *   <li>arraysSortOnly: Arrays#sort on int[] then partition
+ *   <li>introSortWithOrdinals: IntroSorter sorting docIDs + ordinals as parallel arrays then
+ *       partition
+ * </ul>
+ */
+@BenchmarkMode(Mode.Throughput)
+@OutputTimeUnit(TimeUnit.MILLISECONDS)
+@State(Scope.Benchmark)
+@Warmup(iterations = 5, time = 1)
+@Measurement(iterations = 5, time = 1)
+@Fork(value = 3, jvmArgsAppend = {"-Xmx1g", "-Xms1g", "-XX:+AlwaysPreTouch"})
+public class PartitionByLeafBenchmark {
+
+  private static final int[] EMPTY_INT_ARRAY = new int[0];
+
+  /** Number of doc IDs we'll be sorting/partitioning */
+  @Param({"100", "1000", "10000", "100000"})
+  int numDocIds;
+
+  /** Number of leaves in the test index. */
+  @Param({"5", "50", "200"})
+  int numLeaves;
+
+  /** Doc IDs to partition (shuffled before each test). */
+  private int[] docIds;
+
+  /** Leaf boundaries: leafDocBase[i] is the docBase for leaf i. */
+  private int[] leafDocBase;
+
+  /** Max doc per leaf (uniform for simplicity). */
+  private int docsPerLeaf;
+
+  /** Main copy of doc IDs to copy from each invocation. */
+  private int[] mainDocIds;
+
+  @Setup(Level.Trial)
+  public void setup() {
+    Random r = new Random();
+
+    docsPerLeaf = Math.max(numDocIds / numLeaves, 1) * 10;
+    int totalDocs = numLeaves * docsPerLeaf;
+
+    leafDocBase = new int[numLeaves];
+    for (int i = 0; i < numLeaves; i++) {
+      leafDocBase[i] = i * docsPerLeaf;
+    }
+
+    // Generate unique doc IDs via shuffle
+    int[] pool = new int[totalDocs];
+    for (int i = 0; i < totalDocs; i++) {
+      pool[i] = i;
+    }
+    for (int i = totalDocs - 1; i > 0; i--) {
+      int j = r.nextInt(i + 1);
+      int tmp = pool[i];
+      pool[i] = pool[j];
+      pool[j] = tmp;
+    }
+    mainDocIds = Arrays.copyOf(pool, numDocIds);
+  }
+
+  @Setup(Level.Invocation)
+  public void setupInvocation() {
+    // Fresh unsorted copy each invocation since sort is in-place
+    docIds = Arrays.copyOf(mainDocIds, mainDocIds.length);
+  }
+
+  @Benchmark
+  public void arraysSortOnly(Blackhole bh) {
+    int[] sorted = docIds;
+    Arrays.sort(sorted);
+    int[][] result = partitionSorted(sorted);
+    bh.consume(result);
+  }
+
+  @Benchmark
+  public void introSortWithOrdinals(Blackhole bh) {
+    int[] sorted = docIds;
+    int[] ordinals = new int[sorted.length];
+    for (int i = 0; i < ordinals.length; i++) {
+      ordinals[i] = i;
+    }
+
+    new IntroSorter() {
+      int pivot;
+
+      @Override
+      protected int compare(int i, int j) {
+        return Integer.compare(sorted[i], sorted[j]);
+      }
+
+      @Override
+      protected void swap(int i, int j) {
+        int tmp = sorted[i];
+        sorted[i] = sorted[j];
+        sorted[j] = tmp;
+        tmp = ordinals[i];
+        ordinals[i] = ordinals[j];
+        ordinals[j] = tmp;
+      }
+
+      @Override
+      protected void setPivot(int i) {
+        pivot = sorted[i];
+      }
+
+      @Override
+      protected int comparePivot(int j) {
+        return Integer.compare(pivot, sorted[j]);
+      }
+    }.sort(0, sorted.length);
+
+    int[][] result = partitionSorted(sorted);
+    bh.consume(result);
+    bh.consume(ordinals);
+  }
+
+  /**
+   * Partition sorted doc IDs across leaves. Mirrors the logic in ReaderUtil#partitionByLeaf.
+   */
+  private int[][] partitionSorted(int[] sortedDocIds) {
+    int[][] result = new int[numLeaves][];
+    if (sortedDocIds.length == 0) {
+      Arrays.fill(result, EMPTY_INT_ARRAY);
+      return result;
+    }
+    int leafStart = 0;
+    int leafIdx = 0;
+    int leafEnd = leafDocBase[0] + docsPerLeaf;
+    for (int i = 0; i < sortedDocIds.length; i++) {
+      int docId = sortedDocIds[i];
+      while (docId >= leafEnd) {
+        int count = i - leafStart;
+        if (count == 0) {
+          result[leafIdx] = EMPTY_INT_ARRAY;
+        } else {
+          result[leafIdx] = new int[count];
+          System.arraycopy(sortedDocIds, leafStart, result[leafIdx], 0, count);
+        }
+        leafStart = i;
+        leafIdx++;
+        leafEnd = leafDocBase[leafIdx] + docsPerLeaf;
+      }
+    }
+    int count = sortedDocIds.length - leafStart;
+    result[leafIdx] = new int[count];
+    System.arraycopy(sortedDocIds, leafStart, result[leafIdx], 0, count);
+    Arrays.fill(result, leafIdx + 1, numLeaves, EMPTY_INT_ARRAY);
+    return result;
+  }
+}
