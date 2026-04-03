@@ -98,7 +98,8 @@ public final class TruncateTokenFilter extends TokenFilter {
                 termAttribute.buffer(), 0, termAttribute.length(), 0, truncateAfter);
         termAttribute.setLength(truncateAtChar);
       } catch (IndexOutOfBoundsException _) {
-        // the term attribute is shorter than the calculated length
+        // the exception may only happen when the number of chars in buffer is >truncateAfter
+        // (short terms already handled above) and <2*truncateAfter
       }
     } else {
       termAttribute.setLength(truncateAfter);
