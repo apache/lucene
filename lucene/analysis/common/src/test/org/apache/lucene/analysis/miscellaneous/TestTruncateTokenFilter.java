@@ -28,11 +28,30 @@ import org.junit.Test;
 /** Test the truncate token filter. */
 public class TestTruncateTokenFilter extends BaseTokenStreamTestCase {
 
-  public void testTruncating() throws Exception {
+  public void testLegacyTruncating() throws Exception {
+    TokenStream stream =
+        whitespaceMockTokenizer("abcdefg 1234567 ABCDEFG abcde abc 12345 123 1234567 1234😃5");
+    stream = TruncateTokenFilter.truncateAfterChars(stream, 5);
+    assertTokenStreamContents(
+        stream,
+        new String[] {
+          "abcde",
+          "12345",
+          "ABCDE",
+          "abcde",
+          "abc",
+          "12345",
+          "123",
+          "12345",
+          "1234" + "😃".charAt(0)
+        });
+  }
+
+  public void testCodePointTruncating() throws Exception {
     TokenStream stream =
         whitespaceMockTokenizer(
             "abcdefg 1234567 ABCDEFG abcde abc 12345 123 1234😃5 1 😃 😃12345 😃😃 😃😃😃 😃😃😃😃 😃😃😃😃😃 😃😃😃😃😃😃");
-    stream = new TruncateTokenFilter(stream, 5);
+    stream = TruncateTokenFilter.truncateAfterCodePoints(stream, 5);
     assertTokenStreamContents(
         stream,
         new String[] {
@@ -63,7 +82,9 @@ public class TestTruncateTokenFilter extends BaseTokenStreamTestCase {
 
       TokenStream ts1 = whitespaceMockTokenizer(text);
       CharTermAttribute termAtt1 = ts1.addAttribute(CharTermAttribute.class);
-      TokenStream ts2 = new TruncateTokenFilter(whitespaceMockTokenizer(text), truncateLength);
+      TokenStream ts2 =
+          TruncateTokenFilter.truncateAfterCodePoints(
+              whitespaceMockTokenizer(text), truncateLength);
       CharTermAttribute termAtt2 = ts2.addAttribute(CharTermAttribute.class);
 
       ts1.reset();
@@ -95,14 +116,21 @@ public class TestTruncateTokenFilter extends BaseTokenStreamTestCase {
           protected TokenStreamComponents createComponents(String fieldName) {
             Tokenizer tokenizer = new MockTokenizer(MockTokenizer.WHITESPACE, false);
             return new TokenStreamComponents(
-                tokenizer, new TruncateTokenFilter(tokenizer, truncateLength));
+                tokenizer, TruncateTokenFilter.truncateAfterCodePoints(tokenizer, truncateLength));
           }
         };
     checkRandomData(rnd, a, 20 * RANDOM_MULTIPLIER, truncateLength * 2);
   }
 
   @Test(expected = IllegalArgumentException.class)
+  public void testLegacyNonPositiveLength() throws Exception {
+    TruncateTokenFilter.truncateAfterChars(
+        whitespaceMockTokenizer("param must be a positive number"), -48);
+  }
+
+  @Test(expected = IllegalArgumentException.class)
   public void testNonPositiveLength() throws Exception {
-    new TruncateTokenFilter(whitespaceMockTokenizer("length must be a positive number"), -48);
+    TruncateTokenFilter.truncateAfterCodePoints(
+        whitespaceMockTokenizer("param must be a positive number"), -48);
   }
 }

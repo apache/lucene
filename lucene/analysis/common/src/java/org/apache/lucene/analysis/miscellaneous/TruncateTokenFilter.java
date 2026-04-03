@@ -28,23 +28,52 @@ import org.apache.lucene.analysis.tokenattributes.KeywordAttribute;
  * reported that F5, using first 5 characters, produced best results in <a
  * href="https://doi.org/10.1002/asi.20750">Information Retrieval on Turkish Texts</a>
  *
- * <p>Since Lucene 10.5, the filter correctly handles codepoints and truncates after the given
- * number of codepoints, no longer producing incomplete surrogate pairs.
+ * <p>Since Lucene 10.5, the filter is able to correctly handles codepoints and truncates after the
+ * given number of codepoints, no longer producing incomplete surrogate pairs. Use the modern
+ * factory methods to enable this mode.
  */
 public final class TruncateTokenFilter extends TokenFilter {
 
   private final CharTermAttribute termAttribute = addAttribute(CharTermAttribute.class);
   private final KeywordAttribute keywordAttr = addAttribute(KeywordAttribute.class);
 
-  private final int maxCodePoints;
+  private final int truncateAfter;
+  private final boolean useCodePoints;
 
-  public TruncateTokenFilter(TokenStream input, int maxCodePoints) {
+  /** Returns a filter with a prefix of {@code nCodePoints}. */
+  public static TruncateTokenFilter truncateAfterCodePoints(TokenStream input, int nCodePoints) {
+    return new TruncateTokenFilter(input, nCodePoints, true);
+  }
+
+  /**
+   * Returns a filter with a prefix of {@code nChars} Java Characters. This may split surrogate
+   * pairs.
+   */
+  public static TruncateTokenFilter truncateAfterChars(TokenStream input, int nChars) {
+    return new TruncateTokenFilter(input, nChars, false);
+  }
+
+  /**
+   * Instantiates filter with a prefix of {@code nChars} Java Characters. This may split surrogate
+   * pairs.
+   *
+   * @deprecated This constructor is deprecated, use {@link #truncateAfterChars(TokenStream, int)}
+   *     for backwards compatibility, or {@link #truncateAfterCodePoints(TokenStream, int)} to be
+   *     unicode conformant.
+   */
+  @Deprecated
+  public TruncateTokenFilter(TokenStream input, int nChars) {
+    this(input, nChars, false);
+  }
+
+  private TruncateTokenFilter(TokenStream input, int truncateAfter, boolean useCodePoints) {
     super(input);
-    if (maxCodePoints < 1) {
+    if (truncateAfter < 1) {
       throw new IllegalArgumentException(
-          "maxCodePoints parameter must be a positive number: " + maxCodePoints);
+          "truncateAfter parameter must be a positive number: " + truncateAfter);
     }
-    this.maxCodePoints = maxCodePoints;
+    this.truncateAfter = truncateAfter;
+    this.useCodePoints = useCodePoints;
   }
 
   @Override
@@ -55,18 +84,23 @@ public final class TruncateTokenFilter extends TokenFilter {
     if (keywordAttr.isKeyword()) {
       return true;
     }
-    if (termAttribute.length() <= maxCodePoints) {
-      // the term is short enough in utf-16 chars, so we do not need to modify it
+    if (termAttribute.length() <= truncateAfter) {
+      // the term is short enough, so we do not need to modify it
+      // (works for both chars and codepoints)
       return true;
     }
-    try {
-      // calculate the offset
-      int truncateAtChar =
-          Character.offsetByCodePoints(
-              termAttribute.buffer(), 0, termAttribute.length(), 0, maxCodePoints);
-      termAttribute.setLength(truncateAtChar);
-    } catch (IndexOutOfBoundsException _) {
-      // the term attribute is shorter than the calculated length
+    if (useCodePoints) {
+      try {
+        // calculate the offset
+        int truncateAtChar =
+            Character.offsetByCodePoints(
+                termAttribute.buffer(), 0, termAttribute.length(), 0, truncateAfter);
+        termAttribute.setLength(truncateAtChar);
+      } catch (IndexOutOfBoundsException _) {
+        // the term attribute is shorter than the calculated length
+      }
+    } else {
+      termAttribute.setLength(truncateAfter);
     }
     return true;
   }
