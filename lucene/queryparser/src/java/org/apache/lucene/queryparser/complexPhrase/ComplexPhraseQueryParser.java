@@ -267,7 +267,7 @@ public class ComplexPhraseQueryParser extends QueryParser {
       // clauses can be complex
       // Booleans e.g. nots and ors etc
       int numNegatives = 0;
-      if (!(contents instanceof BooleanQuery)) {
+      if (!(contents instanceof BooleanQuery bq)) {
         throw new IllegalArgumentException(
             "Unknown query type \""
                 + contents.getClass().getName()
@@ -275,7 +275,6 @@ public class ComplexPhraseQueryParser extends QueryParser {
                 + phrasedQueryStringContents
                 + "\"");
       }
-      BooleanQuery bq = (BooleanQuery) contents;
       SpanQuery[] allSpanClauses = new SpanQuery[bq.clauses().size()];
       // For all clauses e.g. one* two~
       int i = 0;
@@ -288,14 +287,14 @@ public class ComplexPhraseQueryParser extends QueryParser {
           numNegatives++;
         }
 
-        while (qc instanceof BoostQuery) {
-          qc = ((BoostQuery) qc).getQuery();
+        while (qc instanceof BoostQuery boostQuery) {
+          qc = boostQuery.getQuery();
         }
 
         if (qc instanceof BooleanQuery || qc instanceof SynonymQuery) {
           ArrayList<SpanQuery> sc = new ArrayList<>();
           BooleanQuery booleanClause =
-              qc instanceof BooleanQuery ? (BooleanQuery) qc : convert((SynonymQuery) qc);
+              qc instanceof BooleanQuery booleanQuery ? booleanQuery : convert((SynonymQuery) qc);
           addComplexPhraseClause(sc, booleanClause);
           if (sc.size() > 0) {
             allSpanClauses[i] = sc.get(0);

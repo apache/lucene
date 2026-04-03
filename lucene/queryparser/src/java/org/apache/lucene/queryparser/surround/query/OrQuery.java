@@ -40,8 +40,8 @@ public class OrQuery extends ComposedQuery implements DistanceSubQuery {
     Iterator<SrndQuery> sqi = getSubQueriesIterator();
     while (sqi.hasNext()) {
       SrndQuery leq = sqi.next();
-      if (leq instanceof DistanceSubQuery) {
-        String m = ((DistanceSubQuery) leq).distanceSubQueryNotAllowed();
+      if (leq instanceof DistanceSubQuery dsq) {
+        String m = dsq.distanceSubQueryNotAllowed();
         if (m != null) {
           return m;
         }

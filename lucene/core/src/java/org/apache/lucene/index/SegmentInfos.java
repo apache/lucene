@@ -985,6 +985,14 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   /** Returns readable description of this segment. */
   @Override
   public String toString() {
+    return toString(false);
+  }
+
+  String toStringVerbose() {
+    return toString(true);
+  }
+
+  String toString(boolean verbose) {
     StringBuilder buffer = new StringBuilder();
     buffer.append(getSegmentsFileName()).append(": ");
     final int count = size();
@@ -992,8 +1000,11 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       if (i > 0) {
         buffer.append(' ');
       }
-      final SegmentCommitInfo info = info(i);
-      buffer.append(info.toString(0));
+      if (verbose) {
+        buffer.append(info(i).toStringVerbose());
+      } else {
+        buffer.append(info(i).toString(0));
+      }
     }
     return buffer.toString();
   }
