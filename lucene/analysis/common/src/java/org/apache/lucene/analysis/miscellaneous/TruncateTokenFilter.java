@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.analysis.miscellaneous;
 
+import static java.lang.Character.isHighSurrogate;
+import static java.lang.Character.isLowSurrogate;
+
 import java.io.IOException;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -85,21 +88,25 @@ public final class TruncateTokenFilter extends TokenFilter {
     if (keywordAttr.isKeyword()) {
       return true;
     }
-    if (termAttribute.length() <= truncateAfter) {
+    final int len = termAttribute.length();
+    if (len <= truncateAfter) {
       // the term is short enough, so we do not need to modify it
       // (works for both chars and codepoints)
       return true;
     }
     if (useCodePoints) {
-      try {
-        // calculate the offset
-        int truncateAtChar =
-            Character.offsetByCodePoints(
-                termAttribute.buffer(), 0, termAttribute.length(), 0, truncateAfter);
-        termAttribute.setLength(truncateAtChar);
-      } catch (IndexOutOfBoundsException _) {
-        // the exception may only happen when the number of chars in buffer is >truncateAfter
-        // (short terms already handled above) and <2*truncateAfter
+      // code based on ICU4J's com.ibm.icu.text.UTF16#findOffsetFromCodePoint(...) implementation:
+      final char[] arr = termAttribute.buffer();
+      int ofs = 0, remaining = truncateAfter;
+      while (ofs < len && remaining > 0) {
+        if (isHighSurrogate(arr[ofs++]) && ofs < len && isLowSurrogate(arr[ofs])) {
+          ofs++;
+        }
+        remaining--;
+      }
+      // check if we actually reached the limit and set new length based on calculated offset:
+      if (remaining == 0) {
+        termAttribute.setLength(ofs);
       }
     } else {
       termAttribute.setLength(truncateAfter);
