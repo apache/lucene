@@ -77,6 +77,64 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
     shard.close();
   }
 
+  public void testShardedBlockGrouping() throws IOException {
+    Shard shardControl = new Shard();
+    int shardCount = random().nextInt(3) + 2;
+    Shard[] shards = new Shard[shardCount];
+    for (int shardIdx = 0; shardIdx < shardCount; shardIdx++) {
+      shards[shardIdx] = new Shard();
+      // int bookCount = atLeast(20);
+      for (int bookIdx = 0; bookIdx < 5; bookIdx++) {
+        List<Document> block = new ArrayList<>();
+        String bookName = "book" + shardIdx + bookIdx;
+        // int chapterCount = atLeast(10);
+        int chapterCount = 2;
+        for (int j = 0; j < 2; j++) {
+          Document doc = new Document();
+          String chapterName = "chapter" + j;
+          String chapterText = randomText();
+          doc.add(new TextField("book", bookName, Field.Store.YES));
+          doc.add(new TextField("chapter", chapterName, Field.Store.YES));
+          doc.add(new TextField("text", chapterText, Field.Store.NO));
+          doc.add(new NumericDocValuesField("length", chapterText.length()));
+          doc.add(new SortedDocValuesField("book", new BytesRef(bookName)));
+          if (j == chapterCount - 1) {
+            doc.add(new TextField("blockEnd", "true", Field.Store.NO));
+          }
+          block.add(doc);
+        }
+        shards[shardIdx].writer.addDocuments(block);
+        shardControl.writer.addDocuments(block);
+      }
+    }
+
+    IndexSearcher shardControlIndexSearcher = shardControl.getIndexSearcher();
+
+    Query blockEndQuery = new TermQuery(new Term("blockEnd", "true"));
+    GroupingSearch grouper = new GroupingSearch(blockEndQuery);
+    grouper.setGroupDocsLimit(10);
+
+    Query topLevel = new TermQuery(new Term("text", "grandmother"));
+    TopGroups<?> singleShardTopGroups = grouper.search(shardControlIndexSearcher, topLevel, 0, 5);
+
+    List<TopGroups<?>> shardTopGroups = new ArrayList<>();
+    for (int shardIdx = 0; shardIdx < shardCount; shardIdx++) {
+      shardTopGroups.add(grouper.search(shards[shardIdx].getIndexSearcher(), topLevel, 0, 5));
+    }
+
+    TopGroups<?> mergedTopGroups = TopGroups.mergeBlockGroups(shardTopGroups, Sort.RELEVANCE, 0, 5);
+    assertNotNull(mergedTopGroups);
+
+    assertEquals(singleShardTopGroups.totalHitCount, mergedTopGroups.totalHitCount);
+    assertEquals(singleShardTopGroups.totalGroupCount, mergedTopGroups.totalGroupCount);
+    assertEquals(singleShardTopGroups.groups.length, mergedTopGroups.groups.length);
+
+    shardControl.close();
+    for (int shardIdx = 0; shardIdx < shardCount; shardIdx++) {
+      shards[shardIdx].close();
+    }
+  }
+
   public void testTopLevelSort() throws IOException {
 
     Shard shard = new Shard();

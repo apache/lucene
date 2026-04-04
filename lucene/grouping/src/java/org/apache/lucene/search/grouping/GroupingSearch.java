@@ -196,15 +196,18 @@ public class GroupingSearch {
     final Query endDocsQuery = searcher.rewrite(this.groupEndDocs);
     final Weight groupEndDocs =
         searcher.createWeight(endDocsQuery, ScoreMode.COMPLETE_NO_SCORES, 1);
-    BlockGroupingCollector c =
-        new BlockGroupingCollector(
+    BlockGroupingCollectorManager bcm =
+        new BlockGroupingCollectorManager(
             groupSort,
             topN,
             groupSort.needsScores() || sortWithinGroup.needsScores(),
-            groupEndDocs);
-    searcher.search(query, c);
-    int topNInsideGroup = groupDocsOffset + groupDocsLimit;
-    return c.getTopGroups(sortWithinGroup, groupOffset, groupDocsOffset, topNInsideGroup);
+            groupEndDocs,
+            sortWithinGroup,
+            groupOffset,
+            groupDocsOffset,
+            groupDocsOffset + groupDocsLimit);
+
+    return searcher.search(query, bcm);
   }
 
   /**
