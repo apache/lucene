@@ -42,8 +42,9 @@ import org.openjdk.jmh.infra.Blackhole;
  *   <li>arraysSortOnly: Arrays#sort on int[] then linear-scan partition
  *   <li>introSortWithOrdinals: IntroSorter sorting docIDs + ordinals as parallel arrays then
  *       linear-scan partition
- *   <li>arraysSortBinarySearchPartition: Arrays#sort on int[] then binary-search partition using
- *       leaf boundaries
+ *   <li>arraysSortBinarySearchPartition: Arrays#sort then binary-search partition
+ *   <li>arraysSortHybridPartition: Arrays#sort then picks linear or binary-search based on
+ *       numLeaves vs numDocIds
  * </ul>
  */
 @BenchmarkMode(Mode.Throughput)
@@ -165,6 +166,19 @@ public class PartitionByLeafBenchmark {
     int[] sorted = docIds;
     Arrays.sort(sorted);
     int[][] result = partitionSortedBinarySearch(sorted);
+    bh.consume(result);
+  }
+
+  @Benchmark
+  public void arraysSortHybridPartition(Blackhole bh) {
+    int[] sorted = docIds;
+    Arrays.sort(sorted);
+    int[][] result;
+    if (numLeaves <= sorted.length) {
+      result = partitionSortedBinarySearch(sorted);
+    } else {
+      result = partitionSorted(sorted);
+    }
     bh.consume(result);
   }
 
