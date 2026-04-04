@@ -45,6 +45,8 @@ import org.openjdk.jmh.infra.Blackhole;
  *   <li>arraysSortBinarySearchPartition: Arrays#sort then binary-search partition
  *   <li>arraysSortHybridPartition: Arrays#sort then picks linear or binary-search based on
  *       numLeaves vs numDocIds
+ *   <li>partitionThenSort: partition unsorted docs by leaf first, then Arrays#sort each per-leaf
+ *       array
  * </ul>
  */
 @BenchmarkMode(Mode.Throughput)
@@ -180,6 +182,48 @@ public class PartitionByLeafBenchmark {
       result = partitionSorted(sorted);
     }
     bh.consume(result);
+  }
+
+  @Benchmark
+  public void partitionThenSort(Blackhole bh) {
+    int[] unsorted = docIds;
+
+    // Pass 1: count docs per leaf
+    int[] counts = new int[numLeaves];
+    for (int docId : unsorted) {
+      counts[leafForDoc(docId)]++;
+    }
+
+    // Allocate per-leaf arrays
+    int[][] result = new int[numLeaves][];
+    for (int i = 0; i < numLeaves; i++) {
+      result[i] = counts[i] == 0 ? EMPTY_INT_ARRAY : new int[counts[i]];
+      counts[i] = 0; // reuse as write index
+    }
+
+    // Pass 2: place docs into per-leaf arrays
+    for (int docId : unsorted) {
+      int leaf = leafForDoc(docId);
+      result[leaf][counts[leaf]++] = docId;
+    }
+
+    // Pass 3: sort each per-leaf array
+    for (int[] leafDocs : result) {
+      if (leafDocs.length > 1) {
+        Arrays.sort(leafDocs);
+      }
+    }
+
+    bh.consume(result);
+  }
+
+  /** Find the leaf index for a global doc ID using binary search on leaf boundaries. */
+  private int leafForDoc(int docId) {
+    int idx = Arrays.binarySearch(leafDocBase, docId);
+    if (idx < 0) {
+      idx = -idx - 2;
+    }
+    return idx;
   }
 
   /** Partition sorted doc IDs across leaves. Mirrors the logic in ReaderUtil#partitionByLeaf. */
