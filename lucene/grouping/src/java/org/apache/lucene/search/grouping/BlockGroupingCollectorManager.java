@@ -24,6 +24,19 @@ import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.Weight;
 
+/**
+ * A {@link CollectorManager} for {@link BlockGroupingCollector} that merges results from multiple
+ * collectors into a single {@link TopGroups}. This is intended for use with concurrent search,
+ * where each segment is searched by a separate {@link BlockGroupingCollector}.
+ *
+ * <p>Documents must be indexed as blocks using {@link
+ * org.apache.lucene.index.IndexWriter#addDocuments IndexWriter.addDocuments()} or {@link
+ * org.apache.lucene.index.IndexWriter#updateDocuments IndexWriter.updateDocuments()}.
+ *
+ * <p>See {@link BlockGroupingCollector} for more details.
+ *
+ * @lucene.experimental
+ */
 public class BlockGroupingCollectorManager
     implements CollectorManager<BlockGroupingCollector, TopGroups<?>> {
 
@@ -31,12 +44,13 @@ public class BlockGroupingCollectorManager
   private final int topNGroups;
   private final boolean needsScores;
   private final Weight lastDocPerGroup;
-  private final List<BlockGroupingCollector> collectors;
 
   private final Sort withinGroupSort;
   private final int groupOffset;
   private final int withinGroupOffset;
   private final int maxDocsPerGroup;
+
+  private final List<BlockGroupingCollector> collectors;
 
   public BlockGroupingCollectorManager(
       Sort groupSort,
