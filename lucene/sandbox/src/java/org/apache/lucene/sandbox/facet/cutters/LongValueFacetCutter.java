@@ -61,6 +61,7 @@ public final class LongValueFacetCutter implements FacetCutter, OrdToLabel {
   public LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException {
     SortedNumericDocValues docValues = DocValues.getSortedNumeric(context.reader(), field);
     return new LeafFacetCutter() {
+      final LongIntHashMap localCache = new LongIntHashMap();
       int docValueCount;
       long lastDocValue;
       int docValueCursor;
@@ -83,7 +84,13 @@ public final class LongValueFacetCutter implements FacetCutter, OrdToLabel {
           // check previous value to remove duplicates
           if (docValueCursor == 1 || value != lastDocValue) {
             lastDocValue = value;
-            return valueToOrdMap.computeIfAbsent(value, maxOrdinal::incrementAndGet);
+            int ord = localCache.getOrDefault(value, -1);
+            if (ord != -1) {
+              return ord;
+            }
+            ord = valueToOrdMap.computeIfAbsent(value, maxOrdinal::incrementAndGet);
+            localCache.put(value, ord);
+            return ord;
           }
         }
         return NO_MORE_ORDS;
