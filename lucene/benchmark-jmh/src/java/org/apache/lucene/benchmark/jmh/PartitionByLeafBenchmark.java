@@ -211,6 +211,12 @@ public class PartitionByLeafBenchmark {
     bh.consume(result);
   }
 
+  @Benchmark
+  public void partitionOnlyUnrolledBranchlessBinarySearch(Blackhole bh) {
+    int[][] result = partitionSortedUnrolledBranchlessBinarySearch(mainDocIdsSorted);
+    bh.consume(result);
+  }
+
   /** Partition sorted doc IDs across leaves. Mirrors the logic in ReaderUtil#partitionByLeaf. */
   private int[][] partitionSorted(int[] sortedDocIds) {
     int[][] result = new int[numLeaves][];
@@ -313,10 +319,61 @@ public class PartitionByLeafBenchmark {
     int len = to - from;
     while (len > 1) {
       int half = len >>> 1;
-      // This pattern compiles to cmov — no branch, no misprediction
       lo = a[lo + half] < target ? lo + half : lo;
       len = len - half;
     }
+    return a[lo] < target ? lo + 1 : lo;
+  }
+
+  /**
+   * Partition using unrolled branchless binary search. Same structure as the branchless variant but
+   * with the search loop fully unrolled.
+   */
+  private int[][] partitionSortedUnrolledBranchlessBinarySearch(int[] sortedDocIds) {
+    int[][] result = new int[numLeaves][];
+    if (sortedDocIds.length == 0) {
+      Arrays.fill(result, EMPTY_INT_ARRAY);
+      return result;
+    }
+    int from = 0;
+    int leafIdx = 0;
+    for (; leafIdx < numLeaves && from < sortedDocIds.length; leafIdx++) {
+      int leafEnd = leafDocBase[leafIdx] + docsPerLeaf;
+      if (sortedDocIds[from] >= leafEnd) {
+        result[leafIdx] = EMPTY_INT_ARRAY;
+        continue;
+      }
+      int to = unrolledBranchlessBinarySearch(sortedDocIds, from, sortedDocIds.length, leafEnd);
+      int count = to - from;
+      result[leafIdx] = new int[count];
+      System.arraycopy(sortedDocIds, from, result[leafIdx], 0, count);
+      from = to;
+    }
+    Arrays.fill(result, leafIdx, numLeaves, EMPTY_INT_ARRAY);
+    return result;
+  }
+
+  /** Unrolled branchless binary search. Supports up to 131072 elements. */
+  private static int unrolledBranchlessBinarySearch(int[] a, int from, int to, int target) {
+    int lo = from;
+    int len = to - from;
+    if (len >= 131072) { int h = len >>> 1; lo += a[lo + h] < target ? h : 0; len -= h; }
+    if (len >= 65536)  { int h = len >>> 1; lo += a[lo + h] < target ? h : 0; len -= h; }
+    if (len >= 32768)  { int h = len >>> 1; lo += a[lo + h] < target ? h : 0; len -= h; }
+    if (len >= 16384)  { int h = len >>> 1; lo += a[lo + h] < target ? h : 0; len -= h; }
+    if (len >= 8192)   { int h = len >>> 1; lo += a[lo + h] < target ? h : 0; len -= h; }
+    if (len >= 4096)   { int h = len >>> 1; lo += a[lo + h] < target ? h : 0; len -= h; }
+    if (len >= 2048)   { int h = len >>> 1; lo += a[lo + h] < target ? h : 0; len -= h; }
+    if (len >= 1024)   { int h = len >>> 1; lo += a[lo + h] < target ? h : 0; len -= h; }
+    if (len >= 512)    { int h = len >>> 1; lo += a[lo + h] < target ? h : 0; len -= h; }
+    if (len >= 256)    { int h = len >>> 1; lo += a[lo + h] < target ? h : 0; len -= h; }
+    if (len >= 128)    { int h = len >>> 1; lo += a[lo + h] < target ? h : 0; len -= h; }
+    if (len >= 64)     { int h = len >>> 1; lo += a[lo + h] < target ? h : 0; len -= h; }
+    if (len >= 32)     { int h = len >>> 1; lo += a[lo + h] < target ? h : 0; len -= h; }
+    if (len >= 16)     { int h = len >>> 1; lo += a[lo + h] < target ? h : 0; len -= h; }
+    if (len >= 8)      { int h = len >>> 1; lo += a[lo + h] < target ? h : 0; len -= h; }
+    if (len >= 4)      { int h = len >>> 1; lo += a[lo + h] < target ? h : 0; len -= h; }
+    if (len >= 2)      { int h = len >>> 1; lo += a[lo + h] < target ? h : 0; len -= h; }
     return a[lo] < target ? lo + 1 : lo;
   }
 }
