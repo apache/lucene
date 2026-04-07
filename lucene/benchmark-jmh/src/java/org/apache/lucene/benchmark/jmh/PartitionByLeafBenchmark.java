@@ -81,6 +81,9 @@ public class PartitionByLeafBenchmark {
   /** Main copy of doc IDs to copy from each invocation. */
   private int[] mainDocIds;
 
+  /** Pre-sorted doc IDs for partition-only benchmarks. */
+  private int[] mainDocIdsSorted;
+
   @Setup(Level.Trial)
   public void setup() {
     Random r = new Random();
@@ -105,6 +108,10 @@ public class PartitionByLeafBenchmark {
       pool[j] = tmp;
     }
     mainDocIds = ArrayUtil.copyOfSubArray(pool, 0, numDocIds);
+
+    // Pre-sorted copy for partition-only benchmarks
+    mainDocIdsSorted = ArrayUtil.copyArray(mainDocIds);
+    Arrays.sort(mainDocIdsSorted);
   }
 
   @Setup(Level.Invocation)
@@ -189,6 +196,18 @@ public class PartitionByLeafBenchmark {
     int[] sorted = docIds;
     Arrays.sort(sorted);
     int[][] result = partitionSortedBranchlessBinarySearch(sorted);
+    bh.consume(result);
+  }
+
+  @Benchmark
+  public void partitionOnlyBinarySearch(Blackhole bh) {
+    int[][] result = partitionSortedBinarySearch(mainDocIdsSorted);
+    bh.consume(result);
+  }
+
+  @Benchmark
+  public void partitionOnlyBranchlessBinarySearch(Blackhole bh) {
+    int[][] result = partitionSortedBranchlessBinarySearch(mainDocIdsSorted);
     bh.consume(result);
   }
 
