@@ -82,6 +82,10 @@ public class FirstPassGroupingCollectorManager<T>
       return null;
     }
 
+    if (collectors.size() == 1) {
+      return collectors.iterator().next().getTopGroups(0);
+    }
+
     List<Collection<SearchGroup<T>>> allGroups = new ArrayList<>();
     for (FirstPassGroupingCollector<T> collector : collectors) {
       Collection<SearchGroup<T>> groups = collector.getTopGroups(0);
