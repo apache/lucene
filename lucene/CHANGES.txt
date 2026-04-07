@@ -314,6 +314,9 @@ Optimizations
 
 * GITHUB#15954: Use SkipBlockRangeIterator as the two-phase approximation in SortedNumericDocValuesRangeQuery. (Sagar Upadhyaya)
 
+* GITHUB#15938: Optimize ReaderUtil#partitionByLeaf to use binary search on leaf
+  boundaries instead of linear scan. (Greg Miller)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
@@ -351,10 +354,6 @@ Bug Fixes
 * GITHUB#15908: Fix MMapDirectory.getSharedArenaMaxPermitsSysprop() to use
   RefCountedSharedArena.DEFAULT_MAX_PERMITS instead of a hardcoded value, so that
   the default change from GITHUB#15078 takes effect. (Huaixinww)
-
-* GITHUB#15899, GITHUB#15900: Improve TruncateTokenFilter to truncate on codepoints not
-  chars and no longer produce half surrogates. There are new factory parameters available
-  to configure legacy prefix chars and new codepoint behaviour.  (Uwe Schindler, Michael Sokolov)
 
 Other
 ---------------------
