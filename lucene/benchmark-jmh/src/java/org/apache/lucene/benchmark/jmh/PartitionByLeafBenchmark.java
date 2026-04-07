@@ -45,6 +45,8 @@ import org.openjdk.jmh.infra.Blackhole;
  *   <li>arraysSortBinarySearchPartition: Arrays#sort then binary-search partition
  *   <li>arraysSortHybridPartition: Arrays#sort then picks linear or binary-search based on
  *       numLeaves vs numDocIds
+ *   <li>arraysSortBranchlessBinarySearchPartition: Arrays#sort then branchless binary-search
+ *       partition (cmov pattern)
  * </ul>
  */
 @BenchmarkMode(Mode.Throughput)
@@ -182,6 +184,14 @@ public class PartitionByLeafBenchmark {
     bh.consume(result);
   }
 
+  @Benchmark
+  public void arraysSortBranchlessBinarySearchPartition(Blackhole bh) {
+    int[] sorted = docIds;
+    Arrays.sort(sorted);
+    int[][] result = partitionSortedBranchlessBinarySearch(sorted);
+    bh.consume(result);
+  }
+
   /** Partition sorted doc IDs across leaves. Mirrors the logic in ReaderUtil#partitionByLeaf. */
   private int[][] partitionSorted(int[] sortedDocIds) {
     int[][] result = new int[numLeaves][];
@@ -244,5 +254,50 @@ public class PartitionByLeafBenchmark {
     }
     Arrays.fill(result, leafIdx, numLeaves, EMPTY_INT_ARRAY);
     return result;
+  }
+
+  /**
+   * Partition sorted doc IDs across leaves using branchless binary search on leaf boundaries. Same
+   * structure as the regular binary search partition, but uses a branchless search that compiles to
+   * cmov instructions, avoiding branch misprediction penalties.
+   */
+  private int[][] partitionSortedBranchlessBinarySearch(int[] sortedDocIds) {
+    int[][] result = new int[numLeaves][];
+    if (sortedDocIds.length == 0) {
+      Arrays.fill(result, EMPTY_INT_ARRAY);
+      return result;
+    }
+    int from = 0;
+    int leafIdx = 0;
+    for (; leafIdx < numLeaves && from < sortedDocIds.length; leafIdx++) {
+      int leafEnd = leafDocBase[leafIdx] + docsPerLeaf;
+      if (sortedDocIds[from] >= leafEnd) {
+        result[leafIdx] = EMPTY_INT_ARRAY;
+        continue;
+      }
+      int to = branchlessBinarySearch(sortedDocIds, from, sortedDocIds.length, leafEnd);
+      int count = to - from;
+      result[leafIdx] = new int[count];
+      System.arraycopy(sortedDocIds, from, result[leafIdx], 0, count);
+      from = to;
+    }
+    Arrays.fill(result, leafIdx, numLeaves, EMPTY_INT_ARRAY);
+    return result;
+  }
+
+  /**
+   * Branchless binary search returning the index of the first element >= target. Each iteration
+   * uses a conditional move (cmov) pattern instead of if/else branching.
+   */
+  private static int branchlessBinarySearch(int[] a, int from, int to, int target) {
+    int lo = from;
+    int len = to - from;
+    while (len > 1) {
+      int half = len >>> 1;
+      // This pattern compiles to cmov — no branch, no misprediction
+      lo = a[lo + half] < target ? lo + half : lo;
+      len = len - half;
+    }
+    return a[lo] < target ? lo + 1 : lo;
   }
 }
