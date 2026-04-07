@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.search;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
-
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.document.Document;
@@ -81,9 +79,7 @@ public class TestRegexpQuery extends LuceneTestCase {
             RegExp.ALL,
             RegExp.ASCII_CASE_INSENSITIVE | RegExp.CASE_INSENSITIVE,
             RegexpQuery.DEFAULT_PROVIDER,
-            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
-            MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE,
-            random().nextBoolean());
+            MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
     return searcher.count(query);
   }
 
@@ -171,7 +167,11 @@ public class TestRegexpQuery extends LuceneTestCase {
         };
     RegexpQuery query =
         new RegexpQuery(
-            newTerm("<quickBrown>"), RegExp.ALL, myProvider, DEFAULT_DETERMINIZE_WORK_LIMIT);
+            newTerm("<quickBrown>"),
+            RegExp.ALL,
+            0,
+            myProvider,
+            MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
     assertEquals(1, searcher.search(query, 5).totalHits.value());
   }
 
