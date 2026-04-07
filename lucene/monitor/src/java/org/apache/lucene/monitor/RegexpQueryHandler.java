@@ -94,10 +94,9 @@ public class RegexpQueryHandler implements CustomQueryHandler {
 
   @Override
   public QueryTree handleQuery(Query q, TermWeightor termWeightor) {
-    if (q instanceof RegexpQuery == false) {
+    if (!(q instanceof RegexpQuery query)) {
       return null;
     }
-    RegexpQuery query = (RegexpQuery) q;
     String regexp = parseOutRegexp(query.toString(""));
     String selected = selectLongestSubstring(regexp);
     Term term = new Term(query.getField(), selected + ngramSuffix);

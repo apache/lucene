@@ -251,10 +251,10 @@ public final class SynonymQuery extends Query {
         int newDoc = scorer.iterator().advance(doc);
         if (newDoc == doc) {
           final float freq;
-          if (scorer instanceof SynonymScorer) {
-            freq = ((SynonymScorer) scorer).freq();
-          } else if (scorer instanceof FreqBoostTermScorer) {
-            freq = ((FreqBoostTermScorer) scorer).freq();
+          if (scorer instanceof SynonymScorer ss) {
+            freq = ss.freq();
+          } else if (scorer instanceof FreqBoostTermScorer fbts) {
+            freq = fbts.freq();
           } else {
             assert scorer instanceof TermScorer;
             freq = ((TermScorer) scorer).freq();

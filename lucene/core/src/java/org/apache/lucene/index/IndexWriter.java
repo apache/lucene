@@ -1047,7 +1047,6 @@ public class IndexWriter
         // Must clone because we don't want the incoming NRT reader to "see" any changes this writer
         // now makes:
         segmentInfos = reader.segmentInfos.clone();
-
         SegmentInfos lastCommit;
         try {
           lastCommit = SegmentInfos.readCommit(directoryOrig, segmentInfos.getSegmentsFileName());
@@ -1111,7 +1110,9 @@ public class IndexWriter
 
         rollbackSegments = segmentInfos.createBackupSegmentInfos();
       }
-
+      if (infoStream.isEnabled("IW")) {
+        infoStream.message("IW", "init " + segmentInfos.toStringVerbose());
+      }
       commitUserData = new HashMap<>(segmentInfos.getUserData()).entrySet();
 
       pendingNumDocs.set(segmentInfos.totalMaxDoc());
@@ -1723,9 +1724,9 @@ public class IndexWriter
   private synchronized long tryModifyDocument(IndexReader readerIn, int docID, DocModifier toApply)
       throws IOException {
     final LeafReader reader;
-    if (readerIn instanceof LeafReader) {
+    if (readerIn instanceof LeafReader lr) {
       // Reader is already atomic: use the incoming docID:
-      reader = (LeafReader) readerIn;
+      reader = lr;
     } else {
       // Composite reader: lookup sub-reader and re-base docID:
       List<LeafReaderContext> leaves = readerIn.leaves();
@@ -2844,7 +2845,7 @@ public class IndexWriter
       ensureOpen(false);
 
       if (infoStream.isEnabled("IW")) {
-        infoStream.message("IW", "publishFlushedSegment " + newSegment);
+        infoStream.message("IW", "publishFlushedSegment " + newSegment.toStringVerbose());
       }
 
       if (globalPacket != null && globalPacket.any()) {
@@ -3343,6 +3344,13 @@ public class IndexWriter
       try {
         writer.addIndexesReaderMerge(merge);
         success = true;
+        if (infoStream != null && infoStream.isEnabled("IW")) {
+          if (merge.info == null) {
+            infoStream.message("IW", "dropped 100% deleted segment");
+          } else {
+            infoStream.message("IW", "merged new segment " + merge.info.toStringVerbose());
+          }
+        }
       } catch (Throwable t) {
         handleMergeException(t, merge);
       } finally {
@@ -4775,6 +4783,7 @@ public class IndexWriter
 
     if (merge.info != null && merge.isAborted() == false) {
       if (infoStream.isEnabled("IW")) {
+        infoStream.message("IW", "merged new segment " + merge.info.toStringVerbose());
         infoStream.message(
             "IW",
             "merge time "
