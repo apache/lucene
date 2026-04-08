@@ -330,7 +330,7 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
     TopGroups<T> singletonTopGroups =
         control.getIndexSearcher().search(topLevel, topGroupsCollectorManager);
 
-    List<TopGroups<T>> shardTopGroups = new ArrayList<>();
+    List<TopGroups<T>> shardTopGroups = new ArrayList<>(shards.length);
     for (Shard shard : shards) {
       TopGroupsCollectorManager<T> scm =
           new TopGroupsCollectorManager<>(

@@ -1528,7 +1528,7 @@ public class TestGrouping extends LuceneTestCase {
 
     if (mergedTopGroups != null) {
       // Now 2nd pass:
-      final List<TopGroups<BytesRef>> shardTopGroups = new ArrayList<>();
+      final List<TopGroups<BytesRef>> shardTopGroups = new ArrayList<>(subSearchers.length);
       for (int shardIDX = 0; shardIDX < subSearchers.length; shardIDX++) {
         final TopGroupsCollector<?> secondPassCollector =
             createSecondPassCollector(
