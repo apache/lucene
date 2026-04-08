@@ -114,8 +114,8 @@ public class SpatialDocMaker extends DocMaker {
     RecursivePrefixTreeStrategy strategy = new RecursivePrefixTreeStrategy(grid, spatialField);
     strategy.setPointsOnly(config.get("spatial.docPointsOnly", false));
     final boolean pruneLeafyBranches = config.get("spatial.pruneLeafyBranches", true);
-    if (grid instanceof PackedQuadPrefixTree) {
-      ((PackedQuadPrefixTree) grid).setPruneLeafyBranches(pruneLeafyBranches);
+    if (grid instanceof PackedQuadPrefixTree pqpt) {
+      pqpt.setPruneLeafyBranches(pruneLeafyBranches);
       strategy.setPruneLeafyBranches(
           false); // always leave it to packed grid, even though it isn't the same
     } else {

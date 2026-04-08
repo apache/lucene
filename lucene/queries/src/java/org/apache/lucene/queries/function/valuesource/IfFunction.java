@@ -145,8 +145,7 @@ public class IfFunction extends BoolFunction {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof IfFunction)) return false;
-    IfFunction other = (IfFunction) o;
+    if (!(o instanceof IfFunction other)) return false;
     return ifSource.equals(other.ifSource)
         && trueSource.equals(other.trueSource)
         && falseSource.equals(other.falseSource);

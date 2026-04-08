@@ -190,8 +190,8 @@ public class FSTCompletionBuilder {
   public FSTCompletion build() throws IOException {
     this.automaton = buildAutomaton(sorter);
 
-    if (sorter instanceof Closeable) {
-      ((Closeable) sorter).close();
+    if (sorter instanceof Closeable closeable) {
+      closeable.close();
     }
 
     return new FSTCompletion(automaton);

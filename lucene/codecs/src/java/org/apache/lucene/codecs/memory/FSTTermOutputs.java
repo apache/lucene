@@ -101,11 +101,11 @@ class FSTTermOutputs extends Outputs<FSTTermOutputs.TermData> {
     public boolean equals(Object other_) {
       if (other_ == this) {
         return true;
-      } else if (!(other_ instanceof FSTTermOutputs.TermData)) {
-        return false;
       }
-      TermData other = (TermData) other_;
-      return statsEqual(this, other) && bytesEqual(this, other);
+      if (other_ instanceof FSTTermOutputs.TermData other) {
+        return statsEqual(this, other) && bytesEqual(this, other);
+      }
+      return false;
     }
   }
 

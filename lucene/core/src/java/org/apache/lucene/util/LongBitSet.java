@@ -430,10 +430,9 @@ public final class LongBitSet implements Accountable {
     if (this == o) {
       return true;
     }
-    if (!(o instanceof LongBitSet)) {
+    if (!(o instanceof LongBitSet other)) {
       return false;
     }
-    LongBitSet other = (LongBitSet) o;
     if (numBits != other.numBits) {
       return false;
     }
