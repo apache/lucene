@@ -48,6 +48,8 @@ public class ControlledRealTimeReopenThread<T> extends Thread implements Closeab
   /// Releasing a permit to this semaphore is a signal to the background thread to check again.
   private final Semaphore reloadRequests = new Semaphore(0);
 
+  private final Object waitingRoom = new Object();
+
   /**
    * Create a new thread instance.
    *
@@ -96,9 +98,9 @@ public class ControlledRealTimeReopenThread<T> extends Thread implements Closeab
 
     @Override
     public void afterRefresh(boolean didRefresh) {
-      synchronized (ControlledRealTimeReopenThread.this) {
+      synchronized (waitingRoom) {
         searchingGen = refreshStartGen;
-        ControlledRealTimeReopenThread.this.notifyAll();
+        waitingRoom.notifyAll();
       }
     }
   }
@@ -121,8 +123,8 @@ public class ControlledRealTimeReopenThread<T> extends Thread implements Closeab
     searchingGen = Long.MAX_VALUE;
 
     // Wake up waiters.
-    synchronized (this) {
-      notifyAll();
+    synchronized (waitingRoom) {
+      waitingRoom.notifyAll();
     }
   }
 
@@ -154,33 +156,34 @@ public class ControlledRealTimeReopenThread<T> extends Thread implements Closeab
    *     this instance was closed. True might also be returned if this call returned due to a {@link
    *     #close()}
    */
-  public synchronized boolean waitForGeneration(long targetGen, int maxMS)
-      throws InterruptedException {
-    if (targetGen > searchingGen) {
-      waitingGen.updateAndGet(v -> Math.max(v, targetGen));
+  public boolean waitForGeneration(long targetGen, int maxMS) throws InterruptedException {
+    synchronized (waitingRoom) {
+      if (targetGen > searchingGen) {
+        waitingGen.updateAndGet(v -> Math.max(v, targetGen));
 
-      // Notify the reopen thread that the waitingGen has
-      // changed, so it may wake up and realize it should
-      // not sleep for much or any longer before reopening:
-      reloadRequests.release();
+        // Notify the reopen thread that the waitingGen has
+        // changed, so it may wake up and realize it should
+        // not sleep for much or any longer before reopening:
+        reloadRequests.release();
 
-      long startNS = System.nanoTime();
+        long startNS = System.nanoTime();
 
-      while (targetGen > searchingGen) {
-        if (maxMS < 0) {
-          wait();
-        } else {
-          long msLeft = maxMS - NANOSECONDS.toMillis(System.nanoTime() - startNS);
-          if (msLeft <= 0) {
-            return false;
+        while (targetGen > searchingGen) {
+          if (maxMS < 0) {
+            waitingRoom.wait();
           } else {
-            wait(msLeft);
+            long msLeft = maxMS - NANOSECONDS.toMillis(System.nanoTime() - startNS);
+            if (msLeft <= 0) {
+              return false;
+            } else {
+              waitingRoom.wait(msLeft);
+            }
           }
         }
       }
-    }
 
-    return true;
+      return true;
+    }
   }
 
   @Override
