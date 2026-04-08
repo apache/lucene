@@ -32,6 +32,39 @@ import org.apache.lucene.util.SmallFloat;
 public class BM25Similarity extends Similarity {
   private final float k1;
   private final float b;
+  private final float k3;
+
+  /**
+   * BM25 with the supplied parameter values.
+   *
+   * @param k1 Controls non-linear term frequency normalization (saturation).
+   * @param b Controls to what degree document length normalizes tf values.
+   * @param discountOverlaps True if overlap tokens (tokens with a position of increment of zero)
+   *     are discounted from the document's length.
+   * @param k3 Controls query-side term frequency saturation. When duplicate terms appear in a
+   *     query, their boost is computed as ((k3 + 1) * qtf) / (k3 + qtf) instead of linear summing.
+   *     A negative value disables saturation (linear behavior). Common values are 7 or 8.
+   * @throws IllegalArgumentException if {@code k1} is infinite or negative
+   * @throws IllegalArgumentException if {@code b} is not within the range {@code [0..1]}
+   * @throws IllegalArgumentException if {@code k3} is NaN or infinite
+   */
+  public BM25Similarity(float k1, float b, boolean discountOverlaps, float k3) {
+    super(discountOverlaps);
+    if (Float.isFinite(k1) == false || k1 < 0) {
+      throw new IllegalArgumentException(
+          "illegal k1 value: " + k1 + ", must be a non-negative finite value");
+    }
+    if (Float.isNaN(b) || b < 0 || b > 1) {
+      throw new IllegalArgumentException("illegal b value: " + b + ", must be between 0 and 1");
+    }
+    if (Float.isNaN(k3) || Float.isInfinite(k3)) {
+      throw new IllegalArgumentException(
+          "illegal k3 value: " + k3 + ", must be a finite value (negative to disable)");
+    }
+    this.k1 = k1;
+    this.b = b;
+    this.k3 = k3;
+  }
 
   /**
    * BM25 with the supplied parameter values.
@@ -44,16 +77,7 @@ public class BM25Similarity extends Similarity {
    *     within the range {@code [0..1]}
    */
   public BM25Similarity(float k1, float b, boolean discountOverlaps) {
-    super(discountOverlaps);
-    if (Float.isFinite(k1) == false || k1 < 0) {
-      throw new IllegalArgumentException(
-          "illegal k1 value: " + k1 + ", must be a non-negative finite value");
-    }
-    if (Float.isNaN(b) || b < 0 || b > 1) {
-      throw new IllegalArgumentException("illegal b value: " + b + ", must be between 0 and 1");
-    }
-    this.k1 = k1;
-    this.b = b;
+    this(k1, b, discountOverlaps, -1f);
   }
 
   /**
@@ -65,7 +89,7 @@ public class BM25Similarity extends Similarity {
    *     within the range {@code [0..1]}
    */
   public BM25Similarity(float k1, float b) {
-    this(k1, b, true);
+    this(k1, b, true, -1f);
   }
 
   /**
@@ -82,7 +106,7 @@ public class BM25Similarity extends Similarity {
    *     are discounted from the document's length.
    */
   public BM25Similarity(boolean discountOverlaps) {
-    this(1.2f, 0.75f, discountOverlaps);
+    this(1.2f, 0.75f, discountOverlaps, -1f);
   }
 
   /**
@@ -95,7 +119,20 @@ public class BM25Similarity extends Similarity {
    * </ul>
    */
   public BM25Similarity() {
-    this(1.2f, 0.75f, true);
+    this(1.2f, 0.75f, true, -1f);
+  }
+
+  /**
+   * Computes the query-term weight using BM25's k3 saturation formula: ((k3 + 1) * qtf) / (k3 +
+   * qtf). When k3 is negative (disabled), falls back to linear weighting where the weight equals
+   * the query term frequency.
+   */
+  @Override
+  public float computeQueryTermWeight(int queryTermFrequency) {
+    if (k3 < 0) {
+      return (float) queryTermFrequency;
+    }
+    return ((k3 + 1f) * queryTermFrequency) / (k3 + queryTermFrequency);
   }
 
   /** Implemented as <code>log(1 + (docCount - docFreq + 0.5)/(docFreq + 0.5))</code>. */
@@ -307,7 +344,7 @@ public class BM25Similarity extends Similarity {
 
   @Override
   public String toString() {
-    return "BM25(k1=" + k1 + ",b=" + b + ")";
+    return "BM25(k1=" + k1 + ",b=" + b + (k3 >= 0 ? ",k3=" + k3 : "") + ")";
   }
 
   /**
@@ -326,5 +363,13 @@ public class BM25Similarity extends Similarity {
    */
   public final float getB() {
     return b;
+  }
+
+  /**
+   * Returns the <code>k3</code> parameter for query-side term frequency saturation. A negative
+   * value means saturation is disabled.
+   */
+  public final float getK3() {
+    return k3;
   }
 }

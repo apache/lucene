@@ -50,8 +50,8 @@ class OrderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
       }
     }
     deduplicated.add(RepeatingIntervalsSource.build(current.get(0), current.size()));
-    if (deduplicated.size() == 1 && deduplicated.get(0) instanceof RepeatingIntervalsSource) {
-      ((RepeatingIntervalsSource) deduplicated.get(0)).setName("ORDERED");
+    if (deduplicated.size() == 1 && deduplicated.get(0) instanceof RepeatingIntervalsSource ris) {
+      ris.setName("ORDERED");
     }
     return deduplicated;
   }
@@ -86,9 +86,10 @@ class OrderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
 
   @Override
   public boolean equals(Object other) {
-    if (other instanceof OrderedIntervalsSource == false) return false;
-    OrderedIntervalsSource s = (OrderedIntervalsSource) other;
-    return Objects.equals(subSources, s.subSources);
+    if (other instanceof OrderedIntervalsSource s) {
+      return Objects.equals(subSources, s.subSources);
+    }
+    return false;
   }
 
   @Override

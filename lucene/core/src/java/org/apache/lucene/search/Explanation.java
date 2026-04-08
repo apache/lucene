@@ -16,10 +16,8 @@
  */
 package org.apache.lucene.search;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
@@ -70,13 +68,13 @@ public final class Explanation {
     this.match = match;
     this.value = Objects.requireNonNull(value);
     this.description = Objects.requireNonNull(description);
-    this.details = Collections.unmodifiableList(new ArrayList<>(details));
+    this.details = List.copyOf(details);
     for (Explanation detail : details) {
       Objects.requireNonNull(detail);
     }
   }
 
-  /** Indicates whether or not this Explanation models a match. */
+  /** Indicates whether this Explanation models a match. */
   public boolean isMatch() {
     return match;
   }
