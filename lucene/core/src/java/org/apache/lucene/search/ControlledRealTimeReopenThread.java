@@ -20,6 +20,7 @@ import static java.util.concurrent.TimeUnit.NANOSECONDS;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.index.IndexWriter;
@@ -53,30 +54,32 @@ public class ControlledRealTimeReopenThread<T> extends Thread implements Closeab
    * <p>Potentially mark it as {@linkplain #setDaemon(boolean) a daemon} and {@link #start()} it
    * subsequently. Call {@link #close()} to cleanly stop this thread.
    *
-   * @param targetMaxStaleSec Maximum time until a new reader must be opened; this sets the upper
-   *     bound on how slowly reopens may occur, when no caller is waiting for a specific generation
-   *     to become visible.
-   * @param targetMinStaleSec Minimum time until a new reader can be opened; if a refresh occurred
+   * @param targetMaxStale Maximum time until a new reader must be opened; this sets the upper bound
+   *     on how slowly reopens may occur, when no caller is waiting for a specific generation to
+   *     become visible.
+   * @param targetMinStale Minimum time until a new reader can be opened; if a refresh occurred
    *     recently, it will wait at least this time until another refresh, even if a thread is
    *     waiting for it.
    */
   public ControlledRealTimeReopenThread(
       IndexWriter writer,
       ReferenceManager<T> manager,
-      double targetMaxStaleSec,
-      double targetMinStaleSec) {
-    if (targetMaxStaleSec < targetMinStaleSec) {
-      throw new IllegalArgumentException(
-          "targetMaxScaleSec (= "
-              + targetMaxStaleSec
-              + ") < targetMinStaleSec (="
-              + targetMinStaleSec
-              + ")");
-    }
+      Duration targetMaxStale,
+      Duration targetMinStale) {
     this.writer = writer;
     this.manager = manager;
-    this.targetMaxStaleNS = (long) (1000000000 * targetMaxStaleSec);
-    this.targetMinStaleNS = (long) (1000000000 * targetMinStaleSec);
+    this.targetMaxStaleNS = targetMaxStale.toNanos();
+    this.targetMinStaleNS = targetMinStale.toNanos();
+
+    if (targetMaxStaleNS < targetMinStaleNS) {
+      throw new IllegalArgumentException(
+          "targetMaxScaleSec (= "
+              + targetMaxStale
+              + ") < targetMinStaleSec (="
+              + targetMinStale
+              + ")");
+    }
+
     manager.addListener(new HandleRefresh());
   }
 
@@ -194,7 +197,6 @@ public class ControlledRealTimeReopenThread<T> extends Thread implements Closeab
           lastReopenStartNS + (hasWaiting ? targetMinStaleNS : targetMaxStaleNS);
 
       final long sleepNS = nextReopenStartNS - System.nanoTime();
-
       if (sleepNS > 0) {
         try {
           reloadRequests.tryAcquire(sleepNS, NANOSECONDS);
