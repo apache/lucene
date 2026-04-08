@@ -647,8 +647,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
 
   private static SortField.Type getSortFieldType(SortField sortField) {
     // We expect the sortField to be SortedNumericSortField
-    if (sortField instanceof SortedNumericSortField) {
-      return ((SortedNumericSortField) sortField).getNumericType();
+    if (sortField instanceof SortedNumericSortField snsf) {
+      return snsf.getNumericType();
     } else {
       return sortField.getType();
     }
