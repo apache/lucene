@@ -101,7 +101,7 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
     }
   }
 
-  // We share collection stats for these fields on each node
+  // We share field stats for these fields on each node
   // reopen:
   private final String[] fieldsToShare = new String[] {"body", "title"};
 
@@ -109,7 +109,7 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
   // other nodes.  This is just a mock (since it goes and
   // directly updates all other nodes, in RAM)... in a real
   // env this would hit the wire, sending version &
-  // collection stats to all other nodes:
+  // field stats to all other nodes:
   void broadcastNodeReopen(int nodeID, long version, IndexSearcher newSearcher) throws IOException {
 
     if (VERBOSE) {
@@ -122,16 +122,16 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
               + newSearcher.getIndexReader().maxDoc());
     }
 
-    // Broadcast new collection stats for this node to all
+    // Broadcast new field stats for this node to all
     // other nodes:
     for (String field : fieldsToShare) {
-      final FieldStatistics stats = newSearcher.collectionStatistics(field);
+      final FieldStatistics stats = newSearcher.fieldStatistics(field);
       if (stats != null) {
         for (NodeState node : nodes) {
-          // Don't put my own collection stats into the cache;
+          // Don't put my own field stats into the cache;
           // we pull locally:
           if (node.myNodeID != nodeID) {
-            node.collectionStatsCache.put(new FieldAndShardVersion(nodeID, version, field), stats);
+            node.fieldStatsCache.put(new FieldAndShardVersion(nodeID, version, field), stats);
           }
         }
       }
@@ -204,7 +204,7 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
     // local cache...?  And still LRU otherwise (for the
     // still-live searchers).
 
-    private final Map<FieldAndShardVersion, FieldStatistics> collectionStatsCache =
+    private final Map<FieldAndShardVersion, FieldStatistics> fieldStatsCache =
         new ConcurrentHashMap<>();
     private final Map<TermAndShardVersion, TermStatistics> termStatsCache =
         new ConcurrentHashMap<>();
@@ -294,7 +294,7 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
       }
 
       @Override
-      public FieldStatistics collectionStatistics(String field) throws IOException {
+      public FieldStatistics fieldStatistics(String field) throws IOException {
         // TODO: we could compute this on init and cache,
         // since we are re-inited whenever any nodes have a
         // new reader
@@ -308,9 +308,9 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
               new FieldAndShardVersion(nodeID, nodeVersions[nodeID], field);
           final FieldStatistics nodeStats;
           if (nodeID == myNodeID) {
-            nodeStats = super.collectionStatistics(field);
+            nodeStats = super.fieldStatistics(field);
           } else {
-            nodeStats = collectionStatsCache.get(key);
+            nodeStats = fieldStatsCache.get(key);
           }
           if (nodeStats == null) {
             continue; // field not in sub at all

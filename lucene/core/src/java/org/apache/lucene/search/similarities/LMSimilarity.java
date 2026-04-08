@@ -67,8 +67,8 @@ public abstract class LMSimilarity extends SimilarityBase {
    */
   @Override
   protected void fillBasicStats(
-      BasicStats stats, FieldStatistics collectionStats, TermStatistics termStats) {
-    super.fillBasicStats(stats, collectionStats, termStats);
+      BasicStats stats, FieldStatistics fieldStats, TermStatistics termStats) {
+    super.fillBasicStats(stats, fieldStats, termStats);
     LMStats lmStats = (LMStats) stats;
     lmStats.setCollectionProbability(collectionModel.computeProbability(stats));
   }

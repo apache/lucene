@@ -111,10 +111,9 @@ public abstract class SpanWeight extends Weight {
             searcher.termStatistics(entry.getKey(), ts.docFreq(), ts.totalTermFreq());
       }
     }
-    FieldStatistics collectionStats = searcher.collectionStatistics(query.getField());
+    FieldStatistics fieldStats = searcher.fieldStatistics(query.getField());
     if (termUpTo > 0) {
-      return similarity.scorer(
-          boost, collectionStats, ArrayUtil.copyOfSubArray(termStats, 0, termUpTo));
+      return similarity.scorer(boost, fieldStats, ArrayUtil.copyOfSubArray(termStats, 0, termUpTo));
     } else {
       return null; // no terms at all exist, we won't use similarity
     }

@@ -53,11 +53,11 @@ public abstract class SimilarityBase extends Similarity {
 
   @Override
   public final SimScorer scorer(
-      float boost, FieldStatistics collectionStats, TermStatistics... termStats) {
+      float boost, FieldStatistics fieldStats, TermStatistics... termStats) {
     SimScorer[] weights = new SimScorer[termStats.length];
     for (int i = 0; i < termStats.length; i++) {
-      BasicStats stats = newStats(collectionStats.field(), boost);
-      fillBasicStats(stats, collectionStats, termStats[i]);
+      BasicStats stats = newStats(fieldStats.field(), boost);
+      fillBasicStats(stats, fieldStats, termStats[i]);
       weights[i] = new BasicSimScorer(stats);
     }
     if (weights.length == 1) {
@@ -77,16 +77,15 @@ public abstract class SimilarityBase extends Similarity {
    * this method to fill additional stats.
    */
   protected void fillBasicStats(
-      BasicStats stats, FieldStatistics collectionStats, TermStatistics termStats) {
+      BasicStats stats, FieldStatistics fieldStats, TermStatistics termStats) {
     // TODO: validate this for real, somewhere else
-    assert termStats.totalTermFreq() <= collectionStats.sumTotalTermFreq();
-    assert termStats.docFreq() <= collectionStats.sumDocFreq();
+    assert termStats.totalTermFreq() <= fieldStats.sumTotalTermFreq();
+    assert termStats.docFreq() <= fieldStats.sumDocFreq();
 
     // TODO: add sumDocFreq for field (numberOfFieldPostings)
-    stats.setNumberOfDocuments(collectionStats.docCount());
-    stats.setNumberOfFieldTokens(collectionStats.sumTotalTermFreq());
-    stats.setAvgFieldLength(
-        collectionStats.sumTotalTermFreq() / (double) collectionStats.docCount());
+    stats.setNumberOfDocuments(fieldStats.docCount());
+    stats.setNumberOfFieldTokens(fieldStats.sumTotalTermFreq());
+    stats.setAvgFieldLength(fieldStats.sumTotalTermFreq() / (double) fieldStats.docCount());
     stats.setDocFreq(termStats.docFreq());
     stats.setTotalTermFreq(termStats.totalTermFreq());
   }

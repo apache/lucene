@@ -53,9 +53,9 @@ public class ClassicSimilarity extends TFIDFSimilarity {
   }
 
   @Override
-  public Explanation idfExplain(FieldStatistics collectionStats, TermStatistics termStats) {
+  public Explanation idfExplain(FieldStatistics fieldStats, TermStatistics termStats) {
     final long df = termStats.docFreq();
-    final long docCount = collectionStats.docCount();
+    final long docCount = fieldStats.docCount();
     final float idf = idf(df, docCount);
     return Explanation.match(
         idf,

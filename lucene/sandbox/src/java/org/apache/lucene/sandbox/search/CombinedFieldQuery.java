@@ -72,8 +72,8 @@ import org.apache.lucene.util.SmallFloat;
  *
  * <ol>
  *   <li>Given a list of fields and weights, it pretends there is a synthetic combined field where
- *       all terms have been indexed. It computes new term and collection statistics for this
- *       combined field.
+ *       all terms have been indexed. It computes new term and field statistics for this combined
+ *       field.
  *   <li>It uses a disjunction iterator and {@link IndexSearcher#getSimilarity} to score documents.
  * </ol>
  *
@@ -321,28 +321,28 @@ public final class CombinedFieldQuery extends Query implements Accountable {
         }
       }
       if (docFreq > 0) {
-        FieldStatistics pseudoCollectionStats = mergeCollectionStatistics(searcher);
+        FieldStatistics pseudoFieldStats = mergeFieldStatistics(searcher);
         TermStatistics pseudoTermStatistics =
             new TermStatistics(new BytesRef("pseudo_term"), docFreq, Math.max(1, totalTermFreq));
         this.simWeight =
-            searcher.getSimilarity().scorer(boost, pseudoCollectionStats, pseudoTermStatistics);
+            searcher.getSimilarity().scorer(boost, pseudoFieldStats, pseudoTermStatistics);
       } else {
         this.simWeight = null;
       }
     }
 
-    private FieldStatistics mergeCollectionStatistics(IndexSearcher searcher) throws IOException {
+    private FieldStatistics mergeFieldStatistics(IndexSearcher searcher) throws IOException {
       long maxDoc = 0;
       long docCount = 0;
       long sumTotalTermFreq = 0;
       long sumDocFreq = 0;
       for (FieldAndWeight fieldWeight : fieldAndWeights.values()) {
-        FieldStatistics collectionStats = searcher.collectionStatistics(fieldWeight.field);
-        if (collectionStats != null) {
-          maxDoc = Math.max(collectionStats.maxDoc(), maxDoc);
-          docCount = Math.max(collectionStats.docCount(), docCount);
-          sumDocFreq = Math.max(collectionStats.sumDocFreq(), sumDocFreq);
-          sumTotalTermFreq += (double) fieldWeight.weight * collectionStats.sumTotalTermFreq();
+        FieldStatistics fieldStats = searcher.fieldStatistics(fieldWeight.field);
+        if (fieldStats != null) {
+          maxDoc = Math.max(fieldStats.maxDoc(), maxDoc);
+          docCount = Math.max(fieldStats.docCount(), docCount);
+          sumDocFreq = Math.max(fieldStats.sumDocFreq(), sumDocFreq);
+          sumTotalTermFreq += (double) fieldWeight.weight * fieldStats.sumTotalTermFreq();
         }
       }
 

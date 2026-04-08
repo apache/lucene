@@ -40,8 +40,8 @@ public abstract class PerFieldSimilarityWrapper extends Similarity {
 
   @Override
   public final SimScorer scorer(
-      float boost, FieldStatistics collectionStats, TermStatistics... termStats) {
-    return get(collectionStats.field()).scorer(boost, collectionStats, termStats);
+      float boost, FieldStatistics fieldStats, TermStatistics... termStats) {
+    return get(fieldStats.field()).scorer(boost, fieldStats, termStats);
   }
 
   /** Returns a {@link Similarity} for scoring a field. */

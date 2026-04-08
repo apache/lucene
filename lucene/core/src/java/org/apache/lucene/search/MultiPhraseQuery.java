@@ -233,9 +233,7 @@ public class MultiPhraseQuery extends Query {
           return null; // none of the terms were found, we won't use sim at all
         } else {
           return similarity.scorer(
-              boost,
-              searcher.collectionStatistics(field),
-              allTermStats.toArray(TermStatistics[]::new));
+              boost, searcher.fieldStatistics(field), allTermStats.toArray(TermStatistics[]::new));
         }
       }
 

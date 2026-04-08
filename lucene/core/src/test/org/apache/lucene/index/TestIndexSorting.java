@@ -2295,9 +2295,8 @@ public class TestIndexSorting extends LuceneTestCase {
     }
 
     @Override
-    public SimScorer scorer(
-        float boost, FieldStatistics collectionStats, TermStatistics... termStats) {
-      return in.scorer(boost, collectionStats, termStats);
+    public SimScorer scorer(float boost, FieldStatistics fieldStats, TermStatistics... termStats) {
+      return in.scorer(boost, fieldStats, termStats);
     }
   }
 

@@ -102,8 +102,7 @@ public class TestMaxTermFrequency extends LuceneTestCase {
     }
 
     @Override
-    public SimScorer scorer(
-        float boost, FieldStatistics collectionStats, TermStatistics... termStats) {
+    public SimScorer scorer(float boost, FieldStatistics fieldStats, TermStatistics... termStats) {
       return new SimScorer() {
 
         @Override

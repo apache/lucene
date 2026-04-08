@@ -44,11 +44,10 @@ public class MultiSimilarity extends Similarity {
   }
 
   @Override
-  public SimScorer scorer(
-      float boost, FieldStatistics collectionStats, TermStatistics... termStats) {
+  public SimScorer scorer(float boost, FieldStatistics fieldStats, TermStatistics... termStats) {
     SimScorer[] subScorers = new SimScorer[sims.length];
     for (int i = 0; i < subScorers.length; i++) {
-      subScorers[i] = sims[i].scorer(boost, collectionStats, termStats);
+      subScorers[i] = sims[i].scorer(boost, fieldStats, termStats);
     }
     return new MultiSimScorer(subScorers);
   }

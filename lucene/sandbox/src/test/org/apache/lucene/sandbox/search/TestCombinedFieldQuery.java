@@ -586,13 +586,12 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     }
 
     @Override
-    public SimScorer scorer(
-        float boost, FieldStatistics collectionStats, TermStatistics... termStats) {
-      return new BM25Similarity().scorer(boost, collectionStats, termStats);
+    public SimScorer scorer(float boost, FieldStatistics fieldStats, TermStatistics... termStats) {
+      return new BM25Similarity().scorer(boost, fieldStats, termStats);
     }
   }
 
-  public void testOverrideCollectionStatistics() throws IOException {
+  public void testOverrideFieldStatistics() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig();
     Similarity similarity = randomCompatibleSimilarity();
@@ -639,8 +638,8 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     IndexSearcher searcher =
         new IndexSearcher(reader) {
           @Override
-          public FieldStatistics collectionStatistics(String field) throws IOException {
-            FieldStatistics shardStatistics = super.collectionStatistics(field);
+          public FieldStatistics fieldStatistics(String field) throws IOException {
+            FieldStatistics shardStatistics = super.fieldStatistics(field);
             int extraSumTotalTermFreq;
             if (field.equals("a")) {
               extraSumTotalTermFreq = extraSumTotalTermFreqA;

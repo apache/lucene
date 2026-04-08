@@ -188,8 +188,7 @@ final class JustCompileSearch {
   static final class JustCompileSimilarity extends Similarity {
 
     @Override
-    public SimScorer scorer(
-        float boost, FieldStatistics collectionStats, TermStatistics... termStats) {
+    public SimScorer scorer(float boost, FieldStatistics fieldStats, TermStatistics... termStats) {
       throw new UnsupportedOperationException(UNSUPPORTED_MSG);
     }
 

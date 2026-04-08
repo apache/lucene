@@ -187,7 +187,7 @@ public class TestSimilarityBase extends LuceneTestCase {
     return stats;
   }
 
-  private FieldStatistics toCollectionStats(BasicStats stats) {
+  private FieldStatistics toFieldStats(BasicStats stats) {
     long sumTtf = stats.getNumberOfFieldTokens();
     long sumDf;
     if (sumTtf == -1) {
@@ -217,8 +217,7 @@ public class TestSimilarityBase extends LuceneTestCase {
     for (SimilarityBase sim : sims) {
       BasicStats realStats =
           ((BasicSimScorer)
-                  sim.scorer(
-                      (float) stats.getBoost(), toCollectionStats(stats), toTermStats(stats)))
+                  sim.scorer((float) stats.getBoost(), toFieldStats(stats), toTermStats(stats)))
               .stats;
       float score = (float) sim.score(realStats, freq, docLen);
       float explScore =
@@ -471,7 +470,7 @@ public class TestSimilarityBase extends LuceneTestCase {
     BasicStats stats = createStats();
     BasicStats realStats =
         ((BasicSimScorer)
-                sim.scorer((float) stats.getBoost(), toCollectionStats(stats), toTermStats(stats)))
+                sim.scorer((float) stats.getBoost(), toFieldStats(stats), toTermStats(stats)))
             .stats;
     float score = (float) sim.score(realStats, FREQ, DOC_LEN);
     assertEquals(sim.toString() + " score not correct.", gold, score, FLOAT_EPSILON);

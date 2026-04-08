@@ -218,7 +218,7 @@ public class TestMemoryIndex extends LuceneTestCase {
 
           @Override
           public SimScorer scorer(
-              float boost, FieldStatistics collectionStats, TermStatistics... termStats) {
+              float boost, FieldStatistics fieldStats, TermStatistics... termStats) {
             throw new UnsupportedOperationException();
           }
         });

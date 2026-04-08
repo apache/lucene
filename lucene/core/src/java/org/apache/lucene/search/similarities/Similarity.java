@@ -71,7 +71,7 @@ import org.apache.lucene.util.SmallFloat;
  * <ol>
  *   <li>The {@link #scorer(float, FieldStatistics, TermStatistics...)} method is called a single
  *       time, allowing the implementation to compute any statistics (such as IDF, average document
- *       length, etc) across <i>the entire collection</i>. The {@link TermStatistics} and {@link
+ *       length, etc) across <i>the entire field</i>. The {@link TermStatistics} and {@link
  *       FieldStatistics} passed in already contain all of the raw statistics involved, so a
  *       Similarity can freely use any combination of statistics without causing any additional I/O.
  *       Lucene makes no assumption about what is stored in the returned {@link
@@ -178,23 +178,22 @@ public abstract class Similarity {
   }
 
   /**
-   * Compute any collection-level weight (e.g. IDF, average document length, etc) needed for scoring
-   * a query.
+   * Compute any field-level weight (e.g. IDF, average document length, etc) needed for scoring a
+   * query.
    *
    * @param boost a multiplicative factor to apply to the produces scores
-   * @param collectionStats collection-level statistics, such as the number of tokens in the
-   *     collection.
+   * @param fieldStats field-level statistics, such as the number of tokens in the field.
    * @param termStats term-level statistics, such as the document frequency of a term across the
-   *     collection.
+   *     field.
    * @return SimWeight object with the information this Similarity needs to score a query.
    */
   public abstract SimScorer scorer(
-      float boost, FieldStatistics collectionStats, TermStatistics... termStats);
+      float boost, FieldStatistics fieldStats, TermStatistics... termStats);
 
   /**
-   * Stores the weight for a query across the indexed collection. This abstract implementation is
-   * empty; descendants of {@code Similarity} should subclass {@code SimWeight} and define the
-   * statistics they require in the subclass. Examples include idf, average field length, etc.
+   * Stores the weight for a query across the indexed field. This abstract implementation is empty;
+   * descendants of {@code Similarity} should subclass {@code SimWeight} and define the statistics
+   * they require in the subclass. Examples include idf, average field length, etc.
    */
   public abstract static class SimScorer {
 

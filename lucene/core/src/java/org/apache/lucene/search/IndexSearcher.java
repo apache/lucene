@@ -1131,7 +1131,7 @@ public class IndexSearcher {
    *
    * @lucene.experimental
    */
-  public FieldStatistics collectionStatistics(String field) throws IOException {
+  public FieldStatistics fieldStatistics(String field) throws IOException {
     assert field != null;
     long docCount = 0;
     long sumTotalTermFreq = 0;

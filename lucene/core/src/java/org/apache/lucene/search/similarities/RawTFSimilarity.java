@@ -33,8 +33,7 @@ public class RawTFSimilarity extends Similarity {
   }
 
   @Override
-  public SimScorer scorer(
-      float boost, FieldStatistics collectionStats, TermStatistics... termStats) {
+  public SimScorer scorer(float boost, FieldStatistics fieldStats, TermStatistics... termStats) {
     return new SimScorer() {
       @Override
       public float score(float freq, long norm) {

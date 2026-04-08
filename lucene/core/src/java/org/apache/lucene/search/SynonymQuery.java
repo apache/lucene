@@ -207,7 +207,7 @@ public final class SynonymQuery extends Query {
       super(query);
       assert scoreMode.needsScores();
       this.scoreMode = scoreMode;
-      FieldStatistics collectionStats = searcher.collectionStatistics(field);
+      FieldStatistics fieldStats = searcher.fieldStatistics(field);
       long docFreq = 0;
       long totalTermFreq = 0;
       termStates = new TermStates[terms.length];
@@ -226,7 +226,7 @@ public final class SynonymQuery extends Query {
       if (docFreq > 0) {
         TermStatistics pseudoStats =
             new TermStatistics(new BytesRef("synonym pseudo-term"), docFreq, totalTermFreq);
-        this.simWeight = similarity.scorer(boost, collectionStats, pseudoStats);
+        this.simWeight = similarity.scorer(boost, fieldStats, pseudoStats);
       } else {
         this.simWeight = null; // no terms exist at all, we won't use similarity
       }

@@ -50,8 +50,7 @@ public class TestFieldInvertState extends LuceneTestCase {
     }
 
     @Override
-    public SimScorer scorer(
-        float boost, FieldStatistics collectionStats, TermStatistics... termStats) {
+    public SimScorer scorer(float boost, FieldStatistics fieldStats, TermStatistics... termStats) {
       throw new UnsupportedOperationException();
     }
   }
