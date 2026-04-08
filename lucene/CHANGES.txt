@@ -293,6 +293,8 @@ Optimizations
 
 * GITHUB#15886: Cache frozen FieldType to skip redundant schema validation. (Tim Brooks)
 
+* GITHUB#15886: Skip max score computation when sorting by relevance in BlockGroupingCollector (Binlong Gao)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
