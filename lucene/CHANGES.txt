@@ -76,6 +76,9 @@ API Changes
 
 * GITHUB#15627 : Deferred lambda in TermStates.java according to prefetch (Shubham Sharma)
 
+* GITHUB#15939: Removed RegexpQuery constructor overloads that exposed determinization controls (determinizeWorkLimit / doDeterminization).
+  Determinization is now handled internally, simplifying the public API. (Dimitris Rempapis)
+
 New Features
 ---------------------
 * GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
@@ -163,6 +166,8 @@ Bug Fixes
 
 * GITHUB#15838: Fix luke terms export failure on Windows when field names contain characters forbidden in file name (Binlong Gao)
 
+* GITHUB#15939: Fix thread-safety issues with NFARunAutomaton. (Dimitris Rempapis)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -226,9 +231,6 @@ Other
 
 API Changes
 ---------------------
-* GITHUB#15939: Removed RegexpQuery constructor overloads that exposed determinization controls (determinizeWorkLimit / doDeterminization).
-  Determinization is now handled internally, simplifying the public API. (Robert Muir)
-
 * GITHUB#15663: Allow subclasses of NumericComparator to implement their own
   CompetitiveDISIBuilder subtypes. (Alan Woodward)
 
