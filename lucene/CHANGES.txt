@@ -355,6 +355,10 @@ Bug Fixes
   RefCountedSharedArena.DEFAULT_MAX_PERMITS instead of a hardcoded value, so that
   the default change from GITHUB#15078 takes effect. (Huaixinww)
 
+* GITHUB#15899, GITHUB#15900: Improve TruncateTokenFilter to truncate on codepoints not
+  chars and no longer produce half surrogates. There are new factory parameters available
+  to configure legacy prefix chars and new codepoint behaviour.  (Uwe Schindler, Michael Sokolov)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
