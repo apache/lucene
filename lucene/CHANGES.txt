@@ -226,7 +226,7 @@ Other
 
 API Changes
 ---------------------
-* GITHUB#15939: Removed RegexpQuery constructor overloads that exposed determinization controls (determinizeWorkLimit / doDeterminization). 
+* GITHUB#15939: Removed RegexpQuery constructor overloads that exposed determinization controls (determinizeWorkLimit / doDeterminization).
   Determinization is now handled internally, simplifying the public API. (Robert Muir)
 
 * GITHUB#15663: Allow subclasses of NumericComparator to implement their own
