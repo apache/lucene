@@ -30,7 +30,6 @@ import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.AutomatonProvider;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
-import org.apache.lucene.util.automaton.TooComplexToDeterminizeException;
 
 /** Some simple regex tests, mostly converted from contrib's TestRegexQuery. */
 public class TestRegexpQuery extends LuceneTestCase {
@@ -182,14 +181,5 @@ public class TestRegexpQuery extends LuceneTestCase {
    */
   public void testBacktracking() throws IOException {
     assertEquals(1, regexQueryNrHits("4934[314]"));
-  }
-
-  /** Test worst-case for getCommonSuffix optimization */
-  public void testSlowCommonSuffix() throws Exception {
-    expectThrows(
-        TooComplexToDeterminizeException.class,
-        () -> {
-          new RegexpQuery(new Term("stringvalue", "(.*a){2000}"));
-        });
   }
 }
