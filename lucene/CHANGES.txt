@@ -76,8 +76,10 @@ API Changes
 
 * GITHUB#15627 : Deferred lambda in TermStates.java according to prefetch (Shubham Sharma)
 
-* GITHUB#15939: Removed RegexpQuery constructor overloads that exposed determinization controls (determinizeWorkLimit / doDeterminization).
-  Determinization is now handled internally, simplifying the public API. (Dimitris Rempapis)
+* GITHUB#15939: Removed RegexpQuery constructor overloads that exposed determinization controls
+  (determinizeWorkLimit / doDeterminization). Determinization is now done only as-needed.
+  To force a classic DFA execution, use Operations.determinize() and AutomatonQuery.
+  (Dimitris Rempapis)
 
 New Features
 ---------------------
