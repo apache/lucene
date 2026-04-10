@@ -433,6 +433,11 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                 task.getOutputs().upToDateWhen(_ -> false);
               }
 
+              // use junit platform
+              task.useJUnitPlatform(opts -> {
+                opts.includeEngines("junit-vintage");
+              });
+
               int maxParallelForks = jvmsOption.get();
               if (verboseMode && maxParallelForks != 1) {
                 task.dependsOn(":warnForcedLimitedParallelism");
@@ -448,6 +453,7 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
 
               // do not use any of the existing gradle frameworks.
               // see https://github.com/gradle/gradle/issues/36508
+              /*
               task.getTestFrameworkProperty()
                   .set(
                       project
@@ -457,6 +463,7 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
                               new Object[] {
                                 task.getFilter(), task.getTemporaryDirFactory(), task.getDryRun()
                               }));
+               */
 
               task.setMinHeapSize(minHeapSizeOption.get());
               task.setMaxHeapSize(heapSizeOption.get());

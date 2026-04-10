@@ -20,7 +20,7 @@
 module org.apache.lucene.test_framework {
   requires org.apache.lucene.core;
   requires org.apache.lucene.codecs;
-  requires transitive junit;
+  requires static transitive junit;
   requires transitive randomizedtesting.runner;
   requires org.hamcrest;
 
