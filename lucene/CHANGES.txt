@@ -78,13 +78,6 @@ API Changes
 
 New Features
 ---------------------
-* GITHUB#15827: Add BayesianScoreQuery and LogOddsFusionQuery for probabilistic hybrid
-  search. BayesianScoreQuery transforms BM25 scores into calibrated probabilities via
-  sigmoid calibration with auto-estimated parameters. LogOddsFusionQuery combines multiple
-  probability signals via log-odds fusion with softplus gating and sqrt(n) confidence
-  scaling, supporting per-signal weights for weighted Logarithmic Opinion Pooling.
-  (Jaepil Jeong)
-
 * GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
   PolishSnowballAnalyzer in the stempel package) (Justas Sakalauskas, Dawid Weiss)
 
@@ -266,6 +259,13 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#15948: Improve BayesianScoreQuery and LogOddsFusionQuery with base rate prior,
+  weighted Logarithmic Opinion Pooling, and auto parameter estimation. Add
+  BayesianScoreEstimator for estimating sigmoid calibration parameters from corpus
+  statistics. Add base rate prior to BayesianScoreQuery for log-odds space shifting.
+  Add per-signal weights and logit normalization to LogOddsFusionQuery.
+  (Jaepil Jeong)
+
 * GITHUB#15823: Implement method to add all stream elements into a PriorityQueue.
   Call PriorityQueue#addAll with mapped stream in DisjunctionMaxBulkScorer's constructor. (Zhou Hui)
 
