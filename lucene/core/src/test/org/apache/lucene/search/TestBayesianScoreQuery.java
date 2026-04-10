@@ -257,4 +257,130 @@ public class TestBayesianScoreQuery extends LuceneTestCase {
     // Same ranking order (sigmoid is monotone regardless of alpha/beta)
     assertEquals("same top doc", gentleHits[0].doc, steepHits[0].doc);
   }
+
+  // ---- Base rate tests ----
+
+  public void testBaseRateLowersScores() throws Exception {
+    Query inner = new TermQuery(new Term("body", "alpha"));
+
+    BayesianScoreQuery noBaseRate = new BayesianScoreQuery(inner, 0.5f, 3.0f);
+    BayesianScoreQuery withBaseRate = new BayesianScoreQuery(inner, 0.5f, 3.0f, 0.01f);
+
+    ScoreDoc[] hitsNo = searcher.search(noBaseRate, 10).scoreDocs;
+    ScoreDoc[] hitsBR = searcher.search(withBaseRate, 10).scoreDocs;
+
+    assertTrue("both should have hits", hitsNo.length > 0 && hitsBR.length > 0);
+
+    // Same ranking order (baseRate is a constant shift in log-odds, preserves monotonicity)
+    assertEquals("same top doc", hitsNo[0].doc, hitsBR[0].doc);
+
+    // Base rate < 0.5 adds negative logit, so scores should be lower
+    for (int i = 0; i < Math.min(hitsNo.length, hitsBR.length); i++) {
+      if (hitsNo[i].doc == hitsBR[i].doc) {
+        assertTrue(
+            "base rate 0.01 should lower score: " + hitsBR[i].score + " < " + hitsNo[i].score,
+            hitsBR[i].score < hitsNo[i].score);
+      }
+    }
+  }
+
+  public void testBaseRateScoresInRange() throws Exception {
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    BayesianScoreQuery bsq = new BayesianScoreQuery(inner, 0.5f, 3.0f, 0.001f);
+
+    ScoreDoc[] hits = searcher.search(bsq, 10).scoreDocs;
+    for (ScoreDoc hit : hits) {
+      assertTrue("score in (0,1): " + hit.score, hit.score > 0 && hit.score < 1);
+    }
+  }
+
+  public void testBaseRateMaxScoreCorrectness() throws Exception {
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    BayesianScoreQuery bsq = new BayesianScoreQuery(inner, 0.5f, 3.0f, 0.01f);
+    CheckHits.checkTopScores(random(), bsq, searcher);
+  }
+
+  public void testBaseRateExplanation() throws Exception {
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    BayesianScoreQuery bsq = new BayesianScoreQuery(inner, 0.5f, 3.0f, 0.05f);
+
+    Weight w = searcher.createWeight(searcher.rewrite(bsq), ScoreMode.COMPLETE, 1);
+    LeafReaderContext ctx = searcher.getIndexReader().leaves().get(0);
+    Explanation expl = w.explain(ctx, 0);
+    assertTrue("should match", expl.isMatch());
+    assertTrue("should mention base rate", expl.getDescription().contains("base rate"));
+  }
+
+  public void testBaseRateQueryUtils() throws Exception {
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    BayesianScoreQuery bsq = new BayesianScoreQuery(inner, 0.5f, 3.0f, 0.01f);
+    QueryUtils.check(random(), bsq, searcher);
+  }
+
+  public void testBaseRateEqualsAndHashCode() {
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    BayesianScoreQuery a = new BayesianScoreQuery(inner, 0.5f, 3.0f, 0.01f);
+    BayesianScoreQuery b = new BayesianScoreQuery(inner, 0.5f, 3.0f, 0.01f);
+    BayesianScoreQuery c = new BayesianScoreQuery(inner, 0.5f, 3.0f, 0.05f);
+    BayesianScoreQuery d = new BayesianScoreQuery(inner, 0.5f, 3.0f);
+
+    assertEquals(a, b);
+    assertEquals(a.hashCode(), b.hashCode());
+    assertNotEquals(a, c);
+    assertNotEquals(a, d);
+  }
+
+  public void testIllegalBaseRate() {
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    expectThrows(
+        IllegalArgumentException.class, () -> new BayesianScoreQuery(inner, 0.5f, 3.0f, -0.1f));
+    expectThrows(
+        IllegalArgumentException.class, () -> new BayesianScoreQuery(inner, 0.5f, 3.0f, 1.0f));
+  }
+
+  // ---- Auto-estimation tests ----
+
+  public void testEstimatorReturnsFiniteValues() throws Exception {
+    BayesianScoreEstimator.Parameters params = BayesianScoreEstimator.estimate(searcher, "body");
+
+    assertTrue(
+        "alpha should be positive and finite",
+        params.alpha() > 0 && Float.isFinite(params.alpha()));
+    assertTrue("beta should be finite", Float.isFinite(params.beta()));
+    assertTrue("baseRate in (0, 0.5]", params.baseRate() > 0 && params.baseRate() <= 0.5f);
+  }
+
+  public void testEstimatedParametersProduceValidScores() throws Exception {
+    BayesianScoreEstimator.Parameters params = BayesianScoreEstimator.estimate(searcher, "body");
+
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    BayesianScoreQuery bsq =
+        new BayesianScoreQuery(inner, params.alpha(), params.beta(), params.baseRate());
+
+    ScoreDoc[] hits = searcher.search(bsq, 10).scoreDocs;
+    assertTrue("should have hits", hits.length > 0);
+    for (ScoreDoc hit : hits) {
+      assertTrue("score in (0,1): " + hit.score, hit.score > 0 && hit.score < 1);
+    }
+  }
+
+  public void testEstimatedMaxScoreCorrectness() throws Exception {
+    BayesianScoreEstimator.Parameters params = BayesianScoreEstimator.estimate(searcher, "body");
+
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    BayesianScoreQuery bsq =
+        new BayesianScoreQuery(inner, params.alpha(), params.beta(), params.baseRate());
+    CheckHits.checkTopScores(random(), bsq, searcher);
+  }
+
+  public void testEstimatorReproducibleWithSeed() throws Exception {
+    BayesianScoreEstimator.Parameters p1 =
+        BayesianScoreEstimator.estimate(searcher, "body", 20, 3, 123);
+    BayesianScoreEstimator.Parameters p2 =
+        BayesianScoreEstimator.estimate(searcher, "body", 20, 3, 123);
+
+    assertEquals("same seed should produce same alpha", p1.alpha(), p2.alpha(), 0f);
+    assertEquals("same seed should produce same beta", p1.beta(), p2.beta(), 0f);
+    assertEquals("same seed should produce same baseRate", p1.baseRate(), p2.baseRate(), 0f);
+  }
 }
