@@ -22,14 +22,5 @@ description = 'Index-time and Query-time joins for normalized content'
 dependencies {
   moduleApi project(':lucene:core')
 
-  moduleTestImplementation project(':lucene:test-framework'), {
-    exclude group: "junit"
-  }
-
-  moduleCompileOnly deps.junit, {
-    exclude group: "org.hamcrest"
-  }
-  moduleRuntimeOnly deps.bundles.junitplatform, {
-    exclude group: "org.hamcrest"
-  }
+  moduleTestImplementation project(':lucene:test-framework')
 }
