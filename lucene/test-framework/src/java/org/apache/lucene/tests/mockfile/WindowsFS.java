@@ -75,8 +75,8 @@ public class WindowsFS extends HandleTrackingFS {
   @Override
   protected void onClose(Path path, Object stream) throws IOException {
     synchronized (openFiles) {
-      // we have to read the key under the lock; otherwise concurrent move might change the inode of the path
-      // and therefore the key, meaning we won't be able to find the file in the openFiles map
+      // we have to read the key under the lock; otherwise concurrent move might change the inode
+      // of the path and therefore the key, meaning won't be able to find it in openFiles
       Object key = getKey(path);
       Map<Path, Integer> pathMap = openFiles.get(key);
       assert pathMap != null : "no open file for key " + key + " on path " + path;
