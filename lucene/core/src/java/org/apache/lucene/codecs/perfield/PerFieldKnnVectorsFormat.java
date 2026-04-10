@@ -100,6 +100,15 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
    */
   public abstract KnnVectorsFormat getKnnVectorsFormatForField(String field);
 
+  /**
+   * Called after all vector fields have been merged for a segment merge operation. Subclasses can
+   * override this to release merge-time resources such as thread pools. The default implementation
+   * is a no-op.
+   *
+   * @throws IOException if an I/O error occurs during cleanup
+   */
+  protected void afterMerge() throws IOException {}
+
   private class FieldsWriter extends KnnVectorsWriter {
     private final Map<KnnVectorsFormat, WriterAndSuffix> formats;
     private final Map<String, Integer> suffixes = new HashMap<>();
@@ -133,6 +142,11 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
       for (WriterAndSuffix was : formats.values()) {
         was.writer.finish();
       }
+    }
+
+    @Override
+    protected void afterMerge() throws IOException {
+      PerFieldKnnVectorsFormat.this.afterMerge();
     }
 
     @Override
