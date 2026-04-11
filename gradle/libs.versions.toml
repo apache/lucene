@@ -83,6 +83,8 @@ jmh-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jts = { module = "org.locationtech.jts:jts-core", version.ref = "jts" }
 junit = { module = "junit:junit", version.ref = "junit" }
+junitplatform-launcher = "org.junit.platform:junit-platform-launcher:6.0.3"
+junitplatform-vintage = "org.junit.vintage:junit-vintage-engine:6.0.3"
 morfologik-polish = { module = "org.carrot2:morfologik-polish", version.ref = "morfologik" }
 morfologik-stemming = { module = "org.carrot2:morfologik-stemming", version.ref = "morfologik" }
 morfologik-ukrainian = { module = "ua.net.nlp:morfologik-ukrainian-search", version.ref = "morfologik-ukrainian" }
@@ -94,6 +96,12 @@ s2-geometry = { module = "io.sgr:s2-geometry-library-java", version.ref = "s2-ge
 spatial4j = { module = "org.locationtech.spatial4j:spatial4j", version.ref = "spatial4j" }
 xerces = { module = "xerces:xercesImpl", version.ref = "xerces" }
 zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
+
+[bundles]
+junitplatform = [
+    "junitplatform-launcher",
+    "junitplatform-vintage",
+]
 
 [plugins]
 benmanes-versions = "com.github.ben-manes.versions:0.53.0"
