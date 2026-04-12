@@ -22,6 +22,8 @@ module org.apache.lucene.test_framework {
   requires org.apache.lucene.codecs;
   requires transitive junit;
   requires transitive randomizedtesting.runner;
+  requires transitive com.carrotsearch.randomizedtesting;
+  requires transitive org.junit.jupiter.api;
   requires org.hamcrest;
 
   // Open certain packages for junit because it scans methods via reflection.
