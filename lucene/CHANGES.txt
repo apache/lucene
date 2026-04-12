@@ -224,6 +224,8 @@ Other
 * GITHUB#15867: Use StackWalker without method info for caller checks in internal classes and tests.
   (Uwe Schindler)
 
+* GITHUB#15949: Use junit5 engine vintage runner to run junit4 tests. (Dawid Weiss)
+
 ======================= Lucene 10.5.0 =======================
 
 API Changes
