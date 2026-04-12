@@ -182,19 +182,20 @@ public abstract class GroupFacetCollector extends SimpleCollector {
      * @return a list of facet entries to be rendered based on the specified offset and limit
      */
     public List<FacetEntry> getFacetEntries(int offset, int limit) {
-      int totalEntries = facetEntries.size();
-      if (offset >= totalEntries) {
+      if (offset >= facetEntries.size()) {
         return Collections.emptyList();
       }
 
-      List<FacetEntry> entries = new ArrayList<>(Math.min(limit, totalEntries - offset));
+      List<FacetEntry> entries = new ArrayList<>(Math.min(limit, facetEntries.size() - offset));
 
       int skipped = 0;
+      int included = 0;
       for (FacetEntry facetEntry : facetEntries) {
-        if (skipped++ < offset) {
+        if (skipped < offset) {
+          skipped++;
           continue;
         }
-        if (entries.size() >= limit) {
+        if (included++ >= limit) {
           break;
         }
         entries.add(facetEntry);
