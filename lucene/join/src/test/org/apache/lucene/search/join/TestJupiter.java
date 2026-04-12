@@ -16,24 +16,9 @@
  */
 package org.apache.lucene.search.join;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
 import com.carrotsearch.randomizedtesting.jupiter.Randomized;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field.Store;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.NoMergePolicy;
-import org.apache.lucene.index.Term;
-import org.apache.lucene.search.MatchNoDocsQuery;
-import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.TestUtil;
+import java.io.IOException;
+import java.util.Random;
 import org.junit.jupiter.api.Test;
 
 @Randomized
@@ -41,5 +26,6 @@ public class TestJupiter {
   @Test
   public void testNoParent(Random random) throws IOException {
     System.out.println("Foo.");
+    assert false;
   }
 }
