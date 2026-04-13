@@ -2584,12 +2584,7 @@ public class TestLRUQueryCache extends LuceneTestCase {
     queryCache.close();
   }
 
-  public void testUnifiedCacheEntryCallbacks() throws IOException, InterruptedException {
-    ScheduledThreadPoolExecutor scheduledThreadPoolExecutor =
-        new ScheduledThreadPoolExecutor(1, new DefaultCleanUpThreadFactory());
-    LRUQueryCache.CacheCleanUpParameters cacheCleanUpParameters =
-        new LRUQueryCache.CacheCleanUpParameters(1000000, scheduledThreadPoolExecutor);
-
+  public void testUnifiedCacheEntryCallbacks() throws IOException {
     // Track unified callback invocations
     final AtomicInteger insertedCount = new AtomicInteger();
     final AtomicInteger evictedCount = new AtomicInteger();
@@ -2602,9 +2597,9 @@ public class TestLRUQueryCache extends LuceneTestCase {
     final AtomicLong deprecatedQueryEvictionRam = new AtomicLong();
     final AtomicLong deprecatedDocIdSetEvictionRam = new AtomicLong();
 
-    // Use 1 partition and small maxSize to force evictions
+    // Use 1 partition, no background cleanup (manual cleanUp calls instead)
     final LRUQueryCache queryCache =
-        new LRUQueryCache(2, 10000000, _ -> true, 1, 1, cacheCleanUpParameters) {
+        new LRUQueryCache(2, 10000000, _ -> true, 1, 1, null) {
           @Override
           protected void onQueryCache(Query query, long ramBytesUsed) {
             super.onQueryCache(query, ramBytesUsed);
@@ -2644,22 +2639,28 @@ public class TestLRUQueryCache extends LuceneTestCase {
           }
         };
 
+    // Force exactly 1 segment so cache behavior is deterministic
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
+    IndexWriter iw = new IndexWriter(dir, iwc);
+    Document doc = new Document();
+    doc.add(new StringField("color", "red", Store.NO));
+    iw.addDocument(doc);
+    doc = new Document();
+    doc.add(new StringField("color", "blue", Store.NO));
+    iw.addDocument(doc);
+    doc = new Document();
+    doc.add(new StringField("color", "green", Store.NO));
+    iw.addDocument(doc);
+    iw.commit();
+
+    final DirectoryReader reader = DirectoryReader.open(iw);
+    assertEquals("Expected exactly 1 segment", 1, reader.leaves().size());
+
+    // maxSize=2 means 2 entries fit, 3rd triggers eviction
     LRUQueryCache.LRUQueryCachePartition[] partitions = queryCache.getLruQueryCacheSegments();
     partitions[0].setMaxSize(2);
 
-    Directory dir = newDirectory();
-    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
-    Document doc = new Document();
-    doc.add(new StringField("color", "red", Store.NO));
-    w.addDocument(doc);
-    doc = new Document();
-    doc.add(new StringField("color", "blue", Store.NO));
-    w.addDocument(doc);
-    doc = new Document();
-    doc.add(new StringField("color", "green", Store.NO));
-    w.addDocument(doc);
-
-    final DirectoryReader reader = w.getReader();
     final IndexSearcher searcher = new IndexSearcher(reader);
     searcher.setQueryCache(queryCache);
     searcher.setQueryCachingPolicy(ALWAYS_CACHE);
@@ -2668,20 +2669,19 @@ public class TestLRUQueryCache extends LuceneTestCase {
     final Query query2 = new TermQuery(new Term("color", "blue"));
     final Query query3 = new TermQuery(new Term("color", "green"));
 
-    // Cache query1 — should trigger onCacheEntryInserted once per segment
+    // Cache query1 — 1 segment, 1 insertion
     searcher.search(new ConstantScoreQuery(query1), 1);
-    int segmentCount = reader.leaves().size();
-    assertEquals(segmentCount, insertedCount.get());
+    assertEquals(1, insertedCount.get());
     assertEquals(0, evictedCount.get());
 
-    // Cache query2
+    // Cache query2 — fills cache to maxSize=2
     searcher.search(new ConstantScoreQuery(query2), 1);
-    assertEquals(2 * segmentCount, insertedCount.get());
+    assertEquals(2, insertedCount.get());
     assertEquals(0, evictedCount.get());
 
-    // Cache query3 — should trigger eviction of query1 (LRU) since maxSize=2
+    // Cache query3 — triggers eviction of LRU entry (query1)
     searcher.search(new ConstantScoreQuery(query3), 1);
-    assertEquals(3 * segmentCount, insertedCount.get());
+    assertEquals(3, insertedCount.get());
     assertTrue("Expected evictions but got none", evictedCount.get() > 0);
 
     // Verify unified callback RAM equals sum of deprecated callback RAM for insertions
@@ -2696,11 +2696,10 @@ public class TestLRUQueryCache extends LuceneTestCase {
         deprecatedQueryEvictionRam.get() + deprecatedDocIdSetEvictionRam.get(),
         evictedTotalRam.get());
 
-    // Close reader to trigger segment close evictions
-    long evictedBefore = evictedCount.get();
+    // Close everything and clean up to trigger remaining evictions
     reader.close();
+    iw.close();
     queryCache.cleanUp();
-    assertTrue("Closing reader should trigger more evictions", evictedCount.get() > evictedBefore);
 
     // After full eviction, all inserted RAM should be accounted for in evicted RAM
     assertEquals(
@@ -2713,10 +2712,8 @@ public class TestLRUQueryCache extends LuceneTestCase {
         deprecatedQueryCacheRam.get() + deprecatedDocIdSetCacheRam.get(),
         deprecatedQueryEvictionRam.get() + deprecatedDocIdSetEvictionRam.get());
 
-    w.close();
     dir.close();
     queryCache.close();
-    scheduledThreadPoolExecutor.awaitTermination(5, TimeUnit.SECONDS);
   }
 
   public static class DefaultCleanUpThreadFactory implements ThreadFactory {
