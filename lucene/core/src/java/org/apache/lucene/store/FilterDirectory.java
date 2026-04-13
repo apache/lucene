@@ -37,8 +37,8 @@ public abstract class FilterDirectory extends Directory {
    * FilterDirectory}.
    */
   public static Directory unwrap(Directory dir) {
-    while (dir instanceof FilterDirectory) {
-      dir = ((FilterDirectory) dir).in;
+    while (dir instanceof FilterDirectory fd) {
+      dir = fd.in;
     }
     return dir;
   }

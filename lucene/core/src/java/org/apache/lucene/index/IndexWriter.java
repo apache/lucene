@@ -1723,9 +1723,9 @@ public class IndexWriter
   private synchronized long tryModifyDocument(IndexReader readerIn, int docID, DocModifier toApply)
       throws IOException {
     final LeafReader reader;
-    if (readerIn instanceof LeafReader) {
+    if (readerIn instanceof LeafReader lr) {
       // Reader is already atomic: use the incoming docID:
-      reader = (LeafReader) readerIn;
+      reader = lr;
     } else {
       // Composite reader: lookup sub-reader and re-base docID:
       List<LeafReaderContext> leaves = readerIn.leaves();

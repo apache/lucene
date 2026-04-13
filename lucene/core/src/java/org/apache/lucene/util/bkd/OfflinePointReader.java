@@ -142,10 +142,10 @@ public final class OfflinePointReader implements PointReader {
   @Override
   public void close() throws IOException {
     try {
-      if (countLeft == 0 && in instanceof ChecksumIndexInput && checked == false) {
+      if (countLeft == 0 && in instanceof ChecksumIndexInput cii && checked == false) {
         // System.out.println("NOW CHECK: " + name);
         checked = true;
-        CodecUtil.checkFooter((ChecksumIndexInput) in);
+        CodecUtil.checkFooter(cii);
       }
     } finally {
       in.close();
