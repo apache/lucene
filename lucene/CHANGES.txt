@@ -284,6 +284,8 @@ Optimizations
 
 * GITHUB#15779: Improve BytesRefHash.add performance by optimize rehash operation (tyronecai)
 
+* GITHUB#15902: Improve DiversifyingChildren performance by using primitive arrays(Alessandro Benedetti)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
