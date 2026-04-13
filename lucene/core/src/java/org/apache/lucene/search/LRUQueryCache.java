@@ -62,9 +62,13 @@ import org.apache.lucene.util.RoaringDocIdSet;
  *
  * <p>This class is thread-safe.
  *
- * <p>Note that query eviction runs in linear time with the total number of segments that have cache
- * entries so this cache works best with {@link QueryCachingPolicy caching policies} that only cache
- * on "large" segments, and it is advised to not share this cache across too many indices.
+ * <p>Internally, the cache is split into multiple partitions to reduce lock contention. Each cache
+ * entry is keyed by a composite of (segment, query), so the same query cached against different
+ * segments results in separate cache entries that may reside in different partitions.
+ *
+ * <p>Note that query eviction runs in linear time with the total number of entries in a partition
+ * so this cache works best with {@link QueryCachingPolicy caching policies} that only cache on
+ * "large" segments, and it is advised to not share this cache across too many indices.
  *
  * <p>A default query cache and policy instance is used in IndexSearcher. If you want to replace
  * those defaults it is typically done like this:
@@ -86,9 +90,27 @@ import org.apache.lucene.util.RoaringDocIdSet;
  * #getEvictionCount() number of evicted entries}). In case you would like to have more fine-grained
  * statistics, such as per-index or per-query-class statistics, it is possible to override various
  * callbacks: {@link #onHit}, {@link #onMiss}, {@link #onQueryCache}, {@link #onQueryEviction},
- * {@link #onDocIdSetCache}, {@link #onDocIdSetEviction} and {@link #onClear}. It is better to not
+ * {@link #onDocIdSetCache}, {@link #onDocIdSetEviction} and {@link #onClear}. Note that because
+ * cache entries are keyed by (segment, query) pairs, callbacks like {@link #onQueryCache} and
+ * {@link #onQueryEviction} fire per cache entry, not per unique query. The same query will trigger
+ * these callbacks multiple times if it is cached or evicted across different segments. Prefer the
+ * newer unified callbacks {@link #onCacheEntryInserted} and {@link #onCacheEntryEvicted} which
+ * provide the full context (segment key, query, total RAM) in a single call. It is better to not
  * perform heavy computations in these methods though since they are called synchronously and under
  * a lock.
+ *
+ * <p>Stale cache entries (from closed segments or cleared queries) are not removed inline during
+ * cache operations. Instead, cleanup is performed either automatically by a background thread or
+ * manually by the caller:
+ *
+ * <ul>
+ *   <li>To enable automatic background cleanup, pass a {@link CacheCleanUpParameters} with a {@link
+ *       java.util.concurrent.ScheduledThreadPoolExecutor} to the constructor. The cache will
+ *       schedule periodic cleanup at the configured interval. The cache implements {@link
+ *       java.io.Closeable} and must be closed to shut down the background scheduler.
+ *   <li>If no {@link CacheCleanUpParameters} is provided (or it is {@code null}), the caller is
+ *       responsible for invoking {@link #cleanUp()} periodically to remove stale entries.
+ * </ul>
  *
  * @see QueryCachingPolicy
  * @lucene.experimental
@@ -112,9 +134,9 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
   private final ScheduledThreadPoolExecutor scheduler;
 
   /**
-   * Expert: Create a new instance that will cache at most <code>maxSize</code> keys with at most
-   * <code>maxRamBytesUsed</code> bytes of memory, only on leaves that satisfy {@code
-   * leavesToCache}.
+   * Expert: Create a new instance that will cache at most <code>maxSize</code> cache entries (each
+   * entry being a segment-query pair) with at most <code>maxRamBytesUsed</code> bytes of memory,
+   * only on leaves that satisfy {@code leavesToCache}.
    *
    * <p>Also, clauses whose cost is {@code skipCacheFactor} times more than the cost of the
    * top-level query will not be cached in order to not slow down queries too much.
@@ -128,12 +150,20 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
   }
 
   /**
-   * Expert: Create a new instance that will cache at most <code>maxSize</code> keys with at most
-   * <code>maxRamBytesUsed</code> bytes of memory, only on leaves that satisfy {@code
-   * leavesToCache}.
+   * Expert: Create a new instance that will cache at most <code>maxSize</code> cache entries (each
+   * entry being a segment-query pair) with at most <code>maxRamBytesUsed</code> bytes of memory,
+   * only on leaves that satisfy {@code leavesToCache}. The cache is internally split into {@code
+   * numberOfPartitions} partitions to reduce lock contention.
    *
    * <p>Also, clauses whose cost is {@code skipCacheFactor} times more than the cost of the
    * top-level query will not be cached in order to not slow down queries too much.
+   *
+   * <p>If {@code cacheCleanUpParameters} is provided with a {@link
+   * java.util.concurrent.ScheduledThreadPoolExecutor}, stale cache entries (from closed segments or
+   * cleared queries) will be removed automatically by a background thread at the configured
+   * interval. When using background cleanup, this cache must be {@link #close() closed} to shut
+   * down the scheduler. If {@code cacheCleanUpParameters} is {@code null}, the caller must invoke
+   * {@link #cleanUp()} manually to remove stale entries.
    */
   public LRUQueryCache(
       int maxSize,
@@ -210,12 +240,12 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
   }
 
   /**
-   * Create a new instance that will cache at most <code>maxSize</code> keys with at most <code>
-   * maxRamBytesUsed</code> bytes of memory. Items will only be cached on leaves that have more than
-   * 10k documents and have more than half of the average documents per leave of the index. This
-   * should guarantee that all leaves from the upper {@link TieredMergePolicy tier} will be cached.
-   * Only clauses whose cost is at most 100x the cost of the top-level query will be cached in order
-   * to not hurt latency too much because of caching.
+   * Create a new instance that will cache at most <code>maxSize</code> cache entries (each entry
+   * being a segment-query pair) with at most <code>maxRamBytesUsed</code> bytes of memory. Items
+   * will only be cached on leaves that have more than 10k documents and have more than half of the
+   * average documents per leave of the index. This should guarantee that all leaves from the upper
+   * {@link TieredMergePolicy tier} will be cached. Only clauses whose cost is at most 100x the cost
+   * of the top-level query will be cached in order to not hurt latency too much because of caching.
    */
   public LRUQueryCache(int maxSize, long maxRamBytesUsed) {
     this(maxSize, maxRamBytesUsed, new MinSegmentSizePredicate(10000), 10);
@@ -230,6 +260,12 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     return map;
   }
 
+  /**
+   * Shuts down the background cleanup scheduler, if one was configured via {@link
+   * CacheCleanUpParameters}. This method should be called when the cache is no longer needed to
+   * prevent the background thread from running indefinitely. If no background scheduler was
+   * configured, this method is a no-op.
+   */
   @Override
   public void close() throws IOException {
     if (this.scheduler != null) {
@@ -281,38 +317,97 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
   }
 
   /**
-   * Expert: callback when a query is added to this cache. Implementing this method is typically
-   * useful in order to compute more fine-grained statistics about the query cache.
+   * Expert: callback when a cache entry is added to this cache. This is called once per (segment,
+   * query) pair, so the same query may trigger this callback multiple times when cached against
+   * different segments. Subclasses that need to track unique queries must perform their own
+   * deduplication.
    *
+   * <p>This method is purely a notification hook for subclasses. Internal bookkeeping (RAM
+   * accounting, size tracking) is handled by the cache partitions.
+   *
+   * @deprecated Use {@link #onCacheEntryInserted(Object, Query, long)} instead. In the current
+   *     partitioned cache structure, {@code onQueryCache} and {@code onDocIdSetCache} always fire
+   *     together for the same insertion event. This method will be removed in a future release.
    * @see #onQueryEviction
    * @lucene.experimental
    */
+  @Deprecated
   protected void onQueryCache(Query query, long ramBytesUsed) {}
 
   /**
-   * Expert: callback when a query is evicted from this cache.
+   * Expert: callback when a cache entry is evicted from this cache. This is called once per
+   * (segment, query) pair being evicted, so the same query may trigger this callback multiple times
+   * as its entries across different segments are evicted independently. Subclasses that need to
+   * track unique query evictions must perform their own deduplication.
    *
+   * <p>This method is purely a notification hook for subclasses. Internal bookkeeping (RAM
+   * accounting, size tracking) is handled by the cache partitions.
+   *
+   * @deprecated Use {@link #onCacheEntryEvicted(Object, Query, long)} instead. In the current
+   *     partitioned cache structure, {@code onQueryEviction} and {@code onDocIdSetEviction} always
+   *     fire together for the same eviction event. This method will be removed in a future release.
    * @see #onQueryCache
    * @lucene.experimental
    */
+  @Deprecated
   protected void onQueryEviction(Query query, long ramBytesUsed) {}
 
   /**
-   * Expert: callback when a {@link DocIdSet} is added to this cache. Implementing this method is
-   * typically useful in order to compute more fine-grained statistics about the query cache.
+   * Expert: callback when a {@link DocIdSet} is added to this cache.
    *
+   * @deprecated Use {@link #onCacheEntryInserted(Object, Query, long)} instead. In the current
+   *     partitioned cache structure, {@code onQueryCache} and {@code onDocIdSetCache} always fire
+   *     together for the same insertion event. This method will be removed in a future release.
    * @see #onDocIdSetEviction
    * @lucene.experimental
    */
+  @Deprecated
   protected void onDocIdSetCache(Object readerCoreKey, long ramBytesUsed) {}
 
   /**
    * Expert: callback when one or more {@link DocIdSet}s are removed from this cache.
    *
+   * @deprecated Use {@link #onCacheEntryEvicted(Object, Query, long)} instead. In the current
+   *     partitioned cache structure, {@code onQueryEviction} and {@code onDocIdSetEviction} always
+   *     fire together for the same eviction event. This method will be removed in a future release.
    * @see #onDocIdSetCache
    * @lucene.experimental
    */
+  @Deprecated
   protected void onDocIdSetEviction(Object readerCoreKey, int numEntries, long sumRamBytesUsed) {}
+
+  /**
+   * Expert: callback when a cache entry (a segment-query pair) is inserted into this cache. This
+   * replaces the now-deprecated {@link #onQueryCache} and {@link #onDocIdSetCache} callbacks, which
+   * in the current partitioned cache structure always fire together for the same insertion event.
+   *
+   * <p>The {@code ramBytesUsed} parameter reflects the total RAM cost of this entry, including both
+   * the query key overhead and the cached {@link DocIdSet} value.
+   *
+   * @param readerCoreKey the core cache key of the segment this entry belongs to
+   * @param query the query whose results are being cached
+   * @param ramBytesUsed total RAM bytes used by this cache entry
+   * @see #onCacheEntryEvicted
+   * @lucene.experimental
+   */
+  protected void onCacheEntryInserted(Object readerCoreKey, Query query, long ramBytesUsed) {}
+
+  /**
+   * Expert: callback when a cache entry (a segment-query pair) is evicted from this cache. This
+   * replaces the now-deprecated {@link #onQueryEviction} and {@link #onDocIdSetEviction} callbacks,
+   * which in the current partitioned cache structure always fire together for the same eviction
+   * event.
+   *
+   * <p>The {@code ramBytesUsed} parameter reflects the total RAM cost of the evicted entry,
+   * including both the query key overhead and the cached {@link DocIdSet} value.
+   *
+   * @param readerCoreKey the core cache key of the segment this entry belonged to
+   * @param query the query whose cached results are being evicted
+   * @param ramBytesUsed total RAM bytes freed by this eviction
+   * @see #onCacheEntryInserted
+   * @lucene.experimental
+   */
+  protected void onCacheEntryEvicted(Object readerCoreKey, Query query, long ramBytesUsed) {}
 
   /**
    * Expert: callback when the cache is completely cleared.
@@ -610,7 +705,8 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
   }
 
   /**
-   * Return the total number of {@link DocIdSet}s which are currently stored in the cache.
+   * Return the total number of cache entries (segment-query pairs) currently stored in the cache,
+   * across all partitions.
    *
    * @see #getCacheCount()
    * @see #getEvictionCount()
@@ -864,24 +960,11 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
       LRUQueryCache.this.onQueryCache(queryCacheKey.query, ramBytesUsed);
     }
 
-    /**
-     * Expert: callback when a query is evicted from this cache.
-     *
-     * @see #onQueryCache
-     * @lucene.experimental
-     */
     protected void onQueryEviction(QueryCacheKey queryCacheKey, long ramBytesUsed) {
       this.ramBytesUsed -= ramBytesUsed;
       LRUQueryCache.this.onQueryEviction(queryCacheKey.query, ramBytesUsed);
     }
 
-    /**
-     * Expert: callback when a {@link DocIdSet} is added to this cache. Implementing this method is
-     * typically useful in order to compute more fine-grained statistics about the query cache.
-     *
-     * @see #onDocIdSetEviction
-     * @lucene.experimental
-     */
     protected void onDocIdSetCache(Object readerCoreKey, long ramBytesUsed) {
       cacheSize += 1;
       cacheCount += 1;
@@ -889,12 +972,6 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
       LRUQueryCache.this.onDocIdSetCache(readerCoreKey, ramBytesUsed);
     }
 
-    /**
-     * Expert: callback when one or more {@link DocIdSet}s are removed from this cache.
-     *
-     * @see #onDocIdSetCache
-     * @lucene.experimental
-     */
     protected void onDocIdSetEviction(Object readerCoreKey, int numEntries, long sumRamBytesUsed) {
       this.ramBytesUsed -= sumRamBytesUsed;
       cacheSize -= numEntries;
@@ -953,6 +1030,8 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
         uniqueCacheKeys.putIfAbsent(queryCacheKey, metadata);
         onQueryCache(queryCacheKey, ramBytes);
         onDocIdSetCache(cacheKey, cachedValueBytesUsed);
+        LRUQueryCache.this.onCacheEntryInserted(
+            cacheKey, queryCacheKey.query, ramBytes + cachedValueBytesUsed);
         evictIfNecessary();
       } finally {
         writeLock.unlock();
@@ -971,18 +1050,37 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     }
 
     void remove(QueryCacheKey queryCacheKey) {
+      remove(queryCacheKey, -1);
+    }
+
+    /**
+     * Remove a cache entry. If {@code knownQueryBytes} is non-negative, it is used as the query RAM
+     * cost (for cases where the uniqueCacheKeys entry was already removed externally, e.g. during
+     * eviction). Otherwise the query bytes are looked up from uniqueCacheKeys.
+     */
+    private void remove(QueryCacheKey queryCacheKey, long knownQueryBytes) {
       writeLock.lock();
       try {
         CacheAndCount cacheAndCount = cache.remove(queryCacheKey);
+        long docIdSetBytes = 0;
         if (cacheAndCount != null) {
-          onDocIdSetEviction(
-              queryCacheKey.cacheKey,
-              1,
-              HASHTABLE_RAM_BYTES_PER_ENTRY + cacheAndCount.ramBytesUsed());
+          docIdSetBytes = HASHTABLE_RAM_BYTES_PER_ENTRY + cacheAndCount.ramBytesUsed();
+          onDocIdSetEviction(queryCacheKey.cacheKey, 1, docIdSetBytes);
         }
-        QueryMetadata queryMetadata = uniqueCacheKeys.remove(queryCacheKey);
-        if (queryMetadata != null && queryMetadata.query != null) {
-          onQueryEviction(queryCacheKey, queryMetadata.queryRamBytesUsed);
+        long queryBytes = 0;
+        if (knownQueryBytes >= 0) {
+          // Query bytes already accounted for by caller (e.g. evictIfNecessary)
+          queryBytes = knownQueryBytes;
+        } else {
+          QueryMetadata queryMetadata = uniqueCacheKeys.remove(queryCacheKey);
+          if (queryMetadata != null && queryMetadata.query != null) {
+            queryBytes = queryMetadata.queryRamBytesUsed;
+            onQueryEviction(queryCacheKey, queryBytes);
+          }
+        }
+        if (cacheAndCount != null || queryBytes > 0) {
+          LRUQueryCache.this.onCacheEntryEvicted(
+              queryCacheKey.cacheKey, queryCacheKey.query, queryBytes + docIdSetBytes);
         }
       } finally {
         writeLock.unlock();
@@ -1043,7 +1141,7 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
                     + "]");
           }
           onQueryEviction(entry.getKey(), entry.getValue().queryRamBytesUsed);
-          remove(entry.getKey());
+          remove(entry.getKey(), entry.getValue().queryRamBytesUsed);
         } while (iterator.hasNext() && requiresEviction());
       }
     }
@@ -1135,7 +1233,16 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     }
   }
 
-  /** Cache clean up parameters. */
+  /**
+   * Configuration for automatic background cache cleanup. When provided to the {@link
+   * LRUQueryCache} constructor, a background thread will periodically invoke {@link #cleanUp()} to
+   * remove stale entries from closed segments or cleared queries.
+   *
+   * <p>The {@code scheduleDelayMs} parameter controls the fixed delay in milliseconds between
+   * successive cleanup runs. The {@code scheduledThreadPoolExecutor} is the executor used to
+   * schedule cleanup tasks. If the executor is {@code null}, no background cleanup is performed and
+   * the caller must invoke {@link #cleanUp()} manually.
+   */
   public static class CacheCleanUpParameters {
     private long scheduleDelayMs = 60 * 1000; // 1 minute
     private final Optional<ScheduledThreadPoolExecutor> scheduledThreadPoolExecutor;
@@ -1156,8 +1263,14 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
   }
 
   /**
-   * Performs cleanup of cache stale entries. This can be either be done manually or via background
-   * scheduler passed to this cache.
+   * Removes stale cache entries that have been marked for cleanup, such as entries belonging to
+   * closed segments or explicitly cleared queries. This method is safe to call concurrently.
+   *
+   * <p>If a {@link CacheCleanUpParameters} with a {@link
+   * java.util.concurrent.ScheduledThreadPoolExecutor} was provided at construction time, this
+   * method is invoked automatically at the configured interval and does not need to be called
+   * manually. Otherwise, the caller should invoke this method periodically to prevent stale entries
+   * from accumulating and consuming memory.
    */
   public synchronized void cleanUp() {
     Set<IndexReader.CacheKey> keysToCleanCopy = Set.copyOf(keysToClean);

@@ -2584,6 +2584,141 @@ public class TestLRUQueryCache extends LuceneTestCase {
     queryCache.close();
   }
 
+  public void testUnifiedCacheEntryCallbacks() throws IOException, InterruptedException {
+    ScheduledThreadPoolExecutor scheduledThreadPoolExecutor =
+        new ScheduledThreadPoolExecutor(1, new DefaultCleanUpThreadFactory());
+    LRUQueryCache.CacheCleanUpParameters cacheCleanUpParameters =
+        new LRUQueryCache.CacheCleanUpParameters(1000000, scheduledThreadPoolExecutor);
+
+    // Track unified callback invocations
+    final AtomicInteger insertedCount = new AtomicInteger();
+    final AtomicInteger evictedCount = new AtomicInteger();
+    final AtomicLong insertedTotalRam = new AtomicLong();
+    final AtomicLong evictedTotalRam = new AtomicLong();
+
+    // Also track deprecated callbacks to verify consistency
+    final AtomicLong deprecatedQueryCacheRam = new AtomicLong();
+    final AtomicLong deprecatedDocIdSetCacheRam = new AtomicLong();
+    final AtomicLong deprecatedQueryEvictionRam = new AtomicLong();
+    final AtomicLong deprecatedDocIdSetEvictionRam = new AtomicLong();
+
+    // Use 1 partition and small maxSize to force evictions
+    final LRUQueryCache queryCache =
+        new LRUQueryCache(2, 10000000, _ -> true, 1, 1, cacheCleanUpParameters) {
+          @Override
+          protected void onQueryCache(Query query, long ramBytesUsed) {
+            super.onQueryCache(query, ramBytesUsed);
+            deprecatedQueryCacheRam.addAndGet(ramBytesUsed);
+          }
+
+          @Override
+          protected void onDocIdSetCache(Object readerCoreKey, long ramBytesUsed) {
+            super.onDocIdSetCache(readerCoreKey, ramBytesUsed);
+            deprecatedDocIdSetCacheRam.addAndGet(ramBytesUsed);
+          }
+
+          @Override
+          protected void onQueryEviction(Query query, long ramBytesUsed) {
+            super.onQueryEviction(query, ramBytesUsed);
+            deprecatedQueryEvictionRam.addAndGet(ramBytesUsed);
+          }
+
+          @Override
+          protected void onDocIdSetEviction(
+              Object readerCoreKey, int numEntries, long sumRamBytesUsed) {
+            super.onDocIdSetEviction(readerCoreKey, numEntries, sumRamBytesUsed);
+            deprecatedDocIdSetEvictionRam.addAndGet(sumRamBytesUsed);
+          }
+
+          @Override
+          protected void onCacheEntryInserted(
+              Object readerCoreKey, Query query, long ramBytesUsed) {
+            insertedCount.incrementAndGet();
+            insertedTotalRam.addAndGet(ramBytesUsed);
+          }
+
+          @Override
+          protected void onCacheEntryEvicted(Object readerCoreKey, Query query, long ramBytesUsed) {
+            evictedCount.incrementAndGet();
+            evictedTotalRam.addAndGet(ramBytesUsed);
+          }
+        };
+
+    LRUQueryCache.LRUQueryCachePartition[] partitions = queryCache.getLruQueryCacheSegments();
+    partitions[0].setMaxSize(2);
+
+    Directory dir = newDirectory();
+    final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    Document doc = new Document();
+    doc.add(new StringField("color", "red", Store.NO));
+    w.addDocument(doc);
+    doc = new Document();
+    doc.add(new StringField("color", "blue", Store.NO));
+    w.addDocument(doc);
+    doc = new Document();
+    doc.add(new StringField("color", "green", Store.NO));
+    w.addDocument(doc);
+
+    final DirectoryReader reader = w.getReader();
+    final IndexSearcher searcher = new IndexSearcher(reader);
+    searcher.setQueryCache(queryCache);
+    searcher.setQueryCachingPolicy(ALWAYS_CACHE);
+
+    final Query query1 = new TermQuery(new Term("color", "red"));
+    final Query query2 = new TermQuery(new Term("color", "blue"));
+    final Query query3 = new TermQuery(new Term("color", "green"));
+
+    // Cache query1 — should trigger onCacheEntryInserted once per segment
+    searcher.search(new ConstantScoreQuery(query1), 1);
+    int segmentCount = reader.leaves().size();
+    assertEquals(segmentCount, insertedCount.get());
+    assertEquals(0, evictedCount.get());
+
+    // Cache query2
+    searcher.search(new ConstantScoreQuery(query2), 1);
+    assertEquals(2 * segmentCount, insertedCount.get());
+    assertEquals(0, evictedCount.get());
+
+    // Cache query3 — should trigger eviction of query1 (LRU) since maxSize=2
+    searcher.search(new ConstantScoreQuery(query3), 1);
+    assertEquals(3 * segmentCount, insertedCount.get());
+    assertTrue("Expected evictions but got none", evictedCount.get() > 0);
+
+    // Verify unified callback RAM equals sum of deprecated callback RAM for insertions
+    assertEquals(
+        "Unified inserted RAM should equal sum of deprecated query + docIdSet RAM",
+        deprecatedQueryCacheRam.get() + deprecatedDocIdSetCacheRam.get(),
+        insertedTotalRam.get());
+
+    // Verify unified callback RAM equals sum of deprecated callback RAM for evictions
+    assertEquals(
+        "Unified evicted RAM should equal sum of deprecated query + docIdSet eviction RAM",
+        deprecatedQueryEvictionRam.get() + deprecatedDocIdSetEvictionRam.get(),
+        evictedTotalRam.get());
+
+    // Close reader to trigger segment close evictions
+    long evictedBefore = evictedCount.get();
+    reader.close();
+    queryCache.cleanUp();
+    assertTrue("Closing reader should trigger more evictions", evictedCount.get() > evictedBefore);
+
+    // After full eviction, all inserted RAM should be accounted for in evicted RAM
+    assertEquals(
+        "Total inserted RAM should equal total evicted RAM after full cleanup",
+        insertedTotalRam.get(),
+        evictedTotalRam.get());
+
+    // Verify the deprecated callbacks also balance
+    assertEquals(
+        deprecatedQueryCacheRam.get() + deprecatedDocIdSetCacheRam.get(),
+        deprecatedQueryEvictionRam.get() + deprecatedDocIdSetEvictionRam.get());
+
+    w.close();
+    dir.close();
+    queryCache.close();
+    scheduledThreadPoolExecutor.awaitTermination(5, TimeUnit.SECONDS);
+  }
+
   public static class DefaultCleanUpThreadFactory implements ThreadFactory {
     private final String namePrefix;
 
