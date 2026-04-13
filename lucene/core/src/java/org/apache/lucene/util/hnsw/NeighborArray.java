@@ -292,13 +292,16 @@ public class NeighborArray {
     int[] uncheckedIndexes = sort(scorer);
     assert uncheckedIndexes != null : "We will always have something unchecked";
     int uncheckedCursor = uncheckedIndexes.length - 1;
+    int[] bulkScoreNodes = new int[size];
+    float[] bulkScores = new float[size];
     for (int i = size - 1; i > 0; i--) {
       if (uncheckedCursor < 0) {
         // no unchecked node left
         break;
       }
       scorer.setScoringOrdinal(nodes[i]);
-      if (isWorstNonDiverse(i, uncheckedIndexes, uncheckedCursor, scorer)) {
+      if (isWorstNonDiverse(
+          i, uncheckedIndexes, uncheckedCursor, scorer, bulkScoreNodes, bulkScores)) {
         return i;
       }
       if (i == uncheckedIndexes[uncheckedCursor]) {
@@ -309,31 +312,26 @@ public class NeighborArray {
   }
 
   private boolean isWorstNonDiverse(
-      int candidateIndex, int[] uncheckedIndexes, int uncheckedCursor, RandomVectorScorer scorer)
+      int candidateIndex,
+      int[] uncheckedIndexes,
+      int uncheckedCursor,
+      RandomVectorScorer scorer,
+      int[] bulkScoreNodes,
+      float[] bulkScores)
       throws IOException {
     float minAcceptedSimilarity = scores[candidateIndex];
     if (candidateIndex == uncheckedIndexes[uncheckedCursor]) {
       // the candidate itself is unchecked
-      for (int i = candidateIndex - 1; i >= 0; i--) {
-        float neighborSimilarity = scorer.score(nodes[i]);
-        // candidate node is too similar to node i given its score relative to the base node
-        if (neighborSimilarity >= minAcceptedSimilarity) {
-          return true;
-        }
-      }
-    } else {
-      // else we just need to make sure candidate does not violate diversity with the (newly
-      // inserted) unchecked nodes
-      assert candidateIndex > uncheckedIndexes[uncheckedCursor];
-      for (int i = uncheckedCursor; i >= 0; i--) {
-        float neighborSimilarity = scorer.score(nodes[uncheckedIndexes[i]]);
-        // candidate node is too similar to node i given its score relative to the base node
-        if (neighborSimilarity >= minAcceptedSimilarity) {
-          return true;
-        }
-      }
+      return scorer.bulkScore(nodes, bulkScores, candidateIndex) >= minAcceptedSimilarity;
     }
-    return false;
+    // else we just need to make sure candidate does not violate diversity with the (newly
+    // inserted) unchecked nodes
+    assert candidateIndex > uncheckedIndexes[uncheckedCursor];
+    for (int i = uncheckedCursor; i >= 0; i--) {
+      bulkScoreNodes[i] = nodes[uncheckedIndexes[i]];
+    }
+    return scorer.bulkScore(bulkScoreNodes, bulkScores, uncheckedCursor + 1)
+        >= minAcceptedSimilarity;
   }
 
   public int maxSize() {
