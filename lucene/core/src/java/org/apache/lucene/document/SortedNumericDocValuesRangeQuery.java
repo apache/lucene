@@ -241,9 +241,11 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
                     if (value < lowerValue) {
                       continue;
                     }
+                    // Values are sorted, so the first value that is >= lowerValue is our best
+                    // candidate
                     return value <= upperValue;
                   }
-                  return false;
+                  return false; // all values were < lowerValue
                 }
 
                 @Override
