@@ -23,17 +23,9 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BitSet;
 
 /**
- * Performance and correctness tests for {@link DiversifyingNearestChildrenKnnCollector}.
+ * Tests for {@link DiversifyingNearestChildrenKnnCollector}.
  *
- * <p>Correctness tests verify behaviour
- *
- * <p>Throughput tests print ops/sec figures to stdout so you can compare runs before and after a
- * change. They are annotated {@code @Nightly} and are skipped in normal CI; run them explicitly
- * with:
- *
- * <pre>
- *   ./gradlew -p lucene/join test --tests TestDiversifyingNearestChildrenKnnCollectorPerformance -Ptests.verbose=true -Ptests.filter=@Nightly
- * </pre>
+ * <p>Correctness tests verify behaviour of the collector in various scenarios, including edge cases.
  */
 public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends LuceneTestCase {
 
@@ -157,84 +149,5 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
           "evicted result has lower score than expected: " + sd.score,
           sd.score >= minHighScore - 1e-6f);
     }
-  }
-
-  // ---------------------------------------------------------------------------
-  // Throughput benchmarks (annotated @Nightly, not run in normal CI)
-  // ---------------------------------------------------------------------------
-
-  private static final int WARMUP_ITERATIONS = 5;
-  private static final int MEASURE_ITERATIONS = 20;
-
-  /**
-   * Runs {@code MEASURE_ITERS} full collect+drain cycles and prints throughput to stdout.
-   *
-   * @param label short description printed in the output line
-   * @param k heap capacity
-   * @param numParents number of parent docs
-   * @param childrenPerParent children per parent (controls update vs insert pressure)
-   */
-  private void benchmark(String label, int k, int numParents, int childrenPerParent)
-      throws IOException {
-    BitSet parents = parentBitSet(numParents, childrenPerParent);
-    int totalChildren = numParents * childrenPerParent;
-    int[] childIds = buildChildIds(numParents, childrenPerParent);
-    float[] scores = buildChildScores(numParents, childrenPerParent);
-
-    // Warmup (results discarded)
-    for (int iter = 0; iter < WARMUP_ITERATIONS; iter++) {
-      DiversifyingNearestChildrenKnnCollector collector =
-          new DiversifyingNearestChildrenKnnCollector(k, Integer.MAX_VALUE, parents);
-      for (int i = 0; i < totalChildren; i++) {
-        collector.collect(childIds[i], scores[i]);
-      }
-      collector.topDocs();
-    }
-
-    // Measured
-    long totalNanos = 0;
-    for (int iter = 0; iter < MEASURE_ITERATIONS; iter++) {
-      DiversifyingNearestChildrenKnnCollector collector =
-          new DiversifyingNearestChildrenKnnCollector(k, Integer.MAX_VALUE, parents);
-      long t0 = System.nanoTime();
-      for (int i = 0; i < totalChildren; i++) {
-        collector.collect(childIds[i], scores[i]);
-      }
-      collector.topDocs();
-      totalNanos += System.nanoTime() - t0;
-    }
-
-    long avgNs = totalNanos / MEASURE_ITERATIONS;
-    double opsPerSec = (double) totalChildren * 1_000_000_000L / avgNs;
-    System.out.printf(
-        "%-42s  k=%4d  children=%7d  avg=%6.2f ms  %.2f M collect/sec%n",
-        label, k, totalChildren, avgNs / 1e6, opsPerSec / 1_000_000);
-  }
-
-  @Nightly
-  public void testThroughput_SmallK_SmallK() throws IOException {
-    benchmark("small-k", 10, 10_000, 10);
-  }
-
-  @Nightly
-  public void testThroughput_ThresholdK_MediumK() throws IOException {
-    benchmark("medium-k", 32, 10_000, 10);
-  }
-
-  @Nightly
-  public void testThroughput_MediumK_HighK() throws IOException {
-    benchmark("high-k", 100, 10_000, 10);
-  }
-
-  @Nightly
-  public void testThroughput_DenseUpdates_smallK() throws IOException {
-    // Many children per parent → heavy updateElement() pressure, small k
-    benchmark("dense-updates", 10, 1_000, 100);
-  }
-
-  @Nightly
-  public void testThroughput_DenseUpdates_highK() throws IOException {
-    // Many children per parent → heavy updateElement() pressure, large k
-    benchmark("dense-updates high k", 100, 1_000, 100);
   }
 }
