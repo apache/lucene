@@ -163,10 +163,9 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
     }
 
     private void growArrays() {
-      int newLen = ArrayUtil.oversize(size + 1, Integer.BYTES);
-      childNodes = Arrays.copyOf(childNodes, newLen);
-      parentNodes = Arrays.copyOf(parentNodes, newLen);
-      scores = Arrays.copyOf(scores, newLen);
+      childNodes = ArrayUtil.grow(childNodes);
+      parentNodes = ArrayUtil.grow(parentNodes);
+      scores = ArrayUtil.grow(scores);
     }
 
     private void pushIn(int nodeId, int parentId, float score) {
