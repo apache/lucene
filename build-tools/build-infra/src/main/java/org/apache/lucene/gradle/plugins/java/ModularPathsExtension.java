@@ -245,6 +245,9 @@ public class ModularPathsExtension implements Cloneable, Iterable<Configuration>
         return List.of();
       }
 
+      // we use custom module path assembly. This unfortunately causes
+      // the module-path to be emitted twice in compiler arguments;
+      // see gradle bug https://github.com/gradle/gradle/issues/19492.
       List<String> extraArgs = new ArrayList<>();
       extraArgs.add("--module-path");
       extraArgs.add(joinPaths(modulePath));

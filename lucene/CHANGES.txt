@@ -200,6 +200,8 @@ Build
   paths in cache keys, improving cache hit rates across different project locations.
   (Gasper Kojek)
 
+* Add api/runtime Usage attribute to modular configurations. (Dawid Weiss)
+
 Other
 ---------------------
 
