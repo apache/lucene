@@ -25,7 +25,8 @@ import org.apache.lucene.util.BitSet;
 /**
  * Tests for {@link DiversifyingNearestChildrenKnnCollector}.
  *
- * <p>Correctness tests verify behaviour of the collector in various scenarios, including edge cases.
+ * <p>Correctness tests verify behaviour of the collector in various scenarios, including edge
+ * cases.
  */
 public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends LuceneTestCase {
 
@@ -116,7 +117,6 @@ public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends Luce
       }
     }
   }
-
 
   /**
    * When the heap is full (size == k) and a better candidate arrives for a new parent, the
