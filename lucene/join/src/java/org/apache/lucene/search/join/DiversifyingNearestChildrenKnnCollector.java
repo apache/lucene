@@ -17,7 +17,6 @@
 
 package org.apache.lucene.search.join;
 
-import java.util.Arrays;
 import org.apache.lucene.internal.hppc.IntIntHashMap;
 import org.apache.lucene.search.AbstractKnnCollector;
 import org.apache.lucene.search.ScoreDoc;
