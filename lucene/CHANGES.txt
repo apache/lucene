@@ -306,6 +306,8 @@ Optimizations
 
 * GITHUB#15886: Cache frozen FieldType to skip redundant schema validation. (Tim Brooks)
 
+* GITHUB#15902: Improve DiversifyingChildren performance by using primitive arrays(Alessandro Benedetti)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
