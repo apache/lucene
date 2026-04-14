@@ -47,11 +47,7 @@ public class TestIndexFileDeleter extends LuceneTestCase {
   public void testDeleteLeftoverFiles() throws IOException {
     Directory dir = newDirectory();
 
-    MergePolicy mergePolicy = newLogMergePolicy(true, 10);
-
-    // This test expects all of its segments to be in CFS
-    mergePolicy.setNoCFSRatio(1.0);
-    mergePolicy.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
+    MergePolicy mergePolicy = newLogMergePolicy(10);
 
     IndexWriter writer =
         new IndexWriter(
@@ -60,12 +56,15 @@ public class TestIndexFileDeleter extends LuceneTestCase {
                 .setMaxBufferedDocs(10)
                 .setMergePolicy(mergePolicy)
                 .setUseCompoundFile(true));
+    // This test expects all of its segments to be in CFS
+    writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(true);
+    writer.getConfig().getCodec().compoundFormat().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
 
     int i;
     for (i = 0; i < 35; i++) {
       addDoc(writer, i);
     }
-    writer.getConfig().getMergePolicy().setNoCFSRatio(0.0);
+    writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
     writer.getConfig().setUseCompoundFile(false);
     for (; i < 45; i++) {
       addDoc(writer, i);

@@ -19,79 +19,86 @@ import sys
 # A simple python script to generate an HTML entity map and a regex alternation
 # for inclusion in HTMLStripCharFilter.jflex.
 
+
 def main():
-  with open(sys.argv[1], 'w') as f:
-      sys.stdout = f
+    with open(sys.argv[1], "w") as f:
+        sys.stdout = f
 
-      print(get_apache_license())
-      codes = {}
-      regex = re.compile(r'\s*<!ENTITY\s+(\S+)\s+"&(?:#38;)?#(\d+);"')
-      for line in get_entity_text().split('\n'):
-        match = regex.match(line)
-        if match:
-          key = match.group(1)
-          if   key == 'quot': codes[key] = r'\"'
-          elif key == 'nbsp': codes[key] = ' ';
-          else              : codes[key] = r'\u%04X' % int(match.group(2))
+        print(get_apache_license())
+        codes = {}
+        regex = re.compile(r'\s*<!ENTITY\s+(\S+)\s+"&(?:#38;)?#(\d+);"')
+        for line in get_entity_text().split("\n"):
+            match = regex.match(line)
+            if match:
+                key = match.group(1)
+                if key == "quot":
+                    codes[key] = r"\""
+                elif key == "nbsp":
+                    codes[key] = " "
+                else:
+                    codes[key] = r"\u%04X" % int(match.group(2))
 
-      keys = sorted(codes)
+        keys = sorted(codes)
 
-      first_entry = True
-      output_line = 'CharacterEntities = ( '
-      for key in keys:
-        new_entry = ('"%s"' if first_entry else ' | "%s"') % key
-        first_entry = False
-        if len(output_line) + len(new_entry) >= 80:
-          print(output_line)
-          output_line = '                   '
-        output_line += new_entry
-        if key in ('quot','copy','gt','lt','reg','amp'):
-          new_entry = ' | "%s"' % key.upper()
-          if len(output_line) + len(new_entry) >= 80:
-            print(output_line)
-            output_line = '                   '
-          output_line += new_entry
-      print(output_line, ')')
+        first_entry = True
+        output_line = "CharacterEntities = ( "
+        for key in keys:
+            new_entry = ('"%s"' if first_entry else ' | "%s"') % key
+            first_entry = False
+            if len(output_line) + len(new_entry) >= 80:
+                print(output_line)
+                output_line = "                   "
+            output_line += new_entry
+            if key in ("quot", "copy", "gt", "lt", "reg", "amp"):
+                new_entry = ' | "%s"' % key.upper()
+                if len(output_line) + len(new_entry) >= 80:
+                    print(output_line)
+                    output_line = "                   "
+                output_line += new_entry
+        print(output_line, ")")
 
-      print('%{')
-      print('  private static final Map<String,String> upperCaseVariantsAccepted')
-      print('      = new HashMap<>();')
-      print('  static {')
-      print('    upperCaseVariantsAccepted.put("quot", "QUOT");')
-      print('    upperCaseVariantsAccepted.put("copy", "COPY");')
-      print('    upperCaseVariantsAccepted.put("gt", "GT");')
-      print('    upperCaseVariantsAccepted.put("lt", "LT");')
-      print('    upperCaseVariantsAccepted.put("reg", "REG");')
-      print('    upperCaseVariantsAccepted.put("amp", "AMP");')
-      print('  }')
-      print('  private static final CharArrayMap<Character> entityValues')
-      print('      = new CharArrayMap<>(%i, false);' % len(keys))
-      print('  static {')
-      print('    String[] entities = {')
-      output_line = '     '
-      for key in keys:
-        new_entry = ' "%s", "%s",' % (key, codes[key])
-        if len(output_line) + len(new_entry) >= 80:
-          print(output_line)
-          output_line = '     '
-        output_line += new_entry
-      print(output_line[:-1])
-      print('    };')
-      print('    for (int i = 0 ; i < entities.length ; i += 2) {')
-      print('      Character value = entities[i + 1].charAt(0);')
-      print('      entityValues.put(entities[i], value);')
-      print('      String upperCaseVariant = upperCaseVariantsAccepted.get(entities[i]);')
-      print('      if (upperCaseVariant != null) {')
-      print('        entityValues.put(upperCaseVariant, value);')
-      print('      }')
-      print('    }')
-      print("  }")
-      print("%}")
+        print("%{")
+        print("  private static final Map<String,String> upperCaseVariantsAccepted")
+        print("      = new HashMap<>();")
+        print("  static {")
+        print('    upperCaseVariantsAccepted.put("quot", "QUOT");')
+        print('    upperCaseVariantsAccepted.put("copy", "COPY");')
+        print('    upperCaseVariantsAccepted.put("gt", "GT");')
+        print('    upperCaseVariantsAccepted.put("lt", "LT");')
+        print('    upperCaseVariantsAccepted.put("reg", "REG");')
+        print('    upperCaseVariantsAccepted.put("amp", "AMP");')
+        print("  }")
+        print("  private static final CharArrayMap<Character> entityValues")
+        print("      = new CharArrayMap<>(%i, false);" % len(keys))
+        print("  static {")
+        print("    String[] entities = {")
+        output_line = "     "
+        for key in keys:
+            new_entry = ' "%s", "%s",' % (key, codes[key])
+            if len(output_line) + len(new_entry) >= 80:
+                print(output_line)
+                output_line = "     "
+            output_line += new_entry
+        print(output_line[:-1])
+        print("    };")
+        print("    for (int i = 0 ; i < entities.length ; i += 2) {")
+        print("      Character value = entities[i + 1].charAt(0);")
+        print("      entityValues.put(entities[i], value);")
+        print(
+            "      String upperCaseVariant = upperCaseVariantsAccepted.get(entities[i]);"
+        )
+        print("      if (upperCaseVariant != null) {")
+        print("        entityValues.put(upperCaseVariant, value);")
+        print("      }")
+        print("    }")
+        print("  }")
+        print("%}")
+
 
 def get_entity_text():
-# The text below is taken verbatim from
-# <http://www.w3.org/TR/REC-html40/sgml/entities.html>:
-  text = r"""
+    # The text below is taken verbatim from
+    # <http://www.w3.org/TR/REC-html40/sgml/entities.html>:
+    text = r"""
 F.1. XHTML Character Entities
 
 XHTML DTDs make available a standard collection of named character entities. Those entities are defined in this section.
@@ -517,10 +524,11 @@ You can download this version of this file from http://www.w3.org/TR/2010/REC-xh
 
 <!-- end of xhtml-symbol.ent -->
 """
-  return text
+    return text
+
 
 def get_apache_license():
-  license = r"""/*
+    license = r"""/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -538,6 +546,7 @@ def get_apache_license():
  */
 
 """
-  return license
+    return license
+
 
 main()

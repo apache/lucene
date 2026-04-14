@@ -38,7 +38,7 @@
  *
  * <h3>Farsi Range Queries</h3>
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   // "fa" Locale is not supported by Sun JDK 1.4 or 1.5
  *   Collator collator = Collator.getInstance(new Locale("ar"));
  *   CollationKeyAnalyzer analyzer = new CollationKeyAnalyzer(collator);
@@ -63,11 +63,11 @@
  *   ScoreDoc[] result
  *     = is.search(aqp.parse("[ \u062F TO \u0698 ]"), null, 1000).scoreDocs;
  *   assertEquals("The index Term should not be included.", 0, result.length);
- * </pre>
+ * </code></pre>
  *
  * <h3>Danish Sorting</h3>
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   Analyzer analyzer
  *     = new CollationKeyAnalyzer(Collator.getInstance(new Locale("da", "dk")));
  *   Path dirPath = Files.createTempDirectory("tempIndex");
@@ -93,11 +93,11 @@
  *     Document doc = searcher.doc(result[i].doc);
  *     assertEquals(sortedTracerOrder[i], doc.getValues("tracer")[0]);
  *   }
- * </pre>
+ * </code></pre>
  *
  * <h3>Turkish Case Normalization</h3>
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   Collator collator = Collator.getInstance(new Locale("tr", "TR"));
  *   collator.setStrength(Collator.PRIMARY);
  *   Analyzer analyzer = new CollationKeyAnalyzer(collator);
@@ -114,7 +114,7 @@
  *   Query query = parser.parse("d\u0131gy");   // U+0131: dotless i
  *   ScoreDoc[] result = is.search(query, null, 1000).scoreDocs;
  *   assertEquals("The index Term should be included.", 1, result.length);
- * </pre>
+ * </code></pre>
  *
  * <h2>Caveats and Comparisons</h2>
  *

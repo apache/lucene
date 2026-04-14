@@ -113,7 +113,7 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
    */
   public static final int DEFAULT_BEAM_WIDTH = HnswGraphBuilder.DEFAULT_BEAM_WIDTH;
 
-  /** Default to use single thread merge */
+  /** Default to use single-thread merge */
   public static final int DEFAULT_NUM_MERGE_WORKER = 1;
 
   /**

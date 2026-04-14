@@ -29,7 +29,7 @@ import org.apache.lucene.search.DoubleValuesSource;
  *
  * <p>Example usage:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   SimpleBindings bindings = new SimpleBindings();
  *   // document's text relevance score
  *   bindings.add("_score", DoubleValuesSource.SCORES);
@@ -40,7 +40,7 @@ import org.apache.lucene.search.DoubleValuesSource;
  *
  *   // create a sort field in reverse order
  *   Sort sort = new Sort(expr.getSortField(bindings, true));
- * </pre>
+ * </code></pre>
  *
  * @lucene.experimental
  */

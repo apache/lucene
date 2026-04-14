@@ -371,13 +371,6 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
     }
   }
 
-  private static final double EPSILON = 1E-14;
-
-  public void testSetters() {
-    assertSetters(new LogByteSizeMergePolicy());
-    assertSetters(new MockMergePolicy());
-  }
-
   // Test basic semantics of merge on commit
   public void testMergeOnCommit() throws IOException {
     Directory dir = newDirectory();
@@ -465,27 +458,6 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
 
     writerWithMergePolicy.close();
     dir.close();
-  }
-
-  private void assertSetters(MergePolicy lmp) {
-    lmp.setMaxCFSSegmentSizeMB(2.0);
-    assertEquals(2.0, lmp.getMaxCFSSegmentSizeMB(), EPSILON);
-
-    lmp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
-    assertEquals(
-        Long.MAX_VALUE / 1024. / 1024., lmp.getMaxCFSSegmentSizeMB(), EPSILON * Long.MAX_VALUE);
-
-    lmp.setMaxCFSSegmentSizeMB(Long.MAX_VALUE / 1024. / 1024.);
-    assertEquals(
-        Long.MAX_VALUE / 1024. / 1024., lmp.getMaxCFSSegmentSizeMB(), EPSILON * Long.MAX_VALUE);
-
-    expectThrows(
-        IllegalArgumentException.class,
-        () -> {
-          lmp.setMaxCFSSegmentSizeMB(-2.0);
-        });
-
-    // TODO: Add more checks for other non-double setters!
   }
 
   public void testCarryOverNewDeletesOnCommit() throws IOException, InterruptedException {
@@ -725,10 +697,9 @@ public class TestIndexWriterMergePolicy extends LuceneTestCase {
         writer.addDocument(d2);
         writer.flush();
         mergeAndFail.set(true);
-        try (DirectoryReader reader = DirectoryReader.open(writer)) {
-          assertNotNull(reader); // make compiler happy and use the reader
-          fail();
-        } catch (RuntimeException e) {
+        try {
+          RuntimeException e =
+              expectThrows(RuntimeException.class, () -> DirectoryReader.open(writer));
           assertEquals("boom", e.getMessage());
         } finally {
           mergeAndFail.set(false);

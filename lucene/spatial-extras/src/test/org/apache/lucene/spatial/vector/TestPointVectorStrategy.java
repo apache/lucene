@@ -51,12 +51,12 @@ public class TestPointVectorStrategy extends StrategyTestCase {
     assertNotNull(query);
   }
 
-  @Test(expected = UnsupportedOperationException.class)
+  @Test
   public void testInvalidQueryShape() {
     this.strategy = PointVectorStrategy.newInstance(ctx, getClass().getSimpleName());
     Point point = ctx.makePoint(0, 0);
     SpatialArgs args = new SpatialArgs(SpatialOperation.Intersects, point);
-    this.strategy.makeQuery(args);
+    expectThrows(UnsupportedOperationException.class, () -> this.strategy.makeQuery(args));
   }
 
   @Test

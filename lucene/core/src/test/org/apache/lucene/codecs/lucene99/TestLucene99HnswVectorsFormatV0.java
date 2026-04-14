@@ -33,4 +33,9 @@ public class TestLucene99HnswVectorsFormatV0 extends BaseKnnVectorsFormatTestCas
         new Lucene99HnswVectorsFormat(
             DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, DEFAULT_NUM_MERGE_WORKER, null, 0));
   }
+
+  @Override
+  protected boolean supportsFloatVectorFallback() {
+    return false;
+  }
 }

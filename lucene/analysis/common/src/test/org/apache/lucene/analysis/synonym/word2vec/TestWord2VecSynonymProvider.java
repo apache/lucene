@@ -18,7 +18,7 @@
 package org.apache.lucene.analysis.synonym.word2vec;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.Collection;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.TermAndVector;
@@ -59,12 +59,15 @@ public class TestWord2VecSynonymProvider extends LuceneTestCase {
 
     BytesRef inputTerm = new BytesRef("a");
     String[] expectedSynonyms = {"d", "e", "c", "b"};
-    List<TermAndBoost> actualSynonymsResults =
+    Collection<TermAndBoost> actualSynonymsResults =
         unit.getSynonyms(inputTerm, MAX_SYNONYMS_PER_TERM, MIN_ACCEPTED_SIMILARITY);
 
     assertEquals(4, actualSynonymsResults.size());
-    for (int i = 0; i < expectedSynonyms.length; i++) {
-      assertEquals(new BytesRef(expectedSynonyms[i]), actualSynonymsResults.get(i).term());
+
+    int i = 0;
+    for (TermAndBoost actualSynonymsResult : actualSynonymsResults) {
+      assertEquals(new BytesRef(expectedSynonyms[i]), actualSynonymsResult.term());
+      i++;
     }
   }
 
@@ -78,13 +81,14 @@ public class TestWord2VecSynonymProvider extends LuceneTestCase {
     Word2VecSynonymProvider unit = new Word2VecSynonymProvider(model);
 
     BytesRef inputTerm = new BytesRef("a");
-    List<TermAndBoost> actualSynonymsResults =
+    Collection<TermAndBoost> actualSynonymsResults =
         unit.getSynonyms(inputTerm, MAX_SYNONYMS_PER_TERM, MIN_ACCEPTED_SIMILARITY);
 
     BytesRef expectedFirstSynonymTerm = new BytesRef("b");
     double expectedFirstSynonymBoost = 1.0;
-    assertEquals(expectedFirstSynonymTerm, actualSynonymsResults.get(0).term());
-    assertEquals(expectedFirstSynonymBoost, actualSynonymsResults.get(0).boost(), 0.001f);
+    TermAndBoost first = actualSynonymsResults.iterator().next();
+    assertEquals(expectedFirstSynonymTerm, first.term());
+    assertEquals(expectedFirstSynonymBoost, first.boost(), 0.001f);
   }
 
   @Test
@@ -98,7 +102,7 @@ public class TestWord2VecSynonymProvider extends LuceneTestCase {
     Word2VecSynonymProvider unit = new Word2VecSynonymProvider(model);
 
     BytesRef inputTerm = newBytesRef("a");
-    List<TermAndBoost> actualSynonymsResults =
+    Collection<TermAndBoost> actualSynonymsResults =
         unit.getSynonyms(inputTerm, MAX_SYNONYMS_PER_TERM, MIN_ACCEPTED_SIMILARITY);
     assertEquals(0, actualSynonymsResults.size());
   }

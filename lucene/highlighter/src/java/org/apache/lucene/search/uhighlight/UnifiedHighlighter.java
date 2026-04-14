@@ -775,13 +775,13 @@ public class UnifiedHighlighter {
    *
    * <p>Conceptually, this behaves as a more efficient form of:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * Map m = new HashMap();
    * for (String field : fields) {
    * m.put(field, highlight(field, query, topDocs));
    * }
    * return m;
-   * </pre>
+   * </code></pre>
    *
    * @param fields field names to highlight. Must have a stored string value.
    * @param query query to highlight.
@@ -805,13 +805,13 @@ public class UnifiedHighlighter {
    *
    * <p>Conceptually, this behaves as a more efficient form of:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * Map m = new HashMap();
    * for (String field : fields) {
    * m.put(field, highlight(field, query, topDocs, maxPassages));
    * }
    * return m;
-   * </pre>
+   * </code></pre>
    *
    * @param fields field names to highlight. Must have a stored string value.
    * @param query query to highlight.
@@ -974,8 +974,8 @@ public class UnifiedHighlighter {
                   ? indexReaderWithTermVecCache
                   : searcher.getIndexReader();
           final LeafReader leafReader;
-          if (indexReader instanceof LeafReader) {
-            leafReader = (LeafReader) indexReader;
+          if (indexReader instanceof LeafReader lr) {
+            leafReader = lr;
           } else {
             List<LeafReaderContext> leaves = indexReader.leaves();
             LeafReaderContext leafReaderContext = leaves.get(ReaderUtil.subIndex(docId, leaves));
@@ -1213,7 +1213,7 @@ public class UnifiedHighlighter {
         filteredTerms.add(term.bytes());
       }
     }
-    return filteredTerms.toArray(new BytesRef[filteredTerms.size()]);
+    return filteredTerms.toArray(BytesRef[]::new);
   }
 
   protected PhraseHelper getPhraseHelper(
@@ -1452,8 +1452,8 @@ public class UnifiedHighlighter {
         return;
       }
       StringBuilder curValueBuilder;
-      if (curValue instanceof StringBuilder) {
-        curValueBuilder = (StringBuilder) curValue;
+      if (curValue instanceof StringBuilder sb) {
+        curValueBuilder = sb;
       } else {
         // upgrade String to StringBuilder. Choose a good initial size.
         curValueBuilder =

@@ -253,4 +253,26 @@ public class TestMonitor extends MonitorTestBase {
       assertEquals(0, matches.getMatchCount());
     }
   }
+
+  public void testQueryCacheStats() throws IOException {
+    try (Monitor monitor = newMonitor()) {
+      assertEquals(-1, monitor.getQueryCacheStats().lastPurged());
+      assertEquals(0, monitor.getQueryCacheStats().queries());
+      assertEquals(0, monitor.getQueryCacheStats().cachedQueries());
+
+      MonitorQuery[] queries =
+          new MonitorQuery[] {
+            new MonitorQuery("1", parse("test1")),
+            new MonitorQuery("2", parse("test2")),
+            new MonitorQuery("3", parse("test3"))
+          };
+      monitor.register(queries);
+      assertEquals(3, monitor.getQueryCacheStats().queries());
+      assertEquals(3, monitor.getQueryCacheStats().cachedQueries());
+
+      assertEquals(-1, monitor.getQueryCacheStats().lastPurged());
+      monitor.purgeCache();
+      assertTrue(monitor.getQueryCacheStats().lastPurged() > 0);
+    }
+  }
 }

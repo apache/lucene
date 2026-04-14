@@ -254,10 +254,10 @@ public class TestSearchImpl extends LuceneTestCase {
         search.guessSortTypes("f7").toArray());
   }
 
-  @Test(expected = LukeException.class)
+  @Test
   public void testGuessSortTypesNoSuchField() {
     SearchImpl search = new SearchImpl(reader);
-    search.guessSortTypes("unknown");
+    expectThrows(LukeException.class, () -> search.guessSortTypes("unknown"));
   }
 
   @Test
@@ -295,11 +295,10 @@ public class TestSearchImpl extends LuceneTestCase {
     assertFalse(search.getSortType("f7", "STRING", false).isPresent());
   }
 
-  @Test(expected = LukeException.class)
+  @Test
   public void testGetSortTypeNoSuchField() {
     SearchImpl search = new SearchImpl(reader);
-
-    search.getSortType("unknown", "STRING", false);
+    expectThrows(LukeException.class, () -> search.getSortType("unknown", "STRING", false));
   }
 
   @Test
@@ -341,10 +340,10 @@ public class TestSearchImpl extends LuceneTestCase {
     assertEquals(10, res.getOffset());
   }
 
-  @Test(expected = LukeException.class)
+  @Test
   public void testNextPageSearchNotStarted() {
     SearchImpl search = new SearchImpl(reader);
-    search.nextPage();
+    expectThrows(LukeException.class, () -> search.nextPage());
   }
 
   @Test
@@ -371,10 +370,10 @@ public class TestSearchImpl extends LuceneTestCase {
     assertEquals(0, res.getOffset());
   }
 
-  @Test(expected = LukeException.class)
+  @Test
   public void testPrevPageSearchNotStarted() {
     SearchImpl search = new SearchImpl(reader);
-    search.prevPage();
+    expectThrows(LukeException.class, () -> search.prevPage());
   }
 
   @Test

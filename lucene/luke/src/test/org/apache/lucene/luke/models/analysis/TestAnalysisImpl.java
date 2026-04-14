@@ -132,7 +132,7 @@ public class TestAnalysisImpl extends LuceneTestCase {
     assertNotNull(tokens);
   }
 
-  @Test(expected = LukeException.class)
+  @Test
   public void testAnalyzeStepByStep_preset() {
     AnalysisImpl analysis = new AnalysisImpl();
     String analyzerType = "org.apache.lucene.analysis.standard.StandardAnalyzer";
@@ -140,7 +140,7 @@ public class TestAnalysisImpl extends LuceneTestCase {
     assertEquals(analyzerType, analyzer.getClass().getName());
 
     String text = "This test must fail.";
-    analysis.analyzeStepByStep(text);
+    expectThrows(LukeException.class, () -> analysis.analyzeStepByStep(text));
   }
 
   @Test

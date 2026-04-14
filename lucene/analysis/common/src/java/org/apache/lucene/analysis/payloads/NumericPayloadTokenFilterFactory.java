@@ -23,13 +23,13 @@ import org.apache.lucene.analysis.TokenStream;
 /**
  * Factory for {@link NumericPayloadTokenFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_numpayload" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
  *     &lt;filter class="solr.NumericPayloadTokenFilterFactory" payload="24" typeMatch="word"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @since 3.1
  * @lucene.spi {@value #NAME}

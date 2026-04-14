@@ -470,4 +470,3 @@ void OptionalWeights(SrndQuery q) : {
     }
   )*
 }
-

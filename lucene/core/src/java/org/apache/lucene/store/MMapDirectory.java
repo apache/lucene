@@ -36,7 +36,6 @@ import java.util.function.Function;
 import java.util.logging.Logger;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.util.Constants;
-import org.apache.lucene.util.Unwrappable;
 
 /**
  * File-based {@link Directory} implementation that uses mmap for reading, and {@link
@@ -322,9 +321,6 @@ public class MMapDirectory extends FSDirectory {
     Path path = directory.resolve(name);
     final String resourceDescription = "MemorySegmentIndexInput(path=\"" + path.toString() + "\")";
 
-    // Work around for JDK-8259028: we need to unwrap our test-only file system layers
-    path = Unwrappable.unwrapAll(path);
-
     final boolean confined = context.hints().contains(ReadOnceHint.INSTANCE);
     Function<IOContext, ReadAdvice> toReadAdvice =
         c -> readAdvice.apply(name, c).orElse(Constants.DEFAULT_READADVICE);
@@ -486,7 +482,7 @@ public class MMapDirectory extends FSDirectory {
   }
 
   private static int getSharedArenaMaxPermitsSysprop() {
-    int ret = 1024; // default value
+    int ret = RefCountedSharedArena.DEFAULT_MAX_PERMITS;
     try {
       String str = System.getProperty(SHARED_ARENA_MAX_PERMITS_SYSPROP);
       if (str != null) {

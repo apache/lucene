@@ -433,9 +433,8 @@ public class TestBooleanScorer extends LuceneTestCase {
     int totalHitsThreshold = 7;
     TopScoreDocCollectorManager topScoreDocCollectorManager =
         new TopScoreDocCollectorManager(3, null, totalHitsThreshold);
-    TopScoreDocCollector collector = topScoreDocCollectorManager.newCollector();
-    searcher.search(builder.build(), collector);
-    assertEquals(totalHitsThreshold + 1, collector.totalHits);
+    TopDocs topDocs = searcher.search(builder.build(), topScoreDocCollectorManager);
+    assertEquals(totalHitsThreshold + 1, topDocs.totalHits.value());
 
     reader.close();
     w.close();

@@ -163,6 +163,22 @@ public abstract class Similarity {
   }
 
   /**
+   * Computes the weight for a query term based on how many times it appears in the query. This is
+   * used during query rewriting to compute the boost for duplicate query terms.
+   *
+   * <p>The default implementation returns {@code queryTermFrequency} as a float, which preserves
+   * the existing linear boost behavior. Subclasses may override this to apply saturation (e.g.
+   * BM25's k3 parameter).
+   *
+   * @param queryTermFrequency the number of times a term appears in the query
+   * @return the computed weight for this query term frequency
+   * @lucene.experimental
+   */
+  public float computeQueryTermWeight(int queryTermFrequency) {
+    return (float) queryTermFrequency;
+  }
+
+  /**
    * Compute any collection-level weight (e.g. IDF, average document length, etc) needed for scoring
    * a query.
    *
@@ -242,11 +258,11 @@ public abstract class Similarity {
      * Bulk computation of scores. For each index {@code i} in [0, size), scores[i] is computed as
      * score(freqs[i], norms[i]). The default implementation does the following:
      *
-     * <pre class="prettyprint">
+     * <pre><code class="language-java">
      * for (int i = 0; i &lt; size; ++i) {
      *   scores[i] = score(freqs[i], norms[i]);
      * }
-     * </pre>
+     * </code></pre>
      *
      * <p><b>NOTE</b>: It is legal to pass the same {@code freqs} and {@code scores} arrays.
      */

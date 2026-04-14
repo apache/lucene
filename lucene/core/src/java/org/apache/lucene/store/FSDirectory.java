@@ -181,7 +181,7 @@ public abstract class FSDirectory extends BaseDirectory {
       }
     }
 
-    String[] array = entries.toArray(new String[0]);
+    String[] array = entries.toArray(String[]::new);
     // Directory.listAll javadocs state that we sort the results here, so we don't let filesystem
     // specifics leak out of this abstraction:
     Arrays.sort(array);

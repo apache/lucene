@@ -74,9 +74,9 @@
  * org.apache.lucene.document.Field Field} with the specified string in it. Constructing a {@link
  * org.apache.lucene.search.TermQuery TermQuery} is as simple as:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * TermQuery tq = new TermQuery(new Term("fieldName", "term"));
- * </pre>
+ * </code></pre>
  *
  * In this example, the {@link org.apache.lucene.search.Query Query} identifies all {@link
  * org.apache.lucene.document.Document Document}s that have the {@link
@@ -290,7 +290,7 @@
  * <p>Here is an example that constructs a query on "apache OR lucene" on fields "title" with a
  * boost of 10, and "body" with a boost of 1:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * BooleanQuery.Builder builder = new BooleanQuery.Builder();
  * for (String term : new String[] { "apache", "lucene" }) {
  *   Query query = new CombinedFieldQuery(term)
@@ -300,7 +300,7 @@
  *   builder.add(query, Occur.SHOULD);
  * }
  * Query query = builder.build();
- * </pre>
+ * </code></pre>
  *
  * <h3>Integrating field values into the score</h3>
  *
@@ -311,7 +311,7 @@
  * linear combination. For instance the below query matches the same documents as {@code
  * originalQuery} and computes scores as {@code similarityScore + 0.7 * featureScore}:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * Query originalQuery = new BooleanQuery.Builder()
  *     .add(new TermQuery(new Term("body", "apache")), Occur.SHOULD)
  *     .add(new TermQuery(new Term("body", "lucene")), Occur.SHOULD)
@@ -321,7 +321,7 @@
  *     .add(originalQuery, Occur.MUST)
  *     .add(new BoostQuery(featureQuery, 0.7f), Occur.SHOULD)
  *     .build();
- * </pre>
+ * </code></pre>
  *
  * <p>A less efficient yet more flexible way of modifying scores is to index scoring features into
  * doc-value fields and then combine them with the similarity score using a <a
@@ -332,7 +332,7 @@
  * assuming that values for the {@code popularity} field have been set in a {@link
  * org.apache.lucene.document.NumericDocValuesField NumericDocValuesField} at index time:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   // compile an expression:
  *   Expression expr = JavascriptCompiler.compile("_score * ln(popularity)");
  *
@@ -346,7 +346,7 @@
  *   Query query = new FunctionScoreQuery(
  *       originalQuery,
  *       expr.getDoubleValuesSource(bindings));
- * </pre>
+ * </code></pre>
  *
  * <a id="customQueriesExpert"></a>
  *

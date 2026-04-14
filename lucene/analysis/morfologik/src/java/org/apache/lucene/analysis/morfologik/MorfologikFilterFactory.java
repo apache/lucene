@@ -34,13 +34,13 @@ import org.apache.lucene.util.ResourceLoaderAware;
  * <p>An explicit resource name of the dictionary ({@code ".dict"}) can be provided via the <code>
  * dictionary</code> attribute, as the example below demonstrates:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_mylang" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
  *     &lt;filter class="solr.MorfologikFilterFactory" dictionary="mylang.dict" /&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * <p>If the dictionary attribute is not provided, the Polish dictionary is loaded and used by
  * default.

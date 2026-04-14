@@ -392,7 +392,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
         fieldNames.add(TestUtil.randomSimpleString(random()));
         fieldNames.remove("id");
       }
-      this.fieldNames = fieldNames.toArray(new String[0]);
+      this.fieldNames = fieldNames.toArray(String[]::new);
       terms = new String[disctinctTerms];
       termBytes = new BytesRef[disctinctTerms];
       for (int i = 0; i < disctinctTerms; ++i) {
@@ -447,7 +447,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     for (String term : tk.freqs.keySet()) {
       uniqueTerms.add(new BytesRef(term));
     }
-    final BytesRef[] sortedTerms = uniqueTerms.toArray(new BytesRef[0]);
+    final BytesRef[] sortedTerms = uniqueTerms.toArray(BytesRef[]::new);
     Arrays.sort(sortedTerms);
     final TermsEnum termsEnum = terms.iterator();
     for (int i = 0; i < sortedTerms.length; ++i) {
