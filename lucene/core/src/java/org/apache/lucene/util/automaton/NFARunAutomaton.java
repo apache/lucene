@@ -27,7 +27,8 @@ import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * A RunAutomaton that does not require DFA. It will lazily determinize on-demand, memorizing the
- * generated DFA states that has been explored. Note: the current implementation is NOT thread-safe
+ * generated DFA states that has been explored. This implementation is thread-safe: multiple threads
+ * may concurrently step through different (or the same) DFA states.
  *
  * <p>implemented based on: https://swtch.com/~rsc/regexp/regexp1.html
  *
@@ -45,14 +46,11 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor, Accoun
 
   private final Automaton automaton;
   private final int[] points;
-  private final Map<DState, Integer> dStateToOrd = new HashMap<>(); // could init lazily?
+  private final Map<DState, Integer> dStateToOrd = new HashMap<>(); // guarded by stateRegistryLock
+  private final Object stateRegistryLock = new Object();
   private DState[] dStates;
   private final int alphabetSize;
   final int[] classmap; // map from char number to class
-
-  private final Operations.PointTransitionSet transitionSet =
-      new Operations.PointTransitionSet(); // reusable
-  private final StateSet statesSet = new StateSet(5); // reusable
 
   /**
    * Constructor, assuming alphabet size is the whole Unicode code point space
@@ -101,19 +99,20 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor, Accoun
    */
   @Override
   public int step(int state, int c) {
-    assert dStates[state] != null;
-    return step(dStates[state], c);
+    DState dState = getDState(state);
+    return step(dState, c);
   }
 
   @Override
   public boolean isAccept(int state) {
-    assert dStates[state] != null;
-    return dStates[state].isAccept;
+    return getDState(state).isAccept;
   }
 
   @Override
   public int getSize() {
-    return dStates.length;
+    synchronized (stateRegistryLock) {
+      return dStates.length;
+    }
   }
 
   /**
@@ -128,7 +127,7 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor, Accoun
       p = step(p, c);
       if (p == MISSING) return false;
     }
-    return dStates[p].isAccept;
+    return getDState(p).isAccept;
   }
 
   /**
@@ -141,6 +140,13 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor, Accoun
     return dState.nextState(charClass);
   }
 
+  private DState getDState(int state) {
+    synchronized (stateRegistryLock) {
+      assert dStates[state] != null;
+      return dStates[state];
+    }
+  }
+
   /**
    * return the ordinal of given DFA state, generate a new ordinal if the given DFA state is a new
    * one
@@ -149,18 +155,20 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor, Accoun
     if (dState == null) {
       return MISSING;
     }
-    int ord = dStateToOrd.getOrDefault(dState, -1);
-    if (ord >= 0) {
+    synchronized (stateRegistryLock) {
+      int ord = dStateToOrd.getOrDefault(dState, -1);
+      if (ord >= 0) {
+        return ord;
+      }
+      ord = dStateToOrd.size();
+      dStateToOrd.put(dState, ord);
+      assert ord >= dStates.length || dStates[ord] == null;
+      if (ord >= dStates.length) {
+        dStates = ArrayUtil.grow(dStates, ord + 1);
+      }
+      dStates[ord] = dState;
       return ord;
     }
-    ord = dStateToOrd.size();
-    dStateToOrd.put(dState, ord);
-    assert ord >= dStates.length || dStates[ord] == null;
-    if (ord >= dStates.length) {
-      dStates = ArrayUtil.grow(dStates, ord + 1);
-    }
-    dStates[ord] = dState;
-    return ord;
   }
 
   /** Gets character class of given codepoint */
@@ -185,25 +193,31 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor, Accoun
 
   @Override
   public int initTransition(int state, Transition t) {
+    DState dState = getDState(state);
+    dState.determinize();
     t.source = state;
     t.transitionUpto = -1;
-    return getNumTransitions(state);
+    return dState.outgoingTransitions;
   }
 
   @Override
   public void getNextTransition(Transition t) {
-    assert t.transitionUpto < points.length - 1 && t.transitionUpto >= -1;
-    while (dStates[t.source].transitions[++t.transitionUpto] == MISSING) {
-      // this shouldn't throw AIOOBE as long as this function is only called
-      // numTransitions times
-    }
-    assert dStates[t.source].transitions[t.transitionUpto] != NOT_COMPUTED;
+    DState dState = getDState(t.source);
+    synchronized (dState) {
+      dState.determinize();
+      assert t.transitionUpto < points.length - 1 && t.transitionUpto >= -1;
+      while (dState.transitions[++t.transitionUpto] == MISSING) {
+        // this shouldn't throw AIOOBE as long as this function is only called
+        // numTransitions times
+      }
+      assert dState.transitions[t.transitionUpto] != NOT_COMPUTED;
 
-    setTransitionAccordingly(t);
+      setTransitionAccordingly(t, dState);
+    }
   }
 
-  private void setTransitionAccordingly(Transition t) {
-    t.dest = dStates[t.source].transitions[t.transitionUpto];
+  private void setTransitionAccordingly(Transition t, DState dState) {
+    t.dest = dState.transitions[t.transitionUpto];
     t.min = points[t.transitionUpto];
     if (t.transitionUpto == points.length - 1) {
       t.max = alphabetSize - 1;
@@ -214,24 +228,28 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor, Accoun
 
   @Override
   public int getNumTransitions(int state) {
-    dStates[state].determinize();
-    return dStates[state].outgoingTransitions;
+    DState dState = getDState(state);
+    dState.determinize();
+    return dState.outgoingTransitions;
   }
 
   @Override
   public void getTransition(int state, int index, Transition t) {
-    dStates[state].determinize();
-    int outgoingTransitions = -1;
-    t.transitionUpto = -1;
-    t.source = state;
-    while (outgoingTransitions < index && t.transitionUpto < points.length - 1) {
-      if (dStates[t.source].transitions[++t.transitionUpto] != MISSING) {
-        outgoingTransitions++;
+    DState dState = getDState(state);
+    synchronized (dState) {
+      dState.determinize();
+      int outgoingTransitions = -1;
+      t.transitionUpto = -1;
+      t.source = state;
+      while (outgoingTransitions < index && t.transitionUpto < points.length - 1) {
+        if (dState.transitions[++t.transitionUpto] != MISSING) {
+          outgoingTransitions++;
+        }
       }
-    }
-    assert outgoingTransitions == index;
+      assert outgoingTransitions == index;
 
-    setTransitionAccordingly(t);
+      setTransitionAccordingly(t, dState);
+    }
   }
 
   @Override
@@ -270,7 +288,7 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor, Accoun
       this.hashCode = hashCode;
     }
 
-    private int nextState(int charClass) {
+    private synchronized int nextState(int charClass) {
       initTransitions();
       assert charClass < transitions.length;
       if (transitions[charClass] == NOT_COMPUTED) {
@@ -310,7 +328,7 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor, Accoun
      * wrapped as a DFA state
      */
     private DState step(int c) {
-      statesSet.reset(); // TODO: fork IntHashSet from hppc instead?
+      StateSet statesSet = new StateSet(5);
       int numTransitions;
       int left = -1, right = alphabetSize;
       for (int nfaState : nfaStates) {
@@ -343,13 +361,15 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor, Accoun
     }
 
     // determinize this state only
-    private void determinize() {
+    private synchronized void determinize() {
       if (transitions != null && computedTransitions == transitions.length) {
         // already determinized
         return;
       }
       initTransitions();
       // Mostly forked from Operations.determinize
+      Operations.PointTransitionSet transitionSet = new Operations.PointTransitionSet();
+      StateSet statesSet = new StateSet(5);
       transitionSet.reset();
       for (int nfaState : nfaStates) {
         int numTransitions = automaton.initTransition(nfaState, stepTransition);
