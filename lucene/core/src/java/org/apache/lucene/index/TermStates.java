@@ -193,28 +193,28 @@ public final class TermStates {
         this.states[ctx.ord] = EMPTY_TERMSTATE;
         return null;
       }
-      return () -> {
-        if (this.states[ctx.ord] == null) {
-          TermState state = null;
-          if (termExistsSupplier.get()) {
-            state = termsEnum.termState();
-            this.states[ctx.ord] = state;
-          } else {
-            this.states[ctx.ord] = EMPTY_TERMSTATE;
-          }
-        }
-        TermState state = this.states[ctx.ord];
-        if (state == EMPTY_TERMSTATE) {
-          return null;
-        }
-        return state;
-      };
+      IOSupplier<TermState> stateSupplier =
+          () -> {
+            if (this.states[ctx.ord] == null) {
+              if (termExistsSupplier.get()) {
+                this.states[ctx.ord] = termsEnum.termState();
+              } else {
+                this.states[ctx.ord] = EMPTY_TERMSTATE;
+              }
+            }
+            TermState termState = this.states[ctx.ord];
+            return termState == EMPTY_TERMSTATE ? null : termState;
+          };
+      if (termExistsSupplier.doDefer()) {
+        return stateSupplier;
+      } else {
+        stateSupplier.get();
+        TermState termState = this.states[ctx.ord];
+        return termState == EMPTY_TERMSTATE ? null : () -> termState;
+      }
     }
-    TermState state = this.states[ctx.ord];
-    if (state == EMPTY_TERMSTATE) {
-      return null;
-    }
-    return () -> state;
+    TermState termState = this.states[ctx.ord];
+    return termState == EMPTY_TERMSTATE ? null : () -> termState;
   }
 
   /**
@@ -260,7 +260,7 @@ public final class TermStates {
 
   @Override
   public boolean equals(Object obj) {
-    return obj instanceof TermStates && ((TermStates) obj).docFreq == docFreq;
+    return obj instanceof TermStates ts && ts.docFreq == docFreq;
   }
 
   @Override

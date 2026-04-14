@@ -614,10 +614,9 @@ class StandardXYZSolid extends BaseXYZSolid {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof StandardXYZSolid)) {
+    if (!(o instanceof StandardXYZSolid other)) {
       return false;
     }
-    StandardXYZSolid other = (StandardXYZSolid) o;
     if (!super.equals(other) || other.isWholeWorld != isWholeWorld) {
       return false;
     }

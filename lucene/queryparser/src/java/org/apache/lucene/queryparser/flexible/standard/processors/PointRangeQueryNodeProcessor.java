@@ -57,11 +57,10 @@ public class PointRangeQueryNodeProcessor extends QueryNodeProcessorImpl {
   @Override
   protected QueryNode postProcessNode(QueryNode node) throws QueryNodeException {
 
-    if (node instanceof TermRangeQueryNode) {
+    if (node instanceof TermRangeQueryNode termRangeNode) {
       QueryConfigHandler config = getQueryConfigHandler();
 
       if (config != null) {
-        TermRangeQueryNode termRangeNode = (TermRangeQueryNode) node;
         FieldConfig fieldConfig =
             config.getFieldConfig(StringUtils.toString(termRangeNode.getField()));
 

@@ -75,8 +75,9 @@ public class TestOffHeapVectorValues extends LuceneTestCase {
     }
 
     @Override
-    public void prefetch(long offset, long length) throws IOException {
+    public boolean prefetch(long offset, long length) throws IOException {
       counter.incrementAndGet();
+      return true;
     }
 
     public int getPrefetchCount() {

@@ -144,11 +144,10 @@ public class BooleanQuery2ModifierNodeProcessor implements QueryNodeProcessor {
   private QueryNode applyModifier(QueryNode node, Modifier mod) {
 
     // check if modifier is not already defined and is default
-    if (!(node instanceof ModifierQueryNode)) {
+    if (!(node instanceof ModifierQueryNode modNode)) {
       return new BooleanModifierNode(node, mod);
 
     } else {
-      ModifierQueryNode modNode = (ModifierQueryNode) node;
 
       if (modNode.getModifier() == Modifier.MOD_NONE) {
         return new ModifierQueryNode(modNode.getChild(), mod);
