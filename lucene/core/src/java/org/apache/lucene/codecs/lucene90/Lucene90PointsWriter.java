@@ -152,10 +152,8 @@ public class Lucene90PointsWriter extends PointsWriter {
             values.size(),
             Lucene90PointsFormat.bkdVersion(version))) {
 
-      if (values instanceof MutablePointTree) {
-        IORunnable finalizer =
-            writer.writeField(
-                metaOut, indexOut, dataOut, fieldInfo.name, (MutablePointTree) values);
+      if (values instanceof MutablePointTree mpt) {
+        IORunnable finalizer = writer.writeField(metaOut, indexOut, dataOut, fieldInfo.name, mpt);
         if (finalizer != null) {
           metaOut.writeInt(fieldInfo.number);
           finalizer.run();

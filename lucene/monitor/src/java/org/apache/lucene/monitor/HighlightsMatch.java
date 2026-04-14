@@ -153,10 +153,8 @@ public class HighlightsMatch extends QueryMatch {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof HighlightsMatch)) return false;
+    if (!(o instanceof HighlightsMatch that)) return false;
     if (!super.equals(o)) return false;
-
-    HighlightsMatch that = (HighlightsMatch) o;
 
     if (hits != null ? !hits.equals(that.hits) : that.hits != null) return false;
 

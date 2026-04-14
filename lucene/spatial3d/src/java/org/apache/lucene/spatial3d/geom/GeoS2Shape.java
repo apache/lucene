@@ -197,10 +197,9 @@ class GeoS2Shape extends GeoBasePolygon {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof GeoS2Shape)) {
+    if (!(o instanceof GeoS2Shape other)) {
       return false;
     }
-    GeoS2Shape other = (GeoS2Shape) o;
     return super.equals(other)
         && other.point1.equals(point1)
         && other.point2.equals(point2)
