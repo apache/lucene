@@ -101,7 +101,8 @@ public class TestAllGroupsCollector extends LuceneTestCase {
     IndexSearcher indexSearcher = newSearcher(w.getReader());
     w.close();
 
-    AllGroupsCollectorManager allGroupsCollectorManager = createRandomCollectorManager(groupField);
+    AllGroupsCollectorManager<?> allGroupsCollectorManager =
+        createRandomCollectorManager(groupField);
     Collection<?> groups =
         indexSearcher.search(
             new TermQuery(new Term("content", "random")), allGroupsCollectorManager);
@@ -126,12 +127,13 @@ public class TestAllGroupsCollector extends LuceneTestCase {
     doc.add(new SortedDocValuesField(groupField, new BytesRef(value)));
   }
 
-  private AllGroupsCollectorManager createRandomCollectorManager(String groupField) {
+  private AllGroupsCollectorManager<?> createRandomCollectorManager(String groupField) {
     if (random().nextBoolean()) {
-      return new AllGroupsCollectorManager(groupField);
+      return new AllGroupsCollectorManager<>(() -> new TermGroupSelector(groupField));
     } else {
       ValueSource vs = new BytesRefFieldSource(groupField);
-      return new AllGroupsCollectorManager(vs, new HashMap<>());
+      return new AllGroupsCollectorManager<>(
+          () -> new ValueSourceGroupSelector(vs, new HashMap<>()));
     }
   }
 }

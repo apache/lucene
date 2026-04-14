@@ -19,9 +19,8 @@ package org.apache.lucene.search.grouping;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
-import org.apache.lucene.queries.function.ValueSource;
+import java.util.function.Supplier;
 import org.apache.lucene.search.CollectorManager;
 
 /**
@@ -29,42 +28,27 @@ import org.apache.lucene.search.CollectorManager;
  *
  * @lucene.experimental
  */
-public class AllGroupsCollectorManager
-    implements CollectorManager<AllGroupsCollector<?>, Collection<?>> {
+public class AllGroupsCollectorManager<T>
+    implements CollectorManager<AllGroupsCollector<T>, Collection<T>> {
 
-  private final String groupField;
-  private final ValueSource valueSource;
-  private final Map<Object, Object> valueSourceContext;
+  private final Supplier<GroupSelector<T>> groupSelectorFactory;
 
-  /** Creates a new AllGroupsCollectorManager for TermGroupSelector. */
-  public AllGroupsCollectorManager(String groupField) {
-    this.groupField = groupField;
-    this.valueSource = null;
-    this.valueSourceContext = null;
-  }
-
-  /** Creates a new AllGroupsCollectorManager for ValueSourceGroupSelector. */
-  public AllGroupsCollectorManager(
-      ValueSource valueSource, Map<Object, Object> valueSourceContext) {
-    this.groupField = null;
-    this.valueSource = valueSource;
-    this.valueSourceContext = valueSourceContext;
+  /**
+   * Creates a new AllGroupsCollectorManager.
+   *
+   * @param groupSelectorFactory factory to create group selectors for each collector
+   */
+  public AllGroupsCollectorManager(Supplier<GroupSelector<T>> groupSelectorFactory) {
+    this.groupSelectorFactory = groupSelectorFactory;
   }
 
   @Override
-  public AllGroupsCollector<?> newCollector() {
-    GroupSelector<?> newGroupSelector;
-    if (groupField != null) {
-      newGroupSelector = new TermGroupSelector(groupField);
-    } else {
-      newGroupSelector = new ValueSourceGroupSelector(valueSource, valueSourceContext);
-    }
-
-    return new AllGroupsCollector<>(newGroupSelector);
+  public AllGroupsCollector<T> newCollector() {
+    return new AllGroupsCollector<>(groupSelectorFactory.get());
   }
 
   @Override
-  public Collection<?> reduce(Collection<AllGroupsCollector<?>> collectors) {
+  public Collection<T> reduce(Collection<AllGroupsCollector<T>> collectors) {
     if (collectors.isEmpty()) {
       return Collections.emptyList();
     }
@@ -74,9 +58,9 @@ public class AllGroupsCollectorManager
     }
 
     // Merge groups from all collectors
-    Set<Object> allGroups = new HashSet<>();
-    for (AllGroupsCollector<?> collector : collectors) {
-      Collection<?> groups = collector.getGroups();
+    Set<T> allGroups = new HashSet<>();
+    for (AllGroupsCollector<T> collector : collectors) {
+      Collection<T> groups = collector.getGroups();
       if (groups != null) {
         allGroups.addAll(groups);
       }
