@@ -16,16 +16,16 @@
  */
 package org.apache.lucene.search.join;
 
-import com.carrotsearch.randomizedtesting.jupiter.Randomized;
-import java.io.IOException;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
+import org.apache.lucene.tests.util.LuceneTestCase2;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
-@Randomized
-public class TestJupiter {
+@Timeout(value = 3, unit = TimeUnit.SECONDS)
+public class TestJupiter extends LuceneTestCase2 {
   @Test
-  public void testNoParent(Random random) throws IOException {
+  public void testNoParent(Random random) throws Exception {
     System.out.println("Foo.");
-    assert false;
   }
 }

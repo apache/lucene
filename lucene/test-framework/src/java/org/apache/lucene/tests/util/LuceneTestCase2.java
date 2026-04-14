@@ -1,0 +1,155 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.apache.lucene.tests.util;
+
+import com.carrotsearch.randomizedtesting.jupiter.DetectThreadLeaks;
+import com.carrotsearch.randomizedtesting.jupiter.Randomized;
+import com.carrotsearch.randomizedtesting.jupiter.SystemThreadFilter;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import org.apache.lucene.util.Constants;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.platform.commons.support.AnnotationSupport;
+import org.junit.platform.commons.support.HierarchyTraversalMode;
+import org.junit.platform.commons.support.ModifierSupport;
+import org.junit.platform.commons.support.ReflectionSupport;
+
+/// Base class for all Lucene unit tests (JUnit5/ Jupiter variant).
+///
+/// ## Class and instance setup
+///
+/// The preferred way to specify class (suite-level) setup/cleanup is to use static methods
+/// annotated with [org.junit.jupiter.api.BeforeAll] and [org.junit.jupiter.api.AfterAll].
+/// **Do not use static initializers (including complex final field initializers).**
+///
+/// For instance-level setup, use [BeforeEach] and
+/// [AfterEach] annotated methods.
+///
+/// ## Specifying test cases
+///
+/// Any method of specifying JUnit jupiter tests will work. The most common way would therefore be:
+/// ```java
+/// @Test
+/// public void testMethod(Random random) {}
+/// ```
+///
+/// Note the (optional) [Random] argument - this is automatically populated for each test.
+///
+/// ## Randomized execution and test facilities
+///
+/// [LuceneTestCase2] uses the [Randomized] extension to support component randomization.
+/// A [Random] can be automatically injected in the test (or any junit5 callback) as a parameter.
+/// Tests should be fully reproducible for the same initial seed
+/// (assuming no race conditions between threads
+/// etc.). The initial seed for a test case is reported in many ways:
+///
+///   - logged from the gradle build,
+///   - inserted as a synthetic stack frame in any exceptions.
+///
+/*
+// TODO: port these.
+- reproduce info listener, failuremarker? @Listeners({RunListenerPrintReproduceInfo.class, FailureMarker.class})
+- test sysout rule
+@TestRuleLimitSysouts.Limit(
+    bytes = TestRuleLimitSysouts.DEFAULT_LIMIT,
+    hardLimit = TestRuleLimitSysouts.DEFAULT_HARD_LIMIT)
+ */
+@Randomized
+@DetectThreadLeaks(scope = DetectThreadLeaks.Scope.SUITE)
+@DetectThreadLeaks.LingerTime(millis = 20_000)
+@DetectThreadLeaks.ExcludeThreads({SystemThreadFilter.class, LuceneTestCase2.IsSystemThread.class})
+@Timeout(value = 2, unit = TimeUnit.HOURS)
+@Execution(value = ExecutionMode.SAME_THREAD, reason = "backward compatibility.")
+public abstract class LuceneTestCase2 {
+  /**
+   * This predicate should return {@code true} for threads that should be ignored in {@linkplain
+   * DetectThreadLeaks thread leak detection}.
+   */
+  public static class IsSystemThread implements Predicate<Thread> {
+    static final boolean isJ9;
+
+    static {
+      isJ9 = Constants.JAVA_VENDOR.startsWith("IBM");
+    }
+
+    @Override
+    public boolean test(Thread t) {
+      var threadName = t.getName();
+      switch (threadName) {
+        case "ClassCache Reaper": // LUCENE-6518
+        case "junit-jupiter-timeout-watcher": // junit5/jupiter timeouts.
+        case "JNA Cleaner": // JNA cleaner thread (system).
+          return true;
+      }
+
+      if (isJ9
+          && Stream.of(t.getStackTrace())
+              .anyMatch(frame -> frame.getClassName().equals("java.util.Timer$TimerImpl"))) {
+        return true;
+      }
+
+      return false;
+    }
+  }
+
+  //
+  // Deprecated or removed methods (LuceneTestCase) and other backward-compatibility
+  // infrastructure.
+  //
+
+  /**
+   * Unfortunately there is no easy way to implement custom test providers in jupiter so we just
+   * enforce annotations on {@code test*} methods (so that they're not silently ignored).
+   *
+   * <p>A dynamic test factory would <em>almost</em> work but dynamic tests skip all the
+   * before-after hooks so they're not a direct substitute.
+   */
+  @Test
+  public void allTestMethodsAreAnnotated() {
+    var testMethodsWithoutAnnotations =
+        ReflectionSupport.findMethods(
+            getClass(),
+            m -> {
+              return m.getName().startsWith("test")
+                  && !ModifierSupport.isStatic(m)
+                  && !AnnotationSupport.isAnnotated(m, Test.class);
+            },
+            HierarchyTraversalMode.BOTTOM_UP);
+
+    if (!testMethodsWithoutAnnotations.isEmpty()) {
+      throw new AssertionError(
+          "test* methods must be annotated with @Test in junit5/jupiter, the following are not: "
+              + testMethodsWithoutAnnotations.stream()
+                  .map(m -> "\n  - " + m.getDeclaringClass().getName() + "#" + m.getName())
+                  .collect(Collectors.joining()));
+    }
+  }
+
+  /** Use jupiter's {@link BeforeEach} instead. */
+  protected final void setUp() throws Exception {}
+
+  /** Use jupiter's {@link AfterEach} instead. */
+  protected final void tearDown() throws Exception {}
+}
