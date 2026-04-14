@@ -16,14 +16,21 @@
  */
 package org.apache.lucene.index.memory;
 
+import static org.apache.lucene.tests.analysis.BaseTokenStreamTestCase.RANDOM_MULTIPLIER;
+import static org.apache.lucene.tests.analysis.BaseTokenStreamTestCase.TEST_NIGHTLY;
+import static org.apache.lucene.tests.analysis.BaseTokenStreamTestCase.newDirectory;
+import static org.apache.lucene.tests.analysis.BaseTokenStreamTestCase.newIndexWriterConfig;
+import static org.apache.lucene.tests.analysis.BaseTokenStreamTestCase.newSearcher;
+import static org.apache.lucene.tests.analysis.BaseTokenStreamTestCase.newTextField;
+
 import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.function.Supplier;
 import org.apache.lucene.analysis.Analyzer;
@@ -78,53 +85,64 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.CannedTokenStream;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenFilter;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.analysis.Token;
 import org.apache.lucene.tests.util.LineFileDocs;
+import org.apache.lucene.tests.util.LuceneTestCase2;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 /**
- * Verifies that Lucene MemoryIndex and RAM-resident Directory have the same behaviour, returning
- * the same results for queries on some randomish indexes.
+ * Verifies that Lucene MemoryIndex and RAM-resident Directory have the same behavior, returning the
+ * same results for queries on some randomish indexes.
  */
-public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
-  private final Set<String> queries = new HashSet<>();
+public class TestMemoryIndexAgainstDirectory extends LuceneTestCase2 {
+  private static Set<String> queries = new HashSet<>();
 
-  @Override
-  public void setUp() throws Exception {
-    super.setUp();
+  @BeforeAll
+  public static void prepare() throws Exception {
     queries.addAll(readQueries("testqueries.txt"));
     queries.addAll(readQueries("testqueries2.txt"));
   }
 
+  @AfterAll
+  public static void cleanup() throws Exception {
+    queries = null;
+  }
+
   /** read a set of queries from a resource file */
-  private Set<String> readQueries(String resource) throws IOException {
+  private static Set<String> readQueries(String resource) throws IOException {
     Set<String> queries = new HashSet<>();
-    InputStream stream = getClass().getResourceAsStream(resource);
-    BufferedReader reader =
-        new BufferedReader(new InputStreamReader(stream, StandardCharsets.UTF_8));
-    String line;
-    while ((line = reader.readLine()) != null) {
-      line = line.trim();
-      if (line.length() > 0 && !line.startsWith("#") && !line.startsWith("//")) {
-        queries.add(line);
+    try (var reader =
+        new BufferedReader(
+            new InputStreamReader(
+                TestMemoryIndexAgainstDirectory.class.getResourceAsStream(resource),
+                StandardCharsets.UTF_8))) {
+      String line;
+      while ((line = reader.readLine()) != null) {
+        line = line.trim();
+        if (!line.isEmpty() && !line.startsWith("#") && !line.startsWith("//")) {
+          queries.add(line);
+        }
       }
+      return queries;
     }
-    return queries;
   }
 
   /** runs random tests, up to ITERATIONS times. */
-  public void testRandomQueries() throws Exception {
-    MemoryIndex index = randomMemoryIndex();
+  @Test
+  public void testRandomQueries(Random random) throws Exception {
+    MemoryIndex index = randomMemoryIndex(random);
     int iterations = TEST_NIGHTLY ? 100 * RANDOM_MULTIPLIER : 10 * RANDOM_MULTIPLIER;
     for (int i = 0; i < iterations; i++) {
-      assertAgainstDirectory(index);
+      assertAgainstDirectory(random, index);
     }
   }
 
@@ -132,27 +150,27 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
    * Build a randomish document for both Directory and MemoryIndex, and run all the queries against
    * it.
    */
-  public void assertAgainstDirectory(MemoryIndex memory) throws Exception {
+  public void assertAgainstDirectory(Random random, MemoryIndex memory) throws Exception {
     memory.reset();
     StringBuilder fooField = new StringBuilder();
     StringBuilder termField = new StringBuilder();
 
     // add up to 250 terms to field "foo"
-    final int numFooTerms = random().nextInt(250 * RANDOM_MULTIPLIER);
+    final int numFooTerms = random.nextInt(250 * RANDOM_MULTIPLIER);
     for (int i = 0; i < numFooTerms; i++) {
       fooField.append(" ");
-      fooField.append(randomTerm());
+      fooField.append(randomTerm(random));
     }
 
     // add up to 250 terms to field "term"
-    final int numTermTerms = random().nextInt(250 * RANDOM_MULTIPLIER);
+    final int numTermTerms = random.nextInt(250 * RANDOM_MULTIPLIER);
     for (int i = 0; i < numTermTerms; i++) {
       termField.append(" ");
-      termField.append(randomTerm());
+      termField.append(randomTerm(random));
     }
 
     Directory dir = new ByteBuffersDirectory();
-    Analyzer analyzer = randomAnalyzer();
+    Analyzer analyzer = randomAnalyzer(random);
     IndexWriter writer =
         new IndexWriter(
             dir,
@@ -172,13 +190,13 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
     LeafReader reader = (LeafReader) memory.createSearcher().getIndexReader();
     TestUtil.checkReader(reader);
     DirectoryReader competitor = DirectoryReader.open(dir);
-    duellReaders(competitor, reader);
+    duelReaders(competitor, reader);
     IOUtils.close(reader, competitor);
     assertAllQueries(memory, dir, analyzer);
     dir.close();
   }
 
-  private void duellReaders(CompositeReader other, LeafReader memIndexReader) throws IOException {
+  private void duelReaders(CompositeReader other, LeafReader memIndexReader) throws IOException {
     Fields memFields = memIndexReader.termVectors().get(0);
     for (String field : FieldInfos.getIndexedFields(other)) {
       Terms memTerms = memFields.terms(field);
@@ -215,9 +233,9 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
               assertEquals(iwDocsAndPos.freq(), memDocsAndPos.freq());
               for (int i = 0; i < iwDocsAndPos.freq(); i++) {
                 assertEquals(
-                    "term: " + iwTermsIter.term().utf8ToString(),
                     iwDocsAndPos.nextPosition(),
-                    memDocsAndPos.nextPosition());
+                    memDocsAndPos.nextPosition(),
+                    "term: " + iwTermsIter.term().utf8ToString());
                 if (offsets) {
                   assertEquals(iwDocsAndPos.startOffset(), memDocsAndPos.startOffset());
                   assertEquals(iwDocsAndPos.endOffset(), memDocsAndPos.endOffset());
@@ -254,19 +272,19 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
     for (String query : queries) {
       TopDocs ramDocs = ram.search(qp.parse(query), 1);
       TopDocs memDocs = mem.search(qp.parse(query), 1);
-      assertEquals(query, ramDocs.totalHits.value(), memDocs.totalHits.value());
+      assertEquals(ramDocs.totalHits.value(), memDocs.totalHits.value(), query);
     }
     reader.close();
   }
 
   /** Return a random analyzer (Simple, Stop, Standard) to analyze the terms. */
-  private Analyzer randomAnalyzer() {
-    switch (random().nextInt(4)) {
+  private Analyzer randomAnalyzer(Random random) {
+    switch (random.nextInt(4)) {
       case 0:
-        return new MockAnalyzer(random(), MockTokenizer.SIMPLE, true);
+        return new MockAnalyzer(random, MockTokenizer.SIMPLE, true);
       case 1:
         return new MockAnalyzer(
-            random(), MockTokenizer.SIMPLE, true, MockTokenFilter.ENGLISH_STOPSET);
+            random, MockTokenizer.SIMPLE, true, MockTokenFilter.ENGLISH_STOPSET);
       case 2:
         return new Analyzer() {
           @Override
@@ -276,7 +294,7 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
           }
         };
       default:
-        return new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false);
+        return new MockAnalyzer(random, MockTokenizer.WHITESPACE, false);
     }
   }
 
@@ -335,25 +353,26 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
    * half of the time, returns a random term from TEST_TERMS. the other half of the time, returns a
    * random unicode string.
    */
-  private String randomTerm() {
-    if (random().nextBoolean()) {
+  private String randomTerm(Random random) {
+    if (random.nextBoolean()) {
       // return a random TEST_TERM
-      return TEST_TERMS[random().nextInt(TEST_TERMS.length)];
+      return TEST_TERMS[random.nextInt(TEST_TERMS.length)];
     } else {
       // return a random unicode term
-      return TestUtil.randomUnicodeString(random());
+      return TestUtil.randomUnicodeString(random);
     }
   }
 
-  public void testDocsEnumStart() throws Exception {
-    Analyzer analyzer = new MockAnalyzer(random());
+  @Test
+  public void testDocsEnumStart(Random random) throws Exception {
+    Analyzer analyzer = new MockAnalyzer(random);
     MemoryIndex memory =
-        new MemoryIndex(random().nextBoolean(), false, random().nextInt(50) * 1024 * 1024);
+        new MemoryIndex(random.nextBoolean(), false, random.nextInt(50) * 1024 * 1024);
     memory.addField("foo", "bar", analyzer);
     LeafReader reader = (LeafReader) memory.createSearcher().getIndexReader();
     TestUtil.checkReader(reader);
     PostingsEnum disi =
-        TestUtil.docs(random(), reader, "foo", new BytesRef("bar"), null, PostingsEnum.NONE);
+        TestUtil.docs(random, reader, "foo", new BytesRef("bar"), null, PostingsEnum.NONE);
     int docid = disi.docID();
     assertEquals(-1, docid);
     assertTrue(disi.nextDoc() != DocIdSetIterator.NO_MORE_DOCS);
@@ -368,15 +387,16 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
     reader.close();
   }
 
-  private MemoryIndex randomMemoryIndex() {
+  private MemoryIndex randomMemoryIndex(Random random) {
     return new MemoryIndex(
-        random().nextBoolean(), random().nextBoolean(), random().nextInt(50) * 1024 * 1024);
+        random.nextBoolean(), random.nextBoolean(), random.nextInt(50) * 1024 * 1024);
   }
 
-  public void testDocsAndPositionsEnumStart() throws Exception {
-    Analyzer analyzer = new MockAnalyzer(random());
-    int numIters = atLeast(3);
-    MemoryIndex memory = new MemoryIndex(true, false, random().nextInt(50) * 1024 * 1024);
+  @Test
+  public void testDocsAndPositionsEnumStart(Random random) throws Exception {
+    Analyzer analyzer = new MockAnalyzer(random);
+    int numIters = atLeast(random, 3);
+    MemoryIndex memory = new MemoryIndex(true, false, random.nextInt(50) * 1024 * 1024);
     for (int i = 0; i < numIters; i++) { // check reuse
       memory.addField("foo", "bar", analyzer);
       LeafReader reader = (LeafReader) memory.createSearcher().getIndexReader();
@@ -403,12 +423,13 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
   }
 
   // LUCENE-3831
-  public void testNullPointerException() throws IOException {
+  @Test
+  public void testNullPointerException(Random random) throws IOException {
     RegexpQuery regex = new RegexpQuery(new Term("field", "worl."));
     SpanQuery wrappedquery = new SpanMultiTermQueryWrapper<>(regex);
 
-    MemoryIndex mindex = randomMemoryIndex();
-    mindex.addField("field", new MockAnalyzer(random()).tokenStream("field", "hello there"));
+    MemoryIndex mindex = randomMemoryIndex(random);
+    mindex.addField("field", new MockAnalyzer(random).tokenStream("field", "hello there"));
 
     // This throws an NPE
     assertEquals(0, mindex.search(wrappedquery), 0.00001f);
@@ -416,21 +437,23 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
   }
 
   // LUCENE-3831
-  public void testPassesIfWrapped() throws IOException {
+  @Test
+  public void testPassesIfWrapped(Random random) throws IOException {
     RegexpQuery regex = new RegexpQuery(new Term("field", "worl."));
     SpanQuery wrappedquery = new SpanOrQuery(new SpanMultiTermQueryWrapper<>(regex));
 
-    MemoryIndex mindex = randomMemoryIndex();
-    mindex.addField("field", new MockAnalyzer(random()).tokenStream("field", "hello there"));
+    MemoryIndex mindex = randomMemoryIndex(random);
+    mindex.addField("field", new MockAnalyzer(random).tokenStream("field", "hello there"));
 
     // This passes though
     assertEquals(0, mindex.search(wrappedquery), 0.00001f);
     TestUtil.checkReader(mindex.createSearcher().getIndexReader());
   }
 
-  public void testSameFieldAddedMultipleTimes() throws IOException {
-    MemoryIndex mindex = randomMemoryIndex();
-    MockAnalyzer mockAnalyzer = new MockAnalyzer(random());
+  @Test
+  public void testSameFieldAddedMultipleTimes(Random random) throws IOException {
+    MemoryIndex mindex = randomMemoryIndex(random);
+    MockAnalyzer mockAnalyzer = new MockAnalyzer(random);
     mindex.addField("field", "the quick brown fox", mockAnalyzer);
     mindex.addField("field", "jumps over the", mockAnalyzer);
     LeafReader reader = (LeafReader) mindex.createSearcher().getIndexReader();
@@ -439,19 +462,20 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
     PhraseQuery query = new PhraseQuery("field", "fox", "jumps");
     assertTrue(mindex.search(query) > 0.1);
     mindex.reset();
-    mockAnalyzer.setPositionIncrementGap(1 + random().nextInt(10));
+    mockAnalyzer.setPositionIncrementGap(1 + random.nextInt(10));
     mindex.addField("field", "the quick brown fox", mockAnalyzer);
     mindex.addField("field", "jumps over the", mockAnalyzer);
     assertEquals(0, mindex.search(query), 0.00001f);
     query = new PhraseQuery(10, "field", "fox", "jumps");
     assertTrue(
-        "posGap" + mockAnalyzer.getPositionIncrementGap("field"), mindex.search(query) > 0.0001);
+        mindex.search(query) > 0.0001, "posGap" + mockAnalyzer.getPositionIncrementGap("field"));
     TestUtil.checkReader(mindex.createSearcher().getIndexReader());
   }
 
-  public void testNonExistentField() throws IOException {
-    MemoryIndex mindex = randomMemoryIndex();
-    MockAnalyzer mockAnalyzer = new MockAnalyzer(random());
+  @Test
+  public void testNonExistentField(Random random) throws IOException {
+    MemoryIndex mindex = randomMemoryIndex(random);
+    MockAnalyzer mockAnalyzer = new MockAnalyzer(random);
     mindex.addField("field", "the quick brown fox", mockAnalyzer);
     LeafReader reader = (LeafReader) mindex.createSearcher().getIndexReader();
     TestUtil.checkReader(reader);
@@ -462,50 +486,51 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
     assertNull(reader.terms("not-in-index"));
   }
 
-  public void testDocValuesMemoryIndexVsNormalIndex() throws Exception {
+  @Test
+  public void testDocValuesMemoryIndexVsNormalIndex(Random random) throws Exception {
     Document doc = new Document();
-    long randomLong = random().nextLong();
+    long randomLong = random.nextLong();
     doc.add(new NumericDocValuesField("numeric", randomLong));
-    int numValues = atLeast(5);
+    int numValues = atLeast(random, 5);
     for (int i = 0; i < numValues; i++) {
-      randomLong = random().nextLong();
+      randomLong = random.nextLong();
       doc.add(new SortedNumericDocValuesField("sorted_numeric", randomLong));
-      if (random().nextBoolean()) {
+      if (random.nextBoolean()) {
         // randomly duplicate field/value
         doc.add(new SortedNumericDocValuesField("sorted_numeric", randomLong));
       }
     }
-    BytesRef randomTerm = new BytesRef(randomTerm());
+    BytesRef randomTerm = new BytesRef(randomTerm(random));
     doc.add(new BinaryDocValuesField("binary", randomTerm));
-    if (random().nextBoolean()) {
+    if (random.nextBoolean()) {
       doc.add(new StringField("binary", randomTerm, Field.Store.NO));
     }
-    randomTerm = new BytesRef(randomTerm());
+    randomTerm = new BytesRef(randomTerm(random));
     doc.add(new SortedDocValuesField("sorted", randomTerm));
-    if (random().nextBoolean()) {
+    if (random.nextBoolean()) {
       doc.add(new StringField("sorted", randomTerm, Field.Store.NO));
     }
-    numValues = atLeast(5);
+    numValues = atLeast(random, 5);
     for (int i = 0; i < numValues; i++) {
-      randomTerm = new BytesRef(randomTerm());
+      randomTerm = new BytesRef(randomTerm(random));
       doc.add(new SortedSetDocValuesField("sorted_set", randomTerm));
-      if (random().nextBoolean()) {
+      if (random.nextBoolean()) {
         // randomly duplicate field/value
         doc.add(new SortedSetDocValuesField("sorted_set", randomTerm));
       }
-      if (random().nextBoolean()) {
+      if (random.nextBoolean()) {
         // randomly just add a normal string field
         doc.add(new StringField("sorted_set", randomTerm, Field.Store.NO));
       }
     }
 
-    MockAnalyzer mockAnalyzer = new MockAnalyzer(random());
+    MockAnalyzer mockAnalyzer = new MockAnalyzer(random);
     MemoryIndex memoryIndex = MemoryIndex.fromDocument(doc, mockAnalyzer);
     IndexReader indexReader = memoryIndex.createSearcher().getIndexReader();
     LeafReader leafReader = indexReader.leaves().get(0).reader();
 
     Directory dir = newDirectory();
-    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(random(), mockAnalyzer));
+    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(random, mockAnalyzer));
     writer.addDocument(doc);
     writer.close();
     IndexReader controlIndexReader = DirectoryReader.open(dir);
@@ -562,9 +587,10 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
     dir.close();
   }
 
-  public void testNormsWithDocValues() throws Exception {
+  @Test
+  public void testNormsWithDocValues(Random random) throws Exception {
     MemoryIndex mi = new MemoryIndex(true, true);
-    MockAnalyzer mockAnalyzer = new MockAnalyzer(random());
+    MockAnalyzer mockAnalyzer = new MockAnalyzer(random);
 
     mi.addField(new BinaryDocValuesField("text", new BytesRef("quick brown fox")), mockAnalyzer);
     mi.addField(new TextField("text", "quick brown fox", Field.Store.NO), mockAnalyzer);
@@ -575,7 +601,7 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
     Field field = new TextField("text", "quick brown fox", Field.Store.NO);
     doc.add(field);
     Directory dir = newDirectory();
-    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(random(), mockAnalyzer));
+    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(random, mockAnalyzer));
     writer.addDocument(doc);
     writer.close();
 
@@ -592,13 +618,14 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
     dir.close();
   }
 
-  public void testPointValuesMemoryIndexVsNormalIndex() throws Exception {
-    int size = atLeast(12);
+  @Test
+  public void testPointValuesMemoryIndexVsNormalIndex(Random random) throws Exception {
+    int size = atLeast(random, 12);
 
     List<Integer> randomValues = new ArrayList<>();
 
     Document doc = new Document();
-    for (Integer randomInteger : random().ints(size).toArray()) {
+    for (Integer randomInteger : random.ints(size).toArray()) {
       doc.add(new IntPoint("int", randomInteger));
       randomValues.add(randomInteger);
       doc.add(new LongPoint("long", randomInteger));
@@ -606,18 +633,18 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
       doc.add(new DoublePoint("double", randomInteger));
     }
 
-    MockAnalyzer mockAnalyzer = new MockAnalyzer(random());
+    MockAnalyzer mockAnalyzer = new MockAnalyzer(random);
     MemoryIndex memoryIndex = MemoryIndex.fromDocument(doc, mockAnalyzer);
     IndexSearcher memoryIndexSearcher = memoryIndex.createSearcher();
 
-    Directory dir = newDirectory();
-    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(random(), mockAnalyzer));
+    Directory dir = newDirectory(random);
+    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(random, mockAnalyzer));
     writer.addDocument(doc);
     writer.close();
     IndexReader controlIndexReader = DirectoryReader.open(dir);
     IndexSearcher controlIndexSearcher = new IndexSearcher(controlIndexReader);
 
-    Supplier<Integer> valueSupplier = () -> randomValues.get(random().nextInt(randomValues.size()));
+    Supplier<Integer> valueSupplier = () -> randomValues.get(random.nextInt(randomValues.size()));
     Query[] queries =
         new Query[] {
           IntPoint.newExactQuery("int", valueSupplier.get()),
@@ -642,21 +669,22 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
     dir.close();
   }
 
-  public void testDuellMemIndex() throws IOException {
-    LineFileDocs lineFileDocs = new LineFileDocs(random());
-    int numDocs = atLeast(10);
-    MemoryIndex memory = randomMemoryIndex();
+  @Test
+  public void testDuelMemIndex(Random random) throws IOException {
+    LineFileDocs lineFileDocs = new LineFileDocs(random);
+    int numDocs = atLeast(random, 10);
+    MemoryIndex memory = randomMemoryIndex(random);
     for (int i = 0; i < numDocs; i++) {
-      Directory dir = newDirectory();
-      MockAnalyzer mockAnalyzer = new MockAnalyzer(random());
-      mockAnalyzer.setMaxTokenLength(TestUtil.nextInt(random(), 1, IndexWriter.MAX_TERM_LENGTH));
-      IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(random(), mockAnalyzer));
+      Directory dir = newDirectory(random);
+      MockAnalyzer mockAnalyzer = new MockAnalyzer(random);
+      mockAnalyzer.setMaxTokenLength(TestUtil.nextInt(random, 1, IndexWriter.MAX_TERM_LENGTH));
+      IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(random, mockAnalyzer));
       Document nextDoc = lineFileDocs.nextDoc();
       Document doc = new Document();
       for (IndexableField field : nextDoc.getFields()) {
         if (field.fieldType().indexOptions() != IndexOptions.NONE) {
           doc.add(field);
-          if (random().nextInt(3) == 0) {
+          if (random.nextInt(3) == 0) {
             doc.add(field); // randomly add the same field twice
           }
         }
@@ -670,7 +698,7 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
       DirectoryReader competitor = DirectoryReader.open(dir);
       LeafReader memIndexReader = (LeafReader) memory.createSearcher().getIndexReader();
       TestUtil.checkReader(memIndexReader);
-      duellReaders(competitor, memIndexReader);
+      duelReaders(competitor, memIndexReader);
       IOUtils.close(competitor, memIndexReader);
       memory.reset();
       dir.close();
@@ -679,6 +707,7 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
   }
 
   // LUCENE-4880
+  @Test
   public void testEmptyString() throws IOException {
     MemoryIndex memory = new MemoryIndex();
     memory.addField("foo", new CannedTokenStream(new Token("", 0, 5)));
@@ -688,12 +717,12 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
     TestUtil.checkReader(searcher.getIndexReader());
   }
 
-  public void testDuelMemoryIndexCoreDirectoryWithArrayField() throws Exception {
-
+  @Test
+  public void testDuelMemoryIndexCoreDirectoryWithArrayField(Random random) throws Exception {
     final String field_name = "text";
-    MockAnalyzer mockAnalyzer = new MockAnalyzer(random());
-    if (random().nextBoolean()) {
-      mockAnalyzer.setOffsetGap(random().nextInt(100));
+    MockAnalyzer mockAnalyzer = new MockAnalyzer(random);
+    if (random.nextBoolean()) {
+      mockAnalyzer.setOffsetGap(random.nextInt(100));
     }
     // index into a random directory
     FieldType type = new FieldType(TextField.TYPE_STORED);
@@ -708,7 +737,7 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
     doc.add(new Field(field_name, "foo bar foo bar foo", type));
 
     Directory dir = newDirectory();
-    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(random(), mockAnalyzer));
+    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(random, mockAnalyzer));
     writer.updateDocument(new Term("id", "1"), doc);
     writer.commit();
     writer.close();
@@ -759,21 +788,21 @@ public class TestMemoryIndexAgainstDirectory extends BaseTokenStreamTestCase {
         String failDesc = " (field:" + field_name + " term:" + currentTerm + ")";
         int memPos = memDocsPosEnum.nextPosition();
         int pos = docsPosEnum.nextPosition();
-        assertEquals("Position test failed" + failDesc, pos, memPos);
+        assertEquals(pos, memPos, "Position test failed" + failDesc);
         assertEquals(
-            "Start offset test failed" + failDesc,
             docsPosEnum.startOffset(),
-            memDocsPosEnum.startOffset());
+            memDocsPosEnum.startOffset(),
+            "Start offset test failed" + failDesc);
         assertEquals(
-            "End offset test failed" + failDesc,
             docsPosEnum.endOffset(),
-            memDocsPosEnum.endOffset());
+            memDocsPosEnum.endOffset(),
+            "End offset test failed" + failDesc);
         assertEquals(
-            "Missing payload test failed" + failDesc,
             docsPosEnum.getPayload(),
-            memDocsPosEnum.getPayload());
+            memDocsPosEnum.getPayload(),
+            "Missing payload test failed" + failDesc);
       }
     }
-    assertNull("Still some tokens not processed", memTermEnum.next());
+    assertNull(memTermEnum.next(), "Still some tokens not processed");
   }
 }

@@ -18,7 +18,6 @@
 package org.apache.lucene.tests.util;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.frequently;
-import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsBoolean;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsInt;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
@@ -83,6 +82,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.TimeZone;
@@ -725,7 +725,13 @@ public abstract class LuceneTestCase extends Assert {
     liveIWCFlushMode = flushMode;
   }
 
-  private static final Supplier<Random> randomSupplier;
+  private static volatile AtomicReference<Supplier<Random>> randomSupplier =
+      new AtomicReference<>();
+
+  /** Internal use only; replace the current {@link #randomSupplier}. */
+  static Supplier<Random> replaceRandomSupplier(Supplier<Random> rndSupplier) {
+    return randomSupplier.getAndSet(rndSupplier);
+  }
 
   /** A counter of calls to {@link #random()} if {@link #SYSPROP_RANDOM_MAXACQUIRES} is defined. */
   @SuppressWarnings("NonFinalStaticField")
@@ -753,7 +759,7 @@ public abstract class LuceneTestCase extends Assert {
           };
     }
 
-    randomSupplier = supplier;
+    replaceRandomSupplier(supplier);
   }
 
   // -----------------------------------------------------------------
@@ -813,7 +819,7 @@ public abstract class LuceneTestCase extends Assert {
    * multiple invocations are present. See {@link #nonAssertingRandom(Random)}.
    */
   public static Random random() {
-    return randomSupplier.get();
+    return Objects.requireNonNull(randomSupplier.get()).get();
   }
 
   /**
@@ -1964,7 +1970,7 @@ public abstract class LuceneTestCase extends Assert {
    */
   public static IndexSearcher newSearcher(
       IndexReader r, boolean maybeWrap, boolean wrapWithAssertions) {
-    return newSearcher(r, maybeWrap, wrapWithAssertions, randomBoolean());
+    return newSearcher(r, maybeWrap, wrapWithAssertions, random().nextBoolean());
   }
 
   /**

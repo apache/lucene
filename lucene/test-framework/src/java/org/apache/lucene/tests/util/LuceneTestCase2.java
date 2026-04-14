@@ -20,15 +20,18 @@ package org.apache.lucene.tests.util;
 import com.carrotsearch.randomizedtesting.jupiter.DetectThreadLeaks;
 import com.carrotsearch.randomizedtesting.jupiter.Randomized;
 import com.carrotsearch.randomizedtesting.jupiter.SystemThreadFilter;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.util.Constants;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.platform.commons.support.AnnotationSupport;
@@ -71,6 +74,7 @@ import org.junit.platform.commons.support.ReflectionSupport;
 /*
 // TODO: port these.
 - reproduce info listener, failuremarker? @Listeners({RunListenerPrintReproduceInfo.class, FailureMarker.class})
+- predictable test ordering
 - test sysout rule
 @TestRuleLimitSysouts.Limit(
     bytes = TestRuleLimitSysouts.DEFAULT_LIMIT,
@@ -81,8 +85,11 @@ import org.junit.platform.commons.support.ReflectionSupport;
 @DetectThreadLeaks.LingerTime(millis = 20_000)
 @DetectThreadLeaks.ExcludeThreads({SystemThreadFilter.class, LuceneTestCase2.IsSystemThread.class})
 @Timeout(value = 2, unit = TimeUnit.HOURS)
-@Execution(value = ExecutionMode.SAME_THREAD, reason = "backward compatibility.")
-public abstract class LuceneTestCase2 {
+@Execution(
+    value = ExecutionMode.SAME_THREAD,
+    reason = "single-threaded for backward compatibility.")
+@ExtendWith({GlobalStaticRandomAccess.class})
+public abstract class LuceneTestCase2 extends Assertions {
   /**
    * This predicate should return {@code true} for threads that should be ignored in {@linkplain
    * DetectThreadLeaks thread leak detection}.
@@ -112,6 +119,14 @@ public abstract class LuceneTestCase2 {
 
       return false;
     }
+  }
+
+  //
+  // Custom assertion methods.
+  //
+
+  public static int atLeast(Random random, int i) {
+    return LuceneTestCase.atLeast(random, i);
   }
 
   //
@@ -152,4 +167,9 @@ public abstract class LuceneTestCase2 {
 
   /** Use jupiter's {@link AfterEach} instead. */
   protected final void tearDown() throws Exception {}
+
+  public static <T extends Throwable> T expectThrows(
+      Class<T> expectedType, LuceneTestCase.ThrowingRunnable runnable) {
+    return LuceneTestCase.expectThrows(expectedType, runnable);
+  }
 }
