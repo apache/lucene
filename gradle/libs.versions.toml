@@ -105,7 +105,7 @@ junitplatform = [
 
 [plugins]
 benmanes-versions = "com.github.ben-manes.versions:0.53.0"
-carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.1"
+carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.2"
 carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.2.1"
 errorprone = "net.ltgt.errorprone:5.1.0"
 forbiddenapis = "de.thetaphi.forbiddenapis:3.10"
