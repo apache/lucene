@@ -1666,7 +1666,7 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
           if (wrappers.stream()
               .noneMatch(
                   clz ->
-                      clz.getName().startsWith("DirectIO")
+                      clz.getName().contains("DirectIO")
                           || NRTCachingDirectory.class.isAssignableFrom(clz))) {
             assertTrue(loaded.isPresent());
             assertTrue(loaded.get());
