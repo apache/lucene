@@ -17,7 +17,7 @@ flexmark = "0.64.8"
 # @keep This is GJF version for java source code formatting
 googleJavaFormat = "1.33.0-markdown"
 # gradle build support
-groovy = "5.0.4"
+groovy = "5.0.5"
 # test assertions
 hamcrest = "3.0"
 # analysis/icu/, gradle regeneration unicode support
@@ -45,7 +45,7 @@ morfologik-ukrainian = "4.9.1"
 # benchmark/ html parsing
 nekohtml = "1.9.22"
 # analysis/opennlp/ support
-opennlp = "2.5.7"
+opennlp = "2.5.8"
 # distribution.tests/ process management
 procfork = "1.0.6"
 # unit tests
@@ -83,6 +83,8 @@ jmh-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jts = { module = "org.locationtech.jts:jts-core", version.ref = "jts" }
 junit = { module = "junit:junit", version.ref = "junit" }
+junitplatform-launcher = "org.junit.platform:junit-platform-launcher:6.0.3"
+junitplatform-vintage = "org.junit.vintage:junit-vintage-engine:6.0.3"
 morfologik-polish = { module = "org.carrot2:morfologik-polish", version.ref = "morfologik" }
 morfologik-stemming = { module = "org.carrot2:morfologik-stemming", version.ref = "morfologik" }
 morfologik-ukrainian = { module = "ua.net.nlp:morfologik-ukrainian-search", version.ref = "morfologik-ukrainian" }
@@ -95,9 +97,15 @@ spatial4j = { module = "org.locationtech.spatial4j:spatial4j", version.ref = "sp
 xerces = { module = "xerces:xercesImpl", version.ref = "xerces" }
 zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
 
+[bundles]
+junitplatform = [
+    "junitplatform-launcher",
+    "junitplatform-vintage",
+]
+
 [plugins]
 benmanes-versions = "com.github.ben-manes.versions:0.53.0"
-carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.1"
+carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.2"
 carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.2.1"
 errorprone = "net.ltgt.errorprone:5.1.0"
 forbiddenapis = "de.thetaphi.forbiddenapis:3.10"

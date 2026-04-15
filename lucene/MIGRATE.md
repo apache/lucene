@@ -159,6 +159,21 @@ iwc.getConfig().getCodec().compoundFormat().getShouldUseCompoundFile();
 iwc.getConfig().getCodec().compoundFormat().getMaxCFSSegmentSizeMB();
 ```
 
+### Implicit determinization removed from RegexpQuery
+
+Previously, RegexpQuery would use DFA execution by default, even if it might be inefficient.
+
+RegexpQuery will now only [determinize as-needed](https://swtch.com/~rsc/regexp/regexp1.html). This might be
+faster or slower depending upon your queries.
+
+If you'd like to force the previous behavior, use `determinize()` and `AutomatonQuery`:
+
+```java
+String re = "a(b+|c+)d";
+Automaton dfa = Operations.determinize(new RegExp(re).toAutomaton(), 10000);
+Query query = new AutomatonQuery(new Term("myfield", re), dfa);
+```
+
 ## Migration from Lucene 10.4 to Lucene 10.5
 
 ### `[Byte|Float]VectorSimilarityQuery` now performs adaptive HNSW graph traversal

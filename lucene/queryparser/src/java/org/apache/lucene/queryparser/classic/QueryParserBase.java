@@ -570,12 +570,7 @@ public abstract class QueryParserBase extends QueryBuilder
    */
   protected Query newRegexpQuery(Term regexp) {
     return new RegexpQuery(
-        regexp,
-        RegExp.ALL,
-        0,
-        RegexpQuery.DEFAULT_PROVIDER,
-        determinizeWorkLimit,
-        multiTermRewriteMethod);
+        regexp, RegExp.ALL, 0, RegexpQuery.DEFAULT_PROVIDER, multiTermRewriteMethod);
   }
 
   /**

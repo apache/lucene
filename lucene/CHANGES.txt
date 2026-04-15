@@ -77,6 +77,11 @@ API Changes
 
 * GITHUB#15627 : Deferred lambda in TermStates.java according to prefetch (Shubham Sharma)
 
+* GITHUB#15939: Removed RegexpQuery constructor overloads that exposed determinization controls
+  (determinizeWorkLimit / doDeterminization). Determinization is now done only as-needed.
+  To force a classic DFA execution, use Operations.determinize() and AutomatonQuery.
+  (Dimitris Rempapis)
+
 New Features
 ---------------------
 * GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
@@ -115,6 +120,8 @@ Improvements
 * GITHUB#15574: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
 
 * GITHUB#15225: Improve package documentation for org.apache.lucene.util. (Syed Mohammad Saad)
+
+* GTIHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
 
 Optimizations
 ---------------------
@@ -162,7 +169,11 @@ Bug Fixes
 * GITHUB#14971: Fix CachedExecutor thread pool leak in ConcurrentMergeScheduler
   when IndexWriter initialization fails. (Su Beom)
 
+* GITHUB#15830: Fix possible lost signal in `ControlledRealTimeReopenThread` (Viliam Durina)
+
 * GITHUB#15838: Fix luke terms export failure on Windows when field names contain characters forbidden in file name (Binlong Gao)
+
+* GITHUB#15939: Fix thread-safety issues with NFARunAutomaton. (Dimitris Rempapis)
 
 Changes in Runtime Behavior
 ---------------------
@@ -191,6 +202,8 @@ Build
   Use path-sensitive annotations and argument providers instead of embedding absolute
   paths in cache keys, improving cache hit rates across different project locations.
   (Gasper Kojek)
+
+* Add api/runtime Usage attribute to modular configurations. (Dawid Weiss)
 
 Other
 ---------------------
@@ -222,6 +235,10 @@ Other
 
 * GITHUB#15867: Use StackWalker without method info for caller checks in internal classes and tests.
   (Uwe Schindler)
+
+* GITHUB#15949: Use junit5 engine vintage runner to run junit4 tests. (Dawid Weiss)
+
+* GITHUB#15893: Refactor to move common SHOULD/MUST dedup logic inside BooleanQuery into a common function. (Sagar Upadhyaya)
 
 ======================= Lucene 10.5.0 =======================
 
@@ -292,6 +309,10 @@ Optimizations
 
 * GITHUB#15779: Improve BytesRefHash.add performance by optimize rehash operation (tyronecai)
 
+* GITHUB#15886: Cache frozen FieldType to skip redundant schema validation. (Tim Brooks)
+
+* GITHUB#15902: Improve DiversifyingChildren performance by using primitive arrays(Alessandro Benedetti)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
@@ -325,6 +346,14 @@ Bug Fixes
 
 * GITHUB#15878: Fix existential quantification bug in caller checks
   (VectorizationProvider, TestSecrets).  (Uwe Schindler)
+
+* GITHUB#15908: Fix MMapDirectory.getSharedArenaMaxPermitsSysprop() to use
+  RefCountedSharedArena.DEFAULT_MAX_PERMITS instead of a hardcoded value, so that
+  the default change from GITHUB#15078 takes effect. (Huaixinww)
+
+* GITHUB#15899, GITHUB#15900: Improve TruncateTokenFilter to truncate on codepoints not
+  chars and no longer produce half surrogates. There are new factory parameters available
+  to configure legacy prefix chars and new codepoint behaviour.  (Uwe Schindler, Michael Sokolov)
 
 Other
 ---------------------

@@ -102,7 +102,7 @@ public class TestInfoStream extends LuceneTestCase {
           public void close() throws IOException {}
 
           @Override
-          public void message(String component, String message) {
+          public synchronized void message(String component, String message) {
             if (components.contains(component)) {
               infoStream.add(String.format(Locale.ROOT, "[%s] %s\n", component, message));
             }
