@@ -39,6 +39,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -61,6 +62,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.store.NRTCachingDirectory;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.tests.mockfile.ExtrasFS;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -1657,15 +1659,33 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
 
         if (Constants.WINDOWS) {
           // On Windows, we temporarily don't care until this is fixed: #14050
-        } else if (mMapDir != null
-            // direct IO wraps MMap but does not support isLoaded
-            && !(dir.getClass().getName().contains("DirectIO"))) {
-          assertTrue(loaded.isPresent());
-          assertTrue(loaded.get());
+        } else if (mMapDir != null) {
+          var wrappers = wrapperClasses(dir);
+          // Direct IO wraps MMap but does not support isLoaded.
+          // NRTCachingDirectory may return index inputs from cache.
+          if (wrappers.stream()
+              .noneMatch(
+                  clz ->
+                      clz.getName().contains("DirectIO")
+                          || NRTCachingDirectory.class.isAssignableFrom(clz))) {
+            assertTrue(loaded.isPresent());
+            assertTrue(loaded.get());
+          } else {
+            assertFalse(loaded.isPresent());
+          }
         } else {
           assertFalse(loaded.isPresent());
         }
       }
     }
+  }
+
+  private Set<Class<?>> wrapperClasses(Directory dir) {
+    LinkedHashSet<Class<?>> wrappers = new LinkedHashSet<>();
+    while (dir instanceof FilterDirectory fd) {
+      wrappers.add(fd.getClass());
+      dir = fd.getDelegate();
+    }
+    return wrappers;
   }
 }
