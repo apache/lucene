@@ -631,9 +631,6 @@ final class IndexingChain implements Accountable {
       // 2nd pass – document fields
       docFieldIdx = 0;
       for (IndexableField field : document) {
-        // parentField is currently a NumericDocValuesField so this is always false. Written this
-        // way to maintain the
-        // same behavior of other fields in case of logic changes.
         if (processField(docID, field, docFields[docFieldIdx])) {
           fields[indexedFieldCount] = docFields[docFieldIdx];
           indexedFieldCount++;
