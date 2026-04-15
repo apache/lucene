@@ -194,7 +194,10 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
                 @Override
                 public int docIDRunEnd() throws IOException {
                   if (classifyBlockCached() == BLOCK_YES) {
-                    return skipApprox.docIDRunEnd();
+                    // Only report the current level-0 block as a run. The
+                    // approximation's docIDRunEnd() may expand to higher levels
+                    // that could be MAYBE, not YES.
+                    return cachedBlockEnd + 1;
                   }
                   return super.docIDRunEnd();
                 }
