@@ -155,9 +155,12 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
               new SkipBlockRangeIterator(skipper, lowerValue, upperValue);
           iterator =
               new TwoPhaseIterator(skipApprox) {
+                private int cachedBlockEnd = -1;
+                private int cachedClassification = BLOCK_MAYBE;
+
                 @Override
                 public boolean matches() throws IOException {
-                  int blockMatch = classifyBlock();
+                  int blockMatch = classifyBlockCached();
                   if (blockMatch == BLOCK_YES) {
                     return true;
                   }
@@ -190,7 +193,7 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
 
                 @Override
                 public int docIDRunEnd() throws IOException {
-                  if (classifyBlock() == BLOCK_YES) {
+                  if (classifyBlockCached() == BLOCK_YES) {
                     return skipApprox.docIDRunEnd();
                   }
                   return super.docIDRunEnd();
@@ -204,6 +207,15 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
                 private static final int BLOCK_MAYBE = 0;
                 private static final int BLOCK_YES = 1;
                 private static final int BLOCK_IF_DOC_HAS_VALUE = 2;
+
+                private int classifyBlockCached() {
+                  int blockEnd = skipper.maxDocID(0);
+                  if (blockEnd != cachedBlockEnd) {
+                    cachedBlockEnd = blockEnd;
+                    cachedClassification = classifyBlock();
+                  }
+                  return cachedClassification;
+                }
 
                 private int classifyBlock() {
                   long blockMin = skipper.minValue(0);
