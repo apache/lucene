@@ -121,7 +121,7 @@ public class RangeFacetsExample implements Closeable {
     // you'd use a "normal" query:
     FacetsCollector fc =
         FacetsCollectorManager.search(
-                searcher, new MatchAllDocsQuery(), 10, new FacetsCollectorManager())
+                searcher, MatchAllDocsQuery.INSTANCE, 10, new FacetsCollectorManager())
             .facetsCollector();
 
     Facets facets = new LongRangeFacetCounts("timestamp", fc, PAST_HOUR, PAST_SIX_HOURS, PAST_DAY);
@@ -138,7 +138,8 @@ public class RangeFacetsExample implements Closeable {
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query:
     FacetsCollector fc =
-        FacetsCollectorManager.search(searcher, new MatchAllDocsQuery(), 10, fcm).facetsCollector();
+        FacetsCollectorManager.search(searcher, MatchAllDocsQuery.INSTANCE, 10, fcm)
+            .facetsCollector();
 
     Facets facets = new LongRangeFacetCounts("error timestamp", fc, logTimestampRanges);
     return facets.getTopChildren(10, "error timestamp");

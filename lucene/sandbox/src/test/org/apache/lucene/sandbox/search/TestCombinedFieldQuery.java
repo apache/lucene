@@ -68,10 +68,10 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     IndexReader reader = new MultiReader();
     IndexSearcher searcher = new IndexSearcher(reader);
     Query actual = searcher.rewrite(builder.build());
-    assertEquals(actual, new MatchNoDocsQuery());
+    assertEquals(actual, MatchNoDocsQuery.INSTANCE);
     builder.addField("field", 1f);
     actual = searcher.rewrite(builder.build());
-    assertEquals(actual, new MatchNoDocsQuery());
+    assertEquals(actual, MatchNoDocsQuery.INSTANCE);
     builder.addTerm(new BytesRef("foo"));
     Query query = builder.build();
     actual = searcher.rewrite(query);

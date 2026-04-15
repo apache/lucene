@@ -12,6 +12,9 @@ on:
       - 'main'
       - 'branch_10x'
 
+  schedule:
+    - cron: '44 1 * * *'
+
 permissions: {}
 
 env:
@@ -22,11 +25,47 @@ env:
 # the other runs all tests without other validation checks.
 
 jobs:
+  # Fast repository check
+  lint:
+    name: lint repository
+    runs-on: ubuntu-slim
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Configure problem matchers
+        run: |
+          echo "::add-matcher::.github/problem-matchers/actionlint-matcher.json"
+          echo "::add-matcher::.github/problem-matchers/ruff-check.json"
+          echo "::add-matcher::.github/problem-matchers/ruff-format.json"
+          echo "::add-matcher::.github/problem-matchers/shellcheck-gcc.json"
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@681c641aba71e4a1c380be3ab5e12ad51f415867 # v7.1.6
+        with:
+          version: "0.9.27"
+          enable-cache: true
+          prune-cache: false
+          save-cache: ${{ github.event_name != 'pull_request' }}
+          cache-dependency-glob: dev-tools/uv.lock
+          cache-suffix: dev-tools
+
+      - name: Run prek
+        run: uv run prek --all-files --show-diff-on-failure
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+
 
   # This runs all validation checks without tests.
   checks:
     name: checks without tests (JDK ${{ matrix.java }} on ${{ matrix.os }})
     timeout-minutes: 15
+    needs: lint
 
     strategy:
       matrix:
@@ -40,7 +79,7 @@ jobs:
         run: git config --global core.autocrlf false
 
       - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
@@ -51,26 +90,28 @@ jobs:
         if: ${{ ! startsWith(matrix.os, 'windows') }}
         uses: ./.github/actions/eclint
 
-      - name: Install ast-grep
-        if: ${{ ! startsWith(matrix.os, 'windows') }}
-        run: |
-          npm -g i @ast-grep/cli
-          echo "lucene.tool.ast-grep=ast-grep" >> build-options.local.properties
-
       - name: Run gradle check (without tests)
-        run: ./gradlew check -x test "-Ptask.times=true" --max-workers 2
+        run: ./gradlew check -x test "-Ptask.times=true"
 
 
   # This runs all tests without any other validation checks.
   tests:
     name: tests (JDK ${{ matrix.java }} on ${{ matrix.os }})
     timeout-minutes: 30
+    needs: lint
 
     strategy:
       matrix:
         # Operating systems to run on.
-        os: [ ubuntu-latest, windows-latest, macos-latest ]
+        os: [ ubuntu-latest, ubuntu-24.04-arm, windows-latest, macos-latest ]
         java: [ '25' ]
+        trigger:
+          - ${{ github.event_name }}
+        exclude:
+          - os: macos-latest
+            trigger: push
+          - os: macos-latest
+            trigger: pull_request
 
     runs-on: ${{ matrix.os }}
 
@@ -80,15 +121,27 @@ jobs:
         run: git config --global core.autocrlf false
 
       - name: Checkout repository
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
       - name: Configure tools
         uses: ./.github/actions/prepare-for-build
 
+      - name: Speedup MacOS runner
+        if: ${{ runner.os == 'macOS' }}
+        run: |
+          mkdir /tmp/tmpfs
+          sudo mount_tmpfs -o noowners -s 1g /tmp/tmpfs
+          sudo sysctl debug.lowpri_throttle_enabled=0
+          echo "tests.workDir=/tmp/tmpfs/lucene" >> build-options.local.properties
+
       - name: Run gradle tests
-        run: ./gradlew test "-Ptask.times=true" --max-workers 2
+        run: ./gradlew displayGradleDiagnostics allOptions test "-Ptask.times=true" "-Pvalidation.errorprone=false"
+        env:
+          # Set to the defaults to override the "CI"-based logic that would enable C2
+          # we can't afford C2 on github runners.
+          TEST_JVM_ARGS: "-XX:TieredStopAtLevel=1 -XX:+UseParallelGC -XX:ActiveProcessorCount=1"
 
       - name: List automatically-initialized gradle.properties
         run: cat gradle.properties

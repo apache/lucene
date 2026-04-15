@@ -89,7 +89,7 @@ public final class MultiTerms extends Terms {
       return null;
     } else {
       return new MultiTerms(
-          termsPerLeaf.toArray(EMPTY_ARRAY), slicePerLeaf.toArray(ReaderSlice.EMPTY_ARRAY));
+          termsPerLeaf.toArray(Terms[]::new), slicePerLeaf.toArray(ReaderSlice[]::new));
     }
   }
 
@@ -145,7 +145,7 @@ public final class MultiTerms extends Terms {
     }
 
     if (termsEnums.size() > 0) {
-      return new MultiTermsEnum(subSlices).reset(termsEnums.toArray(TermsEnumIndex.EMPTY_ARRAY));
+      return new MultiTermsEnum(subSlices).reset(termsEnums.toArray(TermsEnumIndex[]::new));
     } else {
       return TermsEnum.EMPTY;
     }
@@ -189,7 +189,7 @@ public final class MultiTerms extends Terms {
     }
 
     if (termsEnums.size() > 0) {
-      return new MultiTermsEnum(subSlices).reset(termsEnums.toArray(TermsEnumIndex.EMPTY_ARRAY));
+      return new MultiTermsEnum(subSlices).reset(termsEnums.toArray(TermsEnumIndex[]::new));
     } else {
       return TermsEnum.EMPTY;
     }

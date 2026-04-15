@@ -294,7 +294,7 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
     IndexSearcher searcher = newSearcher(indexReader);
 
-    FacetsCollector sfc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector sfc = searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     Facets facets = getTaxonomyFacetCounts(taxoReader, getConfig(), sfc);
 
@@ -335,7 +335,7 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
     IndexSearcher searcher = newSearcher(indexReader);
 
-    FacetsCollector sfc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector sfc = searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     Facets facets = getTaxonomyFacetCounts(taxoReader, getConfig(), sfc);
 
@@ -359,7 +359,7 @@ public class TestTaxonomyFacetCounts2 extends FacetTestCase {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
     IndexSearcher searcher = newSearcher(indexReader);
 
-    FacetsCollector sfc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector sfc = searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     Facets facets = getTaxonomyFacetCounts(taxoReader, getConfig(), sfc);
 

@@ -98,7 +98,17 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
    * @param reverse true if the sort should be decreasing
    */
   public SortField getSortField(boolean reverse) {
-    return new DoubleValuesSortField(this, reverse);
+    return new DoubleValuesSortField(this, reverse, 0);
+  }
+
+  /**
+   * Create a sort field based on the value of this producer
+   *
+   * @param reverse true if the sort should be decreasing
+   * @param missingValue a placeholder to use for documents with no value
+   */
+  public SortField getSortField(boolean reverse, double missingValue) {
+    return new DoubleValuesSortField(this, reverse, missingValue);
   }
 
   @Override
@@ -514,20 +524,9 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
     final DoubleValuesSource producer;
 
-    DoubleValuesSortField(DoubleValuesSource producer, boolean reverse) {
-      super(producer.toString(), new DoubleValuesComparatorSource(producer), reverse);
+    DoubleValuesSortField(DoubleValuesSource producer, boolean reverse, double missingValue) {
+      super(producer.toString(), new DoubleValuesComparatorSource(producer, missingValue), reverse);
       this.producer = producer;
-    }
-
-    @Override
-    public void setMissingValue(Object missingValue) {
-      if (missingValue instanceof Number) {
-        this.missingValue = missingValue;
-        ((DoubleValuesComparatorSource) getComparatorSource())
-            .setMissingValue(((Number) missingValue).doubleValue());
-      } else {
-        super.setMissingValue(missingValue);
-      }
     }
 
     @Override
@@ -549,11 +548,10 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
       if (rewrittenSource == producer) {
         return this;
       }
-      DoubleValuesSortField rewritten = new DoubleValuesSortField(rewrittenSource, reverse);
-      if (missingValue != null) {
-        rewritten.setMissingValue(missingValue);
-      }
-      return rewritten;
+      return new DoubleValuesSortField(
+          rewrittenSource,
+          reverse,
+          ((DoubleValuesComparatorSource) getComparatorSource()).missingValue);
     }
   }
 
@@ -563,14 +561,10 @@ public abstract class DoubleValuesSource implements SegmentCacheable {
 
   private static class DoubleValuesComparatorSource extends FieldComparatorSource {
     private final DoubleValuesSource producer;
-    private double missingValue;
+    private final double missingValue;
 
-    DoubleValuesComparatorSource(DoubleValuesSource producer) {
+    DoubleValuesComparatorSource(DoubleValuesSource producer, double missingValue) {
       this.producer = producer;
-      this.missingValue = 0d;
-    }
-
-    void setMissingValue(double missingValue) {
       this.missingValue = missingValue;
     }
 

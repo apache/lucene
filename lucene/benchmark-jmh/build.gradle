@@ -30,7 +30,7 @@ dependencies {
 
 // Exclude JMH-generated files and certain classes that require incubating classes
 // from forbiddenapis validation.
-tasks.matching { it.name == "forbiddenApisMain" }.configureEach {
+tasks.named("forbiddenApisMain").configure {
   patternSet.exclude(["**/jmh_generated/**"])
 }
 
@@ -38,11 +38,6 @@ tasks.matching { it.name == "forbiddenApisMain" }.configureEach {
 // Skip certain infrastructure tasks that we can't use or don't care about.
 tasks.matching {
   it.name in [
-    // Turn off JMH dependency checksums and licensing (it's GPL w/ classpath exception
-    // but this seems fine for test/build only tools).
-    "validateJarChecksums",
-    "validateJarLicenses",
-    "collectJarInfos",
     // No special javadocs for JMH benchmarks.
     "renderSiteJavadoc",
     "renderJavadoc",
@@ -67,7 +62,7 @@ tasks.compileJava.configure {
   options.javaModuleMainClass.set("org.apache.lucene.benchmark.jmh.Main")
 }
 
-jar.configure { Jar jarTask ->
+tasks.named("jar").configure {
   dependsOn configurations.runtimeClasspath
 
   manifest {

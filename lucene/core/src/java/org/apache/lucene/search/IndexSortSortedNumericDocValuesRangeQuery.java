@@ -56,21 +56,18 @@ import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
  * give constant scores. As an example, an {@link IndexSortSortedNumericDocValuesRangeQuery} might
  * be constructed as follows:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   String field = "field";
  *   long lowerValue = 0, long upperValue = 10;
  *   Query fallbackQuery = LongPoint.newRangeQuery(field, lowerValue, upperValue);
  *   Query rangeQuery = new IndexSortSortedNumericDocValuesRangeQuery(
  *       field, lowerValue, upperValue, fallbackQuery);
- * </pre>
+ * </code></pre>
  *
  * @lucene.experimental
  */
-public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
+public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery {
 
-  private final String field;
-  private final long lowerValue;
-  private final long upperValue;
   private final Query fallbackQuery;
 
   /**
@@ -83,9 +80,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
    */
   public IndexSortSortedNumericDocValuesRangeQuery(
       String field, long lowerValue, long upperValue, Query fallbackQuery) {
-    this.field = Objects.requireNonNull(field);
-    this.lowerValue = lowerValue;
-    this.upperValue = upperValue;
+    super(field, lowerValue, upperValue);
     this.fallbackQuery = fallbackQuery;
   }
 
@@ -139,7 +134,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
     Query rewrittenFallback = fallbackQuery.rewrite(indexSearcher);
     if (rewrittenFallback.getClass() == MatchAllDocsQuery.class) {
-      return new MatchAllDocsQuery();
+      return MatchAllDocsQuery.INSTANCE;
     }
     if (rewrittenFallback == fallbackQuery) {
       return this;

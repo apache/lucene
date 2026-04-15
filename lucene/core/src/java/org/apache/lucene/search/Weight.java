@@ -153,7 +153,7 @@ public abstract class Weight implements SegmentCacheable {
    * Helper method that delegates to {@link #scorerSupplier(LeafReaderContext)}. It is implemented
    * as
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * ScorerSupplier scorerSupplier = scorerSupplier(context);
    * if (scorerSupplier == null) {
    *   // No docs match
@@ -162,7 +162,7 @@ public abstract class Weight implements SegmentCacheable {
    *
    * scorerSupplier.setTopLevelScoringClause();
    * return scorerSupplier.bulkScorer();
-   * </pre>
+   * </code></pre>
    *
    * A bulk scorer for the same {@link LeafReaderContext} instance may be requested multiple times
    * as part of a single search call.

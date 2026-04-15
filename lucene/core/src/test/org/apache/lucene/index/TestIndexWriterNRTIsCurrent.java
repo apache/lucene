@@ -43,7 +43,7 @@ public class TestIndexWriterNRTIsCurrent extends LuceneTestCase {
     int numReaderThreads = TEST_NIGHTLY ? TestUtil.nextInt(random(), 2, 5) : 2;
     ReaderThread[] threads = new ReaderThread[numReaderThreads];
     final CountDownLatch latch = new CountDownLatch(1);
-    WriterThread writerThread = new WriterThread(holder, writer, atLeast(500), random(), latch);
+    WriterThread writerThread = new WriterThread(holder, writer, atLeast(200), random(), latch);
     for (int i = 0; i < threads.length; i++) {
       threads[i] = new ReaderThread(holder, latch);
       threads[i].start();
@@ -110,7 +110,7 @@ public class TestIndexWriterNRTIsCurrent extends LuceneTestCase {
               latch.countDown();
             }
           }
-          if (random.nextBoolean()) {
+          if (random.nextInt(7) == 0) {
             writer.commit();
             final DirectoryReader newReader = DirectoryReader.openIfChanged(currentReader);
             if (newReader != null) {

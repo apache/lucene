@@ -332,18 +332,18 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     final RandomVectorScorer scorer = scorerSupplier.get();
     final KnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
-    HnswGraph graph = getGraph(fieldEntry);
     // Take into account if quantized? E.g. some scorer cost?
     // Use approximate cardinality as this is good enough, but ensure we don't exceed the graph
     // size as that is illogical
-    int filteredDocCount = Math.min(acceptDocs.cost(), graph.size());
+    int graphSize = (fieldEntry.vectorIndexLength() == 0) ? 0 : fieldEntry.size();
+    int filteredDocCount = Math.min(acceptDocs.cost(), graphSize);
     Bits accepted = acceptDocs.bits();
     final Bits acceptedOrds = scorer.getAcceptOrds(accepted);
     int numVectors = scorer.maxOrd();
     boolean doHnsw = knnCollector.k() < numVectors;
     // The approximate number of vectors that would be visited if we did not filter
-    int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graph.size());
-    if (unfilteredVisit >= filteredDocCount) {
+    int unfilteredVisit = HnswGraphSearcher.expectedVisitedNodes(knnCollector.k(), graphSize);
+    if (unfilteredVisit >= filteredDocCount || graphSize == 0) {
       doHnsw = false;
     }
     if (doHnsw) {
@@ -399,6 +399,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   private HnswGraph getGraph(FieldEntry entry) throws IOException {
+    if (entry.vectorIndexLength == 0) {
+      return HnswGraph.EMPTY;
+    }
     return new OffHeapHnswGraph(entry, vectorIndex);
   }
 
@@ -612,9 +615,9 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     @Override
     public NodesIterator getNodesOnLevel(int level) {
       if (level == 0) {
-        return new ArrayNodesIterator(size());
+        return new DenseNodesIterator(size());
       } else {
-        return new ArrayNodesIterator(nodesByLevel[level], nodesByLevel[level].length);
+        return new ArrayNodesIterator(nodesByLevel[level]);
       }
     }
   }

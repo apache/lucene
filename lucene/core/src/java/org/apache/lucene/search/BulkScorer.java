@@ -47,7 +47,7 @@ public abstract class BulkScorer {
    *
    * <p>For instance, a {@link Scorer}-based implementation could look like below:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * private final Scorer scorer; // set via constructor
    *
    * public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
@@ -64,7 +64,7 @@ public abstract class BulkScorer {
    *   }
    *   return doc;
    * }
-   * </pre>
+   * </code></pre>
    *
    * @param collector The collector to which all matching documents are passed.
    * @param acceptDocs {@link Bits} that represents the allowed documents to match, or {@code null}

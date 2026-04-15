@@ -184,11 +184,13 @@ public class TestIntLongHashMap extends LuceneTestCase {
     assertEquals(value1, map.indexGet(map.indexOf(keyE)));
     assertEquals(value2, map.indexGet(map.indexOf(key1)));
 
-    expectThrows(
-        AssertionError.class,
-        () -> {
-          map.indexGet(map.indexOf(key2));
-        });
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(
+          AssertionError.class,
+          () -> {
+            map.indexGet(map.indexOf(key2));
+          });
+    }
 
     assertEquals(value1, map.indexReplace(map.indexOf(keyE), value3));
     assertEquals(value2, map.indexReplace(map.indexOf(key1), value4));

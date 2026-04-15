@@ -22,20 +22,21 @@ import org.junit.BeforeClass;
 public abstract class BaseVectorizationTestCase extends LuceneTestCase {
 
   protected static final VectorizationProvider LUCENE_PROVIDER = defaultProvider();
-  protected static final VectorizationProvider PANAMA_PROVIDER = maybePanamaProvider();
+  protected static final VectorizationProvider PANAMA_OR_NATIVE_PROVIDER =
+      maybePanamaOrNativeProvider();
 
   @BeforeClass
   public static void beforeClass() throws Exception {
     assumeTrue(
         "Test only works when JDK's vector incubator module is enabled.",
-        PANAMA_PROVIDER.getClass() != LUCENE_PROVIDER.getClass());
+        PANAMA_OR_NATIVE_PROVIDER.getClass() != LUCENE_PROVIDER.getClass());
   }
 
   public static VectorizationProvider defaultProvider() {
     return new DefaultVectorizationProvider();
   }
 
-  public static VectorizationProvider maybePanamaProvider() {
+  public static VectorizationProvider maybePanamaOrNativeProvider() {
     return VectorizationProvider.lookup(true);
   }
 }

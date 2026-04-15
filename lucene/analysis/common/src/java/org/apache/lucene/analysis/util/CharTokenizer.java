@@ -37,9 +37,9 @@ import org.apache.lucene.util.AttributeFactory;
  * 8 lambdas or method references. It is possible to create an instance which behaves exactly like
  * {@link LetterTokenizer}:
  *
- * <pre class="prettyprint lang-java">
+ * <pre><code class="language-java">
  * Tokenizer tok = CharTokenizer.fromTokenCharPredicate(Character::isLetter);
- * </pre>
+ * </code></pre>
  */
 public abstract class CharTokenizer extends Tokenizer {
 
@@ -85,9 +85,9 @@ public abstract class CharTokenizer extends Tokenizer {
    * <p>This factory is intended to be used with lambdas or method references. E.g., an elegant way
    * to create an instance which behaves exactly as {@link LetterTokenizer} is:
    *
-   * <pre class="prettyprint lang-java">
+   * <pre><code class="language-java">
    * Tokenizer tok = CharTokenizer.fromTokenCharPredicate(Character::isLetter);
-   * </pre>
+   * </code></pre>
    */
   public static CharTokenizer fromTokenCharPredicate(final IntPredicate tokenCharPredicate) {
     return fromTokenCharPredicate(DEFAULT_TOKEN_ATTRIBUTE_FACTORY, tokenCharPredicate);
@@ -101,9 +101,9 @@ public abstract class CharTokenizer extends Tokenizer {
    * <p>This factory is intended to be used with lambdas or method references. E.g., an elegant way
    * to create an instance which behaves exactly as {@link LetterTokenizer} is:
    *
-   * <pre class="prettyprint lang-java">
+   * <pre><code class="language-java">
    * Tokenizer tok = CharTokenizer.fromTokenCharPredicate(factory, Character::isLetter);
-   * </pre>
+   * </code></pre>
    */
   public static CharTokenizer fromTokenCharPredicate(
       AttributeFactory factory, final IntPredicate tokenCharPredicate) {
@@ -125,9 +125,9 @@ public abstract class CharTokenizer extends Tokenizer {
    * <p>This factory is intended to be used with lambdas or method references. E.g., an elegant way
    * to create an instance which behaves exactly as {@link WhitespaceTokenizer} is:
    *
-   * <pre class="prettyprint lang-java">
+   * <pre><code class="language-java">
    * Tokenizer tok = CharTokenizer.fromSeparatorCharPredicate(Character::isWhitespace);
-   * </pre>
+   * </code></pre>
    */
   public static CharTokenizer fromSeparatorCharPredicate(
       final IntPredicate separatorCharPredicate) {
@@ -142,9 +142,9 @@ public abstract class CharTokenizer extends Tokenizer {
    * <p>This factory is intended to be used with lambdas or method references. E.g., an elegant way
    * to create an instance which behaves exactly as {@link WhitespaceTokenizer} is:
    *
-   * <pre class="prettyprint lang-java">
+   * <pre><code class="language-java">
    * Tokenizer tok = CharTokenizer.fromSeparatorCharPredicate(factory, Character::isWhitespace);
-   * </pre>
+   * </code></pre>
    */
   public static CharTokenizer fromSeparatorCharPredicate(
       AttributeFactory factory, final IntPredicate separatorCharPredicate) {

@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.apache.lucene.gradle.SuppressForbidden;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.apache.lucene.gradle.plugins.java.EcjLintPlugin;
 import org.apache.tools.ant.filters.ReplaceTokens;
@@ -37,6 +38,7 @@ import org.gradle.api.artifacts.VersionCatalog;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Provider;
+import org.gradle.api.tasks.Delete;
 import org.gradle.api.tasks.Sync;
 import org.gradle.plugins.ide.eclipse.EclipsePlugin;
 import org.gradle.plugins.ide.eclipse.GenerateEclipseClasspath;
@@ -71,6 +73,11 @@ public class EclipseSupportPlugin extends LuceneGradlePlugin {
     if (rootProject.getGradle().getStartParameter().getTaskNames().contains("eclipse")) {
       configureEclipseIdeSettings(rootProject, eclipseJavaVersionOption.get());
     }
+  }
+
+  @SuppressForbidden(reason = "Ant's ReplaceTokens filter requires a Hashtable as parameter")
+  private static <K, V> Hashtable<K, V> newHashtable(Map<K, V> map) {
+    return new Hashtable<>(map);
   }
 
   private void configureEclipseIdeSettings(Project project, String eclipseJavaVersion) {
@@ -119,7 +126,7 @@ public class EclipseSupportPlugin extends LuceneGradlePlugin {
                   task.filter(
                       Map.of(
                           "tokens",
-                          new Hashtable<>(
+                          newHashtable(
                               Map.ofEntries(
                                   Map.entry("eclipseJavaVersion", eclipseJavaVersion),
                                   Map.entry("ecj-lint-config", ecjLintProps)))),
@@ -153,6 +160,15 @@ public class EclipseSupportPlugin extends LuceneGradlePlugin {
               task.dependsOn(luceneEclipseJdt);
             });
 
+    var wipePreviousConfiguration =
+        tasks.register(
+            "wipePreviousConfiguration",
+            Delete.class,
+            task -> {
+              Path rootDir = getProjectRootPath(project);
+              task.delete(rootDir.resolve(".classpath"), rootDir.resolve(".project"));
+            });
+
     // Add gradle plugin portal to the source repository list and
     // apply any ecj source repository hackery the same way as everywhere.
     project.getRepositories().gradlePluginPortal();
@@ -163,6 +179,8 @@ public class EclipseSupportPlugin extends LuceneGradlePlugin {
         .named("eclipseClasspath")
         .configure(
             task -> {
+              task.dependsOn(wipePreviousConfiguration);
+
               var classpath = task.getClasspath();
               classpath.setDefaultOutputDir(project.file("build/eclipse"));
               classpath.setDownloadJavadoc(false);

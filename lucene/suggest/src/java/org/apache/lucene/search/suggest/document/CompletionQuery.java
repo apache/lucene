@@ -37,10 +37,10 @@ import org.apache.lucene.search.suggest.BitsProducer;
  * that provides a concrete implementation of this query. Example below shows using this query to
  * retrieve the top 5 documents.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *  SuggestIndexSearcher searcher = new SuggestIndexSearcher(reader);
  *  TopSuggestDocs suggestDocs = searcher.suggest(query, 5);
- * </pre>
+ * </code></pre>
  *
  * This query rewrites to an appropriate {@link CompletionQuery} depending on the type ({@link
  * SuggestField} or {@link ContextSuggestField}) of the field the query is run against.

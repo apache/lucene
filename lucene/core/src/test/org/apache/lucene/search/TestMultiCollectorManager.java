@@ -197,8 +197,9 @@ public class TestMultiCollectorManager extends LuceneTestCase {
     C collector = collectorManager.newCollector();
     collectors.add(collector);
     LeafCollector leafCollector = collector.getLeafCollector(ctx);
+    Random random = nonAssertingRandom(random());
     for (Integer v : values) {
-      if (random().nextInt(10) == 1) {
+      if (random.nextInt(10) == 1) {
         collector = collectorManager.newCollector();
         collectors.add(collector);
         leafCollector = collector.getLeafCollector(ctx);

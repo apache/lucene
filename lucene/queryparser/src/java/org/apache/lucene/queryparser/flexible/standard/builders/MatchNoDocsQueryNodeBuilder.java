@@ -43,6 +43,6 @@ public class MatchNoDocsQueryNodeBuilder implements StandardQueryBuilder {
               queryNode.getClass().getName()));
     }
 
-    return new MatchNoDocsQuery();
+    return MatchNoDocsQuery.INSTANCE;
   }
 }

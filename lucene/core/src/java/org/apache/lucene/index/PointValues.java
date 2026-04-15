@@ -65,7 +65,7 @@ import org.apache.lucene.util.bkd.BKDConfig;
  * addition to indexing support, point classes also contain static methods (such as {@link
  * IntPoint#newRangeQuery(String, int, int)}) for creating common queries. For example:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   // add year 1970 to document
  *   document.add(new IntPoint("year", 1970));
  *   // index document
@@ -74,7 +74,7 @@ import org.apache.lucene.util.bkd.BKDConfig;
  *   // issue range query of 1960-1980
  *   Query query = IntPoint.newRangeQuery("year", 1960, 1980);
  *   TopDocs docs = searcher.search(query, ...);
- * </pre>
+ * </code></pre>
  *
  * <h2>Geospatial Point Types</h2>
  *

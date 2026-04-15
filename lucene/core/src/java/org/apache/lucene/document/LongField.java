@@ -172,7 +172,20 @@ public final class LongField extends Field {
    */
   public static SortField newSortField(
       String field, boolean reverse, SortedNumericSelector.Type selector) {
-    return new SortedNumericSortField(field, SortField.Type.LONG, reverse, selector);
+    return new SortedNumericSortField(field, SortField.Type.LONG, reverse, selector, null);
+  }
+
+  /**
+   * Create a new {@link SortField} for long values.
+   *
+   * @param field field name. must not be {@code null}.
+   * @param reverse true if natural order should be reversed.
+   * @param selector custom selector type for choosing the sort value from the set.
+   * @param missingValue a sort value to use for documents with no value in the field
+   */
+  public static SortField newSortField(
+      String field, boolean reverse, SortedNumericSelector.Type selector, long missingValue) {
+    return new SortedNumericSortField(field, SortField.Type.LONG, reverse, selector, missingValue);
   }
 
   /**

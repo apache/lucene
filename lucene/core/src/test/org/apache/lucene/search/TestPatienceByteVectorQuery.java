@@ -49,7 +49,7 @@ public class TestPatienceByteVectorQuery extends BaseKnnVectorQueryTestCase {
         new KnnByteVectorQuery(field, floatToBytes(query), k, queryFilter);
     return wrapSeeded
         ? PatienceKnnVectorQuery.fromSeededQuery(
-            SeededKnnVectorQuery.fromByteQuery(knnQuery, new MatchNoDocsQuery()))
+            SeededKnnVectorQuery.fromByteQuery(knnQuery, MatchNoDocsQuery.INSTANCE))
         : PatienceKnnVectorQuery.fromByteQuery(knnQuery);
   }
 

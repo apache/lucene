@@ -79,7 +79,7 @@ public interface RandomVectorScorer {
   }
 
   /** Creates a default scorer for random access vectors. */
-  abstract class AbstractRandomVectorScorer implements RandomVectorScorer {
+  abstract class AbstractRandomVectorScorer implements RandomVectorScorer, HasKnnVectorValues {
     private final KnnVectorValues values;
 
     /**
@@ -104,6 +104,11 @@ public interface RandomVectorScorer {
     @Override
     public Bits getAcceptOrds(Bits acceptDocs) {
       return values.getAcceptOrds(acceptDocs);
+    }
+
+    @Override
+    public KnnVectorValues values() {
+      return values;
     }
   }
 }

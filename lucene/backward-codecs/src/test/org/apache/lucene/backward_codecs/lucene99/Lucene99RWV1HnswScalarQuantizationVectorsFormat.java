@@ -57,6 +57,7 @@ class Lucene99RWV1HnswScalarQuantizationVectorsFormat
         Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
         flatVectorsFormat.fieldsWriter(state),
         1,
-        null);
+        null,
+        0);
   }
 }

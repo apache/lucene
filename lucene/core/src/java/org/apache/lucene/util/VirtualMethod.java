@@ -33,12 +33,12 @@ import java.util.Set;
  * <p>Define <strong>static final</strong> fields in the base class ({@code BaseClass}), where the
  * old and new method are declared:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *  static final VirtualMethod&lt;BaseClass&gt; newMethod =
  *   new VirtualMethod&lt;BaseClass&gt;(BaseClass.class, "newName", parameters...);
  *  static final VirtualMethod&lt;BaseClass&gt; oldMethod =
  *   new VirtualMethod&lt;BaseClass&gt;(BaseClass.class, "oldName", parameters...);
- * </pre>
+ * </code></pre>
  *
  * <p>This enforces the singleton status of these objects, as the maintenance of the cache would be
  * too costly else. If you try to create a second instance of for the same method/{@code baseClass}
@@ -47,7 +47,7 @@ import java.util.Set;
  * <p>To detect if e.g. the old method was overridden by a more far subclass on the inheritance path
  * to the current instance's class, use a <strong>non-static</strong> field:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *  final boolean isDeprecatedMethodOverridden =
  *   AccessController.doPrivileged((PrivilegedAction&lt;Boolean&gt;) () -&gt;
  *    (oldMethod.getImplementationDistance(this.getClass()) &gt; newMethod.getImplementationDistance(this.getClass())));
@@ -56,7 +56,7 @@ import java.util.Set;
  *  final boolean isDeprecatedMethodOverridden =
  *   AccessController.doPrivileged((PrivilegedAction&lt;Boolean&gt;) () -&gt;
  *    VirtualMethod.compareImplementationDistance(this.getClass(), oldMethod, newMethod) &gt; 0);
- * </pre>
+ * </code></pre>
  *
  * <p>{@link #getImplementationDistance} returns the distance of the subclass that overrides this
  * method. The one with the larger distance should be used preferable. This way also more

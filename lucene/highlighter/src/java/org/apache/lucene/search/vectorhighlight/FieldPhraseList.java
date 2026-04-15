@@ -177,6 +177,7 @@ public class FieldPhraseList {
         // The result is that all informations in TermInfo are lost and not available for further
         // operations.
         existWpi.getTermsInfos().addAll(wpi.getTermsInfos());
+        existWpi.boost += wpi.getBoost(); // Accumulate boost
         return;
       }
     }

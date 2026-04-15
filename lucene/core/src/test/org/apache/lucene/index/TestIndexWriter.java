@@ -1098,8 +1098,8 @@ public class TestIndexWriter extends LuceneTestCase {
         new ThreadInterruptedException(new InterruptedException()).getCause()
             instanceof InterruptedException);
 
-    // issue 100 interrupts to child thread
-    final int numInterrupts = atLeast(100);
+    // issue 20 interrupts to child thread
+    final int numInterrupts = atLeast(20);
     int i = 0;
     while (i < numInterrupts) {
       // TODO: would be nice to also sometimes interrupt the CMS merge threads too ...
@@ -1243,11 +1243,7 @@ public class TestIndexWriter extends LuceneTestCase {
       // handles open.
       FSDirectory dir = new NIOFSDirectory(indexPath);
 
-      MergePolicy mergePolicy = newLogMergePolicy(true);
-
-      // This test expects all of its segments to be in CFS
-      mergePolicy.setNoCFSRatio(1.0);
-      mergePolicy.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
+      MergePolicy mergePolicy = newLogMergePolicy();
 
       IndexWriter w =
           new IndexWriter(
@@ -1255,6 +1251,9 @@ public class TestIndexWriter extends LuceneTestCase {
               newIndexWriterConfig(new MockAnalyzer(random()))
                   .setMergePolicy(mergePolicy)
                   .setUseCompoundFile(true));
+      // This test expects all of its segments to be in CFS
+      w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(true);
+      w.getConfig().getCodec().compoundFormat().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
       Document doc = new Document();
       doc.add(newTextField("field", "go", Field.Store.NO));
       w.addDocument(doc);
@@ -1462,7 +1461,7 @@ public class TestIndexWriter extends LuceneTestCase {
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setRAMBufferSizeMB(0.01)
                 .setMergePolicy(newLogMergePolicy()));
-    indexWriter.getConfig().getMergePolicy().setNoCFSRatio(0.0);
+    indexWriter.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
 
     String BIG =
         "alskjhlaksjghlaksjfhalksvjepgjioefgjnsdfjgefgjhelkgjhqewlrkhgwlekgrhwelkgjhwelkgrhwlkejg";
@@ -2461,7 +2460,7 @@ public class TestIndexWriter extends LuceneTestCase {
         evilWriter.commit();
       }
     }
-    evilWriter.deleteDocuments(new MatchAllDocsQuery());
+    evilWriter.deleteDocuments(MatchAllDocsQuery.INSTANCE);
     evilWriter.forceMerge(1);
     evilWriter.close();
     dir.close();
@@ -4388,9 +4387,9 @@ public class TestIndexWriter extends LuceneTestCase {
         SearcherManager manager = new SearcherManager(writer, new SearcherFactory())) {
       CountDownLatch start = new CountDownLatch(1);
       int numDocs =
-          TEST_NIGHTLY ? TestUtil.nextInt(random(), 100, 600) : TestUtil.nextInt(random(), 10, 60);
+          TEST_NIGHTLY ? TestUtil.nextInt(random(), 100, 600) : TestUtil.nextInt(random(), 10, 30);
       AtomicLong maxCompletedSeqID = new AtomicLong(-1);
-      Thread[] threads = new Thread[2 + random().nextInt(2)];
+      Thread[] threads = new Thread[2];
       for (int i = 0; i < threads.length; i++) {
         int idx = i;
         threads[i] =

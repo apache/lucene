@@ -29,7 +29,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
 /**
  * Factory for {@link OpenNLPLemmatizerFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_opennlp_lemma" class="solr.TextField" positionIncrementGap="100"
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.OpenNLPTokenizerFactory"
@@ -40,7 +40,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
  *             dictionary="filename"
  *             lemmatizerModel="filename"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @since 7.3.0
  * @lucene.spi {@value #NAME}

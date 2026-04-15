@@ -17,6 +17,8 @@
 package org.apache.lucene.tests.util;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayWithSize;
 import static org.hamcrest.Matchers.equalTo;
@@ -1331,6 +1333,16 @@ public final class TestUtil {
   }
 
   /**
+   * Returns the actual default codec (e.g. LuceneMNCodec) for this version of Lucene. This may be
+   * different from {@link Codec#getDefault()} because that is randomized.
+   */
+  public static Codec getDefaultCodec(boolean shouldUseCfs) {
+    Codec codec = getDefaultCodec();
+    codec.compoundFormat().setShouldUseCompoundFile(shouldUseCfs);
+    return codec;
+  }
+
+  /**
    * Returns the actual default postings format (e.g. LuceneMNPostingsFormat) for this version of
    * Lucene.
    */
@@ -1413,7 +1425,7 @@ public final class TestUtil {
    * Lucene.
    */
   public static KnnVectorsFormat getDefaultKnnVectorsFormat() {
-    return new Lucene99HnswVectorsFormat();
+    return new Lucene99HnswVectorsFormat(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, 0);
   }
 
   public static boolean anyFilesExceptWriteLock(Directory dir) throws IOException {
@@ -1440,7 +1452,7 @@ public final class TestUtil {
   public static void reduceOpenFiles(IndexWriter w) {
     // keep number of open files lowish
     MergePolicy mp = w.getConfig().getMergePolicy();
-    mp.setNoCFSRatio(1.0);
+    w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(true);
     if (mp instanceof LogMergePolicy lmp) {
       lmp.setMergeFactor(Math.min(5, lmp.getMergeFactor()));
     } else if (mp instanceof TieredMergePolicy tmp) {
@@ -1695,6 +1707,8 @@ public final class TestUtil {
   }
 
   public static String randomSubString(Random random, int wordLength, boolean simple) {
+    random = LuceneTestCase.nonAssertingRandom(random);
+
     if (wordLength == 0) {
       return "";
     }

@@ -141,7 +141,7 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
         FieldDoc after;
         if (paging) {
           assert searcher.getIndexReader().numDocs() > 0;
-          TopFieldDocs td = searcher.search(new MatchAllDocsQuery(), 10, sort);
+          TopFieldDocs td = searcher.search(MatchAllDocsQuery.INSTANCE, 10, sort);
           after = (FieldDoc) td.scoreDocs[td.scoreDocs.length - 1];
         } else {
           after = null;
@@ -155,7 +155,7 @@ public class TestTopFieldCollectorEarlyTermination extends LuceneTestCase {
         if (random().nextBoolean()) {
           query = new TermQuery(new Term("s", RandomPicks.randomFrom(random(), terms)));
         } else {
-          query = new MatchAllDocsQuery();
+          query = MatchAllDocsQuery.INSTANCE;
         }
         TopDocs td1 = searcher.search(query, manager1);
         TopDocs td2 = searcher.search(query, manager2);

@@ -84,7 +84,7 @@ public class TestExpressionSorts extends LuceneTestCase {
   public void testQueries() throws Exception {
     int n = atLeast(1);
     for (int i = 0; i < n; i++) {
-      assertQuery(new MatchAllDocsQuery());
+      assertQuery(MatchAllDocsQuery.INSTANCE);
       assertQuery(new TermQuery(new Term("english", "one")));
       BooleanQuery.Builder bq = new BooleanQuery.Builder();
       bq.add(new TermQuery(new Term("english", "one")), BooleanClause.Occur.SHOULD);

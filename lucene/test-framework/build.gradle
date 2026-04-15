@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-
+import org.apache.lucene.gradle.plugins.misc.QuietExec
 
 description = 'Framework for testing Lucene-based applications'
 
@@ -32,3 +32,51 @@ dependencies {
 
   moduleImplementation project(':lucene:codecs')
 }
+
+//
+// Regenerate unicode resources
+//
+
+tasks.register("regenerateEmojiTokenizationTest", QuietExec, {
+  def unicodeVersion = "12.1"
+
+  def genDir = file("src/java/org/apache/lucene/tests/analysis/standard")
+  def genScript = file("${genDir}/generateEmojiTokenizationTest.pl")
+  def genOutput = file("${genDir}/EmojiTokenizationTestUnicode_${unicodeVersion.replace('.', '_')}.java")
+
+  description = "Regenerate ${genOutput}"
+
+  inputs.file genScript
+  inputs.property "unicodeVersion", unicodeVersion
+  outputs.file genOutput
+
+  workingDir = genDir
+  executable = buildGlobals.externalTool("perl")
+  args = [
+    genScript,
+    "-v",
+    unicodeVersion
+  ]
+})
+
+tasks.register("regenerateJavaUnicodeWordBreakTest", QuietExec, {
+  def unicodeVersion = "12.1"
+
+  def genDir = file("src/java/org/apache/lucene/tests/analysis/standard")
+  def genScript = file("${genDir}/generateJavaUnicodeWordBreakTest.pl")
+  def genOutput = file("${genDir}/WordBreakTestUnicode_${unicodeVersion.replace('.', '_')}.java")
+
+  description = "Regenerate ${genOutput}"
+
+  inputs.file genScript
+  inputs.property "unicodeVersion", unicodeVersion
+  outputs.file genOutput
+
+  workingDir = genDir
+  executable = buildGlobals.externalTool("perl")
+  args = [
+    genScript,
+    "-v",
+    unicodeVersion
+  ]
+})

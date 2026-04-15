@@ -55,7 +55,7 @@ public class TestComplexExplanations extends BaseExplanationTestCase {
   }
 
   public void testMA3() throws Exception {
-    Query q = new MatchAllDocsQuery();
+    Query q = MatchAllDocsQuery.INSTANCE;
     bqtest(new BoostQuery(q, 0), new int[] {0, 1, 2, 3});
   }
 

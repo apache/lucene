@@ -146,6 +146,8 @@ public class TestAddTaxonomy extends FacetTestCase {
   }
 
   // A more comprehensive and big random test.
+  // TODO: TOO BIG
+  @Nightly
   public void testBig() throws Exception {
     dotest(200, 10000);
     dotest(1000, 20000);

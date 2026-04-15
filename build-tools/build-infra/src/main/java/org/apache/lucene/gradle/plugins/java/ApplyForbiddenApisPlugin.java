@@ -69,7 +69,8 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
               .addAll(
                   List.of("jdk-unsafe", "jdk-deprecated", "jdk-non-portable", "jdk-reflection"));
 
-          task.getSuppressAnnotations().add("**.SuppressForbidden");
+          task.getSuppressAnnotations()
+              .addAll(List.of("**.SuppressForbidden", "**.*$SuppressForbidden"));
 
           // apply logger restrictions to all modules except Luke.
           if (!project.getPath().equals(":lucene:luke")) {

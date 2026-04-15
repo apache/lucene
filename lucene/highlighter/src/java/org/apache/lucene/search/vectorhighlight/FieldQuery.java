@@ -429,7 +429,7 @@ public class FieldQuery {
     private void markTerminal(int slop, float boost) {
       this.terminal = true;
       this.slop = slop;
-      this.boost = boost;
+      this.boost = Math.max(this.boost, boost);
       this.termOrPhraseNumber = fieldQuery.nextTermOrPhraseNumber();
     }
 

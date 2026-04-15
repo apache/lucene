@@ -32,20 +32,16 @@ import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 
-/** Vector scorer over OptimizedScalarQuantized vectors */
-public class Lucene104ScalarQuantizedVectorScorer
-    implements AsymmetricScalarQuantizeFlatVectorsScorer {
+/**
+ * Vector scorer over OptimizedScalarQuantized vectors
+ *
+ * @lucene.experimental
+ */
+public class Lucene104ScalarQuantizedVectorScorer implements AsymmetricScalarQuantizeFlatVectorsScorer {
   private final FlatVectorsScorer nonQuantizedDelegate;
 
   public Lucene104ScalarQuantizedVectorScorer(FlatVectorsScorer nonQuantizedDelegate) {
     this.nonQuantizedDelegate = nonQuantizedDelegate;
-  }
-
-  static void checkDimensions(int queryLen, int fieldLen) {
-    if (queryLen != fieldLen) {
-      throw new IllegalArgumentException(
-          "vector query dimension: " + queryLen + " differs from field dimension: " + fieldLen);
-    }
   }
 
   @Override
@@ -64,7 +60,7 @@ public class Lucene104ScalarQuantizedVectorScorer
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, float[] target)
       throws IOException {
     if (vectorValues instanceof QuantizedByteVectorValues qv) {
-      checkDimensions(target.length, qv.dimension());
+      FlatVectorsScorer.checkDimensions(target.length, qv.dimension());
       OptimizedScalarQuantizer quantizer = qv.getQuantizer();
       Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding scalarEncoding = qv.getScalarEncoding();
       byte[] scratch = new byte[scalarEncoding.getDiscreteDimensions(qv.dimension())];
@@ -81,12 +77,12 @@ public class Lucene104ScalarQuantizedVectorScorer
         VectorUtil.l2normalize(copy);
       }
       target = copy;
-      var targetCorrectiveTerms =
-          quantizer.scalarQuantize(
-              target, scratch, scalarEncoding.getQueryBits(), qv.getCentroid());
-      // for single bit query nibble, we need to transpose the nibbles for fast scoring comparisons
-      if (scalarEncoding
-          == Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE) {
+      var targetCorrectiveTerms = quantizer.scalarQuantize(
+          target, scratch, scalarEncoding.getQueryBits(), qv.getCentroid());
+      // for asymmetric encodings with 4-bit query, we need to transpose the nibbles for fast
+      // scoring comparisons
+      if (scalarEncoding == Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE
+          || scalarEncoding == Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding.DIBIT_QUERY_NIBBLE) {
         OptimizedScalarQuantizer.transposeHalfByte(scratch, targetQuantized);
       }
       return new RandomVectorScorer.AbstractRandomVectorScorer(qv) {
@@ -105,6 +101,7 @@ public class Lucene104ScalarQuantizedVectorScorer
   public RandomVectorScorer getRandomVectorScorer(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, byte[] target)
       throws IOException {
+    FlatVectorsScorer.checkDimensions(target.length, vectorValues.dimension());
     return nonQuantizedDelegate.getRandomVectorScorer(similarityFunction, vectorValues, target);
   }
 
@@ -207,9 +204,10 @@ public class Lucene104ScalarQuantizedVectorScorer
               }
               OffHeapScalarQuantizedVectorValues.unpackNibbles(rawTargetVector, targetVector);
             }
-            case SINGLE_BIT_QUERY_NIBBLE -> {
+            case SINGLE_BIT_QUERY_NIBBLE, DIBIT_QUERY_NIBBLE -> {
               throw new IllegalStateException(
-                  "SINGLE_BIT_QUERY_NIBBLE encoding is not supported for symmetric quantization");
+                  values.getScalarEncoding().name()
+                      + " encoding is not supported for symmetric quantization");
             }
           }
           targetCorrectiveTerms = targetValues.getCorrectiveTerms(node);
@@ -223,17 +221,16 @@ public class Lucene104ScalarQuantizedVectorScorer
     }
   }
 
-  private static final float[] SCALE_LUT =
-      new float[] {
-        1f,
-        1f / ((1 << 2) - 1),
-        1f / ((1 << 3) - 1),
-        1f / ((1 << 4) - 1),
-        1f / ((1 << 5) - 1),
-        1f / ((1 << 6) - 1),
-        1f / ((1 << 7) - 1),
-        1f / ((1 << 8) - 1),
-      };
+  private static final float[] SCALE_LUT = new float[] {
+      1f,
+      1f / ((1 << 2) - 1),
+      1f / ((1 << 3) - 1),
+      1f / ((1 << 4) - 1),
+      1f / ((1 << 5) - 1),
+      1f / ((1 << 6) - 1),
+      1f / ((1 << 7) - 1),
+      1f / ((1 << 8) - 1),
+  };
 
   private static float quantizedScore(
       byte[] quantizedQuery,
@@ -244,14 +241,14 @@ public class Lucene104ScalarQuantizedVectorScorer
       throws IOException {
     ScalarEncoding scalarEncoding = targetVectors.getScalarEncoding();
     byte[] quantizedDoc = targetVectors.vectorValue(targetOrd);
-    float qcDist =
-        switch (scalarEncoding) {
-          case UNSIGNED_BYTE -> VectorUtil.uint8DotProduct(quantizedQuery, quantizedDoc);
-          case SEVEN_BIT -> VectorUtil.dotProduct(quantizedQuery, quantizedDoc);
-          case PACKED_NIBBLE -> VectorUtil.int4DotProductSinglePacked(quantizedQuery, quantizedDoc);
-          case SINGLE_BIT_QUERY_NIBBLE ->
-              VectorUtil.int4BitDotProduct(quantizedQuery, quantizedDoc);
-        };
+    float qcDist = switch (scalarEncoding) {
+      case UNSIGNED_BYTE -> VectorUtil.uint8DotProduct(quantizedQuery, quantizedDoc);
+      case SEVEN_BIT -> VectorUtil.dotProduct(quantizedQuery, quantizedDoc);
+      case PACKED_NIBBLE -> VectorUtil.int4DotProductSinglePacked(quantizedQuery, quantizedDoc);
+      case SINGLE_BIT_QUERY_NIBBLE ->
+        VectorUtil.int4BitDotProduct(quantizedQuery, quantizedDoc);
+      case DIBIT_QUERY_NIBBLE -> VectorUtil.int4DibitDotProduct(quantizedQuery, quantizedDoc);
+    };
     return quantizedScore(
         similarityFunction,
         targetVectors,
@@ -287,27 +284,29 @@ public class Lucene104ScalarQuantizedVectorScorer
     float ay = queryCorrections.lowerInterval();
     float ly = (queryCorrections.upperInterval() - ay) * queryScale;
     float y1 = queryCorrections.quantizedComponentSum();
-    float score =
-        ax * ay * targetVectors.dimension() + ay * lx * x1 + ax * ly * y1 + lx * ly * dotProduct;
+    float score = ax * ay * targetVectors.dimension() + ay * lx * x1 + ax * ly * y1 + lx * ly * dotProduct;
     // For euclidean, we need to invert the score and apply the additional correction, which is
     // assumed to be the squared l2norm of the centroid centered vectors.
     if (similarityFunction == EUCLIDEAN) {
-      score =
-          queryCorrections.additionalCorrection()
-              + indexCorrections.additionalCorrection()
-              - 2 * score;
-      return Math.max(1 / (1f + score), 0);
+      score = queryCorrections.additionalCorrection()
+          + indexCorrections.additionalCorrection()
+          - 2 * score;
+      // Ensure that 'score' (the squared euclidean distance) is non-negative. The computed value
+      // may be negative as a result of quantization loss.
+      return 1 / (1f + Math.max(score, 0f));
     } else {
       // For cosine and max inner product, we need to apply the additional correction, which is
       // assumed to be the non-centered dot-product between the vector and the centroid
-      score +=
-          queryCorrections.additionalCorrection()
-              + indexCorrections.additionalCorrection()
-              - targetVectors.getCentroidDP();
+      score += queryCorrections.additionalCorrection()
+          + indexCorrections.additionalCorrection()
+          - targetVectors.getCentroidDP();
       if (similarityFunction == MAXIMUM_INNER_PRODUCT) {
         return VectorUtil.scaleMaxInnerProductScore(score);
       }
-      return Math.max((1f + score) / 2f, 0);
+      // Ensure that 'score' (a normalized dot product) is in [-1,1]. The computed value may be out
+      // of bounds as a result of quantization loss.
+      score = Math.clamp(score, -1, 1);
+      return (1f + score) / 2f;
     }
   }
 }

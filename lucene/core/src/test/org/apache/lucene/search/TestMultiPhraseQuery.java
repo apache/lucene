@@ -305,7 +305,7 @@ public class TestMultiPhraseQuery extends LuceneTestCase {
     query1builder.add(term2);
     query1 = query1builder.build();
 
-    assertFalse(query1.hashCode() == query2.hashCode());
+    assertNotEquals(query1.hashCode(), query2.hashCode());
     assertFalse(query1.equals(query2));
 
     query2builder.add(term2);

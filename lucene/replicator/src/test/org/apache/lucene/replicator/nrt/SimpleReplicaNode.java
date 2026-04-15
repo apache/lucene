@@ -266,7 +266,7 @@ class SimpleReplicaNode extends ReplicaNode {
             IndexSearcher searcher = mgr.acquire();
             try {
               long version = ((DirectoryReader) searcher.getIndexReader()).getVersion();
-              int hitCount = searcher.count(new MatchAllDocsQuery());
+              int hitCount = searcher.count(MatchAllDocsQuery.INSTANCE);
               // node.message("version=" + version + " searcher=" + searcher);
               out.writeVLong(version);
               out.writeVInt(hitCount);

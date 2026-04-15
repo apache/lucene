@@ -631,7 +631,7 @@ public abstract class QueryParserBase extends QueryBuilder
    * @return new MatchAllDocsQuery instance
    */
   protected Query newMatchAllDocsQuery() {
-    return new MatchAllDocsQuery();
+    return MatchAllDocsQuery.INSTANCE;
   }
 
   /**

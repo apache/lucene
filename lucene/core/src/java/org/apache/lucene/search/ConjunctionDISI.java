@@ -201,7 +201,7 @@ final class ConjunctionDISI extends FilterDocIdSetIterator {
   @Override
   public int advance(int target) throws IOException {
     assert assertItersOnSameDoc()
-        : "Sub-iterators of ConjunctionDISI are not one the same document!";
+        : "Sub-iterators of ConjunctionDISI are not on the same document!";
     return doNext(lead1.advance(target));
   }
 

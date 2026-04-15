@@ -15,10 +15,11 @@
  * limitations under the License.
  */
 
-
+import org.apache.lucene.gradle.plugins.misc.QuietExec
+import de.undercouch.gradle.tasks.download.Download
+import org.apache.tools.ant.taskdefs.condition.Os
 import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOption
-import java.nio.file.Files;
-import org.apache.lucene.gradle.plugins.help.ExecOperationsProvider
+import java.nio.file.Files
 
 
 description = 'Analyzers for indexing content in different languages and domains'
@@ -27,6 +28,105 @@ dependencies {
   moduleApi project(':lucene:core')
   moduleTestImplementation project(':lucene:test-framework')
 }
+
+//
+// Regenerate snowball resources
+//
+
+def resources = rootProject.file("gradle/regenerate/snowball")
+
+// git commit hash of source code https://github.com/snowballstem/snowball/
+def snowballStemmerCommit = "2d2e312df56f2ede014a4ffb3e91e6dea43c24be"
+// git commit hash of stopwords https://github.com/snowballstem/snowball-website
+def snowballWebsiteCommit = "424fd1f75044160bb4a92f1daf08cce618459374"
+
+def snowballWorkDir    = file("${buildDir}/snowball")
+
+def snowballStemmerDir = file("${snowballWorkDir}/stemmers-${snowballStemmerCommit}")
+def snowballWebsiteDir = file("${snowballWorkDir}/website-${snowballWebsiteCommit}")
+
+def snowballScript     = file("${resources}/snowball.sh")
+
+def unpackFromZip = { zipFile, targetDir ->
+  buildGlobals.fileOps.sync({SyncSpec spec ->
+    spec.from(zipTree(zipFile), {
+      eachFile { fcd ->
+        fcd.relativePath = new RelativePath(true, fcd.relativePath.segments.drop(1))
+      }
+    })
+    spec.into targetDir
+  })
+}
+
+// downloads snowball stemmers (or use a cached copy)
+def downloadSnowballStemmers = tasks.register("downloadSnowballStemmers", Download, {
+  src "https://github.com/snowballstem/snowball/archive/${snowballStemmerCommit}.zip"
+  dest file("${snowballStemmerDir}.zip")
+  overwrite false
+  tempAndMove true
+
+  doLast {
+    unpackFromZip(dest, snowballStemmerDir)
+  }
+})
+
+// downloads snowball website (or use a cached copy)
+def downloadSnowballWebsite = tasks.register("downloadSnowballWebsite", Download, {
+  src "https://github.com/snowballstem/snowball-website/archive/${snowballWebsiteCommit}.zip"
+  def snowballWebsiteZip = file("${snowballWebsiteDir}.zip")
+  dest snowballWebsiteZip
+  overwrite false
+  tempAndMove true
+
+  doLast {
+    unpackFromZip(snowballWebsiteZip, snowballWebsiteDir)
+  }
+})
+
+// runs a shell script to regenerate stemmers, base stemming subclasses, test data, and stopwords.
+tasks.register("regenerateSnowball", QuietExec, {
+  description = "Regenerate snowball stemmers."
+
+  dependsOn downloadSnowballStemmers
+  dependsOn downloadSnowballWebsite
+
+  regenerate {
+    ifSkippedAlsoSkip = [
+      downloadSnowballStemmers.name,
+      downloadSnowballWebsite.name
+    ]
+  }
+
+  inputs.files fileTree(
+      dir: "src/java/org/tartarus/snowball",
+      include: [
+        "Among.java",
+        "SnowballStemmer.java",
+        "SnowballProgram.java",
+        "ext/*Stemmer.java"
+      ])
+
+  inputs.files fileTree(
+      dir: "src/resources/org/apache/lucene/analysis/snowball",
+      include: "*_stop.txt")
+
+  // Don't bother on Windows, won't work.
+  if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+    doFirst {
+      // Just emit a big fat error message. Fail the build so that checksums are not regenerated.
+      throw new GradleException("Snowball generation does not work on Windows (bash must be available).")
+    }
+  }
+
+  executable "bash"
+  args = [
+    snowballScript,
+    snowballStemmerDir,
+    snowballWebsiteDir,
+    projectDir
+  ]
+})
+
 
 // Enable Hunspell tests against LibreOffice/ Woorm dictionaries. We pull
 // these dictionaries dynamically from git of each respective project. To keep
@@ -72,13 +172,11 @@ def cloningTasks = dictionaryProjects.collect { repoSpec ->
     inputs.properties(repoSpec)
 
     doFirst {
-      def execOps = objects.newInstance(ExecOperationsProvider).execOperations
-
       def logger = task.logger
       def dotGitPath = targetDir.get().asFile.toPath().toAbsolutePath().resolve(".git")
       def gitExec = { List<String> cmdArgs ->
         logger.lifecycle("Executing git " + cmdArgs.join(" "))
-        execOps.exec {
+        buildGlobals.execOps.exec {
           executable = buildGlobals.externalTool("git")
           ignoreExitValue = false
           workingDir dotGitPath.getParent().toString()

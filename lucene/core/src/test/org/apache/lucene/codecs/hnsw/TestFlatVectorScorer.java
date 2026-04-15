@@ -73,7 +73,7 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
             DefaultFlatVectorScorer.INSTANCE,
             new Lucene99ScalarQuantizedVectorScorer(new DefaultFlatVectorScorer()),
             FlatVectorScorerUtil.getLucene99FlatVectorsScorer(),
-            maybePanamaProvider().getLucene99FlatVectorsScorer());
+            maybePanamaOrNativeProvider().getLucene99FlatVectorsScorer());
     var dirs =
         List.<IOSupplier<Directory>>of(
             TestFlatVectorScorer::newDirectory,
@@ -211,6 +211,8 @@ public class TestFlatVectorScorer extends BaseVectorizationTestCase {
     }
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testBulkScorerFloats() throws IOException {
     int dims = random().nextInt(1, 1024);
     int size = random().nextInt(2, 255);

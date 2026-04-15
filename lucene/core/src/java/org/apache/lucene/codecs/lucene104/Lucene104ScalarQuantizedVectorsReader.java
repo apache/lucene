@@ -51,63 +51,63 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /** Reader for scalar quantized vectors in the Lucene 10.4 format. */
-class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
+public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     implements QuantizedVectorsReader {
 
-  private static final long SHALLOW_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(Lucene104ScalarQuantizedVectorsReader.class);
+  private static final long SHALLOW_SIZE = RamUsageEstimator
+      .shallowSizeOfInstance(Lucene104ScalarQuantizedVectorsReader.class);
 
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
   private final FlatVectorsScorer vectorScorer;
+  public static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
 
-  Lucene104ScalarQuantizedVectorsReader(
-      SegmentReadState state, FlatVectorsReader rawVectorsReader, FlatVectorsScorer vectorsScorer)
+  /** Sole constructor */
+  public Lucene104ScalarQuantizedVectorsReader(
+      SegmentReadState state,
+      FlatVectorsReader rawVectorsReader,
+      FlatVectorsScorer vectorsScorer)
       throws IOException {
     super(vectorsScorer);
     this.vectorScorer = vectorsScorer;
     this.rawVectorsReader = rawVectorsReader;
     int versionMeta = -1;
-    String metaFileName =
-        IndexFileNames.segmentFileName(
-            state.segmentInfo.name,
-            state.segmentSuffix,
-            Lucene104ScalarQuantizedVectorsFormat.META_EXTENSION);
+    String metaFileName = IndexFileNames.segmentFileName(
+        state.segmentInfo.name,
+        state.segmentSuffix,
+        Lucene104ScalarQuantizedVectorsFormat.META_EXTENSION);
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
       try {
-        versionMeta =
-            CodecUtil.checkIndexHeader(
-                meta,
-                Lucene104ScalarQuantizedVectorsFormat.META_CODEC_NAME,
-                Lucene104ScalarQuantizedVectorsFormat.VERSION_START,
-                Lucene104ScalarQuantizedVectorsFormat.VERSION_CURRENT,
-                state.segmentInfo.getId(),
-                state.segmentSuffix);
+        versionMeta = CodecUtil.checkIndexHeader(
+            meta,
+            Lucene104ScalarQuantizedVectorsFormat.META_CODEC_NAME,
+            Lucene104ScalarQuantizedVectorsFormat.VERSION_START,
+            Lucene104ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+            state.segmentInfo.getId(),
+            state.segmentSuffix);
         readFields(meta, state.fieldInfos);
       } catch (Throwable exception) {
         priorE = exception;
       } finally {
         CodecUtil.checkFooter(meta, priorE);
       }
-      quantizedVectorData =
-          openDataInput(
-              state,
-              versionMeta,
-              VECTOR_DATA_EXTENSION,
-              Lucene104ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
-              // Quantized vectors are accessed randomly from their node ID stored in the HNSW
-              // graph.
-              state.context.withHints(
-                  FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
+      quantizedVectorData = openDataInput(
+          state,
+          versionMeta,
+          VECTOR_DATA_EXTENSION,
+          Lucene104ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
+          // Quantized vectors are accessed randomly from their node ID stored in the HNSW
+          // graph.
+          state.context.withHints(
+              FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;
@@ -138,12 +138,11 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               + fieldEntry.dimension);
     }
 
-    long numQuantizedVectorBytes =
-        Math.multiplyExact(
-            (fieldEntry.scalarEncoding.getDocPackedLength(dimension)
-                + (Float.BYTES * 3)
-                + Integer.BYTES),
-            (long) fieldEntry.size);
+    long numQuantizedVectorBytes = Math.multiplyExact(
+        (fieldEntry.scalarEncoding.getDocPackedLength(dimension)
+            + (Float.BYTES * 3)
+            + Integer.BYTES),
+        (long) fieldEntry.size);
     if (numQuantizedVectorBytes != fieldEntry.vectorDataLength) {
       throw new IllegalStateException(
           "vector data length "
@@ -208,21 +207,37 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               + " expected: "
               + VectorEncoding.FLOAT32);
     }
-    OffHeapScalarQuantizedVectorValues sqvv =
-        OffHeapScalarQuantizedVectorValues.load(
-            fi.ordToDocDISIReaderConfiguration,
-            fi.dimension,
-            fi.size,
-            new OptimizedScalarQuantizer(fi.similarityFunction),
-            fi.scalarEncoding,
-            fi.similarityFunction,
-            vectorScorer,
-            fi.centroid,
-            fi.centroidDP,
-            fi.vectorDataOffset,
-            fi.vectorDataLength,
-            quantizedVectorData);
-    return new ScalarQuantizedVectorValues(rawVectorsReader.getFloatVectorValues(field), sqvv);
+
+    FloatVectorValues rawFloatVectorValues = rawVectorsReader.getFloatVectorValues(field);
+
+    if (rawFloatVectorValues.size() == 0) {
+      return OffHeapScalarQuantizedFloatVectorValues.load(
+          fi.ordToDocDISIReaderConfiguration,
+          fi.dimension,
+          fi.size,
+          fi.scalarEncoding,
+          fi.similarityFunction,
+          vectorScorer,
+          fi.centroid,
+          fi.vectorDataOffset,
+          fi.vectorDataLength,
+          quantizedVectorData);
+    }
+
+    OffHeapScalarQuantizedVectorValues sqvv = OffHeapScalarQuantizedVectorValues.load(
+        fi.ordToDocDISIReaderConfiguration,
+        fi.dimension,
+        fi.size,
+        new OptimizedScalarQuantizer(fi.similarityFunction),
+        fi.scalarEncoding,
+        fi.similarityFunction,
+        vectorScorer,
+        fi.centroid,
+        fi.centroidDP,
+        fi.vectorDataOffset,
+        fi.vectorDataLength,
+        quantizedVectorData);
+    return new ScalarQuantizedVectorValues(rawFloatVectorValues, sqvv);
   }
 
   @Override
@@ -239,16 +254,42 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   @Override
   public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
-    if (knnCollector.k() == 0) return;
+    if (knnCollector.k() == 0)
+      return;
     final RandomVectorScorer scorer = getRandomVectorScorer(field, target);
-    if (scorer == null) return;
-    OrdinalTranslatedKnnCollector collector =
-        new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
+    if (scorer == null)
+      return;
     Bits acceptedOrds = scorer.getAcceptOrds(acceptDocs.bits());
-    for (int i = 0; i < scorer.maxOrd(); i++) {
+    // if k is larger than the number of vectors we expect to visit in an HNSW search,
+    // we can just iterate over all vectors and collect them.
+    int[] ords = new int[EXHAUSTIVE_BULK_SCORE_ORDS];
+    float[] scores = new float[EXHAUSTIVE_BULK_SCORE_ORDS];
+    int numOrds = 0;
+    int numVectors = scorer.maxOrd();
+    for (int i = 0; i < numVectors; i++) {
       if (acceptedOrds == null || acceptedOrds.get(i)) {
-        collector.collect(i, scorer.score(i));
-        collector.incVisitedCount(1);
+        if (knnCollector.earlyTerminated()) {
+          break;
+        }
+        ords[numOrds++] = i;
+        if (numOrds == ords.length) {
+          knnCollector.incVisitedCount(numOrds);
+          if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCompetitiveSimilarity()) {
+            for (int j = 0; j < numOrds; j++) {
+              knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
+            }
+          }
+          numOrds = 0;
+        }
+      }
+    }
+
+    if (numOrds > 0) {
+      knnCollector.incVisitedCount(numOrds);
+      if (scorer.bulkScore(ords, scores, numOrds) > knnCollector.minCompetitiveSimilarity()) {
+        for (int j = 0; j < numOrds; j++) {
+          knnCollector.collect(scorer.ordToDoc(ords[j]), scores[j]);
+        }
       }
     }
   }
@@ -261,9 +302,8 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   @Override
   public long ramBytesUsed() {
     long size = SHALLOW_SIZE;
-    size +=
-        RamUsageEstimator.sizeOfMap(
-            fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
+    size += RamUsageEstimator.sizeOfMap(
+        fields, RamUsageEstimator.shallowSizeOfInstance(FieldEntry.class));
     size += rawVectorsReader.ramBytesUsed();
     return size;
   }
@@ -296,18 +336,16 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       String codecName,
       IOContext context)
       throws IOException {
-    String fileName =
-        IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
+    String fileName = IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
     IndexInput in = state.directory.openInput(fileName, context);
     try {
-      int versionVectorData =
-          CodecUtil.checkIndexHeader(
-              in,
-              codecName,
-              Lucene104ScalarQuantizedVectorsFormat.VERSION_START,
-              Lucene104ScalarQuantizedVectorsFormat.VERSION_CURRENT,
-              state.segmentInfo.getId(),
-              state.segmentSuffix);
+      int versionVectorData = CodecUtil.checkIndexHeader(
+          in,
+          codecName,
+          Lucene104ScalarQuantizedVectorsFormat.VERSION_START,
+          Lucene104ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+          state.segmentInfo.getId(),
+          state.segmentSuffix);
       if (versionMeta != versionVectorData) {
         throw new CorruptIndexException(
             "Format versions mismatch: meta="
@@ -357,20 +395,19 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               + " expected: "
               + VectorEncoding.FLOAT32);
     }
-    var qv =
-        OffHeapScalarQuantizedVectorValues.load(
-            fi.ordToDocDISIReaderConfiguration,
-            fi.dimension,
-            fi.size,
-            new OptimizedScalarQuantizer(fi.similarityFunction),
-            fi.scalarEncoding,
-            fi.similarityFunction,
-            vectorScorer,
-            fi.centroid,
-            fi.centroidDP,
-            fi.vectorDataOffset,
-            fi.vectorDataLength,
-            quantizedVectorData);
+    var qv = OffHeapScalarQuantizedVectorValues.load(
+        fi.ordToDocDISIReaderConfiguration,
+        fi.dimension,
+        fi.size,
+        new OptimizedScalarQuantizer(fi.similarityFunction),
+        fi.scalarEncoding,
+        fi.similarityFunction,
+        vectorScorer,
+        fi.centroid,
+        fi.centroidDP,
+        fi.vectorDataOffset,
+        fi.vectorDataLength,
+        quantizedVectorData);
     return new org.apache.lucene.util.quantization.QuantizedByteVectorValues() {
       @Override
       public float getScoreCorrectionConstant(int ord) throws IOException {
@@ -425,20 +462,17 @@ class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       ScalarEncoding scalarEncoding = ScalarEncoding.UNSIGNED_BYTE;
       if (size > 0) {
         int wireNumber = input.readVInt();
-        scalarEncoding =
-            ScalarEncoding.fromWireNumber(wireNumber)
-                .orElseThrow(
-                    () ->
-                        new IllegalStateException(
-                            "Could not get ScalarEncoding from wire number: " + wireNumber));
+        scalarEncoding = ScalarEncoding.fromWireNumber(wireNumber)
+            .orElseThrow(
+                () -> new IllegalStateException(
+                    "Could not get ScalarEncoding from wire number: " + wireNumber));
         centroid = new float[dimension];
         input.readFloats(centroid, 0, dimension);
         centroidDP = Float.intBitsToFloat(input.readInt());
       } else {
         centroid = null;
       }
-      OrdToDocDISIReaderConfiguration conf =
-          OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
+      OrdToDocDISIReaderConfiguration conf = OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
       return new FieldEntry(
           similarityFunction,
           vectorEncoding,

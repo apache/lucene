@@ -80,23 +80,25 @@ public class TestLowercaseAsciiCompression extends LuceneTestCase {
   }
 
   public void testRandomAscii() throws IOException {
-    for (int iter = 0; iter < 1000; ++iter) {
-      int len = random().nextInt(1000);
-      byte[] bytes = new byte[len + random().nextInt(10)];
+    var random = nonAssertingRandom(random());
+    for (int iter = 0, max = atLeast(100); iter < max; ++iter) {
+      int len = random.nextInt(1000);
+      byte[] bytes = new byte[len + random.nextInt(10)];
       for (int i = 0; i < bytes.length; ++i) {
-        bytes[i] = (byte) TestUtil.nextInt(random(), ' ', '~');
+        bytes[i] = (byte) TestUtil.nextInt(random, ' ', '~');
       }
       doTestCompress(bytes, len);
     }
   }
 
   public void testRandomCompressibleAscii() throws IOException {
-    for (int iter = 0; iter < 1000; ++iter) {
-      int len = TestUtil.nextInt(random(), 8, 1000);
-      byte[] bytes = new byte[len + random().nextInt(10)];
+    var random = nonAssertingRandom(random());
+    for (int iter = 0, max = atLeast(100); iter < max; ++iter) {
+      int len = TestUtil.nextInt(random, 8, 1000);
+      byte[] bytes = new byte[len + random.nextInt(10)];
       for (int i = 0; i < bytes.length; ++i) {
         // only use always compressible bytes
-        int b = random().nextInt(32);
+        int b = random.nextInt(32);
         b = b | 0x20 | ((b & 0x20) << 1);
         b -= 1;
         bytes[i] = (byte) b;
@@ -106,20 +108,21 @@ public class TestLowercaseAsciiCompression extends LuceneTestCase {
   }
 
   public void testRandomCompressibleAsciiWithExceptions() throws IOException {
-    for (int iter = 0; iter < 1000; ++iter) {
-      int len = TestUtil.nextInt(random(), 8, 1000);
+    var random = nonAssertingRandom(random());
+    for (int iter = 0, max = atLeast(100); iter < max; ++iter) {
+      int len = TestUtil.nextInt(random, 8, 1000);
       int exceptions = 0;
       int maxExceptions = len >>> 5;
-      byte[] bytes = new byte[len + random().nextInt(10)];
+      byte[] bytes = new byte[len + random.nextInt(10)];
       for (int i = 0; i < bytes.length; ++i) {
-        if (exceptions == maxExceptions || random().nextInt(100) != 0) {
-          int b = random().nextInt(32);
+        if (exceptions == maxExceptions || random.nextInt(100) != 0) {
+          int b = random.nextInt(32);
           b = b | 0x20 | ((b & 0x20) << 1);
           b -= 1;
           bytes[i] = (byte) b;
         } else {
           exceptions++;
-          bytes[i] = (byte) random().nextInt(256);
+          bytes[i] = (byte) random.nextInt(256);
         }
       }
       assertTrue(doTestCompress(bytes, len));
@@ -127,10 +130,11 @@ public class TestLowercaseAsciiCompression extends LuceneTestCase {
   }
 
   public void testRandom() throws IOException {
+    var random = nonAssertingRandom(random());
     for (int iter = 0; iter < 1000; ++iter) {
-      int len = random().nextInt(1000);
-      byte[] bytes = new byte[len + random().nextInt(10)];
-      random().nextBytes(bytes);
+      int len = random.nextInt(1000);
+      byte[] bytes = new byte[len + random.nextInt(10)];
+      random.nextBytes(bytes);
       doTestCompress(bytes, len);
     }
   }

@@ -110,7 +110,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query and one of the
     // Facets.search utility methods:
-    FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector c = searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     FacetsConfig facetsConfig = new FacetsConfig();
     DoubleValuesSource valuesSource = DoubleValuesSource.fromIntField("num");
@@ -189,7 +189,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
     taxoWriter.close();
 
-    FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector c = searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     Facets facets =
         new TaxonomyFacetFloatAssociations(
@@ -264,7 +264,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
     taxoWriter.close();
 
-    FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector c = searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     Facets facets =
         new TaxonomyFacetFloatAssociations(
@@ -309,7 +309,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     DirectoryReader r = DirectoryReader.open(iw);
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    BoostQuery csq = new BoostQuery(new ConstantScoreQuery(new MatchAllDocsQuery()), 2f);
+    BoostQuery csq = new BoostQuery(new ConstantScoreQuery(MatchAllDocsQuery.INSTANCE), 2f);
 
     FacetsCollectorManager.FacetsResult facetsResult =
         FacetsCollectorManager.search(newSearcher(r), csq, 10, new FacetsCollectorManager(true));
@@ -353,7 +353,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
     FacetsCollector sfc =
-        newSearcher(r).search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+        newSearcher(r).search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     // Test SUM:
     Facets facets =
@@ -455,7 +455,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
     FacetsCollector sfc =
-        newSearcher(r).search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+        newSearcher(r).search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
     // Test SUM:
     Facets facets =
         new TaxonomyFacetFloatAssociations(
@@ -507,7 +507,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
       DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
       FacetsCollector sfc =
-          newSearcher(r).search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+          newSearcher(r).search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
       TaxonomyFacets facets =
           new TaxonomyFacetFloatAssociations(
@@ -547,7 +547,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
 
     FacetsCollector fc =
         FacetsCollectorManager.search(
-                newSearcher(r), new MatchAllDocsQuery(), 10, new FacetsCollectorManager(true))
+                newSearcher(r), MatchAllDocsQuery.INSTANCE, 10, new FacetsCollectorManager(true))
             .facetsCollector();
     assertTrue(fc.getKeepScores());
 

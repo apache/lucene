@@ -68,16 +68,45 @@ import org.apache.lucene.util.PriorityQueue;
  */
 public abstract class DiversifiedTopDocsCollector extends TopDocsCollector<ScoreDocKey> {
 
+  /** An internal PQ with remove(element) operation implemented using a linear scan of the heap. */
+  private static final class PriorityQueueWithSlowRemove extends PriorityQueue<ScoreDocKey> {
+    public PriorityQueueWithSlowRemove(int maxSize, LessThan<? super ScoreDocKey> lessThan) {
+      super(maxSize, lessThan);
+    }
+
+    /**
+     * Removes an existing element currently stored in the PriorityQueue. Cost is linear with the
+     * size of the queue. Elements are compared by reference (not equality).
+     */
+    boolean remove(ScoreDocKey element) {
+      var heap = super.getHeapArray();
+      for (int i = 1; i <= size; i++) {
+        if (heap[i] == element) {
+          heap[i] = heap[size];
+          heap[size] = null; // permit GC of objects
+          size--;
+          if (i <= size) {
+            if (!upHeap(i)) {
+              downHeap(i);
+            }
+          }
+          return true;
+        }
+      }
+      return false;
+    }
+  }
+
   ScoreDocKey spare;
-  private final PriorityQueue<ScoreDocKey> globalQueue;
+  private final PriorityQueueWithSlowRemove globalQueue;
   private final int numHits;
   private final LongObjectHashMap<PriorityQueue<ScoreDocKey>> perKeyQueues;
   protected int maxNumPerKey;
   private final Deque<PriorityQueue<ScoreDocKey>> sparePerKeyQueues = new ArrayDeque<>();
 
   public DiversifiedTopDocsCollector(int numHits, int maxHitsPerKey) {
-    super(createScoreDocQueue(numHits));
-    this.globalQueue = pq;
+    super(new PriorityQueueWithSlowRemove(numHits, (a, b) -> KEY_COMPARATOR.compare(a, b) < 0));
+    this.globalQueue = (PriorityQueueWithSlowRemove) pq;
     this.perKeyQueues = new LongObjectHashMap<>();
     this.numHits = numHits;
     this.maxNumPerKey = maxHitsPerKey;
@@ -127,7 +156,7 @@ public abstract class DiversifiedTopDocsCollector extends TopDocsCollector<Score
 
     if (thisKeyQ == null) {
       if (sparePerKeyQueues.isEmpty()) {
-        thisKeyQ = createScoreDocQueue(maxNumPerKey);
+        thisKeyQ = PriorityQueue.usingComparator(maxNumPerKey, KEY_COMPARATOR);
       } else {
         thisKeyQ = sparePerKeyQueues.pop();
       }
@@ -210,10 +239,6 @@ public abstract class DiversifiedTopDocsCollector extends TopDocsCollector<Score
   private static final Comparator<ScoreDocKey> KEY_COMPARATOR =
       FloatComparator.<ScoreDocKey>comparing(sd -> sd.score)
           .thenComparing(Comparator.<ScoreDocKey>comparingInt(sd -> sd.doc).reversed());
-
-  private static PriorityQueue<ScoreDocKey> createScoreDocQueue(int size) {
-    return PriorityQueue.usingComparator(size, KEY_COMPARATOR);
-  }
 
   //
   /** An extension to ScoreDoc that includes a key used for grouping purposes */

@@ -64,14 +64,18 @@ public class HnswGraphBuilder implements HnswBuilder {
   @SuppressWarnings("NonFinalStaticField")
   public static long randSeed = DEFAULT_RAND_SEED;
 
-  private final int M; // max number of connections on upper layers
+  private static final int MAX_BULK_SCORE_NODES = 8;
+
+  protected final int M; // max number of connections on upper layers
   private final double ml;
 
+  private final int[] bulkScoreNodes; // for bulk scoring
+  private final float[] bulkScores; // for bulk scoring
   private final SplittableRandom random;
-  private final UpdateableRandomVectorScorer scorer;
-  private final HnswGraphSearcher graphSearcher;
+  protected final UpdateableRandomVectorScorer scorer;
+  protected final HnswGraphSearcher graphSearcher;
   private final GraphBuilderKnnCollector entryCandidates; // for upper levels of graph search
-  private final GraphBuilderKnnCollector
+  protected final GraphBuilderKnnCollector
       beamCandidates; // for levels of graph where we add the node
   private final GraphBuilderKnnCollector beamCandidates0;
 
@@ -156,6 +160,10 @@ public class HnswGraphBuilder implements HnswBuilder {
     this.hnsw = hnsw;
     this.hnswLock = hnswLock;
     this.graphSearcher = graphSearcher;
+    // pick a number that keeps us from scoring TOO much for diversity checking
+    // but enough to take advantage of bulk scoring
+    this.bulkScoreNodes = new int[MAX_BULK_SCORE_NODES];
+    this.bulkScores = new float[MAX_BULK_SCORE_NODES];
     entryCandidates = new GraphBuilderKnnCollector(1);
     beamCandidates = new GraphBuilderKnnCollector(beamWidth);
     beamCandidates0 = new GraphBuilderKnnCollector(Math.min(beamWidth / 2, M * 3));
@@ -288,7 +296,7 @@ public class HnswGraphBuilder implements HnswBuilder {
 
       // then do connections from bottom up
       for (int i = 0; i < scratchPerLevel.length; i++) {
-        addDiverseNeighbors(i + lowestUnsetLevel, node, scratchPerLevel[i], scorer);
+        addDiverseNeighbors(i + lowestUnsetLevel, node, scratchPerLevel[i], scorer, false);
       }
       lowestUnsetLevel += scratchPerLevel.length;
       assert lowestUnsetLevel == Math.min(nodeLevel, curMaxLevel) + 1;
@@ -344,17 +352,21 @@ public class HnswGraphBuilder implements HnswBuilder {
     return now;
   }
 
-  private void addDiverseNeighbors(
-      int level, int node, NeighborArray candidates, UpdateableRandomVectorScorer scorer)
+  void addDiverseNeighbors(
+      int level,
+      int node,
+      NeighborArray candidates,
+      UpdateableRandomVectorScorer scorer,
+      boolean isLinkRepair)
       throws IOException {
     /* For each of the beamWidth nearest candidates (going from best to worst), select it only if it
      * is closer to target than it is to any of the already-selected neighbors (ie selected in this method,
      * since the node is new and has no prior neighbors).
      */
     NeighborArray neighbors = hnsw.getNeighbors(level, node);
-    assert neighbors.size() == 0; // new node
     int maxConnOnLevel = level == 0 ? M * 2 : M;
-    boolean[] mask = selectAndLinkDiverse(neighbors, candidates, maxConnOnLevel, scorer);
+    boolean[] mask =
+        selectAndLinkDiverse(node, neighbors, candidates, maxConnOnLevel, scorer, isLinkRepair);
 
     // Link the selected nodes to the new node, and the new node to the selected nodes (again
     // applying diversity heuristic)
@@ -369,16 +381,44 @@ public class HnswGraphBuilder implements HnswBuilder {
       if (hnswLock != null) {
         Lock lock = hnswLock.write(level, nbr);
         try {
-          NeighborArray nbrsOfNbr = getGraph().getNeighbors(level, nbr);
-          nbrsOfNbr.addAndEnsureDiversity(node, candidates.getScores(i), nbr, scorer);
+          updateNeighbor(
+              getGraph().getNeighbors(level, nbr),
+              node,
+              candidates.getScores(i),
+              nbr,
+              scorer,
+              isLinkRepair);
         } finally {
           lock.unlock();
         }
       } else {
-        NeighborArray nbrsOfNbr = hnsw.getNeighbors(level, nbr);
-        nbrsOfNbr.addAndEnsureDiversity(node, candidates.getScores(i), nbr, scorer);
+        updateNeighbor(
+            hnsw.getNeighbors(level, nbr),
+            node,
+            candidates.getScores(i),
+            nbr,
+            scorer,
+            isLinkRepair);
       }
     }
+  }
+
+  private void updateNeighbor(
+      NeighborArray nbrsOfNbr,
+      int node,
+      float score,
+      int nbr,
+      UpdateableRandomVectorScorer scorer,
+      boolean isLinkRepair)
+      throws IOException {
+    // Only check for duplicates during link repair to avoid performance overhead during normal
+    // construction
+    if (isLinkRepair) {
+      for (int j = 0; j < nbrsOfNbr.size(); j++) {
+        if (nbrsOfNbr.nodes()[j] == node) return;
+      }
+    }
+    nbrsOfNbr.addAndEnsureDiversity(node, score, nbr, scorer);
   }
 
   /**
@@ -386,10 +426,12 @@ public class HnswGraphBuilder implements HnswBuilder {
    * are selected
    */
   private boolean[] selectAndLinkDiverse(
+      int node,
       NeighborArray neighbors,
       NeighborArray candidates,
       int maxConnOnLevel,
-      UpdateableRandomVectorScorer scorer)
+      UpdateableRandomVectorScorer scorer,
+      boolean isLinkRepair)
       throws IOException {
     boolean[] mask = new boolean[candidates.size()];
     // Select the best maxConnOnLevel neighbors of the new node, applying the diversity heuristic
@@ -397,6 +439,9 @@ public class HnswGraphBuilder implements HnswBuilder {
       // compare each neighbor (in distance order) against the closer neighbors selected so far,
       // only adding it if it is closer to the target than to any of the other selected neighbors
       int cNode = candidates.nodes()[i];
+      if (node == cNode) {
+        continue;
+      }
       float cScore = candidates.getScores(i);
       assert cNode <= hnsw.maxNodeId();
       scorer.setScoringOrdinal(cNode);
@@ -404,13 +449,17 @@ public class HnswGraphBuilder implements HnswBuilder {
         mask[i] = true;
         // here we don't need to lock, because there's no incoming link so no others is able to
         // discover this node such that no others will modify this neighbor array as well
-        neighbors.addInOrder(cNode, cScore);
+        if (isLinkRepair) {
+          neighbors.addOutOfOrder(cNode, cScore);
+        } else {
+          neighbors.addInOrder(cNode, cScore);
+        }
       }
     }
     return mask;
   }
 
-  private static void popToScratch(GraphBuilderKnnCollector candidates, NeighborArray scratch) {
+  static void popToScratch(GraphBuilderKnnCollector candidates, NeighborArray scratch) {
     scratch.clear();
     int candidateCount = candidates.size();
     // extract all the Neighbors from the queue into an array; these will now be
@@ -429,9 +478,11 @@ public class HnswGraphBuilder implements HnswBuilder {
    */
   private boolean diversityCheck(float score, NeighborArray neighbors, RandomVectorScorer scorer)
       throws IOException {
-    for (int i = 0; i < neighbors.size(); i++) {
-      float neighborSimilarity = scorer.score(neighbors.nodes()[i]);
-      if (neighborSimilarity >= score) {
+    final int bulkScoreChunk = Math.min((neighbors.size() + 1) / 2, bulkScoreNodes.length);
+    for (int scored = 0; scored < neighbors.size(); scored += bulkScoreChunk) {
+      int chunkSize = Math.min(bulkScoreChunk, neighbors.size() - scored);
+      System.arraycopy(neighbors.nodes(), scored, bulkScoreNodes, 0, chunkSize);
+      if (scorer.bulkScore(bulkScoreNodes, bulkScores, chunkSize) >= score) {
         return false;
       }
     }

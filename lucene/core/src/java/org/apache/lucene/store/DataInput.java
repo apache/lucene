@@ -18,14 +18,9 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
 import org.apache.lucene.util.BitUtil;
 
 /**
@@ -248,17 +243,17 @@ public abstract class DataInput implements Cloneable {
   public Map<String, String> readMapOfStrings() throws IOException {
     int count = readVInt();
     if (count == 0) {
-      return Collections.emptyMap();
+      return Map.of();
     } else if (count == 1) {
-      return Collections.singletonMap(readString(), readString());
+      return Map.of(readString(), readString());
     } else {
-      Map<String, String> map = count > 10 ? new HashMap<>() : new TreeMap<>();
+      @SuppressWarnings("unchecked")
+      Map.Entry<String, String>[] entries =
+          (Map.Entry<String, String>[]) new Map.Entry<?, ?>[count];
       for (int i = 0; i < count; i++) {
-        final String key = readString();
-        final String val = readString();
-        map.put(key, val);
+        entries[i] = Map.entry(readString(), readString());
       }
-      return Collections.unmodifiableMap(map);
+      return Map.ofEntries(entries);
     }
   }
 
@@ -270,15 +265,15 @@ public abstract class DataInput implements Cloneable {
   public Set<String> readSetOfStrings() throws IOException {
     int count = readVInt();
     if (count == 0) {
-      return Collections.emptySet();
+      return Set.of();
     } else if (count == 1) {
-      return Collections.singleton(readString());
+      return Set.of(readString());
     } else {
-      Set<String> set = count > 10 ? new HashSet<>() : new TreeSet<>();
+      String[] set = new String[count];
       for (int i = 0; i < count; i++) {
-        set.add(readString());
+        set[i] = readString();
       }
-      return Collections.unmodifiableSet(set);
+      return Set.of(set);
     }
   }
 

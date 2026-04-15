@@ -166,7 +166,7 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
 
             @Override
             public String toString() {
-              return super.toString() + ": " + format.toString() + ", " + dvFormat.toString();
+              return super.toString() + ": " + format + ", " + dvFormat;
             }
           };
     } else if ("SimpleText".equals(TEST_CODEC)

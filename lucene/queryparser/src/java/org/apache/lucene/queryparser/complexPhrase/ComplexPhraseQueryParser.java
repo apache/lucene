@@ -345,7 +345,7 @@ public class ComplexPhraseQueryParser extends QueryParser {
         i += 1;
       }
 
-      SpanQuery[] includeClauses = positiveClauses.toArray(new SpanQuery[positiveClauses.size()]);
+      SpanQuery[] includeClauses = positiveClauses.toArray(SpanQuery[]::new);
 
       SpanQuery include = null;
       if (includeClauses.length == 1) {
@@ -410,11 +410,11 @@ public class ComplexPhraseQueryParser extends QueryParser {
       if (ors.size() == 0) {
         return;
       }
-      SpanOrQuery soq = new SpanOrQuery(ors.toArray(new SpanQuery[ors.size()]));
+      SpanOrQuery soq = new SpanOrQuery(ors.toArray(SpanQuery[]::new));
       if (nots.size() == 0) {
         spanClauses.add(soq);
       } else {
-        SpanOrQuery snqs = new SpanOrQuery(nots.toArray(new SpanQuery[nots.size()]));
+        SpanOrQuery snqs = new SpanOrQuery(nots.toArray(SpanQuery[]::new));
         SpanNotQuery snq = new SpanNotQuery(soq, snqs);
         spanClauses.add(snq);
       }

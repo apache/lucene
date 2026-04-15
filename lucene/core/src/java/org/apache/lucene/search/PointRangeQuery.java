@@ -548,20 +548,20 @@ public abstract class PointRangeQuery extends Query {
     byte[] globalMaxPacked = PointValues.getMaxPackedValue(reader, getField());
 
     if (globalMinPacked == null || globalMaxPacked == null) {
-      return new MatchNoDocsQuery();
+      return MatchNoDocsQuery.INSTANCE;
     }
 
     return switch (relate(globalMinPacked, globalMaxPacked)) {
       case CELL_INSIDE_QUERY -> {
         if (canRewriteToMatchAllQuery(reader)) {
-          yield new MatchAllDocsQuery();
+          yield MatchAllDocsQuery.INSTANCE;
         } else if (canRewriteToFieldExistsQuery(reader)) {
           yield new FieldExistsQuery(field);
         } else {
           yield super.rewrite(searcher);
         }
       }
-      case CELL_OUTSIDE_QUERY -> new MatchNoDocsQuery();
+      case CELL_OUTSIDE_QUERY -> MatchNoDocsQuery.INSTANCE;
       case CELL_CROSSES_QUERY -> super.rewrite(searcher);
     };
   }

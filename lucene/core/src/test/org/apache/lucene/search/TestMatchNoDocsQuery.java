@@ -40,7 +40,7 @@ public class TestMatchNoDocsQuery extends LuceneTestCase {
   }
 
   public void testSimple() throws Exception {
-    MatchNoDocsQuery query = new MatchNoDocsQuery();
+    MatchNoDocsQuery query = MatchNoDocsQuery.INSTANCE;
     assertEquals(query.toString(), "MatchNoDocsQuery(\"\")");
     query = new MatchNoDocsQuery("field 'title' not found");
     assertEquals(query.toString(), "MatchNoDocsQuery(\"field 'title' not found\")");
@@ -67,7 +67,7 @@ public class TestMatchNoDocsQuery extends LuceneTestCase {
     assertEquals(searcher.count(query), 0);
 
     ScoreDoc[] hits;
-    hits = searcher.search(new MatchNoDocsQuery(), 1000).scoreDocs;
+    hits = searcher.search(MatchNoDocsQuery.INSTANCE, 1000).scoreDocs;
     assertEquals(0, hits.length);
     assertEquals(query.toString(), "MatchNoDocsQuery(\"field not found\")");
 
@@ -76,7 +76,7 @@ public class TestMatchNoDocsQuery extends LuceneTestCase {
     bq.add(new BooleanClause(new MatchNoDocsQuery("field not found"), BooleanClause.Occur.MUST));
     query = bq.build();
     assertEquals(searcher.count(query), 0);
-    hits = searcher.search(new MatchNoDocsQuery(), 1000).scoreDocs;
+    hits = searcher.search(MatchNoDocsQuery.INSTANCE, 1000).scoreDocs;
     assertEquals(0, hits.length);
     assertEquals(query.toString(), "key:five +MatchNoDocsQuery(\"field not found\")");
 
@@ -97,8 +97,8 @@ public class TestMatchNoDocsQuery extends LuceneTestCase {
   }
 
   public void testEquals() {
-    Query q1 = new MatchNoDocsQuery();
-    Query q2 = new MatchNoDocsQuery();
+    Query q1 = MatchNoDocsQuery.INSTANCE;
+    Query q2 = MatchNoDocsQuery.INSTANCE;
     assertTrue(q1.equals(q2));
     QueryUtils.check(q1);
   }

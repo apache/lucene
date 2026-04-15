@@ -240,7 +240,7 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
     w.close();
     IndexSearcher searcher = newSearcher(reader);
     Query q =
-        new FunctionScoreQuery(new MatchAllDocsQuery(), DoubleValuesSource.fromLongField("foo"));
+        new FunctionScoreQuery(MatchAllDocsQuery.INSTANCE, DoubleValuesSource.fromLongField("foo"));
     QueryUtils.check(random(), q, searcher);
     Explanation expl = searcher.explain(q, 0);
     assertEquals(0, expl.getValue().doubleValue(), 0f);
@@ -259,7 +259,8 @@ public class TestFunctionScoreQuery extends FunctionTestSetup {
     w.close();
     IndexSearcher searcher = newSearcher(reader);
     Query q =
-        new FunctionScoreQuery(new MatchAllDocsQuery(), DoubleValuesSource.fromDoubleField("foo"));
+        new FunctionScoreQuery(
+            MatchAllDocsQuery.INSTANCE, DoubleValuesSource.fromDoubleField("foo"));
     QueryUtils.check(random(), q, searcher);
     Explanation expl = searcher.explain(q, 0);
     assertEquals(0, expl.getValue().doubleValue(), 0f);

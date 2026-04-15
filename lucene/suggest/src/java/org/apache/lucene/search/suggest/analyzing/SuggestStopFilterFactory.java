@@ -29,7 +29,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
 /**
  * Factory for {@link SuggestStopFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="autosuggest" class="solr.TextField"
  *            positionIncrementGap="100" autoGeneratePhraseQueries="true"&gt;
  *   &lt;analyzer&gt;
@@ -38,7 +38,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
  *     &lt;filter class="solr.SuggestStopFilterFactory" ignoreCase="true"
  *             words="stopwords.txt" format="wordset"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * <p>All attributes are optional:
  *

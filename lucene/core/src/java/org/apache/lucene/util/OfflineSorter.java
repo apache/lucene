@@ -97,6 +97,11 @@ public class OfflineSorter {
       this.bytes = (int) bytes;
     }
 
+    // internal for testing
+    static BufferSize kilobytes(long kb) {
+      return new BufferSize(kb * 1024);
+    }
+
     /** Creates a {@link BufferSize} in MB. The given values must be &gt; 0 and &lt; 2048. */
     public static BufferSize megabytes(long mb) {
       return new BufferSize(mb * MB);

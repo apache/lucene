@@ -166,7 +166,7 @@ public class TestBlockJoin extends LuceneTestCase {
 
     BooleanQuery.Builder fullQuery = new BooleanQuery.Builder();
     fullQuery.add(new BooleanClause(childJoinQuery, Occur.MUST));
-    fullQuery.add(new BooleanClause(new MatchAllDocsQuery(), Occur.MUST));
+    fullQuery.add(new BooleanClause(MatchAllDocsQuery.INSTANCE, Occur.MUST));
     TopDocs topDocs = s.search(fullQuery.build(), 2);
     assertEquals(2, topDocs.totalHits.value());
     assertEquals(
@@ -562,8 +562,8 @@ public class TestBlockJoin extends LuceneTestCase {
 
     ToParentBlockJoinQuery q =
         new ToParentBlockJoinQuery(
-            new MatchNoDocsQuery(),
-            new QueryBitSetProducer(new MatchAllDocsQuery()),
+            MatchNoDocsQuery.INSTANCE,
+            new QueryBitSetProducer(MatchAllDocsQuery.INSTANCE),
             ScoreMode.Avg);
     QueryUtils.check(random(), q, s);
     s.search(q, 10);
@@ -626,6 +626,8 @@ public class TestBlockJoin extends LuceneTestCase {
     return new Sort(sortFields.toArray(new SortField[sortFields.size()]));
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandom() throws Exception {
     // We build two indices at once: one normalized (which
     // ToParentBlockJoinQuery/Collector,
@@ -1660,6 +1662,8 @@ public class TestBlockJoin extends LuceneTestCase {
     dir.close();
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testMultiChildQueriesOfDiffParentLevels() throws Exception {
 
     final Directory dir = newDirectory();

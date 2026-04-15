@@ -32,6 +32,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.search.RandomApproximationQuery;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
 
@@ -146,6 +147,10 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
             new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "A"))), 2);
         Query clause2 = new ConstantScoreQuery(new TermQuery(new Term("foo", "C")));
         Query filter = new TermQuery(new Term("foo", "B"));
+        if (random().nextBoolean()) {
+          clause1 = new RandomApproximationQuery(clause1, random());
+          clause2 = new RandomApproximationQuery(clause2, random());
+        }
         LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
         Scorer scorer1 =
             searcher
@@ -214,6 +219,10 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
             new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "A"))), 2);
         Query clause2 = new ConstantScoreQuery(new TermQuery(new Term("foo", "C")));
         Query filter = new TermQuery(new Term("foo", "B"));
+        if (random().nextBoolean()) {
+          clause1 = new RandomApproximationQuery(clause1, random());
+          clause2 = new RandomApproximationQuery(clause2, random());
+        }
         LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
         Scorer scorer1 =
             searcher

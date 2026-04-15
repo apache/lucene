@@ -16,10 +16,12 @@
  */
 package org.apache.lucene.search.join;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.lucene.document.Document;
@@ -27,7 +29,6 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -46,6 +47,15 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
 
 public class TestParentsChildrenBlockJoinQuery extends LuceneTestCase {
+
+  private static RandomIndexWriter createIndexWriter(Directory dir) throws IOException {
+    // We need a merge policy that merges segments sequentially.
+    // Most tests here merge down to a single segment and assume the order of documents in the
+    // segment
+    // matches the order in which they were added.
+    return new RandomIndexWriter(
+        random(), dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+  }
 
   @Test
   public void testEmptyIndex() throws Exception {
@@ -78,7 +88,6 @@ public class TestParentsChildrenBlockJoinQuery extends LuceneTestCase {
 
   @Test
   public void testWithRandomizedIndex() throws Exception {
-
     for (int i = 0; i < 10; i++) {
       // Run multiple iterations to ensure randomness
       if (VERBOSE) {
@@ -162,9 +171,7 @@ public class TestParentsChildrenBlockJoinQuery extends LuceneTestCase {
     blocks[2][2] = new TestDoc("parent", true, 9); // docId=9
 
     final Directory dir = newDirectory();
-    final RandomIndexWriter writer =
-        new RandomIndexWriter(
-            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
+    final RandomIndexWriter writer = createIndexWriter(dir);
 
     // Add documents
     List<Document> docs = new ArrayList<>();
@@ -204,7 +211,7 @@ public class TestParentsChildrenBlockJoinQuery extends LuceneTestCase {
     Weight weight =
         searcher.createWeight(
             searcher.rewrite(query), org.apache.lucene.search.ScoreMode.COMPLETE, 1);
-    Scorer scorer = weight.scorer(reader.leaves().get(0));
+    Scorer scorer = weight.scorer(reader.leaves().getFirst());
     assert scorer != null;
     DocIdSetIterator it = scorer.iterator();
 
@@ -224,9 +231,7 @@ public class TestParentsChildrenBlockJoinQuery extends LuceneTestCase {
   private void test(TestDoc[][] blocks, int[] expectedDocIds, int childLimitPerParent)
       throws Exception {
     final Directory dir = newDirectory();
-    final RandomIndexWriter writer =
-        new RandomIndexWriter(
-            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
+    final RandomIndexWriter writer = createIndexWriter(dir);
 
     // Add documents based on test case
     final List<Document> docs = new ArrayList<>();
@@ -274,8 +279,8 @@ public class TestParentsChildrenBlockJoinQuery extends LuceneTestCase {
       // Verify the matching documents
       for (ScoreDoc scoreDoc : results.scoreDocs) {
         Document doc = reader.storedFields().document(scoreDoc.doc);
-        String type = doc.getField("type").stringValue();
-        Integer id = doc.getField("ID").numericValue().intValue();
+        String type = Objects.requireNonNull(doc.getField("type")).stringValue();
+        Integer id = Objects.requireNonNull(doc.getField("ID")).numericValue().intValue();
         assertEquals("child", type); // All results should be children
         assertTrue(expectedDocIdSet.contains(id));
       }
@@ -292,7 +297,7 @@ public class TestParentsChildrenBlockJoinQuery extends LuceneTestCase {
         int i = 0;
         for (ScoreDoc scoreDoc : results.scoreDocs) {
           Document doc = reader.storedFields().document(scoreDoc.doc);
-          int id = doc.getField("ID").numericValue().intValue();
+          int id = Objects.requireNonNull(doc.getField("ID")).numericValue().intValue();
           actualDocIds[i++] = id;
         }
         System.out.println("Actual docIds: " + Arrays.toString(actualDocIds));
@@ -352,9 +357,7 @@ public class TestParentsChildrenBlockJoinQuery extends LuceneTestCase {
     blocks[1][2] = new TestDoc("parent", true, 5); // docId=5
 
     Directory dir = newDirectory();
-    final RandomIndexWriter writer =
-        new RandomIndexWriter(
-            random(), dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE));
+    final RandomIndexWriter writer = createIndexWriter(dir);
 
     // Add documents
     List<Document> docs = new ArrayList<>();
@@ -428,9 +431,7 @@ public class TestParentsChildrenBlockJoinQuery extends LuceneTestCase {
     }
 
     Directory dir = newDirectory();
-    final RandomIndexWriter writer =
-        new RandomIndexWriter(
-            random(), dir, newIndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)));
+    final RandomIndexWriter writer = createIndexWriter(dir);
 
     // Add documents
     List<Document> docs = new ArrayList<>();

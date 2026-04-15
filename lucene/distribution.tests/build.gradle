@@ -37,7 +37,7 @@ dependencies {
   moduleTestImplementation deps.assertj
 }
 
-test {
+tasks.named("test").configure {
   dependsOn configurations.binaryDistribution
 
   // We need to pass the system property using a lazy provider, not supported at the moment:

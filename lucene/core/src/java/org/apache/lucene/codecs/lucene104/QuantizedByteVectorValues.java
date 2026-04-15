@@ -21,6 +21,7 @@ import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.
 import org.apache.lucene.codecs.lucene95.HasIndexSlice;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 
 /** Scalar quantized byte vector values */
@@ -83,4 +84,9 @@ public abstract class QuantizedByteVectorValues extends ByteVectorValues impleme
 
   @Override
   public abstract QuantizedByteVectorValues copy() throws IOException;
+
+  @Override
+  public IndexInput getSlice() {
+    return null;
+  }
 }

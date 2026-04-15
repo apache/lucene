@@ -58,6 +58,7 @@ public abstract class BaseDataOutputTestCase<T extends DataOutput> extends Lucen
   protected static List<IOConsumer<DataInput>> addRandomData(
       DataOutput dst, Random rnd, int maxAddCalls) throws IOException {
     try {
+      rnd = LuceneTestCase.nonAssertingRandom(rnd);
       List<IOConsumer<DataInput>> reply = new ArrayList<>();
       for (int i = 0; i < maxAddCalls; i++) {
         reply.add(RandomPicks.randomFrom(rnd, GENERATORS).apply(dst, rnd));

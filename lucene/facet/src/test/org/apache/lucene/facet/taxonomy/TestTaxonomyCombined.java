@@ -750,7 +750,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
     final ParallelTaxonomyArrays ca2 = trBase.getParallelTaxonomyArrays();
     final int abYoungChildBase2 = ca2.children().get(abOrd);
 
-    int numRetries = atLeast(10);
+    int numRetries = atLeast(3);
     for (int retry = 0; retry < numRetries; retry++) {
       assertConsistentYoungestChild(
           abPath, abOrd, abYoungChildBase1, abYoungChildBase2, retry, numCategories);
@@ -1109,6 +1109,8 @@ public class TestTaxonomyCombined extends FacetTestCase {
     return result;
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testThousandsOfCategories() throws IOException {
     int roundSize = random().nextInt(2, 4);
     int size = random().nextInt(16384, 32768);

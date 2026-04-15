@@ -1225,20 +1225,21 @@ public class TestPackedInts extends LuceneTestCase {
   }
 
   public void testMonotonicBlockPackedReaderWriter() throws IOException {
+    var random = nonAssertingRandom(random());
+
     final int iters = atLeast(2);
     for (int iter = 0; iter < iters; ++iter) {
-      final int blockSize = 1 << TestUtil.nextInt(random(), 6, 18);
-      final int valueCount = random().nextInt(1 << 18);
+      final int blockSize = 1 << TestUtil.nextInt(random, 6, 18);
+      final int valueCount = random.nextInt(1 << 18);
       final long[] values = new long[valueCount];
       if (valueCount > 0) {
-        values[0] =
-            random().nextBoolean() ? random().nextInt(10) : random().nextInt(Integer.MAX_VALUE);
-        int maxDelta = random().nextInt(64);
+        values[0] = random.nextBoolean() ? random.nextInt(10) : random.nextInt(Integer.MAX_VALUE);
+        int maxDelta = random.nextInt(64);
         for (int i = 1; i < valueCount; ++i) {
-          if (random().nextDouble() < 0.1d) {
-            maxDelta = random().nextInt(64);
+          if (random.nextDouble() < 0.1d) {
+            maxDelta = random.nextInt(64);
           }
-          values[i] = Math.max(0, values[i - 1] + TestUtil.nextInt(random(), -16, maxDelta));
+          values[i] = Math.max(0, values[i - 1] + TestUtil.nextInt(random, -16, maxDelta));
         }
       }
 

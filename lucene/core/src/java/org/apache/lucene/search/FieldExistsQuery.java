@@ -156,7 +156,7 @@ public class FieldExistsQuery extends Query {
       }
     }
     if (allReadersRewritable) {
-      return new MatchAllDocsQuery();
+      return MatchAllDocsQuery.INSTANCE;
     }
     return super.rewrite(indexSearcher);
   }

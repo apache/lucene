@@ -216,7 +216,7 @@ public final class RunListenerPrintReproduceInfo extends RunListener {
       }
     }
 
-    if (LuceneTestCase.assertsAreEnabled) {
+    if (LuceneTestCase.TEST_ASSERTS_ENABLED) {
       addVmOpt(b, "tests.asserts", "true");
     } else {
       addVmOpt(b, "tests.asserts", "false");

@@ -38,15 +38,15 @@ import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 
 class Lucene104MemorySegmentScalarQuantizedVectorScorer
     implements AsymmetricScalarQuantizeFlatVectorsScorer {
-  static final Lucene104MemorySegmentScalarQuantizedVectorScorer INSTANCE =
-      new Lucene104MemorySegmentScalarQuantizedVectorScorer();
+  static final Lucene104MemorySegmentScalarQuantizedVectorScorer INSTANCE = new Lucene104MemorySegmentScalarQuantizedVectorScorer();
 
-  private static final Lucene104ScalarQuantizedVectorScorer DELEGATE =
-      new Lucene104ScalarQuantizedVectorScorer(DefaultFlatVectorScorer.INSTANCE);
+  private static final Lucene104ScalarQuantizedVectorScorer DELEGATE = new Lucene104ScalarQuantizedVectorScorer(
+      DefaultFlatVectorScorer.INSTANCE);
 
   private static final int CORRECTIVE_TERMS_SIZE = Float.BYTES * 3 + Integer.BYTES;
 
-  private Lucene104MemorySegmentScalarQuantizedVectorScorer() {}
+  private Lucene104MemorySegmentScalarQuantizedVectorScorer() {
+  }
 
   @Override
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
@@ -179,8 +179,7 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer
         float[] target)
         throws IOException {
       super(similarityFunction, values, input);
-      Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding scalarEncoding =
-          values.getScalarEncoding();
+      Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding scalarEncoding = values.getScalarEncoding();
       OptimizedScalarQuantizer quantizer = values.getQuantizer();
       scratch = new byte[values.getVectorByteLength()];
       query = new byte[scalarEncoding.getDiscreteDimensions(target.length)];
@@ -190,23 +189,23 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer
         VectorUtil.l2normalize(copy);
       }
       target = copy;
-      queryCorrectiveTerms =
-          quantizer.scalarQuantize(target, query, scalarEncoding.getBits(), values.getCentroid());
+      queryCorrectiveTerms = quantizer.scalarQuantize(target, query, scalarEncoding.getBits(), values.getCentroid());
     }
 
     @Override
     public float score(int node) throws IOException {
       MemorySegment docVector = getVector(node);
-      float dotProduct =
-          switch (getValues().getScalarEncoding()) {
-            case UNSIGNED_BYTE -> PanamaVectorUtilSupport.uint8DotProduct(query, docVector);
-            case SEVEN_BIT -> PanamaVectorUtilSupport.dotProduct(query, docVector);
-            case PACKED_NIBBLE ->
-                PanamaVectorUtilSupport.int4DotProductSinglePacked(query, docVector);
-            case SINGLE_BIT_QUERY_NIBBLE ->
-                throw new IllegalStateException(
-                    "this should be handled by the default implementation");
-          };
+      float dotProduct = switch (getValues().getScalarEncoding()) {
+        case UNSIGNED_BYTE -> PanamaVectorUtilSupport.uint8DotProduct(query, docVector);
+        case SEVEN_BIT -> PanamaVectorUtilSupport.dotProduct(query, docVector);
+        case PACKED_NIBBLE ->
+          PanamaVectorUtilSupport.int4DotProductSinglePacked(query, docVector);
+        case SINGLE_BIT_QUERY_NIBBLE ->
+          throw new IllegalStateException(
+              "this should be handled by the default implementation");
+        case DIBIT_QUERY_NIBBLE -> throw new IllegalStateException(
+            "this should be handled by the default implementation");
+      };
       // Call getCorrectiveTerms() after computing dot product since corrective terms
       // bytes appear after the vector bytes, so this sequence of calls is more cache
       // friendly.
@@ -255,15 +254,17 @@ class Lucene104MemorySegmentScalarQuantizedVectorScorer
     @Override
     public float score(int node) throws IOException {
       MemorySegment doc = getVector(node);
-      float dotProduct =
-          switch (getValues().getScalarEncoding()) {
-            case UNSIGNED_BYTE -> PanamaVectorUtilSupport.uint8DotProduct(query, doc);
-            case SEVEN_BIT -> PanamaVectorUtilSupport.dotProduct(query, doc);
-            case PACKED_NIBBLE -> PanamaVectorUtilSupport.int4DotProductBothPacked(query, doc);
-            case SINGLE_BIT_QUERY_NIBBLE ->
-                throw new IllegalStateException(
-                    "this should be handled by the default implementation");
-          };
+      float dotProduct = switch (getValues().getScalarEncoding()) {
+        case UNSIGNED_BYTE -> PanamaVectorUtilSupport.uint8DotProduct(query, doc);
+        case SEVEN_BIT -> PanamaVectorUtilSupport.dotProduct(query, doc);
+        case PACKED_NIBBLE -> PanamaVectorUtilSupport.int4DotProductBothPacked(query, doc);
+        case SINGLE_BIT_QUERY_NIBBLE ->
+          throw new IllegalStateException(
+              "this should be handled by the default implementation");
+        case DIBIT_QUERY_NIBBLE ->
+          throw new IllegalStateException(
+              "this should be handled by the default implementation");
+      };
       // Call getCorrectiveTerms() after computing dot product since corrective terms
       // bytes appear after the vector bytes, so this sequence of calls is more cache
       // friendly.

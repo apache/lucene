@@ -16,10 +16,7 @@
  */
 
 pluginManagement {
-    repositories {
-        mavenCentral()
-        gradlePluginPortal()
-    }
+    apply from: file("build-tools/build-infra/declare-repositories.gradle"), to: delegate
 
     // the classpath of the included composite project is resolved independently.
     // so custom ecj versions are not found unless we repeat the same code

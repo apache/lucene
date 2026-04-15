@@ -39,7 +39,7 @@ public class TestUsageTrackingFilterCachingPolicy extends LuceneTestCase {
   }
 
   public void testNeverCacheMatchAll() throws Exception {
-    Query q = new MatchAllDocsQuery();
+    Query q = MatchAllDocsQuery.INSTANCE;
     UsageTrackingQueryCachingPolicy policy = new UsageTrackingQueryCachingPolicy();
     for (int i = 0; i < 1000; ++i) {
       policy.onUse(q);

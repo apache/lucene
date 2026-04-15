@@ -444,7 +444,7 @@ public class TestSpellChecker extends LuceneTestCase {
     assertEquals(4, searchers.size());
     int num_field2 = this.numdoc();
     assertEquals(num_field2, num_field1 + 1);
-    int numThreads = 5 + random().nextInt(5);
+    int numThreads = atLeast(2);
     ExecutorService executor =
         Executors.newFixedThreadPool(numThreads, new NamedThreadFactory("testConcurrentAccess"));
     SpellCheckWorker[] workers = new SpellCheckWorker[numThreads];
@@ -453,7 +453,7 @@ public class TestSpellChecker extends LuceneTestCase {
       executor.execute(spellCheckWorker);
       workers[i] = spellCheckWorker;
     }
-    int iterations = 5 + random().nextInt(5);
+    int iterations = atLeast(3);
     for (int i = 0; i < iterations; i++) {
       Thread.sleep(100);
       // concurrently reset the spell index

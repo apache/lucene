@@ -103,7 +103,7 @@ public final class SynonymQuery extends Query {
     /** Builds the {@link SynonymQuery}. */
     public SynonymQuery build() {
       terms.sort(Comparator.comparing(a -> a.term));
-      return new SynonymQuery(terms.toArray(new TermAndBoost[0]), field);
+      return new SynonymQuery(terms.toArray(TermAndBoost[]::new), field);
     }
   }
 

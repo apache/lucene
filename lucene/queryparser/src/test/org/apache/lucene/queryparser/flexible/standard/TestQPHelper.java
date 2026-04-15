@@ -1257,8 +1257,8 @@ public class TestQPHelper extends LuceneTestCase {
     StandardQueryParser qp = new StandardQueryParser();
     qp.setAnalyzer(new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false));
 
-    assertEquals(new MatchAllDocsQuery(), qp.parse("*:*", "field"));
-    assertEquals(new MatchAllDocsQuery(), qp.parse("(*:*)", "field"));
+    assertEquals(MatchAllDocsQuery.INSTANCE, qp.parse("*:*", "field"));
+    assertEquals(MatchAllDocsQuery.INSTANCE, qp.parse("(*:*)", "field"));
     BooleanQuery bq = (BooleanQuery) qp.parse("+*:* -*:*", "field");
     for (BooleanClause c : bq) {
       assertTrue(c.query().getClass() == MatchAllDocsQuery.class);

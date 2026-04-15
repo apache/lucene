@@ -434,27 +434,7 @@ final class SegmentTermsEnum extends BaseTermsEnum {
           return null;
         }
 
-        if (prefetch) {
-          currentFrame.prefetchBlock();
-        }
-
-        return () -> {
-          currentFrame.loadBlock();
-
-          final SeekStatus result = currentFrame.scanToTerm(target, true);
-          if (result == SeekStatus.FOUND) {
-            // if (DEBUG) {
-            //   System.out.println("  return FOUND term=" + term.utf8ToString() + " " + term);
-            // }
-            return true;
-          } else {
-            // if (DEBUG) {
-            //   System.out.println("  got " + result + "; return NOT_FOUND term=" +
-            // ToStringUtils.bytesRefToString(term));
-            // }
-            return false;
-          }
-        };
+        return getIOBooleanSupplier(target, prefetch);
       } else {
         // Follow this node
         node = nextNode;
@@ -491,6 +471,11 @@ final class SegmentTermsEnum extends BaseTermsEnum {
       return null;
     }
 
+    return getIOBooleanSupplier(target, prefetch);
+  }
+
+  private IOBooleanSupplier getIOBooleanSupplier(BytesRef target, boolean prefetch)
+      throws IOException {
     if (prefetch) {
       currentFrame.prefetchBlock();
     }

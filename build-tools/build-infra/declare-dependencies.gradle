@@ -1,0 +1,63 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// These are dependencies on gradle plugins. This file is extracted
+// from the main build.gradle because it's reused in build-infra-shadow.
+
+
+// Convert a plugin dependency to a regular dependency so that we can
+// use [plugins] section in the top-level libs.versions.toml but
+// redeclare them as regular project dependencies.
+static Provider<String> plugin(Provider<PluginDependency> plugin) {
+  return plugin.map {
+    if (it.pluginId == "de.thetaphi.forbiddenapis") {
+      // Uwe's forbiddenapis is on Maven Central, so don't remap coordinates.
+      return "de.thetaphi:forbiddenapis:${it.version}".toString()
+    } else {
+      // maven artifact pattern for gradle's plugin repositories.
+      return "${it.pluginId}:${it.pluginId}.gradle.plugin:${it.version}".toString()
+    }
+  }
+}
+
+dependencies {
+  implementation gradleApi()
+  implementation localGroovy()
+
+  implementation deps.commons.codec
+  implementation deps.randomizedtesting.runner
+  implementation deps.zstd
+
+  implementation deps.flexmark.core
+  implementation deps.flexmark.ext.abbreviation
+  implementation deps.flexmark.ext.attributes
+  implementation deps.flexmark.ext.autolink
+  implementation deps.flexmark.ext.tables
+  implementation deps.gjf
+  implementation deps.jgit
+  implementation deps.ecj
+  implementation deps.errorprone
+
+  implementation plugin(deps.plugins.carrotsearch.buildopts)
+  implementation plugin(deps.plugins.carrotsearch.dependencychecks)
+  implementation plugin(deps.plugins.forbiddenapis)
+  implementation plugin(deps.plugins.spotless)
+  implementation plugin(deps.plugins.undercouch.download)
+  implementation plugin(deps.plugins.errorprone)
+  implementation plugin(deps.plugins.jacocolog)
+  implementation plugin(deps.plugins.versionCatalogUpdate)
+}

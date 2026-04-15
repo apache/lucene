@@ -104,6 +104,8 @@ public class TestIndexOrDocValuesQuery extends LuceneTestCase {
     dir.close();
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testUseIndexForSelectiveMultiValueQueries() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w =

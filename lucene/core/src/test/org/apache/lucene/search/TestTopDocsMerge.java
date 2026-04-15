@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.emptyArray;
+import static org.hamcrest.Matchers.not;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -124,9 +127,9 @@ public class TestTopDocsMerge extends LuceneTestCase {
     // that we already set, instead of the position of that TopDocs in the array:
     TopDocs merge = TopDocs.merge(from, size, topDocs.toArray(new TopDocs[0]));
 
-    assertTrue(merge.scoreDocs.length > 0);
+    assertThat(merge.scoreDocs, not(emptyArray()));
     for (ScoreDoc scoreDoc : merge.scoreDocs) {
-      assertTrue(scoreDoc.shardIndex != -1);
+      assertNotEquals(-1, scoreDoc.shardIndex);
       TopDocs shardTopDocs = shardResultMapping.get(scoreDoc.shardIndex);
       assertNotNull(shardTopDocs);
       boolean found = false;

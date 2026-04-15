@@ -100,10 +100,9 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
     this.centroidDp = centroidDp;
     this.correctiveValues = new float[3];
     this.encoding = encoding;
-    int docPackedLength =
-        isQuerySide
-            ? encoding.getQueryPackedLength(dimension)
-            : encoding.getDocPackedLength(dimension);
+    int docPackedLength = isQuerySide
+        ? encoding.getQueryPackedLength(dimension)
+        : encoding.getDocPackedLength(dimension);
     this.byteSize = docPackedLength + (Float.BYTES * 3) + Integer.BYTES;
     this.byteBuffer = ByteBuffer.allocate(docPackedLength);
     this.vectorValue = byteBuffer.array();
@@ -131,6 +130,11 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
     quantizedComponentSum = slice.readInt();
     lastOrd = targetOrd;
     return vectorValue;
+  }
+
+  @Override
+  public IndexInput getSlice() {
+    return slice;
   }
 
   @Override
@@ -169,12 +173,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
 
   @Override
   public int getVectorByteLength() {
-    return this.encoding.getDocPackedLength(dimension);
-  }
-
-  @Override
-  public IndexInput getSlice() {
-    return slice;
+    return vectorValue.length;
   }
 
   static void packNibbles(byte[] unpacked, byte[] packed) {
@@ -211,9 +210,8 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
       return new EmptyOffHeapVectorValues(dimension, similarityFunction, vectorsScorer);
     }
     assert centroid != null;
-    IndexInput bytesSlice =
-        vectorData.slice(
-            "quantized-vector-data", quantizedVectorDataOffset, quantizedVectorDataLength);
+    IndexInput bytesSlice = vectorData.slice(
+        "quantized-vector-data", quantizedVectorDataOffset, quantizedVectorDataLength);
     if (configuration.isDense()) {
       return new DenseOffHeapVectorValues(
           dimension,
@@ -314,8 +312,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
       assert isQuerySide == false;
       OffHeapScalarQuantizedVectorValues.DenseOffHeapVectorValues copy = copy();
       DocIndexIterator iterator = copy.iterator();
-      RandomVectorScorer scorer =
-          vectorsScorer.getRandomVectorScorer(similarityFunction, copy, target);
+      RandomVectorScorer scorer = vectorsScorer.getRandomVectorScorer(similarityFunction, copy, target);
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
@@ -325,6 +322,11 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
         @Override
         public DocIdSetIterator iterator() {
           return iterator;
+        }
+
+        @Override
+        public VectorScorer.Bulk bulk(DocIdSetIterator matchingDocs) {
+          return Bulk.fromRandomScorerDense(scorer, iterator, matchingDocs);
         }
       };
     }
@@ -423,8 +425,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
       assert isQuerySide == false;
       SparseOffHeapVectorValues copy = copy();
       DocIndexIterator iterator = copy.iterator();
-      RandomVectorScorer scorer =
-          vectorsScorer.getRandomVectorScorer(similarityFunction, copy, target);
+      RandomVectorScorer scorer = vectorsScorer.getRandomVectorScorer(similarityFunction, copy, target);
       return new VectorScorer() {
         @Override
         public float score() throws IOException {
@@ -434,6 +435,11 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
         @Override
         public DocIdSetIterator iterator() {
           return iterator;
+        }
+
+        @Override
+        public VectorScorer.Bulk bulk(DocIdSetIterator matchingDocs) {
+          return Bulk.fromRandomScorerSparse(scorer, iterator, matchingDocs);
         }
       };
     }

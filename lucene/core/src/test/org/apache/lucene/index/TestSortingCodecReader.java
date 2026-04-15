@@ -282,7 +282,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
               assertTrue(binary_sorted_dv.advanceExact(idNext));
               if (dense || prevValue % 2 == 0) {
                 assertEquals(idNext, valuesIterator.advance(idNext));
-                if (graph != null) {
+                if (graph != null && graph.size() > 0) {
                   graph.seek(0, valuesIterator.index());
                   assertNotEquals(DocIdSetIterator.NO_MORE_DOCS, graph.nextNeighbor());
                 }

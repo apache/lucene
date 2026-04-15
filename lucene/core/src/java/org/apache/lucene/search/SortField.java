@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.Comparator;
 import java.util.Objects;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.FloatPoint;
@@ -34,7 +33,6 @@ import org.apache.lucene.search.comparators.LongComparator;
 import org.apache.lucene.search.comparators.TermOrdValComparator;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.NumericUtils;
 
 /**
@@ -125,15 +123,15 @@ public class SortField {
   /** Represents sorting by document number (index order). */
   public static final SortField FIELD_DOC = new SortField(null, Type.DOC);
 
-  private String field;
-  private Type type; // defaults to determining type dynamically
-  boolean reverse = false; // defaults to natural order
+  private final String field;
+  private final Type type; // defaults to determining type dynamically
+  protected final boolean reverse; // defaults to natural order
 
   // Used for CUSTOM sort
   private FieldComparatorSource comparatorSource;
 
   // Used for 'sortMissingFirst/Last'
-  protected Object missingValue = null;
+  protected final Object missingValue;
 
   // Indicates if sort should be optimized with indexed data. Set to true by default.
   @Deprecated private boolean optimizeSortWithIndexedData = true;
@@ -146,7 +144,18 @@ public class SortField {
    * @param type Type of values in the terms.
    */
   public SortField(String field, Type type) {
-    initFieldType(field, type);
+    this(field, type, false, null);
+  }
+
+  /**
+   * Creates a sort by terms in the given field with the type of term values explicitly given.
+   *
+   * @param field Name of field to sort by. Can be <code>null</code> if <code>type</code> is SCORE
+   *     or DOC.
+   * @param type Type of values in the terms.
+   */
+  public SortField(String field, Type type, boolean reverse) {
+    this(field, type, reverse, null);
   }
 
   /**
@@ -158,9 +167,38 @@ public class SortField {
    * @param type Type of values in the terms.
    * @param reverse True if natural order should be reversed.
    */
-  public SortField(String field, Type type, boolean reverse) {
-    initFieldType(field, type);
+  public SortField(String field, Type type, boolean reverse, Object missingValue) {
+    this.field = field;
+    this.type = type;
     this.reverse = reverse;
+    this.missingValue = missingValue;
+    validateField(field, type, missingValue);
+  }
+
+  /**
+   * Creates a sort with a custom comparison function.
+   *
+   * @param field Name of field to sort by; cannot be <code>null</code>.
+   * @param comparator Returns a comparator for sorting hits.
+   */
+  public SortField(String field, FieldComparatorSource comparator) {
+    this(field, comparator, false);
+  }
+
+  /**
+   * Creates a sort, possibly in reverse, with a custom comparison function.
+   *
+   * @param field Name of field to sort by; cannot be <code>null</code>.
+   * @param comparator Returns a comparator for sorting hits.
+   * @param reverse True if natural order should be reversed.
+   */
+  public SortField(String field, FieldComparatorSource comparator, boolean reverse) {
+    this.field = field;
+    this.type = Type.CUSTOM;
+    this.reverse = reverse;
+    this.comparatorSource = comparator;
+    this.missingValue = null; // missingValue factored into comparator source
+    validateField(field, type, null);
   }
 
   /** A SortFieldProvider for field sorts */
@@ -176,40 +214,39 @@ public class SortField {
 
     @Override
     public SortField readSortField(DataInput in) throws IOException {
-      SortField sf = new SortField(in.readString(), readType(in), in.readInt() == 1);
+      String field = in.readString();
+      Type type = readType(in);
+      boolean reverse = in.readInt() == 1;
       if (in.readInt() == 1) {
         // missing object
-        switch (sf.type) {
+        switch (type) {
           case STRING:
             int missingString = in.readInt();
             if (missingString == 1) {
-              sf.setMissingValue(STRING_FIRST);
+              return new SortField(field, type, reverse, STRING_FIRST);
             } else {
-              sf.setMissingValue(STRING_LAST);
+              return new SortField(field, type, reverse, STRING_LAST);
             }
-            break;
           case INT:
-            sf.setMissingValue(in.readInt());
-            break;
+            return new SortField(field, type, reverse, in.readInt());
           case LONG:
-            sf.setMissingValue(in.readLong());
-            break;
+            return new SortField(field, type, reverse, in.readLong());
           case FLOAT:
-            sf.setMissingValue(NumericUtils.sortableIntToFloat(in.readInt()));
-            break;
+            return new SortField(
+                field, type, reverse, NumericUtils.sortableIntToFloat(in.readInt()));
           case DOUBLE:
-            sf.setMissingValue(NumericUtils.sortableLongToDouble(in.readLong()));
-            break;
+            return new SortField(
+                field, type, reverse, NumericUtils.sortableLongToDouble(in.readLong()));
           case CUSTOM:
           case DOC:
           case REWRITEABLE:
           case STRING_VAL:
           case SCORE:
           default:
-            throw new IllegalArgumentException("Cannot deserialize sort of type " + sf.type);
+            throw new IllegalArgumentException("Cannot deserialize sort of type " + type);
         }
       }
-      return sf;
+      return new SortField(field, type, reverse, null);
     }
 
     @Override
@@ -269,7 +306,7 @@ public class SortField {
     }
   }
 
-  /** Pass this to {@link #setMissingValue} to have missing string values sort first. */
+  /** Pass this as a missingValue constructor parameter to have missing string values sort first. */
   public static final Object STRING_FIRST =
       new Object() {
         @Override
@@ -278,7 +315,7 @@ public class SortField {
         }
       };
 
-  /** Pass this to {@link #setMissingValue} to have missing string values sort last. */
+  /** Pass this as a missingValue constructor parameter to have missing string values sort last. */
   public static final Object STRING_LAST =
       new Object() {
         @Override
@@ -295,73 +332,19 @@ public class SortField {
     return missingValue;
   }
 
-  /** Set the value to use for documents that don't have a value. */
-  public void setMissingValue(Object missingValue) {
-    if (type == Type.STRING || type == Type.STRING_VAL) {
-      if (missingValue != STRING_FIRST && missingValue != STRING_LAST) {
-        throw new IllegalArgumentException(
-            "For STRING type, missing value must be either STRING_FIRST or STRING_LAST");
-      }
-    } else if (type == Type.INT) {
-      if (missingValue != null && missingValue.getClass() != Integer.class)
-        throw new IllegalArgumentException(
-            "Missing values for Type.INT can only be of type java.lang.Integer, but got "
-                + missingValue.getClass());
-    } else if (type == Type.LONG) {
-      if (missingValue != null && missingValue.getClass() != Long.class)
-        throw new IllegalArgumentException(
-            "Missing values for Type.LONG can only be of type java.lang.Long, but got "
-                + missingValue.getClass());
-    } else if (type == Type.FLOAT) {
-      if (missingValue != null && missingValue.getClass() != Float.class)
-        throw new IllegalArgumentException(
-            "Missing values for Type.FLOAT can only be of type java.lang.Float, but got "
-                + missingValue.getClass());
-    } else if (type == Type.DOUBLE) {
-      if (missingValue != null && missingValue.getClass() != Double.class)
-        throw new IllegalArgumentException(
-            "Missing values for Type.DOUBLE can only be of type java.lang.Double, but got "
-                + missingValue.getClass());
-    } else {
-      throw new IllegalArgumentException("Missing value only works for numeric or STRING types");
-    }
-    this.missingValue = missingValue;
-  }
-
-  /**
-   * Creates a sort with a custom comparison function.
-   *
-   * @param field Name of field to sort by; cannot be <code>null</code>.
-   * @param comparator Returns a comparator for sorting hits.
-   */
-  public SortField(String field, FieldComparatorSource comparator) {
-    initFieldType(field, Type.CUSTOM);
-    this.comparatorSource = comparator;
-  }
-
-  /**
-   * Creates a sort, possibly in reverse, with a custom comparison function.
-   *
-   * @param field Name of field to sort by; cannot be <code>null</code>.
-   * @param comparator Returns a comparator for sorting hits.
-   * @param reverse True if natural order should be reversed.
-   */
-  public SortField(String field, FieldComparatorSource comparator, boolean reverse) {
-    initFieldType(field, Type.CUSTOM);
-    this.reverse = reverse;
-    this.comparatorSource = comparator;
-  }
-
   // Sets field & type, and ensures field is not NULL unless
   // type is SCORE or DOC
-  private void initFieldType(String field, Type type) {
-    this.type = type;
+  private void validateField(String field, Type type, Object missingValue) {
     if (field == null) {
       if (type != Type.SCORE && type != Type.DOC) {
         throw new IllegalArgumentException("field can only be null when type is SCORE or DOC");
       }
-    } else {
-      this.field = field;
+    }
+    if (type == Type.STRING) {
+      if (missingValue != null && missingValue != STRING_FIRST && missingValue != STRING_LAST) {
+        throw new IllegalArgumentException(
+            "For Type.STRING, missing value must be either STRING_FIRST or STRING_LAST");
+      }
     }
   }
 
@@ -483,16 +466,6 @@ public class SortField {
   @Override
   public int hashCode() {
     return Objects.hash(field, type, reverse, comparatorSource, missingValue);
-  }
-
-  private Comparator<BytesRef> bytesComparator = Comparator.naturalOrder();
-
-  public void setBytesComparator(Comparator<BytesRef> b) {
-    bytesComparator = b;
-  }
-
-  public Comparator<BytesRef> getBytesComparator() {
-    return bytesComparator;
   }
 
   /**

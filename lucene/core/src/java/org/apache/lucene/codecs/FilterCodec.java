@@ -22,7 +22,7 @@ package org.apache.lucene.codecs;
  * <p>Extend this class when you need to reuse the functionality of an existing codec. For example,
  * if you want to build a codec that redefines LuceneMN's {@link LiveDocsFormat}:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   public final class CustomCodec extends FilterCodec {
  *
  *     public CustomCodec() {
@@ -34,7 +34,7 @@ package org.apache.lucene.codecs;
  *     }
  *
  *   }
- * </pre>
+ * </code></pre>
  *
  * <p><em>Please note:</em> Don't call {@link Codec#forName} from the no-arg constructor of your own
  * codec. When the SPI framework loads your own Codec as SPI component, SPI has not yet fully

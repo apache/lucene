@@ -82,11 +82,10 @@ public abstract class CheckGoogleJavaFormatTask extends ParentGoogleJavaFormatTa
 
   @TaskAction
   public void formatSources(InputChanges inputChanges) throws IOException {
-    WorkQueue workQueue = getWorkQueue();
     List<File> sourceFiles = getIncrementalBatch(inputChanges);
-    if (sourceFiles.isEmpty()) {
-      return;
-    }
+
+    var fileStates = readFileStatesFrom(getFileStateCache());
+    sourceFiles = maybeRefilter(fileStates, sourceFiles);
 
     getLogger()
         .info(
@@ -94,41 +93,49 @@ public abstract class CheckGoogleJavaFormatTask extends ParentGoogleJavaFormatTa
             sourceFiles.size(),
             sourceFiles.size() == 1 ? "file" : "files");
 
-    int outputSeq = 0;
-    File tempDir = new File(getTemporaryDir(), "changes");
-    if (Files.exists(tempDir.toPath())) {
-      getFilesystemOperations().delete(spec -> spec.delete(tempDir));
-    }
-    Files.createDirectory(tempDir.toPath());
-
-    for (List<File> batch : batchSourceFiles(sourceFiles)) {
-      final int seq = outputSeq;
-      workQueue.submit(
-          CheckGoogleJavaFormatAction.class,
-          params -> {
-            params.getTargetFiles().setFrom(batch);
-            params.getOutputFile().set(new File(tempDir, "gjf-check-" + seq + ".txt"));
-          });
-      outputSeq++;
-    }
-    workQueue.await();
-
-    // Check if there are any changes.
-    try (Stream<Path> stream = Files.list(tempDir.toPath()).sorted()) {
-      var allChanges = stream.toList();
-
-      if (!allChanges.isEmpty()) {
-        var errorMsg =
-            "java file(s) have google-java-format violations (run './gradlew tidy' to fix).";
-
-        if (getColorizedOutput().getOrElse(false)) {
-          printChangesToColorizedTerminal(allChanges, errorMsg);
-        } else {
-          printChangesToLogger(allChanges, errorMsg);
-        }
-
-        throw new GradleException(errorMsg);
+    if (!sourceFiles.isEmpty()) {
+      int outputSeq = 0;
+      File tempDir = new File(getTemporaryDir(), "changes");
+      if (Files.exists(tempDir.toPath())) {
+        getFilesystemOperations().delete(spec -> spec.delete(tempDir));
       }
+      Files.createDirectory(tempDir.toPath());
+
+      WorkQueue workQueue = getWorkQueue();
+      for (List<File> batch : batchSourceFiles(sourceFiles)) {
+        final int seq = outputSeq;
+        workQueue.submit(
+            CheckGoogleJavaFormatAction.class,
+            params -> {
+              params.getTargetFiles().setFrom(batch);
+              params.getOutputFile().set(new File(tempDir, "gjf-check-" + seq + ".txt"));
+            });
+        outputSeq++;
+      }
+
+      // Wait for all jobs.
+      workQueue.await();
+
+      // Check if there are any changes.
+      try (Stream<Path> stream = Files.list(tempDir.toPath()).sorted()) {
+        var allChanges = stream.toList();
+
+        if (!allChanges.isEmpty()) {
+          var errorMsg =
+              "java file(s) have google-java-format violations (run './gradlew tidy' to fix).";
+
+          if (getColorizedOutput().getOrElse(false)) {
+            printChangesToColorizedTerminal(allChanges, errorMsg);
+          } else {
+            printChangesToLogger(allChanges, errorMsg);
+          }
+
+          throw new GradleException(errorMsg);
+        }
+      }
+
+      updateFileStates(fileStates, sourceFiles);
+      writeFileStates(getFileStateCache(), fileStates);
     }
 
     Path taskOutput = getOutputChangeListFile().get().getAsFile().toPath();

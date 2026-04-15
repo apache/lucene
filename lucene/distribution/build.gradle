@@ -15,12 +15,11 @@
  * limitations under the License.
  */
 
-
-import org.apache.lucene.gradle.plugins.gitinfo.GitInfoExtension
-
 import java.nio.charset.StandardCharsets
 import java.nio.file.Files
+import org.apache.lucene.gradle.plugins.gitinfo.GitInfoExtension
 import org.apache.lucene.gradle.plugins.misc.QuietExec
+import org.apache.lucene.gradle.plugins.publishing.ConfigureMavenPublishingPlugin
 
 plugins {
   id 'signing'
@@ -29,19 +28,16 @@ plugins {
 // This project puts together the Lucene "distribution", assembling bits and pieces
 // from across the project structure into release artifacts.
 
-Provider<Boolean> signOption = buildOptions.addBooleanOption("sign", "Sign assembled distribution artifacts.", false)
-
-ext {
-  releaseDir = file("${buildDir}/release")
-  withSignedArtifacts = signOption.get()
-}
+def releaseDir = project.layout.buildDirectory.dir("release")
 
 // Collect git revision.
 GitInfoExtension gitInfoExt = rootProject.extensions.getByName("gitinfo")
 MapProperty<String, String> gitStatus = gitInfoExt.getGitInfo()
 Provider<String> gitRev = gitStatus.getting("git.commit")
 
+//
 // Prepare the "source" distribution artifact. We use raw git export, no additional complexity needed.
+//
 Provider<RegularFile> sourceTgzFile = project.layout.buildDirectory.file("packages/lucene-${version}-src.tgz")
 tasks.register("assembleSourceTgz", QuietExec, {
   description = "Assemble source Lucene artifact as a .tgz file."
@@ -74,11 +70,139 @@ tasks.register("assembleSourceTgz", QuietExec, {
 })
 
 
+//
 // Prepare the "binary" distribution artifact.
-apply from: buildscript.sourceFile.toPath().resolveSibling("binary-release.gradle")
+//
+def packageBaseName = project.layout.buildDirectory.dir("packages/lucene-${version}").get().asFile.toString()
 
-// Configure maven artifact collection to a local build folder (required to collect artifacts for the release).
-apply from: buildscript.sourceFile.toPath().resolveSibling("collect-maven-artifacts.gradle")
+// Prepare site documentation dependency for inclusion.
+configurations {
+  docs
+
+  jars
+  jarsTestFramework
+  jarsThirdParty
+
+  binaryDirForTests
+}
+
+dependencies {
+  docs project(path: ':lucene:documentation', configuration: 'site')
+
+  // Maven-published submodule JARs are part of the binary distribution.
+  // We don't copy their transitive dependencies.
+  def binaryModules = buildGlobals.publishedProjects.findAll {p ->
+    !(p.path in [
+      // Placed in a separate folder (module layer conflicts).
+      ":lucene:test-framework",
+    ])
+  }
+  for (Project module : binaryModules) {
+    jars(module, {
+      transitive = false
+    })
+  }
+
+  // It's placed in a separate modules folder since it has service providers that are consumed by lucene-core for tests.
+  // We won't resolve it when running the Luke app.
+  jarsTestFramework(project(":lucene:test-framework"), {
+    transitive = false
+  })
+
+  // The third-party JARs consist of all the transitive dependencies from a subset of
+  // all Lucene modules. We only include the demos and Luke. Everything else has to be downloaded
+  // manually or via maven POMs.
+  for (Project module : [
+        project(":lucene:luke"),
+        project(":lucene:demo")
+      ]) {
+    jarsThirdParty(module, {
+      transitive = true
+    })
+  }
+}
+
+def assembleBinaryTgz = tasks.register("assembleBinaryTgz", Tar, {
+  description = "Assemble binary Lucene artifact as a .tgz file."
+
+  archiveFileName = packageBaseName + ".tgz"
+  destinationDirectory = file(archiveFileName).parentFile
+
+  reproducibleFileOrder = true
+  compression = Compression.GZIP
+
+  // Internal archive folder for all files.
+  into("lucene-${rootProject.version}/")
+})
+
+def binaryDestinationDir = file("${packageBaseName}-itests")
+def assembleBinaryDirForTests = tasks.register("assembleBinaryDirForTests", Sync, {
+  description = "Assemble a subset of the binary Lucene distribution as an expanded directory for tests."
+  destinationDir = binaryDestinationDir
+})
+
+artifacts {
+  binaryDirForTests binaryDestinationDir, {
+    builtBy assembleBinaryDirForTests
+  }
+}
+
+// Configure distribution content for archives and stand-alone directories.
+// This is split into binaries and other artifacts to speed up distribution
+// tests.
+Action<AbstractCopyTask> distributionBinaryContent = { AbstractCopyTask task ->
+  // Manually correct posix permissions (matters when assembling archives on Windows).
+  task.filesMatching(["**/*.sh", "**/*.bat"]) {copy ->
+    copy.permissions {
+      unix("755")
+    }
+  }
+
+  // Attach binary release - only files.
+  task.from(file("src/binary-release"), {
+    filteringCharset = 'UTF-8'
+  })
+
+  // Binary modules (Lucene).
+  task.from(configurations.jars, {
+    into 'modules'
+  })
+  task.from(configurations.jarsTestFramework, {
+    into 'modules-test-framework'
+  })
+
+  // Binary modules (with dependencies). Don't duplicate project artifacts.
+  task.from((configurations.jarsThirdParty - configurations.jars), {
+    into 'modules-thirdparty'
+  })
+}
+
+Action<Tar> distributionOtherContent = { Tar task ->
+  // Cherry-pick certain files from the root.
+  task.from(project(':').projectDir, {
+    include "LICENSE.txt"
+    include "NOTICE.txt"
+  })
+
+  // Cherry-pick certain files from the lucene module.
+  task.from(project(':lucene').projectDir, {
+    include "CHANGES.txt"
+    include "JRE_VERSION_MIGRATION.md"
+    include "MIGRATE.md"
+    include "SYSTEM_REQUIREMENTS.md"
+    include "licenses/*"
+  })
+
+  // The documentation.
+  task.from(configurations.docs, {
+    into 'docs'
+  })
+}
+
+assembleBinaryTgz.configure(distributionBinaryContent)
+assembleBinaryTgz.configure(distributionOtherContent)
+assembleBinaryDirForTests.configure(distributionBinaryContent)
+
 
 // Configure release artifact signing.
 tasks.register("signReleaseArchives", Sign, {
@@ -90,31 +214,19 @@ tasks.register("signReleaseArchives", Sign, {
   sign sourceTgzFile.get().asFile
 })
 
-
-// Set up the HTML-rendered "changes" distribution artifact by linking to documentation's output.
-configurations {
-  changesHtml
-}
-
-dependencies {
-  changesHtml project(path: ":lucene:documentation", configuration: "changesHtml")
-}
-
-
 // Compute checksums for release archives.
 tasks.register("computeChecksums", org.apache.lucene.gradle.Checksum, {
   files = objects.fileCollection()
   [
     tasks.assembleSourceTgz,
     tasks.assembleBinaryTgz,
-  ].each { dep ->
+  ].each {dep ->
     dependsOn dep
     files += dep.outputs.files
   }
 
-  outputDir = file("${buildDir}/checksums")
+  outputDir = project.layout.buildDirectory.dir("checksums").get().asFile
 })
-
 
 tasks.register("prepareGitRev", {
   Provider<RegularFile> outputFile = project.layout.buildDirectory.file(".gitrev")
@@ -127,6 +239,16 @@ tasks.register("prepareGitRev", {
   }
 })
 
+// Set up the HTML-rendered "changes" distribution artifact by linking to documentation's output.
+configurations {
+  changesHtml
+  mavenArtifacts
+}
+
+dependencies {
+  changesHtml project(path: ":lucene:documentation", configuration: "changesHtml")
+  mavenArtifacts project(path: ":", configuration: ConfigureMavenPublishingPlugin.MAVEN_ARTIFACTS_CONFIGURATION)
+}
 
 // Assemble everything needed in the release folder structure.
 tasks.register("assembleRelease", Sync, {
@@ -136,7 +258,7 @@ tasks.register("assembleRelease", Sync, {
     into "changes"
   })
 
-  from(tasks.mavenToBuild, {
+  from(configurations.mavenArtifacts, {
     into "maven"
   })
 
@@ -147,13 +269,14 @@ tasks.register("assembleRelease", Sync, {
   from tasks.computeChecksums
 
   // Conditionally, attach signatures of all the release archives.
-  if (project.ext.withSignedArtifacts) {
+  Provider<Boolean> signOption = rootProject.buildOptions.getOption(ConfigureMavenPublishingPlugin.OPT_SIGN)
+      .asBooleanProvider()
+  if (signOption.get()) {
     from tasks.signReleaseArchives
   }
 
   into releaseDir
 })
-
 
 // Add the description and task group to some of the tasks that make
 // sense at the user-level help.

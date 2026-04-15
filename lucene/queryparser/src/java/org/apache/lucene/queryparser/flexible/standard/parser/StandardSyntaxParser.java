@@ -18,11 +18,16 @@
  */
 package org.apache.lucene.queryparser.flexible.standard.parser;
 
-import java.io.StringReader;
-import java.io.Reader;
-import java.util.Collections;
-import java.util.ArrayList;
+import static org.apache.lucene.queryparser.flexible.standard.parser.EscapeQuerySyntaxImpl.discardEscapeChar;
 
+import java.io.Reader;
+import java.io.StringReader;
+import java.util.ArrayList;
+import java.util.Collections;
+import org.apache.lucene.queryparser.charstream.CharStream;
+import org.apache.lucene.queryparser.charstream.FastCharStream;
+import org.apache.lucene.queryparser.flexible.core.QueryNodeParseException;
+import org.apache.lucene.queryparser.flexible.core.messages.QueryParserMessages;
 import org.apache.lucene.queryparser.flexible.core.nodes.AndQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.BooleanQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.BoostQueryNode;
@@ -34,11 +39,13 @@ import org.apache.lucene.queryparser.flexible.core.nodes.OrQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.QueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.QuotedFieldQueryNode;
 import org.apache.lucene.queryparser.flexible.core.nodes.SlopQueryNode;
+import org.apache.lucene.queryparser.flexible.core.parser.SyntaxParser;
 import org.apache.lucene.queryparser.flexible.messages.Message;
 import org.apache.lucene.queryparser.flexible.messages.MessageImpl;
-import org.apache.lucene.queryparser.flexible.core.QueryNodeParseException;
-import org.apache.lucene.queryparser.flexible.core.messages.QueryParserMessages;
-import org.apache.lucene.queryparser.flexible.core.parser.SyntaxParser;
+import org.apache.lucene.queryparser.flexible.standard.nodes.IntervalQueryNode;
+import org.apache.lucene.queryparser.flexible.standard.nodes.MinShouldMatchNode;
+import org.apache.lucene.queryparser.flexible.standard.nodes.RegexpQueryNode;
+import org.apache.lucene.queryparser.flexible.standard.nodes.TermRangeQueryNode;
 import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.After;
 import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.AnalyzedText;
 import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.AtLeast;
@@ -62,26 +69,19 @@ import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.Unordere
 import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.UnorderedNoOverlaps;
 import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.Wildcard;
 import org.apache.lucene.queryparser.flexible.standard.nodes.intervalfn.Within;
-import org.apache.lucene.queryparser.flexible.standard.nodes.IntervalQueryNode;
-import org.apache.lucene.queryparser.flexible.standard.nodes.MinShouldMatchNode;
-import org.apache.lucene.queryparser.flexible.standard.nodes.RegexpQueryNode;
-import org.apache.lucene.queryparser.charstream.CharStream;
-import org.apache.lucene.queryparser.charstream.FastCharStream;
-import org.apache.lucene.queryparser.flexible.standard.nodes.TermRangeQueryNode;
 
-import static org.apache.lucene.queryparser.flexible.standard.parser.EscapeQuerySyntaxImpl.discardEscapeChar;
-
-/**
- * Parser for the standard Lucene syntax
- */
-@SuppressWarnings({"unused","null"}) public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserConstants {
+/** Parser for the standard Lucene syntax */
+@SuppressWarnings({"unused", "null"})
+public class StandardSyntaxParser implements SyntaxParser, StandardSyntaxParserConstants {
   public StandardSyntaxParser() {
     this(new FastCharStream(Reader.nullReader()));
   }
 
   /**
-   * Parses a query string, returning a {@link org.apache.lucene.queryparser.flexible.core.nodes.QueryNode}.
-   * @param query  the query string to be parsed.
+   * Parses a query string, returning a {@link
+   * org.apache.lucene.queryparser.flexible.core.nodes.QueryNode}.
+   *
+   * @param query the query string to be parsed.
    * @throws ParseException if the parsing fails
    */
   @Override
@@ -93,7 +93,8 @@ import static org.apache.lucene.queryparser.flexible.standard.parser.EscapeQuery
       tme.setQuery(query);
       throw tme;
     } catch (Error tme) {
-      Message message = new MessageImpl(QueryParserMessages.INVALID_SYNTAX_CANNOT_PARSE, query, tme.getMessage());
+      Message message =
+          new MessageImpl(QueryParserMessages.INVALID_SYNTAX_CANNOT_PARSE, query, tme.getMessage());
       QueryNodeParseException e = new QueryNodeParseException(tme);
       e.setQuery(query);
       e.setNonLocalizedMessage(message);
@@ -109,40 +110,45 @@ import static org.apache.lucene.queryparser.flexible.standard.parser.EscapeQuery
     return Integer.parseInt(token.image);
   }
 
-  final public QueryNode TopLevelQuery(CharSequence field) throws ParseException {QueryNode q;
+  public final QueryNode TopLevelQuery(CharSequence field) throws ParseException {
+    QueryNode q;
     q = Query(field);
     jj_consume_token(0);
-{if ("" != null) return q;}
+    {
+      if ("" != null) return q;
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private QueryNode Query(CharSequence field) throws ParseException {ArrayList<QueryNode> clauses = new ArrayList<>();
-  QueryNode node;
+  private final QueryNode Query(CharSequence field) throws ParseException {
+    ArrayList<QueryNode> clauses = new ArrayList<>();
+    QueryNode node;
     label_1:
     while (true) {
       node = DisjQuery(field);
-clauses.add(node);
-      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case NOT:
-      case FN_PREFIX:
-      case PLUS:
-      case MINUS:
-      case QUOTED:
-      case NUMBER:
-      case TERM:
-      case REGEXPTERM:
-      case RANGEIN_START:
-      case RANGEEX_START:
-      case LPAREN:{
-        ;
-        break;
-        }
-      default:
-        jj_la1[0] = jj_gen;
-        break label_1;
+      clauses.add(node);
+      switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+        case NOT:
+        case FN_PREFIX:
+        case PLUS:
+        case MINUS:
+        case QUOTED:
+        case NUMBER:
+        case TERM:
+        case REGEXPTERM:
+        case RANGEIN_START:
+        case RANGEEX_START:
+        case LPAREN:
+          {
+            ;
+            break;
+          }
+        default:
+          jj_la1[0] = jj_gen;
+          break label_1;
       }
     }
-// Handle the case of a "pure" negation query which
+    // Handle the case of a "pure" negation query which
     // needs to be wrapped as a boolean query, otherwise
     // the returned result drops the negation.
     if (clauses.size() == 1) {
@@ -153,293 +159,376 @@ clauses.add(node);
       }
     }
 
-    {if ("" != null) return clauses.size() == 1 ? clauses.get(0) : new BooleanQueryNode(clauses);}
+    {
+      if ("" != null) return clauses.size() == 1 ? clauses.get(0) : new BooleanQueryNode(clauses);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private QueryNode DisjQuery(CharSequence field) throws ParseException {ArrayList<QueryNode> clauses = new ArrayList<>();
-  QueryNode node;
+  private final QueryNode DisjQuery(CharSequence field) throws ParseException {
+    ArrayList<QueryNode> clauses = new ArrayList<>();
+    QueryNode node;
     node = ConjQuery(field);
-clauses.add(node);
+    clauses.add(node);
     label_2:
     while (true) {
-      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case OR:{
-        ;
-        break;
-        }
-      default:
-        jj_la1[1] = jj_gen;
-        break label_2;
+      switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+        case OR:
+          {
+            ;
+            break;
+          }
+        default:
+          jj_la1[1] = jj_gen;
+          break label_2;
       }
       jj_consume_token(OR);
       node = ConjQuery(field);
-clauses.add(node);
+      clauses.add(node);
     }
-{if ("" != null) return clauses.size() == 1 ? clauses.get(0) : new OrQueryNode(clauses);}
+    {
+      if ("" != null) return clauses.size() == 1 ? clauses.get(0) : new OrQueryNode(clauses);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private QueryNode ConjQuery(CharSequence field) throws ParseException {ArrayList<QueryNode> clauses = new ArrayList<>();
-  QueryNode node;
+  private final QueryNode ConjQuery(CharSequence field) throws ParseException {
+    ArrayList<QueryNode> clauses = new ArrayList<>();
+    QueryNode node;
     node = ModClause(field);
-clauses.add(node);
+    clauses.add(node);
     label_3:
     while (true) {
-      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case AND:{
-        ;
-        break;
-        }
-      default:
-        jj_la1[2] = jj_gen;
-        break label_3;
+      switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+        case AND:
+          {
+            ;
+            break;
+          }
+        default:
+          jj_la1[2] = jj_gen;
+          break label_3;
       }
       jj_consume_token(AND);
       node = ModClause(field);
-clauses.add(node);
+      clauses.add(node);
     }
-{if ("" != null) return clauses.size() == 1 ? clauses.get(0) : new AndQueryNode(clauses);}
+    {
+      if ("" != null) return clauses.size() == 1 ? clauses.get(0) : new AndQueryNode(clauses);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private QueryNode ModClause(CharSequence field) throws ParseException {QueryNode q;
-  ModifierQueryNode.Modifier modifier = ModifierQueryNode.Modifier.MOD_NONE;
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case NOT:
-    case PLUS:
-    case MINUS:{
-      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case PLUS:{
-        jj_consume_token(PLUS);
-modifier = ModifierQueryNode.Modifier.MOD_REQ;
-        break;
-        }
+  private final QueryNode ModClause(CharSequence field) throws ParseException {
+    QueryNode q;
+    ModifierQueryNode.Modifier modifier = ModifierQueryNode.Modifier.MOD_NONE;
+    switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
       case NOT:
-      case MINUS:{
-        switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-        case MINUS:{
-          jj_consume_token(MINUS);
-          break;
+      case PLUS:
+      case MINUS:
+        {
+          switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+            case PLUS:
+              {
+                jj_consume_token(PLUS);
+                modifier = ModifierQueryNode.Modifier.MOD_REQ;
+                break;
+              }
+            case NOT:
+            case MINUS:
+              {
+                switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+                  case MINUS:
+                    {
+                      jj_consume_token(MINUS);
+                      break;
+                    }
+                  case NOT:
+                    {
+                      jj_consume_token(NOT);
+                      break;
+                    }
+                  default:
+                    jj_la1[3] = jj_gen;
+                    jj_consume_token(-1);
+                    throw new ParseException();
+                }
+                modifier = ModifierQueryNode.Modifier.MOD_NOT;
+                break;
+              }
+            default:
+              jj_la1[4] = jj_gen;
+              jj_consume_token(-1);
+              throw new ParseException();
           }
-        case NOT:{
-          jj_consume_token(NOT);
           break;
-          }
-        default:
-          jj_la1[3] = jj_gen;
-          jj_consume_token(-1);
-          throw new ParseException();
-        }
-modifier = ModifierQueryNode.Modifier.MOD_NOT;
-        break;
         }
       default:
-        jj_la1[4] = jj_gen;
-        jj_consume_token(-1);
-        throw new ParseException();
-      }
-      break;
-      }
-    default:
-      jj_la1[5] = jj_gen;
-      ;
+        jj_la1[5] = jj_gen;
+        ;
     }
     q = Clause(field);
-if (modifier != ModifierQueryNode.Modifier.MOD_NONE) {
+    if (modifier != ModifierQueryNode.Modifier.MOD_NONE) {
       q = new ModifierQueryNode(q, modifier);
     }
-    {if ("" != null) return q;}
+    {
+      if ("" != null) return q;
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private QueryNode Clause(CharSequence field) throws ParseException {QueryNode q;
+  private final QueryNode Clause(CharSequence field) throws ParseException {
+    QueryNode q;
     if (jj_2_3(2)) {
       q = FieldRangeExpr(field);
     } else {
-      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case FN_PREFIX:
-      case QUOTED:
-      case NUMBER:
-      case TERM:
-      case REGEXPTERM:
-      case RANGEIN_START:
-      case RANGEEX_START:
-      case LPAREN:{
-        if (jj_2_1(2)) {
-          field = FieldName();
-          switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-          case OP_COLON:{
-            jj_consume_token(OP_COLON);
-            break;
+      switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+        case FN_PREFIX:
+        case QUOTED:
+        case NUMBER:
+        case TERM:
+        case REGEXPTERM:
+        case RANGEIN_START:
+        case RANGEEX_START:
+        case LPAREN:
+          {
+            if (jj_2_1(2)) {
+              field = FieldName();
+              switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+                case OP_COLON:
+                  {
+                    jj_consume_token(OP_COLON);
+                    break;
+                  }
+                case OP_EQUAL:
+                  {
+                    jj_consume_token(OP_EQUAL);
+                    break;
+                  }
+                default:
+                  jj_la1[6] = jj_gen;
+                  jj_consume_token(-1);
+                  throw new ParseException();
+              }
+            } else {
+              ;
             }
-          case OP_EQUAL:{
-            jj_consume_token(OP_EQUAL);
-            break;
+            if (jj_2_2(2)) {
+              q = Term(field);
+            } else {
+              switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+                case LPAREN:
+                  {
+                    q = GroupingExpr(field);
+                    break;
+                  }
+                case FN_PREFIX:
+                case QUOTED:
+                case NUMBER:
+                case TERM:
+                  {
+                    q = IntervalExpr(field);
+                    break;
+                  }
+                default:
+                  jj_la1[7] = jj_gen;
+                  jj_consume_token(-1);
+                  throw new ParseException();
+              }
             }
-          default:
-            jj_la1[6] = jj_gen;
-            jj_consume_token(-1);
-            throw new ParseException();
+            break;
           }
-        } else {
-          ;
-        }
-        if (jj_2_2(2)) {
-          q = Term(field);
-        } else {
-          switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-          case LPAREN:{
-            q = GroupingExpr(field);
-            break;
-            }
-          case FN_PREFIX:
-          case QUOTED:
-          case NUMBER:
-          case TERM:{
-            q = IntervalExpr(field);
-            break;
-            }
-          default:
-            jj_la1[7] = jj_gen;
-            jj_consume_token(-1);
-            throw new ParseException();
-          }
-        }
-        break;
-        }
-      default:
-        jj_la1[8] = jj_gen;
-        jj_consume_token(-1);
-        throw new ParseException();
+        default:
+          jj_la1[8] = jj_gen;
+          jj_consume_token(-1);
+          throw new ParseException();
       }
     }
-{if ("" != null) return q;}
+    {
+      if ("" != null) return q;
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private CharSequence FieldName() throws ParseException {Token name;
+  private final CharSequence FieldName() throws ParseException {
+    Token name;
     name = jj_consume_token(TERM);
-{if ("" != null) return discardEscapeChar(name.image);}
+    {
+      if ("" != null) return discardEscapeChar(name.image);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private QueryNode GroupingExpr(CharSequence field) throws ParseException {QueryNode q;
-  Token boost, minShouldMatch = null;
+  private final QueryNode GroupingExpr(CharSequence field) throws ParseException {
+    QueryNode q;
+    Token boost, minShouldMatch = null;
     jj_consume_token(LPAREN);
     q = Query(field);
     jj_consume_token(RPAREN);
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case CARAT:{
-      q = Boost(q);
-      break;
-      }
-    default:
-      jj_la1[9] = jj_gen;
-      ;
+    switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+      case CARAT:
+        {
+          q = Boost(q);
+          break;
+        }
+      default:
+        jj_la1[9] = jj_gen;
+        ;
     }
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case 56:{
-      jj_consume_token(56);
-      minShouldMatch = jj_consume_token(NUMBER);
-      break;
-      }
-    default:
-      jj_la1[10] = jj_gen;
-      ;
+    switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+      case 56:
+        {
+          jj_consume_token(56);
+          minShouldMatch = jj_consume_token(NUMBER);
+          break;
+        }
+      default:
+        jj_la1[10] = jj_gen;
+        ;
     }
-if (minShouldMatch != null) {
+    if (minShouldMatch != null) {
       q = new MinShouldMatchNode(parseInt(minShouldMatch), new GroupQueryNode(q));
     } else {
       q = new GroupQueryNode(q);
     }
-    {if ("" != null) return q;}
+    {
+      if ("" != null) return q;
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalQueryNode IntervalExpr(CharSequence field) throws ParseException {IntervalFunction source;
+  private final IntervalQueryNode IntervalExpr(CharSequence field) throws ParseException {
+    IntervalFunction source;
     source = IntervalFun();
-{if ("" != null) return new IntervalQueryNode(field == null ? null : field.toString(), source);}
+    {
+      if ("" != null) return new IntervalQueryNode(field == null ? null : field.toString(), source);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalFun() throws ParseException {IntervalFunction source;
+  private final IntervalFunction IntervalFun() throws ParseException {
+    IntervalFunction source;
     if (jj_2_4(2)) {
       source = IntervalAtLeast();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_5(2)) {
       source = IntervalMaxWidth();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_6(2)) {
       source = IntervalMaxGaps();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_7(2)) {
       source = IntervalOrdered();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_8(2)) {
       source = IntervalUnordered();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_9(2)) {
       source = IntervalUnorderedNoOverlaps();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_10(2)) {
       source = IntervalOr();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_11(2)) {
       source = IntervalWildcard();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_12(2)) {
       source = IntervalAfter();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_13(2)) {
       source = IntervalBefore();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_14(2)) {
       source = IntervalPhrase();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_15(2)) {
       source = IntervalContaining();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_16(2)) {
       source = IntervalNotContaining();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_17(2)) {
       source = IntervalContainedBy();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_18(2)) {
       source = IntervalNotContainedBy();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_19(2)) {
       source = IntervalWithin();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_20(2)) {
       source = IntervalNotWithin();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_21(2)) {
       source = IntervalOverlapping();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_22(2)) {
       source = IntervalNonOverlapping();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_23(2)) {
       source = IntervalExtend();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_24(2)) {
       source = IntervalFuzzyTerm();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else if (jj_2_25(2)) {
       source = IntervalText();
-{if ("" != null) return source;}
+      {
+        if ("" != null) return source;
+      }
     } else {
       jj_consume_token(-1);
       throw new ParseException();
     }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalAtLeast() throws ParseException {IntervalFunction source;
-  ArrayList<IntervalFunction> sources = new ArrayList<IntervalFunction>();
-  Token minShouldMatch;
+  private final IntervalFunction IntervalAtLeast() throws ParseException {
+    IntervalFunction source;
+    ArrayList<IntervalFunction> sources = new ArrayList<IntervalFunction>();
+    Token minShouldMatch;
     jj_consume_token(FN_PREFIX);
     jj_consume_token(ATLEAST);
     jj_consume_token(LPAREN);
@@ -447,242 +536,289 @@ if (minShouldMatch != null) {
     label_4:
     while (true) {
       source = IntervalFun();
-sources.add(source);
-      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case FN_PREFIX:
-      case QUOTED:
-      case NUMBER:
-      case TERM:{
-        ;
-        break;
-        }
-      default:
-        jj_la1[11] = jj_gen;
-        break label_4;
+      sources.add(source);
+      switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+        case FN_PREFIX:
+        case QUOTED:
+        case NUMBER:
+        case TERM:
+          {
+            ;
+            break;
+          }
+        default:
+          jj_la1[11] = jj_gen;
+          break label_4;
       }
     }
     jj_consume_token(RPAREN);
-{if ("" != null) return new AtLeast(parseInt(minShouldMatch), sources);}
+    {
+      if ("" != null) return new AtLeast(parseInt(minShouldMatch), sources);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalMaxWidth() throws ParseException {IntervalFunction source;
-  Token maxWidth;
+  private final IntervalFunction IntervalMaxWidth() throws ParseException {
+    IntervalFunction source;
+    Token maxWidth;
     jj_consume_token(FN_PREFIX);
     jj_consume_token(MAXWIDTH);
     jj_consume_token(LPAREN);
     maxWidth = jj_consume_token(NUMBER);
     source = IntervalFun();
     jj_consume_token(RPAREN);
-{if ("" != null) return new MaxWidth(parseInt(maxWidth), source);}
+    {
+      if ("" != null) return new MaxWidth(parseInt(maxWidth), source);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalMaxGaps() throws ParseException {IntervalFunction source;
-  Token maxGaps;
+  private final IntervalFunction IntervalMaxGaps() throws ParseException {
+    IntervalFunction source;
+    Token maxGaps;
     jj_consume_token(FN_PREFIX);
     jj_consume_token(MAXGAPS);
     jj_consume_token(LPAREN);
     maxGaps = jj_consume_token(NUMBER);
     source = IntervalFun();
     jj_consume_token(RPAREN);
-{if ("" != null) return new MaxGaps(parseInt(maxGaps), source);}
+    {
+      if ("" != null) return new MaxGaps(parseInt(maxGaps), source);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalUnordered() throws ParseException {IntervalFunction source;
-  ArrayList<IntervalFunction> sources = new ArrayList<IntervalFunction>();
+  private final IntervalFunction IntervalUnordered() throws ParseException {
+    IntervalFunction source;
+    ArrayList<IntervalFunction> sources = new ArrayList<IntervalFunction>();
     jj_consume_token(FN_PREFIX);
     jj_consume_token(UNORDERED);
     jj_consume_token(LPAREN);
     label_5:
     while (true) {
       source = IntervalFun();
-sources.add(source);
-      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case FN_PREFIX:
-      case QUOTED:
-      case NUMBER:
-      case TERM:{
-        ;
-        break;
-        }
-      default:
-        jj_la1[12] = jj_gen;
-        break label_5;
+      sources.add(source);
+      switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+        case FN_PREFIX:
+        case QUOTED:
+        case NUMBER:
+        case TERM:
+          {
+            ;
+            break;
+          }
+        default:
+          jj_la1[12] = jj_gen;
+          break label_5;
       }
     }
     jj_consume_token(RPAREN);
-{if ("" != null) return new Unordered(sources);}
+    {
+      if ("" != null) return new Unordered(sources);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalUnorderedNoOverlaps() throws ParseException {IntervalFunction a, b;
+  private final IntervalFunction IntervalUnorderedNoOverlaps() throws ParseException {
+    IntervalFunction a, b;
     jj_consume_token(FN_PREFIX);
     jj_consume_token(UNORDERED_NO_OVERLAPS);
     jj_consume_token(LPAREN);
     a = IntervalFun();
     b = IntervalFun();
     jj_consume_token(RPAREN);
-{if ("" != null) return new UnorderedNoOverlaps(a, b);}
+    {
+      if ("" != null) return new UnorderedNoOverlaps(a, b);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalOrdered() throws ParseException {IntervalFunction source;
-  ArrayList<IntervalFunction> sources = new ArrayList<IntervalFunction>();
+  private final IntervalFunction IntervalOrdered() throws ParseException {
+    IntervalFunction source;
+    ArrayList<IntervalFunction> sources = new ArrayList<IntervalFunction>();
     jj_consume_token(FN_PREFIX);
     jj_consume_token(ORDERED);
     jj_consume_token(LPAREN);
     label_6:
     while (true) {
       source = IntervalFun();
-sources.add(source);
-      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case FN_PREFIX:
-      case QUOTED:
-      case NUMBER:
-      case TERM:{
-        ;
-        break;
-        }
-      default:
-        jj_la1[13] = jj_gen;
-        break label_6;
+      sources.add(source);
+      switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+        case FN_PREFIX:
+        case QUOTED:
+        case NUMBER:
+        case TERM:
+          {
+            ;
+            break;
+          }
+        default:
+          jj_la1[13] = jj_gen;
+          break label_6;
       }
     }
     jj_consume_token(RPAREN);
-{if ("" != null) return new Ordered(sources);}
+    {
+      if ("" != null) return new Ordered(sources);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalOr() throws ParseException {IntervalFunction source;
-  ArrayList<IntervalFunction> sources = new ArrayList<IntervalFunction>();
+  private final IntervalFunction IntervalOr() throws ParseException {
+    IntervalFunction source;
+    ArrayList<IntervalFunction> sources = new ArrayList<IntervalFunction>();
     jj_consume_token(FN_PREFIX);
     jj_consume_token(FN_OR);
     jj_consume_token(LPAREN);
     label_7:
     while (true) {
       source = IntervalFun();
-sources.add(source);
-      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case FN_PREFIX:
-      case QUOTED:
-      case NUMBER:
-      case TERM:{
-        ;
-        break;
-        }
-      default:
-        jj_la1[14] = jj_gen;
-        break label_7;
+      sources.add(source);
+      switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+        case FN_PREFIX:
+        case QUOTED:
+        case NUMBER:
+        case TERM:
+          {
+            ;
+            break;
+          }
+        default:
+          jj_la1[14] = jj_gen;
+          break label_7;
       }
     }
     jj_consume_token(RPAREN);
-{if ("" != null) return new Or(sources);}
+    {
+      if ("" != null) return new Or(sources);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalPhrase() throws ParseException {IntervalFunction source;
-  ArrayList<IntervalFunction> sources = new ArrayList<IntervalFunction>();
+  private final IntervalFunction IntervalPhrase() throws ParseException {
+    IntervalFunction source;
+    ArrayList<IntervalFunction> sources = new ArrayList<IntervalFunction>();
     jj_consume_token(FN_PREFIX);
     jj_consume_token(PHRASE);
     jj_consume_token(LPAREN);
     label_8:
     while (true) {
       source = IntervalFun();
-sources.add(source);
-      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case FN_PREFIX:
-      case QUOTED:
-      case NUMBER:
-      case TERM:{
-        ;
-        break;
-        }
-      default:
-        jj_la1[15] = jj_gen;
-        break label_8;
+      sources.add(source);
+      switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+        case FN_PREFIX:
+        case QUOTED:
+        case NUMBER:
+        case TERM:
+          {
+            ;
+            break;
+          }
+        default:
+          jj_la1[15] = jj_gen;
+          break label_8;
       }
     }
     jj_consume_token(RPAREN);
-{if ("" != null) return new Phrase(sources);}
+    {
+      if ("" != null) return new Phrase(sources);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalBefore() throws ParseException {IntervalFunction source;
-  IntervalFunction reference;
+  private final IntervalFunction IntervalBefore() throws ParseException {
+    IntervalFunction source;
+    IntervalFunction reference;
     jj_consume_token(FN_PREFIX);
     jj_consume_token(BEFORE);
     jj_consume_token(LPAREN);
     source = IntervalFun();
     reference = IntervalFun();
     jj_consume_token(RPAREN);
-{if ("" != null) return new Before(source, reference);}
+    {
+      if ("" != null) return new Before(source, reference);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalAfter() throws ParseException {IntervalFunction source;
-  IntervalFunction reference;
+  private final IntervalFunction IntervalAfter() throws ParseException {
+    IntervalFunction source;
+    IntervalFunction reference;
     jj_consume_token(FN_PREFIX);
     jj_consume_token(AFTER);
     jj_consume_token(LPAREN);
     source = IntervalFun();
     reference = IntervalFun();
     jj_consume_token(RPAREN);
-{if ("" != null) return new After(source, reference);}
+    {
+      if ("" != null) return new After(source, reference);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalContaining() throws ParseException {IntervalFunction big;
-  IntervalFunction small;
+  private final IntervalFunction IntervalContaining() throws ParseException {
+    IntervalFunction big;
+    IntervalFunction small;
     jj_consume_token(FN_PREFIX);
     jj_consume_token(CONTAINING);
     jj_consume_token(LPAREN);
     big = IntervalFun();
     small = IntervalFun();
     jj_consume_token(RPAREN);
-{if ("" != null) return new Containing(big, small);}
+    {
+      if ("" != null) return new Containing(big, small);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalNotContaining() throws ParseException {IntervalFunction minuend;
-  IntervalFunction subtrahend;
+  private final IntervalFunction IntervalNotContaining() throws ParseException {
+    IntervalFunction minuend;
+    IntervalFunction subtrahend;
     jj_consume_token(FN_PREFIX);
     jj_consume_token(NOT_CONTAINING);
     jj_consume_token(LPAREN);
     minuend = IntervalFun();
     subtrahend = IntervalFun();
     jj_consume_token(RPAREN);
-{if ("" != null) return new NotContaining(minuend, subtrahend);}
+    {
+      if ("" != null) return new NotContaining(minuend, subtrahend);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalContainedBy() throws ParseException {IntervalFunction big;
-  IntervalFunction small;
+  private final IntervalFunction IntervalContainedBy() throws ParseException {
+    IntervalFunction big;
+    IntervalFunction small;
     jj_consume_token(FN_PREFIX);
     jj_consume_token(CONTAINED_BY);
     jj_consume_token(LPAREN);
     small = IntervalFun();
     big = IntervalFun();
     jj_consume_token(RPAREN);
-{if ("" != null) return new ContainedBy(small, big);}
+    {
+      if ("" != null) return new ContainedBy(small, big);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalNotContainedBy() throws ParseException {IntervalFunction big;
-  IntervalFunction small;
+  private final IntervalFunction IntervalNotContainedBy() throws ParseException {
+    IntervalFunction big;
+    IntervalFunction small;
     jj_consume_token(FN_PREFIX);
     jj_consume_token(NOT_CONTAINED_BY);
     jj_consume_token(LPAREN);
     small = IntervalFun();
     big = IntervalFun();
     jj_consume_token(RPAREN);
-{if ("" != null) return new NotContainedBy(small, big);}
+    {
+      if ("" != null) return new NotContainedBy(small, big);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalWithin() throws ParseException {IntervalFunction source, reference;
-  Token positions;
+  private final IntervalFunction IntervalWithin() throws ParseException {
+    IntervalFunction source, reference;
+    Token positions;
     jj_consume_token(FN_PREFIX);
     jj_consume_token(WITHIN);
     jj_consume_token(LPAREN);
@@ -690,12 +826,15 @@ sources.add(source);
     positions = jj_consume_token(NUMBER);
     reference = IntervalFun();
     jj_consume_token(RPAREN);
-{if ("" != null) return new Within(source, parseInt(positions), reference);}
+    {
+      if ("" != null) return new Within(source, parseInt(positions), reference);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalExtend() throws ParseException {IntervalFunction source;
-  Token before, after;
+  private final IntervalFunction IntervalExtend() throws ParseException {
+    IntervalFunction source;
+    Token before, after;
     jj_consume_token(FN_PREFIX);
     jj_consume_token(EXTEND);
     jj_consume_token(LPAREN);
@@ -703,12 +842,15 @@ sources.add(source);
     before = jj_consume_token(NUMBER);
     after = jj_consume_token(NUMBER);
     jj_consume_token(RPAREN);
-{if ("" != null) return new Extend(source, parseInt(before), parseInt(after));}
+    {
+      if ("" != null) return new Extend(source, parseInt(before), parseInt(after));
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalNotWithin() throws ParseException {IntervalFunction minuend, subtrahend;
-  Token positions;
+  private final IntervalFunction IntervalNotWithin() throws ParseException {
+    IntervalFunction minuend, subtrahend;
+    Token positions;
     jj_consume_token(FN_PREFIX);
     jj_consume_token(NOT_WITHIN);
     jj_consume_token(LPAREN);
@@ -716,116 +858,138 @@ sources.add(source);
     positions = jj_consume_token(NUMBER);
     subtrahend = IntervalFun();
     jj_consume_token(RPAREN);
-{if ("" != null) return new NotWithin(minuend, parseInt(positions), subtrahend);}
+    {
+      if ("" != null) return new NotWithin(minuend, parseInt(positions), subtrahend);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalOverlapping() throws ParseException {IntervalFunction source, reference;
+  private final IntervalFunction IntervalOverlapping() throws ParseException {
+    IntervalFunction source, reference;
     jj_consume_token(FN_PREFIX);
     jj_consume_token(OVERLAPPING);
     jj_consume_token(LPAREN);
     source = IntervalFun();
     reference = IntervalFun();
     jj_consume_token(RPAREN);
-{if ("" != null) return new Overlapping(source, reference);}
+    {
+      if ("" != null) return new Overlapping(source, reference);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalNonOverlapping() throws ParseException {IntervalFunction minuend, subtrahend;
+  private final IntervalFunction IntervalNonOverlapping() throws ParseException {
+    IntervalFunction minuend, subtrahend;
     jj_consume_token(FN_PREFIX);
     jj_consume_token(NON_OVERLAPPING);
     jj_consume_token(LPAREN);
     minuend = IntervalFun();
     subtrahend = IntervalFun();
     jj_consume_token(RPAREN);
-{if ("" != null) return new NonOverlapping(minuend, subtrahend);}
+    {
+      if ("" != null) return new NonOverlapping(minuend, subtrahend);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalWildcard() throws ParseException {String wildcard;
-  Token maxExpansions = null;
+  private final IntervalFunction IntervalWildcard() throws ParseException {
+    String wildcard;
+    Token maxExpansions = null;
     jj_consume_token(FN_PREFIX);
     jj_consume_token(WILDCARD);
     jj_consume_token(LPAREN);
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case NUMBER:
-    case TERM:{
-      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case TERM:{
-        jj_consume_token(TERM);
-        break;
+    switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+      case NUMBER:
+      case TERM:
+        {
+          switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+            case TERM:
+              {
+                jj_consume_token(TERM);
+                break;
+              }
+            case NUMBER:
+              {
+                jj_consume_token(NUMBER);
+                break;
+              }
+            default:
+              jj_la1[16] = jj_gen;
+              jj_consume_token(-1);
+              throw new ParseException();
+          }
+          wildcard = token.image;
+          break;
         }
-      case NUMBER:{
-        jj_consume_token(NUMBER);
-        break;
+      case QUOTED:
+        {
+          jj_consume_token(QUOTED);
+          wildcard = token.image.substring(1, token.image.length() - 1);
+          break;
         }
       default:
-        jj_la1[16] = jj_gen;
+        jj_la1[17] = jj_gen;
         jj_consume_token(-1);
         throw new ParseException();
-      }
-wildcard = token.image;
-      break;
-      }
-    case QUOTED:{
-      jj_consume_token(QUOTED);
-wildcard = token.image.substring(1, token.image.length() - 1);
-      break;
-      }
-    default:
-      jj_la1[17] = jj_gen;
-      jj_consume_token(-1);
-      throw new ParseException();
     }
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case NUMBER:{
-      maxExpansions = jj_consume_token(NUMBER);
-      break;
-      }
-    default:
-      jj_la1[18] = jj_gen;
-      ;
+    switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+      case NUMBER:
+        {
+          maxExpansions = jj_consume_token(NUMBER);
+          break;
+        }
+      default:
+        jj_la1[18] = jj_gen;
+        ;
     }
     jj_consume_token(RPAREN);
-{if ("" != null) return new Wildcard(wildcard, maxExpansions == null ? 0 : parseInt(maxExpansions));}
+    {
+      if ("" != null)
+        return new Wildcard(wildcard, maxExpansions == null ? 0 : parseInt(maxExpansions));
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private IntervalFunction IntervalFuzzyTerm() throws ParseException {String term;
-  Token maxEdits = null;
-  Token maxExpansions = null;
+  private final IntervalFunction IntervalFuzzyTerm() throws ParseException {
+    String term;
+    Token maxEdits = null;
+    Token maxExpansions = null;
     jj_consume_token(FN_PREFIX);
     jj_consume_token(FUZZYTERM);
     jj_consume_token(LPAREN);
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case NUMBER:
-    case TERM:{
-      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case TERM:{
-        jj_consume_token(TERM);
-        break;
+    switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+      case NUMBER:
+      case TERM:
+        {
+          switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+            case TERM:
+              {
+                jj_consume_token(TERM);
+                break;
+              }
+            case NUMBER:
+              {
+                jj_consume_token(NUMBER);
+                break;
+              }
+            default:
+              jj_la1[19] = jj_gen;
+              jj_consume_token(-1);
+              throw new ParseException();
+          }
+          term = token.image;
+          break;
         }
-      case NUMBER:{
-        jj_consume_token(NUMBER);
-        break;
+      case QUOTED:
+        {
+          jj_consume_token(QUOTED);
+          term = token.image.substring(1, token.image.length() - 1);
+          break;
         }
       default:
-        jj_la1[19] = jj_gen;
+        jj_la1[20] = jj_gen;
         jj_consume_token(-1);
         throw new ParseException();
-      }
-term = token.image;
-      break;
-      }
-    case QUOTED:{
-      jj_consume_token(QUOTED);
-term = token.image.substring(1, token.image.length() - 1);
-      break;
-      }
-    default:
-      jj_la1[20] = jj_gen;
-      jj_consume_token(-1);
-      throw new ParseException();
     }
     if (jj_2_26(2)) {
       maxEdits = jj_consume_token(NUMBER);
@@ -838,120 +1002,158 @@ term = token.image.substring(1, token.image.length() - 1);
       ;
     }
     jj_consume_token(RPAREN);
-{if ("" != null) return new FuzzyTerm(term,
-      maxEdits == null ? null : parseInt(maxEdits),
-      maxExpansions == null ? null : parseInt(maxExpansions));}
-    throw new Error("Missing return statement in function");
-}
-
-  final private IntervalFunction IntervalText() throws ParseException {
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case QUOTED:{
-      jj_consume_token(QUOTED);
-{if ("" != null) return new AnalyzedText(token.image.substring(1, token.image.length() - 1));}
-      break;
-      }
-    case NUMBER:
-    case TERM:{
-      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case TERM:{
-        jj_consume_token(TERM);
-        break;
-        }
-      case NUMBER:{
-        jj_consume_token(NUMBER);
-        break;
-        }
-      default:
-        jj_la1[21] = jj_gen;
-        jj_consume_token(-1);
-        throw new ParseException();
-      }
-{if ("" != null) return new AnalyzedText(token.image);}
-      break;
-      }
-    default:
-      jj_la1[22] = jj_gen;
-      jj_consume_token(-1);
-      throw new ParseException();
+    {
+      if ("" != null)
+        return new FuzzyTerm(
+            term,
+            maxEdits == null ? null : parseInt(maxEdits),
+            maxExpansions == null ? null : parseInt(maxExpansions));
     }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private QueryNode Boost(QueryNode node) throws ParseException {Token boost;
+  private final IntervalFunction IntervalText() throws ParseException {
+    switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+      case QUOTED:
+        {
+          jj_consume_token(QUOTED);
+          {
+            if ("" != null)
+              return new AnalyzedText(token.image.substring(1, token.image.length() - 1));
+          }
+          break;
+        }
+      case NUMBER:
+      case TERM:
+        {
+          switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+            case TERM:
+              {
+                jj_consume_token(TERM);
+                break;
+              }
+            case NUMBER:
+              {
+                jj_consume_token(NUMBER);
+                break;
+              }
+            default:
+              jj_la1[21] = jj_gen;
+              jj_consume_token(-1);
+              throw new ParseException();
+          }
+          {
+            if ("" != null) return new AnalyzedText(token.image);
+          }
+          break;
+        }
+      default:
+        jj_la1[22] = jj_gen;
+        jj_consume_token(-1);
+        throw new ParseException();
+    }
+    throw new Error("Missing return statement in function");
+  }
+
+  private final QueryNode Boost(QueryNode node) throws ParseException {
+    Token boost;
     jj_consume_token(CARAT);
     boost = jj_consume_token(NUMBER);
-{if ("" != null) return node == null ? node : new BoostQueryNode(node, parseFloat(boost));}
+    {
+      if ("" != null) return node == null ? node : new BoostQueryNode(node, parseFloat(boost));
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private QueryNode FuzzyOp(CharSequence field, Token term, QueryNode node) throws ParseException {Token similarity = null;
+  private final QueryNode FuzzyOp(CharSequence field, Token term, QueryNode node)
+      throws ParseException {
+    Token similarity = null;
     jj_consume_token(TILDE);
     if (jj_2_28(2)) {
       similarity = jj_consume_token(NUMBER);
     } else {
       ;
     }
-float fms = org.apache.lucene.search.FuzzyQuery.defaultMaxEdits;
+    float fms = org.apache.lucene.search.FuzzyQuery.defaultMaxEdits;
     if (similarity != null) {
       fms = parseFloat(similarity);
       if (fms < 0.0f) {
-        {if (true) throw new ParseException(new MessageImpl(QueryParserMessages.INVALID_SYNTAX_FUZZY_LIMITS));}
+        {
+          if (true)
+            throw new ParseException(
+                new MessageImpl(QueryParserMessages.INVALID_SYNTAX_FUZZY_LIMITS));
+        }
       } else if (fms >= 1.0f && fms != (int) fms) {
-        {if (true) throw new ParseException(new MessageImpl(QueryParserMessages.INVALID_SYNTAX_FUZZY_EDITS));}
+        {
+          if (true)
+            throw new ParseException(
+                new MessageImpl(QueryParserMessages.INVALID_SYNTAX_FUZZY_EDITS));
+        }
       }
     }
-    {if ("" != null) return new FuzzyQueryNode(field, discardEscapeChar(term.image), fms, term.beginColumn, term.endColumn);}
+    {
+      if ("" != null)
+        return new FuzzyQueryNode(
+            field, discardEscapeChar(term.image), fms, term.beginColumn, term.endColumn);
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private TermRangeQueryNode FieldRangeExpr(CharSequence field) throws ParseException {Token operator, term;
-  FieldQueryNode qLower, qUpper;
-  boolean lowerInclusive, upperInclusive;
+  private final TermRangeQueryNode FieldRangeExpr(CharSequence field) throws ParseException {
+    Token operator, term;
+    FieldQueryNode qLower, qUpper;
+    boolean lowerInclusive, upperInclusive;
     field = FieldName();
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case OP_LESSTHAN:{
-      jj_consume_token(OP_LESSTHAN);
-      break;
-      }
-    case OP_LESSTHANEQ:{
-      jj_consume_token(OP_LESSTHANEQ);
-      break;
-      }
-    case OP_MORETHAN:{
-      jj_consume_token(OP_MORETHAN);
-      break;
-      }
-    case OP_MORETHANEQ:{
-      jj_consume_token(OP_MORETHANEQ);
-      break;
-      }
-    default:
-      jj_la1[23] = jj_gen;
-      jj_consume_token(-1);
-      throw new ParseException();
+    switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+      case OP_LESSTHAN:
+        {
+          jj_consume_token(OP_LESSTHAN);
+          break;
+        }
+      case OP_LESSTHANEQ:
+        {
+          jj_consume_token(OP_LESSTHANEQ);
+          break;
+        }
+      case OP_MORETHAN:
+        {
+          jj_consume_token(OP_MORETHAN);
+          break;
+        }
+      case OP_MORETHANEQ:
+        {
+          jj_consume_token(OP_MORETHANEQ);
+          break;
+        }
+      default:
+        jj_la1[23] = jj_gen;
+        jj_consume_token(-1);
+        throw new ParseException();
     }
-operator = token;
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case TERM:{
-      jj_consume_token(TERM);
-      break;
-      }
-    case QUOTED:{
-      jj_consume_token(QUOTED);
-      break;
-      }
-    case NUMBER:{
-      jj_consume_token(NUMBER);
-      break;
-      }
-    default:
-      jj_la1[24] = jj_gen;
-      jj_consume_token(-1);
-      throw new ParseException();
+    operator = token;
+    switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+      case TERM:
+        {
+          jj_consume_token(TERM);
+          break;
+        }
+      case QUOTED:
+        {
+          jj_consume_token(QUOTED);
+          break;
+        }
+      case NUMBER:
+        {
+          jj_consume_token(NUMBER);
+          break;
+        }
+      default:
+        jj_la1[24] = jj_gen;
+        jj_consume_token(-1);
+        throw new ParseException();
     }
-term = token;
-if (term.kind == QUOTED) {
+    term = token;
+    if (term.kind == QUOTED) {
       term.image = term.image.substring(1, term.image.length() - 1);
     }
     switch (operator.kind) {
@@ -959,490 +1161,639 @@ if (term.kind == QUOTED) {
         lowerInclusive = true;
         upperInclusive = false;
         qLower = new FieldQueryNode(field, "*", term.beginColumn, term.endColumn);
-        qUpper = new FieldQueryNode(field, discardEscapeChar(term.image), term.beginColumn, term.endColumn);
+        qUpper =
+            new FieldQueryNode(
+                field, discardEscapeChar(term.image), term.beginColumn, term.endColumn);
         break;
       case OP_LESSTHANEQ:
         lowerInclusive = true;
         upperInclusive = true;
         qLower = new FieldQueryNode(field, "*", term.beginColumn, term.endColumn);
-        qUpper = new FieldQueryNode(field, discardEscapeChar(term.image), term.beginColumn, term.endColumn);
+        qUpper =
+            new FieldQueryNode(
+                field, discardEscapeChar(term.image), term.beginColumn, term.endColumn);
         break;
       case OP_MORETHAN:
         lowerInclusive = false;
         upperInclusive = true;
-        qLower = new FieldQueryNode(field, discardEscapeChar(term.image), term.beginColumn, term.endColumn);
+        qLower =
+            new FieldQueryNode(
+                field, discardEscapeChar(term.image), term.beginColumn, term.endColumn);
         qUpper = new FieldQueryNode(field, "*", term.beginColumn, term.endColumn);
         break;
       case OP_MORETHANEQ:
         lowerInclusive = true;
         upperInclusive = true;
-        qLower = new FieldQueryNode(field, discardEscapeChar(term.image), term.beginColumn, term.endColumn);
+        qLower =
+            new FieldQueryNode(
+                field, discardEscapeChar(term.image), term.beginColumn, term.endColumn);
         qUpper = new FieldQueryNode(field, "*", term.beginColumn, term.endColumn);
         break;
       default:
-        {if (true) throw new Error("Unhandled case, operator=" + operator);}
-    }
-    {if ("" != null) return new TermRangeQueryNode(qLower, qUpper, lowerInclusive, upperInclusive);}
-    throw new Error("Missing return statement in function");
-}
-
-  final private QueryNode Term(CharSequence field) throws ParseException {QueryNode q;
-  Token term, fuzzySlop=null;
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case REGEXPTERM:{
-      term = jj_consume_token(REGEXPTERM);
-String v = term.image.substring(1, term.image.length() - 1);
-          q = new RegexpQueryNode(field, v, 0, v.length());
-      break;
-      }
-    case NUMBER:
-    case TERM:{
-      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case TERM:{
-        term = jj_consume_token(TERM);
-        break;
+        {
+          if (true) throw new Error("Unhandled case, operator=" + operator);
         }
-      case NUMBER:{
-        term = jj_consume_token(NUMBER);
-        break;
+    }
+    {
+      if ("" != null) return new TermRangeQueryNode(qLower, qUpper, lowerInclusive, upperInclusive);
+    }
+    throw new Error("Missing return statement in function");
+  }
+
+  private final QueryNode Term(CharSequence field) throws ParseException {
+    QueryNode q;
+    Token term, fuzzySlop = null;
+    switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+      case REGEXPTERM:
+        {
+          term = jj_consume_token(REGEXPTERM);
+          String v = term.image.substring(1, term.image.length() - 1);
+          q = new RegexpQueryNode(field, v, 0, v.length());
+          break;
+        }
+      case NUMBER:
+      case TERM:
+        {
+          switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+            case TERM:
+              {
+                term = jj_consume_token(TERM);
+                break;
+              }
+            case NUMBER:
+              {
+                term = jj_consume_token(NUMBER);
+                break;
+              }
+            default:
+              jj_la1[25] = jj_gen;
+              jj_consume_token(-1);
+              throw new ParseException();
+          }
+          q =
+              new FieldQueryNode(
+                  field, discardEscapeChar(term.image), term.beginColumn, term.endColumn);
+          switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+            case TILDE:
+              {
+                q = FuzzyOp(field, term, q);
+                break;
+              }
+            default:
+              jj_la1[26] = jj_gen;
+              ;
+          }
+          break;
+        }
+      case RANGEIN_START:
+      case RANGEEX_START:
+        {
+          q = TermRangeExpr(field);
+          break;
+        }
+      case QUOTED:
+        {
+          q = QuotedTerm(field);
+          break;
         }
       default:
-        jj_la1[25] = jj_gen;
+        jj_la1[27] = jj_gen;
         jj_consume_token(-1);
         throw new ParseException();
-      }
-q = new FieldQueryNode(field, discardEscapeChar(term.image), term.beginColumn, term.endColumn);
-      switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-      case TILDE:{
-        q = FuzzyOp(field, term, q);
-        break;
+    }
+    switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+      case CARAT:
+        {
+          q = Boost(q);
+          break;
         }
       default:
-        jj_la1[26] = jj_gen;
+        jj_la1[28] = jj_gen;
         ;
-      }
-      break;
-      }
-    case RANGEIN_START:
-    case RANGEEX_START:{
-      q = TermRangeExpr(field);
-      break;
-      }
-    case QUOTED:{
-      q = QuotedTerm(field);
-      break;
-      }
-    default:
-      jj_la1[27] = jj_gen;
-      jj_consume_token(-1);
-      throw new ParseException();
     }
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case CARAT:{
-      q = Boost(q);
-      break;
-      }
-    default:
-      jj_la1[28] = jj_gen;
-      ;
+    {
+      if ("" != null) return q;
     }
-{if ("" != null) return q;}
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private QueryNode QuotedTerm(CharSequence field) throws ParseException {QueryNode q;
-  Token term, slop;
+  private final QueryNode QuotedTerm(CharSequence field) throws ParseException {
+    QueryNode q;
+    Token term, slop;
     term = jj_consume_token(QUOTED);
-String image = term.image.substring(1, term.image.length() - 1);
-    q = new QuotedFieldQueryNode(field, discardEscapeChar(image), term.beginColumn + 1, term.endColumn - 1);
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case TILDE:{
-      jj_consume_token(TILDE);
-      slop = jj_consume_token(NUMBER);
-q = new SlopQueryNode(q, parseInt(slop));
-      break;
-      }
-    default:
-      jj_la1[29] = jj_gen;
-      ;
+    String image = term.image.substring(1, term.image.length() - 1);
+    q =
+        new QuotedFieldQueryNode(
+            field, discardEscapeChar(image), term.beginColumn + 1, term.endColumn - 1);
+    switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+      case TILDE:
+        {
+          jj_consume_token(TILDE);
+          slop = jj_consume_token(NUMBER);
+          q = new SlopQueryNode(q, parseInt(slop));
+          break;
+        }
+      default:
+        jj_la1[29] = jj_gen;
+        ;
     }
-{if ("" != null) return q;}
+    {
+      if ("" != null) return q;
+    }
     throw new Error("Missing return statement in function");
-}
+  }
 
-  final private TermRangeQueryNode TermRangeExpr(CharSequence field) throws ParseException {Token left, right;
-  boolean leftInclusive = false;
-  boolean rightInclusive = false;
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case RANGEIN_START:{
-      jj_consume_token(RANGEIN_START);
-leftInclusive = true;
-      break;
-      }
-    case RANGEEX_START:{
-      jj_consume_token(RANGEEX_START);
-      break;
-      }
-    default:
-      jj_la1[30] = jj_gen;
-      jj_consume_token(-1);
-      throw new ParseException();
+  private final TermRangeQueryNode TermRangeExpr(CharSequence field) throws ParseException {
+    Token left, right;
+    boolean leftInclusive = false;
+    boolean rightInclusive = false;
+    switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+      case RANGEIN_START:
+        {
+          jj_consume_token(RANGEIN_START);
+          leftInclusive = true;
+          break;
+        }
+      case RANGEEX_START:
+        {
+          jj_consume_token(RANGEEX_START);
+          break;
+        }
+      default:
+        jj_la1[30] = jj_gen;
+        jj_consume_token(-1);
+        throw new ParseException();
     }
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case RANGE_GOOP:{
-      jj_consume_token(RANGE_GOOP);
-      break;
-      }
-    case RANGE_QUOTED:{
-      jj_consume_token(RANGE_QUOTED);
-      break;
-      }
-    case RANGE_TO:{
-      jj_consume_token(RANGE_TO);
-      break;
-      }
-    default:
-      jj_la1[31] = jj_gen;
-      jj_consume_token(-1);
-      throw new ParseException();
+    switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+      case RANGE_GOOP:
+        {
+          jj_consume_token(RANGE_GOOP);
+          break;
+        }
+      case RANGE_QUOTED:
+        {
+          jj_consume_token(RANGE_QUOTED);
+          break;
+        }
+      case RANGE_TO:
+        {
+          jj_consume_token(RANGE_TO);
+          break;
+        }
+      default:
+        jj_la1[31] = jj_gen;
+        jj_consume_token(-1);
+        throw new ParseException();
     }
-left = token;
+    left = token;
     jj_consume_token(RANGE_TO);
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case RANGE_GOOP:{
-      jj_consume_token(RANGE_GOOP);
-      break;
-      }
-    case RANGE_QUOTED:{
-      jj_consume_token(RANGE_QUOTED);
-      break;
-      }
-    case RANGE_TO:{
-      jj_consume_token(RANGE_TO);
-      break;
-      }
-    default:
-      jj_la1[32] = jj_gen;
-      jj_consume_token(-1);
-      throw new ParseException();
+    switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+      case RANGE_GOOP:
+        {
+          jj_consume_token(RANGE_GOOP);
+          break;
+        }
+      case RANGE_QUOTED:
+        {
+          jj_consume_token(RANGE_QUOTED);
+          break;
+        }
+      case RANGE_TO:
+        {
+          jj_consume_token(RANGE_TO);
+          break;
+        }
+      default:
+        jj_la1[32] = jj_gen;
+        jj_consume_token(-1);
+        throw new ParseException();
     }
-right = token;
-    switch ((jj_ntk==-1)?jj_ntk_f():jj_ntk) {
-    case RANGEIN_END:{
-      jj_consume_token(RANGEIN_END);
-rightInclusive = true;
-      break;
-      }
-    case RANGEEX_END:{
-      jj_consume_token(RANGEEX_END);
-      break;
-      }
-    default:
-      jj_la1[33] = jj_gen;
-      jj_consume_token(-1);
-      throw new ParseException();
+    right = token;
+    switch ((jj_ntk == -1) ? jj_ntk_f() : jj_ntk) {
+      case RANGEIN_END:
+        {
+          jj_consume_token(RANGEIN_END);
+          rightInclusive = true;
+          break;
+        }
+      case RANGEEX_END:
+        {
+          jj_consume_token(RANGEEX_END);
+          break;
+        }
+      default:
+        jj_la1[33] = jj_gen;
+        jj_consume_token(-1);
+        throw new ParseException();
     }
-if (left.kind == RANGE_QUOTED) {
+    if (left.kind == RANGE_QUOTED) {
       left.image = left.image.substring(1, left.image.length() - 1);
     }
     if (right.kind == RANGE_QUOTED) {
       right.image = right.image.substring(1, right.image.length() - 1);
     }
 
-    FieldQueryNode qLower = new FieldQueryNode(field,
-      discardEscapeChar(left.image), left.beginColumn, left.endColumn);
-    FieldQueryNode qUpper = new FieldQueryNode(field,
-      discardEscapeChar(right.image), right.beginColumn, right.endColumn);
+    FieldQueryNode qLower =
+        new FieldQueryNode(field, discardEscapeChar(left.image), left.beginColumn, left.endColumn);
+    FieldQueryNode qUpper =
+        new FieldQueryNode(
+            field, discardEscapeChar(right.image), right.beginColumn, right.endColumn);
 
-    {if ("" != null) return new TermRangeQueryNode(qLower, qUpper, leftInclusive, rightInclusive);}
+    {
+      if ("" != null) return new TermRangeQueryNode(qLower, qUpper, leftInclusive, rightInclusive);
+    }
     throw new Error("Missing return statement in function");
-}
-
-  private boolean jj_2_1(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_1()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(0, xla); }
   }
 
-  private boolean jj_2_2(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_2()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(1, xla); }
+  private boolean jj_2_1(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_1());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(0, xla);
+    }
   }
 
-  private boolean jj_2_3(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_3()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(2, xla); }
+  private boolean jj_2_2(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_2());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(1, xla);
+    }
   }
 
-  private boolean jj_2_4(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_4()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(3, xla); }
+  private boolean jj_2_3(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_3());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(2, xla);
+    }
   }
 
-  private boolean jj_2_5(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_5()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(4, xla); }
+  private boolean jj_2_4(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_4());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(3, xla);
+    }
   }
 
-  private boolean jj_2_6(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_6()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(5, xla); }
+  private boolean jj_2_5(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_5());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(4, xla);
+    }
   }
 
-  private boolean jj_2_7(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_7()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(6, xla); }
+  private boolean jj_2_6(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_6());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(5, xla);
+    }
   }
 
-  private boolean jj_2_8(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_8()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(7, xla); }
+  private boolean jj_2_7(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_7());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(6, xla);
+    }
   }
 
-  private boolean jj_2_9(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_9()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(8, xla); }
+  private boolean jj_2_8(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_8());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(7, xla);
+    }
   }
 
-  private boolean jj_2_10(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_10()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(9, xla); }
+  private boolean jj_2_9(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_9());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(8, xla);
+    }
   }
 
-  private boolean jj_2_11(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_11()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(10, xla); }
+  private boolean jj_2_10(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_10());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(9, xla);
+    }
   }
 
-  private boolean jj_2_12(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_12()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(11, xla); }
+  private boolean jj_2_11(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_11());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(10, xla);
+    }
   }
 
-  private boolean jj_2_13(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_13()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(12, xla); }
+  private boolean jj_2_12(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_12());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(11, xla);
+    }
   }
 
-  private boolean jj_2_14(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_14()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(13, xla); }
+  private boolean jj_2_13(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_13());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(12, xla);
+    }
   }
 
-  private boolean jj_2_15(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_15()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(14, xla); }
+  private boolean jj_2_14(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_14());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(13, xla);
+    }
   }
 
-  private boolean jj_2_16(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_16()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(15, xla); }
+  private boolean jj_2_15(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_15());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(14, xla);
+    }
   }
 
-  private boolean jj_2_17(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_17()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(16, xla); }
+  private boolean jj_2_16(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_16());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(15, xla);
+    }
   }
 
-  private boolean jj_2_18(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_18()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(17, xla); }
+  private boolean jj_2_17(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_17());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(16, xla);
+    }
   }
 
-  private boolean jj_2_19(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_19()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(18, xla); }
+  private boolean jj_2_18(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_18());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(17, xla);
+    }
   }
 
-  private boolean jj_2_20(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_20()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(19, xla); }
+  private boolean jj_2_19(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_19());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(18, xla);
+    }
   }
 
-  private boolean jj_2_21(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_21()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(20, xla); }
+  private boolean jj_2_20(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_20());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(19, xla);
+    }
   }
 
-  private boolean jj_2_22(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_22()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(21, xla); }
+  private boolean jj_2_21(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_21());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(20, xla);
+    }
   }
 
-  private boolean jj_2_23(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_23()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(22, xla); }
+  private boolean jj_2_22(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_22());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(21, xla);
+    }
   }
 
-  private boolean jj_2_24(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_24()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(23, xla); }
+  private boolean jj_2_23(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_23());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(22, xla);
+    }
   }
 
-  private boolean jj_2_25(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_25()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(24, xla); }
+  private boolean jj_2_24(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_24());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(23, xla);
+    }
   }
 
-  private boolean jj_2_26(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_26()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(25, xla); }
+  private boolean jj_2_25(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_25());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(24, xla);
+    }
   }
 
-  private boolean jj_2_27(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_27()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(26, xla); }
+  private boolean jj_2_26(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_26());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(25, xla);
+    }
   }
 
-  private boolean jj_2_28(int xla)
- {
-    jj_la = xla; jj_lastpos = jj_scanpos = token;
-    try { return (!jj_3_28()); }
-    catch(LookaheadSuccess ls) { return true; }
-    finally { jj_save(27, xla); }
+  private boolean jj_2_27(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_27());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(26, xla);
+    }
   }
 
-  private boolean jj_3R_IntervalUnorderedNoOverlaps_464_3_17()
- {
+  private boolean jj_2_28(int xla) {
+    jj_la = xla;
+    jj_lastpos = jj_scanpos = token;
+    try {
+      return (!jj_3_28());
+    } catch (LookaheadSuccess ls) {
+      return true;
+    } finally {
+      jj_save(27, xla);
+    }
+  }
+
+  private boolean jj_3R_IntervalUnorderedNoOverlaps_464_3_17() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(UNORDERED_NO_OVERLAPS)) return true;
     return false;
   }
 
-  private boolean jj_3R_IntervalContainedBy_556_3_25()
- {
+  private boolean jj_3R_IntervalContainedBy_556_3_25() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(CONTAINED_BY)) return true;
     return false;
   }
 
-  private boolean jj_3R_FieldRangeExpr_743_3_11()
- {
+  private boolean jj_3R_FieldRangeExpr_743_3_11() {
     if (jj_3R_FieldName_343_3_9()) return true;
     Token xsp;
     xsp = jj_scanpos;
     if (jj_scan_token(17)) {
-    jj_scanpos = xsp;
-    if (jj_scan_token(18)) {
-    jj_scanpos = xsp;
-    if (jj_scan_token(19)) {
-    jj_scanpos = xsp;
-    if (jj_scan_token(20)) return true;
-    }
-    }
+      jj_scanpos = xsp;
+      if (jj_scan_token(18)) {
+        jj_scanpos = xsp;
+        if (jj_scan_token(19)) {
+          jj_scanpos = xsp;
+          if (jj_scan_token(20)) return true;
+        }
+      }
     }
     return false;
   }
 
-  private boolean jj_3R_IntervalWildcard_646_3_19()
- {
+  private boolean jj_3R_IntervalWildcard_646_3_19() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(WILDCARD)) return true;
     return false;
   }
 
-  private boolean jj_3R_QuotedTerm_833_5_47()
- {
+  private boolean jj_3R_QuotedTerm_833_5_47() {
     if (jj_scan_token(TILDE)) return true;
     return false;
   }
 
-  private boolean jj_3R_IntervalUnordered_453_3_16()
- {
+  private boolean jj_3R_IntervalUnordered_453_3_16() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(UNORDERED)) return true;
     return false;
   }
 
-  private boolean jj_3R_IntervalNotContaining_545_3_24()
- {
+  private boolean jj_3R_IntervalNotContaining_545_3_24() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(NOT_CONTAINING)) return true;
     return false;
   }
 
-  private boolean jj_3R_QuotedTerm_828_3_43()
- {
+  private boolean jj_3R_QuotedTerm_828_3_43() {
     if (jj_scan_token(QUOTED)) return true;
     Token xsp;
     xsp = jj_scanpos;
@@ -1450,420 +1801,361 @@ if (left.kind == RANGE_QUOTED) {
     return false;
   }
 
-  private boolean jj_3R_IntervalNonOverlapping_635_3_30()
- {
+  private boolean jj_3R_IntervalNonOverlapping_635_3_30() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(NON_OVERLAPPING)) return true;
     return false;
   }
 
-  private boolean jj_3R_IntervalMaxGaps_441_3_14()
- {
+  private boolean jj_3R_IntervalMaxGaps_441_3_14() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(MAXGAPS)) return true;
     return false;
   }
 
-  private boolean jj_3_28()
- {
+  private boolean jj_3_28() {
     if (jj_scan_token(NUMBER)) return true;
     return false;
   }
 
-  private boolean jj_3R_IntervalContaining_534_3_23()
- {
+  private boolean jj_3R_IntervalContaining_534_3_23() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(CONTAINING)) return true;
     return false;
   }
 
-  private boolean jj_3R_FieldName_343_3_9()
- {
+  private boolean jj_3R_FieldName_343_3_9() {
     if (jj_scan_token(TERM)) return true;
     return false;
   }
 
-  private boolean jj_3R_IntervalOverlapping_625_3_29()
- {
+  private boolean jj_3R_IntervalOverlapping_625_3_29() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(OVERLAPPING)) return true;
     return false;
   }
 
-  private boolean jj_3R_Term_805_10_41()
- {
+  private boolean jj_3R_Term_805_10_41() {
     if (jj_3R_FuzzyOp_716_3_45()) return true;
     return false;
   }
 
-  private boolean jj_3R_Term_807_8_37()
- {
+  private boolean jj_3R_Term_807_8_37() {
     if (jj_3R_QuotedTerm_828_3_43()) return true;
     return false;
   }
 
-  private boolean jj_3R_FuzzyOp_716_3_45()
- {
+  private boolean jj_3R_FuzzyOp_716_3_45() {
     if (jj_scan_token(TILDE)) return true;
     return false;
   }
 
-  private boolean jj_3R_Term_809_5_38()
- {
+  private boolean jj_3R_Term_809_5_38() {
     if (jj_3R_Boost_699_3_44()) return true;
     return false;
   }
 
-  private boolean jj_3R_Term_806_8_36()
- {
+  private boolean jj_3R_Term_806_8_36() {
     if (jj_3R_TermRangeExpr_854_3_42()) return true;
     return false;
   }
 
-  private boolean jj_3_2()
- {
+  private boolean jj_3_2() {
     if (jj_3R_Term_797_3_10()) return true;
     return false;
   }
 
-  private boolean jj_3R_IntervalMaxWidth_429_3_13()
- {
+  private boolean jj_3R_IntervalMaxWidth_429_3_13() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(MAXWIDTH)) return true;
     return false;
   }
 
-  private boolean jj_3R_Term_803_8_35()
- {
+  private boolean jj_3R_Term_803_8_35() {
     Token xsp;
     xsp = jj_scanpos;
     if (jj_scan_token(25)) {
-    jj_scanpos = xsp;
-    if (jj_scan_token(24)) return true;
+      jj_scanpos = xsp;
+      if (jj_scan_token(24)) return true;
     }
     xsp = jj_scanpos;
     if (jj_3R_Term_805_10_41()) jj_scanpos = xsp;
     return false;
   }
 
-  private boolean jj_3R_IntervalAfter_523_3_20()
- {
+  private boolean jj_3R_IntervalAfter_523_3_20() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(AFTER)) return true;
     return false;
   }
 
-  private boolean jj_3_1()
- {
+  private boolean jj_3_1() {
     if (jj_3R_FieldName_343_3_9()) return true;
     Token xsp;
     xsp = jj_scanpos;
     if (jj_scan_token(15)) {
-    jj_scanpos = xsp;
-    if (jj_scan_token(16)) return true;
+      jj_scanpos = xsp;
+      if (jj_scan_token(16)) return true;
     }
     return false;
   }
 
-  private boolean jj_3_3()
- {
+  private boolean jj_3_3() {
     if (jj_3R_FieldRangeExpr_743_3_11()) return true;
     return false;
   }
 
-  private boolean jj_3R_Term_798_8_34()
- {
+  private boolean jj_3R_Term_798_8_34() {
     if (jj_scan_token(REGEXPTERM)) return true;
     return false;
   }
 
-  private boolean jj_3R_IntervalNotWithin_610_3_28()
- {
+  private boolean jj_3R_IntervalNotWithin_610_3_28() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(NOT_WITHIN)) return true;
     return false;
   }
 
-  private boolean jj_3R_IntervalBefore_512_3_21()
- {
+  private boolean jj_3R_IntervalBefore_512_3_21() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(BEFORE)) return true;
     return false;
   }
 
-  private boolean jj_3R_Term_797_3_10()
- {
+  private boolean jj_3R_Term_797_3_10() {
     Token xsp;
     xsp = jj_scanpos;
     if (jj_3R_Term_798_8_34()) {
-    jj_scanpos = xsp;
-    if (jj_3R_Term_803_8_35()) {
-    jj_scanpos = xsp;
-    if (jj_3R_Term_806_8_36()) {
-    jj_scanpos = xsp;
-    if (jj_3R_Term_807_8_37()) return true;
-    }
-    }
+      jj_scanpos = xsp;
+      if (jj_3R_Term_803_8_35()) {
+        jj_scanpos = xsp;
+        if (jj_3R_Term_806_8_36()) {
+          jj_scanpos = xsp;
+          if (jj_3R_Term_807_8_37()) return true;
+        }
+      }
     }
     xsp = jj_scanpos;
     if (jj_3R_Term_809_5_38()) jj_scanpos = xsp;
     return false;
   }
 
-  private boolean jj_3R_IntervalAtLeast_417_3_12()
- {
+  private boolean jj_3R_IntervalAtLeast_417_3_12() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(ATLEAST)) return true;
     return false;
   }
 
-  private boolean jj_3R_Boost_699_3_44()
- {
+  private boolean jj_3R_Boost_699_3_44() {
     if (jj_scan_token(CARAT)) return true;
     return false;
   }
 
-  private boolean jj_3_25()
- {
+  private boolean jj_3_25() {
     if (jj_3R_IntervalText_684_5_33()) return true;
     return false;
   }
 
-  private boolean jj_3_24()
- {
+  private boolean jj_3_24() {
     if (jj_3R_IntervalFuzzyTerm_665_3_32()) return true;
     return false;
   }
 
-  private boolean jj_3_23()
- {
+  private boolean jj_3_23() {
     if (jj_3R_IntervalExtend_594_3_31()) return true;
     return false;
   }
 
-  private boolean jj_3_22()
- {
+  private boolean jj_3_22() {
     if (jj_3R_IntervalNonOverlapping_635_3_30()) return true;
     return false;
   }
 
-  private boolean jj_3_21()
- {
+  private boolean jj_3_21() {
     if (jj_3R_IntervalOverlapping_625_3_29()) return true;
     return false;
   }
 
-  private boolean jj_3R_IntervalPhrase_500_3_22()
- {
+  private boolean jj_3R_IntervalPhrase_500_3_22() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(PHRASE)) return true;
     return false;
   }
 
-  private boolean jj_3_20()
- {
+  private boolean jj_3_20() {
     if (jj_3R_IntervalNotWithin_610_3_28()) return true;
     return false;
   }
 
-  private boolean jj_3R_IntervalExtend_594_3_31()
- {
+  private boolean jj_3R_IntervalExtend_594_3_31() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(EXTEND)) return true;
     return false;
   }
 
-  private boolean jj_3_19()
- {
+  private boolean jj_3_19() {
     if (jj_3R_IntervalWithin_578_3_27()) return true;
     return false;
   }
 
-  private boolean jj_3_18()
- {
+  private boolean jj_3_18() {
     if (jj_3R_IntervalNotContainedBy_567_3_26()) return true;
     return false;
   }
 
-  private boolean jj_3R_IntervalText_685_5_40()
- {
+  private boolean jj_3R_IntervalText_685_5_40() {
     Token xsp;
     xsp = jj_scanpos;
     if (jj_scan_token(25)) {
-    jj_scanpos = xsp;
-    if (jj_scan_token(24)) return true;
+      jj_scanpos = xsp;
+      if (jj_scan_token(24)) return true;
     }
     return false;
   }
 
-  private boolean jj_3_17()
- {
+  private boolean jj_3_17() {
     if (jj_3R_IntervalContainedBy_556_3_25()) return true;
     return false;
   }
 
-  private boolean jj_3R_IntervalText_684_5_39()
- {
+  private boolean jj_3R_IntervalText_684_5_39() {
     if (jj_scan_token(QUOTED)) return true;
     return false;
   }
 
-  private boolean jj_3R_IntervalText_684_5_33()
- {
+  private boolean jj_3R_IntervalText_684_5_33() {
     Token xsp;
     xsp = jj_scanpos;
     if (jj_3R_IntervalText_684_5_39()) {
-    jj_scanpos = xsp;
-    if (jj_3R_IntervalText_685_5_40()) return true;
+      jj_scanpos = xsp;
+      if (jj_3R_IntervalText_685_5_40()) return true;
     }
     return false;
   }
 
-  private boolean jj_3_16()
- {
+  private boolean jj_3_16() {
     if (jj_3R_IntervalNotContaining_545_3_24()) return true;
     return false;
   }
 
-  private boolean jj_3_15()
- {
+  private boolean jj_3_15() {
     if (jj_3R_IntervalContaining_534_3_23()) return true;
     return false;
   }
 
-  private boolean jj_3_14()
- {
+  private boolean jj_3_14() {
     if (jj_3R_IntervalPhrase_500_3_22()) return true;
     return false;
   }
 
-  private boolean jj_3_13()
- {
+  private boolean jj_3_13() {
     if (jj_3R_IntervalBefore_512_3_21()) return true;
     return false;
   }
 
-  private boolean jj_3_12()
- {
+  private boolean jj_3_12() {
     if (jj_3R_IntervalAfter_523_3_20()) return true;
     return false;
   }
 
-  private boolean jj_3_11()
- {
+  private boolean jj_3_11() {
     if (jj_3R_IntervalWildcard_646_3_19()) return true;
     return false;
   }
 
-  private boolean jj_3_10()
- {
+  private boolean jj_3_10() {
     if (jj_3R_IntervalOr_488_3_18()) return true;
     return false;
   }
 
-  private boolean jj_3_9()
- {
+  private boolean jj_3_9() {
     if (jj_3R_IntervalUnorderedNoOverlaps_464_3_17()) return true;
     return false;
   }
 
-  private boolean jj_3R_IntervalOr_488_3_18()
- {
+  private boolean jj_3R_IntervalOr_488_3_18() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(FN_OR)) return true;
     return false;
   }
 
-  private boolean jj_3_8()
- {
+  private boolean jj_3_8() {
     if (jj_3R_IntervalUnordered_453_3_16()) return true;
     return false;
   }
 
-  private boolean jj_3_7()
- {
+  private boolean jj_3_7() {
     if (jj_3R_IntervalOrdered_476_3_15()) return true;
     return false;
   }
 
-  private boolean jj_3_6()
- {
+  private boolean jj_3_6() {
     if (jj_3R_IntervalMaxGaps_441_3_14()) return true;
     return false;
   }
 
-  private boolean jj_3_5()
- {
+  private boolean jj_3_5() {
     if (jj_3R_IntervalMaxWidth_429_3_13()) return true;
     return false;
   }
 
-  private boolean jj_3_4()
- {
+  private boolean jj_3_4() {
     if (jj_3R_IntervalAtLeast_417_3_12()) return true;
     return false;
   }
 
-  private boolean jj_3_27()
- {
+  private boolean jj_3_27() {
     if (jj_scan_token(NUMBER)) return true;
     return false;
   }
 
-  private boolean jj_3R_IntervalWithin_578_3_27()
- {
+  private boolean jj_3R_IntervalWithin_578_3_27() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(WITHIN)) return true;
     return false;
   }
 
-  private boolean jj_3_26()
- {
+  private boolean jj_3_26() {
     if (jj_scan_token(NUMBER)) return true;
     return false;
   }
 
-  private boolean jj_3R_TermRangeExpr_855_6_46()
- {
+  private boolean jj_3R_TermRangeExpr_855_6_46() {
     if (jj_scan_token(RANGEIN_START)) return true;
     return false;
   }
 
-  private boolean jj_3R_IntervalOrdered_476_3_15()
- {
+  private boolean jj_3R_IntervalOrdered_476_3_15() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(ORDERED)) return true;
     return false;
   }
 
-  private boolean jj_3R_IntervalFuzzyTerm_665_3_32()
- {
+  private boolean jj_3R_IntervalFuzzyTerm_665_3_32() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(FUZZYTERM)) return true;
     return false;
   }
 
-  private boolean jj_3R_TermRangeExpr_854_3_42()
- {
+  private boolean jj_3R_TermRangeExpr_854_3_42() {
     Token xsp;
     xsp = jj_scanpos;
     if (jj_3R_TermRangeExpr_855_6_46()) {
-    jj_scanpos = xsp;
-    if (jj_scan_token(28)) return true;
+      jj_scanpos = xsp;
+      if (jj_scan_token(28)) return true;
     }
     xsp = jj_scanpos;
     if (jj_scan_token(55)) {
-    jj_scanpos = xsp;
-    if (jj_scan_token(54)) {
-    jj_scanpos = xsp;
-    if (jj_scan_token(51)) return true;
-    }
+      jj_scanpos = xsp;
+      if (jj_scan_token(54)) {
+        jj_scanpos = xsp;
+        if (jj_scan_token(51)) return true;
+      }
     }
     return false;
   }
 
-  private boolean jj_3R_IntervalNotContainedBy_567_3_26()
- {
+  private boolean jj_3R_IntervalNotContainedBy_567_3_26() {
     if (jj_scan_token(FN_PREFIX)) return true;
     if (jj_scan_token(NOT_CONTAINED_BY)) return true;
     return false;
@@ -1871,149 +2163,201 @@ if (left.kind == RANGE_QUOTED) {
 
   /** Generated Token Manager. */
   public StandardSyntaxParserTokenManager token_source;
+
   /** Current token. */
   public Token token;
+
   /** Next token. */
   public Token jj_nt;
+
   private int jj_ntk;
   private Token jj_scanpos, jj_lastpos;
   private int jj_la;
   private int jj_gen;
-  final private int[] jj_la1 = new int[34];
-  static private int[] jj_la1_0;
-  static private int[] jj_la1_1;
+  private final int[] jj_la1 = new int[34];
+  private static int[] jj_la1_0;
+  private static int[] jj_la1_1;
+
   static {
-       jj_la1_init_0();
-       jj_la1_init_1();
-    }
-    private static void jj_la1_init_0() {
-       jj_la1_0 = new int[] {0x3f803c00,0x200,0x100,0x2400,0x3400,0x3400,0x18000,0x23800800,0x3f800800,0x200000,0x0,0x3800800,0x3800800,0x3800800,0x3800800,0x3800800,0x3000000,0x3800000,0x1000000,0x3000000,0x3800000,0x3000000,0x3800000,0x1e0000,0x3800000,0x3000000,0x400000,0x1f800000,0x200000,0x400000,0x18000000,0x0,0x0,0x0,};
-    }
-    private static void jj_la1_init_1() {
-       jj_la1_1 = new int[] {0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x1000000,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0x0,0xc80000,0xc80000,0x300000,};
-    }
-  final private JJCalls[] jj_2_rtns = new JJCalls[28];
+    jj_la1_init_0();
+    jj_la1_init_1();
+  }
+
+  private static void jj_la1_init_0() {
+    jj_la1_0 =
+        new int[] {
+          0x3f803c00,
+          0x200,
+          0x100,
+          0x2400,
+          0x3400,
+          0x3400,
+          0x18000,
+          0x23800800,
+          0x3f800800,
+          0x200000,
+          0x0,
+          0x3800800,
+          0x3800800,
+          0x3800800,
+          0x3800800,
+          0x3800800,
+          0x3000000,
+          0x3800000,
+          0x1000000,
+          0x3000000,
+          0x3800000,
+          0x3000000,
+          0x3800000,
+          0x1e0000,
+          0x3800000,
+          0x3000000,
+          0x400000,
+          0x1f800000,
+          0x200000,
+          0x400000,
+          0x18000000,
+          0x0,
+          0x0,
+          0x0,
+        };
+  }
+
+  private static void jj_la1_init_1() {
+    jj_la1_1 =
+        new int[] {
+          0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x1000000, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
+          0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0xc80000, 0xc80000,
+          0x300000,
+        };
+  }
+
+  private final JJCalls[] jj_2_rtns = new JJCalls[28];
   private boolean jj_rescan = false;
   private int jj_gc = 0;
 
   /** Constructor with user supplied CharStream. */
   public StandardSyntaxParser(CharStream stream) {
-     token_source = new StandardSyntaxParserTokenManager(stream);
-     token = new Token();
-     jj_ntk = -1;
-     jj_gen = 0;
-     for (int i = 0; i < 34; i++) jj_la1[i] = -1;
-     for (int i = 0; i < jj_2_rtns.length; i++) jj_2_rtns[i] = new JJCalls();
+    token_source = new StandardSyntaxParserTokenManager(stream);
+    token = new Token();
+    jj_ntk = -1;
+    jj_gen = 0;
+    for (int i = 0; i < 34; i++) jj_la1[i] = -1;
+    for (int i = 0; i < jj_2_rtns.length; i++) jj_2_rtns[i] = new JJCalls();
   }
 
   /** Reinitialise. */
   public void ReInit(CharStream stream) {
-     token_source.ReInit(stream);
-     token = new Token();
-     jj_ntk = -1;
-     jj_gen = 0;
-     for (int i = 0; i < 34; i++) jj_la1[i] = -1;
-     for (int i = 0; i < jj_2_rtns.length; i++) jj_2_rtns[i] = new JJCalls();
+    token_source.ReInit(stream);
+    token = new Token();
+    jj_ntk = -1;
+    jj_gen = 0;
+    for (int i = 0; i < 34; i++) jj_la1[i] = -1;
+    for (int i = 0; i < jj_2_rtns.length; i++) jj_2_rtns[i] = new JJCalls();
   }
 
   /** Constructor with generated Token Manager. */
   public StandardSyntaxParser(StandardSyntaxParserTokenManager tm) {
-     token_source = tm;
-     token = new Token();
-     jj_ntk = -1;
-     jj_gen = 0;
-     for (int i = 0; i < 34; i++) jj_la1[i] = -1;
-     for (int i = 0; i < jj_2_rtns.length; i++) jj_2_rtns[i] = new JJCalls();
+    token_source = tm;
+    token = new Token();
+    jj_ntk = -1;
+    jj_gen = 0;
+    for (int i = 0; i < 34; i++) jj_la1[i] = -1;
+    for (int i = 0; i < jj_2_rtns.length; i++) jj_2_rtns[i] = new JJCalls();
   }
 
   /** Reinitialise. */
   public void ReInit(StandardSyntaxParserTokenManager tm) {
-     token_source = tm;
-     token = new Token();
-     jj_ntk = -1;
-     jj_gen = 0;
-     for (int i = 0; i < 34; i++) jj_la1[i] = -1;
-     for (int i = 0; i < jj_2_rtns.length; i++) jj_2_rtns[i] = new JJCalls();
+    token_source = tm;
+    token = new Token();
+    jj_ntk = -1;
+    jj_gen = 0;
+    for (int i = 0; i < 34; i++) jj_la1[i] = -1;
+    for (int i = 0; i < jj_2_rtns.length; i++) jj_2_rtns[i] = new JJCalls();
   }
 
   private Token jj_consume_token(int kind) throws ParseException {
-     Token oldToken;
-     if ((oldToken = token).next != null) token = token.next;
-     else token = token.next = token_source.getNextToken();
-     jj_ntk = -1;
-     if (token.kind == kind) {
-       jj_gen++;
-       if (++jj_gc > 100) {
-         jj_gc = 0;
-         for (int i = 0; i < jj_2_rtns.length; i++) {
-           JJCalls c = jj_2_rtns[i];
-           while (c != null) {
-             if (c.gen < jj_gen) c.first = null;
-             c = c.next;
-           }
-         }
-       }
-       return token;
-     }
-     token = oldToken;
-     jj_kind = kind;
-     throw generateParseException();
+    Token oldToken;
+    if ((oldToken = token).next != null) token = token.next;
+    else token = token.next = token_source.getNextToken();
+    jj_ntk = -1;
+    if (token.kind == kind) {
+      jj_gen++;
+      if (++jj_gc > 100) {
+        jj_gc = 0;
+        for (int i = 0; i < jj_2_rtns.length; i++) {
+          JJCalls c = jj_2_rtns[i];
+          while (c != null) {
+            if (c.gen < jj_gen) c.first = null;
+            c = c.next;
+          }
+        }
+      }
+      return token;
+    }
+    token = oldToken;
+    jj_kind = kind;
+    throw generateParseException();
   }
 
   @SuppressWarnings("serial")
-  static private final class LookaheadSuccess extends java.lang.Error {
+  private static final class LookaheadSuccess extends java.lang.Error {
     @Override
     public Throwable fillInStackTrace() {
       return this;
     }
   }
-  static private final LookaheadSuccess jj_ls = new LookaheadSuccess();
+
+  private static final LookaheadSuccess jj_ls = new LookaheadSuccess();
+
   private boolean jj_scan_token(int kind) {
-     if (jj_scanpos == jj_lastpos) {
-       jj_la--;
-       if (jj_scanpos.next == null) {
-         jj_lastpos = jj_scanpos = jj_scanpos.next = token_source.getNextToken();
-       } else {
-         jj_lastpos = jj_scanpos = jj_scanpos.next;
-       }
-     } else {
-       jj_scanpos = jj_scanpos.next;
-     }
-     if (jj_rescan) {
-       int i = 0; Token tok = token;
-       while (tok != null && tok != jj_scanpos) { i++; tok = tok.next; }
-       if (tok != null) jj_add_error_token(kind, i);
-     }
-     if (jj_scanpos.kind != kind) return true;
-     if (jj_la == 0 && jj_scanpos == jj_lastpos) throw jj_ls;
-     return false;
+    if (jj_scanpos == jj_lastpos) {
+      jj_la--;
+      if (jj_scanpos.next == null) {
+        jj_lastpos = jj_scanpos = jj_scanpos.next = token_source.getNextToken();
+      } else {
+        jj_lastpos = jj_scanpos = jj_scanpos.next;
+      }
+    } else {
+      jj_scanpos = jj_scanpos.next;
+    }
+    if (jj_rescan) {
+      int i = 0;
+      Token tok = token;
+      while (tok != null && tok != jj_scanpos) {
+        i++;
+        tok = tok.next;
+      }
+      if (tok != null) jj_add_error_token(kind, i);
+    }
+    if (jj_scanpos.kind != kind) return true;
+    if (jj_la == 0 && jj_scanpos == jj_lastpos) throw jj_ls;
+    return false;
   }
 
-
-/** Get the next Token. */
-  final public Token getNextToken() {
-     if (token.next != null) token = token.next;
-     else token = token.next = token_source.getNextToken();
-     jj_ntk = -1;
-     jj_gen++;
-     return token;
+  /** Get the next Token. */
+  public final Token getNextToken() {
+    if (token.next != null) token = token.next;
+    else token = token.next = token_source.getNextToken();
+    jj_ntk = -1;
+    jj_gen++;
+    return token;
   }
 
-/** Get the specific Token. */
-  final public Token getToken(int index) {
-     Token t = token;
-     for (int i = 0; i < index; i++) {
-       if (t.next != null) t = t.next;
-       else t = t.next = token_source.getNextToken();
-     }
-     return t;
+  /** Get the specific Token. */
+  public final Token getToken(int index) {
+    Token t = token;
+    for (int i = 0; i < index; i++) {
+      if (t.next != null) t = t.next;
+      else t = t.next = token_source.getNextToken();
+    }
+    return t;
   }
 
   private int jj_ntk_f() {
-     if ((jj_nt=token.next) == null)
-       return (jj_ntk = (token.next=token_source.getNextToken()).kind);
-     else
-       return (jj_ntk = jj_nt.kind);
+    if ((jj_nt = token.next) == null)
+      return (jj_ntk = (token.next = token_source.getNextToken()).kind);
+    else return (jj_ntk = jj_nt.kind);
   }
 
   private java.util.List<int[]> jj_expentries = new java.util.ArrayList<>();
@@ -2023,160 +2367,217 @@ if (left.kind == RANGE_QUOTED) {
   private int jj_endpos;
 
   private void jj_add_error_token(int kind, int pos) {
-     if (pos >= 100) {
-        return;
-     }
+    if (pos >= 100) {
+      return;
+    }
 
-     if (pos == jj_endpos + 1) {
-       jj_lasttokens[jj_endpos++] = kind;
-     } else if (jj_endpos != 0) {
-       jj_expentry = new int[jj_endpos];
+    if (pos == jj_endpos + 1) {
+      jj_lasttokens[jj_endpos++] = kind;
+    } else if (jj_endpos != 0) {
+      jj_expentry = new int[jj_endpos];
 
-       for (int i = 0; i < jj_endpos; i++) {
-         jj_expentry[i] = jj_lasttokens[i];
-       }
+      for (int i = 0; i < jj_endpos; i++) {
+        jj_expentry[i] = jj_lasttokens[i];
+      }
 
-       for (int[] oldentry : jj_expentries) {
-         if (oldentry.length == jj_expentry.length) {
-           boolean isMatched = true;
+      for (int[] oldentry : jj_expentries) {
+        if (oldentry.length == jj_expentry.length) {
+          boolean isMatched = true;
 
-           for (int i = 0; i < jj_expentry.length; i++) {
-             if (oldentry[i] != jj_expentry[i]) {
-               isMatched = false;
-               break;
-             }
+          for (int i = 0; i < jj_expentry.length; i++) {
+            if (oldentry[i] != jj_expentry[i]) {
+              isMatched = false;
+              break;
+            }
+          }
+          if (isMatched) {
+            jj_expentries.add(jj_expentry);
+            break;
+          }
+        }
+      }
 
-           }
-           if (isMatched) {
-             jj_expentries.add(jj_expentry);
-             break;
-           }
-         }
-       }
-
-       if (pos != 0) {
-         jj_lasttokens[(jj_endpos = pos) - 1] = kind;
-       }
-     }
+      if (pos != 0) {
+        jj_lasttokens[(jj_endpos = pos) - 1] = kind;
+      }
+    }
   }
 
   /** Generate ParseException. */
   public ParseException generateParseException() {
-     jj_expentries.clear();
-     boolean[] la1tokens = new boolean[57];
-     if (jj_kind >= 0) {
-       la1tokens[jj_kind] = true;
-       jj_kind = -1;
-     }
-     for (int i = 0; i < 34; i++) {
-       if (jj_la1[i] == jj_gen) {
-         for (int j = 0; j < 32; j++) {
-           if ((jj_la1_0[i] & (1<<j)) != 0) {
-             la1tokens[j] = true;
-           }
-           if ((jj_la1_1[i] & (1<<j)) != 0) {
-             la1tokens[32+j] = true;
-           }
-         }
-       }
-     }
-     for (int i = 0; i < 57; i++) {
-       if (la1tokens[i]) {
-         jj_expentry = new int[1];
-         jj_expentry[0] = i;
-         jj_expentries.add(jj_expentry);
-       }
-     }
-     jj_endpos = 0;
-     jj_rescan_token();
-     jj_add_error_token(0, 0);
-     int[][] exptokseq = new int[jj_expentries.size()][];
-     for (int i = 0; i < jj_expentries.size(); i++) {
-       exptokseq[i] = jj_expentries.get(i);
-     }
-     return new ParseException(token, exptokseq, tokenImage);
+    jj_expentries.clear();
+    boolean[] la1tokens = new boolean[57];
+    if (jj_kind >= 0) {
+      la1tokens[jj_kind] = true;
+      jj_kind = -1;
+    }
+    for (int i = 0; i < 34; i++) {
+      if (jj_la1[i] == jj_gen) {
+        for (int j = 0; j < 32; j++) {
+          if ((jj_la1_0[i] & (1 << j)) != 0) {
+            la1tokens[j] = true;
+          }
+          if ((jj_la1_1[i] & (1 << j)) != 0) {
+            la1tokens[32 + j] = true;
+          }
+        }
+      }
+    }
+    for (int i = 0; i < 57; i++) {
+      if (la1tokens[i]) {
+        jj_expentry = new int[1];
+        jj_expentry[0] = i;
+        jj_expentries.add(jj_expentry);
+      }
+    }
+    jj_endpos = 0;
+    jj_rescan_token();
+    jj_add_error_token(0, 0);
+    int[][] exptokseq = new int[jj_expentries.size()][];
+    for (int i = 0; i < jj_expentries.size(); i++) {
+      exptokseq[i] = jj_expentries.get(i);
+    }
+    return new ParseException(token, exptokseq, tokenImage);
   }
 
   private boolean trace_enabled;
 
-/** Trace enabled. */
-  final public boolean trace_enabled() {
-     return trace_enabled;
+  /** Trace enabled. */
+  public final boolean trace_enabled() {
+    return trace_enabled;
   }
 
   /** Enable tracing. */
-  final public void enable_tracing() {
-  }
+  public final void enable_tracing() {}
 
   /** Disable tracing. */
-  final public void disable_tracing() {
-  }
+  public final void disable_tracing() {}
 
   private void jj_rescan_token() {
-     jj_rescan = true;
-     for (int i = 0; i < 28; i++) {
-       try {
-         JJCalls p = jj_2_rtns[i];
+    jj_rescan = true;
+    for (int i = 0; i < 28; i++) {
+      try {
+        JJCalls p = jj_2_rtns[i];
 
-         do {
-           if (p.gen > jj_gen) {
-             jj_la = p.arg; jj_lastpos = jj_scanpos = p.first;
-             switch (i) {
-               case 0: jj_3_1(); break;
-               case 1: jj_3_2(); break;
-               case 2: jj_3_3(); break;
-               case 3: jj_3_4(); break;
-               case 4: jj_3_5(); break;
-               case 5: jj_3_6(); break;
-               case 6: jj_3_7(); break;
-               case 7: jj_3_8(); break;
-               case 8: jj_3_9(); break;
-               case 9: jj_3_10(); break;
-               case 10: jj_3_11(); break;
-               case 11: jj_3_12(); break;
-               case 12: jj_3_13(); break;
-               case 13: jj_3_14(); break;
-               case 14: jj_3_15(); break;
-               case 15: jj_3_16(); break;
-               case 16: jj_3_17(); break;
-               case 17: jj_3_18(); break;
-               case 18: jj_3_19(); break;
-               case 19: jj_3_20(); break;
-               case 20: jj_3_21(); break;
-               case 21: jj_3_22(); break;
-               case 22: jj_3_23(); break;
-               case 23: jj_3_24(); break;
-               case 24: jj_3_25(); break;
-               case 25: jj_3_26(); break;
-               case 26: jj_3_27(); break;
-               case 27: jj_3_28(); break;
-             }
-           }
-           p = p.next;
-         } while (p != null);
+        do {
+          if (p.gen > jj_gen) {
+            jj_la = p.arg;
+            jj_lastpos = jj_scanpos = p.first;
+            switch (i) {
+              case 0:
+                jj_3_1();
+                break;
+              case 1:
+                jj_3_2();
+                break;
+              case 2:
+                jj_3_3();
+                break;
+              case 3:
+                jj_3_4();
+                break;
+              case 4:
+                jj_3_5();
+                break;
+              case 5:
+                jj_3_6();
+                break;
+              case 6:
+                jj_3_7();
+                break;
+              case 7:
+                jj_3_8();
+                break;
+              case 8:
+                jj_3_9();
+                break;
+              case 9:
+                jj_3_10();
+                break;
+              case 10:
+                jj_3_11();
+                break;
+              case 11:
+                jj_3_12();
+                break;
+              case 12:
+                jj_3_13();
+                break;
+              case 13:
+                jj_3_14();
+                break;
+              case 14:
+                jj_3_15();
+                break;
+              case 15:
+                jj_3_16();
+                break;
+              case 16:
+                jj_3_17();
+                break;
+              case 17:
+                jj_3_18();
+                break;
+              case 18:
+                jj_3_19();
+                break;
+              case 19:
+                jj_3_20();
+                break;
+              case 20:
+                jj_3_21();
+                break;
+              case 21:
+                jj_3_22();
+                break;
+              case 22:
+                jj_3_23();
+                break;
+              case 23:
+                jj_3_24();
+                break;
+              case 24:
+                jj_3_25();
+                break;
+              case 25:
+                jj_3_26();
+                break;
+              case 26:
+                jj_3_27();
+                break;
+              case 27:
+                jj_3_28();
+                break;
+            }
+          }
+          p = p.next;
+        } while (p != null);
 
-         } catch(LookaheadSuccess ls) { }
-     }
-     jj_rescan = false;
+      } catch (LookaheadSuccess ls) {
+      }
+    }
+    jj_rescan = false;
   }
 
   private void jj_save(int index, int xla) {
-     JJCalls p = jj_2_rtns[index];
-     while (p.gen > jj_gen) {
-       if (p.next == null) { p = p.next = new JJCalls(); break; }
-       p = p.next;
-     }
+    JJCalls p = jj_2_rtns[index];
+    while (p.gen > jj_gen) {
+      if (p.next == null) {
+        p = p.next = new JJCalls();
+        break;
+      }
+      p = p.next;
+    }
 
-     p.gen = jj_gen + xla - jj_la; 
-     p.first = token;
-     p.arg = xla;
+    p.gen = jj_gen + xla - jj_la;
+    p.first = token;
+    p.arg = xla;
   }
 
   static final class JJCalls {
-     int gen;
-     Token first;
-     int arg;
-     JJCalls next;
+    int gen;
+    Token first;
+    int arg;
+    JJCalls next;
   }
-
 }

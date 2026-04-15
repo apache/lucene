@@ -176,7 +176,7 @@ public class MultiCollector implements Collector {
     private final boolean skipNonCompetitiveScores;
 
     private MultiLeafCollector(List<LeafCollector> collectors, boolean skipNonCompetitive) {
-      this.collectors = collectors.toArray(new LeafCollector[collectors.size()]);
+      this.collectors = collectors.toArray(LeafCollector[]::new);
       this.skipNonCompetitiveScores = skipNonCompetitive;
       this.minScores = this.skipNonCompetitiveScores ? new float[this.collectors.length] : null;
     }
@@ -218,6 +218,26 @@ public class MultiCollector implements Collector {
           try {
             collector.collect(doc);
           } catch (CollectionTerminatedException _) {
+            collectors[i].finish();
+            collectors[i] = null;
+            if (allCollectorsTerminated()) {
+              throw new CollectionTerminatedException();
+            }
+          }
+        }
+      }
+    }
+
+    @Override
+    public void collectRange(int min, int max) throws IOException {
+      for (int i = 0; i < collectors.length; i++) {
+        final LeafCollector collector = collectors[i];
+        if (collector != null) {
+          try {
+            collector.collectRange(min, max);
+          } catch (
+              @SuppressWarnings("unused")
+              CollectionTerminatedException e) {
             collectors[i].finish();
             collectors[i] = null;
             if (allCollectorsTerminated()) {

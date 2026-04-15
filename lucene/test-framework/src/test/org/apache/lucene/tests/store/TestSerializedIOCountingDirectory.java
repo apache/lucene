@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -32,7 +31,7 @@ public class TestSerializedIOCountingDirectory extends BaseDirectoryTestCase {
 
   @Override
   protected Directory getDirectory(Path path) throws IOException {
-    return new SerialIOCountingDirectory(FSDirectory.open(path));
+    return new SerialIOCountingDirectory(newDirectory());
   }
 
   public void testSequentialReads() throws IOException {

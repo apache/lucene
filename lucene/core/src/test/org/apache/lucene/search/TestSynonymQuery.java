@@ -519,7 +519,7 @@ public class TestSynonymQuery extends LuceneTestCase {
     // zero length SynonymQuery is rewritten
     SynonymQuery q = new SynonymQuery.Builder("f").build();
     assertTrue(q.getTerms().isEmpty());
-    assertEquals(searcher.rewrite(q), new MatchNoDocsQuery());
+    assertEquals(searcher.rewrite(q), MatchNoDocsQuery.INSTANCE);
 
     // non-boosted single term SynonymQuery is rewritten
     q = new SynonymQuery.Builder("f").addTerm(new Term("f"), 1f).build();

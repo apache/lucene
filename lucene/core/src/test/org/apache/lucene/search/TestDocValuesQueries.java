@@ -447,7 +447,7 @@ public class TestDocValuesQueries extends LuceneTestCase {
 
     QueryUtils.checkEqual(
         NumericDocValuesField.newSlowRangeQuery("foo", 10, 1).rewrite(searcher),
-        new MatchNoDocsQuery());
+        MatchNoDocsQuery.INSTANCE);
     QueryUtils.checkEqual(
         NumericDocValuesField.newSlowRangeQuery("foo", Long.MIN_VALUE, Long.MAX_VALUE)
             .rewrite(searcher),
@@ -502,12 +502,12 @@ public class TestDocValuesQueries extends LuceneTestCase {
     assertEquals(
         NumericDocValuesField.newSlowSetQuery("field", 17L, 42L, 32416190071L),
         NumericDocValuesField.newSlowSetQuery("field", 17L, 32416190071L, 42L));
-    assertFalse(
-        NumericDocValuesField.newSlowSetQuery("field", 42L)
-            .equals(NumericDocValuesField.newSlowSetQuery("field2", 42L)));
-    assertFalse(
-        NumericDocValuesField.newSlowSetQuery("field", 17L, 42L)
-            .equals(NumericDocValuesField.newSlowSetQuery("field", 17L, 32416190071L)));
+    assertNotEquals(
+        NumericDocValuesField.newSlowSetQuery("field", 42L),
+        NumericDocValuesField.newSlowSetQuery("field2", 42L));
+    assertNotEquals(
+        NumericDocValuesField.newSlowSetQuery("field", 17L, 42L),
+        NumericDocValuesField.newSlowSetQuery("field", 17L, 32416190071L));
   }
 
   public void testDuelSetVsTermsQuery() throws IOException {

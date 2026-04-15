@@ -67,7 +67,7 @@ public class TestMemoryAccountingBitsetCollector extends LuceneTestCase {
     expectThrows(
         IllegalStateException.class,
         () -> {
-          searcher.search(new MatchAllDocsQuery(), bitSetCollector);
+          searcher.search(MatchAllDocsQuery.INSTANCE, bitSetCollector);
         });
   }
 }

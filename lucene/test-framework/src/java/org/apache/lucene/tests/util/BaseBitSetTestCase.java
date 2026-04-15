@@ -46,7 +46,7 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
     if (numBitsSet == numBits) {
       set.set(0, numBits);
     } else {
-      Random random = random();
+      Random random = nonAssertingRandom(random());
       for (int i = 0; i < numBitsSet; ++i) {
         while (true) {
           final int o = random.nextInt(numBits);

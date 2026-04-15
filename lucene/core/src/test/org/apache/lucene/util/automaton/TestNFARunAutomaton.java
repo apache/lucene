@@ -119,6 +119,8 @@ public class TestNFARunAutomaton extends LuceneTestCase {
     }
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandomAutomatonQuery() throws IOException {
     final int docNum = 50;
     final int automatonNum = 50;

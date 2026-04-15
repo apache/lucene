@@ -41,11 +41,11 @@ public class TestQueryBitSetProducer extends LuceneTestCase {
     w.addDocument(new Document());
     DirectoryReader reader = w.getReader();
 
-    QueryBitSetProducer producer = new QueryBitSetProducer(new MatchNoDocsQuery());
+    QueryBitSetProducer producer = new QueryBitSetProducer(MatchNoDocsQuery.INSTANCE);
     assertNull(producer.getBitSet(reader.leaves().get(0)));
     assertEquals(1, producer.cache.size());
 
-    producer = new QueryBitSetProducer(new MatchAllDocsQuery());
+    producer = new QueryBitSetProducer(MatchAllDocsQuery.INSTANCE);
     BitSet bitSet = producer.getBitSet(reader.leaves().get(0));
     assertEquals(1, bitSet.length());
     assertEquals(true, bitSet.get(0));
@@ -61,11 +61,11 @@ public class TestQueryBitSetProducer extends LuceneTestCase {
     w.addDocument(new Document());
     DirectoryReader reader = new DummyDirectoryReader(w.getReader());
 
-    QueryBitSetProducer producer = new QueryBitSetProducer(new MatchNoDocsQuery());
+    QueryBitSetProducer producer = new QueryBitSetProducer(MatchNoDocsQuery.INSTANCE);
     assertNull(producer.getBitSet(reader.leaves().get(0)));
     assertEquals(0, producer.cache.size());
 
-    producer = new QueryBitSetProducer(new MatchAllDocsQuery());
+    producer = new QueryBitSetProducer(MatchAllDocsQuery.INSTANCE);
     BitSet bitSet = producer.getBitSet(reader.leaves().get(0));
     assertEquals(1, bitSet.length());
     assertEquals(true, bitSet.get(0));

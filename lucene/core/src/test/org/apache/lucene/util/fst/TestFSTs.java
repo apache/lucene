@@ -1706,7 +1706,7 @@ public class TestFSTs extends LuceneTestCase {
   }
 
   public void testIllegallyModifyRootArc() throws Exception {
-    assumeTrue("test relies on assertions", assertsAreEnabled);
+    assumeTrue("test relies on assertions", TEST_ASSERTS_ENABLED);
 
     Set<BytesRef> terms = new HashSet<>();
     for (int i = 0; i < 100; i++) {

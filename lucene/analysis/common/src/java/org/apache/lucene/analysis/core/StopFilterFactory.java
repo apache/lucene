@@ -26,14 +26,14 @@ import org.apache.lucene.analysis.en.EnglishAnalyzer;
 /**
  * Factory for {@link StopFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_stop" class="solr.TextField" positionIncrementGap="100" autoGeneratePhraseQueries="true"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
  *     &lt;filter class="solr.StopFilterFactory" ignoreCase="true"
  *             words="stopwords.txt" format="wordset"
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * <p>All attributes are optional:
  *

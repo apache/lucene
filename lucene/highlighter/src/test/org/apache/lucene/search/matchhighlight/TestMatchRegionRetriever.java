@@ -295,7 +295,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
                       fmt("2: (%s: 'bar >baz< foo xyz')", field)));
 
               MatcherAssert.assertThat(
-                  highlights(reader, new MatchAllDocsQuery()), Matchers.hasSize(0));
+                  highlights(reader, MatchAllDocsQuery.INSTANCE), Matchers.hasSize(0));
             });
 
     new IndexBuilder(this::toField)

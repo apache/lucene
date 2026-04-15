@@ -51,7 +51,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
 /**
  * Factory for {@link WordDelimiterGraphFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_wd" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
@@ -61,7 +61,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
  *             generateWordParts="1" generateNumberParts="1" stemEnglishPossessive="1"
  *             types="wdfftypes.txt" ignoreKeywords="0" /&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @since 6.5.0
  * @lucene.spi {@value #NAME}

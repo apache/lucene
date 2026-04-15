@@ -1895,7 +1895,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
         } else {
           // find next interval
-          assert target > maxDocID[0] : "target must be bigger that current interval";
+          assert target > maxDocID[0]
+              : "target " + target + " must be bigger that current interval " + maxDocID[0];
           while (true) {
             levels = input.readByte();
             assert levels <= SKIP_INDEX_MAX_LEVEL && levels > 0

@@ -42,11 +42,11 @@ import org.apache.lucene.search.TopTermsRewrite;
  *
  * <blockquote>
  *
- * <pre class="prettyprint">{@code
+ * <pre><code class="language-java">
  * WildcardQuery wildcard = new WildcardQuery(new Term("field", "bro?n"));
- * SpanQuery spanWildcard = new SpanMultiTermQueryWrapper<WildcardQuery>(wildcard);
+ * SpanQuery spanWildcard = new SpanMultiTermQueryWrapper&lt;WildcardQuery&gt;(wildcard);
  * // do something with spanWildcard, such as use it in a SpanFirstQuery
- * }</pre>
+ * </code></pre>
  *
  * </blockquote>
  */

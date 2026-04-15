@@ -138,7 +138,7 @@ public final class BytesRefHash implements Accountable {
     bytesStart = bytesStartArray.init();
     final Counter bytesUsed = bytesStartArray.bytesUsed();
     this.bytesUsed = bytesUsed == null ? Counter.newCounter() : bytesUsed;
-    bytesUsed.addAndGet(hashSize * (long) Integer.BYTES);
+    this.bytesUsed.addAndGet(hashSize * (long) Integer.BYTES);
   }
 
   /**

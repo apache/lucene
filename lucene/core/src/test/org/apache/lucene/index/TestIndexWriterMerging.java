@@ -18,6 +18,9 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Random;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -28,6 +31,7 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.SuppressForbidden;
 
 public class TestIndexWriterMerging extends LuceneTestCase {
 
@@ -331,6 +335,255 @@ public class TestIndexWriterMerging extends LuceneTestCase {
 
     @Override
     public void close() {}
+  }
+
+  public void testForceMergeDeletesWithObserver() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter indexer =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setMaxBufferedDocs(2)
+                .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH));
+
+    for (int i = 0; i < 10; i++) {
+      Document doc = new Document();
+      Field idField = newStringField("id", "" + i, Field.Store.NO);
+      doc.add(idField);
+      indexer.addDocument(doc);
+    }
+    indexer.close();
+
+    IndexReader beforeDeleteReader = DirectoryReader.open(dir);
+    assertEquals(10, beforeDeleteReader.maxDoc());
+    assertEquals(10, beforeDeleteReader.numDocs());
+    beforeDeleteReader.close();
+
+    IndexWriter deleter =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setMergePolicy(NoMergePolicy.INSTANCE));
+    for (int i = 0; i < 10; i++) {
+      if (i % 2 == 0) {
+        deleter.deleteDocuments(new Term("id", "" + i));
+      }
+    }
+    deleter.close();
+
+    IndexReader afterDeleteReader = DirectoryReader.open(dir);
+    assertEquals(10, afterDeleteReader.maxDoc());
+    assertEquals(5, afterDeleteReader.numDocs());
+    afterDeleteReader.close();
+
+    IndexWriter iw =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(newLogMergePolicy()));
+    assertEquals(10, iw.getDocStats().maxDoc);
+    assertEquals(5, iw.getDocStats().numDocs);
+    MergePolicy.MergeObserver observer = iw.forceMergeDeletes(false);
+
+    assertTrue("Should have scheduled merges", observer.numMerges() > 0);
+
+    assertTrue(
+        "Merges should complete within 30 seconds", observer.await(30_000, TimeUnit.MILLISECONDS));
+
+    assertEquals(
+        "All merges should be completed after await() returns true",
+        observer.numMerges(),
+        observer.numCompletedMerges());
+
+    assertEquals(5, iw.getDocStats().maxDoc);
+    assertEquals(5, iw.getDocStats().numDocs);
+
+    iw.waitForMerges();
+    iw.close();
+    dir.close();
+  }
+
+  public void testMergeObserverNoMerges() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter writer =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setMergePolicy(NoMergePolicy.INSTANCE));
+
+    Document doc = new Document();
+    doc.add(newStringField("id", "1", Field.Store.NO));
+    writer.addDocument(doc);
+    writer.commit();
+
+    MergePolicy.MergeObserver observer = writer.forceMergeDeletes(false);
+
+    assertEquals("Should have zero merges", 0, observer.numMerges());
+
+    writer.close();
+    dir.close();
+  }
+
+  public void testMergeObserverAwaitWithTimeout() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter iw =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(newLogMergePolicy()));
+
+    for (int i = 0; i < 10; i++) {
+      Document doc = new Document();
+      doc.add(newStringField("id", "" + i, Field.Store.NO));
+      iw.addDocument(doc);
+    }
+    iw.commit();
+
+    iw.deleteDocuments(new Term("id", "0"));
+    iw.deleteDocuments(new Term("id", "1"));
+    iw.deleteDocuments(new Term("id", "2"));
+    iw.commit();
+
+    MergePolicy.MergeObserver observer = iw.forceMergeDeletes(false);
+
+    assertTrue(
+        "Merges should complete within 30 seconds", observer.await(30_000, TimeUnit.MILLISECONDS));
+
+    assertEquals(
+        "All merges should be completed after await() returns true",
+        observer.numMerges(),
+        observer.numCompletedMerges());
+
+    iw.waitForMerges();
+    iw.close();
+    dir.close();
+  }
+
+  @SuppressForbidden(reason = "Thread sleep")
+  public void testMergeObserverAwaitTimeout() throws Exception {
+    Directory dir = newDirectory();
+
+    CountDownLatch mergeStarted = new CountDownLatch(1);
+    CountDownLatch allowMergeToFinish = new CountDownLatch(1);
+
+    ConcurrentMergeScheduler mergeScheduler =
+        new ConcurrentMergeScheduler() {
+          @Override
+          protected void doMerge(MergeSource mergeSource, MergePolicy.OneMerge merge)
+              throws IOException {
+            try {
+              mergeStarted.countDown();
+              // Block until test allows completion
+              allowMergeToFinish.await();
+              super.doMerge(mergeSource, merge);
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+              throw new IOException(e);
+            }
+          }
+        };
+
+    IndexWriter indexer =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setMergePolicy(newLogMergePolicy())
+                .setMergeScheduler(mergeScheduler));
+
+    for (int i = 0; i < 20; i++) {
+      Document doc = new Document();
+      doc.add(newStringField("id", "" + i, Field.Store.NO));
+      indexer.addDocument(doc);
+    }
+    indexer.commit();
+
+    for (int i = 0; i < 10; i++) {
+      indexer.deleteDocuments(new Term("id", "" + i));
+    }
+    indexer.commit();
+
+    MergePolicy.MergeObserver observer = indexer.forceMergeDeletes(false);
+
+    if (observer.numMerges() > 0) {
+      mergeStarted.await();
+      assertFalse("await should timeout", observer.await(10, TimeUnit.MILLISECONDS));
+      allowMergeToFinish.countDown();
+    }
+
+    indexer.waitForMerges();
+    indexer.close();
+    dir.close();
+  }
+
+  public void testForceMergeDeletesBlockingWithObserver() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter indexer =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setMaxBufferedDocs(2)
+                .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH));
+
+    for (int i = 0; i < 10; i++) {
+      Document doc = new Document();
+      Field idField = newStringField("id", "" + i, Field.Store.NO);
+      doc.add(idField);
+      indexer.addDocument(doc);
+    }
+    indexer.close();
+
+    IndexWriter deleter =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setMergePolicy(NoMergePolicy.INSTANCE));
+    for (int i = 0; i < 10; i++) {
+      if (i % 2 == 0) {
+        deleter.deleteDocuments(new Term("id", "" + i));
+      }
+    }
+    deleter.close();
+
+    IndexWriter iw =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(newLogMergePolicy()));
+    assertEquals(10, iw.getDocStats().maxDoc);
+    assertEquals(5, iw.getDocStats().numDocs);
+
+    MergePolicy.MergeObserver observer = iw.forceMergeDeletes(true);
+    assertTrue("Should have completed merges", observer.numMerges() > 0);
+    assertTrue("await should return true immediately", observer.await());
+
+    assertEquals(5, iw.getDocStats().maxDoc);
+    assertEquals(5, iw.getDocStats().numDocs);
+
+    iw.close();
+    dir.close();
+  }
+
+  public void testBlockingModeWithNoMerges() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter iw =
+        new IndexWriter(
+            dir,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setMergePolicy(NoMergePolicy.INSTANCE));
+
+    Document doc = new Document();
+    doc.add(newStringField("id", "1", Field.Store.NO));
+    iw.addDocument(doc);
+    iw.commit();
+
+    MergePolicy.MergeObserver observer = iw.forceMergeDeletes(true);
+    assertEquals("Should have zero merges", 0, observer.numMerges());
+    assertTrue("await with timeout should return true", observer.await(1, TimeUnit.SECONDS));
+    assertTrue("await should return true", observer.await());
+
+    CompletableFuture<Void> future = observer.awaitAsync();
+    assertTrue("Future should be done", future.isDone());
+    assertFalse("Future should not be exceptional", future.isCompletedExceptionally());
+
+    iw.close();
+    dir.close();
   }
 
   // LUCENE-1013

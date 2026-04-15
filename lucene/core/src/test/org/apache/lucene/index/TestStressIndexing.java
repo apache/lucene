@@ -156,7 +156,8 @@ public class TestStressIndexing extends LuceneTestCase {
     // System.out.println("Searcher 2: " + searcherThread2.count + " searchers created");
   }
 
-  /* */
+  /* TODO: incredibly slow */
+  @Nightly
   public void testStressIndexAndSearching() throws Exception {
     final Directory directory;
     if (TEST_NIGHTLY) {

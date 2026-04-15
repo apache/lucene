@@ -66,7 +66,7 @@ public class PhraseHelper {
 
   public static final PhraseHelper NONE =
       new PhraseHelper(
-          new MatchAllDocsQuery(), "_ignored_", (_) -> false, _ -> null, _ -> null, true);
+          MatchAllDocsQuery.INSTANCE, "_ignored_", (_) -> false, _ -> null, _ -> null, true);
 
   private final String fieldName;
   private final Set<BytesRef> positionInsensitiveTerms; // (TermQuery terms)

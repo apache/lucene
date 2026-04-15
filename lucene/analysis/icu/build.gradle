@@ -15,7 +15,8 @@
  * limitations under the License.
  */
 
-
+import org.apache.tools.ant.taskdefs.condition.Os
+import java.nio.file.Files
 
 description = 'Analysis integration with ICU (International Components for Unicode)'
 
@@ -26,4 +27,287 @@ dependencies {
   moduleApi deps.icu4j
 
   moduleTestImplementation project(':lucene:test-framework')
+}
+
+/*
+ * Regenerates ICU-related data files in this and other projects.
+ *
+ * The icu4c version must match exactly the icu4j version in libs.versions.toml.
+ * The one on your system is probably different. This script will attempt to
+ * download and compile a matching icu4c version automatically.
+ */
+
+def resources = rootProject.file("gradle/regenerate/icu")
+
+def setupIcuDependencies = { Project proj ->
+  // Configure different icu4j dependencies.
+  proj.configurations {
+    icu_current
+    groovy
+  }
+
+  proj.dependencies {
+    icu_current deps.icu4j
+    groovy deps.groovy
+  }
+}
+
+def icu4jVersion = deps.icu4j.get().version
+
+setupIcuDependencies(project)
+def utr30DataDir = file("src/data/utr30")
+
+def icuBuildDir = file("${buildDir}/icu")
+def icuBinDir
+def gennorm
+def icupkg
+
+if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+  icuBinDir = file("${icuBuildDir}/bin64")
+  gennorm = file("${icuBinDir}/gennorm2.exe")
+  icupkg =  file("${icuBinDir}/icupkg.exe")
+} else {
+  icuBinDir = file("${icuBuildDir}/icu/source/bin")
+  gennorm = file("${icuBinDir}/gennorm2")
+  icupkg = file("${icuBinDir}/icupkg")
+}
+
+def icuCompileTask = Os.isFamily(Os.FAMILY_WINDOWS) ? "compileIcuWindows" : "compileIcuLinux"
+
+tasks.register("regenerateUtr30DataFiles", {
+  description = "Regenerate utf30 norm files using ICU"
+
+  def icuConfig = configurations.icu_current
+
+  dependsOn icuConfig
+  dependsOn icuCompileTask
+
+  regenerate {
+    ifSkippedAlsoSkip = [icuCompileTask]
+  }
+
+  // May be undefined yet, so use a provider.
+  dependsOn { sourceSets.tools.runtimeClasspath }
+
+  // gennorm generates file order-dependent output, so make it constant here.
+  def inputFiles = fileTree(dir: utr30DataDir, include: "*.txt")
+  .asList().toSorted(Comparator.comparing { File f -> f.name })
+  def outputFile = file("src/resources/org/apache/lucene/analysis/icu/utr30.nrm")
+
+  inputs.files inputFiles
+  inputs.property "icuConfig", icu4jVersion
+  outputs.file outputFile
+
+  doFirst {
+    // all these steps must be done sequentially: it's a pipeline resulting in utr30.nrm
+    buildGlobals.execOps.javaexec {
+      mainClass = "org.apache.lucene.analysis.icu.GenerateUTR30DataFiles"
+      classpath = sourceSets.tools.runtimeClasspath
+
+      ignoreExitValue = false
+      workingDir utr30DataDir
+      args = [
+        "release-${icu4jVersion}"
+      ]
+    }
+
+    buildGlobals.quietExec(it, {
+      executable gennorm
+      args = [
+        "-v",
+        "-s",
+        utr30DataDir,
+        "-o",
+        "${buildDir}/utr30.tmp",
+        *(inputFiles.collect { it.name })
+      ]
+    })
+
+    buildGlobals.quietExec(it, {
+      executable icupkg
+      args = [
+        "-tb",
+        "${buildDir}/utr30.tmp",
+        outputFile
+      ]
+    })
+  }
+})
+
+tasks.register("regenerateRbbi", {
+  description = "Regenerate rbbi rules using ICU"
+
+  def icuConfig = configurations.icu_current
+
+  dependsOn icuConfig
+
+  // May be undefined yet, so use a provider.
+  dependsOn { sourceSets.tools.runtimeClasspath }
+
+  def sourceDir = file("src/data/uax29")
+  def targetDir = file("src/resources/org/apache/lucene/analysis/icu/segmentation")
+
+  inputs.files fileTree(dir: sourceDir, include: "*.rbbi")
+  inputs.property "icuConfig", icu4jVersion
+  outputs.files fileTree(dir: targetDir, include: "*.brk")
+
+  doFirst {
+    buildGlobals.execOps.javaexec {
+      mainClass = "org.apache.lucene.analysis.icu.RBBIRuleCompiler"
+      classpath = sourceSets.tools.runtimeClasspath
+
+      ignoreExitValue = false
+      enableAssertions true
+      args = [sourceDir, targetDir]
+    }
+  }
+})
+
+tasks.register("compileIcuWindows", {
+  doFirst {
+    def v = icu4jVersion
+    def icuBinZip = file("${icuBuildDir}/icu4c-${v.replace(".", "_")}.zip")
+    if (!icuBinZip.exists()) {
+      icuBuildDir.mkdirs()
+
+      // Download binaries matching icu4j version in version.props
+      def src = URI.create("https://github.com/unicode-org/icu/releases/download/release-${v}/icu4c-${v}-Win64-MSVC2022.zip")
+
+      logger.lifecycle("Trying to download binary ICU version: ${v} from:\n  ${src}")
+      Files.write(icuBinZip.toPath(), src.toURL().openStream().bytes)
+      logger.lifecycle("Downloaded ${icuBinZip.size()} bytes.")
+    }
+
+    // Unzip.
+    buildGlobals.fileOps.copy({
+      into icuBuildDir
+      from zipTree(icuBinZip)
+    })
+  }
+})
+
+tasks.register("compileIcuLinux", {
+  doFirst {
+    if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+      throw new GradleException("ICU compilation not supported on Windows.")
+    }
+
+    def v = icu4jVersion
+    def icuSrcTgz = file("${icuBuildDir}/icu4c-${v}-sources.tgz")
+
+    // Download sources for version matching icu4j version in version.props
+    if (!icuSrcTgz.exists()) {
+      icuBuildDir.mkdirs()
+      def src = URI.create("https://github.com/unicode-org/icu/releases/download/release-${v}/icu4c-${v}-sources.tgz")
+      logger.lifecycle("Trying to download and compile ICU version: ${v} from:\n  ${src}")
+      Files.write(icuSrcTgz.toPath(), src.toURL().openStream().bytes)
+      logger.lifecycle("Downloaded ${icuSrcTgz.size()} bytes.")
+    }
+
+    def icuSrcDir = file("${icuBuildDir}/icu/source")
+    buildGlobals.fileOps.delete(icuSrcDir)
+
+    // Extract the tgz
+    buildGlobals.quietExec(it, {
+      executable "tar"
+      workingDir icuBuildDir
+      args = [
+        "-zxf",
+        icuSrcTgz
+      ]
+    })
+
+    // Compile: (cd icu/source && ./configure --prefix=$(pwd) --enable-rpath && make -j4)
+    buildGlobals.quietExec(it, {
+      executable "sh"
+
+      workingDir icuSrcDir
+      environment("CFLAGS", "-O0")
+      environment("CXXFLAGS", "-O0")
+      args = [
+        "configure",
+        "--prefix=${icuSrcDir}",
+        "--enable-rpath"
+      ]
+    })
+
+    buildGlobals.quietExec(it, {
+      executable "make"
+      workingDir icuSrcDir
+      args = [
+        "-j${buildOptions['tests.jvms'].get()}"
+      ]
+    })
+
+    // Test that the binaries work:  derb -V
+    logger.lifecycle("Compiled ICU, checking...")
+    buildGlobals.quietExec(it, {
+      executable "./derb"
+      workingDir icuBinDir
+      args = ["-V"]
+    })
+  }
+})
+
+configure(project(":lucene:analysis:common")) {
+  setupIcuDependencies(project)
+
+  tasks.register("regenerateUnicodeProps", {
+    def icuConfig = configurations.icu_current
+    def groovyConfig = configurations.groovy
+
+    def outputFile = file("src/java/org/apache/lucene/analysis/util/UnicodeProps.java")
+
+    description = "Regenerate ${outputFile} using ICU"
+
+    dependsOn icuConfig
+
+    inputs.property "icuConfig", icu4jVersion
+    outputs.file outputFile
+
+    doFirst {
+      buildGlobals.execOps.javaexec({ JavaExecSpec spec ->
+        spec.mainClass = "groovy.lang.GroovyShell"
+        spec.classpath(icuConfig, groovyConfig)
+
+        spec.args([
+          "--encoding",
+          "UTF-8",
+          file("${resources}/GenerateUnicodeProps.groovy").toString(),
+          outputFile.toString()
+        ])
+      })
+    }
+  })
+}
+
+configure(project(":lucene:core")) {
+  setupIcuDependencies(project)
+
+  tasks.register("generateUnicodeProps", {
+    def icuConfig = configurations.icu_current
+    def groovyConfig = configurations.groovy
+    def outputFile = file("src/java/org/apache/lucene/util/automaton/CaseFolding.java")
+
+    description = "Regenerate ${outputFile} using ICU"
+
+    dependsOn icuConfig
+
+    inputs.property "icuConfig", icu4jVersion
+    outputs.file outputFile
+
+    doFirst {
+      buildGlobals.execOps.javaexec({
+        mainClass = "groovy.lang.GroovyShell"
+        classpath icuConfig, groovyConfig
+
+        args = [
+          "--encoding",
+          "UTF-8",
+          file("${resources}/GenerateCaseFolding.groovy"),
+          outputFile
+        ]
+      })
+    }
+  })
 }

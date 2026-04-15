@@ -54,7 +54,7 @@ public abstract class LuceneGradlePlugin implements Plugin<Project> {
   }
 
   /** Return the main Lucene project path (root path of the repository checkout). */
-  protected static Path getProjectRootPath(Project project) {
+  public static Path getProjectRootPath(Project project) {
     return project.getLayout().getSettingsDirectory().getAsFile().toPath();
   }
 

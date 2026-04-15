@@ -547,7 +547,7 @@ public class TestValueSources extends LuceneTestCase {
       assertNoneExist(vs);
 
       // doc doesn't match the query, so default value should be returned
-      vs = new QueryValueSource(new MatchNoDocsQuery(), 5.0f);
+      vs = new QueryValueSource(MatchNoDocsQuery.INSTANCE, 5.0f);
       final LeafReaderContext leaf = searcher.getIndexReader().leaves().get(0);
       FunctionValues fv = vs.getValues(ValueSource.newContext(searcher), leaf);
       assertEquals(5.0f, fv.objectVal(1));
@@ -738,6 +738,16 @@ public class TestValueSources extends LuceneTestCase {
             MultiFunction.anyExists(1, new FunctionValues[] {firstArg, secondArg, secondArg}));
       }
     }
+  }
+
+  public void testReWrappingAsDoubleValues() throws Exception {
+    final ValueSource original = new DoubleFieldSource("double");
+    assertSame(original, ValueSource.fromDoubleValuesSource(original.asDoubleValuesSource()));
+  }
+
+  public void testUnWrappingDoubleValues() throws Exception {
+    final DoubleValuesSource original = DoubleValuesSource.fromDoubleField("double");
+    assertSame(original, ValueSource.fromDoubleValuesSource(original).asDoubleValuesSource());
   }
 
   public void testWrappingAsDoubleValues() throws Exception {

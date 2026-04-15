@@ -150,6 +150,8 @@ public class TestGeo3dRpt extends RandomSpatialOpStrategyTestCase {
     return new Geo3dShape<>(areaShape, ctx);
   }
 
+  // TODO: incredibly slow
+  @Nightly
   @Test
   public void testOperationsFromFile() throws IOException {
     setupStrategy();

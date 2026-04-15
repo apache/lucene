@@ -21,9 +21,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import org.apache.lucene.util.CollectionUtil;
 
 /**
  * GeoConvexPolygon objects are generic building blocks of more complex structures. The only
@@ -254,8 +254,8 @@ class GeoConvexPolygon extends GeoBasePolygon {
     }
 
     // For each edge, create a bounds object.
-    prevBrotherMap = CollectionUtil.newHashMap(edges.length);
-    nextBrotherMap = CollectionUtil.newHashMap(edges.length);
+    prevBrotherMap = HashMap.newHashMap(edges.length);
+    nextBrotherMap = HashMap.newHashMap(edges.length);
     for (int edgeIndex = 0; edgeIndex < edges.length; edgeIndex++) {
       final SidedPlane edge = edges[edgeIndex];
       int bound1Index = legalIndex(edgeIndex + 1);

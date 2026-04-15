@@ -320,8 +320,7 @@ final class IndexingChain implements Accountable {
 
     t0 = System.nanoTime();
     Map<String, TermsHashPerField> fieldsToFlush = new HashMap<>();
-    for (int i = 0; i < fieldHash.length; i++) {
-      PerField perField = fieldHash[i];
+    for (PerField perField : fieldHash) {
       while (perField != null) {
         if (perField.invertState != null) {
           fieldsToFlush.put(perField.fieldInfo.name, perField.termsHashPerField);

@@ -670,7 +670,13 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
     return thread;
   }
 
-  synchronized void runOnMergeFinished(MergeSource mergeSource) {
+  /**
+   * Called when a merge thread finishes.
+   *
+   * @lucene.experimental
+   */
+  protected synchronized void runOnMergeFinished(
+      MergeSource mergeSource, OneMerge merge, MergeRateLimiter rateLimiter) {
     // the merge call as well as the merge thread handling in the finally
     // block must be sync'd on CMS otherwise stalling decisions might cause
     // us to miss pending merges
@@ -733,7 +739,7 @@ public class ConcurrentMergeScheduler extends MergeScheduler {
                   rateToString(rateLimiter.getMBPerSec())));
         }
 
-        runOnMergeFinished(mergeSource);
+        runOnMergeFinished(mergeSource, merge, rateLimiter);
 
         if (verbose()) {
           message(String.format(Locale.ROOT, "merge thread %s end", this.getName()));

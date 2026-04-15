@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-
+import org.apache.lucene.gradle.plugins.regenerate.JavaCCTask
 
 description = 'Query parsers and parsing framework'
 
@@ -26,3 +26,216 @@ dependencies {
 
   moduleTestImplementation project(':lucene:test-framework')
 }
+
+//
+// This adds regeneration of javacc-generated sources
+//
+
+def commonCleanups = { FileTree generatedFiles ->
+  // This is a minor typo in a comment that nonetheless people have hand-corrected in the past.
+  generatedFiles.matching({include "CharStream.java"}).each {file ->
+    buildGlobals.modifyFile(file, {text ->
+      return text.replace(
+          "implemetation",
+          "implementation");
+    })
+  }
+
+  generatedFiles.each {file ->
+    buildGlobals.modifyFile(file, {text ->
+      // Normalize EOLs and tabs (EOLs are a side-effect of modifyFile).
+      text = text.replace("\t", "    ");
+      text = text.replaceAll("JavaCC - OriginalChecksum=[^*]+", "(filtered)")
+      text = text.replace("StringBuffer", "StringBuilder")
+      return text
+    })
+  }
+
+  generatedFiles.matching({include "*TokenManager.java"}).each {file ->
+    buildGlobals.modifyFile(file, {text ->
+      // Remove redundant imports.
+      text = text.replaceAll(
+          /(?m)^import .+/,
+          "")
+      // Add CharStream imports.
+      text = text.replaceAll(
+          /package (.+)/,
+          '''
+          package $1
+          import org.apache.lucene.queryparser.charstream.CharStream;
+          '''.trim())
+      // Eliminates redundant cast message.
+      text = text.replace(
+          "int hiByte = (int)(curChar >> 8);",
+          "int hiByte = curChar >> 8;")
+      // Access to forbidden APIs.
+      text = text.replace(
+          "public  java.io.PrintStream debugStream = System.out;",
+          "// (debugStream omitted).")
+      text = text.replace(
+          "public  void setDebugStream(java.io.PrintStream ds) { debugStream = ds; }",
+          "// (setDebugStream omitted).")
+      // Remove dangling doc comments
+      text = text.replace(
+          "/** Debug output. */",
+          "// Debug output.")
+      text = text.replace(
+          "/** Set debug output. */",
+          "// Set debug output.")
+      return text
+    })
+  }
+}
+
+configurations.create("javacc")
+
+dependencies {
+  add("javacc", deps.javacc)
+}
+
+tasks.withType(JavaCCTask).configureEach {
+  classpath = configurations.javacc
+}
+
+tasks.register("regenerateClassicQueryParser", JavaCCTask, {
+  javaccFile = file('src/java/org/apache/lucene/queryparser/classic/QueryParser.jj')
+  description = "Regenerate classic query parser from ${javaccFile}"
+
+  afterGenerate(commonCleanups)
+  afterGenerate({ FileTree generatedFiles ->
+    generatedFiles.matching {include "QueryParser.java"}.each {file ->
+      buildGlobals.modifyFile(file, {text ->
+        text = text.replace(
+            "public QueryParser(CharStream ",
+            "protected QueryParser(CharStream ")
+        text = text.replace(
+            "public QueryParser(QueryParserTokenManager ",
+            "protected QueryParser(QueryParserTokenManager ")
+        text = text.replace(
+            "new java.util.ArrayList<int[]>",
+            "new java.util.ArrayList<>")
+        text = text.replace(
+            "final private LookaheadSuccess jj_ls =",
+            "static final private LookaheadSuccess jj_ls =")
+        text = text.replace(
+            "public class QueryParser ",
+            '@SuppressWarnings({"unused","null"}) public class QueryParser ')
+        text = text.replace(
+            "final public Query TopLevelQuery(",
+            "@Override final public Query TopLevelQuery(")
+        text = text.replace(
+            "public void ReInit(CharStream ",
+            "@Override public void ReInit(CharStream ")
+        return text
+      })
+    }
+  })
+})
+
+
+tasks.register("regenerateSurroundQueryParser", JavaCCTask, {
+  javaccFile = file('src/java/org/apache/lucene/queryparser/surround/parser/QueryParser.jj')
+  description = "Regenerate surround query parser from ${javaccFile}"
+
+  classpath = configurations.javacc
+
+  afterGenerate(commonCleanups)
+
+  afterGenerate({FileTree generatedFiles ->
+    generatedFiles.matching {include "QueryParser.java"}.each {file ->
+      buildGlobals.modifyFile(file, {text ->
+        text = text.replace(
+            "import org.apache.lucene.analysis.TokenStream;",
+            "")
+        text = text.replace(
+            "new java.util.ArrayList<int[]>",
+            "new java.util.ArrayList<>")
+        text = text.replace(
+            "public class QueryParser ",
+            '@SuppressWarnings({"unused","null"}) public class QueryParser ')
+        return text
+      })
+    }
+  })
+})
+
+tasks.register("regenerateFlexibleStandardSyntaxParser", JavaCCTask, {
+  javaccFile = file('src/java/org/apache/lucene/queryparser/flexible/standard/parser/StandardSyntaxParser.jj')
+  description = "Regenerate flexible query parser from ${javaccFile}"
+
+  classpath = configurations.javacc
+
+  afterGenerate(commonCleanups)
+
+  afterGenerate({FileTree generatedFiles ->
+    generatedFiles.matching {include "ParseException.java"}.each {file ->
+      buildGlobals.modifyFile(file, {text ->
+        // Modify constructor.
+        text = text.replace(
+            "class ParseException extends Exception",
+            "class ParseException extends QueryNodeParseException")
+
+        // Modify imports.
+        text = text.replace(
+            "package org.apache.lucene.queryparser.flexible.standard.parser;", '''\
+            package org.apache.lucene.queryparser.flexible.standard.parser;
+
+            import org.apache.lucene.queryparser.flexible.core.QueryNodeParseException;
+            import org.apache.lucene.queryparser.flexible.core.messages.QueryParserMessages;
+            import org.apache.lucene.queryparser.flexible.messages.Message;
+            import org.apache.lucene.queryparser.flexible.messages.MessageImpl;
+            ''')
+
+        // Modify constructors and code bits
+        text = text.replaceAll(
+            /(?s)[ ]*public ParseException\(Token currentTokenVal[^}]+[}]/, '''\
+            public ParseException(Token currentTokenVal,
+              int[][] expectedTokenSequencesVal, String[] tokenImageVal)
+            {
+              super(new MessageImpl(QueryParserMessages.INVALID_SYNTAX, initialise(
+              currentTokenVal, expectedTokenSequencesVal, tokenImageVal)));
+              this.currentToken = currentTokenVal;
+              this.expectedTokenSequences = expectedTokenSequencesVal;
+              this.tokenImage = tokenImageVal;
+            }
+            ''')
+
+        text = text.replaceAll(
+            /(?s)[ ]*public ParseException\(String message\)[^}]+[}]/, '''\
+            public ParseException(Message message)
+            {
+              super(message);
+            }
+            ''')
+
+        text = text.replaceAll(
+            /(?s)[ ]*public ParseException\(\)[^}]+[}]/, '''\
+            public ParseException()
+            {
+              super(new MessageImpl(QueryParserMessages.INVALID_SYNTAX, "Error"));
+            }
+            ''')
+        return text
+      })
+    }
+
+    generatedFiles.matching {include "StandardSyntaxParser.java"}.each {file ->
+      buildGlobals.modifyFile(file, {text ->
+        // Remove redundant cast
+        text = text.replace(
+            "new java.util.ArrayList<int[]>",
+            "new java.util.ArrayList<>")
+        text = text.replace(
+            "new ArrayList<QueryNode>()",
+            "new ArrayList<>()")
+        text = text.replace(
+            "Collections.<QueryNode> singletonList",
+            "Collections.singletonList")
+        text = text.replace(
+            "public class StandardSyntaxParser ",
+            '@SuppressWarnings({"unused","null"}) public class StandardSyntaxParser ')
+        return text
+      })
+    }
+  })
+})

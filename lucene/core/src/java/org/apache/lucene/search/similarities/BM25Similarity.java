@@ -122,9 +122,9 @@ public class BM25Similarity extends Similarity {
    *
    * <p>The default implementation uses:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * idf(docFreq, docCount);
-   * </pre>
+   * </code></pre>
    *
    * Note that {@link CollectionStatistics#docCount()} is used instead of {@link
    * org.apache.lucene.index.IndexReader#numDocs() IndexReader#numDocs()} because also {@link

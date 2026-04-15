@@ -71,11 +71,33 @@ public final class Version {
   @Deprecated public static final Version LUCENE_10_3_0 = new Version(10, 3, 0);
 
   /**
-   * Match settings and bugs in Lucene's 10.4.0 release.
+   * Match settings and bugs in Lucene's 10.3.1 release.
    *
    * @deprecated Use latest
    */
+  @Deprecated public static final Version LUCENE_10_3_1 = new Version(10, 3, 1);
+
+  /**
+   * Match settings and bugs in Lucene's 10.3.2 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_10_3_2 = new Version(10, 3, 2);
+
+  /**
+   * Match settings and bugs in Lucene's 10.4.0 release.
+   *
+   * @deprecated Use latest
+   * @deprecated (10.5.0) Use latest
+   */
   @Deprecated public static final Version LUCENE_10_4_0 = new Version(10, 4, 0);
+
+  /**
+   * Match settings and bugs in Lucene's 10.5.0 release.
+   *
+   * @deprecated Use latest
+   */
+  @Deprecated public static final Version LUCENE_10_5_0 = new Version(10, 5, 0);
 
   /**
    * Match settings and bugs in Lucene's 11.0.0 release.

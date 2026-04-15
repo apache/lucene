@@ -21,10 +21,13 @@ import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin;
 import com.carrotsearch.randomizedtesting.SeedUtils;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.gradle.api.GradleException;
 import org.gradle.api.JavaVersion;
@@ -84,6 +87,38 @@ public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
     boolean isIdeaSync = Boolean.parseBoolean(System.getProperty("idea.sync.active", "false"));
     boolean isIdeaBuild = (isIdea && !isIdeaSync);
 
+    // Determine the set of projects whose artifacts are published to maven central.
+    LinkedHashSet<Project> publishedProjects =
+        project.project(":lucene").getSubprojects().stream()
+            .filter(
+                subproject -> {
+                  // Exclude all modular-test projects.
+                  if (subproject.getPath().endsWith(".tests")) {
+                    return false;
+                  }
+
+                  // Exclude build tools.
+                  if (subproject.getPath().startsWith(":build-tools:")) {
+                    return false;
+                  }
+
+                  // Exclude these explicitly.
+                  return switch (subproject.getPath()) {
+                    // Exclude distribution assembly, tests & documentation.
+                    case ":lucene:distribution", ":lucene:documentation" -> false;
+                    // Exclude the parent container project for analysis modules (no artifacts).
+                    case ":lucene:analysis" -> false;
+                    // Exclude other misc modules: native, test and benchmarks.
+                    case ":lucene:misc:native",
+                        ":lucene:spatial-test-fixtures",
+                        ":lucene:benchmarks-jmh" ->
+                        false;
+                    default -> true;
+                  };
+                })
+            .sorted(Comparator.comparing(Project::getPath))
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+
     project.allprojects(
         p -> {
           var globals =
@@ -96,6 +131,7 @@ public class RegisterBuildGlobalsPlugin extends LuceneGradlePlugin {
           globals.buildTime = buildTime;
           globals.buildYear = buildYear;
           globals.isCIBuild = isCIBuild;
+          globals.publishedProjects = publishedProjects;
           globals.getRootSeed().set(rootSeed);
           globals.getRootSeedAsLong().set(rootSeedLong);
           globals

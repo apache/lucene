@@ -29,6 +29,7 @@ import org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorScorer;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.MemorySegmentAccessInput;
+import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.FloatToFloatFunction;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -63,6 +64,9 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
       throws IOException {
     if (vectorValues instanceof QuantizedByteVectorValues quantized
         && quantized.getSlice() instanceof MemorySegmentAccessInput input) {
+      if (Constants.NATIVE_DOT_PRODUCT_ENABLED) {
+        return new NativeRandomVectorScorerImpl(similarityFunction, quantized, input, target);
+      }
       return new RandomVectorScorerImpl(similarityFunction, quantized, input, target);
     }
     return DELEGATE.getRandomVectorScorer(similarityFunction, vectorValues, target);
@@ -199,7 +203,7 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
   }
 
   private static class RandomVectorScorerImpl extends RandomVectorScorerBase {
-    private final byte[] targetBytes;
+    protected final byte[] targetBytes;
     private final float queryOffset;
 
     RandomVectorScorerImpl(
@@ -248,6 +252,46 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
     }
   }
 
+  private static class NativeRandomVectorScorerImpl extends RandomVectorScorerImpl {
+    NativeRandomVectorScorerImpl(
+        VectorSimilarityFunction similarityFunction,
+        QuantizedByteVectorValues values,
+        MemorySegmentAccessInput input,
+        float[] target) {
+      super(similarityFunction, values, input, target);
+    }
+
+    @Override
+    int euclidean(MemorySegment doc) {
+      return NativeVectorUtilSupport.uint8SquareDistance(targetBytes, doc);
+    }
+
+    @Override
+    int int4Euclidean(MemorySegment doc) {
+      return NativeVectorUtilSupport.int4SquareDistance(targetBytes, doc);
+    }
+
+    @Override
+    int compressedInt4Euclidean(MemorySegment doc) {
+      return NativeVectorUtilSupport.int4SquareDistanceSinglePacked(targetBytes, doc);
+    }
+
+    @Override
+    int dotProduct(MemorySegment doc) {
+      return NativeVectorUtilSupport.uint8DotProduct(targetBytes, doc);
+    }
+
+    @Override
+    int int4DotProduct(MemorySegment doc) {
+      return NativeVectorUtilSupport.int4DotProduct(targetBytes, doc);
+    }
+
+    @Override
+    int compressedInt4DotProduct(MemorySegment doc) {
+      return NativeVectorUtilSupport.int4DotProductSinglePacked(targetBytes, doc);
+    }
+  }
+
   private record RandomVectorScorerSupplierImpl(
       VectorSimilarityFunction similarityFunction,
       QuantizedByteVectorValues values,
@@ -256,6 +300,9 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
 
     @Override
     public UpdateableRandomVectorScorer scorer() {
+      if (Constants.NATIVE_DOT_PRODUCT_ENABLED) {
+        return new NativeUpdateableRandomVectorScorerImpl(similarityFunction, values, input);
+      }
       return new UpdateableRandomVectorScorerImpl(similarityFunction, values, input);
     }
 
@@ -267,7 +314,7 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
 
   private static class UpdateableRandomVectorScorerImpl extends RandomVectorScorerBase
       implements UpdateableRandomVectorScorer {
-    private MemorySegment query;
+    protected MemorySegment query;
     private float queryOffset;
 
     UpdateableRandomVectorScorerImpl(
@@ -318,6 +365,47 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
     @Override
     int compressedInt4DotProduct(MemorySegment doc) {
       return PanamaVectorUtilSupport.int4DotProductBothPacked(query, doc);
+    }
+  }
+
+  private static class NativeUpdateableRandomVectorScorerImpl
+      extends UpdateableRandomVectorScorerImpl {
+
+    NativeUpdateableRandomVectorScorerImpl(
+        VectorSimilarityFunction similarityFunction,
+        QuantizedByteVectorValues values,
+        MemorySegmentAccessInput input) {
+      super(similarityFunction, values, input);
+    }
+
+    @Override
+    int euclidean(MemorySegment doc) {
+      return NativeVectorUtilSupport.uint8SquareDistance(query, doc);
+    }
+
+    @Override
+    int int4Euclidean(MemorySegment doc) {
+      return NativeVectorUtilSupport.int4SquareDistance(query, doc);
+    }
+
+    @Override
+    int compressedInt4Euclidean(MemorySegment doc) {
+      return NativeVectorUtilSupport.int4SquareDistanceBothPacked(query, doc);
+    }
+
+    @Override
+    int dotProduct(MemorySegment doc) {
+      return NativeVectorUtilSupport.uint8DotProduct(query, doc);
+    }
+
+    @Override
+    int int4DotProduct(MemorySegment doc) {
+      return NativeVectorUtilSupport.int4DotProduct(query, doc);
+    }
+
+    @Override
+    int compressedInt4DotProduct(MemorySegment doc) {
+      return NativeVectorUtilSupport.int4DotProductBothPacked(query, doc);
     }
   }
 }

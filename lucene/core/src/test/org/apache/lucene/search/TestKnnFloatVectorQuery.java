@@ -101,7 +101,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
         IndexReader reader = DirectoryReader.open(indexStore)) {
       Query filter = null;
       if (random().nextBoolean()) {
-        filter = new MatchAllDocsQuery();
+        filter = MatchAllDocsQuery.INSTANCE;
       }
       AbstractKnnVectorQuery query = new KnnByteVectorQuery("field", new byte[] {0, 1}, 10, filter);
       IndexSearcher searcher = newSearcher(reader);

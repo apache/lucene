@@ -34,7 +34,7 @@
  *
  * <p>FST Construction example:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *     // Input values (keys). These must be provided to Builder in Unicode code point (UTF8 or UTF32) sorted order.
  *     // Note that sorting by Java's String.compareTo, which is UTF16 sorted order, is not correct and can lead to
  *     // exceptions while building the FST:
@@ -50,26 +50,26 @@
  *       fstCompiler.add(Util.toIntsRef(scratchBytes.toBytesRef(), scratchInts), outputValues[i]);
  *     }
  *     FST&lt;Long&gt; fst = FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());
- * </pre>
+ * </code></pre>
  *
  * Retrieval by key:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *     Long value = Util.get(fst, new BytesRef("dog"));
  *     System.out.println(value); // 7
- * </pre>
+ * </code></pre>
  *
  * Retrieval by value:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *     // Only works because outputs are also in sorted order
  *     IntsRef key = Util.getByOutput(fst, 12);
  *     System.out.println(Util.toBytesRef(key, scratchBytes).utf8ToString()); // dogs
- * </pre>
+ * </code></pre>
  *
  * Iterate over key-value pairs in sorted order:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *     // Like TermsEnum, this also supports seeking (advance)
  *     BytesRefFSTEnum&lt;Long&gt; iterator = new BytesRefFSTEnum&lt;Long&gt;(fst);
  *     while (iterator.next() != null) {
@@ -77,11 +77,11 @@
  *       System.out.println(mapEntry.input.utf8ToString());
  *       System.out.println(mapEntry.output);
  *     }
- * </pre>
+ * </code></pre>
  *
  * N-shortest paths by weight:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *     Comparator&lt;Long&gt; comparator = new Comparator&lt;Long&gt;() {
  *       public int compare(Long left, Long right) {
  *         return left.compareTo(right);
@@ -93,6 +93,6 @@
  *     System.out.println(paths.topN.get(0).output); // 5
  *     System.out.println(Util.toBytesRef(paths.topN.get(1).input, scratchBytes).utf8ToString()); // dog
  *     System.out.println(paths.topN.get(1).output); // 7
- * </pre>
+ * </code></pre>
  */
 package org.apache.lucene.util.fst;

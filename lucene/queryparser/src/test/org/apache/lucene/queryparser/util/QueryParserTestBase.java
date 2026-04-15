@@ -1163,8 +1163,8 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
   public void testMatchAllDocs() throws Exception {
     CommonQueryParserConfiguration qp =
         getParserConfig(new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false));
-    assertEquals(new MatchAllDocsQuery(), getQuery("*:*", qp));
-    assertEquals(new MatchAllDocsQuery(), getQuery("(*:*)", qp));
+    assertEquals(MatchAllDocsQuery.INSTANCE, getQuery("*:*", qp));
+    assertEquals(MatchAllDocsQuery.INSTANCE, getQuery("(*:*)", qp));
     BooleanQuery bq = (BooleanQuery) getQuery("+*:* -*:*", qp);
     assertEquals(2, bq.clauses().size());
     for (BooleanClause clause : bq) {
@@ -1354,10 +1354,10 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     String oldDefaultField = getDefaultField();
     setDefaultField("key");
     CommonQueryParserConfiguration qp = getParserConfig(new MockAnalyzer(random()));
-    assertEquals(new MatchAllDocsQuery(), getQuery(new MatchAllDocsQuery().toString(), qp));
+    assertEquals(MatchAllDocsQuery.INSTANCE, getQuery(MatchAllDocsQuery.INSTANCE.toString(), qp));
 
     // test parsing with non-default boost
-    Query query = new MatchAllDocsQuery();
+    Query query = MatchAllDocsQuery.INSTANCE;
     query = new BoostQuery(query, 2.3f);
     assertEquals(query, getQuery(query.toString(), qp));
     setDefaultField(oldDefaultField);

@@ -107,6 +107,13 @@ public class VectorUtilBenchmark {
   }
 
   @Benchmark
+  @Fork(
+      jvmArgsPrepend = {"--add-modules=jdk.incubator.vector", "-Dlucene.useNativeDotProduct=true"})
+  public int dot8sNative() {
+    return VectorUtil.dotProduct(bytesA, bytesB);
+  }
+
+  @Benchmark
   public float binaryCosineScalar() {
     return VectorUtil.cosine(bytesA, bytesB);
   }
