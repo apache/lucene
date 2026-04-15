@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
-import org.apache.lucene.queries.function.ValueSource;
+import java.util.function.Supplier;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -32,9 +32,9 @@ import org.apache.lucene.util.FixedBitSet;
  *
  * @lucene.experimental
  */
-public class AllGroupHeadsCollectorManager
+public class AllGroupHeadsCollectorManager<T>
     implements CollectorManager<
-        AllGroupHeadsCollector<?>, AllGroupHeadsCollectorManager.GroupHeadsResult> {
+        AllGroupHeadsCollector<T>, AllGroupHeadsCollectorManager.GroupHeadsResult> {
 
   /** Result wrapper that allows retrieving group heads as int[] or Bits. */
   public static class GroupHeadsResult {
@@ -67,42 +67,28 @@ public class AllGroupHeadsCollectorManager
     }
   }
 
-  private final String groupField;
-  private final ValueSource valueSource;
-  private final Map<Object, Object> valueSourceContext;
+  private final Supplier<GroupSelector<T>> groupSelectorFactory;
   private final Sort sortWithinGroup;
 
-  /** Creates a new AllGroupHeadsCollectorManager for TermGroupSelector. */
-  public AllGroupHeadsCollectorManager(String groupField, Sort sortWithinGroup) {
-    this.groupField = groupField;
-    this.valueSource = null;
-    this.valueSourceContext = null;
-    this.sortWithinGroup = sortWithinGroup;
-  }
-
-  /** Creates a new AllGroupHeadsCollectorManager for ValueSourceGroupSelector. */
+  /**
+   * Creates a new AllGroupHeadsCollectorManager.
+   *
+   * @param groupSelectorFactory factory to create group selectors for each collector
+   * @param sortWithinGroup the sort to use within each group to determine the group head
+   */
   public AllGroupHeadsCollectorManager(
-      ValueSource valueSource, Map<Object, Object> valueSourceContext, Sort sortWithinGroup) {
-    this.groupField = null;
-    this.valueSource = valueSource;
-    this.valueSourceContext = valueSourceContext;
+      Supplier<GroupSelector<T>> groupSelectorFactory, Sort sortWithinGroup) {
+    this.groupSelectorFactory = groupSelectorFactory;
     this.sortWithinGroup = sortWithinGroup;
   }
 
   @Override
-  public AllGroupHeadsCollector<?> newCollector() throws IOException {
-    GroupSelector<?> newGroupSelector;
-    if (groupField != null) {
-      newGroupSelector = new TermGroupSelector(groupField);
-    } else {
-      newGroupSelector = new ValueSourceGroupSelector(valueSource, valueSourceContext);
-    }
-
-    return AllGroupHeadsCollector.newCollector(newGroupSelector, sortWithinGroup, true);
+  public AllGroupHeadsCollector<T> newCollector() throws IOException {
+    return AllGroupHeadsCollector.newCollector(groupSelectorFactory.get(), sortWithinGroup, true);
   }
 
   @Override
-  public GroupHeadsResult reduce(Collection<AllGroupHeadsCollector<?>> collectors) {
+  public GroupHeadsResult reduce(Collection<AllGroupHeadsCollector<T>> collectors) {
     if (collectors.isEmpty()) {
       return new GroupHeadsResult(new int[0]);
     }
@@ -114,20 +100,18 @@ public class AllGroupHeadsCollectorManager
     Map<Object, GroupHeadWithValues> mergedHeads = new HashMap<>();
     SortField[] sortFields = sortWithinGroup.getSort();
 
-    for (AllGroupHeadsCollector<?> collector : collectors) {
+    for (AllGroupHeadsCollector<T> collector : collectors) {
       mergeCollectorHeads(collector, mergedHeads, sortFields);
     }
 
     return new GroupHeadsResult(mergedHeads.values().stream().mapToInt(h -> h.doc).toArray());
   }
 
-  @SuppressWarnings("unchecked")
-  private <T> void mergeCollectorHeads(
+  private void mergeCollectorHeads(
       AllGroupHeadsCollector<T> collector,
       Map<Object, GroupHeadWithValues> mergedHeads,
       SortField[] sortFields) {
-    Collection<AllGroupHeadsCollector.GroupHead<T>> heads =
-        (Collection<AllGroupHeadsCollector.GroupHead<T>>) collector.getCollectedGroupHeads();
+    Collection<? extends AllGroupHeadsCollector.GroupHead<T>> heads = collector.getCollectedGroupHeads();
     for (AllGroupHeadsCollector.GroupHead<T> head : heads) {
       Object[] sortValues = collector.getSortValues(head.groupValue);
       GroupHeadWithValues existing = mergedHeads.get(head.groupValue);
