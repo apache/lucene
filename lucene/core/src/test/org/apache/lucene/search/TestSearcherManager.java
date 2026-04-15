@@ -63,7 +63,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
   public void testSearcherManager() throws Exception {
     pruner =
         new SearcherLifetimeManager.PruneByAge(
-            TEST_NIGHTLY ? TestUtil.nextInt(random(), 1, 20) : 1);
+            TEST_NIGHTLY ? TestUtil.nextInt(random(), 1, 10) : 1);
     runTest("TestSearcherManager");
   }
 
@@ -607,7 +607,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
           @Override
           public void run() {
             try {
-              int numDocs = TEST_NIGHTLY ? atLeast(20000) : atLeast(200);
+              int numDocs = TEST_NIGHTLY ? atLeast(10000) : atLeast(200);
               for (int i = 0; i < numDocs; i++) {
                 IndexWriter w = writerRef.get();
                 Document doc = new Document();

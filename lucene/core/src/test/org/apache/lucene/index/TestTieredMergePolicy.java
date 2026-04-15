@@ -696,9 +696,7 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     }
     reader.close();
 
-    Term[] termsToDel = new Term[toDelete.size()];
-    toDelete.toArray(termsToDel);
-    w.deleteDocuments(termsToDel);
+    w.deleteDocuments(toDelete.toArray(Term[]::new));
     w.commit();
     return toDelete.size();
   }

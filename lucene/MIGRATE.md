@@ -84,6 +84,15 @@ Enhanced error messages will clearly indicate:
 This parameter has no replacement, TieredMergePolicy no longer bounds the
 number of segments that may be merged together.
 
+### Snowball dependency upgrade (Dutch stemmer)
+
+Snowball replaced the "Dutch" stemmer by the "Kraaij-Pohlmann" stemmer (previous called dutch-kp). As a result Lucene supports 2 Dutch stemmers:
+
+- DutchStemmer, which is now the "Kraaij-Pohlmann" stemmer.
+- Dutch_porterStemmer, which is the DutchStemmer from Lucene-10 and before.
+
+Opening an pre Lucene-11 index which is indexed using the DutchStemmer will succeed, but due to the different stemmer implementation a re-index is needed in order to make searching work correctly. Or replace DutchStemmer by Dutch_porterStemmer in your code.
+
 ### Query caching is now disabled by default
 
 Query caching is now disabled by default. To enable caching back, do something
@@ -111,6 +120,81 @@ Missing values should be configured in SortField constructor methods, as they ar
 MatchAllDocs and MatchNoDocs queries should use the INSTANCE final field instead of creating
 new objects. The constructors will be removed in the future.
 
+### APIs for configuring compound file creation thresholds have been updated and moved
+
+APIs for configuring compound file creation thresholds were part of merge policies before.
+They are now part of `CompoundFormat`. Previously, the compound file creation depended upon the size of the merged
+segment with respect to the total index size (determined by `CFSRatio` which was 10% by default). Lucene now uses fixed
+thresholds to decide whether a merged segment should be written as a compound file, the default thresholds are:
+
+- **64 MB** for size-based merge policies (e.g., `TieredMergePolicy`)
+- **65,536 documents** for document-count based merge policies (e.g., `LogDocMergePolicy`)
+
+These thresholds could be changed using `setCfsThresholdByteSize` and `setCfsThresholdDocSize` respectively.
+
+#### Migration
+
+If your code previously configured `getNoCFSRatio`, `getMaxCFSSegmentSizeMB`, `setMaxCFSSegmentSizeMB` and `setNoCFSRatio`
+on merge policies, you should change it as follows:
+
+##### Before
+
+```java
+TieredMergePolicy mp = new TieredMergePolicy();
+mp.setNoCFSRatio(0.0);
+mp.setMaxCFSSegmentSizeMB(512);
+IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+iwc.setMergePolicy(mp);
+mp.getNoCFSRatio();
+mp.getMaxCFSSegmentSizeMB();
+```
+
+##### After
+
+```java
+IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+iwc.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
+iwc.getConfig().getCodec().compoundFormat().setMaxCFSSegmentSizeMB(512);
+iwc.getConfig().getCodec().compoundFormat().getShouldUseCompoundFile();
+iwc.getConfig().getCodec().compoundFormat().getMaxCFSSegmentSizeMB();
+```
+
+### Implicit determinization removed from RegexpQuery
+
+Previously, RegexpQuery would use DFA execution by default, even if it might be inefficient.
+
+RegexpQuery will now only [determinize as-needed](https://swtch.com/~rsc/regexp/regexp1.html). This might be
+faster or slower depending upon your queries.
+
+If you'd like to force the previous behavior, use `determinize()` and `AutomatonQuery`:
+
+```java
+String re = "a(b+|c+)d";
+Automaton dfa = Operations.determinize(new RegExp(re).toAutomaton(), 10000);
+Query query = new AutomatonQuery(new Term("myfield", re), dfa);
+```
+
+## Migration from Lucene 10.4 to Lucene 10.5
+
+### `[Byte|Float]VectorSimilarityQuery` now performs adaptive HNSW graph traversal
+
+GITHUB#12679 added `[Byte|Float]VectorSimilarityQuery` to perform similarity-based vector searches, which match all
+(approximate) vectors above a similarity score to the query vector (specified by `resultSimilarity`). For Euclidean
+distance, this can be visualized as matching all vectors within a radius of the query vector.
+
+This query traversed and collected results from existing HNSW graphs. In Lucene 10.4, graph traversal was controlled by
+an explicit parameter (specified by `traversalSimilarity`), where all nodes scoring above this value were traversed, and
+all traversed nodes scoring above `resultSimilarity` were collected as results. To protect against adversarial cases of
+the entry node being far away from the query vector, traversal continued as long as better scoring nodes were available.
+Picking the right value for traversal could be a challenge, and search was susceptible to being stuck in a local maxima,
+terminating before reaching the vicinity of the query vector.
+
+GITHUB#15784: With Lucene 10.5, graph traversal is now adaptive: starts with a high buffer, which decays towards scores
+of nodes traversed but not collected, with a provided factor. The decay factor should lie in `[0, 1]`; with higher
+values producing better recall using more graph exploration. This gives a better recall v/s latency tradeoff than before
+in most cases, while still providing a knob for advanced users to tune quality and performance if needed (using the
+`decay` factor).
+
 ## Migration from Lucene 9.x to Lucene 10.0
 
 ### DataInput#readVLong() may now read negative vlongs
@@ -125,6 +209,17 @@ bytes, while it would never read more than 9 bytes in Lucene 9.x.
 As part of GITHUB#13820, GITHUB#13825, GITHUB#13830, this issue corrects DataInput.readGroupVInts
 to be public and not-final, allowing subclasses to override it. This change also removes the protected
 DataInput.readGroupVInt method: subclasses should delegate or reimplement it entirely.
+
+### Scoring and ranking across major versions
+
+Lucene does not guarantee identical scoring or document ranking behavior across
+major version upgrades. Changes may occur due to improvements or modifications
+in Similarity implementations, query execution, or related internals.
+
+Applications that require stable ranking behavior across upgrades should
+explicitly configure the Similarity used for indexing and searching rather than
+relying on defaults. Reviewing `CHANGES.txt` for intervening major versions is
+recommended when upgrading.
 
 ### OpenNLP dependency upgrade
 
@@ -191,18 +286,14 @@ These classes no longer take a `determinizeWorkLimit` and no longer determinize
 behind the scenes. It is the responsibility of the caller to call
 `Operations.determinize()` for DFA execution.
 
-### RegExp optional complement syntax has been deprecated
+### RegExp optional complement syntax has been removed (LUCENE-11)
 
-Support for the optional complement syntax (`~`) has been deprecated.
-The `COMPLEMENT` syntax flag has been removed and replaced by the
-`DEPRECATED_COMPLEMENT` flag. Users wanting to enable the deprecated
-complement support can do so by explicitly passing a syntax flags that
-has `DEPRECATED_COMPLEMENT` when creating a `RegExp`. For example:
-`new RegExp("~(foo)", RegExp.DEPRECATED_COMPLEMENT)`.
+Support for the optional complement syntax (`~`) that was deprecated in Lucene 10
+has been removed. The `DEPRECATED_COMPLEMENT` flag and `REGEXP_DEPRECATED_COMPLEMENT`
+enum value are no longer available.
 
-Alternatively, and quite commonly, a more simple _complement bracket expression_,
-`[^...]`, may be a suitable replacement, For example, `[^fo]` matches any
-character that is not an `f` or `o`.
+Users should migrate to using _complement bracket expressions_ (`[^...]`) instead.
+For example, `[^fo]` matches any character that is not an `f` or `o`.
 
 ### DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery removed in favor of FieldExistsQuery (LUCENE-10436)
 

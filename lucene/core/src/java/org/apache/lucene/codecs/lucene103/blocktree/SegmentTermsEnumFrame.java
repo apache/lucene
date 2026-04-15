@@ -46,14 +46,14 @@ final class SegmentTermsEnumFrame {
   long totalSuffixBytes; // for stats
 
   byte[] suffixBytes;
-  final ByteArrayDataInput suffixesReader = new ByteArrayDataInput();
+  ByteArrayDataInput suffixesReader;
 
   byte[] suffixLengthBytes;
   final ByteArrayDataInput suffixLengthsReader;
 
   byte[] statBytes;
   int statsSingletonRunLength = 0;
-  final ByteArrayDataInput statsReader = new ByteArrayDataInput();
+  ByteArrayDataInput statsReader;
 
   long rewindPos;
 
@@ -96,7 +96,7 @@ final class SegmentTermsEnumFrame {
 
   // metadata buffer
   byte[] bytes;
-  final ByteArrayDataInput bytesReader = new ByteArrayDataInput();
+  ByteArrayDataInput bytesReader;
 
   private final SegmentTermsEnum ste;
 
@@ -135,10 +135,10 @@ final class SegmentTermsEnumFrame {
     loadBlock();
   }
 
-  void prefetchBlock() throws IOException {
+  boolean prefetchBlock() throws IOException {
     if (nextEnt != -1) {
       // Already loaded
-      return;
+      return false;
     }
 
     // Clone the IndexInput lazily, so that consumers
@@ -147,7 +147,7 @@ final class SegmentTermsEnumFrame {
     ste.initIndexInput();
 
     // TODO: Could we know the number of bytes to prefetch?
-    ste.in.prefetch(fp, 1);
+    return ste.in.prefetch(fp, 1);
   }
 
   /* Does initial decode of next block of terms; this
@@ -200,7 +200,11 @@ final class SegmentTermsEnumFrame {
       throw new CorruptIndexException(e.getMessage(), ste.in, e);
     }
     compressionAlg.read(ste.in, suffixBytes, numSuffixBytes);
-    suffixesReader.reset(suffixBytes, 0, numSuffixBytes);
+    if (suffixesReader == null) {
+      suffixesReader = new ByteArrayDataInput(suffixBytes, 0, numSuffixBytes);
+    } else {
+      suffixesReader.reset(suffixBytes, 0, numSuffixBytes);
+    }
 
     int numSuffixLengthBytes = ste.in.readVInt();
     allEqual = (numSuffixLengthBytes & 0x01) != 0;
@@ -230,7 +234,11 @@ final class SegmentTermsEnumFrame {
       statBytes = new byte[ArrayUtil.oversize(numBytes, 1)];
     }
     ste.in.readBytes(statBytes, 0, numBytes);
-    statsReader.reset(statBytes, 0, numBytes);
+    if (statsReader == null) {
+      statsReader = new ByteArrayDataInput(statBytes, 0, numBytes);
+    } else {
+      statsReader.reset(statBytes, 0, numBytes);
+    }
     statsSingletonRunLength = 0;
     metaDataUpto = 0;
 
@@ -246,7 +254,11 @@ final class SegmentTermsEnumFrame {
       bytes = new byte[ArrayUtil.oversize(numBytes, 1)];
     }
     ste.in.readBytes(bytes, 0, numBytes);
-    bytesReader.reset(bytes, 0, numBytes);
+    if (bytesReader == null) {
+      bytesReader = new ByteArrayDataInput(bytes, 0, numBytes);
+    } else {
+      bytesReader.reset(bytes, 0, numBytes);
+    }
 
     // Sub-blocks of a single floor block are always
     // written one after another -- tail recurse:

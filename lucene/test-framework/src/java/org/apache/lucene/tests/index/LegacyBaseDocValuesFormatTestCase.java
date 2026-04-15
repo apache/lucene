@@ -1544,6 +1544,9 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       int id = random().nextInt(numDocs);
       writer.deleteDocuments(new Term("id", Integer.toString(id)));
     }
+
+    writer.commit();
+
     try (DirectoryReader reader = maybeWrapWithMergingReader(DirectoryReader.open(dir))) {
       TestUtil.checkReader(reader);
       compareStoredFieldWithSortedNumericsDV(reader, "stored", "dv");

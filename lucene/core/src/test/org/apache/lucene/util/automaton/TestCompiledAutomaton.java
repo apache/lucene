@@ -101,7 +101,7 @@ public class TestCompiledAutomaton extends LuceneTestCase {
     while (terms.size() != numTerms) {
       terms.add(randomString());
     }
-    testTerms(numTerms * 100, terms.toArray(new String[terms.size()]));
+    testTerms(numTerms * 100, terms.toArray(String[]::new));
   }
 
   private String randomString() {

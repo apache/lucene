@@ -76,13 +76,6 @@ repos:
       - id: check-executables-have-shebangs
         name: Check that (non-binary) executables have a shebang
         priority: 0
-        exclude:
-          glob:
-            # TODO: fix these permissions
-            - lucene/analysis/common/**/*.java
-            - lucene/codecs/**/*.java
-            - lucene/queries/**/*.java
-            - lucene/spatial3d/**/*.java
 
   - repo: local
     hooks:

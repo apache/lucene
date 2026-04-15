@@ -583,7 +583,7 @@ final class FrozenBufferedUpdates {
     DocIdSetIterator nextTerm(String field, BytesRef term) throws IOException {
       setField(field);
       if (termsEnum != null) {
-        if (sortedTerms) {
+        if (sortedTerms && !termsEnum.preferSeekExact()) {
           assert assertSorted(term);
           // in the sorted case we can take advantage of the "seeking forward" property
           // this allows us depending on the term dict impl to reuse data-structures internally

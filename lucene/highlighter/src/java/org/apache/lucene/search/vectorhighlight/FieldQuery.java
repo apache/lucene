@@ -80,8 +80,7 @@ public class FieldQuery {
       QueryPhraseMap rootMap = getRootMap(flatQuery);
       rootMap.add(flatQuery, reader);
       float boost = 1f;
-      while (flatQuery instanceof BoostQuery) {
-        BoostQuery bq = (BoostQuery) flatQuery;
+      while (flatQuery instanceof BoostQuery bq) {
         flatQuery = bq.getQuery();
         boost *= bq.getBoost();
       }
