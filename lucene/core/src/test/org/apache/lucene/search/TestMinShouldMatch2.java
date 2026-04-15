@@ -371,7 +371,7 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
           sims[(int) ord] =
               weight.similarity.scorer(
                   1f,
-                  searcher.fieldStatistics("field"),
+                  searcher.fieldStats("field"),
                   searcher.termStatistics(term, ts.docFreq(), ts.totalTermFreq()));
         }
       }

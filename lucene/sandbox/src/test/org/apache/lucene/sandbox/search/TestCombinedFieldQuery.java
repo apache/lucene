@@ -32,7 +32,7 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.MultiReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.CollectorManager;
-import org.apache.lucene.search.FieldStatistics;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
@@ -586,12 +586,12 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     }
 
     @Override
-    public SimScorer scorer(float boost, FieldStatistics fieldStats, TermStatistics... termStats) {
+    public SimScorer scorer(float boost, FieldStats fieldStats, TermStatistics... termStats) {
       return new BM25Similarity().scorer(boost, fieldStats, termStats);
     }
   }
 
-  public void testOverrideFieldStatistics() throws IOException {
+  public void testOverrideFieldStats() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig();
     Similarity similarity = randomCompatibleSimilarity();
@@ -638,8 +638,8 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     IndexSearcher searcher =
         new IndexSearcher(reader) {
           @Override
-          public FieldStatistics fieldStatistics(String field) throws IOException {
-            FieldStatistics shardStatistics = super.fieldStatistics(field);
+          public FieldStats fieldStats(String field) throws IOException {
+            FieldStats shardStatistics = super.fieldStats(field);
             int extraSumTotalTermFreq;
             if (field.equals("a")) {
               extraSumTotalTermFreq = extraSumTotalTermFreqA;
@@ -650,7 +650,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
             } else {
               throw new AssertionError("should never be called");
             }
-            return new FieldStatistics(
+            return new FieldStats(
                 field,
                 shardStatistics.maxDoc() + extraMaxDoc,
                 shardStatistics.docCount() + extraDocCount,

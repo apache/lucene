@@ -66,7 +66,7 @@ import java.util.Objects;
  *     exceeds {@link #sumTotalTermFreq()}. @see Terms#getSumDocFreq()
  * @lucene.experimental
  */
-public record FieldStatistics(
+public record FieldStats(
     String field, long maxDoc, long docCount, long sumTotalTermFreq, long sumDocFreq) {
   /**
    * Creates statistics instance for a field.
@@ -77,7 +77,7 @@ public record FieldStatistics(
    * @throws IllegalArgumentException if {@code sumDocFreq} is less than {@code docCount}.
    * @throws IllegalArgumentException if {@code sumTotalTermFreq} is less than {@code sumDocFreq}.
    */
-  public FieldStatistics {
+  public FieldStats {
     Objects.requireNonNull(field);
     if (maxDoc <= 0) {
       throw new IllegalArgumentException("maxDoc must be positive, maxDoc: " + maxDoc);

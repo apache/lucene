@@ -394,7 +394,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
         stats =
             similarity.scorer(
                 boost,
-                searcher.fieldStatistics(field),
+                searcher.fieldStats(field),
                 allTermStats.toArray(new TermStatistics[allTermStats.size()]));
       }
     }

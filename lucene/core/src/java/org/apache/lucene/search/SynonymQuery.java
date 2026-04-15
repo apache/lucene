@@ -207,7 +207,7 @@ public final class SynonymQuery extends Query {
       super(query);
       assert scoreMode.needsScores();
       this.scoreMode = scoreMode;
-      FieldStatistics fieldStats = searcher.fieldStatistics(field);
+      FieldStats fieldStats = searcher.fieldStats(field);
       long docFreq = 0;
       long totalTermFreq = 0;
       termStates = new TermStates[terms.length];

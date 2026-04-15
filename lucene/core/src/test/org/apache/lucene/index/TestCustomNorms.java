@@ -22,7 +22,7 @@ import java.util.stream.IntStream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
-import org.apache.lucene.search.FieldStatistics;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.PerFieldSimilarityWrapper;
@@ -105,7 +105,7 @@ public class TestCustomNorms extends LuceneTestCase {
     }
 
     @Override
-    public SimScorer scorer(float boost, FieldStatistics fieldStats, TermStatistics... termStats) {
+    public SimScorer scorer(float boost, FieldStats fieldStats, TermStatistics... termStats) {
       throw new UnsupportedOperationException();
     }
   }

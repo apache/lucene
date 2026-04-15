@@ -19,7 +19,7 @@ package org.apache.lucene.search.similarities;
 import java.util.List;
 import java.util.Locale;
 import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.FieldStatistics;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.TermStatistics;
 
 /**
@@ -66,8 +66,7 @@ public abstract class LMSimilarity extends SimilarityBase {
    * Computes the collection probability of the current term in addition to the usual statistics.
    */
   @Override
-  protected void fillBasicStats(
-      BasicStats stats, FieldStatistics fieldStats, TermStatistics termStats) {
+  protected void fillBasicStats(BasicStats stats, FieldStats fieldStats, TermStatistics termStats) {
     super.fillBasicStats(stats, fieldStats, termStats);
     LMStats lmStats = (LMStats) stats;
     lmStats.setCollectionProbability(collectionModel.computeProbability(stats));

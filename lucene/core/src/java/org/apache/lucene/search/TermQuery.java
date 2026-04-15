@@ -58,17 +58,17 @@ public class TermQuery extends Query {
       this.termStates = termStates;
       this.similarity = searcher.getSimilarity();
 
-      final FieldStatistics fieldStats;
+      final FieldStats fieldStats;
       final TermStatistics termStats;
       if (scoreMode.needsScores()) {
-        fieldStats = searcher.fieldStatistics(term.field());
+        fieldStats = searcher.fieldStats(term.field());
         termStats =
             termStates.docFreq() > 0
                 ? searcher.termStatistics(term, termStates.docFreq(), termStates.totalTermFreq())
                 : null;
       } else {
         // we do not need the actual stats, use fake stats with docFreq=maxDoc=ttf=1
-        fieldStats = new FieldStatistics(term.field(), 1, 1, 1, 1);
+        fieldStats = new FieldStats(term.field(), 1, 1, 1, 1);
         termStats = new TermStatistics(term.bytes(), 1, 1);
       }
 

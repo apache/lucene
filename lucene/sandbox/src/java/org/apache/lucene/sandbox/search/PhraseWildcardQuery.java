@@ -255,7 +255,7 @@ public class PhraseWildcardQuery extends Query {
             .getSimilarity()
             .scorer(
                 boost,
-                searcher.fieldStatistics(field),
+                searcher.fieldStats(field),
                 termsData.termStatsList.toArray(new TermStatistics[0]));
       }
 

@@ -19,7 +19,7 @@ package org.apache.lucene.search.similarities;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.FieldStatistics;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.util.SmallFloat;
 
@@ -52,8 +52,7 @@ public abstract class SimilarityBase extends Similarity {
   }
 
   @Override
-  public final SimScorer scorer(
-      float boost, FieldStatistics fieldStats, TermStatistics... termStats) {
+  public final SimScorer scorer(float boost, FieldStats fieldStats, TermStatistics... termStats) {
     SimScorer[] weights = new SimScorer[termStats.length];
     for (int i = 0; i < termStats.length; i++) {
       BasicStats stats = newStats(fieldStats.field(), boost);
@@ -76,8 +75,7 @@ public abstract class SimilarityBase extends Similarity {
    * Fills all member fields defined in {@code BasicStats} in {@code stats}. Subclasses can override
    * this method to fill additional stats.
    */
-  protected void fillBasicStats(
-      BasicStats stats, FieldStatistics fieldStats, TermStatistics termStats) {
+  protected void fillBasicStats(BasicStats stats, FieldStats fieldStats, TermStatistics termStats) {
     // TODO: validate this for real, somewhere else
     assert termStats.totalTermFreq() <= fieldStats.sumTotalTermFreq();
     assert termStats.docFreq() <= fieldStats.sumDocFreq();

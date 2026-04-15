@@ -23,7 +23,7 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.FieldStatistics;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.util.SmallFloat;
@@ -52,7 +52,7 @@ import org.apache.lucene.util.SmallFloat;
  * single byte, this might not be suitable for all purposes.
  *
  * <p>Many formulas require the use of average document length, which can be computed via a
- * combination of {@link FieldStatistics#sumTotalTermFreq()} and {@link FieldStatistics#docCount()}.
+ * combination of {@link FieldStats#sumTotalTermFreq()} and {@link FieldStats#docCount()}.
  *
  * <p>Additional scoring factors can be stored in named {@link NumericDocValuesField}s and accessed
  * at query-time with {@link org.apache.lucene.index.LeafReader#getNumericDocValues(String)}.
@@ -69,13 +69,13 @@ import org.apache.lucene.util.SmallFloat;
  * steps:
  *
  * <ol>
- *   <li>The {@link #scorer(float, FieldStatistics, TermStatistics...)} method is called a single
- *       time, allowing the implementation to compute any statistics (such as IDF, average document
+ *   <li>The {@link #scorer(float, FieldStats, TermStatistics...)} method is called a single time,
+ *       allowing the implementation to compute any statistics (such as IDF, average document
  *       length, etc) across <i>the entire field</i>. The {@link TermStatistics} and {@link
- *       FieldStatistics} passed in already contain all of the raw statistics involved, so a
- *       Similarity can freely use any combination of statistics without causing any additional I/O.
- *       Lucene makes no assumption about what is stored in the returned {@link
- *       Similarity.SimScorer} object.
+ *       FieldStats} passed in already contain all of the raw statistics involved, so a Similarity
+ *       can freely use any combination of statistics without causing any additional I/O. Lucene
+ *       makes no assumption about what is stored in the returned {@link Similarity.SimScorer}
+ *       object.
  *   <li>Then {@link SimScorer#score(float, long)} is called for every matching document to compute
  *       its score.
  * </ol>
@@ -187,8 +187,7 @@ public abstract class Similarity {
    *     field.
    * @return SimWeight object with the information this Similarity needs to score a query.
    */
-  public abstract SimScorer scorer(
-      float boost, FieldStatistics fieldStats, TermStatistics... termStats);
+  public abstract SimScorer scorer(float boost, FieldStats fieldStats, TermStatistics... termStats);
 
   /**
    * Stores the weight for a query across the indexed field. This abstract implementation is empty;

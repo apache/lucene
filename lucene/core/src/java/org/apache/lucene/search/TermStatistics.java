@@ -50,18 +50,17 @@ import org.apache.lucene.util.BytesRef;
  *     <p>This is the document-frequency for the term: the count of documents where the term appears
  *     at least one time.
  *     <p>This value is always a positive number, and never exceeds {@link #totalTermFreq}. It also
- *     cannot exceed {@link FieldStatistics#sumDocFreq()}. @see TermsEnum#docFreq()
+ *     cannot exceed {@link FieldStats#sumDocFreq()}. @see TermsEnum#docFreq()
  * @param totalTermFreq number of occurrences of the term in the field, in the range [{@link
- *     #docFreq()} .. {@link FieldStatistics#sumTotalTermFreq()}].
+ *     #docFreq()} .. {@link FieldStats#sumTotalTermFreq()}].
  *     <p>This is the token count for the term: the number of times it appears in the field across
  *     all documents.
  *     <p>This value is always a positive number, always at least {@link #docFreq()}, and never
- *     exceeds {@link FieldStatistics#sumTotalTermFreq()}. @see TermsEnum#totalTermFreq()
+ *     exceeds {@link FieldStats#sumTotalTermFreq()}. @see TermsEnum#totalTermFreq()
  * @lucene.experimental
  */
 // TODO: actually add missing cross-checks to guarantee TermStatistics is in bounds of
-// FieldStatistics,
-// otherwise many similarity functions will implode.
+// FieldStats, otherwise many similarity functions will implode.
 public record TermStatistics(BytesRef term, long docFreq, long totalTermFreq) {
   /**
    * Creates statistics instance for a term.

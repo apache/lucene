@@ -27,7 +27,7 @@ import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.FieldStatistics;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Scorable;
@@ -61,7 +61,7 @@ public class TestOmitTf extends LuceneTestCase {
     }
 
     @Override
-    public Explanation idfExplain(FieldStatistics fieldStats, TermStatistics[] termStats) {
+    public Explanation idfExplain(FieldStats fieldStats, TermStatistics[] termStats) {
       return Explanation.match(1.0f, "Inexplicable");
     }
   }

@@ -18,7 +18,7 @@ package org.apache.lucene.tests.search.similarities;
 
 import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.FieldStatistics;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.similarities.Similarity;
 
@@ -48,7 +48,7 @@ public class AssertingSimilarity extends Similarity {
   }
 
   @Override
-  public SimScorer scorer(float boost, FieldStatistics fieldStats, TermStatistics... termStats) {
+  public SimScorer scorer(float boost, FieldStats fieldStats, TermStatistics... termStats) {
     assert boost >= 0;
     assert fieldStats != null;
     assert termStats.length > 0;

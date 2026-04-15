@@ -1123,15 +1123,15 @@ public class IndexSearcher {
   }
 
   /**
-   * Returns {@link FieldStatistics} for a field, or {@code null} if the field does not exist (has
-   * no indexed terms)
+   * Returns {@link FieldStats} for a field, or {@code null} if the field does not exist (has no
+   * indexed terms)
    *
    * <p>This can be overridden for example, to return a field's statistics across a distributed
    * collection.
    *
    * @lucene.experimental
    */
-  public FieldStatistics fieldStatistics(String field) throws IOException {
+  public FieldStats fieldStats(String field) throws IOException {
     assert field != null;
     long docCount = 0;
     long sumTotalTermFreq = 0;
@@ -1145,7 +1145,7 @@ public class IndexSearcher {
     if (docCount == 0) {
       return null;
     }
-    return new FieldStatistics(field, reader.maxDoc(), docCount, sumTotalTermFreq, sumDocFreq);
+    return new FieldStats(field, reader.maxDoc(), docCount, sumTotalTermFreq, sumDocFreq);
   }
 
   /**

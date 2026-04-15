@@ -28,7 +28,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.FieldStatistics;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
@@ -187,7 +187,7 @@ public class TestSimilarityBase extends LuceneTestCase {
     return stats;
   }
 
-  private FieldStatistics toFieldStats(BasicStats stats) {
+  private FieldStats toFieldStats(BasicStats stats) {
     long sumTtf = stats.getNumberOfFieldTokens();
     long sumDf;
     if (sumTtf == -1) {
@@ -200,7 +200,7 @@ public class TestSimilarityBase extends LuceneTestCase {
     int docCount = Math.toIntExact(Math.min(sumDf, stats.getNumberOfDocuments()));
     int maxDoc = TestUtil.nextInt(random(), docCount, docCount + 10);
 
-    return new FieldStatistics(stats.field, maxDoc, docCount, sumTtf, sumDf);
+    return new FieldStats(stats.field, maxDoc, docCount, sumTtf, sumDf);
   }
 
   private TermStatistics toTermStats(BasicStats stats) {

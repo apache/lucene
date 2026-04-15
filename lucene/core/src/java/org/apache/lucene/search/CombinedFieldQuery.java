@@ -286,7 +286,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
         }
       }
       if (docFreq > 0) {
-        FieldStatistics pseudoFieldStats = mergeFieldStatistics(searcher);
+        FieldStats pseudoFieldStats = mergeFieldStats(searcher);
         TermStatistics pseudoTermStatistics =
             new TermStatistics(new BytesRef("pseudo_term"), docFreq, Math.max(1, totalTermFreq));
         this.simWeight =
@@ -296,13 +296,13 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       }
     }
 
-    private FieldStatistics mergeFieldStatistics(IndexSearcher searcher) throws IOException {
+    private FieldStats mergeFieldStats(IndexSearcher searcher) throws IOException {
       long maxDoc = 0;
       long docCount = 0;
       long sumTotalTermFreq = 0;
       long sumDocFreq = 0;
       for (FieldAndWeight fieldWeight : fieldAndWeights.values()) {
-        FieldStatistics fieldStats = searcher.fieldStatistics(fieldWeight.field);
+        FieldStats fieldStats = searcher.fieldStats(fieldWeight.field);
         if (fieldStats != null) {
           maxDoc = Math.max(fieldStats.maxDoc(), maxDoc);
           docCount = Math.max(fieldStats.docCount(), docCount);
@@ -311,7 +311,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
         }
       }
 
-      return new FieldStatistics("pseudo_field", maxDoc, docCount, sumTotalTermFreq, sumDocFreq);
+      return new FieldStats("pseudo_field", maxDoc, docCount, sumTotalTermFreq, sumDocFreq);
     }
 
     @Override
