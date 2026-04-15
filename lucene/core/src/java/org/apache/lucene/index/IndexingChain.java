@@ -579,7 +579,7 @@ final class IndexingChain implements Accountable {
       // Handle the parent field first (before document fields). Its schema was already
       // set up in the constructor, so we only need to set the docID and trigger
       // initializeFieldInfo on the first encounter in this segment.
-      if (lastDocInBlock && parentPf != null) {
+      if (parentPf != null && lastDocInBlock) {
         parentPf.schema.resetJustDocId(docID);
         if (parentPf.fieldInfo == null) {
           fields[fieldsNeedInitOrValidate++] = parentPf;
@@ -591,8 +591,7 @@ final class IndexingChain implements Accountable {
       for (IndexableField field : document) {
         final String fieldName = field.name();
         final IndexableFieldType fieldType = field.fieldType();
-        PerField pf =
-            getOrAddPerField(fieldName);
+        PerField pf = getOrAddPerField(fieldName);
         if (pf == parentPf) {
           throw new IllegalArgumentException(
               "\"" + fieldName + "\" is a reserved field and should not be added to any document");
@@ -621,14 +620,20 @@ final class IndexingChain implements Accountable {
       }
 
       // 2nd pass – index parent field first, then document fields
-      if (lastDocInBlock && parentPf != null) {
+      if (parentPf != null && lastDocInBlock) {
+        // parentField is currently a NumericDocValuesField so processField always returns false
+        // here, but we check defensively in case the parent field representation changes.
         if (processField(docID, parentField, parentPf)) {
           fields[indexedFieldCount] = parentPf;
           indexedFieldCount++;
         }
       }
+      // 2nd pass – document fields
       docFieldIdx = 0;
       for (IndexableField field : document) {
+        // parentField is currently a NumericDocValuesField so this is always false. Written this
+        // way to maintain the
+        // same behavior of other fields in case of logic changes.
         if (processField(docID, field, docFields[docFieldIdx])) {
           fields[indexedFieldCount] = docFields[docFieldIdx];
           indexedFieldCount++;
@@ -1262,8 +1267,10 @@ final class IndexingChain implements Accountable {
         throws IOException {
       final boolean analyzed = field.fieldType().tokenized() && analyzer != null;
       /*
-       * To assist people in tracking down problems in analysis components, we wish to write the field name to the infostream
-       * when we fail. We expect some caller to eventually deal with the real exception, so we don't want any 'catch' clauses,
+       * To assist people in tracking down problems in analysis components, we wish to write the field name to the
+       * infostream
+       * when we fail. We expect some caller to eventually deal with the real exception, so we don't want any 'catch'
+       *  clauses,
        * but rather a finally that takes note of the problem.
        */
       boolean succeededInProcessingField = false;
@@ -1325,7 +1332,8 @@ final class IndexingChain implements Accountable {
           int endOffset = invertState.offset + invertState.offsetAttribute.endOffset();
           if (startOffset < invertState.lastStartOffset || endOffset < startOffset) {
             throw new IllegalArgumentException(
-                "startOffset must be non-negative, and endOffset must be >= startOffset, and offsets must not go backwards "
+                "startOffset must be non-negative, and endOffset must be >= startOffset, and offsets must not go "
+                    + "backwards "
                     + "startOffset="
                     + startOffset
                     + ",endOffset="
@@ -1365,7 +1373,8 @@ final class IndexingChain implements Accountable {
                     + fieldInfo.name
                     + "\" (whose UTF8 encoding is longer than the max length "
                     + IndexWriter.MAX_TERM_LENGTH
-                    + "), all of which were skipped.  Please correct the analyzer to not produce such terms.  The prefix of the first immense term is: '"
+                    + "), all of which were skipped.  Please correct the analyzer to not produce such terms.  The "
+                    + "prefix of the first immense term is: '"
                     + Arrays.toString(prefix)
                     + "...', original message: "
                     + e.getMessage();
@@ -1637,5 +1646,4 @@ final class IndexingChain implements Accountable {
       assertSame("point num bytes", fi.getPointNumBytes(), pointNumBytes);
     }
   }
-
 }
