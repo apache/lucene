@@ -480,7 +480,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     }
 
     @Override
-    public SimScorer scorer(float boost, FieldStats fieldStats, TermStatistics... termStats) {
+    public SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
       return new BM25Similarity().scorer(boost, fieldStats, termStats);
     }
   }

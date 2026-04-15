@@ -18,7 +18,7 @@ package org.apache.lucene.search.similarities;
 
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.FieldStats;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 
 /**
  * Expert: Historical scoring implementation. You might want to consider using {@link
@@ -53,7 +53,7 @@ public class ClassicSimilarity extends TFIDFSimilarity {
   }
 
   @Override
-  public Explanation idfExplain(FieldStats fieldStats, TermStatistics termStats) {
+  public Explanation idfExplain(FieldStats fieldStats, TermStats termStats) {
     final long df = termStats.docFreq();
     final long docCount = fieldStats.docCount();
     final float idf = idf(df, docCount);

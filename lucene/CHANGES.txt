@@ -7,7 +7,7 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-* GITHUB#15929: Rename CollectionStatistics to FieldStats. (Zhou Hui)
+* GITHUB#15929: Rename CollectionStatistics to FieldStats and TermStatistics to TermStats. (Zhou Hui)
 
 * GITHUB#15763: Deprecate Operations.complement() method. This operation can be slow and is not
   recommended for production use. It will be removed in Lucene 12. (Saurabh Singh)

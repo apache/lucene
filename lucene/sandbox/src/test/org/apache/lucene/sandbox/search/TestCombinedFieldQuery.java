@@ -37,7 +37,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopScoreDocCollector;
 import org.apache.lucene.search.TopScoreDocCollectorManager;
@@ -586,7 +586,7 @@ public class TestCombinedFieldQuery extends LuceneTestCase {
     }
 
     @Override
-    public SimScorer scorer(float boost, FieldStats fieldStats, TermStatistics... termStats) {
+    public SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
       return new BM25Similarity().scorer(boost, fieldStats, termStats);
     }
   }

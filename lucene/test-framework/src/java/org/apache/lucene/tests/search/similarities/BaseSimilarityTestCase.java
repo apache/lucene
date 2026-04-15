@@ -24,7 +24,7 @@ import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.FieldStats;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.search.similarities.IndriDirichletSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.Similarity.BulkSimScorer;
@@ -183,7 +183,7 @@ public abstract class BaseSimilarityTestCase extends LuceneTestCase {
   private static final BytesRef TERM = new BytesRef("term");
 
   /** returns new random term, that fits within the bounds of the corpus */
-  static TermStatistics newTerm(Random random, FieldStats corpus) {
+  static TermStats newTerm(Random random, FieldStats corpus) {
     final long docFreq;
     switch (random.nextInt(3)) {
       case 0:
@@ -227,7 +227,7 @@ public abstract class BaseSimilarityTestCase extends LuceneTestCase {
           break;
       }
     }
-    return new TermStatistics(TERM, docFreq, totalTermFreq);
+    return new TermStats(TERM, docFreq, totalTermFreq);
   }
 
   /**
@@ -264,7 +264,7 @@ public abstract class BaseSimilarityTestCase extends LuceneTestCase {
         for (int k = 1; k < 256; k++) {
           FieldStats corpus = newCorpus(random, k);
           for (int l = 0; l < 10; l++) {
-            TermStatistics term = newTerm(random, corpus);
+            TermStats term = newTerm(random, corpus);
             final float freq;
             if (term.totalTermFreq() == term.docFreq()) {
               // omit TF
@@ -356,12 +356,7 @@ public abstract class BaseSimilarityTestCase extends LuceneTestCase {
    * for that scenario
    */
   private static void doTestScoring(
-      Similarity similarity,
-      FieldStats corpus,
-      TermStatistics term,
-      float boost,
-      float freq,
-      int norm)
+      Similarity similarity, FieldStats corpus, TermStats term, float boost, float freq, int norm)
       throws IOException {
     boolean success = false;
     SimScorer scorer = similarity.scorer(boost, corpus, term);
@@ -463,8 +458,8 @@ public abstract class BaseSimilarityTestCase extends LuceneTestCase {
       // check score(term-1), given the same freq/norm it should be >= score(term) [scores
       // non-decreasing as terms get rarer]
       if (term.docFreq() > 1 && freq < term.totalTermFreq()) {
-        TermStatistics prevTerm =
-            new TermStatistics(term.term(), term.docFreq() - 1, term.totalTermFreq() - 1);
+        TermStats prevTerm =
+            new TermStats(term.term(), term.docFreq() - 1, term.totalTermFreq() - 1);
         SimScorer prevTermScorer = similarity.scorer(boost, corpus, term);
         float prevTermScore = prevTermScorer.score(freq, norm);
         // check that score isn't infinite or negative
@@ -524,7 +519,7 @@ public abstract class BaseSimilarityTestCase extends LuceneTestCase {
     Random random = random();
     Similarity similarity = getSimilarity(random);
     FieldStats corpus = newCorpus(random, 1);
-    TermStatistics term = newTerm(random, corpus);
+    TermStats term = newTerm(random, corpus);
     SimScorer scorer = similarity.scorer(random().nextFloat(5f), corpus, term);
     BulkSimScorer bulkScorer = scorer.asBulkSimScorer();
     int freqUpperBound =

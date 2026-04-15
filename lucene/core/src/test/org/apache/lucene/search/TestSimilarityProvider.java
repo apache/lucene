@@ -109,7 +109,7 @@ public class TestSimilarityProvider extends LuceneTestCase {
     }
 
     @Override
-    public SimScorer scorer(float boost, FieldStats fieldStats, TermStatistics... termStats) {
+    public SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
       return new SimScorer() {
 
         @Override
@@ -128,7 +128,7 @@ public class TestSimilarityProvider extends LuceneTestCase {
     }
 
     @Override
-    public SimScorer scorer(float boost, FieldStats fieldStats, TermStatistics... termStats) {
+    public SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
       return new SimScorer() {
         @Override
         public float score(float freq, long norm) {

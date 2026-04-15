@@ -27,7 +27,7 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.search.FieldStats;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -493,7 +493,7 @@ public class TestCustomTermFreq extends LuceneTestCase {
     }
 
     @Override
-    public SimScorer scorer(float boost, FieldStats fieldStats, TermStatistics... termStats) {
+    public SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
       throw new UnsupportedOperationException();
     }
   }

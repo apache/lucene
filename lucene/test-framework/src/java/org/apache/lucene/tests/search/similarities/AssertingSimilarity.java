@@ -19,7 +19,7 @@ package org.apache.lucene.tests.search.similarities;
 import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.FieldStats;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.search.similarities.Similarity;
 
 /** wraps a similarity with checks for testing */
@@ -48,11 +48,11 @@ public class AssertingSimilarity extends Similarity {
   }
 
   @Override
-  public SimScorer scorer(float boost, FieldStats fieldStats, TermStatistics... termStats) {
+  public SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
     assert boost >= 0;
     assert fieldStats != null;
     assert termStats.length > 0;
-    for (TermStatistics term : termStats) {
+    for (TermStats term : termStats) {
       assert term != null;
     }
     // TODO: check that TermStats is in bounds with respect to collection? e.g. docFreq <= maxDoc

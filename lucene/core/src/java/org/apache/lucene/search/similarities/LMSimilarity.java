@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Locale;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.FieldStats;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 
 /**
  * Abstract superclass for language modeling Similarities. The following inner types are introduced:
@@ -66,7 +66,7 @@ public abstract class LMSimilarity extends SimilarityBase {
    * Computes the collection probability of the current term in addition to the usual statistics.
    */
   @Override
-  protected void fillBasicStats(BasicStats stats, FieldStats fieldStats, TermStatistics termStats) {
+  protected void fillBasicStats(BasicStats stats, FieldStats fieldStats, TermStats termStats) {
     super.fillBasicStats(stats, fieldStats, termStats);
     LMStats lmStats = (LMStats) stats;
     lmStats.setCollectionProbability(collectionModel.computeProbability(stats));

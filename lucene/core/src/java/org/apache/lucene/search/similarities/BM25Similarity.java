@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.FieldStats;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.SmallFloat;
 
@@ -165,7 +165,7 @@ public class BM25Similarity extends Similarity {
    *
    * Note that {@link FieldStats#docCount()} is used instead of {@link
    * org.apache.lucene.index.IndexReader#numDocs() IndexReader#numDocs()} because also {@link
-   * TermStatistics#docFreq()} is used, and when the latter is inaccurate, so is {@link
+   * TermStats#docFreq()} is used, and when the latter is inaccurate, so is {@link
    * FieldStats#docCount()}, and in the same direction. In addition, {@link FieldStats#docCount()}
    * does not skew when fields are sparse.
    *
@@ -174,7 +174,7 @@ public class BM25Similarity extends Similarity {
    * @return an Explain object that includes both an idf score factor and an explanation for the
    *     term.
    */
-  public Explanation idfExplain(FieldStats fieldStats, TermStatistics termStats) {
+  public Explanation idfExplain(FieldStats fieldStats, TermStats termStats) {
     final long df = termStats.docFreq();
     final long docCount = fieldStats.docCount();
     final float idf = idf(df, docCount);
@@ -195,10 +195,10 @@ public class BM25Similarity extends Similarity {
    * @return an Explain object that includes both an idf score factor for the phrase and an
    *     explanation for each term.
    */
-  public Explanation idfExplain(FieldStats fieldStats, TermStatistics[] termStats) {
+  public Explanation idfExplain(FieldStats fieldStats, TermStats[] termStats) {
     double idf = 0d; // sum into a double before casting into a float
     List<Explanation> details = new ArrayList<>();
-    for (final TermStatistics stat : termStats) {
+    for (final TermStats stat : termStats) {
       Explanation idfExplain = idfExplain(fieldStats, stat);
       details.add(idfExplain);
       idf += idfExplain.getValue().floatValue();
@@ -207,7 +207,7 @@ public class BM25Similarity extends Similarity {
   }
 
   @Override
-  public final SimScorer scorer(float boost, FieldStats fieldStats, TermStatistics... termStats) {
+  public final SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
     Explanation idf =
         termStats.length == 1
             ? idfExplain(fieldStats, termStats[0])

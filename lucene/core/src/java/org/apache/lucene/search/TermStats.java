@@ -59,9 +59,9 @@ import org.apache.lucene.util.BytesRef;
  *     exceeds {@link FieldStats#sumTotalTermFreq()}. @see TermsEnum#totalTermFreq()
  * @lucene.experimental
  */
-// TODO: actually add missing cross-checks to guarantee TermStatistics is in bounds of
+// TODO: actually add missing cross-checks to guarantee TermStats is in bounds of
 // FieldStats, otherwise many similarity functions will implode.
-public record TermStatistics(BytesRef term, long docFreq, long totalTermFreq) {
+public record TermStats(BytesRef term, long docFreq, long totalTermFreq) {
   /**
    * Creates statistics instance for a term.
    *
@@ -69,7 +69,7 @@ public record TermStatistics(BytesRef term, long docFreq, long totalTermFreq) {
    * @throws IllegalArgumentException if {@code docFreq} is negative or zero.
    * @throws IllegalArgumentException if {@code totalTermFreq} is less than {@code docFreq}.
    */
-  public TermStatistics {
+  public TermStats {
     Objects.requireNonNull(term);
     if (docFreq <= 0) {
       throw new IllegalArgumentException("docFreq must be positive, docFreq: " + docFreq);

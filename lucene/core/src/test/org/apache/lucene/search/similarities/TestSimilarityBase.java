@@ -32,7 +32,7 @@ import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.SimilarityBase.BasicSimScorer;
 import org.apache.lucene.store.Directory;
@@ -203,9 +203,8 @@ public class TestSimilarityBase extends LuceneTestCase {
     return new FieldStats(stats.field, maxDoc, docCount, sumTtf, sumDf);
   }
 
-  private TermStatistics toTermStats(BasicStats stats) {
-    return new TermStatistics(
-        new BytesRef("spoofyText"), stats.getDocFreq(), stats.getTotalTermFreq());
+  private TermStats toTermStats(BasicStats stats) {
+    return new TermStats(new BytesRef("spoofyText"), stats.getDocFreq(), stats.getTotalTermFreq());
   }
 
   /**

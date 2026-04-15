@@ -52,7 +52,7 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermScorer;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.DFRSimilarity;
@@ -314,18 +314,16 @@ public final class CombinedFieldQuery extends Query implements Accountable {
         TermStates ts = TermStates.build(searcher, fieldTerms[i], true);
         termStates[i] = ts;
         if (ts.docFreq() > 0) {
-          TermStatistics termStats =
-              searcher.termStatistics(fieldTerms[i], ts.docFreq(), ts.totalTermFreq());
+          TermStats termStats = searcher.termStats(fieldTerms[i], ts.docFreq(), ts.totalTermFreq());
           docFreq = Math.max(termStats.docFreq(), docFreq);
           totalTermFreq += (double) field.weight * termStats.totalTermFreq();
         }
       }
       if (docFreq > 0) {
         FieldStats pseudoFieldStats = mergeFieldStats(searcher);
-        TermStatistics pseudoTermStatistics =
-            new TermStatistics(new BytesRef("pseudo_term"), docFreq, Math.max(1, totalTermFreq));
-        this.simWeight =
-            searcher.getSimilarity().scorer(boost, pseudoFieldStats, pseudoTermStatistics);
+        TermStats pseudoTermStats =
+            new TermStats(new BytesRef("pseudo_term"), docFreq, Math.max(1, totalTermFreq));
+        this.simWeight = searcher.getSimilarity().scorer(boost, pseudoFieldStats, pseudoTermStats);
       } else {
         this.simWeight = null;
       }

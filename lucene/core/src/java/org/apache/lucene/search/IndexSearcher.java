@@ -1106,20 +1106,19 @@ public class IndexSearcher {
   }
 
   /**
-   * Returns {@link TermStatistics} for a term.
+   * Returns {@link TermStats} for a term.
    *
    * <p>This can be overridden for example, to return a term's statistics across a distributed
    * collection.
    *
    * @param docFreq The document frequency of the term. It must be greater or equal to 1.
    * @param totalTermFreq The total term frequency.
-   * @return A {@link TermStatistics} (never null).
+   * @return A {@link TermStats} (never null).
    * @lucene.experimental
    */
-  public TermStatistics termStatistics(Term term, int docFreq, long totalTermFreq)
-      throws IOException {
+  public TermStats termStats(Term term, int docFreq, long totalTermFreq) throws IOException {
     // This constructor will throw an exception if docFreq <= 0.
-    return new TermStatistics(term.bytes(), docFreq, totalTermFreq);
+    return new TermStats(term.bytes(), docFreq, totalTermFreq);
   }
 
   /**

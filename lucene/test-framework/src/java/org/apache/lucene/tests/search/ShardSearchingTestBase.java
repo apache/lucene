@@ -37,7 +37,7 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.SearcherLifetimeManager;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.store.Directory;
@@ -169,10 +169,10 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
 
   // Mock: in a real env, this would hit the wire and get
   // term stats from remote node
-  Map<Term, TermStatistics> getNodeTermStats(Set<Term> terms, int nodeID, long version)
+  Map<Term, TermStats> getNodeTermStats(Set<Term> terms, int nodeID, long version)
       throws IOException {
     final NodeState node = nodes[nodeID];
-    final Map<Term, TermStatistics> stats = new HashMap<>();
+    final Map<Term, TermStats> stats = new HashMap<>();
     final IndexSearcher s = node.searchers.acquire(version);
     if (s == null) {
       throw new SearcherExpiredException("node=" + nodeID + " version=" + version);
@@ -181,7 +181,7 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
       for (Term term : terms) {
         final TermStates ts = TermStates.build(s, term, true);
         if (ts.docFreq() > 0) {
-          stats.put(term, s.termStatistics(term, ts.docFreq(), ts.totalTermFreq()));
+          stats.put(term, s.termStats(term, ts.docFreq(), ts.totalTermFreq()));
         }
       }
     } finally {
@@ -205,8 +205,7 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
     // still-live searchers).
 
     private final Map<FieldAndShardVersion, FieldStats> fieldStatsCache = new ConcurrentHashMap<>();
-    private final Map<TermAndShardVersion, TermStatistics> termStatsCache =
-        new ConcurrentHashMap<>();
+    private final Map<TermAndShardVersion, TermStats> termStatsCache = new ConcurrentHashMap<>();
 
     /**
      * Matches docs in the local shard but scores based on aggregated stats ("mock distributed
@@ -248,7 +247,7 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
             }
           }
           if (missing.size() != 0) {
-            for (Map.Entry<Term, TermStatistics> ent :
+            for (Map.Entry<Term, TermStats> ent :
                 getNodeTermStats(missing, nodeID, nodeVersions[nodeID]).entrySet()) {
               if (ent.getValue() != null) {
                 final TermAndShardVersion key =
@@ -263,16 +262,15 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
       }
 
       @Override
-      public TermStatistics termStatistics(Term term, int docFreq, long totalTermFreq)
-          throws IOException {
+      public TermStats termStats(Term term, int docFreq, long totalTermFreq) throws IOException {
         assert term != null;
         long distributedDocFreq = 0;
         long distributedTotalTermFreq = 0;
         for (int nodeID = 0; nodeID < nodeVersions.length; nodeID++) {
 
-          final TermStatistics subStats;
+          final TermStats subStats;
           if (nodeID == myNodeID) {
-            subStats = super.termStatistics(term, docFreq, totalTermFreq);
+            subStats = super.termStats(term, docFreq, totalTermFreq);
           } else {
             final TermAndShardVersion key =
                 new TermAndShardVersion(nodeID, nodeVersions[nodeID], term);
@@ -289,7 +287,7 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
           distributedTotalTermFreq += nodeTotalTermFreq;
         }
         assert distributedDocFreq > 0;
-        return new TermStatistics(term.bytes(), distributedDocFreq, distributedTotalTermFreq);
+        return new TermStats(term.bytes(), distributedDocFreq, distributedTotalTermFreq);
       }
 
       @Override

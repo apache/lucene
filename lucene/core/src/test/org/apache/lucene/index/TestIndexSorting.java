@@ -77,7 +77,7 @@ import org.apache.lucene.search.SortedNumericSortField;
 import org.apache.lucene.search.SortedSetSelector;
 import org.apache.lucene.search.SortedSetSortField;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldCollectorManager;
 import org.apache.lucene.search.similarities.Similarity;
@@ -2295,7 +2295,7 @@ public class TestIndexSorting extends LuceneTestCase {
     }
 
     @Override
-    public SimScorer scorer(float boost, FieldStats fieldStats, TermStatistics... termStats) {
+    public SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
       return in.scorer(boost, fieldStats, termStats);
     }
   }
