@@ -120,6 +120,8 @@ Improvements
 
 * GITHUB#15225: Improve package documentation for org.apache.lucene.util. (Syed Mohammad Saad)
 
+* GTIHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
+
 Optimizations
 ---------------------
 * GITHUB#15681, GITHUB#15833: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
@@ -234,6 +236,8 @@ Other
   (Uwe Schindler)
 
 * GITHUB#15949: Use junit5 engine vintage runner to run junit4 tests. (Dawid Weiss)
+
+* GITHUB#15893: Refactor to move common SHOULD/MUST dedup logic inside BooleanQuery into a common function. (Sagar Upadhyaya)
 
 ======================= Lucene 10.5.0 =======================
 
