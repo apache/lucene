@@ -91,7 +91,7 @@ jobs:
         uses: ./.github/actions/eclint
 
       - name: Run gradle check (without tests)
-        run: ./gradlew check -x test "-Ptask.times=true" --info
+        run: ./gradlew check -x test "-Ptask.times=true"
 
 
   # This runs all tests without any other validation checks.
