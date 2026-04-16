@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.ConcurrentModificationException;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -523,14 +524,17 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     }
   }
 
-  // pkg-private for testing
-  // return the list of cached queries in LRU order
+  // package-private for testing only; returns the list of unique
+  // cached queries in LRU order.
   List<Query> cachedQueries() {
+    Set<Query> dedup = new HashSet<>();
     List<Query> list = new ArrayList<>();
     for (int i = 0; i < this.numberOfPartitions; i++) {
       List<QueryCacheKey> segmentQueryList = lruQueryCachePartition[i].cachedQueries();
       for (QueryCacheKey queryCacheKey : segmentQueryList) {
-        list.add(queryCacheKey.query);
+        if (dedup.add(queryCacheKey.query)) {
+          list.add(queryCacheKey.query);
+        }
       }
     }
     return list;

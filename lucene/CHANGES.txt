@@ -120,7 +120,7 @@ Improvements
 
 * GITHUB#15225: Improve package documentation for org.apache.lucene.util. (Syed Mohammad Saad)
 
-* GTIHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
+* GITHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
 
 Optimizations
 ---------------------
