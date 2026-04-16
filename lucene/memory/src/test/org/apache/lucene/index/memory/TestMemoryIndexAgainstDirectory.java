@@ -91,7 +91,7 @@ import org.apache.lucene.tests.analysis.MockTokenFilter;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.analysis.Token;
 import org.apache.lucene.tests.util.LineFileDocs;
-import org.apache.lucene.tests.util.LuceneTestCase2;
+import org.apache.lucene.tests.util.LuceneTestCaseJupiter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
@@ -103,7 +103,7 @@ import org.junit.jupiter.api.Test;
  * Verifies that Lucene MemoryIndex and RAM-resident Directory have the same behavior, returning the
  * same results for queries on some randomish indexes.
  */
-public class TestMemoryIndexAgainstDirectory extends LuceneTestCase2 {
+public class TestMemoryIndexAgainstDirectory extends LuceneTestCaseJupiter {
   private static Set<String> queries = new HashSet<>();
 
   @BeforeAll
@@ -233,9 +233,9 @@ public class TestMemoryIndexAgainstDirectory extends LuceneTestCase2 {
               assertEquals(iwDocsAndPos.freq(), memDocsAndPos.freq());
               for (int i = 0; i < iwDocsAndPos.freq(); i++) {
                 assertEquals(
+                    "term: " + iwTermsIter.term().utf8ToString(),
                     iwDocsAndPos.nextPosition(),
-                    memDocsAndPos.nextPosition(),
-                    "term: " + iwTermsIter.term().utf8ToString());
+                    memDocsAndPos.nextPosition());
                 if (offsets) {
                   assertEquals(iwDocsAndPos.startOffset(), memDocsAndPos.startOffset());
                   assertEquals(iwDocsAndPos.endOffset(), memDocsAndPos.endOffset());
@@ -272,7 +272,7 @@ public class TestMemoryIndexAgainstDirectory extends LuceneTestCase2 {
     for (String query : queries) {
       TopDocs ramDocs = ram.search(qp.parse(query), 1);
       TopDocs memDocs = mem.search(qp.parse(query), 1);
-      assertEquals(ramDocs.totalHits.value(), memDocs.totalHits.value(), query);
+      assertEquals(query, ramDocs.totalHits.value(), memDocs.totalHits.value());
     }
     reader.close();
   }
@@ -468,7 +468,7 @@ public class TestMemoryIndexAgainstDirectory extends LuceneTestCase2 {
     assertEquals(0, mindex.search(query), 0.00001f);
     query = new PhraseQuery(10, "field", "fox", "jumps");
     assertTrue(
-        mindex.search(query) > 0.0001, "posGap" + mockAnalyzer.getPositionIncrementGap("field"));
+        "posGap" + mockAnalyzer.getPositionIncrementGap("field"), mindex.search(query) > 0.0001);
     TestUtil.checkReader(mindex.createSearcher().getIndexReader());
   }
 
@@ -788,21 +788,21 @@ public class TestMemoryIndexAgainstDirectory extends LuceneTestCase2 {
         String failDesc = " (field:" + field_name + " term:" + currentTerm + ")";
         int memPos = memDocsPosEnum.nextPosition();
         int pos = docsPosEnum.nextPosition();
-        assertEquals(pos, memPos, "Position test failed" + failDesc);
+        assertEquals("Position test failed" + failDesc, pos, memPos);
         assertEquals(
+            "Start offset test failed" + failDesc,
             docsPosEnum.startOffset(),
-            memDocsPosEnum.startOffset(),
-            "Start offset test failed" + failDesc);
+            memDocsPosEnum.startOffset());
         assertEquals(
+            "End offset test failed" + failDesc,
             docsPosEnum.endOffset(),
-            memDocsPosEnum.endOffset(),
-            "End offset test failed" + failDesc);
+            memDocsPosEnum.endOffset());
         assertEquals(
+            "Missing payload test failed" + failDesc,
             docsPosEnum.getPayload(),
-            memDocsPosEnum.getPayload(),
-            "Missing payload test failed" + failDesc);
+            memDocsPosEnum.getPayload());
       }
     }
-    assertNull(memTermEnum.next(), "Still some tokens not processed");
+    assertNull("Still some tokens not processed", memTermEnum.next());
   }
 }

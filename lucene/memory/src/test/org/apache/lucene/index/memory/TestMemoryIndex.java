@@ -93,14 +93,14 @@ import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockPayloadAnalyzer;
-import org.apache.lucene.tests.util.LuceneTestCase2;
+import org.apache.lucene.tests.util.LuceneTestCaseJupiter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.hamcrest.MatcherAssert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-public class TestMemoryIndex extends LuceneTestCase2 {
+public class TestMemoryIndex extends LuceneTestCaseJupiter {
   private MockAnalyzer analyzer;
 
   @BeforeEach

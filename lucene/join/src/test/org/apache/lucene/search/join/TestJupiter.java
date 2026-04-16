@@ -20,7 +20,7 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.LuceneTestCase2;
+import org.apache.lucene.tests.util.LuceneTestCaseJupiter;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -29,13 +29,13 @@ import org.junit.jupiter.api.Timeout;
 @Timeout(value = 3, unit = TimeUnit.SECONDS)
 public class TestJupiter {
   @Nested
-  class T1 extends LuceneTestCase2 {
+  class T1 extends LuceneTestCaseJupiter {
     @Test
     public void t1() throws Exception {
       Random r1 = LuceneTestCase.random();
       Random r2 = LuceneTestCase.random();
       Assertions.assertSame(r1, r2);
-      System.out.println("R: " + Objects.hashCode(r1) + " " + r1.nextLong());
+      System.out.println("R: " + random().nextLong());
     }
 
     @Test
@@ -58,7 +58,7 @@ public class TestJupiter {
   }
 
   @Nested
-  public class T2 extends LuceneTestCase2 {
+  public class T2 extends LuceneTestCaseJupiter {
     @Test
     public void testNoParent(Random random) throws Exception {}
   }

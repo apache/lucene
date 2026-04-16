@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.util.Constants;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
@@ -62,7 +61,7 @@ import org.junit.platform.commons.support.ReflectionSupport;
 ///
 /// ## Randomized execution and test facilities
 ///
-/// [LuceneTestCase2] uses the [Randomized] extension to support component randomization.
+/// [LuceneTestCaseJupiter] uses the [Randomized] extension to support component randomization.
 /// A [Random] can be automatically injected in the test (or any junit5 callback) as a parameter.
 /// Tests should be fully reproducible for the same initial seed
 /// (assuming no race conditions between threads
@@ -83,13 +82,16 @@ import org.junit.platform.commons.support.ReflectionSupport;
 @Randomized
 @DetectThreadLeaks(scope = DetectThreadLeaks.Scope.SUITE)
 @DetectThreadLeaks.LingerTime(millis = 20_000)
-@DetectThreadLeaks.ExcludeThreads({SystemThreadFilter.class, LuceneTestCase2.IsSystemThread.class})
+@DetectThreadLeaks.ExcludeThreads({
+  SystemThreadFilter.class,
+  LuceneTestCaseJupiter.IsSystemThread.class
+})
 @Timeout(value = 2, unit = TimeUnit.HOURS)
 @Execution(
     value = ExecutionMode.SAME_THREAD,
     reason = "single-threaded for backward compatibility.")
-@ExtendWith({GlobalStaticRandomAccess.class})
-public abstract class LuceneTestCase2 extends Assertions {
+@ExtendWith({GlobalStateSupport.class})
+public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCaseParent {
   /**
    * This predicate should return {@code true} for threads that should be ignored in {@linkplain
    * DetectThreadLeaks thread leak detection}.
@@ -133,6 +135,17 @@ public abstract class LuceneTestCase2 extends Assertions {
   // Deprecated or removed methods (LuceneTestCase) and other backward-compatibility
   // infrastructure.
   //
+
+  /**
+   * Whenever possible, you should use an injected {@link Random} or {@link
+   * java.util.function.Supplier<Random>} parameter on junit5 test methods.
+   *
+   * <p>Global static methods make running test suites in parallel impossible.
+   */
+  @Deprecated
+  public static Random random() {
+    return LuceneTestCaseParent.random();
+  }
 
   /**
    * Unfortunately there is no easy way to implement custom test providers in jupiter so we just

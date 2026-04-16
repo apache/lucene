@@ -19,12 +19,12 @@ package org.apache.lucene.index.memory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import org.apache.lucene.tests.util.LuceneTestCase2;
+import org.apache.lucene.tests.util.LuceneTestCaseJupiter;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.IntBlockPool;
 import org.junit.jupiter.api.Test;
 
-public class TestSlicedIntBlockPool extends LuceneTestCase2 {
+public class TestSlicedIntBlockPool extends LuceneTestCaseJupiter {
   @Test
   public void testSingleWriterReader(Random random) {
     Counter bytesUsed = Counter.newCounter();
