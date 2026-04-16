@@ -128,6 +128,7 @@ public final class ReaderUtil {
         to = -to - 1;
       }
       int count = to - from;
+      assert count > 0;
       result[leafIdx] = new int[count];
       System.arraycopy(sortedDocIds, from, result[leafIdx], 0, count);
       from = to;
