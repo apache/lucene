@@ -120,7 +120,7 @@ Improvements
 
 * GITHUB#15225: Improve package documentation for org.apache.lucene.util. (Syed Mohammad Saad)
 
-* GTIHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
+* GITHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
 
 Optimizations
 ---------------------
@@ -314,6 +314,8 @@ Optimizations
 
 * GITHUB#15902: Improve DiversifyingChildren performance by using primitive arrays(Alessandro Benedetti)
 
+* GITHUB#15954: Use SkipBlockRangeIterator as the two-phase approximation in SortedNumericDocValuesRangeQuery. (Sagar Upadhyaya)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
@@ -379,6 +381,8 @@ Other
 * GITHUB#15885: Slenderize SegmentInfo.toString() and use beefy version in infostream only once
 
 * GITHUB#15891: Add the ability to pass DataAccessHints in Lucene104ScalarQuantizedVectorsReader (Navneet Verma)
+
+* GITHUB#15951: Fix WindowsFS onClose race condition (Szymon Bialkowski)
 
 ======================= Lucene 10.4.0 =======================
 
