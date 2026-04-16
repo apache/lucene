@@ -137,8 +137,6 @@ Optimizations
 
 * GITHUB#15597, GITHUB#15777: Reduce memory usage of NeighborArray (Viliam Durina)
 
-* GITHUB#15954: Use SkipBlockRangeIterator as the two-phase approximation in SortedNumericDocValuesRangeQuery. (Sagar Upadhyaya)
-
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
@@ -307,6 +305,8 @@ Optimizations
 * GITHUB#15886: Cache frozen FieldType to skip redundant schema validation. (Tim Brooks)
 
 * GITHUB#15902: Improve DiversifyingChildren performance by using primitive arrays(Alessandro Benedetti)
+
+* GITHUB#15954: Use SkipBlockRangeIterator as the two-phase approximation in SortedNumericDocValuesRangeQuery. (Sagar Upadhyaya)
 
 Bug Fixes
 ---------------------
