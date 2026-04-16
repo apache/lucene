@@ -137,8 +137,8 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
   //
 
   /**
-   * Whenever possible, you should use an injected {@link Random} or {@link
-   * java.util.function.Supplier<Random>} parameter on junit5 test methods.
+   * Whenever possible, you should use an injected {@link Random} or {@code Supplier<Random>}
+   * parameter on junit5 test methods.
    *
    * <p>Global static methods make running test suites in parallel impossible.
    */

@@ -23,11 +23,9 @@ import static org.apache.lucene.tests.util.LuceneTestCase.TEST_POSTINGSFORMAT;
 import static org.apache.lucene.tests.util.LuceneTestCase.VERBOSE;
 import static org.apache.lucene.tests.util.LuceneTestCase.assumeFalse;
 import static org.apache.lucene.tests.util.LuceneTestCase.localeForLanguageTag;
-import static org.apache.lucene.tests.util.LuceneTestCase.random;
 import static org.apache.lucene.tests.util.LuceneTestCase.randomLocale;
 import static org.apache.lucene.tests.util.LuceneTestCase.randomTimeZone;
 
-import com.carrotsearch.randomizedtesting.RandomizedContext;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.PrintStream;
 import java.util.Arrays;
@@ -35,6 +33,7 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.Random;
 import java.util.TimeZone;
+import java.util.function.Supplier;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.PostingsFormat;
@@ -58,6 +57,9 @@ import org.junit.internal.AssumptionViolatedException;
 
 /** Setup and restore suite-level environment (fine grained junk that doesn't fit anywhere else). */
 final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
+  private final Supplier<Random> randomSupplier;
+  private final Supplier<Class<?>> targetClassSupplier;
+
   private Codec savedCodec;
   private Locale savedLocale;
   private TimeZone savedTimeZone;
@@ -75,6 +77,12 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
    * @see SuppressCodecs
    */
   HashSet<String> avoidCodecs;
+
+  TestRuleSetupAndRestoreClassEnv(
+      Supplier<Random> randomSupplier, Supplier<Class<?>> targetClassSupplier) {
+    this.randomSupplier = randomSupplier;
+    this.targetClassSupplier = targetClassSupplier;
+  }
 
   static class ThreadNameFixingPrintStreamInfoStream extends PrintStreamInfoStream {
     public ThreadNameFixingPrintStreamInfoStream(PrintStream out) {
@@ -112,7 +120,7 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
     }
 
     savedInfoStream = InfoStream.getDefault();
-    final Random random = RandomizedContext.current().getRandom();
+    final Random random = randomSupplier.get();
     final boolean v = random.nextBoolean();
     if (INFOSTREAM) {
       InfoStream.setDefault(new ThreadNameFixingPrintStreamInfoStream(System.out));
@@ -120,7 +128,7 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
       InfoStream.setDefault(new NullInfoStream());
     }
 
-    Class<?> targetClass = RandomizedContext.current().getTargetClass();
+    Class<?> targetClass = targetClassSupplier.get();
     avoidCodecs = new HashSet<>();
     if (targetClass.isAnnotationPresent(SuppressCodecs.class)) {
       SuppressCodecs a = targetClass.getAnnotation(SuppressCodecs.class);
@@ -211,10 +219,10 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
     Locale.setDefault(locale);
 
     savedTimeZone = TimeZone.getDefault();
-    TimeZone randomTimeZone = randomTimeZone(random());
+    TimeZone randomTimeZone = randomTimeZone(random);
     timeZone = testTimeZone.equals("random") ? randomTimeZone : TimeZone.getTimeZone(testTimeZone);
     TimeZone.setDefault(timeZone);
-    similarity = new AssertingSimilarity(new RandomSimilarity(random()));
+    similarity = new AssertingSimilarity(new RandomSimilarity(random));
 
     // Check codec restrictions once at class level.
     try {
@@ -233,7 +241,7 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
     // This way the assertMemory in DocumentsWriterFlushControl sometimes runs (when we always flush
     // by RAM).
     LiveIWCFlushMode flushMode;
-    switch (random().nextInt(3)) {
+    switch (random.nextInt(3)) {
       case 0:
         flushMode = LiveIWCFlushMode.BY_RAM;
         break;

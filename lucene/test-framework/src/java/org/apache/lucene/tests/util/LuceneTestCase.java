@@ -48,6 +48,7 @@ import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import com.carrotsearch.randomizedtesting.rules.NoClassHooksShadowingRule;
 import com.carrotsearch.randomizedtesting.rules.NoInstanceHooksOverridesRule;
+import com.carrotsearch.randomizedtesting.rules.TestRuleAdapter;
 import java.io.Closeable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -297,16 +298,10 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
   /**
    * If specified, limits the number of method calls to each individual instance returned by {@link
    * #random()}.
-   *
-   * @see #randomSupplier
    */
   public static final String SYSPROP_RANDOM_MAXCALLS = "tests.random.maxcalls";
 
-  /**
-   * If specified, limits the number of calls {@link #random()} itself.
-   *
-   * @see #randomSupplier
-   */
+  /** If specified, limits the number of calls {@link #random()} itself. */
   public static final String SYSPROP_RANDOM_MAXACQUIRES = "tests.random.maxacquires";
 
   /** Annotation for tests that should only be run during nightly builds. */
@@ -575,9 +570,6 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
   /** Stores the currently class under test. */
   private static final TestRuleStoreClassName classNameRule;
 
-  /** Class environment setup rule. */
-  static final TestRuleSetupAndRestoreClassEnv classEnvRule;
-
   /** Suite failure marker (any error in the test or suite scope). */
   @SuppressWarnings("NonFinalStaticField")
   protected static TestRuleMarkFailure suiteFailureMarker;
@@ -656,7 +648,32 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
                     "org.apache.lucene", Pattern.compile("(.+\\.)(Test)([^.]+)")))
             .around(new TestRuleAssertionsRequired())
             .around(new TestRuleLimitSysouts(suiteFailureMarker))
-            .around(tempFilesCleanupRule = new TestRuleTemporaryFilesCleanup(suiteFailureMarker));
+            .around(tempFilesCleanupRule = new TestRuleTemporaryFilesCleanup(suiteFailureMarker))
+            .around(
+                new TestRuleAdapter() {
+                  @Override
+                  protected void before() throws Throwable {
+                    LuceneTestCaseParent.closeAfter.set(
+                        new CloseAfterHook() {
+                          @Override
+                          public <T extends Closeable> T closeAfterTest(T resource) {
+                            return RandomizedContext.current()
+                                .closeAtEnd(resource, LifecycleScope.TEST);
+                          }
+
+                          @Override
+                          public <T extends Closeable> T closeAfterSuite(T resource) {
+                            return RandomizedContext.current()
+                                .closeAtEnd(resource, LifecycleScope.SUITE);
+                          }
+                        });
+                  }
+
+                  @Override
+                  protected void afterAlways(List<Throwable> errors) throws Throwable {
+                    LuceneTestCaseParent.closeAfter.set(null);
+                  }
+                });
     classRules =
         r.around(new NoClassHooksShadowingRule())
             .around(
@@ -677,7 +694,11 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
                     // We reset the default locale and timezone; these properties change as a
                     // side-effect
                     "user.language", "user.timezone"))
-            .around(classEnvRule = new TestRuleSetupAndRestoreClassEnv());
+            .around(
+                classEnvRule =
+                    new TestRuleSetupAndRestoreClassEnv(
+                        () -> RandomizedContext.current().getRandom(),
+                        () -> RandomizedContext.current().getTargetClass()));
   }
 
   // -----------------------------------------------------------------
@@ -791,24 +812,6 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
   // -----------------------------------------------------------------
   // Test facilities and facades for subclasses.
   // -----------------------------------------------------------------
-
-  /**
-   * Registers a {@link Closeable} resource that should be closed after the test completes.
-   *
-   * @return <code>resource</code> (for call chaining).
-   */
-  public <T extends Closeable> T closeAfterTest(T resource) {
-    return RandomizedContext.current().closeAtEnd(resource, LifecycleScope.TEST);
-  }
-
-  /**
-   * Registers a {@link Closeable} resource that should be closed after the suite completes.
-   *
-   * @return <code>resource</code> (for call chaining).
-   */
-  public static <T extends Closeable> T closeAfterSuite(T resource) {
-    return RandomizedContext.current().closeAtEnd(resource, LifecycleScope.SUITE);
-  }
 
   /** Return the current class being tested. */
   public static Class<?> getTestClass() {

@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search.join;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
@@ -32,6 +34,14 @@ public class TestJupiter {
   class T1 extends LuceneTestCaseJupiter {
     @Test
     public void t1() throws Exception {
+      closeAfterSuite(
+          new Closeable() {
+            @Override
+            public void close() throws IOException {
+              System.out.println("Closed.");
+            }
+          });
+
       Random r1 = LuceneTestCase.random();
       Random r2 = LuceneTestCase.random();
       Assertions.assertSame(r1, r2);
