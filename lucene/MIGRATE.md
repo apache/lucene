@@ -174,6 +174,10 @@ Automaton dfa = Operations.determinize(new RegExp(re).toAutomaton(), 10000);
 Query query = new AutomatonQuery(new Term("myfield", re), dfa);
 ```
 
+### CollectionStatistics and TermStatistics have been renamed to FieldStats and TermStats (GITHUB#15929)
+
+Corresponding methods and parameters have been renamed accordingly.
+
 ## Migration from Lucene 10.4 to Lucene 10.5
 
 ### `[Byte|Float]VectorSimilarityQuery` now performs adaptive HNSW graph traversal

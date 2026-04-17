@@ -34,8 +34,8 @@ import org.apache.lucene.util.BytesRef;
  * <ul>
  *   <li>All statistics are positive integers: never zero or negative.
  *   <li>{@code docFreq} &lt;= {@code totalTermFreq}
- *   <li>{@code docFreq} &lt;= {@code sumDocFreq} of the collection
- *   <li>{@code totalTermFreq} &lt;= {@code sumTotalTermFreq} of the collection
+ *   <li>{@code docFreq} &lt;= {@code sumDocFreq} of the field
+ *   <li>{@code totalTermFreq} &lt;= {@code sumTotalTermFreq} of the field
  * </ul>
  *
  * <p>Values may include statistics on deleted documents that have not yet been merged away.
@@ -45,24 +45,23 @@ import org.apache.lucene.util.BytesRef;
  *
  * @param term Term bytes.
  *     <p>This value is never {@code null}.
- * @param docFreq number of documents containing the term in the collection, in the range [1 ..
- *     {@link #totalTermFreq()}].
+ * @param docFreq number of documents containing the term in the field, in the range [1 .. {@link
+ *     #totalTermFreq()}].
  *     <p>This is the document-frequency for the term: the count of documents where the term appears
  *     at least one time.
  *     <p>This value is always a positive number, and never exceeds {@link #totalTermFreq}. It also
- *     cannot exceed {@link CollectionStatistics#sumDocFreq()}. @see TermsEnum#docFreq()
- * @param totalTermFreq number of occurrences of the term in the collection, in the range [{@link
- *     #docFreq()} .. {@link CollectionStatistics#sumTotalTermFreq()}].
+ *     cannot exceed {@link FieldStats#sumDocFreq()}. @see TermsEnum#docFreq()
+ * @param totalTermFreq number of occurrences of the term in the field, in the range [{@link
+ *     #docFreq()} .. {@link FieldStats#sumTotalTermFreq()}].
  *     <p>This is the token count for the term: the number of times it appears in the field across
  *     all documents.
  *     <p>This value is always a positive number, always at least {@link #docFreq()}, and never
- *     exceeds {@link CollectionStatistics#sumTotalTermFreq()}. @see TermsEnum#totalTermFreq()
+ *     exceeds {@link FieldStats#sumTotalTermFreq()}. @see TermsEnum#totalTermFreq()
  * @lucene.experimental
  */
-// TODO: actually add missing cross-checks to guarantee TermStatistics is in bounds of
-// CollectionStatistics,
-// otherwise many similarity functions will implode.
-public record TermStatistics(BytesRef term, long docFreq, long totalTermFreq) {
+// TODO: actually add missing cross-checks to guarantee TermStats is in bounds of
+// FieldStats, otherwise many similarity functions will implode.
+public record TermStats(BytesRef term, long docFreq, long totalTermFreq) {
   /**
    * Creates statistics instance for a term.
    *
@@ -70,7 +69,7 @@ public record TermStatistics(BytesRef term, long docFreq, long totalTermFreq) {
    * @throws IllegalArgumentException if {@code docFreq} is negative or zero.
    * @throws IllegalArgumentException if {@code totalTermFreq} is less than {@code docFreq}.
    */
-  public TermStatistics {
+  public TermStats {
     Objects.requireNonNull(term);
     if (docFreq <= 0) {
       throw new IllegalArgumentException("docFreq must be positive, docFreq: " + docFreq);

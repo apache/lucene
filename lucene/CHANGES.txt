@@ -7,6 +7,7 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#15929: Rename CollectionStatistics to FieldStats and TermStatistics to TermStats. (Zhou Hui)
 
 * GITHUB#15763: Deprecate Operations.complement() method. This operation can be slow and is not
   recommended for production use. It will be removed in Lucene 12. (Saurabh Singh)
@@ -315,6 +316,9 @@ Optimizations
 * GITHUB#15902: Improve DiversifyingChildren performance by using primitive arrays(Alessandro Benedetti)
 
 * GITHUB#15954: Use SkipBlockRangeIterator as the two-phase approximation in SortedNumericDocValuesRangeQuery. (Sagar Upadhyaya)
+
+* GITHUB#15938: Optimize ReaderUtil#partitionByLeaf to use binary search on leaf
+  boundaries instead of linear scan. (Greg Miller)
 
 Bug Fixes
 ---------------------
