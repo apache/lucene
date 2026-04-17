@@ -318,6 +318,10 @@ Optimizations
 * GITHUB#15938: Optimize ReaderUtil#partitionByLeaf to use binary search on leaf
   boundaries instead of linear scan. (Greg Miller)
 
+ * GITHUB#15732: Prevent writing vectors twice during merging HNSW graphs by allowing doing deferred work after calling
+   merge for vectors is finshed. (Ignacio Vera)
+
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
