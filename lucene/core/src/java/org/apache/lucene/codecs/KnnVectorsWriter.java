@@ -137,7 +137,15 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
     // Phase 2: execute deferred work (e.g., graph construction using the written flat vectors)
     for (IORunnable runnable : deferredWork) {
+      if (mergeState.infoStream.isEnabled("VV")) {
+        mergeState.infoStream.message("VV", "merging deferred work" + mergeState.segmentInfo);
+      }
+
       runnable.run();
+
+      if (mergeState.infoStream.isEnabled("VV")) {
+        mergeState.infoStream.message("VV", "merge deferred work done " + mergeState.segmentInfo);
+      }
     }
 
     finish();
