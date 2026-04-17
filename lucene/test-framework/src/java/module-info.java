@@ -25,7 +25,6 @@ module org.apache.lucene.test_framework {
   requires transitive com.carrotsearch.randomizedtesting;
   requires transitive org.junit.jupiter.api;
   requires org.hamcrest;
-  requires java.sql;
 
   // Open certain packages for junit because it scans methods via reflection.
   opens org.apache.lucene.tests.index to

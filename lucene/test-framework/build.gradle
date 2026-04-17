@@ -19,14 +19,6 @@ import org.apache.lucene.gradle.plugins.misc.QuietExec
 
 description = 'Framework for testing Lucene-based applications'
 
-configurations {
-  foo {
-    attributes {
-      attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage, Usage.JAVA_API))
-    }
-  }
-}
-
 dependencies {
   moduleApi project(':lucene:core')
 
@@ -38,7 +30,6 @@ dependencies {
   })
   moduleApi deps.hamcrest
 
-  foo("org.junit.platform:junit-platform-engine:6.0.3")
   moduleApi(deps.randomizedtesting.jupiter)
   moduleApi(deps.junitplatform.jupiter)
 
