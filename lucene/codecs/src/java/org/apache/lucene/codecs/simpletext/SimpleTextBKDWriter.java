@@ -836,9 +836,9 @@ final class SimpleTextBKDWriter implements Closeable {
     // right reader after recursing to children, and possibly within recursed children,
     // since all together they make a single pass through the file.  But this is a sizable re-org,
     // and would mean leaving readers (IndexInputs) open for longer:
-    if (writer instanceof OfflinePointWriter) {
+    if (writer instanceof OfflinePointWriter opw) {
       // We are reading from a temp file; go verify the checksum:
-      String tempFileName = ((OfflinePointWriter) writer).name;
+      String tempFileName = opw.name;
       try (ChecksumIndexInput in = tempDir.openChecksumInput(tempFileName)) {
         CodecUtil.checkFooter(in, priorException);
       }
@@ -1120,12 +1120,12 @@ final class SimpleTextBKDWriter implements Closeable {
       // least number of unique bytes at commonPrefixLengths[dim], which makes compression more
       // efficient
       HeapPointWriter heapSource;
-      if (points.writer() instanceof HeapPointWriter == false) {
+      if (points.writer() instanceof HeapPointWriter hpw) {
+        heapSource = hpw;
+      } else {
         // Adversarial cases can cause this, e.g. merging big segments with most of the points
         // deleted
         heapSource = switchToHeap(points.writer());
-      } else {
-        heapSource = (HeapPointWriter) points.writer();
       }
 
       int from = Math.toIntExact(points.start());

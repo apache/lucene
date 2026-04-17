@@ -17,6 +17,9 @@ github:
     merge:  false
     rebase: false
 
+  pull_requests:
+    allow_update_branch: true
+
   features:
     wiki: false
     issues: true

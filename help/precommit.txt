@@ -7,14 +7,18 @@ Checks use the prek tool:
   * src: https://github.com/j178/prek
   * docs: https://prek.j178.dev/
 
-To run checks before committing:
+To run checks automatically before committing:
 
 uvx prek
 
 To install a precommit hook so this happens automatically:
 
 uv tool install prek
-prek install
+prek install --allow-missing-config
+
+Please note: The "--allow-missing-config" option is only required if you
+intend to also work on older release branches that do not yet have support
+for prek.
 
 To exhaustively force-check all files (like CI does):
 

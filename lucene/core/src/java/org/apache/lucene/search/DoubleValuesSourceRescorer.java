@@ -78,9 +78,7 @@ public abstract class DoubleValuesSourceRescorer extends Rescorer {
 
     if (topN < hits.length) {
       ArrayUtil.select(hits, 0, hits.length, topN, ScoreDoc.COMPARATOR);
-      ScoreDoc[] subset = new ScoreDoc[topN];
-      System.arraycopy(hits, 0, subset, 0, topN);
-      hits = subset;
+      hits = ArrayUtil.copyOfSubArray(hits, 0, topN);
     }
     Arrays.sort(hits, ScoreDoc.COMPARATOR);
 

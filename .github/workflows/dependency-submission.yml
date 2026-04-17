@@ -28,7 +28,7 @@ jobs:
         uses: ./.github/actions/prepare-for-build
 
       - name: Generate and submit dependency graph
-        uses: gradle/actions/dependency-submission@f29f5a9d7b09a7c6b29859002d29d24e1674c884 # v5.0.1
+        uses: gradle/actions/dependency-submission@39e147cb9de83bb9910b8ef8bd7fff0ee20fcd6f # v6.0.1
         env:
           DEPENDENCY_GRAPH_INCLUDE_CONFIGURATIONS: "(?i)(^|:)(compileClasspath|runtimeClasspath|testCompileClasspath|testRuntimeClasspath)$"
           DEPENDENCY_GRAPH_EXCLUDE_CONFIGURATIONS: "(?i)(^|:)(classpath|.*PluginClasspath|kotlinCompilerClasspath|kaptClasspath|annotationProcessor|detachedConfiguration.*)$"
