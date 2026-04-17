@@ -439,8 +439,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   @Override
   public CloseableRandomVectorScorerSupplier getRandomVectorScorerSupplierForMerge(
       FieldInfo fieldInfo, SegmentWriteState segmentWriteState) throws IOException {
-    if (flatVectorsReader instanceof QuantizedVectorsReader) {
-      return ((QuantizedVectorsReader) flatVectorsReader)
+    if (flatVectorsReader instanceof QuantizedVectorsReader flatVectorsReader) {
+      return flatVectorsReader
           .getRandomVectorScorerSupplierForMerge(fieldInfo, segmentWriteState);
     }
     return null;
