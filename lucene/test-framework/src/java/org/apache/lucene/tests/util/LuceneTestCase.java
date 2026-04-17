@@ -648,7 +648,12 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
                     "org.apache.lucene", Pattern.compile("(.+\\.)(Test)([^.]+)")))
             .around(new TestRuleAssertionsRequired())
             .around(new TestRuleLimitSysouts(suiteFailureMarker))
-            .around(tempFilesCleanupRule = new TestRuleTemporaryFilesCleanup(suiteFailureMarker))
+            .around(
+                tempFilesCleanupRule =
+                    new TestRuleTemporaryFilesCleanup(
+                        suiteFailureMarker,
+                        LuceneTestCase::random,
+                        () -> RandomizedContext.current().getTargetClass()))
             .around(
                 new TestRuleAdapter() {
                   @Override

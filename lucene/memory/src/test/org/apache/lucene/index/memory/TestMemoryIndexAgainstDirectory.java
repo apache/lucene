@@ -114,7 +114,7 @@ public class TestMemoryIndexAgainstDirectory extends LuceneTestCaseJupiter {
 
   @AfterAll
   public static void cleanup() throws Exception {
-    queries = null;
+    queries.clear();
   }
 
   /** read a set of queries from a resource file */

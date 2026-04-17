@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
+import java.util.function.Supplier;
 import org.apache.lucene.tests.mockfile.DisableFsyncFS;
 import org.apache.lucene.tests.mockfile.ExtrasFS;
 import org.apache.lucene.tests.mockfile.HandleLimitFS;
@@ -52,6 +53,9 @@ import org.apache.lucene.util.IOUtils;
  * @see LuceneTestCase#createTempFile()
  */
 final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
+  private final Supplier<Random> randomSupplier;
+  private final Supplier<Class<?>> targetClassSupplier;
+
   /** Retry to create temporary file name this many times. */
   private static final int TEMP_NAME_RETRY_THRESHOLD = 9999;
 
@@ -74,8 +78,13 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
    */
   private static final List<Path> cleanupQueue = new ArrayList<>();
 
-  public TestRuleTemporaryFilesCleanup(TestRuleMarkFailure failureMarker) {
+  public TestRuleTemporaryFilesCleanup(
+      TestRuleMarkFailure failureMarker,
+      Supplier<Random> randomSupplier,
+      Supplier<Class<?>> targetClassSupplier) {
     this.failureMarker = failureMarker;
+    this.randomSupplier = randomSupplier;
+    this.targetClassSupplier = targetClassSupplier;
   }
 
   /** Register temporary folder for removal after the suite completes. */
@@ -126,7 +135,7 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
               .getFileSystem(null);
     }
 
-    Random random = RandomizedContext.current().getRandom();
+    Random random = randomSupplier.get();
 
     // speed up tests by omitting actual fsync calls to the hardware most of the time.
     if (targetClass.isAnnotationPresent(SuppressFsync.class) || random.nextInt(100) > 0) {
