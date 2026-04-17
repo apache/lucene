@@ -236,8 +236,7 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
 
   Path getPerTestClassTempDir() {
     if (tempDirBase == null) {
-      RandomizedContext ctx = RandomizedContext.current();
-      Class<?> clazz = ctx.getTargetClass();
+      Class<?> clazz = targetClassSupplier.get();
       String prefix = clazz.getName();
       prefix = prefix.replaceFirst("^org.apache.lucene.", "lucene.");
 
@@ -250,13 +249,7 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
               "Failed to get a temporary name too many times, check your temp directory and consider manually cleaning it: "
                   + javaTempDir.toAbsolutePath());
         }
-        f =
-            javaTempDir.resolve(
-                prefix
-                    + "_"
-                    + ctx.getRunnerSeedAsString()
-                    + "-"
-                    + String.format(Locale.ENGLISH, "%03d", attempt));
+        f = javaTempDir.resolve(prefix + "_" + String.format(Locale.ENGLISH, "%03d", attempt));
         try {
           Files.createDirectory(f);
           success = true;

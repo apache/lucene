@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Timeout;
 @Timeout(value = 3, unit = TimeUnit.SECONDS)
 public class TestJupiter {
   @Nested
+  @LuceneTestCase.Nightly
   class T1 extends LuceneTestCaseJupiter {
     @Test
     public void t1() throws Exception {

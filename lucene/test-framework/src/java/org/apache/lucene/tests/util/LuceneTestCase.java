@@ -211,6 +211,7 @@ import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.internal.AssumptionViolatedException;
+import org.junit.jupiter.api.Tag;
 import org.junit.rules.RuleChain;
 import org.junit.rules.TestRule;
 import org.junit.runner.RunWith;
@@ -309,6 +310,8 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
   @Inherited
   @Retention(RetentionPolicy.RUNTIME)
   @TestGroup(enabled = false, sysProperty = SYSPROP_NIGHTLY)
+  @Tag("nightly")
+  @TagState(enabled = false, sysProperty = SYSPROP_NIGHTLY)
   public @interface Nightly {}
 
   /** Annotation for tests that should only be run during weekly builds */
@@ -316,6 +319,8 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
   @Inherited
   @Retention(RetentionPolicy.RUNTIME)
   @TestGroup(enabled = false, sysProperty = SYSPROP_WEEKLY)
+  @Tag("weekly")
+  @TagState(enabled = false, sysProperty = SYSPROP_WEEKLY)
   public @interface Weekly {}
 
   /** Annotation for monster tests that require special setup (e.g. use tons of disk and RAM) */
@@ -323,6 +328,8 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
   @Inherited
   @Retention(RetentionPolicy.RUNTIME)
   @TestGroup(enabled = false, sysProperty = SYSPROP_MONSTER)
+  @Tag("monster")
+  @TagState(enabled = false, sysProperty = SYSPROP_MONSTER)
   public @interface Monster {
     String value();
   }
@@ -332,6 +339,8 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
   @Inherited
   @Retention(RetentionPolicy.RUNTIME)
   @TestGroup(enabled = false, sysProperty = SYSPROP_AWAITSFIX)
+  @Tag("awaitsfix")
+  @TagState(enabled = false, sysProperty = SYSPROP_AWAITSFIX)
   public @interface AwaitsFix {
     /** Point to JIRA entry. */
     public String bugUrl();
