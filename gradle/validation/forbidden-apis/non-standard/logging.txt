@@ -1,0 +1,14 @@
+@defaultMessage Lucene should never log below Level.WARNING
+java.util.logging.Level#CONFIG
+java.util.logging.Level#FINE
+java.util.logging.Level#FINER
+java.util.logging.Level#FINEST
+java.util.logging.Level#INFO
+java.util.logging.Logger#config(**)
+java.util.logging.Logger#fine(**)
+java.util.logging.Logger#finer(**)
+java.util.logging.Logger#finest(**)
+java.util.logging.Logger#info(**)
+java.util.logging.Logger#throwing(**)
+java.util.logging.Logger#entering(**)
+java.util.logging.Logger#exiting(**)

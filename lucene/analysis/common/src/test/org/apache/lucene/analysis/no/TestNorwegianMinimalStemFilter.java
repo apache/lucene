@@ -18,7 +18,7 @@ package org.apache.lucene.analysis.no;
 
 import static org.apache.lucene.analysis.no.NorwegianLightStemmer.BOKMAAL;
 import static org.apache.lucene.analysis.no.NorwegianLightStemmer.NYNORSK;
-import static org.apache.lucene.tests.analysis.VocabularyAssert.*;
+import static org.apache.lucene.tests.analysis.VocabularyAssert.assertVocabulary;
 
 import java.io.IOException;
 import java.nio.file.Files;

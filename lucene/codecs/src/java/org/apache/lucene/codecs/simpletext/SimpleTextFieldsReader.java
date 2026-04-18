@@ -80,14 +80,11 @@ class SimpleTextFieldsReader extends FieldsProducer {
             SimpleTextPostingsFormat.getPostingsFileName(
                 state.segmentInfo.name, state.segmentSuffix),
             state.context);
-    boolean success = false;
     try {
       fields = readFields(in.clone());
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -237,9 +234,9 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
         SimpleTextPostingsEnum docsAndPositionsEnum;
         if (reuse != null
-            && reuse instanceof SimpleTextPostingsEnum
-            && ((SimpleTextPostingsEnum) reuse).canReuse(SimpleTextFieldsReader.this.in)) {
-          docsAndPositionsEnum = (SimpleTextPostingsEnum) reuse;
+            && reuse instanceof SimpleTextPostingsEnum simpleTextPostingsEnum
+            && simpleTextPostingsEnum.canReuse(SimpleTextFieldsReader.this.in)) {
+          docsAndPositionsEnum = simpleTextPostingsEnum;
         } else {
           docsAndPositionsEnum = new SimpleTextPostingsEnum();
         }
@@ -248,9 +245,9 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
       SimpleTextDocsEnum docsEnum;
       if (reuse != null
-          && reuse instanceof SimpleTextDocsEnum
-          && ((SimpleTextDocsEnum) reuse).canReuse(SimpleTextFieldsReader.this.in)) {
-        docsEnum = (SimpleTextDocsEnum) reuse;
+          && reuse instanceof SimpleTextDocsEnum simpleTextDocsEnum
+          && simpleTextDocsEnum.canReuse(SimpleTextFieldsReader.this.in)) {
+        docsEnum = simpleTextDocsEnum;
       } else {
         docsEnum = new SimpleTextDocsEnum();
       }

@@ -165,7 +165,9 @@ public abstract class KnnSearchStrategy {
     }
 
     @Override
-    public void nextVectorsBlock() {}
+    public void nextVectorsBlock() {
+      originalStrategy.nextVectorsBlock();
+    }
   }
 
   /**

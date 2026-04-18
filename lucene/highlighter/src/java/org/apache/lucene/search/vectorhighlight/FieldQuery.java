@@ -80,8 +80,7 @@ public class FieldQuery {
       QueryPhraseMap rootMap = getRootMap(flatQuery);
       rootMap.add(flatQuery, reader);
       float boost = 1f;
-      while (flatQuery instanceof BoostQuery) {
-        BoostQuery bq = (BoostQuery) flatQuery;
+      while (flatQuery instanceof BoostQuery bq) {
         flatQuery = bq.getQuery();
         boost *= bq.getBoost();
       }
@@ -429,7 +428,7 @@ public class FieldQuery {
     private void markTerminal(int slop, float boost) {
       this.terminal = true;
       this.slop = slop;
-      this.boost = boost;
+      this.boost = Math.max(this.boost, boost);
       this.termOrPhraseNumber = fieldQuery.nextTermOrPhraseNumber();
     }
 

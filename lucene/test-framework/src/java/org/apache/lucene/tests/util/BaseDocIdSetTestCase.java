@@ -63,7 +63,7 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
 
   /** Compare the content of the set against a {@link BitSet}. */
   public void testAgainstBitSet() throws IOException {
-    Random random = random();
+    Random random = nonAssertingRandom(random());
     final int numBits = TestUtil.nextInt(random, 100, 1 << 20);
     // test various random sets with various load factors
     for (float percentSet : new float[] {0f, 0.0001f, random.nextFloat(), 0.9f, 1f}) {
@@ -181,7 +181,7 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
   }
 
   public void testIntoBitSet() throws IOException {
-    Random random = random();
+    Random random = nonAssertingRandom(random());
     final int numBits = TestUtil.nextInt(random, 100, 1 << 20);
     // test various random sets with various load factors
     for (float percentSet : new float[] {0f, 0.0001f, random.nextFloat(), 0.9f, 1f}) {
@@ -238,12 +238,16 @@ public abstract class BaseDocIdSetTestCase<T extends DocIdSet> extends LuceneTes
     it2.advance(from);
     // This call is not legal, since there is one bit that is set beyond the end of the target bit
     // set
-    expectThrows(Throwable.class, () -> it2.intoBitSet(to, dest2, offset));
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(Throwable.class, () -> it2.intoBitSet(to, dest2, offset));
+    }
 
     FixedBitSet dest3 = new FixedBitSet(42 - offset + 1);
     DocIdSetIterator it3 = copy.iterator();
     it3.advance(from);
     // This call is not legal, since offset is greater than the current doc
-    expectThrows(Throwable.class, () -> it3.intoBitSet(to, dest3, 21));
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(Throwable.class, () -> it3.intoBitSet(to, dest3, 21));
+    }
   }
 }

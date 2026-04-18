@@ -36,7 +36,6 @@ import org.apache.lucene.util.StringHelper;
 public class PrefixCodedTerms implements Accountable {
   private final List<ByteBuffer> content;
   private final long size;
-  private long delGen;
   private int lazyHash;
 
   private PrefixCodedTerms(List<ByteBuffer> content, long size) {
@@ -47,11 +46,6 @@ public class PrefixCodedTerms implements Accountable {
   @Override
   public long ramBytesUsed() {
     return content.stream().mapToLong(buf -> buf.capacity()).sum() + 2 * Long.BYTES;
-  }
-
-  /** Records del gen for this packet. */
-  public void setDelGen(long delGen) {
-    this.delGen = delGen;
   }
 
   /** Builds a PrefixCodedTerms: call add repeatedly, then finish. */
@@ -110,13 +104,11 @@ public class PrefixCodedTerms implements Accountable {
     final BytesRefBuilder builder = new BytesRefBuilder();
     final BytesRef bytes = builder.get();
     final long end;
-    final long delGen;
     String field = "";
 
-    private TermIterator(long delGen, ByteBuffersDataInput input) {
+    private TermIterator(ByteBuffersDataInput input) {
       this.input = input;
       end = input.length();
-      this.delGen = delGen;
     }
 
     @Override
@@ -157,18 +149,11 @@ public class PrefixCodedTerms implements Accountable {
     public String field() {
       return field;
     }
-
-    // Copied from parent-class because javadoc doesn't do it for some reason
-    /** Del gen of the current term. */
-    @Override
-    public long delGen() {
-      return delGen;
-    }
   }
 
   /** Return an iterator over the terms stored in this {@link PrefixCodedTerms}. */
   public TermIterator iterator() {
-    return new TermIterator(delGen, new ByteBuffersDataInput(content));
+    return new TermIterator(new ByteBuffersDataInput(content));
   }
 
   /** Return the number of terms stored in this {@link PrefixCodedTerms}. */
@@ -183,7 +168,6 @@ public class PrefixCodedTerms implements Accountable {
       for (ByteBuffer bb : content) {
         h = h + 31 * bb.hashCode();
       }
-      h = 31 * h + (int) (delGen ^ (delGen >>> 32));
       lazyHash = h;
     }
     return lazyHash;
@@ -200,6 +184,6 @@ public class PrefixCodedTerms implements Accountable {
     }
 
     PrefixCodedTerms other = (PrefixCodedTerms) obj;
-    return delGen == other.delGen && size() == other.size() && this.content.equals(other.content);
+    return size() == other.size() && this.content.equals(other.content);
   }
 }

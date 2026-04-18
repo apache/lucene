@@ -33,7 +33,7 @@ public class DoubleRangeGroupSelector extends GroupSelector<DoubleRange> {
   private final DoubleRangeFactory rangeFactory;
 
   private Set<DoubleRange> inSecondPass;
-  private boolean includeEmpty = true;
+  private boolean includeEmpty;
   private boolean positioned;
   private DoubleRange current;
 
@@ -88,7 +88,6 @@ public class DoubleRangeGroupSelector extends GroupSelector<DoubleRange> {
   @Override
   public void setGroups(Collection<SearchGroup<DoubleRange>> searchGroups) {
     inSecondPass = new HashSet<>();
-    includeEmpty = false;
     for (SearchGroup<DoubleRange> group : searchGroups) {
       if (group.groupValue == null) {
         includeEmpty = true;

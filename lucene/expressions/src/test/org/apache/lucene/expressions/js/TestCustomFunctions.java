@@ -198,7 +198,8 @@ public class TestCustomFunctions extends CompilerTestCase {
     assertTrue(expected.getMessage().contains("is not static"));
   }
 
-  static double nonPublicMethod() {
+  @SuppressWarnings("unused")
+  private static double nonPublicMethod() {
     return 7;
   }
 
@@ -209,7 +210,8 @@ public class TestCustomFunctions extends CompilerTestCase {
     assertEquals(7, expr.evaluate(null), DELTA);
   }
 
-  static class NestedNotPublic {
+  @SuppressWarnings("unused")
+  private static class NestedNotPublic {
     public static double method() {
       return 41;
     }
@@ -291,21 +293,5 @@ public class TestCustomFunctions extends CompilerTestCase {
             MethodHandles.identity(double.class));
     Expression expr = compile("foo.bar() + bar.foo(7)", functions);
     assertEquals(16, expr.evaluate(null), DELTA);
-  }
-
-  public void testLegacyFunctions() throws Exception {
-    var functions =
-        Map.of("foo", TestCustomFunctions.class.getMethod("oneArgMethod", double.class));
-    var newFunctions = JavascriptCompiler.convertLegacyFunctions(functions);
-    newFunctions.putAll(JavascriptCompiler.DEFAULT_FUNCTIONS);
-    Expression expr = compile("foo(3) + abs(-7)", newFunctions);
-    assertEquals(13, expr.evaluate(null), DELTA);
-  }
-
-  public void testInvalidLegacyFunctions() throws Exception {
-    var functions = Map.of("foo", TestCustomFunctions.class.getMethod("nonStaticMethod"));
-    var newFunctions = JavascriptCompiler.convertLegacyFunctions(functions);
-    newFunctions.putAll(JavascriptCompiler.DEFAULT_FUNCTIONS);
-    expectThrows(IllegalArgumentException.class, () -> compile("foo(3) + abs(-7)", newFunctions));
   }
 }

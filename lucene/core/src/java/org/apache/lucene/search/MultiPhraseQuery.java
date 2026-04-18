@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -140,7 +141,7 @@ public class MultiPhraseQuery extends Query {
 
     /** Builds a {@link MultiPhraseQuery}. */
     public MultiPhraseQuery build() {
-      Term[][] termArraysArray = termArrays.toArray(new Term[termArrays.size()][]);
+      Term[][] termArraysArray = termArrays.toArray(Term[][]::new);
       return new MultiPhraseQuery(field, termArraysArray, positions.toArray(), slop);
     }
   }
@@ -234,7 +235,7 @@ public class MultiPhraseQuery extends Query {
           return similarity.scorer(
               boost,
               searcher.collectionStatistics(field),
-              allTermStats.toArray(new TermStatistics[allTermStats.size()]));
+              allTermStats.toArray(TermStatistics[]::new));
         }
       }
 
@@ -412,7 +413,7 @@ public class MultiPhraseQuery extends Query {
    */
   public static class UnionPostingsEnum extends PostingsEnum {
     /** queue ordered by docid */
-    final DocsQueue docsQueue;
+    final PriorityQueue<PostingsEnum> docsQueue;
 
     /** cost of this enum: sum of its subs */
     final long cost;
@@ -427,14 +428,15 @@ public class MultiPhraseQuery extends Query {
     final PostingsEnum[] subs;
 
     public UnionPostingsEnum(Collection<PostingsEnum> subs) {
-      docsQueue = new DocsQueue(subs.size());
+      docsQueue =
+          PriorityQueue.usingComparator(subs.size(), Comparator.comparingInt(PostingsEnum::docID));
       long cost = 0;
       for (PostingsEnum sub : subs) {
         docsQueue.add(sub);
         cost += sub.cost();
       }
       this.cost = cost;
-      this.subs = subs.toArray(new PostingsEnum[subs.size()]);
+      this.subs = subs.toArray(PostingsEnum[]::new);
     }
 
     @Override
@@ -511,18 +513,6 @@ public class MultiPhraseQuery extends Query {
       return null; // payloads are unsupported
     }
 
-    /** disjunction of postings ordered by docid. */
-    static class DocsQueue extends PriorityQueue<PostingsEnum> {
-      DocsQueue(int size) {
-        super(size);
-      }
-
-      @Override
-      public final boolean lessThan(PostingsEnum a, PostingsEnum b) {
-        return a.docID() < b.docID();
-      }
-    }
-
     /**
      * queue of terms for a single document. its a sorted array of all the positions from all the
      * postings
@@ -592,12 +582,7 @@ public class MultiPhraseQuery extends Query {
     public UnionFullPostingsEnum(List<PostingsEnum> subs) {
       super(subs);
       this.posQueue =
-          new PriorityQueue<PostingsAndPosition>(subs.size()) {
-            @Override
-            protected boolean lessThan(PostingsAndPosition a, PostingsAndPosition b) {
-              return a.pos < b.pos;
-            }
-          };
+          PriorityQueue.usingComparator(subs.size(), Comparator.comparingInt(p -> p.pos));
       this.subs = new ArrayList<>();
       for (PostingsEnum pe : subs) {
         this.subs.add(new PostingsAndPosition(pe));

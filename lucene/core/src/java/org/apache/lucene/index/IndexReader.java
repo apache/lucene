@@ -18,10 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
-import java.util.WeakHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.store.AlreadyClosedException;
 
@@ -77,7 +74,7 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
    *
    * <p>Example: cache the number of documents that match a query per reader.
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * public class QueryCountCache {
    *
    *   private final Query query;
@@ -108,7 +105,7 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
    *   }
    *
    * }
-   * </pre>
+   * </code></pre>
    *
    * @lucene.experimental
    */
@@ -130,7 +127,9 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
 
   /** A cache key identifying a resource that is being cached on. */
   public static final class CacheKey {
-    CacheKey() {} // only instantiable by core impls
+
+    /** Default constructor. */
+    public CacheKey() {} // only instantiable by core impls
   }
 
   /**
@@ -146,24 +145,6 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
     void onClose(CacheKey key) throws IOException;
   }
 
-  private final Set<IndexReader> parentReaders =
-      Collections.synchronizedSet(
-          Collections.newSetFromMap(new WeakHashMap<IndexReader, Boolean>()));
-
-  /**
-   * Expert: This method is called by {@code IndexReader}s which wrap other readers (e.g. {@link
-   * CompositeReader} or {@link FilterLeafReader}) to register the parent at the child (this reader)
-   * on construction of the parent. When this reader is closed, it will mark all registered parents
-   * as closed, too. The references to parent readers are weak only, so they can be GCed once they
-   * are no longer in use.
-   *
-   * @lucene.experimental
-   */
-  public final void registerParentReader(IndexReader reader) {
-    ensureOpen();
-    parentReaders.add(reader);
-  }
-
   /**
    * For test framework use only.
    *
@@ -171,18 +152,6 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
    */
   protected void notifyReaderClosedListeners() throws IOException {
     // nothing to notify in the base impl
-  }
-
-  private void reportCloseToParentReaders() throws IOException {
-    synchronized (parentReaders) {
-      for (IndexReader parent : parentReaders) {
-        parent.closedByChild = true;
-        // cross memory barrier by a fake write:
-        parent.refCount.addAndGet(0);
-        // recurse:
-        parent.reportCloseToParentReaders();
-      }
-    }
   }
 
   /** Expert: returns the current refCount for this reader */
@@ -253,8 +222,7 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
     final int rc = refCount.decrementAndGet();
     if (rc == 0) {
       closed = true;
-      try (Closeable _ = this::reportCloseToParentReaders;
-          Closeable _ = this::notifyReaderClosedListeners) {
+      try (Closeable _ = this::notifyReaderClosedListeners) {
         doClose();
       }
     } else if (rc < 0) {
@@ -309,13 +277,13 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
    *
    * <p>Example:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * TopDocs hits = searcher.search(query, 10);
    * TermVectors termVectors = reader.termVectors();
    * for (ScoreDoc hit : hits.scoreDocs) {
    *   Fields vector = termVectors.get(hit.doc);
    * }
-   * </pre>
+   * </code></pre>
    *
    * @throws IOException If there is a low-level IO error
    */
@@ -353,13 +321,13 @@ public abstract sealed class IndexReader implements Closeable permits CompositeR
    *
    * <p>Example:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * TopDocs hits = searcher.search(query, 10);
    * StoredFields storedFields = reader.storedFields();
    * for (ScoreDoc hit : hits.scoreDocs) {
    *   Document doc = storedFields.document(hit.doc);
    * }
-   * </pre>
+   * </code></pre>
    *
    * @throws IOException If there is a low-level IO error
    */

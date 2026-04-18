@@ -24,6 +24,7 @@ import tempfile
 import time
 import urllib.request
 from io import TextIOWrapper
+from pathlib import Path
 
 DEBUG = False
 
@@ -68,8 +69,7 @@ def compress_with_seek_points(file_name_in: str, file_name_out: str, num_seek_po
         bytes_in_chunk = 0
 
   with open(file_name_out[:-3] + ".seek", "w") as f_out:
-    for seek_point in seek_points:
-      f_out.write("%d\n" % seek_point)
+    f_out.writelines("%d\n" % seek_point for seek_point in seek_points)
 
 
 re_tag = re.compile(r"<[^>]+?>")
@@ -113,7 +113,7 @@ def sample_europarl():
   if not os.path.exists(file_name):
     print("Download %s to %s..." % (EUROPARL_V7_URL, file_name))
     urllib.request.urlretrieve(EUROPARL_V7_URL, file_name + ".tmp")
-    os.rename(file_name + ".tmp", file_name)
+    _ = Path(f"{file_name}.tmp").rename(file_name)
   else:
     print("%s already here; skipping download..." % file_name)
 

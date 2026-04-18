@@ -63,6 +63,12 @@ import org.apache.lucene.store.IndexOutput;
  *       that only in sparse case
  * </ul>
  *
+ * <p>NOTE: Arm Neoverse machines have a performance overhead in reading data that is not aligned to
+ * 64 bytes, so this format aligns the <code>.vec</code> file to that size. There may be a
+ * performance penalty in searching of float vectors that do <b>not</b> have a dimension of a
+ * multiple of 16 (equivalent to 64 bytes), because the alignment will not hold for all vectors in
+ * the file.
+ *
  * @lucene.experimental
  */
 public final class Lucene99FlatVectorsFormat extends FlatVectorsFormat {

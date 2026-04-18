@@ -139,17 +139,19 @@ public class TestXYRectangle extends LuceneTestCase {
 
   /** make sure that if a point is inside a circle, it is inside of the bbox as well */
   public void testRandomCircleToBBox() {
+    var random = nonAssertingRandom(random());
+
     int iters = atLeast(100);
     for (int iter = 0; iter < iters; iter++) {
 
-      float centerX = ShapeTestUtil.nextFloat(random());
-      float centerY = ShapeTestUtil.nextFloat(random());
+      float centerX = ShapeTestUtil.nextFloat(random);
+      float centerY = ShapeTestUtil.nextFloat(random);
 
       final float radius;
-      if (random().nextBoolean()) {
-        radius = random().nextFloat() * TestUtil.nextInt(random(), 1, 100000);
+      if (random.nextBoolean()) {
+        radius = random.nextFloat() * TestUtil.nextInt(random, 1, 100000);
       } else {
-        radius = Math.abs(ShapeTestUtil.nextFloat(random()));
+        radius = Math.abs(ShapeTestUtil.nextFloat(random));
       }
 
       XYRectangle bbox = XYRectangle.fromPointDistance(centerX, centerY, radius);
@@ -159,16 +161,16 @@ public class TestXYRectangle extends LuceneTestCase {
       for (int i = 0; i < numPointsToTry; i++) {
 
         double x;
-        if (random().nextBoolean()) {
-          x = Math.min(Float.MAX_VALUE, centerX + radius + random().nextDouble());
+        if (random.nextBoolean()) {
+          x = Math.min(Float.MAX_VALUE, centerX + radius + random.nextDouble());
         } else {
-          x = Math.max(-Float.MAX_VALUE, centerX + radius - random().nextDouble());
+          x = Math.max(-Float.MAX_VALUE, centerX + radius - random.nextDouble());
         }
         double y;
-        if (random().nextBoolean()) {
-          y = Math.min(Float.MAX_VALUE, centerY + radius + random().nextDouble());
+        if (random.nextBoolean()) {
+          y = Math.min(Float.MAX_VALUE, centerY + radius + random.nextDouble());
         } else {
-          y = Math.max(-Float.MAX_VALUE, centerY + radius - random().nextDouble());
+          y = Math.max(-Float.MAX_VALUE, centerY + radius - random.nextDouble());
         }
 
         // cartesian says it's within the circle:

@@ -665,7 +665,7 @@ public class TestGraphTokenStreamFiniteStrings extends LuceneTestCase {
   public void testLongTokenStreamStackOverflowError() throws Exception {
 
     ArrayList<Token> tokens =
-        new ArrayList<Token>() {
+        new ArrayList<>() {
           {
             add(token("fast", 1, 1));
             add(token("wi", 1, 1));

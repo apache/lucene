@@ -35,7 +35,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
 /**
  * Factory for {@link WordDelimiterFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_wd" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
@@ -45,7 +45,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
  *             generateWordParts="1" generateNumberParts="1" stemEnglishPossessive="1"
  *             types="wdfftypes.txt" /&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @deprecated Use {@link WordDelimiterGraphFilterFactory} instead: it produces a correct token
  *     graph so that e.g. {@link PhraseQuery} works correctly when it's used in the search time

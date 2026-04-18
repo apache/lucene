@@ -75,13 +75,13 @@ public class Algorithm implements AutoCloseable {
           task.setDisableCounting(isDisableCountNextTask);
           isDisableCountNextTask = false;
           currSequence.addTask(task);
-          if (task instanceof RepSumByPrefTask) {
+          if (task instanceof RepSumByPrefTask repSumByPrefTask) {
             stok.nextToken();
             String prefix = stok.sval;
             if (prefix == null || prefix.isEmpty()) {
               throw new Exception("named report prefix problem - " + stok);
             }
-            ((RepSumByPrefTask) task).setPrefix(prefix);
+            repSumByPrefTask.setPrefix(prefix);
           }
           // check for task param: '(' someParam ')'
           stok.nextToken();
@@ -283,8 +283,8 @@ public class Algorithm implements AutoCloseable {
       ArrayList<PerfTask> t = sequence.getTasks();
       if (t != null && t.size() == 1) {
         PerfTask p = t.get(0);
-        if (p instanceof TaskSequence) {
-          sequence = (TaskSequence) p;
+        if (p instanceof TaskSequence ts) {
+          sequence = ts;
           continue;
         }
       }
@@ -308,9 +308,7 @@ public class Algorithm implements AutoCloseable {
     for (String pkg : taskPackages) {
       try {
         return Class.forName(pkg + '.' + taskName + "Task");
-      } catch (
-          @SuppressWarnings("unused")
-          ClassNotFoundException e) {
+      } catch (ClassNotFoundException _) {
         // failed in this package, might succeed in the next one...
       }
     }
@@ -350,8 +348,8 @@ public class Algorithm implements AutoCloseable {
     ArrayList<PerfTask> t = sequence.getTasks();
     if (t == null) return;
     for (final PerfTask p : t) {
-      if (p instanceof TaskSequence) {
-        extractTasks(extrct, (TaskSequence) p);
+      if (p instanceof TaskSequence ts) {
+        extractTasks(extrct, ts);
       } else {
         extrct.add(p);
       }

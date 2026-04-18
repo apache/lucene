@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -168,12 +169,10 @@ class DisjunctionIntervalsSource extends IntervalsSource {
       this.approximation = new DisjunctionDISIApproximation(disiQueue);
       this.iterators = iterators;
       this.intervalQueue =
-          new PriorityQueue<>(iterators.size()) {
-            @Override
-            protected boolean lessThan(IntervalIterator a, IntervalIterator b) {
-              return a.end() < b.end() || (a.end() == b.end() && a.start() >= b.start());
-            }
-          };
+          PriorityQueue.usingComparator(
+              iterators.size(),
+              Comparator.comparingInt(IntervalIterator::end)
+                  .thenComparing(Comparator.comparingInt(IntervalIterator::start).reversed()));
       float costsum = 0;
       for (IntervalIterator it : iterators) {
         costsum += it.cost();

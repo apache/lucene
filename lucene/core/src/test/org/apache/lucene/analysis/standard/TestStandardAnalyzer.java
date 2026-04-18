@@ -76,19 +76,20 @@ public class TestStandardAnalyzer extends BaseTokenStreamTestCase {
     };
 
     StringBuilder builder = new StringBuilder();
-    int numChars = TestUtil.nextInt(random(), 100 * 1024, 1024 * 1024);
+    var rnd = nonAssertingRandom(random());
+    int numChars = TestUtil.nextInt(rnd, 100 * 1024, 1024 * 1024);
     for (int i = 0; i < numChars; ) {
       builder.append(
-          WordBreak_ExtendNumLet_chars[random().nextInt(WordBreak_ExtendNumLet_chars.length)]);
+          WordBreak_ExtendNumLet_chars[rnd.nextInt(WordBreak_ExtendNumLet_chars.length)]);
       ++i;
-      if (random().nextBoolean()) {
-        int numFormatExtendChars = TestUtil.nextInt(random(), 1, 8);
+      if (rnd.nextBoolean()) {
+        int numFormatExtendChars = TestUtil.nextInt(rnd, 1, 8);
         for (int j = 0; j < numFormatExtendChars; ++j) {
           int codepoint;
-          if (random().nextBoolean()) {
-            codepoint = WordBreak_Format_chars[random().nextInt(WordBreak_Format_chars.length)];
+          if (rnd.nextBoolean()) {
+            codepoint = WordBreak_Format_chars[rnd.nextInt(WordBreak_Format_chars.length)];
           } else {
-            codepoint = WordBreak_Extend_chars[random().nextInt(WordBreak_Extend_chars.length)];
+            codepoint = WordBreak_Extend_chars[rnd.nextInt(WordBreak_Extend_chars.length)];
           }
           char[] chars = Character.toChars(codepoint);
           builder.append(chars);

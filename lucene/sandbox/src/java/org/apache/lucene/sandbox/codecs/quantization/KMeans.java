@@ -21,12 +21,12 @@ import static org.apache.lucene.sandbox.codecs.quantization.SampleReader.createS
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.hppc.IntCursor;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.NeighborQueue;
@@ -190,14 +190,14 @@ public class KMeans {
    * centroids
    */
   private float[][] initializeForgy() throws IOException {
-    Set<Integer> selection = new HashSet<>();
+    IntHashSet selection = new IntHashSet();
     while (selection.size() < numCentroids) {
       selection.add(random.nextInt(numVectors));
     }
     float[][] initialCentroids = new float[numCentroids][];
     int i = 0;
-    for (Integer selectedIdx : selection) {
-      float[] vector = vectors.vectorValue(selectedIdx);
+    for (IntCursor selectedIdx : selection) {
+      float[] vector = vectors.vectorValue(selectedIdx.value);
       initialCentroids[i++] = ArrayUtil.copyOfSubArray(vector, 0, vector.length);
     }
     return initialCentroids;

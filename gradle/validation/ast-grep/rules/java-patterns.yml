@@ -1,0 +1,151 @@
+# Banned Lucene source patterns
+# Historically implemented as regexes which are more difficult
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: java-lang-import
+language: java
+rule:
+  pattern: import java.lang.$REF;
+  kind: import_declaration
+fix: ""
+severity: error
+message: unnecessary import of `$REF` from java.lang
+note: classes in java.lang are implicitly imported
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: confusing-type-inference
+language: java
+rule:
+  pattern: var $$$ = new $$$<>($$$)
+  kind: local_variable_declaration
+severity: error
+message: illegal use of `var` keyword with generic instance creation
+note: add explicit typing on the RHS when using `var`
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: javadoc-style-license-header
+language: java
+rule:
+  all:
+    - matches: java-license
+    - matches: javadoc
+  pattern: $TEXT
+# remove extraneous stars
+transform:
+  NEWTEXT:
+    replace:
+      replace: "^/[*]+"
+      by: "/*"
+      source: $TEXT
+fix: $NEWTEXT
+severity: error
+message: license should be a non-javadoc block comment
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: license-after-package
+language: java
+rule:
+  kind: package_declaration
+  precedes:
+    matches: java-license
+    # allow anything in between (e.g. import statements)
+    stopBy: end
+severity: error
+message: license should be before `package` declaration
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: javadoc-author-tag
+language: java
+rule:
+  matches: javadoc
+  regex: "@author"
+severity: error
+message: javadoc `@author` tags should not be used
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: nocommit-comment
+language: java
+rule:
+  regex: "nocommit:"
+  any:
+    - kind: line_comment
+    - kind: block_comment
+severity: error
+message: all `nocommit:` comments must be resolved
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: tood-comment
+language: java
+rule:
+  regex: "TOOD:"
+  any:
+    - kind: line_comment
+    - kind: block_comment
+  pattern: $TEXT
+transform:
+  NEWTEXT:
+    replace:
+      replace: "TOOD:"
+      by: "TODO:"
+      source: $TEXT
+fix: $NEWTEXT
+severity: error
+message: please write as `TODO:` instead
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: missing-spi-block-tag
+language: java
+ignores:
+  - "**/src/test/**"
+rule:
+  pattern:
+    selector: superclass
+    context: class $CLASS extends $SUPERCLASS
+  inside:
+    kind: class_declaration
+    # public, and not abstract
+    has:
+      kind: modifiers
+      has:
+        regex: public
+      not:
+        has:
+          regex: abstract
+    # not documented
+    not:
+      follows:
+        matches: javadoc
+        regex: "@lucene.spi [{]@value #NAME[}]"
+constraints:
+  SUPERCLASS:
+    regex: ^(Tokenizer|TokenFilter|CharFilter)Factory$
+severity: error
+message: Public factory is missing @lucene.spi javadoc block tag.
+note: |
+  Document with `@lucene.spi {@value #NAME}`
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: incubator-module-dependency
+language: java
+files:
+  - "**/module-info.java"
+rule:
+  kind: scoped_identifier
+  all:
+    - has:
+        field: scope
+        pattern: jdk
+    - has:
+        field: name
+        pattern: incubator
+severity: error
+message: Module dependency on incubator APIs
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: javadoc-only-inheriting-super
+language: java
+rule:
+  matches: javadoc
+  regex: "^/\\*\\*([ \r\n*])*[{]@inheritDoc[ \r\n]*[}]([ \r\n*])*\\*/$"
+severity: error
+message: "{@inheritDoc} on its own is unnecessary"

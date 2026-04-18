@@ -279,7 +279,7 @@ public class TestLongArrayList extends LuceneTestCase {
 
     count = 0;
     list.resize(0);
-    for (@SuppressWarnings("unused") LongCursor cursor : list) {
+    for (LongCursor _ : list) {
       count++;
     }
     assertEquals(0, count);

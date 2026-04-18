@@ -1,5 +1,3 @@
-package org.egothor.stemmer;
-
 /*
 Egothor Software License version 1.00
 Copyright (C) 1997-2004 Leo Galambos.
@@ -54,6 +52,8 @@ This  software  consists  of  voluntary  contributions  made  by  many
 individuals  on  behalf  of  the  Egothor  Project  and was originally
 created by Leo Galambos (Leo.G@seznam.cz).
 */
+
+package org.egothor.stemmer;
 
 import org.apache.lucene.tests.util.LuceneTestCase;
 
@@ -120,7 +120,7 @@ public class TestStemmer extends LuceneTestCase {
     String[] keys = {"a", "ba", "bb", "c"};
     /*
      * short vals won't work, see line 155 for example
-     * the IOOBE is caught (wierd), but shouldnt affect patch cmds?
+     * the IOOBE is caught (weird), but shouldn't affect patch cmds?
      */
     String[] vals = {"1111", "2222", "2223", "4444"};
 
@@ -137,7 +137,7 @@ public class TestStemmer extends LuceneTestCase {
     String[] keys = {"a", "ba", "bb", "c"};
     /*
      * short vals won't work, see line 155 for example
-     * the IOOBE is caught (wierd), but shouldnt affect patch cmds?
+     * the IOOBE is caught (weird), but shouldn't affect patch cmds?
      */
     String[] vals = {"1111", "2222", "2223", "4444"};
 

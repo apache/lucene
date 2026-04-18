@@ -16,7 +16,10 @@
  */
 package org.apache.lucene.search.matchhighlight;
 
-import static com.carrotsearch.randomizedtesting.RandomizedTest.*;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomAsciiLettersOfLengthBetween;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomBoolean;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
+import static com.carrotsearch.randomizedtesting.RandomizedTest.randomRealisticUnicodeOfCodepointLengthBetween;
 
 import java.util.ArrayList;
 import java.util.Arrays;

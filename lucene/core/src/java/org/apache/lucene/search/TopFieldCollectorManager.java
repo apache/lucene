@@ -144,8 +144,8 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
       // to enable some optimizations for skipping over non-competitive documents
       // We can't set single sort when the `after` parameter is non-null as it's
       // an implicit sort over the document id.
-      if (queue.comparators.length == 1) {
-        queue.comparators[0].setSingleSort();
+      if (queue.getComparators().length == 1) {
+        queue.getComparators()[0].setSingleSort();
       }
       collector =
           new TopFieldCollector.SimpleFieldCollector(

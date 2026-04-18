@@ -34,7 +34,10 @@ import org.apache.lucene.analysis.ja.JapaneseTokenizer.Mode;
 import org.apache.lucene.analysis.ja.dict.ConnectionCosts;
 import org.apache.lucene.analysis.ja.dict.JaMorphData;
 import org.apache.lucene.analysis.ja.dict.UserDictionary;
-import org.apache.lucene.analysis.ja.tokenattributes.*;
+import org.apache.lucene.analysis.ja.tokenattributes.BaseFormAttribute;
+import org.apache.lucene.analysis.ja.tokenattributes.InflectionAttribute;
+import org.apache.lucene.analysis.ja.tokenattributes.PartOfSpeechAttribute;
+import org.apache.lucene.analysis.ja.tokenattributes.ReadingAttribute;
 import org.apache.lucene.analysis.morph.GraphvizFormatter;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
@@ -302,29 +305,28 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
   }
 
   /*
-    // NOTE: intentionally fails!  Just trying to debug this
-    // one input...
-  public void testDecomposition6() throws Exception {
-    assertAnalyzesTo(analyzer, "奈良先端科学技術大学院大学",
-      new String[] { "これ", "は", "本", "で", "は", "ない" },
-      new int[] { 0, 2, 3, 4, 5, 6 },
-      new int[] { 2, 3, 4, 5, 6, 8 }
-                     );
-  }
-  */
+   * // NOTE: intentionally fails!  Just trying to debug this
+   * // one input...
+   * public void testDecomposition6() throws Exception {
+   *   assertAnalyzesTo(analyzer, "奈良先端科学技術大学院大学",
+   *     new String[] { "これ", "は", "本", "で", "は", "ない" },
+   *     new int[] { 0, 2, 3, 4, 5, 6 },
+   *     new int[] { 2, 3, 4, 5, 6, 8 });
+   * }
+   */
 
   /** Tests that sentence offset is incorporated into the resulting offsets */
   public void testTwoSentences() throws Exception {
     /*
-    //TokenStream ts = a.tokenStream("foo", "妹の咲子です。俺と年子で、今受験生です。");
-    TokenStream ts = analyzer.tokenStream("foo", "&#x250cdf66<!--\"<!--#<!--;?><!--#<!--#><!---->?>-->;");
-    ts.reset();
-    CharTermAttribute termAtt = ts.addAttribute(CharTermAttribute.class);
-    while(ts.incrementToken()) {
-      System.out.println("  " + termAtt.toString());
-    }
-    System.out.println("DONE PARSE\n\n");
-    */
+     * //TokenStream ts = a.tokenStream("foo", "妹の咲子です。俺と年子で、今受験生です。");
+     * TokenStream ts = analyzer.tokenStream("foo", "&#x250cdf66<!--\"<!--#<!--;?><!--#<!--#><!---->?>-->;");
+     * ts.reset();
+     * CharTermAttribute termAtt = ts.addAttribute(CharTermAttribute.class);
+     * while(ts.incrementToken()) {
+     *   System.out.println("  " + termAtt.toString());
+     * }
+     * System.out.println("DONE PARSE\n\n");
+     */
 
     assertAnalyzesTo(
         analyzerNoPunct,
@@ -685,51 +687,51 @@ public class TestJapaneseTokenizer extends BaseTokenStreamTestCase {
   }
 
   /*
-  public void testWikipedia() throws Exception {
-    final FileInputStream fis = new FileInputStream("/q/lucene/jawiki-20120220-pages-articles.xml");
-    final Reader r = new BufferedReader(new InputStreamReader(fis, StandardCharsets.UTF_8));
-
-    final long startTimeNS = System.nanoTime();
-    boolean done = false;
-    long compoundCount = 0;
-    long nonCompoundCount = 0;
-    long netOffset = 0;
-    while (!done) {
-      final TokenStream ts = analyzer.tokenStream("ignored", r);
-      ts.reset();
-      final PositionIncrementAttribute posIncAtt = ts.addAttribute(PositionIncrementAttribute.class);
-      final OffsetAttribute offsetAtt = ts.addAttribute(OffsetAttribute.class);
-      int count = 0;
-      while (true) {
-        if (!ts.incrementToken()) {
-          done = true;
-          break;
-        }
-        count++;
-        if (posIncAtt.getPositionIncrement() == 0) {
-          compoundCount++;
-        } else {
-          nonCompoundCount++;
-          if (nonCompoundCount % 1000000 == 0) {
-            System.out.println(String.format("%.2f msec [pos=%d, %d, %d]",
-                                             (System.nanoTime() - startTimeNS) / (double) TimeUnit.MILLISECONDS.toNanos(1),
-                                             netOffset + offsetAtt.startOffset(),
-                                             nonCompoundCount,
-                                             compoundCount));
-          }
-        }
-        if (count == 100000000) {
-          System.out.println("  again...");
-          break;
-        }
-      }
-      ts.end();
-      netOffset += offsetAtt.endOffset();
-    }
-    System.out.println("compoundCount=" + compoundCount + " nonCompoundCount=" + nonCompoundCount);
-    r.close();
-  }
-  */
+   *  public void testWikipedia() throws Exception {
+   *    final FileInputStream fis = new FileInputStream("/q/lucene/jawiki-20120220-pages-articles.xml");
+   *    final Reader r = new BufferedReader(new InputStreamReader(fis, StandardCharsets.UTF_8));
+   *
+   *    final long startTimeNS = System.nanoTime();
+   *    boolean done = false;
+   *    long compoundCount = 0;
+   *    long nonCompoundCount = 0;
+   *    long netOffset = 0;
+   *    while (!done) {
+   *      final TokenStream ts = analyzer.tokenStream("ignored", r);
+   *      ts.reset();
+   *      final PositionIncrementAttribute posIncAtt = ts.addAttribute(PositionIncrementAttribute.class);
+   *      final OffsetAttribute offsetAtt = ts.addAttribute(OffsetAttribute.class);
+   *      int count = 0;
+   *      while (true) {
+   *        if (!ts.incrementToken()) {
+   *          done = true;
+   *          break;
+   *        }
+   *        count++;
+   *        if (posIncAtt.getPositionIncrement() == 0) {
+   *          compoundCount++;
+   *        } else {
+   *          nonCompoundCount++;
+   *          if (nonCompoundCount % 1000000 == 0) {
+   *            System.out.println(String.format("%.2f msec [pos=%d, %d, %d]",
+   *                                             (System.nanoTime() - startTimeNS) / (double) TimeUnit.MILLISECONDS.toNanos(1),
+   *                                             netOffset + offsetAtt.startOffset(),
+   *                                             nonCompoundCount,
+   *                                             compoundCount));
+   *          }
+   *        }
+   *        if (count == 100000000) {
+   *          System.out.println("  again...");
+   *          break;
+   *        }
+   *      }
+   *      ts.end();
+   *      netOffset += offsetAtt.endOffset();
+   *    }
+   *    System.out.println("compoundCount=" + compoundCount + " nonCompoundCount=" + nonCompoundCount);
+   *    r.close();
+   *  }
+   */
 
   private void doTestBocchan(int numIterations) throws Exception {
     LineNumberReader reader =

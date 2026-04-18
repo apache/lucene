@@ -24,13 +24,13 @@ import org.apache.lucene.analysis.TokenStream;
 /**
  * Factory for {@link PatternCaptureGroupTokenFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_ptncapturegroup" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.KeywordTokenizerFactory"/&gt;
  *     &lt;filter class="solr.PatternCaptureGroupFilterFactory" pattern="([^a-z])" preserve_original="true"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @see PatternCaptureGroupTokenFilter
  * @since 4.4.0

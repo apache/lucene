@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.index.DocValues;
@@ -419,14 +420,12 @@ public class LongValueFacetCounts extends Facets {
       return new FacetResult(field, new String[0], totCount, new LabelAndValue[0], 0);
     }
 
+    // sort by count descending, breaking ties by value ascending:
     PriorityQueue<Entry> pq =
-        new PriorityQueue<>(Math.min(topN, counts.length + hashCounts.size())) {
-          @Override
-          protected boolean lessThan(Entry a, Entry b) {
-            // sort by count descending, breaking ties by value ascending:
-            return a.count < b.count || (a.count == b.count && a.value > b.value);
-          }
-        };
+        PriorityQueue.usingComparator(
+            Math.min(topN, counts.length + hashCounts.size()),
+            Comparator.<Entry>comparingInt(e -> e.count)
+                .thenComparing(Comparator.<Entry>comparingLong(dv -> dv.value).reversed()));
 
     int childCount = 0;
     Entry e = null;

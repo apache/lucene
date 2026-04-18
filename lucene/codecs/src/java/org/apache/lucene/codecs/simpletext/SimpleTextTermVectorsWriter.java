@@ -63,16 +63,13 @@ public class SimpleTextTermVectorsWriter extends TermVectorsWriter {
 
   public SimpleTextTermVectorsWriter(Directory directory, String segment, IOContext context)
       throws IOException {
-    boolean success = false;
     try {
       out =
           directory.createOutput(
               IndexFileNames.segmentFileName(segment, "", VECTORS_EXTENSION), context);
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 

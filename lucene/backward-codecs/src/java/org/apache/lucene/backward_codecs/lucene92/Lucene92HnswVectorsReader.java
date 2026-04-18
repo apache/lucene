@@ -17,10 +17,13 @@
 
 package org.apache.lucene.backward_codecs.lucene92;
 
+import static org.apache.lucene.backward_codecs.lucene92.Lucene92HnswVectorsFormat.VECTOR_DATA_EXTENSION;
+import static org.apache.lucene.backward_codecs.lucene92.Lucene92HnswVectorsFormat.VECTOR_INDEX_EXTENSION;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
@@ -33,11 +36,11 @@ import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
@@ -233,7 +236,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field);
     if (fieldEntry.size() == 0) {
@@ -248,11 +251,11 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
         getGraph(fieldEntry),
-        vectorValues.getAcceptOrds(acceptDocs));
+        vectorValues.getAcceptOrds(acceptDocs.bits()));
   }
 
   @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     throw new UnsupportedOperationException();
   }
@@ -261,6 +264,14 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     IndexInput bytesSlice =
         vectorIndex.slice("graph-data", entry.vectorIndexOffset, entry.vectorIndexLength);
     return new OffHeapHnswGraph(entry, bytesSlice);
+  }
+
+  @Override
+  public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+    FieldEntry entry = getFieldEntry(fieldInfo.name);
+    var raw = Map.entry(VECTOR_DATA_EXTENSION, entry.vectorDataLength);
+    var graph = Map.entry(VECTOR_INDEX_EXTENSION, entry.vectorIndexLength);
+    return Map.ofEntries(raw, graph);
   }
 
   @Override
@@ -474,9 +485,9 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     @Override
     public NodesIterator getNodesOnLevel(int level) {
       if (level == 0) {
-        return new ArrayNodesIterator(size());
+        return new DenseNodesIterator(size());
       } else {
-        return new ArrayNodesIterator(nodesByLevel[level], nodesByLevel[level].length);
+        return new ArrayNodesIterator(nodesByLevel[level]);
       }
     }
   }

@@ -100,9 +100,7 @@ public class TestQueryEqualsHashCode extends LuceneTestCase {
     Object first;
     try {
       first = generator.gen(args1);
-    } catch (
-        @SuppressWarnings("unused")
-        UnsupportedOperationException e) {
+    } catch (UnsupportedOperationException _) {
       return;
     }
     if (first == null) return; // unsupported op?

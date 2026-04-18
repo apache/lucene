@@ -42,6 +42,11 @@ public class LogDocMergePolicy extends LogMergePolicy {
     return sizeDocs(info, mergeContext);
   }
 
+  @Override
+  public SizeUnit getSizeUnit() {
+    return SizeUnit.DOCS;
+  }
+
   /**
    * Sets the minimum size for the lowest level segments. Any segments below this size are
    * candidates for full-flush merges and merged more aggressively in order to avoid having a long

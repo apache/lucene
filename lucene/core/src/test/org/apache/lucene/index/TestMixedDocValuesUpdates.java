@@ -752,4 +752,31 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
           exception.getMessage());
     }
   }
+
+  public void testLongRunValuesReset() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    int numDocs = atLeast(65536);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      doc.add(new StringField("id", String.valueOf(i), Store.NO));
+      if (i == 0 || i == numDocs - 1 || random().nextBoolean()) {
+        doc.add(new NumericDocValuesField("numeric", 1));
+      }
+      writer.addDocument(doc);
+    }
+    writer.flush();
+
+    for (int i = 1; i < numDocs - 1; i++) {
+      writer.updateDocValues(
+          new Term("id", String.valueOf(i)), new NumericDocValuesField("numeric", null));
+    }
+
+    try (IndexReader reader = writer.getReader(true, true)) {
+      IndexSearcher searcher = new IndexSearcher(reader);
+      assertEquals(2, searcher.count(new FieldExistsQuery("numeric")));
+    }
+
+    IOUtils.close(writer, dir);
+  }
 }

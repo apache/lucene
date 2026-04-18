@@ -22,6 +22,7 @@
 
 import os
 import sys
+from pathlib import Path
 
 sys.path.append(os.path.dirname(__file__))
 import argparse
@@ -59,7 +60,7 @@ def create_and_add_index(source: str, indextype: str, index_version: scriptutil.
     "dvupdates": "testCreateIndexWithDocValuesUpdates",
     "emptyIndex": "testCreateEmptyIndex",
   }[indextype]
-  gradle_args = " ".join(["-Ptests.useSecurityManager=false", "-p lucene/%s" % module, "test", "--tests TestGenerateBwcIndices.%s" % test, "-Dtests.bwcdir=%s" % temp_dir, "-Dtests.codec=default"])
+  gradle_args = " ".join(["-p lucene/%s" % module, "test", "--tests TestGenerateBwcIndices.%s" % test, "-Dtests.bwcdir=%s" % temp_dir, "-Dtests.codec=default"])
   base_dir = os.getcwd()
   bc_index_file = os.path.join(temp_dir, filename)
 
@@ -188,7 +189,7 @@ http://wiki.apache.org/lucene-java/ReleaseTodo#Generate_Backcompat_Indexes
 def main():
   c = read_config()
   if not os.path.exists(c.temp_dir):
-    os.makedirs(c.temp_dir)
+    Path(c.temp_dir).mkdir(parents=True)
 
   print("\nCreating backwards compatibility indexes")
   source = download_release(c.version, c.temp_dir, c.force)

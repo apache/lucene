@@ -59,7 +59,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
     w.close();
 
     IndexSearcher s = newSearcher(r);
-    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector fc = s.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     LongValueFacetCounts facets = new LongValueFacetCounts("field", fc);
 
@@ -141,7 +141,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
     w.close();
 
     IndexSearcher s = newSearcher(r);
-    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector fc = s.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     LongValueFacetCounts facets = new LongValueFacetCounts("field", fc);
 
@@ -191,7 +191,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
     w.close();
 
     IndexSearcher s = newSearcher(r);
-    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector fc = s.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     Facets facets = new LongValueFacetCounts("field", fc);
 
@@ -293,7 +293,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
 
       LongValueFacetCounts facetCounts;
       if (random().nextBoolean()) {
-        FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+        FacetsCollector fc = s.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
         if (random().nextBoolean()) {
           if (VERBOSE) {
             System.out.println("  use value source");
@@ -583,7 +583,7 @@ public class TestLongValueFacetCounts extends FacetTestCase {
 
       LongValueFacetCounts facetCounts;
       if (random().nextBoolean()) {
-        FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+        FacetsCollector fc = s.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
         if (VERBOSE) {
           System.out.println("  use doc values");
         }

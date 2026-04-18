@@ -332,7 +332,7 @@ public class TestMultipleIndexFields extends FacetTestCase {
 
   private FacetsCollector performSearch(IndexSearcher searcher) throws IOException {
     return FacetsCollectorManager.search(
-            searcher, new MatchAllDocsQuery(), 10, new FacetsCollectorManager())
+            searcher, MatchAllDocsQuery.INSTANCE, 10, new FacetsCollectorManager())
         .facetsCollector();
   }
 

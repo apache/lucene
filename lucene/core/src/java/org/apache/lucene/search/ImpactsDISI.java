@@ -25,9 +25,8 @@ import java.io.IOException;
  *
  * @lucene.internal
  */
-public final class ImpactsDISI extends DocIdSetIterator {
+public final class ImpactsDISI extends FilterDocIdSetIterator {
 
-  private final DocIdSetIterator in;
   private final MaxScoreCache maxScoreCache;
   private float minCompetitiveScore = 0;
   private int upTo = DocIdSetIterator.NO_MORE_DOCS;
@@ -40,7 +39,7 @@ public final class ImpactsDISI extends DocIdSetIterator {
    * @param maxScoreCache the cache of maximum scores, typically computed from the same ImpactsEnum
    */
   public ImpactsDISI(DocIdSetIterator in, MaxScoreCache maxScoreCache) {
-    this.in = in;
+    super(in);
     this.maxScoreCache = maxScoreCache;
   }
 
@@ -99,6 +98,15 @@ public final class ImpactsDISI extends DocIdSetIterator {
     }
   }
 
+  /** If current doc is not competitive, move to a competitive one. */
+  void ensureCompetitive() throws IOException {
+    int doc = docID();
+    int advanceTarget = advanceTarget(doc);
+    if (advanceTarget != doc) {
+      in.advance(advanceTarget);
+    }
+  }
+
   @Override
   public int advance(int target) throws IOException {
     return in.advance(advanceTarget(target));
@@ -111,15 +119,5 @@ public final class ImpactsDISI extends DocIdSetIterator {
       return in.nextDoc();
     }
     return advance(in.docID() + 1);
-  }
-
-  @Override
-  public int docID() {
-    return in.docID();
-  }
-
-  @Override
-  public long cost() {
-    return in.cost();
   }
 }

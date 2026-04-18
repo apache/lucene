@@ -293,8 +293,8 @@ class BufferedUpdates implements Accountable {
   private static class BytesRefIntMap {
 
     private static final long INIT_RAM_BYTES =
-        RamUsageEstimator.shallowSizeOf(BytesRefIntMap.class)
-            + RamUsageEstimator.shallowSizeOf(BytesRefHash.class)
+        RamUsageEstimator.shallowSizeOfInstance(BytesRefIntMap.class)
+            + RamUsageEstimator.shallowSizeOfInstance(BytesRefHash.class)
             + RamUsageEstimator.sizeOf(new int[BytesRefHash.DEFAULT_CAPACITY]);
 
     private final Counter counter;

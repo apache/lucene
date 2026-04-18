@@ -63,7 +63,6 @@ public final class OrdsBlockTreeTermsReader extends FieldsProducer {
             state.segmentInfo.name, state.segmentSuffix, OrdsBlockTreeTermsWriter.TERMS_EXTENSION);
     in = state.directory.openInput(termsFile, state.context);
 
-    boolean success = false;
     IndexInput indexIn = null;
 
     try {
@@ -173,13 +172,9 @@ public final class OrdsBlockTreeTermsReader extends FieldsProducer {
         }
       }
       indexIn.close();
-
-      success = true;
-    } finally {
-      if (!success) {
-        // this.close() will close in:
-        IOUtils.closeWhileHandlingException(indexIn, this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, indexIn, this);
+      throw t;
     }
   }
 

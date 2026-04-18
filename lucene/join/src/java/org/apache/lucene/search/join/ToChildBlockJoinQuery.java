@@ -135,6 +135,11 @@ public class ToChildBlockJoinQuery extends Query {
       }
       return Explanation.noMatch("Not a match");
     }
+
+    @Override
+    public int count(LeafReaderContext context) {
+      return -1;
+    }
   }
 
   static class ToChildBlockJoinScorer extends Scorer {

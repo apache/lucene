@@ -19,11 +19,10 @@ import re
 import subprocess
 import sys
 import time
-import urllib.error
-import urllib.parse
 import urllib.request
 from collections.abc import Callable
 from enum import Enum
+from pathlib import Path
 from re import Match, Pattern
 from typing import Self, override
 
@@ -185,15 +184,13 @@ def attemptDownload(urlString: str, fileName: str):
       os.remove(fileName)
 
 
-version_prop_re = re.compile(r'baseVersion\s*=\s*([\'"])(.*)\1')
-
-
 def find_current_version():
+  version_prop_re = re.compile(r"version\.base=(.*)")
   script_path = os.path.dirname(os.path.realpath(__file__))
-  top_level_dir = os.path.join(os.path.abspath("%s/" % script_path), os.path.pardir, os.path.pardir)
-  match = version_prop_re.search(open("%s/build.gradle" % top_level_dir).read())
+  top_level_dir = os.path.join(Path("%s/" % script_path).resolve(), os.path.pardir, os.path.pardir)
+  match = version_prop_re.search(open("%s/build-options.properties" % top_level_dir).read())
   assert match
-  return match.group(2).strip()
+  return match.group(1).strip()
 
 
 if __name__ == "__main__":

@@ -948,7 +948,7 @@ public class TestSuggestField extends LuceneTestCase {
     iwc.setMergePolicy(newLogMergePolicy());
     Codec filterCodec =
         new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
-          final PostingsFormat postingsFormat = new Completion101PostingsFormat();
+          final PostingsFormat postingsFormat = new Completion104PostingsFormat();
 
           @Override
           public PostingsFormat postingsFormat() {

@@ -333,7 +333,9 @@ public abstract class DataOutput {
    * @param values the values to write
    * @param limit the number of values to write.
    * @lucene.experimental
+   * @deprecated This method is preserved only for backwards codecs
    */
+  @Deprecated
   public void writeGroupVInts(long[] values, int limit) throws IOException {
     if (groupVIntBytes == null) {
       groupVIntBytes = new byte[GroupVIntUtil.MAX_LENGTH_PER_GROUP];

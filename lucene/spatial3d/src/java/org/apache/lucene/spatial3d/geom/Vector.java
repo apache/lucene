@@ -573,10 +573,9 @@ public class Vector {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof Vector)) {
+    if (!(o instanceof Vector other)) {
       return false;
     }
-    Vector other = (Vector) o;
     return (other.x == x && other.y == y && other.z == z);
   }
 

@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -68,6 +69,14 @@ import org.apache.lucene.util.ThreadInterruptedException;
  * @lucene.experimental
  */
 public abstract class MergePolicy {
+
+  /** Enum representing the unit of measurement used by a merge policy for segment size. */
+  public enum SizeUnit {
+    /** Size measured in bytes */
+    BYTES,
+    /** Size measured in document count */
+    DOCS
+  }
 
   /**
    * Progress and state for an executing merge. This class encapsulates the logic to pause and
@@ -427,7 +436,7 @@ public abstract class MergePolicy {
         return true;
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
-      } catch (@SuppressWarnings("unused") ExecutionException | TimeoutException e) {
+      } catch (ExecutionException | TimeoutException _) {
         return false;
       }
     }
@@ -494,16 +503,15 @@ public abstract class MergePolicy {
       merges.add(merge);
     }
 
-    // TODO: deprecate me (dir is never used!  and is sometimes difficult to provide!)
-    /** Returns a description of the merges in this specification. */
+    /**
+     * Returns a description of the merges in this specification
+     *
+     * @deprecated Use {@link #toString()} instead. The {@code Directory} parameter is ignored and
+     *     will be removed in a future release.
+     */
+    @Deprecated
     public String segString(Directory dir) {
-      StringBuilder b = new StringBuilder();
-      b.append("MergeSpec:\n");
-      final int count = merges.size();
-      for (int i = 0; i < count; i++) {
-        b.append("  ").append(1 + i).append(": ").append(merges.get(i).segString());
-      }
-      return b.toString();
+      return toString();
     }
 
     @Override
@@ -530,7 +538,7 @@ public abstract class MergePolicy {
         return true;
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
-      } catch (@SuppressWarnings("unused") ExecutionException | CancellationException e) {
+      } catch (ExecutionException | CancellationException _) {
         return false;
       }
     }
@@ -543,7 +551,7 @@ public abstract class MergePolicy {
         return true;
       } catch (InterruptedException e) {
         throw new ThreadInterruptedException(e);
-      } catch (@SuppressWarnings("unused") ExecutionException | TimeoutException e) {
+      } catch (ExecutionException | TimeoutException _) {
         return false;
       }
     }
@@ -578,40 +586,17 @@ public abstract class MergePolicy {
     }
   }
 
-  /**
-   * Default ratio for compound file system usage. Set to <code>1.0</code>, always use compound file
-   * system.
-   */
-  protected static final double DEFAULT_NO_CFS_RATIO = 1.0;
-
-  /**
-   * Default max segment size in order to use compound file system. Set to {@link Long#MAX_VALUE}.
-   */
-  protected static final long DEFAULT_MAX_CFS_SEGMENT_SIZE = Long.MAX_VALUE;
-
-  /**
-   * If the size of the merge segment exceeds this ratio of the total index size then it will remain
-   * in non-compound format
-   */
-  protected double noCFSRatio;
-
-  /**
-   * If the size of the merged segment exceeds this value then it will not use compound file format.
-   */
-  protected long maxCFSSegmentSize;
-
   /** Creates a new merge policy instance. */
-  protected MergePolicy() {
-    this(DEFAULT_NO_CFS_RATIO, DEFAULT_MAX_CFS_SEGMENT_SIZE);
-  }
+  protected MergePolicy() {}
 
   /**
-   * Creates a new merge policy instance with default settings for noCFSRatio and maxCFSSegmentSize.
-   * This ctor should be used by subclasses using different defaults than the {@link MergePolicy}
+   * Returns the unit of measurement used by this merge policy for segment size. This is used to
+   * determine which threshold to apply when deciding whether to use compound files.
+   *
+   * @return the size unit (BYTES or DOCS)
    */
-  protected MergePolicy(double defaultNoCFSRatio, long defaultMaxCFSSegmentSize) {
-    this.noCFSRatio = defaultNoCFSRatio;
-    this.maxCFSSegmentSize = defaultMaxCFSSegmentSize;
+  public SizeUnit getSizeUnit() {
+    return SizeUnit.BYTES;
   }
 
   /**
@@ -729,32 +714,6 @@ public abstract class MergePolicy {
   }
 
   /**
-   * Returns true if a new segment (regardless of its origin) should use the compound file format.
-   * The default implementation returns <code>true</code> iff the size of the given mergedInfo is
-   * less or equal to {@link #getMaxCFSSegmentSizeMB()} and the size is less or equal to the
-   * TotalIndexSize * {@link #getNoCFSRatio()} otherwise <code>false</code>.
-   */
-  public boolean useCompoundFile(
-      SegmentInfos infos, SegmentCommitInfo mergedInfo, MergeContext mergeContext)
-      throws IOException {
-    if (getNoCFSRatio() == 0.0) {
-      return false;
-    }
-    long mergedInfoSize = size(mergedInfo, mergeContext);
-    if (mergedInfoSize > maxCFSSegmentSize) {
-      return false;
-    }
-    if (getNoCFSRatio() >= 1.0) {
-      return true;
-    }
-    long totalSize = 0;
-    for (SegmentCommitInfo info : infos) {
-      totalSize += size(info, mergeContext);
-    }
-    return mergedInfoSize <= getNoCFSRatio() * totalSize;
-  }
-
-  /**
    * Return the byte size of the provided {@link SegmentCommitInfo}, prorated by percentage of
    * non-deleted documents.
    */
@@ -794,47 +753,8 @@ public abstract class MergePolicy {
     int delCount = mergeContext.numDeletesToMerge(info);
     assert assertDelCount(delCount, info);
     return delCount == 0
-        && useCompoundFile(infos, info, mergeContext) == info.info.getUseCompoundFile();
-  }
-
-  /**
-   * Returns current {@code noCFSRatio}.
-   *
-   * @see #setNoCFSRatio
-   */
-  public double getNoCFSRatio() {
-    return noCFSRatio;
-  }
-
-  /**
-   * If a merged segment will be more than this percentage of the total size of the index, leave the
-   * segment as non-compound file even if compound file is enabled. Set to 1.0 to always use CFS
-   * regardless of merge size.
-   */
-  public void setNoCFSRatio(double noCFSRatio) {
-    if (noCFSRatio < 0.0 || noCFSRatio > 1.0) {
-      throw new IllegalArgumentException(
-          "noCFSRatio must be 0.0 to 1.0 inclusive; got " + noCFSRatio);
-    }
-    this.noCFSRatio = noCFSRatio;
-  }
-
-  /** Returns the largest size allowed for a compound file segment */
-  public double getMaxCFSSegmentSizeMB() {
-    return maxCFSSegmentSize / 1024. / 1024.;
-  }
-
-  /**
-   * If a merged segment will be more than this value, leave the segment as non-compound file even
-   * if compound file is enabled. Set this to Double.POSITIVE_INFINITY (default) and noCFSRatio to
-   * 1.0 to always use CFS regardless of merge size.
-   */
-  public void setMaxCFSSegmentSizeMB(double v) {
-    if (v < 0.0) {
-      throw new IllegalArgumentException("maxCFSSegmentSizeMB must be >=0 (got " + v + ")");
-    }
-    v *= 1024 * 1024;
-    this.maxCFSSegmentSize = v > Long.MAX_VALUE ? Long.MAX_VALUE : (long) v;
+        && info.info.getCodec().compoundFormat().useCompoundFile(size(info, mergeContext), this)
+            == info.info.getUseCompoundFile();
   }
 
   /**
@@ -938,6 +858,96 @@ public abstract class MergePolicy {
       }
       this.codecReader = reader;
       this.hardLiveDocs = hardLiveDocs;
+    }
+  }
+
+  /**
+   * Observer for merge operations returned by {@link IndexWriter#forceMergeDeletes(boolean)}.
+   * Provides methods to query merge status and wait for completion.
+   *
+   * <p>When no merges are needed, {@link #numMerges()} returns 0. In this case, {@link #await()}
+   * returns {@code true} immediately since there is nothing to wait for.
+   *
+   * @lucene.experimental
+   */
+  public static final class MergeObserver {
+    private final MergePolicy.MergeSpecification spec;
+
+    MergeObserver(MergePolicy.MergeSpecification spec) {
+      this.spec = spec;
+    }
+
+    /**
+     * Returns the number of merges in this specification.
+     *
+     * @return number of merges, or 0 if no merges were scheduled
+     */
+    public int numMerges() {
+      return spec == null ? 0 : spec.merges.size();
+    }
+
+    /**
+     * Returns the number of completed merges in this specification. Useful for tracking merge
+     * progress: {@code numCompletedMerges() / numMerges()}.
+     *
+     * @return number of completed merges
+     */
+    public int numCompletedMerges() {
+      if (spec == null) {
+        return 0;
+      }
+      int completed = 0;
+      for (OneMerge merge : spec.merges) {
+        if (merge.mergeCompleted.isDone()) {
+          completed++;
+        }
+      }
+      return completed;
+    }
+
+    /**
+     * Waits for all merges in this specification to complete. Returns immediately if no merges were
+     * scheduled.
+     *
+     * @return {@code true} if all merges completed successfully or no merges were needed, {@code
+     *     false} on error
+     */
+    public boolean await() {
+      return spec == null || spec.await();
+    }
+
+    /**
+     * Waits for all merges in this specification to complete, with timeout. Returns immediately if
+     * no merges were scheduled.
+     *
+     * @param timeout maximum time to wait
+     * @param unit time unit for timeout
+     * @return {@code true} if all merges completed within timeout or no merges were needed, {@code
+     *     false} on timeout or error
+     */
+    public boolean await(long timeout, TimeUnit unit) {
+      return spec == null || spec.await(timeout, unit);
+    }
+
+    /**
+     * Returns a {@link CompletableFuture} that completes when all merges finish. Returns an
+     * already-completed future if no merges were scheduled.
+     *
+     * @return future that completes when merges finish
+     */
+    public CompletableFuture<Void> awaitAsync() {
+      return spec == null
+          ? CompletableFuture.completedFuture(null)
+          : spec.getMergeCompletedFutures();
+    }
+
+    @Override
+    public String toString() {
+      if (spec == null) {
+        return "MergeObserver: no merges";
+      }
+      return String.format(
+          Locale.ROOT, "MergeObserver: %d merges\n%s", numMerges(), spec.toString());
     }
   }
 }

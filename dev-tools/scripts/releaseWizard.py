@@ -48,6 +48,7 @@ import urllib.request
 from collections import OrderedDict
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any, Self, TextIO, cast, override
 
 import yaml
@@ -124,9 +125,9 @@ def expand_jinja(text: str, vars: dict[str, Any] | None = None):
 
   try:
     env = Environment(lstrip_blocks=True, keep_trailing_newline=False, trim_blocks=True)
-    env.filters["path_join"] = lambda paths: os.path.join(*(cast(list[str], paths)))
+    env.filters["path_join"] = lambda paths: os.path.join(*(cast("list[str]", paths)))
     env.filters["expanduser"] = lambda path: os.path.expanduser(str(path))
-    env.filters["formatdate"] = lambda date: (datetime.strftime(date, "%-d %B %Y") if date and isinstance(date, datetime) else "<date>")
+    env.filters["formatdate"] = lambda date: datetime.strftime(date, "%-d %B %Y") if date and isinstance(date, datetime) else "<date>"
     template = env.from_string(str(filled), globals=global_vars)
     filled = template.render()
   except Exception as e:
@@ -488,7 +489,7 @@ class ReleaseState:
     print("Saving")
     if not os.path.exists(os.path.join(self.config_path, self.release_version)):
       print("Creating folder %s" % os.path.join(self.config_path, self.release_version))
-      os.makedirs(os.path.join(self.config_path, self.release_version))
+      Path(os.path.join(self.config_path, self.release_version)).mkdir(parents=True)
 
     with open(os.path.join(self.config_path, self.release_version, "state.yaml"), "w") as fp:
       yaml.dump(self.to_dict(), fp, sort_keys=False, default_flow_style=False)
@@ -526,20 +527,20 @@ class ReleaseState:
     lst: list[Todo] = list(filter(lambda x: x.id == id, self.todos.values()))
     if len(lst) == 1:
       return lst[0].state
-    return cast(dict[Any, Any], {})
+    return cast("dict[Any, Any]", {})
 
   def get_release_folder(self):
     folder = os.path.join(self.config_path, self.release_version)
     if not os.path.exists(folder):
       print("Creating folder %s" % folder)
-      os.makedirs(folder)
+      Path(folder).mkdir(parents=True)
     return folder
 
   def get_rc_folder(self):
     folder = os.path.join(self.get_release_folder(), "RC%d" % self.rc_number)
     if not os.path.exists(folder):
       print("Creating folder %s" % folder)
-      os.makedirs(folder)
+      Path(folder).mkdir(parents=True)
     return folder
 
   def get_dist_folder(self):
@@ -624,7 +625,7 @@ class TodoGroup(SecretYamlObject):
   @override
   def from_yaml(cls, loader: yaml.Loader, node: yaml.MappingNode):
     fields = loader.construct_mapping(node, deep=True)
-    return TodoGroup(**cast(dict[str, Any], fields))
+    return TodoGroup(**cast("dict[str, Any]", fields))
 
   def num_done(self):
     return sum(1 for x in self.todos if x.is_done() > 0)
@@ -733,7 +734,7 @@ class Todo(SecretYamlObject):
   @override
   def from_yaml(cls, loader: yaml.Loader, node: yaml.MappingNode):
     fields = loader.construct_mapping(node, deep=True)
-    return Todo(**cast(dict[str, Any], fields))
+    return Todo(**cast("dict[str, Any]", fields))
 
   def get_vars(self):
     myvars: dict[str, str] = {}
@@ -920,10 +921,10 @@ def help():
 
 def ensure_list(o: Any):
   if o is None:
-    return cast(list[Any], [])
+    return cast("list[Any]", [])
   if not isinstance(o, list):
     return [o]
-  return cast(list[Any], o)
+  return cast("list[Any]", o)
 
 
 def open_file(filename: str):
@@ -1004,15 +1005,13 @@ def generate_asciidoc():
         fh.write(abbreviate_homedir("cd %s\n" % cmds.get_root_folder()))
         cmds2: list[Command] = ensure_list(cmds.commands)
         for c in cmds2:
-          for line in c.display_cmd():
-            fh.write("%s\n" % line)
+          fh.writelines("%s\n" % line for line in c.display_cmd())
         fh.write("----\n\n")
       if todo.post_description and not todo.get_asciidoc():
         fh.write("\n%s\n\n" % todo.get_post_description())
       if todo.links:
         fh.write("Links:\n\n")
-        for link in todo.links:
-          fh.write("* %s\n" % expand_jinja(link))
+        fh.writelines("* %s\n" % expand_jinja(link) for link in todo.links)
         fh.write("\n")
 
   fh.close()
@@ -1030,9 +1029,9 @@ def load_rc():
   lucenerc = os.path.expanduser("~/.lucenerc")
   try:
     with open(lucenerc) as fp:
-      return cast(dict[str, Any], json.load(fp))
+      return cast("dict[str, Any]", json.load(fp))
   except Exception:
-    return cast(dict[str, Any], {})
+    return cast("dict[str, Any]", {})
 
 
 def store_rc(release_root: str, release_version: str | None = None):
@@ -1282,11 +1281,11 @@ def main():
       if root.startswith("~/"):
         release_root = os.path.expanduser(root)
       else:
-        release_root = os.path.abspath(root)
+        release_root = str(Path(root).resolve())
     if not os.path.exists(release_root):
       try:
         print("Creating release root %s" % release_root)
-        os.makedirs(release_root)
+        Path(release_root).mkdir(parents=True)
       except Exception as e:
         sys.exit("Error while creating %s: %s" % (release_root, e))
     release_version = get_release_version()
@@ -1305,7 +1304,7 @@ def main():
     y = yaml.load(open(os.path.join(script_path, "releaseWizard.yaml")), Loader=yaml.Loader)
     templates = y.get("templates")
     todo_list = y.get("groups")
-    state = ReleaseState(release_root, release_version, getScriptVersion())
+    state = ReleaseState(str(release_root), release_version, getScriptVersion())
     state.init_todos(bootstrap_todos(todo_list))
     state.load()
   except Exception as e:
@@ -1313,7 +1312,7 @@ def main():
 
   state.save()
 
-  # Smoketester requires JAVA11_HOME to point to Java11
+  # Smoketester requires JAVA_HOME to point to the minimum Java required to build the project.
   os.environ["JAVA_HOME"] = state.get_java_home()
   os.environ["JAVACMD"] = state.get_java_cmd()
 
@@ -1351,7 +1350,7 @@ def main():
 
 
 sys.path.append(os.path.dirname(__file__))
-current_git_root = os.path.abspath(os.path.join(os.path.abspath(os.path.dirname(__file__)), os.path.pardir, os.path.pardir))
+current_git_root: str = str(Path(os.path.join(Path(os.path.dirname(__file__)).resolve(), os.path.pardir, os.path.pardir)).resolve())
 
 dry_run = False
 
@@ -1389,7 +1388,7 @@ def run_with_log_tail(command: str | list[str], cwd: str | None, logfile: str | 
   if logfile:
     logdir = os.path.dirname(logfile)
     if not os.path.exists(logdir):
-      os.makedirs(logdir)
+      Path(logdir).mkdir(parents=True)
     fh = open(logfile, "w")
   rc = run_follow(command, cwd, fh=fh, tee=tee, live=live, shell=shell)
   if logfile:
@@ -1544,7 +1543,7 @@ class Commands(SecretYamlObject):
     self.logs_prefix = logs_prefix
     self.enable_execute = enable_execute
     self.confirm_each_command = confirm_each_command
-    self.commands: list[Command] = commands if commands else []
+    self.commands: list[Command] = commands or []
     for c in self.commands:
       c.todo_id = todo_id
 
@@ -1552,7 +1551,7 @@ class Commands(SecretYamlObject):
   @override
   def from_yaml(cls, loader: yaml.Loader, node: yaml.MappingNode):
     fields = loader.construct_mapping(node, deep=True)
-    return Commands(**cast(dict[str, Any], fields))
+    return Commands(**cast("dict[str, Any]", fields))
 
   def run(self):  # pylint: disable=inconsistent-return-statements # TODO
     root = self.get_root_folder()
@@ -1600,7 +1599,7 @@ class Commands(SecretYamlObject):
           if len(commands) > 1:
             log_prefix = "%02d_" % index
           else:
-            log_prefix = self.logs_prefix if self.logs_prefix else ""
+            log_prefix = self.logs_prefix or ""
           if not log_prefix[-1:] == "_":
             log_prefix += "_"
           cwd = root
@@ -1669,7 +1668,7 @@ class Commands(SecretYamlObject):
       return success
 
   def get_root_folder(self):
-    return cast(str, self.jinjaify(self.root_folder))
+    return cast("str", self.jinjaify(self.root_folder))
 
   def get_commands_text(self):
     return self.jinjaify(self.commands_text)
@@ -1769,7 +1768,7 @@ class Command(SecretYamlObject):
   @override
   def from_yaml(cls, loader: yaml.Loader, node: yaml.MappingNode):
     fields = loader.construct_mapping(node, deep=True)
-    return Command(**cast(dict[str, Any], fields))
+    return Command(**cast("dict[str, Any]", fields))
 
   def get_comment(self):
     return str(self.jinjaify(self.comment))
@@ -1843,7 +1842,7 @@ class UserInput(SecretYamlObject):
   @override
   def from_yaml(cls, loader: yaml.Loader, node: yaml.MappingNode):
     fields = loader.construct_mapping(node, deep=True)
-    return UserInput(**cast(dict[str, Any], fields))
+    return UserInput(**cast("dict[str, Any]", fields))
 
   def run(self, dict: dict[str, Any] | None = None):
     correct = False
@@ -1863,9 +1862,8 @@ class UserInput(SecretYamlObject):
 
 def create_ical(_todo: Todo):  # pylint: disable=unused-argument
   if ask_yes_no("Do you want to add a Calendar reminder for the close vote time?"):
-    # TODO: this library has broken typing and seems unmaintained, replace?
-    c = Calendar()  # pyright: ignore[reportArgumentType]
-    e = Event()  # pyright: ignore[reportArgumentType]
+    c = Calendar()
+    e = Event()
     e.name = "Lucene %s vote ends" % state.release_version
     e.begin = vote_close_72h_date()
     e.description = "Remember to sum up votes and continue release :)"

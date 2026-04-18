@@ -173,11 +173,13 @@ public class TestIntDoubleHashMap extends LuceneTestCase {
     assertEquals2(value1, map.indexGet(map.indexOf(keyE)));
     assertEquals2(value2, map.indexGet(map.indexOf(key1)));
 
-    expectThrows(
-        AssertionError.class,
-        () -> {
-          map.indexGet(map.indexOf(key2));
-        });
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(
+          AssertionError.class,
+          () -> {
+            map.indexGet(map.indexOf(key2));
+          });
+    }
 
     assertEquals2(value1, map.indexReplace(map.indexOf(keyE), value3));
     assertEquals2(value2, map.indexReplace(map.indexOf(key1), value4));
@@ -254,7 +256,7 @@ public class TestIntDoubleHashMap extends LuceneTestCase {
   public void testPutWithExpansions() {
     final int COUNT = 10000;
     final Random rnd = new Random(random().nextInt());
-    final HashSet<Object> values = new HashSet<Object>();
+    final HashSet<Object> values = new HashSet<>();
 
     for (int i = 0; i < COUNT; i++) {
       final int v = rnd.nextInt();

@@ -15,35 +15,4 @@
  * limitations under the License.
  */
 
-plugins {
-  id 'java-library'
-  alias(deps.plugins.spotless) apply false
-  alias(deps.plugins.forbiddenapis) apply false
-}
-
-repositories {
-  mavenCentral()
-}
-
-version = "1.0.0-SNAPSHOT"
-group = "org.apache.lucene.tools"
 description = 'Doclet-based javadoc validation'
-
-// Make sure the build environment is consistent.
-apply from: file('../../gradle/conventions.gradle')
-apply from: file('../../gradle/validation/check-environment.gradle')
-
-// Add spotless/ tidy.
-tasks.register("checkJdkInternalsExportedToGradle") {}
-apply from: file('../../gradle/validation/spotless.gradle')
-apply from: file('../../gradle/validation/forbidden-apis.gradle')
-
-java {
-  sourceCompatibility = JavaVersion.toVersion(deps.versions.minJava.get())
-  targetCompatibility = JavaVersion.toVersion(deps.versions.minJava.get())
-}
-
-tasks.withType(JavaCompile).configureEach {
-  options.compilerArgs += ["--release", java.targetCompatibility.toString()]
-  options.encoding = "UTF-8"
-}

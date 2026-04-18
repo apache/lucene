@@ -19,6 +19,7 @@ package org.apache.lucene.codecs.lucene90;
 import java.io.DataInput;
 import java.io.IOException;
 import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -26,6 +27,7 @@ import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.RoaringDocIdSet;
 
 /**
@@ -91,7 +93,7 @@ import org.apache.lucene.util.RoaringDocIdSet;
  *
  * @lucene.internal
  */
-public final class IndexedDISI extends DocIdSetIterator {
+public final class IndexedDISI extends AbstractDocIdSetIterator {
 
   // jump-table time/space trade-offs to consider:
   // The block offsets and the block indexes could be stored in more compressed form with
@@ -162,9 +164,9 @@ public final class IndexedDISI extends DocIdSetIterator {
    *
    * @param it the document IDs.
    * @param out destination for the blocks.
-   * @throws IOException if there was an error writing to out.
    * @return the number of jump-table entries following the blocks, -1 for no entries. This should
    *     be stored in meta and used when creating an instance of IndexedDISI.
+   * @throws IOException if there was an error writing to out.
    */
   static short writeBitSet(DocIdSetIterator it, IndexOutput out) throws IOException {
     return writeBitSet(it, out, DEFAULT_DENSE_RANK_POWER);
@@ -183,9 +185,9 @@ public final class IndexedDISI extends DocIdSetIterator {
    *     disables DENSE rank. Recommended values are 8-12: Every 256-4096 docIDs or 4-64 longs.
    *     {@link #DEFAULT_DENSE_RANK_POWER} is 9: Every 512 docIDs. This should be stored in meta and
    *     used when creating an instance of IndexedDISI.
-   * @throws IOException if there was an error writing to out.
    * @return the number of jump-table entries following the blocks, -1 for no entries. This should
    *     be stored in meta and used when creating an instance of IndexedDISI.
+   * @throws IOException if there was an error writing to out.
    */
   public static short writeBitSet(DocIdSetIterator it, IndexOutput out, byte denseRankPower)
       throws IOException {
@@ -203,49 +205,28 @@ public final class IndexedDISI extends DocIdSetIterator {
     int blockCardinality = 0;
     final FixedBitSet buffer = new FixedBitSet(1 << 16);
     int[] jumps = new int[ArrayUtil.oversize(1, Integer.BYTES * 2)];
-    int prevBlock = -1;
-    int jumpBlockIndex = 0;
+    int lastBlock = 0;
 
-    for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
+    for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.docID()) {
       final int block = doc >>> 16;
-      if (prevBlock != -1 && block != prevBlock) {
-        // Track offset+index from previous block up to current
-        jumps =
-            addJumps(
-                jumps,
-                out.getFilePointer() - origo,
-                totalCardinality,
-                jumpBlockIndex,
-                prevBlock + 1);
-        jumpBlockIndex = prevBlock + 1;
-        // Flush block
-        flush(prevBlock, buffer, blockCardinality, denseRankPower, out);
-        // Reset for next block
-        buffer.clear();
-        totalCardinality += blockCardinality;
-        blockCardinality = 0;
-      }
-      buffer.set(doc & 0xFFFF);
-      blockCardinality++;
-      prevBlock = block;
-    }
-    if (blockCardinality > 0) {
-      jumps =
-          addJumps(
-              jumps, out.getFilePointer() - origo, totalCardinality, jumpBlockIndex, prevBlock + 1);
-      totalCardinality += blockCardinality;
-      flush(prevBlock, buffer, blockCardinality, denseRankPower, out);
+      final int upTo = (int) Math.min(Integer.MAX_VALUE, (doc | 0xFFFF) + 1L);
+      it.intoBitSet(upTo, buffer, doc & 0xFFFF0000);
+      blockCardinality = buffer.cardinality();
+      jumps = addJumps(jumps, out.getFilePointer() - origo, totalCardinality, lastBlock, block + 1);
+      lastBlock = block + 1;
+      // Flush block
+      flush(block, buffer, blockCardinality, denseRankPower, out);
+      // Reset for next block
       buffer.clear();
-      prevBlock++;
+      totalCardinality += blockCardinality;
     }
-    final int lastBlock =
-        prevBlock == -1 ? 0 : prevBlock; // There will always be at least 1 block (NO_MORE_DOCS)
+
+    // There will always be at least 1 block (NO_MORE_DOCS)
     // Last entry is a SPARSE with blockIndex == 32767 and the single entry 65535, which becomes the
     // docID NO_MORE_DOCS
     // To avoid creating 65K jump-table entries, only a single entry is created pointing to the
-    // offset of the
-    // NO_MORE_DOCS block, with the jumpBlockIndex set to the logical EMPTY block after all real
-    // blocks.
+    // offset of the NO_MORE_DOCS block, with the jumpBlockIndex set to the logical EMPTY block
+    // after all real blocks.
     jumps =
         addJumps(jumps, out.getFilePointer() - origo, totalCardinality, lastBlock, lastBlock + 1);
     buffer.set(DocIdSetIterator.NO_MORE_DOCS & 0xFFFF);
@@ -422,7 +403,6 @@ public final class IndexedDISI extends DocIdSetIterator {
   int nextBlockIndex = -1;
   Method method;
 
-  int doc = -1;
   int index = -1;
 
   // SPARSE variables
@@ -436,6 +416,7 @@ public final class IndexedDISI extends DocIdSetIterator {
   int numberOfOnes;
   // Used with rank for jumps inside of DENSE as they are absolute instead of relative
   int denseOrigoIndex;
+  FixedBitSet bitSet;
 
   // ALL variables
   int gap;
@@ -475,11 +456,6 @@ public final class IndexedDISI extends DocIdSetIterator {
   }
 
   @Override
-  public int docID() {
-    return doc;
-  }
-
-  @Override
   public int advance(int target) throws IOException {
     final int targetBlock = target & 0xFFFF0000;
     if (block < targetBlock) {
@@ -494,6 +470,16 @@ public final class IndexedDISI extends DocIdSetIterator {
     boolean found = method.advanceWithinBlock(this, block);
     assert found;
     return doc;
+  }
+
+  @Override
+  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+    assert doc >= offset : "offset=" + offset + " doc=" + doc;
+    while (doc < upTo && method.intoBitSetWithinBlock(this, upTo, bitSet, offset) == false) {
+      readBlockHeader();
+      boolean found = method.advanceWithinBlock(this, block);
+      assert found;
+    }
   }
 
   public boolean advanceExact(int target) throws IOException {
@@ -583,6 +569,11 @@ public final class IndexedDISI extends DocIdSetIterator {
     return cost;
   }
 
+  @Override
+  public int docIDRunEnd() throws IOException {
+    return method.docIDRunEnd(this);
+  }
+
   enum Method {
     SPARSE {
       @Override
@@ -629,6 +620,30 @@ public final class IndexedDISI extends DocIdSetIterator {
         }
         disi.exists = false;
         return false;
+      }
+
+      @Override
+      boolean intoBitSetWithinBlock(IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset)
+          throws IOException {
+        bitSet.set(disi.doc - offset);
+        for (; disi.index < disi.nextBlockIndex; ) {
+          int docInBlock = disi.slice.readShort() & 0xFFFF;
+          int doc = disi.block | docInBlock;
+          disi.index++;
+          if (doc >= upTo) {
+            disi.doc = doc;
+            disi.exists = true;
+            disi.nextExistDocInBlock = docInBlock;
+            return true;
+          }
+          bitSet.set(doc - offset);
+        }
+        return false;
+      }
+
+      @Override
+      int docIDRunEnd(IndexedDISI disi) throws IOException {
+        return disi.doc + 1;
       }
     },
     DENSE {
@@ -698,6 +713,53 @@ public final class IndexedDISI extends DocIdSetIterator {
         disi.index = disi.numberOfOnes - Long.bitCount(leftBits);
         return (leftBits & 1L) != 0;
       }
+
+      @Override
+      boolean intoBitSetWithinBlock(IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset)
+          throws IOException {
+        if (disi.bitSet == null) {
+          disi.bitSet = new FixedBitSet(BLOCK_SIZE);
+        }
+        int destFrom = disi.doc - offset;
+        int destTo = MathUtil.unsignedMin(upTo, offset + bitSet.length());
+        int sourceFrom = disi.doc & 0xFFFF;
+        int sourceTo = Math.min(destTo - disi.block, BLOCK_SIZE);
+
+        long fp = disi.slice.getFilePointer();
+        disi.slice.seek(fp - Long.BYTES); // seek back a long to include current word (disi.word).
+        int numWords = FixedBitSet.bits2words(sourceTo) - disi.wordIndex;
+        disi.slice.readLongs(disi.bitSet.getBits(), disi.wordIndex, numWords);
+        FixedBitSet.orRange(disi.bitSet, sourceFrom, bitSet, destFrom, sourceTo - sourceFrom);
+
+        int blockEnd = disi.block | 0xFFFF;
+        if (destTo > blockEnd) {
+          disi.slice.seek(disi.blockEnd);
+          disi.index += disi.bitSet.cardinality(sourceFrom, sourceTo);
+          return false;
+        } else {
+          disi.slice.seek(fp);
+          boolean found = advanceWithinBlock(disi, destTo);
+          if (found && disi.doc < upTo) {
+            throw new IllegalStateException(
+                "There are bits set in the source bitset that are not accounted for."
+                    + " doc="
+                    + disi.doc
+                    + " upTo="
+                    + upTo
+                    + " disi.block="
+                    + disi.block);
+          }
+          return found;
+        }
+      }
+
+      @Override
+      int docIDRunEnd(IndexedDISI disi) throws IOException {
+        if (disi.word == -1L) {
+          return (disi.doc | 0x3F) + 1;
+        }
+        return disi.doc + 1;
+      }
     },
     ALL {
       @Override
@@ -712,6 +774,24 @@ public final class IndexedDISI extends DocIdSetIterator {
         disi.index = target - disi.gap;
         return true;
       }
+
+      @Override
+      boolean intoBitSetWithinBlock(IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset) {
+        final int blockEnd = disi.block | 0xFFFF;
+        if (upTo <= blockEnd) {
+          bitSet.set(disi.doc - offset, upTo - offset);
+          advanceWithinBlock(disi, upTo);
+          return true;
+        } else {
+          bitSet.set(disi.doc - offset, blockEnd - offset + 1);
+          return false;
+        }
+      }
+
+      @Override
+      int docIDRunEnd(IndexedDISI disi) throws IOException {
+        return (disi.doc | 0xFFFF) + 1;
+      }
     };
 
     /**
@@ -725,6 +805,21 @@ public final class IndexedDISI extends DocIdSetIterator {
      * return whether this document exists.
      */
     abstract boolean advanceExactWithinBlock(IndexedDISI disi, int target) throws IOException;
+
+    /**
+     * Similar to {@link DocIdSetIterator#intoBitSet}, load docs in this block into a bitset. This
+     * method returns true if there are remaining docs (gte upTo) in the block, otherwise false.
+     * When false return, fp of {@link IndexedDISI#slice} is at {@link IndexedDISI#blockEnd} and
+     * {@link IndexedDISI#index} is correct but other status vars are undefined. Caller should
+     * decode the header of next block by {@link #readBlockHeader()}.
+     *
+     * <p>Caller need to make sure {@link IndexedDISI#doc} greater than or equals to {@link
+     * IndexedDISI#block} and less than {@code upTo} when calling this.
+     */
+    abstract boolean intoBitSetWithinBlock(
+        IndexedDISI disi, int upTo, FixedBitSet bitSet, int offset) throws IOException;
+
+    abstract int docIDRunEnd(IndexedDISI disi) throws IOException;
   }
 
   /**

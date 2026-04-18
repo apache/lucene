@@ -206,9 +206,7 @@ public class TaskSequence extends PerfTask {
               countsByTime[slot] += inc;
             }
             if (anyExhaustibleTasks) updateExhausted(task);
-          } catch (
-              @SuppressWarnings("unused")
-              NoMoreDataException e) {
+          } catch (NoMoreDataException _) {
             exhausted = true;
           }
         }
@@ -275,9 +273,7 @@ public class TaskSequence extends PerfTask {
           }
 
           if (anyExhaustibleTasks) updateExhausted(task);
-        } catch (
-            @SuppressWarnings("unused")
-            NoMoreDataException e) {
+        } catch (NoMoreDataException _) {
           exhausted = true;
         }
       }
@@ -319,9 +315,7 @@ public class TaskSequence extends PerfTask {
           updateExhausted(task);
         }
         count += n;
-      } catch (
-          @SuppressWarnings("unused")
-          NoMoreDataException e) {
+      } catch (NoMoreDataException _) {
         exhausted = true;
       } catch (Exception e) {
         throw new RuntimeException(e);

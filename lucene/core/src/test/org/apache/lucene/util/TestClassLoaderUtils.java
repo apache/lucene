@@ -22,7 +22,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestClassLoaderUtils extends LuceneTestCase {
 
-  public void testParentChild() throws Exception {
+  public void testParentChild() {
     final ClassLoader parent = getClass().getClassLoader();
     final ClassLoader child = URLClassLoader.newInstance(new URL[0], parent);
     assertTrue(checkNoPerms(parent, parent));
@@ -31,7 +31,7 @@ public class TestClassLoaderUtils extends LuceneTestCase {
     assertFalse(checkNoPerms(child, parent));
   }
 
-  private boolean checkNoPerms(ClassLoader parent, ClassLoader child) throws Exception {
-    return runWithRestrictedPermissions(() -> ClassLoaderUtils.isParentClassLoader(parent, child));
+  private boolean checkNoPerms(ClassLoader parent, ClassLoader child) {
+    return ClassLoaderUtils.isParentClassLoader(parent, child);
   }
 }

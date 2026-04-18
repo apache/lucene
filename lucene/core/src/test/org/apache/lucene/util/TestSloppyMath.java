@@ -20,6 +20,7 @@ import static org.apache.lucene.util.SloppyMath.asin;
 import static org.apache.lucene.util.SloppyMath.cos;
 import static org.apache.lucene.util.SloppyMath.haversinMeters;
 import static org.apache.lucene.util.SloppyMath.haversinSortKey;
+import static org.apache.lucene.util.SloppyMath.sin;
 
 import java.util.Random;
 import org.apache.lucene.tests.geo.GeoTestUtil;
@@ -28,6 +29,8 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public class TestSloppyMath extends LuceneTestCase {
   // accuracy for cos()
   private static final double COS_DELTA = 1E-15;
+  // accuracy for sin()
+  private static final double SIN_DELTA = 1E-12;
   // accuracy for asin()
   private static final double ASIN_DELTA = 1E-7;
   // accuracy for haversinMeters()
@@ -50,14 +53,40 @@ public class TestSloppyMath extends LuceneTestCase {
     assertEquals(StrictMath.cos(Math.PI / 6), cos(Math.PI / 6), COS_DELTA);
     assertEquals(StrictMath.cos(-Math.PI / 6), cos(-Math.PI / 6), COS_DELTA);
 
-    // testing purely random longs is inefficent, as for stupid parameters we just
-    // pass thru to Math.cos() instead of doing some huperduper arg reduction
+    // testing purely random longs is inefficient, as for stupid parameters we just
+    // pass through to Math.cos() instead of doing some superduper arg reduction
     for (int i = 0; i < 10000; i++) {
       double d = random().nextDouble() * SloppyMath.SIN_COS_MAX_VALUE_FOR_INT_MODULO;
       if (random().nextBoolean()) {
         d = -d;
       }
       assertEquals(StrictMath.cos(d), cos(d), COS_DELTA);
+    }
+  }
+
+  public void testSin() {
+    assertTrue(Double.isNaN(sin(Double.NaN)));
+    assertTrue(Double.isNaN(sin(Double.NEGATIVE_INFINITY)));
+    assertTrue(Double.isNaN(sin(Double.POSITIVE_INFINITY)));
+    assertEquals(StrictMath.sin(1), sin(1), SIN_DELTA);
+    assertEquals(StrictMath.sin(0), sin(0), SIN_DELTA);
+    assertEquals(StrictMath.sin(Math.PI / 2), sin(Math.PI / 2), SIN_DELTA);
+    assertEquals(StrictMath.sin(-Math.PI / 2), sin(-Math.PI / 2), SIN_DELTA);
+    assertEquals(StrictMath.sin(Math.PI / 4), sin(Math.PI / 4), SIN_DELTA);
+    assertEquals(StrictMath.sin(-Math.PI / 4), sin(-Math.PI / 4), SIN_DELTA);
+    assertEquals(StrictMath.sin(Math.PI * 2 / 3), sin(Math.PI * 2 / 3), SIN_DELTA);
+    assertEquals(StrictMath.sin(-Math.PI * 2 / 3), sin(-Math.PI * 2 / 3), SIN_DELTA);
+    assertEquals(StrictMath.sin(Math.PI / 6), sin(Math.PI / 6), SIN_DELTA);
+    assertEquals(StrictMath.sin(-Math.PI / 6), sin(-Math.PI / 6), SIN_DELTA);
+
+    // testing purely random longs is inefficient, as for stupid parameters we just
+    // pass through to Math.sin() instead of doing some superduper arg reduction
+    for (int i = 0; i < 10000; i++) {
+      double d = random().nextDouble() * SloppyMath.SIN_COS_MAX_VALUE_FOR_INT_MODULO;
+      if (random().nextBoolean()) {
+        d = -d;
+      }
+      assertEquals(StrictMath.sin(d), sin(d), SIN_DELTA);
     }
   }
 

@@ -469,13 +469,13 @@ public abstract class PointInSetQuery extends Query implements Accountable {
   }
 
   public Collection<byte[]> getPackedPoints() {
-    return new AbstractCollection<byte[]>() {
+    return new AbstractCollection<>() {
 
       @Override
       public Iterator<byte[]> iterator() {
         int size = (int) sortedPackedPoints.size();
         PrefixCodedTerms.TermIterator iterator = sortedPackedPoints.iterator();
-        return new Iterator<byte[]>() {
+        return new Iterator<>() {
 
           int upto = 0;
 

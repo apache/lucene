@@ -78,7 +78,6 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       String metaExtension)
       throws IOException {
     this.termsDictBuffer = new byte[1 << 14];
-    boolean success = false;
     try {
       String dataName =
           IndexFileNames.segmentFileName(
@@ -102,32 +101,29 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
           state.segmentSuffix);
       maxDoc = state.segmentInfo.maxDoc();
       this.skipIndexIntervalSize = skipIndexIntervalSize;
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
   @Override
   public void close() throws IOException {
-    boolean success = false;
     try {
-      if (meta != null) {
-        meta.writeInt(-1); // write EOF marker
-        CodecUtil.writeFooter(meta); // write checksum
+      try {
+        if (meta != null) {
+          meta.writeInt(-1); // write EOF marker
+          CodecUtil.writeFooter(meta); // write checksum
+        }
+        if (data != null) {
+          CodecUtil.writeFooter(data); // write checksum
+        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, data, meta);
+        throw t;
       }
-      if (data != null) {
-        CodecUtil.writeFooter(data); // write checksum
-      }
-      success = true;
+      IOUtils.close(data, meta);
     } finally {
-      if (success) {
-        IOUtils.close(data, meta);
-      } else {
-        IOUtils.closeWhileHandlingException(data, meta);
-      }
       meta = data = null;
     }
   }

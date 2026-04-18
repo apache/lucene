@@ -18,6 +18,7 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -80,5 +81,29 @@ abstract class AbstractHnswGraphSearcher {
       return;
     }
     searchLevel(results, scorer, 0, eps, graph, acceptOrds);
+  }
+
+  protected static void scoreEntryPoints(
+      KnnCollector results,
+      RandomVectorScorer scorer,
+      BitSet visited,
+      int[] eps,
+      Bits acceptOrds,
+      NeighborQueue candidates,
+      float[] scores)
+      throws IOException {
+    assert eps != null && eps.length > 0;
+    assert scores != null && scores.length >= eps.length;
+    scorer.bulkScore(eps, scores, eps.length);
+    results.incVisitedCount(eps.length);
+    for (int i = 0; i < eps.length; i++) {
+      float score = scores[i];
+      int ep = eps[i];
+      visited.set(ep);
+      candidates.add(ep, score);
+      if (acceptOrds == null || acceptOrds.get(ep)) {
+        results.collect(ep, score);
+      }
+    }
   }
 }

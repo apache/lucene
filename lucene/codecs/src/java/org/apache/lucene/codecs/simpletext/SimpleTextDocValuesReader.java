@@ -229,7 +229,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
 
     decoder.setParseBigDecimal(true);
 
-    return new IntFunction<Long>() {
+    return new IntFunction<>() {
       @Override
       public Long apply(int docID) {
         try {
@@ -324,7 +324,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
     DocValuesIterator docsWithField = getBinaryDocsWithField(fieldInfo);
 
     IntFunction<BytesRef> values =
-        new IntFunction<BytesRef>() {
+        new IntFunction<>() {
           final BytesRefBuilder term = new BytesRefBuilder();
           final BytesRefBuilder termByteArray = new BytesRefBuilder();
 

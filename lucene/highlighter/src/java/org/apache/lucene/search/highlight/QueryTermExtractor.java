@@ -78,9 +78,7 @@ public final class QueryTermExtractor {
         // IDF algorithm taken from ClassicSimilarity class
         float idf = (float) (Math.log(totalNumDocs / (double) (docFreq + 1)) + 1.0);
         terms[i].weight *= idf;
-      } catch (
-          @SuppressWarnings("unused")
-          IOException e) {
+      } catch (IOException _) {
         // ignore
       }
     }
@@ -145,8 +143,8 @@ public final class QueryTermExtractor {
 
     @Override
     public QueryVisitor getSubVisitor(BooleanClause.Occur occur, Query parent) {
-      if (parent instanceof BoostQuery) {
-        float newboost = boost * ((BoostQuery) parent).getBoost();
+      if (parent instanceof BoostQuery bq) {
+        float newboost = boost * bq.getBoost();
         return new BoostedTermExtractor(newboost, terms, includeProhibited, fieldSelector);
       }
       if (occur == BooleanClause.Occur.MUST_NOT && includeProhibited == false) {

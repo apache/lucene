@@ -47,6 +47,7 @@ import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.TFIDFSimilarity;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRefBuilder;
+import org.apache.lucene.util.FloatComparator;
 import org.apache.lucene.util.PriorityQueue;
 
 /**
@@ -86,7 +87,7 @@ import org.apache.lucene.util.PriorityQueue;
  * <p>This class has lots of options to try to make it efficient and flexible. The simplest possible
  * usage is as follows. The bold fragment is specific to this class. <br>
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * IndexReader ir = ...
  * IndexSearcher is = ...
  *
@@ -98,7 +99,7 @@ import org.apache.lucene.util.PriorityQueue;
  * // now the usual iteration thru 'topDocs' - the only thing to watch for is to make sure
  * // you ignore the doc if it matches your 'target' document, as it should be similar to itself
  *
- * </pre>
+ * </code></pre>
  *
  * <p>Thus you:
  *
@@ -555,7 +556,7 @@ public final class MoreLikeThis {
     if (fieldNames == null) {
       // gather list of valid fields from lucene
       Collection<String> fields = FieldInfos.getIndexedFields(ir);
-      fieldNames = fields.toArray(new String[fields.size()]);
+      fieldNames = fields.toArray(String[]::new);
     }
 
     return createQuery(retrieveTerms(docNum));
@@ -569,7 +570,7 @@ public final class MoreLikeThis {
     if (fieldNames == null) {
       // gather list of valid fields from lucene
       Collection<String> fields = FieldInfos.getIndexedFields(ir);
-      fieldNames = fields.toArray(new String[fields.size()]);
+      fieldNames = fields.toArray(String[]::new);
     }
     return createQuery(retrieveTerms(filteredDocument));
   }
@@ -607,9 +608,7 @@ public final class MoreLikeThis {
 
       try {
         query.add(tq, BooleanClause.Occur.SHOULD);
-      } catch (
-          @SuppressWarnings("unused")
-          IndexSearcher.TooManyClauses ignore) {
+      } catch (IndexSearcher.TooManyClauses _) {
         break;
       }
     }
@@ -626,7 +625,8 @@ public final class MoreLikeThis {
       Map<String, Map<String, Int>> perFieldTermFrequencies) throws IOException {
     // have collected all words in doc and their freqs
     final int limit = Math.min(maxQueryTerms, this.getTermsCount(perFieldTermFrequencies));
-    FreqQ queue = new FreqQ(limit); // will order words by score
+    PriorityQueue<ScoreTerm> queue =
+        PriorityQueue.usingComparator(limit, FloatComparator.comparing(st -> st.score));
     for (Map.Entry<String, Map<String, Int>> entry : perFieldTermFrequencies.entrySet()) {
       Map<String, Int> perWordTermFrequencies = entry.getValue();
       String fieldName = entry.getKey();
@@ -923,18 +923,6 @@ public final class MoreLikeThis {
     }
     String[] res = new String[al.size()];
     return al.toArray(res);
-  }
-
-  /** PriorityQueue that orders words by score. */
-  private static class FreqQ extends PriorityQueue<ScoreTerm> {
-    FreqQ(int maxSize) {
-      super(maxSize);
-    }
-
-    @Override
-    protected boolean lessThan(ScoreTerm a, ScoreTerm b) {
-      return a.score < b.score;
-    }
   }
 
   private static class ScoreTerm {

@@ -36,7 +36,6 @@ import org.apache.lucene.tests.mockfile.WindowsFS;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.Constants;
 
 public class TestFileSwitchDirectory extends BaseDirectoryTestCase {
 
@@ -61,9 +60,10 @@ public class TestFileSwitchDirectory extends BaseDirectoryTestCase {
         new IndexWriter(
             fsd,
             new IndexWriterConfig(new MockAnalyzer(random()))
-                .setMergePolicy(newLogMergePolicy(false))
+                .setMergePolicy(newLogMergePolicy())
                 .setCodec(TestUtil.getDefaultCodec())
                 .setUseCompoundFile(false));
+    writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
     TestIndexWriterReader.createIndexNoClose(true, "ram", writer);
     IndexReader reader = DirectoryReader.open(writer);
     assertEquals(100, reader.maxDoc());
@@ -172,7 +172,6 @@ public class TestFileSwitchDirectory extends BaseDirectoryTestCase {
   public void testDeleteAndList() throws IOException {
     // relies on windows semantics
     Path path = createTempDir();
-    assumeFalse("Irony we seem to not emulate windows well enough", Constants.WINDOWS);
     WindowsFS provider = new WindowsFS(path.getFileSystem());
     Path indexPath = provider.wrapPath(path);
     try (final FileSwitchDirectory dir =

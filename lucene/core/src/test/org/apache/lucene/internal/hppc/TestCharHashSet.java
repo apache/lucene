@@ -90,11 +90,13 @@ public class TestCharHashSet extends LuceneTestCase {
     MatcherAssert.assertThat(set.indexGet(set.indexOf(keyE)), is(equalTo(keyE)));
     MatcherAssert.assertThat(set.indexGet(set.indexOf(key1)), is(equalTo(key1)));
 
-    expectThrows(
-        AssertionError.class,
-        () -> {
-          set.indexGet(set.indexOf(key2));
-        });
+    if (TEST_ASSERTS_ENABLED) {
+      expectThrows(
+          AssertionError.class,
+          () -> {
+            set.indexGet(set.indexOf(key2));
+          });
+    }
 
     MatcherAssert.assertThat(set.indexReplace(set.indexOf(keyE), keyE), is(equalTo(keyE)));
     MatcherAssert.assertThat(set.indexReplace(set.indexOf(key1), key1), is(equalTo(key1)));

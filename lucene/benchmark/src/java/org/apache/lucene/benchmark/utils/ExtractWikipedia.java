@@ -96,9 +96,7 @@ public class ExtractWikipedia {
             doc.get(DocMaker.DATE_FIELD),
             doc.get(DocMaker.BODY_FIELD));
       }
-    } catch (
-        @SuppressWarnings("unused")
-        NoMoreDataException e) {
+    } catch (NoMoreDataException _) {
       // continue
     }
     long finish = System.currentTimeMillis();

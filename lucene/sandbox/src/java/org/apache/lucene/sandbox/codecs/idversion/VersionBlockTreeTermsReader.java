@@ -64,7 +64,6 @@ public final class VersionBlockTreeTermsReader extends FieldsProducer {
             VersionBlockTreeTermsWriter.TERMS_EXTENSION);
     in = state.directory.openInput(termsFile, state.context);
 
-    boolean success = false;
     IndexInput indexIn = null;
 
     try {
@@ -180,13 +179,10 @@ public final class VersionBlockTreeTermsReader extends FieldsProducer {
         }
       }
       indexIn.close();
-
-      success = true;
-    } finally {
-      if (!success) {
-        // this.close() will close in:
-        IOUtils.closeWhileHandlingException(indexIn, this);
-      }
+    } catch (Throwable t) {
+      // this.close() will close in:
+      IOUtils.closeWhileSuppressingExceptions(t, indexIn, this);
+      throw t;
     }
   }
 

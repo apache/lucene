@@ -458,13 +458,13 @@ public class IndexSearcher {
    *
    * <p>Example:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * TopDocs hits = searcher.search(query, 10);
    * StoredFields storedFields = searcher.storedFields();
    * for (ScoreDoc hit : hits.scoreDocs) {
    *   Document doc = storedFields.document(hit.doc);
    * }
-   * </pre>
+   * </code></pre>
    *
    * @throws IOException If there is a low-level IO error
    * @see IndexReader#storedFields()
@@ -823,9 +823,7 @@ public class IndexSearcher {
     final LeafCollector leafCollector;
     try {
       leafCollector = collector.getLeafCollector(ctx);
-    } catch (
-        @SuppressWarnings("unused")
-        CollectionTerminatedException e) {
+    } catch (CollectionTerminatedException _) {
       // there is no doc of interest in this reader context
       // continue with the following leaf
       return;
@@ -841,14 +839,10 @@ public class IndexSearcher {
         // Optimize for the case when live docs are stored in a FixedBitSet.
         Bits acceptDocs = ScorerUtil.likelyLiveDocs(ctx.reader().getLiveDocs());
         scorer.score(leafCollector, acceptDocs, minDocId, maxDocId);
-      } catch (
-          @SuppressWarnings("unused")
-          CollectionTerminatedException e) {
+      } catch (CollectionTerminatedException _) {
         // collection was terminated prematurely
         // continue with the following leaf
-      } catch (
-          @SuppressWarnings("unused")
-          TimeLimitingBulkScorer.TimeExceededException e) {
+      } catch (TimeLimitingBulkScorer.TimeExceededException _) {
         partialResult = true;
       }
     }
@@ -1010,7 +1004,7 @@ public class IndexSearcher {
     private final int maxDocs;
 
     public LeafSlice(List<LeafReaderContextPartition> partitions) {
-      this(partitions.toArray(new LeafReaderContextPartition[0]));
+      this(partitions.toArray(LeafReaderContextPartition[]::new));
     }
 
     private static LeafSlice entireSegments(List<LeafReaderContext> contexts) {

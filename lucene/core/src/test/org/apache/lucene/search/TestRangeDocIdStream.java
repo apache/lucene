@@ -36,6 +36,25 @@ public class TestRangeDocIdStream extends LuceneTestCase {
     assertEquals(100 - 42, stream.count());
   }
 
+  public void testIntoArray() throws IOException {
+    RangeDocIdStream stream = new RangeDocIdStream(42, 100);
+    int[] array = new int[16];
+    int o = array.length;
+    int count = array.length;
+
+    for (int i = 42; i < 100; ++i) {
+      if (o == count) {
+        count = stream.intoArray(array);
+        o = 0;
+        if (100 - i >= array.length) {
+          assertEquals(array.length, count);
+        }
+      }
+      assertEquals(i, array[o++]);
+    }
+    assertEquals(count, o);
+  }
+
   public void testForEachUpTo() throws IOException {
     RangeDocIdStream stream = new RangeDocIdStream(42, 100);
     int[] expected = new int[] {42};
@@ -71,6 +90,29 @@ public class TestRangeDocIdStream extends LuceneTestCase {
     assertTrue(stream.mayHaveRemaining());
     assertEquals(100 - 65, stream.count(120));
     assertFalse(stream.mayHaveRemaining());
+  }
+
+  public void testIntoArrayUpTo() throws IOException {
+    RangeDocIdStream stream = new RangeDocIdStream(42, 100);
+    int[] array = new int[16];
+    int o = array.length;
+    int count = array.length;
+
+    for (int upTo = 42; upTo < 100; ) {
+      int newUpTo = Math.min(upTo + random().nextInt(40), 100);
+      for (int i = upTo; i < newUpTo; ++i) {
+        if (o == count) {
+          count = stream.intoArray(newUpTo, array);
+          o = 0;
+          if (newUpTo - i >= array.length) {
+            assertEquals(array.length, count);
+          }
+        }
+        assertEquals(i, array[o++]);
+      }
+      assertEquals(count, o);
+      upTo = newUpTo;
+    }
   }
 
   public void testMixForEachCountUpTo() throws IOException {

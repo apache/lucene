@@ -69,6 +69,14 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     this.maxDoc = maxDoc;
   }
 
+  private long computeShouldCost() {
+    final Collection<ScorerSupplier> optionalScorers = subs.get(Occur.SHOULD);
+    return ScorerUtil.costWithMinShouldMatch(
+        optionalScorers.stream().mapToLong(ScorerSupplier::cost),
+        optionalScorers.size(),
+        minShouldMatch);
+  }
+
   private long computeCost() {
     OptionalLong minRequiredCost =
         Stream.concat(subs.get(Occur.MUST).stream(), subs.get(Occur.FILTER).stream())
@@ -77,12 +85,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     if (minRequiredCost.isPresent() && minShouldMatch == 0) {
       return minRequiredCost.getAsLong();
     } else {
-      final Collection<ScorerSupplier> optionalScorers = subs.get(Occur.SHOULD);
-      final long shouldCost =
-          ScorerUtil.costWithMinShouldMatch(
-              optionalScorers.stream().mapToLong(ScorerSupplier::cost),
-              optionalScorers.size(),
-              minShouldMatch);
+      final long shouldCost = computeShouldCost();
       return Math.min(minRequiredCost.orElse(Long.MAX_VALUE), shouldCost);
     }
   }
@@ -252,7 +255,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
           throws IOException {
         final LeafCollector noScoreCollector =
             new LeafCollector() {
-              Score fake = new Score();
+              SimpleScorable fake = new SimpleScorable();
 
               @Override
               public void setScorer(Scorable scorer) throws IOException {
@@ -262,6 +265,11 @@ final class BooleanScorerSupplier extends ScorerSupplier {
               @Override
               public void collect(int doc) throws IOException {
                 collector.collect(doc);
+              }
+
+              @Override
+              public void collect(DocIdStream stream) throws IOException {
+                collector.collect(stream);
               }
             };
         return scorer.score(noScoreCollector, acceptDocs, min, max);
@@ -293,9 +301,10 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       return new MaxScoreBulkScorer(maxDoc, optionalScorers, null);
     }
 
-    List<Scorer> optional = new ArrayList<Scorer>();
+    long shouldCost = computeShouldCost();
+    List<Scorer> optional = new ArrayList<>();
     for (ScorerSupplier ss : subs.get(Occur.SHOULD)) {
-      optional.add(ss.get(Long.MAX_VALUE));
+      optional.add(ss.get(shouldCost));
     }
 
     return new BooleanScorer(optional, Math.max(1, minShouldMatch), scoreMode.needsScores());
@@ -359,10 +368,14 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       return scorer;
     }
 
-    long leadCost =
+    long mustLeadCost =
         subs.get(Occur.MUST).stream().mapToLong(ScorerSupplier::cost).min().orElse(Long.MAX_VALUE);
-    leadCost =
-        subs.get(Occur.FILTER).stream().mapToLong(ScorerSupplier::cost).min().orElse(leadCost);
+    long filterLeadCost =
+        subs.get(Occur.FILTER).stream()
+            .mapToLong(ScorerSupplier::cost)
+            .min()
+            .orElse(Long.MAX_VALUE);
+    long leadCost = Math.min(mustLeadCost, filterLeadCost);
 
     List<Scorer> requiredNoScoring = new ArrayList<>();
     for (ScorerSupplier ss : subs.get(Occur.FILTER)) {
@@ -431,6 +444,13 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       required.addAll(requiredScoring);
       required.addAll(requiredNoScoring);
       conjunctionScorer = new ConjunctionScorer(required, requiredScoring);
+      if (this.scoreMode == ScoreMode.TOP_SCORES && requiredScoring.size() == 0) {
+        conjunctionScorer =
+            conjunctionScorer.twoPhaseIterator() != null
+                ? new ConstantScoreScorer(
+                    0.0F, this.scoreMode, conjunctionScorer.twoPhaseIterator())
+                : new ConstantScoreScorer(0.0F, this.scoreMode, conjunctionScorer.iterator());
+      }
     }
     return new DefaultBulkScorer(conjunctionScorer);
   }
@@ -496,6 +516,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     }
   }
 
+  /** Create a new scorer for the must match scorer and exclude clauses. */
   private Scorer excl(Scorer main, Collection<ScorerSupplier> prohibited, long leadCost)
       throws IOException {
     if (prohibited.isEmpty()) {
@@ -506,6 +527,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     }
   }
 
+  /** Create a new score for the given optional clauses. */
   private Scorer opt(
       Collection<ScorerSupplier> optional,
       int minShouldMatch,

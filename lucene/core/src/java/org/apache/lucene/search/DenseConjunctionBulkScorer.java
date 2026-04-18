@@ -22,6 +22,7 @@ import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.MathUtil;
 
 /**
  * BulkScorer implementation of {@link ConjunctionScorer} that is specialized for dense clauses.
@@ -176,7 +177,7 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     // data, which helps evaluate fewer clauses per window - without allowing windows to become too
     // small thanks to the WINDOW_SIZE/2 threshold.
     int minDocIDRunEnd = max;
-    final int minRunEndThreshold = (int) Math.min((long) min + WINDOW_SIZE / 2, max);
+    final int minRunEndThreshold = MathUtil.unsignedMin(min + WINDOW_SIZE / 2, max);
     for (DisiWrapper w : iterators) {
       int docIdRunEnd = w.docIDRunEnd();
       if (w.docID() > min || docIdRunEnd < minRunEndThreshold) {
@@ -195,20 +196,10 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
       return minDocIDRunEnd;
     }
 
-    int bitsetWindowMax = (int) Math.min(minDocIDRunEnd, (long) WINDOW_SIZE + min);
+    int bitsetWindowMax = MathUtil.unsignedMin(minDocIDRunEnd, WINDOW_SIZE + min);
 
     if (windowTwoPhases.isEmpty()) {
-      if (acceptDocs == null && windowApproximations.size() == 1) {
-        // We have a range of doc IDs where all matches of an iterator are matches of the
-        // conjunction.
-        DocIdSetIterator iterator = windowApproximations.get(0);
-        if (iterator.docID() < min) {
-          iterator.advance(min);
-        }
-        collector.collect(new DISIDocIdStream(iterator, bitsetWindowMax, clauseWindowMatches));
-      } else {
-        scoreWindowUsingBitSet(collector, acceptDocs, windowApproximations, min, bitsetWindowMax);
-      }
+      scoreWindowUsingBitSet(collector, acceptDocs, windowApproximations, min, bitsetWindowMax);
     } else {
       windowTwoPhases.sort(Comparator.comparingDouble(TwoPhaseIterator::matchCost));
       scoreWindowUsingLeapFrog(

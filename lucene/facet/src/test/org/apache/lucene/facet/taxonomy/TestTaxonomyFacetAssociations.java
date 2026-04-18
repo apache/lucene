@@ -548,7 +548,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     IOUtils.close(taxoWriter, writer);
 
     IndexSearcher searcher = newSearcher(reader);
-    Query q = new MatchAllDocsQuery();
+    Query q = MatchAllDocsQuery.INSTANCE;
     FacetsCollector fc = searcher.search(q, new FacetsCollectorManager());
 
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
@@ -597,7 +597,7 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     IOUtils.close(taxoWriter, writer);
 
     IndexSearcher searcher = newSearcher(reader);
-    Query q = new MatchAllDocsQuery();
+    Query q = MatchAllDocsQuery.INSTANCE;
     FacetsCollector fc = searcher.search(q, new FacetsCollectorManager());
 
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);

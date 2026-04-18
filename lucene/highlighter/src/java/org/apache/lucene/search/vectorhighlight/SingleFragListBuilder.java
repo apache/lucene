@@ -27,10 +27,10 @@ import org.apache.lucene.search.vectorhighlight.FieldPhraseList.WeightedPhraseIn
  * object. Typical use case of this class is that you can get an entire field contents by using both
  * of this class and {@link SimpleFragmentsBuilder}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * FastVectorHighlighter h = new FastVectorHighlighter( true, true,
  *   new SingleFragListBuilder(), new SimpleFragmentsBuilder() );
- * </pre>
+ * </code></pre>
  */
 public class SingleFragListBuilder implements FragListBuilder {
 

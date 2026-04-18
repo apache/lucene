@@ -129,7 +129,6 @@ public class FSTTermsWriter extends FieldsConsumer {
     this.out = state.directory.createOutput(termsFileName, state.context);
     this.maxDoc = state.segmentInfo.maxDoc();
 
-    boolean success = false;
     try {
       CodecUtil.writeIndexHeader(
           out,
@@ -139,11 +138,9 @@ public class FSTTermsWriter extends FieldsConsumer {
           state.segmentSuffix);
 
       this.postingsWriter.init(out, state);
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(out);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, out);
+      throw t;
     }
   }
 
@@ -188,8 +185,8 @@ public class FSTTermsWriter extends FieldsConsumer {
   @Override
   public void close() throws IOException {
     if (out != null) {
-      boolean success = false;
-      try {
+      try (IndexOutput _ = out;
+          postingsWriter) {
         // write field summary
         final long dirStart = out.getFilePointer();
 
@@ -206,13 +203,7 @@ public class FSTTermsWriter extends FieldsConsumer {
         }
         writeTrailer(out, dirStart);
         CodecUtil.writeFooter(out);
-        success = true;
       } finally {
-        if (success) {
-          IOUtils.close(out, postingsWriter);
-        } else {
-          IOUtils.closeWhileHandlingException(out, postingsWriter);
-        }
         out = null;
       }
     }

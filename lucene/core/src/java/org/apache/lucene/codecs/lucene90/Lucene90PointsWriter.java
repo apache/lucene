@@ -64,7 +64,6 @@ public class Lucene90PointsWriter extends PointsWriter {
             writeState.segmentSuffix,
             Lucene90PointsFormat.DATA_EXTENSION);
     dataOut = writeState.directory.createOutput(dataFileName, writeState.context);
-    boolean success = false;
     try {
       CodecUtil.writeIndexHeader(
           dataOut,
@@ -98,12 +97,9 @@ public class Lucene90PointsWriter extends PointsWriter {
           Lucene90PointsFormat.VERSION_CURRENT,
           writeState.segmentInfo.getId(),
           writeState.segmentSuffix);
-
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -156,10 +152,8 @@ public class Lucene90PointsWriter extends PointsWriter {
             values.size(),
             Lucene90PointsFormat.bkdVersion(version))) {
 
-      if (values instanceof MutablePointTree) {
-        IORunnable finalizer =
-            writer.writeField(
-                metaOut, indexOut, dataOut, fieldInfo.name, (MutablePointTree) values);
+      if (values instanceof MutablePointTree mpt) {
+        IORunnable finalizer = writer.writeField(metaOut, indexOut, dataOut, fieldInfo.name, mpt);
         if (finalizer != null) {
           metaOut.writeInt(fieldInfo.number);
           finalizer.run();

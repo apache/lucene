@@ -75,8 +75,8 @@ public class TestMinHashFilter extends BaseTokenStreamTestCase {
     assertTrue(MinHashFilter.isLessThanUnsigned(1L, 2L));
     assertTrue(MinHashFilter.isLessThanUnsigned(Long.MAX_VALUE, Long.MIN_VALUE));
 
-    FixedSizeTreeSet<LongPair> minSet = new FixedSizeTreeSet<LongPair>(500);
-    HashSet<LongPair> unadded = new HashSet<LongPair>();
+    FixedSizeTreeSet<LongPair> minSet = new FixedSizeTreeSet<>(500);
+    HashSet<LongPair> unadded = new HashSet<>();
     for (int i = 0; i < 100; i++) {
       LongPair hash = new LongPair();
       MinHashFilter.murmurhash3_x64_128(MinHashFilter.getBytes(i), 0, 4, 0, hash);
@@ -100,9 +100,9 @@ public class TestMinHashFilter extends BaseTokenStreamTestCase {
   }
 
   public void testCollisions() {
-    HashSet<LongPair> collisionDetection = new HashSet<LongPair>();
-    HashSet<LongPair> unadded = new HashSet<LongPair>();
-    FixedSizeTreeSet<LongPair> minSet = new FixedSizeTreeSet<LongPair>(500);
+    HashSet<LongPair> collisionDetection = new HashSet<>();
+    HashSet<LongPair> unadded = new HashSet<>();
+    FixedSizeTreeSet<LongPair> minSet = new FixedSizeTreeSet<>(500);
     int numElements = TEST_NIGHTLY ? 1000000 : 10000;
     for (int i = 0; i < numElements; i++) {
       LongPair hash = new LongPair();
@@ -139,8 +139,8 @@ public class TestMinHashFilter extends BaseTokenStreamTestCase {
 
   @Test
   public void testHashNotRepeated() {
-    FixedSizeTreeSet<LongPair> minSet = new FixedSizeTreeSet<LongPair>(500);
-    HashSet<LongPair> unadded = new HashSet<LongPair>();
+    FixedSizeTreeSet<LongPair> minSet = new FixedSizeTreeSet<>(500);
+    HashSet<LongPair> unadded = new HashSet<>();
     for (int i = 0; i < 10000; i++) {
       LongPair hash = new LongPair();
       MinHashFilter.murmurhash3_x64_128(MinHashFilter.getBytes(i), 0, 4, 0, hash);

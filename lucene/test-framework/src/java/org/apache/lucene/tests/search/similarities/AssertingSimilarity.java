@@ -99,6 +99,26 @@ public class AssertingSimilarity extends Similarity {
           == delegate.score(freq.getValue().floatValue(), norm);
       return explanation;
     }
+
+    @Override
+    public BulkSimScorer asBulkSimScorer() {
+      BulkSimScorer bulkScorer = delegate.asBulkSimScorer();
+      return new BulkSimScorer() {
+        @Override
+        public void score(int size, float[] freqs, long[] norms, float[] scores) {
+          for (int i = 0; i < size; ++i) {
+            assert freqs[i] > 0;
+            assert norms[i] != 0;
+          }
+          bulkScorer.score(size, freqs, norms, scores);
+          for (int i = 0; i < size; ++i) {
+            float score = scores[i];
+            assert Float.isFinite(score);
+            assert score >= 0;
+          }
+        }
+      };
+    }
   }
 
   @Override

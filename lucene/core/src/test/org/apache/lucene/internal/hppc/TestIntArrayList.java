@@ -279,7 +279,7 @@ public class TestIntArrayList extends LuceneTestCase {
 
     count = 0;
     list.resize(0);
-    for (@SuppressWarnings("unused") IntCursor cursor : list) {
+    for (IntCursor _ : list) {
       count++;
     }
     assertEquals(0, count);

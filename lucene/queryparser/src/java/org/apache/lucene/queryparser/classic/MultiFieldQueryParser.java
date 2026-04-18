@@ -108,10 +108,9 @@ public class MultiFieldQueryParser extends QueryParser {
   }
 
   private Query applySlop(Query q, int slop) {
-    if (q instanceof PhraseQuery) {
+    if (q instanceof PhraseQuery pq) {
       PhraseQuery.Builder builder = new PhraseQuery.Builder();
       builder.setSlop(slop);
-      PhraseQuery pq = (PhraseQuery) q;
       org.apache.lucene.index.Term[] terms = pq.getTerms();
       int[] positions = pq.getPositions();
       for (int i = 0; i < terms.length; ++i) {
@@ -150,8 +149,8 @@ public class MultiFieldQueryParser extends QueryParser {
       for (int i = 0; i < fields.length; i++) {
         Query q = super.getFieldQuery(fields[i], queryText, quoted);
         if (q != null) {
-          if (q instanceof BooleanQuery) {
-            maxTerms = Math.max(maxTerms, ((BooleanQuery) q).clauses().size());
+          if (q instanceof BooleanQuery bq) {
+            maxTerms = Math.max(maxTerms, bq.clauses().size());
           } else {
             maxTerms = Math.max(1, maxTerms);
           }
@@ -163,8 +162,8 @@ public class MultiFieldQueryParser extends QueryParser {
         for (int i = 0; i < fields.length; i++) {
           if (fieldQueries[i] != null) {
             Query q = null;
-            if (fieldQueries[i] instanceof BooleanQuery) {
-              List<BooleanClause> nestedClauses = ((BooleanQuery) fieldQueries[i]).clauses();
+            if (fieldQueries[i] instanceof BooleanQuery bq) {
+              List<BooleanClause> nestedClauses = bq.clauses();
               if (termNum < nestedClauses.size()) {
                 q = nestedClauses.get(termNum).query();
               }
@@ -325,15 +324,13 @@ public class MultiFieldQueryParser extends QueryParser {
    *
    * <p>Usage:
    *
-   * <pre class="prettyprint">
-   * <code>
+   * <pre><code class="language-java">
    * String[] fields = {"filename", "contents", "description"};
    * BooleanClause.Occur[] flags = {BooleanClause.Occur.SHOULD,
    *                BooleanClause.Occur.MUST,
    *                BooleanClause.Occur.MUST_NOT};
    * MultiFieldQueryParser.parse("query", fields, flags, analyzer);
-   * </code>
-   * </pre>
+   * </code></pre>
    *
    * <p>The code above would construct a query:
    *
@@ -375,16 +372,14 @@ public class MultiFieldQueryParser extends QueryParser {
    *
    * <p>Usage:
    *
-   * <pre class="prettyprint">
-   * <code>
+   * <pre><code class="language-java">
    * String[] query = {"query1", "query2", "query3"};
    * String[] fields = {"filename", "contents", "description"};
    * BooleanClause.Occur[] flags = {BooleanClause.Occur.SHOULD,
    *                BooleanClause.Occur.MUST,
    *                BooleanClause.Occur.MUST_NOT};
    * MultiFieldQueryParser.parse(query, fields, flags, analyzer);
-   * </code>
-   * </pre>
+   * </code></pre>
    *
    * <p>The code above would construct a query:
    *

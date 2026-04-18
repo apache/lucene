@@ -65,7 +65,7 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
             new UHComponents(
                 "field",
                 (_) -> false,
-                new MatchAllDocsQuery(),
+                MatchAllDocsQuery.INSTANCE,
                 new BytesRef[0],
                 PhraseHelper.NONE,
                 new LabelledCharArrayMatcher[0],

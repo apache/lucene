@@ -58,31 +58,31 @@ ResetSystemErase
   { "AddDocs" AddDoc > : 10000
   CloseIndex
 
-  OpenReader  
+  OpenReader
   { "SearchSameRdr" Search > : 500
-  CloseReader 
-              
+  CloseReader
+
   { "WarmNewRdr" Warm > : 50
-              
+
   { "SrchNewRdr" Search > : 500
-              
+
   { "SrchTrvNewRdr" SearchTrav > : 300
-              
+
   { "SrchTrvRetNewRdr" SearchTravRet > : 100
 
   [ "WarmNewRdr" Warm > : 50
-              
+
   [ "SrchNewRdr" Search > : 500
-              
+
   [ "SrchTrvNewRdr" SearchTrav > : 300
-              
+
   [ "SrchTrvRetNewRdr" SearchTravRet > : 100
 
   ResetInputs
   RepSumByName
   NewRound
 } : 4
-            
+
 RepSumByName
 RepSumByNameRound
 RepSumByPrefRound AddDocs

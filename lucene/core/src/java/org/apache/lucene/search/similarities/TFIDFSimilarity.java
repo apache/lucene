@@ -353,9 +353,9 @@ public abstract class TFIDFSimilarity extends Similarity {
    *
    * <p>The default implementation uses:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * idf(docFreq, docCount);
-   * </pre>
+   * </code></pre>
    *
    * Note that {@link CollectionStatistics#docCount()} is used instead of {@link
    * org.apache.lucene.index.IndexReader#numDocs() IndexReader#numDocs()} because also {@link
@@ -481,7 +481,7 @@ public abstract class TFIDFSimilarity extends Similarity {
     }
 
     private Explanation explainScore(Explanation freq, long encodedNorm, float[] normTable) {
-      List<Explanation> subs = new ArrayList<Explanation>();
+      List<Explanation> subs = new ArrayList<>();
       if (boost != 1F) {
         subs.add(Explanation.match(boost, "boost"));
       }

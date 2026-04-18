@@ -92,7 +92,7 @@ class SimpleGeoJSONPolygonParser {
         polygons.add(parsePolygon((List<Object>) o));
       }
 
-      return polygons.toArray(new Polygon[polygons.size()]);
+      return polygons.toArray(Polygon[]::new);
     }
   }
 
@@ -156,10 +156,10 @@ class SimpleGeoJSONPolygonParser {
         o = parseString();
       } else if (ch == 't') {
         scan("true");
-        o = Boolean.TRUE;
+        o = true;
       } else if (ch == 'f') {
         scan("false");
-        o = Boolean.FALSE;
+        o = false;
       } else if (ch == 'n') {
         scan("null");
         o = null;
@@ -242,7 +242,7 @@ class SimpleGeoJSONPolygonParser {
       double[][] holePoints = parsePoints((List<Object>) o);
       holes.add(new Polygon(holePoints[0], holePoints[1]));
     }
-    return new Polygon(polyPoints[0], polyPoints[1], holes.toArray(new Polygon[holes.size()]));
+    return new Polygon(polyPoints[0], polyPoints[1], holes.toArray(Polygon[]::new));
   }
 
   /** Parses [[lat, lon], [lat, lon] ...] into 2d double array */
@@ -342,9 +342,7 @@ class SimpleGeoJSONPolygonParser {
     // we only handle doubles
     try {
       return Double.parseDouble(b.toString());
-    } catch (
-        @SuppressWarnings("unused")
-        NumberFormatException nfe) {
+    } catch (NumberFormatException _) {
       upto = uptoStart;
       throw newParseException("could not parse number as double");
     }

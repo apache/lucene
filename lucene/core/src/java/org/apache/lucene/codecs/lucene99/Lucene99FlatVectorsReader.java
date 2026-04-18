@@ -21,7 +21,9 @@ import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSi
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
@@ -39,9 +41,12 @@ import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataAccessHint;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IOContext.FileOpenHint;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
@@ -59,13 +64,31 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   private final IntObjectHashMap<FieldEntry> fields = new IntObjectHashMap<>();
   private final IndexInput vectorData;
   private final FieldInfos fieldInfos;
+  private final IOContext dataContext;
 
   public Lucene99FlatVectorsReader(SegmentReadState state, FlatVectorsScorer scorer)
+      throws IOException {
+    this(state, scorer, DataAccessHint.RANDOM);
+  }
+
+  /**
+   * Creates a Lucene99FlatVectorsReader.
+   *
+   * @param state the segment read state
+   * @param scorer the flat vectors scorer
+   * @param accessHint a data access hint, or null
+   */
+  public Lucene99FlatVectorsReader(
+      SegmentReadState state, FlatVectorsScorer scorer, DataAccessHint accessHint)
       throws IOException {
     super(scorer);
     int versionMeta = readMetadata(state);
     this.fieldInfos = state.fieldInfos;
-    boolean success = false;
+    FileOpenHint[] hints =
+        Stream.of(FileTypeHint.DATA, FileDataHint.KNN_VECTORS, accessHint)
+            .filter(Objects::nonNull)
+            .toArray(FileOpenHint[]::new);
+    dataContext = state.context.withHints(hints);
     try {
       vectorData =
           openDataInput(
@@ -73,14 +96,10 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
               versionMeta,
               Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION,
               Lucene99FlatVectorsFormat.VECTOR_DATA_CODEC_NAME,
-              // Flat formats are used to randomly access vectors from their node ID that is stored
-              // in the HNSW graph.
-              state.context.withReadAdvice(ReadAdvice.RANDOM));
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+              dataContext);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -120,7 +139,6 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     String fileName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, fileExtension);
     IndexInput in = state.directory.openInput(fileName, context);
-    boolean success = false;
     try {
       int versionVectorData =
           CodecUtil.checkIndexHeader(
@@ -141,12 +159,10 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
             in);
       }
       CodecUtil.retrieveChecksum(in);
-      success = true;
       return in;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(in);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, in);
+      throw t;
     }
   }
 
@@ -167,27 +183,34 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   }
 
   @Override
+  public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+    final FieldEntry entry = getFieldEntryOrThrow(fieldInfo.name);
+    return Map.of(Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION, entry.vectorDataLength());
+  }
+
+  @Override
   public void checkIntegrity() throws IOException {
     CodecUtil.checksumEntireFile(vectorData);
   }
 
   @Override
-  public FlatVectorsReader getMergeInstance() {
-    try {
-      // Update the read advice since vectors are guaranteed to be accessed sequentially for merge
-      this.vectorData.updateReadAdvice(ReadAdvice.SEQUENTIAL);
-      return this;
-    } catch (IOException exception) {
-      throw new UncheckedIOException(exception);
+  public FlatVectorsReader getMergeInstance() throws IOException {
+    // Update the read advice since vectors are guaranteed to be accessed sequentially for merge
+    vectorData.updateIOContext(dataContext.withHints(DataAccessHint.SEQUENTIAL));
+    return this;
+  }
+
+  private FieldEntry getFieldEntryOrThrow(String field) {
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry entry;
+    if (info == null || (entry = fields.get(info.number)) == null) {
+      throw new IllegalArgumentException("field=\"" + field + "\" not found");
     }
+    return entry;
   }
 
   private FieldEntry getFieldEntry(String field, VectorEncoding expectedEncoding) {
-    final FieldInfo info = fieldInfos.fieldInfo(field);
-    final FieldEntry fieldEntry;
-    if (info == null || (fieldEntry = fields.get(info.number)) == null) {
-      throw new IllegalArgumentException("field=\"" + field + "\" not found");
-    }
+    final FieldEntry fieldEntry = getFieldEntryOrThrow(field);
     if (fieldEntry.vectorEncoding != expectedEncoding) {
       throw new IllegalArgumentException(
           "field=\""
@@ -266,7 +289,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   public void finishMerge() throws IOException {
     // This makes sure that the access pattern hint is reverted back since HNSW implementation
     // needs it
-    this.vectorData.updateReadAdvice(ReadAdvice.RANDOM);
+    vectorData.updateIOContext(dataContext);
   }
 
   @Override

@@ -50,8 +50,26 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
-import org.apache.lucene.search.*;
+import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BoostQuery;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.FieldDoc;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MatchNoDocsQuery;
+import org.apache.lucene.search.PrefixQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.BasicStats;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.SimilarityBase;
@@ -148,7 +166,7 @@ public class TestBlockJoin extends LuceneTestCase {
 
     BooleanQuery.Builder fullQuery = new BooleanQuery.Builder();
     fullQuery.add(new BooleanClause(childJoinQuery, Occur.MUST));
-    fullQuery.add(new BooleanClause(new MatchAllDocsQuery(), Occur.MUST));
+    fullQuery.add(new BooleanClause(MatchAllDocsQuery.INSTANCE, Occur.MUST));
     TopDocs topDocs = s.search(fullQuery.build(), 2);
     assertEquals(2, topDocs.totalHits.value());
     assertEquals(
@@ -544,8 +562,8 @@ public class TestBlockJoin extends LuceneTestCase {
 
     ToParentBlockJoinQuery q =
         new ToParentBlockJoinQuery(
-            new MatchNoDocsQuery(),
-            new QueryBitSetProducer(new MatchAllDocsQuery()),
+            MatchNoDocsQuery.INSTANCE,
+            new QueryBitSetProducer(MatchAllDocsQuery.INSTANCE),
             ScoreMode.Avg);
     QueryUtils.check(random(), q, s);
     s.search(q, 10);
@@ -608,6 +626,8 @@ public class TestBlockJoin extends LuceneTestCase {
     return new Sort(sortFields.toArray(new SortField[sortFields.size()]));
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandom() throws Exception {
     // We build two indices at once: one normalized (which
     // ToParentBlockJoinQuery/Collector,
@@ -1642,6 +1662,8 @@ public class TestBlockJoin extends LuceneTestCase {
     dir.close();
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testMultiChildQueriesOfDiffParentLevels() throws Exception {
 
     final Directory dir = newDirectory();

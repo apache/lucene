@@ -30,7 +30,9 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.FlattenGraphFilter;
-import org.apache.lucene.analysis.tokenattributes.*;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
+import org.apache.lucene.analysis.tokenattributes.PositionLengthAttribute;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
@@ -1471,9 +1473,7 @@ public class TestSynonymGraphFilter extends BaseTokenStreamTestCase {
       // output token that also happens to be in the input:
       try {
         actual = Operations.determinize(actual, 50000);
-      } catch (
-          @SuppressWarnings("unused")
-          TooComplexToDeterminizeException tctde) {
+      } catch (TooComplexToDeterminizeException _) {
         // Unfortunately the syns can easily create difficult-to-determinize graphs:
         assertTrue(approxEquals(actual, expected));
         continue;
@@ -1481,9 +1481,7 @@ public class TestSynonymGraphFilter extends BaseTokenStreamTestCase {
 
       try {
         expected = Operations.determinize(expected, 50000);
-      } catch (
-          @SuppressWarnings("unused")
-          TooComplexToDeterminizeException tctde) {
+      } catch (TooComplexToDeterminizeException _) {
         // Unfortunately the syns can easily create difficult-to-determinize graphs:
         assertTrue(approxEquals(actual, expected));
         continue;

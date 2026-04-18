@@ -57,7 +57,7 @@ public class TestTermQuery extends LuceneTestCase {
     try (MultiReader multiReader = new MultiReader()) {
       context = multiReader.getContext();
       IndexSearcher searcher = new IndexSearcher(context);
-      QueryUtils.checkEqual(
+      QueryUtils.checkUnequal(
           new TermQuery(new Term("foo", "bar")),
           new TermQuery(
               new Term("foo", "bar"), TermStates.build(searcher, new Term("foo", "bar"), true)));
@@ -184,7 +184,7 @@ public class TestTermQuery extends LuceneTestCase {
     Similarity existingSimilarity = searcher.getSimilarity();
 
     for (ScoreMode scoreMode : ScoreMode.values()) {
-      final AtomicReference<ScoreMode> scoreModeInWeight = new AtomicReference<ScoreMode>();
+      final AtomicReference<ScoreMode> scoreModeInWeight = new AtomicReference<>();
       final AtomicBoolean scorerCalled = new AtomicBoolean();
       searcher.setSimilarity(
           new Similarity() { // Wrapping existing similarity for testing

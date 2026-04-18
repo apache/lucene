@@ -41,6 +41,7 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.TermVectors;
 import org.apache.lucene.index.Terms;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 
@@ -241,13 +242,15 @@ class MergeReaderWrapper extends LeafReader {
 
   @Override
   public void searchNearestVectors(
-      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+      String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
     in.searchNearestVectors(field, target, knnCollector, acceptDocs);
   }
 
   @Override
   public void searchNearestVectors(
-      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+      String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
     in.searchNearestVectors(field, target, knnCollector, acceptDocs);
   }
 

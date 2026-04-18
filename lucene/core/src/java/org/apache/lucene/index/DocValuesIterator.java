@@ -26,6 +26,9 @@ abstract class DocValuesIterator extends DocIdSetIterator {
    * {@code target} must be greater than or equal to the current {@link #docID() doc ID} and must be
    * a valid doc ID, ie. &ge; 0 and &lt; {@code maxDoc}. After this method returns, {@link #docID()}
    * returns {@code target}.
+   *
+   * <p>Note: it is illegal to call {@link DocIdSetIterator#intoBitSet} or {@link
+   * DocIdSetIterator#docIDRunEnd()} when this method returns false.
    */
   public abstract boolean advanceExact(int target) throws IOException;
 }

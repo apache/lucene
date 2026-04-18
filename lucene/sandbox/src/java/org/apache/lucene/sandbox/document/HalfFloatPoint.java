@@ -247,7 +247,7 @@ public final class HalfFloatPoint extends Field {
     return decodeDimension(bytes.bytes, bytes.offset);
   }
 
-  private static BytesRef pack(float... point) {
+  public static BytesRef pack(float... point) {
     if (point == null) {
       throw new IllegalArgumentException("point must not be null");
     }

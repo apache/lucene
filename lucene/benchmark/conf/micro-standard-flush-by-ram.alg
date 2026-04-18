@@ -57,18 +57,18 @@ log.queries=true
         CloseIndex
     }
 
-    OpenReader  
+    OpenReader
     { "SearchSameRdr" Search > : 5000
-    CloseReader 
-                
+    CloseReader
+
     { "WarmNewRdr" Warm > : 50
-                
+
     { "SrchNewRdr" Search > : 500
-                
+
     { "SrchTrvNewRdr" SearchTrav(1000) > : 300
-                
+
     { "SrchTrvRetNewRdr" SearchTravRet(2000) > : 100
-                
+
     NewRound
 
 } : 4

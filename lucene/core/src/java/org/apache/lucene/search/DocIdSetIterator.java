@@ -55,21 +55,15 @@ public abstract class DocIdSetIterator {
     return new RangeDocIdSetIterator(minDoc, maxDoc);
   }
 
-  private static class RangeDocIdSetIterator extends DocIdSetIterator {
+  private static class RangeDocIdSetIterator extends AbstractDocIdSetIterator {
 
     private final int minDoc, maxDoc;
-    private int doc = -1;
 
     RangeDocIdSetIterator(int minDoc, int maxDoc) {
       // advance relies on minDoc <= maxDoc for correctness
       assert minDoc <= maxDoc;
       this.minDoc = minDoc;
       this.maxDoc = maxDoc;
-    }
-
-    @Override
-    public int docID() {
-      return doc;
     }
 
     @Override
@@ -149,14 +143,14 @@ public abstract class DocIdSetIterator {
    *
    * <p>When <code> target &gt; current</code> it behaves as if written:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * int advance(int target) {
    *   int doc;
    *   while ((doc = nextDoc()) &lt; target) {
    *   }
    *   return doc;
    * }
-   * </pre>
+   * </code></pre>
    *
    * Some implementations are considerably more efficient than that.
    *
@@ -193,11 +187,11 @@ public abstract class DocIdSetIterator {
    * Load doc IDs into a {@link FixedBitSet}. This should behave exactly as if implemented as below,
    * which is the default implementation:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * for (int doc = docID(); doc &lt; upTo; doc = nextDoc()) {
    *   bitSet.set(doc - offset);
    * }
-   * </pre>
+   * </code></pre>
    *
    * <p><b>Note</b>: {@code offset} must be less than or equal to the {@link #docID() current doc
    * ID}. Behaviour is undefined if this iterator is unpositioned.
@@ -209,7 +203,7 @@ public abstract class DocIdSetIterator {
    * @lucene.internal
    */
   public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-    assert offset <= docID();
+    assert offset <= docID() : "offset=" + offset + " docID()=" + docID() + " upTo=" + upTo;
     for (int doc = docID(); doc < upTo; doc = nextDoc()) {
       bitSet.set(doc - offset);
     }

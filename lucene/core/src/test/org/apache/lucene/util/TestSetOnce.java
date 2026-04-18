@@ -39,13 +39,9 @@ public class TestSetOnce extends LuceneTestCase {
         sleep(RAND.nextInt(10)); // sleep for a short time
         set.set(Integer.valueOf(getName().substring(2)));
         success = true;
-      } catch (
-          @SuppressWarnings("unused")
-          InterruptedException e) {
+      } catch (InterruptedException _) {
         // ignore
-      } catch (
-          @SuppressWarnings("unused")
-          RuntimeException e) {
+      } catch (RuntimeException _) {
         // TODO: change exception type
         // expected.
         success = false;
@@ -59,19 +55,19 @@ public class TestSetOnce extends LuceneTestCase {
     assertNull(set.get());
   }
 
-  @Test(expected = AlreadySetException.class)
+  @Test
   public void testSettingCtor() throws Exception {
     SetOnce<Integer> set = new SetOnce<>(5);
     assertEquals(5, set.get().intValue());
-    set.set(7);
+    expectThrows(AlreadySetException.class, () -> set.set(7));
   }
 
-  @Test(expected = AlreadySetException.class)
+  @Test
   public void testSetOnce() throws Exception {
     SetOnce<Integer> set = new SetOnce<>();
     set.set(5);
     assertEquals(5, set.get().intValue());
-    set.set(7);
+    expectThrows(AlreadySetException.class, () -> set.set(7));
   }
 
   @Test

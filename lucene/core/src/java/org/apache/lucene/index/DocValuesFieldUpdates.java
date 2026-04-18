@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
+import java.util.Comparator;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
@@ -159,24 +160,12 @@ abstract class DocValuesFieldUpdates implements Accountable {
       return subs[0];
     }
 
+    // sort by smaller docID, then larger delGen
     PriorityQueue<Iterator> queue =
-        new PriorityQueue<Iterator>(subs.length) {
-          @Override
-          protected boolean lessThan(Iterator a, Iterator b) {
-            // sort by smaller docID
-            int cmp = Integer.compare(a.docID(), b.docID());
-            if (cmp == 0) {
-              // then by larger delGen
-              cmp = Long.compare(b.delGen(), a.delGen());
-
-              // delGens are unique across our subs:
-              assert cmp != 0;
-            }
-
-            return cmp < 0;
-          }
-        };
-
+        PriorityQueue.usingComparator(
+            subs.length,
+            Comparator.comparingInt(Iterator::docID)
+                .thenComparing(Comparator.comparingLong(Iterator::delGen).reversed()));
     for (Iterator sub : subs) {
       if (sub.nextDoc() != NO_MORE_DOCS) {
         queue.add(sub);

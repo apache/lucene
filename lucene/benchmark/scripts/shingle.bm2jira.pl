@@ -6,7 +6,7 @@
 # The ASF licenses this file to You under the Apache License, Version 2.0
 # (the "License"); you may not use this file except in compliance with
 # the License.  You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -18,7 +18,7 @@
 # ----------
 # shingle.bm2jira.pl
 #
-# Converts Lucene contrib-benchmark output produced using the 
+# Converts Lucene contrib-benchmark output produced using the
 # conf/shingle.alg file into a JIRA-formatted table.
 #
 
@@ -38,10 +38,10 @@ while (<>) {
   if (/^((?:Uni|Bi|Four)grams\S+)[-\s]*([^\s{].*)/) {
     my $operation = $1;
     my $stats = $2;
-    my $max_shingle_size 
+    my $max_shingle_size
     = ($operation =~ /^Bigrams/ ? 2 : $operation =~ /^Unigrams/ ? 1 : 4);
-    my $output_unigrams 
-      = ($operation =~ /(?:AndUnigrams|UnigramsOnly)$/ ? 'yes' : 'no'); 
+    my $output_unigrams
+      = ($operation =~ /(?:AndUnigrams|UnigramsOnly)$/ ? 'yes' : 'no');
     my ($elapsed) = $stats =~ /(?:[\d,.]+[-\s]*){4}([.\d]+)/;
     $min_elapsed{$max_shingle_size}{$output_unigrams} = $elapsed
       unless (defined($min_elapsed{$max_shingle_size}{$output_unigrams})
@@ -66,7 +66,7 @@ print "\n||Max Shingle Size||Unigrams?||Elapsed||\n";
 
 for my $max_shingle_size (sort { $a <=> $b } keys %min_elapsed) {
   for my $output_unigrams (sort keys %{$min_elapsed{$max_shingle_size}}) {
-    my $size = (1 == $max_shingle_size ? '1 (Unigrams)' : $max_shingle_size);   
+    my $size = (1 == $max_shingle_size ? '1 (Unigrams)' : $max_shingle_size);
     printf "|$size|$output_unigrams|\%2.2fs|\n",
            $min_elapsed{$max_shingle_size}{$output_unigrams};
   }

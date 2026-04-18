@@ -31,15 +31,14 @@ package org.apache.lucene.util.automaton;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
+import org.apache.lucene.internal.hppc.IntArrayList;
 
 /**
  * Regular Expression extension to <code>Automaton</code>.
@@ -389,14 +388,7 @@ public class RegExp {
     /** An Automaton expression */
     REGEXP_AUTOMATON,
     /** An Interval expression */
-    REGEXP_INTERVAL,
-    /**
-     * The complement of an expression.
-     *
-     * @deprecated Will be removed in Lucene 11
-     */
-    @Deprecated
-    REGEXP_DEPRECATED_COMPLEMENT
+    REGEXP_INTERVAL
   }
 
   // -----  Syntax flags ( <= 0xff )  ------
@@ -487,18 +479,6 @@ public class RegExp {
    */
   public static final int CASE_INSENSITIVE_RANGE = 0x0400;
 
-  // -----  Deprecated flags ( > 0xffff )  ------
-
-  /**
-   * Allows regexp parsing of the complement (<code>~</code>).
-   *
-   * <p>Note that processing the complement can require exponential time, but will be bounded by an
-   * internal limit. Regexes exceeding the limit will fail with TooComplexToDeterminizeException.
-   *
-   * @deprecated This method will be removed in Lucene 11
-   */
-  @Deprecated public static final int DEPRECATED_COMPLEMENT = 0x10000;
-
   // Immutable parsed state
   /** The type of expression */
   public final Kind kind;
@@ -553,7 +533,7 @@ public class RegExp {
    * @exception IllegalArgumentException if an error occurred while parsing the regular expression
    */
   public RegExp(String s, int syntax_flags, int match_flags) throws IllegalArgumentException {
-    if ((syntax_flags & ~DEPRECATED_COMPLEMENT) > ALL) {
+    if (syntax_flags > ALL) {
       throw new IllegalArgumentException("Illegal syntax flag");
     }
 
@@ -699,15 +679,9 @@ public class RegExp {
         a = exp1.toAutomaton(automata, automaton_provider);
         a = Operations.complement(a, Integer.MAX_VALUE);
         break;
-      case REGEXP_DEPRECATED_COMPLEMENT:
-        // to ease transitions for users only, support arbitrary complement
-        // but bounded by DEFAULT_DETERMINIZE_WORK_LIMIT: must not be configurable.
-        a = exp1.toAutomaton(automata, automaton_provider);
-        a = Operations.complement(a, Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
-        break;
       case REGEXP_CHAR:
         if (check(ASCII_CASE_INSENSITIVE | CASE_INSENSITIVE)) {
-          a = Automata.makeCharSet(toCaseInsensitiveChar(c));
+          a = Automata.makeCaseInsensitiveChar(c);
         } else {
           a = Automata.makeChar(c);
         }
@@ -726,7 +700,7 @@ public class RegExp {
         break;
       case REGEXP_STRING:
         if (check(ASCII_CASE_INSENSITIVE | CASE_INSENSITIVE)) {
-          a = toCaseInsensitiveString();
+          a = Automata.makeCaseInsensitiveString(s);
         } else {
           a = Automata.makeString(s);
         }
@@ -767,14 +741,14 @@ public class RegExp {
    * @return the original codepoint and the set of alternates
    */
   private int[] toCaseInsensitiveChar(int codepoint) {
-    List<Integer> list = new ArrayList<>();
+    IntArrayList list = new IntArrayList();
     CaseFolding.expand(
         codepoint,
         (int variant) -> {
           list.add(variant);
         });
-    Collections.sort(list);
-    return list.stream().mapToInt(Integer::intValue).toArray();
+    list.sort();
+    return list.toArray();
   }
 
   /**
@@ -785,7 +759,7 @@ public class RegExp {
    * activated by optional flag.
    */
   private void expandCaseInsensitiveRange(
-      int start, int end, List<Integer> rangeStarts, List<Integer> rangeEnds) {
+      int start, int end, IntArrayList rangeStarts, IntArrayList rangeEnds) {
     if (start > end)
       throw new IllegalArgumentException(
           "invalid range: from (" + start + ") cannot be > to (" + end + ")");
@@ -816,17 +790,6 @@ public class RegExp {
     }
   }
 
-  private Automaton toCaseInsensitiveString() {
-    List<Automaton> list = new ArrayList<>();
-
-    Iterator<Integer> iter = s.codePoints().iterator();
-    while (iter.hasNext()) {
-      int[] points = toCaseInsensitiveChar(iter.next());
-      list.add(Automata.makeCharSet(points));
-    }
-    return Operations.concatenate(list);
-  }
-
   private void findLeaves(
       RegExp exp,
       Kind kind,
@@ -852,6 +815,19 @@ public class RegExp {
     StringBuilder b = new StringBuilder();
     toStringBuilder(b);
     return b.toString();
+  }
+
+  StringBuilder escapeCharIfNeeded(StringBuilder b, int codePoint) {
+    // From https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html#bs
+    // "It is an error to use a backslash prior to any alphabetic character that does not denote
+    // an escaped
+    // construct;"
+    // Plus, ASCII characters conflict with character classes.
+    // Escape only characters which are NOT in [A-Za-z]
+    if (!((codePoint >= 65 && codePoint <= 90) || (codePoint >= 97 && codePoint <= 122))) {
+      b.append("\\");
+    }
+    return b.appendCodePoint(codePoint);
   }
 
   void toStringBuilder(StringBuilder b) {
@@ -895,16 +871,19 @@ public class RegExp {
         b.append("){").append(min).append(",").append(max).append("}");
         break;
       case REGEXP_COMPLEMENT:
-      case REGEXP_DEPRECATED_COMPLEMENT:
         b.append("~(");
         exp1.toStringBuilder(b);
         b.append(")");
         break;
       case REGEXP_CHAR:
-        b.append("\\").appendCodePoint(c);
+        escapeCharIfNeeded(b, c);
         break;
       case REGEXP_CHAR_RANGE:
-        b.append("[\\").appendCodePoint(from[0]).append("-\\").appendCodePoint(to[0]).append("]");
+        b.append("[");
+        escapeCharIfNeeded(b, from[0]);
+        b.append("-");
+        escapeCharIfNeeded(b, to[0]);
+        b.append("]");
         break;
       case REGEXP_CHAR_CLASS:
         b.append("[");
@@ -968,7 +947,6 @@ public class RegExp {
       case REGEXP_OPTIONAL:
       case REGEXP_REPEAT:
       case REGEXP_COMPLEMENT:
-      case REGEXP_DEPRECATED_COMPLEMENT:
         b.append(indent);
         b.append(kind);
         b.append('\n');
@@ -1089,7 +1067,6 @@ public class RegExp {
       case REGEXP_REPEAT_MIN:
       case REGEXP_REPEAT_MINMAX:
       case REGEXP_COMPLEMENT:
-      case REGEXP_DEPRECATED_COMPLEMENT:
         exp1.getIdentifiers(set);
         break;
       case REGEXP_AUTOMATON:
@@ -1164,16 +1141,6 @@ public class RegExp {
 
   static RegExp makeComplement(int flags, RegExp exp) {
     return newContainerNode(flags, Kind.REGEXP_COMPLEMENT, exp, null);
-  }
-
-  /**
-   * Creates node that will compute complement of arbitrary expression.
-   *
-   * @deprecated Will be removed in Lucene 11
-   */
-  @Deprecated
-  static RegExp makeDeprecatedComplement(int flags, RegExp exp) {
-    return newContainerNode(flags, Kind.REGEXP_DEPRECATED_COMPLEMENT, exp, null);
   }
 
   static RegExp makeChar(int flags, int c) {
@@ -1324,9 +1291,7 @@ public class RegExp {
   }
 
   final RegExp parseComplExp() throws IllegalArgumentException {
-    if (check(DEPRECATED_COMPLEMENT) && match('~'))
-      return makeDeprecatedComplement(flags, parseComplExp());
-    else return parseCharClassExp();
+    return parseCharClassExp();
   }
 
   final RegExp parseCharClassExp() throws IllegalArgumentException {
@@ -1341,8 +1306,8 @@ public class RegExp {
   }
 
   final RegExp parseCharClasses() throws IllegalArgumentException {
-    ArrayList<Integer> starts = new ArrayList<>();
-    ArrayList<Integer> ends = new ArrayList<>();
+    IntArrayList starts = new IntArrayList();
+    IntArrayList ends = new IntArrayList();
 
     do {
       // look for escape
@@ -1385,20 +1350,17 @@ public class RegExp {
     // not sure why we bother optimizing nodes, same automaton...
     // definitely saves time vs fixing toString()-based tests.
     if (starts.size() == 1) {
-      if (starts.get(0).intValue() == ends.get(0).intValue()) {
+      if (starts.get(0) == ends.get(0)) {
         return makeChar(flags, starts.get(0));
       } else {
         return makeCharRange(flags, starts.get(0), ends.get(0));
       }
     } else {
-      return makeCharClass(
-          flags,
-          starts.stream().mapToInt(Integer::intValue).toArray(),
-          ends.stream().mapToInt(Integer::intValue).toArray());
+      return makeCharClass(flags, starts.toArray(), ends.toArray());
     }
   }
 
-  void expandPreDefined(List<Integer> starts, List<Integer> ends) {
+  void expandPreDefined(IntArrayList starts, IntArrayList ends) {
     if (peek("\\")) {
       // escape
       starts.add((int) '\\');
@@ -1472,13 +1434,10 @@ public class RegExp {
   final RegExp matchPredefinedCharacterClass() {
     // See https://docs.oracle.com/javase/tutorial/essential/regex/pre_char_classes.html
     if (match('\\') && peek("\\ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")) {
-      var starts = new ArrayList<Integer>();
-      var ends = new ArrayList<Integer>();
+      var starts = new IntArrayList();
+      var ends = new IntArrayList();
       expandPreDefined(starts, ends);
-      return makeCharClass(
-          flags,
-          starts.stream().mapToInt(Integer::intValue).toArray(),
-          ends.stream().mapToInt(Integer::intValue).toArray());
+      return makeCharClass(flags, starts.toArray(), ends.toArray());
     }
 
     return null;

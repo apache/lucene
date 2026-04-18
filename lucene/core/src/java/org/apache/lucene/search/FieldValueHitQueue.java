@@ -27,8 +27,7 @@ import org.apache.lucene.util.PriorityQueue;
  * @since 2.9
  * @see IndexSearcher#search(Query,int,Sort)
  */
-public abstract class FieldValueHitQueue<T extends FieldValueHitQueue.Entry>
-    extends PriorityQueue<T> {
+public class FieldValueHitQueue<T extends FieldValueHitQueue.Entry> extends PriorityQueue<T> {
 
   /** Extension of ScoreDoc to also store the {@link FieldComparator} slot. */
   public static class Entry extends ScoreDoc {
@@ -45,62 +44,22 @@ public abstract class FieldValueHitQueue<T extends FieldValueHitQueue.Entry>
     }
   }
 
-  /**
-   * An implementation of {@link FieldValueHitQueue} which is optimized in case there is just one
-   * comparator.
-   */
-  private static final class OneComparatorFieldValueHitQueue<T extends FieldValueHitQueue.Entry>
-      extends FieldValueHitQueue<T> {
+  private static class EntryLessThan implements LessThan<Entry> {
 
-    private final int oneReverseMul;
-    private final FieldComparator<?> oneComparator;
+    // All these are required by this class's API - need to return arrays.
+    // Therefore, even in the case of a single comparator, store an array
+    // anyway.
+    protected final FieldComparator<?>[] comparators;
+    protected final int[] reverseMul;
 
-    public OneComparatorFieldValueHitQueue(SortField[] fields, int size) {
-      super(fields, size);
-
-      assert fields.length == 1;
-      oneComparator = comparators[0];
-      oneReverseMul = reverseMul[0];
-    }
-
-    /**
-     * Returns whether <code>hitA</code> is less relevant than <code>hitB</code>.
-     *
-     * @param hitA Entry
-     * @param hitB Entry
-     * @return <code>true</code> if document <code>hitA</code> should be sorted after document
-     *     <code>hitB</code>.
-     */
-    @Override
-    protected boolean lessThan(final Entry hitA, final Entry hitB) {
-
-      assert hitA != hitB;
-      assert hitA.slot != hitB.slot;
-
-      final int c = oneReverseMul * oneComparator.compare(hitA.slot, hitB.slot);
-      if (c != 0) {
-        return c > 0;
-      }
-
-      // avoid random sort order that could lead to duplicates (bug #31241):
-      return hitA.doc > hitB.doc;
-    }
-  }
-
-  /**
-   * An implementation of {@link FieldValueHitQueue} which is optimized in case there is more than
-   * one comparator.
-   */
-  private static final class MultiComparatorsFieldValueHitQueue<T extends FieldValueHitQueue.Entry>
-      extends FieldValueHitQueue<T> {
-
-    public MultiComparatorsFieldValueHitQueue(SortField[] fields, int size) {
-      super(fields, size);
+    private EntryLessThan(FieldComparator<?>[] comparators, int[] reverseMul) {
+      assert comparators.length == reverseMul.length;
+      this.comparators = comparators;
+      this.reverseMul = reverseMul;
     }
 
     @Override
-    protected boolean lessThan(final Entry hitA, final Entry hitB) {
-
+    public boolean lessThan(Entry hitA, Entry hitB) {
       assert hitA != hitB;
       assert hitA.slot != hitB.slot;
 
@@ -118,29 +77,46 @@ public abstract class FieldValueHitQueue<T extends FieldValueHitQueue.Entry>
     }
   }
 
+  // optimisation for the case when there's only one comparator
+  private static class OneComparatorEntryLessThan extends EntryLessThan {
+    private final int oneReverseMul;
+    private final FieldComparator<?> oneComparator;
+
+    private OneComparatorEntryLessThan(FieldComparator<?>[] comparators, int[] reverseMul) {
+      super(comparators, reverseMul);
+
+      assert comparators.length == 1;
+      oneComparator = comparators[0];
+      oneReverseMul = reverseMul[0];
+    }
+
+    @Override
+    public boolean lessThan(Entry hitA, Entry hitB) {
+      assert hitA != hitB;
+      assert hitA.slot != hitB.slot;
+
+      final int c = oneReverseMul * oneComparator.compare(hitA.slot, hitB.slot);
+      if (c != 0) {
+        return c > 0;
+      }
+
+      // avoid random sort order that could lead to duplicates (bug #31241):
+      return hitA.doc > hitB.doc;
+    }
+  }
+
+  /** Stores the sort criteria being used. */
+  private final SortField[] fields;
+
+  private final EntryLessThan lessThan;
+
   // prevent instantiation and extension.
-  private FieldValueHitQueue(SortField[] fields, int size) {
-    super(size);
+  private FieldValueHitQueue(SortField[] fields, int size, EntryLessThan lessThan) {
+    super(size, lessThan);
     // When we get here, fields.length is guaranteed to be > 0, therefore no
     // need to check it again.
-
-    // All these are required by this class's API - need to return arrays.
-    // Therefore, even in the case of a single comparator, create an array
-    // anyway.
     this.fields = fields;
-    int numComparators = fields.length;
-    comparators = new FieldComparator<?>[numComparators];
-    reverseMul = new int[numComparators];
-    for (int i = 0; i < numComparators; ++i) {
-      SortField field = fields[i];
-      reverseMul[i] = field.reverse ? -1 : 1;
-      comparators[i] =
-          field.getComparator(
-              size,
-              i == 0
-                  ? (numComparators > 1 ? Pruning.GREATER_THAN : Pruning.GREATER_THAN_OR_EQUAL_TO)
-                  : Pruning.NONE);
-    }
+    this.lessThan = lessThan;
   }
 
   /**
@@ -160,37 +136,43 @@ public abstract class FieldValueHitQueue<T extends FieldValueHitQueue.Entry>
       throw new IllegalArgumentException("Sort must contain at least one field");
     }
 
-    if (fields.length == 1) {
-      return new OneComparatorFieldValueHitQueue<>(fields, size);
-    } else {
-      return new MultiComparatorsFieldValueHitQueue<>(fields, size);
+    int numComparators = fields.length;
+    FieldComparator<?>[] comparators = new FieldComparator<?>[numComparators];
+    int[] reverseMul = new int[numComparators];
+    for (int i = 0; i < numComparators; ++i) {
+      SortField field = fields[i];
+      reverseMul[i] = field.reverse ? -1 : 1;
+      comparators[i] =
+          field.getComparator(
+              size,
+              i == 0
+                  ? (numComparators > 1 ? Pruning.GREATER_THAN : Pruning.GREATER_THAN_OR_EQUAL_TO)
+                  : Pruning.NONE);
     }
+
+    return new FieldValueHitQueue<>(
+        fields,
+        size,
+        fields.length == 1
+            ? new OneComparatorEntryLessThan(comparators, reverseMul)
+            : new EntryLessThan(comparators, reverseMul));
   }
 
   public FieldComparator<?>[] getComparators() {
-    return comparators;
+    return lessThan.comparators;
   }
 
   public int[] getReverseMul() {
-    return reverseMul;
+    return lessThan.reverseMul;
   }
 
   public LeafFieldComparator[] getComparators(LeafReaderContext context) throws IOException {
-    LeafFieldComparator[] comparators = new LeafFieldComparator[this.comparators.length];
+    LeafFieldComparator[] comparators = new LeafFieldComparator[lessThan.comparators.length];
     for (int i = 0; i < comparators.length; ++i) {
-      comparators[i] = this.comparators[i].getLeafComparator(context);
+      comparators[i] = lessThan.comparators[i].getLeafComparator(context);
     }
     return comparators;
   }
-
-  /** Stores the sort criteria being used. */
-  protected final SortField[] fields;
-
-  protected final FieldComparator<?>[] comparators;
-  protected final int[] reverseMul;
-
-  @Override
-  protected abstract boolean lessThan(final Entry a, final Entry b);
 
   /**
    * Given a queue Entry, creates a corresponding FieldDoc that contains the values used to sort the
@@ -203,10 +185,10 @@ public abstract class FieldValueHitQueue<T extends FieldValueHitQueue.Entry>
    * @see IndexSearcher#search(Query,int,Sort)
    */
   FieldDoc fillFields(final Entry entry) {
-    final int n = comparators.length;
+    final int n = lessThan.comparators.length;
     final Object[] fields = new Object[n];
     for (int i = 0; i < n; ++i) {
-      fields[i] = comparators[i].value(entry.slot);
+      fields[i] = lessThan.comparators[i].value(entry.slot);
     }
     // if (maxscore > 1.0f) doc.score /= maxscore;   // normalize scores
     return new FieldDoc(entry.doc, entry.score, fields);

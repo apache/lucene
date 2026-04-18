@@ -111,9 +111,7 @@ public abstract class TokenStream extends AttributeSource implements Closeable {
               || Modifier.isFinal(clazz.getMethod("incrementToken").getModifiers())
           : "TokenStream implementation classes or at least their incrementToken() implementation must be final";
       return true;
-    } catch (
-        @SuppressWarnings("unused")
-        NoSuchMethodException nsme) {
+    } catch (NoSuchMethodException _) {
       return false;
     }
   }

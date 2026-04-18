@@ -92,14 +92,12 @@ public class TopDocs {
     return value < 0;
   }
 
-  // Specialized MergeSortQueue that just merges by
-  // relevance score, descending:
-  private static class ScoreMergeSortQueue extends PriorityQueue<ShardRef> {
-    final ScoreDoc[][] shardHits;
-    final Comparator<ScoreDoc> tieBreakerComparator;
+  // LessThan that just sorts by relevance score, descending:
+  private static class ScoreLessThan implements PriorityQueue.LessThan<ShardRef> {
+    private final ScoreDoc[][] shardHits;
+    private final Comparator<ScoreDoc> tieBreakerComparator;
 
-    public ScoreMergeSortQueue(TopDocs[] shardHits, Comparator<ScoreDoc> tieBreakerComparator) {
-      super(shardHits.length);
+    public ScoreLessThan(TopDocs[] shardHits, Comparator<ScoreDoc> tieBreakerComparator) {
       this.shardHits = new ScoreDoc[shardHits.length][];
       for (int shardIDX = 0; shardIDX < shardHits.length; shardIDX++) {
         this.shardHits[shardIDX] = shardHits[shardIDX].scoreDocs;
@@ -123,16 +121,14 @@ public class TopDocs {
     }
   }
 
-  @SuppressWarnings({"rawtypes", "unchecked"})
-  private static class MergeSortQueue extends PriorityQueue<ShardRef> {
+  private static class ShardRefLessThan implements PriorityQueue.LessThan<ShardRef> {
     // These are really FieldDoc instances:
     final ScoreDoc[][] shardHits;
     final FieldComparator<?>[] comparators;
     final int[] reverseMul;
     final Comparator<ScoreDoc> tieBreaker;
 
-    public MergeSortQueue(Sort sort, TopDocs[] shardHits, Comparator<ScoreDoc> tieBreaker) {
-      super(shardHits.length);
+    private ShardRefLessThan(Sort sort, TopDocs[] shardHits, Comparator<ScoreDoc> tieBreaker) {
       this.shardHits = new ScoreDoc[shardHits.length][];
       this.tieBreaker = tieBreaker;
       for (int shardIDX = 0; shardIDX < shardHits.length; shardIDX++) {
@@ -159,7 +155,7 @@ public class TopDocs {
       }
 
       final SortField[] sortFields = sort.getSort();
-      comparators = new FieldComparator[sortFields.length];
+      comparators = new FieldComparator<?>[sortFields.length];
       reverseMul = new int[sortFields.length];
       for (int compIDX = 0; compIDX < sortFields.length; compIDX++) {
         final SortField sortField = sortFields[compIDX];
@@ -170,6 +166,7 @@ public class TopDocs {
 
     // Returns true if first is < second
     @Override
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public boolean lessThan(ShardRef first, ShardRef second) {
       assert first != second;
       final FieldDoc firstFD = (FieldDoc) shardHits[first.shardIndex][first.hitIndex];
@@ -283,9 +280,10 @@ public class TopDocs {
 
     final PriorityQueue<ShardRef> queue;
     if (sort == null) {
-      queue = new ScoreMergeSortQueue(shardHits, tieBreaker);
+      queue = new PriorityQueue<>(shardHits.length, new ScoreLessThan(shardHits, tieBreaker));
     } else {
-      queue = new MergeSortQueue(sort, shardHits, tieBreaker);
+      queue =
+          new PriorityQueue<>(shardHits.length, new ShardRefLessThan(sort, shardHits, tieBreaker));
     }
 
     long totalHitCount = 0;

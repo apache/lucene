@@ -150,6 +150,8 @@ public class TestPayloadScoreQuery extends LuceneTestCase {
         q, new AveragePayloadFunction(), new int[] {122, 222, 22}, new float[] {4.0f, 4.0f, 3.0f});
   }
 
+  // TODO: incredibly slow
+  @Nightly
   @Test
   public void testNestedNearQuery() throws Exception {
 
@@ -208,6 +210,8 @@ public class TestPayloadScoreQuery extends LuceneTestCase {
     }
   }
 
+  // TODO: incredibly slow
+  @Nightly
   @Test
   public void testSpanContainingQuery() throws Exception {
 

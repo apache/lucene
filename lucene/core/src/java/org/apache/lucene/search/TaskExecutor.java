@@ -58,9 +58,7 @@ public final class TaskExecutor {
         r -> {
           try {
             executor.execute(r);
-          } catch (
-              @SuppressWarnings("unused")
-              RejectedExecutionException rejectedExecutionException) {
+          } catch (RejectedExecutionException _) {
             // execute directly on the current thread in case of rejection to ensure a rejecting
             // executor only reduces parallelism and does not
             // result in failure

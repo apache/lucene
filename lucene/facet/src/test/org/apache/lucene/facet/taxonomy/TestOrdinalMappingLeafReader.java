@@ -92,7 +92,7 @@ public class TestOrdinalMappingLeafReader extends FacetTestCase {
 
     FacetsCollector collector =
         FacetsCollectorManager.search(
-                searcher, new MatchAllDocsQuery(), 10, new FacetsCollectorManager())
+                searcher, MatchAllDocsQuery.INSTANCE, 10, new FacetsCollectorManager())
             .facetsCollector();
 
     // tag facets

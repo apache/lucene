@@ -26,11 +26,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
@@ -40,7 +42,10 @@ import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
+import org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsReader;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnByteVectorField;
@@ -75,18 +80,22 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
-import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.tests.codecs.asserting.AssertingKnnVectorsFormat;
+import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -95,6 +104,7 @@ import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.Version;
+import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.junit.Before;
 
 /**
@@ -113,6 +123,20 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   public void init() {
     vectorEncoding = randomVectorEncoding();
     similarityFunction = randomSimilarity();
+  }
+
+  protected abstract boolean supportsFloatVectorFallback();
+
+  /**
+   * Returns the number of bits used for quantization to compute epsilon tolerance of float
+   * quantization errors in test cases. Default is 8 bits, override in subclasses if needed
+   */
+  protected int getQuantizationBits() {
+    return 8;
+  }
+
+  protected Codec getCodecForFloatVectorFallbackTest() {
+    return getCodec(); // Default implementation
   }
 
   @Override
@@ -460,6 +484,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           assertEquals(0, iterator.nextDoc());
           assertEquals(0, vectorValues.vectorValue(0)[0], 0);
           assertEquals(NO_MORE_DOCS, iterator.nextDoc());
+          assertOffHeapByteSize(r, fieldName);
         }
       }
     }
@@ -824,7 +849,11 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         // assert that knn search doesn't fail on a field with all deleted docs
         TopDocs results =
             leafReader.searchNearestVectors(
-                "v", randomNormalizedVector(4), 1, leafReader.getLiveDocs(), Integer.MAX_VALUE);
+                "v",
+                randomNormalizedVector(4),
+                1,
+                AcceptDocs.fromLiveDocs(leafReader.getLiveDocs(), leafReader.maxDoc()),
+                Integer.MAX_VALUE);
         assertEquals(0, results.scoreDocs.length);
       }
     }
@@ -955,7 +984,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         if (random().nextInt(10) == 2) {
           iw.deleteDocuments(new Term("id", Integer.toString(random().nextInt(i + 1))));
         }
-        if (random().nextInt(10) == 3) {
+        if (random().nextInt(23) == 1) {
           iw.commit();
         }
       }
@@ -1016,7 +1045,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         if (random().nextInt(10) == 2) {
           iw.deleteDocuments(new Term("id", Integer.toString(random().nextInt(i + 1))));
         }
-        if (random().nextInt(10) == 3) {
+        if (random().nextInt(23) == 1) {
           iw.commit();
         }
       }
@@ -1076,6 +1105,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         assertNotNull(values);
         assertEquals(0, values.size());
         assertNull(values.scorer(new float[] {2, 3, 5, 6}));
+        assertOffHeapByteSize(r, "v");
       }
     }
   }
@@ -1102,6 +1132,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         assertNotNull(values);
         assertEquals(0, values.size());
         assertNull(values.scorer(new byte[] {2, 3, 5, 6}));
+        assertOffHeapByteSize(r, "v");
       }
     }
   }
@@ -1481,9 +1512,20 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           TopDocs results =
               ctx.reader()
                   .searchNearestVectors(
-                      fieldName, randomNormalizedVector(dimension), k, liveDocs, visitedLimit);
+                      fieldName,
+                      randomNormalizedVector(dimension),
+                      k,
+                      AcceptDocs.fromLiveDocs(liveDocs, ctx.reader().maxDoc()),
+                      visitedLimit);
           assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, results.totalHits.relation());
-          assertEquals(visitedLimit, results.totalHits.value());
+          int size = Lucene99HnswVectorsReader.EXHAUSTIVE_BULK_SCORE_ORDS;
+          // visit limit is a "best effort" limit given our bulk scoring logic; assert that we are
+          // within
+          // reasonable bounds
+          assertTrue(
+              results.totalHits.value() == visitedLimit
+                  || results.totalHits.value()
+                      <= ((visitedLimit + size - 1) / size) * ((long) size));
 
           // check the limit is not hit when it clearly exceeds the number of vectors
           k = vectorValues.size();
@@ -1491,9 +1533,14 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           results =
               ctx.reader()
                   .searchNearestVectors(
-                      fieldName, randomNormalizedVector(dimension), k, liveDocs, visitedLimit);
+                      fieldName,
+                      randomNormalizedVector(dimension),
+                      k,
+                      AcceptDocs.fromLiveDocs(liveDocs, ctx.reader().maxDoc()),
+                      visitedLimit);
           assertEquals(TotalHits.Relation.EQUAL_TO, results.totalHits.relation());
           assertTrue(results.totalHits.value() <= visitedLimit);
+          assertOffHeapByteSize(ctx.reader(), fieldName);
         }
       }
     }
@@ -1572,11 +1619,16 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           TopDocs results =
               ctx.reader()
                   .searchNearestVectors(
-                      fieldName, randomNormalizedVector(dimension), k, liveDocs, Integer.MAX_VALUE);
+                      fieldName,
+                      randomNormalizedVector(dimension),
+                      k,
+                      AcceptDocs.fromLiveDocs(liveDocs, ctx.reader().maxDoc()),
+                      Integer.MAX_VALUE);
           assertEquals(Math.min(k, size), results.scoreDocs.length);
           for (int i = 0; i < k - 1; i++) {
             assertTrue(results.scoreDocs[i].score >= results.scoreDocs[i + 1].score);
           }
+          assertOffHeapByteSize(ctx.reader(), fieldName);
         }
       }
     }
@@ -1770,6 +1822,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
               i = iter.docID();
             }
           }
+          assertOffHeapByteSize(r, fieldName);
         }
       }
     }
@@ -1838,6 +1891,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                       storedFields.document(byteVectorValues.ordToDoc(ord), Set.of("id"));
                   sumOrdToDocIds += Integer.parseInt(doc.get("id"));
                 }
+                assertOffHeapByteSize(ctx.reader(), "knn_vector");
               }
             }
           }
@@ -1858,6 +1912,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
                   Document doc = storedFields.document(vectorValues.ordToDoc(ord), Set.of("id"));
                   sumOrdToDocIds += Integer.parseInt(doc.get("id"));
                 }
+                assertOffHeapByteSize(ctx.reader(), "knn_vector");
               }
             }
           }
@@ -1872,6 +1927,96 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
         assertEquals(fieldSumDocIDs, sumOrdToDocIds);
       }
     }
+  }
+
+  private List<float[]> getRandomFloatVector(int numVectors, int dim, boolean normalize) {
+    List<float[]> vectors = new ArrayList<>(numVectors);
+    for (int i = 0; i < numVectors; i++) {
+      float[] vec = randomVector(dim);
+      if (normalize) {
+        VectorUtil.l2normalize(vec);
+      }
+      vectors.add(vec);
+    }
+    return vectors;
+  }
+
+  /**
+   * Tests reading quantized vectors when raw vector data is empty. Verifies that scalar quantized
+   * formats can properly dequantize vectors and maintain accuracy within expected error bounds even
+   * when the original raw vector file is empty or corrupted.
+   */
+  public void testReadQuantizedVectorWithEmptyRawVectors() throws Exception {
+    assumeTrue("Test only applies to scalar quantized formats", supportsFloatVectorFallback());
+
+    String vectorFieldName = "vec1";
+    int numVectors = 1 + random().nextInt(50);
+    int dim = random().nextInt(64) + 1;
+    if (dim % 2 == 1) {
+      dim++;
+    }
+    float eps = (1f / (float) (1 << getQuantizationBits()));
+    VectorSimilarityFunction similarityFunction = randomSimilarity();
+    List<float[]> vectors =
+        getRandomFloatVector(
+            numVectors, dim, similarityFunction == VectorSimilarityFunction.COSINE);
+
+    try (BaseDirectoryWrapper dir = newDirectory()) {
+      dir.setCheckIndexOnClose(false);
+
+      try (IndexWriter w =
+          new IndexWriter(
+              dir,
+              new IndexWriterConfig()
+                  .setMaxBufferedDocs(numVectors + 1)
+                  .setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+                  .setMergePolicy(NoMergePolicy.INSTANCE)
+                  .setUseCompoundFile(false)
+                  .setCodec(getCodecForFloatVectorFallbackTest()))) {
+        for (int i = 0; i < numVectors; i++) {
+          Document doc = new Document();
+          doc.add(new KnnFloatVectorField(vectorFieldName, vectors.get(i), similarityFunction));
+          w.addDocument(doc);
+        }
+      }
+      simulateEmptyRawVectors(dir);
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        LeafReader r = getOnlyLeafReader(reader);
+        if (r instanceof CodecReader codecReader) {
+          KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
+          knnVectorsReader = knnVectorsReader.unwrapReaderForField(vectorFieldName);
+          FloatVectorValues floatVectorValues =
+              knnVectorsReader.getFloatVectorValues(vectorFieldName);
+          if (floatVectorValues.size() > 0) {
+            KnnVectorValues.DocIndexIterator iter = floatVectorValues.iterator();
+            for (int docId = iter.nextDoc(); docId != NO_MORE_DOCS; docId = iter.nextDoc()) {
+              float[] dequantizedVector = floatVectorValues.vectorValue(iter.index());
+              float mae = 0;
+              for (int i = 0; i < dim; i++) {
+                mae += Math.abs(dequantizedVector[i] - vectors.get(docId)[i]);
+              }
+              mae /= dim;
+              assertTrue(
+                  "bits: " + getQuantizationBits() + " mae: " + mae + " > eps: " + eps, mae <= eps);
+            }
+          } else {
+            fail("floatVectorValues size should be non zero");
+          }
+        } else {
+          fail("reader is not CodecReader");
+        }
+      }
+    }
+  }
+
+  /**
+   * Simulates empty raw vectors by modifying index files. Override in codecs that support
+   * FloatVector fallback.
+   */
+  protected void simulateEmptyRawVectors(Directory dir) throws Exception {
+    throw new Exception(
+        "simulateEmptyRawVectors must be implemented by codecs that support FloatVector fallback");
   }
 
   public void testMismatchedFields() throws Exception {
@@ -1928,7 +2073,10 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   /**
    * Test that the query is a viable approximation to exact search. This test is designed to uncover
    * gross failures only, not to represent the true expected recall.
+   *
+   * <p>TODO: this test is incredibly slow
    */
+  @Nightly
   public void testRecall() throws IOException {
     VectorSimilarityFunction[] functions = {
       VectorSimilarityFunction.EUCLIDEAN,
@@ -1967,9 +2115,8 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       for (String queryString : testQueries) {
         computeLineEmbedding(queryString, queryEmbedding);
 
-        // pass match-all "filter" to force full traversal, bypassing graph
-        KnnFloatVectorQuery exactQuery =
-            new KnnFloatVectorQuery("field", queryEmbedding, 1000, new MatchAllDocsQuery());
+        // gather exact results first
+        Query exactQuery = buildExactKnnQuery("field", queryEmbedding, 10000);
         assertEquals(numQueries, searcher.count(exactQuery)); // Same for exact search
 
         KnnFloatVectorQuery query = new KnnFloatVectorQuery("field", queryEmbedding, efSearch);
@@ -2100,5 +2247,106 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
       }
       writer.addDocument(doc);
     }
+  }
+
+  protected void assertOffHeapByteSize(LeafReader r, String fieldName) throws IOException {
+    var fieldInfo = r.getFieldInfos().fieldInfo(fieldName);
+
+    if (r instanceof CodecReader codecReader) {
+      KnnVectorsReader knnVectorsReader = codecReader.getVectorReader();
+      knnVectorsReader = knnVectorsReader.unwrapReaderForField(fieldName);
+      var offHeap = knnVectorsReader.getOffHeapByteSize(fieldInfo);
+      long totalByteSize = offHeap.values().stream().mapToLong(Long::longValue).sum();
+      if (knnVectorsReader instanceof SimpleTextKnnVectorsReader) {
+        assertEquals(0L, offHeap.size()); // all vectors are in memory
+        assertEquals(0L, totalByteSize);
+      } else {
+        if (getNumVectors(knnVectorsReader, fieldInfo) == 0) {
+          assertEquals(0L, totalByteSize);
+        } else {
+          assertTrue(totalByteSize > 0);
+          assertTrue(offHeap.get("vec") > 0L);
+
+          if (hasHNSW(knnVectorsReader, fieldInfo)) {
+            assertTrue(offHeap.get("vex") > 0L);
+            var quant = offHeap.getOrDefault("veq", offHeap.get("veb"));
+            assertTrue(quant == null || quant > 0L);
+          } else {
+            assertTrue(offHeap.get("vex") == null || offHeap.get("vex") == 0);
+          }
+
+          if (hasQuantized(knnVectorsReader, fieldInfo)) {
+            assertTrue(offHeap.getOrDefault("veq", offHeap.get("veb")) > 0L);
+          }
+        }
+      }
+    } else {
+      throw new AssertionError("unexpected:" + r.getClass());
+    }
+  }
+
+  static int getNumVectors(KnnVectorsReader reader, FieldInfo fieldInfo) throws IOException {
+    return switch (fieldInfo.getVectorEncoding()) {
+      case BYTE -> reader.getByteVectorValues(fieldInfo.getName()).size();
+      case FLOAT32 -> reader.getFloatVectorValues(fieldInfo.getName()).size();
+    };
+  }
+
+  static boolean hasQuantized(KnnVectorsReader knnVectorsReader, FieldInfo fieldInfo)
+      throws IOException {
+    if (fieldInfo.getVectorEncoding() == VectorEncoding.BYTE) {
+      return false; // byte vectors are never auto-quantized
+    }
+    if (knnVectorsReader
+        instanceof AssertingKnnVectorsFormat.AssertingKnnVectorsReader assertingReader) {
+      knnVectorsReader = assertingReader.delegate;
+    }
+
+    if (knnVectorsReader instanceof QuantizedVectorsReader quantReader) {
+      return quantReader.getQuantizedVectorValues(fieldInfo.name) != null;
+    }
+
+    String name = knnVectorsReader.getClass().getSimpleName().toLowerCase(Locale.ROOT);
+    return name.contains("quantized");
+  }
+
+  static boolean hasHNSW(KnnVectorsReader knnVectorsReader, FieldInfo fieldInfo)
+      throws IOException {
+    if (knnVectorsReader
+        instanceof AssertingKnnVectorsFormat.AssertingKnnVectorsReader assertingReader) {
+      knnVectorsReader = assertingReader.delegate;
+    }
+    if (knnVectorsReader instanceof HnswGraphProvider graphProvider) {
+      return graphProvider.getGraph(fieldInfo.name) != null
+          && graphProvider.getGraph(fieldInfo.name).size() > 0;
+    }
+    String name = knnVectorsReader.getClass().getSimpleName().toLowerCase(Locale.ROOT);
+    return name.contains("hnsw");
+  }
+
+  public void testMergeOffHeapByteSizeMaps() {
+    Map<String, Long> map1 = Map.of("a", 0L, "b", 1L, "c", 100L);
+    Map<String, Long> map2 = Map.of("b", 2L, "c", 5L, "d", 101L, "e", 6L);
+    var r = KnnVectorsReader.mergeOffHeapByteSizeMaps(map1, map2);
+    assertEquals(r.size(), 5);
+    assertEquals(0L, (long) r.get("a"));
+    assertEquals(3L, (long) r.get("b"));
+    assertEquals(105L, (long) r.get("c"));
+    assertEquals(101L, (long) r.get("d"));
+    assertEquals(6L, (long) r.get("e"));
+  }
+
+  private static Query buildExactKnnQuery(String fieldName, float[] queryVector, int totalDocs) {
+    return new KnnFloatVectorQuery(fieldName, queryVector, totalDocs) {
+      @Override
+      protected TopDocs approximateSearch(
+          LeafReaderContext context,
+          AcceptDocs acceptDocs,
+          int visitedLimit,
+          KnnCollectorManager knnCollectorManager)
+          throws IOException {
+        return exactSearch(context, DocIdSetIterator.all(totalDocs), null);
+      }
+    };
   }
 }

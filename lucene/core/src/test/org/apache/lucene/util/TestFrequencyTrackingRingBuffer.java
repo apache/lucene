@@ -37,7 +37,7 @@ public class TestFrequencyTrackingRingBuffer extends LuceneTestCase {
     } else {
       recentItems = items.subList(items.size() - maxSize, items.size());
     }
-    final Map<Integer, Integer> expectedFrequencies = new HashMap<Integer, Integer>();
+    final Map<Integer, Integer> expectedFrequencies = new HashMap<>();
     for (Integer item : recentItems) {
       final Integer freq = expectedFrequencies.get(item);
       if (freq == null) {

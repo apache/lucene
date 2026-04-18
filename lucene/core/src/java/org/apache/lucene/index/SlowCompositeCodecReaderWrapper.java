@@ -34,6 +34,7 @@ import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.index.MultiDocValues.MultiSortedDocValues;
 import org.apache.lucene.index.MultiDocValues.MultiSortedSetDocValues;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
@@ -304,7 +305,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
   private record DocValuesSub<T extends KnnVectorValues>(T sub, int docStart, int ordStart) {
     @SuppressWarnings("unchecked")
     DocValuesSub<T> copy() throws IOException {
-      return new DocValuesSub<T>((T) (sub.copy()), docStart, ordStart);
+      return new DocValuesSub<>((T) (sub.copy()), docStart, ordStart);
     }
   }
 
@@ -426,8 +427,8 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
           // uncached, or not a multi dv
           SortedDocValues dv =
               MultiDocValues.getSortedValues(new MultiReader(codecReaders), field.name);
-          if (dv instanceof MultiSortedDocValues) {
-            map = ((MultiSortedDocValues) dv).mapping;
+          if (dv instanceof MultiSortedDocValues msdv) {
+            map = msdv.mapping;
             cachedOrdMaps.put(field.name, map);
           }
           return dv;
@@ -462,8 +463,8 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
           // uncached, or not a multi dv
           SortedSetDocValues dv =
               MultiDocValues.getSortedSetValues(new MultiReader(codecReaders), field.name);
-          if (dv instanceof MultiSortedSetDocValues) {
-            map = ((MultiSortedSetDocValues) dv).mapping;
+          if (dv instanceof MultiSortedSetDocValues mssdv) {
+            map = mssdv.mapping;
             cachedOrdMaps.put(field.name, map);
           }
           return dv;
@@ -852,6 +853,15 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
       return new MergedFloatVectorValues(dimension, size, subs);
     }
 
+    @Override
+    public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+      Map<String, Long> map = new HashMap<>();
+      for (var reader : readers) {
+        map = KnnVectorsReader.mergeOffHeapByteSizeMaps(map, reader.getOffHeapByteSize(fieldInfo));
+      }
+      return map;
+    }
+
     class MergedFloatVectorValues extends FloatVectorValues {
       final int dimension;
       final int size;
@@ -1017,13 +1027,15 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+    public void search(
+        String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+    public void search(
+        String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
       throw new UnsupportedOperationException();
     }

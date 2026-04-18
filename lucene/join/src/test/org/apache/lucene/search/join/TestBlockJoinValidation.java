@@ -123,7 +123,7 @@ public class TestBlockJoinValidation extends LuceneTestCase {
   }
 
   public void testAdvanceValidationForToChildBjq() throws Exception {
-    Query parentQuery = new MatchAllDocsQuery();
+    Query parentQuery = MatchAllDocsQuery.INSTANCE;
     ToChildBlockJoinQuery blockJoinQuery = new ToChildBlockJoinQuery(parentQuery, parentsFilter);
 
     final LeafReaderContext context = indexSearcher.getIndexReader().leaves().get(0);

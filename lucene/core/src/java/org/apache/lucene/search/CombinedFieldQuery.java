@@ -37,6 +37,7 @@ import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.DFRSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -378,8 +379,10 @@ public final class CombinedFieldQuery extends Query implements Accountable {
           List<DisiWrapper> wrappers = new ArrayList<>(iterators.size());
           for (int i = 0; i < iterators.size(); i++) {
             float weight = fields.get(i).weight;
-            wrappers.add(
-                new WeightedDisiWrapper(new TermScorer(iterators.get(i), simWeight, null), weight));
+            Scorer scorer = new TermScorer(iterators.get(i), simWeight, null);
+            DisiWrapper w = new DisiWrapper(scorer, false, weight);
+            assert w.postingsEnum != null; // needed to access term frequencies
+            wrappers.add(w);
           }
           // Even though it is called approximation, it is accurate since none of
           // the sub iterators are two-phase iterators.
@@ -392,27 +395,17 @@ public final class CombinedFieldQuery extends Query implements Accountable {
         public long cost() {
           return finalCost;
         }
+
+        @Override
+        public BulkScorer bulkScorer() throws IOException {
+          return new BatchScoreBulkScorer(get(Long.MAX_VALUE));
+        }
       };
     }
 
     @Override
     public boolean isCacheable(LeafReaderContext ctx) {
       return false;
-    }
-  }
-
-  private static class WeightedDisiWrapper extends DisiWrapper {
-    final PostingsEnum postingsEnum;
-    final float weight;
-
-    WeightedDisiWrapper(Scorer scorer, float weight) {
-      super(scorer, false);
-      this.weight = weight;
-      this.postingsEnum = (PostingsEnum) scorer.iterator();
-    }
-
-    float freq() throws IOException {
-      return weight * postingsEnum.freq();
     }
   }
 
@@ -434,9 +427,9 @@ public final class CombinedFieldQuery extends Query implements Accountable {
 
     float freq() throws IOException {
       DisiWrapper w = iterator.topList();
-      float freq = ((WeightedDisiWrapper) w).freq();
+      float freq = w.postingsEnum.freq() * w.weight;
       for (w = w.next; w != null; w = w.next) {
-        freq += ((WeightedDisiWrapper) w).freq();
+        freq += w.postingsEnum.freq() * w.weight;
         if (freq < 0) { // overflow
           return Integer.MAX_VALUE;
         }
@@ -457,6 +450,24 @@ public final class CombinedFieldQuery extends Query implements Accountable {
     @Override
     public float getMaxScore(int upTo) throws IOException {
       return maxScore;
+    }
+
+    @Override
+    public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
+        throws IOException {
+      int batchSize = 64; // arbitrary
+      buffer.growNoCopy(batchSize);
+      int size = 0;
+      DocIdSetIterator iterator = iterator();
+      for (int doc = docID(); doc < upTo && size < batchSize; doc = iterator.nextDoc()) {
+        if (liveDocs == null || liveDocs.get(doc)) {
+          buffer.docs[size] = doc;
+          buffer.features[size] = freq();
+          ++size;
+        }
+      }
+      buffer.size = size;
+      simScorer.scoreRange(buffer);
     }
   }
 }

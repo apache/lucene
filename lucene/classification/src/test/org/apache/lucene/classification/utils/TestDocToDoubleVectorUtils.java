@@ -84,7 +84,7 @@ public class TestDocToDoubleVectorUtils extends LuceneTestCase {
     IndexSearcher indexSearcher = new IndexSearcher(index);
     TermVectors termVectors = index.termVectors();
     for (ScoreDoc scoreDoc :
-        indexSearcher.search(new MatchAllDocsQuery(), Integer.MAX_VALUE).scoreDocs) {
+        indexSearcher.search(MatchAllDocsQuery.INSTANCE, Integer.MAX_VALUE).scoreDocs) {
       Terms docTerms = termVectors.get(scoreDoc.doc, "text");
       Double[] vector = DocToDoubleVectorUtils.toDenseLocalFreqDoubleArray(docTerms);
       assertNotNull(vector);
@@ -99,7 +99,7 @@ public class TestDocToDoubleVectorUtils extends LuceneTestCase {
       IndexSearcher indexSearcher = new IndexSearcher(index);
       TermVectors termVectors = index.termVectors();
       for (ScoreDoc scoreDoc :
-          indexSearcher.search(new MatchAllDocsQuery(), Integer.MAX_VALUE).scoreDocs) {
+          indexSearcher.search(MatchAllDocsQuery.INSTANCE, Integer.MAX_VALUE).scoreDocs) {
         Terms docTerms = termVectors.get(scoreDoc.doc, "text");
         Double[] vector = DocToDoubleVectorUtils.toSparseLocalFreqDoubleArray(docTerms, fieldTerms);
         assertNotNull(vector);

@@ -76,7 +76,7 @@ public class TestSimilarityProvider extends LuceneTestCase {
     for (int i = 0; i < reader.maxDoc(); i++) {
       assertEquals(i, fooNorms.nextDoc());
       assertEquals(i, barNorms.nextDoc());
-      assertFalse(fooNorms.longValue() == barNorms.longValue());
+      assertNotEquals(fooNorms.longValue(), barNorms.longValue());
     }
 
     // sanity check of searching

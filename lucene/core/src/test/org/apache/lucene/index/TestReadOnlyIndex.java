@@ -16,10 +16,8 @@
  */
 package org.apache.lucene.index;
 
-import java.io.FilePermission;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.PropertyPermission;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -66,18 +64,6 @@ public class TestReadOnlyIndex extends LuceneTestCase {
   }
 
   public void testReadOnlyIndex() throws Exception {
-    runWithRestrictedPermissions(
-        this::doTestReadOnlyIndex,
-        // add some basic permissions (because we are limited already - so we grant all important
-        // ones):
-        new RuntimePermission("*"),
-        new PropertyPermission("*", "read"),
-        // only allow read to the given index dir, nothing else:
-        new FilePermission(indexPath.toString(), "read"),
-        new FilePermission(indexPath.resolve("-").toString(), "read"));
-  }
-
-  private Void doTestReadOnlyIndex() throws Exception {
     Directory dir = FSDirectory.open(indexPath);
     IndexReader ireader = DirectoryReader.open(dir);
     IndexSearcher isearcher = newSearcher(ireader);
@@ -100,6 +86,5 @@ public class TestReadOnlyIndex extends LuceneTestCase {
     assertEquals(1, isearcher.count(phraseQuery));
 
     ireader.close();
-    return null; // void
   }
 }

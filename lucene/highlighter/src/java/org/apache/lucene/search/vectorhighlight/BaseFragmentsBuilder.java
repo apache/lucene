@@ -168,7 +168,7 @@ public abstract class BaseFragmentsBuilder implements FragmentsBuilder {
       fragments.add(
           makeFragment(buffer, nextValueIndex, values, fragInfo, preTags, postTags, encoder));
     }
-    return fragments.toArray(new String[fragments.size()]);
+    return fragments.toArray(String[]::new);
   }
 
   protected Field[] getFields(IndexReader reader, int docId, final String fieldName)
@@ -269,7 +269,7 @@ public abstract class BaseFragmentsBuilder implements FragmentsBuilder {
       List<WeightedFragInfo> fragInfos, Field[] fields) {
     Map<String, List<WeightedFragInfo>> fieldNameToFragInfos = new HashMap<>();
     for (Field field : fields) {
-      fieldNameToFragInfos.put(field.name(), new ArrayList<WeightedFragInfo>());
+      fieldNameToFragInfos.put(field.name(), new ArrayList<>());
     }
 
     fragInfos:

@@ -865,7 +865,7 @@ public class TestQueryParser extends QueryParserTestBase {
 
     QueryParser parser2 = new QueryParser("*", new ASCIIAnalyzer());
     parser2.setAllowLeadingWildcard(false);
-    assertEquals(new MatchAllDocsQuery(), parser2.parse("*"));
+    assertEquals(MatchAllDocsQuery.INSTANCE, parser2.parse("*"));
   }
 
   public void testWildCardEscapes() throws ParseException, IOException {

@@ -365,12 +365,12 @@ public class TestVectorSimilarityValuesSource extends LuceneTestCase {
     byte[] byteQueryVector = new byte[] {-10, 20, 30};
 
     expectThrows(
-        IllegalArgumentException.class,
+        IllegalStateException.class,
         () ->
             DoubleValuesSource.similarityToQueryVector(
                 searcher.reader.leaves().get(0), floatQueryVector, "knnByteField1"));
     expectThrows(
-        IllegalArgumentException.class,
+        IllegalStateException.class,
         () ->
             DoubleValuesSource.similarityToQueryVector(
                 searcher.reader.leaves().get(0), byteQueryVector, "knnFloatField1"));

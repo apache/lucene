@@ -7,6 +7,10 @@
 
 # For more information on how to define globs, visit: https://github.com/actions/labeler
 
+module:build-infra:
+  - changed-files:
+      - any-glob-to-any-file: ['build-tools/build-infra/**', 'build-tools/build-infra-shadow/**', '**/*.gradle']
+
 module:analysis:
   - changed-files:
       - any-glob-to-any-file: 'lucene/analysis/**'

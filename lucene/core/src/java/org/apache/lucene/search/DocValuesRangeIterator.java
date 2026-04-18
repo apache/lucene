@@ -57,7 +57,7 @@ public final class DocValuesRangeIterator extends TwoPhaseIterator {
     this.innerTwoPhase = twoPhase;
   }
 
-  abstract static class Approximation extends DocIdSetIterator {
+  abstract static class Approximation extends AbstractDocIdSetIterator {
 
     private final DocIdSetIterator innerApproximation;
 
@@ -65,11 +65,9 @@ public final class DocValuesRangeIterator extends TwoPhaseIterator {
     protected final long lowerValue;
     protected final long upperValue;
 
-    private int doc = -1;
-
     // Track a decision for all doc IDs between the current doc ID and upTo inclusive.
     Match match = Match.MAYBE;
-    int upTo = -1;
+    int upTo;
 
     Approximation(
         DocIdSetIterator innerApproximation,
@@ -80,11 +78,7 @@ public final class DocValuesRangeIterator extends TwoPhaseIterator {
       this.skipper = skipper;
       this.lowerValue = lowerValue;
       this.upperValue = upperValue;
-    }
-
-    @Override
-    public int docID() {
-      return doc;
+      this.upTo = skipper.maxDocID(0);
     }
 
     @Override
@@ -203,8 +197,7 @@ public final class DocValuesRangeIterator extends TwoPhaseIterator {
   @Override
   public final boolean matches() throws IOException {
     return switch (approximation.match) {
-      case YES -> true;
-      case IF_DOC_HAS_VALUE -> true;
+      case YES, IF_DOC_HAS_VALUE -> true;
       case MAYBE -> innerTwoPhase.matches();
       case NO -> throw new IllegalStateException("Unpositioned approximation");
     };

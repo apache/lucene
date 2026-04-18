@@ -102,11 +102,11 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
       assumeFalse(
           "this test cannot tolerate random forceMerges",
           mp.toString().contains("MockRandomMergePolicy"));
-      mp.setNoCFSRatio(random().nextBoolean() ? 0 : 1);
 
       IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
       iwc.setMergeScheduler(mergeScheduler);
       iwc.setMergePolicy(mp);
+      iwc.getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
 
       IndexWriter writer = new IndexWriter(dir, iwc);
       final int numSegments = TestUtil.nextInt(random(), 2, 20);
@@ -400,7 +400,11 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
     return newInfos;
   }
 
-  /** Simulate an append-only use-case, ie. there are no deletes. */
+  /**
+   * Simulate an append-only use-case, ie. there are no deletes. TODO: incredibly slow (at least
+   * with TestUpgradeIndexMergePolicy)
+   */
+  @Nightly
   public void testSimulateAppendOnly() throws IOException {
     doTestSimulateAppendOnly(mergePolicy(), 100_000_000, 10_000);
   }

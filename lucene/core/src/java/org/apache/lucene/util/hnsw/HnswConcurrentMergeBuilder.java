@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.FixedBitSet;
@@ -99,6 +100,11 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
   }
 
   @Override
+  public void addGraphNode(int node, IntHashSet eps) throws IOException {
+    throw new UnsupportedOperationException("This builder is for merge only");
+  }
+
+  @Override
   public void setInfoStream(InfoStream infoStream) {
     this.infoStream = infoStream;
     for (HnswBuilder worker : workers) {
@@ -142,7 +148,6 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
 
     private final BitSet initializedNodes;
     private int batchSize = DEFAULT_BATCH_SIZE;
-    private final UpdateableRandomVectorScorer scorer;
 
     private ConcurrentMergeWorker(
         RandomVectorScorerSupplier scorerSupplier,
@@ -163,7 +168,6 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
               new NeighborQueue(beamWidth, true), hnswLock, new FixedBitSet(hnsw.maxNodeId() + 1)));
       this.workProgress = workProgress;
       this.initializedNodes = initializedNodes;
-      this.scorer = scorerSupplier.scorer();
     }
 
     /**
@@ -193,20 +197,11 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     }
 
     @Override
-    public void addGraphNode(int node, UpdateableRandomVectorScorer scorer) throws IOException {
-      if (initializedNodes != null && initializedNodes.get(node)) {
-        return;
-      }
-      super.addGraphNode(node, scorer);
-    }
-
-    @Override
     public void addGraphNode(int node) throws IOException {
       if (initializedNodes != null && initializedNodes.get(node)) {
         return;
       }
-      scorer.setScoringOrdinal(node);
-      addGraphNode(node, scorer);
+      super.addGraphNode(node);
     }
   }
 

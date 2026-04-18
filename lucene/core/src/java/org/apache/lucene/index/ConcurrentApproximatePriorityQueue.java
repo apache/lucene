@@ -136,7 +136,7 @@ final class ConcurrentApproximatePriorityQueue<T> {
   // Only used for assertions
   boolean contains(Object o) {
     boolean assertionsAreEnabled = false;
-    assert assertionsAreEnabled = true;
+    assert (assertionsAreEnabled = true) == true; // Intentional side-effect!!!
     if (assertionsAreEnabled == false) {
       throw new AssertionError("contains should only be used for assertions");
     }

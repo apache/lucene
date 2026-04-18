@@ -76,9 +76,7 @@ public final class MultiFields extends Fields {
       }
     }
     if (subs2.size() != 0) {
-      result =
-          new MultiTerms(
-              subs2.toArray(Terms.EMPTY_ARRAY), slices2.toArray(ReaderSlice.EMPTY_ARRAY));
+      result = new MultiTerms(subs2.toArray(Terms[]::new), slices2.toArray(ReaderSlice[]::new));
       terms.put(field, result);
     }
 

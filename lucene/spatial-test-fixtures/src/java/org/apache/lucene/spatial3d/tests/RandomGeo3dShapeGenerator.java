@@ -357,9 +357,7 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return pointShape;
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalArgumentException e) {
+      } catch (IllegalArgumentException _) {
         continue;
       }
     }
@@ -392,9 +390,7 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return circle;
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalArgumentException e) {
+      } catch (IllegalArgumentException _) {
         continue;
       }
     }
@@ -428,9 +424,7 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return circle;
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalArgumentException e) {
+      } catch (IllegalArgumentException _) {
         continue;
       }
     }
@@ -470,9 +464,7 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return bbox;
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalArgumentException e) {
+      } catch (IllegalArgumentException _) {
         continue;
       }
     }
@@ -504,9 +496,7 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return path;
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalArgumentException e) {
+      } catch (IllegalArgumentException _) {
         continue;
       }
     }
@@ -539,9 +529,7 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return path;
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalArgumentException e) {
+      } catch (IllegalArgumentException _) {
         continue;
       }
     }
@@ -601,9 +589,7 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return polygon;
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalArgumentException e) {
+      } catch (IllegalArgumentException _) {
         continue;
       }
     }
@@ -660,9 +646,7 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return polygon;
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalArgumentException e) {
+      } catch (IllegalArgumentException _) {
         continue;
       }
     }
@@ -712,9 +696,7 @@ public final class RandomGeo3dShapeGenerator {
           return holes;
         }
         pointConstraints.put(hole, GeoArea.DISJOINT);
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalArgumentException e) {
+      } catch (IllegalArgumentException _) {
         continue;
       }
     }
@@ -747,9 +729,7 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return polygon;
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalArgumentException e) {
+      } catch (IllegalArgumentException _) {
         continue;
       }
     }
@@ -806,9 +786,7 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return polygon;
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalArgumentException e) {
+      } catch (IllegalArgumentException _) {
         continue;
       }
     }
@@ -844,9 +822,7 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return polygon;
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalArgumentException e) {
+      } catch (IllegalArgumentException _) {
         continue;
       }
     }
@@ -877,9 +853,7 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return polygon;
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalArgumentException e) {
+      } catch (IllegalArgumentException _) {
         continue;
       }
     }
@@ -911,9 +885,7 @@ public final class RandomGeo3dShapeGenerator {
           continue;
         }
         return polygon;
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalArgumentException e) {
+      } catch (IllegalArgumentException _) {
         continue;
       }
     }

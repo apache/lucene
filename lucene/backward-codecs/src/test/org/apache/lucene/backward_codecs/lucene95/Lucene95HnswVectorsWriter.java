@@ -381,7 +381,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
         if (level == 0) {
           return graph.getNodesOnLevel(0);
         } else {
-          return new ArrayNodesIterator(nodesByLevel.get(level), nodesByLevel.get(level).length);
+          return new ArrayNodesIterator(nodesByLevel.get(level));
         }
       }
     };
@@ -539,11 +539,11 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     int countOnLevel0 = graph.size();
     int[][] offsets = new int[graph.numLevels()][];
     for (int level = 0; level < graph.numLevels(); level++) {
-      int[] sortedNodes = HnswGraph.NodesIterator.getSortedNodes(graph.getNodesOnLevel(level));
-      offsets[level] = new int[sortedNodes.length];
+      HnswGraph.NodesIterator sortedNodes = graph.getSortedNodes(level);
+      offsets[level] = new int[sortedNodes.size()];
       int nodeOffsetId = 0;
-      for (int node : sortedNodes) {
-        NeighborArray neighbors = graph.getNeighbors(level, node);
+      while (sortedNodes.hasNext()) {
+        NeighborArray neighbors = graph.getNeighbors(level, sortedNodes.next());
         int size = neighbors.size();
         // Write size in VInt as the neighbors list is typically small
         long offsetStart = vectorIndex.getFilePointer();

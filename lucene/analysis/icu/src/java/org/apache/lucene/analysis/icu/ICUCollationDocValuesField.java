@@ -51,7 +51,7 @@ public final class ICUCollationDocValuesField extends Field {
     super(name, SortedDocValuesField.TYPE);
     this.name = name;
     try {
-      this.collator = (Collator) collator.clone();
+      this.collator = collator.clone();
     } catch (CloneNotSupportedException e) {
       throw new RuntimeException(e);
     }

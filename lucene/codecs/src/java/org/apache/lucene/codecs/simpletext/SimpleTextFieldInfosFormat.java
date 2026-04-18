@@ -37,7 +37,6 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.StringHelper;
 
 /**
@@ -82,11 +81,9 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
       throws IOException {
     final String fileName =
         IndexFileNames.segmentFileName(segmentInfo.name, segmentSuffix, FIELD_INFOS_EXTENSION);
-    ChecksumIndexInput input = directory.openChecksumInput(fileName);
     BytesRefBuilder scratch = new BytesRefBuilder();
 
-    boolean success = false;
-    try {
+    try (ChecksumIndexInput input = directory.openChecksumInput(fileName)) {
 
       SimpleTextUtil.readLine(input, scratch);
       assert StringHelper.startsWith(scratch.get(), NUMFIELDS);
@@ -206,15 +203,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
 
       SimpleTextUtil.checkFooter(input);
 
-      FieldInfos fieldInfos = new FieldInfos(infos);
-      success = true;
-      return fieldInfos;
-    } finally {
-      if (success) {
-        input.close();
-      } else {
-        IOUtils.closeWhileHandlingException(input);
-      }
+      return new FieldInfos(infos);
     }
   }
 
@@ -248,10 +237,8 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
       throws IOException {
     final String fileName =
         IndexFileNames.segmentFileName(segmentInfo.name, segmentSuffix, FIELD_INFOS_EXTENSION);
-    IndexOutput out = directory.createOutput(fileName, context);
     BytesRefBuilder scratch = new BytesRefBuilder();
-    boolean success = false;
-    try {
+    try (IndexOutput out = directory.createOutput(fileName, context)) {
       SimpleTextUtil.write(out, NUMFIELDS);
       SimpleTextUtil.write(out, Integer.toString(infos.size()), scratch);
       SimpleTextUtil.writeNewline(out);
@@ -347,13 +334,6 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
         SimpleTextUtil.writeNewline(out);
       }
       SimpleTextUtil.writeChecksum(out, scratch);
-      success = true;
-    } finally {
-      if (success) {
-        out.close();
-      } else {
-        IOUtils.closeWhileHandlingException(out);
-      }
     }
   }
 

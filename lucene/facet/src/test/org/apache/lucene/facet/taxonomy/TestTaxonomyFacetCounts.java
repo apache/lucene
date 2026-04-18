@@ -294,7 +294,7 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     // NRT open
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector c = searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     // Uses default $facets field:
     Facets facets = new FastTaxonomyFacetCounts(taxoReader, config, c);
@@ -635,7 +635,7 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
     FacetsCollector sfc =
-        newSearcher(r).search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+        newSearcher(r).search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
     Facets facets1 = getTaxonomyFacetCounts(taxoReader, config, sfc);
     Facets facets2 = getTaxonomyFacetCounts(taxoReader, config, sfc, "$b");
     assertEquals(r.maxDoc(), facets1.getTopChildren(10, "a").value.intValue());
@@ -1118,7 +1118,7 @@ public class TestTaxonomyFacetCounts extends FacetTestCase {
       // for all non-deleted docs in the index); normally
       // you'd use a "normal" query, and use MultiCollector to
       // wrap collecting the "normal" hits and also facets:
-      FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+      FacetsCollector c = searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
       return new FastTaxonomyFacetCounts(taxoReader, config, c);
     } else {

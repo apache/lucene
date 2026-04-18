@@ -54,6 +54,8 @@ import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.FloatDocValuesField;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.KeywordField;
+import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
@@ -70,7 +72,9 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.SortedNumericSelector;
 import org.apache.lucene.search.SortedNumericSortField;
+import org.apache.lucene.search.SortedSetSelector;
 import org.apache.lucene.search.SortedSetSortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermStatistics;
@@ -371,8 +375,8 @@ public class TestIndexSorting extends LuceneTestCase {
     for (boolean reverse : new boolean[] {true, false}) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortField("foo", SortField.Type.STRING, reverse);
-      sortField.setMissingValue(SortField.STRING_FIRST);
+      SortField sortField =
+          new SortField("foo", SortField.Type.STRING, reverse, SortField.STRING_FIRST);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -418,8 +422,9 @@ public class TestIndexSorting extends LuceneTestCase {
     for (boolean reverse : new boolean[] {true, false}) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortedSetSortField("foo", reverse);
-      sortField.setMissingValue(SortField.STRING_FIRST);
+      SortField sortField =
+          new SortedSetSortField(
+              "foo", reverse, SortedSetSelector.Type.MIN, SortField.STRING_FIRST);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -475,8 +480,8 @@ public class TestIndexSorting extends LuceneTestCase {
     for (boolean reverse : new boolean[] {true, false}) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortField("foo", SortField.Type.STRING, reverse);
-      sortField.setMissingValue(SortField.STRING_LAST);
+      SortField sortField =
+          new SortField("foo", SortField.Type.STRING, reverse, SortField.STRING_LAST);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -522,8 +527,8 @@ public class TestIndexSorting extends LuceneTestCase {
     for (boolean reverse : new boolean[] {true, false}) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortedSetSortField("foo", reverse);
-      sortField.setMissingValue(SortField.STRING_LAST);
+      SortField sortField =
+          new SortedSetSortField("foo", reverse, SortedSetSelector.Type.MIN, SortField.STRING_LAST);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -659,8 +664,7 @@ public class TestIndexSorting extends LuceneTestCase {
     for (boolean reverse : new boolean[] {true, false}) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortField("foo", SortField.Type.LONG, reverse);
-      sortField.setMissingValue(Long.MIN_VALUE);
+      SortField sortField = new SortField("foo", SortField.Type.LONG, reverse, Long.MIN_VALUE);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -706,8 +710,9 @@ public class TestIndexSorting extends LuceneTestCase {
     for (boolean reverse : new boolean[] {true, false}) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortedNumericSortField("foo", SortField.Type.LONG, reverse);
-      sortField.setMissingValue(Long.MIN_VALUE);
+      SortField sortField =
+          new SortedNumericSortField(
+              "foo", SortField.Type.LONG, reverse, SortedNumericSelector.Type.MIN, Long.MIN_VALUE);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -762,8 +767,7 @@ public class TestIndexSorting extends LuceneTestCase {
     for (boolean reverse : new boolean[] {true, false}) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortField("foo", SortField.Type.LONG, reverse);
-      sortField.setMissingValue(Long.MAX_VALUE);
+      SortField sortField = new SortField("foo", SortField.Type.LONG, reverse, Long.MAX_VALUE);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -810,8 +814,9 @@ public class TestIndexSorting extends LuceneTestCase {
     for (boolean reverse : new boolean[] {true, false}) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortedNumericSortField("foo", SortField.Type.LONG, reverse);
-      sortField.setMissingValue(Long.MAX_VALUE);
+      SortField sortField =
+          new SortedNumericSortField(
+              "foo", SortField.Type.LONG, reverse, SortedNumericSelector.Type.MIN, Long.MAX_VALUE);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -950,8 +955,7 @@ public class TestIndexSorting extends LuceneTestCase {
     for (boolean reverse : new boolean[] {true, false}) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortField("foo", SortField.Type.INT, reverse);
-      sortField.setMissingValue(Integer.MIN_VALUE);
+      SortField sortField = new SortField("foo", SortField.Type.INT, reverse, Integer.MIN_VALUE);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -996,8 +1000,13 @@ public class TestIndexSorting extends LuceneTestCase {
     for (boolean reverse : new boolean[] {true, false}) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortedNumericSortField("foo", SortField.Type.INT, reverse);
-      sortField.setMissingValue(Integer.MIN_VALUE);
+      SortField sortField =
+          new SortedNumericSortField(
+              "foo",
+              SortField.Type.INT,
+              reverse,
+              SortedNumericSelector.Type.MIN,
+              Integer.MIN_VALUE);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -1052,8 +1061,7 @@ public class TestIndexSorting extends LuceneTestCase {
     for (boolean reverse : new boolean[] {true, false}) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortField("foo", SortField.Type.INT, reverse);
-      sortField.setMissingValue(Integer.MAX_VALUE);
+      SortField sortField = new SortField("foo", SortField.Type.INT, reverse, Integer.MAX_VALUE);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -1100,8 +1108,13 @@ public class TestIndexSorting extends LuceneTestCase {
     for (boolean reverse : new boolean[] {true, false}) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortedNumericSortField("foo", SortField.Type.INT, reverse);
-      sortField.setMissingValue(Integer.MAX_VALUE);
+      SortField sortField =
+          new SortedNumericSortField(
+              "foo",
+              SortField.Type.INT,
+              reverse,
+              SortedNumericSelector.Type.MIN,
+              Integer.MAX_VALUE);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -1238,8 +1251,8 @@ public class TestIndexSorting extends LuceneTestCase {
     for (boolean reverse : new boolean[] {true, false}) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortField("foo", SortField.Type.DOUBLE, reverse);
-      sortField.setMissingValue(Double.NEGATIVE_INFINITY);
+      SortField sortField =
+          new SortField("foo", SortField.Type.DOUBLE, reverse, Double.NEGATIVE_INFINITY);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -1284,8 +1297,13 @@ public class TestIndexSorting extends LuceneTestCase {
     for (boolean reverse : new boolean[] {true, false}) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortedNumericSortField("foo", SortField.Type.DOUBLE, reverse);
-      sortField.setMissingValue(Double.NEGATIVE_INFINITY);
+      SortField sortField =
+          new SortedNumericSortField(
+              "foo",
+              SortField.Type.DOUBLE,
+              reverse,
+              SortedNumericSelector.Type.MIN,
+              Double.NEGATIVE_INFINITY);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -1340,8 +1358,8 @@ public class TestIndexSorting extends LuceneTestCase {
     for (boolean reverse : new boolean[] {true, false}) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortField("foo", SortField.Type.DOUBLE, reverse);
-      sortField.setMissingValue(Double.POSITIVE_INFINITY);
+      SortField sortField =
+          new SortField("foo", SortField.Type.DOUBLE, reverse, Double.POSITIVE_INFINITY);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -1387,8 +1405,13 @@ public class TestIndexSorting extends LuceneTestCase {
     for (boolean reverse : new boolean[] {true, false}) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortedNumericSortField("foo", SortField.Type.DOUBLE, reverse);
-      sortField.setMissingValue(Double.POSITIVE_INFINITY);
+      SortField sortField =
+          new SortedNumericSortField(
+              "foo",
+              SortField.Type.DOUBLE,
+              reverse,
+              SortedNumericSelector.Type.MIN,
+              Double.POSITIVE_INFINITY);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -1524,8 +1547,8 @@ public class TestIndexSorting extends LuceneTestCase {
     for (boolean reverse : new boolean[] {true, false}) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortField("foo", SortField.Type.FLOAT, reverse);
-      sortField.setMissingValue(Float.NEGATIVE_INFINITY);
+      SortField sortField =
+          new SortField("foo", SortField.Type.FLOAT, reverse, Float.NEGATIVE_INFINITY);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -1570,8 +1593,13 @@ public class TestIndexSorting extends LuceneTestCase {
     for (boolean reverse : new boolean[] {true, false}) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortedNumericSortField("foo", SortField.Type.FLOAT, reverse);
-      sortField.setMissingValue(Float.NEGATIVE_INFINITY);
+      SortField sortField =
+          new SortedNumericSortField(
+              "foo",
+              SortField.Type.FLOAT,
+              reverse,
+              SortedNumericSelector.Type.MIN,
+              Float.NEGATIVE_INFINITY);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -1626,8 +1654,8 @@ public class TestIndexSorting extends LuceneTestCase {
     for (boolean reverse : new boolean[] {true, false}) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortField("foo", SortField.Type.FLOAT, reverse);
-      sortField.setMissingValue(Float.POSITIVE_INFINITY);
+      SortField sortField =
+          new SortField("foo", SortField.Type.FLOAT, reverse, Float.POSITIVE_INFINITY);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -1673,8 +1701,13 @@ public class TestIndexSorting extends LuceneTestCase {
     for (boolean reverse : new boolean[] {true, false}) {
       Directory dir = newDirectory();
       IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-      SortField sortField = new SortedNumericSortField("foo", SortField.Type.FLOAT, reverse);
-      sortField.setMissingValue(Float.POSITIVE_INFINITY);
+      SortField sortField =
+          new SortedNumericSortField(
+              "foo",
+              SortField.Type.FLOAT,
+              reverse,
+              SortedNumericSelector.Type.MIN,
+              Float.POSITIVE_INFINITY);
       Sort indexSort = new Sort(sortField);
       iwc.setIndexSort(indexSort);
       IndexWriter w = new IndexWriter(dir, iwc);
@@ -2456,75 +2489,76 @@ public class TestIndexSorting extends LuceneTestCase {
 
   private static SortField randomIndexSortField() {
     boolean reversed = random().nextBoolean();
-    SortField sortField;
-    switch (random().nextInt(10)) {
-      case 0:
-        sortField = new SortField("int", SortField.Type.INT, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextInt());
-        }
-        break;
-      case 1:
-        sortField = new SortedNumericSortField("multi_valued_int", SortField.Type.INT, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextInt());
-        }
-        break;
-      case 2:
-        sortField = new SortField("long", SortField.Type.LONG, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextLong());
-        }
-        break;
-      case 3:
-        sortField = new SortedNumericSortField("multi_valued_long", SortField.Type.LONG, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextLong());
-        }
-        break;
-      case 4:
-        sortField = new SortField("float", SortField.Type.FLOAT, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextFloat());
-        }
-        break;
-      case 5:
-        sortField =
-            new SortedNumericSortField("multi_valued_float", SortField.Type.FLOAT, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextFloat());
-        }
-        break;
-      case 6:
-        sortField = new SortField("double", SortField.Type.DOUBLE, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextDouble());
-        }
-        break;
-      case 7:
-        sortField =
-            new SortedNumericSortField("multi_valued_double", SortField.Type.DOUBLE, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextDouble());
-        }
-        break;
-      case 8:
-        sortField = new SortField("bytes", SortField.Type.STRING, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(SortField.STRING_LAST);
-        }
-        break;
-      case 9:
-        sortField = new SortedSetSortField("multi_valued_bytes", reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(SortField.STRING_LAST);
-        }
-        break;
-      default:
-        sortField = null;
+    return switch (random().nextInt(10)) {
+      case 0 ->
+          new SortField(
+              "int",
+              SortField.Type.INT,
+              reversed,
+              random().nextBoolean() ? random().nextInt() : null);
+      case 1 ->
+          new SortedNumericSortField(
+              "multi_valued_int",
+              SortField.Type.INT,
+              reversed,
+              SortedNumericSelector.Type.MIN,
+              random().nextBoolean() ? random().nextInt() : null);
+      case 2 ->
+          new SortField(
+              "long",
+              SortField.Type.LONG,
+              reversed,
+              random().nextBoolean() ? random().nextLong() : null);
+      case 3 ->
+          new SortedNumericSortField(
+              "multi_valued_long",
+              SortField.Type.LONG,
+              reversed,
+              SortedNumericSelector.Type.MIN,
+              random().nextBoolean() ? random().nextLong() : null);
+      case 4 ->
+          new SortField(
+              "float",
+              SortField.Type.FLOAT,
+              reversed,
+              random().nextBoolean() ? random().nextFloat() : null);
+      case 5 ->
+          new SortedNumericSortField(
+              "multi_valued_float",
+              SortField.Type.FLOAT,
+              reversed,
+              SortedNumericSelector.Type.MIN,
+              random().nextBoolean() ? random().nextFloat() : null);
+      case 6 ->
+          new SortField(
+              "double",
+              SortField.Type.DOUBLE,
+              reversed,
+              random().nextBoolean() ? random().nextDouble() : null);
+      case 7 ->
+          new SortedNumericSortField(
+              "multi_valued_double",
+              SortField.Type.DOUBLE,
+              reversed,
+              SortedNumericSelector.Type.MIN,
+              random().nextBoolean() ? random().nextDouble() : null);
+      case 8 ->
+          new SortField(
+              "bytes",
+              SortField.Type.STRING,
+              reversed,
+              random().nextBoolean() ? SortField.STRING_LAST : null);
+      case 9 ->
+          new SortedSetSortField(
+              "multi_valued_bytes",
+              reversed,
+              SortedSetSelector.Type.MIN,
+              random().nextBoolean() ? SortField.STRING_LAST : null);
+      default -> {
         fail();
-    }
-    return sortField;
+        yield null;
+      }
+    };
   }
 
   private static Sort randomSort() {
@@ -2653,10 +2687,10 @@ public class TestIndexSorting extends LuceneTestCase {
 
       TopDocs hits1 =
           s1.search(
-              new MatchAllDocsQuery(),
+              MatchAllDocsQuery.INSTANCE,
               new TopFieldCollectorManager(sort, numHits, Integer.MAX_VALUE));
       TopDocs hits2 =
-          s2.search(new MatchAllDocsQuery(), new TopFieldCollectorManager(sort, numHits, 1));
+          s2.search(MatchAllDocsQuery.INSTANCE, new TopFieldCollectorManager(sort, numHits, 1));
 
       if (VERBOSE) {
         System.out.println("  topDocs query-time sort: totalHits=" + hits1.totalHits.value());
@@ -2773,8 +2807,7 @@ public class TestIndexSorting extends LuceneTestCase {
   public void testIndexSortOnSparseField() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-    SortField sortField = new SortField("sparse", SortField.Type.INT, false);
-    sortField.setMissingValue(Integer.MIN_VALUE);
+    SortField sortField = new SortField("sparse", SortField.Type.INT, false, Integer.MIN_VALUE);
     Sort indexSort = new Sort(sortField);
     iwc.setIndexSort(indexSort);
     IndexWriter w = new IndexWriter(dir, iwc);
@@ -3331,7 +3364,7 @@ public class TestIndexSorting extends LuceneTestCase {
       iwc.setIndexSort(indexSort);
       iwc.setParentField(parentField);
       RandomIndexWriter randomIndexWriter = new RandomIndexWriter(random(), dir, iwc);
-      int numDocs = random().nextInt(100, 1000);
+      int numDocs = random().nextInt(100, 300);
       for (int i = 0; i < numDocs; i++) {
         if (rarely()) {
           randomIndexWriter.deleteDocuments(new Term("id", "" + random().nextInt(0, i + 1)));
@@ -3444,6 +3477,67 @@ public class TestIndexSorting extends LuceneTestCase {
             }
           }
         }
+      }
+    }
+  }
+
+  public void testFlushAfterInconsistentSchema() throws IOException {
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    if (random().nextBoolean()) {
+      Sort indexSort = new Sort(new SortField("host.name", SortField.Type.STRING));
+      iwc.setIndexSort(indexSort);
+    }
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, iwc)) {
+      Consumer<Document> addExtraFields =
+          doc -> {
+            int extraFields = random().nextInt(100);
+            for (int i = 0; i < extraFields; i++) {
+              if (random().nextBoolean()) {
+                doc.add(new NumericDocValuesField("extra-dv-" + i, i));
+              }
+              if (random().nextBoolean()) {
+                doc.add(new LongField("extra-point-" + i, i, Store.NO));
+              }
+              if (random().nextBoolean()) {
+                doc.add(
+                    new KeywordField(
+                        "extra-posting-" + i, new BytesRef(Integer.toString(i)), Store.NO));
+              }
+            }
+          };
+      // first segment
+      {
+        Document doc = new Document();
+        doc.add(new SortedDocValuesField("host.name", newBytesRef("h2")));
+        doc.add(new LongField("@timestamp", 1, Store.NO));
+        addExtraFields.accept(doc);
+        w.addDocument(doc);
+        w.commit();
+      }
+      // second segment
+      {
+        var doc = new Document();
+        doc.add(new NumericDocValuesField("@timestamp", 2));
+        addExtraFields.accept(doc);
+        doc.add(new SortedDocValuesField("host.name", newBytesRef("h1")));
+        expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
+        w.commit();
+      }
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        assertEquals(1, reader.numDocs());
+      }
+      // third segment
+      {
+        var doc = new Document();
+        addExtraFields.accept(doc);
+        doc.add(new LongField("@timestamp", 3, Store.NO));
+        doc.add(new SortedDocValuesField("host.name", newBytesRef("h1")));
+        w.addDocument(doc);
+        w.commit();
+      }
+      try (DirectoryReader reader = DirectoryReader.open(w)) {
+        assertEquals(2, reader.numDocs());
       }
     }
   }

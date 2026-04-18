@@ -77,20 +77,12 @@ class BigramDictionary extends AbstractDictionary {
     return singleInstance;
   }
 
-  private boolean loadFromObj(Path serialObj) {
-    try {
-      loadFromInputStream(Files.newInputStream(serialObj));
-      return true;
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   @SuppressForbidden(
       reason = "TODO: fix code to serialize its own dictionary vs. a binary blob in the codebase")
   private void loadFromInputStream(InputStream serialObjectInputStream)
       throws IOException, ClassNotFoundException {
     try (ObjectInputStream input = new ObjectInputStream(serialObjectInputStream)) {
+      input.setObjectInputFilter(this::filterObjectInputStream);
       bigramHashTable = (long[]) input.readObject();
       frequencyTable = (int[]) input.readObject();
       // log.info("load bigram dict from serialization.");
@@ -114,26 +106,17 @@ class BigramDictionary extends AbstractDictionary {
 
   private void load(String dictRoot) throws IOException {
     String bigramDictPath = dictRoot + "/bigramdict.dct";
-
-    Path serialObj = Paths.get(dictRoot + "/bigramdict.mem");
-
-    if (Files.exists(serialObj) && loadFromObj(serialObj)) {
-
-    } else {
-      try {
-        bigramHashTable = new long[PRIME_BIGRAM_LENGTH];
-        frequencyTable = new int[PRIME_BIGRAM_LENGTH];
-        for (int i = 0; i < PRIME_BIGRAM_LENGTH; i++) {
-          // it is possible for a value to hash to 0, but the probability is extremely low
-          bigramHashTable[i] = 0;
-          frequencyTable[i] = 0;
-        }
-        loadFromFile(bigramDictPath);
-      } catch (IOException e) {
-        throw new RuntimeException(e.getMessage());
-      }
-      saveToObj(serialObj);
+    bigramHashTable = new long[PRIME_BIGRAM_LENGTH];
+    frequencyTable = new int[PRIME_BIGRAM_LENGTH];
+    for (int i = 0; i < PRIME_BIGRAM_LENGTH; i++) {
+      // it is possible for a value to hash to 0, but the probability is extremely low
+      bigramHashTable[i] = 0;
+      frequencyTable[i] = 0;
     }
+    loadFromFile(bigramDictPath);
+
+    /* Enable the following line to regenerate the serialized file: */
+    // saveToObj(Paths.get(dictRoot + "/bigramdict.mem"));
   }
 
   /**
@@ -150,53 +133,56 @@ class BigramDictionary extends AbstractDictionary {
     int[] buffer = new int[3];
     byte[] intBuffer = new byte[4];
     String tmpword;
-    DataInputStream dctFile = new DataInputStream(Files.newInputStream(Paths.get(dctFilePath)));
+    // Using try-with-resources
+    try (DataInputStream dctFile =
+        new DataInputStream(Files.newInputStream(Paths.get(dctFilePath)))) {
 
-    // GB2312 characters 0 - 6768
-    for (i = GB2312_FIRST_CHAR; i < GB2312_FIRST_CHAR + CHAR_NUM_IN_FILE; i++) {
-      String currentStr = getCCByGB2312Id(i);
-      // if (i == 5231)
-      // System.out.println(i);
+      // GB2312 characters 0 - 6768
+      for (i = GB2312_FIRST_CHAR; i < GB2312_FIRST_CHAR + CHAR_NUM_IN_FILE; i++) {
+        String currentStr = getCCByGB2312Id(i);
+        // if (i == 5231)
+        // System.out.println(i);
 
-      dctFile.read(intBuffer);
-      // the dictionary was developed for C, and byte order must be converted to work with Java
-      cnt = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt();
-      if (cnt <= 0) {
-        continue;
-      }
-      int j = 0;
-      while (j < cnt) {
         dctFile.read(intBuffer);
-        buffer[0] = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt(); // frequency
-        dctFile.read(intBuffer);
-        buffer[1] = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt(); // length
-        dctFile.read(intBuffer);
-        // buffer[2] = ByteBuffer.wrap(intBuffer).order(
-        // ByteOrder.LITTLE_ENDIAN).getInt();// handle
-
-        length = buffer[1];
-        if (length > 0) {
-          byte[] lchBuffer = new byte[length];
-          dctFile.read(lchBuffer);
-          tmpword = new String(lchBuffer, "GB2312");
-          if (i != 3755 + GB2312_FIRST_CHAR) {
-            tmpword = currentStr + tmpword;
-          }
-          char[] carray = tmpword.toCharArray();
-          long hashId = hash1(carray);
-          int index = getAvaliableIndex(hashId, carray);
-          if (index != -1) {
-            if (bigramHashTable[index] == 0) {
-              bigramHashTable[index] = hashId;
-              // bigramStringTable[index] = tmpword;
-            }
-            frequencyTable[index] += buffer[0];
-          }
+        // the dictionary was developed for C, and byte order must be converted to work with Java
+        cnt = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt();
+        if (cnt <= 0) {
+          continue;
         }
-        j++;
+        int j = 0;
+        while (j < cnt) {
+          dctFile.read(intBuffer);
+          buffer[0] =
+              ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt(); // frequency
+          dctFile.read(intBuffer);
+          buffer[1] = ByteBuffer.wrap(intBuffer).order(ByteOrder.LITTLE_ENDIAN).getInt(); // length
+          dctFile.read(intBuffer);
+          // buffer[2] = ByteBuffer.wrap(intBuffer).order(
+          // ByteOrder.LITTLE_ENDIAN).getInt();// handle
+
+          length = buffer[1];
+          if (length > 0) {
+            byte[] lchBuffer = new byte[length];
+            dctFile.read(lchBuffer);
+            tmpword = new String(lchBuffer, "GB2312");
+            if (i != 3755 + GB2312_FIRST_CHAR) {
+              tmpword = currentStr + tmpword;
+            }
+            char[] carray = tmpword.toCharArray();
+            long hashId = hash1(carray);
+            int index = getAvaliableIndex(hashId, carray);
+            if (index != -1) {
+              if (bigramHashTable[index] == 0) {
+                bigramHashTable[index] = hashId;
+                // bigramStringTable[index] = tmpword;
+              }
+              frequencyTable[index] += buffer[0];
+            }
+          }
+          j++;
+        }
       }
     }
-    dctFile.close();
     // log.info("load dictionary done! " + dctFilePath + " total:" + total);
   }
 
