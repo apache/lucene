@@ -111,8 +111,9 @@ public final class Sort {
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
-    if (!(o instanceof Sort)) return false;
-    final Sort other = (Sort) o;
+    if (!(o instanceof Sort other)) {
+      return false;
+    }
     return Arrays.equals(this.fields, other.fields);
   }
 

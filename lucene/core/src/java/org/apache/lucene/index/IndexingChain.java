@@ -550,8 +550,8 @@ final class IndexingChain implements Accountable {
   }
 
   void processDocument(int docID, Iterable<? extends IndexableField> document) throws IOException {
-    // number of unique fields by names (collapses multiple field instances by the same name)
-    int fieldCount = 0;
+    // number of unique fields by name which need to be init in segment or full validation
+    int fieldsNeedInitOrValidate = 0;
     int indexedFieldCount = 0; // number of unique fields indexed with postings
     long fieldGen = nextFieldGen++;
     int docFieldIdx = 0;
@@ -568,38 +568,38 @@ final class IndexingChain implements Accountable {
       // 1st pass over doc fields – verify that doc schema matches the index schema
       // build schema for each unique doc field
       for (IndexableField field : document) {
-        IndexableFieldType fieldType = field.fieldType();
+        final String fieldName = field.name();
+        final IndexableFieldType fieldType = field.fieldType();
         final boolean isReserved = field.getClass() == ReservedField.class;
         PerField pf =
             getOrAddPerField(
-                field.name(), false
+                fieldName, false
                 /* we never add reserved fields during indexing should be done during DWPT setup*/ );
         if (pf.reserved != isReserved) {
           throw new IllegalArgumentException(
-              "\""
-                  + field.name()
-                  + "\" is a reserved field and should not be added to any document");
+              "\"" + fieldName + "\" is a reserved field and should not be added to any document");
         }
         if (pf.fieldGen != fieldGen) { // first time we see this field in this document
-          fields[fieldCount++] = pf;
           pf.fieldGen = fieldGen;
-          pf.reset(docID);
+          pf.reset(docID, fieldType);
+          if (pf.validatedFrozenFieldType == null) {
+            fields[fieldsNeedInitOrValidate++] = pf;
+          }
+        } else if (pf.multiValueForcesDeoptimize(fieldType)) {
+          // Multi-valued field with a different field type than the cached frozen type.
+          // Drop the validated frozen field type to force the validation path.
+          pf.validatedFrozenFieldType = null;
+          fields[fieldsNeedInitOrValidate++] = pf;
         }
         if (docFieldIdx >= docFields.length) oversizeDocFields();
         docFields[docFieldIdx++] = pf;
-        updateDocFieldSchema(field.name(), pf.schema, fieldType);
-      }
-      // For each field, if it's the first time we see this field in this segment,
-      // initialize its FieldInfo.
-      // If we have already seen this field, verify that its schema
-      // within the current doc matches its schema in the index.
-      for (int i = 0; i < fieldCount; i++) {
-        PerField pf = fields[i];
-        if (pf.fieldInfo == null) {
-          initializeFieldInfo(pf);
-        } else {
-          pf.schema.assertSameSchema(pf.fieldInfo);
+        if (pf.validatedFrozenFieldType == null) {
+          updateDocFieldSchema(fieldName, pf.schema, fieldType);
         }
+      }
+
+      if (fieldsNeedInitOrValidate > 0) {
+        initAndValidateFields(fieldsNeedInitOrValidate);
       }
 
       // 2nd pass over doc fields – index each field
@@ -628,6 +628,22 @@ final class IndexingChain implements Accountable {
           abortingExceptionConsumer.accept(th);
           throw th;
         }
+      }
+    }
+  }
+
+  private void initAndValidateFields(int fieldCount) throws IOException {
+    // For each field, if it's the first time we see this field in this segment,
+    // initialize its FieldInfo.
+    // If we have already seen this field, verify that its schema
+    // within the current doc matches its schema in the index.
+    for (int i = 0; i < fieldCount; i++) {
+      PerField pf = fields[i];
+      if (pf.fieldInfo == null) {
+        initializeFieldInfo(pf);
+        pf.trySetValidatedFrozenFieldType();
+      } else {
+        pf.schema.assertSameSchema(pf.fieldInfo);
       }
     }
   }
@@ -1099,6 +1115,14 @@ final class IndexingChain implements Accountable {
     private final Analyzer analyzer;
     private boolean first; // first in a document
 
+    /**
+     * Allows IndexingChain to skip schema validation if fields keep using the same frozen field
+     * type
+     */
+    private FieldType validatedFrozenFieldType;
+
+    private IndexableFieldType candidateFieldType;
+
     PerField(
         String fieldName,
         int indexCreatedVersionMajor,
@@ -1116,9 +1140,33 @@ final class IndexingChain implements Accountable {
       this.reserved = reserved;
     }
 
-    void reset(int docId) {
+    void reset(int docId, IndexableFieldType fieldType) {
       first = true;
-      schema.reset(docId);
+      if (fieldInfo == null) {
+        // The first time we encounter this field in a segment propose a frozen field to optimize
+        // the validation step. This will be promoted in trySetValidatedFrozenFieldType if it is
+        // frozen and valid.
+        candidateFieldType = fieldType;
+      }
+      if (fieldType == validatedFrozenFieldType) {
+        schema.resetJustDocId(docId);
+      } else {
+        // Encountered new FieldType. Deoptimize the schema validation skip.
+        validatedFrozenFieldType = null;
+        schema.reset(docId);
+      }
+    }
+
+    boolean multiValueForcesDeoptimize(IndexableFieldType fieldType) {
+      return validatedFrozenFieldType != null && fieldType != validatedFrozenFieldType;
+    }
+
+    void trySetValidatedFrozenFieldType() {
+      assert fieldInfo != null;
+      if (candidateFieldType instanceof FieldType ft && ft.isFrozen()) {
+        validatedFrozenFieldType = ft;
+      }
+      candidateFieldType = null;
     }
 
     void setFieldInfo(FieldInfo fieldInfo) {
@@ -1536,8 +1584,12 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void reset(int doc) {
+    void resetJustDocId(int doc) {
       docID = doc;
+    }
+
+    void reset(int doc) {
+      resetJustDocId(doc);
       omitNorms = false;
       storeTermVector = false;
       indexOptions = IndexOptions.NONE;

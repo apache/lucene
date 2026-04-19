@@ -482,7 +482,7 @@ public class MMapDirectory extends FSDirectory {
   }
 
   private static int getSharedArenaMaxPermitsSysprop() {
-    int ret = 1024; // default value
+    int ret = RefCountedSharedArena.DEFAULT_MAX_PERMITS;
     try {
       String str = System.getProperty(SHARED_ARENA_MAX_PERMITS_SYSPROP);
       if (str != null) {

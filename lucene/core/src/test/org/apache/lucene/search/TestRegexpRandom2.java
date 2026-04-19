@@ -180,11 +180,9 @@ public class TestRegexpRandom2 extends LuceneTestCase {
             RegExp.NONE,
             0,
             RegexpQuery.DEFAULT_PROVIDER,
-            0,
             // TODO: The NFA query is not able to use rewrite method that will utilize the
             // concurrency
-            MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE,
-            false);
+            MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE);
     DumbRegexpQuery dumb = new DumbRegexpQuery(new Term(fieldName, regexp), RegExp.NONE);
 
     TopDocs smartDocs = searcher1.search(smart, 25);
