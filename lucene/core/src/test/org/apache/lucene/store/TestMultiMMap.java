@@ -204,4 +204,57 @@ public class TestMultiMMap extends BaseChunkedDirectoryTestCase {
           "Require a multi impl, got " + clazz, clazz.getSimpleName().matches("Multi\\w+Impl"));
     }
   }
+
+  // GITHUB#15730: MemorySegmentIndexInput's absolute read methods must not modify the input's
+  // file pointer, even when the read crosses a memory-segment boundary and the implementation
+  // has to fall back to seek + relative read.
+  public void testAbsoluteReadDoesNotModifyPositionAcrossBoundary() throws IOException {
+    final int chunkSize = 16;
+    try (Directory dir =
+        getDirectory(createTempDir("testAbsoluteReadDoesNotModifyPosition"), chunkSize)) {
+      try (IndexOutput out = dir.createOutput("file", IOContext.DEFAULT)) {
+        for (int i = 0; i < chunkSize * 2; i++) {
+          out.writeByte((byte) i);
+        }
+      }
+      try (IndexInput input = dir.openInput("file", IOContext.DEFAULT)) {
+        // ensure we really are exercising the multi-segment impl
+        assertCorrectImpl(false, input);
+        RandomAccessInput rai = (RandomAccessInput) input;
+
+        assertEquals(0L, input.getFilePointer());
+
+        // read fits inside the first chunk: position must not change
+        rai.readInt(4);
+        assertEquals(0L, input.getFilePointer());
+
+        // read crosses the chunk boundary: position must still not change
+        rai.readInt(14);
+        assertEquals(0L, input.getFilePointer());
+
+        // same for readShort and readLong at boundaries
+        rai.readShort(15);
+        assertEquals(0L, input.getFilePointer());
+
+        rai.readLong(12);
+        assertEquals(0L, input.getFilePointer());
+
+        // absolute reads must not disturb a non-zero existing file pointer either
+        input.seek(7L);
+        rai.readInt(14);
+        assertEquals(7L, input.getFilePointer());
+        rai.readLong(10);
+        assertEquals(7L, input.getFilePointer());
+        rai.readShort(15);
+        assertEquals(7L, input.getFilePointer());
+
+        // value returned by the boundary-crossing fallback must still be correct
+        input.seek(14L);
+        int expectedIntAtBoundary = input.readInt();
+        input.seek(0L);
+        assertEquals(expectedIntAtBoundary, rai.readInt(14));
+        assertEquals(0L, input.getFilePointer());
+      }
+    }
+  }
 }

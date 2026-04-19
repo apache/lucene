@@ -502,9 +502,19 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     try {
       return segments[si].get(LAYOUT_LE_SHORT, pos & chunkSizeMask);
     } catch (IndexOutOfBoundsException _) {
-      // either it's a boundary, or read past EOF, fall back:
-      setPos(pos, si);
-      return readShort();
+      // either it's a boundary, or read past EOF, fall back. Absolute reads must not modify
+      // the file pointer (see RandomAccessInput), so save and restore curSegment state.
+      final int savedSegmentIndex = curSegmentIndex;
+      final MemorySegment savedSegment = curSegment;
+      final long savedPosition = curPosition;
+      try {
+        setPos(pos, si);
+        return readShort();
+      } finally {
+        this.curSegmentIndex = savedSegmentIndex;
+        this.curSegment = savedSegment;
+        this.curPosition = savedPosition;
+      }
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
     }
@@ -516,9 +526,19 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     try {
       return segments[si].get(LAYOUT_LE_INT, pos & chunkSizeMask);
     } catch (IndexOutOfBoundsException _) {
-      // either it's a boundary, or read past EOF, fall back:
-      setPos(pos, si);
-      return readInt();
+      // either it's a boundary, or read past EOF, fall back. Absolute reads must not modify
+      // the file pointer (see RandomAccessInput), so save and restore curSegment state.
+      final int savedSegmentIndex = curSegmentIndex;
+      final MemorySegment savedSegment = curSegment;
+      final long savedPosition = curPosition;
+      try {
+        setPos(pos, si);
+        return readInt();
+      } finally {
+        this.curSegmentIndex = savedSegmentIndex;
+        this.curSegment = savedSegment;
+        this.curPosition = savedPosition;
+      }
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
     }
@@ -530,9 +550,19 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     try {
       return segments[si].get(LAYOUT_LE_LONG, pos & chunkSizeMask);
     } catch (IndexOutOfBoundsException _) {
-      // either it's a boundary, or read past EOF, fall back:
-      setPos(pos, si);
-      return readLong();
+      // either it's a boundary, or read past EOF, fall back. Absolute reads must not modify
+      // the file pointer (see RandomAccessInput), so save and restore curSegment state.
+      final int savedSegmentIndex = curSegmentIndex;
+      final MemorySegment savedSegment = curSegment;
+      final long savedPosition = curPosition;
+      try {
+        setPos(pos, si);
+        return readLong();
+      } finally {
+        this.curSegmentIndex = savedSegmentIndex;
+        this.curSegment = savedSegment;
+        this.curPosition = savedPosition;
+      }
     } catch (NullPointerException | IllegalStateException e) {
       throw alreadyClosed(e);
     }

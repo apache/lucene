@@ -181,6 +181,10 @@ Bug Fixes
 
 * GITHUB#15939: Fix thread-safety issues with NFARunAutomaton. (Dimitris Rempapis)
 
+* GITHUB#15730: Fix MemorySegmentIndexInput absolute read methods (readShort(pos), readInt(pos),
+  readLong(pos)) to not modify the file pointer when the read crosses a memory segment boundary.
+  (Barry)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
