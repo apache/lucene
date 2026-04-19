@@ -974,8 +974,8 @@ public class UnifiedHighlighter {
                   ? indexReaderWithTermVecCache
                   : searcher.getIndexReader();
           final LeafReader leafReader;
-          if (indexReader instanceof LeafReader) {
-            leafReader = (LeafReader) indexReader;
+          if (indexReader instanceof LeafReader lr) {
+            leafReader = lr;
           } else {
             List<LeafReaderContext> leaves = indexReader.leaves();
             LeafReaderContext leafReaderContext = leaves.get(ReaderUtil.subIndex(docId, leaves));
@@ -1452,8 +1452,8 @@ public class UnifiedHighlighter {
         return;
       }
       StringBuilder curValueBuilder;
-      if (curValue instanceof StringBuilder) {
-        curValueBuilder = (StringBuilder) curValue;
+      if (curValue instanceof StringBuilder sb) {
+        curValueBuilder = sb;
       } else {
         // upgrade String to StringBuilder. Choose a good initial size.
         curValueBuilder =

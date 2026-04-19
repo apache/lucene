@@ -202,7 +202,7 @@ public class ShowFailedTestsAtEndPlugin extends LuceneGradlePlugin {
         LOGGER.error(
             "\nERROR: {} {} failed{}:\n\n{}",
             failedTests.size(),
-            failedTests.size() == 1 ? "test has" : failedTests.size() + " tests have",
+            failedTests.size() == 1 ? "test has" : "tests have",
             failedTests.size() > limit ? " (top " + limit + " shown)" : "",
             formatted);
       }

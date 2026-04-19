@@ -19,7 +19,7 @@ package org.apache.lucene.search;
 import java.util.Objects;
 
 /**
- * Contains statistics for a collection (field).
+ * Contains statistics for a field.
  *
  * <p>This class holds statistics across all documents for scoring purposes:
  *
@@ -54,22 +54,22 @@ import java.util.Objects;
  *     Terms#getDocCount()
  * @param sumTotalTermFreq The total number of tokens for this field , in the range [{@link
  *     #sumDocFreq()} .. {@link Long#MAX_VALUE}]. This is the "word count" for this field across all
- *     documents. It is the sum of {@link TermStatistics#totalTermFreq()} across all terms. It is
- *     also the sum of each document's field length across all documents.
+ *     documents. It is the sum of {@link TermStats#totalTermFreq()} across all terms. It is also
+ *     the sum of each document's field length across all documents.
  *     <p>This value is always a positive number, and always at least {@link #sumDocFreq()}. @see
  *     Terms#getSumTotalTermFreq()
  * @param sumDocFreq The total number of posting list entries for this field, in the range [{@link
  *     #docCount()} .. {@link #sumTotalTermFreq()}]. This is the sum of term-document pairs: the sum
- *     of {@link TermStatistics#docFreq()} across all terms. It is also the sum of each document's
- *     unique term count for this field across all documents.
+ *     of {@link TermStats#docFreq()} across all terms. It is also the sum of each document's unique
+ *     term count for this field across all documents.
  *     <p>This value is always a positive number, always at least {@link #docCount()}, and never
  *     exceeds {@link #sumTotalTermFreq()}. @see Terms#getSumDocFreq()
  * @lucene.experimental
  */
-public record CollectionStatistics(
+public record FieldStats(
     String field, long maxDoc, long docCount, long sumTotalTermFreq, long sumDocFreq) {
   /**
-   * Creates statistics instance for a collection (field).
+   * Creates statistics instance for a field.
    *
    * @throws IllegalArgumentException if {@code maxDoc} is negative or zero.
    * @throws IllegalArgumentException if {@code docCount} is negative or zero.
@@ -77,7 +77,7 @@ public record CollectionStatistics(
    * @throws IllegalArgumentException if {@code sumDocFreq} is less than {@code docCount}.
    * @throws IllegalArgumentException if {@code sumTotalTermFreq} is less than {@code sumDocFreq}.
    */
-  public CollectionStatistics {
+  public FieldStats {
     Objects.requireNonNull(field);
     if (maxDoc <= 0) {
       throw new IllegalArgumentException("maxDoc must be positive, maxDoc: " + maxDoc);

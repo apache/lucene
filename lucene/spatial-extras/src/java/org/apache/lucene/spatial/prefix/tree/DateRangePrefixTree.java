@@ -291,11 +291,11 @@ public class DateRangePrefixTree extends NumberRangePrefixTree {
    */
   @Override
   public UnitNRShape toUnitShape(Object value) {
-    if (value instanceof Calendar) {
-      return toShape((Calendar) value);
-    } else if (value instanceof Date) {
+    if (value instanceof Calendar cal) {
+      return toShape(cal);
+    } else if (value instanceof Date date) {
       Calendar cal = newCal();
-      cal.setTime((Date) value);
+      cal.setTime(date);
       return toShape(cal);
     }
     throw new IllegalArgumentException("Expecting Calendar or Date but got: " + value.getClass());

@@ -46,8 +46,8 @@ public abstract class TwoPhaseIterator {
    * this will return the wrapped {@link TwoPhaseIterator}. Otherwise this returns {@code null}.
    */
   public static TwoPhaseIterator unwrap(DocIdSetIterator iterator) {
-    if (iterator instanceof TwoPhaseIteratorAsDocIdSetIterator) {
-      return ((TwoPhaseIteratorAsDocIdSetIterator) iterator).twoPhaseIterator;
+    if (iterator instanceof TwoPhaseIteratorAsDocIdSetIterator tpi) {
+      return tpi.twoPhaseIterator;
     } else {
       return null;
     }

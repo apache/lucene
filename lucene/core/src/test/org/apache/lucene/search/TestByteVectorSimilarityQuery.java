@@ -58,24 +58,14 @@ public class TestByteVectorSimilarityQuery
 
   @Override
   ByteVectorSimilarityQuery getVectorQuery(
-      String field,
-      byte[] vector,
-      float traversalSimilarity,
-      float resultSimilarity,
-      Query filter) {
-    return new ByteVectorSimilarityQuery(
-        field, vector, traversalSimilarity, resultSimilarity, filter);
+      String field, byte[] vector, float resultSimilarity, float decay, Query filter) {
+    return new ByteVectorSimilarityQuery(field, vector, resultSimilarity, decay, filter);
   }
 
   @Override
   ByteVectorSimilarityQuery getThrowingVectorQuery(
-      String field,
-      byte[] vector,
-      float traversalSimilarity,
-      float resultSimilarity,
-      Query filter) {
-    return new ByteVectorSimilarityQuery(
-        field, vector, traversalSimilarity, resultSimilarity, filter) {
+      String field, byte[] vector, float resultSimilarity, float decay, Query filter) {
+    return new ByteVectorSimilarityQuery(field, vector, resultSimilarity, decay, filter) {
       @Override
       VectorScorer createVectorScorer(LeafReaderContext context) {
         throw new UnsupportedOperationException();

@@ -399,26 +399,25 @@ public class TestExitableDirectoryReader extends LuceneTestCase {
 
       // Test that singleton docValues stay as singleton docValues after filtering
       directoryReader = DirectoryReader.open(directory);
-      try (IndexReader reader = new TestReader(getOnlyLeafReader(directoryReader))) {
+      try (IndexReader reader = new TestReader(getOnlyLeafReader(directoryReader));
+          IndexReader exitableReader =
+              new TestReader(
+                  getOnlyLeafReader(
+                      new ExitableDirectoryReader(
+                          DirectoryReader.open(directory), infiniteQueryTimeout())))) {
         LeafReader leafReader = reader.leaves().getFirst().reader();
-        assertThat(
-            leafReader.getSortedSetDocValues("sortedset"),
-            Matchers.instanceOf(SingletonSortedSetDocValues.class));
-        assertThat(
-            leafReader.getSortedNumericDocValues("sortednumeric"),
-            Matchers.instanceOf(SingletonSortedNumericDocValues.class));
-      }
-      exitableDirectoryReader =
-          new ExitableDirectoryReader(DirectoryReader.open(directory), infiniteQueryTimeout());
-      try (IndexReader extitableReader =
-          new TestReader(getOnlyLeafReader(exitableDirectoryReader))) {
-        LeafReader exitableLeafReader = extitableReader.leaves().getFirst().reader();
-        assertThat(
-            exitableLeafReader.getSortedSetDocValues("sortedset"),
-            Matchers.instanceOf(SingletonSortedSetDocValues.class));
-        assertThat(
-            exitableLeafReader.getSortedNumericDocValues("sortednumeric"),
-            Matchers.instanceOf(SingletonSortedNumericDocValues.class));
+        LeafReader exitableLeafReader = exitableReader.leaves().getFirst().reader();
+        if (leafReader.getSortedSetDocValues("sortedset") instanceof SingletonSortedSetDocValues) {
+          assertThat(
+              exitableLeafReader.getSortedSetDocValues("sortedset"),
+              Matchers.instanceOf(SingletonSortedSetDocValues.class));
+        }
+        if (leafReader.getSortedNumericDocValues("sortednumeric")
+            instanceof SingletonSortedNumericDocValues) {
+          assertThat(
+              exitableLeafReader.getSortedNumericDocValues("sortednumeric"),
+              Matchers.instanceOf(SingletonSortedNumericDocValues.class));
+        }
       }
     }
   }

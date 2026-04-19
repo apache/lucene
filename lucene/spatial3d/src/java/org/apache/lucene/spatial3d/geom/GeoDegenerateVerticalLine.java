@@ -255,10 +255,9 @@ public class GeoDegenerateVerticalLine extends GeoBaseBBox {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof GeoDegenerateVerticalLine)) {
+    if (!(o instanceof GeoDegenerateVerticalLine other)) {
       return false;
     }
-    GeoDegenerateVerticalLine other = (GeoDegenerateVerticalLine) o;
     return super.equals(other) && other.UHC.equals(UHC) && other.LHC.equals(LHC);
   }
 
