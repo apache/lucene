@@ -63,7 +63,7 @@ class PhraseScorer extends Scorer {
             return false;
           }
         }
-        matcher.reset();
+        matcher.resetPositions();
         freq = 0;
         return matcher.nextMatch();
       }

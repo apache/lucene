@@ -25,6 +25,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermStates;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.store.Directory;
@@ -33,7 +34,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 /**
  * Tests the {@link PhraseMatcher} contract, particularly the ability to call {@link
- * PhraseMatcher#maxFreq()} before {@link PhraseMatcher#reset()}.
+ * PhraseMatcher#maxFreq()} before {@link PhraseMatcher#resetPositions()}.
  */
 public class TestPhraseMatcherContract extends LuceneTestCase {
 
@@ -66,7 +67,14 @@ public class TestPhraseMatcherContract extends LuceneTestCase {
             new PhraseQuery.PostingsAndFreq(pe2, (org.apache.lucene.index.ImpactsEnum) pe2, 1, t2);
 
         IndexSearcher searcher = new IndexSearcher(reader);
-        SimScorer scorer = new BM25Similarity().scorer(1f, searcher.collectionStatistics("body"));
+        FieldStats fieldStats = searcher.fieldStats("body");
+        assertNotNull(fieldStats);
+        // Same stats path as PhraseWeight#getStats (PhraseQuery#createWeight)
+        TermStates ts1 = TermStates.build(searcher, t1, true);
+        TermStates ts2 = TermStates.build(searcher, t2, true);
+        assertTrue(ts1.docFreq() > 0);
+        assertTrue(ts2.docFreq() > 0);
+        SimScorer scorer = new BM25Similarity().scorer(1f, fieldStats, searcher.termStats(t1, ts1.docFreq(), ts1.totalTermFreq()), searcher.termStats(t2, ts2.docFreq(), ts2.totalTermFreq()));
         ExactPhraseMatcher matcher =
             new ExactPhraseMatcher(postings, ScoreMode.TOP_SCORES, scorer, 1f);
 
@@ -74,12 +82,12 @@ public class TestPhraseMatcherContract extends LuceneTestCase {
         int docId = approximation.nextDoc();
         assertNotEquals(DocIdSetIterator.NO_MORE_DOCS, docId);
 
-        // CALL maxFreq BEFORE reset
+        // CALL maxFreq BEFORE resetPositions
         float maxFreq = matcher.maxFreq();
         assertTrue(maxFreq >= 1.0f);
 
-        // Then reset
-        matcher.reset();
+        // Then resetPositions
+        matcher.resetPositions();
         assertTrue("Should have a match in doc " + docId, matcher.nextMatch());
         assertFalse(matcher.nextMatch());
       }
@@ -114,8 +122,14 @@ public class TestPhraseMatcherContract extends LuceneTestCase {
             new PhraseQuery.PostingsAndFreq(pe2, (org.apache.lucene.index.ImpactsEnum) pe2, 1, t2);
 
         IndexSearcher searcher = new IndexSearcher(reader);
-        SimScorer scorer = new BM25Similarity().scorer(1f, searcher.collectionStatistics("body"));
-        // distance 2 allows "quick silver fox"
+        FieldStats fieldStats = searcher.fieldStats("body");
+        assertNotNull(fieldStats);
+        TermStates ts1 = TermStates.build(searcher, t1, true);
+        TermStates ts2 = TermStates.build(searcher, t2, true);
+        assertTrue(ts1.docFreq() > 0);
+        assertTrue(ts2.docFreq() > 0);
+        SimScorer scorer = new BM25Similarity().scorer(1f, fieldStats, searcher.termStats(t1, ts1.docFreq(), ts1.totalTermFreq()), searcher.termStats(t2, ts2.docFreq(), ts2.totalTermFreq()));
+        // Slop 2 allows "quick silver fox"
         SloppyPhraseMatcher matcher =
             new SloppyPhraseMatcher(postings, 2, ScoreMode.TOP_SCORES, scorer, 1f, false);
 
@@ -123,12 +137,12 @@ public class TestPhraseMatcherContract extends LuceneTestCase {
         int docId = approximation.nextDoc();
         assertNotEquals(DocIdSetIterator.NO_MORE_DOCS, docId);
 
-        // CALL maxFreq BEFORE reset
+        // CALL maxFreq BEFORE resetPositions
         float maxFreq = matcher.maxFreq();
         assertTrue(maxFreq >= 1.0f);
 
-        // Then reset
-        matcher.reset();
+        // Then resetPositions
+        matcher.resetPositions();
         assertTrue("Should have a match in doc " + docId, matcher.nextMatch());
         assertFalse(matcher.nextMatch());
       }

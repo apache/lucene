@@ -28,7 +28,10 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.PhraseQuery;
+import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopFieldCollectorManager;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -53,6 +56,8 @@ import org.openjdk.jmh.annotations.Warmup;
     value = 3,
     jvmArgsAppend = {"-Xmx2g", "-Xms2g"})
 public class PhraseScorerBenchmark {
+
+  private static final int NUM_HITS = 10;
 
   private Directory dir;
   private IndexReader reader;
@@ -108,5 +113,29 @@ public class PhraseScorerBenchmark {
   @Benchmark
   public TopDocs benchmarkSloppyTopScores() throws IOException {
     return searcher.search(sloppyQuery, 10);
+  }
+
+  @Benchmark
+  public TopDocs benchmarkExactComplete() throws IOException {
+    return searcher.search(
+        exactQuery, new TopScoreDocCollectorManager(NUM_HITS, Integer.MAX_VALUE));
+  }
+
+  @Benchmark
+  public TopDocs benchmarkExactCompleteNoScores() throws IOException {
+    return searcher.search(
+        exactQuery, new TopFieldCollectorManager(Sort.INDEXORDER, NUM_HITS, Integer.MAX_VALUE));
+  }
+
+  @Benchmark
+  public TopDocs benchmarkSloppyComplete() throws IOException {
+    return searcher.search(
+        sloppyQuery, new TopScoreDocCollectorManager(NUM_HITS, Integer.MAX_VALUE));
+  }
+
+  @Benchmark
+  public TopDocs benchmarkSloppyCompleteNoScores() throws IOException {
+    return searcher.search(
+        sloppyQuery, new TopFieldCollectorManager(Sort.INDEXORDER, NUM_HITS, Integer.MAX_VALUE));
   }
 }

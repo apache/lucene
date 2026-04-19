@@ -168,9 +168,9 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
 
   @Override
   float maxFreq() throws IOException {
-    // Load freqs eagerly so maxFreq() can be called before reset() in TOP_SCORES
+    // Load freqs eagerly so maxFreq() can be called before resetPositions() in TOP_SCORES
     // mode. PhraseScorer uses this to short-circuit non-competitive documents
-    // before paying the cost of reset() + initPhrasePositions().
+    // before paying the cost of resetPositions() + initPhrasePositions().
     float maxFreq = 0;
     for (PhrasePositions phrasePosition : phrasePositions) {
       phrasePosition.freq = phrasePosition.postings.freq();
@@ -181,7 +181,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
   }
 
   @Override
-  public void reset() throws IOException {
+  public void resetPositions() throws IOException {
     if (freqsLoaded) {
       // Freqs already loaded by maxFreq().
       freqsLoaded = false;

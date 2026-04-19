@@ -95,9 +95,9 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
 
   @Override
   float maxFreq() throws IOException {
-    // Load freqs eagerly so maxFreq() can be called before reset() in TOP_SCORES
+    // Load freqs eagerly so maxFreq() can be called before resetPositions() in TOP_SCORES
     // mode. PhraseScorer uses this to short-circuit non-competitive documents
-    // before paying the cost of reset() + nextMatch().
+    // before paying the cost of resetPositions() + nextMatch().
     int minFreq = postings[0].postings.freq();
     postings[0].freq = minFreq;
     for (int i = 1; i < postings.length; i++) {
@@ -110,7 +110,7 @@ public final class ExactPhraseMatcher extends PhraseMatcher {
   }
 
   @Override
-  public void reset() throws IOException {
+  public void resetPositions() throws IOException {
     if (freqsLoaded) {
       // Freqs already loaded by maxFreq(). Only reset position state.
       freqsLoaded = false;
