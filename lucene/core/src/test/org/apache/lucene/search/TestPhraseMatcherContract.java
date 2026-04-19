@@ -74,7 +74,13 @@ public class TestPhraseMatcherContract extends LuceneTestCase {
         TermStates ts2 = TermStates.build(searcher, t2, true);
         assertTrue(ts1.docFreq() > 0);
         assertTrue(ts2.docFreq() > 0);
-        SimScorer scorer = new BM25Similarity().scorer(1f, fieldStats, searcher.termStats(t1, ts1.docFreq(), ts1.totalTermFreq()), searcher.termStats(t2, ts2.docFreq(), ts2.totalTermFreq()));
+        SimScorer scorer =
+            new BM25Similarity()
+                .scorer(
+                    1f,
+                    fieldStats,
+                    searcher.termStats(t1, ts1.docFreq(), ts1.totalTermFreq()),
+                    searcher.termStats(t2, ts2.docFreq(), ts2.totalTermFreq()));
         ExactPhraseMatcher matcher =
             new ExactPhraseMatcher(postings, ScoreMode.TOP_SCORES, scorer, 1f);
 
@@ -128,7 +134,13 @@ public class TestPhraseMatcherContract extends LuceneTestCase {
         TermStates ts2 = TermStates.build(searcher, t2, true);
         assertTrue(ts1.docFreq() > 0);
         assertTrue(ts2.docFreq() > 0);
-        SimScorer scorer = new BM25Similarity().scorer(1f, fieldStats, searcher.termStats(t1, ts1.docFreq(), ts1.totalTermFreq()), searcher.termStats(t2, ts2.docFreq(), ts2.totalTermFreq()));
+        SimScorer scorer =
+            new BM25Similarity()
+                .scorer(
+                    1f,
+                    fieldStats,
+                    searcher.termStats(t1, ts1.docFreq(), ts1.totalTermFreq()),
+                    searcher.termStats(t2, ts2.docFreq(), ts2.totalTermFreq()));
         // Slop 2 allows "quick silver fox"
         SloppyPhraseMatcher matcher =
             new SloppyPhraseMatcher(postings, 2, ScoreMode.TOP_SCORES, scorer, 1f, false);

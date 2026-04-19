@@ -48,8 +48,7 @@ public abstract class PhraseMatcher {
    * <p>This may be called before {@link #resetPositions()} to enable early termination of
    * non-competitive documents in {@link ScoreMode#TOP_SCORES} mode, as long as the {@link
    * #approximation()} has been advanced to the target document. Implementations must lazily load
-   * any required state (e.g.
-   * term frequencies) on first access per document.
+   * any required state (e.g. term frequencies) on first access per document.
    */
   abstract float maxFreq() throws IOException;
 
