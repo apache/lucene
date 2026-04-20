@@ -33,9 +33,9 @@ import org.apache.lucene.index.IndexableFieldType;
  */
 public abstract class BinaryColumn extends Column {
 
-  /** Creates a BinaryColumn with the given field name and type. */
-  protected BinaryColumn(String name, IndexableFieldType fieldType) {
-    super(name, fieldType);
+  /** Creates a BinaryColumn with the given field name, type, and density. */
+  protected BinaryColumn(String name, IndexableFieldType fieldType, Density density) {
+    super(name, fieldType, density);
   }
 
   /**

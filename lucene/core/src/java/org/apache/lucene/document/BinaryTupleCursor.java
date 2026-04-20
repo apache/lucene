@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.document;
 
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -27,22 +28,20 @@ import org.apache.lucene.util.BytesRef;
  */
 public abstract class BinaryTupleCursor {
 
-  /** Sentinel value returned by {@link #nextDoc()} when there are no more documents. */
-  public static final int NO_MORE_DOCS = Integer.MAX_VALUE;
-
   /** Sole constructor. */
   protected BinaryTupleCursor() {}
 
   /**
-   * Advances to the next doc-id that has a value and returns it, or {@link #NO_MORE_DOCS} if
-   * exhausted. Doc-ids are batch-local (0 to {@code numDocs - 1}).
+   * Advances to the next doc-id that has a value and returns it, or {@link
+   * DocIdSetIterator#NO_MORE_DOCS} if exhausted. Doc-ids are batch-local (0 to {@code numDocs -
+   * 1}).
    */
   public abstract int nextDoc();
 
   /**
    * Returns the value at the current cursor position. Only valid until the next call to {@link
    * #nextDoc()}, and only after a {@code nextDoc()} that returned a value other than {@link
-   * #NO_MORE_DOCS}.
+   * DocIdSetIterator#NO_MORE_DOCS}.
    */
   public abstract BytesRef binaryValue();
 }

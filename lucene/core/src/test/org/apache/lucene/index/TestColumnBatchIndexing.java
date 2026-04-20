@@ -2087,6 +2087,234 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
+  /**
+   * With a sparse row column, the batch must still produce {@code numDocs} documents in the
+   * segment, and stored-fields for un-populated docs must be empty (not shifted, not missing). This
+   * guards the row-dense framing contract: every doc-id in {@code [0, numDocs)} is framed
+   * regardless of whether any row column has a value at that doc.
+   */
+  public void testSparseStoredFramingPreservesNumDocs() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType storedOnly = new FieldType();
+    storedOnly.setStored(true);
+    storedOnly.freeze();
+
+    // 5 batch docs, but only docs 1 and 3 have a stored value.
+    int[] docIds = {1, 3};
+    BytesRef[] values = {newBytesRef("one"), newBytesRef("three")};
+    w.addBatch(simpleBatch(5, new ArrayBinaryColumn("field", storedOnly, docIds, values)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    assertEquals(5, leaf.maxDoc());
+
+    StoredFields storedFields = leaf.storedFields();
+    assertNull(storedFields.document(0).getField("field"));
+    assertEquals(newBytesRef("one"), storedFields.document(1).getField("field").binaryValue());
+    assertNull(storedFields.document(2).getField("field"));
+    assertEquals(newBytesRef("three"), storedFields.document(3).getField("field").binaryValue());
+    assertNull(storedFields.document(4).getField("field"));
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  /**
+   * With a sparse indexed row column, the segment must still have {@code numDocs} documents, and
+   * the inverted index must reflect only the populated docs. Guards termsHash framing alignment.
+   */
+  public void testSparseIndexedFramingPreservesNumDocs() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType indexedType = new FieldType();
+    indexedType.setIndexOptions(IndexOptions.DOCS);
+    indexedType.setOmitNorms(true);
+    indexedType.setTokenized(false);
+    indexedType.freeze();
+
+    // 6 batch docs, only docs 2 and 5 have a term.
+    int[] docIds = {2, 5};
+    BytesRef[] values = {newBytesRef("a"), newBytesRef("b")};
+    w.addBatch(simpleBatch(6, new ArrayBinaryColumn("tag", indexedType, docIds, values)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    assertEquals(6, leaf.maxDoc());
+
+    IndexSearcher searcher = new IndexSearcher(r);
+    assertEquals(1, searcher.count(new TermQuery(new Term("tag", "a"))));
+    assertEquals(1, searcher.count(new TermQuery(new Term("tag", "b"))));
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  /**
+   * When some docs in the batch have only a DV column (no row column value), framing still happens
+   * for every doc: stored fields must be empty for those docs, inverted index untouched, and DV
+   * values align with their batch doc-ids.
+   */
+  public void testSparseRowMixedWithDenseDocValues() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType storedOnly = new FieldType();
+    storedOnly.setStored(true);
+    storedOnly.freeze();
+
+    // Row-sparse stored column: only docs 0 and 3 have a stored value.
+    int[] storedDocIds = {0, 3};
+    BytesRef[] storedValues = {newBytesRef("first"), newBytesRef("fourth")};
+    // Dense DV column covering every doc.
+    long[] dvValues = {100, 200, 300, 400};
+
+    w.addBatch(
+        simpleBatch(
+            4,
+            new ArrayBinaryColumn("stored", storedOnly, storedDocIds, storedValues),
+            new ArrayDenseLongColumn("dv", NumericDocValuesField.TYPE, dvValues)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    assertEquals(4, leaf.maxDoc());
+
+    StoredFields storedFields = leaf.storedFields();
+    assertEquals(newBytesRef("first"), storedFields.document(0).getField("stored").binaryValue());
+    assertNull(storedFields.document(1).getField("stored"));
+    assertNull(storedFields.document(2).getField("stored"));
+    assertEquals(newBytesRef("fourth"), storedFields.document(3).getField("stored").binaryValue());
+
+    NumericDocValues dv = leaf.getNumericDocValues("dv");
+    for (int i = 0; i < dvValues.length; i++) {
+      assertEquals(i, dv.nextDoc());
+      assertEquals(dvValues[i], dv.longValue());
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, dv.nextDoc());
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  /**
+   * Indexing the same logical docs via {@code addBatch} with a sparse row column vs. via {@code
+   * addDocument} one doc at a time must produce segments with the same {@code maxDoc} and the same
+   * stored-field / inverted-index visibility. This is the golden equivalence check.
+   */
+  public void testSparseBatchMatchesDocByDoc() throws IOException {
+    FieldType storedIndexed = new FieldType(StringField.TYPE_STORED);
+    storedIndexed.freeze();
+
+    // 7 docs; only docs 1, 2, and 5 have values for the row column.
+    int[] docIds = {1, 2, 5};
+    String[] values = {"alpha", "beta", "gamma"};
+    int totalDocs = 7;
+
+    // --- Batch path ---
+    Directory batchDir = newDirectory();
+    try (IndexWriter batchW = new IndexWriter(batchDir, newIndexWriterConfig())) {
+      BytesRef[] refs = new BytesRef[values.length];
+      for (int i = 0; i < values.length; i++) {
+        refs[i] = newBytesRef(values[i]);
+      }
+      // StringField stores as STRING — use the matching storedType so stored-value round-trip is
+      // comparable between the two paths.
+      batchW.addBatch(
+          simpleBatch(
+              totalDocs,
+              new ArrayBinaryColumn(
+                  "field", storedIndexed, docIds, refs, StoredValue.Type.STRING)));
+    }
+
+    // --- Doc-by-doc path ---
+    Directory singleDir = newDirectory();
+    try (IndexWriter singleW = new IndexWriter(singleDir, newIndexWriterConfig())) {
+      int next = 0;
+      for (int d = 0; d < totalDocs; d++) {
+        Document doc = new Document();
+        if (next < docIds.length && docIds[next] == d) {
+          doc.add(
+              new StringField("field", values[next], org.apache.lucene.document.Field.Store.YES));
+          next++;
+        }
+        singleW.addDocument(doc);
+      }
+    }
+
+    try (DirectoryReader batchR = DirectoryReader.open(batchDir);
+        DirectoryReader singleR = DirectoryReader.open(singleDir)) {
+      LeafReader batchLeaf = getOnlyLeafReader(batchR);
+      LeafReader singleLeaf = getOnlyLeafReader(singleR);
+
+      assertEquals(singleLeaf.maxDoc(), batchLeaf.maxDoc());
+      assertEquals(totalDocs, batchLeaf.maxDoc());
+
+      StoredFields batchStored = batchLeaf.storedFields();
+      StoredFields singleStored = singleLeaf.storedFields();
+      for (int d = 0; d < totalDocs; d++) {
+        IndexableField bf = batchStored.document(d).getField("field");
+        IndexableField sf = singleStored.document(d).getField("field");
+        if (sf == null) {
+          assertNull("doc " + d + " should have no stored field", bf);
+        } else {
+          assertNotNull("doc " + d + " should have a stored field", bf);
+          assertEquals(sf.stringValue(), bf.stringValue());
+        }
+      }
+
+      IndexSearcher batchSearcher = new IndexSearcher(batchR);
+      IndexSearcher singleSearcher = new IndexSearcher(singleR);
+      for (String v : values) {
+        Term t = new Term("field", v);
+        assertEquals(singleSearcher.count(new TermQuery(t)), batchSearcher.count(new TermQuery(t)));
+      }
+    }
+
+    batchDir.close();
+    singleDir.close();
+  }
+
+  /** A row column that returns an out-of-order batch doc-id must be rejected. */
+  public void testRowColumnOutOfOrderDocIdThrows() throws IOException {
+    Directory dir = newDirectory();
+    try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      FieldType storedOnly = new FieldType();
+      storedOnly.setStored(true);
+      storedOnly.freeze();
+
+      // docIds intentionally not non-decreasing.
+      int[] docIds = {2, 1};
+      BytesRef[] values = {newBytesRef("a"), newBytesRef("b")};
+      expectThrows(
+          IllegalArgumentException.class,
+          () -> w.addBatch(simpleBatch(3, new ArrayBinaryColumn("f", storedOnly, docIds, values))));
+    }
+    dir.close();
+  }
+
+  /** A row column that returns a batch doc-id {@code >= numDocs} must be rejected. */
+  public void testRowColumnOutOfRangeDocIdThrows() throws IOException {
+    Directory dir = newDirectory();
+    try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      FieldType storedOnly = new FieldType();
+      storedOnly.setStored(true);
+      storedOnly.freeze();
+
+      // Batch size 3, but the column advertises a value at doc 5.
+      int[] docIds = {5};
+      BytesRef[] values = {newBytesRef("oob")};
+      expectThrows(
+          IllegalArgumentException.class,
+          () -> w.addBatch(simpleBatch(3, new ArrayBinaryColumn("f", storedOnly, docIds, values))));
+    }
+    dir.close();
+  }
+
   private static byte[] intsToBytes(int[] values, ByteOrder byteOrder) {
     byte[] bytes = new byte[values.length * Integer.BYTES];
     java.lang.invoke.VarHandle vh =
@@ -2132,7 +2360,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     private final long[] values;
 
     ArrayLongColumn(String name, IndexableFieldType fieldType, int[] docIds, long[] values) {
-      super(name, fieldType);
+      super(name, fieldType, Density.SPARSE);
       assert docIds.length == values.length;
       this.docIds = docIds;
       this.values = values;
@@ -2146,7 +2374,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         @Override
         public int nextDoc() {
           pos++;
-          return pos < docIds.length ? docIds[pos] : NO_MORE_DOCS;
+          return pos < docIds.length ? docIds[pos] : DocIdSetIterator.NO_MORE_DOCS;
         }
 
         @Override
@@ -2173,7 +2401,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         int[] docIds,
         BytesRef[] values,
         StoredValue.Type storedType) {
-      super(name, fieldType);
+      super(name, fieldType, Density.SPARSE);
       assert docIds.length == values.length;
       this.docIds = docIds;
       this.values = values;
@@ -2193,7 +2421,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         @Override
         public int nextDoc() {
           pos++;
-          return pos < docIds.length ? docIds[pos] : NO_MORE_DOCS;
+          return pos < docIds.length ? docIds[pos] : DocIdSetIterator.NO_MORE_DOCS;
         }
 
         @Override
@@ -2236,7 +2464,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         StoredValue.Type storedType,
         int[] docIds,
         BytesRef[] values) {
-      super(name, fieldType);
+      super(name, fieldType, Density.SPARSE);
       assert docIds.length == values.length;
       this.fixedSize = fixedSize;
       this.byteOrder = byteOrder;
@@ -2274,7 +2502,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         @Override
         public int nextDoc() {
           pos++;
-          return pos < docIds.length ? docIds[pos] : NO_MORE_DOCS;
+          return pos < docIds.length ? docIds[pos] : DocIdSetIterator.NO_MORE_DOCS;
         }
 
         @Override
@@ -2290,7 +2518,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     private final long[] values;
 
     ArrayDenseLongColumn(String name, IndexableFieldType fieldType, long[] values) {
-      super(name, fieldType);
+      super(name, fieldType, Density.DENSE);
       this.values = values;
     }
 
@@ -2302,7 +2530,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         @Override
         public int nextDoc() {
           pos++;
-          return pos < values.length ? pos : NO_MORE_DOCS;
+          return pos < values.length ? pos : DocIdSetIterator.NO_MORE_DOCS;
         }
 
         @Override
@@ -2345,7 +2573,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         ByteOrder byteOrder,
         int byteWidth,
         byte[] bytes) {
-      super(name, fieldType);
+      super(name, fieldType, Density.DENSE);
       this.byteOrder = byteOrder;
       this.byteWidth = byteWidth;
       this.bytes = bytes;
@@ -2376,7 +2604,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         @Override
         public int nextDoc() {
           pos++;
-          return pos < numDocs ? pos : NO_MORE_DOCS;
+          return pos < numDocs ? pos : DocIdSetIterator.NO_MORE_DOCS;
         }
 
         @Override

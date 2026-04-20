@@ -884,8 +884,11 @@ final class IndexingChain implements Accountable {
 
   /**
    * Processes row-oriented features (stored fields and term inversion) for columns that have stored
-   * or indexed fields, in a doc-by-doc merged iteration. Doc values and points are handled
-   * separately in the column-oriented pass.
+   * or indexed fields. The outer loop iterates every batch-local doc-id in {@code [0, numDocs)} so
+   * every reserved doc is framed with {@code startStoredFields}/{@code termsHash.startDocument},
+   * matching the single-doc indexing path. For each doc, row columns are consumed while their
+   * cursor head equals the current doc. Doc values and points are handled separately in the
+   * column-oriented pass.
    */
   private void processRowColumns(int baseDocID, int numDocs, Iterable<Column> columns)
       throws IOException {
@@ -893,7 +896,7 @@ final class IndexingChain implements Accountable {
     int numRowCols = 0;
     ColumnFieldAdapter[] adapters = new ColumnFieldAdapter[4];
     PerField[] rowPfs = new PerField[4];
-    int[] nextDocs = new int[4];
+    int[] heads = new int[4];
     boolean hasInverted = false;
 
     for (Column column : columns) {
@@ -904,50 +907,41 @@ final class IndexingChain implements Accountable {
       if (numRowCols >= adapters.length) {
         adapters = ArrayUtil.grow(adapters, numRowCols + 1);
         rowPfs = ArrayUtil.grow(rowPfs, numRowCols + 1);
-        nextDocs = ArrayUtil.grow(nextDocs, numRowCols + 1);
+        heads = ArrayUtil.grow(heads, numRowCols + 1);
       }
       ColumnFieldAdapter adapter = ColumnFieldAdapter.create(column);
       adapters[numRowCols] = adapter;
       rowPfs[numRowCols] = getOrAddPerField(column.name());
-      nextDocs[numRowCols] = adapter.nextDoc();
+      heads[numRowCols] = adapter.nextDoc();
       if (fieldType.indexOptions() != IndexOptions.NONE) {
         hasInverted = true;
       }
       numRowCols++;
     }
 
-    // Merge-iterate doc-by-doc across all row columns
-    int indexedFieldCount = 0;
-    long fieldGen = nextFieldGen++;
-    while (true) {
-      // Find the minimum doc across all cursors
-      int minDoc = ColumnFieldAdapter.NO_MORE_DOCS;
-      for (int i = 0; i < numRowCols; i++) {
-        if (nextDocs[i] < minDoc) {
-          minDoc = nextDocs[i];
-        }
-      }
-      if (minDoc == ColumnFieldAdapter.NO_MORE_DOCS) {
-        break;
-      }
-      if (minDoc < 0 || minDoc >= numDocs) {
-        throw new IllegalArgumentException(
-            "Row column returned batch doc-id "
-                + minDoc
-                + " which is out of range [0, "
-                + numDocs
-                + ")");
-      }
+    // Row-dense outer loop: frame every doc in [0, numDocs). Column cursors stay sparse, but the
+    // per-doc framing is fixed so stored fields and termsHash stay aligned with the reserved doc
+    // ids even for docs that have no row-oriented values.
+    for (int batchDocID = 0; batchDocID < numDocs; batchDocID++) {
+      int segDocID = baseDocID + batchDocID;
+      long fieldGen = nextFieldGen++;
+      int indexedFieldCount = 0;
 
-      int segDocID = baseDocID + minDoc;
-      indexedFieldCount = 0;
       if (hasInverted) {
         termsHash.startDocument();
       }
       startStoredFields(segDocID);
       try {
         for (int i = 0; i < numRowCols; i++) {
-          while (nextDocs[i] == minDoc) {
+          int head = heads[i];
+          if (head != DocIdSetIterator.NO_MORE_DOCS && head < batchDocID) {
+            throw new IllegalArgumentException(
+                "Row column \""
+                    + adapters[i].name()
+                    + "\" returned out-of-order batch doc-id "
+                    + head);
+          }
+          while (head == batchDocID) {
             PerField pf = rowPfs[i];
             if (pf.fieldGen != fieldGen) {
               pf.fieldGen = fieldGen;
@@ -957,8 +951,9 @@ final class IndexingChain implements Accountable {
               fields[indexedFieldCount] = pf;
               indexedFieldCount++;
             }
-            nextDocs[i] = adapters[i].nextDoc();
+            head = adapters[i].nextDoc();
           }
+          heads[i] = head;
         }
       } finally {
         if (hasHitAbortingException == false) {
@@ -976,7 +971,20 @@ final class IndexingChain implements Accountable {
           }
         }
       }
-      fieldGen = nextFieldGen++;
+    }
+
+    // Any remaining cursor head after the outer loop is a doc-id >= numDocs.
+    for (int i = 0; i < numRowCols; i++) {
+      if (heads[i] != DocIdSetIterator.NO_MORE_DOCS) {
+        throw new IllegalArgumentException(
+            "Row column \""
+                + adapters[i].name()
+                + "\" returned batch doc-id "
+                + heads[i]
+                + " which is out of range [0, "
+                + numDocs
+                + ")");
+      }
     }
   }
 
@@ -987,7 +995,6 @@ final class IndexingChain implements Accountable {
    * fresh tuple cursor over the underlying column; one instance is created per column per batch.
    */
   private abstract static class ColumnFieldAdapter extends Field {
-    static final int NO_MORE_DOCS = LongTupleCursor.NO_MORE_DOCS;
 
     ColumnFieldAdapter(String name, IndexableFieldType fieldType) {
       super(name, fieldType);
@@ -1189,9 +1196,8 @@ final class IndexingChain implements Accountable {
 
   private void processLongColumn(
       int baseDocID, int numDocs, LongColumn column, PerField pf, DocValuesType dvType) {
-    LongValuesCursor valuesCursor = column.values();
-    if (valuesCursor != null) {
-      processDenseLongColumn(baseDocID, numDocs, column, valuesCursor, pf, dvType);
+    if (column.density() == Column.Density.DENSE) {
+      processDenseLongColumn(baseDocID, numDocs, column, column.values(), pf, dvType);
       return;
     }
 
@@ -1200,7 +1206,7 @@ final class IndexingChain implements Accountable {
       case NUMERIC -> {
         NumericDocValuesWriter writer = (NumericDocValuesWriter) pf.docValuesWriter;
         int batchDocID;
-        while ((batchDocID = cursor.nextDoc()) != LongTupleCursor.NO_MORE_DOCS) {
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           checkDocID(column, batchDocID, numDocs);
           writer.addValue(baseDocID + batchDocID, cursor.longValue());
         }
@@ -1208,7 +1214,7 @@ final class IndexingChain implements Accountable {
       case SORTED_NUMERIC -> {
         SortedNumericDocValuesWriter writer = (SortedNumericDocValuesWriter) pf.docValuesWriter;
         int batchDocID;
-        while ((batchDocID = cursor.nextDoc()) != LongTupleCursor.NO_MORE_DOCS) {
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           checkDocID(column, batchDocID, numDocs);
           writer.addValue(baseDocID + batchDocID, cursor.longValue());
         }
@@ -1297,7 +1303,7 @@ final class IndexingChain implements Accountable {
       // Points only: bytes are passed through unchanged (caller is responsible for producing
       // sort-encoded bytes of the correct total length).
       int batchDocID;
-      while ((batchDocID = cursor.nextDoc()) != BinaryTupleCursor.NO_MORE_DOCS) {
+      while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
         checkDocID(column, batchDocID, numDocs);
         pointWriter.addPackedValue(baseDocID + batchDocID, cursor.binaryValue());
       }
@@ -1308,7 +1314,7 @@ final class IndexingChain implements Accountable {
       case BINARY -> {
         BinaryDocValuesWriter writer = (BinaryDocValuesWriter) pf.docValuesWriter;
         int batchDocID;
-        while ((batchDocID = cursor.nextDoc()) != BinaryTupleCursor.NO_MORE_DOCS) {
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           checkDocID(column, batchDocID, numDocs);
           int segDocID = baseDocID + batchDocID;
           BytesRef value = cursor.binaryValue();
@@ -1321,7 +1327,7 @@ final class IndexingChain implements Accountable {
       case SORTED -> {
         SortedDocValuesWriter writer = (SortedDocValuesWriter) pf.docValuesWriter;
         int batchDocID;
-        while ((batchDocID = cursor.nextDoc()) != BinaryTupleCursor.NO_MORE_DOCS) {
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           checkDocID(column, batchDocID, numDocs);
           int segDocID = baseDocID + batchDocID;
           BytesRef value = cursor.binaryValue();
@@ -1334,7 +1340,7 @@ final class IndexingChain implements Accountable {
       case SORTED_SET -> {
         SortedSetDocValuesWriter writer = (SortedSetDocValuesWriter) pf.docValuesWriter;
         int batchDocID;
-        while ((batchDocID = cursor.nextDoc()) != BinaryTupleCursor.NO_MORE_DOCS) {
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           checkDocID(column, batchDocID, numDocs);
           int segDocID = baseDocID + batchDocID;
           BytesRef value = cursor.binaryValue();
@@ -1364,12 +1370,11 @@ final class IndexingChain implements Accountable {
     final ByteOrder byteOrder = column.byteOrder();
     final NumericBinaryColumn.NumericKind kind = column.numericKind();
 
-    // DV only: use the bulk path when available.
+    // DV only: use the bulk path when the column declares itself DENSE.
     if (hasPoints == false) {
-      BinaryValuesCursor valuesCursor = column.values();
-      if (valuesCursor != null) {
+      if (column.density() == Column.Density.DENSE) {
         processDenseNumericBinaryColumn(
-            baseDocID, numDocs, column, valuesCursor, pf, byteWidth, byteOrder, dvType);
+            baseDocID, numDocs, column, column.values(), pf, byteWidth, byteOrder, dvType);
         return;
       }
       processSparseNumericBinaryDVOnly(
@@ -1385,7 +1390,7 @@ final class IndexingChain implements Accountable {
 
     if (dvType == DocValuesType.NONE) {
       int batchDocID;
-      while ((batchDocID = cursor.nextDoc()) != BinaryTupleCursor.NO_MORE_DOCS) {
+      while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
         checkDocID(column, batchDocID, numDocs);
         long raw = decodeLong(column, cursor.binaryValue(), byteWidth, byteOrder);
         encodeSortablePointBytes(raw, kind, pointScratch);
@@ -1398,7 +1403,7 @@ final class IndexingChain implements Accountable {
       case NUMERIC -> {
         NumericDocValuesWriter dvWriter = (NumericDocValuesWriter) pf.docValuesWriter;
         int batchDocID;
-        while ((batchDocID = cursor.nextDoc()) != BinaryTupleCursor.NO_MORE_DOCS) {
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           checkDocID(column, batchDocID, numDocs);
           int segDocID = baseDocID + batchDocID;
           long raw = decodeLong(column, cursor.binaryValue(), byteWidth, byteOrder);
@@ -1410,7 +1415,7 @@ final class IndexingChain implements Accountable {
       case SORTED_NUMERIC -> {
         SortedNumericDocValuesWriter dvWriter = (SortedNumericDocValuesWriter) pf.docValuesWriter;
         int batchDocID;
-        while ((batchDocID = cursor.nextDoc()) != BinaryTupleCursor.NO_MORE_DOCS) {
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           checkDocID(column, batchDocID, numDocs);
           int segDocID = baseDocID + batchDocID;
           long raw = decodeLong(column, cursor.binaryValue(), byteWidth, byteOrder);
@@ -1437,7 +1442,7 @@ final class IndexingChain implements Accountable {
       case NUMERIC -> {
         NumericDocValuesWriter writer = (NumericDocValuesWriter) pf.docValuesWriter;
         int batchDocID;
-        while ((batchDocID = cursor.nextDoc()) != BinaryTupleCursor.NO_MORE_DOCS) {
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           checkDocID(column, batchDocID, numDocs);
           writer.addValue(
               baseDocID + batchDocID,
@@ -1447,7 +1452,7 @@ final class IndexingChain implements Accountable {
       case SORTED_NUMERIC -> {
         SortedNumericDocValuesWriter writer = (SortedNumericDocValuesWriter) pf.docValuesWriter;
         int batchDocID;
-        while ((batchDocID = cursor.nextDoc()) != BinaryTupleCursor.NO_MORE_DOCS) {
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           checkDocID(column, batchDocID, numDocs);
           writer.addValue(
               baseDocID + batchDocID,

@@ -59,9 +59,9 @@ public abstract class NumericBinaryColumn extends BinaryColumn {
     DOUBLE,
   }
 
-  /** Creates a NumericBinaryColumn with the given field name and type. */
-  protected NumericBinaryColumn(String name, IndexableFieldType fieldType) {
-    super(name, fieldType);
+  /** Creates a NumericBinaryColumn with the given field name, type, and density. */
+  protected NumericBinaryColumn(String name, IndexableFieldType fieldType, Density density) {
+    super(name, fieldType, density);
   }
 
   /**
@@ -99,12 +99,14 @@ public abstract class NumericBinaryColumn extends BinaryColumn {
   }
 
   /**
-   * Returns a fresh values cursor iterating dense packed values for doc-ids {@code [0, numDocs)},
-   * or {@code null} if the column is not dense or does not support bulk iteration. The default
-   * implementation returns {@code null}. Each returned {@link org.apache.lucene.util.BytesRef} has
+   * Returns a fresh values cursor iterating dense packed values for doc-ids {@code [0, numDocs)}.
+   * Must be overridden when {@link #density()} is {@link Density#DENSE DENSE}; the default
+   * implementation throws {@link UnsupportedOperationException} and is never called for {@link
+   * Density#SPARSE SPARSE} columns. Each returned {@link org.apache.lucene.util.BytesRef} has
    * length that is a multiple of {@link #fixedSize()}.
    */
   public BinaryValuesCursor values() {
-    return null;
+    throw new UnsupportedOperationException(
+        "values() requires density() == DENSE for column \"" + name() + "\"");
   }
 }

@@ -25,26 +25,30 @@ import org.apache.lucene.index.IndexableFieldType;
  * long fields.
  *
  * <p>Iteration is performed via cursors. {@link #tuples()} is always available and yields {@code
- * (docID, longValue)} pairs. {@link #values()} is an optional dense bulk cursor that returns every
- * doc's value in batch order; it returns {@code null} if the column is not dense.
+ * (docID, longValue)} pairs. {@link #values()} is a bulk cursor over consecutive doc-ids; it must
+ * be overridden when {@link #density()} is {@link Density#DENSE DENSE} and is only consulted in
+ * that case.
  *
  * @lucene.experimental
  */
 public abstract class LongColumn extends Column {
 
-  /** Creates a LongColumn with the given field name and type. */
-  protected LongColumn(String name, IndexableFieldType fieldType) {
-    super(name, fieldType);
+  /** Creates a LongColumn with the given field name, type, and density. */
+  protected LongColumn(String name, IndexableFieldType fieldType, Density density) {
+    super(name, fieldType, density);
   }
 
   /** Returns a fresh tuple cursor starting at the beginning of the batch. */
   public abstract LongTupleCursor tuples();
 
   /**
-   * Returns a fresh values cursor iterating dense long values for doc-ids {@code [0, numDocs)}, or
-   * {@code null} if the column is not dense. The default implementation returns {@code null}.
+   * Returns a fresh values cursor iterating dense long values for doc-ids {@code [0, numDocs)}.
+   * Must be overridden when {@link #density()} is {@link Density#DENSE DENSE}; the default
+   * implementation throws {@link UnsupportedOperationException} and is never called for {@link
+   * Density#SPARSE SPARSE} columns.
    */
   public LongValuesCursor values() {
-    return null;
+    throw new UnsupportedOperationException(
+        "values() requires density() == DENSE for column \"" + name() + "\"");
   }
 }

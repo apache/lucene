@@ -21,7 +21,7 @@ import org.apache.lucene.index.IndexableFieldType;
 
 /**
  * A single field's values across multiple documents in a {@link ColumnBatch}. A Column carries only
- * metadata (name and field type); iteration is performed via cursors obtained from {@link
+ * metadata (name, field type, and density); iteration is performed via cursors obtained from {@link
  * LongColumn} or {@link BinaryColumn}.
  *
  * <p>Each call that requests a cursor returns a fresh cursor positioned at the first value, so
@@ -32,18 +32,36 @@ import org.apache.lucene.index.IndexableFieldType;
  */
 public abstract class Column {
 
+  /**
+   * Whether a column has a value for every document in the batch. This is a contract the column
+   * asserts up-front so the indexing chain can pick the right code path without probing the data.
+   */
+  public enum Density {
+    /**
+     * The column has a value for every batch-local doc-id in {@code [0, numDocs)}, in order. For
+     * single-valued fields this means exactly {@code numDocs} values; for multi-valued fields every
+     * doc must appear at least once.
+     */
+    DENSE,
+    /** The column may be missing values for some doc-ids. */
+    SPARSE,
+  }
+
   private final String name;
   private final IndexableFieldType fieldType;
+  private final Density density;
 
   /**
-   * Creates a Column with the given field name and type.
+   * Creates a Column with the given field name, type, and density.
    *
    * @param name the field name
    * @param fieldType describes how this field should be indexed
+   * @param density whether this column has a value for every document in the batch
    */
-  protected Column(String name, IndexableFieldType fieldType) {
+  protected Column(String name, IndexableFieldType fieldType, Density density) {
     this.name = Objects.requireNonNull(name, "field name must not be null");
     this.fieldType = Objects.requireNonNull(fieldType, "field type must not be null");
+    this.density = Objects.requireNonNull(density, "density must not be null");
   }
 
   /** Returns the field name. */
@@ -54,5 +72,10 @@ public abstract class Column {
   /** Returns the field type describing how this field is indexed. */
   public IndexableFieldType fieldType() {
     return fieldType;
+  }
+
+  /** Returns the density of this column (whether every doc has a value). */
+  public Density density() {
+    return density;
   }
 }

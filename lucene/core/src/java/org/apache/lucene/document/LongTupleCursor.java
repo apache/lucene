@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.document;
 
+import org.apache.lucene.search.DocIdSetIterator;
+
 /**
  * A tuple cursor over a {@link LongColumn}. Yields {@code (docID, longValue)} pairs. Batch-local
  * doc-ids are returned in non-decreasing order; the same doc-id may repeat for multi-valued fields
@@ -25,21 +27,19 @@ package org.apache.lucene.document;
  */
 public abstract class LongTupleCursor {
 
-  /** Sentinel value returned by {@link #nextDoc()} when there are no more documents. */
-  public static final int NO_MORE_DOCS = Integer.MAX_VALUE;
-
   /** Sole constructor. */
   protected LongTupleCursor() {}
 
   /**
-   * Advances to the next doc-id that has a value and returns it, or {@link #NO_MORE_DOCS} if
-   * exhausted. Doc-ids are batch-local (0 to {@code numDocs - 1}).
+   * Advances to the next doc-id that has a value and returns it, or {@link
+   * DocIdSetIterator#NO_MORE_DOCS} if exhausted. Doc-ids are batch-local (0 to {@code numDocs -
+   * 1}).
    */
   public abstract int nextDoc();
 
   /**
    * Returns the value at the current cursor position. Only valid after a successful {@link
-   * #nextDoc()} call that returned a value other than {@link #NO_MORE_DOCS}.
+   * #nextDoc()} call that returned a value other than {@link DocIdSetIterator#NO_MORE_DOCS}.
    */
   public abstract long longValue();
 }
