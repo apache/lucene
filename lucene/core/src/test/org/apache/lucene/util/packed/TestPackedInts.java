@@ -20,6 +20,7 @@ import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.LongBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1069,6 +1070,175 @@ public class TestPackedInts extends LuceneTestCase {
             RamUsageTester.ramUsed(values, new IgnoreNullReaderSingletonAccumulator());
         final long computedBytesUsed = values.ramBytesUsed();
         assertEquals(expectedBytesUsed, computedBytesUsed);
+      }
+    }
+  }
+
+  public void testPackedLongValuesBulkAdd() {
+    // Test that bulk add produces the same result as single add
+    final long[] arr =
+        new long[RandomNumbers.randomIntBetween(random(), 1, TEST_NIGHTLY ? 100000 : 10000)];
+
+    for (int bpv : new int[] {0, 1, 63, 64, RandomNumbers.randomIntBetween(random(), 2, 62)}) {
+      for (DataType dataType : DataType.values()) {
+        final int pageSize = 1 << TestUtil.nextInt(random(), 6, 20);
+        float acceptableOverheadRatio = PackedInts.DEFAULT;
+        final int inc;
+        switch (dataType) {
+          case PACKED:
+            inc = 0;
+            break;
+          case DELTA_PACKED:
+            inc = 0;
+            break;
+          case MONOTONIC:
+            inc = TestUtil.nextInt(random(), -1000, 1000);
+            break;
+          default:
+            throw new RuntimeException("added a type and forgot to add it here?");
+        }
+
+        if (bpv == 0) {
+          arr[0] = random().nextLong();
+          for (int i = 1; i < arr.length; ++i) {
+            arr[i] = arr[i - 1] + inc;
+          }
+        } else if (bpv == 64) {
+          for (int i = 0; i < arr.length; ++i) {
+            arr[i] = random().nextLong();
+          }
+        } else {
+          final long minValue =
+              TestUtil.nextLong(
+                  random(), Long.MIN_VALUE, Long.MAX_VALUE - PackedInts.maxValue(bpv));
+          for (int i = 0; i < arr.length; ++i) {
+            arr[i] = minValue + inc * i + random().nextLong() & PackedInts.maxValue(bpv);
+          }
+        }
+
+        // Build with single adds (reference)
+        PackedLongValues.Builder singleBuf =
+            createBuilder(dataType, pageSize, acceptableOverheadRatio);
+        for (int i = 0; i < arr.length; ++i) {
+          singleBuf.add(arr[i]);
+        }
+        PackedLongValues singleValues = singleBuf.build();
+
+        // Build with bulk adds in random-sized chunks
+        PackedLongValues.Builder bulkBuf =
+            createBuilder(dataType, pageSize, acceptableOverheadRatio);
+        int pos = 0;
+        while (pos < arr.length) {
+          int chunkSize =
+              Math.min(RandomNumbers.randomIntBetween(random(), 1, pageSize * 2), arr.length - pos);
+          bulkBuf.add(arr, pos, chunkSize);
+          pos += chunkSize;
+        }
+        assertEquals(arr.length, bulkBuf.size());
+        PackedLongValues bulkValues = bulkBuf.build();
+
+        // Verify same results
+        assertEquals(singleValues.size(), bulkValues.size());
+        for (int i = 0; i < arr.length; ++i) {
+          assertEquals("mismatch at index " + i, singleValues.get(i), bulkValues.get(i));
+        }
+      }
+    }
+  }
+
+  private PackedLongValues.Builder createBuilder(
+      DataType dataType, int pageSize, float acceptableOverheadRatio) {
+    return switch (dataType) {
+      case PACKED -> PackedLongValues.packedBuilder(pageSize, acceptableOverheadRatio);
+      case DELTA_PACKED -> PackedLongValues.deltaPackedBuilder(pageSize, acceptableOverheadRatio);
+      case MONOTONIC -> PackedLongValues.monotonicBuilder(pageSize, acceptableOverheadRatio);
+    };
+  }
+
+  public void testPackedLongValuesBulkAddFromBytes() {
+    // Test that bulk add from byte[] produces the same result as single add
+    final long[] arr =
+        new long[RandomNumbers.randomIntBetween(random(), 1, TEST_NIGHTLY ? 100000 : 10000)];
+
+    for (int bpv : new int[] {0, 1, 63, 64, RandomNumbers.randomIntBetween(random(), 2, 62)}) {
+      for (ByteOrder byteOrder : new ByteOrder[] {ByteOrder.LITTLE_ENDIAN, ByteOrder.BIG_ENDIAN}) {
+        for (DataType dataType : DataType.values()) {
+          final int pageSize = 1 << TestUtil.nextInt(random(), 6, 20);
+          float acceptableOverheadRatio = PackedInts.DEFAULT;
+          final int inc;
+          switch (dataType) {
+            case PACKED:
+            case DELTA_PACKED:
+              inc = 0;
+              break;
+            case MONOTONIC:
+              inc = TestUtil.nextInt(random(), -1000, 1000);
+              break;
+            default:
+              throw new RuntimeException("added a type and forgot to add it here?");
+          }
+
+          if (bpv == 0) {
+            arr[0] = random().nextLong();
+            for (int i = 1; i < arr.length; ++i) {
+              arr[i] = arr[i - 1] + inc;
+            }
+          } else if (bpv == 64) {
+            for (int i = 0; i < arr.length; ++i) {
+              arr[i] = random().nextLong();
+            }
+          } else {
+            final long minValue =
+                TestUtil.nextLong(
+                    random(), Long.MIN_VALUE, Long.MAX_VALUE - PackedInts.maxValue(bpv));
+            for (int i = 0; i < arr.length; ++i) {
+              arr[i] = minValue + inc * i + random().nextLong() & PackedInts.maxValue(bpv);
+            }
+          }
+
+          // Encode longs into byte[] in the given byte order
+          byte[] bytes = new byte[arr.length * Long.BYTES];
+          java.lang.invoke.VarHandle vh =
+              byteOrder == ByteOrder.LITTLE_ENDIAN
+                  ? org.apache.lucene.util.BitUtil.VH_LE_LONG
+                  : org.apache.lucene.util.BitUtil.VH_BE_LONG;
+          for (int i = 0; i < arr.length; i++) {
+            vh.set(bytes, i * Long.BYTES, arr[i]);
+          }
+
+          // Build with single adds (reference)
+          PackedLongValues.Builder singleBuf =
+              createBuilder(dataType, pageSize, acceptableOverheadRatio);
+          for (int i = 0; i < arr.length; ++i) {
+            singleBuf.add(arr[i]);
+          }
+          PackedLongValues singleValues = singleBuf.build();
+
+          // Build with bulk byte[] adds in random-sized chunks
+          PackedLongValues.Builder bulkBuf =
+              createBuilder(dataType, pageSize, acceptableOverheadRatio);
+          int pos = 0;
+          while (pos < bytes.length) {
+            int chunkLongs =
+                Math.min(
+                    RandomNumbers.randomIntBetween(random(), 1, pageSize * 2),
+                    (bytes.length - pos) / Long.BYTES);
+            int chunkBytes = chunkLongs * Long.BYTES;
+            bulkBuf.add(byteOrder, bytes, pos, chunkBytes);
+            pos += chunkBytes;
+          }
+          assertEquals(arr.length, bulkBuf.size());
+          PackedLongValues bulkValues = bulkBuf.build();
+
+          // Verify same results
+          assertEquals(singleValues.size(), bulkValues.size());
+          for (int i = 0; i < arr.length; ++i) {
+            assertEquals(
+                "mismatch at index " + i + " byteOrder=" + byteOrder + " dataType=" + dataType,
+                singleValues.get(i),
+                bulkValues.get(i));
+          }
+        }
       }
     }
   }

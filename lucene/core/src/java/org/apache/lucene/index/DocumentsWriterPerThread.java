@@ -32,6 +32,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.document.ColumnBatch;
 import org.apache.lucene.index.DocumentsWriterDeleteQueue.DeleteSlice;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
@@ -281,6 +282,60 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
       }
     } finally {
       maybeAbort("updateDocuments", flushNotifications);
+    }
+  }
+
+  long updateBatch(
+      ColumnBatch columnBatch,
+      DocumentsWriterDeleteQueue.Node<?> deleteNode,
+      DocumentsWriter.FlushNotifications flushNotifications,
+      Runnable onNewDocOnRAM)
+      throws IOException {
+    try {
+      testPoint("DocumentsWriterPerThread addBatch start");
+      assert abortingException == null : "DWPT has hit aborting exception but is still indexing";
+      if (INFO_VERBOSE && infoStream.isEnabled("DWPT")) {
+        infoStream.message(
+            "DWPT",
+            Thread.currentThread().getName()
+                + " update batch"
+                + " docID="
+                + numDocsInRAM
+                + " seg="
+                + segmentInfo.name);
+      }
+      final int docsInRamBefore = numDocsInRAM;
+      final int numDocs = columnBatch.numDocs();
+      boolean allDocsIndexed = false;
+      try {
+        // Reserve all doc IDs upfront and account for them in numDocsInRAM immediately,
+        // so that deleteLastDocs in the finally block can correctly clean up on failure.
+        // Even on exception, the documents are still added (but marked deleted), matching
+        // the document path semantics.
+        for (int i = 0; i < numDocs; i++) {
+          reserveOneDoc();
+        }
+        numDocsInRAM += numDocs;
+        for (int i = 0; i < numDocs; i++) {
+          onNewDocOnRAM.run();
+        }
+
+        indexingChain.processBatch(docsInRamBefore, columnBatch);
+
+        if (numDocs > 1) {
+          segmentInfo.setHasBlocks();
+        }
+        allDocsIndexed = true;
+        return finishDocuments(deleteNode, docsInRamBefore);
+      } finally {
+        if (!allDocsIndexed && !aborted) {
+          // the iterator threw an exception that is not aborting
+          // go and mark all docs from this block as deleted
+          deleteLastDocs(numDocsInRAM - docsInRamBefore);
+        }
+      }
+    } finally {
+      maybeAbort("updateBatch", flushNotifications);
     }
   }
 

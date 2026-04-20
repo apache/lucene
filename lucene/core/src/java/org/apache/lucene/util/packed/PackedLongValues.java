@@ -18,8 +18,11 @@ package org.apache.lucene.util.packed;
 
 import static org.apache.lucene.util.packed.PackedInts.checkBlockSize;
 
+import java.lang.invoke.VarHandle;
+import java.nio.ByteOrder;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.RamUsageEstimator;
 
@@ -234,17 +237,93 @@ public class PackedLongValues extends LongValues implements Accountable {
       if (pending == null) {
         throw new IllegalStateException("Cannot be reused after build()");
       }
+      packIfFull();
+      pending[pendingOff++] = l;
+      size += 1;
+      return this;
+    }
+
+    /** Add multiple elements to this builder in bulk. */
+    public Builder add(long[] values, int offset, int length) {
+      if (pending == null) {
+        throw new IllegalStateException("Cannot be reused after build()");
+      }
+      int remaining = length;
+      int srcOff = offset;
+      while (remaining > 0) {
+        packIfFull();
+        int toCopy = Math.min(remaining, pending.length - pendingOff);
+        System.arraycopy(values, srcOff, pending, pendingOff, toCopy);
+        pendingOff += toCopy;
+        srcOff += toCopy;
+        remaining -= toCopy;
+        size += toCopy;
+      }
+      return this;
+    }
+
+    /**
+     * Add multiple elements from a byte array interpreted as longs in the given byte order. The
+     * byte range must be aligned to 8 bytes (Long.BYTES).
+     */
+    public Builder add(ByteOrder byteOrder, byte[] bytes, int offset, int length) {
+      return add(byteOrder, Long.BYTES, bytes, offset, length);
+    }
+
+    /**
+     * Add multiple elements from a byte array interpreted as fixed-width integers in the given byte
+     * order. Supported widths are {@code 4} (sign-extended to long) and {@code 8}. The byte range
+     * must be aligned to {@code byteWidth}.
+     */
+    public Builder add(ByteOrder byteOrder, int byteWidth, byte[] bytes, int offset, int length) {
+      if (pending == null) {
+        throw new IllegalStateException("Cannot be reused after build()");
+      }
+      if (byteWidth != Integer.BYTES && byteWidth != Long.BYTES) {
+        throw new IllegalArgumentException("byteWidth must be 4 or 8: byteWidth=" + byteWidth);
+      }
+      if ((length % byteWidth) != 0) {
+        throw new IllegalArgumentException(
+            "length must be a multiple of byteWidth=" + byteWidth + ": length=" + length);
+      }
+      final boolean isLong = byteWidth == Long.BYTES;
+      final VarHandle vh;
+      if (isLong) {
+        vh = byteOrder == ByteOrder.LITTLE_ENDIAN ? BitUtil.VH_LE_LONG : BitUtil.VH_BE_LONG;
+      } else {
+        vh = byteOrder == ByteOrder.LITTLE_ENDIAN ? BitUtil.VH_LE_INT : BitUtil.VH_BE_INT;
+      }
+      int remaining = length / byteWidth;
+      int srcOff = offset;
+      while (remaining > 0) {
+        packIfFull();
+        int toCopy = Math.min(remaining, pending.length - pendingOff);
+        if (isLong) {
+          for (int i = 0; i < toCopy; i++) {
+            pending[pendingOff + i] = (long) vh.get(bytes, srcOff);
+            srcOff += Long.BYTES;
+          }
+        } else {
+          for (int i = 0; i < toCopy; i++) {
+            pending[pendingOff + i] = (int) vh.get(bytes, srcOff);
+            srcOff += Integer.BYTES;
+          }
+        }
+        pendingOff += toCopy;
+        remaining -= toCopy;
+        size += toCopy;
+      }
+      return this;
+    }
+
+    private void packIfFull() {
       if (pendingOff == pending.length) {
-        // check size
         if (values.length == valuesOff) {
           final int newLength = ArrayUtil.oversize(valuesOff + 1, 8);
           grow(newLength);
         }
         pack();
       }
-      pending[pendingOff++] = l;
-      size += 1;
-      return this;
     }
 
     final void finish() {

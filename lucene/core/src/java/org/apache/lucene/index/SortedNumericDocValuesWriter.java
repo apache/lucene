@@ -19,13 +19,16 @@ package org.apache.lucene.index;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.nio.ByteOrder;
 import java.util.Arrays;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.NumericDocValuesWriter.BufferedNumericDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Counter;
+import org.apache.lucene.util.LongsRef;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedLongValues;
@@ -68,10 +71,74 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
     updateBytesUsed();
   }
 
+  public void addDenseValues(int firstDocID, LongsRef values) {
+    assert firstDocID > currentDoc;
+    finishCurrentDoc();
+
+    // Write values directly to pending — each value is one doc, single-valued.
+    // No currentValues[] buffering, no sorting needed.
+    pending.add(values.longs, values.offset, values.length);
+
+    // If pendingCounts is active (some earlier doc was multi-valued),
+    // record count=1 for each dense doc.
+    if (pendingCounts != null) {
+      for (int i = 0; i < values.length; i++) {
+        pendingCounts.add(1);
+      }
+    }
+
+    // Bulk-add consecutive doc-ids
+    docsWithField.addRange(firstDocID, firstDocID + values.length);
+
+    // Set currentDoc to last written doc so ordering is maintained.
+    // currentUpto stays 0 — nothing buffered.
+    currentDoc = firstDocID + values.length - 1;
+
+    updateBytesUsed();
+  }
+
+  public void addDenseValues(int firstDocID, ByteOrder byteOrder, BytesRef values) {
+    addDenseValues(firstDocID, byteOrder, Long.BYTES, values);
+  }
+
+  public void addDenseValues(int firstDocID, ByteOrder byteOrder, int byteWidth, BytesRef values) {
+    if (byteWidth != Integer.BYTES && byteWidth != Long.BYTES) {
+      throw new IllegalArgumentException("byteWidth must be 4 or 8: byteWidth=" + byteWidth);
+    }
+    if ((values.length % byteWidth) != 0) {
+      throw new IllegalArgumentException(
+          "BytesRef length must be a multiple of byteWidth="
+              + byteWidth
+              + ": length="
+              + values.length);
+    }
+    assert firstDocID > currentDoc;
+    finishCurrentDoc();
+
+    int numValues = values.length / byteWidth;
+
+    pending.add(byteOrder, byteWidth, values.bytes, values.offset, values.length);
+
+    if (pendingCounts != null) {
+      for (int i = 0; i < numValues; i++) {
+        pendingCounts.add(1);
+      }
+    }
+
+    docsWithField.addRange(firstDocID, firstDocID + numValues);
+
+    currentDoc = firstDocID + numValues - 1;
+
+    updateBytesUsed();
+  }
+
   // finalize currentDoc: this sorts the values in the current doc
   private void finishCurrentDoc() {
     if (currentDoc == -1) {
       return;
+    }
+    if (currentUpto == 0) {
+      return; // doc already committed directly (e.g., via addDenseValues)
     }
     if (currentUpto > 1) {
       Arrays.sort(currentValues, 0, currentUpto);
