@@ -172,7 +172,8 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   static final String META_CODEC = "Lucene90DocValuesMetadata";
   static final String META_EXTENSION = "dvm";
   static final int VERSION_START = 0;
-  static final int VERSION_CURRENT = VERSION_START;
+  static final int VERSION_SUM_AND_VALUE_COUNT = 1;
+  static final int VERSION_CURRENT = VERSION_SUM_AND_VALUE_COUNT;
 
   // indicates docvalues type
   static final byte NUMERIC = 0;
@@ -196,12 +197,19 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
 
   // number of documents in an interval
   private static final int DEFAULT_SKIP_INDEX_INTERVAL_SIZE = 4096;
-  // bytes on an interval:
+  // bytes on an interval for VERSION_START (v0):
   //   * 1 byte : number of levels
   //   * 16 bytes: min / max value,
   //   * 8 bytes:  min / max docID
   //   * 4 bytes: number of documents
-  private static final long SKIP_INDEX_INTERVAL_BYTES = 29L;
+  static final long SKIP_INDEX_INTERVAL_BYTES_V0 = 29L;
+  // bytes on an interval for VERSION_SUM_AND_VALUE_COUNT (v1):
+  //   * 1 byte : number of levels
+  //   * 16 bytes: min / max value,
+  //   * 8 bytes:  min / max docID
+  //   * 4 bytes: number of documents
+  //   * 24 bytes: sum (high + low) and value count
+  static final long SKIP_INDEX_INTERVAL_BYTES_V1 = 53L;
   // number of intervals represented as a shift to create a new level, this is 1 << 3 == 8
   // intervals.
   static final int SKIP_INDEX_LEVEL_SHIFT = 3;
@@ -211,19 +219,24 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   static final int SKIP_INDEX_MAX_LEVEL = 4;
   // number of bytes to skip when skipping a level. It does not take into account the
   // current interval that is being read.
-  static final long[] SKIP_INDEX_JUMP_LENGTH_PER_LEVEL = new long[SKIP_INDEX_MAX_LEVEL];
+  static final long[] SKIP_INDEX_JUMP_LENGTH_PER_LEVEL_V0 = new long[SKIP_INDEX_MAX_LEVEL];
+  static final long[] SKIP_INDEX_JUMP_LENGTH_PER_LEVEL_V1 = new long[SKIP_INDEX_MAX_LEVEL];
 
   static {
+    computeJumpLengths(SKIP_INDEX_JUMP_LENGTH_PER_LEVEL_V0, SKIP_INDEX_INTERVAL_BYTES_V0);
+    computeJumpLengths(SKIP_INDEX_JUMP_LENGTH_PER_LEVEL_V1, SKIP_INDEX_INTERVAL_BYTES_V1);
+  }
+
+  private static void computeJumpLengths(long[] jumpLengths, long intervalBytes) {
     // Size of the interval minus read bytes (1 byte for level and 4 bytes for maxDocID)
-    SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[0] = SKIP_INDEX_INTERVAL_BYTES - 5L;
+    jumpLengths[0] = intervalBytes - 5L;
     for (int level = 1; level < SKIP_INDEX_MAX_LEVEL; level++) {
       // jump from previous level
-      SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level] = SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level - 1];
+      jumpLengths[level] = jumpLengths[level - 1];
       // nodes added by new level
-      SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level] +=
-          (1 << (level * SKIP_INDEX_LEVEL_SHIFT)) * SKIP_INDEX_INTERVAL_BYTES;
+      jumpLengths[level] += (1 << (level * SKIP_INDEX_LEVEL_SHIFT)) * intervalBytes;
       // remove the byte levels added in the previous level
-      SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level] -= (1 << ((level - 1) * SKIP_INDEX_LEVEL_SHIFT));
+      jumpLengths[level] -= (1 << ((level - 1) * SKIP_INDEX_LEVEL_SHIFT));
     }
   }
 }

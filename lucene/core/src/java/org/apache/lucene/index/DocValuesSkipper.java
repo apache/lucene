@@ -81,6 +81,32 @@ public abstract class DocValuesSkipper {
   public abstract int docCount(int level);
 
   /**
+   * Return the lower 64 bits of the 128-bit sum of all values in the interval at the given level.
+   * Use together with {@link #sumHigh(int)} to reconstruct the full 128-bit sum.
+   *
+   * <p><b>NOTE</b>: For multi-valued fields, this includes all values from all documents in the
+   * interval. The sum is stored as a signed 128-bit integer to avoid overflow.
+   */
+  public abstract long sumLow(int level);
+
+  /**
+   * Return the upper 64 bits of the 128-bit sum of all values in the interval at the given level.
+   * Use together with {@link #sumLow(int)} to reconstruct the full 128-bit sum.
+   *
+   * <p><b>NOTE</b>: For multi-valued fields, this includes all values from all documents in the
+   * interval. The sum is stored as a signed 128-bit integer to avoid overflow.
+   */
+  public abstract long sumHigh(int level);
+
+  /**
+   * Return the total count of values (not documents) in the interval at the given level.
+   *
+   * <p><b>NOTE</b>: For single-valued fields, this equals {@link #docCount(int)}. For multi-valued
+   * fields, this is the sum of value counts across all documents.
+   */
+  public abstract long valueCount(int level);
+
+  /**
    * Return the global minimum value.
    *
    * <p><b>NOTE</b>: It is only guaranteed that values are greater than or equal the returned value.
@@ -98,6 +124,30 @@ public abstract class DocValuesSkipper {
 
   /** Return the global number of documents with a value for the field. */
   public abstract int docCount();
+
+  /**
+   * Return the lower 64 bits of the global 128-bit sum of all values. Use together with {@link
+   * #sumHigh()} to reconstruct the full 128-bit sum.
+   *
+   * <p><b>NOTE</b>: For multi-valued fields, this includes all values from all documents.
+   */
+  public abstract long sumLow();
+
+  /**
+   * Return the upper 64 bits of the global 128-bit sum of all values. Use together with {@link
+   * #sumLow()} to reconstruct the full 128-bit sum.
+   *
+   * <p><b>NOTE</b>: For multi-valued fields, this includes all values from all documents.
+   */
+  public abstract long sumHigh();
+
+  /**
+   * Return the global total count of values (not documents).
+   *
+   * <p><b>NOTE</b>: For single-valued fields, this equals {@link #docCount()}. For multi-valued
+   * fields, this is the sum of value counts across all documents.
+   */
+  public abstract long valueCount();
 
   /**
    * Advance this skipper so that all levels intersects the range given by {@code minValue} and
