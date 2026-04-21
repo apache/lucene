@@ -579,13 +579,6 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
   /** Stores the currently class under test. */
   private static final TestRuleStoreClassName classNameRule;
 
-  /** Suite failure marker (any error in the test or suite scope). */
-  @SuppressWarnings("NonFinalStaticField")
-  protected static TestRuleMarkFailure suiteFailureMarker;
-
-  /** Temporary files cleanup rule. */
-  private static final TestRuleTemporaryFilesCleanup tempFilesCleanupRule;
-
   /**
    * Ignore tests after hitting a designated number of initial failures. This is truly a "static"
    * global singleton since it needs to span the lifetime of all test classes running inside this

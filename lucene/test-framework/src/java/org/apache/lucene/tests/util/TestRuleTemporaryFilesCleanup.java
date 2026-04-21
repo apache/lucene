@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.tests.util;
 
-import com.carrotsearch.randomizedtesting.RandomizedContext;
 import com.carrotsearch.randomizedtesting.rules.TestRuleAdapter;
 import java.io.IOException;
 import java.net.URI;
@@ -119,7 +118,7 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
   }
 
   private FileSystem initializeFileSystem() {
-    Class<?> targetClass = RandomizedContext.current().getTargetClass();
+    Class<?> targetClass = targetClassSupplier.get();
     Set<String> avoid = new HashSet<>();
     if (targetClass.isAnnotationPresent(SuppressFileSystems.class)) {
       SuppressFileSystems a = targetClass.getAnnotation(SuppressFileSystems.class);
@@ -206,14 +205,13 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
     }
 
     // Only check and throw an IOException on un-removable files if the test
-    // was successful. Otherwise just report the path of temporary files
+    // was successful. Otherwise, just report the path of temporary files
     // and leave them there.
     if (failureMarker.wasSuccessful()) {
-
       try {
         IOUtils.rm(everything);
       } catch (IOException e) {
-        Class<?> suiteClass = RandomizedContext.current().getTargetClass();
+        Class<?> suiteClass = targetClassSupplier.get();
         if (suiteClass.isAnnotationPresent(SuppressTempFileChecks.class)) {
           System.err.println(
               "WARNING: Leftover undeleted temporary files (bugUrl: "

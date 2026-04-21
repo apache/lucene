@@ -36,6 +36,12 @@ public abstract sealed class LuceneTestCaseParent extends Assert
     permits LuceneTestCase, LuceneTestCaseJupiter {
   static TestRuleSetupAndRestoreClassEnv classEnvRule;
 
+  /** Suite failure marker (any error in the test or suite scope). */
+  @SuppressWarnings("NonFinalStaticField")
+  protected static TestRuleMarkFailure suiteFailureMarker;
+
+  static TestRuleTemporaryFilesCleanup tempFilesCleanupRule;
+
   private static volatile AtomicReference<Supplier<Random>> randomSupplier =
       new AtomicReference<>();
 

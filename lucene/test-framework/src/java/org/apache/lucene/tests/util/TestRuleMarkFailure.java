@@ -37,9 +37,7 @@ public final class TestRuleMarkFailure implements TestRule {
     return new Statement() {
       @Override
       public void evaluate() throws Throwable {
-        // Clear status at start.
-        failures = false;
-
+        reset();
         try {
           s.evaluate();
         } catch (Throwable t) {
@@ -98,5 +96,9 @@ public final class TestRuleMarkFailure implements TestRule {
   /** Check if this object was successful (the opposite of {@link #hadFailures()}). */
   public boolean wasSuccessful() {
     return !hadFailures();
+  }
+
+  public void reset() {
+    failures = false;
   }
 }

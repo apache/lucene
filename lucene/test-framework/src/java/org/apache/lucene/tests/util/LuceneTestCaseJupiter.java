@@ -20,17 +20,27 @@ package org.apache.lucene.tests.util;
 import com.carrotsearch.randomizedtesting.jupiter.DetectThreadLeaks;
 import com.carrotsearch.randomizedtesting.jupiter.Randomized;
 import com.carrotsearch.randomizedtesting.jupiter.SystemThreadFilter;
+import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.util.Constants;
+import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.extension.Extension;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.extension.TestWatcher;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.platform.commons.support.AnnotationSupport;
@@ -120,6 +130,45 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
       }
 
       return false;
+    }
+  }
+
+  static TestRuleTemporaryFilesCleanup tempFilesCleanupRule_;
+  static TestRuleMarkFailure failureMarker = new TestRuleMarkFailure();
+
+  @RegisterExtension
+  static Extension failureListener =
+      new TestWatcher() {
+        @Override
+        public void testAborted(ExtensionContext context, @Nullable Throwable cause) {
+          failureMarker.markFailed();
+        }
+
+        @Override
+        public void testFailed(ExtensionContext context, @Nullable Throwable cause) {
+          failureMarker.markFailed();
+        }
+      };
+
+  @BeforeAll
+  public static void setupClass(TestInfo testInfo) throws Throwable {
+    var newRule =
+        new TestRuleTemporaryFilesCleanup(
+            failureMarker,
+            LuceneTestCaseJupiter::random,
+            () -> testInfo.getTestClass().orElseThrow());
+    failureMarker.reset();
+    newRule.before();
+
+    tempFilesCleanupRule_ = Objects.requireNonNull(tempFilesCleanupRule);
+    tempFilesCleanupRule = newRule;
+  }
+
+  @AfterAll
+  public static void teardownClass() throws Throwable {
+    if (tempFilesCleanupRule != null) {
+      tempFilesCleanupRule.afterAlways(List.of());
+      tempFilesCleanupRule = tempFilesCleanupRule_;
     }
   }
 
