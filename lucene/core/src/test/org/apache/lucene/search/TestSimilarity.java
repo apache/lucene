@@ -49,7 +49,7 @@ public class TestSimilarity extends LuceneTestCase {
     }
 
     @Override
-    public Explanation idfExplain(CollectionStatistics collectionStats, TermStatistics[] stats) {
+    public Explanation idfExplain(FieldStats fieldStats, TermStats[] stats) {
       return Explanation.match(1.0f, "Inexplicable");
     }
   }

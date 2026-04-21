@@ -103,9 +103,7 @@ final class IndexingChain implements Accountable {
 
   // Holds fields seen in each document
   private PerField[] fields = new PerField[1];
-  // Buffered slow-path field instances needing deferred init/validate + processing
-  private IndexableField[] deferredDocFields = new IndexableField[2];
-  private PerField[] deferredDocFieldPfs = new PerField[2];
+  private PerField[] docFields = new PerField[2];
   private final InfoStream infoStream;
   private final ByteBlockPool.Allocator byteBlockAllocator;
   private final LiveIndexWriterConfig indexWriterConfig;
@@ -578,28 +576,33 @@ final class IndexingChain implements Accountable {
   void processDocument(
       int docID, Iterable<? extends IndexableField> document, boolean lastDocInBlock)
       throws IOException {
+    // number of unique fields by name which need to be init in segment or full validation
+    int fieldsNeedInitOrValidate = 0;
     int indexedFieldCount = 0; // number of unique fields indexed with postings
     long fieldGen = nextFieldGen++;
-    int numDeferredDocFields = 0;
+    int docFieldIdx = 0;
 
+    // NOTE: we need two passes here, in case there are
+    // multi-valued fields, because we must process all
+    // instances of a given field at once, since the
+    // analyzer is free to reuse TokenStream across fields
+    // (i.e., we cannot have more than one TokenStream
+    // running "at once"):
     termsHash.startDocument();
     startStoredFields(docID);
     try {
       // Handle the parent field first (before document fields). Its schema was already
       // set up in the constructor, so we only need to set the docID and trigger
       // initializeFieldInfo on the first encounter in this segment.
-      if (lastDocInBlock && parentPf != null) {
+      if (parentPf != null && lastDocInBlock) {
         parentPf.schema.resetJustDocId(docID);
         if (parentPf.fieldInfo == null) {
-          initializeFieldInfo(parentPf);
-          parentPf.trySetValidatedFrozenFieldType();
-        }
-        if (processField(docID, parentField, parentPf)) {
-          fields[indexedFieldCount] = parentPf;
-          indexedFieldCount++;
+          fields[fieldsNeedInitOrValidate++] = parentPf;
         }
       }
 
+      // 1st pass over doc fields – verify that doc schema matches the index schema
+      // build schema for each unique doc field
       for (IndexableField field : document) {
         final String fieldName = field.name();
         final IndexableFieldType fieldType = field.fieldType();
@@ -611,45 +614,43 @@ final class IndexingChain implements Accountable {
         if (pf.fieldGen != fieldGen) { // first time we see this field in this document
           pf.fieldGen = fieldGen;
           pf.reset(docID, fieldType);
+          if (pf.validatedFrozenFieldType == null) {
+            fields[fieldsNeedInitOrValidate++] = pf;
+          }
         } else if (pf.multiValueForcesDeoptimize(fieldType)) {
           // Multi-valued field with a different field type than the cached frozen type.
           // Drop the validated frozen field type to force the validation path.
           pf.validatedFrozenFieldType = null;
+          fields[fieldsNeedInitOrValidate++] = pf;
         }
-
-        if (pf.validatedFrozenFieldType != null) {
-          // Fast path: field type matches the validated frozen type, process immediately
-          if (processField(docID, field, pf)) {
-            fields[indexedFieldCount] = pf;
-            indexedFieldCount++;
-          }
-        } else {
-          // Slow path: build schema, buffer for deferred processing after init/validate
+        if (docFieldIdx >= docFields.length) oversizeDocFields();
+        docFields[docFieldIdx++] = pf;
+        if (pf.validatedFrozenFieldType == null) {
           updateDocFieldSchema(fieldName, pf.schema, fieldType);
-          numDeferredDocFields = addDeferredDocField(field, pf, numDeferredDocFields);
         }
       }
 
-      if (numDeferredDocFields > 0) {
-        // Init/validate + process deferred fields now that the full schema has been built.
-        // For multi-valued slow-path fields, assertSameSchema may run more than once per
-        // unique field — this is redundant but inexpensive (just comparisons).
-        for (int i = 0; i < numDeferredDocFields; i++) {
-          PerField pf = deferredDocFieldPfs[i];
-          if (pf.fieldInfo == null) {
-            initializeFieldInfo(pf);
-            pf.trySetValidatedFrozenFieldType();
-          } else {
-            pf.schema.assertSameSchema(pf.fieldInfo);
-          }
+      if (fieldsNeedInitOrValidate > 0) {
+        initAndValidateFields(fieldsNeedInitOrValidate);
+      }
+
+      // 2nd pass – index parent field first, then document fields
+      if (parentPf != null && lastDocInBlock) {
+        // parentField is currently a NumericDocValuesField so processField always returns false
+        // here, but we check defensively in case the parent field representation changes.
+        if (processField(docID, parentField, parentPf)) {
+          fields[indexedFieldCount] = parentPf;
+          indexedFieldCount++;
         }
-        for (int i = 0; i < numDeferredDocFields; i++) {
-          if (processField(docID, deferredDocFields[i], deferredDocFieldPfs[i])) {
-            fields[indexedFieldCount] = deferredDocFieldPfs[i];
-            indexedFieldCount++;
-          }
-          deferredDocFields[i] = null;
+      }
+      // 2nd pass – document fields
+      docFieldIdx = 0;
+      for (IndexableField field : document) {
+        if (processField(docID, field, docFields[docFieldIdx])) {
+          fields[indexedFieldCount] = docFields[docFieldIdx];
+          indexedFieldCount++;
         }
+        docFieldIdx++;
       }
     } finally {
       if (hasHitAbortingException == false) {
@@ -658,6 +659,7 @@ final class IndexingChain implements Accountable {
           fields[i].finish(docID);
         }
         finishStoredFields();
+        // TODO: for broken docs, optimize termsHash.finishDocument
         try {
           termsHash.finishDocument(docID);
         } catch (Throwable th) {
@@ -668,6 +670,30 @@ final class IndexingChain implements Accountable {
         }
       }
     }
+  }
+
+  private void initAndValidateFields(int fieldCount) throws IOException {
+    // For each field, if it's the first time we see this field in this segment,
+    // initialize its FieldInfo.
+    // If we have already seen this field, verify that its schema
+    // within the current doc matches its schema in the index.
+    for (int i = 0; i < fieldCount; i++) {
+      PerField pf = fields[i];
+      if (pf.fieldInfo == null) {
+        initializeFieldInfo(pf);
+        pf.trySetValidatedFrozenFieldType();
+      } else {
+        pf.schema.assertSameSchema(pf.fieldInfo);
+      }
+    }
+  }
+
+  private void oversizeDocFields() {
+    PerField[] newDocFields =
+        new PerField
+            [ArrayUtil.oversize(docFields.length + 1, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
+    System.arraycopy(docFields, 0, newDocFields, 0, docFields.length);
+    docFields = newDocFields;
   }
 
   /**
@@ -1052,7 +1078,6 @@ final class IndexingChain implements Accountable {
     private final BinaryTupleCursor cursor;
     private final StoredValue reusableStoredValue;
     private final StoredValue.Type storedType;
-    private final int byteWidth;
     private final ByteOrder byteOrder;
     private final boolean tokenized;
     private final boolean indexed;
@@ -1063,10 +1088,8 @@ final class IndexingChain implements Accountable {
       this.tokenized = column.fieldType().tokenized();
       this.indexed = column.fieldType().indexOptions() != IndexOptions.NONE;
       if (column instanceof NumericBinaryColumn nbc) {
-        this.byteWidth = nbc.fixedSize();
         this.byteOrder = nbc.byteOrder();
       } else {
-        this.byteWidth = -1;
         this.byteOrder = ByteOrder.LITTLE_ENDIAN;
       }
       if (column.fieldType().stored()) {
@@ -1577,16 +1600,6 @@ final class IndexingChain implements Accountable {
               + numDocs
               + ")");
     }
-  }
-
-  private int addDeferredDocField(IndexableField field, PerField pf, int count) {
-    if (count >= deferredDocFields.length) {
-      deferredDocFields = ArrayUtil.grow(deferredDocFields, count + 1);
-      deferredDocFieldPfs = ArrayUtil.grow(deferredDocFieldPfs, count + 1);
-    }
-    deferredDocFields[count] = field;
-    deferredDocFieldPfs[count] = pf;
-    return count + 1;
   }
 
   private void initializeFieldInfo(PerField pf) throws IOException {

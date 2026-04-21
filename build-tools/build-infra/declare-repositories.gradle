@@ -26,9 +26,8 @@ repositories {
     maven {
       url "https://maven-central.storage-download.googleapis.com/maven2/"
     }
-  } else {
-    mavenCentral()
   }
 
+  mavenCentral()
   gradlePluginPortal()
 }

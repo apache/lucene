@@ -33,10 +33,10 @@ import org.apache.lucene.queries.spans.SpanNearQuery;
 import org.apache.lucene.queries.spans.SpanOrQuery;
 import org.apache.lucene.queries.spans.SpanQuery;
 import org.apache.lucene.queries.spans.SpanTermQuery;
-import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
@@ -367,13 +367,12 @@ public class TestPayloadScoreQuery extends LuceneTestCase {
 
     // idf used for phrase queries
     @Override
-    public Explanation idfExplain(
-        CollectionStatistics collectionStats, TermStatistics[] termStats) {
+    public Explanation idfExplain(FieldStats fieldStats, TermStats[] termStats) {
       return Explanation.match(1.0f, "Inexplicable");
     }
 
     @Override
-    public Explanation idfExplain(CollectionStatistics collectionStats, TermStatistics termStats) {
+    public Explanation idfExplain(FieldStats fieldStats, TermStats termStats) {
       return Explanation.match(1.0f, "Inexplicable");
     }
   }
