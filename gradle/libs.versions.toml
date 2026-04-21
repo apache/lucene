@@ -11,7 +11,7 @@ commons-compress = "1.28.0"
 # See ecj-lint.gradle (used for more linting).
 ecj = "3.44.0"
 # java linting
-errorprone = "2.48.0"
+errorprone = "2.49.0"
 # markdown documentation generation
 flexmark = "0.64.8"
 # @keep This is GJF version for java source code formatting
@@ -83,6 +83,8 @@ jmh-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jts = { module = "org.locationtech.jts:jts-core", version.ref = "jts" }
 junit = { module = "junit:junit", version.ref = "junit" }
+junitplatform-launcher = "org.junit.platform:junit-platform-launcher:6.0.3"
+junitplatform-vintage = "org.junit.vintage:junit-vintage-engine:6.0.3"
 morfologik-polish = { module = "org.carrot2:morfologik-polish", version.ref = "morfologik" }
 morfologik-stemming = { module = "org.carrot2:morfologik-stemming", version.ref = "morfologik" }
 morfologik-ukrainian = { module = "ua.net.nlp:morfologik-ukrainian-search", version.ref = "morfologik-ukrainian" }
@@ -95,9 +97,15 @@ spatial4j = { module = "org.locationtech.spatial4j:spatial4j", version.ref = "sp
 xerces = { module = "xerces:xercesImpl", version.ref = "xerces" }
 zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
 
+[bundles]
+junitplatform = [
+    "junitplatform-launcher",
+    "junitplatform-vintage",
+]
+
 [plugins]
 benmanes-versions = "com.github.ben-manes.versions:0.53.0"
-carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.1"
+carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.2"
 carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.2.1"
 errorprone = "net.ltgt.errorprone:5.1.0"
 forbiddenapis = "de.thetaphi.forbiddenapis:3.10"

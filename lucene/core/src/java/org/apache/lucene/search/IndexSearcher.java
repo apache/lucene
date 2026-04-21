@@ -42,7 +42,7 @@ import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.NIOFSDirectory;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.automaton.ByteRunAutomaton;
+import org.apache.lucene.util.automaton.ByteRunnable;
 
 /**
  * Implements search over a single IndexReader.
@@ -911,7 +911,7 @@ public class IndexSearcher {
 
       @Override
       public void consumeTermsMatching(
-          Query query, String field, Supplier<ByteRunAutomaton> automaton) {
+          Query query, String field, Supplier<ByteRunnable> automaton) {
         if (numClauses > maxClauseCount) {
           throw new TooManyNestedClauses();
         }
@@ -1106,32 +1106,31 @@ public class IndexSearcher {
   }
 
   /**
-   * Returns {@link TermStatistics} for a term.
+   * Returns {@link TermStats} for a term.
    *
    * <p>This can be overridden for example, to return a term's statistics across a distributed
    * collection.
    *
    * @param docFreq The document frequency of the term. It must be greater or equal to 1.
    * @param totalTermFreq The total term frequency.
-   * @return A {@link TermStatistics} (never null).
+   * @return A {@link TermStats} (never null).
    * @lucene.experimental
    */
-  public TermStatistics termStatistics(Term term, int docFreq, long totalTermFreq)
-      throws IOException {
+  public TermStats termStats(Term term, int docFreq, long totalTermFreq) throws IOException {
     // This constructor will throw an exception if docFreq <= 0.
-    return new TermStatistics(term.bytes(), docFreq, totalTermFreq);
+    return new TermStats(term.bytes(), docFreq, totalTermFreq);
   }
 
   /**
-   * Returns {@link CollectionStatistics} for a field, or {@code null} if the field does not exist
-   * (has no indexed terms)
+   * Returns {@link FieldStats} for a field, or {@code null} if the field does not exist (has no
+   * indexed terms)
    *
    * <p>This can be overridden for example, to return a field's statistics across a distributed
    * collection.
    *
    * @lucene.experimental
    */
-  public CollectionStatistics collectionStatistics(String field) throws IOException {
+  public FieldStats fieldStats(String field) throws IOException {
     assert field != null;
     long docCount = 0;
     long sumTotalTermFreq = 0;
@@ -1145,7 +1144,7 @@ public class IndexSearcher {
     if (docCount == 0) {
       return null;
     }
-    return new CollectionStatistics(field, reader.maxDoc(), docCount, sumTotalTermFreq, sumDocFreq);
+    return new FieldStats(field, reader.maxDoc(), docCount, sumTotalTermFreq, sumDocFreq);
   }
 
   /**
