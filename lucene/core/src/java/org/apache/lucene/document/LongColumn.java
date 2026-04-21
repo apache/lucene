@@ -26,8 +26,8 @@ import org.apache.lucene.index.IndexableFieldType;
  *
  * <p>Iteration is performed via cursors. {@link #tuples()} is always available and yields {@code
  * (docID, longValue)} pairs. {@link #values()} is a bulk cursor over consecutive doc-ids; it must
- * be overridden when {@link #density()} is {@link Density#DENSE DENSE} and is only consulted in
- * that case.
+ * be overridden when {@link #density()} is {@link Column.Density#DENSE DENSE} and is only consulted
+ * in that case.
  *
  * @lucene.experimental
  */
@@ -43,9 +43,9 @@ public abstract class LongColumn extends Column {
 
   /**
    * Returns a fresh values cursor iterating dense long values for doc-ids {@code [0, numDocs)}.
-   * Must be overridden when {@link #density()} is {@link Density#DENSE DENSE}; the default
+   * Must be overridden when {@link #density()} is {@link Column.Density#DENSE DENSE}; the default
    * implementation throws {@link UnsupportedOperationException} and is never called for {@link
-   * Density#SPARSE SPARSE} columns.
+   * Column.Density#SPARSE SPARSE} columns.
    */
   public LongValuesCursor values() {
     throw new UnsupportedOperationException(

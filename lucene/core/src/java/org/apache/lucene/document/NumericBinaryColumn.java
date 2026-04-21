@@ -100,10 +100,10 @@ public abstract class NumericBinaryColumn extends BinaryColumn {
 
   /**
    * Returns a fresh values cursor iterating dense packed values for doc-ids {@code [0, numDocs)}.
-   * Must be overridden when {@link #density()} is {@link Density#DENSE DENSE}; the default
+   * Must be overridden when {@link #density()} is {@link Column.Density#DENSE DENSE}; the default
    * implementation throws {@link UnsupportedOperationException} and is never called for {@link
-   * Density#SPARSE SPARSE} columns. Each returned {@link org.apache.lucene.util.BytesRef} has
-   * length that is a multiple of {@link #fixedSize()}.
+   * Column.Density#SPARSE SPARSE} columns. Each returned {@link org.apache.lucene.util.BytesRef}
+   * has length that is a multiple of {@link #fixedSize()}.
    */
   public BinaryValuesCursor values() {
     throw new UnsupportedOperationException(
