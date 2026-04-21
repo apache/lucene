@@ -263,7 +263,9 @@ final class MaxScoreBulkScorer extends BulkScorer {
       top = essentialQueue.updateTop();
     } while (top.doc < innerWindowMax);
 
-    docAndScoreAccBuffer.growNoCopy(windowMatches.cardinality(0, innerWindowSize));
+    // Pre-allocate to max window size to avoid a separate cardinality() pass.
+    // This buffer is reused across windows so the allocation is a one-time cost.
+    docAndScoreAccBuffer.growNoCopy(INNER_WINDOW_SIZE);
     docAndScoreAccBuffer.size = 0;
     windowMatches.forEach(
         0,
