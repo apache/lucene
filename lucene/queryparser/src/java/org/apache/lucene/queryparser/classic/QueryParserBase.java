@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.queryparser.classic;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
-
 import java.io.StringReader;
 import java.text.DateFormat;
 import java.util.Calendar;
@@ -100,7 +98,6 @@ public abstract class QueryParserBase extends QueryBuilder
   Map<String, DateTools.Resolution> fieldToDateResolution = null;
 
   boolean autoGeneratePhraseQueries;
-  int determinizeWorkLimit = DEFAULT_DETERMINIZE_WORK_LIMIT;
 
   // So the generated QueryParser(CharStream) won't error out
   protected QueryParserBase() {
@@ -345,22 +342,6 @@ public abstract class QueryParserBase extends QueryBuilder
     }
 
     return resolution;
-  }
-
-  /**
-   * @param determinizeWorkLimit the maximum effort that determinizing a regexp query can spend. If
-   *     the query requires more effort, a TooComplexToDeterminizeException is thrown.
-   */
-  public void setDeterminizeWorkLimit(int determinizeWorkLimit) {
-    this.determinizeWorkLimit = determinizeWorkLimit;
-  }
-
-  /**
-   * @return the maximum effort that determinizing a regexp query can spend. If the query requires
-   *     more effort, a TooComplexToDeterminizeException is thrown.
-   */
-  public int getDeterminizeWorkLimit() {
-    return determinizeWorkLimit;
   }
 
   protected void addClause(List<BooleanClause> clauses, int conj, int mods, Query q) {
@@ -636,7 +617,7 @@ public abstract class QueryParserBase extends QueryBuilder
    * @return new WildcardQuery instance
    */
   protected Query newWildcardQuery(Term t) {
-    return new WildcardQuery(t, determinizeWorkLimit, multiTermRewriteMethod);
+    return new WildcardQuery(t, multiTermRewriteMethod);
   }
 
   /**
