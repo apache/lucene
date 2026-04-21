@@ -42,26 +42,26 @@ public final class GlobalStateSupport
       ExtensionContext.Namespace.create(getClass().getName());
 
   private static final class State {
-    private TestRuleSetupAndRestoreClassEnv prevClassEnvRule;
+    private LuceneTestCaseParent.TestFrameworkInfra frameworkInfra;
 
+    private TestRuleSetupAndRestoreClassEnv prevClassEnvRule;
     private ConcurrentHashMap<Thread, Random> perThreadRandoms;
-    private Supplier<Random> previousSupplier;
 
     private final List<Closeable> closeAfterTest = new ArrayList<>();
     private final List<Closeable> closeAfterSuite = new ArrayList<>();
 
     void reset() {
+      frameworkInfra = null;
       perThreadRandoms = null;
-      previousSupplier = null;
       closeAfterTest.clear();
       closeAfterSuite.clear();
     }
 
     void initialize() {
-      if (perThreadRandoms != null) {
-        throw new RuntimeException(
-            "Expected perThreadRandoms to be null (single-threaded, sequential test execution).");
+      if (frameworkInfra != null) {
+        throw new RuntimeException();
       }
+
       perThreadRandoms = new ConcurrentHashMap<>();
     }
   }
@@ -71,17 +71,21 @@ public final class GlobalStateSupport
     State state = getState(context);
     state.initialize();
 
-    if (LuceneTestCase.VERBOSE) {
-      // touch LuceneTestCase to trigger static initializers.
-      // TODO: perhaps we should run the entire rule chain instead...
-    }
+    // touch LuceneTestCase to trigger static initializers.
+    LuceneTestCase.ensureInitialized();
 
-    Supplier<Random> rnd = getRandomSupplier(context.getExecutableInvoker());
+    state.frameworkInfra =
+        new LuceneTestCaseParent.TestFrameworkInfra() {
+          final ConcurrentHashMap<Thread, Random> perThreadRandoms = state.perThreadRandoms;
+          final Supplier<Random> rnd = getRandomSupplier(context.getExecutableInvoker());
 
-    var perThreadRandoms = state.perThreadRandoms;
-    state.previousSupplier =
-        LuceneTestCaseParent.replaceRandomSupplier(
-            () -> perThreadRandoms.computeIfAbsent(Thread.currentThread(), _ -> rnd.get()));
+          @Override
+          public Random threadRandom() {
+            return perThreadRandoms.computeIfAbsent(Thread.currentThread(), _ -> rnd.get());
+          }
+        };
+
+    LuceneTestCaseParent.setTestFrameworkInfra(null, state.frameworkInfra);
 
     LuceneTestCaseParent.closeAfter.set(
         new LuceneTestCaseParent.CloseAfterHook() {
@@ -104,7 +108,8 @@ public final class GlobalStateSupport
 
     state.prevClassEnvRule = LuceneTestCase.classEnvRule;
     var targetClass = context.getRequiredTestClass();
-    LuceneTestCase.classEnvRule = new TestRuleSetupAndRestoreClassEnv(rnd, () -> targetClass);
+    LuceneTestCase.classEnvRule =
+        new TestRuleSetupAndRestoreClassEnv(state.frameworkInfra::threadRandom, () -> targetClass);
     LuceneTestCase.classEnvRule.before();
   }
 
@@ -123,7 +128,6 @@ public final class GlobalStateSupport
     var state = getState(context);
     var rule = LuceneTestCaseParent.classEnvRule;
     try {
-      LuceneTestCaseParent.replaceRandomSupplier(state.previousSupplier);
       LuceneTestCaseParent.classEnvRule = state.prevClassEnvRule;
       IOUtils.close(
           Stream.concat(
@@ -134,6 +138,7 @@ public final class GlobalStateSupport
               .toList());
     } finally {
       rule.after();
+      LuceneTestCaseParent.setTestFrameworkInfra(state.frameworkInfra, null);
       state.reset();
     }
   }

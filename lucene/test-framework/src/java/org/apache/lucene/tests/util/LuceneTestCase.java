@@ -157,7 +157,6 @@ import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LRUQueryCache;
-import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryCache;
 import org.apache.lucene.search.QueryCachingPolicy;
 import org.apache.lucene.store.ByteBuffersDirectory;
@@ -188,14 +187,12 @@ import org.apache.lucene.tests.mockfile.VirusCheckingFS;
 import org.apache.lucene.tests.search.AssertingIndexSearcher;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
-import org.apache.lucene.tests.store.MockDirectoryWrapper.Throttling;
 import org.apache.lucene.tests.store.RawDirectoryWrapper;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CommandLineUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.automaton.Automaton;
@@ -276,34 +273,7 @@ import org.junit.runner.RunWith;
     bytes = TestRuleLimitSysouts.DEFAULT_LIMIT,
     hardLimit = TestRuleLimitSysouts.DEFAULT_HARD_LIMIT)
 public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
-
-  // --------------------------------------------------------------------
-  // Test groups, system properties and other annotations modifying tests
-  // --------------------------------------------------------------------
-
-  public static final String SYSPROP_NIGHTLY = "tests.nightly";
-  public static final String SYSPROP_WEEKLY = "tests.weekly";
-  public static final String SYSPROP_MONSTER = "tests.monster";
-  public static final String SYSPROP_AWAITSFIX = "tests.awaitsfix";
-
-  /**
-   * @see #ignoreAfterMaxFailures
-   */
-  public static final String SYSPROP_MAXFAILURES = "tests.maxfailures";
-
-  /**
-   * @see #ignoreAfterMaxFailures
-   */
-  public static final String SYSPROP_FAILFAST = "tests.failfast";
-
-  /**
-   * If specified, limits the number of method calls to each individual instance returned by {@link
-   * #random()}.
-   */
-  public static final String SYSPROP_RANDOM_MAXCALLS = "tests.random.maxcalls";
-
-  /** If specified, limits the number of calls {@link #random()} itself. */
-  public static final String SYSPROP_RANDOM_MAXACQUIRES = "tests.random.maxacquires";
+  static final void ensureInitialized() {}
 
   /** Annotation for tests that should only be run during nightly builds. */
   @Documented
@@ -441,134 +411,6 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
   public @interface SuppressReproduceLine {}
 
   // -----------------------------------------------------------------
-  // Truly immutable fields and constants, initialized once and valid
-  // for all suites ever since.
-  // -----------------------------------------------------------------
-
-  /**
-   * True if and only if tests are run in verbose mode. If this flag is false tests are not expected
-   * to print any messages. Enforced with {@link TestRuleLimitSysouts}.
-   */
-  public static final boolean VERBOSE = systemPropertyAsBoolean("tests.verbose", false);
-
-  /** Enables or disables dumping of {@link InfoStream} messages. */
-  public static final boolean INFOSTREAM = systemPropertyAsBoolean("tests.infostream", VERBOSE);
-
-  /**
-   * True if {@code tests.asserts} is enabled (either explicitly via the build option or, if not
-   * present, by the default assertion status on this class).
-   */
-  public static final boolean TEST_ASSERTS_ENABLED =
-      systemPropertyAsBoolean("tests.asserts", LuceneTestCase.class.desiredAssertionStatus());
-
-  /**
-   * The default (embedded resource) lines file.
-   *
-   * @see #TEST_LINE_DOCS_FILE
-   */
-  public static final String DEFAULT_LINE_DOCS_FILE = "europarl.lines.txt.gz";
-
-  /**
-   * Random sample from enwiki used in tests. See {@code help/tests.txt}. gradle task downloading
-   * this data set: {@code gradlew getEnWikiRandomLines}.
-   */
-  public static final String JENKINS_LARGE_LINE_DOCS_FILE = "enwiki.random.lines.txt";
-
-  /** Gets the codec to run tests with. */
-  public static final String TEST_CODEC = System.getProperty("tests.codec", "random");
-
-  /** Gets the postingsFormat to run tests with. */
-  public static final String TEST_POSTINGSFORMAT =
-      System.getProperty("tests.postingsformat", "random");
-
-  /** Gets the docValuesFormat to run tests with */
-  public static final String TEST_DOCVALUESFORMAT =
-      System.getProperty("tests.docvaluesformat", "random");
-
-  /** Gets the directory to run tests with */
-  public static final String TEST_DIRECTORY = System.getProperty("tests.directory", "random");
-
-  /** The line file used in tests (by {@link LineFileDocs}). */
-  public static final String TEST_LINE_DOCS_FILE =
-      System.getProperty("tests.linedocsfile", DEFAULT_LINE_DOCS_FILE);
-
-  /** Whether or not {@link Nightly} tests should run. */
-  public static final boolean TEST_NIGHTLY =
-      systemPropertyAsBoolean(
-          SYSPROP_NIGHTLY, Nightly.class.getAnnotation(TestGroup.class).enabled());
-
-  /** Whether or not {@link Weekly} tests should run. */
-  public static final boolean TEST_WEEKLY =
-      systemPropertyAsBoolean(
-          SYSPROP_WEEKLY, Weekly.class.getAnnotation(TestGroup.class).enabled());
-
-  /** Whether or not {@link Monster} tests should run. */
-  public static final boolean TEST_MONSTER =
-      systemPropertyAsBoolean(
-          SYSPROP_MONSTER, Monster.class.getAnnotation(TestGroup.class).enabled());
-
-  /** Whether or not {@link AwaitsFix} tests should run. */
-  public static final boolean TEST_AWAITSFIX =
-      systemPropertyAsBoolean(
-          SYSPROP_AWAITSFIX, AwaitsFix.class.getAnnotation(TestGroup.class).enabled());
-
-  /** Throttling, see {@link MockDirectoryWrapper#setThrottling(Throttling)}. */
-  public static final Throttling TEST_THROTTLING =
-      TEST_NIGHTLY ? Throttling.SOMETIMES : Throttling.NEVER;
-
-  /**
-   * A random multiplier which you should use when writing random tests: multiply it by the number
-   * of iterations to scale your tests (for nightly builds).
-   */
-  public static final int RANDOM_MULTIPLIER =
-      systemPropertyAsInt("tests.multiplier", defaultRandomMultiplier());
-
-  /** Compute the default value of the random multiplier (based on {@link #TEST_NIGHTLY}). */
-  static int defaultRandomMultiplier() {
-    return TEST_NIGHTLY ? 2 : 1;
-  }
-
-  /** Leave temporary files on disk, even on successful runs. */
-  public static final boolean LEAVE_TEMPORARY;
-
-  static {
-    boolean defaultValue = false;
-    for (String property :
-        Arrays.asList(
-            "tests.leaveTemporary" /* ANT tasks' (junit4) flag. */,
-            "tests.leavetemporary" /* lowercase */,
-            "tests.leavetmpdir" /* default */)) {
-      defaultValue |= systemPropertyAsBoolean(property, false);
-    }
-    LEAVE_TEMPORARY = defaultValue;
-  }
-
-  /** Filesystem-based {@link Directory} implementations. */
-  private static final List<String> FS_DIRECTORIES =
-      Arrays.asList("NIOFSDirectory", "MMapDirectory");
-
-  /** All {@link Directory} implementations. */
-  private static final List<String> CORE_DIRECTORIES;
-
-  static {
-    CORE_DIRECTORIES = new ArrayList<>(FS_DIRECTORIES);
-    CORE_DIRECTORIES.add(ByteBuffersDirectory.class.getSimpleName());
-  }
-
-  /** A {@link org.apache.lucene.search.QueryCachingPolicy} that randomly caches. */
-  public static final QueryCachingPolicy MAYBE_CACHE_POLICY =
-      new QueryCachingPolicy() {
-
-        @Override
-        public void onUse(Query query) {}
-
-        @Override
-        public boolean shouldCache(Query query) throws IOException {
-          return random().nextBoolean();
-        }
-      };
-
-  // -----------------------------------------------------------------
   // Fields initialized in class or instance rules.
   // -----------------------------------------------------------------
 
@@ -576,7 +418,7 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
   // Class level (suite) rules.
   // -----------------------------------------------------------------
 
-  /** Stores the currently class under test. */
+  /** Stores the current class under test. */
   private static final TestRuleStoreClassName classNameRule;
 
   /**
@@ -643,6 +485,52 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
   static {
     RuleChain r =
         RuleChain.outerRule(new TestRuleIgnoreTestSuites())
+            .around(
+                new TestRuleAdapter() {
+                  private static TestFrameworkInfra testFrameworkInfra;
+
+                  @Override
+                  protected void before() throws Throwable {
+                    int maxCalls =
+                        Integer.parseInt(System.getProperty(SYSPROP_RANDOM_MAXCALLS, "0"));
+                    Supplier<Random> supplier = () -> RandomizedContext.current().getRandom();
+                    if (maxCalls > 0) {
+                      var finalizedSupplier = supplier;
+                      supplier = () -> new MaxCallCountRandom(finalizedSupplier.get(), maxCalls);
+                    }
+
+                    int maxAquires =
+                        Integer.parseInt(System.getProperty(SYSPROP_RANDOM_MAXACQUIRES, "0"));
+                    if (maxAquires > 0) {
+                      var finalizedSupplier = supplier;
+                      supplier =
+                          () -> {
+                            if (randomCalls.incrementAndGet() > maxAquires) {
+                              throw new RuntimeException(
+                                  "Too many random() calls. Consider using LuceneTestCase.nonAssertingRandom for"
+                                      + " large loops or data generation.");
+                            }
+                            return finalizedSupplier.get();
+                          };
+                    }
+
+                    var finalizedSupplier = supplier;
+                    setTestFrameworkInfra(
+                        null,
+                        testFrameworkInfra =
+                            new TestFrameworkInfra() {
+                              @Override
+                              public Random threadRandom() {
+                                return finalizedSupplier.get();
+                              }
+                            });
+                  }
+
+                  @Override
+                  protected void afterAlways(List<Throwable> errors) {
+                    setTestFrameworkInfra(testFrameworkInfra, null);
+                  }
+                })
             .around(ignoreAfterMaxFailures)
             .around(suiteFailureMarker = new TestRuleMarkFailure())
             .around(
@@ -753,31 +641,6 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
   /** A counter of calls to {@link #random()} if {@link #SYSPROP_RANDOM_MAXACQUIRES} is defined. */
   @SuppressWarnings("NonFinalStaticField")
   private static AtomicLong randomCalls = new AtomicLong();
-
-  static {
-    int maxCalls = Integer.parseInt(System.getProperty(SYSPROP_RANDOM_MAXCALLS, "0"));
-    Supplier<Random> supplier = () -> RandomizedContext.current().getRandom();
-    if (maxCalls > 0) {
-      var finalizedSupplier = supplier;
-      supplier = () -> new MaxCallCountRandom(finalizedSupplier.get(), maxCalls);
-    }
-
-    int maxAquires = Integer.parseInt(System.getProperty(SYSPROP_RANDOM_MAXACQUIRES, "0"));
-    if (maxAquires > 0) {
-      var finalizedSupplier = supplier;
-      supplier =
-          () -> {
-            if (randomCalls.incrementAndGet() > maxAquires) {
-              throw new RuntimeException(
-                  "Too many random() calls. Consider using LuceneTestCase.nonAssertingRandom for"
-                      + " large loops or data generation.");
-            }
-            return finalizedSupplier.get();
-          };
-    }
-
-    replaceRandomSupplier(supplier);
-  }
 
   // -----------------------------------------------------------------
   // Suite and test case setup/ cleanup.

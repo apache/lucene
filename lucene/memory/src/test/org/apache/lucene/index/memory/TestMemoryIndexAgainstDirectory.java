@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.index.memory;
 
-import static org.apache.lucene.tests.analysis.BaseTokenStreamTestCase.RANDOM_MULTIPLIER;
-import static org.apache.lucene.tests.analysis.BaseTokenStreamTestCase.TEST_NIGHTLY;
 import static org.apache.lucene.tests.analysis.BaseTokenStreamTestCase.newDirectory;
 import static org.apache.lucene.tests.analysis.BaseTokenStreamTestCase.newIndexWriterConfig;
 import static org.apache.lucene.tests.analysis.BaseTokenStreamTestCase.newSearcher;
