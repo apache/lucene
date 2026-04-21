@@ -82,6 +82,12 @@ API Changes
   To force a classic DFA execution, use Operations.determinize() and AutomatonQuery.
   (Dimitris Rempapis)
 
+* GITHUB#15961: Removed WildcardQuery constructor overloads that exposed determinization controls
+  (determinizeWorkLimit). Determinization is now done only as-needed.
+  To force a classic DFA execution, use Operations.determinize() and AutomatonQuery.
+  Also removed QueryParserBase.setDeterminizeWorkLimit/getDeterminizeWorkLimit, which are
+  no longer needed. (Dimitris Rempapis)
+
 New Features
 ---------------------
 * GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
@@ -298,6 +304,8 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#15861: Optimise PhraseScorer by short circuiting non competitive documents in TOP_SCORES mode. (Prithvi S)
+
 * GITHUB#15637: Lazily allocate ByteArrayDataInputs in SegmentTermsEnumFrame#15637 (Misha Dmitriev)
 
 * GITHUB#15718 Skip per-document stored field reads on sorted indices when no stored fields are present (Francisco Fernández Castaño)
@@ -388,6 +396,8 @@ Other
 * GITHUB#15891: Add the ability to pass DataAccessHints in Lucene104ScalarQuantizedVectorsReader (Navneet Verma)
 
 * GITHUB#15951: Fix WindowsFS onClose race condition (Szymon Bialkowski)
+
+* GITHUB#15960: Move parent field from DWPT to IndexingChain. (Tim Brooks)
 
 ======================= Lucene 10.4.0 =======================
 
