@@ -1264,10 +1264,8 @@ final class IndexingChain implements Accountable {
         throws IOException {
       final boolean analyzed = field.fieldType().tokenized() && analyzer != null;
       /*
-       * To assist people in tracking down problems in analysis components, we wish to write the field name to the
-       * infostream
-       * when we fail. We expect some caller to eventually deal with the real exception, so we don't want any 'catch'
-       *  clauses,
+       * To assist people in tracking down problems in analysis components, we wish to write the field name to the infostream
+       * when we fail. We expect some caller to eventually deal with the real exception, so we don't want any 'catch' clauses,
        * but rather a finally that takes note of the problem.
        */
       boolean succeededInProcessingField = false;
@@ -1329,8 +1327,7 @@ final class IndexingChain implements Accountable {
           int endOffset = invertState.offset + invertState.offsetAttribute.endOffset();
           if (startOffset < invertState.lastStartOffset || endOffset < startOffset) {
             throw new IllegalArgumentException(
-                "startOffset must be non-negative, and endOffset must be >= startOffset, and offsets must not go "
-                    + "backwards "
+                "startOffset must be non-negative, and endOffset must be >= startOffset, and offsets must not go backwards "
                     + "startOffset="
                     + startOffset
                     + ",endOffset="
@@ -1370,8 +1367,7 @@ final class IndexingChain implements Accountable {
                     + fieldInfo.name
                     + "\" (whose UTF8 encoding is longer than the max length "
                     + IndexWriter.MAX_TERM_LENGTH
-                    + "), all of which were skipped.  Please correct the analyzer to not produce such terms.  The "
-                    + "prefix of the first immense term is: '"
+                    + "), all of which were skipped.  Please correct the analyzer to not produce such terms.  The prefix of the first immense term is: '"
                     + Arrays.toString(prefix)
                     + "...', original message: "
                     + e.getMessage();
