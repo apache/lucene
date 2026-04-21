@@ -2430,7 +2430,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
       };
     }
   }
-  
+
   private static class ArrayNumericBinaryColumn extends NumericBinaryColumn {
     private final int fixedSize;
     private final ByteOrder byteOrder;
