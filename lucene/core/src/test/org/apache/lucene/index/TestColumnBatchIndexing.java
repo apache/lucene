@@ -2385,7 +2385,6 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     }
   }
 
-  /** Plain sparse {@link BinaryColumn} with an optional {@link StoredValue.Type} override. */
   private static class ArrayBinaryColumn extends BinaryColumn {
     private final int[] docIds;
     private final BytesRef[] values;
@@ -2431,11 +2430,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
       };
     }
   }
-
-  /**
-   * Sparse fixed-size {@link NumericBinaryColumn} with configurable fixedSize, byteOrder,
-   * numericKind, and stored type.
-   */
+  
   private static class ArrayNumericBinaryColumn extends NumericBinaryColumn {
     private final int fixedSize;
     private final ByteOrder byteOrder;
@@ -2556,7 +2551,6 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     }
   }
 
-  /** Dense {@link NumericBinaryColumn} with fixed-size encoded numerics. */
   private static class ArrayDenseBinaryColumn extends NumericBinaryColumn {
     private final int byteWidth;
     private final ByteOrder byteOrder;
