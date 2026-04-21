@@ -421,7 +421,7 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
     }
   }
 
-  private final class PendingBlock extends PendingEntry {
+  private static final class PendingBlock extends PendingEntry {
     public final BytesRef prefix;
     public final long fp;
     public TrieBuilder index;
