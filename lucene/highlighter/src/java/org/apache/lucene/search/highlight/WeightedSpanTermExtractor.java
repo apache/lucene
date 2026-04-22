@@ -130,14 +130,13 @@ public class WeightedSpanTermExtractor {
       throws IOException {
     if (query instanceof BoostQuery boostQuery) {
       extract(boostQuery.getQuery(), boost * boostQuery.getBoost(), terms);
-    } else if (query instanceof BooleanQuery) {
-      for (BooleanClause clause : (BooleanQuery) query) {
+    } else if (query instanceof BooleanQuery bq) {
+      for (BooleanClause clause : bq) {
         if (!clause.isProhibited()) {
           extract(clause.query(), boost, terms);
         }
       }
-    } else if (query instanceof PhraseQuery) {
-      PhraseQuery phraseQuery = ((PhraseQuery) query);
+    } else if (query instanceof PhraseQuery phraseQuery) {
       Term[] phraseQueryTerms = phraseQuery.getTerms();
       if (phraseQueryTerms.length == 1) {
         extractWeightedSpanTerms(terms, new SpanTermQuery(phraseQueryTerms[0]), boost);
@@ -163,17 +162,17 @@ public class WeightedSpanTermExtractor {
             new SpanNearQuery(clauses, phraseQuery.getSlop() + positionGaps, inorder);
         extractWeightedSpanTerms(terms, sp, boost);
       }
-    } else if (query instanceof IndexOrDocValuesQuery) {
-      Query indexQuery = ((IndexOrDocValuesQuery) query).getIndexQuery();
+    } else if (query instanceof IndexOrDocValuesQuery idvq) {
+      Query indexQuery = idvq.getIndexQuery();
       if (indexQuery != null) {
         extract(indexQuery, boost, terms);
       }
     } else if (query instanceof TermQuery || query instanceof SynonymQuery) {
       extractWeightedTerms(terms, query, boost);
-    } else if (query instanceof SpanQuery) {
-      extractWeightedSpanTerms(terms, (SpanQuery) query, boost);
-    } else if (query instanceof ConstantScoreQuery) {
-      final Query q = ((ConstantScoreQuery) query).getQuery();
+    } else if (query instanceof SpanQuery spanQuery) {
+      extractWeightedSpanTerms(terms, spanQuery, boost);
+    } else if (query instanceof ConstantScoreQuery csq) {
+      final Query q = csq.getQuery();
       if (q != null) {
         extract(q, boost, terms);
       }
@@ -181,8 +180,8 @@ public class WeightedSpanTermExtractor {
       // specialized since rewriting would change the result query
       // this query is index sensitive.
       extractWeightedTerms(terms, query, boost);
-    } else if (query instanceof DisjunctionMaxQuery) {
-      for (Query clause : ((DisjunctionMaxQuery) query)) {
+    } else if (query instanceof DisjunctionMaxQuery dmq) {
+      for (Query clause : dmq) {
         extract(clause, boost, terms);
       }
     } else if (query instanceof MultiPhraseQuery mpq) {

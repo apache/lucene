@@ -159,9 +159,9 @@ public abstract class IndexInput extends DataInput implements Closeable {
    */
   public RandomAccessInput randomAccessSlice(long offset, long length) throws IOException {
     final IndexInput slice = slice("randomaccess", offset, length);
-    if (slice instanceof RandomAccessInput) {
+    if (slice instanceof RandomAccessInput rai) {
       // slice() already supports random access
-      return (RandomAccessInput) slice;
+      return rai;
     } else {
       // return default impl
       return new RandomAccessInput() {
@@ -202,8 +202,8 @@ public abstract class IndexInput extends DataInput implements Closeable {
         }
 
         @Override
-        public void prefetch(long offset, long length) throws IOException {
-          slice.prefetch(offset, length);
+        public boolean prefetch(long offset, long length) throws IOException {
+          return slice.prefetch(offset, length);
         }
 
         @Override
@@ -223,8 +223,12 @@ public abstract class IndexInput extends DataInput implements Closeable {
    *
    * @param offset start offset
    * @param length the number of bytes to prefetch
+   * @return true if prefetch actually prefetched something, hence user can benefit from deferring
+   *     reading the prefetched memory block.
    */
-  public void prefetch(long offset, long length) throws IOException {}
+  public boolean prefetch(long offset, long length) throws IOException {
+    return false;
+  }
 
   /**
    * Optional method: Updates the {@code IOContext} to specify a new read access pattern. IndexInput

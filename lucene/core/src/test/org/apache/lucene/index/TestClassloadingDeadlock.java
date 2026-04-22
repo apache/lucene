@@ -14,12 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs;
+package org.apache.lucene.index;
 
 import com.carrotsearch.randomizedtesting.LifecycleScope;
 import com.carrotsearch.randomizedtesting.RandomizedContext;
 import com.carrotsearch.randomizedtesting.RandomizedRunner;
 import com.carrotsearch.randomizedtesting.RandomizedTest;
+import java.lang.invoke.MethodHandles;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -29,6 +30,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
@@ -36,6 +38,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.DocValuesFormat;
+import org.apache.lucene.codecs.PostingsFormat;
+import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.SuppressForbidden;
@@ -47,7 +53,7 @@ import org.junit.runner.RunWith;
  * initialization when spawned as subprocess (and please let default codecs alive)! */
 
 @RunWith(RandomizedRunner.class)
-public class TestCodecLoadingDeadlock extends Assert {
+public class TestClassloadingDeadlock extends Assert {
   private static final int MAX_TIME_SECONDS = 30;
 
   @Test
@@ -99,7 +105,21 @@ public class TestCodecLoadingDeadlock extends Assert {
     final String pfName = args[1];
     final String dvfName = args[2];
 
-    final int numThreads = 14; // two times the modulo in switch statement below
+    final var lookup = MethodHandles.lookup();
+    final List<Callable<?>> tasks =
+        List.of(
+            Codec::getDefault,
+            () -> Codec.forName(codecName),
+            () -> PostingsFormat.forName(pfName),
+            () -> DocValuesFormat.forName(dvfName),
+            Codec::availableCodecs,
+            PostingsFormat::availablePostingsFormats,
+            DocValuesFormat::availableDocValuesFormats,
+            TestSecrets::getIndexWriterAccess,
+            () -> lookup.ensureInitialized(IndexWriter.class),
+            () -> lookup.ensureInitialized(SegmentReader.class));
+
+    final int numTasks = tasks.size(), numThreads = numTasks * 2;
     final CopyOnWriteArrayList<Thread> allThreads = new CopyOnWriteArrayList<>();
     final ExecutorService pool =
         Executors.newFixedThreadPool(
@@ -123,36 +143,11 @@ public class TestCodecLoadingDeadlock extends Assert {
                         // Await a common barrier point for all threads and then
                         // run racy code. This is intentional.
                         barrier.await();
-                        switch (taskNo % 7) {
-                          case 0:
-                            Codec.getDefault();
-                            break;
-                          case 1:
-                            Codec.forName(codecName);
-                            break;
-                          case 2:
-                            PostingsFormat.forName(pfName);
-                            break;
-                          case 3:
-                            DocValuesFormat.forName(dvfName);
-                            break;
-                          case 4:
-                            Codec.availableCodecs();
-                            break;
-                          case 5:
-                            PostingsFormat.availablePostingsFormats();
-                            break;
-                          case 6:
-                            DocValuesFormat.availableDocValuesFormats();
-                            break;
-                          default:
-                            throw new AssertionError();
-                        }
+                        tasks.get(taskNo % numTasks).call();
                       } catch (Throwable t) {
                         synchronized (args) {
                           System.err.println(
-                              Thread.currentThread().getName()
-                                  + " failed to lookup codec service:");
+                              Thread.currentThread().getName() + " failed to call racy method:");
                           t.printStackTrace(System.err);
                         }
                         Runtime.getRuntime().halt(1); // signal failure to caller

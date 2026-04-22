@@ -371,8 +371,8 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
           sims[(int) ord] =
               weight.similarity.scorer(
                   1f,
-                  searcher.collectionStatistics("field"),
-                  searcher.termStatistics(term, ts.docFreq(), ts.totalTermFreq()));
+                  searcher.fieldStats("field"),
+                  searcher.termStats(term, ts.docFreq(), ts.totalTermFreq()));
         }
       }
       norms = reader.getNormValues("field");

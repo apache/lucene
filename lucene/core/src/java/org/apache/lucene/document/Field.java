@@ -417,8 +417,8 @@ public class Field implements IndexableField {
 
   @Override
   public Number numericValue() {
-    if (fieldsData instanceof Number) {
-      return (Number) fieldsData;
+    if (fieldsData instanceof Number n) {
+      return n;
     } else {
       return null;
     }
@@ -426,8 +426,8 @@ public class Field implements IndexableField {
 
   @Override
   public BytesRef binaryValue() {
-    if (fieldsData instanceof BytesRef) {
-      return (BytesRef) fieldsData;
+    if (fieldsData instanceof BytesRef br) {
+      return br;
     } else {
       return null;
     }
@@ -608,24 +608,18 @@ public class Field implements IndexableField {
   public StoredValue storedValue() {
     if (fieldType().stored() == false) {
       return null;
-    } else if (fieldsData == null) {
-      throw new IllegalArgumentException("fieldsData is unset");
-    } else if (fieldsData instanceof Integer) {
-      return new StoredValue((int) fieldsData);
-    } else if (fieldsData instanceof Long) {
-      return new StoredValue((long) fieldsData);
-    } else if (fieldsData instanceof Float) {
-      return new StoredValue((float) fieldsData);
-    } else if (fieldsData instanceof Double) {
-      return new StoredValue((double) fieldsData);
-    } else if (fieldsData instanceof BytesRef) {
-      return new StoredValue((BytesRef) fieldsData);
-    } else if (fieldsData instanceof StoredFieldDataInput) {
-      return new StoredValue((StoredFieldDataInput) fieldsData);
-    } else if (fieldsData instanceof String) {
-      return new StoredValue((String) fieldsData);
-    } else {
-      throw new IllegalStateException("Cannot store value of type " + fieldsData.getClass());
     }
+    return switch (fieldsData) {
+      case null -> throw new IllegalArgumentException("fieldsData is unset");
+      case Integer i -> new StoredValue(i);
+      case Long l -> new StoredValue(l);
+      case Float f -> new StoredValue(f);
+      case Double d -> new StoredValue(d);
+      case BytesRef br -> new StoredValue(br);
+      case StoredFieldDataInput sfdi -> new StoredValue(sfdi);
+      case String s -> new StoredValue(s);
+      default ->
+          throw new IllegalStateException("Cannot store value of type " + fieldsData.getClass());
+    };
   }
 }
