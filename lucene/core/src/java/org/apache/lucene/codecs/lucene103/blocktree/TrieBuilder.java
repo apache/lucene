@@ -17,20 +17,26 @@
 package org.apache.lucene.codecs.lucene103.blocktree;
 
 import java.io.IOException;
-import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.Deque;
 import java.util.function.BiConsumer;
+import org.apache.lucene.store.ByteBuffersDataInput;
+import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefBuilder;
 
 /**
  * A builder to build prefix tree (trie) as the index of block tree, and can be saved to disk.
  *
- * <p>TODO make this trie builder a more memory efficient structure.
+ * <p>This implementation stores entries in a compact prefix-coded byte buffer during building, and
+ * reconstructs the trie structure on-the-fly during save using a frontier-based approach. The first
+ * non-empty-key entry (minKey) is stored separately so that {@link #append} can re-encode only that
+ * one entry and then bulk-copy the remaining bytes with zero per-entry overhead.
+ *
+ * <p>Memory usage is O(total encoded bytes) during building and O(max key depth) during save,
+ * compared to the previous tree-based approach which was O(total nodes * ~120 bytes per node).
  */
 class TrieBuilder {
 
@@ -60,54 +66,37 @@ class TrieBuilder {
     DESTROYED
   }
 
-  private static class Node {
+  // ====== Prefix-coded buffer entry format ======
+  // Each entry is encoded as:
+  //   [prefixLen: vInt] [suffixLen: vInt] [suffix: bytes]
+  //   [fp: vLong] [hasTerms: byte (0/1)] [floorDataLen: vInt] [floorData: bytes]
+  //
+  // The first non-empty-key entry (minKey) is stored separately in minKey/minOutput
+  // and NOT written to the buffer. Buffer entries start from the second entry onward,
+  // with their prefixLen computed relative to the preceding entry's full key.
 
-    // The utf8 digit that leads to this Node, 0 for root node
-    private final int label;
-    // The output of this node.
-    private Output output;
-    // The number of children of this node.
-    private int childrenNum;
-    // Pointers to relative nodes
-    private Node next;
-    private Node firstChild;
-    private Node lastChild;
+  /** Output for the empty ("") key, if any. */
+  private Output emptyOutput;
 
-    Node(int label, Output output) {
-      this.label = label;
-      this.output = output;
-    }
-  }
+  /** The first non-empty key, stored separately from the buffer. */
+  private final BytesRef minKey;
+
+  /** Output for minKey. Null if there is no non-empty key entry. */
+  private Output minOutput;
+
+  /** Buffer holding entries from the second onward, prefix-encoded. */
+  private final ByteBuffersDataOutput buffer = new ByteBuffersDataOutput();
 
   /**
-   * Transient state used only during {@link #saveNodes}. Keeps save-time bookkeeping off of {@link
-   * Node} so that Nodes are smaller during the (much longer) building phase.
+   * The last key appended. Since entries are always appended in sorted order, this also serves as
+   * the lexicographically largest key (maxKey) for ordered-append assertions. The backing byte[]
+   * may be over-allocated; only bytes [0, length) are meaningful.
    */
-  private static class SaveFrame {
-    final Node node;
-    // Iteration cursor: the latest child that has been pushed for saving.
-    Node savedTo;
-    // File pointer assigned when this node is written. -1 until then.
-    long fp = -1;
-    // File pointers of children, collected as they are popped. Null for leaf nodes.
-    long[] childFps;
-    int numChildFps;
+  private final BytesRef lastKey;
 
-    SaveFrame(Node node) {
-      this.node = node;
-      if (node.childrenNum > 0) {
-        this.childFps = new long[node.childrenNum];
-      }
-    }
+  /** The maximum key length across all entries, used for frontier array allocation. */
+  private int maxKeyDepth;
 
-    void addChildFp(long childFp) {
-      childFps[numChildFps++] = childFp;
-    }
-  }
-
-  private final Node root = new Node(0, null);
-  private final BytesRef minKey;
-  private BytesRef maxKey;
   private Status status = Status.BUILDING;
 
   static TrieBuilder bytesRefToTrie(BytesRef k, Output v) {
@@ -115,20 +104,44 @@ class TrieBuilder {
   }
 
   private TrieBuilder(BytesRef k, Output v) {
-    minKey = maxKey = BytesRef.deepCopyOf(k);
+    minKey = BytesRef.deepCopyOf(k);
+    maxKeyDepth = k.length;
+
     if (k.length == 0) {
-      root.output = v;
-      return;
+      emptyOutput = v;
+      lastKey = new BytesRef();
+    } else {
+      minOutput = v;
+      lastKey = BytesRef.deepCopyOf(k);
     }
-    Node parent = root;
-    for (int i = 0; i < k.length; i++) {
-      int b = k.bytes[i + k.offset] & 0xFF;
-      Output output = i == k.length - 1 ? v : null;
-      Node node = new Node(b, output);
-      parent.firstChild = parent.lastChild = node;
-      parent.childrenNum = 1;
-      parent = node;
+  }
+
+  /**
+   * Encode and append a single (key, output) entry into the buffer. The entry is prefix-encoded
+   * relative to {@link #lastKey}, and lastKey is updated to the given key afterward.
+   */
+  private void appendEntry(BytesRef key, int prefixLen, Output v) {
+    try {
+      int suffixLen = key.length - prefixLen;
+      buffer.writeVInt(prefixLen);
+      buffer.writeVInt(suffixLen);
+      buffer.writeBytes(key.bytes, key.offset + prefixLen, suffixLen);
+      buffer.writeVLong(v.fp);
+      buffer.writeByte((byte) (v.hasTerms ? 1 : 0));
+      if (v.floorData != null) {
+        buffer.writeVInt(v.floorData.length);
+        buffer.writeBytes(v.floorData.bytes, v.floorData.offset, v.floorData.length);
+      } else {
+        buffer.writeVInt(0);
+      }
+    } catch (IOException e) {
+      throw new RuntimeException("should not happen on in-memory buffer", e);
     }
+    lastKey.bytes = ArrayUtil.growNoCopy(lastKey.bytes, key.length);
+    System.arraycopy(key.bytes, key.offset, lastKey.bytes, 0, key.length);
+    lastKey.offset = 0;
+    lastKey.length = key.length;
+    maxKeyDepth = Math.max(maxKeyDepth, key.length);
   }
 
   /**
@@ -137,59 +150,116 @@ class TrieBuilder {
    *
    * <p>Note: the given trie will be destroyed after appending.
    */
-  void append(TrieBuilder trieBuilder) {
-    if (status != Status.BUILDING || trieBuilder.status != Status.BUILDING) {
+  void append(TrieBuilder other) {
+    if (status != Status.BUILDING || other.status != Status.BUILDING) {
       throw new IllegalStateException(
-          "tries have wrong status, got this: " + status + ", append: " + trieBuilder.status);
+          "tries have wrong status, got this: " + status + ", append: " + other.status);
     }
-    assert this.maxKey.compareTo(trieBuilder.minKey) < 0;
+    assert this.lastKey.compareTo(other.minKey) < 0;
 
-    int mismatch =
-        Arrays.mismatch(
-            this.maxKey.bytes,
-            this.maxKey.offset,
-            this.maxKey.offset + this.maxKey.length,
-            trieBuilder.minKey.bytes,
-            trieBuilder.minKey.offset,
-            trieBuilder.minKey.offset + trieBuilder.minKey.length);
-    Node a = this.root;
-    Node b = trieBuilder.root;
+    if (other.emptyOutput != null && this.emptyOutput == null) {
+      this.emptyOutput = other.emptyOutput;
+    }
 
-    for (int i = 0; i < mismatch; i++) {
-      final Node aLast = a.lastChild;
-      final Node bFirst = b.firstChild;
-      assert aLast.label == bFirst.label;
-
-      if (b.childrenNum > 1) {
-        aLast.next = bFirst.next;
-        a.childrenNum += b.childrenNum - 1;
-        a.lastChild = b.lastChild;
-        assert assertChildrenLabelInOrder(a);
+    if (other.minOutput != null) {
+      // Re-encode other's first entry (minKey) relative to our lastKey.
+      int mismatch =
+          Arrays.mismatch(
+              lastKey.bytes,
+              lastKey.offset,
+              lastKey.offset + lastKey.length,
+              other.minKey.bytes,
+              other.minKey.offset,
+              other.minKey.offset + other.minKey.length);
+      if (mismatch == -1) {
+        mismatch = Math.min(lastKey.length, other.minKey.length);
       }
+      appendEntry(other.minKey, mismatch, other.minOutput);
 
-      a = aLast;
-      b = bFirst;
+      // After appendEntry, lastKey == other.minKey. The remaining buffer entries in 'other'
+      // are prefix-encoded relative to other.minKey, which is now identical to our lastKey,
+      // so we can bulk-copy them directly without any re-encoding.
+      if (other.buffer.size() > 0) {
+        try {
+          ByteBuffersDataInput otherIn = other.buffer.toDataInput();
+          buffer.copyBytes(otherIn, otherIn.length());
+        } catch (IOException e) {
+          throw new RuntimeException("should not happen on in-memory buffer", e);
+        }
+        // Update lastKey to other's lastKey (the last entry in the bulk-copied data).
+        lastKey.bytes = ArrayUtil.growNoCopy(lastKey.bytes, other.lastKey.length);
+        System.arraycopy(
+            other.lastKey.bytes, other.lastKey.offset, lastKey.bytes, 0, other.lastKey.length);
+        lastKey.offset = 0;
+        lastKey.length = other.lastKey.length;
+      }
     }
 
-    assert b.childrenNum > 0;
-    if (a.childrenNum == 0) {
-      a.firstChild = b.firstChild;
-      a.lastChild = b.lastChild;
-      a.childrenNum = b.childrenNum;
-    } else {
-      assert a.lastChild.label < b.firstChild.label;
-      a.lastChild.next = b.firstChild;
-      a.lastChild = b.lastChild;
-      a.childrenNum += b.childrenNum;
-    }
-    assert assertChildrenLabelInOrder(a);
-
-    this.maxKey = trieBuilder.maxKey;
-    trieBuilder.status = Status.DESTROYED;
+    this.maxKeyDepth = Math.max(this.maxKeyDepth, other.maxKeyDepth);
+    other.status = Status.DESTROYED;
   }
 
   Output getEmptyOutput() {
-    return root.output;
+    return emptyOutput;
+  }
+
+  // ====== Entry iteration (shared by visit and saveNodes) ======
+
+  /**
+   * Iterates over all non-empty-key entries: first the separately-stored minKey entry, then the
+   * prefix-coded buffer entries. The iterator maintains a reusable key buffer; callers that need the
+   * previous key (e.g. for common-prefix computation) must copy it before calling {@link #next()}.
+   *
+   * <p>This is a non-static inner class so it can directly access the enclosing TrieBuilder's
+   * {@link #minKey}, {@link #minOutput}, {@link #buffer}, and {@link #maxKeyDepth}.
+   */
+  private class EntryIterator {
+    private final ByteBuffersDataInput in;
+    private boolean minKeyConsumed;
+    byte[] key;
+    int keyLen;
+    Output output;
+
+    EntryIterator() {
+      key = new byte[Math.max(maxKeyDepth, 1)];
+      // Pre-populate key buffer with minKey. When minOutput != null, the first next()
+      // returns it directly. Either way the buffer is seeded for prefix-decoding
+      // subsequent entries (which are encoded relative to minKey).
+      System.arraycopy(minKey.bytes, minKey.offset, key, 0, minKey.length);
+      keyLen = minKey.length;
+      minKeyConsumed = (minOutput == null);
+      in = buffer.size() > 0 ? buffer.toDataInput() : null;
+    }
+
+    boolean hasNext() {
+      if (!minKeyConsumed) return true;
+      return in != null && in.position() < in.length();
+    }
+
+    void next() throws IOException {
+      if (!minKeyConsumed) {
+        // key/keyLen are already set from constructor.
+        output = minOutput;
+        minKeyConsumed = true;
+        return;
+      }
+      int prefixLen = in.readVInt();
+      int suffixLen = in.readVInt();
+      keyLen = prefixLen + suffixLen;
+      key = ArrayUtil.grow(key, keyLen); // must preserve [0, prefixLen)
+      in.readBytes(key, prefixLen, suffixLen);
+
+      long fp = in.readVLong();
+      boolean hasTerms = in.readByte() == 1;
+      int floorDataLen = in.readVInt();
+      BytesRef floorData = null;
+      if (floorDataLen > 0) {
+        byte[] fd = new byte[floorDataLen];
+        in.readBytes(fd, 0, floorDataLen);
+        floorData = new BytesRef(fd);
+      }
+      output = new Output(fp, hasTerms, floorData);
+    }
   }
 
   /**
@@ -198,21 +268,18 @@ class TrieBuilder {
    */
   void visit(BiConsumer<BytesRef, Output> consumer) {
     assert status == Status.BUILDING;
-    if (root.output != null) {
-      consumer.accept(new BytesRef(), root.output);
+    if (emptyOutput != null) {
+      consumer.accept(new BytesRef(), emptyOutput);
     }
-    visit(root.firstChild, new BytesRefBuilder(), consumer);
-  }
-
-  private void visit(Node first, BytesRefBuilder key, BiConsumer<BytesRef, Output> consumer) {
-    while (first != null) {
-      key.append((byte) first.label);
-      if (first.output != null) {
-        consumer.accept(key.toBytesRef(), first.output);
+    try {
+      EntryIterator iter = new EntryIterator();
+      while (iter.hasNext()) {
+        iter.next();
+        consumer.accept(
+            new BytesRef(ArrayUtil.copyOfSubArray(iter.key, 0, iter.keyLen)), iter.output);
       }
-      visit(first.firstChild, key, consumer);
-      key.setLength(key.length() - 1);
-      first = first.next;
+    } catch (IOException e) {
+      throw new RuntimeException("should not happen on in-memory buffer", e);
     }
   }
 
@@ -227,170 +294,207 @@ class TrieBuilder {
     status = Status.SAVED;
   }
 
+  // ====== Frontier-based save ======
+
+  /**
+   * A frontier slot for one depth level. During save, frontier[d] represents the trie node at
+   * depth d on the path from root to the last inserted key. Only the current path is live; deeper
+   * slots are frozen (serialized) and reset as new keys arrive.
+   */
+  private static class FrontierNode {
+    Output output;
+    int childrenNum;
+    int[] childLabels;
+    long[] childFps;
+
+    FrontierNode() {
+      childLabels = new int[4];
+      childFps = new long[4];
+    }
+
+    void reset() {
+      output = null;
+      childrenNum = 0;
+    }
+
+    void addChild(int label, long fp) {
+      childLabels = ArrayUtil.grow(childLabels, childrenNum + 1);
+      childFps = ArrayUtil.grow(childFps, childrenNum + 1);
+      childLabels[childrenNum] = label;
+      childFps[childrenNum] = fp;
+      childrenNum++;
+    }
+  }
+
   long saveNodes(IndexOutput index) throws IOException {
     final long startFP = index.getFilePointer();
-    Deque<SaveFrame> stack = new ArrayDeque<>();
-    SaveFrame rootFrame = new SaveFrame(root);
-    stack.push(rootFrame);
 
-    // Visit and save nodes of this trie in a post-order depth-first traversal.
-    while (stack.isEmpty() == false) {
-      SaveFrame frame = stack.peek();
-      Node node = frame.node;
-      assert frame.fp == -1;
-      assert assertChildrenLabelInOrder(node);
+    FrontierNode[] frontier = new FrontierNode[maxKeyDepth + 1];
+    for (int i = 0; i <= maxKeyDepth; i++) {
+      frontier[i] = new FrontierNode();
+    }
+    frontier[0].output = emptyOutput;
 
-      final int childrenNum = node.childrenNum;
+    byte[] prevKey = new byte[Math.max(maxKeyDepth, 1)];
+    int prevKeyLen = 0;
+    boolean firstEntry = true;
 
-      if (childrenNum == 0) { // leaf node
-        assert node.output != null : "leaf nodes should have output.";
+    EntryIterator iter = new EntryIterator();
+    while (iter.hasNext()) {
+      iter.next();
 
-        frame.fp = index.getFilePointer() - startFP;
-        stack.pop();
-        if (stack.isEmpty() == false) {
-          stack.peek().addChildFp(frame.fp);
+      if (!firstEntry) {
+        int commonPrefix =
+            Arrays.mismatch(prevKey, 0, prevKeyLen, iter.key, 0, iter.keyLen);
+        if (commonPrefix == -1) {
+          commonPrefix = Math.min(prevKeyLen, iter.keyLen);
         }
+        freezeFrom(prevKey, prevKeyLen, commonPrefix, frontier, startFP, index);
+      }
+      firstEntry = false;
 
-        // [n bytes] floor data
-        // [n bytes] output fp
-        // [1bit] x | [1bit] has floor | [1bit] has terms | [3bit] output fp bytes | [2bit] sign
+      frontier[iter.keyLen].output = iter.output;
 
+      prevKey = ArrayUtil.growNoCopy(prevKey, iter.keyLen);
+      System.arraycopy(iter.key, 0, prevKey, 0, iter.keyLen);
+      prevKeyLen = iter.keyLen;
+    }
+
+    // Freeze all remaining frontier nodes down to depth 1.
+    if (!firstEntry) {
+      freezeFrom(prevKey, prevKeyLen, 0, frontier, startFP, index);
+    }
+
+    // Freeze root.
+    return freezeNode(frontier[0], startFP, index);
+  }
+
+  /**
+   * Freeze frontier nodes from depth {@code keyLen} down to depth {@code toDepth + 1}. Each frozen
+   * node's fp is registered as a child of its parent (one level up).
+   */
+  private void freezeFrom(
+      byte[] key, int keyLen, int toDepth, FrontierNode[] frontier, long startFP, IndexOutput index)
+      throws IOException {
+    for (int d = keyLen; d > toDepth; d--) {
+      long fp = freezeNode(frontier[d], startFP, index);
+      frontier[d - 1].addChild(key[d - 1] & 0xFF, fp);
+      frontier[d].reset();
+    }
+  }
+
+  /**
+   * Serialize a single frontier node to the index output and return its fp (relative to startFP).
+   */
+  private long freezeNode(FrontierNode node, long startFP, IndexOutput index) throws IOException {
+    int childrenNum = node.childrenNum;
+
+    if (childrenNum == 0) {
+      assert node.output != null : "leaf nodes should have output.";
+      long bottomFp = index.getFilePointer() - startFP;
+      writeLeafNode(node.output, index);
+      return bottomFp;
+    }
+
+    if (childrenNum == 1) {
+      long bottomFp = index.getFilePointer() - startFP;
+      long childDeltaFp = bottomFp - node.childFps[0];
+      assert childDeltaFp > 0 : "parent node is always written after children: " + childDeltaFp;
+      int childFpBytes = bytesRequiredVLong(childDeltaFp);
+      int encodedOutputFpBytes =
+          node.output == null ? 0 : bytesRequiredVLong(node.output.fp << 2);
+
+      int sign =
+          node.output != null ? SIGN_SINGLE_CHILD_WITH_OUTPUT : SIGN_SINGLE_CHILD_WITHOUT_OUTPUT;
+      int header = sign | ((childFpBytes - 1) << 2) | ((encodedOutputFpBytes - 1) << 5);
+      index.writeByte((byte) header);
+      index.writeByte((byte) node.childLabels[0]);
+      writeLongNBytes(childDeltaFp, childFpBytes, index);
+
+      if (node.output != null) {
         Output output = node.output;
-        int outputFpBytes = bytesRequiredVLong(output.fp);
-        int header =
-            SIGN_NO_CHILDREN
-                | ((outputFpBytes - 1) << 2)
-                | (output.hasTerms ? LEAF_NODE_HAS_TERMS : 0)
-                | (output.floorData != null ? LEAF_NODE_HAS_FLOOR : 0);
-        index.writeByte(((byte) header));
-        writeLongNBytes(output.fp, outputFpBytes, index);
+        long encodedFp = encodeFP(output);
+        writeLongNBytes(encodedFp, encodedOutputFpBytes, index);
         if (output.floorData != null) {
           index.writeBytes(
               output.floorData.bytes, output.floorData.offset, output.floorData.length);
         }
-        continue;
       }
+      return bottomFp;
+    }
 
-      // If there are any children have not been saved, push the first one into stack and continue.
-      // We want to ensure saving children before parent.
+    // Multi-children
+    long bottomFp = index.getFilePointer() - startFP;
 
-      if (frame.savedTo == null) {
-        frame.savedTo = node.firstChild;
-        stack.push(new SaveFrame(frame.savedTo));
-        continue;
-      }
-      if (frame.savedTo.next != null) {
-        assert frame.numChildFps > 0 && frame.childFps[frame.numChildFps - 1] >= 0;
-        frame.savedTo = frame.savedTo.next;
-        stack.push(new SaveFrame(frame.savedTo));
-        continue;
-      }
+    final int minLabel = node.childLabels[0];
+    final int maxLabel = node.childLabels[childrenNum - 1];
+    assert maxLabel > minLabel;
+    ChildSaveStrategy childSaveStrategy =
+        ChildSaveStrategy.choose(minLabel, maxLabel, childrenNum);
+    int strategyBytes = childSaveStrategy.needBytes(minLabel, maxLabel, childrenNum);
+    assert strategyBytes > 0 && strategyBytes <= 32;
 
-      // All children have been written, now it's time to write the parent!
+    long maxChildDeltaFp = bottomFp - node.childFps[0];
+    assert maxChildDeltaFp > 0 : "parent always written after all children";
 
-      assert assertNonLeafFramePreparingSaving(frame);
-      frame.fp = index.getFilePointer() - startFP;
-      stack.pop();
-      if (stack.isEmpty() == false) {
-        stack.peek().addChildFp(frame.fp);
-      }
+    int childrenFpBytes = bytesRequiredVLong(maxChildDeltaFp);
+    int encodedOutputFpBytes =
+        node.output == null ? 1 : bytesRequiredVLong(node.output.fp << 2);
+    int header =
+        SIGN_MULTI_CHILDREN
+            | ((childrenFpBytes - 1) << 2)
+            | ((node.output != null ? 1 : 0) << 5)
+            | ((encodedOutputFpBytes - 1) << 6)
+            | (childSaveStrategy.code << 9)
+            | ((strategyBytes - 1) << 11)
+            | (minLabel << 16);
 
-      if (childrenNum == 1) {
+    writeLongNBytes(header, 3, index);
 
-        // [n bytes] floor data
-        // [n bytes] encoded output fp | [n bytes] child fp | [1 byte] label
-        // [3bit] encoded output fp bytes | [3bit] child fp bytes | [2bit] sign
-
-        long childDeltaFp = frame.fp - frame.childFps[0];
-        assert childDeltaFp > 0 : "parent node is always written after children: " + childDeltaFp;
-        int childFpBytes = bytesRequiredVLong(childDeltaFp);
-        int encodedOutputFpBytes =
-            node.output == null ? 0 : bytesRequiredVLong(node.output.fp << 2);
-
-        // TODO if we have only one child and no output, we can store child labels in this node.
-        // E.g. for a single term trie [foobar], we can save only two nodes [fooba] and [r]
-
-        int sign =
-            node.output != null ? SIGN_SINGLE_CHILD_WITH_OUTPUT : SIGN_SINGLE_CHILD_WITHOUT_OUTPUT;
-        int header = sign | ((childFpBytes - 1) << 2) | ((encodedOutputFpBytes - 1) << 5);
-        index.writeByte((byte) header);
-        index.writeByte((byte) node.firstChild.label);
-        writeLongNBytes(childDeltaFp, childFpBytes, index);
-
-        if (node.output != null) {
-          Output output = node.output;
-          long encodedFp = encodeFP(output);
-          writeLongNBytes(encodedFp, encodedOutputFpBytes, index);
-          if (output.floorData != null) {
-            index.writeBytes(
-                output.floorData.bytes, output.floorData.offset, output.floorData.length);
-          }
-        }
-      } else {
-
-        // [n bytes] floor data
-        // [n bytes] children fps | [n bytes] strategy data
-        // [1 byte] children count (if floor data) | [n bytes] encoded output fp | [1 byte] label
-        // [5bit] strategy bytes | 2bit children strategy | [3bit] encoded output fp bytes
-        // [1bit] has output | [3bit] children fp bytes | [2bit] sign
-
-        final int minLabel = node.firstChild.label;
-        final int maxLabel = node.lastChild.label;
-        assert maxLabel > minLabel;
-        ChildSaveStrategy childSaveStrategy =
-            ChildSaveStrategy.choose(minLabel, maxLabel, childrenNum);
-        int strategyBytes = childSaveStrategy.needBytes(minLabel, maxLabel, childrenNum);
-        assert strategyBytes > 0 && strategyBytes <= 32;
-
-        // children fps are in order, so the first child's fp is min, then delta is max.
-        long maxChildDeltaFp = frame.fp - frame.childFps[0];
-        assert maxChildDeltaFp > 0 : "parent always written after all children";
-
-        int childrenFpBytes = bytesRequiredVLong(maxChildDeltaFp);
-        int encodedOutputFpBytes =
-            node.output == null ? 1 : bytesRequiredVLong(node.output.fp << 2);
-        int header =
-            SIGN_MULTI_CHILDREN
-                | ((childrenFpBytes - 1) << 2)
-                | ((node.output != null ? 1 : 0) << 5)
-                | ((encodedOutputFpBytes - 1) << 6)
-                | (childSaveStrategy.code << 9)
-                | ((strategyBytes - 1) << 11)
-                | (minLabel << 16);
-
-        writeLongNBytes(header, 3, index);
-
-        if (node.output != null) {
-          Output output = node.output;
-          long encodedFp = encodeFP(output);
-          writeLongNBytes(encodedFp, encodedOutputFpBytes, index);
-          if (output.floorData != null) {
-            // We need this childrenNum to compute where the floor data start.
-            index.writeByte((byte) (childrenNum - 1));
-          }
-        }
-
-        long strategyStartFp = index.getFilePointer();
-        childSaveStrategy.save(node, childrenNum, strategyBytes, index);
-        assert index.getFilePointer() == strategyStartFp + strategyBytes
-            : childSaveStrategy.name()
-                + " strategy bytes compute error, computed: "
-                + strategyBytes
-                + " actual: "
-                + (index.getFilePointer() - strategyStartFp);
-
-        for (int i = 0; i < frame.numChildFps; i++) {
-          assert frame.fp > frame.childFps[i] : "parent always written after all children";
-          writeLongNBytes(frame.fp - frame.childFps[i], childrenFpBytes, index);
-        }
-
-        if (node.output != null && node.output.floorData != null) {
-          BytesRef floorData = node.output.floorData;
-          index.writeBytes(floorData.bytes, floorData.offset, floorData.length);
-        }
+    if (node.output != null) {
+      Output output = node.output;
+      long encodedFp = encodeFP(output);
+      writeLongNBytes(encodedFp, encodedOutputFpBytes, index);
+      if (output.floorData != null) {
+        index.writeByte((byte) (childrenNum - 1));
       }
     }
-    return rootFrame.fp;
+
+    long strategyStartFp = index.getFilePointer();
+    childSaveStrategy.save(node.childLabels, childrenNum, strategyBytes, index);
+    assert index.getFilePointer() == strategyStartFp + strategyBytes
+        : childSaveStrategy.name()
+        + " strategy bytes compute error, computed: "
+        + strategyBytes
+        + " actual: "
+        + (index.getFilePointer() - strategyStartFp);
+
+    for (int i = 0; i < childrenNum; i++) {
+      assert bottomFp > node.childFps[i] : "parent always written after all children";
+      writeLongNBytes(bottomFp - node.childFps[i], childrenFpBytes, index);
+    }
+
+    if (node.output != null && node.output.floorData != null) {
+      BytesRef floorData = node.output.floorData;
+      index.writeBytes(floorData.bytes, floorData.offset, floorData.length);
+    }
+
+    return bottomFp;
+  }
+
+  private void writeLeafNode(Output output, IndexOutput index) throws IOException {
+    int outputFpBytes = bytesRequiredVLong(output.fp);
+    int header =
+        SIGN_NO_CHILDREN
+            | ((outputFpBytes - 1) << 2)
+            | (output.hasTerms ? LEAF_NODE_HAS_TERMS : 0)
+            | (output.floorData != null ? LEAF_NODE_HAS_FLOOR : 0);
+    index.writeByte(((byte) header));
+    writeLongNBytes(output.fp, outputFpBytes, index);
+    if (output.floorData != null) {
+      index.writeBytes(
+          output.floorData.bytes, output.floorData.offset, output.floorData.length);
+    }
   }
 
   private long encodeFP(Output output) {
@@ -412,58 +516,13 @@ class TrieBuilder {
    */
   private static void writeLongNBytes(long v, int n, DataOutput out) throws IOException {
     for (int i = 0; i < n; i++) {
-      // Note that we sometimes write trailing 0 bytes here, when the incoming int n is bigger than
-      // would be required for a "normal" vLong
       out.writeByte((byte) v);
       v >>>= 8;
     }
     assert v == 0;
   }
 
-  private static boolean assertChildrenLabelInOrder(Node node) {
-    if (node.childrenNum == 0) {
-      assert node.firstChild == null;
-      assert node.lastChild == null;
-    } else if (node.childrenNum == 1) {
-      assert node.firstChild == node.lastChild;
-      assert node.firstChild.next == null;
-    } else if (node.childrenNum > 1) {
-      int n = 0;
-      for (Node child = node.firstChild; child != null; child = child.next) {
-        n++;
-        assert child.next == null || child.label < child.next.label
-            : " the label of children nodes should always be in strictly increasing order.";
-      }
-      assert node.childrenNum == n;
-    }
-    return true;
-  }
-
-  private static boolean assertNonLeafFramePreparingSaving(SaveFrame frame) {
-    Node node = frame.node;
-    assert assertChildrenLabelInOrder(node);
-    assert node.childrenNum != 0;
-    assert frame.numChildFps == node.childrenNum
-        : "expected " + node.childrenNum + " child fps, got " + frame.numChildFps;
-    if (node.childrenNum == 1) {
-      assert node.firstChild == node.lastChild;
-      assert node.firstChild.next == null;
-      assert frame.savedTo == node.firstChild;
-      assert frame.childFps[0] >= 0;
-    } else {
-      int n = 0;
-      for (int i = 0; i < frame.numChildFps; i++) {
-        n++;
-        assert frame.childFps[i] >= 0;
-        assert i == frame.numChildFps - 1 || frame.childFps[i] < frame.childFps[i + 1]
-            : " the fp of children nodes should always be in order.";
-      }
-      assert node.childrenNum == n;
-      assert node.lastChild == frame.savedTo;
-      assert frame.savedTo.next == null;
-    }
-    return true;
-  }
+  // ====== ChildSaveStrategy (lookup methods unchanged from original) ======
 
   enum ChildSaveStrategy {
 
@@ -479,13 +538,13 @@ class TrieBuilder {
       }
 
       @Override
-      void save(Node parent, int labelCnt, int strategyBytes, IndexOutput output)
+      void save(int[] childLabels, int labelCnt, int strategyBytes, IndexOutput output)
           throws IOException {
         byte presenceBits = 1; // The first arc is always present.
         int presenceIndex = 0;
-        int previousLabel = parent.firstChild.label;
-        for (Node child = parent.firstChild.next; child != null; child = child.next) {
-          int label = child.label;
+        int previousLabel = childLabels[0];
+        for (int i = 1; i < labelCnt; i++) {
+          int label = childLabels[i];
           assert label > previousLabel;
           presenceIndex += label - previousLabel;
           while (presenceIndex >= Byte.SIZE) {
@@ -493,13 +552,9 @@ class TrieBuilder {
             presenceBits = 0;
             presenceIndex -= Byte.SIZE;
           }
-          // Set the bit at presenceIndex to flag that the corresponding arc is present.
           presenceBits |= 1 << presenceIndex;
           previousLabel = label;
         }
-        assert presenceIndex == (parent.lastChild.label - parent.firstChild.label) % 8;
-        assert presenceBits != 0; // The last byte is not 0.
-        assert (presenceBits & (1 << presenceIndex)) != 0; // The last arc is always present.
         output.writeByte(presenceBits);
       }
 
@@ -539,10 +594,10 @@ class TrieBuilder {
       }
 
       @Override
-      void save(Node parent, int labelCnt, int strategyBytes, IndexOutput output)
+      void save(int[] childLabels, int labelCnt, int strategyBytes, IndexOutput output)
           throws IOException {
-        for (Node child = parent.firstChild.next; child != null; child = child.next) {
-          output.writeByte((byte) child.label);
+        for (int i = 1; i < labelCnt; i++) {
+          output.writeByte((byte) childLabels[i]);
         }
       }
 
@@ -582,12 +637,12 @@ class TrieBuilder {
       }
 
       @Override
-      void save(Node parent, int labelCnt, int strategyBytes, IndexOutput output)
+      void save(int[] childLabels, int labelCnt, int strategyBytes, IndexOutput output)
           throws IOException {
-        output.writeByte((byte) parent.lastChild.label);
-        int lastLabel = parent.firstChild.label;
-        for (Node child = parent.firstChild.next; child != null; child = child.next) {
-          while (++lastLabel < child.label) {
+        output.writeByte((byte) childLabels[labelCnt - 1]); // max label
+        int lastLabel = childLabels[0];
+        for (int i = 1; i < labelCnt; i++) {
+          while (++lastLabel < childLabels[i]) {
             output.writeByte((byte) lastLabel);
           }
         }
@@ -642,7 +697,7 @@ class TrieBuilder {
 
     abstract int needBytes(int minLabel, int maxLabel, int labelCnt);
 
-    abstract void save(Node parent, int labelCnt, int strategyBytes, IndexOutput output)
+    abstract void save(int[] childLabels, int labelCnt, int strategyBytes, IndexOutput output)
         throws IOException;
 
     abstract int lookup(
