@@ -207,8 +207,9 @@ class TrieBuilder {
 
   /**
    * Iterates over all non-empty-key entries: first the separately-stored minKey entry, then the
-   * prefix-coded buffer entries. The iterator maintains a reusable key buffer; callers that need the
-   * previous key (e.g. for common-prefix computation) must copy it before calling {@link #next()}.
+   * prefix-coded buffer entries. The iterator maintains a reusable key buffer; callers that need
+   * the previous key (e.g. for common-prefix computation) must copy it before calling {@link
+   * #next()}.
    *
    * <p>This is a non-static inner class so it can directly access the enclosing TrieBuilder's
    * {@link #minKey}, {@link #minOutput}, {@link #buffer}, and {@link #maxKeyDepth}.
@@ -297,9 +298,9 @@ class TrieBuilder {
   // ====== Frontier-based save ======
 
   /**
-   * A frontier slot for one depth level. During save, frontier[d] represents the trie node at
-   * depth d on the path from root to the last inserted key. Only the current path is live; deeper
-   * slots are frozen (serialized) and reset as new keys arrive.
+   * A frontier slot for one depth level. During save, frontier[d] represents the trie node at depth
+   * d on the path from root to the last inserted key. Only the current path is live; deeper slots
+   * are frozen (serialized) and reset as new keys arrive.
    */
   private static class FrontierNode {
     Output output;
@@ -344,8 +345,7 @@ class TrieBuilder {
       iter.next();
 
       if (!firstEntry) {
-        int commonPrefix =
-            Arrays.mismatch(prevKey, 0, prevKeyLen, iter.key, 0, iter.keyLen);
+        int commonPrefix = Arrays.mismatch(prevKey, 0, prevKeyLen, iter.key, 0, iter.keyLen);
         if (commonPrefix == -1) {
           commonPrefix = Math.min(prevKeyLen, iter.keyLen);
         }
@@ -401,8 +401,7 @@ class TrieBuilder {
       long childDeltaFp = bottomFp - node.childFps[0];
       assert childDeltaFp > 0 : "parent node is always written after children: " + childDeltaFp;
       int childFpBytes = bytesRequiredVLong(childDeltaFp);
-      int encodedOutputFpBytes =
-          node.output == null ? 0 : bytesRequiredVLong(node.output.fp << 2);
+      int encodedOutputFpBytes = node.output == null ? 0 : bytesRequiredVLong(node.output.fp << 2);
 
       int sign =
           node.output != null ? SIGN_SINGLE_CHILD_WITH_OUTPUT : SIGN_SINGLE_CHILD_WITHOUT_OUTPUT;
@@ -429,8 +428,7 @@ class TrieBuilder {
     final int minLabel = node.childLabels[0];
     final int maxLabel = node.childLabels[childrenNum - 1];
     assert maxLabel > minLabel;
-    ChildSaveStrategy childSaveStrategy =
-        ChildSaveStrategy.choose(minLabel, maxLabel, childrenNum);
+    ChildSaveStrategy childSaveStrategy = ChildSaveStrategy.choose(minLabel, maxLabel, childrenNum);
     int strategyBytes = childSaveStrategy.needBytes(minLabel, maxLabel, childrenNum);
     assert strategyBytes > 0 && strategyBytes <= 32;
 
@@ -438,8 +436,7 @@ class TrieBuilder {
     assert maxChildDeltaFp > 0 : "parent always written after all children";
 
     int childrenFpBytes = bytesRequiredVLong(maxChildDeltaFp);
-    int encodedOutputFpBytes =
-        node.output == null ? 1 : bytesRequiredVLong(node.output.fp << 2);
+    int encodedOutputFpBytes = node.output == null ? 1 : bytesRequiredVLong(node.output.fp << 2);
     int header =
         SIGN_MULTI_CHILDREN
             | ((childrenFpBytes - 1) << 2)
@@ -464,10 +461,10 @@ class TrieBuilder {
     childSaveStrategy.save(node.childLabels, childrenNum, strategyBytes, index);
     assert index.getFilePointer() == strategyStartFp + strategyBytes
         : childSaveStrategy.name()
-        + " strategy bytes compute error, computed: "
-        + strategyBytes
-        + " actual: "
-        + (index.getFilePointer() - strategyStartFp);
+            + " strategy bytes compute error, computed: "
+            + strategyBytes
+            + " actual: "
+            + (index.getFilePointer() - strategyStartFp);
 
     for (int i = 0; i < childrenNum; i++) {
       assert bottomFp > node.childFps[i] : "parent always written after all children";
@@ -492,8 +489,7 @@ class TrieBuilder {
     index.writeByte(((byte) header));
     writeLongNBytes(output.fp, outputFpBytes, index);
     if (output.floorData != null) {
-      index.writeBytes(
-          output.floorData.bytes, output.floorData.offset, output.floorData.length);
+      index.writeBytes(output.floorData.bytes, output.floorData.offset, output.floorData.length);
     }
   }
 
