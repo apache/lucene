@@ -180,6 +180,17 @@ public abstract sealed class LuceneTestCaseParent extends Assert
   /** If specified, limits the number of calls {@link #random()} itself. */
   public static final String SYSPROP_RANDOM_MAXACQUIRES = "tests.random.maxacquires";
 
+  /**
+   * Returns a Random instance based on the current state of another Random. The returned instance
+   * should be faster for thousands of consecutive calls because it doesn't assert that it isn't
+   * shared between threads or used within the correct {@link RandomizedContext}.
+   *
+   * <p>Use this method for local tight loops that generate a lot of random data.
+   */
+  public static Random nonAssertingRandom(Random rnd) {
+    return new Xoroshiro128PlusRandom(rnd.nextLong());
+  }
+
   // -----------------------------------------------------------------
   // This bit is for supporting all the static method calls we have all over the place.
   // In order for both junit4 and junit5 to work, we need to make sure that each class
@@ -190,12 +201,20 @@ public abstract sealed class LuceneTestCaseParent extends Assert
 
   protected interface TestFrameworkInfra {
     Random threadRandom();
+
+    <T extends Closeable> T closeAfterTest(T resource);
+
+    <T extends Closeable> T closeAfterClass(T resource);
+
+    void afterEach() throws IOException;
+
+    void afterAll() throws IOException;
   }
 
   private static final AtomicReference<TestFrameworkInfra> testFrameworkInfra =
       new AtomicReference<>();
 
-  public static void setTestFrameworkInfra(
+  protected static void setTestFrameworkInfra(
       TestFrameworkInfra expected, TestFrameworkInfra newInfra) {
     TestFrameworkInfra prev;
     if ((prev = testFrameworkInfra.compareAndExchange(expected, newInfra)) != expected) {
@@ -205,6 +224,11 @@ public abstract sealed class LuceneTestCaseParent extends Assert
               + ", expected: "
               + expected);
     }
+  }
+
+  protected static TestFrameworkInfra getTestFrameworkInfra() {
+    return Objects.requireNonNull(
+        testFrameworkInfra.get(), "Expected test framework not to be null.");
   }
 
   // -----------------------------------------------------------------
@@ -219,8 +243,8 @@ public abstract sealed class LuceneTestCaseParent extends Assert
         public void onUse(Query query) {}
 
         @Override
-        public boolean shouldCache(Query query) throws IOException {
-          return testFrameworkInfra.get().threadRandom().nextBoolean();
+        public boolean shouldCache(Query query) {
+          return getTestFrameworkInfra().threadRandom().nextBoolean();
         }
       };
 
@@ -229,40 +253,13 @@ public abstract sealed class LuceneTestCaseParent extends Assert
         .threadRandom();
   }
 
-  static TestRuleSetupAndRestoreClassEnv classEnvRule;
-
-  /** Suite failure marker (any error in the test or suite scope). */
-  @SuppressWarnings("NonFinalStaticField")
-  protected static TestRuleMarkFailure suiteFailureMarker;
-
-  static TestRuleTemporaryFilesCleanup tempFilesCleanupRule;
-
-  /**
-   * Returns a Random instance based on the current state of another Random. The returned instance
-   * should be faster for thousands of consecutive calls because it doesn't assert that it isn't
-   * shared between threads or used within the correct {@link RandomizedContext}.
-   *
-   * <p>Use this method for local tight loops that generate a lot of random data.
-   */
-  public static Random nonAssertingRandom(Random rnd) {
-    return new Xoroshiro128PlusRandom(rnd.nextLong());
-  }
-
-  interface CloseAfterHook {
-    <T extends Closeable> T closeAfterTest(T resource);
-
-    <T extends Closeable> T closeAfterSuite(T resource);
-  }
-
-  static volatile AtomicReference<CloseAfterHook> closeAfter = new AtomicReference<>();
-
   /**
    * Registers a {@link Closeable} resource that should be closed after the test completes.
    *
    * @return <code>resource</code> (for call chaining).
    */
   public <T extends Closeable> T closeAfterTest(T resource) {
-    return closeAfter.get().closeAfterTest(resource);
+    return getTestFrameworkInfra().closeAfterTest(resource);
   }
 
   /**
@@ -271,6 +268,16 @@ public abstract sealed class LuceneTestCaseParent extends Assert
    * @return <code>resource</code> (for call chaining).
    */
   public static <T extends Closeable> T closeAfterSuite(T resource) {
-    return closeAfter.get().closeAfterSuite(resource);
+    return getTestFrameworkInfra().closeAfterClass(resource);
   }
+
+  // TODO: to remove from here?
+
+  static TestRuleSetupAndRestoreClassEnv classEnvRule;
+
+  /** Suite failure marker (any error in the test or suite scope). */
+  @SuppressWarnings("NonFinalStaticField")
+  protected static TestRuleMarkFailure suiteFailureMarker;
+
+  static TestRuleTemporaryFilesCleanup tempFilesCleanupRule;
 }

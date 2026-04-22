@@ -18,7 +18,9 @@
 package org.apache.lucene.tests.util;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
@@ -43,26 +45,16 @@ public final class GlobalStateSupport
 
   private static final class State {
     private LuceneTestCaseParent.TestFrameworkInfra frameworkInfra;
-
     private TestRuleSetupAndRestoreClassEnv prevClassEnvRule;
-    private ConcurrentHashMap<Thread, Random> perThreadRandoms;
-
-    private final List<Closeable> closeAfterTest = new ArrayList<>();
-    private final List<Closeable> closeAfterSuite = new ArrayList<>();
 
     void reset() {
       frameworkInfra = null;
-      perThreadRandoms = null;
-      closeAfterTest.clear();
-      closeAfterSuite.clear();
     }
 
     void initialize() {
       if (frameworkInfra != null) {
         throw new RuntimeException();
       }
-
-      perThreadRandoms = new ConcurrentHashMap<>();
     }
   }
 
@@ -76,35 +68,57 @@ public final class GlobalStateSupport
 
     state.frameworkInfra =
         new LuceneTestCaseParent.TestFrameworkInfra() {
-          final ConcurrentHashMap<Thread, Random> perThreadRandoms = state.perThreadRandoms;
+          private final ConcurrentHashMap<Thread, Random> perThreadRandoms =
+              new ConcurrentHashMap<>();
+
+          private final List<Closeable> closeAfterTest = new ArrayList<>();
+          private final List<Closeable> closeAfterSuite = new ArrayList<>();
+
           final Supplier<Random> rnd = getRandomSupplier(context.getExecutableInvoker());
 
           @Override
           public Random threadRandom() {
             return perThreadRandoms.computeIfAbsent(Thread.currentThread(), _ -> rnd.get());
           }
+
+          @Override
+          public <T extends Closeable> T closeAfterTest(T resource) {
+            synchronized (this) {
+              closeAfterTest.add(resource);
+            }
+            return resource;
+          }
+
+          @Override
+          public <T extends Closeable> T closeAfterClass(T resource) {
+            synchronized (this) {
+              closeAfterSuite.add(resource);
+            }
+            return resource;
+          }
+
+          @Override
+          public void afterEach() throws IOException {
+            synchronized (this) {
+              IOUtils.close(closeAfterTest);
+              closeAfterTest.clear();
+            }
+          }
+
+          @Override
+          public void afterAll() throws IOException {
+            synchronized (this) {
+              IOUtils.close(
+                  Stream.of(closeAfterTest, closeAfterSuite, perThreadRandoms.values())
+                      .flatMap(Collection::stream)
+                      .filter(v -> v instanceof Closeable)
+                      .map(v -> (Closeable) v)
+                      .toList());
+            }
+          }
         };
 
     LuceneTestCaseParent.setTestFrameworkInfra(null, state.frameworkInfra);
-
-    LuceneTestCaseParent.closeAfter.set(
-        new LuceneTestCaseParent.CloseAfterHook() {
-          @Override
-          public <T extends Closeable> T closeAfterTest(T resource) {
-            synchronized (state) {
-              state.closeAfterTest.add(resource);
-            }
-            return resource;
-          }
-
-          @Override
-          public <T extends Closeable> T closeAfterSuite(T resource) {
-            synchronized (state) {
-              state.closeAfterSuite.add(resource);
-            }
-            return resource;
-          }
-        });
 
     state.prevClassEnvRule = LuceneTestCase.classEnvRule;
     var targetClass = context.getRequiredTestClass();
@@ -115,12 +129,7 @@ public final class GlobalStateSupport
 
   @Override
   public void afterEach(ExtensionContext context) throws Exception {
-    var state = getState(context);
-    List<Closeable> toClose;
-    synchronized (state) {
-      toClose = List.copyOf(state.closeAfterTest);
-    }
-    IOUtils.close(toClose);
+    getState(context).frameworkInfra.afterEach();
   }
 
   @Override
@@ -129,18 +138,18 @@ public final class GlobalStateSupport
     var rule = LuceneTestCaseParent.classEnvRule;
     try {
       LuceneTestCaseParent.classEnvRule = state.prevClassEnvRule;
-      IOUtils.close(
-          Stream.concat(
-                  state.closeAfterSuite.stream(),
-                  state.perThreadRandoms.values().stream()
-                      .filter(rnd1 -> rnd1 instanceof Closeable)
-                      .map(rnd1 -> (Closeable) rnd1))
-              .toList());
+      state.frameworkInfra.afterAll();
     } finally {
       rule.after();
       LuceneTestCaseParent.setTestFrameworkInfra(state.frameworkInfra, null);
       state.reset();
     }
+  }
+
+  private State getState(ExtensionContext context) {
+    return context
+        .getStore(ExtensionContext.StoreScope.EXECUTION_REQUEST, NS)
+        .computeIfAbsent(State.class);
   }
 
   // This trick is needed to get the Supplier<Random> injected by a parameter resolved
@@ -161,11 +170,5 @@ public final class GlobalStateSupport
                 executableInvoker.invoke(
                     hack.getClass().getMethod("captureParameter", Supplier.class), hack));
     return rnd;
-  }
-
-  private State getState(ExtensionContext context) {
-    return context
-        .getStore(ExtensionContext.StoreScope.EXECUTION_REQUEST, NS)
-        .computeIfAbsent(State.class);
   }
 }

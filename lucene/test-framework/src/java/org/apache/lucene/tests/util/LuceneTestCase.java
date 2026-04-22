@@ -523,6 +523,24 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
                               public Random threadRandom() {
                                 return finalizedSupplier.get();
                               }
+
+                              @Override
+                              public <T extends Closeable> T closeAfterTest(T resource) {
+                                return RandomizedContext.current()
+                                    .closeAtEnd(resource, LifecycleScope.TEST);
+                              }
+
+                              @Override
+                              public <T extends Closeable> T closeAfterClass(T resource) {
+                                return RandomizedContext.current()
+                                    .closeAtEnd(resource, LifecycleScope.SUITE);
+                              }
+
+                              @Override
+                              public void afterAll() {}
+
+                              @Override
+                              public void afterEach() {}
                             });
                   }
 
@@ -543,32 +561,7 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
                     new TestRuleTemporaryFilesCleanup(
                         suiteFailureMarker,
                         LuceneTestCase::random,
-                        () -> RandomizedContext.current().getTargetClass()))
-            .around(
-                new TestRuleAdapter() {
-                  @Override
-                  protected void before() throws Throwable {
-                    LuceneTestCaseParent.closeAfter.set(
-                        new CloseAfterHook() {
-                          @Override
-                          public <T extends Closeable> T closeAfterTest(T resource) {
-                            return RandomizedContext.current()
-                                .closeAtEnd(resource, LifecycleScope.TEST);
-                          }
-
-                          @Override
-                          public <T extends Closeable> T closeAfterSuite(T resource) {
-                            return RandomizedContext.current()
-                                .closeAtEnd(resource, LifecycleScope.SUITE);
-                          }
-                        });
-                  }
-
-                  @Override
-                  protected void afterAlways(List<Throwable> errors) throws Throwable {
-                    LuceneTestCaseParent.closeAfter.set(null);
-                  }
-                });
+                        () -> RandomizedContext.current().getTargetClass()));
     classRules =
         r.around(new NoClassHooksShadowingRule())
             .around(
