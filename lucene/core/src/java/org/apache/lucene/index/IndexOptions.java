@@ -25,6 +25,7 @@ import org.apache.lucene.search.PhraseQuery;
  */
 public enum IndexOptions {
   // NOTE: order is important here; enum ordinals can be used to compare options.
+
   /** Not indexed */
   NONE,
   /**
@@ -48,4 +49,20 @@ public enum IndexOptions {
    * the positions.
    */
   DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS,
+  /**
+   * Like DOCS_AND_FREQS except the "custom freqs" are treated as scores and do not represent term
+   * counts. Each term can only occur once per document, so its frequency in that sense is always 1.
+   */
+  DOCS_AND_CUSTOM_FREQS,
+
+  public boolean subsumes(IndexOptions other) {
+    // treat DOCS_AND_CUSTOM_FREQS and DOCS_AND_FREQS for the purpose of subsumes
+    if (this == DOCS_AND_CUSTOM_FREQS) {
+      return DOCS_AND_FREQS.subsumes(other);
+    }
+    if (other == DOCS_AND_CUSTOM_FREQS) {
+      return subsumes(DOCS_AND_FREQS);
+    }
+    return compareTo(other) >= 0;
+  }
 }

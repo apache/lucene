@@ -48,7 +48,7 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
       FieldInfo fieldInfo,
       TermsHashPerField nextPerField) {
     super(
-        fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0
+        fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)
             ? 2
             : 1,
         termsHash.intPool,
@@ -60,9 +60,9 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
         fieldInfo.getIndexOptions());
     this.fieldState = invertState;
     this.fieldInfo = fieldInfo;
-    hasFreq = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
-    hasProx = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
-    hasOffsets = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
+    hasFreq = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS);
+    hasProx = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+    hasOffsets = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
     isTermDoc = fieldInfo.isTermDocField();
   }
 
@@ -227,10 +227,10 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
 
   @Override
   ParallelPostingsArray createPostingsArray(int size) {
-    boolean hasFreq = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
-    boolean hasProx = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+    boolean hasFreq = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS);
+    boolean hasProx = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
     boolean hasOffsets =
-        indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
+        indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
     return new FreqProxPostingsArray(size, hasFreq, hasProx, hasOffsets);
   }
 

@@ -143,8 +143,7 @@ public class TestSimilarity extends LuceneTestCase {
                 .setMergePolicy(newMergePolicy(random(), false)));
 
     FieldType fieldType = new FieldType(TextField.TYPE_STORED);
-    fieldType.putAttribute(FieldInfo.IS_TERM_DOC_FIELD, "true");
-    fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+    fieldType.setIndexOptions(IndexOptions.DOCS_AND_CUSTOM_FREQS);
 
     Document d1 = new Document();
     d1.add(new Field("field", "a c", fieldType));
@@ -225,8 +224,7 @@ public class TestSimilarity extends LuceneTestCase {
                   .setMergePolicy(newMergePolicy(random(), false)));
 
       FieldType type = new FieldType(TextField.TYPE_STORED);
-      type.putAttribute(FieldInfo.IS_TERM_DOC_FIELD, "true");
-      type.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+      type.setIndexOptions(IndexOptions.DOCS_AND_CUSTOM_FREQS);
 
       Document d1 = new Document();
       d1.add(new Field("field", "a c", type));

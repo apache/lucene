@@ -87,8 +87,7 @@ public final class MockTokenFilter extends TokenFilter {
   private final CharacterRunAutomaton filter;
 
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-  private final PositionIncrementAttribute posIncrAtt =
-      addAttribute(PositionIncrementAttribute.class);
+  private final PositionIncrementAttribute posIncrAtt;
   private final TermFrequencyAttribute termFreqAtt;
   private final Function<CharSequence, Integer> customTermFreq;
   private int skippedPositions;
@@ -104,6 +103,7 @@ public final class MockTokenFilter extends TokenFilter {
     this.filter = filter;
     termFreqAtt = null;
     customTermFreq = null;
+    posIncrAtt = addAttribute(PositionIncrementAttribute.class);
   }
 
   /**
@@ -121,8 +121,10 @@ public final class MockTokenFilter extends TokenFilter {
     this.filter = filter;
     this.customTermFreq = customTermFreq;
     if (customTermFreq != null) {
+      posIncrAtt = null;
       termFreqAtt = addAttribute(TermFrequencyAttribute.class);
     } else {
+      posIncrAtt = addAttribute(PositionIncrementAttribute.class);
       termFreqAtt = null;
     }
   }
@@ -136,13 +138,17 @@ public final class MockTokenFilter extends TokenFilter {
     skippedPositions = 0;
     while (input.incrementToken()) {
       if (!filter.run(termAtt.buffer(), 0, termAtt.length())) {
-        posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + skippedPositions);
         if (termFreqAtt != null) {
           termFreqAtt.setTermFrequency(customTermFreq.apply(termAtt));
         }
+        if (posIncrAtt != null) {
+          posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + skippedPositions);
+        }
         return true;
       }
-      skippedPositions += posIncrAtt.getPositionIncrement();
+      if (posIncrAtt != null) {
+        skippedPositions += posIncrAtt.getPositionIncrement();
+      }
     }
     // reached EOS -- return false
     return false;
@@ -151,7 +157,9 @@ public final class MockTokenFilter extends TokenFilter {
   @Override
   public void end() throws IOException {
     super.end();
-    posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + skippedPositions);
+    if (posIncrAtt != null) {
+      posIncrAtt.setPositionIncrement(posIncrAtt.getPositionIncrement() + skippedPositions);
+    }
   }
 
   @Override

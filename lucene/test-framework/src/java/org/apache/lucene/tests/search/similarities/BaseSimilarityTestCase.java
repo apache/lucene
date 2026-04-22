@@ -62,11 +62,14 @@ public abstract class BaseSimilarityTestCase extends LuceneTestCase {
     DIR = newDirectory();
     FieldType fieldType = new FieldType(TextField.TYPE_NOT_STORED);
     fieldType.setOmitNorms(true);
-    fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+    if (random().nextBoolean()) {
+      fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+    } else {
+      fieldType.setIndexOptions(IndexOptions.DOCS_AND_CUSTOM_FREQS);
+    }
     IndexableField field = newField("field", "value", fieldType);
     RandomIndexWriter writer;
-    if (field.fieldType().getAttributes() != null
-        && field.fieldType().getAttributes().get(FieldInfo.IS_TERM_DOC_FIELD).equals("true")) {
+    if (field.fieldType().indexOptions() == IndexOptions.DOCS_AND_CUSTOM_FREQS) {
       writer =
           new RandomIndexWriter(
               random(),
