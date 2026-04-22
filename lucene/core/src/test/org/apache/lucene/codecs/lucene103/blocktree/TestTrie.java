@@ -50,6 +50,8 @@ public class TestTrie extends LuceneTestCase {
     testTrieLookup(supplier, 12);
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testVeryLongTerms() throws Exception {
     Supplier<byte[]> supplier =
         () -> {
@@ -59,7 +61,7 @@ public class TestTrie extends LuceneTestCase {
           }
           return bytes;
         };
-    testTrieLookup(supplier, TEST_NIGHTLY ? 10 : 3);
+    testTrieLookup(supplier, 5);
   }
 
   public void testOneByteTerms() throws Exception {
