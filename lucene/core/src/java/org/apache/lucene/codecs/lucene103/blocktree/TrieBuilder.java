@@ -34,9 +34,6 @@ import org.apache.lucene.util.BytesRef;
  * reconstructs the trie structure on-the-fly during save using a frontier-based approach. The first
  * non-empty-key entry (minKey) is stored separately so that {@link #append} can re-encode only that
  * one entry and then bulk-copy the remaining bytes with zero per-entry overhead.
- *
- * <p>Memory usage is O(total encoded bytes) during building and O(max key depth) during save,
- * compared to the previous tree-based approach which was O(total nodes * ~120 bytes per node).
  */
 class TrieBuilder {
 
