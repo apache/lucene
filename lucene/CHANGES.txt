@@ -146,8 +146,6 @@ Optimizations
 
 * GITHUB#15597, GITHUB#15777: Reduce memory usage of NeighborArray (Viliam Durina)
 
-* GITHUB#15977: Speed up TrieBuilder and reduce its memory footprint by replacing the in-memory object tree with a compact prefix-coded byte buffer. (Guo Feng)
-
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
@@ -329,6 +327,8 @@ Optimizations
   boundaries instead of linear scan. (Greg Miller)
 
 * GITHUB#15970: Reduce memory usage of fields with long terms during segment merges. (Alan Woodward)
+
+* GITHUB#15977: Speed up TrieBuilder and reduce its memory footprint by replacing the in-memory object tree with a compact prefix-coded byte buffer. (Guo Feng)
 
 Bug Fixes
 ---------------------
