@@ -50,6 +50,8 @@ various parts of the build system, including typical workflow tasks.
 
 ### Code formatting and checks
 
+Lucene uses [prek](https://github.com/j178/prek) for fast pre-commit validation. Validate your staged changes with `uvx prek`, Type `./gradlew helpPrecommit` for more information: [help/precommit.txt](help/precommit.txt).
+
 If you've modified any sources, run `./gradlew tidy` to apply code formatting conventions automatically (see [help/formatting.txt](https://github.com/apache/lucene/blob/main/help/formatting.txt)).
 
 Please make sure that all unit tests and validations succeed before constructing your patch: `./gradlew check`. This will assemble Lucene and run all validation tasks (including tests). There are various commands to check the code; type `./gradlew helpTest` for more information ([help/tests.txt](./help/tests.txt)).

@@ -16,7 +16,8 @@
  */
 package org.apache.lucene.search.vectorhighlight;
 
-import java.util.LinkedList;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.vectorhighlight.FieldPhraseList.WeightedPhraseInfo;
@@ -269,7 +270,7 @@ public class TestFieldPhraseList extends AbstractTestCase {
   }
 
   private WeightedPhraseInfo newInfo(int startOffset, int endOffset, float boost) {
-    LinkedList<TermInfo> infos = new LinkedList<>();
+    List<TermInfo> infos = new ArrayList<>();
     infos.add(new TermInfo(TestUtil.randomUnicodeString(random()), startOffset, endOffset, 0, 0));
     return new WeightedPhraseInfo(infos, boost);
   }
@@ -291,12 +292,12 @@ public class TestFieldPhraseList extends AbstractTestCase {
   }
 
   public void testMergeOverlappingWeightedPhraseInfoAccumulateBoost() {
-    LinkedList<TermInfo> infos1 = new LinkedList<>();
+    List<TermInfo> infos1 = new ArrayList<>();
     infos1.add(new TermInfo("中国", 0, 2, 0, 0));
     infos1.add(new TermInfo("经济", 3, 5, 1, 1));
     WeightedPhraseInfo wpi1 = new WeightedPhraseInfo(infos1, 2.0f);
 
-    LinkedList<TermInfo> infos2 = new LinkedList<>();
+    List<TermInfo> infos2 = new ArrayList<>();
     infos2.add(new TermInfo("经济", 3, 5, 1, 1));
     infos2.add(new TermInfo("发展", 6, 8, 2, 2));
     WeightedPhraseInfo wpi2 = new WeightedPhraseInfo(infos2, 3.0f);

@@ -43,7 +43,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Version;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.BaseQuantizedByteVectorValues;
 
 public class TestInt7HnswBackwardsCompatibility extends BackwardsCompatibilityTestBase {
 
@@ -157,7 +157,7 @@ public class TestInt7HnswBackwardsCompatibility extends BackwardsCompatibilityTe
 
         assertTrue(forField instanceof Lucene99HnswVectorsReader);
 
-        QuantizedByteVectorValues quantized =
+        BaseQuantizedByteVectorValues quantized =
             ((Lucene99HnswVectorsReader) forField).getQuantizedVectorValues(KNN_VECTOR_FIELD);
 
         assertNotNull(

@@ -24,10 +24,10 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
-import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
@@ -52,10 +52,16 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
-/** Reader for scalar quantized vectors in the Lucene 10.4 format. */
+/**
+ * Reader for scalar quantized vectors in the Lucene 10.4 format.
+ *
+ * @lucene.experimental
+ */
 public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     implements QuantizedVectorsReader {
 
@@ -68,11 +74,21 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
   public static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
 
-  /** Sole constructor */
   public Lucene104ScalarQuantizedVectorsReader(
       SegmentReadState state,
       FlatVectorsReader rawVectorsReader,
       Lucene104ScalarQuantizedVectorScorer vectorsScorer)
+      throws IOException {
+    // Quantized vectors are accessed randomly from their node ID stored in the HNSW
+    // graph.
+    this(state, rawVectorsReader, vectorsScorer, DataAccessHint.RANDOM);
+  }
+
+  public Lucene104ScalarQuantizedVectorsReader(
+      SegmentReadState state,
+      FlatVectorsReader rawVectorsReader,
+      Lucene104ScalarQuantizedVectorScorer vectorsScorer,
+      DataAccessHint accessHint)
       throws IOException {
     super(vectorsScorer);
     this.vectorScorer = vectorsScorer;
@@ -100,16 +116,18 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       } finally {
         CodecUtil.checkFooter(meta, priorE);
       }
+
+      final IOContext.FileOpenHint[] hints =
+          Stream.of(FileTypeHint.DATA, FileDataHint.KNN_VECTORS, accessHint)
+              .filter(Objects::nonNull)
+              .toArray(IOContext.FileOpenHint[]::new);
       quantizedVectorData =
           openDataInput(
               state,
               versionMeta,
               VECTOR_DATA_EXTENSION,
               Lucene104ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
-              // Quantized vectors are accessed randomly from their node ID stored in the HNSW
-              // graph.
-              state.context.withHints(
-                  FileTypeHint.DATA, FileDataHint.KNN_VECTORS, DataAccessHint.RANDOM));
+              state.context.withHints(hints));
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, this);
       throw t;
@@ -385,8 +403,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   }
 
   @Override
-  public org.apache.lucene.util.quantization.QuantizedByteVectorValues getQuantizedVectorValues(
-      String field) throws IOException {
+  public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
     FieldEntry fi = fields.get(field);
     if (fi == null) {
       return null;
@@ -400,41 +417,19 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               + " expected: "
               + VectorEncoding.FLOAT32);
     }
-    var qv =
-        OffHeapScalarQuantizedVectorValues.load(
-            fi.ordToDocDISIReaderConfiguration,
-            fi.dimension,
-            fi.size,
-            new OptimizedScalarQuantizer(fi.similarityFunction),
-            fi.scalarEncoding,
-            fi.similarityFunction,
-            vectorScorer,
-            fi.centroid,
-            fi.centroidDP,
-            fi.vectorDataOffset,
-            fi.vectorDataLength,
-            quantizedVectorData);
-    return new org.apache.lucene.util.quantization.QuantizedByteVectorValues() {
-      @Override
-      public float getScoreCorrectionConstant(int ord) throws IOException {
-        return 0;
-      }
-
-      @Override
-      public byte[] vectorValue(int ord) throws IOException {
-        return qv.vectorValue(ord);
-      }
-
-      @Override
-      public int dimension() {
-        return qv.dimension();
-      }
-
-      @Override
-      public int size() {
-        return qv.size();
-      }
-    };
+    return OffHeapScalarQuantizedVectorValues.load(
+        fi.ordToDocDISIReaderConfiguration,
+        fi.dimension,
+        fi.size,
+        new OptimizedScalarQuantizer(fi.similarityFunction),
+        fi.scalarEncoding,
+        fi.similarityFunction,
+        vectorScorer,
+        fi.centroid,
+        fi.centroidDP,
+        fi.vectorDataOffset,
+        fi.vectorDataLength,
+        quantizedVectorData);
   }
 
   @Override

@@ -18,8 +18,9 @@
 package org.apache.lucene.analysis.synonym.word2vec;
 
 import java.io.IOException;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.ArrayDeque;
+import java.util.Collection;
+import java.util.Queue;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.synonym.SynonymGraphFilter;
@@ -46,7 +47,7 @@ public final class Word2VecSynonymFilter extends TokenFilter {
   private final Word2VecSynonymProvider synonymProvider;
   private final int maxSynonymsPerTerm;
   private final float minAcceptedSimilarity;
-  private final LinkedList<TermAndBoost> synonymBuffer = new LinkedList<>();
+  private final Queue<TermAndBoost> synonymBuffer = new ArrayDeque<>();
   private State lastState;
 
   /**
@@ -76,7 +77,7 @@ public final class Word2VecSynonymFilter extends TokenFilter {
   public boolean incrementToken() throws IOException {
 
     if (!synonymBuffer.isEmpty()) {
-      TermAndBoost synonym = synonymBuffer.pollFirst();
+      TermAndBoost synonym = synonymBuffer.poll();
       clearAttributes();
       restoreState(this.lastState);
       termAtt.setEmpty();
@@ -91,9 +92,9 @@ public final class Word2VecSynonymFilter extends TokenFilter {
       BytesRefBuilder bytesRefBuilder = new BytesRefBuilder();
       bytesRefBuilder.copyChars(termAtt.buffer(), 0, termAtt.length());
       BytesRef term = bytesRefBuilder.get();
-      List<TermAndBoost> synonyms =
+      Collection<TermAndBoost> synonyms =
           this.synonymProvider.getSynonyms(term, maxSynonymsPerTerm, minAcceptedSimilarity);
-      if (synonyms.size() > 0) {
+      if (!synonyms.isEmpty()) {
         this.lastState = captureState();
         this.synonymBuffer.addAll(synonyms);
       }

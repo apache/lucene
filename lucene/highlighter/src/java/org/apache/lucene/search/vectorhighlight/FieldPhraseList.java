@@ -19,7 +19,6 @@ package org.apache.lucene.search.vectorhighlight;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import org.apache.lucene.search.vectorhighlight.FieldQuery.QueryPhraseMap;
 import org.apache.lucene.search.vectorhighlight.FieldTermStack.TermInfo;
@@ -31,7 +30,7 @@ import org.apache.lucene.util.MergedIterator;
  */
 public class FieldPhraseList {
   /** List of non-overlapping WeightedPhraseInfo objects. */
-  LinkedList<WeightedPhraseInfo> phraseList = new LinkedList<>();
+  List<WeightedPhraseInfo> phraseList = new ArrayList<>();
 
   /**
    * create a FieldPhraseList that has no limit on the number of phrases to analyze
@@ -62,7 +61,7 @@ public class FieldPhraseList {
   public FieldPhraseList(FieldTermStack fieldTermStack, FieldQuery fieldQuery, int phraseLimit) {
     final String field = fieldTermStack.getFieldName();
 
-    LinkedList<TermInfo> phraseCandidate = new LinkedList<>();
+    List<TermInfo> phraseCandidate = new ArrayList<>();
     QueryPhraseMap currMap = null;
     QueryPhraseMap nextMap = null;
     while (!fieldTermStack.isEmpty() && (phraseList.size() < phraseLimit)) {
@@ -136,7 +135,7 @@ public class FieldPhraseList {
     }
     MergedIterator<WeightedPhraseInfo> itr = new MergedIterator<>(false, allInfos);
     // Step 2.  Walk the sorted list merging infos that overlap
-    phraseList = new LinkedList<>();
+    phraseList = new ArrayList<>();
     if (!itr.hasNext()) {
       return;
     }
@@ -227,11 +226,11 @@ public class FieldPhraseList {
       return termsInfos;
     }
 
-    public WeightedPhraseInfo(LinkedList<TermInfo> terms, float boost) {
+    public WeightedPhraseInfo(List<TermInfo> terms, float boost) {
       this(terms, boost, 0);
     }
 
-    public WeightedPhraseInfo(LinkedList<TermInfo> terms, float boost, int seqnum) {
+    public WeightedPhraseInfo(List<TermInfo> terms, float boost, int seqnum) {
       this.boost = boost;
       this.seqnum = seqnum;
 

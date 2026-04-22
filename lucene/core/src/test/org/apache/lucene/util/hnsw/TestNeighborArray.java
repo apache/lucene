@@ -30,8 +30,7 @@ public class TestNeighborArray extends LuceneTestCase {
 
     if (TEST_ASSERTS_ENABLED) {
       AssertionError ex = expectThrows(AssertionError.class, () -> neighbors.addInOrder(2, 0.9f));
-      assert ex.getMessage().startsWith("Nodes are added in the incorrect order!")
-          : ex.getMessage();
+      assert ex.getMessage().startsWith("Nodes are added in an incorrect order!") : ex.getMessage();
     }
 
     neighbors.insertSorted(3, 0.9f);
@@ -82,8 +81,7 @@ public class TestNeighborArray extends LuceneTestCase {
 
     if (TEST_ASSERTS_ENABLED) {
       AssertionError ex = expectThrows(AssertionError.class, () -> neighbors.addInOrder(2, 0.15f));
-      assert ex.getMessage().startsWith("Nodes are added in the incorrect order!")
-          : ex.getMessage();
+      assert ex.getMessage().startsWith("Nodes are added in an incorrect order!") : ex.getMessage();
     }
 
     neighbors.insertSorted(3, 0.3f);
@@ -191,7 +189,7 @@ public class TestNeighborArray extends LuceneTestCase {
     assertScoresEqual(new float[] {7, 6, 5, 4, 3, 2, 1}, neighbors2);
   }
 
-  public void testAddwithScoringFunction() throws IOException {
+  public void testAddWithScoringFunction() throws IOException {
     NeighborArray neighbors = new NeighborArray(10, true);
     neighbors.addOutOfOrder(1, Float.NaN);
     if (TEST_ASSERTS_ENABLED) {
@@ -209,7 +207,7 @@ public class TestNeighborArray extends LuceneTestCase {
     assertScoresEqual(new float[] {7, 6, 5, 4, 3, 2, 1}, neighbors);
   }
 
-  public void testAddwithScoringFunctionLargeOrd() throws IOException {
+  public void testAddWithScoringFunctionLargeOrd() throws IOException {
     NeighborArray neighbors = new NeighborArray(10, true);
     neighbors.addOutOfOrder(11, Float.NaN);
     if (TEST_ASSERTS_ENABLED) {

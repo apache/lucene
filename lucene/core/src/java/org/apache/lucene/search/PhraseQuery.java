@@ -469,7 +469,7 @@ public class PhraseQuery extends Query {
               "PhraseWeight requires that the first position is 0, call rewrite first");
         }
         states = new TermStates[terms.length];
-        TermStatistics[] termStats = new TermStatistics[terms.length];
+        TermStats[] termStats = new TermStats[terms.length];
         int termUpTo = 0;
         for (int i = 0; i < terms.length; i++) {
           final Term term = terms[i];
@@ -477,16 +477,13 @@ public class PhraseQuery extends Query {
           if (scoreMode.needsScores()) {
             TermStates ts = states[i];
             if (ts.docFreq() > 0) {
-              termStats[termUpTo++] =
-                  searcher.termStatistics(term, ts.docFreq(), ts.totalTermFreq());
+              termStats[termUpTo++] = searcher.termStats(term, ts.docFreq(), ts.totalTermFreq());
             }
           }
         }
         if (termUpTo > 0) {
           return similarity.scorer(
-              boost,
-              searcher.collectionStatistics(field),
-              ArrayUtil.copyOfSubArray(termStats, 0, termUpTo));
+              boost, searcher.fieldStats(field), ArrayUtil.copyOfSubArray(termStats, 0, termUpTo));
         } else {
           return null; // no terms at all, we won't use similarity
         }

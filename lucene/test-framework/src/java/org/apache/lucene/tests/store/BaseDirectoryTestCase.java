@@ -39,6 +39,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -55,11 +56,13 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.FileSwitchDirectory;
 import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.store.NRTCachingDirectory;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.tests.mockfile.ExtrasFS;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -1628,8 +1631,15 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
 
   private void testIsLoaded(int startOffset) throws IOException {
     try (Directory dir = getDirectory(createTempDir())) {
-      if (FilterDirectory.unwrap(dir) instanceof MMapDirectory mMapDirectory) {
-        mMapDirectory.setPreload(MMapDirectory.ALL_FILES);
+      Directory inner = FilterDirectory.unwrap(dir);
+      if (inner instanceof FileSwitchDirectory fsd) {
+        // We check the secondary directory based on the assumption that the file in this test will
+        // always route there.
+        inner = FilterDirectory.unwrap(fsd.getSecondaryDir());
+      }
+      MMapDirectory mMapDir = inner instanceof MMapDirectory mmap ? mmap : null;
+      if (mMapDir != null) {
+        mMapDir.setPreload(MMapDirectory.ALL_FILES);
       }
       final int totalLength = startOffset + TestUtil.nextInt(random(), 16384, 65536);
       byte[] arr = new byte[totalLength];
@@ -1649,15 +1659,29 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
 
         if (Constants.WINDOWS) {
           // On Windows, we temporarily don't care until this is fixed: #14050
-        } else if (FilterDirectory.unwrap(dir) instanceof MMapDirectory
-            // direct IO wraps MMap but does not support isLoaded
-            && !(dir.getClass().getName().contains("DirectIO"))) {
-          assertTrue(loaded.isPresent());
-          assertTrue(loaded.get());
-        } else {
-          assertFalse(loaded.isPresent());
+        } else if (mMapDir != null) {
+          var wrappers = wrapperClasses(dir);
+          // NRTCachingDirectory may return index inputs from cache and this
+          // depends on segment size.
+          if (wrappers.stream().anyMatch(NRTCachingDirectory.class::isAssignableFrom)) {
+            // Ignore the check.
+          } else if (wrappers.stream().anyMatch(clz -> clz.getName().contains("DirectIO"))) {
+            // Direct IO wraps MMap but does not support isLoaded.
+          } else {
+            assertTrue(loaded.isPresent());
+            assertTrue(loaded.get());
+          }
         }
       }
     }
+  }
+
+  private Set<Class<?>> wrapperClasses(Directory dir) {
+    LinkedHashSet<Class<?>> wrappers = new LinkedHashSet<>();
+    while (dir instanceof FilterDirectory fd) {
+      wrappers.add(fd.getClass());
+      dir = fd.getDelegate();
+    }
+    return wrappers;
   }
 }

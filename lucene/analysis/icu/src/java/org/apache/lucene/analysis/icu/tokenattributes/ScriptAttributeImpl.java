@@ -68,8 +68,8 @@ public class ScriptAttributeImpl extends AttributeImpl implements ScriptAttribut
       return true;
     }
 
-    if (other instanceof ScriptAttributeImpl) {
-      return ((ScriptAttributeImpl) other).code == code;
+    if (other instanceof ScriptAttributeImpl sa) {
+      return sa.code == code;
     }
 
     return false;

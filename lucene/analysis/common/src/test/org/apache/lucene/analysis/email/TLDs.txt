@@ -486,7 +486,6 @@ godaddy
 gold
 goldpoint
 golf
-goo
 goodyear
 goog
 google
@@ -1250,7 +1249,6 @@ windows
 wine
 winners
 wme
-wolterskluwer
 woodside
 work
 works

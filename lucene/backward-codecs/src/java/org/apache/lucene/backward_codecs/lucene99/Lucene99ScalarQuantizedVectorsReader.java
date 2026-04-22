@@ -48,7 +48,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.LegacyQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
@@ -327,7 +327,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   }
 
   @Override
-  public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
+  public LegacyQuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
     final FieldEntry fieldEntry = getFieldEntry(field);
     return OffHeapQuantizedByteVectorValues.load(
         fieldEntry.ordToDoc,
@@ -422,10 +422,10 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
 
   private static final class QuantizedVectorValues extends FloatVectorValues {
     private final FloatVectorValues rawVectorValues;
-    private final QuantizedByteVectorValues quantizedVectorValues;
+    private final LegacyQuantizedByteVectorValues quantizedVectorValues;
 
     QuantizedVectorValues(
-        FloatVectorValues rawVectorValues, QuantizedByteVectorValues quantizedVectorValues) {
+        FloatVectorValues rawVectorValues, LegacyQuantizedByteVectorValues quantizedVectorValues) {
       this.rawVectorValues = rawVectorValues;
       this.quantizedVectorValues = quantizedVectorValues;
     }

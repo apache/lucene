@@ -72,21 +72,21 @@ public class PayloadSpanUtil {
   }
 
   private void queryToSpanQuery(Query query, Collection<byte[]> payloads) throws IOException {
-    if (query instanceof BooleanQuery) {
-      for (BooleanClause clause : (BooleanQuery) query) {
+    if (query instanceof BooleanQuery bq) {
+      for (BooleanClause clause : bq) {
         if (!clause.isProhibited()) {
           queryToSpanQuery(clause.query(), payloads);
         }
       }
 
-    } else if (query instanceof PhraseQuery) {
-      Term[] phraseQueryTerms = ((PhraseQuery) query).getTerms();
+    } else if (query instanceof PhraseQuery pq) {
+      Term[] phraseQueryTerms = pq.getTerms();
       SpanQuery[] clauses = new SpanQuery[phraseQueryTerms.length];
       for (int i = 0; i < phraseQueryTerms.length; i++) {
         clauses[i] = new SpanTermQuery(phraseQueryTerms[i]);
       }
 
-      int slop = ((PhraseQuery) query).getSlop();
+      int slop = pq.getSlop();
       boolean inorder = false;
 
       if (slop == 0) {
@@ -95,15 +95,14 @@ public class PayloadSpanUtil {
 
       SpanNearQuery sp = new SpanNearQuery(clauses, slop, inorder);
       getPayloads(payloads, sp);
-    } else if (query instanceof TermQuery) {
-      SpanTermQuery stq = new SpanTermQuery(((TermQuery) query).getTerm());
+    } else if (query instanceof TermQuery tq) {
+      SpanTermQuery stq = new SpanTermQuery(tq.getTerm());
       getPayloads(payloads, stq);
-    } else if (query instanceof SpanQuery) {
-      getPayloads(payloads, (SpanQuery) query);
-    } else if (query instanceof DisjunctionMaxQuery) {
+    } else if (query instanceof SpanQuery sq) {
+      getPayloads(payloads, sq);
+    } else if (query instanceof DisjunctionMaxQuery dmq) {
 
-      for (Iterator<Query> iterator = ((DisjunctionMaxQuery) query).iterator();
-          iterator.hasNext(); ) {
+      for (Iterator<Query> iterator = dmq.iterator(); iterator.hasNext(); ) {
         queryToSpanQuery(iterator.next(), payloads);
       }
 

@@ -392,7 +392,9 @@ public final class Tessellator {
       // compute if the bridge overlaps with a polygon edge.
       boolean fromPolygon =
           isPointInLine(bridge, bridge.next, holeNode)
-              || isPointInLine(holeNode, holeNode.next, bridge);
+              || isPointInLine(bridge, bridge.previous, holeNode)
+              || isPointInLine(holeNode, holeNode.next, bridge)
+              || isPointInLine(holeNode, holeNode.previous, bridge);
       // Split the resulting polygon.
       splitPolygon(bridge, holeNode, fromPolygon);
       return outerNode;
@@ -1260,8 +1262,8 @@ public final class Tessellator {
               >= 0;
     } else {
       // ccw
-      return area(a.getX(), a.getY(), b.getX(), b.getY(), a.previous.getX(), a.previous.getY()) < 0
-          || area(a.getX(), a.getY(), a.next.getX(), a.next.getY(), b.getX(), b.getY()) < 0;
+      return area(a.getX(), a.getY(), b.getX(), b.getY(), a.previous.getX(), a.previous.getY()) <= 0
+          || area(a.getX(), a.getY(), a.next.getX(), a.next.getY(), b.getX(), b.getY()) <= 0;
     }
   }
 
