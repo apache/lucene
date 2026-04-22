@@ -136,8 +136,7 @@ public class TestCustomTermFreq extends LuceneTestCase {
 
   private static FieldType getTermDocFieldType() {
     FieldType fieldType = new FieldType(TextField.TYPE_NOT_STORED);
-    fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
-    fieldType.putAttribute("isTermDocField", "true");
+    fieldType.setIndexOptions(IndexOptions.DOCS_AND_CUSTOM_FREQS);
     return fieldType;
   }
 
@@ -539,7 +538,7 @@ public class TestCustomTermFreq extends LuceneTestCase {
     w.addDocument(doc);
 
     doc = new Document();
-    fieldType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+    fieldType.setIndexOptions(IndexOptions.DOCS_AND_CUSTOM_FREQS);
     field =
         new Field(
             "field",

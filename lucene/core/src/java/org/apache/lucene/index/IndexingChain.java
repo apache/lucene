@@ -1241,7 +1241,7 @@ final class IndexingChain implements Accountable {
      * this field name in this document.
      */
     public void invert(int docID, IndexableField field, boolean first) throws IOException {
-      assert field.fieldType().indexOptions().compareTo(IndexOptions.DOCS) >= 0;
+      assert field.fieldType().indexOptions().subsumes(IndexOptions.DOCS);
 
       if (first) {
         // First time we're seeing this field (indexed) in this document
@@ -1423,7 +1423,7 @@ final class IndexingChain implements Accountable {
       }
       final IndexableFieldType fieldType = field.fieldType();
       if (fieldType.tokenized()
-          || fieldType.indexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) > 0
+          || fieldType.indexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)
           || fieldType.storeTermVectorPositions()
           || fieldType.storeTermVectorOffsets()
           || fieldType.storeTermVectorPayloads()) {

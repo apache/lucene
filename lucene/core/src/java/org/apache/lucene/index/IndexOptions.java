@@ -53,7 +53,7 @@ public enum IndexOptions {
    * Like DOCS_AND_FREQS except the "custom freqs" are treated as scores and do not represent term
    * counts. Each term can only occur once per document, so its frequency in that sense is always 1.
    */
-  DOCS_AND_CUSTOM_FREQS,
+  DOCS_AND_CUSTOM_FREQS;
 
   public boolean subsumes(IndexOptions other) {
     // treat DOCS_AND_CUSTOM_FREQS and DOCS_AND_FREQS for the purpose of subsumes

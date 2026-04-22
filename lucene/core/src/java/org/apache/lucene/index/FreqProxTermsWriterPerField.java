@@ -48,9 +48,7 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
       FieldInfo fieldInfo,
       TermsHashPerField nextPerField) {
     super(
-        fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)
-            ? 2
-            : 1,
+        fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) ? 2 : 1,
         termsHash.intPool,
         termsHash.bytePool,
         termsHash.termBytePool,

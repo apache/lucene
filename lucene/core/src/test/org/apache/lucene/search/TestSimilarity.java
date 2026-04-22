@@ -23,7 +23,6 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
-import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -254,47 +253,48 @@ public class TestSimilarity extends LuceneTestCase {
         bq.add(new TermQuery(b), BooleanClause.Occur.SHOULD);
         // BooleanScorer takes the sum of scores of disjunctive terms
         // but loss of floating precision means MAX_VALUE + 17 == MAX_VALUE.
-        assertResults(searcher, bq.build(), new float[]{17f, (float) Integer.MAX_VALUE});
+        assertResults(searcher, bq.build(), new float[] {17f, (float) Integer.MAX_VALUE});
 
         bq = new BooleanQuery.Builder();
         bq.add(new TermQuery(b), BooleanClause.Occur.SHOULD);
         bq.add(new TermQuery(d), BooleanClause.Occur.SHOULD);
         // here we see we can sum max int value twice; there are no problems with overflow
-        assertResults(searcher, bq.build(), new float[]{-1, 2 * (float) Integer.MAX_VALUE});
+        assertResults(searcher, bq.build(), new float[] {-1, 2 * (float) Integer.MAX_VALUE});
       }
     }
   }
 
   private static void assertResults(IndexSearcher searcher, Query query, float[] scores)
-    throws IOException {
-    CollectorManager<SimpleCollector, Integer> collector = new CollectorManager<>() {
-        int count = 0;
+      throws IOException {
+    CollectorManager<SimpleCollector, Integer> collector =
+        new CollectorManager<>() {
+          int count = 0;
 
-        @Override
-        public SimpleCollector newCollector() {
-          return new ScoreAssertingCollector() {
-            private int base = 0;
+          @Override
+          public SimpleCollector newCollector() {
+            return new ScoreAssertingCollector() {
+              private int base = 0;
 
-            @Override
-            public void collect(int doc) throws IOException {
-              // System.out.println("Doc=" + doc + " score=" + scorer.score());
-              assertEquals(scores[doc + base], scorer.score(), 0);
-              // not thread-safe, but I think it's OK?
-              ++count;
-            }
+              @Override
+              public void collect(int doc) throws IOException {
+                // System.out.println("Doc=" + doc + " score=" + scorer.score());
+                assertEquals(scores[doc + base], scorer.score(), 0);
+                // not thread-safe, but I think it's OK?
+                ++count;
+              }
 
-            @Override
-            protected void doSetNextReader(LeafReaderContext context) {
-              base = context.docBase;
-            }
-          };
-        }
+              @Override
+              protected void doSetNextReader(LeafReaderContext context) {
+                base = context.docBase;
+              }
+            };
+          }
 
-        @Override
-        public Integer reduce(Collection<SimpleCollector> collectors) {
-          return count;
-        }
-    };
+          @Override
+          public Integer reduce(Collection<SimpleCollector> collectors) {
+            return count;
+          }
+        };
 
     int expectedCount = 0;
     for (float score : scores) {

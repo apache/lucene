@@ -136,7 +136,7 @@ public final class FieldInfo {
     }
     if (indexOptions != IndexOptions.NONE) {
       // Cannot store payloads unless positions are indexed:
-      if (indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) < 0 && storePayloads) {
+      if (!indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) && storePayloads) {
         throw new IllegalArgumentException(
             "indexed field '" + name + "' cannot have payloads without positions");
       }
@@ -614,7 +614,7 @@ public final class FieldInfo {
   }
 
   void setStorePayloads() {
-    if (indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0) {
+    if (indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)) {
       storePayloads = true;
     }
     this.checkConsistency();
