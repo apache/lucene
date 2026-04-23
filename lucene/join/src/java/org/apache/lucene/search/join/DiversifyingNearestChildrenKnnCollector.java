@@ -93,9 +93,6 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
   @Override
   public TopDocs topDocs() {
     assert heap.size() <= k() : "Tried to collect more results than the maximum number allowed";
-    while (heap.size() > k()) {
-      heap.popToDrain();
-    }
     ScoreDoc[] scoreDocs = new ScoreDoc[heap.size()];
     for (int i = 1; i <= scoreDocs.length; i++) {
       scoreDocs[scoreDocs.length - i] = new ScoreDoc(heap.topNode(), heap.topScore());
@@ -184,12 +181,7 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
       float oldScore = scores[heapIndex];
       childNodes[heapIndex] = nodeId;
       scores[heapIndex] = score;
-      // Since we are a min heap, if the new value is less, we need to make sure to bubble it up
-      if (score < oldScore) {
-        upHeap(heapIndex);
-      } else {
-        downHeap(heapIndex);
-      }
+      downHeap(heapIndex);
     }
 
     /**
