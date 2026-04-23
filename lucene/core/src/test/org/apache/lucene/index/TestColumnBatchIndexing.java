@@ -49,7 +49,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LongsRef;
 
 /** Tests for column-oriented batch indexing via {@link IndexWriter#addBatch}. */
 public class TestColumnBatchIndexing extends LuceneTestCase {
@@ -2538,14 +2537,30 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     @Override
     public LongValuesCursor values() {
       return new LongValuesCursor() {
-        final LongsRef ref = new LongsRef(values, 0, values.length);
-        boolean exhausted;
+        int pos = 0;
 
         @Override
-        public LongsRef nextLongs() {
-          if (exhausted) return null;
-          exhausted = true;
-          return ref;
+        public int size() {
+          return values.length;
+        }
+
+        @Override
+        public long nextLong() {
+          if (pos >= values.length) {
+            throw new IllegalStateException(
+                "LongValuesCursor exhausted: size=" + values.length);
+          }
+          return values[pos++];
+        }
+
+        @Override
+        public void fill(long[] dst, int offset, int length) {
+          if (pos + length > values.length) {
+            throw new IllegalStateException(
+                "LongValuesCursor exhausted: size=" + values.length);
+          }
+          System.arraycopy(values, pos, dst, offset, length);
+          pos += length;
         }
       };
     }

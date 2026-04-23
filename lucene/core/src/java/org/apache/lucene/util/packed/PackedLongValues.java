@@ -19,6 +19,7 @@ package org.apache.lucene.util.packed;
 import static org.apache.lucene.util.packed.PackedInts.checkBlockSize;
 
 import java.nio.ByteOrder;
+import org.apache.lucene.document.column.LongValuesCursor;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
@@ -239,6 +240,26 @@ public class PackedLongValues extends LongValues implements Accountable {
       packIfFull();
       pending[pendingOff++] = l;
       size += 1;
+      return this;
+    }
+
+    /**
+     * Add all values produced by the given {@link LongValuesCursor} in bulk. The cursor's {@link
+     * LongValuesCursor#size()} is used as the bounds: exactly that many values are pulled.
+     */
+    public Builder add(LongValuesCursor cursor) {
+      if (pending == null) {
+        throw new IllegalStateException("Cannot be reused after build()");
+      }
+      int remaining = cursor.size();
+      while (remaining > 0) {
+        packIfFull();
+        int toFill = Math.min(remaining, pending.length - pendingOff);
+        cursor.fill(pending, pendingOff, toFill);
+        pendingOff += toFill;
+        remaining -= toFill;
+        size += toFill;
+      }
       return this;
     }
 

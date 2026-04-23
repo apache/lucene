@@ -23,12 +23,12 @@ import java.nio.ByteOrder;
 import java.util.Arrays;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
+import org.apache.lucene.document.column.LongValuesCursor;
 import org.apache.lucene.index.NumericDocValuesWriter.BufferedNumericDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Counter;
-import org.apache.lucene.util.LongsRef;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedLongValues;
@@ -71,28 +71,30 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
     updateBytesUsed();
   }
 
-  public void addDenseValues(int firstDocID, LongsRef values) {
+  public void addDenseValues(int firstDocID, LongValuesCursor cursor) {
     assert firstDocID > currentDoc;
     finishCurrentDoc();
 
+    int numValues = cursor.size();
+
     // Write values directly to pending — each value is one doc, single-valued.
     // No currentValues[] buffering, no sorting needed.
-    pending.add(values.longs, values.offset, values.length);
+    pending.add(cursor);
 
     // If pendingCounts is active (some earlier doc was multi-valued),
     // record count=1 for each dense doc.
     if (pendingCounts != null) {
-      for (int i = 0; i < values.length; i++) {
+      for (int i = 0; i < numValues; i++) {
         pendingCounts.add(1);
       }
     }
 
     // Bulk-add consecutive doc-ids
-    docsWithField.addRange(firstDocID, firstDocID + values.length);
+    docsWithField.addRange(firstDocID, firstDocID + numValues);
 
     // Set currentDoc to last written doc so ordering is maintained.
     // currentUpto stays 0 — nothing buffered.
-    currentDoc = firstDocID + values.length - 1;
+    currentDoc = firstDocID + numValues - 1;
 
     updateBytesUsed();
   }

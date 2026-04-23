@@ -72,7 +72,6 @@ import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.IntBlockPool;
-import org.apache.lucene.util.LongsRef;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.Version;
@@ -728,12 +727,8 @@ final class IndexingChain implements Accountable {
         validateNumericBinaryColumn(nbc, fieldType);
       } else if (column instanceof BinaryColumn bc) {
         validatePlainBinaryColumn(bc, fieldType);
-      } else if (column instanceof LongColumn && fieldType.pointDimensionCount() != 0) {
-        throw new IllegalArgumentException(
-            "LongColumn \""
-                + fieldName
-                + "\" cannot index points; use a NumericBinaryColumn with a matching fixedSize"
-                + " instead");
+      } else if (column instanceof LongColumn lc) {
+        validateLongColumn(lc, fieldType);
       }
 
       if (fieldType.stored() || fieldType.indexOptions() != IndexOptions.NONE) {
@@ -779,6 +774,36 @@ final class IndexingChain implements Accountable {
         processBinaryColumn(baseDocID, numDocs, binaryCol, pf, fieldType);
       } else {
         throw new IllegalArgumentException("Unknown column type: " + column.getClass().getName());
+      }
+    }
+  }
+
+  private static void validateLongColumn(LongColumn column, IndexableFieldType fieldType) {
+    if (fieldType.pointDimensionCount() != 0) {
+      throw new IllegalArgumentException(
+          "LongColumn \""
+              + column.name()
+              + "\" cannot index points; use a NumericBinaryColumn with a matching fixedSize"
+              + " instead");
+    }
+    if (fieldType.stored()) {
+      final StoredValue.Type storedType = column.storedType();
+      switch (storedType) {
+        case INTEGER, LONG, FLOAT, DOUBLE -> {
+          // OK.
+        }
+        case STRING, BINARY ->
+            throw new IllegalArgumentException(
+                "LongColumn \""
+                    + column.name()
+                    + "\" storedType="
+                    + storedType
+                    + " is not supported; use a BinaryColumn for non-numeric stored data");
+        case DATA_INPUT ->
+            throw new IllegalArgumentException(
+                "LongColumn \""
+                    + column.name()
+                    + "\" storedType DATA_INPUT is not supported for columns");
       }
     }
   }
@@ -1042,11 +1067,29 @@ final class IndexingChain implements Accountable {
   private static final class LongColumnAdapter extends ColumnFieldAdapter {
     private final LongTupleCursor cursor;
     private final StoredValue reusableStoredValue;
+    private final StoredValue.Type storedType;
 
     LongColumnAdapter(LongColumn column) {
       super(column.name(), column.fieldType());
       this.cursor = column.tuples();
-      this.reusableStoredValue = column.fieldType().stored() ? new StoredValue(0L) : null;
+      if (column.fieldType().stored()) {
+        this.storedType = column.storedType();
+        this.reusableStoredValue = newReusableLongStoredValue(storedType);
+      } else {
+        this.storedType = null;
+        this.reusableStoredValue = null;
+      }
+    }
+
+    private static StoredValue newReusableLongStoredValue(StoredValue.Type type) {
+      return switch (type) {
+        case INTEGER -> new StoredValue(0);
+        case LONG -> new StoredValue(0L);
+        case FLOAT -> new StoredValue(0.0f);
+        case DOUBLE -> new StoredValue(0.0);
+        case STRING, BINARY, DATA_INPUT ->
+            throw new AssertionError("rejected by validateLongColumn");
+      };
     }
 
     @Override
@@ -1064,7 +1107,15 @@ final class IndexingChain implements Accountable {
       if (reusableStoredValue == null) {
         return null;
       }
-      reusableStoredValue.setLongValue(cursor.longValue());
+      long raw = cursor.longValue();
+      switch (storedType) {
+        case INTEGER -> reusableStoredValue.setIntValue((int) raw);
+        case LONG -> reusableStoredValue.setLongValue(raw);
+        case FLOAT -> reusableStoredValue.setFloatValue(Float.intBitsToFloat((int) raw));
+        case DOUBLE -> reusableStoredValue.setDoubleValue(Double.longBitsToDouble(raw));
+        case STRING, BINARY, DATA_INPUT ->
+            throw new AssertionError("rejected by validateLongColumn");
+      }
       return reusableStoredValue;
     }
 
@@ -1256,36 +1307,21 @@ final class IndexingChain implements Accountable {
       LongValuesCursor cursor,
       PerField pf,
       DocValuesType dvType) {
-    int consumed;
+    checkDenseCount(column, cursor.size(), numDocs);
     switch (dvType) {
       case NUMERIC -> {
         NumericDocValuesWriter writer = (NumericDocValuesWriter) pf.docValuesWriter;
-        int docID = baseDocID;
-        LongsRef values;
-        while ((values = cursor.nextLongs()) != null) {
-          checkDenseBounds(column, docID - baseDocID, values.length, numDocs);
-          writer.addDenseValues(docID, values);
-          docID += values.length;
-        }
-        consumed = docID - baseDocID;
+        writer.addDenseValues(baseDocID, cursor);
       }
       case SORTED_NUMERIC -> {
         SortedNumericDocValuesWriter writer = (SortedNumericDocValuesWriter) pf.docValuesWriter;
-        int docID = baseDocID;
-        LongsRef values;
-        while ((values = cursor.nextLongs()) != null) {
-          checkDenseBounds(column, docID - baseDocID, values.length, numDocs);
-          writer.addDenseValues(docID, values);
-          docID += values.length;
-        }
-        consumed = docID - baseDocID;
+        writer.addDenseValues(baseDocID, cursor);
       }
       // $CASES-OMITTED$
       default ->
           throw new IllegalArgumentException(
               "LongColumn \"" + column.name() + "\" has incompatible docValuesType: " + dvType);
     }
-    checkDenseCount(column, consumed, numDocs);
   }
 
   private static void checkDenseBounds(Column column, int consumed, int chunkSize, int numDocs) {

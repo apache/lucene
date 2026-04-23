@@ -22,12 +22,12 @@ import java.io.IOException;
 import java.nio.ByteOrder;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
+import org.apache.lucene.document.column.LongValuesCursor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.LongsRef;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedLongValues;
 
@@ -67,15 +67,16 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
     lastDocID = docID;
   }
 
-  public void addDenseValues(int firstDocID, LongsRef values) {
+  public void addDenseValues(int firstDocID, LongValuesCursor cursor) {
     assert firstDocID > lastDocID;
 
-    pending.add(values.longs, values.offset, values.length);
-    docsWithField.addRange(firstDocID, firstDocID + values.length);
+    int numValues = cursor.size();
+    pending.add(cursor);
+    docsWithField.addRange(firstDocID, firstDocID + numValues);
 
     updateBytesUsed();
 
-    lastDocID = firstDocID + values.length - 1;
+    lastDocID = firstDocID + numValues - 1;
   }
 
   public void addDenseValues(int firstDocID, ByteOrder byteOrder, int byteWidth, BytesRef values) {

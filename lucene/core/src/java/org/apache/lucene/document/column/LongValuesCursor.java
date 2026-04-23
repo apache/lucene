@@ -16,12 +16,12 @@
  */
 package org.apache.lucene.document.column;
 
-import org.apache.lucene.util.LongsRef;
-
 /**
- * A values cursor over a dense {@link LongColumn}. Each call to {@link #nextLongs()} returns the
- * next chunk of values for consecutive batch-local doc-ids starting at 0, until exhausted. Across
- * all calls, exactly {@code numDocs} values must be produced.
+ * A values cursor over a dense {@link LongColumn}. The cursor produces exactly {@link #size()}
+ * values for consecutive batch-local doc-ids starting at 0, one per call to {@link #nextLong()}.
+ *
+ * <p>Implementations must throw an exception if {@link #nextLong()} is called more than {@link
+ * #size()} times.
  *
  * @lucene.experimental
  */
@@ -30,9 +30,23 @@ public abstract class LongValuesCursor {
   /** Sole constructor. */
   protected LongValuesCursor() {}
 
+  /** Total number of values this cursor will produce. */
+  public abstract int size();
+
+  /** Returns the next long value. Must not be called more than {@link #size()} times. */
+  public abstract long nextLong();
+
   /**
-   * Returns the next chunk of long values, or {@code null} when the cursor is exhausted. The
-   * returned {@link LongsRef} is only valid until the next call to {@code nextLongs()}.
+   * Bulk-fill {@code length} values into {@code dst} starting at {@code offset}, advancing the
+   * cursor by {@code length}. Combined {@link #nextLong()} and {@code fill} calls must not consume
+   * more than {@link #size()} values; implementations must throw if they do.
+   *
+   * <p>The default implementation calls {@link #nextLong()} in a loop. Override to provide a more
+   * efficient bulk fill (for example a {@link System#arraycopy} from a backing array).
    */
-  public abstract LongsRef nextLongs();
+  public void fill(long[] dst, int offset, int length) {
+    for (int i = 0; i < length; i++) {
+      dst[offset + i] = nextLong();
+    }
+  }
 }
