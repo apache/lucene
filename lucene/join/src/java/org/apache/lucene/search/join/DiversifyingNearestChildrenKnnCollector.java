@@ -178,7 +178,6 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
     private void updateElement(int heapIndex, int nodeId, int parentId, float score) {
       assert parentNodes[heapIndex] == parentId
           : "attempted to update heap element value but with a different parent id";
-      float oldScore = scores[heapIndex];
       childNodes[heapIndex] = nodeId;
       scores[heapIndex] = score;
       downHeap(heapIndex);
