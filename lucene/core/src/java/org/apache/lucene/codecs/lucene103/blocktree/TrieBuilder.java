@@ -189,22 +189,29 @@ class TrieBuilder {
    * Iterates over all non-empty-key entries: first the separately-stored minKey, then the
    * prefix-coded buffer entries. Maintains a reusable key buffer and exposes the prefix length from
    * the encoding, which equals the common prefix length with the preceding key.
+   *
+   * <p>Supports two-phase iteration via {@link #readHeader()} and {@link #readBody()}: after
+   * readHeader(), {@link #key} still holds the previous key's bytes (the new suffix has not been
+   * written yet), and {@link #prefixLen} gives the boundary for freezing. After readBody(), {@link
+   * #key} is updated to the current key.
    */
   class EntryIterator {
     private final ByteBuffersDataInput in;
     private boolean minKeyConsumed;
-    byte[] key;
-    int keyLen;
 
+    // header
     int suffixLen;
     int prefixLen;
 
+    // body
+    byte[] key;
+    int keyLen;
     Output output;
 
     EntryIterator() {
       key = new byte[Math.max(maxKeyDepth, 1)];
       System.arraycopy(minKey.bytes, minKey.offset, key, 0, minKey.length);
-      keyLen = minKey.length;
+      keyLen = 0;
       minKeyConsumed = (minOutput == null);
       in = buffer.size() > 0 ? buffer.toDataInput() : null;
     }
@@ -214,15 +221,36 @@ class TrieBuilder {
       return in != null && in.position() < in.length();
     }
 
-    void next() throws IOException {
+    /**
+     * Phase 1: Read only the header (prefixLen and suffixLen).
+     *
+     * <p>After this call, {@link #key}[0..keyLen) still contains the <em>previous</em> key's bytes
+     * because the new suffix has not been written yet. This allows the caller to use key[] safely
+     * for freezing nodes between depth keyLen and prefixLen.
+     */
+    void readHeader() throws IOException {
       if (!minKeyConsumed) {
-        output = minOutput;
         prefixLen = 0;
-        minKeyConsumed = true;
+        suffixLen = minKey.length;
         return;
       }
       prefixLen = in.readVInt();
       suffixLen = in.readVInt();
+    }
+
+    /**
+     * Phase 2: Read the suffix bytes (overwriting key[prefixLen..]) and the output.
+     *
+     * <p>After this call, {@link #key}[0..keyLen) holds the <em>current</em> key and {@link
+     * #output} holds the current entry's output.
+     */
+    void readBody() throws IOException {
+      if (!minKeyConsumed) {
+        keyLen = minKey.length;
+        output = minOutput;
+        minKeyConsumed = true;
+        return;
+      }
       keyLen = prefixLen + suffixLen;
       in.readBytes(key, prefixLen, suffixLen);
       long fp = in.readVLong();
@@ -276,6 +304,14 @@ class TrieBuilder {
     }
   }
 
+  /**
+   * Reconstruct the trie from the prefix-coded entries and serialize it to disk.
+   *
+   * <p>Uses a two-phase iteration: readHeader() exposes the prefixLen (which is the common prefix
+   * length with the previous key, already encoded in the buffer at append time) while key[] still
+   * holds the previous key's content — this allows freezeFrom() to read the correct labels without
+   * maintaining a separate prevKey copy. readBody() then overwrites key[] with the current entry.
+   */
   long saveNodes(IndexOutput index) throws IOException {
     final long startFP = index.getFilePointer();
 
@@ -285,30 +321,23 @@ class TrieBuilder {
     }
     frontier[0].output = emptyOutput;
 
-    byte[] prevKey = new byte[Math.max(maxKeyDepth, 1)];
-    int prevKeyLen = 0;
-    boolean firstEntry = true;
-
     EntryIterator iter = new EntryIterator();
     while (iter.hasNext()) {
-      iter.next();
+      // Phase 1: read prefixLen only; iter.key still holds the previous key's bytes.
+      int prevKeyLen = iter.keyLen;
+      iter.readHeader();
 
-      if (!firstEntry) {
-        // iter.prefixLen is the common prefix length with the previous key, already encoded
-        // in the buffer at append time — no need to recompute.
-        freezeFrom(prevKey, prevKeyLen, iter.prefixLen, frontier, startFP, index);
-      }
-      firstEntry = false;
+      // Freeze frontier nodes from prevKeyLen down to iter.prefixLen.
+      // On the first entry prevKeyLen == 0 and prefixLen == 0, so the loop is a no-op.
+      freezeFrom(iter.key, prevKeyLen, iter.prefixLen, frontier, startFP, index);
 
+      // Phase 2: read suffix + output; iter.key now holds the current key.
+      iter.readBody();
       frontier[iter.keyLen].output = iter.output;
-
-      System.arraycopy(iter.key, iter.prefixLen, prevKey, iter.prefixLen, iter.suffixLen);
-      prevKeyLen = iter.keyLen;
     }
 
-    if (!firstEntry) {
-      freezeFrom(prevKey, prevKeyLen, 0, frontier, startFP, index);
-    }
+    // Freeze all remaining nodes for the last key.
+    freezeFrom(iter.key, iter.keyLen, 0, frontier, startFP, index);
 
     return freezeNode(frontier[0], startFP, index);
   }
@@ -667,7 +696,8 @@ class TrieBuilder {
     try {
       EntryIterator iter = new EntryIterator();
       while (iter.hasNext()) {
-        iter.next();
+        iter.readHeader();
+        iter.readBody();
         consumer.accept(
             new BytesRef(ArrayUtil.copyOfSubArray(iter.key, 0, iter.keyLen)), iter.output);
       }
