@@ -17,6 +17,7 @@
 package org.apache.lucene.codecs.lucene103.blocktree;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Arrays;
 import java.util.function.BiConsumer;
 import org.apache.lucene.store.ByteBuffersDataInput;
@@ -30,10 +31,12 @@ import org.apache.lucene.util.BytesRef;
 /**
  * A builder to build prefix tree (trie) as the index of block tree, and can be saved to disk.
  *
- * <p>This implementation stores entries in a compact prefix-coded byte buffer during building, and
- * reconstructs the trie structure on-the-fly during save using a frontier-based approach. The first
- * non-empty-key entry (minKey) is stored separately so that {@link #append} can re-encode only that
- * one entry and then bulk-copy the remaining bytes with zero per-entry overhead.
+ * <p>Entries are stored in a compact prefix-coded byte buffer during building. The first non-empty
+ * key (minKey) is stored separately so that {@link #append} can re-encode only that one entry and
+ * bulk-copy the remaining bytes. At {@link #save} time the trie structure is reconstructed
+ * on-the-fly using a frontier array and serialized to disk in a single pass.
+ *
+ * <p>Memory usage is O(total encoded bytes) during building and O(max key depth) during save.
  */
 class TrieBuilder {
 
@@ -57,20 +60,13 @@ class TrieBuilder {
    */
   record Output(long fp, boolean hasTerms, BytesRef floorData) {}
 
-  private enum Status {
-    BUILDING,
-    SAVED,
-    DESTROYED
-  }
-
   // ====== Prefix-coded buffer entry format ======
-  // Each entry is encoded as:
+  // Each entry:
   //   [prefixLen: vInt] [suffixLen: vInt] [suffix: bytes]
   //   [fp: vLong] [hasTerms: byte (0/1)] [floorDataLen: vInt] [floorData: bytes]
   //
-  // The first non-empty-key entry (minKey) is stored separately in minKey/minOutput
-  // and NOT written to the buffer. Buffer entries start from the second entry onward,
-  // with their prefixLen computed relative to the preceding entry's full key.
+  // The first non-empty-key entry (minKey) is stored separately and NOT in the buffer.
+  // Buffer entries start from the second entry onward, prefix-encoded against their predecessor.
 
   /** Output for the empty ("") key, if any. */
   private Output emptyOutput;
@@ -81,20 +77,17 @@ class TrieBuilder {
   /** Output for minKey. Null if there is no non-empty key entry. */
   private Output minOutput;
 
-  /** Buffer holding entries from the second onward, prefix-encoded. */
+  /** Buffer holding all entries after minKey, prefix-encoded. */
   private final ByteBuffersDataOutput buffer = new ByteBuffersDataOutput();
 
   /**
-   * The last key appended. Since entries are always appended in sorted order, this also serves as
-   * the lexicographically largest key (maxKey) for ordered-append assertions. The backing byte[]
-   * may be over-allocated; only bytes [0, length) are meaningful.
+   * The last key appended. Since entries are always appended in sorted order this doubles as the
+   * lexicographically largest key for ordered-append assertions.
    */
   private final BytesRef lastKey;
 
-  /** The maximum key length across all entries, used for frontier array allocation. */
+  /** The maximum key length across all entries. */
   private int maxKeyDepth;
-
-  private Status status = Status.BUILDING;
 
   static TrieBuilder bytesRefToTrie(BytesRef k, Output v) {
     return new TrieBuilder(k, v);
@@ -114,8 +107,8 @@ class TrieBuilder {
   }
 
   /**
-   * Encode and append a single (key, output) entry into the buffer. The entry is prefix-encoded
-   * relative to {@link #lastKey}, and lastKey is updated to the given key afterward.
+   * Encode and append a single (key, output) entry into the buffer, prefix-encoded against {@link
+   * #lastKey}. Updates lastKey afterward.
    */
   private void appendEntry(BytesRef key, int prefixLen, Output v) {
     try {
@@ -132,7 +125,7 @@ class TrieBuilder {
         buffer.writeVInt(0);
       }
     } catch (IOException e) {
-      throw new RuntimeException("should not happen on in-memory buffer", e);
+      throw new UncheckedIOException("should not happen on in-memory buffer", e);
     }
     lastKey.bytes = ArrayUtil.growNoCopy(lastKey.bytes, key.length);
     System.arraycopy(key.bytes, key.offset, lastKey.bytes, 0, key.length);
@@ -148,10 +141,6 @@ class TrieBuilder {
    * <p>Note: the given trie will be destroyed after appending.
    */
   void append(TrieBuilder other) {
-    if (status != Status.BUILDING || other.status != Status.BUILDING) {
-      throw new IllegalStateException(
-          "tries have wrong status, got this: " + status + ", append: " + other.status);
-    }
     assert this.lastKey.compareTo(other.minKey) < 0;
 
     if (other.emptyOutput != null && this.emptyOutput == null) {
@@ -159,7 +148,6 @@ class TrieBuilder {
     }
 
     if (other.minOutput != null) {
-      // Re-encode other's first entry (minKey) relative to our lastKey.
       int mismatch =
           Arrays.mismatch(
               lastKey.bytes,
@@ -173,17 +161,15 @@ class TrieBuilder {
       }
       appendEntry(other.minKey, mismatch, other.minOutput);
 
-      // After appendEntry, lastKey == other.minKey. The remaining buffer entries in 'other'
-      // are prefix-encoded relative to other.minKey, which is now identical to our lastKey,
-      // so we can bulk-copy them directly without any re-encoding.
+      // Remaining buffer entries in 'other' are prefix-encoded against other.minKey which now
+      // equals our lastKey, so bulk-copy is safe without re-encoding.
       if (other.buffer.size() > 0) {
         try {
           ByteBuffersDataInput otherIn = other.buffer.toDataInput();
           buffer.copyBytes(otherIn, otherIn.length());
         } catch (IOException e) {
-          throw new RuntimeException("should not happen on in-memory buffer", e);
+          throw new UncheckedIOException("should not happen on in-memory buffer", e);
         }
-        // Update lastKey to other's lastKey (the last entry in the bulk-copied data).
         lastKey.bytes = ArrayUtil.growNoCopy(lastKey.bytes, other.lastKey.length);
         System.arraycopy(
             other.lastKey.bytes, other.lastKey.offset, lastKey.bytes, 0, other.lastKey.length);
@@ -193,7 +179,6 @@ class TrieBuilder {
     }
 
     this.maxKeyDepth = Math.max(this.maxKeyDepth, other.maxKeyDepth);
-    other.status = Status.DESTROYED;
   }
 
   Output getEmptyOutput() {
@@ -203,26 +188,23 @@ class TrieBuilder {
   // ====== Entry iteration (shared by visit and saveNodes) ======
 
   /**
-   * Iterates over all non-empty-key entries: first the separately-stored minKey entry, then the
-   * prefix-coded buffer entries. The iterator maintains a reusable key buffer; callers that need
-   * the previous key (e.g. for common-prefix computation) must copy it before calling {@link
-   * #next()}.
-   *
-   * <p>This is a non-static inner class so it can directly access the enclosing TrieBuilder's
-   * {@link #minKey}, {@link #minOutput}, {@link #buffer}, and {@link #maxKeyDepth}.
+   * Iterates over all non-empty-key entries: first the separately-stored minKey, then the
+   * prefix-coded buffer entries. Maintains a reusable key buffer and exposes the prefix length from
+   * the encoding, which equals the common prefix length with the preceding key.
    */
-  private class EntryIterator {
+  class EntryIterator {
     private final ByteBuffersDataInput in;
     private boolean minKeyConsumed;
     byte[] key;
     int keyLen;
+
+    int suffixLen;
+    int prefixLen;
+
     Output output;
 
     EntryIterator() {
       key = new byte[Math.max(maxKeyDepth, 1)];
-      // Pre-populate key buffer with minKey. When minOutput != null, the first next()
-      // returns it directly. Either way the buffer is seeded for prefix-decoding
-      // subsequent entries (which are encoded relative to minKey).
       System.arraycopy(minKey.bytes, minKey.offset, key, 0, minKey.length);
       keyLen = minKey.length;
       minKeyConsumed = (minOutput == null);
@@ -236,17 +218,15 @@ class TrieBuilder {
 
     void next() throws IOException {
       if (!minKeyConsumed) {
-        // key/keyLen are already set from constructor.
         output = minOutput;
+        prefixLen = 0;
         minKeyConsumed = true;
         return;
       }
-      int prefixLen = in.readVInt();
-      int suffixLen = in.readVInt();
+      prefixLen = in.readVInt();
+      suffixLen = in.readVInt();
       keyLen = prefixLen + suffixLen;
-      key = ArrayUtil.grow(key, keyLen); // must preserve [0, prefixLen)
       in.readBytes(key, prefixLen, suffixLen);
-
       long fp = in.readVLong();
       boolean hasTerms = in.readByte() == 1;
       int floorDataLen = in.readVInt();
@@ -260,44 +240,18 @@ class TrieBuilder {
     }
   }
 
-  /**
-   * Used for tests only. The recursive impl need to be avoided if someone plans to use for
-   * production one day.
-   */
-  void visit(BiConsumer<BytesRef, Output> consumer) {
-    assert status == Status.BUILDING;
-    if (emptyOutput != null) {
-      consumer.accept(new BytesRef(), emptyOutput);
-    }
-    try {
-      EntryIterator iter = new EntryIterator();
-      while (iter.hasNext()) {
-        iter.next();
-        consumer.accept(
-            new BytesRef(ArrayUtil.copyOfSubArray(iter.key, 0, iter.keyLen)), iter.output);
-      }
-    } catch (IOException e) {
-      throw new RuntimeException("should not happen on in-memory buffer", e);
-    }
-  }
-
   void save(DataOutput meta, IndexOutput index) throws IOException {
-    if (status != Status.BUILDING) {
-      throw new IllegalStateException("only unsaved trie can be saved, got: " + status);
-    }
     meta.writeVLong(index.getFilePointer());
     meta.writeVLong(saveNodes(index));
     index.writeLong(0L); // additional 8 bytes for over-reading
     meta.writeVLong(index.getFilePointer());
-    status = Status.SAVED;
   }
 
   // ====== Frontier-based save ======
 
   /**
-   * A frontier slot for one depth level. During save, frontier[d] represents the trie node at depth
-   * d on the path from root to the last inserted key. Only the current path is live; deeper slots
-   * are frozen (serialized) and reset as new keys arrive.
+   * A frontier slot for one depth level. frontier[d] represents the trie node at depth d on the
+   * path from root to the last inserted key.
    */
   private static class FrontierNode {
     Output output;
@@ -342,27 +296,22 @@ class TrieBuilder {
       iter.next();
 
       if (!firstEntry) {
-        int commonPrefix = Arrays.mismatch(prevKey, 0, prevKeyLen, iter.key, 0, iter.keyLen);
-        if (commonPrefix == -1) {
-          commonPrefix = Math.min(prevKeyLen, iter.keyLen);
-        }
-        freezeFrom(prevKey, prevKeyLen, commonPrefix, frontier, startFP, index);
+        // iter.prefixLen is the common prefix length with the previous key, already encoded
+        // in the buffer at append time — no need to recompute.
+        freezeFrom(prevKey, prevKeyLen, iter.prefixLen, frontier, startFP, index);
       }
       firstEntry = false;
 
       frontier[iter.keyLen].output = iter.output;
 
-      prevKey = ArrayUtil.growNoCopy(prevKey, iter.keyLen);
-      System.arraycopy(iter.key, 0, prevKey, 0, iter.keyLen);
+      System.arraycopy(iter.key, iter.prefixLen, prevKey, iter.prefixLen, iter.suffixLen);
       prevKeyLen = iter.keyLen;
     }
 
-    // Freeze all remaining frontier nodes down to depth 1.
     if (!firstEntry) {
       freezeFrom(prevKey, prevKeyLen, 0, frontier, startFP, index);
     }
 
-    // Freeze root.
     return freezeNode(frontier[0], startFP, index);
   }
 
@@ -515,8 +464,6 @@ class TrieBuilder {
     assert v == 0;
   }
 
-  // ====== ChildSaveStrategy (lookup methods unchanged from original) ======
-
   enum ChildSaveStrategy {
 
     /**
@@ -583,7 +530,7 @@ class TrieBuilder {
     ARRAY(1) {
       @Override
       int needBytes(int minLabel, int maxLabel, int labelCnt) {
-        return labelCnt - 1; // min label saved
+        return labelCnt - 1;
       }
 
       @Override
@@ -608,7 +555,7 @@ class TrieBuilder {
           } else if (midLabel > targetLabel) {
             high = mid - 1;
           } else {
-            return mid + 1; // min label not included, plus 1
+            return mid + 1;
           }
         }
         return -1;
@@ -632,7 +579,7 @@ class TrieBuilder {
       @Override
       void save(int[] childLabels, int labelCnt, int strategyBytes, IndexOutput output)
           throws IOException {
-        output.writeByte((byte) childLabels[labelCnt - 1]); // max label
+        output.writeByte((byte) childLabels[labelCnt - 1]);
         int lastLabel = childLabels[0];
         for (int i = 1; i < labelCnt; i++) {
           while (++lastLabel < childLabels[i]) {
@@ -714,6 +661,23 @@ class TrieBuilder {
       assert childSaveStrategy != null;
       assert strategyBytes > 0 && strategyBytes <= 32;
       return childSaveStrategy;
+    }
+  }
+
+  /** Used for tests only. */
+  void visit(BiConsumer<BytesRef, Output> consumer) {
+    if (emptyOutput != null) {
+      consumer.accept(new BytesRef(), emptyOutput);
+    }
+    try {
+      EntryIterator iter = new EntryIterator();
+      while (iter.hasNext()) {
+        iter.next();
+        consumer.accept(
+            new BytesRef(ArrayUtil.copyOfSubArray(iter.key, 0, iter.keyLen)), iter.output);
+      }
+    } catch (IOException e) {
+      throw new UncheckedIOException("should not happen on in-memory buffer", e);
     }
   }
 }
