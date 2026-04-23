@@ -58,14 +58,10 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -78,18 +74,12 @@ import java.util.regex.Pattern;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.bitvectors.HnswBitVectorsFormat;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.document.Field.Store;
-import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.CompositeReader;
 import org.apache.lucene.index.ConcurrentMergeScheduler;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
@@ -130,7 +120,6 @@ import org.apache.lucene.tests.search.AssertingIndexSearcher;
 import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.apache.lucene.tests.store.RawDirectoryWrapper;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CommandLineUtil;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.junit.After;
@@ -567,8 +556,6 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
           .around(new TestRuleSetupAndRestoreInstanceEnv())
           .around(parentChainCallRule);
 
-  private static final Map<String, FieldType> fieldToType = new HashMap<>();
-
   /** A counter of calls to {@link #random()} if {@link #SYSPROP_RANDOM_MAXACQUIRES} is defined. */
   @SuppressWarnings("NonFinalStaticField")
   private static AtomicLong randomCalls = new AtomicLong();
@@ -579,16 +566,19 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
 
   /** For subclasses to override. Overrides must call {@code super.setUp()}. */
   @Before
+  @Override
   public void setUp() throws Exception {
+    super.setUp();
     randomCalls.set(0);
     parentChainCallRule.setupCalled = true;
   }
 
   /** For subclasses to override. Overrides must call {@code super.tearDown()}. */
   @After
+  @Override
   public void tearDown() throws Exception {
+    super.tearDown();
     parentChainCallRule.teardownCalled = true;
-    fieldToType.clear();
 
     // Test is supposed to call this itself, but we do this defensively in case it forgot:
     restoreIndexWriterMaxDocs();
@@ -778,174 +768,6 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
       closeAfterSuite(new CloseableDirectory(mock, suiteFailureMarker));
       return mock;
     }
-  }
-
-  public static Field newStringField(String name, String value, Store stored) {
-    return newField(
-        random(),
-        name,
-        value,
-        stored == Store.YES ? StringField.TYPE_STORED : StringField.TYPE_NOT_STORED);
-  }
-
-  public static Field newStringField(String name, BytesRef value, Store stored) {
-    return newField(
-        random(),
-        name,
-        value,
-        stored == Store.YES ? StringField.TYPE_STORED : StringField.TYPE_NOT_STORED);
-  }
-
-  public static Field newTextField(String name, String value, Store stored) {
-    return newField(
-        random(),
-        name,
-        value,
-        stored == Store.YES ? TextField.TYPE_STORED : TextField.TYPE_NOT_STORED);
-  }
-
-  public static Field newStringField(Random random, String name, String value, Store stored) {
-    return newField(
-        random,
-        name,
-        value,
-        stored == Store.YES ? StringField.TYPE_STORED : StringField.TYPE_NOT_STORED);
-  }
-
-  public static Field newStringField(Random random, String name, BytesRef value, Store stored) {
-    return newField(
-        random,
-        name,
-        value,
-        stored == Store.YES ? StringField.TYPE_STORED : StringField.TYPE_NOT_STORED);
-  }
-
-  public static Field newTextField(Random random, String name, String value, Store stored) {
-    return newField(
-        random,
-        name,
-        value,
-        stored == Store.YES ? TextField.TYPE_STORED : TextField.TYPE_NOT_STORED);
-  }
-
-  public static Field newField(String name, String value, FieldType type) {
-    return newField(random(), name, value, type);
-  }
-
-  // TODO: if we can pull out the "make term vector options
-  // consistent across all instances of the same field name"
-  // write-once schema sort of helper class then we can
-  // remove the sync here.  We can also fold the random
-  // "enable norms" (now commented out, below) into that:
-  public static synchronized Field newField(
-      Random random, String name, Object value, FieldType type) {
-
-    // Defeat any consumers that illegally rely on intern'd
-    // strings (we removed this from Lucene a while back):
-    name = new String(name);
-
-    FieldType prevType = fieldToType.get(name);
-    if (prevType != null) {
-      // always use the same fieldType for the same field name
-      return createField(name, value, prevType);
-    }
-
-    // TODO: once all core & test codecs can index
-    // offsets, sometimes randomly turn on offsets if we are
-    // already indexing positions...
-
-    FieldType newType = new FieldType(type);
-    if (!newType.stored() && random.nextBoolean()) {
-      newType.setStored(true); // randomly store it
-    }
-    if (newType.indexOptions() != IndexOptions.NONE) {
-      if (!newType.storeTermVectors() && random.nextBoolean()) {
-        newType.setStoreTermVectors(true);
-        if (!newType.storeTermVectorPositions()) {
-          newType.setStoreTermVectorPositions(random.nextBoolean());
-          if (newType.storeTermVectorPositions()) {
-            if (!newType.storeTermVectorPayloads()) {
-              newType.setStoreTermVectorPayloads(random.nextBoolean());
-            }
-          }
-        }
-        // Check for strings as offsets are disallowed on binary fields
-        if (value instanceof String && !newType.storeTermVectorOffsets()) {
-          newType.setStoreTermVectorOffsets(random.nextBoolean());
-        }
-
-        if (VERBOSE) {
-          System.out.println("NOTE: LuceneTestCase: upgrade name=" + name + " type=" + newType);
-        }
-      }
-    }
-    newType.freeze();
-    fieldToType.put(name, newType);
-
-    // TODO: we need to do this, but smarter, ie, most of
-    // the time we set the same value for a given field but
-    // sometimes (rarely) we change it up:
-    /*
-    if (newType.omitNorms()) {
-      newType.setOmitNorms(random.nextBoolean());
-    }
-    */
-
-    return createField(name, value, newType);
-  }
-
-  private static Field createField(String name, Object value, FieldType fieldType) {
-    if (value instanceof String) {
-      return new Field(name, (String) value, fieldType);
-    } else if (value instanceof BytesRef) {
-      return new Field(name, (BytesRef) value, fieldType);
-    } else {
-      throw new IllegalArgumentException("value must be String or BytesRef");
-    }
-  }
-
-  private static final String[] availableLanguageTags =
-      Arrays.stream(Locale.getAvailableLocales())
-          .map(Locale::toLanguageTag)
-          .sorted()
-          .distinct()
-          .toArray(String[]::new);
-
-  /**
-   * Return a random Locale from the available locales on the system.
-   *
-   * @see <a href="http://issues.apache.org/jira/browse/LUCENE-4020">LUCENE-4020</a>
-   */
-  public static Locale randomLocale(Random random) {
-    return localeForLanguageTag(
-        availableLanguageTags[random.nextInt(availableLanguageTags.length)]);
-  }
-
-  /** Time zone IDs that cause a deprecation warning in JDK 25. */
-  private static final Set<String> DEPRECATED_TIME_ZONE_IDS_JDK25 =
-      Set.of(
-          "ACT", "AET", "AGT", "ART", "AST", "BET", "BST", "CAT", "CNT", "CST", "CTT", "EAT", "ECT",
-          "EST", "HST", "IET", "IST", "JST", "MIT", "MST", "NET", "NST", "PLT", "PNT", "PRT", "PST",
-          "SST", "VST");
-
-  /**
-   * Return a random TimeZone from the available timezones on the system
-   *
-   * @see <a href="http://issues.apache.org/jira/browse/LUCENE-4020">LUCENE-4020</a>
-   */
-  public static TimeZone randomTimeZone(Random random) {
-    List<String> tzIds = Arrays.asList(TimeZone.getAvailableIDs());
-    // Remove time zones that cause deprecation warnings as these can break
-    // certain tests that expect exact output.
-    if (Runtime.version().feature() >= 25) {
-      tzIds = tzIds.stream().filter(id -> !DEPRECATED_TIME_ZONE_IDS_JDK25.contains(id)).toList();
-    }
-    return TimeZone.getTimeZone(RandomPicks.randomFrom(random, tzIds));
-  }
-
-  /** return a Locale object equivalent to its programmatic name */
-  public static Locale localeForLanguageTag(String languageTag) {
-    return new Locale.Builder().setLanguageTag(languageTag).build();
   }
 
   private static Directory newFSDirectoryImpl(

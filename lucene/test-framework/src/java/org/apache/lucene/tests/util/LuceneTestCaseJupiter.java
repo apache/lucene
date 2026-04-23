@@ -224,11 +224,19 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
     }
   }
 
-  /** Use jupiter's {@link BeforeEach} instead. */
-  protected final void setUp() throws Exception {}
+  /** Use methods marked with jupiter's {@link BeforeEach} instead. */
+  @Override
+  @BeforeEach
+  protected final void setUp() throws Exception {
+    super.setUp();
+  }
 
-  /** Use jupiter's {@link AfterEach} instead. */
-  protected final void tearDown() throws Exception {}
+  /** Use methods marked with jupiter's {@link AfterEach} instead. */
+  @Override
+  @AfterEach
+  protected final void tearDown() throws Exception {
+    super.tearDown();
+  }
 
   public static <T extends Throwable> T expectThrows(
       Class<T> expectedType, LuceneTestCase.ThrowingRunnable runnable) {

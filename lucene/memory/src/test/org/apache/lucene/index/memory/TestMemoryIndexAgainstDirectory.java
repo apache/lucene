@@ -18,7 +18,6 @@ package org.apache.lucene.index.memory;
 
 import static org.apache.lucene.tests.analysis.BaseTokenStreamTestCase.newDirectory;
 import static org.apache.lucene.tests.analysis.BaseTokenStreamTestCase.newSearcher;
-import static org.apache.lucene.tests.analysis.BaseTokenStreamTestCase.newTextField;
 
 import java.io.BufferedReader;
 import java.io.IOException;
