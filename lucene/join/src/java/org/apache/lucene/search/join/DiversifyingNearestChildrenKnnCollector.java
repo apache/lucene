@@ -275,7 +275,7 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
       scores[i] = savedScore;
     }
 
-    private int downHeap(int i) {
+    private void downHeap(int i) {
       int savedChild = childNodes[i];
       int savedParent = parentNodes[i];
       float savedScore = scores[i];
@@ -300,7 +300,6 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
       childNodes[i] = savedChild;
       parentNodes[i] = savedParent;
       scores[i] = savedScore;
-      return i;
     }
 
     // Used only during popToDrain: the index map is never read again after closed=true,
