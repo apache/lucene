@@ -55,8 +55,8 @@ import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.PrintStreamInfoStream;
 import org.junit.internal.AssumptionViolatedException;
 
-/** Setup and restore suite-level environment (fine grained junk that doesn't fit anywhere else). */
-final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
+/** Setup and restore suite-level environment (fine-grained junk that doesn't fit anywhere else). */
+final class SetupAndRestoreStaticEnv implements BeforeAfterCallback {
   private final Supplier<Random> randomSupplier;
   private final Supplier<Class<?>> targetClassSupplier;
 
@@ -78,7 +78,7 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
    */
   HashSet<String> avoidCodecs;
 
-  TestRuleSetupAndRestoreClassEnv(
+  SetupAndRestoreStaticEnv(
       Supplier<Random> randomSupplier, Supplier<Class<?>> targetClassSupplier) {
     this.randomSupplier = randomSupplier;
     this.targetClassSupplier = targetClassSupplier;
@@ -112,7 +112,7 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
   }
 
   @Override
-  protected void before() throws Exception {
+  public void before() throws Exception {
     // if verbose: print some debugging stuff about which codecs are loaded.
     if (VERBOSE) {
       System.out.println("Loaded codecs: " + Codec.availableCodecs());
@@ -289,7 +289,7 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
 
   /** After suite cleanup (always invoked). */
   @Override
-  protected void after() throws Exception {
+  public void after() throws Exception {
     Codec.setDefault(savedCodec);
     InfoStream.setDefault(savedInfoStream);
     if (savedLocale != null) Locale.setDefault(savedLocale);

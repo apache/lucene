@@ -483,7 +483,12 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
   @ClassRule public static final TestRule classRules;
 
   static {
-    RuleChain r =
+    var setupAndRestoreClassEnv =
+        new SetupAndRestoreStaticEnv(
+            () -> RandomizedContext.current().getRandom(),
+            () -> RandomizedContext.current().getTargetClass());
+
+    classRules =
         RuleChain.outerRule(new TestRuleIgnoreTestSuites())
             .around(
                 new TestRuleAdapter() {
@@ -541,6 +546,11 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
 
                               @Override
                               public void afterEach() {}
+
+                              @Override
+                              public SetupAndRestoreStaticEnv getClassEnv() {
+                                return setupAndRestoreClassEnv;
+                              }
                             });
                   }
 
@@ -561,9 +571,8 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
                     new TestRuleTemporaryFilesCleanup(
                         suiteFailureMarker,
                         LuceneTestCase::random,
-                        () -> RandomizedContext.current().getTargetClass()));
-    classRules =
-        r.around(new NoClassHooksShadowingRule())
+                        () -> RandomizedContext.current().getTargetClass()))
+            .around(new NoClassHooksShadowingRule())
             .around(
                 new NoInstanceHooksOverridesRule() {
                   @Override
@@ -582,11 +591,23 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
                     // We reset the default locale and timezone; these properties change as a
                     // side-effect
                     "user.language", "user.timezone"))
+            .around(new CallbacksToRuleAdapter(setupAndRestoreClassEnv))
             .around(
-                classEnvRule =
-                    new TestRuleSetupAndRestoreClassEnv(
-                        () -> RandomizedContext.current().getRandom(),
-                        () -> RandomizedContext.current().getTargetClass()));
+                new CallbacksToRuleAdapter(
+                    new BeforeAfterCallback() {
+                      @Override
+                      public void before() throws Exception {
+                        RunListenerPrintReproduceInfo.env =
+                            new RunListenerPrintReproduceInfo.Env(
+                                setupAndRestoreClassEnv.codec,
+                                setupAndRestoreClassEnv.similarity,
+                                setupAndRestoreClassEnv.locale,
+                                setupAndRestoreClassEnv.timeZone);
+                      }
+
+                      @Override
+                      public void after() throws Exception {}
+                    }));
   }
 
   // -----------------------------------------------------------------
@@ -833,7 +854,7 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
   public static IndexWriterConfig newIndexWriterConfig(Random r, Analyzer a) {
     IndexWriterConfig c = new IndexWriterConfig(a);
     configureRandomCompoundFormat(r, c.getCodec().compoundFormat());
-    c.setSimilarity(classEnvRule.similarity);
+    c.setSimilarity(getTestFrameworkInfra().getClassEnv().similarity);
     if (INFOSTREAM) {
       // Even though TestRuleSetupAndRestoreClassEnv calls
       // InfoStream.setDefault, we do it again here so that
@@ -842,7 +863,7 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
       // IndexWriter created we see "IW 0", "IW 1", "IW 2",
       // ... instead of just always "IW 0":
       c.setInfoStream(
-          new TestRuleSetupAndRestoreClassEnv.ThreadNameFixingPrintStreamInfoStream(System.out));
+          new SetupAndRestoreStaticEnv.ThreadNameFixingPrintStreamInfoStream(System.out));
     }
 
     if (rarely(r)) {
@@ -935,7 +956,7 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
     } else if (r.nextBoolean()) {
       return newTieredMergePolicy(r);
     } else if (rarely(r)) {
-      return newAlcoholicMergePolicy(r, classEnvRule.timeZone);
+      return newAlcoholicMergePolicy(r, getTestFrameworkInfra().getClassEnv().timeZone);
     }
     return newLogMergePolicy(r);
   }
@@ -953,7 +974,7 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
   }
 
   public static AlcoholicMergePolicy newAlcoholicMergePolicy() {
-    return newAlcoholicMergePolicy(random(), classEnvRule.timeZone);
+    return newAlcoholicMergePolicy(random(), getTestFrameworkInfra().getClassEnv().timeZone);
   }
 
   public static AlcoholicMergePolicy newAlcoholicMergePolicy(Random r, TimeZone tz) {
@@ -1871,7 +1892,7 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
       } else {
         ret = random.nextBoolean() ? new IndexSearcher(r) : new IndexSearcher(r.getContext());
       }
-      ret.setSimilarity(classEnvRule.similarity);
+      ret.setSimilarity(getTestFrameworkInfra().getClassEnv().similarity);
       return ret;
     } else {
       final ExecutorService ex;
@@ -1916,7 +1937,7 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
               }
             };
       }
-      ret.setSimilarity(classEnvRule.similarity);
+      ret.setSimilarity(getTestFrameworkInfra().getClassEnv().similarity);
       ret.setQueryCachingPolicy(MAYBE_CACHE_POLICY);
       if (random().nextBoolean()) {
         ret.setTimeout(() -> false);

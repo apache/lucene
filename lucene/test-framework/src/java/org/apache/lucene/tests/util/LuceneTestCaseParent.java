@@ -209,6 +209,8 @@ public abstract sealed class LuceneTestCaseParent extends Assert
     void afterEach() throws IOException;
 
     void afterAll() throws IOException;
+
+    SetupAndRestoreStaticEnv getClassEnv();
   }
 
   private static final AtomicReference<TestFrameworkInfra> testFrameworkInfra =
@@ -272,8 +274,6 @@ public abstract sealed class LuceneTestCaseParent extends Assert
   }
 
   // TODO: to remove from here?
-
-  static TestRuleSetupAndRestoreClassEnv classEnvRule;
 
   /** Suite failure marker (any error in the test or suite scope). */
   @SuppressWarnings("NonFinalStaticField")

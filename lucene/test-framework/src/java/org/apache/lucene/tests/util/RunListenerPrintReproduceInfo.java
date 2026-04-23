@@ -32,14 +32,21 @@ import static org.apache.lucene.tests.util.LuceneTestCase.TEST_MONSTER;
 import static org.apache.lucene.tests.util.LuceneTestCase.TEST_NIGHTLY;
 import static org.apache.lucene.tests.util.LuceneTestCase.TEST_POSTINGSFORMAT;
 import static org.apache.lucene.tests.util.LuceneTestCase.TEST_WEEKLY;
-import static org.apache.lucene.tests.util.LuceneTestCase.classEnvRule;
 
 import com.carrotsearch.randomizedtesting.LifecycleScope;
 import com.carrotsearch.randomizedtesting.RandomizedContext;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.TimeZone;
 import java.util.regex.Pattern;
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.Constants;
 import org.junit.runner.Description;
 import org.junit.runner.Result;
@@ -66,11 +73,13 @@ public final class RunListenerPrintReproduceInfo extends RunListener {
   /** Suite-level code (initialization, rule, hook) failed. */
   private boolean suiteFailed;
 
-  /** A marker to print full env. diagnostics after the suite. */
-  private boolean printDiagnosticsAfterClass;
+  /** Either a test or something else has failed. */
+  private boolean somethingFailed;
 
   /** true if we should skip the reproduce string (diagnostics are independent) */
   private boolean suppressReproduceLine;
+
+  static Env env;
 
   @Override
   public void testRunStarted(Description description) throws Exception {
@@ -97,13 +106,14 @@ public final class RunListenerPrintReproduceInfo extends RunListener {
     } else {
       suiteFailed = true;
     }
-    printDiagnosticsAfterClass = true;
+    somethingFailed = true;
   }
 
   @Override
   public void testFinished(Description description) throws Exception {
     if (testFailed) {
-      reportAdditionalFailureInfo(stripTestNameAugmentations(description.getMethodName()));
+      System.err.println(
+          getAdditionalFailureInfo(stripTestNameAugmentations(description.getMethodName())));
     }
     scope = LifecycleScope.SUITE;
     testFailed = false;
@@ -124,26 +134,35 @@ public final class RunListenerPrintReproduceInfo extends RunListener {
 
   @Override
   public void testRunFinished(Result result) throws Exception {
-    if (printDiagnosticsAfterClass || LuceneTestCase.VERBOSE) {
-      RunListenerPrintReproduceInfo.printDebuggingInformation();
+    if (somethingFailed || LuceneTestCase.VERBOSE) {
+      System.err.println(getDebuggingInformation());
     }
 
     if (suiteFailed) {
-      reportAdditionalFailureInfo(null);
+      System.err.println(getAdditionalFailureInfo(null));
+    }
+  }
+
+  record Env(String codec, String similarity, String locale, String timeZone) {
+    Env(Codec codec, Similarity similarity, Locale locale, TimeZone timeZone) {
+      this(
+          Objects.toString(codec),
+          Objects.toString(similarity),
+          Optional.ofNullable(locale).map(Locale::toLanguageTag).orElse(null),
+          Optional.ofNullable(timeZone).map(TimeZone::getID).orElse(null));
     }
   }
 
   /** print some useful debugging information about the environment */
-  private static void printDebuggingInformation() {
-    if (classEnvRule != null && classEnvRule.isInitialized()) {
-      System.err.println(
-          ("NOTE: test params are: codec=" + classEnvRule.codec)
-              + (", sim=" + classEnvRule.similarity)
-              + (", locale=" + classEnvRule.locale.toLanguageTag())
-              + (", timezone="
-                  + (classEnvRule.timeZone == null ? "(null)" : classEnvRule.timeZone.getID())));
-    }
-    System.err.println(
+  private static String getDebuggingInformation() {
+    StringWriter sw = new StringWriter();
+    PrintWriter pw = new PrintWriter(sw);
+    pw.println(
+        ("NOTE: test params are: codec=" + env.codec)
+            + (", sim=" + env.similarity)
+            + (", locale=" + env.locale)
+            + (", timezone=" + env.timeZone));
+    pw.println(
         "NOTE: "
             + (System.getProperty("os.name") + " ")
             + (System.getProperty("os.version") + " ")
@@ -158,14 +177,17 @@ public final class RunListenerPrintReproduceInfo extends RunListener {
             + ("threads=" + Thread.activeCount() + ",")
             + ("free=" + Runtime.getRuntime().freeMemory() + ",")
             + ("total=" + Runtime.getRuntime().totalMemory()));
-    System.err.println(
-        "NOTE: All tests run in this JVM: " + Arrays.toString(testClassesRun.toArray()));
+    pw.println("NOTE: All tests run in this JVM: " + Arrays.toString(testClassesRun.toArray()));
+    pw.flush();
+
+    return sw.toString();
   }
 
-  private void reportAdditionalFailureInfo(final String testName) {
+  private String getAdditionalFailureInfo(final String testName) {
     if (suppressReproduceLine) {
-      return;
+      return "";
     }
+
     if (TEST_LINE_DOCS_FILE.endsWith(JENKINS_LARGE_LINE_DOCS_FILE)) {
       System.err.println(
           "NOTE: large line-docs file was used in this run. You have to download "
@@ -209,11 +231,12 @@ public final class RunListenerPrintReproduceInfo extends RunListener {
     // Environment.
     if (!TEST_LINE_DOCS_FILE.equals(DEFAULT_LINE_DOCS_FILE))
       addVmOpt(b, "tests.linedocsfile", TEST_LINE_DOCS_FILE);
-    if (classEnvRule != null && classEnvRule.isInitialized()) {
-      addVmOpt(b, "tests.locale", classEnvRule.locale.toLanguageTag());
-      if (classEnvRule.timeZone != null) {
-        addVmOpt(b, "tests.timezone", classEnvRule.timeZone.getID());
-      }
+    if (env.locale() != null) {
+      addVmOpt(b, "tests.locale", env.locale);
+    }
+
+    if (env.timeZone() != null) {
+      addVmOpt(b, "tests.timezone", env.timeZone());
     }
 
     if (LuceneTestCase.TEST_ASSERTS_ENABLED) {
@@ -224,7 +247,7 @@ public final class RunListenerPrintReproduceInfo extends RunListener {
 
     addVmOpt(b, "tests.file.encoding", System.getProperty("file.encoding"));
 
-    System.err.println(b.toString());
+    return b.toString();
   }
 
   /**

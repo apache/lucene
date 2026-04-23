@@ -45,7 +45,6 @@ public final class GlobalStateSupport
 
   private static final class State {
     private LuceneTestCaseParent.TestFrameworkInfra frameworkInfra;
-    private TestRuleSetupAndRestoreClassEnv prevClassEnvRule;
 
     void reset() {
       frameworkInfra = null;
@@ -58,6 +57,74 @@ public final class GlobalStateSupport
     }
   }
 
+  private static final class JupiterTestFrameworkInfra
+      implements LuceneTestCaseParent.TestFrameworkInfra {
+    private final ConcurrentHashMap<Thread, Random> perThreadRandoms = new ConcurrentHashMap<>();
+
+    private final List<Closeable> closeAfterTest = new ArrayList<>();
+    private final List<Closeable> closeAfterSuite = new ArrayList<>();
+
+    final Supplier<Random> rnd;
+    final SetupAndRestoreStaticEnv classEnvRule;
+
+    JupiterTestFrameworkInfra(Class<?> requiredTestClass, Supplier<Random> randomSupplier) {
+      this.rnd = randomSupplier;
+      this.classEnvRule =
+          new SetupAndRestoreStaticEnv(
+              this::threadRandom, () -> Objects.requireNonNull(requiredTestClass));
+    }
+
+    @Override
+    public Random threadRandom() {
+      return perThreadRandoms.computeIfAbsent(Thread.currentThread(), _ -> rnd.get());
+    }
+
+    @Override
+    public <T extends Closeable> T closeAfterTest(T resource) {
+      synchronized (this) {
+        closeAfterTest.add(resource);
+      }
+      return resource;
+    }
+
+    @Override
+    public <T extends Closeable> T closeAfterClass(T resource) {
+      synchronized (this) {
+        closeAfterSuite.add(resource);
+      }
+      return resource;
+    }
+
+    @Override
+    public void afterEach() throws IOException {
+      synchronized (this) {
+        IOUtils.close(closeAfterTest);
+        closeAfterTest.clear();
+      }
+    }
+
+    @Override
+    public void afterAll() throws IOException {
+      synchronized (this) {
+        IOUtils.close(
+            Stream.of(closeAfterTest, closeAfterSuite, perThreadRandoms.values())
+                .flatMap(Collection::stream)
+                .filter(v -> v instanceof Closeable)
+                .map(v -> (Closeable) v)
+                .toList());
+      }
+    }
+
+    @Override
+    public SetupAndRestoreStaticEnv getClassEnv() {
+      return classEnvRule;
+    }
+
+    public void beforeAll() throws Exception {
+      classEnvRule.before();
+    }
+  }
+
   @Override
   public void beforeAll(ExtensionContext context) throws Exception {
     State state = getState(context);
@@ -66,65 +133,13 @@ public final class GlobalStateSupport
     // touch LuceneTestCase to trigger static initializers.
     LuceneTestCase.ensureInitialized();
 
-    state.frameworkInfra =
-        new LuceneTestCaseParent.TestFrameworkInfra() {
-          private final ConcurrentHashMap<Thread, Random> perThreadRandoms =
-              new ConcurrentHashMap<>();
+    var frameworkInfra =
+        new JupiterTestFrameworkInfra(
+            context.getRequiredTestClass(), getRandomSupplier(context.getExecutableInvoker()));
+    state.frameworkInfra = frameworkInfra;
 
-          private final List<Closeable> closeAfterTest = new ArrayList<>();
-          private final List<Closeable> closeAfterSuite = new ArrayList<>();
-
-          final Supplier<Random> rnd = getRandomSupplier(context.getExecutableInvoker());
-
-          @Override
-          public Random threadRandom() {
-            return perThreadRandoms.computeIfAbsent(Thread.currentThread(), _ -> rnd.get());
-          }
-
-          @Override
-          public <T extends Closeable> T closeAfterTest(T resource) {
-            synchronized (this) {
-              closeAfterTest.add(resource);
-            }
-            return resource;
-          }
-
-          @Override
-          public <T extends Closeable> T closeAfterClass(T resource) {
-            synchronized (this) {
-              closeAfterSuite.add(resource);
-            }
-            return resource;
-          }
-
-          @Override
-          public void afterEach() throws IOException {
-            synchronized (this) {
-              IOUtils.close(closeAfterTest);
-              closeAfterTest.clear();
-            }
-          }
-
-          @Override
-          public void afterAll() throws IOException {
-            synchronized (this) {
-              IOUtils.close(
-                  Stream.of(closeAfterTest, closeAfterSuite, perThreadRandoms.values())
-                      .flatMap(Collection::stream)
-                      .filter(v -> v instanceof Closeable)
-                      .map(v -> (Closeable) v)
-                      .toList());
-            }
-          }
-        };
-
-    LuceneTestCaseParent.setTestFrameworkInfra(null, state.frameworkInfra);
-
-    state.prevClassEnvRule = LuceneTestCase.classEnvRule;
-    var targetClass = context.getRequiredTestClass();
-    LuceneTestCase.classEnvRule =
-        new TestRuleSetupAndRestoreClassEnv(state.frameworkInfra::threadRandom, () -> targetClass);
-    LuceneTestCase.classEnvRule.before();
+    LuceneTestCaseParent.setTestFrameworkInfra(null, frameworkInfra);
+    frameworkInfra.beforeAll();
   }
 
   @Override
@@ -135,12 +150,9 @@ public final class GlobalStateSupport
   @Override
   public void afterAll(ExtensionContext context) throws Exception {
     var state = getState(context);
-    var rule = LuceneTestCaseParent.classEnvRule;
     try {
-      LuceneTestCaseParent.classEnvRule = state.prevClassEnvRule;
       state.frameworkInfra.afterAll();
     } finally {
-      rule.after();
       LuceneTestCaseParent.setTestFrameworkInfra(state.frameworkInfra, null);
       state.reset();
     }

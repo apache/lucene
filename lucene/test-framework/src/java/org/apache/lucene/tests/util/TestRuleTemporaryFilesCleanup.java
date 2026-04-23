@@ -129,8 +129,7 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
       fs =
           new VerboseFS(
                   fs,
-                  new TestRuleSetupAndRestoreClassEnv.ThreadNameFixingPrintStreamInfoStream(
-                      System.out))
+                  new SetupAndRestoreStaticEnv.ThreadNameFixingPrintStreamInfoStream(System.out))
               .getFileSystem(null);
     }
 

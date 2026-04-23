@@ -28,8 +28,8 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.platform.commons.support.AnnotationSupport;
 
 /**
- * Control the state (enabled/ disabled) of a test tag meta-annotation: provides the default state
- * and system property to control it.
+ * Control the default state (enabled/ disabled) of a test tag meta-annotation. The state can be
+ * switched using a system property.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE, ElementType.METHOD})
