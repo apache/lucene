@@ -55,6 +55,12 @@ public enum IndexOptions {
    */
   DOCS_AND_CUSTOM_FREQS;
 
+  /**
+   * Return true if the index format encoding this IndexOptions includes the bits required for the
+   * other index format. This function provides a partial ordering of the options. The options can't
+   * be totally ordered because DOCS_AND_FREQS and DOCS_AND_CUSTOM_FREQS, which are encoded using
+   * the same bits, are treated as distinct options due to their different interpretations.
+   */
   public boolean subsumes(IndexOptions other) {
     // treat DOCS_AND_CUSTOM_FREQS and DOCS_AND_FREQS for the purpose of subsumes
     if (this == DOCS_AND_CUSTOM_FREQS) {
