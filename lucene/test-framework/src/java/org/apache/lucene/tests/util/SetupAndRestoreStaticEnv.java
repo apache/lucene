@@ -49,8 +49,8 @@ import org.apache.lucene.tests.codecs.mockrandom.MockRandomPostingsFormat;
 import org.apache.lucene.tests.index.RandomCodec;
 import org.apache.lucene.tests.search.similarities.AssertingSimilarity;
 import org.apache.lucene.tests.search.similarities.RandomSimilarity;
-import org.apache.lucene.tests.util.LuceneTestCase.LiveIWCFlushMode;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.LuceneTestCaseParent.LiveIWCFlushMode;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.PrintStreamInfoStream;
 import org.junit.internal.AssumptionViolatedException;
@@ -64,6 +64,7 @@ final class SetupAndRestoreStaticEnv implements BeforeAfterCallback {
   private Locale savedLocale;
   private TimeZone savedTimeZone;
   private InfoStream savedInfoStream;
+  private LiveIWCFlushMode flushMode;
 
   Locale locale;
   TimeZone timeZone;
@@ -82,6 +83,10 @@ final class SetupAndRestoreStaticEnv implements BeforeAfterCallback {
       Supplier<Random> randomSupplier, Supplier<Class<?>> targetClassSupplier) {
     this.randomSupplier = randomSupplier;
     this.targetClassSupplier = targetClassSupplier;
+  }
+
+  LuceneTestCaseParent.LiveIWCFlushMode getLiveIWCFlushMode() {
+    return flushMode;
   }
 
   static class ThreadNameFixingPrintStreamInfoStream extends PrintStreamInfoStream {
@@ -240,22 +245,13 @@ final class SetupAndRestoreStaticEnv implements BeforeAfterCallback {
     // just the doc count to flush by, else both.
     // This way the assertMemory in DocumentsWriterFlushControl sometimes runs (when we always flush
     // by RAM).
-    LiveIWCFlushMode flushMode;
-    switch (random.nextInt(3)) {
-      case 0:
-        flushMode = LiveIWCFlushMode.BY_RAM;
-        break;
-      case 1:
-        flushMode = LiveIWCFlushMode.BY_DOCS;
-        break;
-      case 2:
-        flushMode = LiveIWCFlushMode.EITHER;
-        break;
-      default:
-        throw new AssertionError();
-    }
-
-    LuceneTestCase.setLiveIWCFlushMode(flushMode);
+    this.flushMode =
+        switch (random.nextInt(3)) {
+          case 0 -> LiveIWCFlushMode.BY_RAM;
+          case 1 -> LiveIWCFlushMode.BY_DOCS;
+          case 2 -> LiveIWCFlushMode.EITHER;
+          default -> throw new AssertionError();
+        };
 
     initialized = true;
   }
