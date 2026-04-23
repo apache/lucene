@@ -148,6 +148,10 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#15967: Fix HNSW InfoStream progress to show elapsed time since merge start instead of
+  duplicate incremental/total times. Add per-chunk completion logging with sub-millisecond
+  precision to aid merge concurrency debugging. (Prithvi S)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 

@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.KnnCollector;
@@ -84,6 +84,29 @@ public class HnswGraphBuilder implements HnswBuilder {
 
   protected InfoStream infoStream = InfoStream.getDefault();
   protected boolean frozen;
+
+  /**
+   * Merge-level start time in nanoseconds. When set, the periodic progress prints (every 10K
+   * vectors) show elapsed time since the overall merge began rather than since the current chunk
+   * began. A value of -1 means not set (non-concurrent path).
+   */
+  private long mergeStartTimeNS = -1;
+
+  /**
+   * Shared accumulator for total worker time across all concurrent merge workers. Each chunk's
+   * elapsed time is added here so that effective concurrency can be computed at merge end.
+   */
+  private AtomicLong cumulativeWorkTimeNS;
+
+  /** Set the merge-level start time so progress prints show time since merge began. */
+  void setMergeStartTimeNS(long mergeStartTimeNS) {
+    this.mergeStartTimeNS = mergeStartTimeNS;
+  }
+
+  /** Set the shared accumulator for tracking cumulative worker time across concurrent chunks. */
+  void setCumulativeWorkTimeNS(AtomicLong cumulativeWorkTimeNS) {
+    this.cumulativeWorkTimeNS = cumulativeWorkTimeNS;
+  }
 
   public static HnswGraphBuilder create(
       RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
@@ -204,15 +227,29 @@ public class HnswGraphBuilder implements HnswBuilder {
     if (frozen) {
       throw new IllegalStateException("This HnswGraphBuilder is frozen and cannot be updated");
     }
-    long start = System.nanoTime(), t = start;
-    if (infoStream.isEnabled(HNSW_COMPONENT)) {
-      infoStream.message(HNSW_COMPONENT, "addVectors [" + minOrd + " " + maxOrd + ")");
-    }
+    long start = System.nanoTime();
+    long progressStart = mergeStartTimeNS != -1 ? mergeStartTimeNS : start;
     for (int node = minOrd; node < maxOrd; node++) {
       addGraphNode(node);
       if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
-        t = printGraphBuildStatus(node, start, t);
+        printGraphBuildStatus(node, progressStart);
       }
+    }
+    long chunkElapsedNS = System.nanoTime() - start;
+    if (cumulativeWorkTimeNS != null) {
+      cumulativeWorkTimeNS.addAndGet(chunkElapsedNS);
+    }
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      double elapsedMs = chunkElapsedNS / 1_000_000.0;
+      infoStream.message(
+          HNSW_COMPONENT,
+          String.format(
+              Locale.ROOT,
+              "addVectors [%d %d): %d vectors in %.2f ms",
+              minOrd,
+              maxOrd,
+              maxOrd - minOrd,
+              elapsedMs));
     }
   }
 
@@ -339,17 +376,10 @@ public class HnswGraphBuilder implements HnswBuilder {
     addGraphNodeInternal(node, scorer, eps0);
   }
 
-  private long printGraphBuildStatus(int node, long start, long t) {
-    long now = System.nanoTime();
+  private void printGraphBuildStatus(int node, long start) {
+    double elapsedMs = (System.nanoTime() - start) / 1_000_000.0;
     infoStream.message(
-        HNSW_COMPONENT,
-        String.format(
-            Locale.ROOT,
-            "built %d in %d/%d ms",
-            node,
-            TimeUnit.NANOSECONDS.toMillis(now - t),
-            TimeUnit.NANOSECONDS.toMillis(now - start)));
-    return now;
+        HNSW_COMPONENT, String.format(Locale.ROOT, "built %d in %.2f ms", node, elapsedMs));
   }
 
   void addDiverseNeighbors(
