@@ -137,8 +137,6 @@ class TrieBuilder {
   /**
    * Append all (K, V) pairs from the given trie into this one. The given trie builder need to
    * ensure its keys greater or equals than max key of this one.
-   *
-   * <p>Note: the given trie will be destroyed after appending.
    */
   void append(TrieBuilder other) {
     assert this.lastKey.compareTo(other.minKey) < 0;
@@ -338,7 +336,18 @@ class TrieBuilder {
     if (childrenNum == 0) {
       assert node.output != null : "leaf nodes should have output.";
       long bottomFp = index.getFilePointer() - startFP;
-      writeLeafNode(node.output, index);
+      Output output = node.output;
+      int outputFpBytes = bytesRequiredVLong(output.fp);
+      int header =
+          SIGN_NO_CHILDREN
+              | ((outputFpBytes - 1) << 2)
+              | (output.hasTerms ? LEAF_NODE_HAS_TERMS : 0)
+              | (output.floorData != null ? LEAF_NODE_HAS_FLOOR : 0);
+      index.writeByte(((byte) header));
+      writeLongNBytes(output.fp, outputFpBytes, index);
+      if (output.floorData != null) {
+        index.writeBytes(output.floorData.bytes, output.floorData.offset, output.floorData.length);
+      }
       return bottomFp;
     }
 
@@ -423,20 +432,6 @@ class TrieBuilder {
     }
 
     return bottomFp;
-  }
-
-  private void writeLeafNode(Output output, IndexOutput index) throws IOException {
-    int outputFpBytes = bytesRequiredVLong(output.fp);
-    int header =
-        SIGN_NO_CHILDREN
-            | ((outputFpBytes - 1) << 2)
-            | (output.hasTerms ? LEAF_NODE_HAS_TERMS : 0)
-            | (output.floorData != null ? LEAF_NODE_HAS_FLOOR : 0);
-    index.writeByte(((byte) header));
-    writeLongNBytes(output.fp, outputFpBytes, index);
-    if (output.floorData != null) {
-      index.writeBytes(output.floorData.bytes, output.floorData.offset, output.floorData.length);
-    }
   }
 
   private long encodeFP(Output output) {
