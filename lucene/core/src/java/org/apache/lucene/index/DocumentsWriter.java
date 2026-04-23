@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.function.ToLongFunction;
-import org.apache.lucene.document.ColumnBatch;
+import org.apache.lucene.document.column.ColumnBatch;
 import org.apache.lucene.index.DocumentsWriterPerThread.FlushedSegment;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.store.AlreadyClosedException;

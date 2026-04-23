@@ -14,21 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.document;
+package org.apache.lucene.document.column;
 
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.util.BytesRef;
 
 /**
- * A tuple cursor over a {@link LongColumn}. Yields {@code (docID, longValue)} pairs. Batch-local
- * doc-ids are returned in non-decreasing order; the same doc-id may repeat for multi-valued fields
- * (e.g. {@link org.apache.lucene.index.DocValuesType#SORTED_NUMERIC SORTED_NUMERIC}).
+ * A tuple cursor over a {@link BinaryColumn}. Yields {@code (docID, binaryValue)} pairs.
+ * Batch-local doc-ids are returned in non-decreasing order; the same doc-id may repeat for
+ * multi-valued fields (e.g. {@link org.apache.lucene.index.DocValuesType#SORTED_SET SORTED_SET}).
  *
  * @lucene.experimental
  */
-public abstract class LongTupleCursor {
+public abstract class BinaryTupleCursor {
 
   /** Sole constructor. */
-  protected LongTupleCursor() {}
+  protected BinaryTupleCursor() {}
 
   /**
    * Advances to the next doc-id that has a value and returns it, or {@link
@@ -38,8 +39,9 @@ public abstract class LongTupleCursor {
   public abstract int nextDoc();
 
   /**
-   * Returns the value at the current cursor position. Only valid after a successful {@link
-   * #nextDoc()} call that returned a value other than {@link DocIdSetIterator#NO_MORE_DOCS}.
+   * Returns the value at the current cursor position. Only valid until the next call to {@link
+   * #nextDoc()}, and only after a {@code nextDoc()} that returned a value other than {@link
+   * DocIdSetIterator#NO_MORE_DOCS}.
    */
-  public abstract long longValue();
+  public abstract BytesRef binaryValue();
 }

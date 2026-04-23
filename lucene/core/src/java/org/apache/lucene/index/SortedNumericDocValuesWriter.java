@@ -97,10 +97,6 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
     updateBytesUsed();
   }
 
-  public void addDenseValues(int firstDocID, ByteOrder byteOrder, BytesRef values) {
-    addDenseValues(firstDocID, byteOrder, Long.BYTES, values);
-  }
-
   public void addDenseValues(int firstDocID, ByteOrder byteOrder, int byteWidth, BytesRef values) {
     if (byteWidth != Integer.BYTES && byteWidth != Long.BYTES) {
       throw new IllegalArgumentException("byteWidth must be 4 or 8: byteWidth=" + byteWidth);

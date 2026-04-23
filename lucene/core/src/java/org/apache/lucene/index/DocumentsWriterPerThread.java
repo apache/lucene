@@ -32,7 +32,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.document.ColumnBatch;
+import org.apache.lucene.document.column.ColumnBatch;
 import org.apache.lucene.index.DocumentsWriterDeleteQueue.DeleteSlice;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;

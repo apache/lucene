@@ -39,22 +39,22 @@ import org.apache.lucene.codecs.NormsFormat;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
-import org.apache.lucene.document.BinaryColumn;
-import org.apache.lucene.document.BinaryTupleCursor;
-import org.apache.lucene.document.BinaryValuesCursor;
-import org.apache.lucene.document.Column;
-import org.apache.lucene.document.ColumnBatch;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
-import org.apache.lucene.document.LongColumn;
-import org.apache.lucene.document.LongTupleCursor;
-import org.apache.lucene.document.LongValuesCursor;
-import org.apache.lucene.document.NumericBinaryColumn;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredValue;
+import org.apache.lucene.document.column.BinaryColumn;
+import org.apache.lucene.document.column.BinaryTupleCursor;
+import org.apache.lucene.document.column.BinaryValuesCursor;
+import org.apache.lucene.document.column.Column;
+import org.apache.lucene.document.column.ColumnBatch;
+import org.apache.lucene.document.column.LongColumn;
+import org.apache.lucene.document.column.LongTupleCursor;
+import org.apache.lucene.document.column.LongValuesCursor;
+import org.apache.lucene.document.column.NumericBinaryColumn;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -1507,7 +1507,7 @@ final class IndexingChain implements Accountable {
         NumericDocValuesWriter writer = (NumericDocValuesWriter) pf.docValuesWriter;
         int docID = baseDocID;
         BytesRef values;
-        while ((values = cursor.nextBytes()) != null) {
+        while ((values = cursor.nextValues()) != null) {
           checkChunkAlignment(column, values.length, byteWidth);
           int chunkDocs = values.length / byteWidth;
           checkDenseBounds(column, docID - baseDocID, chunkDocs, numDocs);
@@ -1520,7 +1520,7 @@ final class IndexingChain implements Accountable {
         SortedNumericDocValuesWriter writer = (SortedNumericDocValuesWriter) pf.docValuesWriter;
         int docID = baseDocID;
         BytesRef values;
-        while ((values = cursor.nextBytes()) != null) {
+        while ((values = cursor.nextValues()) != null) {
           checkChunkAlignment(column, values.length, byteWidth);
           int chunkDocs = values.length / byteWidth;
           checkDenseBounds(column, docID - baseDocID, chunkDocs, numDocs);

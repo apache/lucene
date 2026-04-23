@@ -19,22 +19,13 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import java.nio.ByteOrder;
 import java.util.List;
-import org.apache.lucene.document.BinaryColumn;
 import org.apache.lucene.document.BinaryDocValuesField;
-import org.apache.lucene.document.BinaryTupleCursor;
-import org.apache.lucene.document.BinaryValuesCursor;
-import org.apache.lucene.document.Column;
-import org.apache.lucene.document.ColumnBatch;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoublePoint;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.LongColumn;
 import org.apache.lucene.document.LongPoint;
-import org.apache.lucene.document.LongTupleCursor;
-import org.apache.lucene.document.LongValuesCursor;
-import org.apache.lucene.document.NumericBinaryColumn;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
@@ -42,6 +33,15 @@ import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
+import org.apache.lucene.document.column.BinaryColumn;
+import org.apache.lucene.document.column.BinaryTupleCursor;
+import org.apache.lucene.document.column.BinaryValuesCursor;
+import org.apache.lucene.document.column.Column;
+import org.apache.lucene.document.column.ColumnBatch;
+import org.apache.lucene.document.column.LongColumn;
+import org.apache.lucene.document.column.LongTupleCursor;
+import org.apache.lucene.document.column.LongValuesCursor;
+import org.apache.lucene.document.column.NumericBinaryColumn;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
@@ -2618,7 +2618,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         boolean exhausted;
 
         @Override
-        public BytesRef nextBytes() {
+        public BytesRef nextValues() {
           if (exhausted) return null;
           exhausted = true;
           return ref;

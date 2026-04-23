@@ -14,25 +14,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.document;
+package org.apache.lucene.document.column;
 
-import org.apache.lucene.util.LongsRef;
+import org.apache.lucene.util.BytesRef;
 
 /**
- * A values cursor over a dense {@link LongColumn}. Each call to {@link #nextLongs()} returns the
- * next chunk of values for consecutive batch-local doc-ids starting at 0, until exhausted. Across
- * all calls, exactly {@code numDocs} values must be produced.
+ * A values cursor over a dense {@link NumericBinaryColumn}. Each call to {@link #nextValues()}
+ * returns the next chunk of packed bytes; the length of each returned {@link BytesRef} must be a
+ * multiple of the column's {@link NumericBinaryColumn#fixedSize()}. Across all calls, exactly
+ * {@code numDocs} values (chunks of length {@code fixedSize} each) must be produced.
  *
  * @lucene.experimental
  */
-public abstract class LongValuesCursor {
+public abstract class BinaryValuesCursor {
 
   /** Sole constructor. */
-  protected LongValuesCursor() {}
+  protected BinaryValuesCursor() {}
 
   /**
-   * Returns the next chunk of long values, or {@code null} when the cursor is exhausted. The
-   * returned {@link LongsRef} is only valid until the next call to {@code nextLongs()}.
+   * Returns the next chunk of packed bytes, or {@code null} when the cursor is exhausted. The
+   * returned {@link BytesRef} is only valid until the next call to {@code nextBytes()}.
    */
-  public abstract LongsRef nextLongs();
+  public abstract BytesRef nextValues();
 }

@@ -18,7 +18,6 @@ package org.apache.lucene.util.packed;
 
 import static org.apache.lucene.util.packed.PackedInts.checkBlockSize;
 
-import java.lang.invoke.VarHandle;
 import java.nio.ByteOrder;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
@@ -287,33 +286,55 @@ public class PackedLongValues extends LongValues implements Accountable {
             "length must be a multiple of byteWidth=" + byteWidth + ": length=" + length);
       }
       final boolean isLong = byteWidth == Long.BYTES;
-      final VarHandle vh;
-      if (isLong) {
-        vh = byteOrder == ByteOrder.LITTLE_ENDIAN ? BitUtil.VH_LE_LONG : BitUtil.VH_BE_LONG;
-      } else {
-        vh = byteOrder == ByteOrder.LITTLE_ENDIAN ? BitUtil.VH_LE_INT : BitUtil.VH_BE_INT;
-      }
+      final boolean isLE = byteOrder == ByteOrder.LITTLE_ENDIAN;
       int remaining = length / byteWidth;
       int srcOff = offset;
       while (remaining > 0) {
         packIfFull();
         int toCopy = Math.min(remaining, pending.length - pendingOff);
         if (isLong) {
-          for (int i = 0; i < toCopy; i++) {
-            pending[pendingOff + i] = (long) vh.get(bytes, srcOff);
-            srcOff += Long.BYTES;
+          if (isLE) {
+            copyLongsLE(bytes, srcOff, pending, pendingOff, toCopy);
+          } else {
+            copyLongsBE(bytes, srcOff, pending, pendingOff, toCopy);
           }
         } else {
-          for (int i = 0; i < toCopy; i++) {
-            pending[pendingOff + i] = (int) vh.get(bytes, srcOff);
-            srcOff += Integer.BYTES;
+          if (isLE) {
+            copyIntsLE(bytes, srcOff, pending, pendingOff, toCopy);
+          } else {
+            copyIntsBE(bytes, srcOff, pending, pendingOff, toCopy);
           }
         }
+        srcOff += toCopy * byteWidth;
         pendingOff += toCopy;
         remaining -= toCopy;
         size += toCopy;
       }
       return this;
+    }
+
+    private static void copyLongsLE(byte[] bytes, int srcOff, long[] dest, int destOff, int count) {
+      for (int i = 0; i < count; i++) {
+        dest[destOff + i] = (long) BitUtil.VH_LE_LONG.get(bytes, srcOff + i * Long.BYTES);
+      }
+    }
+
+    private static void copyLongsBE(byte[] bytes, int srcOff, long[] dest, int destOff, int count) {
+      for (int i = 0; i < count; i++) {
+        dest[destOff + i] = (long) BitUtil.VH_BE_LONG.get(bytes, srcOff + i * Long.BYTES);
+      }
+    }
+
+    private static void copyIntsLE(byte[] bytes, int srcOff, long[] dest, int destOff, int count) {
+      for (int i = 0; i < count; i++) {
+        dest[destOff + i] = (int) BitUtil.VH_LE_INT.get(bytes, srcOff + i * Integer.BYTES);
+      }
+    }
+
+    private static void copyIntsBE(byte[] bytes, int srcOff, long[] dest, int destOff, int count) {
+      for (int i = 0; i < count; i++) {
+        dest[destOff + i] = (int) BitUtil.VH_BE_INT.get(bytes, srcOff + i * Integer.BYTES);
+      }
     }
 
     private void packIfFull() {
