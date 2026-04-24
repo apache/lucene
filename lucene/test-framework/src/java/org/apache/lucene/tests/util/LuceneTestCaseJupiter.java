@@ -46,6 +46,20 @@ import org.junit.platform.commons.support.HierarchyTraversalMode;
 import org.junit.platform.commons.support.ModifierSupport;
 import org.junit.platform.commons.support.ReflectionSupport;
 
+/*
+TODOs.
+
+- pick a smaller module and move (some?) of the tests to jupiter. Ensure both frameworks can coexist (jupiter and
+vintage engine running both).
+- add tests of the LuceneTestCaseJupiter infrastructure (if what was previously implemented
+as rules in LuceneTestCase still provides the same functionality). Nested classes should be perhaps
+excluded from discovery entirely (unless they're really needed/loaded?).
+- resign from using GlobalStateSupport and move it to this class itself?
+- add a check ensuring junit jupiter runs in single-thread mode (unfortunately this can't be
+changed, at least for now).
+- add all remaining class and test rules from LuceneTestCase; this is now the minimum subset.
+ */
+
 /// Base class for all Lucene unit tests (JUnit5/ Jupiter variant).
 ///
 /// ## Class and instance setup
