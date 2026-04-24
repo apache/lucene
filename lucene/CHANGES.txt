@@ -123,8 +123,6 @@ Improvements
 
 * GITHUB#15453: Avoid unnecessary sorting and instantiations in readMapOfStrings. (Benjamin Lerer)
 
-* GITHUB#15574: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
-
 * GITHUB#15225: Improve package documentation for org.apache.lucene.util. (Syed Mohammad Saad)
 
 * GITHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
@@ -270,6 +268,9 @@ API Changes
 * GITHUB#15803: Add ReaderUtil#partitionByLeaf to partition doc IDs from
   ScoreDoc hits by leaf reader. (Zihan Xu)
 
+* GITHUB#15584: Add support for termdoc fields that use custom term freqs (via IndexOptions.DOCS_AND_CUSTOM_FREQS).
+  IndexWriter counts their terms rather than summing their freqs.  Use
+
 New Features
 ---------------------
 
@@ -307,6 +308,8 @@ Improvements
   deprecated. (Kaival Parikh)
 
 * GITHUB#15976: Store DocValuesSkipper data in their own file. (Alan Woodward)
+
+* GITHUB#15574: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
 
 Optimizations
 ---------------------
