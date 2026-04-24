@@ -188,7 +188,7 @@ Build
 * GITHUB#15926: Support jdk.CPUTimeSample event (Java 25+, JEP 509) in ProfileResults.
   CPU-time profiling produces more accurate profiles by sampling CPU instructions instead
   of wall-clock time. When CPUTimeSample events are present, they are preferred over legacy
-  ExecutionSample events to avoid double-counting. (Prithvi)
+  ExecutionSample events to avoid double-counting. (Prithvi S)
 
 * GITHUB#15327: New low-level build options to detect abuse of LuceneTestCase.random():
   tests.random.maxacquires and tests.random.maxcalls (Robert Muir, Dawid Weiss)
