@@ -396,11 +396,8 @@ Other
 
 * GITHUB#15891: Add the ability to pass DataAccessHints in Lucene104ScalarQuantizedVectorsReader (Navneet Verma)
 
-<<<<<<< HEAD
-=======
 * GITHUB#15951: Fix WindowsFS onClose race condition (Szymon Bialkowski)
 
->>>>>>> upstream/main
 * GITHUB#15960: Move parent field from DWPT to IndexingChain. (Tim Brooks)
 
 ======================= Lucene 10.4.0 =======================
