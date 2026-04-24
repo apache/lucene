@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -48,13 +47,11 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.document.column.BinaryColumn;
 import org.apache.lucene.document.column.BinaryTupleCursor;
-import org.apache.lucene.document.column.BinaryValuesCursor;
 import org.apache.lucene.document.column.Column;
 import org.apache.lucene.document.column.ColumnBatch;
 import org.apache.lucene.document.column.LongColumn;
 import org.apache.lucene.document.column.LongTupleCursor;
 import org.apache.lucene.document.column.LongValuesCursor;
-import org.apache.lucene.document.column.NumericBinaryColumn;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -64,7 +61,6 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.ByteBlockPool;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash.MaxBytesLengthExceededException;
@@ -723,9 +719,7 @@ final class IndexingChain implements Accountable {
                 + " or have index options");
       }
 
-      if (column instanceof NumericBinaryColumn nbc) {
-        validateNumericBinaryColumn(nbc, fieldType);
-      } else if (column instanceof BinaryColumn bc) {
+      if (column instanceof BinaryColumn bc) {
         validatePlainBinaryColumn(bc, fieldType);
       } else if (column instanceof LongColumn lc) {
         validateLongColumn(lc, fieldType);
@@ -767,9 +761,7 @@ final class IndexingChain implements Accountable {
       PerField pf = getOrAddPerField(column.name());
 
       if (column instanceof LongColumn longCol) {
-        processLongColumn(baseDocID, numDocs, longCol, pf, fieldType.docValuesType());
-      } else if (column instanceof NumericBinaryColumn nbc) {
-        processNumericBinaryColumn(baseDocID, numDocs, nbc, pf, fieldType);
+        processLongColumn(baseDocID, numDocs, longCol, pf, fieldType);
       } else if (column instanceof BinaryColumn binaryCol) {
         processBinaryColumn(baseDocID, numDocs, binaryCol, pf, fieldType);
       } else {
@@ -779,12 +771,31 @@ final class IndexingChain implements Accountable {
   }
 
   private static void validateLongColumn(LongColumn column, IndexableFieldType fieldType) {
-    if (fieldType.pointDimensionCount() != 0) {
-      throw new IllegalArgumentException(
-          "LongColumn \""
-              + column.name()
-              + "\" cannot index points; use a NumericBinaryColumn with a matching fixedSize"
-              + " instead");
+    final int pointDims = fieldType.pointDimensionCount();
+    if (pointDims != 0) {
+      if (pointDims != 1) {
+        throw new IllegalArgumentException(
+            "LongColumn \""
+                + column.name()
+                + "\" only supports 1-dimensional point fields, got pointDimensionCount="
+                + pointDims);
+      }
+      final int expectedPointBytes =
+          (column.numericKind() == LongColumn.NumericKind.INT
+                  || column.numericKind() == LongColumn.NumericKind.FLOAT)
+              ? Integer.BYTES
+              : Long.BYTES;
+      if (fieldType.pointNumBytes() != expectedPointBytes) {
+        throw new IllegalArgumentException(
+            "LongColumn \""
+                + column.name()
+                + "\" numericKind="
+                + column.numericKind()
+                + " requires pointNumBytes="
+                + expectedPointBytes
+                + ", got "
+                + fieldType.pointNumBytes());
+      }
     }
     if (fieldType.stored()) {
       final StoredValue.Type storedType = column.storedType();
@@ -816,7 +827,7 @@ final class IndexingChain implements Accountable {
               + column.name()
               + "\" cannot feed docValuesType="
               + dvType
-              + "; use a NumericBinaryColumn");
+              + "; use a LongColumn");
     }
     if (fieldType.stored()) {
       final StoredValue.Type storedType = column.storedType();
@@ -830,103 +841,10 @@ final class IndexingChain implements Accountable {
                     + column.name()
                     + "\" storedType="
                     + storedType
-                    + " requires a NumericBinaryColumn of matching fixedSize");
+                    + " is not supported; use a LongColumn for numeric stored data");
         case DATA_INPUT ->
             throw new IllegalArgumentException(
                 "BinaryColumn \""
-                    + column.name()
-                    + "\" storedType DATA_INPUT is not supported for columns");
-      }
-    }
-  }
-
-  private static void validateNumericBinaryColumn(
-      NumericBinaryColumn column, IndexableFieldType fieldType) {
-    final int fixedSize = column.fixedSize();
-    final NumericBinaryColumn.NumericKind kind = column.numericKind();
-    final int expectedWidth =
-        (kind == NumericBinaryColumn.NumericKind.INT
-                || kind == NumericBinaryColumn.NumericKind.FLOAT)
-            ? Integer.BYTES
-            : Long.BYTES;
-    if (fixedSize != expectedWidth) {
-      throw new IllegalArgumentException(
-          "NumericBinaryColumn \""
-              + column.name()
-              + "\" numericKind="
-              + kind
-              + " requires fixedSize="
-              + expectedWidth
-              + ", got "
-              + fixedSize);
-    }
-
-    final int pointDims = fieldType.pointDimensionCount();
-    final DocValuesType dvType = fieldType.docValuesType();
-    final boolean hasPoints = pointDims != 0;
-    final boolean hasNumericDV =
-        dvType == DocValuesType.NUMERIC || dvType == DocValuesType.SORTED_NUMERIC;
-
-    if (dvType != DocValuesType.NONE && !hasNumericDV) {
-      throw new IllegalArgumentException(
-          "NumericBinaryColumn \""
-              + column.name()
-              + "\" supports only NUMERIC / SORTED_NUMERIC docValuesType, got "
-              + dvType);
-    }
-
-    if (hasPoints) {
-      if (hasNumericDV && pointDims != 1) {
-        throw new IllegalArgumentException(
-            "NumericBinaryColumn \""
-                + column.name()
-                + "\" with both points and numeric doc values requires a 1-dimensional point"
-                + " field, got pointDimensionCount="
-                + pointDims);
-      }
-      final int pointBytes = fieldType.pointNumBytes();
-      if (pointBytes != fixedSize) {
-        throw new IllegalArgumentException(
-            "NumericBinaryColumn \""
-                + column.name()
-                + "\" has fixedSize="
-                + fixedSize
-                + " but pointNumBytes="
-                + pointBytes);
-      }
-    }
-
-    if (fieldType.stored()) {
-      final StoredValue.Type storedType = column.storedType();
-      switch (storedType) {
-        case INTEGER, FLOAT -> {
-          if (fixedSize != Integer.BYTES) {
-            throw new IllegalArgumentException(
-                "NumericBinaryColumn \""
-                    + column.name()
-                    + "\" with storedType="
-                    + storedType
-                    + " requires fixedSize=4, got "
-                    + fixedSize);
-          }
-        }
-        case LONG, DOUBLE -> {
-          if (fixedSize != Long.BYTES) {
-            throw new IllegalArgumentException(
-                "NumericBinaryColumn \""
-                    + column.name()
-                    + "\" with storedType="
-                    + storedType
-                    + " requires fixedSize=8, got "
-                    + fixedSize);
-          }
-        }
-        case BINARY, STRING -> {
-          // No width constraint.
-        }
-        case DATA_INPUT ->
-            throw new IllegalArgumentException(
-                "NumericBinaryColumn \""
                     + column.name()
                     + "\" storedType DATA_INPUT is not supported for columns");
       }
@@ -1129,7 +1047,6 @@ final class IndexingChain implements Accountable {
     private final BinaryTupleCursor cursor;
     private final StoredValue reusableStoredValue;
     private final StoredValue.Type storedType;
-    private final ByteOrder byteOrder;
     private final boolean tokenized;
     private final boolean indexed;
 
@@ -1138,11 +1055,6 @@ final class IndexingChain implements Accountable {
       this.cursor = column.tuples();
       this.tokenized = column.fieldType().tokenized();
       this.indexed = column.fieldType().indexOptions() != IndexOptions.NONE;
-      if (column instanceof NumericBinaryColumn nbc) {
-        this.byteOrder = nbc.byteOrder();
-      } else {
-        this.byteOrder = ByteOrder.LITTLE_ENDIAN;
-      }
       if (column.fieldType().stored()) {
         this.storedType = column.storedType();
         this.reusableStoredValue = newReusableStoredValue(storedType);
@@ -1154,13 +1066,10 @@ final class IndexingChain implements Accountable {
 
     private static StoredValue newReusableStoredValue(StoredValue.Type type) {
       return switch (type) {
-        case INTEGER -> new StoredValue(0);
-        case LONG -> new StoredValue(0L);
-        case FLOAT -> new StoredValue(0.0f);
-        case DOUBLE -> new StoredValue(0.0);
         case STRING -> new StoredValue("");
         case BINARY -> new StoredValue(new BytesRef());
-        case DATA_INPUT -> throw new AssertionError("DATA_INPUT rejected by validation");
+        case INTEGER, LONG, FLOAT, DOUBLE, DATA_INPUT ->
+            throw new AssertionError("rejected by validatePlainBinaryColumn");
       };
     }
 
@@ -1191,14 +1100,6 @@ final class IndexingChain implements Accountable {
       }
       BytesRef value = cursor.binaryValue();
       switch (storedType) {
-        case INTEGER -> reusableStoredValue.setIntValue(decodeInt(name(), value, byteOrder));
-        case LONG -> reusableStoredValue.setLongValue(decodeLongValue(name(), value, byteOrder));
-        case FLOAT ->
-            reusableStoredValue.setFloatValue(
-                Float.intBitsToFloat(decodeInt(name(), value, byteOrder)));
-        case DOUBLE ->
-            reusableStoredValue.setDoubleValue(
-                Double.longBitsToDouble(decodeLongValue(name(), value, byteOrder)));
         case STRING ->
             reusableStoredValue.setStringValue(
                 new String(
@@ -1207,7 +1108,8 @@ final class IndexingChain implements Accountable {
                     value.length,
                     java.nio.charset.StandardCharsets.UTF_8));
         case BINARY -> reusableStoredValue.setBinaryValue(value);
-        case DATA_INPUT -> throw new AssertionError();
+        case INTEGER, LONG, FLOAT, DOUBLE, DATA_INPUT ->
+            throw new AssertionError("rejected by validatePlainBinaryColumn");
       }
       return reusableStoredValue;
     }
@@ -1229,34 +1131,6 @@ final class IndexingChain implements Accountable {
     }
   }
 
-  private static int decodeInt(String fieldName, BytesRef value, ByteOrder byteOrder) {
-    if (value.length != Integer.BYTES) {
-      throw new IllegalArgumentException(
-          "BinaryColumn \""
-              + fieldName
-              + "\" value length "
-              + value.length
-              + " does not match fixedSize=4");
-    }
-    return (int)
-        (byteOrder == ByteOrder.LITTLE_ENDIAN ? BitUtil.VH_LE_INT : BitUtil.VH_BE_INT)
-            .get(value.bytes, value.offset);
-  }
-
-  private static long decodeLongValue(String fieldName, BytesRef value, ByteOrder byteOrder) {
-    if (value.length != Long.BYTES) {
-      throw new IllegalArgumentException(
-          "BinaryColumn \""
-              + fieldName
-              + "\" value length "
-              + value.length
-              + " does not match fixedSize=8");
-    }
-    return (long)
-        (byteOrder == ByteOrder.LITTLE_ENDIAN ? BitUtil.VH_LE_LONG : BitUtil.VH_BE_LONG)
-            .get(value.bytes, value.offset);
-  }
-
   private void validateColumnSchema(String fieldName, PerField pf, IndexableFieldType fieldType)
       throws IOException {
     updateDocFieldSchema(fieldName, pf.schema, fieldType);
@@ -1269,34 +1143,107 @@ final class IndexingChain implements Accountable {
   }
 
   private void processLongColumn(
-      int baseDocID, int numDocs, LongColumn column, PerField pf, DocValuesType dvType) {
-    if (column.density() == Column.Density.DENSE) {
-      processDenseLongColumn(baseDocID, numDocs, column, column.values(), pf, dvType);
+      int baseDocID, int numDocs, LongColumn column, PerField pf, IndexableFieldType fieldType)
+      throws IOException {
+    final DocValuesType dvType = fieldType.docValuesType();
+    final boolean hasPoints = fieldType.pointDimensionCount() != 0;
+
+    // DV-only path (no points): the bulk dense path remains available.
+    if (hasPoints == false) {
+      if (column.density() == Column.Density.DENSE) {
+        processDenseLongColumn(baseDocID, numDocs, column, column.values(), pf, dvType);
+        return;
+      }
+      LongTupleCursor cursor = column.tuples();
+      switch (dvType) {
+        case NUMERIC -> {
+          NumericDocValuesWriter writer = (NumericDocValuesWriter) pf.docValuesWriter;
+          int batchDocID;
+          while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+            checkDocID(column, batchDocID, numDocs);
+            writer.addValue(baseDocID + batchDocID, cursor.longValue());
+          }
+        }
+        case SORTED_NUMERIC -> {
+          SortedNumericDocValuesWriter writer = (SortedNumericDocValuesWriter) pf.docValuesWriter;
+          int batchDocID;
+          while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+            checkDocID(column, batchDocID, numDocs);
+            writer.addValue(baseDocID + batchDocID, cursor.longValue());
+          }
+        }
+        // $CASES-OMITTED$
+        default ->
+            throw new IllegalArgumentException(
+                "LongColumn \"" + column.name() + "\" has incompatible docValuesType: " + dvType);
+      }
       return;
     }
 
-    LongTupleCursor cursor = column.tuples();
+    // Points (+ optional numeric DV). Always uses the tuple cursor.
+    final LongColumn.NumericKind kind = column.numericKind();
+    final int byteWidth =
+        (kind == LongColumn.NumericKind.INT || kind == LongColumn.NumericKind.FLOAT)
+            ? Integer.BYTES
+            : Long.BYTES;
+    final byte[] pointScratch = new byte[byteWidth];
+    final BytesRef pointBytesRef = new BytesRef(pointScratch);
+    final PointValuesWriter pointWriter = pf.pointValuesWriter;
+    final LongTupleCursor cursor = column.tuples();
+
     switch (dvType) {
-      case NUMERIC -> {
-        NumericDocValuesWriter writer = (NumericDocValuesWriter) pf.docValuesWriter;
+      case NONE -> {
         int batchDocID;
         while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           checkDocID(column, batchDocID, numDocs);
-          writer.addValue(baseDocID + batchDocID, cursor.longValue());
+          encodeSortablePointBytes(cursor.longValue(), kind, pointScratch);
+          pointWriter.addPackedValue(baseDocID + batchDocID, pointBytesRef);
+        }
+      }
+      case NUMERIC -> {
+        NumericDocValuesWriter dvWriter = (NumericDocValuesWriter) pf.docValuesWriter;
+        int batchDocID;
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          checkDocID(column, batchDocID, numDocs);
+          int segDocID = baseDocID + batchDocID;
+          long raw = cursor.longValue();
+          dvWriter.addValue(segDocID, raw);
+          encodeSortablePointBytes(raw, kind, pointScratch);
+          pointWriter.addPackedValue(segDocID, pointBytesRef);
         }
       }
       case SORTED_NUMERIC -> {
-        SortedNumericDocValuesWriter writer = (SortedNumericDocValuesWriter) pf.docValuesWriter;
+        SortedNumericDocValuesWriter dvWriter = (SortedNumericDocValuesWriter) pf.docValuesWriter;
         int batchDocID;
         while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           checkDocID(column, batchDocID, numDocs);
-          writer.addValue(baseDocID + batchDocID, cursor.longValue());
+          int segDocID = baseDocID + batchDocID;
+          long raw = cursor.longValue();
+          dvWriter.addValue(segDocID, raw);
+          encodeSortablePointBytes(raw, kind, pointScratch);
+          pointWriter.addPackedValue(segDocID, pointBytesRef);
         }
       }
       // $CASES-OMITTED$
       default ->
           throw new IllegalArgumentException(
               "LongColumn \"" + column.name() + "\" has incompatible docValuesType: " + dvType);
+    }
+  }
+
+  private static void encodeSortablePointBytes(
+      long raw, LongColumn.NumericKind kind, byte[] scratch) {
+    switch (kind) {
+      case INT -> NumericUtils.intToSortableBytes((int) raw, scratch, 0);
+      case LONG -> NumericUtils.longToSortableBytes(raw, scratch, 0);
+      case FLOAT -> {
+        int sortable = NumericUtils.sortableFloatBits((int) raw);
+        NumericUtils.intToSortableBytes(sortable, scratch, 0);
+      }
+      case DOUBLE -> {
+        long sortable = NumericUtils.sortableDoubleBits(raw);
+        NumericUtils.longToSortableBytes(sortable, scratch, 0);
+      }
     }
   }
 
@@ -1414,215 +1361,6 @@ final class IndexingChain implements Accountable {
           throw new IllegalArgumentException(
               "BinaryColumn \"" + column.name() + "\" has incompatible docValuesType: " + dvType);
     }
-  }
-
-  private void processNumericBinaryColumn(
-      int baseDocID,
-      int numDocs,
-      NumericBinaryColumn column,
-      PerField pf,
-      IndexableFieldType fieldType)
-      throws IOException {
-    final DocValuesType dvType = fieldType.docValuesType();
-    final boolean hasPoints = fieldType.pointDimensionCount() != 0;
-    final int byteWidth = column.fixedSize();
-    final ByteOrder byteOrder = column.byteOrder();
-    final NumericBinaryColumn.NumericKind kind = column.numericKind();
-
-    // DV only: use the bulk path when the column declares itself DENSE.
-    if (hasPoints == false) {
-      if (column.density() == Column.Density.DENSE) {
-        processDenseNumericBinaryColumn(
-            baseDocID, numDocs, column, column.values(), pf, byteWidth, byteOrder, dvType);
-        return;
-      }
-      processSparseNumericBinaryDVOnly(
-          baseDocID, numDocs, column, pf, byteWidth, byteOrder, dvType);
-      return;
-    }
-
-    // Points (+ optional numeric DV). Always sparse.
-    final byte[] pointScratch = new byte[byteWidth];
-    final BytesRef pointBytesRef = new BytesRef(pointScratch);
-    final PointValuesWriter pointWriter = pf.pointValuesWriter;
-    final BinaryTupleCursor cursor = column.tuples();
-
-    if (dvType == DocValuesType.NONE) {
-      int batchDocID;
-      while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-        checkDocID(column, batchDocID, numDocs);
-        long raw = decodeLong(column, cursor.binaryValue(), byteWidth, byteOrder);
-        encodeSortablePointBytes(raw, kind, pointScratch);
-        pointWriter.addPackedValue(baseDocID + batchDocID, pointBytesRef);
-      }
-      return;
-    }
-
-    switch (dvType) {
-      case NUMERIC -> {
-        NumericDocValuesWriter dvWriter = (NumericDocValuesWriter) pf.docValuesWriter;
-        int batchDocID;
-        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          checkDocID(column, batchDocID, numDocs);
-          int segDocID = baseDocID + batchDocID;
-          long raw = decodeLong(column, cursor.binaryValue(), byteWidth, byteOrder);
-          dvWriter.addValue(segDocID, raw);
-          encodeSortablePointBytes(raw, kind, pointScratch);
-          pointWriter.addPackedValue(segDocID, pointBytesRef);
-        }
-      }
-      case SORTED_NUMERIC -> {
-        SortedNumericDocValuesWriter dvWriter = (SortedNumericDocValuesWriter) pf.docValuesWriter;
-        int batchDocID;
-        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          checkDocID(column, batchDocID, numDocs);
-          int segDocID = baseDocID + batchDocID;
-          long raw = decodeLong(column, cursor.binaryValue(), byteWidth, byteOrder);
-          dvWriter.addValue(segDocID, raw);
-          encodeSortablePointBytes(raw, kind, pointScratch);
-          pointWriter.addPackedValue(segDocID, pointBytesRef);
-        }
-      }
-      // $CASES-OMITTED$
-      default -> throw new AssertionError("dvType=" + dvType);
-    }
-  }
-
-  private void processSparseNumericBinaryDVOnly(
-      int baseDocID,
-      int numDocs,
-      NumericBinaryColumn column,
-      PerField pf,
-      int byteWidth,
-      ByteOrder byteOrder,
-      DocValuesType dvType) {
-    BinaryTupleCursor cursor = column.tuples();
-    switch (dvType) {
-      case NUMERIC -> {
-        NumericDocValuesWriter writer = (NumericDocValuesWriter) pf.docValuesWriter;
-        int batchDocID;
-        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          checkDocID(column, batchDocID, numDocs);
-          writer.addValue(
-              baseDocID + batchDocID,
-              decodeLong(column, cursor.binaryValue(), byteWidth, byteOrder));
-        }
-      }
-      case SORTED_NUMERIC -> {
-        SortedNumericDocValuesWriter writer = (SortedNumericDocValuesWriter) pf.docValuesWriter;
-        int batchDocID;
-        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          checkDocID(column, batchDocID, numDocs);
-          writer.addValue(
-              baseDocID + batchDocID,
-              decodeLong(column, cursor.binaryValue(), byteWidth, byteOrder));
-        }
-      }
-      // $CASES-OMITTED$
-      default ->
-          throw new IllegalArgumentException(
-              "NumericBinaryColumn \""
-                  + column.name()
-                  + "\" has incompatible docValuesType: "
-                  + dvType);
-    }
-  }
-
-  private void processDenseNumericBinaryColumn(
-      int baseDocID,
-      int numDocs,
-      NumericBinaryColumn column,
-      BinaryValuesCursor cursor,
-      PerField pf,
-      int byteWidth,
-      ByteOrder byteOrder,
-      DocValuesType dvType) {
-    int consumed;
-    switch (dvType) {
-      case NUMERIC -> {
-        NumericDocValuesWriter writer = (NumericDocValuesWriter) pf.docValuesWriter;
-        int docID = baseDocID;
-        BytesRef values;
-        while ((values = cursor.nextValues()) != null) {
-          checkChunkAlignment(column, values.length, byteWidth);
-          int chunkDocs = values.length / byteWidth;
-          checkDenseBounds(column, docID - baseDocID, chunkDocs, numDocs);
-          writer.addDenseValues(docID, byteOrder, byteWidth, values);
-          docID += chunkDocs;
-        }
-        consumed = docID - baseDocID;
-      }
-      case SORTED_NUMERIC -> {
-        SortedNumericDocValuesWriter writer = (SortedNumericDocValuesWriter) pf.docValuesWriter;
-        int docID = baseDocID;
-        BytesRef values;
-        while ((values = cursor.nextValues()) != null) {
-          checkChunkAlignment(column, values.length, byteWidth);
-          int chunkDocs = values.length / byteWidth;
-          checkDenseBounds(column, docID - baseDocID, chunkDocs, numDocs);
-          writer.addDenseValues(docID, byteOrder, byteWidth, values);
-          docID += chunkDocs;
-        }
-        consumed = docID - baseDocID;
-      }
-      // $CASES-OMITTED$
-      default ->
-          throw new IllegalArgumentException(
-              "NumericBinaryColumn \""
-                  + column.name()
-                  + "\" has incompatible docValuesType: "
-                  + dvType);
-    }
-    checkDenseCount(column, consumed, numDocs);
-  }
-
-  private static void encodeSortablePointBytes(
-      long raw, NumericBinaryColumn.NumericKind kind, byte[] scratch) {
-    switch (kind) {
-      case INT -> NumericUtils.intToSortableBytes((int) raw, scratch, 0);
-      case LONG -> NumericUtils.longToSortableBytes(raw, scratch, 0);
-      case FLOAT -> {
-        int sortable = NumericUtils.sortableFloatBits((int) raw);
-        NumericUtils.intToSortableBytes(sortable, scratch, 0);
-      }
-      case DOUBLE -> {
-        long sortable = NumericUtils.sortableDoubleBits(raw);
-        NumericUtils.longToSortableBytes(sortable, scratch, 0);
-      }
-    }
-  }
-
-  private static void checkChunkAlignment(NumericBinaryColumn column, int length, int byteWidth) {
-    if ((length % byteWidth) != 0) {
-      throw new IllegalArgumentException(
-          "NumericBinaryColumn \""
-              + column.name()
-              + "\" dense chunk length "
-              + length
-              + " is not a multiple of fixedSize="
-              + byteWidth);
-    }
-  }
-
-  private static long decodeLong(
-      NumericBinaryColumn column, BytesRef value, int byteWidth, ByteOrder byteOrder) {
-    if (value.length != byteWidth) {
-      throw new IllegalArgumentException(
-          "NumericBinaryColumn \""
-              + column.name()
-              + "\" value length "
-              + value.length
-              + " does not match fixedSize="
-              + byteWidth);
-    }
-    if (byteWidth == Long.BYTES) {
-      return (long)
-          (byteOrder == ByteOrder.LITTLE_ENDIAN ? BitUtil.VH_LE_LONG : BitUtil.VH_BE_LONG)
-              .get(value.bytes, value.offset);
-    }
-    return (int)
-        (byteOrder == ByteOrder.LITTLE_ENDIAN ? BitUtil.VH_LE_INT : BitUtil.VH_BE_INT)
-            .get(value.bytes, value.offset);
   }
 
   private static void checkDocID(Column column, int batchDocID, int numDocs) {

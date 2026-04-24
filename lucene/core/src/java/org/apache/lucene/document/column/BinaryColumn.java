@@ -24,11 +24,12 @@ import org.apache.lucene.index.IndexableFieldType;
  * org.apache.lucene.index.DocValuesType#BINARY BINARY}, {@link
  * org.apache.lucene.index.DocValuesType#SORTED SORTED}, and {@link
  * org.apache.lucene.index.DocValuesType#SORTED_SET SORTED_SET} doc values, and for stored/indexed
- * binary or text fields.
+ * binary or text fields. Values fed to points are passed through unchanged, so callers are
+ * responsible for producing sort-encoded bytes of the correct total length.
  *
  * <p>Numeric doc values ({@link org.apache.lucene.index.DocValuesType#NUMERIC NUMERIC} / {@link
- * org.apache.lucene.index.DocValuesType#SORTED_NUMERIC SORTED_NUMERIC}) and points require {@link
- * NumericBinaryColumn} instead, which adds fixed-size, byte order, and a numeric kind.
+ * org.apache.lucene.index.DocValuesType#SORTED_NUMERIC SORTED_NUMERIC}) and 1-D numeric points
+ * (int / long / float / double) are fed by {@link LongColumn} instead.
  *
  * @lucene.experimental
  */
@@ -41,9 +42,8 @@ public abstract class BinaryColumn extends Column {
 
   /**
    * The {@link StoredValue.Type} to emit when this column is written to stored fields. The default
-   * is {@link StoredValue.Type#BINARY}. On a plain {@link BinaryColumn}, only {@link
-   * StoredValue.Type#BINARY} and {@link StoredValue.Type#STRING} are supported; numeric stored
-   * types require {@link NumericBinaryColumn}.
+   * is {@link StoredValue.Type#BINARY}. Only {@link StoredValue.Type#BINARY} and {@link
+   * StoredValue.Type#STRING} are supported; numeric stored types require {@link LongColumn}.
    */
   public StoredValue.Type storedType() {
     return StoredValue.Type.BINARY;

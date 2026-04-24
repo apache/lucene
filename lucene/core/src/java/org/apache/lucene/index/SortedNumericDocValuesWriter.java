@@ -19,7 +19,6 @@ package org.apache.lucene.index;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.nio.ByteOrder;
 import java.util.Arrays;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
@@ -27,7 +26,6 @@ import org.apache.lucene.document.column.LongValuesCursor;
 import org.apache.lucene.index.NumericDocValuesWriter.BufferedNumericDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.packed.PackedInts;
@@ -94,37 +92,6 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
 
     // Set currentDoc to last written doc so ordering is maintained.
     // currentUpto stays 0 — nothing buffered.
-    currentDoc = firstDocID + numValues - 1;
-
-    updateBytesUsed();
-  }
-
-  public void addDenseValues(int firstDocID, ByteOrder byteOrder, int byteWidth, BytesRef values) {
-    if (byteWidth != Integer.BYTES && byteWidth != Long.BYTES) {
-      throw new IllegalArgumentException("byteWidth must be 4 or 8: byteWidth=" + byteWidth);
-    }
-    if ((values.length % byteWidth) != 0) {
-      throw new IllegalArgumentException(
-          "BytesRef length must be a multiple of byteWidth="
-              + byteWidth
-              + ": length="
-              + values.length);
-    }
-    assert firstDocID > currentDoc;
-    finishCurrentDoc();
-
-    int numValues = values.length / byteWidth;
-
-    pending.add(byteOrder, byteWidth, values.bytes, values.offset, values.length);
-
-    if (pendingCounts != null) {
-      for (int i = 0; i < numValues; i++) {
-        pendingCounts.add(1);
-      }
-    }
-
-    docsWithField.addRange(firstDocID, firstDocID + numValues);
-
     currentDoc = firstDocID + numValues - 1;
 
     updateBytesUsed();

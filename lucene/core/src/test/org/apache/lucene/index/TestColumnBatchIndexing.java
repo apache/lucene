@@ -17,7 +17,6 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
-import java.nio.ByteOrder;
 import java.util.List;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
@@ -35,13 +34,11 @@ import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.document.column.BinaryColumn;
 import org.apache.lucene.document.column.BinaryTupleCursor;
-import org.apache.lucene.document.column.BinaryValuesCursor;
 import org.apache.lucene.document.column.Column;
 import org.apache.lucene.document.column.ColumnBatch;
 import org.apache.lucene.document.column.LongColumn;
 import org.apache.lucene.document.column.LongTupleCursor;
 import org.apache.lucene.document.column.LongValuesCursor;
-import org.apache.lucene.document.column.NumericBinaryColumn;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
@@ -281,21 +278,15 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
 
     int[] raw = {10, 20, 30};
     int[] docIds = {0, 1, 2};
-    BytesRef[] values = new BytesRef[raw.length];
+    long[] values = new long[raw.length];
     for (int i = 0; i < raw.length; i++) {
-      values[i] = new BytesRef(intsToBytes(new int[] {raw[i]}, ByteOrder.LITTLE_ENDIAN));
+      values[i] = raw[i];
     }
     w.addBatch(
         simpleBatch(
             3,
-            new ArrayNumericBinaryColumn(
-                "point",
-                pointType,
-                Integer.BYTES,
-                ByteOrder.LITTLE_ENDIAN,
-                NumericBinaryColumn.NumericKind.INT,
-                docIds,
-                values)));
+            new ArrayLongColumn(
+                "point", pointType, LongColumn.NumericKind.INT, docIds, values)));
 
     DirectoryReader r = DirectoryReader.open(w);
     IndexSearcher searcher = new IndexSearcher(r);
@@ -322,21 +313,15 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
 
     int[] raw = {10, 20, 30};
     int[] docIds = {0, 1, 2};
-    BytesRef[] values = new BytesRef[raw.length];
+    long[] values = new long[raw.length];
     for (int i = 0; i < raw.length; i++) {
-      values[i] = new BytesRef(intsToBytes(new int[] {raw[i]}, ByteOrder.LITTLE_ENDIAN));
+      values[i] = raw[i];
     }
     w.addBatch(
         simpleBatch(
             3,
-            new ArrayNumericBinaryColumn(
-                "field",
-                pointAndDvType,
-                Integer.BYTES,
-                ByteOrder.LITTLE_ENDIAN,
-                NumericBinaryColumn.NumericKind.INT,
-                docIds,
-                values)));
+            new ArrayLongColumn(
+                "field", pointAndDvType, LongColumn.NumericKind.INT, docIds, values)));
 
     DirectoryReader r = DirectoryReader.open(w);
     IndexSearcher searcher = new IndexSearcher(r);
@@ -366,18 +351,12 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
 
     // Only doc 1 out of 3 has a point value
     int[] docIds = {1};
-    BytesRef[] values = {new BytesRef(intsToBytes(new int[] {42}, ByteOrder.LITTLE_ENDIAN))};
+    long[] values = {42};
     w.addBatch(
         simpleBatch(
             3,
-            new ArrayNumericBinaryColumn(
-                "point",
-                pointType,
-                Integer.BYTES,
-                ByteOrder.LITTLE_ENDIAN,
-                NumericBinaryColumn.NumericKind.INT,
-                docIds,
-                values)));
+            new ArrayLongColumn(
+                "point", pointType, LongColumn.NumericKind.INT, docIds, values)));
 
     DirectoryReader r = DirectoryReader.open(w);
     IndexSearcher searcher = new IndexSearcher(r);
@@ -544,22 +523,15 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
 
     int[] raw = {10, 20, 30};
     int[] docIds = {0, 1, 2};
-    BytesRef[] values = new BytesRef[raw.length];
+    long[] values = new long[raw.length];
     for (int i = 0; i < raw.length; i++) {
-      values[i] = new BytesRef(intsToBytes(new int[] {raw[i]}, ByteOrder.LITTLE_ENDIAN));
+      values[i] = raw[i];
     }
     w.addBatch(
         simpleBatch(
             3,
-            new ArrayNumericBinaryColumn(
-                "pt",
-                storedPointType,
-                Integer.BYTES,
-                ByteOrder.LITTLE_ENDIAN,
-                NumericBinaryColumn.NumericKind.INT,
-                StoredValue.Type.INTEGER,
-                docIds,
-                values)));
+            new ArrayLongColumn(
+                "pt", storedPointType, LongColumn.NumericKind.INT, docIds, values)));
 
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
@@ -834,47 +806,31 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  public void testStoredIndexedWithDocValuesAndPoints() throws IOException {
+  public void testStoredWithDocValuesAndPoints() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
 
-    // stored + indexed(DOCS, omitNorms) + SORTED_NUMERIC DV + 4-byte points
+    // stored + SORTED_NUMERIC DV + 4-byte points
     FieldType allType = new FieldType();
     allType.setStored(true);
-    allType.setIndexOptions(IndexOptions.DOCS);
-    allType.setOmitNorms(true);
-    allType.setTokenized(false);
     allType.setDocValuesType(DocValuesType.SORTED_NUMERIC);
     allType.setDimensions(1, Integer.BYTES);
     allType.freeze();
 
     int[] raw = {10, 20, 30};
     int[] docIds = {0, 1, 2};
-    BytesRef[] values = new BytesRef[raw.length];
+    long[] values = new long[raw.length];
     for (int i = 0; i < raw.length; i++) {
-      values[i] = new BytesRef(intsToBytes(new int[] {raw[i]}, ByteOrder.LITTLE_ENDIAN));
+      values[i] = raw[i];
     }
     w.addBatch(
         simpleBatch(
             3,
-            new ArrayNumericBinaryColumn(
-                "field",
-                allType,
-                Integer.BYTES,
-                ByteOrder.LITTLE_ENDIAN,
-                NumericBinaryColumn.NumericKind.INT,
-                StoredValue.Type.INTEGER,
-                docIds,
-                values)));
+            new ArrayLongColumn(
+                "field", allType, LongColumn.NumericKind.INT, docIds, values)));
 
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
-    IndexSearcher searcher = new IndexSearcher(r);
-
-    // Verify inverted index (terms over raw LE bytes).
-    for (int i = 0; i < raw.length; i++) {
-      assertEquals(1, searcher.count(new TermQuery(new Term("field", values[i]))));
-    }
 
     // Verify stored fields — decoded as ints.
     StoredFields storedFields = leaf.storedFields();
@@ -1047,183 +1003,24 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  public void testDenseBinaryNumericDocValues() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    long[] values = {100, 200, 300};
-    byte[] bytes = longsToBytes(values, ByteOrder.LITTLE_ENDIAN);
-    w.addBatch(
-        simpleBatch(
-            3,
-            new ArrayDenseBinaryColumn(
-                "val", NumericDocValuesField.TYPE, ByteOrder.LITTLE_ENDIAN, bytes)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-
-    NumericDocValues dv = leaf.getNumericDocValues("val");
-    for (int i = 0; i < 3; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(values[i], dv.longValue());
-    }
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testDenseBinarySortedNumericDocValues() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    long[] values = {10, 20, 30, 40, 50};
-    byte[] bytes = longsToBytes(values, ByteOrder.BIG_ENDIAN);
-    w.addBatch(
-        simpleBatch(
-            5,
-            new ArrayDenseBinaryColumn(
-                "val", SortedNumericDocValuesField.TYPE, ByteOrder.BIG_ENDIAN, bytes)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-
-    SortedNumericDocValues dv = leaf.getSortedNumericDocValues("val");
-    for (int i = 0; i < 5; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(1, dv.docValueCount());
-      assertEquals(values[i], dv.nextValue());
-    }
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testDenseBinaryColumnTooManyValuesThrows() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // 5 values but batch only has 3 documents
-    long[] values = {10, 20, 30, 40, 50};
-    byte[] bytes = longsToBytes(values, ByteOrder.LITTLE_ENDIAN);
-    expectThrows(
-        IllegalArgumentException.class,
-        () ->
-            w.addBatch(
-                simpleBatch(
-                    3,
-                    new ArrayDenseBinaryColumn(
-                        "val", NumericDocValuesField.TYPE, ByteOrder.LITTLE_ENDIAN, bytes))));
-
-    // Writer should still be usable
-    w.addBatch(
-        simpleBatch(
-            1,
-            new ArrayDenseBinaryColumn(
-                "val2",
-                NumericDocValuesField.TYPE,
-                ByteOrder.LITTLE_ENDIAN,
-                longsToBytes(new long[] {42}, ByteOrder.LITTLE_ENDIAN))));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    NumericDocValues dv = leaf.getNumericDocValues("val2");
-    assertNotNull(dv);
-    int doc = dv.nextDoc();
-    assertTrue(doc != DocIdSetIterator.NO_MORE_DOCS);
-    assertEquals(42, dv.longValue());
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testDenseBinaryColumnCountMismatchThrows() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // 2 values but batch expects 3 documents
-    long[] values = {10, 20};
-    byte[] bytes = longsToBytes(values, ByteOrder.LITTLE_ENDIAN);
-    expectThrows(
-        IllegalArgumentException.class,
-        () ->
-            w.addBatch(
-                simpleBatch(
-                    3,
-                    new ArrayDenseBinaryColumn(
-                        "val", NumericDocValuesField.TYPE, ByteOrder.LITTLE_ENDIAN, bytes))));
-
-    // Writer should still be usable
-    w.addBatch(
-        simpleBatch(
-            1,
-            new ArrayDenseBinaryColumn(
-                "val2",
-                NumericDocValuesField.TYPE,
-                ByteOrder.LITTLE_ENDIAN,
-                longsToBytes(new long[] {42}, ByteOrder.LITTLE_ENDIAN))));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    NumericDocValues dv = leaf.getNumericDocValues("val2");
-    assertNotNull(dv);
-    int doc = dv.nextDoc();
-    assertTrue(doc != DocIdSetIterator.NO_MORE_DOCS);
-    assertEquals(42, dv.longValue());
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testBinaryColumn4ByteDenseNumericDocValues() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    int[] values = {1, -2, 3, Integer.MIN_VALUE, Integer.MAX_VALUE};
-    byte[] bytes = intsToBytes(values, ByteOrder.LITTLE_ENDIAN);
-    w.addBatch(
-        simpleBatch(
-            5,
-            new ArrayDenseBinaryColumn(
-                "val", NumericDocValuesField.TYPE, ByteOrder.LITTLE_ENDIAN, Integer.BYTES, bytes)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    NumericDocValues dv = leaf.getNumericDocValues("val");
-    for (int i = 0; i < values.length; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(values[i], dv.longValue()); // sign-extended
-    }
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testBinaryColumn4ByteSparseNumericDocValues() throws IOException {
+  public void testIntSparseNumericDocValues() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
 
     // Sparse: only docs 0 and 2 have values.
     int[] docIds = {0, 2};
     int[] raw = {-7, 9};
-    BytesRef[] values = new BytesRef[raw.length];
+    long[] values = new long[raw.length];
     for (int i = 0; i < raw.length; i++) {
-      byte[] b = intsToBytes(new int[] {raw[i]}, ByteOrder.BIG_ENDIAN);
-      values[i] = new BytesRef(b, 0, b.length);
+      values[i] = raw[i];
     }
     w.addBatch(
         simpleBatch(
             3,
-            new ArrayNumericBinaryColumn(
+            new ArrayLongColumn(
                 "val",
                 NumericDocValuesField.TYPE,
-                Integer.BYTES,
-                ByteOrder.BIG_ENDIAN,
-                NumericBinaryColumn.NumericKind.INT,
+                LongColumn.NumericKind.INT,
                 docIds,
                 values)));
 
@@ -1241,31 +1038,27 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  public void testBinaryColumnPointFixedSizeMismatchThrows() throws IOException {
+  public void testLongColumnPointWidthMismatchThrows() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
 
     FieldType pointType = new FieldType();
-    pointType.setDimensions(1, Integer.BYTES); // expects fixedSize=4
+    pointType.setDimensions(1, Integer.BYTES); // expects 4 bytes
     pointType.freeze();
 
-    // BinaryColumn with fixedSize=8 should fail point validation.
+    // LONG kind implies 8-byte point bytes; should fail validation against a 4-byte point type.
     expectThrows(
         IllegalArgumentException.class,
         () ->
             w.addBatch(
                 simpleBatch(
                     1,
-                    new ArrayNumericBinaryColumn(
+                    new ArrayLongColumn(
                         "pt",
                         pointType,
-                        Long.BYTES,
-                        ByteOrder.LITTLE_ENDIAN,
-                        NumericBinaryColumn.NumericKind.LONG,
+                        LongColumn.NumericKind.LONG,
                         new int[] {0},
-                        new BytesRef[] {
-                          new BytesRef(longsToBytes(new long[] {1}, ByteOrder.LITTLE_ENDIAN))
-                        }))));
+                        new long[] {1}))));
 
     w.close();
     dir.close();
@@ -1292,12 +1085,12 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  public void testLongColumnPointsThrows() throws IOException {
+  public void testLongColumnMultiDimPointsThrows() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
 
     FieldType pointType = new FieldType();
-    pointType.setDimensions(1, Long.BYTES);
+    pointType.setDimensions(2, Long.BYTES);
     pointType.freeze();
 
     expectThrows(
@@ -1344,7 +1137,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  public void testStoredTypeIntegerFromBinaryColumn() throws IOException {
+  public void testStoredTypeIntegerFromLongColumn() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
 
@@ -1353,23 +1146,15 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     type.freeze();
 
     int[] raw = {1, -2, 3};
-    BytesRef[] values = new BytesRef[raw.length];
+    long[] values = new long[raw.length];
     for (int i = 0; i < raw.length; i++) {
-      byte[] b = intsToBytes(new int[] {raw[i]}, ByteOrder.LITTLE_ENDIAN);
-      values[i] = new BytesRef(b, 0, b.length);
+      values[i] = raw[i];
     }
     w.addBatch(
         simpleBatch(
             3,
-            new ArrayNumericBinaryColumn(
-                "val",
-                type,
-                Integer.BYTES,
-                ByteOrder.LITTLE_ENDIAN,
-                NumericBinaryColumn.NumericKind.INT,
-                StoredValue.Type.INTEGER,
-                new int[] {0, 1, 2},
-                values)));
+            new ArrayLongColumn(
+                "val", type, LongColumn.NumericKind.INT, new int[] {0, 1, 2}, values)));
 
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
@@ -1383,7 +1168,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  public void testStoredTypeLongFromBinaryColumn() throws IOException {
+  public void testStoredTypeLongFromLongColumn() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
 
@@ -1392,23 +1177,9 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     type.freeze();
 
     long[] raw = {Long.MIN_VALUE, 0L, Long.MAX_VALUE};
-    BytesRef[] values = new BytesRef[raw.length];
-    for (int i = 0; i < raw.length; i++) {
-      byte[] b = longsToBytes(new long[] {raw[i]}, ByteOrder.BIG_ENDIAN);
-      values[i] = new BytesRef(b, 0, b.length);
-    }
     w.addBatch(
         simpleBatch(
-            3,
-            new ArrayNumericBinaryColumn(
-                "val",
-                type,
-                Long.BYTES,
-                ByteOrder.BIG_ENDIAN,
-                NumericBinaryColumn.NumericKind.LONG,
-                StoredValue.Type.LONG,
-                new int[] {0, 1, 2},
-                values)));
+            3, new ArrayLongColumn("val", type, new int[] {0, 1, 2}, raw.clone())));
 
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
@@ -1422,7 +1193,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  public void testStoredTypeFloatFromBinaryColumn() throws IOException {
+  public void testStoredTypeFloatFromLongColumn() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
 
@@ -1431,23 +1202,15 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     type.freeze();
 
     float[] raw = {1.5f, -2.25f, Float.MAX_VALUE};
-    BytesRef[] values = new BytesRef[raw.length];
+    long[] values = new long[raw.length];
     for (int i = 0; i < raw.length; i++) {
-      byte[] b = intsToBytes(new int[] {Float.floatToRawIntBits(raw[i])}, ByteOrder.LITTLE_ENDIAN);
-      values[i] = new BytesRef(b, 0, b.length);
+      values[i] = Float.floatToRawIntBits(raw[i]);
     }
     w.addBatch(
         simpleBatch(
             3,
-            new ArrayNumericBinaryColumn(
-                "val",
-                type,
-                Integer.BYTES,
-                ByteOrder.LITTLE_ENDIAN,
-                NumericBinaryColumn.NumericKind.FLOAT,
-                StoredValue.Type.FLOAT,
-                new int[] {0, 1, 2},
-                values)));
+            new ArrayLongColumn(
+                "val", type, LongColumn.NumericKind.FLOAT, new int[] {0, 1, 2}, values)));
 
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
@@ -1462,7 +1225,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  public void testStoredTypeDoubleFromBinaryColumn() throws IOException {
+  public void testStoredTypeDoubleFromLongColumn() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
 
@@ -1471,24 +1234,15 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     type.freeze();
 
     double[] raw = {1.5d, -2.25d, Double.MAX_VALUE};
-    BytesRef[] values = new BytesRef[raw.length];
+    long[] values = new long[raw.length];
     for (int i = 0; i < raw.length; i++) {
-      byte[] b =
-          longsToBytes(new long[] {Double.doubleToRawLongBits(raw[i])}, ByteOrder.BIG_ENDIAN);
-      values[i] = new BytesRef(b, 0, b.length);
+      values[i] = Double.doubleToRawLongBits(raw[i]);
     }
     w.addBatch(
         simpleBatch(
             3,
-            new ArrayNumericBinaryColumn(
-                "val",
-                type,
-                Long.BYTES,
-                ByteOrder.BIG_ENDIAN,
-                NumericBinaryColumn.NumericKind.DOUBLE,
-                StoredValue.Type.DOUBLE,
-                new int[] {0, 1, 2},
-                values)));
+            new ArrayLongColumn(
+                "val", type, LongColumn.NumericKind.DOUBLE, new int[] {0, 1, 2}, values)));
 
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
@@ -1534,39 +1288,28 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  public void testStoredTypeFloatWithNumericDVAndIndexed() throws IOException {
-    // storedType=FLOAT on a BinaryColumn that also feeds NumericDV and inverted index.
+  public void testStoredTypeFloatWithNumericDV() throws IOException {
+    // FLOAT kind on a LongColumn that also feeds NumericDV.
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
 
     FieldType type = new FieldType();
     type.setStored(true);
     type.setDocValuesType(DocValuesType.NUMERIC);
-    type.setIndexOptions(IndexOptions.DOCS);
-    type.setOmitNorms(true);
-    type.setTokenized(false);
     type.freeze();
 
     float[] raw = {1.5f, -2.25f, 42.0f};
     int[] rawBits = new int[raw.length];
-    BytesRef[] values = new BytesRef[raw.length];
+    long[] values = new long[raw.length];
     for (int i = 0; i < raw.length; i++) {
       rawBits[i] = Float.floatToRawIntBits(raw[i]);
-      byte[] b = intsToBytes(new int[] {rawBits[i]}, ByteOrder.LITTLE_ENDIAN);
-      values[i] = new BytesRef(b, 0, b.length);
+      values[i] = rawBits[i];
     }
     w.addBatch(
         simpleBatch(
             3,
-            new ArrayNumericBinaryColumn(
-                "val",
-                type,
-                Integer.BYTES,
-                ByteOrder.LITTLE_ENDIAN,
-                NumericBinaryColumn.NumericKind.FLOAT,
-                StoredValue.Type.FLOAT,
-                new int[] {0, 1, 2},
-                values)));
+            new ArrayLongColumn(
+                "val", type, LongColumn.NumericKind.FLOAT, new int[] {0, 1, 2}, values)));
 
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
@@ -1586,68 +1329,6 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     }
 
     r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testStoredTypeIntegerBadFixedSizeThrows() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType type = new FieldType();
-    type.setStored(true);
-    type.freeze();
-
-    // INTEGER stored type requires fixedSize=4, but column has fixedSize=8.
-    expectThrows(
-        IllegalArgumentException.class,
-        () ->
-            w.addBatch(
-                simpleBatch(
-                    1,
-                    new ArrayNumericBinaryColumn(
-                        "val",
-                        type,
-                        Long.BYTES,
-                        ByteOrder.LITTLE_ENDIAN,
-                        NumericBinaryColumn.NumericKind.LONG,
-                        StoredValue.Type.INTEGER,
-                        new int[] {0},
-                        new BytesRef[] {
-                          new BytesRef(longsToBytes(new long[] {1}, ByteOrder.LITTLE_ENDIAN))
-                        }))));
-
-    w.close();
-    dir.close();
-  }
-
-  public void testStoredTypeDoubleBadFixedSizeThrows() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType type = new FieldType();
-    type.setStored(true);
-    type.freeze();
-
-    // DOUBLE stored type requires fixedSize=8, but column has fixedSize=4.
-    expectThrows(
-        IllegalArgumentException.class,
-        () ->
-            w.addBatch(
-                simpleBatch(
-                    1,
-                    new ArrayNumericBinaryColumn(
-                        "val",
-                        type,
-                        Integer.BYTES,
-                        ByteOrder.LITTLE_ENDIAN,
-                        NumericBinaryColumn.NumericKind.INT,
-                        StoredValue.Type.DOUBLE,
-                        new int[] {0},
-                        new BytesRef[] {
-                          new BytesRef(intsToBytes(new int[] {1}, ByteOrder.LITTLE_ENDIAN))
-                        }))));
-
     w.close();
     dir.close();
   }
@@ -1769,108 +1450,83 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
   }
 
   public void testNumericKindIntPointsAndDV() throws IOException {
-    for (ByteOrder order : new ByteOrder[] {ByteOrder.LITTLE_ENDIAN, ByteOrder.BIG_ENDIAN}) {
-      Directory dir = newDirectory();
-      IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
 
-      FieldType type = new FieldType();
-      type.setDimensions(1, Integer.BYTES);
-      type.setDocValuesType(DocValuesType.SORTED_NUMERIC);
-      type.freeze();
+    FieldType type = new FieldType();
+    type.setDimensions(1, Integer.BYTES);
+    type.setDocValuesType(DocValuesType.SORTED_NUMERIC);
+    type.freeze();
 
-      int[] raw = {-5, -1, 0, 7, Integer.MAX_VALUE};
-      BytesRef[] values = new BytesRef[raw.length];
-      int[] docIds = new int[raw.length];
-      for (int i = 0; i < raw.length; i++) {
-        docIds[i] = i;
-        byte[] b = intsToBytes(new int[] {raw[i]}, order);
-        values[i] = new BytesRef(b, 0, b.length);
-      }
-      w.addBatch(
-          simpleBatch(
-              raw.length,
-              new ArrayNumericBinaryColumn(
-                  "val",
-                  type,
-                  Integer.BYTES,
-                  order,
-                  NumericBinaryColumn.NumericKind.INT,
-                  docIds,
-                  values)));
-
-      DirectoryReader r = DirectoryReader.open(w);
-      LeafReader leaf = getOnlyLeafReader(r);
-
-      SortedNumericDocValues dv = leaf.getSortedNumericDocValues("val");
-      for (int i = 0; i < raw.length; i++) {
-        assertEquals(i, dv.nextDoc());
-        assertEquals(1, dv.docValueCount());
-        assertEquals(raw[i], dv.nextValue());
-      }
-
-      IndexSearcher searcher = new IndexSearcher(r);
-      assertEquals(
-          raw.length,
-          searcher.count(IntPoint.newRangeQuery("val", Integer.MIN_VALUE, Integer.MAX_VALUE)));
-      assertEquals(1, searcher.count(IntPoint.newExactQuery("val", -5)));
-      assertEquals(3, searcher.count(IntPoint.newRangeQuery("val", -1, 7)));
-
-      r.close();
-      w.close();
-      dir.close();
+    int[] raw = {-5, -1, 0, 7, Integer.MAX_VALUE};
+    long[] values = new long[raw.length];
+    int[] docIds = new int[raw.length];
+    for (int i = 0; i < raw.length; i++) {
+      docIds[i] = i;
+      values[i] = raw[i];
     }
+    w.addBatch(
+        simpleBatch(
+            raw.length,
+            new ArrayLongColumn("val", type, LongColumn.NumericKind.INT, docIds, values)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+
+    SortedNumericDocValues dv = leaf.getSortedNumericDocValues("val");
+    for (int i = 0; i < raw.length; i++) {
+      assertEquals(i, dv.nextDoc());
+      assertEquals(1, dv.docValueCount());
+      assertEquals(raw[i], dv.nextValue());
+    }
+
+    IndexSearcher searcher = new IndexSearcher(r);
+    assertEquals(
+        raw.length,
+        searcher.count(IntPoint.newRangeQuery("val", Integer.MIN_VALUE, Integer.MAX_VALUE)));
+    assertEquals(1, searcher.count(IntPoint.newExactQuery("val", -5)));
+    assertEquals(3, searcher.count(IntPoint.newRangeQuery("val", -1, 7)));
+
+    r.close();
+    w.close();
+    dir.close();
   }
 
   public void testNumericKindLongPointsAndDV() throws IOException {
-    for (ByteOrder order : new ByteOrder[] {ByteOrder.LITTLE_ENDIAN, ByteOrder.BIG_ENDIAN}) {
-      Directory dir = newDirectory();
-      IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
 
-      FieldType type = new FieldType();
-      type.setDimensions(1, Long.BYTES);
-      type.setDocValuesType(DocValuesType.SORTED_NUMERIC);
-      type.freeze();
+    FieldType type = new FieldType();
+    type.setDimensions(1, Long.BYTES);
+    type.setDocValuesType(DocValuesType.SORTED_NUMERIC);
+    type.freeze();
 
-      long[] raw = {Long.MIN_VALUE, -100L, 0L, 42L, Long.MAX_VALUE};
-      BytesRef[] values = new BytesRef[raw.length];
-      int[] docIds = new int[raw.length];
-      for (int i = 0; i < raw.length; i++) {
-        docIds[i] = i;
-        byte[] b = longsToBytes(new long[] {raw[i]}, order);
-        values[i] = new BytesRef(b, 0, b.length);
-      }
-      w.addBatch(
-          simpleBatch(
-              raw.length,
-              new ArrayNumericBinaryColumn(
-                  "val",
-                  type,
-                  Long.BYTES,
-                  order,
-                  NumericBinaryColumn.NumericKind.LONG,
-                  docIds,
-                  values)));
-
-      DirectoryReader r = DirectoryReader.open(w);
-      LeafReader leaf = getOnlyLeafReader(r);
-
-      SortedNumericDocValues dv = leaf.getSortedNumericDocValues("val");
-      for (int i = 0; i < raw.length; i++) {
-        assertEquals(i, dv.nextDoc());
-        assertEquals(raw[i], dv.nextValue());
-      }
-
-      IndexSearcher searcher = new IndexSearcher(r);
-      assertEquals(
-          raw.length,
-          searcher.count(LongPoint.newRangeQuery("val", Long.MIN_VALUE, Long.MAX_VALUE)));
-      assertEquals(1, searcher.count(LongPoint.newExactQuery("val", Long.MIN_VALUE)));
-      assertEquals(3, searcher.count(LongPoint.newRangeQuery("val", -100L, 42L)));
-
-      r.close();
-      w.close();
-      dir.close();
+    long[] raw = {Long.MIN_VALUE, -100L, 0L, 42L, Long.MAX_VALUE};
+    int[] docIds = new int[raw.length];
+    for (int i = 0; i < raw.length; i++) {
+      docIds[i] = i;
     }
+    w.addBatch(simpleBatch(raw.length, new ArrayLongColumn("val", type, docIds, raw.clone())));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+
+    SortedNumericDocValues dv = leaf.getSortedNumericDocValues("val");
+    for (int i = 0; i < raw.length; i++) {
+      assertEquals(i, dv.nextDoc());
+      assertEquals(raw[i], dv.nextValue());
+    }
+
+    IndexSearcher searcher = new IndexSearcher(r);
+    assertEquals(
+        raw.length,
+        searcher.count(LongPoint.newRangeQuery("val", Long.MIN_VALUE, Long.MAX_VALUE)));
+    assertEquals(1, searcher.count(LongPoint.newExactQuery("val", Long.MIN_VALUE)));
+    assertEquals(3, searcher.count(LongPoint.newRangeQuery("val", -100L, 42L)));
+
+    r.close();
+    w.close();
+    dir.close();
   }
 
   public void testNumericKindFloatPointsAndDV() throws IOException {
@@ -1883,26 +1539,16 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     type.freeze();
 
     float[] raw = {Float.NEGATIVE_INFINITY, -1.5f, 0.0f, 2.25f, Float.POSITIVE_INFINITY};
-    int[] rawBits = new int[raw.length];
-    BytesRef[] values = new BytesRef[raw.length];
+    long[] values = new long[raw.length];
     int[] docIds = new int[raw.length];
     for (int i = 0; i < raw.length; i++) {
       docIds[i] = i;
-      rawBits[i] = Float.floatToRawIntBits(raw[i]);
-      byte[] b = intsToBytes(new int[] {rawBits[i]}, ByteOrder.LITTLE_ENDIAN);
-      values[i] = new BytesRef(b, 0, b.length);
+      values[i] = Float.floatToRawIntBits(raw[i]);
     }
     w.addBatch(
         simpleBatch(
             raw.length,
-            new ArrayNumericBinaryColumn(
-                "val",
-                type,
-                Float.BYTES,
-                ByteOrder.LITTLE_ENDIAN,
-                NumericBinaryColumn.NumericKind.FLOAT,
-                docIds,
-                values)));
+            new ArrayLongColumn("val", type, LongColumn.NumericKind.FLOAT, docIds, values)));
 
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
@@ -1938,25 +1584,16 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     type.freeze();
 
     double[] raw = {Double.NEGATIVE_INFINITY, -1.5d, 0.0d, 2.25d, Double.POSITIVE_INFINITY};
-    BytesRef[] values = new BytesRef[raw.length];
+    long[] values = new long[raw.length];
     int[] docIds = new int[raw.length];
     for (int i = 0; i < raw.length; i++) {
       docIds[i] = i;
-      long bits = Double.doubleToRawLongBits(raw[i]);
-      byte[] b = longsToBytes(new long[] {bits}, ByteOrder.BIG_ENDIAN);
-      values[i] = new BytesRef(b, 0, b.length);
+      values[i] = Double.doubleToRawLongBits(raw[i]);
     }
     w.addBatch(
         simpleBatch(
             raw.length,
-            new ArrayNumericBinaryColumn(
-                "val",
-                type,
-                Double.BYTES,
-                ByteOrder.BIG_ENDIAN,
-                NumericBinaryColumn.NumericKind.DOUBLE,
-                docIds,
-                values)));
+            new ArrayLongColumn("val", type, LongColumn.NumericKind.DOUBLE, docIds, values)));
 
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
@@ -1996,16 +1633,12 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
             w.addBatch(
                 simpleBatch(
                     1,
-                    new ArrayNumericBinaryColumn(
+                    new ArrayLongColumn(
                         "val",
                         type,
-                        8,
-                        ByteOrder.LITTLE_ENDIAN,
-                        NumericBinaryColumn.NumericKind.LONG,
+                        LongColumn.NumericKind.LONG,
                         new int[] {0},
-                        new BytesRef[] {
-                          new BytesRef(longsToBytes(new long[] {1L}, ByteOrder.LITTLE_ENDIAN))
-                        }))));
+                        new long[] {1L}))));
 
     w.close();
     dir.close();
@@ -2015,7 +1648,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
 
-    // FLOAT kind with fixedSize=8 should throw.
+    // FLOAT kind requires a 4-byte point field; declaring Long.BYTES should throw.
     FieldType type = new FieldType();
     type.setDimensions(1, Long.BYTES);
     type.setDocValuesType(DocValuesType.SORTED_NUMERIC);
@@ -2027,23 +1660,21 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
             w.addBatch(
                 simpleBatch(
                     1,
-                    new ArrayNumericBinaryColumn(
+                    new ArrayLongColumn(
                         "val",
                         type,
-                        Long.BYTES,
-                        ByteOrder.LITTLE_ENDIAN,
-                        NumericBinaryColumn.NumericKind.FLOAT,
+                        LongColumn.NumericKind.FLOAT,
                         new int[] {0},
-                        new BytesRef[] {
-                          new BytesRef(longsToBytes(new long[] {1L}, ByteOrder.LITTLE_ENDIAN))
-                        }))));
+                        new long[] {1L}))));
 
     w.close();
     dir.close();
   }
 
-  public void testNumericKindDVOnlyIgnoresKind() throws IOException {
-    // Scenario 2: DV only. numericKind is ignored; bytes round-trip as raw IEEE bits via byteOrder.
+  public void testNumericKindDVOnlyKeepsRawLongBits() throws IOException {
+    // DV only (no points): LongColumn stores the raw long value unchanged regardless of
+    // numericKind. For FLOAT bits stored in the low 32 bits, DV reads back those exact bits
+    // sign-extended to long.
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
 
@@ -2052,32 +1683,22 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     type.freeze();
 
     float[] raw = {1.5f, -2.25f, Float.MAX_VALUE};
-    BytesRef[] values = new BytesRef[raw.length];
+    long[] values = new long[raw.length];
     int[] docIds = new int[raw.length];
     for (int i = 0; i < raw.length; i++) {
       docIds[i] = i;
-      byte[] b = intsToBytes(new int[] {Float.floatToRawIntBits(raw[i])}, ByteOrder.LITTLE_ENDIAN);
-      values[i] = new BytesRef(b, 0, b.length);
+      values[i] = Float.floatToRawIntBits(raw[i]);
     }
     w.addBatch(
         simpleBatch(
             raw.length,
-            // Declared FLOAT kind but with only DV (no points) — kind should be ignored.
-            new ArrayNumericBinaryColumn(
-                "val",
-                type,
-                Float.BYTES,
-                ByteOrder.LITTLE_ENDIAN,
-                NumericBinaryColumn.NumericKind.FLOAT,
-                docIds,
-                values)));
+            new ArrayLongColumn("val", type, LongColumn.NumericKind.FLOAT, docIds, values)));
 
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
     NumericDocValues dv = leaf.getNumericDocValues("val");
     for (int i = 0; i < raw.length; i++) {
       assertEquals(i, dv.nextDoc());
-      // DV stores raw IEEE bits sign-extended from the 4-byte decode.
       assertEquals(Float.floatToRawIntBits(raw[i]), dv.longValue());
     }
 
@@ -2314,30 +1935,6 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  private static byte[] intsToBytes(int[] values, ByteOrder byteOrder) {
-    byte[] bytes = new byte[values.length * Integer.BYTES];
-    java.lang.invoke.VarHandle vh =
-        byteOrder == ByteOrder.LITTLE_ENDIAN
-            ? org.apache.lucene.util.BitUtil.VH_LE_INT
-            : org.apache.lucene.util.BitUtil.VH_BE_INT;
-    for (int i = 0; i < values.length; i++) {
-      vh.set(bytes, i * Integer.BYTES, values[i]);
-    }
-    return bytes;
-  }
-
-  private static byte[] longsToBytes(long[] values, ByteOrder byteOrder) {
-    byte[] bytes = new byte[values.length * Long.BYTES];
-    java.lang.invoke.VarHandle vh =
-        byteOrder == ByteOrder.LITTLE_ENDIAN
-            ? org.apache.lucene.util.BitUtil.VH_LE_LONG
-            : org.apache.lucene.util.BitUtil.VH_BE_LONG;
-    for (int i = 0; i < values.length; i++) {
-      vh.set(bytes, i * Long.BYTES, values[i]);
-    }
-    return bytes;
-  }
-
   // --- Test Column implementations backed by arrays ---
 
   private static ColumnBatch simpleBatch(int numDocs, Column... columns) {
@@ -2360,6 +1957,18 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
 
     ArrayLongColumn(String name, IndexableFieldType fieldType, int[] docIds, long[] values) {
       super(name, fieldType, Density.SPARSE);
+      assert docIds.length == values.length;
+      this.docIds = docIds;
+      this.values = values;
+    }
+
+    ArrayLongColumn(
+        String name,
+        IndexableFieldType fieldType,
+        NumericKind numericKind,
+        int[] docIds,
+        long[] values) {
+      super(name, fieldType, Density.SPARSE, numericKind);
       assert docIds.length == values.length;
       this.docIds = docIds;
       this.values = values;
@@ -2404,83 +2013,6 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
       this.docIds = docIds;
       this.values = values;
       this.storedType = storedType;
-    }
-
-    @Override
-    public StoredValue.Type storedType() {
-      return storedType;
-    }
-
-    @Override
-    public BinaryTupleCursor tuples() {
-      return new BinaryTupleCursor() {
-        int pos = -1;
-
-        @Override
-        public int nextDoc() {
-          pos++;
-          return pos < docIds.length ? docIds[pos] : DocIdSetIterator.NO_MORE_DOCS;
-        }
-
-        @Override
-        public BytesRef binaryValue() {
-          return values[pos];
-        }
-      };
-    }
-  }
-
-  private static class ArrayNumericBinaryColumn extends NumericBinaryColumn {
-    private final int fixedSize;
-    private final ByteOrder byteOrder;
-    private final NumericKind kind;
-    private final StoredValue.Type storedType;
-    private final int[] docIds;
-    private final BytesRef[] values;
-
-    ArrayNumericBinaryColumn(
-        String name,
-        IndexableFieldType fieldType,
-        int fixedSize,
-        ByteOrder byteOrder,
-        NumericKind kind,
-        int[] docIds,
-        BytesRef[] values) {
-      this(name, fieldType, fixedSize, byteOrder, kind, StoredValue.Type.BINARY, docIds, values);
-    }
-
-    ArrayNumericBinaryColumn(
-        String name,
-        IndexableFieldType fieldType,
-        int fixedSize,
-        ByteOrder byteOrder,
-        NumericKind kind,
-        StoredValue.Type storedType,
-        int[] docIds,
-        BytesRef[] values) {
-      super(name, fieldType, Density.SPARSE);
-      assert docIds.length == values.length;
-      this.fixedSize = fixedSize;
-      this.byteOrder = byteOrder;
-      this.kind = kind;
-      this.storedType = storedType;
-      this.docIds = docIds;
-      this.values = values;
-    }
-
-    @Override
-    public int fixedSize() {
-      return fixedSize;
-    }
-
-    @Override
-    public ByteOrder byteOrder() {
-      return byteOrder;
-    }
-
-    @Override
-    public NumericKind numericKind() {
-      return kind;
     }
 
     @Override
@@ -2566,79 +2098,4 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     }
   }
 
-  private static class ArrayDenseBinaryColumn extends NumericBinaryColumn {
-    private final int byteWidth;
-    private final ByteOrder byteOrder;
-    private final byte[] bytes;
-
-    ArrayDenseBinaryColumn(
-        String name, IndexableFieldType fieldType, ByteOrder byteOrder, byte[] bytes) {
-      this(name, fieldType, byteOrder, Long.BYTES, bytes);
-    }
-
-    ArrayDenseBinaryColumn(
-        String name,
-        IndexableFieldType fieldType,
-        ByteOrder byteOrder,
-        int byteWidth,
-        byte[] bytes) {
-      super(name, fieldType, Density.DENSE);
-      this.byteOrder = byteOrder;
-      this.byteWidth = byteWidth;
-      this.bytes = bytes;
-    }
-
-    @Override
-    public int fixedSize() {
-      return byteWidth;
-    }
-
-    @Override
-    public ByteOrder byteOrder() {
-      return byteOrder;
-    }
-
-    @Override
-    public NumericKind numericKind() {
-      return byteWidth == Integer.BYTES ? NumericKind.INT : NumericKind.LONG;
-    }
-
-    @Override
-    public BinaryTupleCursor tuples() {
-      return new BinaryTupleCursor() {
-        final BytesRef scratch = new BytesRef();
-        int pos = -1;
-        final int numDocs = bytes.length / byteWidth;
-
-        @Override
-        public int nextDoc() {
-          pos++;
-          return pos < numDocs ? pos : DocIdSetIterator.NO_MORE_DOCS;
-        }
-
-        @Override
-        public BytesRef binaryValue() {
-          scratch.bytes = bytes;
-          scratch.offset = pos * byteWidth;
-          scratch.length = byteWidth;
-          return scratch;
-        }
-      };
-    }
-
-    @Override
-    public BinaryValuesCursor values() {
-      return new BinaryValuesCursor() {
-        final BytesRef ref = new BytesRef(bytes, 0, bytes.length);
-        boolean exhausted;
-
-        @Override
-        public BytesRef nextValues() {
-          if (exhausted) return null;
-          exhausted = true;
-          return ref;
-        }
-      };
-    }
-  }
 }
