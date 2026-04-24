@@ -43,20 +43,6 @@ public final class GlobalStateSupport
   private final ExtensionContext.Namespace NS =
       ExtensionContext.Namespace.create(getClass().getName());
 
-  private static final class State {
-    private LuceneTestCaseParent.TestFrameworkInfra frameworkInfra;
-
-    void reset() {
-      frameworkInfra = null;
-    }
-
-    void initialize() {
-      if (frameworkInfra != null) {
-        throw new RuntimeException();
-      }
-    }
-  }
-
   private static final class JupiterTestFrameworkInfra
       implements LuceneTestCaseParent.TestFrameworkInfra {
     private final ConcurrentHashMap<Thread, Random> perThreadRandoms = new ConcurrentHashMap<>();
@@ -153,8 +139,10 @@ public final class GlobalStateSupport
 
   @Override
   public void beforeAll(ExtensionContext context) throws Exception {
-    State state = getState(context);
-    state.initialize();
+    var store = context.getStore(ExtensionContext.StoreScope.EXECUTION_REQUEST, NS);
+    if (store.get(JupiterTestFrameworkInfra.class) != null) {
+      throw new RuntimeException();
+    }
 
     // touch LuceneTestCase to trigger static initializers.
     LuceneTestCase.ensureInitialized();
@@ -162,7 +150,7 @@ public final class GlobalStateSupport
     var frameworkInfra =
         new JupiterTestFrameworkInfra(
             context.getRequiredTestClass(), getRandomSupplier(context.getExecutableInvoker()));
-    state.frameworkInfra = frameworkInfra;
+    store.put(JupiterTestFrameworkInfra.class, frameworkInfra);
 
     LuceneTestCaseParent.setTestFrameworkInfra(null, frameworkInfra);
     frameworkInfra.beforeAll();
@@ -170,24 +158,26 @@ public final class GlobalStateSupport
 
   @Override
   public void afterEach(ExtensionContext context) throws Exception {
-    getState(context).frameworkInfra.afterEach();
+    getFrameworkInfra(context).afterEach();
   }
 
   @Override
   public void afterAll(ExtensionContext context) throws Exception {
-    var state = getState(context);
+    var frameworkInfra = getFrameworkInfra(context);
     try {
-      state.frameworkInfra.afterAll();
+      frameworkInfra.afterAll();
     } finally {
-      LuceneTestCaseParent.setTestFrameworkInfra(state.frameworkInfra, null);
-      state.reset();
+      LuceneTestCaseParent.setTestFrameworkInfra(frameworkInfra, null);
+      context
+          .getStore(ExtensionContext.StoreScope.EXECUTION_REQUEST, NS)
+          .remove(JupiterTestFrameworkInfra.class);
     }
   }
 
-  private State getState(ExtensionContext context) {
+  private JupiterTestFrameworkInfra getFrameworkInfra(ExtensionContext context) {
     return context
         .getStore(ExtensionContext.StoreScope.EXECUTION_REQUEST, NS)
-        .computeIfAbsent(State.class);
+        .get(JupiterTestFrameworkInfra.class, JupiterTestFrameworkInfra.class);
   }
 
   // This trick is needed to get the Supplier<Random> injected by a parameter resolved
