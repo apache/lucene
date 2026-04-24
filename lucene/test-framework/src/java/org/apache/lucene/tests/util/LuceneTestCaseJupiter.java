@@ -20,19 +20,28 @@ package org.apache.lucene.tests.util;
 import com.carrotsearch.randomizedtesting.jupiter.DetectThreadLeaks;
 import com.carrotsearch.randomizedtesting.jupiter.Randomized;
 import com.carrotsearch.randomizedtesting.jupiter.SystemThreadFilter;
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.util.Constants;
+import org.apache.lucene.util.IOUtils;
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.Timeout;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.Extension;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -52,7 +61,6 @@ vintage engine running both).
 - add tests of the LuceneTestCaseJupiter infrastructure (if what was previously implemented
 as rules in LuceneTestCase still provides the same functionality). Nested classes should be perhaps
 excluded from discovery entirely (unless they're really needed/loaded?).
-- resign from using GlobalStateSupport and move it to this class itself?
 - add a check ensuring junit jupiter runs in single-thread mode (unfortunately this can't be
 changed, at least for now).
 - add all remaining class and test rules from LuceneTestCase; this is now the minimum subset.
@@ -110,7 +118,6 @@ changed, at least for now).
 @Execution(
     value = ExecutionMode.SAME_THREAD,
     reason = "single-threaded for backward compatibility.")
-@ExtendWith({GlobalStateSupport.class})
 public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCaseParent {
   /**
    * This predicate should return {@code true} for threads that should be ignored in {@linkplain
@@ -143,37 +150,142 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
     }
   }
 
-  // TODO: this should be in use (marker when tests failed).
-  static TestRuleMarkFailure failureMarker = new TestRuleMarkFailure();
+  private static final class JupiterTestFrameworkInfra
+      implements LuceneTestCaseParent.TestFrameworkInfra {
+    private final ConcurrentHashMap<Thread, Random> perThreadRandoms = new ConcurrentHashMap<>();
+
+    private final List<Closeable> closeAfterTest = new ArrayList<>();
+    private final List<Closeable> closeAfterSuite = new ArrayList<>();
+
+    final Supplier<Random> rnd;
+    final SetupAndRestoreStaticEnv classEnvRule;
+
+    private final TemporaryFilesSupplier tempFilesSupplier;
+    private final TestRuleMarkFailure failureMarker;
+
+    JupiterTestFrameworkInfra(Class<?> requiredTestClass, Supplier<Random> randomSupplier) {
+      this.rnd = randomSupplier;
+      this.classEnvRule =
+          new SetupAndRestoreStaticEnv(
+              this::threadRandom, () -> Objects.requireNonNull(requiredTestClass));
+      this.failureMarker = new TestRuleMarkFailure();
+      this.tempFilesSupplier =
+          new TemporaryFilesSupplier(
+              failureMarker, this::threadRandom, () -> Objects.requireNonNull(requiredTestClass));
+    }
+
+    @Override
+    public Random threadRandom() {
+      return perThreadRandoms.computeIfAbsent(Thread.currentThread(), _ -> rnd.get());
+    }
+
+    @Override
+    public <T extends Closeable> T closeAfterTest(T resource) {
+      synchronized (this) {
+        closeAfterTest.add(resource);
+      }
+      return resource;
+    }
+
+    @Override
+    public <T extends Closeable> T closeAfterClass(T resource) {
+      synchronized (this) {
+        closeAfterSuite.add(resource);
+      }
+      return resource;
+    }
+
+    @Override
+    public void afterEach() throws IOException {
+      synchronized (this) {
+        IOUtils.close(closeAfterTest);
+        closeAfterTest.clear();
+      }
+    }
+
+    @Override
+    public void afterAll() throws IOException {
+      synchronized (this) {
+        IOUtils.close(
+            Stream.of(
+                    List.<Closeable>of(
+                        () -> {
+                          try {
+                            tempFilesSupplier.after();
+                            classEnvRule.after();
+                          } catch (Exception e) {
+                            throw new RuntimeException(e);
+                          }
+                        }),
+                    closeAfterTest,
+                    closeAfterSuite,
+                    perThreadRandoms.values())
+                .flatMap(Collection::stream)
+                .filter(v -> v instanceof Closeable)
+                .map(v -> (Closeable) v)
+                .toList());
+      }
+    }
+
+    @Override
+    public SetupAndRestoreStaticEnv getClassEnv() {
+      return classEnvRule;
+    }
+
+    @Override
+    public TemporaryFilesSupplier getTempFilesSupplier() {
+      return tempFilesSupplier;
+    }
+
+    void beforeAll() throws Exception {
+      classEnvRule.before();
+      failureMarker.reset();
+      tempFilesSupplier.before();
+    }
+  }
+
+  private static JupiterTestFrameworkInfra frameworkInfra;
 
   @RegisterExtension
   static Extension failureListener =
       new TestWatcher() {
         @Override
         public void testAborted(ExtensionContext context, @Nullable Throwable cause) {
-          failureMarker.markFailed();
+          frameworkInfra.failureMarker.markFailed();
         }
 
         @Override
         public void testFailed(ExtensionContext context, @Nullable Throwable cause) {
-          failureMarker.markFailed();
+          frameworkInfra.failureMarker.markFailed();
         }
       };
 
   @BeforeAll
-  static void setupClass(TestInfo testInfo) throws Throwable {
-    var newRule =
-        new TemporaryFilesSupplier(
-            failureMarker,
-            LuceneTestCaseJupiter::random,
-            () -> testInfo.getTestClass().orElseThrow());
-    failureMarker.reset();
-    newRule.before();
+  static void setupClass(Supplier<Random> randomSupplier, TestInfo testInfo) throws Exception {
+    // touch LuceneTestCase to trigger static initializers.
+    LuceneTestCase.ensureInitialized();
+
+    frameworkInfra =
+        new JupiterTestFrameworkInfra(testInfo.getTestClass().orElseThrow(), randomSupplier);
+    LuceneTestCaseParent.setTestFrameworkInfra(null, frameworkInfra);
+    frameworkInfra.beforeAll();
   }
 
   @AfterEach
   void afterEach() throws Exception {
+    frameworkInfra.afterEach();
     fieldToType.after();
+  }
+
+  @AfterAll
+  static void teardownClass() throws Exception {
+    var infra = frameworkInfra;
+    try {
+      infra.afterAll();
+    } finally {
+      LuceneTestCaseParent.setTestFrameworkInfra(infra, null);
+      frameworkInfra = null;
+    }
   }
 
   //
