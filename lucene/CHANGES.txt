@@ -148,6 +148,13 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#15901: Fix undercounting of RAM used by vectors buffered in in-memory segments.
+  BufferingKnnVectorsWriter hardcoded Float.BYTES for all vector encodings, overcounting byte
+  vectors by 4x. Scalar quantized vector writers (Lucene104, Lucene99, Lucene102) did not
+  account for rawVectorDelegate RAM, making byte vector fields completely invisible in RAM
+  reporting. Also added missing dimensionSums array accounting in quantized writers.
+  (Prithvi S)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 

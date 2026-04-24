@@ -55,6 +55,7 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
@@ -637,9 +638,12 @@ class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
   @Override
   public long ramBytesUsed() {
     long total = SHALLOW_RAM_BYTES_USED;
+    // The rawVectorDelegate tracks all vector data for both byte and float32 fields.
+    // For byte vector fields (which bypass our FieldWriter), this is the only accounting.
+    total += rawVectorDelegate.ramBytesUsed();
     for (FieldWriter field : fields) {
-      // the field tracks the delegate field usage
-      total += field.ramBytesUsed();
+      // Add quantization-specific overhead not tracked by the delegate
+      total += field.quantizationOverheadBytesUsed();
     }
     return total;
   }
@@ -714,11 +718,22 @@ class Lucene102BinaryQuantizedVectorsWriter extends FlatVectorsWriter {
       throw new UnsupportedOperationException();
     }
 
+    /**
+     * Returns the RAM usage of quantization-specific state only (magnitudes, dimensionSums, shallow
+     * object overhead). The underlying flat vector data is tracked separately by the
+     * rawVectorDelegate at the writer level to avoid double-counting.
+     */
+    long quantizationOverheadBytesUsed() {
+      long size = SHALLOW_SIZE;
+      size += magnitudes.ramBytesUsed();
+      size += RamUsageEstimator.sizeOf(dimensionSums);
+      return size;
+    }
+
     @Override
     public long ramBytesUsed() {
-      long size = SHALLOW_SIZE;
+      long size = quantizationOverheadBytesUsed();
       size += flatFieldVectorsWriter.ramBytesUsed();
-      size += magnitudes.ramBytesUsed();
       return size;
     }
   }
