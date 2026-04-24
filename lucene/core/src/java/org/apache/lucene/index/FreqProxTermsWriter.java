@@ -176,7 +176,7 @@ final class FreqProxTermsWriter extends TermsHash {
     @Override
     public PostingsEnum postings(PostingsEnum reuse, final int flags) throws IOException {
 
-      if (indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS) >= 0
+      if (indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS)
           && PostingsEnum.featureRequested(flags, PostingsEnum.FREQS)) {
         final PostingsEnum inReuse;
         final SortingPostingsEnum wrapReuse;
@@ -196,9 +196,9 @@ final class FreqProxTermsWriter extends TermsHash {
         // ask for everything. if that assumption changes in the future, we can
         // factor in whether 'flags' says offsets are not required.
         final boolean storePositions =
-            indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+            indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
         final boolean storeOffsets =
-            indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
+            indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
         wrapReuse.reset(docMap, inDocsAndPositions, storePositions, storeOffsets);
         return wrapReuse;
       }
