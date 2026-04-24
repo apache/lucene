@@ -261,6 +261,9 @@ API Changes
 * GITHUB#15803: Add ReaderUtil#partitionByLeaf to partition doc IDs from
   ScoreDoc hits by leaf reader. (Zihan Xu)
 
+* GITHUB#15584: Add support for termdoc fields that use custom term freqs (via IndexOptions.DOCS_AND_CUSTOM_FREQS).
+  IndexWriter counts their terms rather than summing their freqs.  Use 
+
 New Features
 ---------------------
 
@@ -449,9 +452,6 @@ API Changes
   (Chris Hegarty)
 
 * GITHUB#15502: Add `count()` method to `FilterWeight`  (Prudhvi Godithi)
-
-* GITHUB#15584: Add support for termdoc fields that use custom term freqs: IndexWriter counts their terms
-                rather than summing their freqs.
 
 New Features
 ---------------------
@@ -681,9 +681,6 @@ API Changes
 * GITHUB#15011: LeafReader#searchNearestVectors now accepts an AcceptDocs
   instance instead of a Bits instance to identify document IDs to filter.
   (Shubham Chaudhary, Adrien Grand)
-
-* GITHUB#15584: Add support for termdoc fields that use custom term freqs: IndexWriter counts their terms
-                rather than summing their freqs.
 
 New Features
 ---------------------
