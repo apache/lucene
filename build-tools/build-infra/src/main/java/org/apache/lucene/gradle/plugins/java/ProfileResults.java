@@ -101,10 +101,16 @@ public class ProfileResults {
   }
 
   /** true if we care about this event */
-  static boolean isInteresting(String mode, RecordedEvent event) {
+  static boolean isInteresting(String mode, RecordedEvent event, boolean hasCPUTimeSamples) {
     String name = event.getEventType().getName();
     switch (mode) {
       case "cpu":
+        if (hasCPUTimeSamples) {
+          // Prefer jdk.CPUTimeSample (Java 25+, JEP 509): samples by CPU time, not wall-clock
+          // time, so idle threads (like gradle epoll) are inherently excluded — no filtering
+          // needed. When available, we skip legacy execution samples to avoid double-counting.
+          return name.equals("jdk.CPUTimeSample");
+        }
         return (name.equals("jdk.ExecutionSample") || name.equals("jdk.NativeMethodSample"))
             && !isGradlePollThread(event.getThread("sampledThread"));
       case "heap":
@@ -121,6 +127,24 @@ public class ProfileResults {
     return (thread != null && thread.getJavaName().startsWith("/127.0.0.1"));
   }
 
+  /**
+   * Pre-scan recording files to detect if any jdk.CPUTimeSample events are present. When they are,
+   * we prefer them over legacy jdk.ExecutionSample/jdk.NativeMethodSample to avoid double-counting.
+   */
+  static boolean detectCPUTimeSamples(List<String> files) throws IOException {
+    for (String file : files) {
+      try (RecordingFile recording = new RecordingFile(Paths.get(file))) {
+        while (recording.hasMoreEvents()) {
+          RecordedEvent event = recording.readEvent();
+          if (event.getEventType().getName().equals("jdk.CPUTimeSample")) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  }
+
   /** value we accumulate for this event */
   static long getValue(RecordedEvent event) {
     switch (event.getEventType().getName()) {
@@ -131,6 +155,8 @@ public class ProfileResults {
       case "jdk.ExecutionSample":
         return 1L;
       case "jdk.NativeMethodSample":
+        return 1L;
+      case "jdk.CPUTimeSample":
         return 1L;
       default:
         throw new UnsupportedOperationException(event.toString());
@@ -173,6 +199,11 @@ public class ProfileResults {
     if (count < 1) {
       throw new IllegalArgumentException("tests.profile.count must be positive");
     }
+
+    // Pre-scan to detect if CPU-time samples (Java 25+, JEP 509) are available.
+    // If so, prefer them over legacy execution samples to avoid double-counting.
+    boolean hasCPUTimeSamples = "cpu".equals(mode) && detectCPUTimeSamples(files);
+
     Map<String, SimpleEntry<String, Long>> histogram = new HashMap<>();
     int totalEvents = 0;
     long sumValues = 0;
@@ -181,7 +212,7 @@ public class ProfileResults {
       try (RecordingFile recording = new RecordingFile(Paths.get(file))) {
         while (recording.hasMoreEvents()) {
           RecordedEvent event = recording.readEvent();
-          if (!isInteresting(mode, event)) {
+          if (!isInteresting(mode, event, hasCPUTimeSamples)) {
             continue;
           }
           RecordedStackTrace trace = event.getStackTrace();
