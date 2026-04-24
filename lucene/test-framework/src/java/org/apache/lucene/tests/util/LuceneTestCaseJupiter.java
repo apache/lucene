@@ -20,8 +20,6 @@ package org.apache.lucene.tests.util;
 import com.carrotsearch.randomizedtesting.jupiter.DetectThreadLeaks;
 import com.carrotsearch.randomizedtesting.jupiter.Randomized;
 import com.carrotsearch.randomizedtesting.jupiter.SystemThreadFilter;
-import java.util.List;
-import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
@@ -133,7 +131,7 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
     }
   }
 
-  static TestRuleTemporaryFilesCleanup tempFilesCleanupRule_;
+  // TODO: this should be in use (marker when tests failed).
   static TestRuleMarkFailure failureMarker = new TestRuleMarkFailure();
 
   @RegisterExtension
@@ -151,26 +149,18 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
       };
 
   @BeforeAll
-  public static void setupClass(TestInfo testInfo) throws Throwable {
+  static void setupClass(TestInfo testInfo) throws Throwable {
     var newRule =
-        new TestRuleTemporaryFilesCleanup(
+        new TemporaryFilesSupplier(
             failureMarker,
             LuceneTestCaseJupiter::random,
             () -> testInfo.getTestClass().orElseThrow());
     failureMarker.reset();
     newRule.before();
-
-    tempFilesCleanupRule_ = Objects.requireNonNull(tempFilesCleanupRule);
-    tempFilesCleanupRule = newRule;
   }
 
   @AfterAll
-  public static void teardownClass() throws Throwable {
-    if (tempFilesCleanupRule != null) {
-      tempFilesCleanupRule.afterAlways(List.of());
-      tempFilesCleanupRule = tempFilesCleanupRule_;
-    }
-  }
+  static void teardownClass() throws Throwable {}
 
   //
   // Custom assertion methods.

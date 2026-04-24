@@ -40,92 +40,26 @@ import com.carrotsearch.randomizedtesting.annotations.ThreadLeakScope.Scope;
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakZombies;
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakZombies.Consequence;
 import com.carrotsearch.randomizedtesting.annotations.TimeoutSuite;
-import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import com.carrotsearch.randomizedtesting.rules.NoClassHooksShadowingRule;
 import com.carrotsearch.randomizedtesting.rules.NoInstanceHooksOverridesRule;
 import com.carrotsearch.randomizedtesting.rules.TestRuleAdapter;
 import java.io.Closeable;
-import java.io.IOException;
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
-import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
-import org.apache.lucene.codecs.KnnVectorsFormat;
-import org.apache.lucene.codecs.bitvectors.HnswBitVectorsFormat;
-import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
-import org.apache.lucene.index.CodecReader;
-import org.apache.lucene.index.CompositeReader;
-import org.apache.lucene.index.ConcurrentMergeScheduler;
-import org.apache.lucene.index.DirectoryReader;
-import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriterConfig;
-import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.LogByteSizeMergePolicy;
-import org.apache.lucene.index.LogMergePolicy;
-import org.apache.lucene.index.MergePolicy;
-import org.apache.lucene.index.ParallelCompositeReader;
-import org.apache.lucene.index.ParallelLeafReader;
-import org.apache.lucene.index.TieredMergePolicy;
-import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.LRUQueryCache;
-import org.apache.lucene.search.QueryCache;
-import org.apache.lucene.search.QueryCachingPolicy;
-import org.apache.lucene.store.ByteBuffersDirectory;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.store.FSLockFactory;
-import org.apache.lucene.store.FileSwitchDirectory;
-import org.apache.lucene.store.FlushInfo;
-import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.LockFactory;
-import org.apache.lucene.store.MergeInfo;
-import org.apache.lucene.store.NRTCachingDirectory;
-import org.apache.lucene.store.ReadOnceHint;
 import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
-import org.apache.lucene.tests.index.AssertingDirectoryReader;
-import org.apache.lucene.tests.index.AssertingLeafReader;
-import org.apache.lucene.tests.index.FieldFilterLeafReader;
-import org.apache.lucene.tests.index.MergingCodecReader;
-import org.apache.lucene.tests.index.MergingDirectoryReaderWrapper;
-import org.apache.lucene.tests.index.MismatchedCodecReader;
-import org.apache.lucene.tests.index.MismatchedDirectoryReader;
-import org.apache.lucene.tests.index.MismatchedLeafReader;
-import org.apache.lucene.tests.mockfile.VirusCheckingFS;
-import org.apache.lucene.tests.search.AssertingIndexSearcher;
-import org.apache.lucene.tests.store.BaseDirectoryWrapper;
-import org.apache.lucene.tests.store.MockDirectoryWrapper;
-import org.apache.lucene.tests.store.RawDirectoryWrapper;
-import org.apache.lucene.util.CommandLineUtil;
-import org.apache.lucene.util.NamedThreadFactory;
 import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
 import org.junit.jupiter.api.Tag;
@@ -135,10 +69,13 @@ import org.junit.runner.RunWith;
 
 /// Base class for all Lucene unit tests (JUnit4 variant).
 ///
+/// **Please consider using the new JUnit Jupiter base class [LuceneTestCaseJupiter] instead. This class
+/// will be eventually removed from Lucene codebase.**
+///
 /// ## Class and instance setup
 ///
 /// The preferred way to specify class (suite-level) setup/cleanup is to use static methods
-/// annotated with [BeforeClass] and [AfterClass]. Any code in these methods is executed
+/// annotated with [org.junit.BeforeClass] and [org.junit.AfterClass]. Any code in these methods is executed
 /// within the test framework's control and ensure proper setup has been made. **Try not to use
 /// static initializers (including complex final field initializers).** Static initializers are
 /// executed before any setup rules are fired and may cause you (or somebody else) headaches.
@@ -408,6 +345,14 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
             () -> RandomizedContext.current().getRandom(),
             () -> RandomizedContext.current().getTargetClass());
 
+    LuceneTestCase.suiteFailureMarker = new TestRuleMarkFailure();
+
+    var tempFilesSupplier =
+        new TemporaryFilesSupplier(
+            suiteFailureMarker,
+            LuceneTestCase::random,
+            () -> RandomizedContext.current().getTargetClass());
+
     classRules =
         RuleChain.outerRule(new TestRuleIgnoreTestSuites())
             .around(
@@ -471,6 +416,11 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
                               public SetupAndRestoreStaticEnv getClassEnv() {
                                 return setupAndRestoreClassEnv;
                               }
+
+                              @Override
+                              public TemporaryFilesSupplier getTempFilesSupplier() {
+                                return tempFilesSupplier;
+                              }
                             });
                   }
 
@@ -480,18 +430,13 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
                   }
                 })
             .around(ignoreAfterMaxFailures)
-            .around(suiteFailureMarker = new TestRuleMarkFailure())
+            .around(suiteFailureMarker)
             .around(
                 new VerifyTestClassNamingConvention(
                     "org.apache.lucene", Pattern.compile("(.+\\.)(Test)([^.]+)")))
             .around(new TestRuleAssertionsRequired())
             .around(new TestRuleLimitSysouts(suiteFailureMarker))
-            .around(
-                tempFilesCleanupRule =
-                    new TestRuleTemporaryFilesCleanup(
-                        suiteFailureMarker,
-                        LuceneTestCase::random,
-                        () -> RandomizedContext.current().getTargetClass()))
+            .around(new CallbacksToRuleAdapter(tempFilesSupplier))
             .around(new NoClassHooksShadowingRule())
             .around(
                 new NoInstanceHooksOverridesRule() {
@@ -516,7 +461,7 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
                 new CallbacksToRuleAdapter(
                     new BeforeAfterCallback() {
                       @Override
-                      public void before() throws Exception {
+                      public void before() {
                         RunListenerPrintReproduceInfo.env =
                             new RunListenerPrintReproduceInfo.Env(
                                 setupAndRestoreClassEnv.codec,
@@ -524,9 +469,6 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
                                 setupAndRestoreClassEnv.locale,
                                 setupAndRestoreClassEnv.timeZone);
                       }
-
-                      @Override
-                      public void after() throws Exception {}
                     }));
   }
 
@@ -604,713 +546,5 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
   protected boolean isTestThread() {
     assertNotNull("Test case thread not set?", threadAndTestNameRule.testCaseThread);
     return Thread.currentThread() == threadAndTestNameRule.testCaseThread;
-  }
-
-  /**
-   * Returns a new Directory instance. Use this when the test does not care about the specific
-   * Directory implementation (most tests).
-   *
-   * <p>The Directory is wrapped with {@link BaseDirectoryWrapper}. this means usually it will be
-   * picky, such as ensuring that you properly close it and all open files in your test. It will
-   * emulate some features of Windows, such as not allowing open files to be overwritten.
-   */
-  public static BaseDirectoryWrapper newDirectory() {
-    return newDirectory(random());
-  }
-
-  /** Like {@link #newDirectory} except randomly the {@link VirusCheckingFS} may be installed */
-  public static BaseDirectoryWrapper newMaybeVirusCheckingDirectory() {
-    if (random().nextInt(5) == 4) {
-      Path path = addVirusChecker(createTempDir());
-      return newFSDirectory(path);
-    } else {
-      return newDirectory(random());
-    }
-  }
-
-  /**
-   * Returns a new Directory instance, using the specified random. See {@link #newDirectory()} for
-   * more information.
-   */
-  public static BaseDirectoryWrapper newDirectory(Random r) {
-    return wrapDirectory(r, newDirectoryImpl(r, TEST_DIRECTORY), rarely(r), false);
-  }
-
-  /**
-   * Returns a new Directory instance, using the specified random. See {@link #newDirectory()} for
-   * more information.
-   */
-  public static BaseDirectoryWrapper newDirectory(Random r, LockFactory lf) {
-    return wrapDirectory(r, newDirectoryImpl(r, TEST_DIRECTORY, lf), rarely(r), false);
-  }
-
-  public static MockDirectoryWrapper newMockDirectory() {
-    return newMockDirectory(random());
-  }
-
-  public static MockDirectoryWrapper newMockDirectory(Random r) {
-    return (MockDirectoryWrapper)
-        wrapDirectory(r, newDirectoryImpl(r, TEST_DIRECTORY), false, false);
-  }
-
-  public static MockDirectoryWrapper newMockDirectory(Random r, LockFactory lf) {
-    return (MockDirectoryWrapper)
-        wrapDirectory(r, newDirectoryImpl(r, TEST_DIRECTORY, lf), false, false);
-  }
-
-  public static MockDirectoryWrapper newMockFSDirectory(Path f) {
-    return (MockDirectoryWrapper) newFSDirectory(f, FSLockFactory.getDefault(), false);
-  }
-
-  public static MockDirectoryWrapper newMockFSDirectory(Path f, LockFactory lf) {
-    return (MockDirectoryWrapper) newFSDirectory(f, lf, false);
-  }
-
-  public static Path addVirusChecker(Path path) {
-    if (TestUtil.hasVirusChecker(path) == false) {
-      VirusCheckingFS fs = new VirusCheckingFS(path.getFileSystem(), random().nextLong());
-      path = fs.wrapPath(path);
-    }
-    return path;
-  }
-
-  /**
-   * Returns a new Directory instance, with contents copied from the provided directory. See {@link
-   * #newDirectory()} for more information.
-   */
-  public static BaseDirectoryWrapper newDirectory(Directory d) throws IOException {
-    return newDirectory(random(), d);
-  }
-
-  /** Returns a new FSDirectory instance over the given file, which must be a folder. */
-  public static BaseDirectoryWrapper newFSDirectory(Path f) {
-    return newFSDirectory(f, FSLockFactory.getDefault());
-  }
-
-  /** Like {@link #newFSDirectory(Path)}, but randomly insert {@link VirusCheckingFS} */
-  public static BaseDirectoryWrapper newMaybeVirusCheckingFSDirectory(Path f) {
-    if (random().nextInt(5) == 4) {
-      f = addVirusChecker(f);
-    }
-    return newFSDirectory(f, FSLockFactory.getDefault());
-  }
-
-  /** Returns a new FSDirectory instance over the given file, which must be a folder. */
-  public static BaseDirectoryWrapper newFSDirectory(Path f, LockFactory lf) {
-    return newFSDirectory(f, lf, rarely());
-  }
-
-  private static BaseDirectoryWrapper newFSDirectory(Path f, LockFactory lf, boolean bare) {
-    String fsdirClass = TEST_DIRECTORY;
-    if (fsdirClass.equals("random")) {
-      fsdirClass = RandomPicks.randomFrom(random(), FS_DIRECTORIES);
-    }
-
-    Class<? extends FSDirectory> clazz;
-    try {
-      try {
-        clazz = CommandLineUtil.loadFSDirectoryClass(fsdirClass);
-      } catch (ClassCastException _) {
-        // TEST_DIRECTORY is not a sub-class of FSDirectory, so draw one at random
-        fsdirClass = RandomPicks.randomFrom(random(), FS_DIRECTORIES);
-        clazz = CommandLineUtil.loadFSDirectoryClass(fsdirClass);
-      }
-
-      Directory fsdir = newFSDirectoryImpl(clazz, f, lf);
-      return wrapDirectory(random(), fsdir, bare, true);
-    } catch (Exception e) {
-      Rethrow.rethrow(e);
-      throw null; // dummy to prevent compiler failure
-    }
-  }
-
-  private static Directory newFileSwitchDirectory(Random random, Directory dir1, Directory dir2) {
-    List<String> fileExtensions =
-        Arrays.asList(
-            "fdt", "fdx", "tim", "tip", "si", "fnm", "pos", "dii", "dim", "nvm", "nvd", "dvm",
-            "dvd");
-    Collections.shuffle(fileExtensions, random);
-    fileExtensions = fileExtensions.subList(0, 1 + random.nextInt(fileExtensions.size()));
-    return new FileSwitchDirectory(new HashSet<>(fileExtensions), dir1, dir2, true);
-  }
-
-  /**
-   * Returns a new Directory instance, using the specified random with contents copied from the
-   * provided directory. See {@link #newDirectory()} for more information.
-   */
-  public static BaseDirectoryWrapper newDirectory(Random r, Directory d) throws IOException {
-    Directory impl = newDirectoryImpl(r, TEST_DIRECTORY);
-    for (String file : d.listAll()) {
-      if (file.startsWith(IndexFileNames.SEGMENTS)
-          || IndexFileNames.CODEC_FILE_PATTERN.matcher(file).matches()) {
-        impl.copyFrom(d, file, file, newIOContext(r));
-      }
-    }
-    return wrapDirectory(r, impl, rarely(r), false);
-  }
-
-  private static BaseDirectoryWrapper wrapDirectory(
-      Random random, Directory directory, boolean bare, boolean filesystem) {
-    // IOContext randomization might make NRTCachingDirectory make bad decisions, so avoid
-    // using it if the user requested a filesystem directory.
-    if (rarely(random) && !bare && filesystem == false) {
-      directory = new NRTCachingDirectory(directory, random.nextDouble(), random.nextDouble());
-    }
-
-    if (bare) {
-      BaseDirectoryWrapper base = new RawDirectoryWrapper(directory);
-      closeAfterSuite(new CloseableDirectory(base, suiteFailureMarker));
-      return base;
-    } else {
-      MockDirectoryWrapper mock = new MockDirectoryWrapper(random, directory);
-
-      mock.setThrottling(TEST_THROTTLING);
-      closeAfterSuite(new CloseableDirectory(mock, suiteFailureMarker));
-      return mock;
-    }
-  }
-
-  private static Directory newFSDirectoryImpl(
-      Class<? extends FSDirectory> clazz, Path path, LockFactory lf) throws IOException {
-    FSDirectory d = null;
-    try {
-      d = CommandLineUtil.newFSDirectory(clazz, path, lf);
-    } catch (ReflectiveOperationException e) {
-      Rethrow.rethrow(e);
-    }
-    return d;
-  }
-
-  static Directory newDirectoryImpl(Random random, String clazzName) {
-    return newDirectoryImpl(random, clazzName, FSLockFactory.getDefault());
-  }
-
-  static Directory newDirectoryImpl(Random random, String clazzName, LockFactory lf) {
-    if (clazzName.equals("random")) {
-      if (rarely(random)) {
-        clazzName = RandomPicks.randomFrom(random, CORE_DIRECTORIES);
-      } else if (rarely(random)) {
-        String clazzName1 =
-            rarely(random)
-                ? RandomPicks.randomFrom(random, CORE_DIRECTORIES)
-                : ByteBuffersDirectory.class.getName();
-        String clazzName2 =
-            rarely(random)
-                ? RandomPicks.randomFrom(random, CORE_DIRECTORIES)
-                : ByteBuffersDirectory.class.getName();
-        return newFileSwitchDirectory(
-            random,
-            newDirectoryImpl(random, clazzName1, lf),
-            newDirectoryImpl(random, clazzName2, lf));
-      } else {
-        clazzName = ByteBuffersDirectory.class.getName();
-      }
-    }
-
-    try {
-      final Class<? extends Directory> clazz = CommandLineUtil.loadDirectoryClass(clazzName);
-      // If it is a FSDirectory type, try its ctor(Path)
-      if (FSDirectory.class.isAssignableFrom(clazz)) {
-        final Path dir = createTempDir("index-" + clazzName);
-        return newFSDirectoryImpl(clazz.asSubclass(FSDirectory.class), dir, lf);
-      }
-
-      // See if it has a Path/LockFactory ctor even though it's not an
-      // FSDir subclass:
-      try {
-        Constructor<? extends Directory> pathCtor =
-            clazz.getConstructor(Path.class, LockFactory.class);
-        final Path dir = createTempDir("index");
-        return pathCtor.newInstance(dir, lf);
-      } catch (NoSuchMethodException _) {
-        // Ignore
-      }
-
-      // the remaining dirs are no longer filesystem based, so we must check that the
-      // passedLockFactory is not file based:
-      if (!(lf instanceof FSLockFactory)) {
-        // try ctor with only LockFactory
-        try {
-          return clazz.getConstructor(LockFactory.class).newInstance(lf);
-        } catch (NoSuchMethodException _) {
-          // Ignore
-        }
-      }
-
-      // try empty ctor
-      return clazz.getConstructor().newInstance();
-    } catch (Exception e) {
-      Rethrow.rethrow(e);
-      throw null; // dummy to prevent compiler failure
-    }
-  }
-
-  public static IndexReader wrapReader(IndexReader r) throws IOException {
-    Random random = random();
-
-    for (int i = 0, c = random.nextInt(6) + 1; i < c; i++) {
-      switch (random.nextInt(5)) {
-        case 0:
-          // will create no FC insanity in atomic case, as ParallelLeafReader has own cache key:
-          if (VERBOSE) {
-            System.out.println(
-                "NOTE: LuceneTestCase.wrapReader: wrapping previous reader="
-                    + r
-                    + " with ParallelLeaf/CompositeReader");
-          }
-          r =
-              (r instanceof LeafReader)
-                  ? new ParallelLeafReader((LeafReader) r)
-                  : new ParallelCompositeReader((CompositeReader) r);
-          break;
-        case 1:
-          if (r instanceof LeafReader ar) {
-            final List<String> allFields = new ArrayList<>();
-            for (FieldInfo fi : ar.getFieldInfos()) {
-              allFields.add(fi.name);
-            }
-            Collections.shuffle(allFields, random);
-            final int end = allFields.isEmpty() ? 0 : random.nextInt(allFields.size());
-            final Set<String> fields = new HashSet<>(allFields.subList(0, end));
-            // will create no FC insanity as ParallelLeafReader has own cache key:
-            if (VERBOSE) {
-              System.out.println(
-                  "NOTE: LuceneTestCase.wrapReader: wrapping previous reader="
-                      + r
-                      + " with ParallelLeafReader");
-            }
-            r =
-                new ParallelLeafReader(
-                    new FieldFilterLeafReader(ar, fields, false),
-                    new FieldFilterLeafReader(ar, fields, true));
-          }
-          break;
-        case 2:
-          // Häckidy-Hick-Hack: a standard Reader will cause FC insanity, so we use
-          // QueryUtils' reader with a fake cache key, so insanity checker cannot walk
-          // along our reader:
-          if (VERBOSE) {
-            System.out.println(
-                "NOTE: LuceneTestCase.wrapReader: wrapping previous reader="
-                    + r
-                    + " with AssertingLeaf/DirectoryReader");
-          }
-          if (r instanceof LeafReader) {
-            r = new AssertingLeafReader((LeafReader) r);
-          } else if (r instanceof DirectoryReader) {
-            r = new AssertingDirectoryReader((DirectoryReader) r);
-          }
-          break;
-        case 3:
-          if (VERBOSE) {
-            System.out.println(
-                "NOTE: LuceneTestCase.wrapReader: wrapping previous reader="
-                    + r
-                    + " with MismatchedLeaf/Directory/CodecReader");
-          }
-          if (r instanceof LeafReader) {
-            r = new MismatchedLeafReader((LeafReader) r, random);
-          } else if (r instanceof DirectoryReader) {
-            r = new MismatchedDirectoryReader((DirectoryReader) r, random);
-          } else if (r instanceof CodecReader) {
-            r = new MismatchedCodecReader((CodecReader) r, random);
-          }
-          break;
-        case 4:
-          if (VERBOSE) {
-            System.out.println(
-                "NOTE: LuceneTestCase.wrapReader: wrapping previous reader="
-                    + r
-                    + " with MergingCodecReader");
-          }
-          if (r instanceof CodecReader) {
-            r = new MergingCodecReader((CodecReader) r);
-          } else if (r instanceof DirectoryReader) {
-            boolean allLeavesAreCodecReaders = true;
-            for (LeafReaderContext ctx : r.leaves()) {
-              if (ctx.reader() instanceof CodecReader == false) {
-                allLeavesAreCodecReaders = false;
-                break;
-              }
-            }
-            if (allLeavesAreCodecReaders) {
-              r = new MergingDirectoryReaderWrapper((DirectoryReader) r);
-            }
-          }
-          break;
-        default:
-          fail("should not get here");
-      }
-    }
-
-    if (VERBOSE) {
-      System.out.println("wrapReader wrapped: " + r);
-    }
-
-    return r;
-  }
-
-  /** Sometimes wrap the IndexReader as slow, parallel or filter reader (or combinations of that) */
-  public static IndexReader maybeWrapReader(IndexReader r) throws IOException {
-    if (rarely()) {
-      r = wrapReader(r);
-    }
-    return r;
-  }
-
-  /** TODO: javadoc */
-  public static IOContext newIOContext(Random random) {
-    return newIOContext(random, IOContext.DEFAULT);
-  }
-
-  /** TODO: javadoc */
-  public static IOContext newIOContext(Random random, IOContext oldContext) {
-    if (oldContext.hints().contains(ReadOnceHint.INSTANCE)) {
-      return oldContext; // just return as-is
-    }
-    final int randomNumDocs = random.nextInt(4192);
-    final int size = random.nextInt(512) * randomNumDocs;
-    if (oldContext.flushInfo() != null) {
-      // Always return at least the estimatedSegmentSize of
-      // the incoming IOContext:
-      return IOContext.flush(
-          new FlushInfo(
-              randomNumDocs, Math.max(oldContext.flushInfo().estimatedSegmentSize(), size)));
-    } else if (oldContext.mergeInfo() != null) {
-      // Always return at least the estimatedMergeBytes of
-      // the incoming IOContext:
-      return IOContext.merge(
-          new MergeInfo(
-              randomNumDocs,
-              Math.max(oldContext.mergeInfo().estimatedMergeBytes(), size),
-              random.nextBoolean(),
-              TestUtil.nextInt(random, 1, 100)));
-    } else {
-      // Make a totally random IOContext
-      final IOContext context;
-      switch (random.nextInt(3)) {
-        case 0:
-          context = IOContext.DEFAULT;
-          break;
-        case 1:
-          context = IOContext.merge(new MergeInfo(randomNumDocs, size, true, -1));
-          break;
-        case 2:
-          context = IOContext.flush(new FlushInfo(randomNumDocs, size));
-          break;
-        default:
-          context = IOContext.DEFAULT;
-      }
-      return context;
-    }
-  }
-
-  private static final QueryCache DEFAULT_QUERY_CACHE = IndexSearcher.getDefaultQueryCache();
-  private static final QueryCachingPolicy DEFAULT_CACHING_POLICY =
-      IndexSearcher.getDefaultQueryCachingPolicy();
-  private static final List<LRUQueryCache> queryCacheList = new ArrayList<>();
-
-  @Before
-  public void overrideTestDefaultQueryCache() {
-    // Make sure each test method has its own cache
-    overrideDefaultQueryCache();
-  }
-
-  @BeforeClass
-  public static void overrideDefaultQueryCache() {
-    // we need to reset the query cache in an @BeforeClass so that tests that
-    // instantiate an IndexSearcher in an @BeforeClass method use a fresh new cache
-    LRUQueryCache queryCacheTemp =
-        new LRUQueryCache(10000, 1 << 25, _ -> true, Float.POSITIVE_INFINITY);
-    queryCacheList.add(queryCacheTemp);
-    IndexSearcher.setDefaultQueryCache(queryCacheTemp);
-    IndexSearcher.setDefaultQueryCachingPolicy(MAYBE_CACHE_POLICY);
-  }
-
-  @AfterClass
-  public static void resetDefaultQueryCache() {
-    IndexSearcher.setDefaultQueryCache(DEFAULT_QUERY_CACHE);
-    IndexSearcher.setDefaultQueryCachingPolicy(DEFAULT_CACHING_POLICY);
-    for (int i = 0; i < queryCacheList.size(); i++) {
-      try {
-        queryCacheList.get(i).close();
-      } catch (IOException e) {
-        throw new RuntimeException(e);
-      }
-    }
-  }
-
-  @BeforeClass
-  public static void setupCPUCoreCount() {
-    // Randomize core count so CMS varies its dynamic defaults, and this also "fixes" core
-    // count from the master seed so it will always be the same on reproduce:
-    int numCores = TestUtil.nextInt(random(), 1, 4);
-    System.setProperty(
-        ConcurrentMergeScheduler.DEFAULT_CPU_CORE_COUNT_PROPERTY, Integer.toString(numCores));
-  }
-
-  @AfterClass
-  public static void restoreCPUCoreCount() {
-    System.clearProperty(ConcurrentMergeScheduler.DEFAULT_CPU_CORE_COUNT_PROPERTY);
-  }
-
-  private static ExecutorService executor;
-
-  @BeforeClass
-  public static void setUpExecutorService() {
-    int threads = TestUtil.nextInt(random(), 1, 2);
-    executor =
-        new ThreadPoolExecutor(
-            threads,
-            threads,
-            0L,
-            TimeUnit.MILLISECONDS,
-            new LinkedBlockingQueue<>(),
-            new NamedThreadFactory("LuceneTestCase"));
-    // uncomment to intensify LUCENE-3840
-    // executor.prestartAllCoreThreads();
-    if (VERBOSE) {
-      System.out.println("NOTE: Created shared ExecutorService with " + threads + " threads");
-    }
-  }
-
-  @AfterClass
-  public static void shutdownExecutorService() {
-    TestUtil.shutdownExecutorService(executor);
-    executor = null;
-  }
-
-  /** Create a new searcher over the reader. This searcher might randomly use threads. */
-  public static IndexSearcher newSearcher(IndexReader r) {
-    return newSearcher(r, true);
-  }
-
-  /** Create a new searcher over the reader. This searcher might randomly use threads. */
-  public static IndexSearcher newSearcher(IndexReader r, boolean maybeWrap) {
-    return newSearcher(r, maybeWrap, true);
-  }
-
-  /**
-   * Create a new searcher over the reader. This searcher might randomly use threads. if <code>
-   * maybeWrap</code> is true, this searcher might wrap the reader with one that returns null for
-   * getSequentialSubReaders. If <code>wrapWithAssertions</code> is true, this searcher might be an
-   * {@link AssertingIndexSearcher} instance.
-   */
-  public static IndexSearcher newSearcher(
-      IndexReader r, boolean maybeWrap, boolean wrapWithAssertions) {
-    return newSearcher(r, maybeWrap, wrapWithAssertions, random().nextBoolean());
-  }
-
-  /**
-   * Create a new searcher over the reader. If <code>
-   * maybeWrap</code> is true, this searcher might wrap the reader with one that returns null for
-   * getSequentialSubReaders. If <code>wrapWithAssertions</code> is true, this searcher might be an
-   * {@link AssertingIndexSearcher} instance. The searcher will use threads if <code>useThreads
-   * </code> is set to true.
-   */
-  public static IndexSearcher newSearcher(
-      IndexReader r, boolean maybeWrap, boolean wrapWithAssertions, boolean useThreads) {
-    if (useThreads) {
-      return newSearcher(r, maybeWrap, wrapWithAssertions, Concurrency.INTRA_SEGMENT);
-    }
-    return newSearcher(r, maybeWrap, wrapWithAssertions, Concurrency.NONE);
-  }
-
-  /** What level of concurrency is supported by the searcher being created */
-  public enum Concurrency {
-    /** No concurrency, meaning an executor won't be provided to the searcher */
-    NONE,
-    /**
-     * Inter-segment concurrency, meaning an executor will be provided to the searcher and slices
-     * will be randomly created to concurrently search entire segments
-     */
-    INTER_SEGMENT,
-    /**
-     * Intra-segment concurrency, meaning an executor will be provided to the searcher and slices
-     * will be randomly created to concurrently search segment partitions
-     */
-    INTRA_SEGMENT
-  }
-
-  public static IndexSearcher newSearcher(
-      IndexReader r, boolean maybeWrap, boolean wrapWithAssertions, Concurrency concurrency) {
-    Random random = random();
-    if (concurrency == Concurrency.NONE) {
-      if (maybeWrap) {
-        try {
-          r = maybeWrapReader(r);
-        } catch (IOException e) {
-          Rethrow.rethrow(e);
-        }
-      }
-      // TODO: this whole check is a coverage hack, we should move it to tests for various
-      // filterreaders.
-      // ultimately whatever you do will be checkIndex'd at the end anyway.
-      if (random.nextInt(500) == 0 && r instanceof LeafReader) {
-        // TODO: not useful to check DirectoryReader (redundant with checkindex)
-        // but maybe sometimes run this on the other crazy readers maybeWrapReader creates?
-        try {
-          TestUtil.checkReader(r);
-        } catch (IOException e) {
-          Rethrow.rethrow(e);
-        }
-      }
-      final IndexSearcher ret;
-      if (wrapWithAssertions) {
-        ret =
-            random.nextBoolean()
-                ? new AssertingIndexSearcher(random, r)
-                : new AssertingIndexSearcher(random, r.getContext());
-      } else {
-        ret = random.nextBoolean() ? new IndexSearcher(r) : new IndexSearcher(r.getContext());
-      }
-      ret.setSimilarity(getTestFrameworkInfra().getClassEnv().similarity);
-      return ret;
-    } else {
-      final ExecutorService ex;
-      if (random.nextBoolean()) {
-        ex = null;
-      } else {
-        ex = executor;
-        if (VERBOSE) {
-          System.out.println("NOTE: newSearcher using shared ExecutorService");
-        }
-      }
-      IndexSearcher ret;
-      int maxDocPerSlice = random.nextBoolean() ? 1 : 1 + random.nextInt(1000);
-      int maxSegmentsPerSlice = random.nextBoolean() ? 1 : 1 + random.nextInt(10);
-      if (wrapWithAssertions) {
-        if (random.nextBoolean()) {
-          ret =
-              new AssertingIndexSearcher(random, r, ex) {
-                @Override
-                protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-                  return LuceneTestCaseParent.slices(
-                      leaves, maxDocPerSlice, maxSegmentsPerSlice, concurrency);
-                }
-              };
-        } else {
-          ret =
-              new AssertingIndexSearcher(random, r.getContext(), ex) {
-                @Override
-                protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-                  return LuceneTestCaseParent.slices(
-                      leaves, maxDocPerSlice, maxSegmentsPerSlice, concurrency);
-                }
-              };
-        }
-      } else {
-        ret =
-            new IndexSearcher(r, ex) {
-              @Override
-              protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-                return LuceneTestCaseParent.slices(
-                    leaves, maxDocPerSlice, maxSegmentsPerSlice, concurrency);
-              }
-            };
-      }
-      ret.setSimilarity(getTestFrameworkInfra().getClassEnv().similarity);
-      ret.setQueryCachingPolicy(MAYBE_CACHE_POLICY);
-      if (random().nextBoolean()) {
-        ret.setTimeout(() -> false);
-      }
-      return ret;
-    }
-  }
-
-  /**
-   * Creates an empty, temporary folder (when the name of the folder is of no importance).
-   *
-   * @see #createTempDir(String)
-   */
-  public static Path createTempDir() {
-    return createTempDir("tempDir");
-  }
-
-  /**
-   * Creates an empty, temporary folder with the given name prefix.
-   *
-   * <p>The folder will be automatically removed after the test class completes successfully. The
-   * test should close any file handles that would prevent the folder from being removed.
-   */
-  public static Path createTempDir(String prefix) {
-    return tempFilesCleanupRule.createTempDir(prefix);
-  }
-
-  /**
-   * Creates an empty file with the given prefix and suffix.
-   *
-   * <p>The file will be automatically removed after the test class completes successfully. The test
-   * should close any file handles that would prevent the folder from being removed.
-   */
-  public static Path createTempFile(String prefix, String suffix) throws IOException {
-    return tempFilesCleanupRule.createTempFile(prefix, suffix);
-  }
-
-  /**
-   * Creates an empty temporary file.
-   *
-   * @see #createTempFile(String, String)
-   */
-  public static Path createTempFile() throws IOException {
-    return createTempFile("tempFile", ".tmp");
-  }
-
-  /** Ensures that the MergePolicy has sane values for tests that test with lots of documents. */
-  protected static IndexWriterConfig ensureSaneIWCOnNightly(IndexWriterConfig conf) {
-    if (LuceneTestCase.TEST_NIGHTLY) {
-      // newIWConfig makes smallish max seg size, which
-      // results in tons and tons of segments for this test
-      // when run nightly:
-      MergePolicy mp = conf.getMergePolicy();
-      if (mp instanceof TieredMergePolicy) {
-        ((TieredMergePolicy) mp).setMaxMergedSegmentMB(5000.);
-      } else if (mp instanceof LogByteSizeMergePolicy) {
-        ((LogByteSizeMergePolicy) mp).setMaxMergeMB(1000.);
-      } else if (mp instanceof LogMergePolicy) {
-        ((LogMergePolicy) mp).setMaxMergeDocs(100000);
-      }
-      // when running nightly, merging can still have crazy parameters,
-      // and might use many per-field codecs. turn on CFS for IW flushes
-      // and ensure CFS ratio is reasonable to keep it contained.
-      conf.setUseCompoundFile(true);
-    }
-    return conf;
-  }
-
-  private static boolean supportsVectorEncoding(
-      KnnVectorsFormat format, VectorEncoding vectorEncoding) {
-    if (format instanceof HnswBitVectorsFormat) {
-      // special case, this only supports BYTE
-      return vectorEncoding == VectorEncoding.BYTE;
-    }
-    return true;
-  }
-
-  private static boolean supportsVectorSearch(KnnVectorsFormat format) {
-    return (format instanceof FlatVectorsFormat) == false;
-  }
-
-  protected static KnnVectorsFormat randomVectorFormat(VectorEncoding vectorEncoding) {
-    List<KnnVectorsFormat> availableFormats =
-        KnnVectorsFormat.availableKnnVectorsFormats().stream()
-            .map(KnnVectorsFormat::forName)
-            .filter(format -> supportsVectorEncoding(format, vectorEncoding))
-            .filter(format -> supportsVectorSearch(format))
-            .toList();
-    return RandomPicks.randomFrom(random(), availableFormats);
-  }
-
-  /**
-   * This is a test merge scheduler that will always use the intra merge executor to ensure we test
-   * it.
-   */
-  static class TestConcurrentMergeScheduler extends ConcurrentMergeScheduler {
-    @Override
-    public Executor getIntraMergeExecutor(MergePolicy.OneMerge merge) {
-      assert intraMergeExecutor != null : "scaledExecutor is not initialized";
-      // Always do the intra merge executor to ensure we test it
-      return intraMergeExecutor;
-    }
   }
 }

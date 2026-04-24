@@ -67,11 +67,18 @@ public final class GlobalStateSupport
     final Supplier<Random> rnd;
     final SetupAndRestoreStaticEnv classEnvRule;
 
+    private final TemporaryFilesSupplier tempFilesSupplier;
+    private final TestRuleMarkFailure failureMarker;
+
     JupiterTestFrameworkInfra(Class<?> requiredTestClass, Supplier<Random> randomSupplier) {
       this.rnd = randomSupplier;
       this.classEnvRule =
           new SetupAndRestoreStaticEnv(
               this::threadRandom, () -> Objects.requireNonNull(requiredTestClass));
+      this.failureMarker = new TestRuleMarkFailure();
+      this.tempFilesSupplier =
+          new TemporaryFilesSupplier(
+              failureMarker, this::threadRandom, () -> Objects.requireNonNull(requiredTestClass));
     }
 
     @Override
@@ -107,7 +114,19 @@ public final class GlobalStateSupport
     public void afterAll() throws IOException {
       synchronized (this) {
         IOUtils.close(
-            Stream.of(closeAfterTest, closeAfterSuite, perThreadRandoms.values())
+            Stream.of(
+                    List.<Closeable>of(
+                        () -> {
+                          try {
+                            tempFilesSupplier.after();
+                            classEnvRule.after();
+                          } catch (Exception e) {
+                            throw new RuntimeException(e);
+                          }
+                        }),
+                    closeAfterTest,
+                    closeAfterSuite,
+                    perThreadRandoms.values())
                 .flatMap(Collection::stream)
                 .filter(v -> v instanceof Closeable)
                 .map(v -> (Closeable) v)
@@ -120,8 +139,15 @@ public final class GlobalStateSupport
       return classEnvRule;
     }
 
+    @Override
+    public TemporaryFilesSupplier getTempFilesSupplier() {
+      return tempFilesSupplier;
+    }
+
     public void beforeAll() throws Exception {
       classEnvRule.before();
+      failureMarker.reset();
+      tempFilesSupplier.before();
     }
   }
 

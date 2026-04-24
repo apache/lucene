@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.tests.util;
 
-import com.carrotsearch.randomizedtesting.rules.TestRuleAdapter;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.FileSystem;
@@ -51,7 +50,7 @@ import org.apache.lucene.util.IOUtils;
  * @see LuceneTestCase#createTempDir()
  * @see LuceneTestCase#createTempFile()
  */
-final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
+final class TemporaryFilesSupplier implements BeforeAfterCallback {
   private final Supplier<Random> randomSupplier;
   private final Supplier<Class<?>> targetClassSupplier;
 
@@ -77,7 +76,7 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
    */
   private static final List<Path> cleanupQueue = new ArrayList<>();
 
-  public TestRuleTemporaryFilesCleanup(
+  public TemporaryFilesSupplier(
       TestRuleMarkFailure failureMarker,
       Supplier<Random> randomSupplier,
       Supplier<Class<?>> targetClassSupplier) {
@@ -101,9 +100,7 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
   }
 
   @Override
-  protected void before() throws Throwable {
-    super.before();
-
+  public void before() throws Exception {
     assert tempDirBase == null;
     fileSystem = initializeFileSystem();
     javaTempDir = initializeJavaTempDir();
@@ -189,7 +186,7 @@ final class TestRuleTemporaryFilesCleanup extends TestRuleAdapter {
   }
 
   @Override
-  protected void afterAlways(List<Throwable> errors) throws Throwable {
+  public void after() throws Exception {
     // Drain cleanup queue and clear it.
     final Path[] everything;
     final String tempDirBasePath;

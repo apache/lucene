@@ -18,7 +18,9 @@ package org.apache.lucene.tests.util;
 
 /** Abstraction for before-test/before-suite callbacks. */
 interface BeforeAfterCallback {
-  void before() throws Exception;
+  default void before() throws Exception {}
+  ;
 
-  void after() throws Exception;
+  default void after() throws Exception {}
+  ;
 }
