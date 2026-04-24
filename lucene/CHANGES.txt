@@ -9,6 +9,11 @@ API Changes
 ---------------------
 * GITHUB#15929: Rename CollectionStatistics to FieldStats and TermStatistics to TermStats. (Zhou Hui)
 
+* GITHUB#15935: Add protected afterMerge() lifecycle hook to KnnVectorsWriter and
+  PerFieldKnnVectorsFormat. Subclasses can override this to release merge-time resources such as
+  thread pools. The method is called in a finally block within merge(), guaranteeing invocation
+  even if mergeOneField throws an exception. (MrFlap)
+
 * GITHUB#15763: Deprecate Operations.complement() method. This operation can be slow and is not
   recommended for production use. It will be removed in Lucene 12. (Saurabh Singh)
 

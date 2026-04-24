@@ -83,6 +83,17 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   public abstract void finish() throws IOException;
 
   /**
+   * Called after all vector fields have been merged but before {@link #finish()} and {@link
+   * #close()}. Subclasses can override this to release merge-time resources such as thread pools.
+   * The default implementation is a no-op.
+   *
+   * <p>This method is guaranteed to be called even if {@link #mergeOneField} throws an exception.
+   *
+   * @throws IOException if an I/O error occurs during cleanup
+   */
+  protected void afterMerge() throws IOException {}
+
+  /**
    * Merges the segment vectors for all fields. This default implementation delegates to {@link
    * #mergeOneField}, passing a {@link KnnVectorsReader} that combines the vector values and ignores
    * deleted documents.
@@ -96,18 +107,22 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
     }
 
-    for (FieldInfo fieldInfo : mergeState.mergeFieldInfos) {
-      if (fieldInfo.hasVectorValues()) {
-        if (mergeState.infoStream.isEnabled("VV")) {
-          mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
-        }
+    try {
+      for (FieldInfo fieldInfo : mergeState.mergeFieldInfos) {
+        if (fieldInfo.hasVectorValues()) {
+          if (mergeState.infoStream.isEnabled("VV")) {
+            mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
+          }
 
-        mergeOneField(fieldInfo, mergeState);
+          mergeOneField(fieldInfo, mergeState);
 
-        if (mergeState.infoStream.isEnabled("VV")) {
-          mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
+          if (mergeState.infoStream.isEnabled("VV")) {
+            mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
+          }
         }
       }
+    } finally {
+      afterMerge();
     }
     finish();
   }
