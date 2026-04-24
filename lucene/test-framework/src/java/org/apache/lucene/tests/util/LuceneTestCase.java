@@ -508,22 +508,20 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
 
   /** For subclasses to override. Overrides must call {@code super.setUp()}. */
   @Before
-  @Override
   public void setUp() throws Exception {
-    super.setUp();
     randomCalls.set(0);
     parentChainCallRule.setupCalled = true;
   }
 
   /** For subclasses to override. Overrides must call {@code super.tearDown()}. */
   @After
-  @Override
   public void tearDown() throws Exception {
-    super.tearDown();
     parentChainCallRule.teardownCalled = true;
 
     // Test is supposed to call this itself, but we do this defensively in case it forgot:
     restoreIndexWriterMaxDocs();
+
+    fieldToType.after();
   }
 
   // -----------------------------------------------------------------

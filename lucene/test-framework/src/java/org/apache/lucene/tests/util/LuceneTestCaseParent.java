@@ -83,7 +83,6 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.IndexFileNames;
-import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -368,14 +367,6 @@ public abstract sealed class LuceneTestCaseParent extends Assert
   protected static TestFrameworkInfra getTestFrameworkInfra() {
     return Objects.requireNonNull(
         testFrameworkInfra.get(), "Expected test framework not to be null.");
-  }
-
-  protected void setUp() throws Exception {}
-
-  protected void tearDown() throws Exception {
-    synchronized (fieldToType) {
-      fieldToType.clear();
-    }
   }
 
   // -----------------------------------------------------------------
@@ -2098,80 +2089,13 @@ public abstract sealed class LuceneTestCaseParent extends Assert
     return newField(random(), name, value, type);
   }
 
-  private static final Map<String, FieldType> fieldToType = new HashMap<>();
-
-  // TODO: if we can pull out the "make term vector options
-  // consistent across all instances of the same field name"
-  // write-once schema sort of helper class then we can
-  // remove the sync here.  We can also fold the random
-  // "enable norms" (now commented out, below) into that:
   public static Field newField(Random random, String name, Object value, FieldType type) {
-
-    // Defeat any consumers that illegally rely on interned
-    // strings (we removed this from Lucene a while back):
-    name = new String(name);
-
-    synchronized (fieldToType) {
-      FieldType prevType = fieldToType.get(name);
-
-      if (prevType != null) {
-        // always use the same fieldType for the same field name
-        return createField(name, value, prevType);
-      }
-
-      // TODO: once all core & test codecs can index
-      // offsets, sometimes randomly turn on offsets if we are
-      // already indexing positions...
-
-      FieldType newType = new FieldType(type);
-      if (!newType.stored() && random.nextBoolean()) {
-        newType.setStored(true); // randomly store it
-      }
-      if (newType.indexOptions() != IndexOptions.NONE) {
-        if (!newType.storeTermVectors() && random.nextBoolean()) {
-          newType.setStoreTermVectors(true);
-          if (!newType.storeTermVectorPositions()) {
-            newType.setStoreTermVectorPositions(random.nextBoolean());
-            if (newType.storeTermVectorPositions()) {
-              if (!newType.storeTermVectorPayloads()) {
-                newType.setStoreTermVectorPayloads(random.nextBoolean());
-              }
-            }
-          }
-          // Check for strings as offsets are disallowed on binary fields
-          if (value instanceof String && !newType.storeTermVectorOffsets()) {
-            newType.setStoreTermVectorOffsets(random.nextBoolean());
-          }
-
-          if (VERBOSE) {
-            System.out.println("NOTE: LuceneTestCase: upgrade name=" + name + " type=" + newType);
-          }
-        }
-      }
-      newType.freeze();
-      fieldToType.put(name, newType);
-
-      // TODO: we need to do this, but smarter, ie, most of
-      // the time we set the same value for a given field but
-      // sometimes (rarely) we change it up:
-      /*
-      if (newType.omitNorms()) {
-        newType.setOmitNorms(random.nextBoolean());
-      }
-      */
-
-      return createField(name, value, newType);
-    }
-  }
-
-  private static Field createField(String name, Object value, FieldType fieldType) {
-    if (value instanceof String) {
-      return new Field(name, (String) value, fieldType);
-    } else if (value instanceof BytesRef) {
-      return new Field(name, (BytesRef) value, fieldType);
-    } else {
-      throw new IllegalArgumentException("value must be String or BytesRef");
-    }
+    // TODO: if we can pull out the "make term vector options
+    // consistent across all instances of the same field name"
+    // write-once schema sort of helper class then we can
+    // remove the sync here.  We can also fold the random
+    // "enable norms" (now commented out, below) into that:
+    return fieldToType.newField(random, name, value, type);
   }
 
   private static final String[] availableLanguageTags =
@@ -2929,6 +2853,7 @@ public abstract sealed class LuceneTestCaseParent extends Assert
   //
   // TODO: to remove from here?
   //
+  static FieldToType fieldToType = new FieldToType();
 
   /** Suite failure marker (any error in the test or suite scope). */
   @SuppressWarnings("NonFinalStaticField")

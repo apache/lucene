@@ -27,10 +27,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.util.Constants;
 import org.jspecify.annotations.Nullable;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.Timeout;
@@ -68,7 +66,7 @@ changed, at least for now).
 /// annotated with [org.junit.jupiter.api.BeforeAll] and [org.junit.jupiter.api.AfterAll].
 /// **Do not use static initializers (including complex final field initializers).**
 ///
-/// For instance-level setup, use [BeforeEach] and
+/// For instance-level setup, use [org.junit.jupiter.api.BeforeEach] and
 /// [AfterEach] annotated methods.
 ///
 /// ## Specifying test cases
@@ -173,8 +171,10 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
     newRule.before();
   }
 
-  @AfterAll
-  static void teardownClass() throws Throwable {}
+  @AfterEach
+  void afterEach() throws Exception {
+    fieldToType.after();
+  }
 
   //
   // Custom assertion methods.
@@ -226,20 +226,6 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
                   .map(m -> "\n  - " + m.getDeclaringClass().getName() + "#" + m.getName())
                   .collect(Collectors.joining()));
     }
-  }
-
-  /** Use methods marked with jupiter's {@link BeforeEach} instead. */
-  @Override
-  @BeforeEach
-  protected final void setUp() throws Exception {
-    super.setUp();
-  }
-
-  /** Use methods marked with jupiter's {@link AfterEach} instead. */
-  @Override
-  @AfterEach
-  protected final void tearDown() throws Exception {
-    super.tearDown();
   }
 
   public static <T extends Throwable> T expectThrows(
