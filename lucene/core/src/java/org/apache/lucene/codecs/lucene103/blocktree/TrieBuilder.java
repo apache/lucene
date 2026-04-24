@@ -27,6 +27,7 @@ import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.RandomAccessInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
 
 /**
  * A builder to build prefix tree (trie) as the index of block tree, and can be saved to disk.
@@ -84,7 +85,7 @@ class TrieBuilder {
    * The last key appended. Since entries are always appended in sorted order this doubles as the
    * lexicographically largest key for ordered-append assertions.
    */
-  private final BytesRef lastKey;
+  private final BytesRefBuilder lastKey = new BytesRefBuilder();
 
   /** The maximum key length across all entries. */
   private int maxKeyDepth;
@@ -99,39 +100,10 @@ class TrieBuilder {
 
     if (k.length == 0) {
       emptyOutput = v;
-      lastKey = new BytesRef();
     } else {
       minOutput = v;
-      lastKey = BytesRef.deepCopyOf(k);
+      lastKey.copyBytes(k);
     }
-  }
-
-  /**
-   * Encode and append a single (key, output) entry into the buffer, prefix-encoded against {@link
-   * #lastKey}. Updates lastKey afterward.
-   */
-  private void appendEntry(BytesRef key, int prefixLen, Output v) {
-    try {
-      int suffixLen = key.length - prefixLen;
-      buffer.writeVInt(prefixLen);
-      buffer.writeVInt(suffixLen);
-      buffer.writeBytes(key.bytes, key.offset + prefixLen, suffixLen);
-      buffer.writeVLong(v.fp);
-      buffer.writeByte((byte) (v.hasTerms ? 1 : 0));
-      if (v.floorData != null) {
-        buffer.writeVInt(v.floorData.length);
-        buffer.writeBytes(v.floorData.bytes, v.floorData.offset, v.floorData.length);
-      } else {
-        buffer.writeVInt(0);
-      }
-    } catch (IOException e) {
-      throw new UncheckedIOException("should not happen on in-memory buffer", e);
-    }
-    lastKey.bytes = ArrayUtil.growNoCopy(lastKey.bytes, key.length);
-    System.arraycopy(key.bytes, key.offset, lastKey.bytes, 0, key.length);
-    lastKey.offset = 0;
-    lastKey.length = key.length;
-    maxKeyDepth = Math.max(maxKeyDepth, key.length);
   }
 
   /**
@@ -139,43 +111,56 @@ class TrieBuilder {
    * ensure its keys greater or equals than max key of this one.
    */
   void append(TrieBuilder other) {
-    assert this.lastKey.compareTo(other.minKey) < 0;
+    assert this.lastKey.get().compareTo(other.minKey) < 0;
 
     if (other.emptyOutput != null && this.emptyOutput == null) {
       this.emptyOutput = other.emptyOutput;
     }
 
     if (other.minOutput != null) {
-      int mismatch =
-          Arrays.mismatch(
-              lastKey.bytes,
-              lastKey.offset,
-              lastKey.offset + lastKey.length,
-              other.minKey.bytes,
-              other.minKey.offset,
-              other.minKey.offset + other.minKey.length);
-      if (mismatch == -1) {
-        mismatch = Math.min(lastKey.length, other.minKey.length);
-      }
-      appendEntry(other.minKey, mismatch, other.minOutput);
+      try {
 
-      // Remaining buffer entries in 'other' are prefix-encoded against other.minKey which now
-      // equals our lastKey, so bulk-copy is safe without re-encoding.
-      if (other.buffer.size() > 0) {
-        try {
+        // Encode and append the min entry in 'other' into the buffer, prefix-encoded against
+        // lastKey.
+        BytesRef lastKeyRef = lastKey.get();
+        int mismatch =
+            Arrays.mismatch(
+                lastKeyRef.bytes,
+                lastKeyRef.offset,
+                lastKeyRef.offset + lastKeyRef.length,
+                other.minKey.bytes,
+                other.minKey.offset,
+                other.minKey.offset + other.minKey.length);
+        if (mismatch == -1) {
+          mismatch = Math.min(lastKeyRef.length, other.minKey.length);
+        }
+        int suffixLen = other.minKey.length - mismatch;
+        buffer.writeVInt(mismatch);
+        buffer.writeVInt(suffixLen);
+        buffer.writeBytes(other.minKey.bytes, other.minKey.offset + mismatch, suffixLen);
+        buffer.writeVLong(other.minOutput.fp);
+        buffer.writeByte((byte) (other.minOutput.hasTerms ? 1 : 0));
+        if (other.minOutput.floorData != null) {
+          BytesRef floorData = other.minOutput.floorData;
+          buffer.writeVInt(floorData.length);
+          buffer.writeBytes(floorData.bytes, floorData.offset, floorData.length);
+        } else {
+          buffer.writeVInt(0);
+        }
+
+        // Remaining buffer entries in 'other' are prefix-encoded against other.minKey which now
+        // equals our lastKey, so bulk-copy is safe without re-encoding.
+        if (other.buffer.size() > 0) {
           ByteBuffersDataInput otherIn = other.buffer.toDataInput();
           buffer.copyBytes(otherIn, otherIn.length());
-        } catch (IOException e) {
-          throw new UncheckedIOException("should not happen on in-memory buffer", e);
         }
-        lastKey.bytes = ArrayUtil.growNoCopy(lastKey.bytes, other.lastKey.length);
-        System.arraycopy(
-            other.lastKey.bytes, other.lastKey.offset, lastKey.bytes, 0, other.lastKey.length);
-        lastKey.offset = 0;
-        lastKey.length = other.lastKey.length;
+
+      } catch (IOException e) {
+        throw new UncheckedIOException("should not happen on in-memory buffer", e);
       }
     }
 
+    lastKey.copyBytes(other.lastKey);
     this.maxKeyDepth = Math.max(this.maxKeyDepth, other.maxKeyDepth);
   }
 
@@ -198,6 +183,7 @@ class TrieBuilder {
   class EntryIterator {
     private final ByteBuffersDataInput in;
     private boolean minKeyConsumed;
+    boolean headerRead = false;
 
     // header
     int suffixLen;
@@ -229,11 +215,15 @@ class TrieBuilder {
      * for freezing nodes between depth keyLen and prefixLen.
      */
     void readHeader() throws IOException {
+      assert headerRead == false;
+      headerRead = true;
+
       if (!minKeyConsumed) {
         prefixLen = 0;
         suffixLen = minKey.length;
         return;
       }
+
       prefixLen = in.readVInt();
       suffixLen = in.readVInt();
     }
@@ -245,12 +235,16 @@ class TrieBuilder {
      * #output} holds the current entry's output.
      */
     void readBody() throws IOException {
+      assert headerRead == true;
+      headerRead = false;
+
       if (!minKeyConsumed) {
         keyLen = minKey.length;
         output = minOutput;
         minKeyConsumed = true;
         return;
       }
+
       keyLen = prefixLen + suffixLen;
       in.readBytes(key, prefixLen, suffixLen);
       long fp = in.readVLong();
