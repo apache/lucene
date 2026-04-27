@@ -159,9 +159,9 @@ iwc.getConfig().getCodec().compoundFormat().getShouldUseCompoundFile();
 iwc.getConfig().getCodec().compoundFormat().getMaxCFSSegmentSizeMB();
 ```
 
-### Implicit determinization removed from RegexpQuery
+### Implicit determinization removed from RegexpQuery and WildcardQuery
 
-Previously, RegexpQuery would use DFA execution by default, even if it might be inefficient.
+Previously, RegexpQuery and WildcardQuery would use DFA execution by default, even if it might be inefficient.
 
 RegexpQuery will now only [determinize as-needed](https://swtch.com/~rsc/regexp/regexp1.html). This might be
 faster or slower depending upon your queries.
@@ -172,6 +172,18 @@ If you'd like to force the previous behavior, use `determinize()` and `Automaton
 String re = "a(b+|c+)d";
 Automaton dfa = Operations.determinize(new RegExp(re).toAutomaton(), 10000);
 Query query = new AutomatonQuery(new Term("myfield", re), dfa);
+```
+
+Similarly for WildcardQuery, the `determinizeWorkLimit` parameter has been removed from `WildcardQuery` constructors and from
+`WildcardQuery.toAutomaton`. `QueryParserBase.setDeterminizeWorkLimit` and `getDeterminizeWorkLimit`
+have also been removed.
+
+To force the previous behavior, use:
+
+```java
+String pattern = "foo*bar";
+Automaton dfa = Operations.determinize(WildcardQuery.toAutomaton(new Term("myfield", pattern)), 10000);
+Query query = new AutomatonQuery(new Term("myfield", pattern), dfa);
 ```
 
 ### CollectionStatistics and TermStatistics have been renamed to FieldStats and TermStats (GITHUB#15929)
