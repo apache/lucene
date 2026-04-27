@@ -20,6 +20,7 @@ import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsExtension;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
@@ -91,6 +92,8 @@ public class CodeProfilingPlugin extends LuceneGradlePlugin {
             getCount().get(),
             getLineNumbers().get(),
             getFrametypes().get());
+      } catch (IllegalStateException e) {
+        throw new GradleException(e.getMessage(), e);
       } catch (IOException e) {
         throw new GradleException("Error when generating jfr profile summaries.", e);
       }
@@ -189,7 +192,7 @@ public class CodeProfilingPlugin extends LuceneGradlePlugin {
             task.jvmArgs(
                 List.of(
                     "-XX:StartFlightRecording=dumponexit=true,maxsize=250M,settings="
-                        + gradlePluginResource(project, "testing/profiling.jfc"),
+                        + gradlePluginResource(project, profilingSettingsPath()),
                     "-XX:+UnlockDiagnosticVMOptions",
                     "-XX:+DebugNonSafepoints"));
             task.dependsOn(cleanPreviousProfiles);
@@ -254,4 +257,14 @@ public class CodeProfilingPlugin extends LuceneGradlePlugin {
       Provider<Integer> countOption,
       Provider<Boolean> lineNumbersOption,
       Provider<Boolean> frametypesOption) {}
+
+  /**
+   * JEP 509 CPU-time sampling ({@code jdk.CPUTimeSample}) is implemented on Linux. Use a Linux-only
+   * JFR template with CPU-time sampling only; other hosts keep wall-clock execution sampling for
+   * short tests.
+   */
+  private static String profilingSettingsPath() {
+    String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+    return os.contains("linux") ? "testing/profiling.linux.jfc" : "testing/profiling.jfc";
+  }
 }

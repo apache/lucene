@@ -107,8 +107,9 @@ public class ProfileResults {
       case "cpu":
         if (hasCPUTimeSamples) {
           // Prefer jdk.CPUTimeSample (Java 25+, JEP 509): samples by CPU time, not wall-clock
-          // time, so idle threads (like gradle epoll) are inherently excluded — no filtering
-          // needed. When available, we skip legacy execution samples to avoid double-counting.
+          // time, so idle threads (like gradle epoll) are inherently excluded; no filtering
+          // needed. When present, we ignore jdk.ExecutionSample and jdk.NativeMethodSample
+          // (wall-clock / JNI execution sampling) so the same hot code is not double-counted.
           return name.equals("jdk.CPUTimeSample");
         }
         return (name.equals("jdk.ExecutionSample") || name.equals("jdk.NativeMethodSample"))
@@ -128,21 +129,34 @@ public class ProfileResults {
   }
 
   /**
-   * Pre-scan recording files to detect if any jdk.CPUTimeSample events are present. When they are,
-   * we prefer them over legacy jdk.ExecutionSample/jdk.NativeMethodSample to avoid double-counting.
+   * Pre-scan recording files for CPU sampling strategy. Returns whether any {@code
+   * jdk.CPUTimeSample} events appear in the inputs. Throws if recordings mix those with legacy
+   * wall-clock samples ({@code jdk.ExecutionSample} / {@code jdk.NativeMethodSample}); only one
+   * CPU sampler should be enabled in JFR settings.
    */
-  static boolean detectCPUTimeSamples(List<String> files) throws IOException {
+  static boolean resolveCpuTimeSampling(List<String> files) throws IOException {
+    boolean hasCpuTime = false;
+    boolean hasLegacy = false;
     for (String file : files) {
       try (RecordingFile recording = new RecordingFile(Paths.get(file))) {
         while (recording.hasMoreEvents()) {
           RecordedEvent event = recording.readEvent();
-          if (event.getEventType().getName().equals("jdk.CPUTimeSample")) {
-            return true;
+          String n = event.getEventType().getName();
+          if (n.equals("jdk.CPUTimeSample")) {
+            hasCpuTime = true;
+          } else if (n.equals("jdk.ExecutionSample") || n.equals("jdk.NativeMethodSample")) {
+            hasLegacy = true;
+          }
+          if (hasCpuTime && hasLegacy) {
+            throw new IllegalStateException(
+                "Mixed CPU profiling events: found both jdk.CPUTimeSample and legacy wall-clock "
+                    + "samples (jdk.ExecutionSample / jdk.NativeMethodSample). Use a single sampler "
+                    + "in JFR settings (see gradle/testing/profiling*.jfc).");
           }
         }
       }
     }
-    return false;
+    return hasCpuTime;
   }
 
   /** value we accumulate for this event */
@@ -200,9 +214,8 @@ public class ProfileResults {
       throw new IllegalArgumentException("tests.profile.count must be positive");
     }
 
-    // Pre-scan to detect if CPU-time samples (Java 25+, JEP 509) are available.
-    // If so, prefer them over legacy execution samples to avoid double-counting.
-    boolean hasCPUTimeSamples = "cpu".equals(mode) && detectCPUTimeSamples(files);
+    // Pre-scan recordings: decide CPU-time vs legacy sampling and reject mixed configurations.
+    boolean hasCPUTimeSamples = "cpu".equals(mode) && resolveCpuTimeSampling(files);
 
     Map<String, SimpleEntry<String, Long>> histogram = new HashMap<>();
     int totalEvents = 0;

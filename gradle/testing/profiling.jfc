@@ -16,7 +16,9 @@
     limitations under the License.
 -->
 <!--
-Collects only execution and method samples at a low interval
+  Wall-clock execution samples for CPU profiling on platforms where JEP 509 CPU-time sampling
+  is unavailable (non-Linux). On Linux, CodeProfilingPlugin uses profiling.linux.jfc instead.
+  Heap allocation events are enabled on all platforms.
 -->
 <configuration version="2.0" label="TestProfiling" description="Sampling for unit tests" provider="Apache">
   <event name="jdk.ExecutionSample">
@@ -27,11 +29,6 @@ Collects only execution and method samples at a low interval
   <event name="jdk.NativeMethodSample">
     <setting name="enabled">true</setting>
     <setting name="period">1 ms</setting>
-  </event>
-
-  <event name="jdk.CPUTimeSample">
-    <setting name="enabled">true</setting>
-    <setting name="throttle">10 ms</setting>
   </event>
 
   <event name="jdk.ObjectAllocationInNewTLAB">
