@@ -26,6 +26,7 @@ module org.apache.lucene.test_framework {
   requires transitive org.junit.jupiter.api;
   requires org.hamcrest;
   requires java.management;
+  requires org.junit.platform.engine;
 
   // Open certain packages for junit because it scans methods via reflection.
   opens org.apache.lucene.tests.index to

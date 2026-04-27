@@ -407,12 +407,6 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
                               }
 
                               @Override
-                              public void afterAll() {}
-
-                              @Override
-                              public void afterEach() {}
-
-                              @Override
                               public SetupAndRestoreStaticEnv getClassEnv() {
                                 return setupAndRestoreClassEnv;
                               }

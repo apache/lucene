@@ -24,12 +24,17 @@ import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 
 /** A rule for marking failed tests and suites. */
-public final class TestRuleMarkFailure implements TestRule {
+public final class TestRuleMarkFailure implements TestRule, BeforeAfterCallback {
   private final TestRuleMarkFailure[] chained;
   private volatile boolean failures;
 
   public TestRuleMarkFailure(TestRuleMarkFailure... chained) {
     this.chained = chained;
+  }
+
+  @Override
+  public void before() throws Exception {
+    reset();
   }
 
   @Override

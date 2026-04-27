@@ -340,10 +340,6 @@ public abstract sealed class LuceneTestCaseParent extends Assert
 
     <T extends Closeable> T closeAfterClass(T resource);
 
-    void afterEach() throws IOException;
-
-    void afterAll() throws IOException;
-
     SetupAndRestoreStaticEnv getClassEnv();
 
     TemporaryFilesSupplier getTempFilesSupplier();

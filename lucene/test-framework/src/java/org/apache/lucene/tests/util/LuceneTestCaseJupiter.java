@@ -21,7 +21,7 @@ import com.carrotsearch.randomizedtesting.jupiter.DetectThreadLeaks;
 import com.carrotsearch.randomizedtesting.jupiter.Randomized;
 import com.carrotsearch.randomizedtesting.jupiter.SystemThreadFilter;
 import java.io.Closeable;
-import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -29,23 +29,20 @@ import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.IOUtils;
-import org.jspecify.annotations.Nullable;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.extension.AfterAllCallback;
+import org.junit.jupiter.api.extension.AfterEachCallback;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
+import org.junit.jupiter.api.extension.ExecutableInvoker;
 import org.junit.jupiter.api.extension.Extension;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.junit.jupiter.api.extension.TestWatcher;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.platform.commons.support.AnnotationSupport;
@@ -75,7 +72,7 @@ changed, at least for now).
 /// **Do not use static initializers (including complex final field initializers).**
 ///
 /// For instance-level setup, use [org.junit.jupiter.api.BeforeEach] and
-/// [AfterEach] annotated methods.
+/// [org.junit.jupiter.api.AfterEach] annotated methods.
 ///
 /// ## Specifying test cases
 ///
@@ -110,46 +107,12 @@ changed, at least for now).
 @Randomized
 @DetectThreadLeaks(scope = DetectThreadLeaks.Scope.SUITE)
 @DetectThreadLeaks.LingerTime(millis = 20_000)
-@DetectThreadLeaks.ExcludeThreads({
-  SystemThreadFilter.class,
-  LuceneTestCaseJupiter.IsSystemThread.class
-})
+@DetectThreadLeaks.ExcludeThreads({SystemThreadFilter.class, IsSystemThread.class})
 @Timeout(value = 2, unit = TimeUnit.HOURS)
 @Execution(
     value = ExecutionMode.SAME_THREAD,
     reason = "single-threaded for backward compatibility.")
 public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCaseParent {
-  /**
-   * This predicate should return {@code true} for threads that should be ignored in {@linkplain
-   * DetectThreadLeaks thread leak detection}.
-   */
-  public static class IsSystemThread implements Predicate<Thread> {
-    static final boolean isJ9;
-
-    static {
-      isJ9 = Constants.JAVA_VENDOR.startsWith("IBM");
-    }
-
-    @Override
-    public boolean test(Thread t) {
-      var threadName = t.getName();
-      switch (threadName) {
-        case "ClassCache Reaper": // LUCENE-6518
-        case "junit-jupiter-timeout-watcher": // junit5/jupiter timeouts.
-        case "JNA Cleaner": // JNA cleaner thread (system).
-          return true;
-      }
-
-      if (isJ9
-          && Stream.of(t.getStackTrace())
-              .anyMatch(frame -> frame.getClassName().equals("java.util.Timer$TimerImpl"))) {
-        return true;
-      }
-
-      return false;
-    }
-  }
-
   private static final class JupiterTestFrameworkInfra
       implements LuceneTestCaseParent.TestFrameworkInfra {
     private final ConcurrentHashMap<Thread, Random> perThreadRandoms = new ConcurrentHashMap<>();
@@ -158,20 +121,17 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
     private final List<Closeable> closeAfterSuite = new ArrayList<>();
 
     final Supplier<Random> rnd;
-    final SetupAndRestoreStaticEnv classEnvRule;
 
     private final TemporaryFilesSupplier tempFilesSupplier;
-    private final TestRuleMarkFailure failureMarker;
+    private final SetupAndRestoreStaticEnv classEnvRule;
 
-    JupiterTestFrameworkInfra(Class<?> requiredTestClass, Supplier<Random> randomSupplier) {
+    JupiterTestFrameworkInfra(
+        SetupAndRestoreStaticEnv classEnvRule,
+        TemporaryFilesSupplier tempFileSupplier,
+        Supplier<Random> randomSupplier) {
+      this.classEnvRule = classEnvRule;
       this.rnd = randomSupplier;
-      this.classEnvRule =
-          new SetupAndRestoreStaticEnv(
-              this::threadRandom, () -> Objects.requireNonNull(requiredTestClass));
-      this.failureMarker = new TestRuleMarkFailure();
-      this.tempFilesSupplier =
-          new TemporaryFilesSupplier(
-              failureMarker, this::threadRandom, () -> Objects.requireNonNull(requiredTestClass));
+      this.tempFilesSupplier = tempFileSupplier;
     }
 
     @Override
@@ -196,38 +156,6 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
     }
 
     @Override
-    public void afterEach() throws IOException {
-      synchronized (this) {
-        IOUtils.close(closeAfterTest);
-        closeAfterTest.clear();
-      }
-    }
-
-    @Override
-    public void afterAll() throws IOException {
-      synchronized (this) {
-        IOUtils.close(
-            Stream.of(
-                    List.<Closeable>of(
-                        () -> {
-                          try {
-                            tempFilesSupplier.after();
-                            classEnvRule.after();
-                          } catch (Exception e) {
-                            throw new RuntimeException(e);
-                          }
-                        }),
-                    closeAfterTest,
-                    closeAfterSuite,
-                    perThreadRandoms.values())
-                .flatMap(Collection::stream)
-                .filter(v -> v instanceof Closeable)
-                .map(v -> (Closeable) v)
-                .toList());
-      }
-    }
-
-    @Override
     public SetupAndRestoreStaticEnv getClassEnv() {
       return classEnvRule;
     }
@@ -236,65 +164,146 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
     public TemporaryFilesSupplier getTempFilesSupplier() {
       return tempFilesSupplier;
     }
+  }
 
-    void beforeAll() throws Exception {
-      classEnvRule.before();
-      failureMarker.reset();
-      tempFilesSupplier.before();
+  static final class OrderedBeforeAfterCallback implements BeforeAfterCallback {
+    final List<BeforeAfterCallback> callbacks;
+    final ArrayDeque<BeforeAfterCallback> executed = new ArrayDeque<>();
+
+    OrderedBeforeAfterCallback(List<BeforeAfterCallback> callbacks) {
+      this.callbacks = callbacks;
+    }
+
+    @Override
+    public void before() throws Exception {
+      assert executed.isEmpty();
+      for (var c : callbacks) {
+        c.before();
+        executed.addLast(c);
+      }
+    }
+
+    @Override
+    public void after() throws Exception {
+      Throwable t = null;
+      while (!executed.isEmpty()) {
+        var c = executed.removeLast();
+        try {
+          c.after();
+        } catch (Throwable ex) {
+          if (t == null) {
+            t = ex;
+          } else {
+            t.addSuppressed(ex);
+          }
+        }
+      }
+
+      if (t != null) {
+        if (t instanceof Exception ex) {
+          throw ex;
+        } else if (t instanceof Error err) {
+          throw err;
+        } else /* only theoretically possible? */ {
+          throw new RuntimeException(t);
+        }
+      }
     }
   }
 
-  private static JupiterTestFrameworkInfra frameworkInfra;
+  static class SetupTestFrameworkInfra implements BeforeAllCallback, AfterAllCallback {
+    private JupiterTestFrameworkInfra jupiterFrameworkInfra;
+
+    TestRuleMarkFailure failureMarker;
+    SetupAndRestoreStaticEnv classEnvRule;
+    TemporaryFilesSupplier tempFileSupplier;
+
+    private OrderedBeforeAfterCallback beforeAfters;
+
+    @Override
+    public void beforeAll(ExtensionContext context) throws Exception {
+      // touch LuceneTestCase to trigger static initializers.
+      LuceneTestCase.ensureInitialized();
+
+      var activeTestClass = context.getRequiredTestClass();
+      this.classEnvRule =
+          new SetupAndRestoreStaticEnv(LuceneTestCaseJupiter::random, () -> activeTestClass);
+      this.failureMarker = new TestRuleMarkFailure();
+      this.tempFileSupplier =
+          new TemporaryFilesSupplier(
+              failureMarker, LuceneTestCaseJupiter::random, () -> activeTestClass);
+      this.jupiterFrameworkInfra =
+          new JupiterTestFrameworkInfra(
+              classEnvRule, tempFileSupplier, getRandomSupplier(context.getExecutableInvoker()));
+
+      var setFramework =
+          new BeforeAfterCallback() {
+            @Override
+            public void before() {
+              LuceneTestCaseParent.setTestFrameworkInfra(null, jupiterFrameworkInfra);
+            }
+
+            @Override
+            public void after() throws Exception {
+              IOUtils.close(
+                  Stream.of(
+                          jupiterFrameworkInfra.closeAfterTest,
+                          jupiterFrameworkInfra.closeAfterSuite,
+                          jupiterFrameworkInfra.perThreadRandoms.values())
+                      .flatMap(Collection::stream)
+                      .filter(v -> v instanceof Closeable)
+                      .map(v -> (Closeable) v)
+                      .toList());
+
+              LuceneTestCaseParent.setTestFrameworkInfra(jupiterFrameworkInfra, null);
+            }
+          };
+
+      this.beforeAfters =
+          new OrderedBeforeAfterCallback(
+              List.of(setFramework, classEnvRule, failureMarker, tempFileSupplier));
+      beforeAfters.before();
+    }
+
+    @Override
+    public void afterAll(ExtensionContext context) throws Exception {
+      beforeAfters.after();
+    }
+
+    // This trick is needed to get the Supplier<Random> injected by a parameter resolved
+    // of the randomized testing framework.
+    private Supplier<Random> getRandomSupplier(ExecutableInvoker executableInvoker)
+        throws Exception {
+      var hack =
+          new Object() {
+            @SuppressWarnings("unused")
+            public Supplier<Random> captureParameter(Supplier<Random> rnd) {
+              return rnd;
+            }
+          };
+
+      @SuppressWarnings("unchecked")
+      Supplier<Random> rnd =
+          (Supplier<Random>)
+              Objects.requireNonNull(
+                  executableInvoker.invoke(
+                      hack.getClass().getMethod("captureParameter", Supplier.class), hack));
+      return rnd;
+    }
+  }
 
   @RegisterExtension
-  static Extension failureListener =
-      new TestWatcher() {
-        @Override
-        public void testAborted(ExtensionContext context, @Nullable Throwable cause) {
-          frameworkInfra.failureMarker.markFailed();
-        }
+  @Order(0)
+  static SetupTestFrameworkInfra classCallbacks = new SetupTestFrameworkInfra();
 
+  @RegisterExtension
+  Extension testCallbackChain =
+      new AfterEachCallback() {
         @Override
-        public void testFailed(ExtensionContext context, @Nullable Throwable cause) {
-          frameworkInfra.failureMarker.markFailed();
+        public void afterEach(ExtensionContext context) throws Exception {
+          fieldToType.after();
         }
       };
-
-  @BeforeAll
-  static void setupClass(Supplier<Random> randomSupplier, TestInfo testInfo) throws Exception {
-    // touch LuceneTestCase to trigger static initializers.
-    LuceneTestCase.ensureInitialized();
-
-    frameworkInfra =
-        new JupiterTestFrameworkInfra(testInfo.getTestClass().orElseThrow(), randomSupplier);
-    LuceneTestCaseParent.setTestFrameworkInfra(null, frameworkInfra);
-    frameworkInfra.beforeAll();
-  }
-
-  @AfterEach
-  void afterEach() throws Exception {
-    frameworkInfra.afterEach();
-    fieldToType.after();
-  }
-
-  @AfterAll
-  static void teardownClass() throws Exception {
-    var infra = frameworkInfra;
-    try {
-      infra.afterAll();
-    } finally {
-      LuceneTestCaseParent.setTestFrameworkInfra(infra, null);
-      frameworkInfra = null;
-    }
-  }
-
-  //
-  // Custom assertion methods.
-  //
-
-  public static int atLeast(Random random, int i) {
-    return LuceneTestCase.atLeast(random, i);
-  }
 
   //
   // Deprecated or removed methods (LuceneTestCase) and other backward-compatibility
@@ -302,10 +311,8 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
   //
 
   /**
-   * Whenever possible, you should use an injected {@link Random} or {@code Supplier<Random>}
-   * parameter on junit5 test methods.
-   *
-   * <p>Global static methods make running test suites in parallel impossible.
+   * Use explicit, injected {@link Random} or {@code Supplier<Random>} parameters on junit jupiter
+   * test methods (or callbacks).
    */
   @Deprecated
   public static Random random() {
@@ -338,10 +345,5 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
                   .map(m -> "\n  - " + m.getDeclaringClass().getName() + "#" + m.getName())
                   .collect(Collectors.joining()));
     }
-  }
-
-  public static <T extends Throwable> T expectThrows(
-      Class<T> expectedType, LuceneTestCase.ThrowingRunnable runnable) {
-    return LuceneTestCase.expectThrows(expectedType, runnable);
   }
 }
