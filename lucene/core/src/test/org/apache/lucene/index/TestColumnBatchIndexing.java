@@ -39,6 +39,8 @@ import org.apache.lucene.document.column.ColumnBatch;
 import org.apache.lucene.document.column.LongColumn;
 import org.apache.lucene.document.column.LongTupleCursor;
 import org.apache.lucene.document.column.LongValuesCursor;
+import org.apache.lucene.document.column.VectorColumn;
+import org.apache.lucene.document.column.VectorTupleCursor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
@@ -285,8 +287,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     w.addBatch(
         simpleBatch(
             3,
-            new ArrayLongColumn(
-                "point", pointType, LongColumn.NumericKind.INT, docIds, values)));
+            new ArrayLongColumn("point", pointType, LongColumn.NumericKind.INT, docIds, values)));
 
     DirectoryReader r = DirectoryReader.open(w);
     IndexSearcher searcher = new IndexSearcher(r);
@@ -355,8 +356,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     w.addBatch(
         simpleBatch(
             3,
-            new ArrayLongColumn(
-                "point", pointType, LongColumn.NumericKind.INT, docIds, values)));
+            new ArrayLongColumn("point", pointType, LongColumn.NumericKind.INT, docIds, values)));
 
     DirectoryReader r = DirectoryReader.open(w);
     IndexSearcher searcher = new IndexSearcher(r);
@@ -825,9 +825,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     }
     w.addBatch(
         simpleBatch(
-            3,
-            new ArrayLongColumn(
-                "field", allType, LongColumn.NumericKind.INT, docIds, values)));
+            3, new ArrayLongColumn("field", allType, LongColumn.NumericKind.INT, docIds, values)));
 
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
@@ -1018,11 +1016,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         simpleBatch(
             3,
             new ArrayLongColumn(
-                "val",
-                NumericDocValuesField.TYPE,
-                LongColumn.NumericKind.INT,
-                docIds,
-                values)));
+                "val", NumericDocValuesField.TYPE, LongColumn.NumericKind.INT, docIds, values)));
 
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
@@ -1177,9 +1171,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     type.freeze();
 
     long[] raw = {Long.MIN_VALUE, 0L, Long.MAX_VALUE};
-    w.addBatch(
-        simpleBatch(
-            3, new ArrayLongColumn("val", type, new int[] {0, 1, 2}, raw.clone())));
+    w.addBatch(simpleBatch(3, new ArrayLongColumn("val", type, new int[] {0, 1, 2}, raw.clone())));
 
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
@@ -1519,8 +1511,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
 
     IndexSearcher searcher = new IndexSearcher(r);
     assertEquals(
-        raw.length,
-        searcher.count(LongPoint.newRangeQuery("val", Long.MIN_VALUE, Long.MAX_VALUE)));
+        raw.length, searcher.count(LongPoint.newRangeQuery("val", Long.MIN_VALUE, Long.MAX_VALUE)));
     assertEquals(1, searcher.count(LongPoint.newExactQuery("val", Long.MIN_VALUE)));
     assertEquals(3, searcher.count(LongPoint.newRangeQuery("val", -100L, 42L)));
 
@@ -1937,6 +1928,472 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
 
   // --- Test Column implementations backed by arrays ---
 
+  // ---- VectorColumn tests ----
+
+  public void testDenseFloatVectorColumn() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType vectorType = floatVectorType(3, VectorSimilarityFunction.EUCLIDEAN);
+    float[][] vectors = {
+      {1f, 2f, 3f}, {4f, 5f, 6f}, {7f, 8f, 9f},
+    };
+    w.addBatch(simpleBatch(3, new ArrayDenseFloatVectorColumn("v", vectorType, vectors)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    FloatVectorValues values = leaf.getFloatVectorValues("v");
+    assertNotNull(values);
+    KnnVectorValues.DocIndexIterator it = values.iterator();
+    for (int i = 0; i < vectors.length; i++) {
+      assertEquals(i, it.nextDoc());
+      assertArrayEquals(vectors[i], values.vectorValue(it.index()), 0f);
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.nextDoc());
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testDenseByteVectorColumn() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType vectorType = byteVectorType(4, VectorSimilarityFunction.EUCLIDEAN);
+    byte[][] vectors = {
+      {1, 2, 3, 4}, {5, 6, 7, 8}, {9, 10, 11, 12},
+    };
+    w.addBatch(simpleBatch(3, new ArrayDenseByteVectorColumn("v", vectorType, vectors)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    ByteVectorValues values = leaf.getByteVectorValues("v");
+    assertNotNull(values);
+    KnnVectorValues.DocIndexIterator it = values.iterator();
+    for (int i = 0; i < vectors.length; i++) {
+      assertEquals(i, it.nextDoc());
+      assertArrayEquals(vectors[i], values.vectorValue(it.index()));
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.nextDoc());
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testSparseFloatVectorColumn() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
+    int[] docIds = {0, 2, 5, 9};
+    float[][] vectors = {{1f, 1f}, {2f, 2f}, {3f, 3f}, {4f, 4f}};
+    // pair with a sparse long column so the batch has a defined doc count > vector count
+    int[] anchorIds = {0, 9};
+    long[] anchorVals = {0L, 9L};
+    w.addBatch(
+        simpleBatch(
+            10,
+            new ArrayFloatVectorColumn("v", vectorType, docIds, vectors),
+            new ArrayLongColumn("anchor", NumericDocValuesField.TYPE, anchorIds, anchorVals)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    FloatVectorValues values = leaf.getFloatVectorValues("v");
+    assertNotNull(values);
+    KnnVectorValues.DocIndexIterator it = values.iterator();
+    for (int i = 0; i < docIds.length; i++) {
+      assertEquals(docIds[i], it.nextDoc());
+      assertArrayEquals(vectors[i], values.vectorValue(it.index()), 0f);
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.nextDoc());
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testSparseByteVectorColumn() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType vectorType = byteVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
+    int[] docIds = {1, 4};
+    byte[][] vectors = {{1, 2}, {3, 4}};
+    int[] anchorIds = {0, 5};
+    long[] anchorVals = {0L, 5L};
+    w.addBatch(
+        simpleBatch(
+            6,
+            new ArrayByteVectorColumn("v", vectorType, docIds, vectors),
+            new ArrayLongColumn("anchor", NumericDocValuesField.TYPE, anchorIds, anchorVals)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    ByteVectorValues values = leaf.getByteVectorValues("v");
+    assertNotNull(values);
+    KnnVectorValues.DocIndexIterator it = values.iterator();
+    for (int i = 0; i < docIds.length; i++) {
+      assertEquals(docIds[i], it.nextDoc());
+      assertArrayEquals(vectors[i], values.vectorValue(it.index()));
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.nextDoc());
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testVectorMixedWithLongAndBinary() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.DOT_PRODUCT);
+    float[][] vectors = {{0.6f, 0.8f}, {0.8f, 0.6f}, {1.0f, 0.0f}};
+    long[] longs = {10, 20, 30};
+    BytesRef[] bins = {newBytesRef("a"), newBytesRef("b"), newBytesRef("c")};
+    int[] ids = {0, 1, 2};
+    w.addBatch(
+        simpleBatch(
+            3,
+            new ArrayDenseFloatVectorColumn("v", vectorType, vectors),
+            new ArrayLongColumn("num", NumericDocValuesField.TYPE, ids, longs),
+            new ArrayBinaryColumn("bin", BinaryDocValuesField.TYPE, ids, bins)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    NumericDocValues nums = leaf.getNumericDocValues("num");
+    BinaryDocValues binDv = leaf.getBinaryDocValues("bin");
+    FloatVectorValues vec = leaf.getFloatVectorValues("v");
+    KnnVectorValues.DocIndexIterator it = vec.iterator();
+    for (int i = 0; i < 3; i++) {
+      assertEquals(i, nums.nextDoc());
+      assertEquals(longs[i], nums.longValue());
+      assertEquals(i, binDv.nextDoc());
+      assertEquals(bins[i], binDv.binaryValue());
+      assertEquals(i, it.nextDoc());
+      assertArrayEquals(vectors[i], vec.vectorValue(it.index()), 0f);
+    }
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testVectorAcrossMultipleBatches() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
+    float[][] firstBatch = {{1f, 1f}, {2f, 2f}};
+    float[][] secondBatch = {{3f, 3f}, {4f, 4f}, {5f, 5f}};
+    w.addBatch(simpleBatch(2, new ArrayDenseFloatVectorColumn("v", vectorType, firstBatch)));
+    w.addBatch(simpleBatch(3, new ArrayDenseFloatVectorColumn("v", vectorType, secondBatch)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    FloatVectorValues values = leaf.getFloatVectorValues("v");
+    KnnVectorValues.DocIndexIterator it = values.iterator();
+    float[][] all = {firstBatch[0], firstBatch[1], secondBatch[0], secondBatch[1], secondBatch[2]};
+    for (int i = 0; i < all.length; i++) {
+      assertEquals(i, it.nextDoc());
+      assertArrayEquals(all[i], values.vectorValue(it.index()), 0f);
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.nextDoc());
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testEmptyVectorColumnRejected() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    // A field type alone is not enough — every batch must have at least one column with data,
+    // and a vector-only column with no values is the equivalent of "no documents have this
+    // vector". We pair it with a long anchor to make the batch valid; the vector cursor returns
+    // NO_MORE_DOCS immediately.
+    FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
+    int[] anchorIds = {0, 1};
+    long[] anchorVals = {0L, 1L};
+    w.addBatch(
+        simpleBatch(
+            2,
+            new ArrayFloatVectorColumn("v", vectorType, new int[0], new float[0][]),
+            new ArrayLongColumn("anchor", NumericDocValuesField.TYPE, anchorIds, anchorVals)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    FloatVectorValues values = leaf.getFloatVectorValues("v");
+    if (values != null) {
+      assertEquals(DocIdSetIterator.NO_MORE_DOCS, values.iterator().nextDoc());
+    }
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testParentFieldWithVectorBatch() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = newIndexWriterConfig();
+    config.setParentField("_parent");
+    IndexWriter w = new IndexWriter(dir, config);
+
+    FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
+    float[][] vectors = {{1f, 0f}, {0f, 1f}, {1f, 1f}};
+    w.addBatch(simpleBatch(3, new ArrayDenseFloatVectorColumn("v", vectorType, vectors)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    NumericDocValues parentDv = leaf.getNumericDocValues("_parent");
+    assertNotNull(parentDv);
+    for (int i = 0; i < 3; i++) {
+      assertEquals(i, parentDv.nextDoc());
+    }
+    FloatVectorValues values = leaf.getFloatVectorValues("v");
+    KnnVectorValues.DocIndexIterator it = values.iterator();
+    for (int i = 0; i < 3; i++) {
+      assertEquals(i, it.nextDoc());
+      assertArrayEquals(vectors[i], values.vectorValue(it.index()), 0f);
+    }
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testFloatVectorEncodingMismatchFails() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    // FieldType says FLOAT32 but column carries byte[] vectors.
+    FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
+    byte[][] vectors = {{1, 2}, {3, 4}};
+    expectThrows(
+        ClassCastException.class,
+        () -> w.addBatch(simpleBatch(2, new ArrayDenseByteVectorColumn("v", vectorType, vectors))));
+    w.rollback();
+    dir.close();
+  }
+
+  public void testWrongDimensionFails() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType vectorType = floatVectorType(3, VectorSimilarityFunction.EUCLIDEAN);
+    float[][] vectors = {{1f, 2f, 3f}, {4f, 5f}};
+    IllegalArgumentException e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                w.addBatch(
+                    simpleBatch(2, new ArrayDenseFloatVectorColumn("v", vectorType, vectors))));
+    assertTrue(e.getMessage(), e.getMessage().contains("expected dimension 3"));
+    w.rollback();
+    dir.close();
+  }
+
+  public void testZeroDimensionFieldTypeFails() {
+    FieldType bad = new FieldType();
+    // No vector attributes set -> vectorDimension() == 0
+    bad.setDocValuesType(DocValuesType.NUMERIC);
+    bad.freeze();
+    IllegalArgumentException e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> new ArrayDenseFloatVectorColumn("v", bad, new float[][] {{1f, 2f}}));
+    assertTrue(e.getMessage(), e.getMessage().contains("vectorDimension() > 0"));
+  }
+
+  public void testVectorWithDocValuesRejected() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType bad = new FieldType();
+    bad.setVectorAttributes(2, VectorEncoding.FLOAT32, VectorSimilarityFunction.EUCLIDEAN);
+    bad.setDocValuesType(DocValuesType.NUMERIC);
+    bad.freeze();
+    IllegalArgumentException e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                w.addBatch(
+                    simpleBatch(
+                        1, new ArrayDenseFloatVectorColumn("v", bad, new float[][] {{1f, 2f}}))));
+    assertTrue(e.getMessage(), e.getMessage().contains("must be vector-only"));
+    w.rollback();
+    dir.close();
+  }
+
+  public void testVectorWithStoredRejected() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType bad = new FieldType();
+    bad.setVectorAttributes(2, VectorEncoding.FLOAT32, VectorSimilarityFunction.EUCLIDEAN);
+    bad.setStored(true);
+    bad.freeze();
+    IllegalArgumentException e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                w.addBatch(
+                    simpleBatch(
+                        1, new ArrayDenseFloatVectorColumn("v", bad, new float[][] {{1f, 2f}}))));
+    assertTrue(e.getMessage(), e.getMessage().contains("must be vector-only"));
+    w.rollback();
+    dir.close();
+  }
+
+  public void testVectorWithIndexOptionsRejected() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType bad = new FieldType();
+    bad.setVectorAttributes(2, VectorEncoding.FLOAT32, VectorSimilarityFunction.EUCLIDEAN);
+    bad.setIndexOptions(IndexOptions.DOCS);
+    bad.setTokenized(false);
+    bad.freeze();
+    IllegalArgumentException e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                w.addBatch(
+                    simpleBatch(
+                        1, new ArrayDenseFloatVectorColumn("v", bad, new float[][] {{1f, 2f}}))));
+    assertTrue(e.getMessage(), e.getMessage().contains("must be vector-only"));
+    w.rollback();
+    dir.close();
+  }
+
+  public void testVectorWithPointsRejected() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType bad = new FieldType();
+    bad.setVectorAttributes(2, VectorEncoding.FLOAT32, VectorSimilarityFunction.EUCLIDEAN);
+    bad.setDimensions(1, Integer.BYTES);
+    bad.freeze();
+    IllegalArgumentException e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                w.addBatch(
+                    simpleBatch(
+                        1, new ArrayDenseFloatVectorColumn("v", bad, new float[][] {{1f, 2f}}))));
+    assertTrue(e.getMessage(), e.getMessage().contains("must be vector-only"));
+    w.rollback();
+    dir.close();
+  }
+
+  public void testDuplicateDocIDFails() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
+    int[] docIds = {0, 0};
+    float[][] vectors = {{1f, 2f}, {3f, 4f}};
+    IllegalArgumentException e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                w.addBatch(
+                    simpleBatch(2, new ArrayFloatVectorColumn("v", vectorType, docIds, vectors))));
+    assertTrue(e.getMessage(), e.getMessage().contains("strictly increasing"));
+    w.rollback();
+    dir.close();
+  }
+
+  public void testDecreasingDocIDFails() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
+    int[] docIds = {3, 1};
+    float[][] vectors = {{1f, 2f}, {3f, 4f}};
+    IllegalArgumentException e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                w.addBatch(
+                    simpleBatch(4, new ArrayFloatVectorColumn("v", vectorType, docIds, vectors))));
+    assertTrue(e.getMessage(), e.getMessage().contains("strictly increasing"));
+    w.rollback();
+    dir.close();
+  }
+
+  public void testVectorOutOfRangeDocIDFails() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
+    int[] docIds = {0, 5};
+    float[][] vectors = {{1f, 2f}, {3f, 4f}};
+    IllegalArgumentException e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                w.addBatch(
+                    simpleBatch(3, new ArrayFloatVectorColumn("v", vectorType, docIds, vectors))));
+    assertTrue(e.getMessage(), e.getMessage().contains("out of range"));
+    w.rollback();
+    dir.close();
+  }
+
+  public void testDenseVectorColumnTooFewValuesFails() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
+    // 2 values declared DENSE but the batch has 3 docs.
+    float[][] vectors = {{1f, 2f}, {3f, 4f}};
+    IllegalArgumentException e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                w.addBatch(
+                    simpleBatch(3, new ArrayDenseFloatVectorColumn("v", vectorType, vectors))));
+    assertTrue(e.getMessage(), e.getMessage().contains("Dense column"));
+    w.rollback();
+    dir.close();
+  }
+
+  public void testVectorColumnSchemaConsistencyAcrossBatches() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType float32Type = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
+    w.addBatch(
+        simpleBatch(
+            1, new ArrayDenseFloatVectorColumn("v", float32Type, new float[][] {{1f, 2f}})));
+
+    FieldType byteType = byteVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
+    expectThrows(
+        IllegalArgumentException.class,
+        () ->
+            w.addBatch(
+                simpleBatch(
+                    1, new ArrayDenseByteVectorColumn("v", byteType, new byte[][] {{1, 2}}))));
+    w.rollback();
+    dir.close();
+  }
+
+  private static FieldType floatVectorType(int dimension, VectorSimilarityFunction sim) {
+    FieldType type = new FieldType();
+    type.setVectorAttributes(dimension, VectorEncoding.FLOAT32, sim);
+    type.freeze();
+    return type;
+  }
+
+  private static FieldType byteVectorType(int dimension, VectorSimilarityFunction sim) {
+    FieldType type = new FieldType();
+    type.setVectorAttributes(dimension, VectorEncoding.BYTE, sim);
+    type.freeze();
+    return type;
+  }
+
   private static ColumnBatch simpleBatch(int numDocs, Column... columns) {
     return new ColumnBatch() {
       @Override
@@ -2079,8 +2536,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         @Override
         public long nextLong() {
           if (pos >= values.length) {
-            throw new IllegalStateException(
-                "LongValuesCursor exhausted: size=" + values.length);
+            throw new IllegalStateException("LongValuesCursor exhausted: size=" + values.length);
           }
           return values[pos++];
         }
@@ -2088,8 +2544,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         @Override
         public void fill(long[] dst, int offset, int length) {
           if (pos + length > values.length) {
-            throw new IllegalStateException(
-                "LongValuesCursor exhausted: size=" + values.length);
+            throw new IllegalStateException("LongValuesCursor exhausted: size=" + values.length);
           }
           System.arraycopy(values, pos, dst, offset, length);
           pos += length;
@@ -2098,4 +2553,119 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     }
   }
 
+  private static class ArrayFloatVectorColumn extends VectorColumn<float[]> {
+    private final int[] docIds;
+    private final float[][] values;
+
+    ArrayFloatVectorColumn(
+        String name, IndexableFieldType fieldType, int[] docIds, float[][] values) {
+      super(name, fieldType, Density.SPARSE);
+      assert docIds.length == values.length;
+      this.docIds = docIds;
+      this.values = values;
+    }
+
+    @Override
+    public VectorTupleCursor<float[]> tuples() {
+      return new VectorTupleCursor<>() {
+        int pos = -1;
+
+        @Override
+        public int nextDoc() {
+          pos++;
+          return pos < docIds.length ? docIds[pos] : DocIdSetIterator.NO_MORE_DOCS;
+        }
+
+        @Override
+        public float[] vectorValue() {
+          return values[pos];
+        }
+      };
+    }
+  }
+
+  private static class ArrayByteVectorColumn extends VectorColumn<byte[]> {
+    private final int[] docIds;
+    private final byte[][] values;
+
+    ArrayByteVectorColumn(
+        String name, IndexableFieldType fieldType, int[] docIds, byte[][] values) {
+      super(name, fieldType, Density.SPARSE);
+      assert docIds.length == values.length;
+      this.docIds = docIds;
+      this.values = values;
+    }
+
+    @Override
+    public VectorTupleCursor<byte[]> tuples() {
+      return new VectorTupleCursor<>() {
+        int pos = -1;
+
+        @Override
+        public int nextDoc() {
+          pos++;
+          return pos < docIds.length ? docIds[pos] : DocIdSetIterator.NO_MORE_DOCS;
+        }
+
+        @Override
+        public byte[] vectorValue() {
+          return values[pos];
+        }
+      };
+    }
+  }
+
+  private static class ArrayDenseFloatVectorColumn extends VectorColumn<float[]> {
+    private final float[][] values;
+
+    ArrayDenseFloatVectorColumn(String name, IndexableFieldType fieldType, float[][] values) {
+      super(name, fieldType, Density.DENSE);
+      this.values = values;
+    }
+
+    @Override
+    public VectorTupleCursor<float[]> tuples() {
+      return new VectorTupleCursor<>() {
+        int pos = -1;
+
+        @Override
+        public int nextDoc() {
+          pos++;
+          return pos < values.length ? pos : DocIdSetIterator.NO_MORE_DOCS;
+        }
+
+        @Override
+        public float[] vectorValue() {
+          return values[pos];
+        }
+      };
+    }
+  }
+
+  private static class ArrayDenseByteVectorColumn extends VectorColumn<byte[]> {
+    private final byte[][] values;
+
+    ArrayDenseByteVectorColumn(String name, IndexableFieldType fieldType, byte[][] values) {
+      super(name, fieldType, Density.DENSE);
+      this.values = values;
+    }
+
+    @Override
+    public VectorTupleCursor<byte[]> tuples() {
+      return new VectorTupleCursor<>() {
+        int pos = -1;
+
+        @Override
+        public int nextDoc() {
+          pos++;
+          return pos < values.length ? pos : DocIdSetIterator.NO_MORE_DOCS;
+        }
+
+        @Override
+        public byte[] vectorValue() {
+          return values[pos];
+        }
+      };
+    }
+  }
 }

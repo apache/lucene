@@ -38,9 +38,7 @@ import org.apache.lucene.codecs.NormsFormat;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
-import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -49,9 +47,13 @@ import org.apache.lucene.document.column.BinaryColumn;
 import org.apache.lucene.document.column.BinaryTupleCursor;
 import org.apache.lucene.document.column.Column;
 import org.apache.lucene.document.column.ColumnBatch;
+import org.apache.lucene.document.column.ColumnFieldAdapter;
+import org.apache.lucene.document.column.ColumnValidation;
 import org.apache.lucene.document.column.LongColumn;
 import org.apache.lucene.document.column.LongTupleCursor;
 import org.apache.lucene.document.column.LongValuesCursor;
+import org.apache.lucene.document.column.VectorColumn;
+import org.apache.lucene.document.column.VectorTupleCursor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -708,21 +710,14 @@ final class IndexingChain implements Accountable {
       final String fieldName = column.name();
       final IndexableFieldType fieldType = column.fieldType();
 
-      if (fieldType.docValuesType() == DocValuesType.NONE
-          && fieldType.pointDimensionCount() == 0
-          && fieldType.stored() == false
-          && fieldType.indexOptions() == IndexOptions.NONE) {
-        throw new IllegalArgumentException(
-            "Column \""
-                + fieldName
-                + "\" must have a non-NONE docValuesType, point dimensions, be stored,"
-                + " or have index options");
-      }
+      ColumnValidation.validateColumnHasIndexingFeature(fieldName, fieldType);
 
       if (column instanceof BinaryColumn bc) {
-        validatePlainBinaryColumn(bc, fieldType);
+        ColumnValidation.validateBinaryColumn(bc, fieldType);
       } else if (column instanceof LongColumn lc) {
-        validateLongColumn(lc, fieldType);
+        ColumnValidation.validateLongColumn(lc, fieldType);
+      } else if (column instanceof VectorColumn<?> vc) {
+        ColumnValidation.validateVectorColumn(vc, fieldType);
       }
 
       if (fieldType.stored() || fieldType.indexOptions() != IndexOptions.NONE) {
@@ -752,101 +747,26 @@ final class IndexingChain implements Accountable {
       processRowColumns(baseDocID, numDocs, columnBatch.columns());
     }
 
-    // Column-oriented pass: doc values and points. Each column is asked for a fresh cursor
+    // Column-oriented pass: doc values, points, and vectors. Each column is asked for a fresh
+    // cursor.
     for (Column column : columnBatch.columns()) {
       final IndexableFieldType fieldType = column.fieldType();
-      if (fieldType.docValuesType() == DocValuesType.NONE && fieldType.pointDimensionCount() == 0) {
+      if (fieldType.docValuesType() == DocValuesType.NONE
+          && fieldType.pointDimensionCount() == 0
+          && fieldType.vectorDimension() == 0) {
         continue; // no column-oriented features
       }
       PerField pf = getOrAddPerField(column.name());
 
-      if (column instanceof LongColumn longCol) {
-        processLongColumn(baseDocID, numDocs, longCol, pf, fieldType);
-      } else if (column instanceof BinaryColumn binaryCol) {
-        processBinaryColumn(baseDocID, numDocs, binaryCol, pf, fieldType);
-      } else {
-        throw new IllegalArgumentException("Unknown column type: " + column.getClass().getName());
-      }
-    }
-  }
-
-  private static void validateLongColumn(LongColumn column, IndexableFieldType fieldType) {
-    final int pointDims = fieldType.pointDimensionCount();
-    if (pointDims != 0) {
-      if (pointDims != 1) {
-        throw new IllegalArgumentException(
-            "LongColumn \""
-                + column.name()
-                + "\" only supports 1-dimensional point fields, got pointDimensionCount="
-                + pointDims);
-      }
-      final int expectedPointBytes =
-          (column.numericKind() == LongColumn.NumericKind.INT
-                  || column.numericKind() == LongColumn.NumericKind.FLOAT)
-              ? Integer.BYTES
-              : Long.BYTES;
-      if (fieldType.pointNumBytes() != expectedPointBytes) {
-        throw new IllegalArgumentException(
-            "LongColumn \""
-                + column.name()
-                + "\" numericKind="
-                + column.numericKind()
-                + " requires pointNumBytes="
-                + expectedPointBytes
-                + ", got "
-                + fieldType.pointNumBytes());
-      }
-    }
-    if (fieldType.stored()) {
-      final StoredValue.Type storedType = column.storedType();
-      switch (storedType) {
-        case INTEGER, LONG, FLOAT, DOUBLE -> {
-          // OK.
-        }
-        case STRING, BINARY ->
+      switch (column) {
+        case LongColumn longCol -> processLongColumn(baseDocID, numDocs, longCol, pf, fieldType);
+        case BinaryColumn binaryCol ->
+            processBinaryColumn(baseDocID, numDocs, binaryCol, pf, fieldType);
+        case VectorColumn<?> vectorCol ->
+            processVectorColumn(baseDocID, numDocs, vectorCol, pf, fieldType);
+        default ->
             throw new IllegalArgumentException(
-                "LongColumn \""
-                    + column.name()
-                    + "\" storedType="
-                    + storedType
-                    + " is not supported; use a BinaryColumn for non-numeric stored data");
-        case DATA_INPUT ->
-            throw new IllegalArgumentException(
-                "LongColumn \""
-                    + column.name()
-                    + "\" storedType DATA_INPUT is not supported for columns");
-      }
-    }
-  }
-
-  private static void validatePlainBinaryColumn(BinaryColumn column, IndexableFieldType fieldType) {
-    final DocValuesType dvType = fieldType.docValuesType();
-    if (dvType == DocValuesType.NUMERIC || dvType == DocValuesType.SORTED_NUMERIC) {
-      throw new IllegalArgumentException(
-          "BinaryColumn \""
-              + column.name()
-              + "\" cannot feed docValuesType="
-              + dvType
-              + "; use a LongColumn");
-    }
-    if (fieldType.stored()) {
-      final StoredValue.Type storedType = column.storedType();
-      switch (storedType) {
-        case BINARY, STRING -> {
-          // OK.
-        }
-        case INTEGER, LONG, FLOAT, DOUBLE ->
-            throw new IllegalArgumentException(
-                "BinaryColumn \""
-                    + column.name()
-                    + "\" storedType="
-                    + storedType
-                    + " is not supported; use a LongColumn for numeric stored data");
-        case DATA_INPUT ->
-            throw new IllegalArgumentException(
-                "BinaryColumn \""
-                    + column.name()
-                    + "\" storedType DATA_INPUT is not supported for columns");
+                "Unknown column type: " + column.getClass().getName());
       }
     }
   }
@@ -861,10 +781,11 @@ final class IndexingChain implements Accountable {
    */
   private void processRowColumns(int baseDocID, int numDocs, Iterable<Column> columns)
       throws IOException {
-    // Collect row-oriented columns into parallel arrays
+    // Collect row-oriented columns. Per-field PerFields are cached in the shared docFields array
+    // (also used by processDocument) to avoid a per-batch allocation; adapters and cursor heads
+    // are local since they're column-specific.
     int numRowCols = 0;
     ColumnFieldAdapter[] adapters = new ColumnFieldAdapter[4];
-    PerField[] rowPfs = new PerField[4];
     int[] heads = new int[4];
     boolean hasInverted = false;
 
@@ -875,12 +796,14 @@ final class IndexingChain implements Accountable {
       }
       if (numRowCols >= adapters.length) {
         adapters = ArrayUtil.grow(adapters, numRowCols + 1);
-        rowPfs = ArrayUtil.grow(rowPfs, numRowCols + 1);
         heads = ArrayUtil.grow(heads, numRowCols + 1);
+      }
+      if (numRowCols >= docFields.length) {
+        oversizeDocFields();
       }
       ColumnFieldAdapter adapter = ColumnFieldAdapter.create(column);
       adapters[numRowCols] = adapter;
-      rowPfs[numRowCols] = getOrAddPerField(column.name());
+      docFields[numRowCols] = getOrAddPerField(column.name());
       heads[numRowCols] = adapter.nextDoc();
       if (fieldType.indexOptions() != IndexOptions.NONE) {
         hasInverted = true;
@@ -911,12 +834,12 @@ final class IndexingChain implements Accountable {
                     + head);
           }
           while (head == batchDocID) {
-            PerField pf = rowPfs[i];
+            PerField pf = docFields[i];
             if (pf.fieldGen != fieldGen) {
               pf.fieldGen = fieldGen;
               pf.reset(segDocID, adapters[i].fieldType());
             }
-            if (processRowField(segDocID, adapters[i], pf)) {
+            if (invertAndStore(segDocID, adapters[i], pf)) {
               fields[indexedFieldCount] = pf;
               indexedFieldCount++;
             }
@@ -957,180 +880,6 @@ final class IndexingChain implements Accountable {
     }
   }
 
-  /**
-   * Lightweight adapter that presents a column's current cursor value as an {@link IndexableField},
-   * so it can be passed to {@link #processRowField}. Extends {@link Field} so that {@code name()}
-   * and {@code fieldType()} resolve to final field reads rather than virtual dispatch. Holds a
-   * fresh tuple cursor over the underlying column; one instance is created per column per batch.
-   */
-  private abstract static class ColumnFieldAdapter extends Field {
-
-    ColumnFieldAdapter(String name, IndexableFieldType fieldType) {
-      super(name, fieldType);
-    }
-
-    static ColumnFieldAdapter create(Column column) {
-      if (column instanceof LongColumn lc) {
-        return new LongColumnAdapter(lc);
-      } else if (column instanceof BinaryColumn bc) {
-        return new BinaryColumnAdapter(bc);
-      } else {
-        throw new IllegalArgumentException("Unknown column type: " + column.getClass().getName());
-      }
-    }
-
-    abstract int nextDoc();
-  }
-
-  private static final class LongColumnAdapter extends ColumnFieldAdapter {
-    private final LongTupleCursor cursor;
-    private final StoredValue reusableStoredValue;
-    private final StoredValue.Type storedType;
-
-    LongColumnAdapter(LongColumn column) {
-      super(column.name(), column.fieldType());
-      this.cursor = column.tuples();
-      if (column.fieldType().stored()) {
-        this.storedType = column.storedType();
-        this.reusableStoredValue = newReusableLongStoredValue(storedType);
-      } else {
-        this.storedType = null;
-        this.reusableStoredValue = null;
-      }
-    }
-
-    private static StoredValue newReusableLongStoredValue(StoredValue.Type type) {
-      return switch (type) {
-        case INTEGER -> new StoredValue(0);
-        case LONG -> new StoredValue(0L);
-        case FLOAT -> new StoredValue(0.0f);
-        case DOUBLE -> new StoredValue(0.0);
-        case STRING, BINARY, DATA_INPUT ->
-            throw new AssertionError("rejected by validateLongColumn");
-      };
-    }
-
-    @Override
-    int nextDoc() {
-      return cursor.nextDoc();
-    }
-
-    @Override
-    public Number numericValue() {
-      return cursor.longValue();
-    }
-
-    @Override
-    public StoredValue storedValue() {
-      if (reusableStoredValue == null) {
-        return null;
-      }
-      long raw = cursor.longValue();
-      switch (storedType) {
-        case INTEGER -> reusableStoredValue.setIntValue((int) raw);
-        case LONG -> reusableStoredValue.setLongValue(raw);
-        case FLOAT -> reusableStoredValue.setFloatValue(Float.intBitsToFloat((int) raw));
-        case DOUBLE -> reusableStoredValue.setDoubleValue(Double.longBitsToDouble(raw));
-        case STRING, BINARY, DATA_INPUT ->
-            throw new AssertionError("rejected by validateLongColumn");
-      }
-      return reusableStoredValue;
-    }
-
-    @Override
-    public InvertableType invertableType() {
-      return null;
-    }
-  }
-
-  private static final class BinaryColumnAdapter extends ColumnFieldAdapter {
-    private final BinaryTupleCursor cursor;
-    private final StoredValue reusableStoredValue;
-    private final StoredValue.Type storedType;
-    private final boolean tokenized;
-    private final boolean indexed;
-
-    BinaryColumnAdapter(BinaryColumn column) {
-      super(column.name(), column.fieldType());
-      this.cursor = column.tuples();
-      this.tokenized = column.fieldType().tokenized();
-      this.indexed = column.fieldType().indexOptions() != IndexOptions.NONE;
-      if (column.fieldType().stored()) {
-        this.storedType = column.storedType();
-        this.reusableStoredValue = newReusableStoredValue(storedType);
-      } else {
-        this.storedType = null;
-        this.reusableStoredValue = null;
-      }
-    }
-
-    private static StoredValue newReusableStoredValue(StoredValue.Type type) {
-      return switch (type) {
-        case STRING -> new StoredValue("");
-        case BINARY -> new StoredValue(new BytesRef());
-        case INTEGER, LONG, FLOAT, DOUBLE, DATA_INPUT ->
-            throw new AssertionError("rejected by validatePlainBinaryColumn");
-      };
-    }
-
-    @Override
-    int nextDoc() {
-      return cursor.nextDoc();
-    }
-
-    @Override
-    public BytesRef binaryValue() {
-      return cursor.binaryValue();
-    }
-
-    @Override
-    public String stringValue() {
-      if (tokenized) {
-        BytesRef ref = cursor.binaryValue();
-        return new String(
-            ref.bytes, ref.offset, ref.length, java.nio.charset.StandardCharsets.UTF_8);
-      }
-      return null;
-    }
-
-    @Override
-    public StoredValue storedValue() {
-      if (reusableStoredValue == null) {
-        return null;
-      }
-      BytesRef value = cursor.binaryValue();
-      switch (storedType) {
-        case STRING ->
-            reusableStoredValue.setStringValue(
-                new String(
-                    value.bytes,
-                    value.offset,
-                    value.length,
-                    java.nio.charset.StandardCharsets.UTF_8));
-        case BINARY -> reusableStoredValue.setBinaryValue(value);
-        case INTEGER, LONG, FLOAT, DOUBLE, DATA_INPUT ->
-            throw new AssertionError("rejected by validatePlainBinaryColumn");
-      }
-      return reusableStoredValue;
-    }
-
-    @Override
-    public InvertableType invertableType() {
-      if (indexed == false) {
-        return null;
-      }
-      return tokenized ? InvertableType.TOKEN_STREAM : InvertableType.BINARY;
-    }
-
-    @Override
-    public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
-      if (tokenized) {
-        return analyzer.tokenStream(name(), stringValue());
-      }
-      return null;
-    }
-  }
-
   private void validateColumnSchema(String fieldName, PerField pf, IndexableFieldType fieldType)
       throws IOException {
     updateDocFieldSchema(fieldName, pf.schema, fieldType);
@@ -1142,7 +891,7 @@ final class IndexingChain implements Accountable {
     }
   }
 
-  private void processLongColumn(
+  private static void processLongColumn(
       int baseDocID, int numDocs, LongColumn column, PerField pf, IndexableFieldType fieldType)
       throws IOException {
     final DocValuesType dvType = fieldType.docValuesType();
@@ -1160,7 +909,7 @@ final class IndexingChain implements Accountable {
           NumericDocValuesWriter writer = (NumericDocValuesWriter) pf.docValuesWriter;
           int batchDocID;
           while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-            checkDocID(column, batchDocID, numDocs);
+            ColumnValidation.checkDocID(column, batchDocID, numDocs);
             writer.addValue(baseDocID + batchDocID, cursor.longValue());
           }
         }
@@ -1168,7 +917,7 @@ final class IndexingChain implements Accountable {
           SortedNumericDocValuesWriter writer = (SortedNumericDocValuesWriter) pf.docValuesWriter;
           int batchDocID;
           while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-            checkDocID(column, batchDocID, numDocs);
+            ColumnValidation.checkDocID(column, batchDocID, numDocs);
             writer.addValue(baseDocID + batchDocID, cursor.longValue());
           }
         }
@@ -1195,7 +944,7 @@ final class IndexingChain implements Accountable {
       case NONE -> {
         int batchDocID;
         while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          checkDocID(column, batchDocID, numDocs);
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
           encodeSortablePointBytes(cursor.longValue(), kind, pointScratch);
           pointWriter.addPackedValue(baseDocID + batchDocID, pointBytesRef);
         }
@@ -1204,7 +953,7 @@ final class IndexingChain implements Accountable {
         NumericDocValuesWriter dvWriter = (NumericDocValuesWriter) pf.docValuesWriter;
         int batchDocID;
         while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          checkDocID(column, batchDocID, numDocs);
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
           int segDocID = baseDocID + batchDocID;
           long raw = cursor.longValue();
           dvWriter.addValue(segDocID, raw);
@@ -1216,7 +965,7 @@ final class IndexingChain implements Accountable {
         SortedNumericDocValuesWriter dvWriter = (SortedNumericDocValuesWriter) pf.docValuesWriter;
         int batchDocID;
         while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          checkDocID(column, batchDocID, numDocs);
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
           int segDocID = baseDocID + batchDocID;
           long raw = cursor.longValue();
           dvWriter.addValue(segDocID, raw);
@@ -1247,14 +996,14 @@ final class IndexingChain implements Accountable {
     }
   }
 
-  private void processDenseLongColumn(
+  private static void processDenseLongColumn(
       int baseDocID,
       int numDocs,
       LongColumn column,
       LongValuesCursor cursor,
       PerField pf,
       DocValuesType dvType) {
-    checkDenseCount(column, cursor.size(), numDocs);
+    ColumnValidation.checkDenseCount(column, cursor.size(), numDocs);
     switch (dvType) {
       case NUMERIC -> {
         NumericDocValuesWriter writer = (NumericDocValuesWriter) pf.docValuesWriter;
@@ -1271,33 +1020,7 @@ final class IndexingChain implements Accountable {
     }
   }
 
-  private static void checkDenseBounds(Column column, int consumed, int chunkSize, int numDocs) {
-    if (consumed + chunkSize > numDocs) {
-      throw new IllegalArgumentException(
-          "Dense column \""
-              + column.name()
-              + "\" would exceed batch size: "
-              + (consumed + chunkSize)
-              + " values but batch has "
-              + numDocs
-              + " documents");
-    }
-  }
-
-  private static void checkDenseCount(Column column, int consumed, int numDocs) {
-    if (consumed != numDocs) {
-      throw new IllegalArgumentException(
-          "Dense column \""
-              + column.name()
-              + "\" provided "
-              + consumed
-              + " values but batch has "
-              + numDocs
-              + " documents");
-    }
-  }
-
-  private void processBinaryColumn(
+  private static void processBinaryColumn(
       int baseDocID, int numDocs, BinaryColumn column, PerField pf, IndexableFieldType fieldType)
       throws IOException {
     final DocValuesType dvType = fieldType.docValuesType();
@@ -1310,7 +1033,7 @@ final class IndexingChain implements Accountable {
       // sort-encoded bytes of the correct total length).
       int batchDocID;
       while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-        checkDocID(column, batchDocID, numDocs);
+        ColumnValidation.checkDocID(column, batchDocID, numDocs);
         pointWriter.addPackedValue(baseDocID + batchDocID, cursor.binaryValue());
       }
       return;
@@ -1321,7 +1044,7 @@ final class IndexingChain implements Accountable {
         BinaryDocValuesWriter writer = (BinaryDocValuesWriter) pf.docValuesWriter;
         int batchDocID;
         while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          checkDocID(column, batchDocID, numDocs);
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
           int segDocID = baseDocID + batchDocID;
           BytesRef value = cursor.binaryValue();
           writer.addValue(segDocID, value);
@@ -1334,7 +1057,7 @@ final class IndexingChain implements Accountable {
         SortedDocValuesWriter writer = (SortedDocValuesWriter) pf.docValuesWriter;
         int batchDocID;
         while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          checkDocID(column, batchDocID, numDocs);
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
           int segDocID = baseDocID + batchDocID;
           BytesRef value = cursor.binaryValue();
           writer.addValue(segDocID, value);
@@ -1347,7 +1070,7 @@ final class IndexingChain implements Accountable {
         SortedSetDocValuesWriter writer = (SortedSetDocValuesWriter) pf.docValuesWriter;
         int batchDocID;
         while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-          checkDocID(column, batchDocID, numDocs);
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
           int segDocID = baseDocID + batchDocID;
           BytesRef value = cursor.binaryValue();
           writer.addValue(segDocID, value);
@@ -1363,16 +1086,46 @@ final class IndexingChain implements Accountable {
     }
   }
 
-  private static void checkDocID(Column column, int batchDocID, int numDocs) {
-    if (batchDocID < 0 || batchDocID >= numDocs) {
-      throw new IllegalArgumentException(
-          "Column \""
-              + column.name()
-              + "\" returned batch doc-id "
-              + batchDocID
-              + " which is out of range [0, "
-              + numDocs
-              + ")");
+  @SuppressWarnings("unchecked")
+  private static void processVectorColumn(
+      int baseDocID, int numDocs, VectorColumn<?> column, PerField pf, IndexableFieldType fieldType)
+      throws IOException {
+    final VectorEncoding encoding = fieldType.vectorEncoding();
+    final int dimension = fieldType.vectorDimension();
+    final VectorTupleCursor<?> cursor = column.tuples();
+    int prevBatchDocID = -1;
+    int consumed = 0;
+    int batchDocID;
+    switch (encoding) {
+      case FLOAT32 -> {
+        KnnFieldVectorsWriter<float[]> writer =
+            (KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter;
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
+          ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
+          float[] vec = (float[]) cursor.vectorValue();
+          ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
+          writer.addValue(baseDocID + batchDocID, vec);
+          prevBatchDocID = batchDocID;
+          consumed++;
+        }
+      }
+      case BYTE -> {
+        KnnFieldVectorsWriter<byte[]> writer =
+            (KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter;
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
+          ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
+          byte[] vec = (byte[]) cursor.vectorValue();
+          ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
+          writer.addValue(baseDocID + batchDocID, vec);
+          prevBatchDocID = batchDocID;
+          consumed++;
+        }
+      }
+    }
+    if (column.density() == Column.Density.DENSE) {
+      ColumnValidation.checkDenseCount(column, consumed, numDocs);
     }
   }
 
@@ -1457,89 +1210,10 @@ final class IndexingChain implements Accountable {
     }
   }
 
-  /**
-   * Processes only row-oriented features (stored fields and term inversion) for a batch column
-   * field. Doc values, points, and vectors are handled in the column-oriented pass. Returns {@code
-   * true} if this is a unique indexed field with postings.
-   */
-  private boolean processRowField(int docID, IndexableField field, PerField pf) throws IOException {
-    IndexableFieldType fieldType = field.fieldType();
-    boolean indexedField = false;
-
-    // Invert indexed fields
-    if (fieldType.indexOptions() != IndexOptions.NONE) {
-      if (pf.first) { // first time we see this field in this doc
-        pf.invert(docID, field, true);
-        pf.first = false;
-        indexedField = true;
-      } else {
-        pf.invert(docID, field, false);
-      }
-    }
-
-    // Add stored fields
-    if (fieldType.stored()) {
-      StoredValue storedValue = field.storedValue();
-      if (storedValue == null) {
-        throw new IllegalArgumentException("Cannot store a null value");
-      } else if (storedValue.getType() == StoredValue.Type.STRING
-          && storedValue.getStringValue().length() > IndexWriter.MAX_STORED_STRING_LENGTH) {
-        throw new IllegalArgumentException(
-            "stored field \""
-                + field.name()
-                + "\" is too large ("
-                + storedValue.getStringValue().length()
-                + " characters) to store");
-      }
-      try {
-        storedFieldsConsumer.writeField(pf.fieldInfo, storedValue);
-      } catch (Throwable th) {
-        onAbortingException(th);
-        throw th;
-      }
-    }
-
-    return indexedField;
-  }
-
   /** Index each field Returns {@code true}, if we are indexing a unique field with postings */
   private boolean processField(int docID, IndexableField field, PerField pf) throws IOException {
+    boolean indexedField = invertAndStore(docID, field, pf);
     IndexableFieldType fieldType = field.fieldType();
-    boolean indexedField = false;
-
-    // Invert indexed fields
-    if (fieldType.indexOptions() != IndexOptions.NONE) {
-      if (pf.first) { // first time we see this field in this doc
-        pf.invert(docID, field, true);
-        pf.first = false;
-        indexedField = true;
-      } else {
-        pf.invert(docID, field, false);
-      }
-    }
-
-    // Add stored fields
-    if (fieldType.stored()) {
-      StoredValue storedValue = field.storedValue();
-      if (storedValue == null) {
-        throw new IllegalArgumentException("Cannot store a null value");
-      } else if (storedValue.getType() == StoredValue.Type.STRING
-          && storedValue.getStringValue().length() > IndexWriter.MAX_STORED_STRING_LENGTH) {
-        throw new IllegalArgumentException(
-            "stored field \""
-                + field.name()
-                + "\" is too large ("
-                + storedValue.getStringValue().length()
-                + " characters) to store");
-      }
-      try {
-        storedFieldsConsumer.writeField(pf.fieldInfo, storedValue);
-      } catch (Throwable th) {
-        onAbortingException(th);
-        throw th;
-      }
-    }
-
     DocValuesType dvType = fieldType.docValuesType();
     if (dvType != DocValuesType.NONE) {
       indexDocValue(docID, pf, dvType, field);
@@ -1550,6 +1224,49 @@ final class IndexingChain implements Accountable {
     if (fieldType.vectorDimension() != 0) {
       indexVectorValue(docID, pf, fieldType.vectorEncoding(), field);
     }
+    return indexedField;
+  }
+
+  /**
+   * Inverts indexed fields and writes stored fields. Shared by the single-doc row path ({@link
+   * #processField}) and the column-batch row pass ({@link #processRowColumns}). Returns {@code
+   * true} if this is a unique indexed field with postings.
+   */
+  private boolean invertAndStore(int docID, IndexableField field, PerField pf) throws IOException {
+    IndexableFieldType fieldType = field.fieldType();
+    boolean indexedField = false;
+
+    if (fieldType.indexOptions() != IndexOptions.NONE) {
+      if (pf.first) { // first time we see this field in this doc
+        pf.invert(docID, field, true);
+        pf.first = false;
+        indexedField = true;
+      } else {
+        pf.invert(docID, field, false);
+      }
+    }
+
+    if (fieldType.stored()) {
+      StoredValue storedValue = field.storedValue();
+      if (storedValue == null) {
+        throw new IllegalArgumentException("Cannot store a null value");
+      } else if (storedValue.getType() == StoredValue.Type.STRING
+          && storedValue.getStringValue().length() > IndexWriter.MAX_STORED_STRING_LENGTH) {
+        throw new IllegalArgumentException(
+            "stored field \""
+                + field.name()
+                + "\" is too large ("
+                + storedValue.getStringValue().length()
+                + " characters) to store");
+      }
+      try {
+        storedFieldsConsumer.writeField(pf.fieldInfo, storedValue);
+      } catch (Throwable th) {
+        onAbortingException(th);
+        throw th;
+      }
+    }
+
     return indexedField;
   }
 

@@ -28,8 +28,8 @@ import org.apache.lucene.index.IndexableFieldType;
  * responsible for producing sort-encoded bytes of the correct total length.
  *
  * <p>Numeric doc values ({@link org.apache.lucene.index.DocValuesType#NUMERIC NUMERIC} / {@link
- * org.apache.lucene.index.DocValuesType#SORTED_NUMERIC SORTED_NUMERIC}) and 1-D numeric points
- * (int / long / float / double) are fed by {@link LongColumn} instead.
+ * org.apache.lucene.index.DocValuesType#SORTED_NUMERIC SORTED_NUMERIC}) and 1-D numeric points (int
+ * / long / float / double) are fed by {@link LongColumn} instead.
  *
  * @lucene.experimental
  */

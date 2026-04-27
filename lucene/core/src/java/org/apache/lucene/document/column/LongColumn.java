@@ -44,16 +44,13 @@ public abstract class LongColumn extends Column {
 
   /** The numeric interpretation of the column's long values. */
   public enum NumericKind {
-    /** Signed 32-bit int, taken from the low 32 bits of the long value. */
+    /** Type of integer values. */
     INT,
-    /** Signed 64-bit long. */
+    /** Type of long values. */
     LONG,
-    /**
-     * IEEE 754 32-bit float, bit-packed in the low 32 bits of the long value (see {@link
-     * Float#floatToRawIntBits}).
-     */
+    /** Type of float values. */
     FLOAT,
-    /** IEEE 754 64-bit double, bit-packed in the long value (see {@link Double#doubleToRawLongBits}). */
+    /** Type of double values. */
     DOUBLE,
   }
 
