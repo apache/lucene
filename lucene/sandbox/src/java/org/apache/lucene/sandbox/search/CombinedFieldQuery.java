@@ -38,11 +38,11 @@ import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
-import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.DisiWrapper;
 import org.apache.lucene.search.DisjunctionDISIApproximation;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.Query;
@@ -52,7 +52,7 @@ import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TermScorer;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.search.similarities.DFRSimilarity;
@@ -72,8 +72,8 @@ import org.apache.lucene.util.SmallFloat;
  *
  * <ol>
  *   <li>Given a list of fields and weights, it pretends there is a synthetic combined field where
- *       all terms have been indexed. It computes new term and collection statistics for this
- *       combined field.
+ *       all terms have been indexed. It computes new term and field statistics for this combined
+ *       field.
  *   <li>It uses a disjunction iterator and {@link IndexSearcher#getSimilarity} to score documents.
  * </ol>
  *
@@ -314,41 +314,37 @@ public final class CombinedFieldQuery extends Query implements Accountable {
         TermStates ts = TermStates.build(searcher, fieldTerms[i], true);
         termStates[i] = ts;
         if (ts.docFreq() > 0) {
-          TermStatistics termStats =
-              searcher.termStatistics(fieldTerms[i], ts.docFreq(), ts.totalTermFreq());
+          TermStats termStats = searcher.termStats(fieldTerms[i], ts.docFreq(), ts.totalTermFreq());
           docFreq = Math.max(termStats.docFreq(), docFreq);
           totalTermFreq += (double) field.weight * termStats.totalTermFreq();
         }
       }
       if (docFreq > 0) {
-        CollectionStatistics pseudoCollectionStats = mergeCollectionStatistics(searcher);
-        TermStatistics pseudoTermStatistics =
-            new TermStatistics(new BytesRef("pseudo_term"), docFreq, Math.max(1, totalTermFreq));
-        this.simWeight =
-            searcher.getSimilarity().scorer(boost, pseudoCollectionStats, pseudoTermStatistics);
+        FieldStats pseudoFieldStats = mergeFieldStats(searcher);
+        TermStats pseudoTermStats =
+            new TermStats(new BytesRef("pseudo_term"), docFreq, Math.max(1, totalTermFreq));
+        this.simWeight = searcher.getSimilarity().scorer(boost, pseudoFieldStats, pseudoTermStats);
       } else {
         this.simWeight = null;
       }
     }
 
-    private CollectionStatistics mergeCollectionStatistics(IndexSearcher searcher)
-        throws IOException {
+    private FieldStats mergeFieldStats(IndexSearcher searcher) throws IOException {
       long maxDoc = 0;
       long docCount = 0;
       long sumTotalTermFreq = 0;
       long sumDocFreq = 0;
       for (FieldAndWeight fieldWeight : fieldAndWeights.values()) {
-        CollectionStatistics collectionStats = searcher.collectionStatistics(fieldWeight.field);
-        if (collectionStats != null) {
-          maxDoc = Math.max(collectionStats.maxDoc(), maxDoc);
-          docCount = Math.max(collectionStats.docCount(), docCount);
-          sumDocFreq = Math.max(collectionStats.sumDocFreq(), sumDocFreq);
-          sumTotalTermFreq += (double) fieldWeight.weight * collectionStats.sumTotalTermFreq();
+        FieldStats fieldStats = searcher.fieldStats(fieldWeight.field);
+        if (fieldStats != null) {
+          maxDoc = Math.max(fieldStats.maxDoc(), maxDoc);
+          docCount = Math.max(fieldStats.docCount(), docCount);
+          sumDocFreq = Math.max(fieldStats.sumDocFreq(), sumDocFreq);
+          sumTotalTermFreq += (double) fieldWeight.weight * fieldStats.sumTotalTermFreq();
         }
       }
 
-      return new CollectionStatistics(
-          "pseudo_field", maxDoc, docCount, sumTotalTermFreq, sumDocFreq);
+      return new FieldStats("pseudo_field", maxDoc, docCount, sumTotalTermFreq, sumDocFreq);
     }
 
     @Override

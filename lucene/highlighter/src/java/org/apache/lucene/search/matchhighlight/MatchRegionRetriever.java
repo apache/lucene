@@ -492,6 +492,7 @@ public class MatchRegionRetriever {
         case DOCS_AND_FREQS_AND_POSITIONS:
           return new OffsetsFromPositions(field, analyzer);
 
+        case DOCS_AND_CUSTOM_FREQS:
         case DOCS_AND_FREQS:
         case DOCS:
           // By default retrieve offsets from individual tokens

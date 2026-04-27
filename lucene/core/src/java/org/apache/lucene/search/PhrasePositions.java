@@ -31,6 +31,7 @@ final class PhrasePositions {
   int rptGroup = -1; // >=0 indicates that this is a repeating PP
   int rptInd; // index in the rptGroup
   final Term[] terms; // for repetitions initialization
+  int freq; // cached frequency for the current document
 
   PhrasePositions(PostingsEnum postings, int o, int ord, Term[] terms) {
     this.postings = postings;
@@ -40,7 +41,7 @@ final class PhrasePositions {
   }
 
   final void firstPosition() throws IOException {
-    count = postings.freq(); // read first pos
+    count = freq; // use cached frequency
     nextPosition();
   }
 
