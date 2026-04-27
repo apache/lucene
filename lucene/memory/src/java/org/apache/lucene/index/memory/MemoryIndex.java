@@ -633,7 +633,7 @@ public class MemoryIndex {
     }
     if (tokenStream != null) {
       storeTerms(info, tokenStream, positionIncrementGap, offsetGap);
-    } else if (field.fieldType().indexOptions().compareTo(IndexOptions.DOCS) >= 0) {
+    } else if (field.fieldType().indexOptions().subsumes(IndexOptions.DOCS)) {
       BytesRef binaryValue = field.binaryValue();
       if (binaryValue == null) {
         throw new IllegalArgumentException(
