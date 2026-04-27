@@ -169,7 +169,6 @@ final class SortedSetDocValuesRangeQuery extends Query {
             }
 
             final SortedDocValues singleton = DocValues.unwrapSingleton(values);
-            TwoPhaseIterator iterator;
             if (singleton != null) {
               if (skipper != null) {
                 final DocIdSetIterator psIterator =
@@ -179,46 +178,11 @@ final class SortedSetDocValuesRangeQuery extends Query {
                   return psIterator;
                 }
               }
-              iterator =
-                  new TwoPhaseIterator(singleton) {
-                    @Override
-                    public boolean matches() throws IOException {
-                      final long ord = singleton.ordValue();
-                      return ord >= minOrd && ord <= maxOrd;
-                    }
-
-                    @Override
-                    public float matchCost() {
-                      return 2; // 2 comparisons
-                    }
-                  };
-            } else {
-              iterator =
-                  new TwoPhaseIterator(values) {
-                    @Override
-                    public boolean matches() throws IOException {
-                      for (int i = 0; i < values.docValueCount(); i++) {
-                        long ord = values.nextOrd();
-                        if (ord < minOrd) {
-                          continue;
-                        }
-                        // Values are sorted, so the first ord that is >= minOrd is our best
-                        // candidate
-                        return ord <= maxOrd;
-                      }
-                      return false; // all ords were < minOrd
-                    }
-
-                    @Override
-                    public float matchCost() {
-                      return 2; // 2 comparisons
-                    }
-                  };
+              return TwoPhaseIterator.asDocIdSetIterator(
+                  DocValuesRangeIterator.forOrdinalRange(singleton, skipper, minOrd, maxOrd));
             }
-            if (skipper != null) {
-              iterator = new DocValuesRangeIterator(iterator, skipper, minOrd, maxOrd, false);
-            }
-            return TwoPhaseIterator.asDocIdSetIterator(iterator);
+            return TwoPhaseIterator.asDocIdSetIterator(
+                DocValuesRangeIterator.forOrdinalRange(values, skipper, minOrd, maxOrd));
           }
 
           @Override
