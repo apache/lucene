@@ -329,6 +329,8 @@ Optimizations
 
 * GITHUB#15886: Cache frozen FieldType to skip redundant schema validation. (Tim Brooks)
 
+* GITHUB#15942: Skip max score computation when sorting by relevance in BlockGroupingCollector (Binlong Gao)
+
 * GITHUB#15902: Improve DiversifyingChildren performance by using primitive arrays(Alessandro Benedetti)
 
 * GITHUB#15954: Use SkipBlockRangeIterator as the two-phase approximation in SortedNumericDocValuesRangeQuery. (Sagar Upadhyaya)
@@ -337,6 +339,9 @@ Optimizations
   boundaries instead of linear scan. (Greg Miller)
 
 * GITHUB#15970: Reduce memory usage of fields with long terms during segment merges. (Alan Woodward)
+
+* GITHUB#15868: Optimize DisjunctionMaxBulkScorer by reusing the inner LeafCollector across
+  sub-scorers and resetting windowScores inline during replay instead of Arrays.fill. (Prithvi S)
 
 Bug Fixes
 ---------------------
