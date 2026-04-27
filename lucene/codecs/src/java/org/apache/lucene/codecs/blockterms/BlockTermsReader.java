@@ -256,20 +256,19 @@ public class BlockTermsReader extends FieldsProducer {
 
     @Override
     public boolean hasFreqs() {
-      return fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
+      return fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS);
     }
 
     @Override
     public boolean hasOffsets() {
       return fieldInfo
-              .getIndexOptions()
-              .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-          >= 0;
+          .getIndexOptions()
+          .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
     }
 
     @Override
     public boolean hasPositions() {
-      return fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+      return fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
     }
 
     @Override

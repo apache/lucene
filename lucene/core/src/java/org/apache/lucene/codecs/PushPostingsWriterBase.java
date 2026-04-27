@@ -87,10 +87,9 @@ public abstract class PushPostingsWriterBase extends PostingsWriterBase {
     this.fieldInfo = fieldInfo;
     indexOptions = fieldInfo.getIndexOptions();
 
-    writeFreqs = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
-    writePositions = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
-    writeOffsets =
-        indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
+    writeFreqs = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS);
+    writePositions = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+    writeOffsets = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
     writePayloads = fieldInfo.hasPayloads();
 
     if (writeFreqs == false) {
