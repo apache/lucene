@@ -227,15 +227,15 @@ public class HnswGraphBuilder implements HnswBuilder {
     if (frozen) {
       throw new IllegalStateException("This HnswGraphBuilder is frozen and cannot be updated");
     }
-    long start = System.nanoTime();
-    long progressStart = mergeStartTimeNS != -1 ? mergeStartTimeNS : start;
+    long startNs = System.nanoTime();
+    long progressStartNs = mergeStartTimeNS != -1 ? mergeStartTimeNS : startNs;
     for (int node = minOrd; node < maxOrd; node++) {
       addGraphNode(node);
       if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
-        printGraphBuildStatus(node, progressStart);
+        printGraphBuildStatus(node, progressStartNs);
       }
     }
-    long chunkElapsedNS = System.nanoTime() - start;
+    long chunkElapsedNS = System.nanoTime() - startNs;
     if (cumulativeWorkTimeNS != null) {
       cumulativeWorkTimeNS.addAndGet(chunkElapsedNS);
     }
@@ -376,8 +376,8 @@ public class HnswGraphBuilder implements HnswBuilder {
     addGraphNodeInternal(node, scorer, eps0);
   }
 
-  private void printGraphBuildStatus(int node, long start) {
-    double elapsedMs = (System.nanoTime() - start) / 1_000_000.0;
+  private void printGraphBuildStatus(int node, long startNs) {
+    double elapsedMs = (System.nanoTime() - startNs) / 1_000_000.0;
     infoStream.message(
         HNSW_COMPONENT, String.format(Locale.ROOT, "built %d in %.2f ms", node, elapsedMs));
   }
