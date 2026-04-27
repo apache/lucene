@@ -116,8 +116,6 @@ Improvements
 
 * GITHUB#15453: Avoid unnecessary sorting and instantiations in readMapOfStrings. (Benjamin Lerer)
 
-* GITHUB#15653: Introduce DocValuesStatsCollectorManager to parallelize search when using DocValuesStatsCollector. (Binlong Gao)
-
 * GITHUB#15574: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
 
 * GITHUB#15225: Improve package documentation for org.apache.lucene.util. (Syed Mohammad Saad)
@@ -293,6 +291,8 @@ Improvements
   factor should lie in [0, 1]; with higher values producing better recall using more graph exploration. Earlier, this
   buffer was controlled by an explicit parameter (set as `resultSimilarity` - `traversalSimilarity`), which is now
   deprecated. (Kaival Parikh)
+
+* GITHUB#15653: Introduce DocValuesStatsCollectorManager to parallelize search when using DocValuesStatsCollector. (Binlong Gao)
 
 Optimizations
 ---------------------

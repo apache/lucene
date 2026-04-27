@@ -123,6 +123,9 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
             docValues[i] = nextVal;
             ++nextVal;
           }
+          if (i != 0 && i % 10 == 0) {
+            indexWriter.commit();
+          }
           indexWriter.addDocument(doc);
         }
 
@@ -177,6 +180,9 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
             doc.add(new StringField("id", "doc" + i, Store.NO));
             docValues[i] = nextVal;
             ++nextVal;
+          }
+          if (i != 0 && i % 10 == 0) {
+            indexWriter.commit();
           }
           indexWriter.addDocument(doc);
         }
@@ -236,6 +242,9 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
               ++nextVal;
             }
             doc.add(new StringField("id", "doc" + i, Store.NO));
+          }
+          if (i != 0 && i % 10 == 0) {
+            indexWriter.commit();
           }
           indexWriter.addDocument(doc);
         }
@@ -299,6 +308,9 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
             }
             doc.add(new StringField("id", "doc" + i, Store.NO));
           }
+          if (i != 0 && i % 10 == 0) {
+            indexWriter.commit();
+          }
           indexWriter.addDocument(doc);
         }
 
@@ -345,7 +357,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
     try (Directory dir = newDirectory();
         RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir)) {
       String field = "sorted";
-      int numDocs = TestUtil.nextInt(random(), 1, 100);
+      int numDocs = TestUtil.nextInt(random(), 50, 100);
       BytesRef[] docValues = new BytesRef[numDocs];
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();
@@ -354,6 +366,9 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
           doc.add(new SortedDocValuesField(field, val));
           doc.add(new StringField("id", "doc" + i, Store.NO));
           docValues[i] = val;
+        }
+        if (i != 0 && i % 10 == 0) {
+          indexWriter.commit();
         }
         indexWriter.addDocument(doc);
       }
@@ -391,7 +406,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
     try (Directory dir = newDirectory();
         RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir)) {
       String field = "sorted";
-      int numDocs = TestUtil.nextInt(random(), 1, 100);
+      int numDocs = TestUtil.nextInt(random(), 50, 100);
       BytesRef[][] docValues = new BytesRef[numDocs][];
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();
@@ -404,6 +419,9 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
             docValues[i][j] = val;
           }
           doc.add(new StringField("id", "doc" + i, Store.NO));
+        }
+        if (i != 0 && i % 10 == 0) {
+          indexWriter.commit();
         }
         indexWriter.addDocument(doc);
       }

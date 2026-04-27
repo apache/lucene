@@ -24,6 +24,15 @@ import org.apache.lucene.search.CollectorManager;
 /**
  * A {@link CollectorManager} implementation for {@link DocValuesStatsCollector}.
  *
+ * <p>Example usage:
+ *
+ * <pre class="prettyprint">
+ * IndexSearcher searcher = ...; // your IndexSearcher
+ * DocValuesStatsCollectorManager&lt;DocValuesStats.LongDocValuesStats&gt; manager =
+ *     new DocValuesStatsCollectorManager&lt;&gt;(() -&gt; new DocValuesStats.LongDocValuesStats("price"));
+ * DocValuesStats.LongDocValuesStats stats = searcher.search(new MatchAllDocsQuery(), manager);
+ * </pre>
+ *
  * @param <S> the type of {@link DocValuesStats}
  */
 public class DocValuesStatsCollectorManager<S extends DocValuesStats<?>>
@@ -48,15 +57,12 @@ public class DocValuesStatsCollectorManager<S extends DocValuesStats<?>>
   @Override
   @SuppressWarnings("unchecked")
   public S reduce(Collection<DocValuesStatsCollector> collectors) throws IOException {
-    if (collectors.isEmpty()) {
-      return null;
-    }
-
     S merged = statsSupplier.get();
     for (DocValuesStatsCollector collector : collectors) {
       S stats = (S) collector.getStats();
       merged.merge(stats);
     }
+
     return merged;
   }
 }

@@ -76,10 +76,10 @@ public abstract class DocValuesStats<T> {
   void merge(DocValuesStats<?> other) {
     count += other.count;
     missing += other.missing;
-    if (other.min != null && (min == null || compareMin(other.min, min) < 0)) {
+    if (other.min != null && (min == null || compareValues(other.min, min) < 0)) {
       copyMin(other);
     }
-    if (other.max != null && (max == null || compareMax(other.max, max) > 0)) {
+    if (other.max != null && (max == null || compareValues(other.max, max) > 0)) {
       copyMax(other);
     }
   }
@@ -95,18 +95,7 @@ public abstract class DocValuesStats<T> {
   }
 
   @SuppressWarnings({"unchecked", "rawtypes"})
-  int compareMin(Object a, Object b) {
-    if (a instanceof Number numA && b instanceof Number numB) {
-      return Double.compare(numA.doubleValue(), numB.doubleValue());
-    }
-    return ((Comparable) a).compareTo(b);
-  }
-
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  int compareMax(Object a, Object b) {
-    if (a instanceof Number numA && b instanceof Number numB) {
-      return Double.compare(numA.doubleValue(), numB.doubleValue());
-    }
+  int compareValues(Object a, Object b) {
     return ((Comparable) a).compareTo(b);
   }
 
@@ -180,44 +169,42 @@ public abstract class DocValuesStats<T> {
      */
     public abstract T sum();
 
+    @SuppressWarnings("unchecked")
     @Override
     void merge(DocValuesStats<?> other) {
-      if (!(other instanceof NumericDocValuesStats<?> o)) {
-        throw new IllegalArgumentException("Cannot merge different stat types");
-      }
+      NumericDocValuesStats<T> otherStats = (NumericDocValuesStats<T>) other;
 
-      this.missing += o.missing();
-
-      if (o.count() == 0) {
+      this.missing += otherStats.missing();
+      if (otherStats.count() == 0) {
         return;
       }
       if (this.count() == 0) {
-        this.count = o.count();
-        copyMin(o);
-        copyMax(o);
-        this.mean = o.mean;
-        this.variance = o.variance;
+        this.count = otherStats.count();
+        this.min = otherStats.min();
+        this.max = otherStats.max();
+        this.mean = otherStats.mean();
+        this.variance = otherStats.variance;
         return;
       }
 
-      int totalCount = this.count() + o.count();
-      double combinedMean = (sum().doubleValue() + o.sum().doubleValue()) / totalCount;
+      int totalCount = this.count() + otherStats.count();
+      double combinedMean = (sum().doubleValue() + otherStats.sum().doubleValue()) / totalCount;
       double targetDelta = this.mean - combinedMean;
-      double sourceDelta = o.mean - combinedMean;
+      double sourceDelta = otherStats.mean() - combinedMean;
 
       this.variance =
           this.variance
-              + o.variance
+              + otherStats.variance
               + targetDelta * targetDelta * this.count()
-              + sourceDelta * sourceDelta * o.count();
+              + sourceDelta * sourceDelta * otherStats.count();
       this.mean = combinedMean;
       this.count = totalCount;
 
-      if (compareMin(o.min(), min()) < 0) {
-        copyMin(o);
+      if (compareValues(otherStats.min(), min()) < 0) {
+        this.min = otherStats.min();
       }
-      if (compareMax(o.max(), max()) > 0) {
-        copyMax(o);
+      if (compareValues(otherStats.max(), max()) > 0) {
+        this.max = otherStats.max();
       }
     }
   }
@@ -255,9 +242,7 @@ public abstract class DocValuesStats<T> {
     @Override
     void merge(DocValuesStats<?> other) {
       super.merge(other);
-      if (other instanceof LongDocValuesStats o) {
-        sum += o.sum;
-      }
+      sum += ((LongDocValuesStats) other).sum;
     }
   }
 
@@ -295,9 +280,7 @@ public abstract class DocValuesStats<T> {
     @Override
     void merge(DocValuesStats<?> other) {
       super.merge(other);
-      if (other instanceof DoubleDocValuesStats o) {
-        sum += o.sum;
-      }
+      this.sum += ((DoubleDocValuesStats) other).sum;
     }
   }
 
@@ -353,46 +336,46 @@ public abstract class DocValuesStats<T> {
      */
     public abstract T sum();
 
+    @SuppressWarnings("unchecked")
     @Override
     void merge(DocValuesStats<?> other) {
-      if (!(other instanceof SortedNumericDocValuesStats<?> o)) {
-        throw new IllegalArgumentException("Cannot merge different stat types");
-      }
+      SortedNumericDocValuesStats<T> otherStats = (SortedNumericDocValuesStats<T>) other;
 
-      this.missing += o.missing();
+      this.missing += otherStats.missing();
 
-      if (o.count() == 0) {
+      if (otherStats.count() == 0) {
         return;
       }
       if (this.count() == 0) {
-        this.count = o.count();
-        copyMin(o);
-        copyMax(o);
-        this.mean = o.mean;
-        this.variance = o.variance;
-        this.valuesCount = o.valuesCount;
+        this.count = otherStats.count();
+        this.min = otherStats.min();
+        this.max = otherStats.max();
+        this.mean = otherStats.mean();
+        this.variance = otherStats.variance;
+        this.valuesCount = otherStats.valuesCount();
         return;
       }
 
-      long totalValuesCount = this.valuesCount + o.valuesCount;
-      double combinedMean = (sum().doubleValue() + o.sum().doubleValue()) / totalValuesCount;
+      long totalValuesCount = this.valuesCount + otherStats.valuesCount;
+      double combinedMean =
+          (sum().doubleValue() + otherStats.sum().doubleValue()) / totalValuesCount;
       double targetDelta = this.mean - combinedMean;
-      double sourceDelta = o.mean - combinedMean;
+      double sourceDelta = otherStats.mean() - combinedMean;
 
       this.variance =
           this.variance
-              + o.variance
+              + otherStats.variance
               + targetDelta * targetDelta * this.valuesCount
-              + sourceDelta * sourceDelta * o.valuesCount;
+              + sourceDelta * sourceDelta * otherStats.valuesCount;
       this.mean = combinedMean;
       this.valuesCount = totalValuesCount;
-      this.count += o.count();
+      this.count += otherStats.count();
 
-      if (compareMin(o.min(), min()) < 0) {
-        copyMin(o);
+      if (compareValues(otherStats.min(), min()) < 0) {
+        this.min = otherStats.min();
       }
-      if (compareMax(o.max(), max()) > 0) {
-        copyMax(o);
+      if (compareValues(otherStats.max(), max()) > 0) {
+        this.max = otherStats.max();
       }
     }
   }
@@ -437,9 +420,7 @@ public abstract class DocValuesStats<T> {
     @Override
     void merge(DocValuesStats<?> other) {
       super.merge(other);
-      if (other instanceof SortedLongDocValuesStats o) {
-        sum += o.sum;
-      }
+      sum += ((SortedLongDocValuesStats) other).sum();
     }
   }
 
@@ -484,9 +465,7 @@ public abstract class DocValuesStats<T> {
     @Override
     void merge(DocValuesStats<?> other) {
       super.merge(other);
-      if (other instanceof SortedDoubleDocValuesStats o) {
-        sum += o.sum;
-      }
+      this.sum += ((SortedDoubleDocValuesStats) other).sum;
     }
   }
 
