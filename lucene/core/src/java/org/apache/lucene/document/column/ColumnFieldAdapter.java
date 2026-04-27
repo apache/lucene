@@ -26,6 +26,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.NumericUtils;
 
 /**
  * Lightweight adapter that presents a {@link Column}'s current cursor value as an {@link
@@ -103,10 +104,10 @@ final class LongColumnAdapter extends ColumnFieldAdapter {
     switch (storedType) {
       case INTEGER -> reusableStoredValue.setIntValue((int) raw);
       case LONG -> reusableStoredValue.setLongValue(raw);
-      case FLOAT -> reusableStoredValue.setFloatValue(Float.intBitsToFloat((int) raw));
-      case DOUBLE -> reusableStoredValue.setDoubleValue(Double.longBitsToDouble(raw));
+      case FLOAT -> reusableStoredValue.setFloatValue(NumericUtils.sortableIntToFloat((int) raw));
+      case DOUBLE -> reusableStoredValue.setDoubleValue(NumericUtils.sortableLongToDouble(raw));
       case STRING, BINARY, DATA_INPUT ->
-          throw new AssertionError("rejected by ColumnValidation.validateLongColumn");
+          throw new IllegalArgumentException("rejected by ColumnValidation.validateLongColumn");
     }
     return reusableStoredValue;
   }
@@ -143,7 +144,7 @@ final class BinaryColumnAdapter extends ColumnFieldAdapter {
       case STRING -> new StoredValue("");
       case BINARY -> new StoredValue(new BytesRef());
       case INTEGER, LONG, FLOAT, DOUBLE, DATA_INPUT ->
-          throw new AssertionError("rejected by ColumnValidation.validateBinaryColumn");
+          throw new IllegalArgumentException("rejected by ColumnValidation.validateBinaryColumn");
     };
   }
 
@@ -178,7 +179,7 @@ final class BinaryColumnAdapter extends ColumnFieldAdapter {
               new String(value.bytes, value.offset, value.length, StandardCharsets.UTF_8));
       case BINARY -> reusableStoredValue.setBinaryValue(value);
       case INTEGER, LONG, FLOAT, DOUBLE, DATA_INPUT ->
-          throw new AssertionError("rejected by ColumnValidation.validateBinaryColumn");
+          throw new IllegalArgumentException("rejected by ColumnValidation.validateBinaryColumn");
     }
     return reusableStoredValue;
   }

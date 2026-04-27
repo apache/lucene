@@ -48,6 +48,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.NumericUtils;
 
 /** Tests for column-oriented batch indexing via {@link IndexWriter#addBatch}. */
 public class TestColumnBatchIndexing extends LuceneTestCase {
@@ -1196,7 +1197,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     float[] raw = {1.5f, -2.25f, Float.MAX_VALUE};
     long[] values = new long[raw.length];
     for (int i = 0; i < raw.length; i++) {
-      values[i] = Float.floatToRawIntBits(raw[i]);
+      values[i] = NumericUtils.floatToSortableInt(raw[i]);
     }
     w.addBatch(
         simpleBatch(
@@ -1228,7 +1229,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     double[] raw = {1.5d, -2.25d, Double.MAX_VALUE};
     long[] values = new long[raw.length];
     for (int i = 0; i < raw.length; i++) {
-      values[i] = Double.doubleToRawLongBits(raw[i]);
+      values[i] = NumericUtils.doubleToSortableLong(raw[i]);
     }
     w.addBatch(
         simpleBatch(
@@ -1291,11 +1292,9 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     type.freeze();
 
     float[] raw = {1.5f, -2.25f, 42.0f};
-    int[] rawBits = new int[raw.length];
     long[] values = new long[raw.length];
     for (int i = 0; i < raw.length; i++) {
-      rawBits[i] = Float.floatToRawIntBits(raw[i]);
-      values[i] = rawBits[i];
+      values[i] = NumericUtils.floatToSortableInt(raw[i]);
     }
     w.addBatch(
         simpleBatch(
@@ -1313,11 +1312,94 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
           raw[i], storedFields.document(i).getField("val").numericValue().floatValue(), 0f);
     }
 
-    // NumericDV stores the raw int bits (sign-extended to long).
+    // NumericDV stores the sortable-int encoding sign-extended to long.
     NumericDocValues dv = leaf.getNumericDocValues("val");
     for (int i = 0; i < raw.length; i++) {
       assertEquals(i, dv.nextDoc());
-      assertEquals(rawBits[i], dv.longValue());
+      assertEquals(values[i], dv.longValue());
+    }
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testStoredTypeIntegerWithNumericDV() throws IOException {
+    // INT kind on a LongColumn that also feeds NumericDV.
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType type = new FieldType();
+    type.setStored(true);
+    type.setDocValuesType(DocValuesType.NUMERIC);
+    type.freeze();
+
+    int[] raw = {Integer.MIN_VALUE, -1, 0, 42, Integer.MAX_VALUE};
+    long[] values = new long[raw.length];
+    int[] docIds = new int[raw.length];
+    for (int i = 0; i < raw.length; i++) {
+      docIds[i] = i;
+      values[i] = raw[i];
+    }
+    w.addBatch(
+        simpleBatch(
+            raw.length,
+            new ArrayLongColumn("val", type, LongColumn.NumericKind.INT, docIds, values)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+
+    StoredFields storedFields = leaf.storedFields();
+    for (int i = 0; i < raw.length; i++) {
+      assertEquals(raw[i], storedFields.document(i).getField("val").numericValue().intValue());
+    }
+
+    NumericDocValues dv = leaf.getNumericDocValues("val");
+    for (int i = 0; i < raw.length; i++) {
+      assertEquals(i, dv.nextDoc());
+      assertEquals(raw[i], dv.longValue());
+    }
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testStoredTypeDoubleWithNumericDV() throws IOException {
+    // DOUBLE kind on a LongColumn that also feeds NumericDV.
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType type = new FieldType();
+    type.setStored(true);
+    type.setDocValuesType(DocValuesType.NUMERIC);
+    type.freeze();
+
+    double[] raw = {Double.NEGATIVE_INFINITY, -1.5d, 0.0d, 2.25d, Double.POSITIVE_INFINITY};
+    long[] values = new long[raw.length];
+    int[] docIds = new int[raw.length];
+    for (int i = 0; i < raw.length; i++) {
+      docIds[i] = i;
+      values[i] = NumericUtils.doubleToSortableLong(raw[i]);
+    }
+    w.addBatch(
+        simpleBatch(
+            raw.length,
+            new ArrayLongColumn("val", type, LongColumn.NumericKind.DOUBLE, docIds, values)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+
+    StoredFields storedFields = leaf.storedFields();
+    for (int i = 0; i < raw.length; i++) {
+      assertEquals(
+          raw[i], storedFields.document(i).getField("val").numericValue().doubleValue(), 0d);
+    }
+
+    NumericDocValues dv = leaf.getNumericDocValues("val");
+    for (int i = 0; i < raw.length; i++) {
+      assertEquals(i, dv.nextDoc());
+      assertEquals(values[i], dv.longValue());
     }
 
     r.close();
@@ -1534,7 +1616,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     int[] docIds = new int[raw.length];
     for (int i = 0; i < raw.length; i++) {
       docIds[i] = i;
-      values[i] = Float.floatToRawIntBits(raw[i]);
+      values[i] = NumericUtils.floatToSortableInt(raw[i]);
     }
     w.addBatch(
         simpleBatch(
@@ -1544,11 +1626,11 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
 
-    // DV stores raw IEEE bits; decode via intBitsToFloat.
+    // DV stores the sortable-int encoding; decode via sortableIntToFloat.
     SortedNumericDocValues dv = leaf.getSortedNumericDocValues("val");
     for (int i = 0; i < raw.length; i++) {
       assertEquals(i, dv.nextDoc());
-      assertEquals(Float.floatToRawIntBits(raw[i]), dv.nextValue());
+      assertEquals(raw[i], NumericUtils.sortableIntToFloat((int) dv.nextValue()), 0f);
     }
 
     // Points sort numerically.
@@ -1579,7 +1661,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     int[] docIds = new int[raw.length];
     for (int i = 0; i < raw.length; i++) {
       docIds[i] = i;
-      values[i] = Double.doubleToRawLongBits(raw[i]);
+      values[i] = NumericUtils.doubleToSortableLong(raw[i]);
     }
     w.addBatch(
         simpleBatch(
@@ -1592,7 +1674,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     SortedNumericDocValues dv = leaf.getSortedNumericDocValues("val");
     for (int i = 0; i < raw.length; i++) {
       assertEquals(i, dv.nextDoc());
-      assertEquals(Double.doubleToRawLongBits(raw[i]), dv.nextValue());
+      assertEquals(raw[i], NumericUtils.sortableLongToDouble(dv.nextValue()), 0d);
     }
 
     IndexSearcher searcher = new IndexSearcher(r);
@@ -1662,10 +1744,9 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  public void testNumericKindDVOnlyKeepsRawLongBits() throws IOException {
-    // DV only (no points): LongColumn stores the raw long value unchanged regardless of
-    // numericKind. For FLOAT bits stored in the low 32 bits, DV reads back those exact bits
-    // sign-extended to long.
+  public void testNumericKindFloatDVOnly() throws IOException {
+    // DV only (no points): LongColumn stores the long value unchanged. For FLOAT, callers feed
+    // sortable-int bits in the low 32 bits, and DV reads them back sign-extended to long.
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
 
@@ -1678,7 +1759,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     int[] docIds = new int[raw.length];
     for (int i = 0; i < raw.length; i++) {
       docIds[i] = i;
-      values[i] = Float.floatToRawIntBits(raw[i]);
+      values[i] = NumericUtils.floatToSortableInt(raw[i]);
     }
     w.addBatch(
         simpleBatch(
@@ -1690,7 +1771,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     NumericDocValues dv = leaf.getNumericDocValues("val");
     for (int i = 0; i < raw.length; i++) {
       assertEquals(i, dv.nextDoc());
-      assertEquals(Float.floatToRawIntBits(raw[i]), dv.longValue());
+      assertEquals(values[i], dv.longValue());
     }
 
     r.close();

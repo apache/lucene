@@ -30,9 +30,9 @@ import org.apache.lucene.index.VectorEncoding;
  * VectorEncoding#BYTE BYTE}. A mismatch is reported as a {@link ClassCastException} when values are
  * consumed during indexing.
  *
- * <p>{@link Density#DENSE DENSE} indicates that every batch-local doc has a vector; {@link
- * Density#SPARSE SPARSE} allows gaps. Both densities use the same tuple cursor — there is no dense
- * bulk-fill fast path for vectors.
+ * <p>{@link Column.Density#DENSE DENSE} indicates that every batch-local doc has a vector; {@link
+ * Column.Density#SPARSE SPARSE} allows gaps. Both densities use the same tuple cursor — there is no
+ * dense bulk-fill fast path for vectors.
  *
  * @param <T> the vector array type, either {@code float[]} or {@code byte[]}
  * @lucene.experimental

@@ -33,10 +33,15 @@ import org.apache.lucene.index.IndexableFieldType;
  *
  * <p>{@link #numericKind()} marks how the long bits should be interpreted. Defaults to {@link
  * NumericKind#LONG LONG}; pass {@link NumericKind#INT INT} (low 32 bits, sign-extended), {@link
- * NumericKind#FLOAT FLOAT} (low 32 bits via {@link Float#intBitsToFloat}), or {@link
- * NumericKind#DOUBLE DOUBLE} (full 64 bits via {@link Double#longBitsToDouble}) to the constructor
- * to select another interpretation. The numeric kind drives the default {@link #storedType()} and
- * will drive the sortable-byte encoding when points support is added.
+ * NumericKind#FLOAT FLOAT} (low 32 bits encoded via {@link
+ * org.apache.lucene.util.NumericUtils#floatToSortableInt}), or {@link NumericKind#DOUBLE DOUBLE}
+ * (full 64 bits encoded via {@link org.apache.lucene.util.NumericUtils#doubleToSortableLong}) to
+ * the constructor to select another interpretation. Callers are responsible for producing the
+ * sortable encoding; doc values writes the long unchanged, points consumes it as sortable bytes,
+ * and stored fields round-trips it back to {@code float}/{@code double} via {@link
+ * org.apache.lucene.util.NumericUtils#sortableIntToFloat} / {@link
+ * org.apache.lucene.util.NumericUtils#sortableLongToDouble}. The numeric kind drives the default
+ * {@link #storedType()}.
  *
  * @lucene.experimental
  */
@@ -73,9 +78,9 @@ public abstract class LongColumn extends Column {
 
   /**
    * Returns a fresh values cursor iterating dense long values for doc-ids {@code [0, numDocs)}.
-   * Must be overridden when {@link #density()} is {@link Column.Density#DENSE DENSE}; the default
-   * implementation throws {@link UnsupportedOperationException} and is never called for {@link
-   * Column.Density#SPARSE SPARSE} columns.
+   * Must be overridden when {@link Column#density()} is {@link Column.Density#DENSE DENSE}; the
+   * default implementation throws {@link UnsupportedOperationException} and is never called for
+   * {@link Column.Density#SPARSE SPARSE} columns.
    */
   public LongValuesCursor values() {
     throw new UnsupportedOperationException(
@@ -91,8 +96,8 @@ public abstract class LongColumn extends Column {
    * The stored-field variant emitted for this column. The default derives from {@link
    * #numericKind()} — {@code INT→INTEGER}, {@code LONG→LONG}, {@code FLOAT→FLOAT}, {@code
    * DOUBLE→DOUBLE} — so a caller that wants the natural numeric variant does not need to override
-   * this method. Only numeric {@link StoredValue.Type} values are permitted; non-numeric stored
-   * data should use a {@link BinaryColumn}.
+   * this method. Only numeric {@link org.apache.lucene.document.StoredValue.Type} values are
+   * permitted; non-numeric stored data should use a {@link BinaryColumn}.
    */
   public StoredValue.Type storedType() {
     return switch (numericKind) {

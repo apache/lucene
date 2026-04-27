@@ -898,6 +898,7 @@ final class IndexingChain implements Accountable {
     final boolean hasPoints = fieldType.pointDimensionCount() != 0;
 
     // DV-only path (no points): the bulk dense path remains available.
+    // TODO: can support dense fast path for points
     if (hasPoints == false) {
       if (column.density() == Column.Density.DENSE) {
         processDenseLongColumn(baseDocID, numDocs, column, column.values(), pf, dvType);
@@ -983,16 +984,8 @@ final class IndexingChain implements Accountable {
   private static void encodeSortablePointBytes(
       long raw, LongColumn.NumericKind kind, byte[] scratch) {
     switch (kind) {
-      case INT -> NumericUtils.intToSortableBytes((int) raw, scratch, 0);
-      case LONG -> NumericUtils.longToSortableBytes(raw, scratch, 0);
-      case FLOAT -> {
-        int sortable = NumericUtils.sortableFloatBits((int) raw);
-        NumericUtils.intToSortableBytes(sortable, scratch, 0);
-      }
-      case DOUBLE -> {
-        long sortable = NumericUtils.sortableDoubleBits(raw);
-        NumericUtils.longToSortableBytes(sortable, scratch, 0);
-      }
+      case INT, FLOAT -> NumericUtils.intToSortableBytes((int) raw, scratch, 0);
+      case LONG, DOUBLE -> NumericUtils.longToSortableBytes(raw, scratch, 0);
     }
   }
 

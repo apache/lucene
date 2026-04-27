@@ -41,9 +41,11 @@ public abstract class BinaryColumn extends Column {
   }
 
   /**
-   * The {@link StoredValue.Type} to emit when this column is written to stored fields. The default
-   * is {@link StoredValue.Type#BINARY}. Only {@link StoredValue.Type#BINARY} and {@link
-   * StoredValue.Type#STRING} are supported; numeric stored types require {@link LongColumn}.
+   * The {@link org.apache.lucene.document.StoredValue.Type} to emit when this column is written to
+   * stored fields. The default is {@link org.apache.lucene.document.StoredValue.Type#BINARY}. Only
+   * {@link org.apache.lucene.document.StoredValue.Type#BINARY} and {@link
+   * org.apache.lucene.document.StoredValue.Type#STRING} are supported; numeric stored types require
+   * {@link LongColumn}.
    */
   public StoredValue.Type storedType() {
     return StoredValue.Type.BINARY;

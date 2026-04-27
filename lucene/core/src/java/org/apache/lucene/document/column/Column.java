@@ -22,7 +22,7 @@ import org.apache.lucene.index.IndexableFieldType;
 /**
  * A single field's values across multiple documents in a {@link ColumnBatch}. A Column carries only
  * metadata (name, field type, and density); iteration is performed via cursors obtained from {@link
- * LongColumn} or {@link BinaryColumn}.
+ * LongColumn}, {@link BinaryColumn}, or {@link VectorColumn}.
  *
  * <p>Each call that requests a cursor returns a fresh cursor positioned at the first value, so
  * columns can be consumed multiple times (for example, once in the row-oriented pass for stored
@@ -37,13 +37,9 @@ public abstract class Column {
    * asserts up-front so the indexing chain can pick the right code path without probing the data.
    */
   public enum Density {
-    /**
-     * The column has a value for every batch-local doc-id in {@code [0, numDocs)}, in order. For
-     * single-valued fields this means exactly {@code numDocs} values; for multi-valued fields every
-     * doc must appear at least once.
-     */
+    /** The column has a value for every batch-local doc-id in {@code [0, numDocs)}, in order. */
     DENSE,
-    /** The column may be missing values for some doc-ids. */
+    /** The column may be missing values or have multiple values for some doc-ids. */
     SPARSE,
   }
 

@@ -27,7 +27,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.hamcrest.MatcherAssert;
 import org.junit.Test;
 
-public class TestDocumentColumnBatch extends LuceneTestCase {
+public class TestDocumentBatch extends LuceneTestCase {
 
   public static final Analyzer ANALYZER = new StandardAnalyzer();
 
