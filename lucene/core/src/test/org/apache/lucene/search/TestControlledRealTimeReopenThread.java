@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -230,8 +231,9 @@ public class TestControlledRealTimeReopenThread extends ThreadedIndexingAndSearc
 
   @Override
   protected void doAfterWriter(final ExecutorService es) throws Exception {
-    final double minReopenSec = 0.01 + 0.05 * random().nextDouble();
-    final double maxReopenSec = minReopenSec * (1.0 + 10 * random().nextDouble());
+    final Duration minReopenSec = Duration.ofMillis((long) (1 + 5 * random().nextDouble()));
+    final Duration maxReopenSec =
+        Duration.ofMillis((long) (minReopenSec.toMillis() * (100 + 10 * random().nextDouble())));
 
     if (VERBOSE) {
       System.out.println(
@@ -378,7 +380,8 @@ public class TestControlledRealTimeReopenThread extends ThreadedIndexingAndSearc
       manager.release(searcher);
     }
     final ControlledRealTimeReopenThread<IndexSearcher> thread =
-        new ControlledRealTimeReopenThread<>(writer, manager, 0.01, 0.01);
+        new ControlledRealTimeReopenThread<>(
+            writer, manager, Duration.ofMillis(1), Duration.ofMillis(1));
     thread.start(); // start reopening
     if (VERBOSE) {
       System.out.println("waiting now for generation " + lastGen);
@@ -501,7 +504,7 @@ public class TestControlledRealTimeReopenThread extends ThreadedIndexingAndSearc
     // test behaving badly
 
     // should be high enough
-    int maxStaleSecs = 20;
+    Duration maxStale = Duration.ofSeconds(20);
 
     // build crap data just to store it.
     String s = "        abcdefghijklmnopqrstuvwxyz     ";
@@ -522,7 +525,7 @@ public class TestControlledRealTimeReopenThread extends ThreadedIndexingAndSearc
     final IndexWriter iw = new IndexWriter(dir, config);
     SearcherManager sm = new SearcherManager(iw, new SearcherFactory());
     ControlledRealTimeReopenThread<IndexSearcher> controlledRealTimeReopenThread =
-        new ControlledRealTimeReopenThread<>(iw, sm, maxStaleSecs, 0);
+        new ControlledRealTimeReopenThread<>(iw, sm, maxStale, Duration.ofSeconds(0));
 
     controlledRealTimeReopenThread.setDaemon(true);
     controlledRealTimeReopenThread.start();
@@ -559,7 +562,7 @@ public class TestControlledRealTimeReopenThread extends ThreadedIndexingAndSearc
       long l = iw.addDocument(d);
       controlledRealTimeReopenThread.waitForGeneration(l);
       long wait = System.nanoTime() - start;
-      assertTrue("waited too long for generation " + wait, wait < (maxStaleSecs * 1_000_000_000L));
+      assertTrue("waited too long for generation " + wait, wait < (maxStale.toNanos()));
       IndexSearcher searcher = sm.acquire();
       TopDocs td = searcher.search(new TermQuery(new Term("count", i + "")), 10);
       sm.release(searcher);
@@ -580,7 +583,8 @@ public class TestControlledRealTimeReopenThread extends ThreadedIndexingAndSearc
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
     SearcherManager mgr = new SearcherManager(w, new SearcherFactory());
-    nrtDeletesThread = new ControlledRealTimeReopenThread<>(w, mgr, 0.1, 0.01);
+    nrtDeletesThread =
+        new ControlledRealTimeReopenThread<>(w, mgr, Duration.ofMillis(10), Duration.ofMillis(1));
     nrtDeletesThread.setName("NRTDeletes Reopen Thread");
     nrtDeletesThread.setDaemon(true);
     nrtDeletesThread.start();

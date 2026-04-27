@@ -58,18 +58,18 @@ public class TermQuery extends Query {
       this.termStates = termStates;
       this.similarity = searcher.getSimilarity();
 
-      final CollectionStatistics collectionStats;
-      final TermStatistics termStats;
+      final FieldStats fieldStats;
+      final TermStats termStats;
       if (scoreMode.needsScores()) {
-        collectionStats = searcher.collectionStatistics(term.field());
+        fieldStats = searcher.fieldStats(term.field());
         termStats =
             termStates.docFreq() > 0
-                ? searcher.termStatistics(term, termStates.docFreq(), termStates.totalTermFreq())
+                ? searcher.termStats(term, termStates.docFreq(), termStates.totalTermFreq())
                 : null;
       } else {
         // we do not need the actual stats, use fake stats with docFreq=maxDoc=ttf=1
-        collectionStats = new CollectionStatistics(term.field(), 1, 1, 1, 1);
-        termStats = new TermStatistics(term.bytes(), 1, 1);
+        fieldStats = new FieldStats(term.field(), 1, 1, 1, 1);
+        termStats = new TermStats(term.bytes(), 1, 1);
       }
 
       if (termStats == null) {
@@ -79,7 +79,7 @@ public class TermQuery extends Query {
         // allocations in case default BM25Scorer is used.
         // See: https://github.com/apache/lucene/issues/12297
         if (scoreMode.needsScores()) {
-          this.simScorer = similarity.scorer(boost, collectionStats, termStats);
+          this.simScorer = similarity.scorer(boost, fieldStats, termStats);
         } else {
           // Assigning a dummy scorer as this is not expected to be called since scores are not
           // needed.

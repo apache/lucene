@@ -291,6 +291,7 @@ public class TestIndexOptions extends LuceneTestCase {
     for (int i = 20; i < 30; i++) {
       w.addDocument(Collections.singleton(new Field("foo", "val" + i, ftA)));
     }
+    w.forceMerge(1); // just in case we had a random flush
     try (LeafReader r = getOnlyLeafReader(DirectoryReader.open(w))) {
       assertEquals(30, r.maxDoc());
     }
