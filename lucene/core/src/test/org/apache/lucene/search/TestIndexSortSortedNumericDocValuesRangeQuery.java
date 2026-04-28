@@ -19,12 +19,18 @@ package org.apache.lucene.search;
 import static org.hamcrest.Matchers.instanceOf;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
+import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.KeywordField;
+import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.SortedNumericDocValuesField;
+import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -37,6 +43,8 @@ import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.BytesRef;
 import org.hamcrest.MatcherAssert;
 
 @LuceneTestCase.SuppressCodecs(value = "SimpleText")
@@ -163,6 +171,215 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
       if (scores) {
         assertEquals(td1.scoreDocs[i].score, td2.scoreDocs[i].score, 10e-7);
       }
+    }
+  }
+
+  public void testBooleanFilterOnPrimaryIndexSortFieldRestrictsBulkScoringRange()
+      throws IOException {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setIndexSort(
+        new Sort(LongField.newSortField("sort", false, SortedNumericSelector.Type.MIN)));
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+
+    for (int i = 99; i >= 0; --i) {
+      Document doc = new Document();
+      doc.add(new LongField("sort", i, Field.Store.NO));
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+
+    DirectoryReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    RecordingMatchAllQuery recordingQuery = new RecordingMatchAllQuery();
+    Query filter = LongField.newRangeQuery("sort", 40, 59);
+    Query query =
+        new BooleanQuery.Builder()
+            .add(recordingQuery, BooleanClause.Occur.MUST)
+            .add(filter, BooleanClause.Occur.FILTER)
+            .build();
+    MatcherAssert.assertThat(
+        searcher.rewrite(query), instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+
+    TopDocs topDocs = searcher.search(query, 100);
+    assertEquals(20, topDocs.totalHits.value());
+    assertFalse(recordingQuery.scoredRanges.isEmpty());
+    for (DocIdRange range : recordingQuery.scoredRanges) {
+      assertTrue(range.minDoc() >= 40);
+      assertTrue(range.maxDoc() <= 60);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testBooleanTermFilterOnPrimaryIndexSortFieldRestrictsBulkScoringRange()
+      throws IOException {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(16)));
+    iwc.setIndexSort(
+        new Sort(
+            KeywordField.newSortField(
+                "category", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST)));
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+
+    for (int i = 0; i < 100; ++i) {
+      Document doc = new Document();
+      String category;
+      if (i < 30) {
+        category = "articles";
+      } else if (i < 50) {
+        category = "books";
+      } else {
+        category = "music";
+      }
+      doc.add(new KeywordField("category", category, Field.Store.NO));
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+
+    DirectoryReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    RecordingMatchAllQuery recordingQuery = new RecordingMatchAllQuery();
+    Query filter = KeywordField.newExactQuery("category", "books");
+    Query query =
+        new BooleanQuery.Builder()
+            .add(recordingQuery, BooleanClause.Occur.MUST)
+            .add(filter, BooleanClause.Occur.FILTER)
+            .build();
+    MatcherAssert.assertThat(
+        searcher.rewrite(query), instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+
+    TopDocs topDocs = searcher.search(query, 100);
+    assertEquals(20, topDocs.totalHits.value());
+    assertFalse(recordingQuery.scoredRanges.isEmpty());
+    for (DocIdRange range : recordingQuery.scoredRanges) {
+      assertTrue(range.minDoc() >= 30);
+      assertTrue(range.maxDoc() <= 50);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testBooleanTermFilterOnPrimaryIndexSortFieldStillAppliesPostingsFilter()
+      throws IOException {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setIndexSort(new Sort(new SortedSetSortField("category", false)));
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+
+    for (int i = 0; i < 20; ++i) {
+      Document doc = new Document();
+      doc.add(new SortedSetDocValuesField("category", new BytesRef("books")));
+      if (i % 2 == 0) {
+        doc.add(new StringField("category", "books", Field.Store.NO));
+      } else {
+        doc.add(new StringField("category", "other", Field.Store.NO));
+      }
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+
+    DirectoryReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    RecordingMatchAllQuery recordingQuery = new RecordingMatchAllQuery();
+    Query filter = new TermQuery(new org.apache.lucene.index.Term("category", "books"));
+    Query query =
+        new BooleanQuery.Builder()
+            .add(recordingQuery, BooleanClause.Occur.MUST)
+            .add(filter, BooleanClause.Occur.FILTER)
+            .build();
+    TopDocs topDocs = searcher.search(query, 20);
+    assertEquals(10, topDocs.totalHits.value());
+
+    reader.close();
+    dir.close();
+  }
+
+  private static class RecordingMatchAllQuery extends Query {
+    final List<DocIdRange> scoredRanges = new ArrayList<>();
+
+    @Override
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
+      return new ConstantScoreWeight(this, boost) {
+        @Override
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) {
+          final int maxDoc = context.reader().maxDoc();
+          final float queryScore = score();
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              return new ConstantScoreScorer(queryScore, scoreMode, DocIdSetIterator.all(maxDoc));
+            }
+
+            @Override
+            public BulkScorer bulkScorer() {
+              return new BulkScorer() {
+                @Override
+                public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
+                    throws IOException {
+                  scoredRanges.add(new DocIdRange(min, max));
+                  SimpleScorable scorable = new SimpleScorable();
+                  scorable.setScore(queryScore);
+                  collector.setScorer(scorable);
+                  for (int doc = min; doc < max; ++doc) {
+                    if (acceptDocs == null || acceptDocs.get(doc)) {
+                      collector.collect(doc);
+                    }
+                  }
+                  return max == maxDoc ? DocIdSetIterator.NO_MORE_DOCS : max;
+                }
+
+                @Override
+                public long cost() {
+                  return maxDoc;
+                }
+              };
+            }
+
+            @Override
+            public long cost() {
+              return maxDoc;
+            }
+          };
+        }
+
+        @Override
+        public boolean isCacheable(LeafReaderContext ctx) {
+          return true;
+        }
+      };
+    }
+
+    @Override
+    public String toString(String field) {
+      return "RecordingMatchAllQuery";
+    }
+
+    @Override
+    public void visit(QueryVisitor visitor) {
+      visitor.visitLeaf(this);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return this == obj;
+    }
+
+    @Override
+    public int hashCode() {
+      return System.identityHashCode(this);
     }
   }
 

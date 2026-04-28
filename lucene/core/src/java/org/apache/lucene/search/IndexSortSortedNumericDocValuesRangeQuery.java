@@ -544,6 +544,14 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
     return null;
   }
 
+  DocIdRange getDenseDocIdRangeForPrimarySort(LeafReaderContext context) throws IOException {
+    IteratorAndCount itAndCount = getDocIdSetIteratorOrNull(context);
+    if (itAndCount == null || itAndCount.count() < 0) {
+      return null;
+    }
+    return new DocIdRange(itAndCount.minDoc(), itAndCount.maxDoc());
+  }
+
   /**
    * Computes the document IDs that lie within the range [lowerValue, upperValue] by performing
    * binary search on the field's doc values.
@@ -658,22 +666,24 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
    * Provides a {@code DocIdSetIterator} along with an accurate count of documents provided by the
    * iterator (or {@code -1} if an accurate count is unknown).
    */
-  private record IteratorAndCount(DocIdSetIterator it, int count) {
+  private record IteratorAndCount(DocIdSetIterator it, int count, int minDoc, int maxDoc) {
 
     static IteratorAndCount empty() {
-      return new IteratorAndCount(DocIdSetIterator.empty(), 0);
+      return new IteratorAndCount(DocIdSetIterator.empty(), 0, 0, 0);
     }
 
     static IteratorAndCount all(int maxDoc) {
-      return new IteratorAndCount(DocIdSetIterator.all(maxDoc), maxDoc);
+      return new IteratorAndCount(DocIdSetIterator.all(maxDoc), maxDoc, 0, maxDoc);
     }
 
     static IteratorAndCount denseRange(int minDoc, int maxDoc) {
-      return new IteratorAndCount(DocIdSetIterator.range(minDoc, maxDoc), maxDoc - minDoc);
+      return new IteratorAndCount(
+          DocIdSetIterator.range(minDoc, maxDoc), maxDoc - minDoc, minDoc, maxDoc);
     }
 
     static IteratorAndCount sparseRange(int minDoc, int maxDoc, DocIdSetIterator delegate) {
-      return new IteratorAndCount(new BoundedDocIdSetIterator(minDoc, maxDoc, delegate), -1);
+      return new IteratorAndCount(
+          new BoundedDocIdSetIterator(minDoc, maxDoc, delegate), -1, minDoc, maxDoc);
     }
   }
 

@@ -598,7 +598,55 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
       }
     }
 
+    Query filteredOnPrimaryIndexSortField = rewriteFilteredOnPrimaryIndexSortField(indexSearcher);
+    if (filteredOnPrimaryIndexSortField != null) {
+      return filteredOnPrimaryIndexSortField;
+    }
+
     return super.rewrite(indexSearcher);
+  }
+
+  private Query rewriteFilteredOnPrimaryIndexSortField(IndexSearcher indexSearcher)
+      throws IOException {
+    BooleanClause selectedFilterClause = null;
+    for (BooleanClause clause : clauses) {
+      if (clause.occur() == Occur.FILTER
+          && FilteredOnPrimaryIndexSortFieldQuery.canOptimize(clause.query(), indexSearcher)) {
+        selectedFilterClause = clause;
+        break;
+      }
+    }
+    if (selectedFilterClause == null) {
+      return null;
+    }
+
+    BooleanQuery.Builder builder = new BooleanQuery.Builder();
+    builder.setMinimumNumberShouldMatch(minimumNumberShouldMatch);
+    boolean hasRequiredClause = false;
+    int shouldClauseCount = 0;
+    for (BooleanClause clause : clauses) {
+      if (clause == selectedFilterClause) {
+        continue;
+      }
+      if (clause.occur() == Occur.MUST || clause.occur() == Occur.FILTER) {
+        hasRequiredClause = true;
+      } else if (clause.occur() == Occur.SHOULD) {
+        shouldClauseCount++;
+      }
+      builder.add(clause);
+    }
+
+    if (hasRequiredClause == false) {
+      if (minimumNumberShouldMatch == 0) {
+        return null;
+      } else if (shouldClauseCount < minimumNumberShouldMatch) {
+        return new MatchNoDocsQuery("SHOULD clause count less than minimumNumberShouldMatch");
+      }
+    }
+
+    Query filteredQuery = indexSearcher.rewrite(builder.build());
+    return new FilteredOnPrimaryIndexSortFieldQuery(
+        filteredQuery, selectedFilterClause.query(), this);
   }
 
   @Override
