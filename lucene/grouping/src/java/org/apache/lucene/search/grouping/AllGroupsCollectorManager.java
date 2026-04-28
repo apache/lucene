@@ -17,10 +17,9 @@
 package org.apache.lucene.search.grouping;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
-import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.apache.lucene.search.CollectorManager;
 
 /**
@@ -49,23 +48,9 @@ public class AllGroupsCollectorManager<T>
 
   @Override
   public Collection<T> reduce(Collection<AllGroupsCollector<T>> collectors) {
-    if (collectors.isEmpty()) {
-      return Collections.emptyList();
-    }
-
-    if (collectors.size() == 1) {
-      return collectors.iterator().next().getGroups();
-    }
-
     // Merge groups from all collectors
-    Set<T> allGroups = new HashSet<>();
-    for (AllGroupsCollector<T> collector : collectors) {
-      Collection<T> groups = collector.getGroups();
-      if (groups != null) {
-        allGroups.addAll(groups);
-      }
-    }
-
-    return allGroups;
+    return collectors.stream()
+        .flatMap(c -> c.getGroups().stream())
+        .collect(Collectors.toCollection(HashSet::new));
   }
 }
