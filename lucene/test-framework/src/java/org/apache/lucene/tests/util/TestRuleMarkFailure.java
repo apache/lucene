@@ -103,7 +103,7 @@ public final class TestRuleMarkFailure implements TestRule, BeforeAfterCallback 
     return !hadFailures();
   }
 
-  public void reset() {
+  private void reset() {
     failures = false;
   }
 }
