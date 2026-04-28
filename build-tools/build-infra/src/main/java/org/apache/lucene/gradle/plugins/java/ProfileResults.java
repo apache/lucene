@@ -101,19 +101,20 @@ public class ProfileResults {
   }
 
   /** true if we care about this event */
-  static boolean isInteresting(String mode, RecordedEvent event, boolean hasCPUTimeSamples) {
+  static boolean isInteresting(String mode, RecordedEvent event) {
     String name = event.getEventType().getName();
     switch (mode) {
       case "cpu":
-        if (hasCPUTimeSamples) {
-          // Prefer jdk.CPUTimeSample (Java 25+, JEP 509): samples by CPU time, not wall-clock
-          // time, so idle threads (like gradle epoll) are inherently excluded; no filtering
-          // needed. When present, we ignore jdk.ExecutionSample and jdk.NativeMethodSample
-          // (wall-clock / JNI execution sampling) so the same hot code is not double-counted.
-          return name.equals("jdk.CPUTimeSample");
+        // jdk.CPUTimeSample: JEP 509 (e.g. gradle/testing/profiling.linux.jfc). Legacy samples:
+        // jdk.ExecutionSample / jdk.NativeMethodSample (e.g. profiling.jfc). Stock Lucene configs
+        // enable one family; filter gradle poll thread for legacy samples only.
+        if (name.equals("jdk.CPUTimeSample")) {
+          return true;
         }
-        return (name.equals("jdk.ExecutionSample") || name.equals("jdk.NativeMethodSample"))
-            && !isGradlePollThread(event.getThread("sampledThread"));
+        if (name.equals("jdk.ExecutionSample") || name.equals("jdk.NativeMethodSample")) {
+          return !isGradlePollThread(event.getThread("sampledThread"));
+        }
+        return false;
       case "heap":
         return (name.equals("jdk.ObjectAllocationInNewTLAB")
                 || name.equals("jdk.ObjectAllocationOutsideTLAB"))
@@ -126,37 +127,6 @@ public class ProfileResults {
   /** true if the thread is gradle epoll thread (which we don't care about) */
   static boolean isGradlePollThread(RecordedThread thread) {
     return (thread != null && thread.getJavaName().startsWith("/127.0.0.1"));
-  }
-
-  /**
-   * Pre-scan recording files for CPU sampling strategy. Returns whether any {@code
-   * jdk.CPUTimeSample} events appear in the inputs. Throws if recordings mix those with legacy
-   * wall-clock samples ({@code jdk.ExecutionSample} / {@code jdk.NativeMethodSample}); only one
-   * CPU sampler should be enabled in JFR settings.
-   */
-  static boolean resolveCpuTimeSampling(List<String> files) throws IOException {
-    boolean hasCpuTime = false;
-    boolean hasLegacy = false;
-    for (String file : files) {
-      try (RecordingFile recording = new RecordingFile(Paths.get(file))) {
-        while (recording.hasMoreEvents()) {
-          RecordedEvent event = recording.readEvent();
-          String n = event.getEventType().getName();
-          if (n.equals("jdk.CPUTimeSample")) {
-            hasCpuTime = true;
-          } else if (n.equals("jdk.ExecutionSample") || n.equals("jdk.NativeMethodSample")) {
-            hasLegacy = true;
-          }
-          if (hasCpuTime && hasLegacy) {
-            throw new IllegalStateException(
-                "Mixed CPU profiling events: found both jdk.CPUTimeSample and legacy wall-clock "
-                    + "samples (jdk.ExecutionSample / jdk.NativeMethodSample). Use a single sampler "
-                    + "in JFR settings (see gradle/testing/profiling*.jfc).");
-          }
-        }
-      }
-    }
-    return hasCpuTime;
   }
 
   /** value we accumulate for this event */
@@ -214,9 +184,6 @@ public class ProfileResults {
       throw new IllegalArgumentException("tests.profile.count must be positive");
     }
 
-    // Pre-scan recordings: decide CPU-time vs legacy sampling and reject mixed configurations.
-    boolean hasCPUTimeSamples = "cpu".equals(mode) && resolveCpuTimeSampling(files);
-
     Map<String, SimpleEntry<String, Long>> histogram = new HashMap<>();
     int totalEvents = 0;
     long sumValues = 0;
@@ -225,7 +192,7 @@ public class ProfileResults {
       try (RecordingFile recording = new RecordingFile(Paths.get(file))) {
         while (recording.hasMoreEvents()) {
           RecordedEvent event = recording.readEvent();
-          if (!isInteresting(mode, event, hasCPUTimeSamples)) {
+          if (!isInteresting(mode, event)) {
             continue;
           }
           RecordedStackTrace trace = event.getStackTrace();

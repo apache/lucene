@@ -92,8 +92,6 @@ public class CodeProfilingPlugin extends LuceneGradlePlugin {
             getCount().get(),
             getLineNumbers().get(),
             getFrametypes().get());
-      } catch (IllegalStateException e) {
-        throw new GradleException(e.getMessage(), e);
       } catch (IOException e) {
         throw new GradleException("Error when generating jfr profile summaries.", e);
       }

@@ -187,8 +187,8 @@ Build
 ---------------------
 * GITHUB#15926: Support jdk.CPUTimeSample event (Java 25+, JEP 509) in ProfileResults.
   Linux test JVMs use gradle/testing/profiling.linux.jfc (CPU-time sampling only); other hosts
-  keep wall-clock jdk.ExecutionSample/jdk.NativeMethodSample. ProfileResults rejects recordings
-  that mix CPU-time and legacy execution samples. (Prithvi S)
+  keep wall-clock jdk.ExecutionSample/jdk.NativeMethodSample. CodeProfilingPlugin selects the
+  JFR settings file by host OS. (Prithvi S)
 
 * GITHUB#15327: New low-level build options to detect abuse of LuceneTestCase.random():
   tests.random.maxacquires and tests.random.maxcalls (Robert Muir, Dawid Weiss)
