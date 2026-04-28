@@ -129,6 +129,10 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#15139: BooleanQuery rewrites so a FILTER on the primary index sort field can restrict
+  the remaining clauses' BulkScorer to a contiguous doc id range when safe (sorted numeric range
+  filters; single-valued sorted-set term filters with dense postings). (Prithvi)
+
 * GITHUB#15681, GITHUB#15833: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
