@@ -89,6 +89,11 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor, Accoun
     }
   }
 
+  /** Returns the wrapped NFA automaton. */
+  Automaton getAutomaton() {
+    return automaton;
+  }
+
   /**
    * For a given state and an incoming character (codepoint), return the next state
    *
@@ -262,6 +267,19 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor, Accoun
         + RamUsageEstimator.sizeOfObject(classmap);
   }
 
+  @Override
+  public int hashCode() {
+    return automaton.hashCode();
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) return true;
+    if (obj == null || getClass() != obj.getClass()) return false;
+    NFARunAutomaton other = (NFARunAutomaton) obj;
+    return automaton.equals(other.automaton);
+  }
+
   private class DState implements Accountable {
     private final int[] nfaStates;
     // this field is lazily init'd when first time caller wants to add a new transition
@@ -396,16 +414,15 @@ public class NFARunAutomaton implements ByteRunnable, TransitionAccessor, Accoun
         if (statesSet.size() > 0) {
           assert lastPoint != -1;
           int ord = findDState(new DState(statesSet.getArray()));
-          while (points[charClass] < lastPoint) {
+          while (charClass < points.length && points[charClass] < lastPoint) {
             assignTransition(charClass++, MISSING);
           }
-          assert points[charClass] == lastPoint;
+          assert charClass == points.length || points[charClass] == lastPoint;
           while (charClass < points.length && points[charClass] < point) {
             assert transitions[charClass] == NOT_COMPUTED || transitions[charClass] == ord;
             assignTransition(charClass++, ord);
           }
-          assert (charClass == points.length && point == alphabetSize)
-              || points[charClass] == point;
+          assert charClass == points.length || points[charClass] == point;
         }
 
         // process transitions that end on this point

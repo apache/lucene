@@ -73,16 +73,35 @@ class TrieBuilder {
     private Node firstChild;
     private Node lastChild;
 
-    // Vars used during saving:
-
-    // The file pointer point to where the node saved. -1 means the node has not been saved.
-    private long fp = -1;
-    // The latest child that have been saved. null means no child has been saved.
-    private Node savedTo;
-
     Node(int label, Output output) {
       this.label = label;
       this.output = output;
+    }
+  }
+
+  /**
+   * Transient state used only during {@link #saveNodes}. Keeps save-time bookkeeping off of {@link
+   * Node} so that Nodes are smaller during the (much longer) building phase.
+   */
+  private static class SaveFrame {
+    final Node node;
+    // Iteration cursor: the latest child that has been pushed for saving.
+    Node savedTo;
+    // File pointer assigned when this node is written. -1 until then.
+    long fp = -1;
+    // File pointers of children, collected as they are popped. Null for leaf nodes.
+    long[] childFps;
+    int numChildFps;
+
+    SaveFrame(Node node) {
+      this.node = node;
+      if (node.childrenNum > 0) {
+        this.childFps = new long[node.childrenNum];
+      }
+    }
+
+    void addChildFp(long childFp) {
+      childFps[numChildFps++] = childFp;
     }
   }
 
@@ -202,22 +221,23 @@ class TrieBuilder {
       throw new IllegalStateException("only unsaved trie can be saved, got: " + status);
     }
     meta.writeVLong(index.getFilePointer());
-    saveNodes(index);
-    meta.writeVLong(root.fp);
+    meta.writeVLong(saveNodes(index));
     index.writeLong(0L); // additional 8 bytes for over-reading
     meta.writeVLong(index.getFilePointer());
     status = Status.SAVED;
   }
 
-  void saveNodes(IndexOutput index) throws IOException {
+  long saveNodes(IndexOutput index) throws IOException {
     final long startFP = index.getFilePointer();
-    Deque<Node> stack = new ArrayDeque<>();
-    stack.push(root);
+    Deque<SaveFrame> stack = new ArrayDeque<>();
+    SaveFrame rootFrame = new SaveFrame(root);
+    stack.push(rootFrame);
 
     // Visit and save nodes of this trie in a post-order depth-first traversal.
     while (stack.isEmpty() == false) {
-      Node node = stack.peek();
-      assert node.fp == -1;
+      SaveFrame frame = stack.peek();
+      Node node = frame.node;
+      assert frame.fp == -1;
       assert assertChildrenLabelInOrder(node);
 
       final int childrenNum = node.childrenNum;
@@ -225,8 +245,11 @@ class TrieBuilder {
       if (childrenNum == 0) { // leaf node
         assert node.output != null : "leaf nodes should have output.";
 
-        node.fp = index.getFilePointer() - startFP;
+        frame.fp = index.getFilePointer() - startFP;
         stack.pop();
+        if (stack.isEmpty() == false) {
+          stack.peek().addChildFp(frame.fp);
+        }
 
         // [n bytes] floor data
         // [n bytes] output fp
@@ -251,23 +274,26 @@ class TrieBuilder {
       // If there are any children have not been saved, push the first one into stack and continue.
       // We want to ensure saving children before parent.
 
-      if (node.savedTo == null) {
-        node.savedTo = node.firstChild;
-        stack.push(node.savedTo);
+      if (frame.savedTo == null) {
+        frame.savedTo = node.firstChild;
+        stack.push(new SaveFrame(frame.savedTo));
         continue;
       }
-      if (node.savedTo.next != null) {
-        assert node.savedTo.fp >= 0;
-        node.savedTo = node.savedTo.next;
-        stack.push(node.savedTo);
+      if (frame.savedTo.next != null) {
+        assert frame.numChildFps > 0 && frame.childFps[frame.numChildFps - 1] >= 0;
+        frame.savedTo = frame.savedTo.next;
+        stack.push(new SaveFrame(frame.savedTo));
         continue;
       }
 
       // All children have been written, now it's time to write the parent!
 
-      assert assertNonLeafNodePreparingSaving(node);
-      node.fp = index.getFilePointer() - startFP;
+      assert assertNonLeafFramePreparingSaving(frame);
+      frame.fp = index.getFilePointer() - startFP;
       stack.pop();
+      if (stack.isEmpty() == false) {
+        stack.peek().addChildFp(frame.fp);
+      }
 
       if (childrenNum == 1) {
 
@@ -275,7 +301,7 @@ class TrieBuilder {
         // [n bytes] encoded output fp | [n bytes] child fp | [1 byte] label
         // [3bit] encoded output fp bytes | [3bit] child fp bytes | [2bit] sign
 
-        long childDeltaFp = node.fp - node.firstChild.fp;
+        long childDeltaFp = frame.fp - frame.childFps[0];
         assert childDeltaFp > 0 : "parent node is always written after children: " + childDeltaFp;
         int childFpBytes = bytesRequiredVLong(childDeltaFp);
         int encodedOutputFpBytes =
@@ -317,7 +343,7 @@ class TrieBuilder {
         assert strategyBytes > 0 && strategyBytes <= 32;
 
         // children fps are in order, so the first child's fp is min, then delta is max.
-        long maxChildDeltaFp = node.fp - node.firstChild.fp;
+        long maxChildDeltaFp = frame.fp - frame.childFps[0];
         assert maxChildDeltaFp > 0 : "parent always written after all children";
 
         int childrenFpBytes = bytesRequiredVLong(maxChildDeltaFp);
@@ -353,9 +379,9 @@ class TrieBuilder {
                 + " actual: "
                 + (index.getFilePointer() - strategyStartFp);
 
-        for (Node child = node.firstChild; child != null; child = child.next) {
-          assert node.fp > child.fp : "parent always written after all children";
-          writeLongNBytes(node.fp - child.fp, childrenFpBytes, index);
+        for (int i = 0; i < frame.numChildFps; i++) {
+          assert frame.fp > frame.childFps[i] : "parent always written after all children";
+          writeLongNBytes(frame.fp - frame.childFps[i], childrenFpBytes, index);
         }
 
         if (node.output != null && node.output.floorData != null) {
@@ -364,6 +390,7 @@ class TrieBuilder {
         }
       }
     }
+    return rootFrame.fp;
   }
 
   private long encodeFP(Output output) {
@@ -412,25 +439,28 @@ class TrieBuilder {
     return true;
   }
 
-  private static boolean assertNonLeafNodePreparingSaving(Node node) {
+  private static boolean assertNonLeafFramePreparingSaving(SaveFrame frame) {
+    Node node = frame.node;
     assert assertChildrenLabelInOrder(node);
     assert node.childrenNum != 0;
+    assert frame.numChildFps == node.childrenNum
+        : "expected " + node.childrenNum + " child fps, got " + frame.numChildFps;
     if (node.childrenNum == 1) {
       assert node.firstChild == node.lastChild;
       assert node.firstChild.next == null;
-      assert node.savedTo == node.firstChild;
-      assert node.firstChild.fp >= 0;
+      assert frame.savedTo == node.firstChild;
+      assert frame.childFps[0] >= 0;
     } else {
       int n = 0;
-      for (Node child = node.firstChild; child != null; child = child.next) {
+      for (int i = 0; i < frame.numChildFps; i++) {
         n++;
-        assert child.fp >= 0;
-        assert child.next == null || child.fp < child.next.fp
-            : " the fp or children nodes should always be in order.";
+        assert frame.childFps[i] >= 0;
+        assert i == frame.numChildFps - 1 || frame.childFps[i] < frame.childFps[i + 1]
+            : " the fp of children nodes should always be in order.";
       }
       assert node.childrenNum == n;
-      assert node.lastChild == node.savedTo;
-      assert node.savedTo.next == null;
+      assert node.lastChild == frame.savedTo;
+      assert frame.savedTo.next == null;
     }
     return true;
   }
