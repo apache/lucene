@@ -339,13 +339,16 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
    */
   @ClassRule public static final TestRule classRules;
 
+  @SuppressWarnings("NonFinalStaticField")
+  private static TestRuleMarkFailure suiteFailureMarker;
+
   static {
     var setupAndRestoreClassEnv =
         new SetupAndRestoreStaticEnv(
             () -> RandomizedContext.current().getRandom(),
             () -> RandomizedContext.current().getTargetClass());
 
-    LuceneTestCase.suiteFailureMarker = new TestRuleMarkFailure();
+    suiteFailureMarker = new TestRuleMarkFailure();
 
     var tempFilesSupplier =
         new TemporaryFilesSupplier(
@@ -408,6 +411,11 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
                               @Override
                               public TemporaryFilesSupplier getTempFilesSupplier() {
                                 return tempFilesSupplier;
+                              }
+
+                              @Override
+                              public SuiteFailureState getSuiteFailureState() {
+                                return suiteFailureMarker;
                               }
                             });
                   }

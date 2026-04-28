@@ -341,6 +341,8 @@ public abstract sealed class LuceneTestCaseParent extends Assert
     SetupAndRestoreStaticEnv getClassEnv();
 
     TemporaryFilesSupplier getTempFilesSupplier();
+
+    SuiteFailureState getSuiteFailureState();
   }
 
   private static final AtomicReference<TestFrameworkInfra> testFrameworkInfra =
@@ -2280,13 +2282,13 @@ public abstract sealed class LuceneTestCaseParent extends Assert
 
     if (bare) {
       BaseDirectoryWrapper base = new RawDirectoryWrapper(directory);
-      closeAfterSuite(new CloseableDirectory(base, suiteFailureMarker));
+      closeAfterSuite(new CloseableDirectory(base, getTestFrameworkInfra().getSuiteFailureState()));
       return base;
     } else {
       MockDirectoryWrapper mock = new MockDirectoryWrapper(random, directory);
 
       mock.setThrottling(TEST_THROTTLING);
-      closeAfterSuite(new CloseableDirectory(mock, suiteFailureMarker));
+      closeAfterSuite(new CloseableDirectory(mock, getTestFrameworkInfra().getSuiteFailureState()));
       return mock;
     }
   }
@@ -2839,8 +2841,4 @@ public abstract sealed class LuceneTestCaseParent extends Assert
   // TODO: to remove from here?
   //
   static FieldToType fieldToType = new FieldToType();
-
-  /** Suite failure marker (any error in the test or suite scope). */
-  @SuppressWarnings("NonFinalStaticField")
-  protected static TestRuleMarkFailure suiteFailureMarker;
 }

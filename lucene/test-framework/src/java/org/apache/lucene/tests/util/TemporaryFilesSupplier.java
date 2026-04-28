@@ -67,7 +67,7 @@ final class TemporaryFilesSupplier implements BeforeAfterCallback {
   private FileSystem fileSystem;
 
   /** Suite failure marker. */
-  private final TestRuleMarkFailure failureMarker;
+  private final SuiteFailureState failureMarker;
 
   /**
    * A queue of temporary resources to be removed after the suite completes.
@@ -77,7 +77,7 @@ final class TemporaryFilesSupplier implements BeforeAfterCallback {
   private static final List<Path> cleanupQueue = new ArrayList<>();
 
   public TemporaryFilesSupplier(
-      TestRuleMarkFailure failureMarker,
+      SuiteFailureState failureMarker,
       Supplier<Random> randomSupplier,
       Supplier<Class<?>> targetClassSupplier) {
     this.failureMarker = failureMarker;

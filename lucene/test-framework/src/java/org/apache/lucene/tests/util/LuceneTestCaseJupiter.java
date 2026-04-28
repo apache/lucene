@@ -40,6 +40,7 @@ import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExecutableInvoker;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.api.extension.TestWatcher;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.platform.commons.support.AnnotationSupport;
@@ -193,6 +194,55 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
     }
   }
 
+  /// Tracks whether any test in the current suite had a failure.
+  /// Registered before [ClassLevelCallbackChain] so its state is available during suite teardown.
+  static final class SuiteFailureTracker
+      implements AfterAllCallback, BeforeAllCallback, TestWatcher, SuiteFailureState {
+    private static final ExtensionContext.Namespace NAMESPACE =
+        ExtensionContext.Namespace.create(SuiteFailureTracker.class);
+
+    private volatile boolean hadFailures;
+
+    @Override
+    public void beforeAll(ExtensionContext context) {
+      hadFailures = false;
+      // Register a Closeable to capture failures that TestWatcher cannot see:
+      // @BeforeAll/@AfterAll lifecycle methods and peer extension afterAll callbacks
+      // (e.g. DetectThreadLeaks). Closeable's close runs during cleanUp(), which
+      // is after all afterAll callbacks have completed, so the throwableCollector backing
+      // context.getExecutionException() is fully populated by then.
+      context
+          .getStore(NAMESPACE)
+          .put(
+              "failureCheck",
+              (AutoCloseable)
+                  () -> {
+                    if (context.getExecutionException().isPresent()) {
+                      hadFailures = true;
+                    }
+                  });
+    }
+
+    @Override
+    public void afterAll(ExtensionContext context) {
+      if (context.getExecutionException().isPresent()) {
+        hadFailures = true;
+      }
+    }
+
+    @Override
+    public void testFailed(ExtensionContext context, Throwable cause) {
+      // Handles individual test method failures (not visible via class-level
+      // context.getExecutionException()).
+      hadFailures = true;
+    }
+
+    @Override
+    public boolean wasSuccessful() {
+      return !hadFailures;
+    }
+  }
+
   /// This extension sets up junit-jupiter implementations of the
   /// test framework-dependent infrastructure in [LuceneTestCaseParent].
   ///
@@ -200,9 +250,14 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
   /// (call order, unwinding in case of failures, etc.).
   static class ClassLevelCallbackChain
       implements BeforeAllCallback, AfterAllCallback, AfterEachCallback {
+    private final SuiteFailureTracker suiteFailureTracker;
     private TestFrameworkInfra jupiterFrameworkInfra;
     private OrderedBeforeAfterCallbacks beforeAfters;
     private CloseAfterScopeSupport closeAfterScopeSupport;
+
+    ClassLevelCallbackChain(SuiteFailureTracker suiteFailureTracker) {
+      this.suiteFailureTracker = suiteFailureTracker;
+    }
 
     @Override
     public void beforeAll(ExtensionContext context) throws Exception {
@@ -215,10 +270,9 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
       // with the expected nesting.
       var classEnvRule =
           new SetupAndRestoreStaticEnv(LuceneTestCaseJupiter::random, () -> activeTestClass);
-      var failureMarker = new TestRuleMarkFailure();
       var tempFileSupplier =
           new TemporaryFilesSupplier(
-              failureMarker, LuceneTestCaseJupiter::random, () -> activeTestClass);
+              suiteFailureTracker, LuceneTestCaseJupiter::random, () -> activeTestClass);
       var perThreadRandom = new PerThreadRandom(getRandomSupplier(context.getExecutableInvoker()));
       this.closeAfterScopeSupport = new CloseAfterScopeSupport();
 
@@ -243,6 +297,11 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
             public TemporaryFilesSupplier getTempFilesSupplier() {
               return tempFileSupplier;
             }
+
+            @Override
+            public SuiteFailureState getSuiteFailureState() {
+              return suiteFailureTracker;
+            }
           };
 
       var installFrameworkInfraSupport =
@@ -264,7 +323,6 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
                   perThreadRandom,
                   installFrameworkInfraSupport,
                   classEnvRule,
-                  failureMarker,
                   tempFileSupplier,
                   closeAfterScopeSupport));
 
@@ -305,7 +363,12 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
 
   @RegisterExtension
   @Order(0)
-  static ClassLevelCallbackChain classLevelCallbackChain = new ClassLevelCallbackChain();
+  static final SuiteFailureTracker suiteFailureTracker = new SuiteFailureTracker();
+
+  @RegisterExtension
+  @Order(1)
+  static ClassLevelCallbackChain classLevelCallbackChain =
+      new ClassLevelCallbackChain(suiteFailureTracker);
 
   //
   // Deprecated or removed methods (LuceneTestCase) and other backward-compatibility

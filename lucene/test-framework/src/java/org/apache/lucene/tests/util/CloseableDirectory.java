@@ -27,9 +27,9 @@ import org.junit.Assert;
  */
 final class CloseableDirectory implements Closeable {
   private final BaseDirectoryWrapper dir;
-  private final TestRuleMarkFailure failureMarker;
+  private final SuiteFailureState failureMarker;
 
-  public CloseableDirectory(BaseDirectoryWrapper dir, TestRuleMarkFailure failureMarker) {
+  public CloseableDirectory(BaseDirectoryWrapper dir, SuiteFailureState failureMarker) {
     this.dir = dir;
     this.failureMarker = failureMarker;
   }

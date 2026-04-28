@@ -20,16 +20,24 @@ import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass
 import static org.junit.platform.testkit.engine.EventConditions.event;
 import static org.junit.platform.testkit.engine.EventConditions.finishedWithFailure;
 
+import com.carrotsearch.randomizedtesting.jupiter.DetectThreadLeaks;
 import com.carrotsearch.randomizedtesting.jupiter.SysProps;
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
+import org.apache.lucene.util.SuppressForbidden;
 import org.junit.Assert;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.platform.testkit.engine.EngineTestKit;
@@ -85,6 +93,133 @@ public class TestLuceneTestCaseJupiter {
       @AfterAll
       static void afterAll(Random rnd) {
         Assert.assertNotNull(rnd);
+      }
+    }
+  }
+
+  /// Verifies that [LuceneTestCaseJupiter.SuiteFailureTracker] correctly tracks test failures
+  /// across various lifecycle methods of a [LuceneTestCaseJupiter] subclass.
+  @Nested
+  class SuiteFailureTracking {
+    private static final List<Thread> forkedThreads = new ArrayList<>();
+
+    @AfterEach
+    void interruptAndJoinForkedThreads() throws InterruptedException {
+      for (var t : forkedThreads) t.interrupt();
+      for (var t : forkedThreads) t.join();
+      forkedThreads.clear();
+    }
+
+    @SuppressForbidden(reason = "Thread sleep")
+    private static void startSleepingThread(Duration duration) {
+      startThread(
+          "sleeping-thread",
+          () -> {
+            try {
+              Thread.sleep(duration.toMillis());
+            } catch (InterruptedException _) {
+            }
+          });
+    }
+
+    private static Thread startThread(String name, Runnable r) {
+      var t = new Thread(r, name);
+      forkedThreads.add(t);
+      t.start();
+      return t;
+    }
+
+    @Test
+    public void testNoFailureLeavesMarkerClear() {
+      testKitBuilder(SuccessfulSuite.class)
+          .execute()
+          .allEvents()
+          .assertThatEvents()
+          .doNotHave(event(finishedWithFailure()));
+      Assert.assertTrue(LuceneTestCaseJupiter.suiteFailureTracker.wasSuccessful());
+    }
+
+    @TestFactory
+    Stream<DynamicTest> suiteFailureIsTracked() {
+      return Stream.of(
+              FailInTestMethod.class,
+              FailInBeforeEach.class,
+              FailInAfterEach.class,
+              FailInBeforeAll.class,
+              FailInAfterAll.class,
+              FailBecauseOfLeakedThreads.class)
+          .map(
+              clazz ->
+                  DynamicTest.dynamicTest(
+                      clazz.getSimpleName(),
+                      () -> {
+                        testKitBuilder(clazz)
+                            .execute()
+                            .allEvents()
+                            .assertThatEvents()
+                            .haveAtLeast(1, event(finishedWithFailure()));
+                        Assert.assertFalse(
+                            LuceneTestCaseJupiter.suiteFailureTracker.wasSuccessful());
+                      }));
+    }
+
+    static class SuccessfulSuite extends LuceneTestCaseJupiter {
+      @Test
+      void testOk() {}
+    }
+
+    static class FailInTestMethod extends LuceneTestCaseJupiter {
+      @Test
+      void testFails() {
+        throw new AssertionError();
+      }
+    }
+
+    static class FailInBeforeEach extends LuceneTestCaseJupiter {
+      @BeforeEach
+      void beforeEach() {
+        throw new AssertionError();
+      }
+
+      @Test
+      void testMethod() {}
+    }
+
+    static class FailInAfterEach extends LuceneTestCaseJupiter {
+      @AfterEach
+      void afterEach() {
+        throw new AssertionError();
+      }
+
+      @Test
+      void testMethod() {}
+    }
+
+    static class FailInBeforeAll extends LuceneTestCaseJupiter {
+      @BeforeAll
+      static void setUpSuite() {
+        throw new AssertionError();
+      }
+
+      @Test
+      void testMethod() {}
+    }
+
+    static class FailInAfterAll extends LuceneTestCaseJupiter {
+      @AfterAll
+      static void tearDownSuite() {
+        throw new AssertionError();
+      }
+
+      @Test
+      void testMethod() {}
+    }
+
+    @DetectThreadLeaks.LingerTime(millis = 0)
+    static class FailBecauseOfLeakedThreads extends LuceneTestCaseJupiter {
+      @Test
+      void testMethod() {
+        startSleepingThread(Duration.ofSeconds(10));
       }
     }
   }
