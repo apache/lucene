@@ -304,6 +304,9 @@ Improvements
 
 * GITHUB#15574: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
 
+* GITHUB#15989: DocValuesRangeIterator always tries to use skipper-based block iteration
+  as its approximation. (Alan Woodward)
+
 Optimizations
 ---------------------
 * GITHUB#15861: Optimise PhraseScorer by short circuiting non competitive documents in TOP_SCORES mode. (Prithvi S)
