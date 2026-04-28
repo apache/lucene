@@ -16,8 +16,8 @@
     limitations under the License.
 -->
 <!--
-  Wall-clock execution samples for CPU profiling on platforms where JEP 509 CPU-time sampling
-  is unavailable (non-Linux). On Linux, CodeProfilingPlugin uses profiling.linux.jfc instead.
+  Wall-clock execution samples for CPU profiling when JEP 509 CPU-time sampling is not used for
+  tests (see profiling.cputime.jfc on hosts where CodeProfilingPlugin selects it).
   Heap allocation events are enabled on all platforms.
 -->
 <configuration version="2.0" label="TestProfiling" description="Sampling for unit tests" provider="Apache">

@@ -257,12 +257,13 @@ public class CodeProfilingPlugin extends LuceneGradlePlugin {
       Provider<Boolean> frametypesOption) {}
 
   /**
-   * JEP 509 CPU-time sampling ({@code jdk.CPUTimeSample}) is implemented on Linux. Use a Linux-only
-   * JFR template with CPU-time sampling only; other hosts keep wall-clock execution sampling for
-   * short tests.
+   * Java 25+ JEP 509 ({@code jdk.CPUTimeSample}) is currently implemented only on Linux in the JDK.
+   * When the Gradle host is Linux, use {@code testing/profiling.cputime.jfc} (CPU-time sampling
+   * only). Otherwise use {@code testing/profiling.jfc} (legacy wall-clock execution sampling). Host
+   * selection may broaden if CPU-time sampling is supported on other OS releases later.
    */
   private static String profilingSettingsPath() {
     String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
-    return os.contains("linux") ? "testing/profiling.linux.jfc" : "testing/profiling.jfc";
+    return os.contains("linux") ? "testing/profiling.cputime.jfc" : "testing/profiling.jfc";
   }
 }

@@ -105,7 +105,7 @@ public class ProfileResults {
     String name = event.getEventType().getName();
     switch (mode) {
       case "cpu":
-        // jdk.CPUTimeSample: JEP 509 (e.g. gradle/testing/profiling.linux.jfc). Legacy samples:
+        // jdk.CPUTimeSample: JEP 509 (e.g. gradle/testing/profiling.cputime.jfc). Legacy samples:
         // jdk.ExecutionSample / jdk.NativeMethodSample (e.g. profiling.jfc). Stock Lucene configs
         // enable one family; filter gradle poll thread for legacy samples only.
         if (name.equals("jdk.CPUTimeSample")) {
