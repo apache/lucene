@@ -5001,7 +5001,6 @@ public class TestIndexWriter extends LuceneTestCase {
         doc2.add(new SortedNumericDocValuesField("test", random().nextLong()));
         IllegalArgumentException ex =
             expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc2));
-        ex.printStackTrace();
         assertEquals(
             "Inconsistency of field data structures across documents for field [test] of doc [1]. doc values skip index type: expected 'RANGE', but it has 'NONE'.",
             ex.getMessage());

@@ -140,14 +140,13 @@ public final class AssertingPostingsFormat extends PostingsFormat {
         BytesRefBuilder lastTerm = null;
         PostingsEnum postingsEnum = null;
 
-        boolean hasFreqs = fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
+        boolean hasFreqs = fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS);
         boolean hasPositions =
-            fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+            fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
         boolean hasOffsets =
             fieldInfo
-                    .getIndexOptions()
-                    .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-                >= 0;
+                .getIndexOptions()
+                .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
         boolean hasPayloads = terms.hasPayloads();
 
         assert hasPositions == terms.hasPositions();
