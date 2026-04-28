@@ -520,8 +520,9 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     dir.close();
   }
 
-  public void testBooleanTermFilterOnPrimaryIndexSortFieldFallsBackWhenPostingsTermMissingFromDocValues()
-      throws IOException {
+  public void
+      testBooleanTermFilterOnPrimaryIndexSortFieldFallsBackWhenPostingsTermMissingFromDocValues()
+          throws IOException {
     Directory dir = newDirectory();
 
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));

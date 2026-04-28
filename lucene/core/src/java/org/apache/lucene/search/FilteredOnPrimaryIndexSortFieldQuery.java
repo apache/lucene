@@ -196,8 +196,8 @@ final class FilteredOnPrimaryIndexSortFieldQuery extends Query {
     return null;
   }
 
-  private static DocIdRange getDocIdRangeForPrimarySort(
-      LeafReaderContext context, BytesRef value) throws IOException {
+  private static DocIdRange getDocIdRangeForPrimarySort(LeafReaderContext context, BytesRef value)
+      throws IOException {
     SortField sortField = context.reader().getMetaData().sort().getSort()[0];
     int maxDoc = context.reader().maxDoc();
 
