@@ -127,8 +127,8 @@ public class AllGroupHeadsCollectorManager<T>
         cmp = values2[i] == null ? 0 : -1;
       } else if (values2[i] == null) {
         cmp = 1;
-      } else if (values1[i] instanceof Comparable) {
-        cmp = ((Comparable) values1[i]).compareTo(values2[i]);
+      } else if (values1[i] instanceof Comparable comparable) {
+        cmp = comparable.compareTo(values2[i]);
       }
       if (cmp != 0) {
         // For SCORE type, natural order is descending (higher is better)
