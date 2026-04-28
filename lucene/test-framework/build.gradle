@@ -34,6 +34,9 @@ dependencies {
   moduleApi(deps.junitplatform.jupiter)
 
   moduleImplementation project(':lucene:codecs')
+
+  moduleTestImplementation deps.junitplatform.testkit
+  moduleTestImplementation deps.assertj
 }
 
 //

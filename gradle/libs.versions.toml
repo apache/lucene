@@ -87,6 +87,7 @@ jts = { module = "org.locationtech.jts:jts-core", version.ref = "jts" }
 junit = { module = "junit:junit", version.ref = "junit" }
 junitplatform-jupiter = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit5" }
 junitplatform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit5" }
+junitplatform-testkit = { module = "org.junit.platform:junit-platform-testkit", version.ref = "junit5" }
 junitplatform-vintage = { module = "org.junit.vintage:junit-vintage-engine", version.ref = "junit5" }
 morfologik-polish = { module = "org.carrot2:morfologik-polish", version.ref = "morfologik" }
 morfologik-stemming = { module = "org.carrot2:morfologik-stemming", version.ref = "morfologik" }

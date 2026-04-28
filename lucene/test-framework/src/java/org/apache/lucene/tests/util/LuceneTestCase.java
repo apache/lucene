@@ -395,12 +395,6 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
                               }
 
                               @Override
-                              public <T extends Closeable> T closeAfterTest(T resource) {
-                                return RandomizedContext.current()
-                                    .closeAtEnd(resource, LifecycleScope.TEST);
-                              }
-
-                              @Override
                               public <T extends Closeable> T closeAfterClass(T resource) {
                                 return RandomizedContext.current()
                                     .closeAtEnd(resource, LifecycleScope.SUITE);

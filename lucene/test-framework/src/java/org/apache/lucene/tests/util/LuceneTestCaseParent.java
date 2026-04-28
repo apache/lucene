@@ -336,8 +336,6 @@ public abstract sealed class LuceneTestCaseParent extends Assert
   protected interface TestFrameworkInfra {
     Random threadRandom();
 
-    <T extends Closeable> T closeAfterTest(T resource);
-
     <T extends Closeable> T closeAfterClass(T resource);
 
     SetupAndRestoreStaticEnv getClassEnv();
@@ -1169,15 +1167,6 @@ public abstract sealed class LuceneTestCaseParent extends Assert
     } catch (URISyntaxException e) {
       throw new AssertionError(e);
     }
-  }
-
-  /**
-   * Registers a {@link Closeable} resource that should be closed after the test completes.
-   *
-   * @return <code>resource</code> (for call chaining).
-   */
-  public <T extends Closeable> T closeAfterTest(T resource) {
-    return getTestFrameworkInfra().closeAfterTest(resource);
   }
 
   /**
