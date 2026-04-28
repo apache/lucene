@@ -307,6 +307,47 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     dir.close();
   }
 
+  public void testBooleanTermFilterOnPrimaryIndexSortFieldFallsBackWhenPostingsTermMissingFromDocValues()
+      throws IOException {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setIndexSort(new Sort(new SortedSetSortField("category", false)));
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+
+    for (int i = 0; i < 20; ++i) {
+      Document doc = new Document();
+      doc.add(new SortedSetDocValuesField("category", new BytesRef("music")));
+      if (i % 2 == 0) {
+        doc.add(new StringField("category", "books", Field.Store.NO));
+      } else {
+        doc.add(new StringField("category", "music", Field.Store.NO));
+      }
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+
+    DirectoryReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    RecordingMatchAllQuery recordingQuery = new RecordingMatchAllQuery();
+    Query filter = new TermQuery(new org.apache.lucene.index.Term("category", "books"));
+    Query query =
+        new BooleanQuery.Builder()
+            .add(recordingQuery, BooleanClause.Occur.MUST)
+            .add(filter, BooleanClause.Occur.FILTER)
+            .build();
+    MatcherAssert.assertThat(
+        searcher.rewrite(query), instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+
+    TopDocs topDocs = searcher.search(query, 20);
+    assertEquals(10, topDocs.totalHits.value());
+
+    reader.close();
+    dir.close();
+  }
+
   private static class RecordingMatchAllQuery extends Query {
     final List<DocIdRange> scoredRanges = new ArrayList<>();
 

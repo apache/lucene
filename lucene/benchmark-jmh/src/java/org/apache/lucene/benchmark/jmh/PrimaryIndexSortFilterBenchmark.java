@@ -153,14 +153,9 @@ public class PrimaryIndexSortFilterBenchmark {
   private static void deleteDirectory(Path path) throws IOException {
     if (path != null && Files.exists(path)) {
       try (Stream<Path> walk = Files.walk(path)) {
-        walk.sorted(Comparator.reverseOrder())
-            .forEach(
-                p -> {
-                  try {
-                    Files.delete(p);
-                  } catch (IOException _) {
-                  }
-                });
+        for (Path p : walk.sorted(Comparator.reverseOrder()).toList()) {
+          Files.delete(p);
+        }
       }
     }
   }

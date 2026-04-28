@@ -150,15 +150,16 @@ final class FilteredOnPrimaryIndexSortFieldQuery extends Query {
     if (singleton == null) {
       return null;
     }
+    int docFreq = context.reader().docFreq(term);
     long ord = values.lookupTerm(term.bytes());
     if (ord < 0) {
-      return new DocIdRange(0, 0);
+      return docFreq == 0 ? new DocIdRange(0, 0) : null;
     }
     DocIdRange range = getDocIdRangeForPrimarySort(context, term.bytes());
     if (range.isEmpty()) {
       return range;
     }
-    if (context.reader().docFreq(term) != range.maxDoc() - range.minDoc()) {
+    if (docFreq != range.maxDoc() - range.minDoc()) {
       return null;
     }
     PostingsEnum postings = context.reader().postings(term, PostingsEnum.NONE);
