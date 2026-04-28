@@ -235,12 +235,12 @@ public class HnswGraphBuilder implements HnswBuilder {
         printGraphBuildStatus(node, progressStartNs);
       }
     }
-    long chunkElapsedNS = System.nanoTime() - startNs;
+    long chunkedElapsedNs = System.nanoTime() - startNs;
     if (cumulativeWorkTimeNS != null) {
-      cumulativeWorkTimeNS.addAndGet(chunkElapsedNS);
+      cumulativeWorkTimeNS.addAndGet(chunkedElapsedNs);
     }
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
-      double elapsedMs = chunkElapsedNS / 1_000_000.0;
+      double elapsedMs = chunkedElapsedNs / 1_000_000.0;
       infoStream.message(
           HNSW_COMPONENT,
           String.format(
