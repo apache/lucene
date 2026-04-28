@@ -89,14 +89,6 @@ public class AllGroupHeadsCollectorManager<T>
 
   @Override
   public GroupHeadsResult reduce(Collection<AllGroupHeadsCollector<T>> collectors) {
-    if (collectors.isEmpty()) {
-      return new GroupHeadsResult(new int[0]);
-    }
-
-    if (collectors.size() == 1) {
-      return new GroupHeadsResult(collectors.iterator().next().retrieveGroupHeads());
-    }
-
     Map<Object, GroupHeadWithValues> mergedHeads = new HashMap<>();
     SortField[] sortFields = sortWithinGroup.getSort();
 
@@ -111,7 +103,8 @@ public class AllGroupHeadsCollectorManager<T>
       AllGroupHeadsCollector<T> collector,
       Map<Object, GroupHeadWithValues> mergedHeads,
       SortField[] sortFields) {
-    Collection<? extends AllGroupHeadsCollector.GroupHead<T>> heads = collector.getCollectedGroupHeads();
+    Collection<? extends AllGroupHeadsCollector.GroupHead<T>> heads =
+        collector.getCollectedGroupHeads();
     for (AllGroupHeadsCollector.GroupHead<T> head : heads) {
       Object[] sortValues = collector.getSortValues(head.groupValue);
       GroupHeadWithValues existing = mergedHeads.get(head.groupValue);

@@ -139,7 +139,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
     AllGroupHeadsCollectorManager<?> allGroupHeadsCollectorManager =
         createRandomCollectorManager(groupField, sortWithinGroup);
     AllGroupHeadsCollectorManager.GroupHeadsResult groupHeadsResult =
-        (AllGroupHeadsCollectorManager.GroupHeadsResult) indexSearcher.search(
+        indexSearcher.search(
             new TermQuery(new Term("content", "random")), allGroupHeadsCollectorManager);
     assertTrue(arrayContains(new int[] {2, 3, 5, 7}, groupHeadsResult.retrieveGroupHeads()));
     assertTrue(
@@ -148,7 +148,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
 
     allGroupHeadsCollectorManager = createRandomCollectorManager(groupField, sortWithinGroup);
     groupHeadsResult =
-        (AllGroupHeadsCollectorManager.GroupHeadsResult) indexSearcher.search(
+        indexSearcher.search(
             new TermQuery(new Term("content", "some")), allGroupHeadsCollectorManager);
     assertTrue(arrayContains(new int[] {2, 3, 4}, groupHeadsResult.retrieveGroupHeads()));
     assertTrue(
@@ -157,7 +157,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
 
     allGroupHeadsCollectorManager = createRandomCollectorManager(groupField, sortWithinGroup);
     groupHeadsResult =
-        (AllGroupHeadsCollectorManager.GroupHeadsResult) indexSearcher.search(
+        indexSearcher.search(
             new TermQuery(new Term("content", "blob")), allGroupHeadsCollectorManager);
     assertTrue(arrayContains(new int[] {1, 5}, groupHeadsResult.retrieveGroupHeads()));
     assertTrue(
@@ -167,7 +167,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
     Sort sortWithinGroup2 = new Sort(new SortField("id_2", SortField.Type.STRING, true));
     allGroupHeadsCollectorManager = createRandomCollectorManager(groupField, sortWithinGroup2);
     groupHeadsResult =
-        (AllGroupHeadsCollectorManager.GroupHeadsResult) indexSearcher.search(
+        indexSearcher.search(
             new TermQuery(new Term("content", "random")), allGroupHeadsCollectorManager);
     assertTrue(arrayContains(new int[] {2, 3, 5, 7}, groupHeadsResult.retrieveGroupHeads()));
     assertTrue(
@@ -177,7 +177,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
     Sort sortWithinGroup3 = new Sort(new SortField("id_2", SortField.Type.STRING, false));
     allGroupHeadsCollectorManager = createRandomCollectorManager(groupField, sortWithinGroup3);
     groupHeadsResult =
-        (AllGroupHeadsCollectorManager.GroupHeadsResult) indexSearcher.search(
+        indexSearcher.search(
             new TermQuery(new Term("content", "random")), allGroupHeadsCollectorManager);
     // 7 b/c higher doc id wins, even if order of field is in not in reverse.
     assertTrue(arrayContains(new int[] {0, 3, 4, 6}, groupHeadsResult.retrieveGroupHeads()));
@@ -355,9 +355,10 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
         boolean sortByScoreOnly = random().nextBoolean();
         Sort sortWithinGroup = getRandomSort(sortByScoreOnly);
         AllGroupHeadsCollectorManager<BytesRef> allGroupHeadsCollectorManager =
-            new AllGroupHeadsCollectorManager<>(() -> new TermGroupSelector("group"), sortWithinGroup);
+            new AllGroupHeadsCollectorManager<>(
+                () -> new TermGroupSelector("group"), sortWithinGroup);
         AllGroupHeadsCollectorManager.GroupHeadsResult groupHeadsResult =
-            (AllGroupHeadsCollectorManager.GroupHeadsResult) s.search(new TermQuery(new Term("content", searchTerm)), allGroupHeadsCollectorManager);
+            s.search(new TermQuery(new Term("content", searchTerm)), allGroupHeadsCollectorManager);
         int[] expectedGroupHeads =
             createExpectedGroupHeads(
                 searchTerm, groupDocs, sortWithinGroup, sortByScoreOnly, fieldIdToDocID);
@@ -563,9 +564,12 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
       String groupField, Sort sortWithinGroup) {
     if (random().nextBoolean()) {
       ValueSource vs = new BytesRefFieldSource(groupField);
-      return new AllGroupHeadsCollectorManager<>(() -> new ValueSourceGroupSelector(vs, new HashMap<>()), sortWithinGroup);
+      Map<Object, Object> context = new HashMap<>();
+      return new AllGroupHeadsCollectorManager<>(
+          () -> new ValueSourceGroupSelector(vs, context), sortWithinGroup);
     } else {
-      return new AllGroupHeadsCollectorManager<BytesRef>(() -> new TermGroupSelector(groupField), sortWithinGroup);
+      return new AllGroupHeadsCollectorManager<>(
+          () -> new TermGroupSelector(groupField), sortWithinGroup);
     }
   }
 
