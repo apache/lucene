@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -95,14 +96,14 @@ public class TestInfoStream extends LuceneTestCase {
     // examine info stream output from IW, MP, MS
     IndexWriterConfig iwc = new IndexWriterConfig(null);
     Set<String> components = Set.of("IW", "MP", "MS", "BD", "BU");
-    List<String> infoStream = new ArrayList<>();
+    List<String> infoStream = Collections.synchronizedList(new ArrayList<>());
     iwc.setInfoStream(
         new InfoStream() {
           @Override
           public void close() throws IOException {}
 
           @Override
-          public synchronized void message(String component, String message) {
+          public void message(String component, String message) {
             if (components.contains(component)) {
               infoStream.add(String.format(Locale.ROOT, "[%s] %s\n", component, message));
             }
