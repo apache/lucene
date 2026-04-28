@@ -302,8 +302,6 @@ Improvements
 
 * GITHUB#15976: Store DocValuesSkipper data in their own file. (Alan Woodward)
 
-* GITHUB#15557: Introduce AllGroupsCollectorManager to parallelize search when using AllGroupsCollector. (Binlong Gao)
-
 * GITHUB#15574: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
 
 Optimizations
@@ -516,6 +514,8 @@ Improvements
 * GITHUB#15479: Add NumericDocValueRangeQuery base class to add accessor methods for field, lower and upper values (Alan Woodward)
 
 * GITHUB#15570: Disallow invalid offset 0 for LZ4 decompression (Marcono1234)
+
+* GITHUB#15557: Introduce AllGroupsCollectorManager to parallelize search when using AllGroupsCollector. (Binlong Gao)
 
 Optimizations
 ---------------------
