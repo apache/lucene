@@ -137,32 +137,27 @@ public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
       }
 
       @Override
-      @SuppressWarnings("DuplicateBranches")
       public long minValue(int level) {
-        int d = doc % 1024;
-        if (d < 128) {
-          return queryMin;
-        } else if (d < 256) {
-          return queryMax + 1;
-        } else if (d < 768) {
-          return queryMin - 1;
-        } else {
-          return queryMin - 1;
-        }
+        int dStart = minDocID(level) % 1024;
+        int dEnd = maxDocID(level) % 1024;
+        long min = Long.MAX_VALUE;
+        if (dStart <= 127 && dEnd >= 0) min = Math.min(min, queryMin);
+        if (dStart <= 255 && dEnd >= 128) min = Math.min(min, queryMax + 1);
+        if (dStart <= 511 && dEnd >= 256) min = Math.min(min, queryMin - 1);
+        if (dEnd >= 512) min = Math.min(min, queryMin - 1);
+        return min;
       }
 
       @Override
       public long maxValue(int level) {
-        int d = doc % 1024;
-        if (d < 128) {
-          return queryMax;
-        } else if (d < 256) {
-          return queryMax + 1;
-        } else if (d < 768) {
-          return queryMin - 1;
-        } else {
-          return queryMax + 1;
-        }
+        int dStart = minDocID(level) % 1024;
+        int dEnd = maxDocID(level) % 1024;
+        long max = Long.MIN_VALUE;
+        if (dStart <= 127 && dEnd >= 0) max = Math.max(max, queryMax);
+        if (dStart <= 255 && dEnd >= 128) max = Math.max(max, queryMax + 1);
+        if (dStart <= 511 && dEnd >= 256) max = Math.max(max, queryMin - 1);
+        if (dEnd >= 512) max = Math.max(max, queryMax + 1);
+        return max;
       }
 
       @Override
