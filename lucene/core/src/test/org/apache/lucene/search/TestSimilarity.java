@@ -18,8 +18,12 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.function.Function;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
@@ -125,6 +129,181 @@ public class TestSimilarity extends LuceneTestCase {
 
     reader.close();
     store.close();
+  }
+
+  public void testSimilarityTermDocNoTf() throws Exception {
+    Directory store = newDirectory();
+    RandomIndexWriter writer =
+        new RandomIndexWriter(
+            random(),
+            store,
+            newIndexWriterConfig(new MockAnalyzer(random()))
+                .setSimilarity(new SimpleSimilarity())
+                .setMergePolicy(newMergePolicy(random(), false)));
+
+    FieldType fieldType = new FieldType(TextField.TYPE_STORED);
+    fieldType.setIndexOptions(IndexOptions.DOCS_AND_CUSTOM_FREQS);
+
+    Document d1 = new Document();
+    d1.add(new Field("field", "a c", fieldType));
+
+    Document d2 = new Document();
+    d2.add(new Field("field", "a c b", fieldType));
+
+    writer.addDocument(d1);
+    writer.addDocument(d2);
+    IndexReader reader = writer.getReader();
+    writer.close();
+
+    IndexSearcher searcher = newSearcher(reader);
+    searcher.setSimilarity(new SimpleSimilarity());
+
+    Term a = new Term("field", "a");
+    Term b = new Term("field", "b");
+    Term c = new Term("field", "c");
+
+    // when no custom term freq is provided, default to 1
+    assertScore(searcher, new TermQuery(a), 1f);
+    assertScore(searcher, new TermQuery(b), 1f);
+    assertScore(searcher, new TermQuery(c), 1f);
+
+    BooleanQuery.Builder bq = new BooleanQuery.Builder();
+    bq.add(new TermQuery(a), BooleanClause.Occur.SHOULD);
+    bq.add(new TermQuery(b), BooleanClause.Occur.SHOULD);
+    // System.out.println(bq.toString("field"));
+    searcher.search(
+        bq.build(),
+        new CollectorManager<SimpleCollector, Void>() {
+          @Override
+          public SimpleCollector newCollector() {
+            // score is the sum(1) for each matching term in the doc
+            int[] scores = {1, 2};
+            return new ScoreAssertingCollector() {
+              private int base = 0;
+
+              @Override
+              public void collect(int doc) throws IOException {
+                // System.out.println("Doc=" + doc + " score=" + scorer.score());
+                assertEquals(scores[base + doc], scorer.score(), 0);
+              }
+
+              @Override
+              protected void doSetNextReader(LeafReaderContext context) {
+                base = context.docBase;
+              }
+            };
+          }
+
+          @Override
+          public Void reduce(Collection<SimpleCollector> collectors) {
+            return null;
+          }
+        });
+    reader.close();
+    store.close();
+  }
+
+  public void testTermDocSimilarity() throws IOException {
+    try (Directory store = newDirectory()) {
+      Function<CharSequence, Integer> termFreq =
+          term ->
+              switch (term.toString()) {
+                case "a" -> 17;
+                case "b" -> Integer.MAX_VALUE;
+                case "d" -> Integer.MAX_VALUE;
+                default -> 1;
+              };
+
+      RandomIndexWriter writer =
+          new RandomIndexWriter(
+              random(),
+              store,
+              newIndexWriterConfig(new MockAnalyzer(random(), termFreq))
+                  .setSimilarity(new SimpleSimilarity())
+                  .setMergePolicy(newMergePolicy(random(), false)));
+
+      FieldType type = new FieldType(TextField.TYPE_STORED);
+      type.setIndexOptions(IndexOptions.DOCS_AND_CUSTOM_FREQS);
+
+      Document d1 = new Document();
+      d1.add(new Field("field", "a c", type));
+
+      Document d2 = new Document();
+      d2.add(new Field("field", "a c b d", type));
+
+      writer.addDocument(d1);
+      writer.addDocument(d2);
+      try (IndexReader reader = writer.getReader()) {
+        writer.close();
+
+        IndexSearcher searcher = newSearcher(reader);
+        searcher.setSimilarity(new SimpleSimilarity());
+
+        Term a = new Term("field", "a");
+        Term b = new Term("field", "b");
+        Term c = new Term("field", "c");
+        Term d = new Term("field", "d");
+
+        assertScore(searcher, new TermQuery(a), 17f);
+        assertScore(searcher, new TermQuery(b), Integer.MAX_VALUE);
+        assertScore(searcher, new TermQuery(c), 1f);
+
+        BooleanQuery.Builder bq = new BooleanQuery.Builder();
+        bq.add(new TermQuery(a), BooleanClause.Occur.SHOULD);
+        bq.add(new TermQuery(b), BooleanClause.Occur.SHOULD);
+        // BooleanScorer takes the sum of scores of disjunctive terms
+        // but loss of floating precision means MAX_VALUE + 17 == MAX_VALUE.
+        assertResults(searcher, bq.build(), new float[] {17f, (float) Integer.MAX_VALUE});
+
+        bq = new BooleanQuery.Builder();
+        bq.add(new TermQuery(b), BooleanClause.Occur.SHOULD);
+        bq.add(new TermQuery(d), BooleanClause.Occur.SHOULD);
+        // here we see we can sum max int value twice; there are no problems with overflow
+        assertResults(searcher, bq.build(), new float[] {-1, 2 * (float) Integer.MAX_VALUE});
+      }
+    }
+  }
+
+  private static void assertResults(IndexSearcher searcher, Query query, float[] scores)
+      throws IOException {
+    CollectorManager<SimpleCollector, Integer> collector =
+        new CollectorManager<>() {
+          int count = 0;
+
+          @Override
+          public SimpleCollector newCollector() {
+            return new ScoreAssertingCollector() {
+              private int base = 0;
+
+              @Override
+              public void collect(int doc) throws IOException {
+                // System.out.println("Doc=" + doc + " score=" + scorer.score());
+                assertEquals(scores[doc + base], scorer.score(), 0);
+                // not thread-safe, but I think it's OK?
+                ++count;
+              }
+
+              @Override
+              protected void doSetNextReader(LeafReaderContext context) {
+                base = context.docBase;
+              }
+            };
+          }
+
+          @Override
+          public Integer reduce(Collection<SimpleCollector> collectors) {
+            return count;
+          }
+        };
+
+    int expectedCount = 0;
+    for (float score : scores) {
+      if (score >= 0) {
+        expectedCount++;
+      }
+    }
+    int count = searcher.search(query, collector);
+    assertEquals(expectedCount, count);
   }
 
   private static void assertScore(IndexSearcher searcher, Query query, float score)

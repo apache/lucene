@@ -22,6 +22,11 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Supplier;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
@@ -158,5 +163,113 @@ public class TestCompiledAutomaton extends LuceneTestCase {
     Automaton a = Automata.makeString(TestUtil.randomRealisticUnicodeString(random()));
     CompiledAutomaton ca = new CompiledAutomaton(a, true, true, false);
     assertEquals(CompiledAutomaton.AUTOMATON_TYPE.SINGLE, ca.type);
+  }
+
+  public void testNfaCompiledAutomatonEqualsAndHashCode() {
+    Automaton nfa1 = makeSimpleNfa('a');
+    Automaton nfa2 = makeSimpleNfa('a');
+    assertNotSame(nfa1, nfa2);
+
+    CompiledAutomaton ca1 = new CompiledAutomaton(nfa1, false, true, true);
+    CompiledAutomaton ca2 = new CompiledAutomaton(nfa2, false, true, true);
+
+    assertEquals(CompiledAutomaton.AUTOMATON_TYPE.NORMAL, ca1.type);
+    assertEquals(CompiledAutomaton.AUTOMATON_TYPE.NORMAL, ca2.type);
+    assertNotNull(ca1.nfaRunAutomaton);
+    assertNotNull(ca2.nfaRunAutomaton);
+
+    assertEquals(ca1, ca2);
+    assertEquals(ca1.hashCode(), ca2.hashCode());
+  }
+
+  public void testNfaCompiledAutomatonHashCodeIsStableForStructuralEquals() {
+    CompiledAutomaton ca1 = new CompiledAutomaton(makeSimpleNfa('z'), false, true, true);
+    CompiledAutomaton ca2 = new CompiledAutomaton(makeSimpleNfa('z'), false, true, true);
+    CompiledAutomaton ca3 = new CompiledAutomaton(makeSimpleNfa('z'), false, true, true);
+
+    assertEquals(ca1, ca2);
+    assertEquals(ca2, ca3);
+    assertEquals(ca1.hashCode(), ca2.hashCode());
+    assertEquals(ca2.hashCode(), ca3.hashCode());
+  }
+
+  public void testNfaCompiledAutomatonNotEquals() {
+    CompiledAutomaton ca1 = new CompiledAutomaton(makeSimpleNfa('a'), false, true, true);
+    CompiledAutomaton ca2 = new CompiledAutomaton(makeSimpleNfa('b'), false, true, true);
+
+    assertNotEquals(ca1, ca2);
+  }
+
+  public void testDfaCompiledAutomatonEqualsAndHashCode() {
+    CompiledAutomaton ca1 =
+        new CompiledAutomaton(makeDeterministicNormalAutomaton('a', 'b'), false, false, true);
+    CompiledAutomaton ca2 =
+        new CompiledAutomaton(makeDeterministicNormalAutomaton('a', 'b'), false, false, true);
+
+    assertNotNull(ca1.runAutomaton);
+    assertNotNull(ca2.runAutomaton);
+    assertNull(ca1.nfaRunAutomaton);
+    assertNull(ca2.nfaRunAutomaton);
+
+    assertEquals(ca1, ca2);
+    assertEquals(ca1.hashCode(), ca2.hashCode());
+  }
+
+  public void testDfaCompiledAutomatonNotEquals() {
+    CompiledAutomaton ca1 =
+        new CompiledAutomaton(makeDeterministicNormalAutomaton('a', 'b'), false, false, true);
+    CompiledAutomaton ca2 =
+        new CompiledAutomaton(makeDeterministicNormalAutomaton('a', 'c'), false, false, true);
+
+    assertNotEquals(ca1, ca2);
+  }
+
+  public void testDfaAndNfaCompiledAutomataAreNotEqual() {
+    CompiledAutomaton dfa =
+        new CompiledAutomaton(makeDeterministicNormalAutomaton('a', 'b'), false, false, true);
+    CompiledAutomaton nfa = new CompiledAutomaton(makeSimpleNfa('a'), false, true, true);
+
+    assertNotNull(dfa.runAutomaton);
+    assertNull(dfa.nfaRunAutomaton);
+    assertNull(nfa.runAutomaton);
+    assertNotNull(nfa.nfaRunAutomaton);
+    assertNotEquals(dfa, nfa);
+    assertNotEquals(nfa, dfa);
+  }
+
+  public void testVisitUsesMatchingCallbackForNfaAutomaton() {
+    CompiledAutomaton ca = new CompiledAutomaton(makeSimpleNfa('a'), false, true, true);
+    Query parent = new TermQuery(new Term("f", "x"));
+
+    final boolean[] matchingCalled = new boolean[1];
+    QueryVisitor visitor =
+        new QueryVisitor() {
+          @Override
+          public void consumeTermsMatching(
+              Query query, String field, Supplier<ByteRunnable> automaton) {
+            matchingCalled[0] = true;
+            assertNotNull(automaton.get());
+          }
+        };
+
+    ca.visit(visitor, parent, "f");
+    assertTrue(matchingCalled[0]);
+  }
+
+  private static Automaton makeSimpleNfa(char ch) {
+    return makeDeterministicNormalAutomaton(ch, ch);
+  }
+
+  private static Automaton makeDeterministicNormalAutomaton(char first, char second) {
+    Automaton automaton = new Automaton();
+    int start = automaton.createState();
+    int accept1 = automaton.createState();
+    int accept2 = automaton.createState();
+    automaton.setAccept(accept1, true);
+    automaton.setAccept(accept2, true);
+    automaton.addTransition(start, accept1, first, first);
+    automaton.addTransition(start, accept2, second, second);
+    automaton.finishState();
+    return automaton;
   }
 }

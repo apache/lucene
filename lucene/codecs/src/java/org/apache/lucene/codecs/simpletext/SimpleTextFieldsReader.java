@@ -229,7 +229,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
     @Override
     public PostingsEnum postings(PostingsEnum reuse, int flags) throws IOException {
 
-      boolean hasPositions = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+      boolean hasPositions = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
       if (hasPositions && PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS)) {
 
         SimpleTextPostingsEnum docsAndPositionsEnum;
@@ -467,9 +467,8 @@ class SimpleTextFieldsReader extends FieldsProducer {
         long fp, IndexOptions indexOptions, int docFreq, long skipPointer) throws IOException {
       nextDocStart = fp;
       docID = -1;
-      readPositions = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
-      readOffsets =
-          indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
+      readPositions = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+      readOffsets = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
       if (!readOffsets) {
         startOffset = -1;
         endOffset = -1;
@@ -780,20 +779,19 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
     @Override
     public boolean hasFreqs() {
-      return fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
+      return fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS);
     }
 
     @Override
     public boolean hasOffsets() {
       return fieldInfo
-              .getIndexOptions()
-              .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-          >= 0;
+          .getIndexOptions()
+          .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
     }
 
     @Override
     public boolean hasPositions() {
-      return fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+      return fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
     }
 
     @Override

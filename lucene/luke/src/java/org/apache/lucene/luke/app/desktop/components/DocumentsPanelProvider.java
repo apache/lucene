@@ -1125,6 +1125,9 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
           case DOCS_AND_FREQS:
             sb.append("df--");
             break;
+          case DOCS_AND_CUSTOM_FREQS:
+            sb.append("dc--");
+            break;
           case DOCS_AND_FREQS_AND_POSITIONS:
             sb.append("dfp-");
             break;
