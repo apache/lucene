@@ -36,6 +36,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -267,6 +268,218 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
     reader.close();
     dir.close();
+  }
+
+  public void testBooleanTermFilterOnReversePrimaryIndexSortFieldRestrictsBulkScoringRange()
+      throws IOException {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(16)));
+    iwc.setIndexSort(
+        new Sort(
+            KeywordField.newSortField(
+                "category", true, SortedSetSelector.Type.MIN, SortField.STRING_LAST)));
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+
+    for (int i = 0; i < 100; ++i) {
+      Document doc = new Document();
+      String category;
+      if (i < 30) {
+        category = "articles";
+      } else if (i < 50) {
+        category = "books";
+      } else {
+        category = "music";
+      }
+      doc.add(new KeywordField("category", category, Field.Store.NO));
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+
+    DirectoryReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    RecordingMatchAllQuery recordingQuery = new RecordingMatchAllQuery();
+    Query filter = KeywordField.newExactQuery("category", "books");
+    Query query =
+        new BooleanQuery.Builder()
+            .add(recordingQuery, BooleanClause.Occur.MUST)
+            .add(filter, BooleanClause.Occur.FILTER)
+            .build();
+    MatcherAssert.assertThat(
+        searcher.rewrite(query), instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+
+    TopDocs topDocs = searcher.search(query, 100);
+    assertEquals(20, topDocs.totalHits.value());
+    assertFalse(recordingQuery.scoredRanges.isEmpty());
+    for (DocIdRange range : recordingQuery.scoredRanges) {
+      assertTrue(range.minDoc() >= 50);
+      assertTrue(range.maxDoc() <= 70);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testBooleanTermFilterOnPrimaryIndexSortFieldRespectsMustNot() throws IOException {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(16)));
+    iwc.setIndexSort(
+        new Sort(
+            KeywordField.newSortField(
+                "category", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST)));
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+
+    for (int i = 0; i < 100; ++i) {
+      Document doc = new Document();
+      String category;
+      if (i < 30) {
+        category = "articles";
+      } else if (i < 50) {
+        category = "books";
+        if (i % 2 == 0) {
+          doc.add(new StringField("excluded", "yes", Field.Store.NO));
+        }
+      } else {
+        category = "music";
+      }
+      doc.add(new KeywordField("category", category, Field.Store.NO));
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+
+    DirectoryReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    RecordingMatchAllQuery recordingQuery = new RecordingMatchAllQuery();
+    Query query =
+        new BooleanQuery.Builder()
+            .add(recordingQuery, BooleanClause.Occur.MUST)
+            .add(KeywordField.newExactQuery("category", "books"), BooleanClause.Occur.FILTER)
+            .add(
+                new TermQuery(new org.apache.lucene.index.Term("excluded", "yes")),
+                BooleanClause.Occur.MUST_NOT)
+            .build();
+    MatcherAssert.assertThat(
+        searcher.rewrite(query), instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+
+    TopDocs topDocs = searcher.search(query, 100);
+    assertEquals(10, topDocs.totalHits.value());
+    assertFalse(recordingQuery.scoredRanges.isEmpty());
+    for (DocIdRange range : recordingQuery.scoredRanges) {
+      assertTrue(range.minDoc() >= 30);
+      assertTrue(range.maxDoc() <= 50);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testBooleanTermFilterOnPrimaryIndexSortFieldWithMixedSegmentFallback()
+      throws IOException {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setMergePolicy(NoMergePolicy.INSTANCE);
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(16)));
+    iwc.setIndexSort(
+        new Sort(
+            KeywordField.newSortField(
+                "category", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST)));
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+
+    for (int i = 0; i < 20; ++i) {
+      Document doc = new Document();
+      String category = i < 10 ? "books" : "music";
+      doc.add(new KeywordField("category", category, Field.Store.NO));
+      iw.addDocument(doc);
+    }
+    iw.commit(false);
+
+    for (int i = 0; i < 10; ++i) {
+      Document doc = new Document();
+      doc.add(new SortedSetDocValuesField("category", new BytesRef("music")));
+      if (i % 2 == 0) {
+        doc.add(new StringField("category", "books", Field.Store.NO));
+      } else {
+        doc.add(new StringField("category", "music", Field.Store.NO));
+      }
+      iw.addDocument(doc);
+    }
+    iw.commit(false);
+
+    DirectoryReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    assertTrue(reader.leaves().size() >= 2);
+    RecordingMatchAllQuery recordingQuery = new RecordingMatchAllQuery();
+    Query query =
+        new BooleanQuery.Builder()
+            .add(recordingQuery, BooleanClause.Occur.MUST)
+            .add(
+                new TermQuery(new org.apache.lucene.index.Term("category", "books")),
+                BooleanClause.Occur.FILTER)
+            .build();
+    MatcherAssert.assertThat(
+        searcher.rewrite(query), instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+
+    TopDocs topDocs = searcher.search(query, 30);
+    assertEquals(15, topDocs.totalHits.value());
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testBooleanQueryWithTwoOptimizableFiltersOnPrimaryIndexSortField()
+      throws IOException {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setIndexSort(
+        new Sort(LongField.newSortField("sort", false, SortedNumericSelector.Type.MIN)));
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+
+    for (int i = 99; i >= 0; --i) {
+      Document doc = new Document();
+      doc.add(new LongField("sort", i, Field.Store.NO));
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+
+    DirectoryReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    Query wideFilter = LongField.newRangeQuery("sort", 20, 79);
+    Query narrowFilter = LongField.newRangeQuery("sort", 40, 59);
+    assertTwoOptimizableFiltersMatch(searcher, wideFilter, narrowFilter);
+    assertTwoOptimizableFiltersMatch(searcher, narrowFilter, wideFilter);
+
+    reader.close();
+    dir.close();
+  }
+
+  private static void assertTwoOptimizableFiltersMatch(
+      IndexSearcher searcher, Query firstFilter, Query secondFilter) throws IOException {
+    RecordingMatchAllQuery recordingQuery = new RecordingMatchAllQuery();
+    Query query =
+        new BooleanQuery.Builder()
+            .add(recordingQuery, BooleanClause.Occur.MUST)
+            .add(firstFilter, BooleanClause.Occur.FILTER)
+            .add(secondFilter, BooleanClause.Occur.FILTER)
+            .build();
+    MatcherAssert.assertThat(
+        searcher.rewrite(query), instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+
+    TopDocs topDocs = searcher.search(query, 100);
+    assertEquals(20, topDocs.totalHits.value());
+    assertFalse(recordingQuery.scoredRanges.isEmpty());
   }
 
   public void testBooleanTermFilterOnPrimaryIndexSortFieldStillAppliesPostingsFilter()
