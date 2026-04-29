@@ -115,8 +115,7 @@ public class SearchGroup<T> {
 
     // Only for assert
     private boolean neverEquals(Object _other) {
-      if (_other instanceof MergedGroup) {
-        MergedGroup<?> other = (MergedGroup<?>) _other;
+      if (_other instanceof MergedGroup<?> other) {
         if (groupValue == null) {
           assert other.groupValue != null;
         } else {
@@ -249,13 +248,17 @@ public class SearchGroup<T> {
           // System.out.println("      competes=" + competes);
 
           if (competes) {
-            // Group's sort changed -- remove & re-insert
-            if (mergedGroup.inQueue) {
+            // Group's sort changed -- remove & re-insert, update first group in place for
+            // efficiency
+            boolean skipHeavyOps = queue.first() == mergedGroup;
+            if (mergedGroup.inQueue && !skipHeavyOps) {
               queue.remove(mergedGroup);
             }
             mergedGroup.topValues = group.sortValues;
             mergedGroup.minShardIndex = shard.shardIndex;
-            queue.add(mergedGroup);
+            if (!skipHeavyOps) {
+              queue.add(mergedGroup);
+            }
             mergedGroup.inQueue = true;
           }
         }

@@ -50,8 +50,8 @@ class UnorderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
     for (IntervalsSource source : counts.keySet()) {
       deduplicated.add(RepeatingIntervalsSource.build(source, counts.get(source)));
     }
-    if (deduplicated.size() == 1 && deduplicated.get(0) instanceof RepeatingIntervalsSource) {
-      ((RepeatingIntervalsSource) deduplicated.get(0)).setName("UNORDERED");
+    if (deduplicated.size() == 1 && deduplicated.get(0) instanceof RepeatingIntervalsSource ris) {
+      ris.setName("UNORDERED");
     }
     return deduplicated;
   }
@@ -86,9 +86,10 @@ class UnorderedIntervalsSource extends MinimizingConjunctionIntervalsSource {
 
   @Override
   public boolean equals(Object other) {
-    if (other instanceof UnorderedIntervalsSource == false) return false;
-    UnorderedIntervalsSource o = (UnorderedIntervalsSource) other;
-    return Objects.equals(this.subSources, o.subSources);
+    if (other instanceof UnorderedIntervalsSource o) {
+      return Objects.equals(this.subSources, o.subSources);
+    }
+    return false;
   }
 
   @Override
