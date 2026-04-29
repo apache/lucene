@@ -30,6 +30,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer.QuantizationResult;
 
@@ -54,7 +55,7 @@ public class Lucene102BinaryFlatVectorsScorer implements FlatVectorsScorer {
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
       throws IOException {
-    throw new UnsupportedOperationException("Old codecs may only be used for reading");
+    return nonQuantizedDelegate.getRandomVectorScorerSupplier(similarityFunction, vectorValues);
   }
 
   @Override
@@ -96,6 +97,62 @@ public class Lucene102BinaryFlatVectorsScorer implements FlatVectorsScorer {
   @Override
   public String toString() {
     return "Lucene102BinaryFlatVectorsScorer(nonQuantizedDelegate=" + nonQuantizedDelegate + ")";
+  }
+
+  RandomVectorScorerSupplier getRandomVectorScorerSupplier(
+      VectorSimilarityFunction similarityFunction,
+      Lucene102BinaryQuantizedVectorsReader.OffHeapBinarizedQueryVectorValues scoringVectors,
+      BinarizedByteVectorValues targetVectors) {
+    return new BinarizedRandomVectorScorerSupplier(
+        scoringVectors, targetVectors, similarityFunction);
+  }
+
+  /** Vector scorer supplier over binarized vector values */
+  static class BinarizedRandomVectorScorerSupplier implements RandomVectorScorerSupplier {
+    private final Lucene102BinaryQuantizedVectorsReader.OffHeapBinarizedQueryVectorValues
+        queryVectors;
+    private final BinarizedByteVectorValues targetVectors;
+    private final VectorSimilarityFunction similarityFunction;
+
+    BinarizedRandomVectorScorerSupplier(
+        Lucene102BinaryQuantizedVectorsReader.OffHeapBinarizedQueryVectorValues queryVectors,
+        BinarizedByteVectorValues targetVectors,
+        VectorSimilarityFunction similarityFunction) {
+      this.queryVectors = queryVectors;
+      this.targetVectors = targetVectors;
+      this.similarityFunction = similarityFunction;
+    }
+
+    @Override
+    public UpdateableRandomVectorScorer scorer() throws IOException {
+      final BinarizedByteVectorValues targetVectors = this.targetVectors.copy();
+      final Lucene102BinaryQuantizedVectorsReader.OffHeapBinarizedQueryVectorValues queryVectors =
+          this.queryVectors.copy();
+      return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(targetVectors) {
+        private QuantizationResult queryCorrections = null;
+        private byte[] vector = null;
+
+        @Override
+        public void setScoringOrdinal(int node) throws IOException {
+          queryCorrections = queryVectors.getCorrectiveTerms(node);
+          vector = queryVectors.vectorValue(node);
+        }
+
+        @Override
+        public float score(int node) throws IOException {
+          if (vector == null || queryCorrections == null) {
+            throw new IllegalStateException("setScoringOrdinal was not called");
+          }
+          return quantizedScore(vector, queryCorrections, targetVectors, node, similarityFunction);
+        }
+      };
+    }
+
+    @Override
+    public RandomVectorScorerSupplier copy() throws IOException {
+      return new BinarizedRandomVectorScorerSupplier(
+          queryVectors.copy(), targetVectors.copy(), similarityFunction);
+    }
   }
 
   static float quantizedScore(

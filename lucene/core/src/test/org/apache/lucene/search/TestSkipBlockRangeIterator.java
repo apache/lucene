@@ -27,26 +27,26 @@ public class TestSkipBlockRangeIterator extends BaseDocValuesSkipperTests {
     SkipBlockRangeIterator it = new SkipBlockRangeIterator(skipper, 10, 20);
 
     assertEquals(0, it.nextDoc());
-    assertEquals(256, it.docIDRunEnd());
+    assertEquals(128, it.docIDRunEnd());
     assertEquals(100, it.advance(100));
-    assertEquals(768, it.advance(300));
-    assertEquals(1024, it.docIDRunEnd());
+    assertEquals(512, it.advance(300));
+    assertEquals(513, it.docIDRunEnd());
     assertEquals(1100, it.advance(1100));
-    assertEquals(1280, it.docIDRunEnd());
-    assertEquals(1792, it.advance(1500));
-    assertEquals(2048, it.docIDRunEnd());
+    assertEquals(1101, it.docIDRunEnd());
+    assertEquals(1536, it.advance(1500));
+    assertEquals(1537, it.docIDRunEnd());
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.advance(2050));
   }
 
   public void testIntoBitSet() throws Exception {
     DocValuesSkipper skipper = docValuesSkipper(10, 20, true);
     SkipBlockRangeIterator it = new SkipBlockRangeIterator(skipper, 10, 20);
-    assertEquals(768, it.advance(300));
+    assertEquals(512, it.advance(300));
     FixedBitSet bitSet = new FixedBitSet(2048);
-    it.intoBitSet(1500, bitSet, 768);
+    it.intoBitSet(1500, bitSet, 512);
 
     FixedBitSet expected = new FixedBitSet(2048);
-    expected.set(0, 512);
+    expected.set(0, 640);
 
     assertEquals(expected, bitSet);
   }

@@ -35,6 +35,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
@@ -54,6 +55,7 @@ import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
@@ -426,16 +428,25 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
 
   @Override
   public BaseQuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
-    if (flatVectorsReader instanceof QuantizedVectorsReader) {
-      return ((QuantizedVectorsReader) flatVectorsReader).getQuantizedVectorValues(field);
+    if (flatVectorsReader instanceof QuantizedVectorsReader qvr) {
+      return qvr.getQuantizedVectorValues(field);
     }
     return null;
   }
 
   @Override
   public ScalarQuantizer getQuantizationState(String field) {
-    if (flatVectorsReader instanceof QuantizedVectorsReader) {
-      return ((QuantizedVectorsReader) flatVectorsReader).getQuantizationState(field);
+    if (flatVectorsReader instanceof QuantizedVectorsReader qvr) {
+      return qvr.getQuantizationState(field);
+    }
+    return null;
+  }
+
+  @Override
+  public CloseableRandomVectorScorerSupplier getRandomVectorScorerSupplierForMerge(
+      FieldInfo fieldInfo, SegmentWriteState segmentWriteState) throws IOException {
+    if (flatVectorsReader instanceof QuantizedVectorsReader qvr) {
+      return qvr.getRandomVectorScorerSupplierForMerge(fieldInfo, segmentWriteState);
     }
     return null;
   }
@@ -560,7 +571,8 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
           level == 0
               ? targetOrd
               : Arrays.binarySearch(nodesByLevel[level], 0, nodesByLevel[level].length, targetOrd);
-      assert targetIndex >= 0;
+      assert targetIndex >= 0
+          : "seek level=" + level + " target=" + targetOrd + " not found: " + targetIndex;
       // unsafe; no bounds checking
       dataIn.seek(graphLevelNodeOffsets.get(targetIndex + graphLevelNodeIndexOffsets[level]));
       arcCount = dataIn.readVInt();

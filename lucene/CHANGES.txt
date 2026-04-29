@@ -63,6 +63,9 @@ Improvements
 
 * GITHUB#15574: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
 
+* GITHUB#15989: DocValuesRangeIterator always tries to use skipper-based block iteration
+  as its approximation. (Alan Woodward)
+
 Optimizations
 ---------------------
 * GITHUB#15861: Optimise PhraseScorer by short circuiting non competitive documents in TOP_SCORES mode. (Prithvi S)
@@ -83,6 +86,8 @@ Optimizations
 
 * GITHUB#15886: Cache frozen FieldType to skip redundant schema validation. (Tim Brooks)
 
+* GITHUB#15942: Skip max score computation when sorting by relevance in BlockGroupingCollector (Binlong Gao)
+
 * GITHUB#15954: Use SkipBlockRangeIterator as the two-phase approximation in SortedNumericDocValuesRangeQuery. (Sagar Upadhyaya)
 
 * GITHUB#15938: Optimize ReaderUtil#partitionByLeaf to use binary search on leaf
@@ -92,6 +97,10 @@ Optimizations
 
 * GITHUB#15868: Optimize DisjunctionMaxBulkScorer by reusing the inner LeafCollector across
   sub-scorers and resetting windowScores inline during replay instead of Arrays.fill. (Prithvi S)
+
+* GITHUB#15732: Prevent writing vectors twice during merging HNSW graphs by allowing doing deferred work after calling
+  merge for vectors is finshed. (Ignacio Vera)
+
 
 Bug Fixes
 ---------------------
