@@ -318,9 +318,11 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     if (optional.isEmpty()) {
       return null;
     }
-    // BooleanScorer requires at least 2 sub-scorers
+    // BooleanScorer requires at least 2 sub-scorers.
+    // If only 1 remains after filtering zero-cost clauses, use it directly.
     if (optional.size() == 1) {
-      return null;
+      Scorer scorer = optional.get(0);
+      return new DefaultBulkScorer(scorer);
     }
 
     return new BooleanScorer(optional, Math.max(1, minShouldMatch), scoreMode.needsScores());
@@ -347,8 +349,7 @@ final class BooleanScorerSupplier extends ScorerSupplier {
     }
     // After filtering zero-cost clauses, if only 1 scorer remains,
     // fall back to null so the caller uses a different code path.
-    // DisjunctionSumScorer requires at least 2 sub-scorers.
-    if (optionalScorers.size() <= 1) {
+    if (optionalScorers.size() == 1) {
       return null;
     }
     List<Scorer> filters = new ArrayList<>();
