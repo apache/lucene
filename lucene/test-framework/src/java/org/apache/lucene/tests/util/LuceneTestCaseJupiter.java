@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 import org.apache.lucene.util.IOUtils;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
@@ -47,19 +48,6 @@ import org.junit.platform.commons.support.AnnotationSupport;
 import org.junit.platform.commons.support.HierarchyTraversalMode;
 import org.junit.platform.commons.support.ModifierSupport;
 import org.junit.platform.commons.support.ReflectionSupport;
-
-/*
-TODOs.
-
-- pick a smaller module and move (some?) of the tests to jupiter. Ensure both frameworks can coexist (jupiter and
-vintage engine running both).
-- add tests of the LuceneTestCaseJupiter infrastructure (if what was previously implemented
-as rules in LuceneTestCase still provides the same functionality). Nested classes should be perhaps
-excluded from discovery entirely (unless they're really needed/loaded?).
-- add a check ensuring junit jupiter runs in single-thread mode (unfortunately this can't be
-changed, at least for now).
-- add all remaining class and test rules from LuceneTestCase; this is now the minimum subset.
- */
 
 /// Base class for all Lucene unit tests (JUnit5/ Jupiter variant).
 ///
@@ -96,11 +84,17 @@ changed, at least for now).
 /*
 // TODO: port these.
 - reproduce info listener, @Listeners({RunListenerPrintReproduceInfo.class})
-- predictable test ordering
 - test sysout rule
 @TestRuleLimitSysouts.Limit(
     bytes = TestRuleLimitSysouts.DEFAULT_LIMIT,
     hardLimit = TestRuleLimitSysouts.DEFAULT_HARD_LIMIT)
+
+- pick a smaller module and move (some?) of the tests to jupiter. Ensure both frameworks can coexist (jupiter and
+vintage engine running both).
+- add tests of the LuceneTestCaseJupiter infrastructure (if what was previously implemented
+as rules in LuceneTestCase still provides the same functionality). Nested classes should be perhaps
+excluded from discovery entirely (unless they're really needed/loaded?).
+
  */
 @Randomized
 @DetectThreadLeaks(scope = DetectThreadLeaks.Scope.SUITE)
@@ -111,6 +105,7 @@ changed, at least for now).
     value = ExecutionMode.SAME_THREAD,
     reason = "single-threaded for backward compatibility.")
 @ExtendWith(EnsureSequentialExecution.class)
+@TestMethodOrder(CustomMethodOrderer.class)
 public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCaseParent {
 
   static final class PerThreadRandom implements BeforeAfterCallback {
