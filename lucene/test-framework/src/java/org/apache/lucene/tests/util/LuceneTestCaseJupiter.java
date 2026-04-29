@@ -37,6 +37,7 @@ import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExecutableInvoker;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.extension.TestWatcher;
@@ -94,7 +95,7 @@ changed, at least for now).
 ///
 /*
 // TODO: port these.
-- reproduce info listener, failuremarker? @Listeners({RunListenerPrintReproduceInfo.class, FailureMarker.class})
+- reproduce info listener, @Listeners({RunListenerPrintReproduceInfo.class})
 - predictable test ordering
 - test sysout rule
 @TestRuleLimitSysouts.Limit(
@@ -109,6 +110,7 @@ changed, at least for now).
 @Execution(
     value = ExecutionMode.SAME_THREAD,
     reason = "single-threaded for backward compatibility.")
+@ExtendWith(EnsureSequentialExecution.class)
 public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCaseParent {
 
   static final class PerThreadRandom implements BeforeAfterCallback {
