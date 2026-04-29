@@ -32,4 +32,9 @@ public class TestLucene60FieldInfosFormat extends BaseFieldInfoFormatTestCase {
   protected boolean supportDocValuesSkipIndex() {
     return false;
   }
+
+  @Override
+  protected boolean supportCustomTermFreqs() {
+    return false;
+  }
 }

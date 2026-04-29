@@ -69,6 +69,14 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     return true;
   }
 
+  /**
+   * Override and return {@code false} if the format does not support
+   * IndexOption.DOCS_AND_CUSTOM_TERM_FREQS.
+   */
+  protected boolean supportCustomTermFreqs() {
+    return true;
+  }
+
   /** Test field infos read/write with a single field */
   public void testOneField() throws Exception {
     Directory dir = newDirectory();
@@ -352,7 +360,11 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
 
     if (r.nextBoolean()) {
       IndexOptions[] values = IndexOptions.values();
-      type.setIndexOptions(values[r.nextInt(values.length)]);
+      IndexOptions indexOptions = values[r.nextInt(values.length)];
+      if (indexOptions == IndexOptions.DOCS_AND_CUSTOM_FREQS && !supportCustomTermFreqs()) {
+        indexOptions = IndexOptions.DOCS_AND_FREQS;
+      }
+      type.setIndexOptions(indexOptions);
       type.setOmitNorms(r.nextBoolean());
 
       if (r.nextBoolean()) {
