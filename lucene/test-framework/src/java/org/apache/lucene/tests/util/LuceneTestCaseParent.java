@@ -27,7 +27,6 @@ import com.carrotsearch.randomizedtesting.Xoroshiro128PlusRandom;
 import com.carrotsearch.randomizedtesting.annotations.TestGroup;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
-import java.io.Closeable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -335,8 +334,6 @@ public abstract sealed class LuceneTestCaseParent extends Assert
 
   protected interface TestFrameworkInfra {
     Random threadRandom();
-
-    <T extends Closeable> T closeAfterClass(T resource);
 
     SetupAndRestoreStaticEnv getClassEnv();
 
@@ -1169,15 +1166,6 @@ public abstract sealed class LuceneTestCaseParent extends Assert
     } catch (URISyntaxException e) {
       throw new AssertionError(e);
     }
-  }
-
-  /**
-   * Registers a {@link Closeable} resource that should be closed after the suite completes.
-   *
-   * @return <code>resource</code> (for call chaining).
-   */
-  public static <T extends Closeable> T closeAfterSuite(T resource) {
-    return getTestFrameworkInfra().closeAfterClass(resource);
   }
 
   /**
@@ -2280,17 +2268,21 @@ public abstract sealed class LuceneTestCaseParent extends Assert
       directory = new NRTCachingDirectory(directory, random.nextDouble(), random.nextDouble());
     }
 
+    BaseDirectoryWrapper dir;
     if (bare) {
-      BaseDirectoryWrapper base = new RawDirectoryWrapper(directory);
-      closeAfterSuite(new CloseableDirectory(base, getTestFrameworkInfra().getSuiteFailureState()));
-      return base;
+      dir = new RawDirectoryWrapper(directory);
     } else {
       MockDirectoryWrapper mock = new MockDirectoryWrapper(random, directory);
-
       mock.setThrottling(TEST_THROTTLING);
-      closeAfterSuite(new CloseableDirectory(mock, getTestFrameworkInfra().getSuiteFailureState()));
-      return mock;
+      dir = mock;
     }
+
+    getTestFrameworkInfra()
+        .getTempFilesSupplier()
+        .registerToCloseAfterSuite(
+            new AssertDirectoryClosed(dir, getTestFrameworkInfra().getSuiteFailureState()));
+
+    return dir;
   }
 
   private static Directory newFSDirectoryImpl(

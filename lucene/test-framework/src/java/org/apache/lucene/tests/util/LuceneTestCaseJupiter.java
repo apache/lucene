@@ -22,7 +22,6 @@ import com.carrotsearch.randomizedtesting.jupiter.Randomized;
 import com.carrotsearch.randomizedtesting.jupiter.SystemThreadFilter;
 import java.io.Closeable;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Random;
@@ -179,23 +178,9 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
     }
   }
 
-  static class CloseAfterScopeSupport implements BeforeAfterCallback {
-    private final List<Closeable> closeAfterSuite = new ArrayList<>();
-
-    @Override
-    public synchronized void after() throws Exception {
-      IOUtils.close(closeAfterSuite);
-      closeAfterSuite.clear();
-    }
-
-    <T extends Closeable> T registerToClose(T resource) {
-      this.closeAfterSuite.add(Objects.requireNonNull(resource));
-      return resource;
-    }
-  }
-
   /// Tracks whether any test in the current suite had a failure.
   /// Registered before [ClassLevelCallbackChain] so its state is available during suite teardown.
+  /// We plug into multiple jupiter extensions, hoping they will be sufficient to detect failure state.
   static final class SuiteFailureTracker
       implements AfterAllCallback, BeforeAllCallback, TestWatcher, SuiteFailureState {
     private static final ExtensionContext.Namespace NAMESPACE =
@@ -232,8 +217,6 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
 
     @Override
     public void testFailed(ExtensionContext context, Throwable cause) {
-      // Handles individual test method failures (not visible via class-level
-      // context.getExecutionException()).
       hadFailures = true;
     }
 
@@ -253,7 +236,6 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
     private final SuiteFailureTracker suiteFailureTracker;
     private TestFrameworkInfra jupiterFrameworkInfra;
     private OrderedBeforeAfterCallbacks beforeAfters;
-    private CloseAfterScopeSupport closeAfterScopeSupport;
 
     ClassLevelCallbackChain(SuiteFailureTracker suiteFailureTracker) {
       this.suiteFailureTracker = suiteFailureTracker;
@@ -274,18 +256,12 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
           new TemporaryFilesSupplier(
               suiteFailureTracker, LuceneTestCaseJupiter::random, () -> activeTestClass);
       var perThreadRandom = new PerThreadRandom(getRandomSupplier(context.getExecutableInvoker()));
-      this.closeAfterScopeSupport = new CloseAfterScopeSupport();
 
       this.jupiterFrameworkInfra =
           new TestFrameworkInfra() {
             @Override
             public Random threadRandom() {
               return perThreadRandom.get();
-            }
-
-            @Override
-            public <T extends Closeable> T closeAfterClass(T resource) {
-              return closeAfterScopeSupport.registerToClose(resource);
             }
 
             @Override
@@ -320,11 +296,7 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
       this.beforeAfters =
           new OrderedBeforeAfterCallbacks(
               List.of(
-                  perThreadRandom,
-                  installFrameworkInfraSupport,
-                  classEnvRule,
-                  tempFileSupplier,
-                  closeAfterScopeSupport));
+                  perThreadRandom, installFrameworkInfraSupport, classEnvRule, tempFileSupplier));
 
       beforeAfters.before();
     }

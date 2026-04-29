@@ -19,6 +19,8 @@ package org.apache.lucene.tests.util;
 import static org.junit.platform.engine.discovery.DiscoverySelectors.selectClass;
 import static org.junit.platform.testkit.engine.EventConditions.event;
 import static org.junit.platform.testkit.engine.EventConditions.finishedWithFailure;
+import static org.junit.platform.testkit.engine.TestExecutionResultConditions.instanceOf;
+import static org.junit.platform.testkit.engine.TestExecutionResultConditions.message;
 
 import com.carrotsearch.randomizedtesting.jupiter.DetectThreadLeaks;
 import com.carrotsearch.randomizedtesting.jupiter.SysProps;
@@ -220,6 +222,32 @@ public class TestLuceneTestCaseJupiter {
       @Test
       void testMethod() {
         startSleepingThread(Duration.ofSeconds(10));
+      }
+    }
+  }
+
+  /// Verifies that failing to close a [org.apache.lucene.store.Directory] created during
+  /// a test causes a test failure, mirroring the behavior of [TestFailIfDirectoryNotClosed]
+  @Nested
+  class UnclosedDirectoryTracking {
+    @Test
+    void testFailIfDirectoryNotClosed() {
+      testKitBuilder(LeakyDirectorySuite.class)
+          .execute()
+          .allEvents()
+          .assertThatEvents()
+          .haveAtLeast(
+              1,
+              event(
+                  finishedWithFailure(
+                      instanceOf(AssertionError.class),
+                      message(msg -> msg.contains(AssertDirectoryClosed.MSG_PREFIX)))));
+    }
+
+    static class LeakyDirectorySuite extends LuceneTestCaseJupiter {
+      @Test
+      void testLeaksDirectory() {
+        LuceneTestCaseParent.newDirectory();
       }
     }
   }

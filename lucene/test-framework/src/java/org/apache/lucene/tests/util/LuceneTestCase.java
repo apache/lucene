@@ -21,7 +21,6 @@ import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAs
 import static com.carrotsearch.randomizedtesting.RandomizedTest.systemPropertyAsInt;
 
 import com.carrotsearch.randomizedtesting.JUnit4MethodProvider;
-import com.carrotsearch.randomizedtesting.LifecycleScope;
 import com.carrotsearch.randomizedtesting.MixWithSuiteName;
 import com.carrotsearch.randomizedtesting.RandomizedContext;
 import com.carrotsearch.randomizedtesting.RandomizedRunner;
@@ -43,7 +42,6 @@ import com.carrotsearch.randomizedtesting.annotations.TimeoutSuite;
 import com.carrotsearch.randomizedtesting.rules.NoClassHooksShadowingRule;
 import com.carrotsearch.randomizedtesting.rules.NoInstanceHooksOverridesRule;
 import com.carrotsearch.randomizedtesting.rules.TestRuleAdapter;
-import java.io.Closeable;
 import java.lang.annotation.Documented;
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Inherited;
@@ -395,12 +393,6 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
                               @Override
                               public Random threadRandom() {
                                 return finalizedSupplier.get();
-                              }
-
-                              @Override
-                              public <T extends Closeable> T closeAfterClass(T resource) {
-                                return RandomizedContext.current()
-                                    .closeAtEnd(resource, LifecycleScope.SUITE);
                               }
 
                               @Override

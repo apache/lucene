@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.tests.util;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.URI;
 import java.nio.file.FileSystem;
@@ -25,9 +26,7 @@ import java.nio.file.Path;
 import java.nio.file.spi.FileSystemProvider;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
@@ -70,11 +69,18 @@ final class TemporaryFilesSupplier implements BeforeAfterCallback {
   private final SuiteFailureState failureMarker;
 
   /**
-   * A queue of temporary resources to be removed after the suite completes.
+   * A queue of paths to be removed after the suite completes.
    *
-   * @see #registerToRemoveAfterSuite(Path)
+   * @see #registerToCloseAfterSuite(Path)
    */
-  private static final List<Path> cleanupQueue = new ArrayList<>();
+  private static final ArrayList<Path> pathQueue = new ArrayList<>();
+
+  /**
+   * A queue of closeables to be closed after the suite completes.
+   *
+   * @see #registerToCloseAfterSuite(Closeable)
+   */
+  private static final ArrayList<Closeable> closeableQueue = new ArrayList<>();
 
   public TemporaryFilesSupplier(
       SuiteFailureState failureMarker,
@@ -86,7 +92,14 @@ final class TemporaryFilesSupplier implements BeforeAfterCallback {
   }
 
   /** Register temporary folder for removal after the suite completes. */
-  void registerToRemoveAfterSuite(Path f) {
+  void registerToCloseAfterSuite(Closeable c) {
+    synchronized (closeableQueue) {
+      closeableQueue.addLast(c);
+    }
+  }
+
+  /** Register temporary folder for removal after the suite completes. */
+  void registerToCloseAfterSuite(Path f) {
     assert f != null;
 
     if (LuceneTestCase.LEAVE_TEMPORARY) {
@@ -94,15 +107,21 @@ final class TemporaryFilesSupplier implements BeforeAfterCallback {
       return;
     }
 
-    synchronized (cleanupQueue) {
-      cleanupQueue.add(f);
+    synchronized (pathQueue) {
+      pathQueue.addLast(f);
     }
   }
 
   @Override
   public void before() throws Exception {
     assert tempDirBase == null;
+    assert pathQueue.isEmpty() && closeableQueue.isEmpty();
+
     fileSystem = initializeFileSystem();
+    if (fileSystem != FileSystems.getDefault()) {
+      registerToCloseAfterSuite(fileSystem);
+    }
+
     javaTempDir = initializeJavaTempDir();
   }
 
@@ -187,45 +206,51 @@ final class TemporaryFilesSupplier implements BeforeAfterCallback {
 
   @Override
   public void after() throws Exception {
-    // Drain cleanup queue and clear it.
-    final Path[] everything;
-    final String tempDirBasePath;
-    synchronized (cleanupQueue) {
-      tempDirBasePath = (tempDirBase != null ? tempDirBase.toAbsolutePath().toString() : null);
-      tempDirBase = null;
+    final String tempDirBasePath =
+        (tempDirBase != null ? tempDirBase.toAbsolutePath().toString() : null);
+    tempDirBase = null;
 
-      Collections.reverse(cleanupQueue);
-      everything = new Path[cleanupQueue.size()];
-      cleanupQueue.toArray(everything);
-      cleanupQueue.clear();
+    // Drain cleanup queue and clear it.
+    final Path[] paths;
+    synchronized (pathQueue) {
+      paths = pathQueue.reversed().toArray(Path[]::new);
+      pathQueue.clear();
     }
 
     // Only check and throw an IOException on un-removable files if the test
     // was successful. Otherwise, just report the path of temporary files
     // and leave them there.
     if (failureMarker.wasSuccessful()) {
-      try {
-        IOUtils.rm(everything);
-      } catch (IOException e) {
-        Class<?> suiteClass = targetClassSupplier.get();
-        if (suiteClass.isAnnotationPresent(SuppressTempFileChecks.class)) {
-          System.err.println(
-              "WARNING: Leftover undeleted temporary files (bugUrl: "
-                  + suiteClass.getAnnotation(SuppressTempFileChecks.class).bugUrl()
-                  + "): "
-                  + e.getMessage());
-          return;
-        }
-        throw e;
-      }
-      if (fileSystem != FileSystems.getDefault()) {
-        fileSystem.close();
-      }
+      registerToCloseAfterSuite(
+          () -> {
+            try {
+              IOUtils.rm(paths);
+            } catch (IOException e) {
+              Class<?> suiteClass = targetClassSupplier.get();
+              if (suiteClass.isAnnotationPresent(SuppressTempFileChecks.class)) {
+                System.err.println(
+                    "WARNING: Leftover undeleted temporary files (bugUrl: "
+                        + suiteClass.getAnnotation(SuppressTempFileChecks.class).bugUrl()
+                        + "): "
+                        + e.getMessage());
+                return;
+              }
+              throw e;
+            }
+          });
     } else {
       if (tempDirBasePath != null) {
         System.err.println("NOTE: leaving temporary files on disk at: " + tempDirBasePath);
       }
     }
+
+    Closeable[] toClose;
+    synchronized (closeableQueue) {
+      toClose = closeableQueue.reversed().toArray(Closeable[]::new);
+      closeableQueue.clear();
+    }
+
+    IOUtils.close(toClose);
   }
 
   Path getPerTestClassTempDir() {
@@ -252,7 +277,7 @@ final class TemporaryFilesSupplier implements BeforeAfterCallback {
       } while (!success);
 
       tempDirBase = f;
-      registerToRemoveAfterSuite(tempDirBase);
+      registerToCloseAfterSuite(tempDirBase);
     }
     return tempDirBase;
   }
@@ -280,7 +305,7 @@ final class TemporaryFilesSupplier implements BeforeAfterCallback {
       }
     } while (!success);
 
-    registerToRemoveAfterSuite(f);
+    registerToCloseAfterSuite(f);
     return f;
   }
 
@@ -307,7 +332,7 @@ final class TemporaryFilesSupplier implements BeforeAfterCallback {
       }
     } while (!success);
 
-    registerToRemoveAfterSuite(f);
+    registerToCloseAfterSuite(f);
     return f;
   }
 }
