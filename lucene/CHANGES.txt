@@ -353,6 +353,8 @@ Optimizations
 * GITHUB#15732: Prevent writing vectors twice during merging HNSW graphs by allowing doing deferred work after calling
   merge for vectors is finshed. (Ignacio Vera)
 
+* GITHUB#15998: Skip scorer construction for zero-cost SHOULD clauses in BooleanScorerSupplier. (Sagar Upadhyaya)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
