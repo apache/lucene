@@ -89,17 +89,10 @@ import org.opentest4j.TestAbortedException;
 ///   - inserted as a synthetic stack frame in any exceptions.
 ///
 /*
-// TODO: port these too.
-- test sysout rule
-@TestRuleLimitSysouts.Limit(
-    bytes = TestRuleLimitSysouts.DEFAULT_LIMIT,
-    hardLimit = TestRuleLimitSysouts.DEFAULT_HARD_LIMIT)
-- pick a smaller module and move (some?) of the tests to jupiter. Ensure both frameworks can coexist (jupiter and
-vintage engine running both).
-- add tests of the LuceneTestCaseJupiter infrastructure (if what was previously implemented
-as rules in LuceneTestCase still provides the same functionality). Nested classes should be perhaps
-excluded from discovery entirely (unless they're really needed/loaded?).
- */
+TODO: port the remaining infrastructure bits from LuceneTestCase:
+- there are class rules and test rules that are still only on junit4 side
+- sysout limit annotation/ rule is not ported.
+*/
 @Randomized
 @DetectThreadLeaks(scope = DetectThreadLeaks.Scope.SUITE)
 @DetectThreadLeaks.LingerTime(millis = 20_000)
