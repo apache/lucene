@@ -131,8 +131,8 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#15519: Apply broad filters after essential clauses in MaxScoreBulkScorer when the
-  filter cost is substantially higher than essential clause costs. (Prithvi S)
+* GITHUB#15519: Use filter doc ID runs to bulk-score filtered MaxScoreBulkScorer windows.
+  (Prithvi S)
 
 * GITHUB#15681, GITHUB#15833: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 

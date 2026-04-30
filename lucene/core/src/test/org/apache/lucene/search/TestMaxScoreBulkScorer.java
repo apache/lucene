@@ -279,7 +279,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     }
   }
 
-  public void testFilteredDisjunctionWithPostFilter() throws Exception {
+  public void testFilteredDisjunctionWithFilterRun() throws Exception {
     try (Directory dir = newDirectory()) {
       try (IndexWriter w =
           new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
