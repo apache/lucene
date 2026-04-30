@@ -54,7 +54,10 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
-/** Benchmarks filtered top-score disjunctions that use {@link org.apache.lucene.search.MaxScoreBulkScorer}. */
+/**
+ * Benchmarks filtered top-score disjunctions that use {@link
+ * org.apache.lucene.search.MaxScoreBulkScorer}.
+ */
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)
 @State(Scope.Thread)
@@ -123,11 +126,8 @@ public class MaxScoreFilterBenchmark {
 
   private static Query buildQuery() {
     BooleanQuery.Builder builder = new BooleanQuery.Builder();
-    builder.add(
-        new BoostQuery(new TermQuery(new Term("foo", "high")), 4f), Occur.SHOULD);
-    builder.add(
-        new BoostQuery(new TermQuery(new Term("foo", "low")), 1f),
-        Occur.SHOULD);
+    builder.add(new BoostQuery(new TermQuery(new Term("foo", "high")), 4f), Occur.SHOULD);
+    builder.add(new BoostQuery(new TermQuery(new Term("foo", "low")), 1f), Occur.SHOULD);
     builder.add(new TermQuery(new Term("filter", "yes")), Occur.FILTER);
     return builder.build();
   }

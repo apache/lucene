@@ -129,6 +129,9 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#15519: Apply broad filters after essential clauses in MaxScoreBulkScorer when the
+  filter cost is substantially higher than essential clause costs. (Prithvi S)
+
 * GITHUB#15681, GITHUB#15833: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
