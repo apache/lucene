@@ -75,6 +75,8 @@ API Changes
 
 * GITHUB#15295 : Switched to a fixed CFS threshold (Shubham Sharma)
 
+* GITHUB#15486: Change TopGroups.merge() to accept a list of TopGroups (Binlong Gao)
+
 * GITHUB#15627 : Deferred lambda in TermStates.java according to prefetch (Shubham Sharma)
 
 * GITHUB#15939: Removed RegexpQuery constructor overloads that exposed determinization controls
@@ -188,11 +190,6 @@ Changes in Runtime Behavior
 
 Build
 ---------------------
-* GITHUB#15926: Use the Java 25+ (JEP 509) CPU-time sampling profiler when available (currently
-  only on Linux), and fall back to legacy wall-clock execution sampling elsewhere. ProfileResults
-  recognizes jdk.CPUTimeSample; CodeProfilingPlugin picks gradle/testing/profiling.cputime.jfc or
-  profiling.jfc by host OS. (Prithvi S)
-
 * GITHUB#15327: New low-level build options to detect abuse of LuceneTestCase.random():
   tests.random.maxacquires and tests.random.maxcalls (Robert Muir, Dawid Weiss)
 
@@ -216,6 +213,11 @@ Build
   (Gasper Kojek)
 
 * Add api/runtime Usage attribute to modular configurations. (Dawid Weiss)
+
+* GITHUB#15926: Use the Java 25+ (JEP 509) CPU-time sampling profiler when available (currently
+  only on Linux), and fall back to legacy wall-clock execution sampling elsewhere. ProfileResults
+  recognizes jdk.CPUTimeSample; CodeProfilingPlugin picks gradle/testing/profiling.cputime.jfc or
+  profiling.jfc by host OS. (Prithvi S)
 
 Other
 ---------------------
