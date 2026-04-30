@@ -75,6 +75,8 @@ API Changes
 
 * GITHUB#15295 : Switched to a fixed CFS threshold (Shubham Sharma)
 
+* GITHUB#15486: Change TopGroups.merge() to accept a list of TopGroups (Binlong Gao)
+
 * GITHUB#15627 : Deferred lambda in TermStates.java according to prefetch (Shubham Sharma)
 
 * GITHUB#15939: Removed RegexpQuery constructor overloads that exposed determinization controls
@@ -213,6 +215,11 @@ Build
 
 * Add api/runtime Usage attribute to modular configurations. (Dawid Weiss)
 
+* GITHUB#15926: Use the Java 25+ (JEP 509) CPU-time sampling profiler when available (currently
+  only on Linux), and fall back to legacy wall-clock execution sampling elsewhere. ProfileResults
+  recognizes jdk.CPUTimeSample; CodeProfilingPlugin picks gradle/testing/profiling.cputime.jfc or
+  profiling.jfc by host OS. (Prithvi S)
+
 Other
 ---------------------
 
@@ -329,6 +336,8 @@ Optimizations
 
 * GITHUB#15779: Improve BytesRefHash.add performance by optimize rehash operation (tyronecai)
 
+* GITHUB#15896: Skip heavy TreeSet opts for the first group in SearchGroup#merge (Binlong Gao)
+
 * GITHUB#15886: Cache frozen FieldType to skip redundant schema validation. (Tim Brooks)
 
 * GITHUB#15942: Skip max score computation when sorting by relevance in BlockGroupingCollector (Binlong Gao)
@@ -378,6 +387,8 @@ Bug Fixes
 
 * GITHUB#12419, GITHUB#15119, GITHUB#15864: Fix circular dependency deadlock in
   TestSecrets initialization (Namgyu Kim, Uwe Schindler)
+
+* GITHUB#15873: Fix TopGroupsCollector#getTopGroups() returning NaN maxScore when a group has no hits (Binlong Gao)
 
 * GITHUB#15878: Fix existential quantification bug in caller checks
   (VectorizationProvider, TestSecrets).  (Uwe Schindler)
@@ -524,6 +535,8 @@ Improvements
 * GITHUB#15479: Add NumericDocValueRangeQuery base class to add accessor methods for field, lower and upper values (Alan Woodward)
 
 * GITHUB#15570: Disallow invalid offset 0 for LZ4 decompression (Marcono1234)
+
+* GITHUB#15557: Introduce AllGroupsCollectorManager to parallelize search when using AllGroupsCollector. (Binlong Gao)
 
 Optimizations
 ---------------------

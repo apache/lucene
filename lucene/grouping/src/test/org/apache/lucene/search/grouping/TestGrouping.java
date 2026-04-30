@@ -1528,8 +1528,7 @@ public class TestGrouping extends LuceneTestCase {
 
     if (mergedTopGroups != null) {
       // Now 2nd pass:
-      @SuppressWarnings({"unchecked", "rawtypes"})
-      final TopGroups<BytesRef>[] shardTopGroups = new TopGroups[subSearchers.length];
+      final List<TopGroups<BytesRef>> shardTopGroups = new ArrayList<>(subSearchers.length);
       for (int shardIDX = 0; shardIDX < subSearchers.length; shardIDX++) {
         final TopGroupsCollector<?> secondPassCollector =
             createSecondPassCollector(
@@ -1541,11 +1540,15 @@ public class TestGrouping extends LuceneTestCase {
                 docOffset + topNDocs,
                 getMaxScores);
         subSearchers[shardIDX].search(w, secondPassCollector);
-        shardTopGroups[shardIDX] = getTopGroups(secondPassCollector, 0);
+        shardTopGroups.add(getTopGroups(secondPassCollector, 0));
         if (VERBOSE) {
           System.out.println(
-              " " + shardTopGroups[shardIDX].groups.length + " shard[" + shardIDX + "] groups:");
-          for (GroupDocs<BytesRef> group : shardTopGroups[shardIDX].groups) {
+              " "
+                  + shardTopGroups.get(shardIDX).groups.length
+                  + " shard["
+                  + shardIDX
+                  + "] groups:");
+          for (GroupDocs<BytesRef> group : shardTopGroups.get(shardIDX).groups) {
             System.out.println(
                 "    ["
                     + groupToString(group.groupValue())
