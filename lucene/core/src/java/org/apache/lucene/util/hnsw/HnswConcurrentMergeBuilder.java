@@ -78,16 +78,16 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     if (frozen) {
       throw new IllegalStateException("graph has already been built");
     }
-    long mergeStartTimeNS = System.nanoTime();
+    long mergeStartTimeNs = System.nanoTime();
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(
           HNSW_COMPONENT,
           "build graph from " + maxOrd + " vectors, with " + workers.length + " workers");
     }
-    AtomicLong cumulativeWorkTimeNS = new AtomicLong();
+    AtomicLong cumulativeWorkTimeNs = new AtomicLong();
     for (ConcurrentMergeWorker worker : workers) {
-      worker.setMergeStartTimeNS(mergeStartTimeNS);
-      worker.setCumulativeWorkTimeNS(cumulativeWorkTimeNS);
+      worker.setMergeStartTimeNs(mergeStartTimeNs);
+      worker.setCumulativeWorkTimeNs(cumulativeWorkTimeNs);
     }
     List<Callable<Void>> futures = new ArrayList<>();
     for (int i = 0; i < workers.length; i++) {
@@ -100,8 +100,8 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     }
     taskExecutor.invokeAll(futures);
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
-      double wallClockMs = (System.nanoTime() - mergeStartTimeNS) / 1_000_000.0;
-      double totalWorkerMs = cumulativeWorkTimeNS.get() / 1_000_000.0;
+      double wallClockMs = (System.nanoTime() - mergeStartTimeNs) / 1_000_000.0;
+      double totalWorkerMs = cumulativeWorkTimeNs.get() / 1_000_000.0;
       double effectiveConcurrency = wallClockMs > 0 ? totalWorkerMs / wallClockMs : 0;
       infoStream.message(
           HNSW_COMPONENT,

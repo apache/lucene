@@ -90,22 +90,22 @@ public class HnswGraphBuilder implements HnswBuilder {
    * vectors) show elapsed time since the overall merge began rather than since the current chunk
    * began. A value of -1 means not set (non-concurrent path).
    */
-  private long mergeStartTimeNS = -1;
+  private long mergeStartTimeNs = -1;
 
   /**
    * Shared accumulator for total worker time across all concurrent merge workers. Each chunk's
    * elapsed time is added here so that effective concurrency can be computed at merge end.
    */
-  private AtomicLong cumulativeWorkTimeNS;
+  private AtomicLong cumulativeWorkTimeNs;
 
   /** Set the merge-level start time so progress prints show time since merge began. */
-  void setMergeStartTimeNS(long mergeStartTimeNS) {
-    this.mergeStartTimeNS = mergeStartTimeNS;
+  void setMergeStartTimeNs(long mergeStartTimeNs) {
+    this.mergeStartTimeNs = mergeStartTimeNs;
   }
 
   /** Set the shared accumulator for tracking cumulative worker time across concurrent chunks. */
-  void setCumulativeWorkTimeNS(AtomicLong cumulativeWorkTimeNS) {
-    this.cumulativeWorkTimeNS = cumulativeWorkTimeNS;
+  void setCumulativeWorkTimeNs(AtomicLong cumulativeWorkTimeNs) {
+    this.cumulativeWorkTimeNs = cumulativeWorkTimeNs;
   }
 
   public static HnswGraphBuilder create(
@@ -228,7 +228,7 @@ public class HnswGraphBuilder implements HnswBuilder {
       throw new IllegalStateException("This HnswGraphBuilder is frozen and cannot be updated");
     }
     long startNs = System.nanoTime();
-    long progressStartNs = mergeStartTimeNS != -1 ? mergeStartTimeNS : startNs;
+    long progressStartNs = mergeStartTimeNs != -1 ? mergeStartTimeNs : startNs;
     for (int node = minOrd; node < maxOrd; node++) {
       addGraphNode(node);
       if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
@@ -236,8 +236,8 @@ public class HnswGraphBuilder implements HnswBuilder {
       }
     }
     long chunkedElapsedNs = System.nanoTime() - startNs;
-    if (cumulativeWorkTimeNS != null) {
-      cumulativeWorkTimeNS.addAndGet(chunkedElapsedNs);
+    if (cumulativeWorkTimeNs != null) {
+      cumulativeWorkTimeNs.addAndGet(chunkedElapsedNs);
     }
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       double elapsedMs = chunkedElapsedNs / 1_000_000.0;
