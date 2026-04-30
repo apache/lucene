@@ -89,7 +89,7 @@ import org.opentest4j.TestAbortedException;
 ///   - inserted as a synthetic stack frame in any exceptions.
 ///
 /*
-// TODO: port these.
+// TODO: port these too.
 - test sysout rule
 @TestRuleLimitSysouts.Limit(
     bytes = TestRuleLimitSysouts.DEFAULT_LIMIT,
@@ -99,7 +99,6 @@ vintage engine running both).
 - add tests of the LuceneTestCaseJupiter infrastructure (if what was previously implemented
 as rules in LuceneTestCase still provides the same functionality). Nested classes should be perhaps
 excluded from discovery entirely (unless they're really needed/loaded?).
-
  */
 @Randomized
 @DetectThreadLeaks(scope = DetectThreadLeaks.Scope.SUITE)
