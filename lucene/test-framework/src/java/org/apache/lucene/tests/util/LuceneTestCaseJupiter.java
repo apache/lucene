@@ -31,11 +31,14 @@ import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.lucene.util.IOUtils;
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.AfterAllCallback;
@@ -529,6 +532,13 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
   @Deprecated
   public static Random random() {
     return LuceneTestCaseParent.random();
+  }
+
+  @BeforeAll
+  static void testTestClassNameConvention(TestInfo testInfo) {
+    new VerifyTestClassNamingConvention(
+            "org.apache.lucene", Pattern.compile("(.+\\.)(Test)([^.]+)"))
+        .check(testInfo.getTestClass().orElseThrow());
   }
 
   /**
