@@ -103,7 +103,7 @@ xerces = { module = "xerces:xercesImpl", version.ref = "xerces" }
 zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
 
 [plugins]
-benmanes-versions = "com.github.ben-manes.versions:0.53.0"
+benmanes-versions = "com.github.ben-manes.versions:0.54.0"
 carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.2"
 carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.2.1"
 errorprone = "net.ltgt.errorprone:5.1.0"

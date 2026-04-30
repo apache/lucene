@@ -123,8 +123,6 @@ Improvements
 
 * GITHUB#15453: Avoid unnecessary sorting and instantiations in readMapOfStrings. (Benjamin Lerer)
 
-* GITHUB#15574: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
-
 * GITHUB#15225: Improve package documentation for org.apache.lucene.util. (Syed Mohammad Saad)
 
 * GITHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
@@ -187,6 +185,11 @@ Changes in Runtime Behavior
 
 Build
 ---------------------
+* GITHUB#15926: Use the Java 25+ (JEP 509) CPU-time sampling profiler when available (currently
+  only on Linux), and fall back to legacy wall-clock execution sampling elsewhere. ProfileResults
+  recognizes jdk.CPUTimeSample; CodeProfilingPlugin picks gradle/testing/profiling.cputime.jfc or
+  profiling.jfc by host OS. (Prithvi S)
+
 * GITHUB#15327: New low-level build options to detect abuse of LuceneTestCase.random():
   tests.random.maxacquires and tests.random.maxcalls (Robert Muir, Dawid Weiss)
 
@@ -263,6 +266,9 @@ API Changes
 * GITHUB#15803: Add ReaderUtil#partitionByLeaf to partition doc IDs from
   ScoreDoc hits by leaf reader. (Zihan Xu)
 
+* GITHUB#15584: Add support for termdoc fields that use custom term freqs (via IndexOptions.DOCS_AND_CUSTOM_FREQS).
+  IndexWriter counts their terms rather than summing their freqs.  Use
+
 New Features
 ---------------------
 
@@ -301,6 +307,11 @@ Improvements
 
 * GITHUB#15976: Store DocValuesSkipper data in their own file. (Alan Woodward)
 
+* GITHUB#15574: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
+
+* GITHUB#15989: DocValuesRangeIterator always tries to use skipper-based block iteration
+  as its approximation. (Alan Woodward)
+
 Optimizations
 ---------------------
 * GITHUB#15861: Optimise PhraseScorer by short circuiting non competitive documents in TOP_SCORES mode. (Prithvi S)
@@ -319,7 +330,11 @@ Optimizations
 
 * GITHUB#15779: Improve BytesRefHash.add performance by optimize rehash operation (tyronecai)
 
+* GITHUB#15896: Skip heavy TreeSet opts for the first group in SearchGroup#merge (Binlong Gao)
+
 * GITHUB#15886: Cache frozen FieldType to skip redundant schema validation. (Tim Brooks)
+
+* GITHUB#15942: Skip max score computation when sorting by relevance in BlockGroupingCollector (Binlong Gao)
 
 * GITHUB#15902: Improve DiversifyingChildren performance by using primitive arrays(Alessandro Benedetti)
 
@@ -329,6 +344,12 @@ Optimizations
   boundaries instead of linear scan. (Greg Miller)
 
 * GITHUB#15970: Reduce memory usage of fields with long terms during segment merges. (Alan Woodward)
+
+* GITHUB#15868: Optimize DisjunctionMaxBulkScorer by reusing the inner LeafCollector across
+  sub-scorers and resetting windowScores inline during replay instead of Arrays.fill. (Prithvi S)
+
+* GITHUB#15732: Prevent writing vectors twice during merging HNSW graphs by allowing doing deferred work after calling
+  merge for vectors is finshed. (Ignacio Vera)
 
 Bug Fixes
 ---------------------
@@ -360,6 +381,8 @@ Bug Fixes
 
 * GITHUB#12419, GITHUB#15119, GITHUB#15864: Fix circular dependency deadlock in
   TestSecrets initialization (Namgyu Kim, Uwe Schindler)
+
+* GITHUB#15873: Fix TopGroupsCollector#getTopGroups() returning NaN maxScore when a group has no hits (Binlong Gao)
 
 * GITHUB#15878: Fix existential quantification bug in caller checks
   (VectorizationProvider, TestSecrets).  (Uwe Schindler)
@@ -506,6 +529,8 @@ Improvements
 * GITHUB#15479: Add NumericDocValueRangeQuery base class to add accessor methods for field, lower and upper values (Alan Woodward)
 
 * GITHUB#15570: Disallow invalid offset 0 for LZ4 decompression (Marcono1234)
+
+* GITHUB#15557: Introduce AllGroupsCollectorManager to parallelize search when using AllGroupsCollector. (Binlong Gao)
 
 Optimizations
 ---------------------

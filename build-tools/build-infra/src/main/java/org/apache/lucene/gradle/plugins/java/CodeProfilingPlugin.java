@@ -20,6 +20,7 @@ import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsExtension;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
@@ -189,7 +190,7 @@ public class CodeProfilingPlugin extends LuceneGradlePlugin {
             task.jvmArgs(
                 List.of(
                     "-XX:StartFlightRecording=dumponexit=true,maxsize=250M,settings="
-                        + gradlePluginResource(project, "testing/profiling.jfc"),
+                        + gradlePluginResource(project, profilingSettingsPath()),
                     "-XX:+UnlockDiagnosticVMOptions",
                     "-XX:+DebugNonSafepoints"));
             task.dependsOn(cleanPreviousProfiles);
@@ -254,4 +255,15 @@ public class CodeProfilingPlugin extends LuceneGradlePlugin {
       Provider<Integer> countOption,
       Provider<Boolean> lineNumbersOption,
       Provider<Boolean> frametypesOption) {}
+
+  /**
+   * Java 25+ JEP 509 ({@code jdk.CPUTimeSample}) is currently implemented only on Linux in the JDK.
+   * When the Gradle host is Linux, use {@code testing/profiling.cputime.jfc} (CPU-time sampling
+   * only). Otherwise use {@code testing/profiling.jfc} (legacy wall-clock execution sampling). Host
+   * selection may broaden if CPU-time sampling is supported on other OS releases later.
+   */
+  private static String profilingSettingsPath() {
+    String os = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+    return os.contains("linux") ? "testing/profiling.cputime.jfc" : "testing/profiling.jfc";
+  }
 }

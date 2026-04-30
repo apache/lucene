@@ -58,7 +58,8 @@ class FieldToType implements BeforeAfterCallback {
     if (!newType.stored() && random.nextBoolean()) {
       newType.setStored(true); // randomly store it
     }
-    if (newType.indexOptions() != IndexOptions.NONE) {
+    if (newType.indexOptions() != IndexOptions.NONE
+        && newType.indexOptions() != IndexOptions.DOCS_AND_CUSTOM_FREQS) {
       if (!newType.storeTermVectors() && random.nextBoolean()) {
         newType.setStoreTermVectors(true);
         if (!newType.storeTermVectorPositions()) {
