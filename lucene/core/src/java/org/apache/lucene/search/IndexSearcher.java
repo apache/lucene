@@ -493,14 +493,16 @@ public class IndexSearcher {
    * possible.
    */
   public int count(Query query) throws IOException {
-    // Rewrite query before optimization check
     query = rewrite(new ConstantScoreQuery(query));
-    if (query instanceof ConstantScoreQuery csq) {
-      query = csq.getQuery();
+
+    // Unwrap CSQ to check for optimizations on the inner query
+    Query innerQuery = query;
+    if (innerQuery instanceof ConstantScoreQuery csq) {
+      innerQuery = csq.getQuery();
     }
 
     // Check if two clause disjunction optimization applies
-    if (query instanceof BooleanQuery booleanQuery
+    if (innerQuery instanceof BooleanQuery booleanQuery
         && this.reader.hasDeletions() == false
         && booleanQuery.isTwoClausePureDisjunctionWithTerms()) {
       Query[] queries = booleanQuery.rewriteTwoClauseDisjunctionWithTermsForCount(this);
@@ -514,7 +516,12 @@ public class IndexSearcher {
         return countTerm1 + countTerm2 - count(queries[2]);
       }
     }
-    return search(new ConstantScoreQuery(query), new TotalHitCountCollectorManager(getSlices()));
+
+    // Use the already-rewritten query directly, avoiding a redundant rewrite in search(query, collector)
+    var collectorManager = new TotalHitCountCollectorManager(getSlices());
+    var firstCollector = collectorManager.newCollector();
+    final Weight weight = createWeight(query, firstCollector.scoreMode(), 1);
+    return search(weight, collectorManager, firstCollector);
   }
 
   /**
@@ -958,7 +965,7 @@ public class IndexSearcher {
 
   /**
    * Creates a {@link Weight} for the given query, potentially adding caching if possible and
-   * configured.
+   * configured. The query is assumed to have been {@link #rewrite(Query)}-en already.
    *
    * @lucene.experimental
    */
