@@ -26,6 +26,7 @@ import org.apache.lucene.util.MathUtil;
 final class MaxScoreBulkScorer extends BulkScorer {
 
   static final int INNER_WINDOW_SIZE = 1 << 12;
+  private static final int MIN_FILTER_TO_ESSENTIAL_COST_RATIO_FOR_POST_FILTERING = 16;
 
   private final int maxDoc;
   // All scorers, sorted by increasing max score.
@@ -146,7 +147,11 @@ final class MaxScoreBulkScorer extends BulkScorer {
   private void scoreInnerWindow(
       LeafCollector collector, Bits acceptDocs, int max, DisiWrapper filter) throws IOException {
     if (filter != null) {
-      scoreInnerWindowWithFilter(collector, acceptDocs, max, filter);
+      if (shouldPostFilter(filter)) {
+        scoreInnerWindowWithPostFilter(collector, acceptDocs, max, filter);
+      } else {
+        scoreInnerWindowWithFilter(collector, acceptDocs, max, filter);
+      }
     } else {
       DisiWrapper top = essentialQueue.top();
       DisiWrapper top2 = essentialQueue.top2();
@@ -159,6 +164,39 @@ final class MaxScoreBulkScorer extends BulkScorer {
       } else {
         scoreInnerWindowMultipleEssentialClauses(collector, acceptDocs, max);
       }
+    }
+  }
+
+  private boolean shouldPostFilter(DisiWrapper filter) {
+    long remainingCost = filter.cost;
+    for (int i = firstEssentialScorer; i < allScorers.length; ++i) {
+      long essentialCost = allScorers[i].cost;
+      if (essentialCost > Long.MAX_VALUE / MIN_FILTER_TO_ESSENTIAL_COST_RATIO_FOR_POST_FILTERING) {
+        return false;
+      }
+      // Post-filtering needs to overcome extra buffering, so require a substantial cost gap.
+      remainingCost -= essentialCost * MIN_FILTER_TO_ESSENTIAL_COST_RATIO_FOR_POST_FILTERING;
+      if (remainingCost <= 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private void scoreInnerWindowWithPostFilter(
+      LeafCollector collector, Bits acceptDocs, int max, DisiWrapper filter) throws IOException {
+    DisiWrapper top = essentialQueue.top();
+    DisiWrapper top2 = essentialQueue.top2();
+    int innerWindowMax = MathUtil.unsignedMin(max, top.doc + INNER_WINDOW_SIZE);
+    if (top2 == null) {
+      scoreInnerWindowSingleEssentialClauseWithPostFilter(
+          collector, acceptDocs, innerWindowMax, filter);
+    } else if (top2.doc - INNER_WINDOW_SIZE / 2 >= top.doc) {
+      scoreInnerWindowSingleEssentialClauseWithPostFilter(
+          collector, acceptDocs, Math.min(innerWindowMax, top2.doc), filter);
+    } else {
+      scoreInnerWindowMultipleEssentialClausesWithPostFilter(
+          collector, acceptDocs, innerWindowMax, filter);
     }
   }
 
@@ -237,8 +275,38 @@ final class MaxScoreBulkScorer extends BulkScorer {
     essentialQueue.updateTop();
   }
 
+  private void scoreInnerWindowSingleEssentialClauseWithPostFilter(
+      LeafCollector collector, Bits acceptDocs, int upTo, DisiWrapper filter) throws IOException {
+    DisiWrapper top = essentialQueue.top();
+
+    for (top.scorer.nextDocsAndScores(upTo, acceptDocs, docAndScoreBuffer);
+        docAndScoreBuffer.size > 0;
+        top.scorer.nextDocsAndScores(upTo, acceptDocs, docAndScoreBuffer)) {
+
+      docAndScoreAccBuffer.copyFrom(docAndScoreBuffer);
+      applyFilter(docAndScoreAccBuffer, filter);
+      scoreNonEssentialClauses(collector, docAndScoreAccBuffer, firstEssentialScorer);
+    }
+
+    top.doc = top.iterator.docID();
+    essentialQueue.updateTop();
+  }
+
   private void scoreInnerWindowMultipleEssentialClauses(
       LeafCollector collector, Bits acceptDocs, int max) throws IOException {
+    collectInnerWindowMultipleEssentialClauses(acceptDocs, max);
+    scoreNonEssentialClauses(collector, docAndScoreAccBuffer, firstEssentialScorer);
+  }
+
+  private void scoreInnerWindowMultipleEssentialClausesWithPostFilter(
+      LeafCollector collector, Bits acceptDocs, int max, DisiWrapper filter) throws IOException {
+    collectInnerWindowMultipleEssentialClauses(acceptDocs, max);
+    applyFilter(docAndScoreAccBuffer, filter);
+    scoreNonEssentialClauses(collector, docAndScoreAccBuffer, firstEssentialScorer);
+  }
+
+  private void collectInnerWindowMultipleEssentialClauses(Bits acceptDocs, int max)
+      throws IOException {
     DisiWrapper top = essentialQueue.top();
 
     int innerWindowMin = top.doc;
@@ -276,8 +344,25 @@ final class MaxScoreBulkScorer extends BulkScorer {
           windowScores[index] = 0d;
         });
     windowMatches.clear(0, innerWindowSize);
+  }
 
-    scoreNonEssentialClauses(collector, docAndScoreAccBuffer, firstEssentialScorer);
+  private void applyFilter(DocAndScoreAccBuffer buffer, DisiWrapper filter) throws IOException {
+    int intersectionSize = 0;
+    int filterDoc = filter.doc;
+    for (int i = 0; i < buffer.size; ++i) {
+      int targetDoc = buffer.docs[i];
+      if (filterDoc < targetDoc) {
+        filterDoc = filter.approximation.advance(targetDoc);
+      }
+      if (filterDoc == targetDoc
+          && (filter.twoPhaseView == null || filter.twoPhaseView.matches())) {
+        buffer.docs[intersectionSize] = targetDoc;
+        buffer.scores[intersectionSize] = buffer.scores[i];
+        intersectionSize++;
+      }
+    }
+    filter.doc = filterDoc;
+    buffer.size = intersectionSize;
   }
 
   private int computeOuterWindowMax(int windowMin) throws IOException {

@@ -279,6 +279,92 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     }
   }
 
+  public void testFilteredDisjunctionWithPostFilter() throws Exception {
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+        for (int i = 0; i < 512; ++i) {
+          Document doc = new Document();
+          if (i != 10 && i != 30) {
+            doc.add(new StringField("filter", "yes", Field.Store.NO));
+          }
+          if (i == 10 || i == 20 || i == 30) {
+            doc.add(new StringField("foo", "A", Field.Store.NO));
+          }
+          if (i == 20 || i == 40) {
+            doc.add(new StringField("foo", "C", Field.Store.NO));
+          }
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = newSearcher(reader);
+
+        Query clause1 =
+            new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "A"))), 2);
+        Query clause2 =
+            new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "C"))), 3);
+        Query filter =
+            new RandomApproximationQuery(new TermQuery(new Term("filter", "yes")), random());
+        LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
+        Scorer scorer1 =
+            searcher
+                .createWeight(searcher.rewrite(clause1), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+        Scorer scorer2 =
+            searcher
+                .createWeight(searcher.rewrite(clause2), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+        Scorer filterScorer =
+            searcher
+                .createWeight(searcher.rewrite(filter), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+
+        BulkScorer scorer =
+            new MaxScoreBulkScorer(
+                context.reader().maxDoc(), Arrays.asList(scorer1, scorer2), filterScorer);
+
+        LeafCollector collector =
+            new LeafCollector() {
+
+              private int i;
+              private Scorable scorer;
+
+              @Override
+              public void setScorer(Scorable scorer) throws IOException {
+                this.scorer = scorer;
+              }
+
+              @Override
+              public void collect(int doc) throws IOException {
+                switch (i++) {
+                  case 0:
+                    assertEquals(20, doc);
+                    assertEquals(2 + 3, scorer.score(), 0);
+                    break;
+                  case 1:
+                    assertEquals(40, doc);
+                    assertEquals(3, scorer.score(), 0);
+                    break;
+                  default:
+                    fail();
+                    break;
+                }
+              }
+
+              @Override
+              public void finish() throws IOException {
+                assertEquals(2, i);
+              }
+            };
+        scorer.score(collector, null, 0, DocIdSetIterator.NO_MORE_DOCS);
+        collector.finish();
+      }
+    }
+  }
+
   public void testBasicsWithTwoDisjunctionClausesAndSkipping() throws Exception {
     try (Directory dir = newDirectory()) {
       writeDocuments(dir);
