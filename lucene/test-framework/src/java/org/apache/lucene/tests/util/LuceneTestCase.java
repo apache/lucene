@@ -486,7 +486,7 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
       RuleChain.outerRule(testFailureMarker)
           .around(ignoreAfterMaxFailures)
           .around(threadAndTestNameRule)
-          .around(new TestRuleSetupAndRestoreInstanceEnv())
+          .around(new CallbacksToRuleAdapter(new TestRuleSetupAndRestoreInstanceEnv()))
           .around(parentChainCallRule);
 
   /** A counter of calls to {@link #random()} if {@link #SYSPROP_RANDOM_MAXACQUIRES} is defined. */

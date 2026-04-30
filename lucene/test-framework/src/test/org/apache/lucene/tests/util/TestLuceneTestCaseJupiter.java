@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
+import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.util.SuppressForbidden;
 import org.assertj.core.api.Assertions;
 import org.junit.Assert;
@@ -383,6 +384,39 @@ public class TestLuceneTestCaseJupiter {
         CallAtPointcut.pointcuts = null;
       }
       return testOutput;
+    }
+  }
+
+  @Nested
+  class BackCompatBehavior {
+    @Test
+    public void testIndexWriterIsRestoredAfterEachTest() throws Exception {
+      try {
+        AlterIndexSearcher.expectedValue = IndexSearcher.getMaxClauseCount();
+        testKitBuilder(AlterIndexSearcher.class)
+            .execute()
+            .allEvents()
+            .assertThatEvents()
+            .doNotHave(event(finishedWithFailure()));
+      } finally {
+        IndexSearcher.setMaxClauseCount(AlterIndexSearcher.expectedValue);
+      }
+    }
+
+    static class AlterIndexSearcher extends LuceneTestCaseJupiter {
+      static int expectedValue;
+
+      @Test
+      public void t1() {
+        Assertions.assertThat(IndexSearcher.getMaxClauseCount()).isEqualTo(expectedValue);
+        IndexSearcher.setMaxClauseCount(expectedValue + 1);
+      }
+
+      @Test
+      public void t2() {
+        Assertions.assertThat(IndexSearcher.getMaxClauseCount()).isEqualTo(expectedValue);
+        IndexSearcher.setMaxClauseCount(expectedValue + 1);
+      }
     }
   }
 

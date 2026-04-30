@@ -43,6 +43,7 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
+import org.junit.jupiter.api.extension.BeforeEachCallback;
 import org.junit.jupiter.api.extension.DynamicTestInvocationContext;
 import org.junit.jupiter.api.extension.ExecutableInvoker;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -97,8 +98,6 @@ TestRuleRestoreSystemProperties
 TestRuleLimitSysouts
 NoInstanceHooksOverridesRule (?)
 ignoreAfterMaxFailures
-threadAndTestNameRule (?)
-TestRuleSetupAndRestoreInstanceEnv
 */
 @Randomized
 @DetectThreadLeaks(scope = DetectThreadLeaks.Scope.SUITE)
@@ -508,6 +507,22 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
     }
   }
 
+  static class TestLevelCallbackChain implements BeforeEachCallback, AfterEachCallback {
+    private OrderedBeforeAfterCallbacks callbacks;
+
+    @Override
+    public void beforeEach(ExtensionContext context) throws Exception {
+      this.callbacks =
+          new OrderedBeforeAfterCallbacks(List.of(new TestRuleSetupAndRestoreInstanceEnv()));
+      callbacks.before();
+    }
+
+    @Override
+    public void afterEach(ExtensionContext context) throws Exception {
+      callbacks.after();
+    }
+  }
+
   @RegisterExtension
   @Order(0)
   static final SuiteFailureTracker suiteFailureTracker = new SuiteFailureTracker();
@@ -523,6 +538,10 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
       new ClassLevelCallbackChain(
           Objects.requireNonNull(suiteFailureTracker),
           Objects.requireNonNull(printReproduceInfoExtension));
+
+  @RegisterExtension
+  @Order(3)
+  static final TestLevelCallbackChain testLevelCallbackChain = new TestLevelCallbackChain();
 
   //
   // Deprecated or removed methods (LuceneTestCase) and other backward-compatibility
