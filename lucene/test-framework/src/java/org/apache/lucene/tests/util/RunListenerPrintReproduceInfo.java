@@ -16,54 +16,20 @@
  */
 package org.apache.lucene.tests.util;
 
-import static org.apache.lucene.tests.util.LuceneTestCase.DEFAULT_LINE_DOCS_FILE;
-import static org.apache.lucene.tests.util.LuceneTestCase.JENKINS_LARGE_LINE_DOCS_FILE;
-import static org.apache.lucene.tests.util.LuceneTestCase.RANDOM_MULTIPLIER;
-import static org.apache.lucene.tests.util.LuceneTestCase.SYSPROP_AWAITSFIX;
-import static org.apache.lucene.tests.util.LuceneTestCase.SYSPROP_MONSTER;
-import static org.apache.lucene.tests.util.LuceneTestCase.SYSPROP_NIGHTLY;
-import static org.apache.lucene.tests.util.LuceneTestCase.SYSPROP_WEEKLY;
-import static org.apache.lucene.tests.util.LuceneTestCase.TEST_AWAITSFIX;
-import static org.apache.lucene.tests.util.LuceneTestCase.TEST_CODEC;
-import static org.apache.lucene.tests.util.LuceneTestCase.TEST_DIRECTORY;
-import static org.apache.lucene.tests.util.LuceneTestCase.TEST_DOCVALUESFORMAT;
-import static org.apache.lucene.tests.util.LuceneTestCase.TEST_LINE_DOCS_FILE;
-import static org.apache.lucene.tests.util.LuceneTestCase.TEST_MONSTER;
-import static org.apache.lucene.tests.util.LuceneTestCase.TEST_NIGHTLY;
-import static org.apache.lucene.tests.util.LuceneTestCase.TEST_POSTINGSFORMAT;
-import static org.apache.lucene.tests.util.LuceneTestCase.TEST_WEEKLY;
-
 import com.carrotsearch.randomizedtesting.LifecycleScope;
 import com.carrotsearch.randomizedtesting.RandomizedContext;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.TimeZone;
-import java.util.regex.Pattern;
-import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.search.similarities.Similarity;
-import org.apache.lucene.util.Constants;
 import org.junit.runner.Description;
 import org.junit.runner.Result;
 import org.junit.runner.notification.Failure;
 import org.junit.runner.notification.RunListener;
 
 /**
- * A suite listener printing a "reproduce string". This ensures test result events are always
- * captured properly even if exceptions happen at initialization or suite/ hooks level.
+ * A suite listener printing a "reproduce string" (junit4/ randomizedtesting). This ensures test
+ * result events are always captured properly even if exceptions happen at initialization or suite/
+ * hooks level.
  */
 public final class RunListenerPrintReproduceInfo extends RunListener {
-  /**
-   * A list of all test suite classes executed so far in this JVM (ehm, under this class's
-   * classloader).
-   */
-  private static final List<String> testClassesRun = new ArrayList<>();
-
   /** The currently executing scope. */
   private LifecycleScope scope;
 
@@ -79,18 +45,20 @@ public final class RunListenerPrintReproduceInfo extends RunListener {
   /** true if we should skip the reproduce string (diagnostics are independent) */
   private boolean suppressReproduceLine;
 
-  static Env env;
+  /** Environment settings for the run. Set by {@link LuceneTestCase}. */
+  static TestEnvInfo envInfoJunit4;
 
   @Override
   public void testRunStarted(Description description) throws Exception {
     suiteFailed = false;
     testFailed = false;
     scope = LifecycleScope.SUITE;
+    envInfoJunit4 = null;
 
-    Class<?> targetClass = RandomizedContext.current().getTargetClass();
     suppressReproduceLine =
-        targetClass.isAnnotationPresent(LuceneTestCase.SuppressReproduceLine.class);
-    testClassesRun.add(targetClass.getSimpleName());
+        RandomizedContext.current()
+            .getTargetClass()
+            .isAnnotationPresent(LuceneTestCase.SuppressReproduceLine.class);
   }
 
   @Override
@@ -111,12 +79,27 @@ public final class RunListenerPrintReproduceInfo extends RunListener {
 
   @Override
   public void testFinished(Description description) throws Exception {
-    if (testFailed) {
+    if (testFailed && !suppressReproduceLine) {
       System.err.println(
-          getAdditionalFailureInfo(stripTestNameAugmentations(description.getMethodName())));
+          envInfoJunit4.getAdditionalFailureInfo(
+              RandomizedContext.current().getRunnerSeedAsString(),
+              b -> {
+                appendSelectorArguments(
+                    b, Optional.of(stripTestNameAugmentations(description.getMethodName())));
+              }));
     }
     scope = LifecycleScope.SUITE;
     testFailed = false;
+  }
+
+  private void appendSelectorArguments(StringBuilder b, Optional<String> testMethod) {
+    // Figure out the test case name and method, if any.
+    String testClass = RandomizedContext.current().getTargetClass().getSimpleName();
+    b.append("--tests ");
+    b.append(testClass);
+    if (testMethod.isPresent()) {
+      b.append(".").append(testMethod.get());
+    }
   }
 
   /**
@@ -134,136 +117,16 @@ public final class RunListenerPrintReproduceInfo extends RunListener {
 
   @Override
   public void testRunFinished(Result result) throws Exception {
-    if (somethingFailed || LuceneTestCase.VERBOSE) {
-      System.err.println(getDebuggingInformation());
-    }
-
-    if (suiteFailed) {
-      System.err.println(getAdditionalFailureInfo(null));
-    }
-  }
-
-  record Env(String codec, String similarity, String locale, String timeZone) {
-    Env(Codec codec, Similarity similarity, Locale locale, TimeZone timeZone) {
-      this(
-          Objects.toString(codec),
-          Objects.toString(similarity),
-          Optional.ofNullable(locale).map(Locale::toLanguageTag).orElse(null),
-          Optional.ofNullable(timeZone).map(TimeZone::getID).orElse(null));
-    }
-  }
-
-  /** print some useful debugging information about the environment */
-  private static String getDebuggingInformation() {
-    StringWriter sw = new StringWriter();
-    PrintWriter pw = new PrintWriter(sw);
-    pw.println(
-        ("NOTE: test params are: codec=" + env.codec)
-            + (", sim=" + env.similarity)
-            + (", locale=" + env.locale)
-            + (", timezone=" + env.timeZone));
-    pw.println(
-        "NOTE: "
-            + (System.getProperty("os.name") + " ")
-            + (System.getProperty("os.version") + " ")
-            + (System.getProperty("os.arch") + "/" + System.getProperty("java.vendor"))
-            + (" " + System.getProperty("java.version"))
-            + (" "
-                + (Constants.JRE_IS_64BIT ? "(64-bit)" : "(32-bit)")
-                + "/"
-                + "cpus="
-                + Runtime.getRuntime().availableProcessors()
-                + ",")
-            + ("threads=" + Thread.activeCount() + ",")
-            + ("free=" + Runtime.getRuntime().freeMemory() + ",")
-            + ("total=" + Runtime.getRuntime().totalMemory()));
-    pw.println("NOTE: All tests run in this JVM: " + Arrays.toString(testClassesRun.toArray()));
-    pw.flush();
-
-    return sw.toString();
-  }
-
-  private String getAdditionalFailureInfo(final String testName) {
-    if (suppressReproduceLine) {
-      return "";
-    }
-
-    if (TEST_LINE_DOCS_FILE.endsWith(JENKINS_LARGE_LINE_DOCS_FILE)) {
+    if (suiteFailed && !suppressReproduceLine) {
       System.err.println(
-          "NOTE: large line-docs file was used in this run. You have to download "
-              + "it manually ('gradlew getEnWikiRandomLines') and use -P"
-              + TEST_LINE_DOCS_FILE
-              + "=... property to point to it.");
+          envInfoJunit4.getAdditionalFailureInfo(
+              RandomizedContext.current().getRunnerSeedAsString(),
+              b -> {
+                appendSelectorArguments(b, Optional.empty());
+              }));
     }
-
-    final StringBuilder b = new StringBuilder();
-    b.append("NOTE: reproduce with: gradlew test ");
-
-    // Figure out the test case name and method, if any.
-    String testClass = RandomizedContext.current().getTargetClass().getSimpleName();
-    b.append("--tests ");
-    b.append(testClass);
-    if (testName != null) {
-      b.append(".").append(testName);
+    if (somethingFailed || LuceneTestCase.VERBOSE) {
+      System.err.println(envInfoJunit4.getDebuggingInformation());
     }
-
-    // Pass the master seed.
-    addVmOpt(b, "tests.seed", RandomizedContext.current().getRunnerSeedAsString());
-
-    addVmOpt(b, "tests.jvmargs", System.getProperty("tests.jvmargs"));
-
-    // Test groups and multipliers.
-    if (RANDOM_MULTIPLIER != LuceneTestCase.defaultRandomMultiplier())
-      addVmOpt(b, "tests.multiplier", RANDOM_MULTIPLIER);
-    if (TEST_NIGHTLY) addVmOpt(b, SYSPROP_NIGHTLY, TEST_NIGHTLY);
-    if (TEST_WEEKLY) addVmOpt(b, SYSPROP_WEEKLY, TEST_WEEKLY);
-    if (TEST_MONSTER) addVmOpt(b, SYSPROP_MONSTER, TEST_MONSTER);
-    if (TEST_AWAITSFIX) addVmOpt(b, SYSPROP_AWAITSFIX, TEST_AWAITSFIX);
-
-    // Codec, postings, directories.
-    if (!TEST_CODEC.equals("random")) addVmOpt(b, "tests.codec", TEST_CODEC);
-    if (!TEST_POSTINGSFORMAT.equals("random"))
-      addVmOpt(b, "tests.postingsformat", TEST_POSTINGSFORMAT);
-    if (!TEST_DOCVALUESFORMAT.equals("random"))
-      addVmOpt(b, "tests.docvaluesformat", TEST_DOCVALUESFORMAT);
-    if (!TEST_DIRECTORY.equals("random")) addVmOpt(b, "tests.directory", TEST_DIRECTORY);
-
-    // Environment.
-    if (!TEST_LINE_DOCS_FILE.equals(DEFAULT_LINE_DOCS_FILE))
-      addVmOpt(b, "tests.linedocsfile", TEST_LINE_DOCS_FILE);
-    if (env.locale() != null) {
-      addVmOpt(b, "tests.locale", env.locale);
-    }
-
-    if (env.timeZone() != null) {
-      addVmOpt(b, "tests.timezone", env.timeZone());
-    }
-
-    if (LuceneTestCase.TEST_ASSERTS_ENABLED) {
-      addVmOpt(b, "tests.asserts", "true");
-    } else {
-      addVmOpt(b, "tests.asserts", "false");
-    }
-
-    addVmOpt(b, "tests.file.encoding", System.getProperty("file.encoding"));
-
-    return b.toString();
-  }
-
-  /**
-   * Append a VM option (-Dkey=value) to a {@link StringBuilder}. Add quotes if spaces or other
-   * funky characters are detected.
-   */
-  static void addVmOpt(StringBuilder b, String key, Object value) {
-    if (value == null) return;
-
-    b.append(" -D").append(key).append("=");
-    String v = value.toString();
-    // Add simplistic quoting. This varies a lot from system to system and between
-    // shells... ANT should have some code for doing it properly.
-    if (Pattern.compile("[\\s=']").matcher(v).find()) {
-      v = '"' + v + '"';
-    }
-    b.append(v);
   }
 }

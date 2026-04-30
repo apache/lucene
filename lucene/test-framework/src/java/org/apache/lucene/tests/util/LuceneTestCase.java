@@ -450,8 +450,11 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
                     new BeforeAfterCallback() {
                       @Override
                       public void before() {
-                        RunListenerPrintReproduceInfo.env =
-                            new RunListenerPrintReproduceInfo.Env(
+                        // Save environment information to reproduce-info listener.
+                        // This listener can be invoked after all the tests and other callbacks have
+                        // completed; I don't see any clean way to pass it there.
+                        RunListenerPrintReproduceInfo.envInfoJunit4 =
+                            new TestEnvInfo(
                                 setupAndRestoreClassEnv.codec,
                                 setupAndRestoreClassEnv.similarity,
                                 setupAndRestoreClassEnv.locale,

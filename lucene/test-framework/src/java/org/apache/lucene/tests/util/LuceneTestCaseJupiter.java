@@ -19,17 +19,21 @@ package org.apache.lucene.tests.util;
 
 import com.carrotsearch.randomizedtesting.jupiter.DetectThreadLeaks;
 import com.carrotsearch.randomizedtesting.jupiter.Randomized;
+import com.carrotsearch.randomizedtesting.jupiter.RandomizedContext;
 import com.carrotsearch.randomizedtesting.jupiter.SystemThreadFilter;
 import java.io.Closeable;
+import java.io.PrintStream;
 import java.util.ArrayDeque;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.apache.lucene.util.IOUtils;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -37,9 +41,11 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
+import org.junit.jupiter.api.extension.DynamicTestInvocationContext;
 import org.junit.jupiter.api.extension.ExecutableInvoker;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.junit.jupiter.api.extension.InvocationInterceptor;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.extension.TestWatcher;
 import org.junit.jupiter.api.parallel.Execution;
@@ -48,6 +54,7 @@ import org.junit.platform.commons.support.AnnotationSupport;
 import org.junit.platform.commons.support.HierarchyTraversalMode;
 import org.junit.platform.commons.support.ModifierSupport;
 import org.junit.platform.commons.support.ReflectionSupport;
+import org.opentest4j.TestAbortedException;
 
 /// Base class for all Lucene unit tests (JUnit5/ Jupiter variant).
 ///
@@ -83,12 +90,10 @@ import org.junit.platform.commons.support.ReflectionSupport;
 ///
 /*
 // TODO: port these.
-- reproduce info listener, @Listeners({RunListenerPrintReproduceInfo.class})
 - test sysout rule
 @TestRuleLimitSysouts.Limit(
     bytes = TestRuleLimitSysouts.DEFAULT_LIMIT,
     hardLimit = TestRuleLimitSysouts.DEFAULT_HARD_LIMIT)
-
 - pick a smaller module and move (some?) of the tests to jupiter. Ensure both frameworks can coexist (jupiter and
 vintage engine running both).
 - add tests of the LuceneTestCaseJupiter infrastructure (if what was previously implemented
@@ -177,9 +182,14 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
 
   /// Tracks whether any test in the current suite had a failure.
   /// Registered before [ClassLevelCallbackChain] so its state is available during suite teardown.
-  /// We plug into multiple jupiter extensions, hoping they will be sufficient to detect failure state.
+  /// We plug into multiple jupiter extensions, hoping they will be sufficient to detect failure
+  // state.
   static final class SuiteFailureTracker
-      implements AfterAllCallback, BeforeAllCallback, TestWatcher, SuiteFailureState {
+      implements AfterAllCallback,
+          BeforeAllCallback,
+          TestWatcher,
+          SuiteFailureState,
+          InvocationInterceptor {
     private static final ExtensionContext.Namespace NAMESPACE =
         ExtensionContext.Namespace.create(SuiteFailureTracker.class);
 
@@ -188,33 +198,62 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
     @Override
     public void beforeAll(ExtensionContext context) {
       hadFailures = false;
-      // Register a Closeable to capture failures that TestWatcher cannot see:
+      // Register a Closeable invoked after all the other callbacks have been called:
       // @BeforeAll/@AfterAll lifecycle methods and peer extension afterAll callbacks
-      // (e.g. DetectThreadLeaks). Closeable's close runs during cleanUp(), which
-      // is after all afterAll callbacks have completed, so the throwableCollector backing
-      // context.getExecutionException() is fully populated by then.
+      // (e.g. DetectThreadLeaks).
       context
           .getStore(NAMESPACE)
-          .put(
-              "failureCheck",
-              (AutoCloseable)
-                  () -> {
-                    if (context.getExecutionException().isPresent()) {
-                      hadFailures = true;
-                    }
-                  });
+          .put("failureCheck", (AutoCloseable) () -> checkContextException(context));
     }
 
     @Override
     public void afterAll(ExtensionContext context) {
+      checkContextException(context);
+    }
+
+    private void checkContextException(ExtensionContext context) {
       if (context.getExecutionException().isPresent()) {
-        hadFailures = true;
+        if (!isFailedAssumption(context.getExecutionException().get())) {
+          hadFailures = true;
+        }
       }
+    }
+
+    public static boolean isFailedAssumption(Throwable t) {
+      return t instanceof TestAbortedException
+          || t.getClass().getName().equals("org.junit.AssumptionViolatedException");
     }
 
     @Override
     public void testFailed(ExtensionContext context, Throwable cause) {
       hadFailures = true;
+    }
+
+    @Override
+    public void testAborted(ExtensionContext context, @Nullable Throwable cause) {
+      // This means the test threw an assumption exception. Ignored.
+    }
+
+    @Override
+    public void testDisabled(ExtensionContext context, Optional<String> reason) {
+      // This means the test is ignored for some other reason.
+    }
+
+    // required to detect failures in dynamic tests.
+    @Override
+    public void interceptDynamicTest(
+        Invocation<@Nullable Void> invocation,
+        DynamicTestInvocationContext invocationContext,
+        ExtensionContext extensionContext)
+        throws Throwable {
+      try {
+        invocation.proceed();
+      } catch (Throwable t) {
+        if (!isFailedAssumption(t)) {
+          hadFailures = true;
+        }
+        throw t;
+      }
     }
 
     @Override
@@ -231,11 +270,16 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
   static class ClassLevelCallbackChain
       implements BeforeAllCallback, AfterAllCallback, AfterEachCallback {
     private final SuiteFailureTracker suiteFailureTracker;
+    private final PrintReproduceInfoExtension printReproduceInfo;
+
     private TestFrameworkInfra jupiterFrameworkInfra;
     private OrderedBeforeAfterCallbacks beforeAfters;
 
-    ClassLevelCallbackChain(SuiteFailureTracker suiteFailureTracker) {
+    ClassLevelCallbackChain(
+        SuiteFailureTracker suiteFailureTracker,
+        PrintReproduceInfoExtension printReproduceInfoExtension) {
       this.suiteFailureTracker = suiteFailureTracker;
+      this.printReproduceInfo = printReproduceInfoExtension;
     }
 
     @Override
@@ -290,10 +334,30 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
             }
           };
 
+      var installEnvInfo =
+          new BeforeAfterCallback() {
+            @Override
+            public void before() throws Exception {
+              printReproduceInfo.testEnvInfo =
+                  new TestEnvInfo(
+                      classEnvRule.codec,
+                      classEnvRule.similarity,
+                      classEnvRule.locale,
+                      classEnvRule.timeZone);
+            }
+          };
+
+      // This is the chain of before-after callbacks that must be called in the right order for
+      // compatibility
+      // with junit4 implementation.
       this.beforeAfters =
           new OrderedBeforeAfterCallbacks(
               List.of(
-                  perThreadRandom, installFrameworkInfraSupport, classEnvRule, tempFileSupplier));
+                  perThreadRandom,
+                  installFrameworkInfraSupport,
+                  classEnvRule,
+                  installEnvInfo,
+                  tempFileSupplier));
 
       beforeAfters.before();
     }
@@ -330,14 +394,136 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
     }
   }
 
+  static class PrintReproduceInfoExtension
+      implements BeforeAllCallback, TestWatcher, InvocationInterceptor {
+    public static final CharSequence TEST_REPRO_LEAD = TestEnvInfo.TEST_REPRO_LEAD;
+    public static final CharSequence TEST_ENV_LEAD = TestEnvInfo.TEST_ENV_LEAD;
+
+    // Used for tests only to replace syserrs.
+    public static PrintStream debugStream;
+
+    TestEnvInfo testEnvInfo;
+
+    private String rootSeed;
+    private boolean somethingFailed;
+
+    @Override
+    public void beforeAll(ExtensionContext context) throws Exception {
+      this.rootSeed = getRandomSupplier(context.getExecutableInvoker()).getRootSeed().toString();
+
+      // Register a Closeable invoked after all the other callbacks have been called:
+      // @BeforeAll/@AfterAll lifecycle methods and peer extension afterAll callbacks
+      // (e.g. DetectThreadLeaks).
+      context
+          .getStore(ExtensionContext.Namespace.create(PrintReproduceInfoExtension.class))
+          .put(
+              "failureCheck",
+              (AutoCloseable)
+                  () -> {
+                    if (context.getExecutionException().isPresent()) {
+                      if (!SuiteFailureTracker.isFailedAssumption(
+                          context.getExecutionException().get())) {
+                        printReproduceInfo(context);
+                        somethingFailed = true;
+                      }
+                    }
+
+                    if (somethingFailed && testEnvInfo != null) {
+                      println(testEnvInfo.getDebuggingInformation());
+                    }
+                  });
+    }
+
+    @Override
+    public void testFailed(ExtensionContext context, @Nullable Throwable cause) {
+      somethingFailed = true;
+      printReproduceInfo(context);
+    }
+
+    // Required to detect failures in dynamic tests.
+    @Override
+    public void interceptDynamicTest(
+        Invocation<@Nullable Void> invocation,
+        DynamicTestInvocationContext invocationContext,
+        ExtensionContext extensionContext)
+        throws Throwable {
+      try {
+        invocation.proceed();
+      } catch (Throwable t) {
+        if (!SuiteFailureTracker.isFailedAssumption(t)) {
+          somethingFailed = true;
+          printReproduceInfo(extensionContext);
+        }
+        throw t;
+      }
+    }
+
+    private void printReproduceInfo(ExtensionContext context) {
+      if (testEnvInfo == null || rootSeed == null) {
+        println(
+            "NOTE: test failed but no environment information is present to construct the reproduce-line.");
+      } else {
+        println(
+            testEnvInfo.getAdditionalFailureInfo(
+                rootSeed,
+                b -> {
+                  // TODO: add gradle infrastructure to rerun tests based on their uniqueid
+                  // instead of their class/method. This would allow dynamic tests to be
+                  // repeatable.
+
+                  if (context.getTestClass().isPresent()) {
+                    b.append("--tests ");
+                    b.append(context.getRequiredTestClass().getName());
+                    if (context.getTestMethod().isPresent()) {
+                      b.append(".").append(context.getRequiredTestMethod().getName());
+                    }
+                  }
+                }));
+      }
+    }
+
+    private void println(String msg) {
+      if (debugStream != null) {
+        debugStream.println(msg);
+      } else {
+        System.err.println(msg);
+      }
+    }
+
+    // This trick is needed to get the Supplier<Random> injected by a parameter resolved
+    // of the randomized testing framework.
+    private RandomizedContext getRandomSupplier(ExecutableInvoker executableInvoker)
+        throws Exception {
+      var hack =
+          new Object() {
+            @SuppressWarnings("unused")
+            public RandomizedContext captureParameter(RandomizedContext ctx) {
+              return ctx;
+            }
+          };
+
+      return (RandomizedContext)
+          Objects.requireNonNull(
+              executableInvoker.invoke(
+                  hack.getClass().getMethod("captureParameter", RandomizedContext.class), hack));
+    }
+  }
+
   @RegisterExtension
   @Order(0)
   static final SuiteFailureTracker suiteFailureTracker = new SuiteFailureTracker();
 
   @RegisterExtension
   @Order(1)
+  static final PrintReproduceInfoExtension printReproduceInfoExtension =
+      new PrintReproduceInfoExtension();
+
+  @RegisterExtension
+  @Order(2)
   static ClassLevelCallbackChain classLevelCallbackChain =
-      new ClassLevelCallbackChain(suiteFailureTracker);
+      new ClassLevelCallbackChain(
+          Objects.requireNonNull(suiteFailureTracker),
+          Objects.requireNonNull(printReproduceInfoExtension));
 
   //
   // Deprecated or removed methods (LuceneTestCase) and other backward-compatibility

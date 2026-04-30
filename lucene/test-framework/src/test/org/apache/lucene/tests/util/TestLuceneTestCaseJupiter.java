@@ -24,29 +24,105 @@ import static org.junit.platform.testkit.engine.TestExecutionResultConditions.me
 
 import com.carrotsearch.randomizedtesting.jupiter.DetectThreadLeaks;
 import com.carrotsearch.randomizedtesting.jupiter.SysProps;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import org.apache.lucene.util.SuppressForbidden;
+import org.assertj.core.api.Assertions;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
+import org.junit.jupiter.api.function.Executable;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.junit.platform.testkit.engine.EngineTestKit;
 
 /// groups all tests of the junit5/ jupiter parent class and its infrastructure.
 @Execution(value = ExecutionMode.SAME_THREAD, reason = "single-threaded.")
 public class TestLuceneTestCaseJupiter {
+  /**
+   * A test class that calls the provided callable at a specific pointcut (callback method, test).
+   * This is used to make unit tests more compact.
+   */
+  static class CallAtPointcut extends LuceneTestCaseJupiter {
+    enum Pointcut {
+      BEFORE_ALL,
+      BEFORE_EACH,
+      TEST_NORMAL,
+      TEST_DYNAMIC,
+      TEST_PARAMETERIZED,
+      AFTER_EACH,
+      AFTER_ALL,
+    }
+
+    static Map<Pointcut, Executable> pointcuts;
+
+    private static void call(Pointcut pointcut) throws Throwable {
+      if (pointcuts.containsKey(pointcut)) {
+        pointcuts.get(pointcut).execute();
+      }
+    }
+
+    @BeforeAll
+    static void beforeAll() throws Throwable {
+      call(Pointcut.BEFORE_ALL);
+    }
+
+    @BeforeEach
+    void beforeEach() throws Throwable {
+      call(Pointcut.BEFORE_EACH);
+    }
+
+    @Test
+    void normalTestMethod() throws Throwable {
+      call(Pointcut.TEST_NORMAL);
+    }
+
+    @TestFactory
+    Stream<DynamicTest> dynamicTests() throws Throwable {
+      return Stream.of(
+          DynamicTest.dynamicTest(
+              "dynamicTest",
+              () -> {
+                call(Pointcut.TEST_DYNAMIC);
+              }));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"a"})
+    void templateTest(String unused) throws Throwable {
+      call(Pointcut.TEST_PARAMETERIZED);
+    }
+
+    @AfterEach
+    void afterEach() throws Throwable {
+      call(Pointcut.AFTER_EACH);
+    }
+
+    @AfterAll
+    static void afterAll() throws Throwable {
+      call(Pointcut.AFTER_ALL);
+    }
+  }
+
   /// Test cases should use parameter-injected [java.util.Random] or a supplier
   /// of [java.util.Random]. Avoid using static methods.
   @Nested
@@ -141,21 +217,21 @@ public class TestLuceneTestCaseJupiter {
       Assert.assertTrue(LuceneTestCaseJupiter.suiteFailureTracker.wasSuccessful());
     }
 
+    static class SuccessfulSuite extends LuceneTestCaseJupiter {
+      @Test
+      void testMethod() {}
+    }
+
     @TestFactory
     Stream<DynamicTest> suiteFailureIsTracked() {
-      return Stream.of(
-              FailInTestMethod.class,
-              FailInBeforeEach.class,
-              FailInAfterEach.class,
-              FailInBeforeAll.class,
-              FailInAfterAll.class,
-              FailBecauseOfLeakedThreads.class)
+      return Stream.of(CallAtPointcut.Pointcut.values())
           .map(
-              clazz ->
+              pointcut ->
                   DynamicTest.dynamicTest(
-                      clazz.getSimpleName(),
+                      pointcut.name(),
                       () -> {
-                        testKitBuilder(clazz)
+                        CallAtPointcut.pointcuts = Map.of(pointcut, Assertions::fail);
+                        testKitBuilder(CallAtPointcut.class)
                             .execute()
                             .allEvents()
                             .assertThatEvents()
@@ -165,56 +241,50 @@ public class TestLuceneTestCaseJupiter {
                       }));
     }
 
-    static class SuccessfulSuite extends LuceneTestCaseJupiter {
-      @Test
-      void testOk() {}
+    @TestFactory
+    Stream<DynamicTest> failedAssumptionsAreNotFailures() {
+      return Stream.of(CallAtPointcut.Pointcut.values())
+          .<Map.Entry<CallAtPointcut.Pointcut, Executable>>mapMulti(
+              (pointcut, downstream) -> {
+                downstream.accept(
+                    Map.entry(
+                        pointcut,
+                        () -> {
+                          org.junit.jupiter.api.Assumptions.assumeTrue(false);
+                        }));
+                downstream.accept(
+                    Map.entry(
+                        pointcut,
+                        () -> {
+                          org.assertj.core.api.Assumptions.assumeThat(true).isFalse();
+                        }));
+                downstream.accept(
+                    Map.entry(
+                        pointcut,
+                        () -> {
+                          Assume.assumeTrue(false);
+                        }));
+              })
+          .map(
+              entry -> {
+                return DynamicTest.dynamicTest(
+                    entry.getKey().name(),
+                    () -> {
+                      CallAtPointcut.pointcuts = Map.ofEntries(entry);
+                      testKitBuilder(CallAtPointcut.class).execute();
+                      Assert.assertTrue(LuceneTestCaseJupiter.suiteFailureTracker.wasSuccessful());
+                    });
+              });
     }
 
-    static class FailInTestMethod extends LuceneTestCaseJupiter {
-      @Test
-      void testFails() {
-        throw new AssertionError();
-      }
-    }
-
-    static class FailInBeforeEach extends LuceneTestCaseJupiter {
-      @BeforeEach
-      void beforeEach() {
-        throw new AssertionError();
-      }
-
-      @Test
-      void testMethod() {}
-    }
-
-    static class FailInAfterEach extends LuceneTestCaseJupiter {
-      @AfterEach
-      void afterEach() {
-        throw new AssertionError();
-      }
-
-      @Test
-      void testMethod() {}
-    }
-
-    static class FailInBeforeAll extends LuceneTestCaseJupiter {
-      @BeforeAll
-      static void setUpSuite() {
-        throw new AssertionError();
-      }
-
-      @Test
-      void testMethod() {}
-    }
-
-    static class FailInAfterAll extends LuceneTestCaseJupiter {
-      @AfterAll
-      static void tearDownSuite() {
-        throw new AssertionError();
-      }
-
-      @Test
-      void testMethod() {}
+    @Test
+    public void testFailBecauseOfLeakedThreads() {
+      testKitBuilder(FailBecauseOfLeakedThreads.class)
+          .execute()
+          .allEvents()
+          .assertThatEvents()
+          .haveAtLeast(1, event(finishedWithFailure()));
+      Assert.assertFalse(LuceneTestCaseJupiter.suiteFailureTracker.wasSuccessful());
     }
 
     @DetectThreadLeaks.LingerTime(millis = 0)
@@ -249,6 +319,70 @@ public class TestLuceneTestCaseJupiter {
       void testLeaksDirectory() {
         LuceneTestCaseParent.newDirectory();
       }
+    }
+  }
+
+  @Nested
+  class ReproduceLinePrinter {
+    @TestFactory
+    Stream<DynamicTest> testReproLineIsPrinted() throws Exception {
+      return Stream.of(CallAtPointcut.Pointcut.values())
+          .map(
+              pointcut -> {
+                return DynamicTest.dynamicTest(
+                    pointcut.name(),
+                    () -> {
+                      String testOutput = collectOutputFrom(Map.of(pointcut, Assertions::fail));
+
+                      Assertions.assertThat(testOutput)
+                          .contains(
+                              LuceneTestCaseJupiter.PrintReproduceInfoExtension.TEST_REPRO_LEAD)
+                          .contains(
+                              LuceneTestCaseJupiter.PrintReproduceInfoExtension.TEST_ENV_LEAD);
+                    });
+              });
+    }
+
+    @TestFactory
+    Stream<DynamicTest> testReproLineIsNotPrintedForAssumptions() throws Exception {
+      return Stream.of(CallAtPointcut.Pointcut.values())
+          .map(
+              pointcut -> {
+                return DynamicTest.dynamicTest(
+                    pointcut.name(),
+                    () -> {
+                      String testOutput =
+                          collectOutputFrom(
+                              Map.of(
+                                  pointcut,
+                                  () -> {
+                                    Assumptions.assumeTrue(false);
+                                  }));
+
+                      Assertions.assertThat(testOutput)
+                          .doesNotContain(
+                              LuceneTestCaseJupiter.PrintReproduceInfoExtension.TEST_REPRO_LEAD)
+                          .doesNotContain(
+                              LuceneTestCaseJupiter.PrintReproduceInfoExtension.TEST_ENV_LEAD);
+                    });
+              });
+    }
+
+    private static String collectOutputFrom(Map<CallAtPointcut.Pointcut, Executable> callables)
+        throws IOException {
+      String testOutput;
+      try (var baos = new ByteArrayOutputStream();
+          var pw = new PrintStream(baos, true, StandardCharsets.UTF_8)) {
+        CallAtPointcut.pointcuts = callables;
+        LuceneTestCaseJupiter.PrintReproduceInfoExtension.debugStream = pw;
+        testKitBuilder(CallAtPointcut.class).execute();
+        pw.flush();
+        testOutput = baos.toString(StandardCharsets.UTF_8);
+      } finally {
+        LuceneTestCaseJupiter.PrintReproduceInfoExtension.debugStream = null;
+        CallAtPointcut.pointcuts = null;
+      }
+      return testOutput;
     }
   }
 
