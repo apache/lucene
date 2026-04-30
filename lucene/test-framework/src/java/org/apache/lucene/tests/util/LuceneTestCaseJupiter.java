@@ -35,7 +35,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.lucene.util.IOUtils;
 import org.jspecify.annotations.Nullable;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -94,7 +93,12 @@ import org.opentest4j.TestAbortedException;
 /*
 TODO: port the remaining infrastructure bits from LuceneTestCase:
 - there are class rules and test rules that are still only on junit4 side
-- sysout limit annotation/ rule is not ported.
+TestRuleRestoreSystemProperties
+TestRuleLimitSysouts
+NoInstanceHooksOverridesRule (?)
+ignoreAfterMaxFailures
+threadAndTestNameRule (?)
+TestRuleSetupAndRestoreInstanceEnv
 */
 @Randomized
 @DetectThreadLeaks(scope = DetectThreadLeaks.Scope.SUITE)
@@ -534,8 +538,14 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
     return LuceneTestCaseParent.random();
   }
 
-  @BeforeAll
-  static void testTestClassNameConvention(TestInfo testInfo) {
+  @Test
+  void verifyTestAssertionStatus() throws Exception {
+    TestRuleAssertionsRequired.checkAssertionStatus();
+  }
+
+  /** Enforce test class naming convention. */
+  @Test
+  void enforceClassNamingConvention(TestInfo testInfo) {
     new VerifyTestClassNamingConvention(
             "org.apache.lucene", Pattern.compile("(.+\\.)(Test)([^.]+)"))
         .check(testInfo.getTestClass().orElseThrow());
@@ -549,10 +559,10 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
    * before-after hooks so they're not a direct substitute.
    */
   @Test
-  public void allTestMethodsAreAnnotated() {
+  void allTestMethodsAreAnnotated(TestInfo testInfo) {
     var testMethodsWithoutAnnotations =
         ReflectionSupport.findMethods(
-            getClass(),
+            testInfo.getTestClass().orElseThrow(),
             m -> {
               return m.getName().startsWith("test")
                   && !ModifierSupport.isStatic(m)
