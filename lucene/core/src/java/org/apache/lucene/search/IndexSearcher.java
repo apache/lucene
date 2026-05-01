@@ -493,31 +493,35 @@ public class IndexSearcher {
    * possible.
    */
   public int count(Query query) throws IOException {
+    // CSQ.rewrite may simplify the query -- don't need scores
     query = rewrite(new ConstantScoreQuery(query));
 
-    // Unwrap CSQ to check for optimizations on the inner query
-    Query innerQuery = query;
-    if (innerQuery instanceof ConstantScoreQuery csq) {
-      innerQuery = csq.getQuery();
-    }
+    {
+      // Unwrap CSQ to check for optimizations on the inner query
+      Query innerQuery = query;
+      if (innerQuery instanceof ConstantScoreQuery csq) {
+        innerQuery = csq.getQuery();
+      }
 
-    // Check if two clause disjunction optimization applies
-    if (innerQuery instanceof BooleanQuery booleanQuery
-        && this.reader.hasDeletions() == false
-        && booleanQuery.isTwoClausePureDisjunctionWithTerms()) {
-      Query[] queries = booleanQuery.rewriteTwoClauseDisjunctionWithTermsForCount(this);
-      int countTerm1 = count(queries[0]);
-      int countTerm2 = count(queries[1]);
-      if (countTerm1 == 0 || countTerm2 == 0) {
-        return Math.max(countTerm1, countTerm2);
-        // Only apply optimization if the intersection is significantly smaller than the union
-      } else if ((double) Math.min(countTerm1, countTerm2) / Math.max(countTerm1, countTerm2)
-          < 0.1) {
-        return countTerm1 + countTerm2 - count(queries[2]);
+      // Check if two clause disjunction optimization applies
+      if (innerQuery instanceof BooleanQuery booleanQuery
+          && this.reader.hasDeletions() == false
+          && booleanQuery.isTwoClausePureDisjunctionWithTerms()) {
+        Query[] queries = booleanQuery.rewriteTwoClauseDisjunctionWithTermsForCount(this);
+        int countTerm1 = count(queries[0]);
+        int countTerm2 = count(queries[1]);
+        if (countTerm1 == 0 || countTerm2 == 0) {
+          return Math.max(countTerm1, countTerm2);
+          // Only apply optimization if the intersection is significantly smaller than the union
+        } else if ((double) Math.min(countTerm1, countTerm2) / Math.max(countTerm1, countTerm2)
+            < 0.1) {
+          return countTerm1 + countTerm2 - count(queries[2]);
+        }
       }
     }
 
-    // Use the already-rewritten query directly, avoiding a redundant rewrite in search(query, collector)
+    // Use the already-rewritten query directly, avoiding a redundant rewrite in search(query,
+    // collector)
     var collectorManager = new TotalHitCountCollectorManager(getSlices());
     var firstCollector = collectorManager.newCollector();
     final Weight weight = createWeight(query, firstCollector.scoreMode(), 1);
