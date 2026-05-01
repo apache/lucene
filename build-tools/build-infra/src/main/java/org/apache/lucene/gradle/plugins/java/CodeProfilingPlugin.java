@@ -204,10 +204,19 @@ public class CodeProfilingPlugin extends LuceneGradlePlugin {
                               .getProviders()
                               .provider(
                                   () -> {
-                                    return task.getState().getDidWork();
+                                    return taskDidNotFail(task);
                                   }));
                 });
           });
+    }
+  }
+
+  private static boolean taskDidNotFail(Test task) {
+    try {
+      task.getState().rethrowFailure();
+      return true;
+    } catch (RuntimeException _) {
+      return false;
     }
   }
 
