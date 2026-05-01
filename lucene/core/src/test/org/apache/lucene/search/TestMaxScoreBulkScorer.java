@@ -283,7 +283,7 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       try (IndexWriter w =
           new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
-        for (int i = 0; i < 512; ++i) {
+        for (int i = 0; i < MaxScoreBulkScorer.INNER_WINDOW_SIZE; ++i) {
           Document doc = new Document();
           if (i != 10 && i != 30) {
             doc.add(new StringField("filter", "yes", Field.Store.NO));
