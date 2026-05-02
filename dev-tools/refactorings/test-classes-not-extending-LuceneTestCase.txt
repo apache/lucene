@@ -1,0 +1,51 @@
+lucene/analysis/common
+  lucene/analysis/common/src/test/org/apache/lucene/analysis/hunspell/TestHunspellRepositoryTestCases.java  [extends (no superclass)]  *** unresolved superclass
+
+lucene/core
+  lucene/core/src/test/org/apache/lucene/document/TestXYLineShapeQueries.java  [extends Validator]  *** unresolved superclass
+  lucene/core/src/test/org/apache/lucene/document/TestXYMultiLineShapeQueries.java  [extends Validator]  *** unresolved superclass
+  lucene/core/src/test/org/apache/lucene/document/TestXYMultiPointShapeQueries.java  [extends Validator]  *** unresolved superclass
+  lucene/core/src/test/org/apache/lucene/document/TestXYMultiPolygonShapeQueries.java  [extends Validator]  *** unresolved superclass
+  lucene/core/src/test/org/apache/lucene/document/TestXYPointShapeQueries.java  [extends Validator]  *** unresolved superclass
+  lucene/core/src/test/org/apache/lucene/document/TestXYPolygonShapeQueries.java  [extends Validator]  *** unresolved superclass
+  lucene/core/src/test/org/apache/lucene/index/TestClassloadingDeadlock.java  [extends Assert]  *** unresolved superclass
+  lucene/core/src/test/org/apache/lucene/search/TestMultiThreadTermVectors.java  [extends Thread]  *** unresolved superclass
+
+lucene/core.tests
+  lucene/core.tests/src/test/org/apache/lucene/core/tests/TestRuntimeDependenciesSane.java  [extends (no superclass)]  *** unresolved superclass
+
+lucene/distribution.tests
+  lucene/distribution.tests/src/test/org/apache/lucene/distribution/TestModularLayer.java  [extends AbstractLuceneDistributionTest]
+  lucene/distribution.tests/src/test/org/apache/lucene/distribution/TestScripts.java  [extends AbstractLuceneDistributionTest]
+
+lucene/memory
+  lucene/memory/src/test/org/apache/lucene/index/memory/TestMemoryIndex.java  [extends LuceneTestCaseJupiter]
+  lucene/memory/src/test/org/apache/lucene/index/memory/TestMemoryIndexAgainstDirectory.java  [extends LuceneTestCaseJupiter]
+  lucene/memory/src/test/org/apache/lucene/index/memory/TestSlicedIntBlockPool.java  [extends LuceneTestCaseJupiter]
+
+lucene/monitor
+  lucene/monitor/src/test/org/apache/lucene/monitor/outsidepackage/TestCandidateMatcherVisibility.java  [extends (no superclass)]  *** unresolved superclass
+
+lucene/queryparser
+  lucene/queryparser/src/test/org/apache/lucene/queryparser/complexPhrase/TestComplexPhraseQuery.java  [extends LuceneTestCaseJupiter]
+
+lucene/suggest
+  lucene/suggest/src/test/org/apache/lucene/search/suggest/SuggestRebuildTestUtil.java  [extends (no superclass)]  *** unresolved superclass
+
+lucene/test-framework
+  lucene/test-framework/src/test/org/apache/lucene/tests/util/TestBeforeAfterOverrides.java  [extends WithNestedTests]  *** unresolved superclass
+  lucene/test-framework/src/test/org/apache/lucene/tests/util/TestCodecReported.java  [extends WithNestedTests]  *** unresolved superclass
+  lucene/test-framework/src/test/org/apache/lucene/tests/util/TestExceptionInBeforeClassHooks.java  [extends WithNestedTests]  *** unresolved superclass
+  lucene/test-framework/src/test/org/apache/lucene/tests/util/TestFailIfDirectoryNotClosed.java  [extends WithNestedTests]  *** unresolved superclass
+  lucene/test-framework/src/test/org/apache/lucene/tests/util/TestFailIfUnreferencedFiles.java  [extends WithNestedTests]  *** unresolved superclass
+  lucene/test-framework/src/test/org/apache/lucene/tests/util/TestJUnitRuleOrder.java  [extends WithNestedTests]  *** unresolved superclass
+  lucene/test-framework/src/test/org/apache/lucene/tests/util/TestJvmInfo.java  [extends RandomizedTest]  *** unresolved superclass
+  lucene/test-framework/src/test/org/apache/lucene/tests/util/TestMaxFailuresRule.java  [extends WithNestedTests]  *** unresolved superclass
+  lucene/test-framework/src/test/org/apache/lucene/tests/util/TestReproduceMessage.java  [extends WithNestedTests]  *** unresolved superclass
+  lucene/test-framework/src/test/org/apache/lucene/tests/util/TestReproduceMessageWithRepeated.java  [extends WithNestedTests]  *** unresolved superclass
+  lucene/test-framework/src/test/org/apache/lucene/tests/util/TestSeedFromUncaught.java  [extends WithNestedTests]  *** unresolved superclass
+  lucene/test-framework/src/test/org/apache/lucene/tests/util/TestSetupTeardownChaining.java  [extends WithNestedTests]  *** unresolved superclass
+  lucene/test-framework/src/test/org/apache/lucene/tests/util/TestSysoutsLimits.java  [extends ParentNestedTest]
+  lucene/test-framework/src/test/org/apache/lucene/tests/util/TestSysoutsLimits.java  [extends ParentNestedTest]
+  lucene/test-framework/src/test/org/apache/lucene/tests/util/TestSysoutsLimits.java  [extends ParentNestedTest]
+  lucene/test-framework/src/test/org/apache/lucene/tests/util/TestSysoutsLimits.java  [extends WithNestedTests]  *** unresolved superclass
