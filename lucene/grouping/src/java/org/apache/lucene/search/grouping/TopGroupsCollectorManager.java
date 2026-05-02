@@ -119,10 +119,8 @@ public class TopGroupsCollectorManager<T>
     // Merge results from multiple collectors
     List<TopGroups<T>> shardGroupsList = collectors.stream().map(c -> c.getTopGroups(0)).toList();
 
-    @SuppressWarnings("unchecked")
-    TopGroups<T>[] shardGroups = (TopGroups<T>[]) shardGroupsList.toArray(TopGroups[]::new);
     return TopGroups.merge(
-        shardGroups,
+        shardGroupsList,
         groupSort,
         sortWithinGroup,
         withinGroupOffset,
