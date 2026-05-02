@@ -1,6 +1,6 @@
 ///usr/bin/env jbang "$0" "$@" ; exit $?
 //JAVA 17+
-//DEPS com.github.javaparser:javaparser-core:3.25.10
+//DEPS com.github.javaparser:javaparser-core:3.28.0
 
 import com.github.javaparser.JavaParser;
 import com.github.javaparser.ParserConfiguration;
@@ -44,7 +44,7 @@ public class RemoveRedundantTestAnnotations {
                  .forEach(file -> {
                      try {
                          var result = parser.parse(file);
-                         if (!result.getResult().isPresent()) {
+                         if (!result.isSuccessful()) {
                              System.err.println("# parse error: " + file);
                              return;
                          }

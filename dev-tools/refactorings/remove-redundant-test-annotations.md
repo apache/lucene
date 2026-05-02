@@ -40,11 +40,6 @@ docker run --rm \
 
 ## Known quirks
 
-**Parse warnings for `_` catch parameters** — files using the Java 21 unnamed-variable
-syntax (`catch (IOException _)`) trigger a JavaParser warning under `BLEEDING_EDGE`
-language level. The script uses `getResult().isPresent()` (not `isSuccessful()`) so it
-proceeds with the partial AST, which is complete enough for annotation removal.
-
 **Build-tool sources** — `build-tools/build-infra/**` contains Gradle plugin sources
 that use Groovy-interop annotations; several fail to parse. None of them contain test
 methods, so the failures are harmless.
