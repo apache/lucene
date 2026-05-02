@@ -46,6 +46,7 @@ public final class RunListenerPrintReproduceInfo extends RunListener {
   private boolean suppressReproduceLine;
 
   /** Environment settings for the run. Set by {@link LuceneTestCase}. */
+  @SuppressWarnings("NonFinalStaticField")
   static TestEnvInfo envInfoJunit4;
 
   @Override

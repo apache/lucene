@@ -358,6 +358,7 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
         RuleChain.outerRule(new TestRuleIgnoreTestSuites())
             .around(
                 new TestRuleAdapter() {
+                  @SuppressWarnings("NonFinalStaticField")
                   private static TestFrameworkInfra testFrameworkInfra;
 
                   @Override

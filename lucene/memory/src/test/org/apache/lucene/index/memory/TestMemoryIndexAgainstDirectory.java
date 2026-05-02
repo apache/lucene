@@ -97,7 +97,7 @@ import org.junit.jupiter.api.Test;
  * same results for queries on some randomish indexes.
  */
 public class TestMemoryIndexAgainstDirectory extends LuceneTestCaseJupiter {
-  private static Set<String> queries = new HashSet<>();
+  private static final Set<String> queries = new HashSet<>();
 
   @BeforeAll
   public static void prepare() throws Exception {

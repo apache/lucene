@@ -74,6 +74,7 @@ public class TestLuceneTestCaseJupiter {
       AFTER_ALL,
     }
 
+    @SuppressWarnings("NonFinalStaticField")
     static Map<Pointcut, Executable> pointcuts;
 
     private static void call(Pointcut pointcut) throws Throwable {
@@ -404,6 +405,7 @@ public class TestLuceneTestCaseJupiter {
     }
 
     static class AlterIndexSearcher extends LuceneTestCaseJupiter {
+      @SuppressWarnings("NonFinalStaticField")
       static int expectedValue;
 
       @Test

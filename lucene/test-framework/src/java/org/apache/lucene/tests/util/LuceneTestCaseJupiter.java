@@ -400,6 +400,7 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
     public static final CharSequence TEST_ENV_LEAD = TestEnvInfo.TEST_ENV_LEAD;
 
     // Used for tests only to replace syserrs.
+    @SuppressWarnings("NonFinalStaticField")
     public static PrintStream debugStream;
 
     TestEnvInfo testEnvInfo;
@@ -536,7 +537,7 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
 
   @RegisterExtension
   @Order(2)
-  static ClassLevelCallbackChain classLevelCallbackChain =
+  static final ClassLevelCallbackChain classLevelCallbackChain =
       new ClassLevelCallbackChain(
           Objects.requireNonNull(suiteFailureTracker),
           Objects.requireNonNull(printReproduceInfoExtension));

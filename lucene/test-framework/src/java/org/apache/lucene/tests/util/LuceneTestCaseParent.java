@@ -2832,5 +2832,6 @@ public abstract sealed class LuceneTestCaseParent extends Assert
   //
   // TODO: to remove from here?
   //
+  @SuppressWarnings("NonFinalStaticField")
   static FieldToType fieldToType = new FieldToType();
 }
