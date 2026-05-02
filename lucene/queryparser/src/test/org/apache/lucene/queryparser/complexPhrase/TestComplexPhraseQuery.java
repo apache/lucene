@@ -265,8 +265,8 @@ public class TestComplexPhraseQuery extends LuceneTestCaseJupiter {
 
   @Override
   public void tearDown() throws Exception {
-    IOUtils.close(reader, rd);
     super.tearDown();
+    IOUtils.close(reader, rd);
   }
 
   static class DocData {

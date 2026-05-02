@@ -550,12 +550,22 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
   // infrastructure.
   //
 
-  /// a [BeforeEach] callback. In subclasses, if you override, you must call `super.setUp` too.
+  /// [BeforeEach] isn't inherited in junit5, so call this method explicitly, even if overridden.
   @BeforeEach
+  void callSetUp() throws Exception {
+    setUp();
+  }
+
+  /// a [BeforeEach] callback. In subclasses, if you override, you must call `super.setUp` too.
   public void setUp() throws Exception {}
 
-  /// a [AfterEach] callback. In subclasses, if you override, you must call `super.setUp` too.
+  /// [AfterEach] isn't inherited in junit5, so call this method explicitly, even if overridden.
   @AfterEach
+  public void callTearDown() throws Exception {
+    tearDown();
+  }
+
+  /// a [AfterEach] callback. In subclasses, if you override, you must call `super.setUp` too.
   public void tearDown() throws Exception {}
 
   /**
