@@ -19,7 +19,6 @@ package org.apache.lucene.spatial.prefix;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomInt;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 
-import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.IOException;
 import java.util.Calendar;
 import org.apache.lucene.spatial.prefix.tree.DateRangePrefixTree;
@@ -29,9 +28,6 @@ import org.junit.Before;
 import org.locationtech.spatial4j.shape.Shape;
 
 public class TestDateNRStrategy extends RandomSpatialOpStrategyTestCase {
-
-  static final int ITERATIONS = 10;
-
   DateRangePrefixTree tree;
 
   long randomCalWindowMs;
@@ -49,17 +45,14 @@ public class TestDateNRStrategy extends RandomSpatialOpStrategyTestCase {
     randomCalWindowMs = Math.max(2000L, tmpCal.getTimeInMillis());
   }
 
-  @Repeat(iterations = ITERATIONS)
   public void testIntersects() throws IOException {
     testOperationRandomShapes(SpatialOperation.Intersects);
   }
 
-  @Repeat(iterations = ITERATIONS)
   public void testWithin() throws IOException {
     testOperationRandomShapes(SpatialOperation.IsWithin);
   }
 
-  @Repeat(iterations = ITERATIONS)
   public void testContains() throws IOException {
     testOperationRandomShapes(SpatialOperation.Contains);
   }

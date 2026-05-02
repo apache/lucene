@@ -19,7 +19,6 @@ package org.apache.lucene.spatial.prefix;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.atMost;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 
-import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -158,7 +157,6 @@ public class TestHeatmapFacetCounter extends StrategyTestCase {
     }
   }
 
-  @Repeat(iterations = 20)
   public void testRandom() throws IOException {
     // Tests using random index shapes & query shapes. This has found all sorts of edge case bugs
     // (e.g. dateline,

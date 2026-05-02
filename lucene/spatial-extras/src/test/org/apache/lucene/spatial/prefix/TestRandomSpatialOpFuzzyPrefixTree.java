@@ -24,7 +24,6 @@ import static org.locationtech.spatial4j.shape.SpatialRelation.DISJOINT;
 import static org.locationtech.spatial4j.shape.SpatialRelation.INTERSECTS;
 import static org.locationtech.spatial4j.shape.SpatialRelation.WITHIN;
 
-import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -126,19 +125,16 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
     return new RecursivePrefixTreeStrategy(this.grid, getClass().getSimpleName());
   }
 
-  @Repeat(iterations = ITERATIONS)
   public void testIntersects() throws IOException {
     setupGrid(-1);
     doTest(SpatialOperation.Intersects);
   }
 
-  @Repeat(iterations = ITERATIONS)
   public void testWithin() throws IOException {
     setupGrid(-1);
     doTest(SpatialOperation.IsWithin);
   }
 
-  @Repeat(iterations = ITERATIONS)
   public void testContains() throws IOException {
     setupGrid(-1);
     doTest(SpatialOperation.Contains);

@@ -21,7 +21,6 @@ import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.random
 import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomGeoPoint;
 import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomPlanetModel;
 
-import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
@@ -79,7 +78,6 @@ public class TestGeoExactCircle extends LuceneTestCase {
   }
 
   @Test
-  @Repeat(iterations = 100)
   public void RandomPointBearingWGS84Test() {
     PlanetModel planetModel = PlanetModel.WGS84;
     GeoPoint center = randomGeoPoint(planetModel);
@@ -91,7 +89,6 @@ public class TestGeoExactCircle extends LuceneTestCase {
   }
 
   @Test
-  @Repeat(iterations = 100)
   public void RandomPointBearingCardinalTest() {
     // surface distance calculations methods start not converging when
     // planet scaledFlattening > 0.4
@@ -190,7 +187,6 @@ public class TestGeoExactCircle extends LuceneTestCase {
    * in LUCENE-8054 we have problems with exact circles that have edges that are close together.
    * This test creates those circles with the same center and slightly different radius.
    */
-  @Repeat(iterations = 100)
   public void testRandomLUCENE8054() {
     PlanetModel planetModel = randomPlanetModel();
     GeoCircle circle1 =

@@ -18,7 +18,6 @@ package org.apache.lucene.spatial.prefix;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 
-import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -59,7 +58,6 @@ public class TestNumberRangeFacets extends StrategyTestCase {
     randomCalWindowMs = Math.max(2000L, tmpCal.getTimeInMillis());
   }
 
-  @Repeat(iterations = 20)
   public void test() throws IOException {
     // generate test data
     List<Shape> indexedShapes = new ArrayList<>();

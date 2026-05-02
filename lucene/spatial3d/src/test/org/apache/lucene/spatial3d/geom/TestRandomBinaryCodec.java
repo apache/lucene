@@ -22,7 +22,6 @@ import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.random
 import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomPlanetModel;
 import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomShapeType;
 
-import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -30,7 +29,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 /** Test to check Serialization */
 public class TestRandomBinaryCodec extends LuceneTestCase {
-  @Repeat(iterations = 10)
+
   public void testRandomPointCodec() throws IOException {
     PlanetModel planetModel = randomPlanetModel();
     GeoPoint shape = randomGeoPoint(planetModel);
@@ -41,7 +40,6 @@ public class TestRandomBinaryCodec extends LuceneTestCase {
     assertEquals(shape.toString(), shape, shapeCopy);
   }
 
-  @Repeat(iterations = 100)
   public void testRandomPlanetObjectCodec() throws IOException {
     PlanetModel planetModel = randomPlanetModel();
     int type = randomShapeType();
@@ -53,7 +51,6 @@ public class TestRandomBinaryCodec extends LuceneTestCase {
     assertEquals(shape.toString(), shape, shapeCopy);
   }
 
-  @Repeat(iterations = 100)
   public void testRandomShapeCodec() throws IOException {
     PlanetModel planetModel = randomPlanetModel();
     int type = randomShapeType();

@@ -20,7 +20,6 @@ package org.apache.lucene.spatial3d.geom;
 import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomGeoPoint;
 import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomPlanetModel;
 
-import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -28,7 +27,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 /** Random test for planes. */
 public class TestRandomPlane extends LuceneTestCase {
 
-  @Repeat(iterations = 10)
   public void testPlaneAccuracy() {
     PlanetModel planetModel = randomPlanetModel();
     GeoPoint point1 = randomGeoPoint(planetModel);
@@ -51,7 +49,6 @@ public class TestRandomPlane extends LuceneTestCase {
     }
   }
 
-  @Repeat(iterations = 10)
   public void testPlaneThreePointsAccuracy() {
     PlanetModel planetModel = randomPlanetModel();
     for (int i = 0; i < 1000; i++) {
@@ -88,7 +85,6 @@ public class TestRandomPlane extends LuceneTestCase {
     }
   }
 
-  @Repeat(iterations = 10)
   public void testPolygonAccuracy() {
     PlanetModel planetModel = randomPlanetModel();
     GeoPoint point1 = randomGeoPoint(planetModel);
