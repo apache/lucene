@@ -24,7 +24,6 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.junit.Test;
 
 public class TestCodepointCountFilter extends BaseTokenStreamTestCase {
   public void testFilterWithPosIncr() throws Exception {
@@ -70,7 +69,6 @@ public class TestCodepointCountFilter extends BaseTokenStreamTestCase {
   }
 
   /** checking the validity of constructor arguments */
-  @Test
   public void testIllegalArguments() throws Exception {
     expectThrows(
         IllegalArgumentException.class,

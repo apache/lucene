@@ -23,7 +23,6 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.TestUtil;
-import org.junit.Test;
 
 /** Test the truncate token filter. */
 public class TestTruncateTokenFilter extends BaseTokenStreamTestCase {
@@ -124,7 +123,6 @@ public class TestTruncateTokenFilter extends BaseTokenStreamTestCase {
     checkRandomData(rnd, a, 20 * RANDOM_MULTIPLIER, truncateLength * 2);
   }
 
-  @Test
   public void testLegacyNonPositiveLength() throws Exception {
     expectThrows(
         IllegalArgumentException.class,
@@ -134,7 +132,6 @@ public class TestTruncateTokenFilter extends BaseTokenStreamTestCase {
         });
   }
 
-  @Test
   public void testNonPositiveLength() throws Exception {
     expectThrows(
         IllegalArgumentException.class,

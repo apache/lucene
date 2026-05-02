@@ -31,7 +31,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.BytesRef;
-import org.junit.Test;
 
 public class TestDocValuesAdapter extends DocumentsTestBase {
 
@@ -58,7 +57,6 @@ public class TestDocValuesAdapter extends DocumentsTestBase {
     dir.close();
   }
 
-  @Test
   public void testGetDocValues_binary() throws Exception {
     DocValuesAdapter adapterImpl = new DocValuesAdapter(reader);
     DocValues values =
@@ -68,7 +66,6 @@ public class TestDocValuesAdapter extends DocumentsTestBase {
     assertEquals(Collections.emptyList(), values.getNumericValues());
   }
 
-  @Test
   public void testGetDocValues_sorted() throws Exception {
     DocValuesAdapter adapterImpl = new DocValuesAdapter(reader);
     DocValues values =
@@ -78,7 +75,6 @@ public class TestDocValuesAdapter extends DocumentsTestBase {
     assertEquals(Collections.emptyList(), values.getNumericValues());
   }
 
-  @Test
   public void testGetDocValues_sorted_set() throws Exception {
     DocValuesAdapter adapterImpl = new DocValuesAdapter(reader);
     DocValues values =
@@ -89,7 +85,6 @@ public class TestDocValuesAdapter extends DocumentsTestBase {
     assertEquals(Collections.emptyList(), values.getNumericValues());
   }
 
-  @Test
   public void testGetDocValues_numeric() throws Exception {
     DocValuesAdapter adapterImpl = new DocValuesAdapter(reader);
     DocValues values =
@@ -99,7 +94,6 @@ public class TestDocValuesAdapter extends DocumentsTestBase {
     assertEquals(42L, values.getNumericValues().get(0).longValue());
   }
 
-  @Test
   public void testGetDocValues_sorted_numeric() throws Exception {
     DocValuesAdapter adapterImpl = new DocValuesAdapter(reader);
     DocValues values =
@@ -110,7 +104,6 @@ public class TestDocValuesAdapter extends DocumentsTestBase {
     assertEquals(22L, values.getNumericValues().get(1).longValue());
   }
 
-  @Test
   public void testGetDocValues_notAvailable() throws Exception {
     DocValuesAdapter adapterImpl = new DocValuesAdapter(reader);
     assertFalse(adapterImpl.getDocValues(0, "no_dv").isPresent());

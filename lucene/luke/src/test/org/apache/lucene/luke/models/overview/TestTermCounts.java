@@ -20,17 +20,14 @@ package org.apache.lucene.luke.models.overview;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Map;
-import org.junit.Test;
 
 public class TestTermCounts extends OverviewTestBase {
 
-  @Test
   public void testNumTerms() throws Exception {
     TermCounts termCounts = new TermCounts(reader);
     assertEquals(9, termCounts.numTerms());
   }
 
-  @Test
   @SuppressWarnings("unchecked")
   public void testSortedTermCounts_count_asc() throws Exception {
     TermCounts termCounts = new TermCounts(reader);
@@ -42,7 +39,6 @@ public class TestTermCounts extends OverviewTestBase {
     assertEquals(6, (long) countsMap.get("f2"));
   }
 
-  @Test
   @SuppressWarnings("unchecked")
   public void testSortedTermCounts_count_desc() throws Exception {
     TermCounts termCounts = new TermCounts(reader);
@@ -54,7 +50,6 @@ public class TestTermCounts extends OverviewTestBase {
     assertEquals(6, (long) countsMap.get("f2"));
   }
 
-  @Test
   @SuppressWarnings("unchecked")
   public void testSortedTermCounts_name_asc() throws Exception {
     TermCounts termCounts = new TermCounts(reader);
@@ -66,7 +61,6 @@ public class TestTermCounts extends OverviewTestBase {
     assertEquals(6, (long) countsMap.get("f2"));
   }
 
-  @Test
   @SuppressWarnings("unchecked")
   public void testSortedTermCounts_name_desc() throws Exception {
     TermCounts termCounts = new TermCounts(reader);

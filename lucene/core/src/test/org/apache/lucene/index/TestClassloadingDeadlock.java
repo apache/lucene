@@ -46,7 +46,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.SuppressForbidden;
 import org.junit.Assert;
-import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /* WARNING: This test does *not* extend LuceneTestCase to prevent static class
@@ -56,7 +55,6 @@ import org.junit.runner.RunWith;
 public class TestClassloadingDeadlock extends Assert {
   private static final int MAX_TIME_SECONDS = 30;
 
-  @Test
   @SuppressForbidden(reason = "Uses Path.toFile because ProcessBuilder requires it.")
   public void testDeadlock() throws Exception {
     // pick random codec names for stress test in separate process:

@@ -27,7 +27,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.Version;
-import org.junit.Test;
 
 public class TestOneMergeWrappingMergePolicy extends LuceneTestCase {
 
@@ -80,7 +79,6 @@ public class TestOneMergeWrappingMergePolicy extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testSegmentsAreWrapped() throws IOException {
     try (final Directory dir = newDirectory()) {
       // first create random merge specs
