@@ -45,6 +45,7 @@ public class TopGroupsCollectorManager<T>
    * @param searchGroups the search groups from the first pass
    * @param groupSort the sort to use for groups
    * @param sortWithinGroup the sort to use within each group
+   * @param withinGroupOffset the offset within each group to start collecting documents
    * @param maxDocsPerGroup the maximum number of documents per group
    * @param getMaxScores whether to compute max scores
    */
@@ -74,6 +75,7 @@ public class TopGroupsCollectorManager<T>
    * @param searchGroups the search groups from the first pass
    * @param groupSort the sort to use for groups
    * @param sortWithinGroup the sort to use within each group
+   * @param withinGroupOffset the offset within each group to start collecting documents
    * @param maxDocsPerGroup the maximum number of documents per group
    * @param getMaxScores whether to compute max scores
    * @param scoreMergeMode the mode for merging scores across shards
