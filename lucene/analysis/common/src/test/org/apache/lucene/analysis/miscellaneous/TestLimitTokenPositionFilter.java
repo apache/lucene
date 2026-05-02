@@ -120,8 +120,12 @@ public class TestLimitTokenPositionFilter extends BaseTokenStreamTestCase {
     }
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testIllegalArguments() throws Exception {
-    new LimitTokenPositionFilter(whitespaceMockTokenizer("one two three four five"), 0);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new LimitTokenPositionFilter(whitespaceMockTokenizer("one two three four five"), 0);
+        });
   }
 }

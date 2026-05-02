@@ -31,9 +31,13 @@ public class TestDocumentBatch extends LuceneTestCase {
 
   public static final Analyzer ANALYZER = new StandardAnalyzer();
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testDocumentBatchThrowsIllegalArgumentExceptionUponZeroDocument() {
-    DocumentBatch.of(ANALYZER);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          DocumentBatch.of(ANALYZER);
+        });
   }
 
   public void testSingleDocumentAndArrayOfOneDocumentResultInSameDocumentBatch()

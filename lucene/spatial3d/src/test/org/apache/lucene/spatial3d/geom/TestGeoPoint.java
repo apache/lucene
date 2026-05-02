@@ -118,8 +118,12 @@ public class TestGeoPoint extends LuceneTestCase {
     }
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testBadLatLon() {
-    new GeoPoint(PlanetModel.SPHERE, 50.0, 32.2);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new GeoPoint(PlanetModel.SPHERE, 50.0, 32.2);
+        });
   }
 }
