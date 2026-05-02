@@ -332,6 +332,7 @@ public abstract sealed class LuceneTestCaseParent extends Assert
   // to this class.
   // -----------------------------------------------------------------
 
+  /** Junit4/Junit5-dependent implementations. */
   protected interface TestFrameworkInfra {
     Random threadRandom();
 

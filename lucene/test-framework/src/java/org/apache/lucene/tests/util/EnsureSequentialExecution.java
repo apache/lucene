@@ -20,6 +20,7 @@ import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
+/** An extension to ensure we're running in single-thread (same-thread) mode. */
 public class EnsureSequentialExecution implements BeforeAllCallback {
   @Override
   public void beforeAll(ExtensionContext context) throws Exception {

@@ -39,6 +39,7 @@ public @interface TagState {
 
   String sysProperty();
 
+  /** Execution condition to ignore a tagged test depending on the tag's system property state. */
   final class Condition implements ExecutionCondition {
     @Override
     public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {

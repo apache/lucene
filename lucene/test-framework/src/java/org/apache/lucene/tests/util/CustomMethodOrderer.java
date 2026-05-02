@@ -27,6 +27,7 @@ import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.MethodOrdererContext;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 
+/** A {@link MethodOrderer} that provides random-seed dependent ordering. */
 public final class CustomMethodOrderer implements MethodOrderer {
   @Override
   public void orderMethods(MethodOrdererContext context) {
