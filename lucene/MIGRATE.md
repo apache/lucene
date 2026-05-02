@@ -31,19 +31,19 @@ support.
 
 #### Key changes
 
-* All tests must be Jupiter tests, typically this means
+- All tests must be Jupiter tests, typically this means
 methods must be annotated with `@Test`. Method prefix
 `test*` is not sufficient. Methods that are named `test*` but are not tests
 will cause validation errors.
-* You can use parameterized tests, dynamic tests, etc. All these are supported.
-* You *must not* call the static `random()` method on the parent
+- You can use parameterized tests, dynamic tests, etc. All these are supported.
+- You *must not* call the static `random()` method on the parent
 class, even though it is there. Add a `Random` parameter to your test methods
 or callbacks - it will
 be automatically injected by the test framework. See the `memory`
 module tests for examples.
-* Use `@BeforeEach`, `@AfterEach` and other junit5-specific callback
+- Use `@BeforeEach`, `@AfterEach` and other junit5-specific callback
 annotations instead of `setUp` and `tearDown` methods.
-* Static utility methods have been pulled up to a parent class
+- Static utility methods have been pulled up to a parent class
 called `LuceneTestCaseParent` but you should reference them either
 without an explicit type or via the type of the parent class
 for your test framework. The parent class may be removed in the future.
@@ -337,7 +337,7 @@ Support for the optional complement syntax (`~`) that was deprecated in Lucene 1
 has been removed. The `DEPRECATED_COMPLEMENT` flag and `REGEXP_DEPRECATED_COMPLEMENT`
 enum value are no longer available.
 
-Users should migrate to using _complement bracket expressions_ (`[^...]`) instead.
+Users should migrate to using *complement bracket expressions* (`[^...]`) instead.
 For example, `[^fo]` matches any character that is not an `f` or `o`.
 
 ### DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery removed in favor of FieldExistsQuery (LUCENE-10436)
