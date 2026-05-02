@@ -31,7 +31,6 @@ import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockTokenizer;
-import org.junit.Test;
 
 /** Tests {@link CapitalizationFilter} */
 public class TestCapitalizationFilter extends BaseTokenStreamTestCase {
@@ -295,7 +294,6 @@ public class TestCapitalizationFilter extends BaseTokenStreamTestCase {
   }
 
   /** checking the validity of constructor arguments */
-  @Test
   public void testIllegalArguments() throws Exception {
     expectThrows(
         IllegalArgumentException.class,
@@ -312,7 +310,6 @@ public class TestCapitalizationFilter extends BaseTokenStreamTestCase {
         });
   }
 
-  @Test
   public void testIllegalArguments1() throws Exception {
     expectThrows(
         IllegalArgumentException.class,
@@ -329,7 +326,6 @@ public class TestCapitalizationFilter extends BaseTokenStreamTestCase {
         });
   }
 
-  @Test
   public void testIllegalArguments2() throws Exception {
     expectThrows(
         IllegalArgumentException.class,

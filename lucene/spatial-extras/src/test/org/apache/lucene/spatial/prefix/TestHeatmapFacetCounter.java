@@ -30,7 +30,6 @@ import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTree;
 import org.apache.lucene.util.Bits;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.context.SpatialContextFactory;
 import org.locationtech.spatial4j.distance.DistanceUtils;
@@ -70,7 +69,6 @@ public class TestHeatmapFacetCounter extends StrategyTestCase {
         "Validated " + cellsValidated + " cells, " + cellValidatedNonZero + " non-zero");
   }
 
-  @Test
   public void testStatic() throws IOException {
     // Some specific tests (static, not random).
     adoc("0", shapeFactory.rect(179.8, -170, -90, -80)); // barely crosses equator
@@ -86,7 +84,6 @@ public class TestHeatmapFacetCounter extends StrategyTestCase {
     // add specific tests if we find a bug.
   }
 
-  @Test
   public void testLucene7291Dateline() throws IOException {
     grid = new QuadPrefixTree(ctx, 2); // only 2, and we wind up with some big leaf cells
     strategy = new RecursivePrefixTreeStrategy(grid, getTestClass().getSimpleName());
@@ -95,7 +92,6 @@ public class TestHeatmapFacetCounter extends StrategyTestCase {
     validateHeatmapResultLoop(shapeFactory.rect(179, -179, 62, 63), 2, 100); // HM crosses dateline
   }
 
-  @Test
   public void testQueryCircle() throws IOException {
     // overwrite setUp; non-geo bounds is more straight-forward; otherwise 88,88 would actually be
     // practically north,
@@ -162,7 +158,6 @@ public class TestHeatmapFacetCounter extends StrategyTestCase {
     }
   }
 
-  @Test
   @Repeat(iterations = 20)
   public void testRandom() throws IOException {
     // Tests using random index shapes & query shapes. This has found all sorts of edge case bugs

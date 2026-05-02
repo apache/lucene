@@ -24,12 +24,10 @@ import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 /** Random test for planes. */
 public class TestRandomPlane extends LuceneTestCase {
 
-  @Test
   @Repeat(iterations = 10)
   public void testPlaneAccuracy() {
     PlanetModel planetModel = randomPlanetModel();
@@ -53,7 +51,6 @@ public class TestRandomPlane extends LuceneTestCase {
     }
   }
 
-  @Test
   @Repeat(iterations = 10)
   public void testPlaneThreePointsAccuracy() {
     PlanetModel planetModel = randomPlanetModel();
@@ -91,7 +88,6 @@ public class TestRandomPlane extends LuceneTestCase {
     }
   }
 
-  @Test
   @Repeat(iterations = 10)
   public void testPolygonAccuracy() {
     PlanetModel planetModel = randomPlanetModel();

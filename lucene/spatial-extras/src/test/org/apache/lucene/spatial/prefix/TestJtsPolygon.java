@@ -31,7 +31,6 @@ import org.apache.lucene.spatial.prefix.tree.QuadPrefixTree;
 import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTree;
 import org.apache.lucene.spatial.query.SpatialArgs;
 import org.apache.lucene.spatial.query.SpatialOperation;
-import org.junit.Test;
 import org.locationtech.spatial4j.context.SpatialContextFactory;
 import org.locationtech.spatial4j.shape.Point;
 import org.locationtech.spatial4j.shape.Shape;
@@ -58,7 +57,6 @@ public class TestJtsPolygon extends StrategyTestCase {
         .setDistErrPct(LUCENE_4464_distErrPct); // 1% radius (small!)
   }
 
-  @Test
   /* LUCENE-4464 */
   public void testCloseButNoMatch() throws Exception {
     getAddAndVerifyIndexedDocuments("LUCENE-4464.txt");
@@ -86,7 +84,6 @@ public class TestJtsPolygon extends StrategyTestCase {
    * A PrefixTree pruning optimization gone bad. See <a
    * href="https://issues.apache.org/jira/browse/LUCENE-4770">LUCENE-4770</a>.
    */
-  @Test
   public void testBadPrefixTreePrune() throws Exception {
 
     Shape area =

@@ -27,11 +27,9 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 /** Test to check Serialization */
 public class TestRandomBinaryCodec extends LuceneTestCase {
-  @Test
   @Repeat(iterations = 10)
   public void testRandomPointCodec() throws IOException {
     PlanetModel planetModel = randomPlanetModel();
@@ -43,7 +41,6 @@ public class TestRandomBinaryCodec extends LuceneTestCase {
     assertEquals(shape.toString(), shape, shapeCopy);
   }
 
-  @Test
   @Repeat(iterations = 100)
   public void testRandomPlanetObjectCodec() throws IOException {
     PlanetModel planetModel = randomPlanetModel();
@@ -56,7 +53,6 @@ public class TestRandomBinaryCodec extends LuceneTestCase {
     assertEquals(shape.toString(), shape, shapeCopy);
   }
 
-  @Test
   @Repeat(iterations = 100)
   public void testRandomShapeCodec() throws IOException {
     PlanetModel planetModel = randomPlanetModel();
