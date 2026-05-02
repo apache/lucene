@@ -17,7 +17,24 @@
 
 package org.apache.lucene.tests.util;
 
-import static org.apache.lucene.tests.util.LuceneTestCaseParent.*;
+import static org.apache.lucene.tests.util.LuceneTestCaseParent.DEFAULT_LINE_DOCS_FILE;
+import static org.apache.lucene.tests.util.LuceneTestCaseParent.JENKINS_LARGE_LINE_DOCS_FILE;
+import static org.apache.lucene.tests.util.LuceneTestCaseParent.RANDOM_MULTIPLIER;
+import static org.apache.lucene.tests.util.LuceneTestCaseParent.SYSPROP_AWAITSFIX;
+import static org.apache.lucene.tests.util.LuceneTestCaseParent.SYSPROP_MONSTER;
+import static org.apache.lucene.tests.util.LuceneTestCaseParent.SYSPROP_NIGHTLY;
+import static org.apache.lucene.tests.util.LuceneTestCaseParent.SYSPROP_WEEKLY;
+import static org.apache.lucene.tests.util.LuceneTestCaseParent.TEST_ASSERTS_ENABLED;
+import static org.apache.lucene.tests.util.LuceneTestCaseParent.TEST_AWAITSFIX;
+import static org.apache.lucene.tests.util.LuceneTestCaseParent.TEST_CODEC;
+import static org.apache.lucene.tests.util.LuceneTestCaseParent.TEST_DIRECTORY;
+import static org.apache.lucene.tests.util.LuceneTestCaseParent.TEST_DOCVALUESFORMAT;
+import static org.apache.lucene.tests.util.LuceneTestCaseParent.TEST_LINE_DOCS_FILE;
+import static org.apache.lucene.tests.util.LuceneTestCaseParent.TEST_MONSTER;
+import static org.apache.lucene.tests.util.LuceneTestCaseParent.TEST_NIGHTLY;
+import static org.apache.lucene.tests.util.LuceneTestCaseParent.TEST_POSTINGSFORMAT;
+import static org.apache.lucene.tests.util.LuceneTestCaseParent.TEST_WEEKLY;
+import static org.apache.lucene.tests.util.LuceneTestCaseParent.defaultRandomMultiplier;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
