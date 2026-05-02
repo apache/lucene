@@ -38,8 +38,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockSynonymAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCaseJupiter;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
+import org.apache.lucene.util.IOUtils;
 import org.junit.jupiter.api.Test;
 
 public class TestComplexPhraseQuery extends LuceneTestCaseJupiter {
@@ -245,8 +244,10 @@ public class TestComplexPhraseQuery extends LuceneTestCaseJupiter {
     assertEquals(expected, actual);
   }
 
-  @BeforeEach
-  void setUp() throws Exception {
+  @Override
+  public void setUp() throws Exception {
+    super.setUp();
+
     analyzer = new MockAnalyzer(random());
     rd = newDirectory();
     IndexWriter w = new IndexWriter(rd, newIndexWriterConfig(analyzer));
@@ -262,10 +263,10 @@ public class TestComplexPhraseQuery extends LuceneTestCaseJupiter {
     searcher = newSearcher(reader);
   }
 
-  @AfterEach
-  void tearDown() throws Exception {
-    reader.close();
-    rd.close();
+  @Override
+  public void tearDown() throws Exception {
+    IOUtils.close(reader, rd);
+    super.tearDown();
   }
 
   static class DocData {

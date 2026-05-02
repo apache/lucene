@@ -35,6 +35,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.lucene.util.IOUtils;
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
@@ -547,6 +549,14 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
   // Deprecated or removed methods (LuceneTestCase) and other backward-compatibility
   // infrastructure.
   //
+
+  /// a [BeforeEach] callback. In subclasses, if you override, you must call `super.setUp` too.
+  @BeforeEach
+  public void setUp() throws Exception {}
+
+  /// a [AfterEach] callback. In subclasses, if you override, you must call `super.setUp` too.
+  @AfterEach
+  public void tearDown() throws Exception {}
 
   /**
    * Use explicit, injected {@link Random} or {@code Supplier<Random>} parameters on junit jupiter
