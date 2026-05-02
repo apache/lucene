@@ -70,8 +70,12 @@ public class TestCodepointCountFilter extends BaseTokenStreamTestCase {
   }
 
   /** checking the validity of constructor arguments */
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testIllegalArguments() throws Exception {
-    new CodepointCountFilter(whitespaceMockTokenizer("accept only valid arguments"), 4, 1);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new CodepointCountFilter(whitespaceMockTokenizer("accept only valid arguments"), 4, 1);
+        });
   }
 }

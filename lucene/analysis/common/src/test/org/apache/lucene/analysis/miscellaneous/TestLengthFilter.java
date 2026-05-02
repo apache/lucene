@@ -47,8 +47,12 @@ public class TestLengthFilter extends BaseTokenStreamTestCase {
   }
 
   /** checking the validity of constructor arguments */
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testIllegalArguments() throws Exception {
-    new LengthFilter(whitespaceMockTokenizer("accept only valid arguments"), -4, -1);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new LengthFilter(whitespaceMockTokenizer("accept only valid arguments"), -4, -1);
+        });
   }
 }

@@ -124,15 +124,23 @@ public class TestTruncateTokenFilter extends BaseTokenStreamTestCase {
     checkRandomData(rnd, a, 20 * RANDOM_MULTIPLIER, truncateLength * 2);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testLegacyNonPositiveLength() throws Exception {
-    TruncateTokenFilter.truncateAfterChars(
-        whitespaceMockTokenizer("param must be a positive number"), -48);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          TruncateTokenFilter.truncateAfterChars(
+              whitespaceMockTokenizer("param must be a positive number"), -48);
+        });
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testNonPositiveLength() throws Exception {
-    TruncateTokenFilter.truncateAfterCodePoints(
-        whitespaceMockTokenizer("param must be a positive number"), -48);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          TruncateTokenFilter.truncateAfterCodePoints(
+              whitespaceMockTokenizer("param must be a positive number"), -48);
+        });
   }
 }

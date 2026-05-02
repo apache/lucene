@@ -32,8 +32,12 @@ public class TestLimitTokenCountFilter extends BaseTokenStreamTestCase {
     }
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testIllegalArguments() throws Exception {
-    new LimitTokenCountFilter(whitespaceMockTokenizer("A1 B2 C3 D4 E5 F6"), -1);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new LimitTokenCountFilter(whitespaceMockTokenizer("A1 B2 C3 D4 E5 F6"), -1);
+        });
   }
 }
