@@ -49,6 +49,7 @@ import org.apache.lucene.internal.hppc.FloatArrayList;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
@@ -126,7 +127,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       FlatFieldVectorsWriter<float[]> storage =
           enableCentering
               ? (FlatFieldVectorsWriter<float[]>) this.rawVectorDelegate.addField(fieldInfo)
-              : new InMemoryFloatFieldWriter();
+              : new InMemoryFloatFieldWriter(fieldInfo);
       FieldWriter fieldWriter = new FieldWriter(fieldInfo, storage, enableCentering);
       fields.add(fieldWriter);
       return fieldWriter;
@@ -712,19 +713,24 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
    */
   private static class InMemoryFloatFieldWriter extends FlatFieldVectorsWriter<float[]> {
     private static final long SHALLOW_SIZE = shallowSizeOfInstance(InMemoryFloatFieldWriter.class);
+    private final int dim;
     private final List<float[]> vectors = new ArrayList<>();
     private final DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     private boolean finished;
 
+    public InMemoryFloatFieldWriter(FieldInfo fieldInfo) {
+      dim = fieldInfo.getVectorDimension();
+    }
+
     @Override
     public void addValue(int docID, float[] vectorValue) throws IOException {
-      vectors.add(Arrays.copyOf(vectorValue, vectorValue.length));
+      vectors.add(copyValue(vectorValue));
       docsWithField.add(docID);
     }
 
     @Override
     public float[] copyValue(float[] vectorValue) {
-      return Arrays.copyOf(vectorValue, vectorValue.length);
+      return ArrayUtil.copyOfSubArray(vectorValue, 0, dim);
     }
 
     @Override
