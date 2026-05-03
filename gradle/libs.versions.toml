@@ -51,7 +51,7 @@ opennlp = "2.5.8"
 procfork = "1.0.6"
 # unit tests
 randomizedtesting = "2.8.4"
-randomizedtesting-jupiter = "0.2.0"
+randomizedtesting-jupiter = "0.3.0"
 # spatial-extras/ support
 s2-geometry = "1.0.0"
 # spatial-extras/ support
