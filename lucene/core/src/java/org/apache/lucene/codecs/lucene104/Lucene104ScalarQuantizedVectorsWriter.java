@@ -704,33 +704,38 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
   }
 
-  /**
-   * In-memory storage for float vectors when centering is disabled. Holds vectors buffered during
-   * indexing so they can be quantized at flush time, without writing any raw float data to disk.
-   *
-   * <p>TODO: replace with immediate per-vector quantization in addValue() to avoid buffering raw
-   * floats in memory altogether.
-   */
   private static class InMemoryFloatFieldWriter extends FlatFieldVectorsWriter<float[]> {
     private static final long SHALLOW_SIZE = shallowSizeOfInstance(InMemoryFloatFieldWriter.class);
-    private final int dim;
+    private final FieldInfo fieldInfo;
     private final List<float[]> vectors = new ArrayList<>();
     private final DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     private boolean finished;
+    private int lastDocID = -1;
 
     public InMemoryFloatFieldWriter(FieldInfo fieldInfo) {
-      dim = fieldInfo.getVectorDimension();
+      this.fieldInfo = fieldInfo;
     }
 
     @Override
     public void addValue(int docID, float[] vectorValue) throws IOException {
+      if (finished) {
+        throw new IllegalStateException("already finished, cannot add more values");
+      }
+      if (docID == lastDocID) {
+        throw new IllegalArgumentException(
+            "VectorValuesField \""
+                + fieldInfo.name
+                + "\" appears more than once in this document (only one value is allowed per field)");
+      }
+      assert docID > lastDocID;
       vectors.add(copyValue(vectorValue));
       docsWithField.add(docID);
+      lastDocID = docID;
     }
 
     @Override
     public float[] copyValue(float[] vectorValue) {
-      return ArrayUtil.copyOfSubArray(vectorValue, 0, dim);
+      return ArrayUtil.copyOfSubArray(vectorValue, 0, fieldInfo.getVectorDimension());
     }
 
     @Override
@@ -756,10 +761,14 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     @Override
     public long ramBytesUsed() {
       long size = SHALLOW_SIZE;
-      for (float[] v : vectors) {
-        size += RamUsageEstimator.sizeOf(v);
+      if (vectors.isEmpty()) {
+        return size;
       }
-      return size;
+      return size
+          + docsWithField.ramBytesUsed()
+          + (long) vectors.size()
+              * (RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
+          + (long) vectors.size() * fieldInfo.getVectorDimension() * Float.BYTES;
     }
   }
 
