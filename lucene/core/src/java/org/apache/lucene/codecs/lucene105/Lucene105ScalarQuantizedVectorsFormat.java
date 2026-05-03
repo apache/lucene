@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene104;
+package org.apache.lucene.codecs.lucene105;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
@@ -92,14 +92,14 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  *
  * @lucene.experimental
  */
-public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
+public class Lucene105ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   public static final String QUANTIZED_VECTOR_COMPONENT = "QVEC";
-  public static final String NAME = "Lucene104ScalarQuantizedVectorsFormat";
+  public static final String NAME = "Lucene105ScalarQuantizedVectorsFormat";
 
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
-  static final String META_CODEC_NAME = "Lucene104ScalarQuantizedVectorsFormatMeta";
-  static final String VECTOR_DATA_CODEC_NAME = "Lucene104ScalarQuantizedVectorsFormatData";
+  static final String META_CODEC_NAME = "Lucene105ScalarQuantizedVectorsFormatMeta";
+  static final String VECTOR_DATA_CODEC_NAME = "Lucene105ScalarQuantizedVectorsFormatData";
   static final String META_EXTENSION = "vemq";
   static final String VECTOR_DATA_EXTENSION = "veq";
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
@@ -107,31 +107,44 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   private static final FlatVectorsFormat rawVectorFormat =
       new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
-  private static final Lucene104ScalarQuantizedVectorScorer scorer =
-      new Lucene104ScalarQuantizedVectorScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
+  private static final Lucene105ScalarQuantizedVectorScorer scorer =
+      new Lucene105ScalarQuantizedVectorScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   private final ScalarEncoding encoding;
+  private final boolean enableCentering;
 
-  /** Creates a new instance with UNSIGNED_BYTE encoding. */
-  public Lucene104ScalarQuantizedVectorsFormat() {
+  /** Creates a new instance with UNSIGNED_BYTE encoding and centering enabled. */
+  public Lucene105ScalarQuantizedVectorsFormat() {
     this(ScalarEncoding.UNSIGNED_BYTE);
   }
 
-  /** Creates a new instance with the chosen quantization encoding. */
-  public Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding encoding) {
+  /** Creates a new instance with the chosen quantization encoding and centering enabled. */
+  public Lucene105ScalarQuantizedVectorsFormat(ScalarEncoding encoding) {
+    this(encoding, true);
+  }
+
+  /**
+   * Creates a new instance with the chosen quantization encoding and centering setting.
+   *
+   * <p>When {@code enableCentering} is {@code false} (data-blind mode), no centroid is computed and
+   * no raw float vectors are written. This reduces storage costs by 4x or more but reduces
+   * quantization accuracy, particularly at lower bit rates.
+   */
+  public Lucene105ScalarQuantizedVectorsFormat(ScalarEncoding encoding, boolean enableCentering) {
     super(NAME);
     this.encoding = encoding;
+    this.enableCentering = enableCentering;
   }
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene104ScalarQuantizedVectorsWriter(
-        state, encoding, rawVectorFormat.fieldsWriter(state), scorer);
+    return new Lucene105ScalarQuantizedVectorsWriter(
+        state, encoding, enableCentering, rawVectorFormat.fieldsWriter(state), scorer);
   }
 
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene104ScalarQuantizedVectorsReader(
+    return new Lucene105ScalarQuantizedVectorsReader(
         state, rawVectorFormat.fieldsReader(state), scorer);
   }
 
@@ -142,10 +155,12 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
 
   @Override
   public String toString() {
-    return "Lucene104ScalarQuantizedVectorsFormat(name="
+    return "Lucene105ScalarQuantizedVectorsFormat(name="
         + NAME
         + ", encoding="
         + encoding
+        + ", enableCentering="
+        + enableCentering
         + ", flatVectorScorer="
         + scorer
         + ", rawVectorFormat="

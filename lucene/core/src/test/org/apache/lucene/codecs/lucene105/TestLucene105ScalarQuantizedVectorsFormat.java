@@ -14,10 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene104;
+package org.apache.lucene.codecs.lucene105;
 
 import static java.lang.String.format;
-import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene105.Lucene105ScalarQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
@@ -38,6 +38,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.SerialMergeScheduler;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
@@ -55,7 +56,7 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 import org.junit.Before;
 
-public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
+public class TestLucene105ScalarQuantizedVectorsFormat extends BaseKnnVectorsFormatTestCase {
 
   private ScalarEncoding encoding;
   private KnnVectorsFormat format;
@@ -65,7 +66,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
   public void setUp() throws Exception {
     var encodingValues = ScalarEncoding.values();
     encoding = encodingValues[random().nextInt(encodingValues.length)];
-    format = new Lucene104ScalarQuantizedVectorsFormat(encoding);
+    format = new Lucene105ScalarQuantizedVectorsFormat(encoding);
     super.setUp();
   }
 
@@ -110,14 +111,15 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
         new FilterCodec("foo", Codec.getDefault()) {
           @Override
           public KnnVectorsFormat knnVectorsFormat() {
-            return new Lucene104ScalarQuantizedVectorsFormat();
+            return new Lucene105ScalarQuantizedVectorsFormat();
           }
         };
     String expectedPattern =
-        "Lucene104ScalarQuantizedVectorsFormat("
-            + "name=Lucene104ScalarQuantizedVectorsFormat, "
+        "Lucene105ScalarQuantizedVectorsFormat("
+            + "name=Lucene105ScalarQuantizedVectorsFormat, "
             + "encoding=UNSIGNED_BYTE, "
-            + "flatVectorScorer=Lucene104ScalarQuantizedVectorScorer(nonQuantizedDelegate=%s()), "
+            + "enableCentering=true, "
+            + "flatVectorScorer=Lucene105ScalarQuantizedVectorScorer(nonQuantizedDelegate=%s()), "
             + "rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s()))";
     var defaultScorer =
         format(Locale.ROOT, expectedPattern, "DefaultFlatVectorScorer", "DefaultFlatVectorScorer");
@@ -167,7 +169,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           FloatVectorValues vectorValues = r.getFloatVectorValues(fieldName);
           assertEquals(vectorValues.size(), numVectors);
           QuantizedByteVectorValues qvectorValues =
-              ((Lucene104ScalarQuantizedVectorsReader.ScalarQuantizedVectorValues) vectorValues)
+              ((Lucene105ScalarQuantizedVectorsReader.ScalarQuantizedVectorValues) vectorValues)
                   .getQuantizedVectorValues();
           float[] centroid = qvectorValues.getCentroid();
           assertEquals(centroid.length, dims);
@@ -177,7 +179,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           byte[] expectedVector = new byte[encoding.getDocPackedLength(scratch.length)];
           if (similarityFunction == VectorSimilarityFunction.COSINE) {
             vectorValues =
-                new Lucene104ScalarQuantizedVectorsWriter.NormalizedFloatVectorValues(vectorValues);
+                new Lucene105ScalarQuantizedVectorsWriter.NormalizedFloatVectorValues(vectorValues);
           }
           KnnVectorValues.DocIndexIterator docIndexIterator = vectorValues.iterator();
 
@@ -252,6 +254,164 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
       out.writeBytes(indexHeader, 0, indexHeader.length);
       // Write footer (no content in between)
       CodecUtil.writeFooter(out);
+    }
+  }
+
+  // ---- data-blind (enableCentering=false) tests ----
+
+  private Codec datablindCodec(ScalarEncoding enc) {
+    return TestUtil.alwaysKnnVectorsFormat(new Lucene105ScalarQuantizedVectorsFormat(enc, false));
+  }
+
+  public void testDataBlindSearchCorrectness() throws Exception {
+    String fieldName = "field";
+    int numVectors = random().nextInt(50, 200);
+    int dims = random().nextInt(4, 65);
+    VectorSimilarityFunction sim = randomSimilarity();
+    ScalarEncoding enc = ScalarEncoding.UNSIGNED_BYTE;
+
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = newIndexWriterConfig();
+      iwc.setCodec(datablindCodec(enc));
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        KnnFloatVectorField field = new KnnFloatVectorField(fieldName, randomVector(dims), sim);
+        for (int i = 0; i < numVectors; i++) {
+          Document doc = new Document();
+          field.setVectorValue(randomVector(dims));
+          doc.add(field);
+          w.addDocument(doc);
+        }
+        w.commit();
+
+        try (IndexReader reader = DirectoryReader.open(w)) {
+          IndexSearcher searcher = new IndexSearcher(reader);
+          int k = Math.min(10, numVectors);
+          TopDocs hits =
+              searcher.search(new KnnFloatVectorQuery(fieldName, randomVector(dims), k), k);
+          assertEquals(k, hits.totalHits.value());
+        }
+      }
+    }
+  }
+
+  public void testDataBlindNoRawFloatVectors() throws Exception {
+    String fieldName = "field";
+    int dims = 8;
+    VectorSimilarityFunction sim = VectorSimilarityFunction.EUCLIDEAN;
+
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = newIndexWriterConfig();
+      iwc.setCodec(datablindCodec(ScalarEncoding.UNSIGNED_BYTE));
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        KnnFloatVectorField field = new KnnFloatVectorField(fieldName, randomVector(dims), sim);
+        for (int i = 0; i < 20; i++) {
+          Document doc = new Document();
+          field.setVectorValue(randomVector(dims));
+          doc.add(field);
+          w.addDocument(doc);
+        }
+        w.commit();
+
+        try (IndexReader reader = DirectoryReader.open(w)) {
+          LeafReader leaf = getOnlyLeafReader(reader);
+          FloatVectorValues fvv = leaf.getFloatVectorValues(fieldName);
+          assertNotNull(fvv);
+          assertEquals(20, fvv.size());
+          // In data-blind mode the float values are reconstructed from quantized data, not backed
+          // by raw stored floats — so the returned type must NOT be a ScalarQuantizedVectorValues.
+          assertFalse(
+              "data-blind mode must not store raw float vectors",
+              fvv instanceof Lucene105ScalarQuantizedVectorsReader.ScalarQuantizedVectorValues);
+        }
+      }
+    }
+  }
+
+  public void testDataBlindMultiSegmentMerge() throws Exception {
+    String fieldName = "field";
+    int dims = 16;
+    VectorSimilarityFunction sim = VectorSimilarityFunction.EUCLIDEAN;
+    int numPerSegment = 30;
+
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = newIndexWriterConfig();
+      iwc.setCodec(datablindCodec(ScalarEncoding.UNSIGNED_BYTE));
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        KnnFloatVectorField field = new KnnFloatVectorField(fieldName, randomVector(dims), sim);
+        // write two separate segments
+        for (int s = 0; s < 2; s++) {
+          for (int i = 0; i < numPerSegment; i++) {
+            Document doc = new Document();
+            field.setVectorValue(randomVector(dims));
+            doc.add(field);
+            w.addDocument(doc);
+          }
+          w.commit();
+        }
+        w.forceMerge(1);
+
+        try (IndexReader reader = DirectoryReader.open(w)) {
+          assertEquals(1, reader.leaves().size());
+          LeafReader leaf = reader.leaves().get(0).reader();
+          FloatVectorValues fvv = leaf.getFloatVectorValues(fieldName);
+          assertEquals(numPerSegment * 2, fvv.size());
+
+          // search should still return results
+          IndexSearcher searcher = new IndexSearcher(reader);
+          int k = 10;
+          TopDocs hits =
+              searcher.search(new KnnFloatVectorQuery(fieldName, randomVector(dims), k), k);
+          assertEquals(k, hits.totalHits.value());
+        }
+      }
+    }
+  }
+
+  public void testDataBlindIncompatibleEncodingMerge() throws Exception {
+    String fieldName = "field";
+    int dims = 16;
+    VectorSimilarityFunction sim = VectorSimilarityFunction.EUCLIDEAN;
+
+    try (Directory dir1 = newDirectory();
+        Directory dir2 = newDirectory()) {
+      // segment 1: UNSIGNED_BYTE, data-blind
+      IndexWriterConfig iwc1 = newIndexWriterConfig();
+      iwc1.setCodec(datablindCodec(ScalarEncoding.UNSIGNED_BYTE));
+      try (IndexWriter w = new IndexWriter(dir1, iwc1)) {
+        KnnFloatVectorField field = new KnnFloatVectorField(fieldName, randomVector(dims), sim);
+        for (int i = 0; i < 10; i++) {
+          Document doc = new Document();
+          field.setVectorValue(randomVector(dims));
+          doc.add(field);
+          w.addDocument(doc);
+        }
+      }
+
+      // segment 2: PACKED_NIBBLE, data-blind
+      IndexWriterConfig iwc2 = newIndexWriterConfig();
+      iwc2.setCodec(datablindCodec(ScalarEncoding.PACKED_NIBBLE));
+      try (IndexWriter w = new IndexWriter(dir2, iwc2)) {
+        KnnFloatVectorField field = new KnnFloatVectorField(fieldName, randomVector(dims), sim);
+        for (int i = 0; i < 10; i++) {
+          Document doc = new Document();
+          field.setVectorValue(randomVector(dims));
+          doc.add(field);
+          w.addDocument(doc);
+        }
+      }
+
+      // merge both into a PACKED_NIBBLE data-blind index — UNSIGNED_BYTE segment has no raw
+      // floats, so re-quantization to PACKED_NIBBLE is impossible: expect an error.
+      // SerialMergeScheduler makes merges synchronous so the exception propagates directly.
+      try (Directory dirMerge = newDirectory()) {
+        IndexWriterConfig iwcMerge = newIndexWriterConfig();
+        iwcMerge.setCodec(datablindCodec(ScalarEncoding.PACKED_NIBBLE));
+        iwcMerge.setMergeScheduler(new SerialMergeScheduler());
+        try (IndexWriter w = new IndexWriter(dirMerge, iwcMerge)) {
+          w.addIndexes(dir1, dir2);
+          expectThrows(Exception.class, () -> w.forceMerge(1));
+        }
+      }
     }
   }
 

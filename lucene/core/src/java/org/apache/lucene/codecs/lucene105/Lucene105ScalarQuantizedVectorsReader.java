@@ -14,9 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene104;
+package org.apache.lucene.codecs.lucene105;
 
-import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION;
+import static org.apache.lucene.codecs.lucene105.Lucene105ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
@@ -66,36 +66,36 @@ import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
- * Reader for scalar quantized vectors in the Lucene 10.4 format.
+ * Reader for scalar quantized vectors in the Lucene 10.5 format.
  *
  * @lucene.experimental
  */
-public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
+public class Lucene105ScalarQuantizedVectorsReader extends FlatVectorsReader
     implements QuantizedVectorsReader {
 
   private static final long SHALLOW_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(Lucene104ScalarQuantizedVectorsReader.class);
+      RamUsageEstimator.shallowSizeOfInstance(Lucene105ScalarQuantizedVectorsReader.class);
 
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
-  private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
+  private final Lucene105ScalarQuantizedVectorScorer vectorScorer;
   public static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
 
-  public Lucene104ScalarQuantizedVectorsReader(
+  public Lucene105ScalarQuantizedVectorsReader(
       SegmentReadState state,
       FlatVectorsReader rawVectorsReader,
-      Lucene104ScalarQuantizedVectorScorer vectorsScorer)
+      Lucene105ScalarQuantizedVectorScorer vectorsScorer)
       throws IOException {
     // Quantized vectors are accessed randomly from their node ID stored in the HNSW
     // graph.
     this(state, rawVectorsReader, vectorsScorer, DataAccessHint.RANDOM);
   }
 
-  public Lucene104ScalarQuantizedVectorsReader(
+  public Lucene105ScalarQuantizedVectorsReader(
       SegmentReadState state,
       FlatVectorsReader rawVectorsReader,
-      Lucene104ScalarQuantizedVectorScorer vectorsScorer,
+      Lucene105ScalarQuantizedVectorScorer vectorsScorer,
       DataAccessHint accessHint)
       throws IOException {
     super(vectorsScorer);
@@ -106,16 +106,16 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene104ScalarQuantizedVectorsFormat.META_EXTENSION);
+            Lucene105ScalarQuantizedVectorsFormat.META_EXTENSION);
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
       try {
         versionMeta =
             CodecUtil.checkIndexHeader(
                 meta,
-                Lucene104ScalarQuantizedVectorsFormat.META_CODEC_NAME,
-                Lucene104ScalarQuantizedVectorsFormat.VERSION_START,
-                Lucene104ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+                Lucene105ScalarQuantizedVectorsFormat.META_CODEC_NAME,
+                Lucene105ScalarQuantizedVectorsFormat.VERSION_START,
+                Lucene105ScalarQuantizedVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
         readFields(meta, state.fieldInfos);
@@ -134,7 +134,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               state,
               versionMeta,
               VECTOR_DATA_EXTENSION,
-              Lucene104ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
+              Lucene105ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
               state.context.withHints(hints));
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, this);
@@ -237,9 +237,10 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               + VectorEncoding.FLOAT32);
     }
 
-    FloatVectorValues rawFloatVectorValues = rawVectorsReader.getFloatVectorValues(field);
+    FloatVectorValues rawFloatVectorValues =
+        fi.isDataBlind() ? null : rawVectorsReader.getFloatVectorValues(field);
 
-    if (rawFloatVectorValues.size() == 0) {
+    if (rawFloatVectorValues == null || rawFloatVectorValues.size() == 0) {
       return OffHeapScalarQuantizedFloatVectorValues.load(
           fi.ordToDocDISIReaderConfiguration,
           fi.dimension,
@@ -358,6 +359,15 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     return null;
   }
 
+  boolean hasRawFloatVectors(String field) throws IOException {
+    FieldEntry fi = fields.get(field);
+    if (fi == null || fi.isDataBlind()) {
+      return false;
+    }
+    FloatVectorValues raw = rawVectorsReader.getFloatVectorValues(field);
+    return raw != null && raw.size() > 0;
+  }
+
   private static IndexInput openDataInput(
       SegmentReadState state,
       int versionMeta,
@@ -373,8 +383,8 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
           CodecUtil.checkIndexHeader(
               in,
               codecName,
-              Lucene104ScalarQuantizedVectorsFormat.VERSION_START,
-              Lucene104ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+              Lucene105ScalarQuantizedVectorsFormat.VERSION_START,
+              Lucene105ScalarQuantizedVectorsFormat.VERSION_CURRENT,
               state.segmentInfo.getId(),
               state.segmentSuffix);
       if (versionMeta != versionVectorData) {
@@ -563,6 +573,14 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       float[] centroid,
       float centroidDP,
       OrdToDocDISIReaderConfiguration ordToDocDISIReaderConfiguration) {
+
+    boolean isDataBlind() {
+      if (centroid == null) return false;
+      for (float v : centroid) {
+        if (v != 0f) return false;
+      }
+      return true;
+    }
 
     static FieldEntry create(
         IndexInput input,
