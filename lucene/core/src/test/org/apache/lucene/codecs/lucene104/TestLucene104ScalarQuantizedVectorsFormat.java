@@ -23,7 +23,6 @@ import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.oneOf;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Locale;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CodecUtil;
@@ -261,8 +260,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
   // ---- data-blind (enableCentering=false) tests ----
 
   private Codec datablindCodec(ScalarEncoding enc) {
-    return TestUtil.alwaysKnnVectorsFormat(
-        new Lucene104ScalarQuantizedVectorsFormat(enc, false));
+    return TestUtil.alwaysKnnVectorsFormat(new Lucene104ScalarQuantizedVectorsFormat(enc, false));
   }
 
   public void testDataBlindSearchCorrectness() throws Exception {
@@ -288,7 +286,8 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
         try (IndexReader reader = DirectoryReader.open(w)) {
           IndexSearcher searcher = new IndexSearcher(reader);
           int k = Math.min(10, numVectors);
-          TopDocs hits = searcher.search(new KnnFloatVectorQuery(fieldName, randomVector(dims), k), k);
+          TopDocs hits =
+              searcher.search(new KnnFloatVectorQuery(fieldName, randomVector(dims), k), k);
           assertEquals(k, hits.totalHits.value());
         }
       }
@@ -360,8 +359,8 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           // search should still return results
           IndexSearcher searcher = new IndexSearcher(reader);
           int k = 10;
-          TopDocs hits = searcher.search(
-              new KnnFloatVectorQuery(fieldName, randomVector(dims), k), k);
+          TopDocs hits =
+              searcher.search(new KnnFloatVectorQuery(fieldName, randomVector(dims), k), k);
           assertEquals(k, hits.totalHits.value());
         }
       }
@@ -373,7 +372,8 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
     int dims = 16;
     VectorSimilarityFunction sim = VectorSimilarityFunction.EUCLIDEAN;
 
-    try (Directory dir1 = newDirectory(); Directory dir2 = newDirectory()) {
+    try (Directory dir1 = newDirectory();
+        Directory dir2 = newDirectory()) {
       // segment 1: UNSIGNED_BYTE, data-blind
       IndexWriterConfig iwc1 = newIndexWriterConfig();
       iwc1.setCodec(datablindCodec(ScalarEncoding.UNSIGNED_BYTE));

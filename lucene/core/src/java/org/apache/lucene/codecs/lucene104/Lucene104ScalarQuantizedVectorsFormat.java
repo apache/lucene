@@ -126,9 +126,9 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   /**
    * Creates a new instance with the chosen quantization encoding and centering setting.
    *
-   * <p>When {@code enableCentering} is {@code false} (data-blind mode), no centroid is computed
-   * and no raw float vectors are written. This reduces storage at the cost of slightly lower
-   * quantization quality.
+   * <p>When {@code enableCentering} is {@code false} (data-blind mode), no centroid is computed and
+   * no raw float vectors are written. This reduces storage costs by 4x or more but reduces
+   * quantization accuracy, particularly at lower bit rates.
    */
   public Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding encoding, boolean enableCentering) {
     super(NAME);

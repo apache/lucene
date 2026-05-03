@@ -711,8 +711,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
    * floats in memory altogether.
    */
   private static class InMemoryFloatFieldWriter extends FlatFieldVectorsWriter<float[]> {
-    private static final long SHALLOW_SIZE =
-        shallowSizeOfInstance(InMemoryFloatFieldWriter.class);
+    private static final long SHALLOW_SIZE = shallowSizeOfInstance(InMemoryFloatFieldWriter.class);
     private final List<float[]> vectors = new ArrayList<>();
     private final DocsWithFieldSet docsWithField = new DocsWithFieldSet();
     private boolean finished;
@@ -921,10 +920,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     static MergedQuantizedByteVectorValues merge(
-        FieldInfo fieldInfo,
-        MergeState mergeState,
-        float[] centroid,
-        ScalarEncoding encoding)
+        FieldInfo fieldInfo, MergeState mergeState, float[] centroid, ScalarEncoding encoding)
         throws IOException {
       List<QuantizedByteVectorValuesSub> subs = new ArrayList<>();
       for (int i = 0; i < mergeState.knnVectorsReaders.length; i++) {

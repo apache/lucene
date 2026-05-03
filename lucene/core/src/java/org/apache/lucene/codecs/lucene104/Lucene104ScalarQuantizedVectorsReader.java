@@ -237,7 +237,8 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               + VectorEncoding.FLOAT32);
     }
 
-    FloatVectorValues rawFloatVectorValues = getRawFloatVectorValues(field);
+    FloatVectorValues rawFloatVectorValues =
+        fi.isDataBlind() ? null : rawVectorsReader.getFloatVectorValues(field);
 
     if (rawFloatVectorValues == null || rawFloatVectorValues.size() == 0) {
       return OffHeapScalarQuantizedFloatVectorValues.load(
@@ -358,23 +359,13 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     return null;
   }
 
-  /** Returns {@code true} if raw float vectors are stored for {@code field}. */
   boolean hasRawFloatVectors(String field) throws IOException {
-    FloatVectorValues raw = getRawFloatVectorValues(field);
-    return raw != null && raw.size() > 0;
-  }
-
-  /**
-   * Returns raw float vectors from the underlying flat reader, or {@code null} if the field was
-   * not written there (data-blind mode). Some flat readers throw {@link IllegalArgumentException}
-   * instead of returning null for missing fields, so we catch that here.
-   */
-  private FloatVectorValues getRawFloatVectorValues(String field) throws IOException {
-    try {
-      return rawVectorsReader.getFloatVectorValues(field);
-    } catch (IllegalArgumentException e) {
-      return null; // field not present in raw reader (written in data-blind mode)
+    FieldEntry fi = fields.get(field);
+    if (fi == null || fi.isDataBlind()) {
+      return false;
     }
+    FloatVectorValues raw = rawVectorsReader.getFloatVectorValues(field);
+    return raw != null && raw.size() > 0;
   }
 
   private static IndexInput openDataInput(
@@ -582,6 +573,14 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       float[] centroid,
       float centroidDP,
       OrdToDocDISIReaderConfiguration ordToDocDISIReaderConfiguration) {
+
+    boolean isDataBlind() {
+      if (centroid == null) return false;
+      for (float v : centroid) {
+        if (v != 0f) return false;
+      }
+      return true;
+    }
 
     static FieldEntry create(
         IndexInput input,
