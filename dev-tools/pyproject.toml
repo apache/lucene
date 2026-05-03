@@ -20,7 +20,7 @@ dev = [
   # validates python
   "ruff==0.15.12",
   # validates various
-  "ast-grep-cli==0.42.0",
+  "ast-grep-cli==0.42.1",
 ]
 
 [tool.uv]
