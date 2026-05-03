@@ -28,7 +28,11 @@ class FieldToType implements BeforeAfterCallback {
   private final Map<String, FieldType> fieldToType = new HashMap<>();
 
   @Override
-  public synchronized void after() throws Exception {
+  public void after() throws Exception {
+    reset();
+  }
+
+  synchronized void reset() {
     fieldToType.clear();
   }
 

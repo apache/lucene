@@ -55,6 +55,8 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
 import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.junit.After;
 import org.junit.Before;
@@ -67,13 +69,14 @@ import org.junit.runner.RunWith;
 
 /// Base class for all Lucene unit tests (JUnit4 variant).
 ///
-/// **Please consider using the new JUnit Jupiter base class [LuceneTestCaseJupiter] instead. This class
-/// will be eventually removed from Lucene codebase.**
+/// **Please consider using the new JUnit Jupiter base class [LuceneTestCaseJupiter] instead. This
+/// class will be eventually removed from Lucene codebase.**
 ///
 /// ## Class and instance setup
 ///
 /// The preferred way to specify class (suite-level) setup/cleanup is to use static methods
-/// annotated with [org.junit.BeforeClass] and [org.junit.AfterClass]. Any code in these methods is executed
+/// annotated with [org.junit.BeforeClass] and [org.junit.AfterClass]. Any code in these methods
+/// is executed
 /// within the test framework's control and ensure proper setup has been made. **Try not to use
 /// static initializers (including complex final field initializers).** Static initializers are
 /// executed before any setup rules are fired and may cause you (or somebody else) headaches.
@@ -107,7 +110,7 @@ import org.junit.runner.RunWith;
 ///   - as part of the main thread executing the test case (if your test hangs, just dump the stack
 ///     trace of all threads, and you'll see the seed),
 ///   - the master seed can also be accessed manually by getting the current context (
-///     [RandomizedContext#current()]) and then calling
+///     [RandomizedContext#current()]) and then callingd
 ///     [RandomizedContext#getRunnerSeedAsString()].
 ///
 @RunWith(RandomizedRunner.class)
@@ -340,6 +343,8 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
   @SuppressWarnings("NonFinalStaticField")
   private static TestRuleMarkFailure suiteFailureMarker;
 
+  private static final FieldToType fieldToType;
+
   static {
     var setupAndRestoreClassEnv =
         new SetupAndRestoreStaticEnv(
@@ -410,6 +415,12 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
                               public SuiteFailureState getSuiteFailureState() {
                                 return suiteFailureMarker;
                               }
+
+                              @Override
+                              public Field newField(
+                                  Random random, String name, Object value, FieldType type) {
+                                return fieldToType.newField(random, name, value, type);
+                              }
                             });
                   }
 
@@ -446,6 +457,7 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
                     // side-effect
                     "user.language", "user.timezone"))
             .around(new CallbacksToRuleAdapter(setupAndRestoreClassEnv))
+            .around(new CallbacksToRuleAdapter(fieldToType = new FieldToType()))
             .around(
                 new CallbacksToRuleAdapter(
                     new BeforeAfterCallback() {
@@ -513,7 +525,7 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
     // Test is supposed to call this itself, but we do this defensively in case it forgot:
     restoreIndexWriterMaxDocs();
 
-    fieldToType.after();
+    fieldToType.reset();
   }
 
   // -----------------------------------------------------------------

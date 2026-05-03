@@ -33,6 +33,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
 import org.apache.lucene.util.IOUtils;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
@@ -275,6 +277,8 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
     private TestFrameworkInfra jupiterFrameworkInfra;
     private OrderedBeforeAfterCallbacks beforeAfters;
 
+    private FieldToType fieldToType;
+
     ClassLevelCallbackChain(
         SuiteFailureTracker suiteFailureTracker,
         PrintReproduceInfoExtension printReproduceInfoExtension) {
@@ -298,6 +302,8 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
               suiteFailureTracker, LuceneTestCaseJupiter::random, () -> activeTestClass);
       var perThreadRandom = new PerThreadRandom(getRandomSupplier(context.getExecutableInvoker()));
 
+      fieldToType = new FieldToType();
+
       this.jupiterFrameworkInfra =
           new TestFrameworkInfra() {
             @Override
@@ -318,6 +324,11 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
             @Override
             public SuiteFailureState getSuiteFailureState() {
               return suiteFailureTracker;
+            }
+
+            @Override
+            public Field newField(Random random, String name, Object value, FieldType type) {
+              return fieldToType.newField(random, name, value, type);
             }
           };
 
@@ -356,6 +367,7 @@ public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCasePar
                   perThreadRandom,
                   installFrameworkInfraSupport,
                   classEnvRule,
+                  fieldToType,
                   installEnvInfo,
                   tempFileSupplier));
 

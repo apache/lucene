@@ -341,6 +341,8 @@ public abstract sealed class LuceneTestCaseParent extends Assert
     TemporaryFilesSupplier getTempFilesSupplier();
 
     SuiteFailureState getSuiteFailureState();
+
+    Field newField(Random random, String name, Object value, FieldType type);
   }
 
   private static final AtomicReference<TestFrameworkInfra> testFrameworkInfra =
@@ -2071,7 +2073,7 @@ public abstract sealed class LuceneTestCaseParent extends Assert
     // write-once schema sort of helper class then we can
     // remove the sync here.  We can also fold the random
     // "enable norms" (now commented out, below) into that:
-    return fieldToType.newField(random, name, value, type);
+    return getTestFrameworkInfra().newField(random, name, value, type);
   }
 
   private static final String[] availableLanguageTags =
@@ -2829,10 +2831,4 @@ public abstract sealed class LuceneTestCaseParent extends Assert
   public static Path createTempFile(String prefix, String suffix) throws IOException {
     return getTestFrameworkInfra().getTempFilesSupplier().createTempFile(prefix, suffix);
   }
-
-  //
-  // TODO: to remove from here?
-  //
-  @SuppressWarnings("NonFinalStaticField")
-  static FieldToType fieldToType = new FieldToType();
 }
