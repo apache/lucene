@@ -51,7 +51,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.ThreadInterruptedException;
 import org.apache.lucene.util.Version;
-import org.junit.Test;
 
 @SuppressCodecs("SimpleText") // too slow here
 public class TestIndexWriterReader extends LuceneTestCase {
@@ -1106,7 +1105,6 @@ public class TestIndexWriterReader extends LuceneTestCase {
     d.close();
   }
 
-  @Test
   public void testNRTOpenExceptions() throws Exception {
     // LUCENE-5262: test that several failed attempts to obtain an NRT reader
     // don't leak file handles.
