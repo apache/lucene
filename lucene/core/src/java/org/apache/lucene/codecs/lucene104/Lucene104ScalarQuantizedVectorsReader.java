@@ -237,9 +237,9 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               + VectorEncoding.FLOAT32);
     }
 
-    FloatVectorValues rawFloatVectorValues = rawVectorsReader.getFloatVectorValues(field);
+    FloatVectorValues rawFloatVectorValues = getRawFloatVectorValues(field);
 
-    if (rawFloatVectorValues.size() == 0) {
+    if (rawFloatVectorValues == null || rawFloatVectorValues.size() == 0) {
       return OffHeapScalarQuantizedFloatVectorValues.load(
           fi.ordToDocDISIReaderConfiguration,
           fi.dimension,
@@ -356,6 +356,25 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       return fieldEntry.centroid;
     }
     return null;
+  }
+
+  /** Returns {@code true} if raw float vectors are stored for {@code field}. */
+  boolean hasRawFloatVectors(String field) throws IOException {
+    FloatVectorValues raw = getRawFloatVectorValues(field);
+    return raw != null && raw.size() > 0;
+  }
+
+  /**
+   * Returns raw float vectors from the underlying flat reader, or {@code null} if the field was
+   * not written there (data-blind mode). Some flat readers throw {@link IllegalArgumentException}
+   * instead of returning null for missing fields, so we catch that here.
+   */
+  private FloatVectorValues getRawFloatVectorValues(String field) throws IOException {
+    try {
+      return rawVectorsReader.getFloatVectorValues(field);
+    } catch (IllegalArgumentException e) {
+      return null; // field not present in raw reader (written in data-blind mode)
+    }
   }
 
   private static IndexInput openDataInput(

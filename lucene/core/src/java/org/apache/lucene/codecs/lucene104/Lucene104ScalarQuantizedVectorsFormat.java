@@ -111,22 +111,35 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
       new Lucene104ScalarQuantizedVectorScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   private final ScalarEncoding encoding;
+  private final boolean enableCentering;
 
-  /** Creates a new instance with UNSIGNED_BYTE encoding. */
+  /** Creates a new instance with UNSIGNED_BYTE encoding and centering enabled. */
   public Lucene104ScalarQuantizedVectorsFormat() {
     this(ScalarEncoding.UNSIGNED_BYTE);
   }
 
-  /** Creates a new instance with the chosen quantization encoding. */
+  /** Creates a new instance with the chosen quantization encoding and centering enabled. */
   public Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding encoding) {
+    this(encoding, true);
+  }
+
+  /**
+   * Creates a new instance with the chosen quantization encoding and centering setting.
+   *
+   * <p>When {@code enableCentering} is {@code false} (data-blind mode), no centroid is computed
+   * and no raw float vectors are written. This reduces storage at the cost of slightly lower
+   * quantization quality.
+   */
+  public Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding encoding, boolean enableCentering) {
     super(NAME);
     this.encoding = encoding;
+    this.enableCentering = enableCentering;
   }
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene104ScalarQuantizedVectorsWriter(
-        state, encoding, rawVectorFormat.fieldsWriter(state), scorer);
+        state, encoding, enableCentering, rawVectorFormat.fieldsWriter(state), scorer);
   }
 
   @Override
@@ -146,6 +159,8 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
         + NAME
         + ", encoding="
         + encoding
+        + ", enableCentering="
+        + enableCentering
         + ", flatVectorScorer="
         + scorer
         + ", rawVectorFormat="
