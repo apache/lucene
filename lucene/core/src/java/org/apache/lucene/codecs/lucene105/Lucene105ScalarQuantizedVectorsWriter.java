@@ -302,12 +302,14 @@ public class Lucene105ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     meta.writeVInt(count);
     if (count > 0) {
       meta.writeVInt(encoding.getWireNumber());
-      final ByteBuffer buffer =
-          ByteBuffer.allocate(field.getVectorDimension() * Float.BYTES)
-              .order(ByteOrder.LITTLE_ENDIAN);
-      buffer.asFloatBuffer().put(clusterCenter);
-      meta.writeBytes(buffer.array(), buffer.array().length);
       meta.writeInt(Float.floatToIntBits(centroidDp));
+      if (centroidDp != 0f) {
+        final ByteBuffer buffer =
+            ByteBuffer.allocate(field.getVectorDimension() * Float.BYTES)
+                .order(ByteOrder.LITTLE_ENDIAN);
+        buffer.asFloatBuffer().put(clusterCenter);
+        meta.writeBytes(buffer.array(), buffer.array().length);
+      }
     }
     OrdToDocDISIReaderConfiguration.writeStoredMeta(
         DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, count, maxDoc, docsWithField);

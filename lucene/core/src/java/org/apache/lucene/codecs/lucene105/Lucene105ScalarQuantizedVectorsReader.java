@@ -602,9 +602,11 @@ public class Lucene105ScalarQuantizedVectorsReader extends FlatVectorsReader
                     () ->
                         new IllegalStateException(
                             "Could not get ScalarEncoding from wire number: " + wireNumber));
-        centroid = new float[dimension];
-        input.readFloats(centroid, 0, dimension);
         centroidDP = Float.intBitsToFloat(input.readInt());
+        centroid = new float[dimension];
+        if (centroidDP != 0f) {
+          input.readFloats(centroid, 0, dimension);
+        }
       } else {
         centroid = null;
       }
