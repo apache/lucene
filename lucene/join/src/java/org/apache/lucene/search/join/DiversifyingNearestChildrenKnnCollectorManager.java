@@ -19,7 +19,9 @@ package org.apache.lucene.search.join;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.concurrent.ConcurrentHashMap;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
@@ -33,6 +35,15 @@ import org.apache.lucene.util.BitSet;
  * DiversifyingNearestChildrenKnnCollector} instances.
  */
 public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollectorManager {
+
+  // Sentinel stored in the cache to represent "this segment has no vectors for the field",
+  // because ConcurrentHashMap does not allow null values.
+  private static final int[] NO_VECTORS = new int[0];
+
+  // Cache keyed by (segment core cache key → (field name → docToOrd array)).
+  // Entries are evicted automatically when the segment is closed via addClosedListener.
+  private static final ConcurrentHashMap<IndexReader.CacheKey, ConcurrentHashMap<String, int[]>>
+      DOC_TO_ORD_CACHE = new ConcurrentHashMap<>();
 
   // the number of docs to collect
   private final int k;
@@ -69,7 +80,7 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
     if (parentBitSet == null) {
       return null;
     }
-    int[] docToOrd = buildDocToOrd(context);
+    int[] docToOrd = getCachedDocToOrd(context);
     return new DiversifyingNearestChildrenKnnCollector(
         k, visitedLimit, searchStrategy, parentBitSet, docToOrd);
   }
@@ -82,7 +93,7 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
     if (parentBitSet == null) {
       return null;
     }
-    int[] docToOrd = buildDocToOrd(context);
+    int[] docToOrd = getCachedDocToOrd(context);
     return new DiversifyingNearestChildrenKnnCollector(
         k, visitedLimit, searchStrategy, parentBitSet, docToOrd);
   }
@@ -90,6 +101,34 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
   @Override
   public boolean isOptimistic() {
     return true;
+  }
+
+  /**
+   * Returns the docId-to-ordinal array for the given leaf, building and caching it on first access.
+   * The cached array is evicted automatically when the segment closes.
+   */
+  private int[] getCachedDocToOrd(LeafReaderContext context) throws IOException {
+    IndexReader.CacheHelper cacheHelper = context.reader().getCoreCacheHelper();
+    if (cacheHelper == null) {
+      return buildDocToOrd(context);
+    }
+    IndexReader.CacheKey cacheKey = cacheHelper.getKey();
+    ConcurrentHashMap<String, int[]> fieldMap = new ConcurrentHashMap<>();
+    ConcurrentHashMap<String, int[]> existing = DOC_TO_ORD_CACHE.putIfAbsent(cacheKey, fieldMap);
+    if (existing == null) {
+      // We inserted the new entry — register cleanup when the segment closes
+      cacheHelper.addClosedListener(DOC_TO_ORD_CACHE::remove);
+    } else {
+      fieldMap = existing;
+    }
+    int[] cached = fieldMap.get(field);
+    if (cached != null) {
+      return cached == NO_VECTORS ? null : cached;
+    }
+    int[] built = buildDocToOrd(context);
+    int[] stored = built != null ? built : NO_VECTORS;
+    int[] race = fieldMap.putIfAbsent(field, stored);
+    return race != null ? (race == NO_VECTORS ? null : race) : built;
   }
 
   /**

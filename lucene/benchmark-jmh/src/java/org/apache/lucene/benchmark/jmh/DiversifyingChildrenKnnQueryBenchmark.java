@@ -58,10 +58,21 @@ import org.openjdk.jmh.annotations.Warmup;
 
 /**
  * Benchmarks end-to-end latency of {@link DiversifyingChildrenFloatKnnVectorQuery} with sibling
- * expansion enabled. Run with:
+ * expansion enabled across three sibling-correlation scenarios:
+ *
+ * <ul>
+ *   <li><b>best</b> — siblings are nearly identical (small noise around a parent centroid).
+ *       Expansion finds the best sibling immediately; HNSW terminates early.
+ *   <li><b>standard</b> — siblings have moderate correlation (realistic use case).
+ *   <li><b>worst</b> — siblings are fully independent random vectors. Expansion fires but adds no
+ *       recall benefit; measures pure overhead.
+ * </ul>
+ *
+ * Run with:
  *
  * <pre>
- *   ./gradlew -p lucene/benchmark-jmh jmh --args="DiversifyingChildrenKnnQueryBenchmark"
+ *   ./gradlew -p lucene/benchmark-jmh assemble
+ *   java -jar lucene/benchmark-jmh/build/benchmarks/lucene-benchmark-jmh-*.jar DiversifyingChildrenKnnQueryBenchmark
  * </pre>
  */
 @BenchmarkMode(Mode.AverageTime)
@@ -78,6 +89,17 @@ public class DiversifyingChildrenKnnQueryBenchmark {
   private static final String PARENT_FIELD = "docType";
   private static final String PARENT_VALUE = "_parent";
   private static final int NUM_QUERY_VECTORS = 256;
+
+  /**
+   * Sibling correlation scenario:
+   * <ul>
+   *   <li>{@code best} — siblings nearly identical (noise = 0.05); best case for expansion.
+   *   <li>{@code standard} — siblings moderately correlated (noise = 0.3); realistic case.
+   *   <li>{@code worst} — siblings fully random; pure overhead, no recall benefit.
+   * </ul>
+   */
+  @Param({"best", "standard", "worst"})
+  public String siblingCorrelation;
 
   @Param({"5000"})
   public int numParents;
@@ -104,14 +126,24 @@ public class DiversifyingChildrenKnnQueryBenchmark {
     tmpDir = Files.createTempDirectory("DiversifyingChildrenKnnQueryBenchmark");
     dir = MMapDirectory.open(tmpDir);
 
+    float noiseLevel =
+        switch (siblingCorrelation) {
+          case "best"     -> 0.05f;
+          case "standard" -> 0.30f;
+          default         -> Float.NaN; // worst: fully random, no centroid
+        };
+
     Random rnd = new Random(42);
     try (IndexWriter w = new IndexWriter(dir, new IndexWriterConfig())) {
       for (int p = 0; p < numParents; p++) {
+        float[] centroid = Float.isNaN(noiseLevel) ? null : randomUnitVector(dim, rnd);
         List<Document> block = new ArrayList<>();
         for (int c = 0; c < childrenPerParent; c++) {
+          float[] vec = centroid == null
+              ? randomUnitVector(dim, rnd)
+              : perturbedUnitVector(centroid, noiseLevel, rnd);
           Document child = new Document();
-          child.add(
-              new KnnFloatVectorField(FIELD, randomUnitVector(dim, rnd), VectorSimilarityFunction.DOT_PRODUCT));
+          child.add(new KnnFloatVectorField(FIELD, vec, VectorSimilarityFunction.DOT_PRODUCT));
           block.add(child);
         }
         Document parent = new Document();
@@ -149,15 +181,24 @@ public class DiversifyingChildrenKnnQueryBenchmark {
 
   private static float[] randomUnitVector(int dim, Random rnd) {
     float[] v = new float[dim];
+    for (int i = 0; i < dim; i++) v[i] = rnd.nextFloat() * 2 - 1;
+    return normalise(v);
+  }
+
+  /** Returns a unit vector near {@code centroid} with per-dimension noise scaled by noiseLevel. */
+  private static float[] perturbedUnitVector(float[] centroid, float noiseLevel, Random rnd) {
+    float[] v = new float[centroid.length];
+    for (int i = 0; i < centroid.length; i++) {
+      v[i] = centroid[i] + noiseLevel * (rnd.nextFloat() * 2 - 1);
+    }
+    return normalise(v);
+  }
+
+  private static float[] normalise(float[] v) {
     float norm = 0;
-    for (int i = 0; i < dim; i++) {
-      v[i] = rnd.nextFloat() * 2 - 1;
-      norm += v[i] * v[i];
-    }
+    for (float x : v) norm += x * x;
     norm = (float) Math.sqrt(norm);
-    for (int i = 0; i < dim; i++) {
-      v[i] /= norm;
-    }
+    for (int i = 0; i < v.length; i++) v[i] /= norm;
     return v;
   }
 }
