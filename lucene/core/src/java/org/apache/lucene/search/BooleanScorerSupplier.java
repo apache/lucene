@@ -337,20 +337,24 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       return null;
     }
     long cost = cost();
+    // Count non-zero-cost suppliers first to avoid calling get() on scorers we won't use.
+    // Calling get() consumes internal state (e.g. DocIdSetBuilder) that cannot be reused
+    // if we later fall back to the scorer-based path.
+    int nonZeroCostCount = 0;
+    for (ScorerSupplier ss : subs.get(Occur.SHOULD)) {
+      if (ss.cost() > 0) {
+        nonZeroCostCount++;
+      }
+    }
+    if (nonZeroCostCount < 2) {
+      return null;
+    }
     List<Scorer> optionalScorers = new ArrayList<>();
     for (ScorerSupplier ss : subs.get(Occur.SHOULD)) {
       if (ss.cost() == 0) {
         continue;
       }
       optionalScorers.add(ss.get(cost));
-    }
-    if (optionalScorers.isEmpty()) {
-      return null;
-    }
-    // After filtering zero-cost clauses, if only 1 scorer remains,
-    // fall back to null so the caller uses a different code path.
-    if (optionalScorers.size() == 1) {
-      return null;
     }
     List<Scorer> filters = new ArrayList<>();
     for (ScorerSupplier ss : subs.get(Occur.FILTER)) {
