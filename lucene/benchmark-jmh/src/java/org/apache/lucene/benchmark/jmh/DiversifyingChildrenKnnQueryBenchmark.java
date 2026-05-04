@@ -104,10 +104,10 @@ public class DiversifyingChildrenKnnQueryBenchmark {
   @Param({"5000"})
   public int numParents;
 
-  @Param({"4", "8"})
+  @Param({"4", "8", "16"})
   public int childrenPerParent;
 
-  @Param({"10"})
+  @Param({"10", "100"})
   public int k;
 
   @Param({"128"})
