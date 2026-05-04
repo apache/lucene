@@ -324,9 +324,16 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
     Collection<SearchGroup<T>> mergedGroups = SearchGroup.merge(shardGroups, 0, 5, sort);
     assertEquals(singletonGroups, mergedGroups);
 
+    final int withinGroupOffset = random().nextInt(numDocs);
     TopGroupsCollectorManager<T> topGroupsCollectorManager =
         new TopGroupsCollectorManager<>(
-            this::getGroupSelector, singletonGroups, sort, Sort.RELEVANCE, 5, true);
+            this::getGroupSelector,
+            singletonGroups,
+            sort,
+            Sort.RELEVANCE,
+            withinGroupOffset,
+            5,
+            true);
     TopGroups<T> singletonTopGroups =
         control.getIndexSearcher().search(topLevel, topGroupsCollectorManager);
 
@@ -337,12 +344,24 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
     for (Shard shard : shards) {
       TopGroupsCollectorManager<T> scm =
           new TopGroupsCollectorManager<>(
-              this::getGroupSelector, mergedGroups, sort, Sort.RELEVANCE, 5, true);
+              this::getGroupSelector,
+              mergedGroups,
+              sort,
+              Sort.RELEVANCE,
+              withinGroupOffset,
+              5,
+              true);
       shardTopGroups[j] = shard.getIndexSearcher().search(topLevel, scm);
       j++;
     }
     TopGroups<T> mergedTopGroups =
-        TopGroups.merge(shardTopGroups, sort, Sort.RELEVANCE, 0, 5, TopGroups.ScoreMergeMode.None);
+        TopGroups.merge(
+            shardTopGroups,
+            sort,
+            Sort.RELEVANCE,
+            withinGroupOffset,
+            5,
+            TopGroups.ScoreMergeMode.None);
     assertNotNull(mergedTopGroups);
 
     assertEquals(singletonTopGroups.totalGroupedHitCount, mergedTopGroups.totalGroupedHitCount);
