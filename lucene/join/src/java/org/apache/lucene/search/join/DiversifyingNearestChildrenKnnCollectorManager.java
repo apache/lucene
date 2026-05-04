@@ -18,7 +18,10 @@
 package org.apache.lucene.search.join;
 
 import java.io.IOException;
+import java.util.Arrays;
+import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.knn.KnnCollectorManager;
@@ -35,17 +38,21 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
   private final int k;
   // filter identifying the parent documents.
   private final BitSetProducer parentsFilter;
+  // vector field name; used to build the docId-to-ordinal mapping for sibling expansion
+  private final String field;
 
   /**
    * Constructor
    *
    * @param k - the number of top k vectors to collect
    * @param parentsFilter Filter identifying the parent documents.
+   * @param field the vector field name
    */
   public DiversifyingNearestChildrenKnnCollectorManager(
-      int k, BitSetProducer parentsFilter, IndexSearcher indexSearcher) {
+      int k, BitSetProducer parentsFilter, IndexSearcher indexSearcher, String field) {
     this.k = k;
     this.parentsFilter = parentsFilter;
+    this.field = field;
   }
 
   /**
@@ -62,8 +69,9 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
     if (parentBitSet == null) {
       return null;
     }
+    int[] docToOrd = buildDocToOrd(context);
     return new DiversifyingNearestChildrenKnnCollector(
-        k, visitedLimit, searchStrategy, parentBitSet);
+        k, visitedLimit, searchStrategy, parentBitSet, docToOrd);
   }
 
   @Override
@@ -74,12 +82,44 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
     if (parentBitSet == null) {
       return null;
     }
+    int[] docToOrd = buildDocToOrd(context);
     return new DiversifyingNearestChildrenKnnCollector(
-        k, visitedLimit, searchStrategy, parentBitSet);
+        k, visitedLimit, searchStrategy, parentBitSet, docToOrd);
   }
 
   @Override
   public boolean isOptimistic() {
     return true;
+  }
+
+  /**
+   * Builds a docId-to-ordinal array for the given leaf, mapping each docId to its vector ordinal.
+   *
+   * <p>Returns {@code null} if the field has no vector values in this segment at all — sibling
+   * expansion will be disabled for this leaf.
+   *
+   * <p>Otherwise returns an array of size {@code maxDoc} where each entry is the vector ordinal for
+   * that docId, or {@code -1} if that specific document has no vector (sparse indexing).
+   */
+  private int[] buildDocToOrd(LeafReaderContext context) throws IOException {
+    FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
+    // fi = null if the field doesn't exist in this segment at all.
+    // fi.getVectorDimension() = 0 if the field exist in the segment but was not indexed as a vector field.
+    if (fi == null || fi.getVectorDimension() == 0) {
+      return null;
+    }
+    DocIdSetIterator iter =
+        switch (fi.getVectorEncoding()) {
+          case FLOAT32 -> context.reader().getFloatVectorValues(field).iterator();
+          case BYTE -> context.reader().getByteVectorValues(field).iterator();
+        };
+    int maxDoc = context.reader().maxDoc();
+    int[] docToOrd = new int[maxDoc];
+    Arrays.fill(docToOrd, -1);
+    int ord = 0;
+    while (iter.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+      docToOrd[iter.docID()] = ord++;
+    }
+    return docToOrd;
   }
 }

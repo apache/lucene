@@ -25,40 +25,42 @@ import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.hnsw.DocSiblingExpansion;
 
 /**
  * This collects the nearest children vectors. Diversifying the results over the provided parent
  * filter. This means the nearest children vectors are returned, but only one per parent
  */
-class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
+class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector
+    implements DocSiblingExpansion {
 
   private final BitSet parentBitSet;
   private final NodeIdCachingHeap heap;
+  // docId → vector ordinal mapping; -1 means the doc has no vector. Null when not needed.
+  private final int[] docToOrd;
 
   /**
-   * Create a new object for joining nearest child kNN documents with a parent bitset
-   *
-   * @param k The number of joined parent documents to collect
-   * @param visitLimit how many child vectors can be visited
-   * @param parentBitSet The leaf parent bitset
-   */
-  public DiversifyingNearestChildrenKnnCollector(int k, int visitLimit, BitSet parentBitSet) {
-    this(k, visitLimit, null, parentBitSet);
-  }
-
-  /**
-   * Create a new object for joining nearest child kNN documents with a parent bitset
+   * Create a new object for joining nearest child kNN documents with a parent bitset and a
+   * precomputed docId-to-ordinal mapping that enables dynamic sibling expansion during HNSW graph
+   * search.
    *
    * @param k The number of joined parent documents to collect
    * @param visitLimit how many child vectors can be visited
    * @param searchStrategy The search strategy to use
    * @param parentBitSet The leaf parent bitset
+   * @param docToOrd precomputed array mapping docId to vector ordinal; {@code -1} entries mean the
+   *     document has no vector. May be {@code null} to disable sibling expansion.
    */
   public DiversifyingNearestChildrenKnnCollector(
-      int k, int visitLimit, KnnSearchStrategy searchStrategy, BitSet parentBitSet) {
+      int k,
+      int visitLimit,
+      KnnSearchStrategy searchStrategy,
+      BitSet parentBitSet,
+      int[] docToOrd) {
     super(k, visitLimit, searchStrategy);
     this.parentBitSet = parentBitSet;
     this.heap = new NodeIdCachingHeap(k);
+    this.docToOrd = docToOrd;
   }
 
   /**
@@ -109,6 +111,47 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
   @Override
   public int numCollected() {
     return heap.size();
+  }
+
+  @Override
+  public int[] findSiblingDocIds(int childDocId) {
+    int parent = parentBitSet.nextSetBit(childDocId);
+    // Skip if this parent's entry is already in the heap
+    if (heap.containsParent(parent)) {
+      return null;
+    }
+    // Find siblings range(prevParent, parent). If parent is 0 there are not prevParents so -1
+    int prevParent = parent > 0 ? parentBitSet.prevSetBit(parent - 1) : -1;
+    int from = prevParent + 1;
+    // Children of parent are all docIds in [from, parent); exclude childDocId itself
+    int capacity = parent - from - 1;
+    // One child case
+    if (capacity == 0) {
+      return null;
+    }
+    int[] siblings = new int[capacity];
+    int idx = 0;
+    for (int docId = from; docId < parent; docId++) {
+      if (docId != childDocId) {
+        siblings[idx++] = docId;
+      }
+    }
+    return idx > 0 ? siblings : null;
+  }
+
+  @Override
+  public int docIdToOrdinal(int docId) {
+    // Conditions explanation:
+    //  docToOrd == null — buildDocToOrd returns null when the segment has no vector values at all for the field (line 113). Without this guard you'd get a NullPointerException.
+    //  docId >= docToOrd.length — In production, docToOrd is sized exactly maxDoc for that segment (line 116), so every valid docId in that segment fits. This check is therefore a pure defensive guard — it can't be triggered by
+    //  correct production code, but it protects against:
+    //  - bugs in how the array is built or passed
+    //  - future refactoring that changes the array size
+    //  - misuse when constructing the collector manually (as in tests, e.g. the docIdToOrdinal(9999) test case)
+    if (docToOrd == null || docId >= docToOrd.length) {
+      return -1;
+    }
+    return docToOrd[docId];
   }
 
   /**
@@ -243,6 +286,11 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector {
     /** Returns the number of elements currently stored in the PriorityQueue. */
     public final int size() {
       return size;
+    }
+
+    /** Returns {@code true} if a child of the given parent is already in the heap. */
+    public boolean containsParent(int parentDocId) {
+      return nodeIdHeapIndex.containsKey(parentDocId);
     }
 
     /**

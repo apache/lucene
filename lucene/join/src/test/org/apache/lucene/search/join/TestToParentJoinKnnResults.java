@@ -33,7 +33,7 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
     // make sure we have the sign correct
     BitSet parentBitSet = BitSet.of(new IntArrayDocIdSetIterator(new int[] {1, 3, 5}, 3), 6);
     DiversifyingNearestChildrenKnnCollector nn =
-        new DiversifyingNearestChildrenKnnCollector(2, Integer.MAX_VALUE, parentBitSet);
+        new DiversifyingNearestChildrenKnnCollector(2, Integer.MAX_VALUE, null, parentBitSet, null);
     assertTrue(nn.collect(2, 0.5f));
     assertTrue(nn.collect(0, 0.2f));
     assertTrue(nn.collect(4, 1f));
@@ -48,7 +48,7 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
     float[] scores = new float[] {1f, 0.5f, 0.6f, 2f, 2f, 1.2f, 4f};
     BitSet parentBitSet = BitSet.of(new IntArrayDocIdSetIterator(new int[] {3, 6, 9, 12}, 4), 13);
     DiversifyingNearestChildrenKnnCollector results =
-        new DiversifyingNearestChildrenKnnCollector(7, Integer.MAX_VALUE, parentBitSet);
+        new DiversifyingNearestChildrenKnnCollector(7, Integer.MAX_VALUE, null, parentBitSet, null);
     for (int i = 0; i < nodes.length; i++) {
       results.collect(nodes[i], scores[i]);
     }
@@ -69,7 +69,7 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
     BitSet parentBitSet =
         BitSet.of(new IntArrayDocIdSetIterator(new int[] {3, 6, 9, 11, 13, 15}, 6), 16);
     DiversifyingNearestChildrenKnnCollector results =
-        new DiversifyingNearestChildrenKnnCollector(5, Integer.MAX_VALUE, parentBitSet);
+        new DiversifyingNearestChildrenKnnCollector(5, Integer.MAX_VALUE, null, parentBitSet, null);
     for (int i = 0; i < nodes.length - 1; i++) {
       results.collect(nodes[i], scores[i]);
     }
@@ -104,7 +104,7 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
     BitSet parentBitSet =
         BitSet.of(new IntArrayDocIdSetIterator(parents, parents.length), nextParent + 1);
     DiversifyingNearestChildrenKnnCollector results =
-        new DiversifyingNearestChildrenKnnCollector(20, Integer.MAX_VALUE, parentBitSet);
+        new DiversifyingNearestChildrenKnnCollector(20, Integer.MAX_VALUE, null, parentBitSet, null);
     for (int i = 0; i < children.size(); i++) {
       results.collect(children.get(i), childrenScores.get(i));
     }

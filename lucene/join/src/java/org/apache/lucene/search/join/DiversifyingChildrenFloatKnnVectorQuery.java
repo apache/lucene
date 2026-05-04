@@ -155,7 +155,7 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
 
   @Override
   protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
-    return new DiversifyingNearestChildrenKnnCollectorManager(k, parentsFilter, searcher);
+    return new DiversifyingNearestChildrenKnnCollectorManager(k, parentsFilter, searcher, field);
   }
 
   @Override

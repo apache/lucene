@@ -96,14 +96,72 @@ abstract class AbstractHnswGraphSearcher {
     assert scores != null && scores.length >= eps.length;
     scorer.bulkScore(eps, scores, eps.length);
     results.incVisitedCount(eps.length);
+    float[] siblingScores = null;
     for (int i = 0; i < eps.length; i++) {
       float score = scores[i];
       int ep = eps[i];
       visited.set(ep);
       candidates.add(ep, score);
       if (acceptOrds == null || acceptOrds.get(ep)) {
+        // Fetch siblings BEFORE collect() so the parent is not yet in the heap
+        int[] siblings = null;
+        int numSiblingsToVisit = 0;
+        if (results instanceof ChildrenSiblingExpansion expander) {
+          siblings = expander.pendingSiblingOrdinals(ep, visited);
+          if (siblings != null) {
+            //  how many siblings are actually scored to avoid exceeding the visit budget.
+            numSiblingsToVisit =
+                (int) Math.min(siblings.length, results.visitLimit() - results.visitedCount());
+            // Only mark as visited the siblings we will actually score; the rest remain
+            // reachable via normal graph traversal so a better child can still be found
+            for (int s = 0; s < numSiblingsToVisit; s++) visited.set(siblings[s]);
+          }
+        }
+        // Collect the ep node here so after we have a correctly updated minCompetitiveSimilarity
         results.collect(ep, score);
+        if (numSiblingsToVisit > 0) {
+          siblingScores =
+              scoreSiblings(
+                  results, scorer, candidates, acceptOrds, siblings, numSiblingsToVisit, siblingScores);
+        }
       }
     }
+  }
+
+  /**
+   * Scores and collects siblings, adding competitive ones to the candidate queue. Reuses and
+   * returns the siblingScores buffer, reallocating only if too small.
+   */
+  protected static float[] scoreSiblings(
+      KnnCollector results,
+      RandomVectorScorer scorer,
+      NeighborQueue candidates,
+      Bits acceptOrds,
+      int[] siblings,
+      int numSiblings,
+      float[] siblingScores)
+      throws IOException {
+    // If siblingScores not defined yet or too small to collect scores a new one is created
+    // Otherwise we reuse the old one that will be overridden in bulkScore with new scores
+    if (siblingScores == null || siblingScores.length < numSiblings) {
+      siblingScores = new float[numSiblings];
+    }
+    float maxScore = scorer.bulkScore(siblings, siblingScores, numSiblings);
+    results.incVisitedCount(numSiblings);
+    if (maxScore > results.minCompetitiveSimilarity()) {
+      float minSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
+      for (int j = 0; j < numSiblings; j++) {
+        float sibScore = siblingScores[j];
+        // We avoid adding to candidates a sibling with a bad score
+        if (sibScore >= minSimilarity) {
+          candidates.add(siblings[j], sibScore);
+          if (acceptOrds == null || acceptOrds.get(siblings[j])) {
+            results.collect(siblings[j], sibScore);
+            minSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
+          }
+        }
+      }
+    }
+    return siblingScores;
   }
 }

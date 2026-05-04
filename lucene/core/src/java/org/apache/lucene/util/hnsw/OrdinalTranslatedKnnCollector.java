@@ -17,14 +17,19 @@
 
 package org.apache.lucene.util.hnsw;
 
+import java.util.Arrays;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.util.BitSet;
 
 /**
- * Wraps a provided KnnCollector object, translating the provided vectorId ordinal to a documentId
+ * Wraps a provided KnnCollector object, translating the provided vectorId ordinal to a documentId.
+ * This wrapper implements {@link ChildrenSiblingExpansion}; sibling expansion is active only
+ * when the wrapped collector also implements {@link DocSiblingExpansion}.
  */
-public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator {
+public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator
+    implements ChildrenSiblingExpansion {
 
   private final IntToIntFunction vectorOrdinalToDocId;
 
@@ -49,5 +54,31 @@ public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator 
                 ? TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO
                 : TotalHits.Relation.EQUAL_TO),
         td.scoreDocs);
+  }
+
+  @Override
+  public int[] pendingSiblingOrdinals(int collectedOrdinal, BitSet visitedOrds) {
+    if (!(collector instanceof DocSiblingExpansion docExpander)) {
+      return null;
+    }
+    int docId = vectorOrdinalToDocId.apply(collectedOrdinal);
+    int[] siblingDocIds = docExpander.findSiblingDocIds(docId);
+    if (siblingDocIds == null) {
+      return null;
+    }
+    int[] siblingOrdinals = new int[siblingDocIds.length];
+    // siblingOrdinals is pre-allocated to siblingDocIds.length and Java initializes int arrays to 0 so this variable is necessary.
+    int count = 0;
+    for (int sibDocId : siblingDocIds) {
+      int sibOrd = docExpander.docIdToOrdinal(sibDocId);
+      //  sibOrd = -1 when a document has no vector for this field.
+      //  Such a doc has no node in the HNSW graph and can't be scored, so it must be skipped.
+      //  If a sibling was reached via normal graph traversal before sibling expansion triggered, re-adding it would
+      //  cause it to be scored twice. !visitedOrds.get(sibOrd) filters those out.
+      if (sibOrd >= 0 && !visitedOrds.get(sibOrd)) {
+        siblingOrdinals[count++] = sibOrd;
+      }
+    }
+    return count > 0 ? Arrays.copyOf(siblingOrdinals, count) : null;
   }
 }
