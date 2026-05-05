@@ -122,7 +122,13 @@ abstract class AbstractHnswGraphSearcher {
         if (numSiblingsToVisit > 0) {
           siblingScores =
               scoreSiblings(
-                  results, scorer, candidates, acceptOrds, siblings, numSiblingsToVisit, siblingScores);
+                  results,
+                  scorer,
+                  candidates,
+                  acceptOrds,
+                  siblings,
+                  numSiblingsToVisit,
+                  siblingScores);
         }
       }
     }

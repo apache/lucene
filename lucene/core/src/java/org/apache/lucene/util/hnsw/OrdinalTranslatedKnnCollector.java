@@ -25,8 +25,8 @@ import org.apache.lucene.util.BitSet;
 
 /**
  * Wraps a provided KnnCollector object, translating the provided vectorId ordinal to a documentId.
- * This wrapper implements {@link ChildrenSiblingExpansion}; sibling expansion is active only
- * when the wrapped collector also implements {@link DocSiblingExpansion}.
+ * This wrapper implements {@link ChildrenSiblingExpansion}; sibling expansion is active only when
+ * the wrapped collector also implements {@link DocSiblingExpansion}.
  */
 public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator
     implements ChildrenSiblingExpansion {
@@ -67,13 +67,15 @@ public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator
       return null;
     }
     int[] siblingOrdinals = new int[siblingDocIds.length];
-    // siblingOrdinals is pre-allocated to siblingDocIds.length and Java initializes int arrays to 0 so this variable is necessary.
+    // siblingOrdinals is pre-allocated to siblingDocIds.length and Java initializes int arrays to 0
+    // so this variable is necessary.
     int count = 0;
     for (int sibDocId : siblingDocIds) {
       int sibOrd = docExpander.docIdToOrdinal(sibDocId);
       //  sibOrd = -1 when a document has no vector for this field.
       //  Such a doc has no node in the HNSW graph and can't be scored, so it must be skipped.
-      //  If a sibling was reached via normal graph traversal before sibling expansion triggered, re-adding it would
+      //  If a sibling was reached via normal graph traversal before sibling expansion triggered,
+      // re-adding it would
       //  cause it to be scored twice. !visitedOrds.get(sibOrd) filters those out.
       if (sibOrd >= 0 && !visitedOrds.get(sibOrd)) {
         siblingOrdinals[count++] = sibOrd;

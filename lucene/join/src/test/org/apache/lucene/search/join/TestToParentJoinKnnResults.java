@@ -104,7 +104,8 @@ public class TestToParentJoinKnnResults extends LuceneTestCase {
     BitSet parentBitSet =
         BitSet.of(new IntArrayDocIdSetIterator(parents, parents.length), nextParent + 1);
     DiversifyingNearestChildrenKnnCollector results =
-        new DiversifyingNearestChildrenKnnCollector(20, Integer.MAX_VALUE, null, parentBitSet, null);
+        new DiversifyingNearestChildrenKnnCollector(
+            20, Integer.MAX_VALUE, null, parentBitSet, null);
     for (int i = 0; i < children.size(); i++) {
       results.collect(children.get(i), childrenScores.get(i));
     }

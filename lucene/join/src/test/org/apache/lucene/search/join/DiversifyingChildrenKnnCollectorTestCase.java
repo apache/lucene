@@ -24,8 +24,8 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BitSet;
 
 /**
- * Base class for {@link DiversifyingNearestChildrenKnnCollector} tests. Provides shared helpers
- * for building the block-join parent {@link BitSet} used across test subclasses.
+ * Base class for {@link DiversifyingNearestChildrenKnnCollector} tests. Provides shared helpers for
+ * building the block-join parent {@link BitSet} used across test subclasses.
  */
 abstract class DiversifyingChildrenKnnCollectorTestCase extends LuceneTestCase {
 

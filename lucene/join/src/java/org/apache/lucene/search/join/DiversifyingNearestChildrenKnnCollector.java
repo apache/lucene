@@ -142,12 +142,16 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector
   @Override
   public int docIdToOrdinal(int docId) {
     // Conditions explanation:
-    //  docToOrd == null — buildDocToOrd returns null when the segment has no vector values at all for the field (line 113). Without this guard you'd get a NullPointerException.
-    //  docId >= docToOrd.length — In production, docToOrd is sized exactly maxDoc for that segment (line 116), so every valid docId in that segment fits. This check is therefore a pure defensive guard — it can't be triggered by
+    //  docToOrd == null — buildDocToOrd returns null when the segment has no vector values at all
+    // for the field (line 113). Without this guard you'd get a NullPointerException.
+    //  docId >= docToOrd.length — In production, docToOrd is sized exactly maxDoc for that segment
+    // (line 116), so every valid docId in that segment fits. This check is therefore a pure
+    // defensive guard — it can't be triggered by
     //  correct production code, but it protects against:
     //  - bugs in how the array is built or passed
     //  - future refactoring that changes the array size
-    //  - misuse when constructing the collector manually (as in tests, e.g. the docIdToOrdinal(9999) test case)
+    //  - misuse when constructing the collector manually (as in tests, e.g. the
+    // docIdToOrdinal(9999) test case)
     if (docToOrd == null || docId >= docToOrd.length) {
       return -1;
     }

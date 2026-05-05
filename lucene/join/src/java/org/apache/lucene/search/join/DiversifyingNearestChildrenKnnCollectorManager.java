@@ -143,7 +143,8 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
   private int[] buildDocToOrd(LeafReaderContext context) throws IOException {
     FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
     // fi = null if the field doesn't exist in this segment at all.
-    // fi.getVectorDimension() = 0 if the field exist in the segment but was not indexed as a vector field.
+    // fi.getVectorDimension() = 0 if the field exist in the segment but was not indexed as a vector
+    // field.
     if (fi == null || fi.getVectorDimension() == 0) {
       return null;
     }

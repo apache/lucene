@@ -46,8 +46,8 @@ import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
 
 /**
  * Tests for sibling expansion in {@link DiversifyingNearestChildrenKnnCollector} ({@link
- * org.apache.lucene.util.hnsw.DocSiblingExpansion} contract) and end-to-end correctness via
- * {@link DiversifyingChildrenFloatKnnVectorQuery}.
+ * org.apache.lucene.util.hnsw.DocSiblingExpansion} contract) and end-to-end correctness via {@link
+ * DiversifyingChildrenFloatKnnVectorQuery}.
  */
 public class TestDiversifyingChildrenKnnSiblingExpansion
     extends DiversifyingChildrenKnnCollectorTestCase {
@@ -141,10 +141,10 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
 
     assertEquals(0, c.docIdToOrdinal(0));
     assertEquals(1, c.docIdToOrdinal(1));
-    assertEquals(-1, c.docIdToOrdinal(2));  // parent → no vector
+    assertEquals(-1, c.docIdToOrdinal(2)); // parent → no vector
     assertEquals(2, c.docIdToOrdinal(3));
     assertEquals(3, c.docIdToOrdinal(4));
-    assertEquals(-1, c.docIdToOrdinal(5));  // parent → no vector
+    assertEquals(-1, c.docIdToOrdinal(5)); // parent → no vector
     assertEquals(-1, c.docIdToOrdinal(9999)); // beyond array bounds
   }
 
@@ -163,8 +163,8 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
   // ---------------------------------------------------------------------------
 
   /**
-   * C3 is the entry point (score 0.85) but its siblings C4 (0.95)
-   * and C5 (0.90) are expanded immediately. The parent must be represented by C4, not C3.
+   * C3 is the entry point (score 0.85) but its siblings C4 (0.95) and C5 (0.90) are expanded
+   * immediately. The parent must be represented by C4, not C3.
    */
   public void testBestSiblingReplacesFirstFoundChild() throws IOException {
     // 1 parent, 3 children: [C0=0, C1=1, C2=2 | P0=3]
@@ -181,7 +181,8 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
 
     TopDocs td = c.topDocs();
     assertEquals(1, td.scoreDocs.length);
-    assertEquals("best sibling must win over first-found child", 0.95f, td.scoreDocs[0].score, 1e-5f);
+    assertEquals(
+        "best sibling must win over first-found child", 0.95f, td.scoreDocs[0].score, 1e-5f);
     assertEquals("best child doc id must be C1", 1, td.scoreDocs[0].doc);
   }
 
@@ -201,8 +202,8 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
     c.collect(1, 0.95f);
 
     // P1: C2 found first (0.60), C3 is better sibling (0.65)
-    c.collect(3, 0.60f);  // trigger child → P1 enters heap, now FULL (size=2=k)
-    c.collect(4, 0.65f);  // better sibling → heap full but P1 already present, updates entry
+    c.collect(3, 0.60f); // trigger child → P1 enters heap, now FULL (size=2=k)
+    c.collect(4, 0.65f); // better sibling → heap full but P1 already present, updates entry
 
     TopDocs td = c.topDocs();
     assertEquals(2, td.scoreDocs.length);
@@ -217,8 +218,8 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
   // ---------------------------------------------------------------------------
 
   /**
-   * Siblings whose ordinal is already in visitedOrds must be filtered out to prevent
-   * double-scoring when the sibling was independently discovered via normal graph traversal.
+   * Siblings whose ordinal is already in visitedOrds must be filtered out to prevent double-scoring
+   * when the sibling was independently discovered via normal graph traversal.
    */
   public void testPendingSiblingOrdinals_filtersAlreadyVisited() throws IOException {
     // 1 parent, 3 children: [C0=doc0, C1=doc1, C2=doc2 | P0=doc3]
@@ -227,7 +228,8 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
     int[] docToOrd = buildDocToOrd(1, 3);
     int[] ordToDoc = {0, 1, 2};
     OrdinalTranslatedKnnCollector collector =
-        new OrdinalTranslatedKnnCollector(makeCollector(10, parents, docToOrd), ord -> ordToDoc[ord]);
+        new OrdinalTranslatedKnnCollector(
+            makeCollector(10, parents, docToOrd), ord -> ordToDoc[ord]);
 
     // Mark C1 (ordinal 1) as already visited by normal graph traversal
     FixedBitSet visited = new FixedBitSet(4);
@@ -236,12 +238,12 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
     // Trigger on C0 (ordinal 0 → docId 0); siblings are C1 and C2
     int[] result = collector.pendingSiblingOrdinals(0, visited);
     assertNotNull(result);
-    assertArrayEquals("C1 must be filtered (visited); only C2 remains", new int[]{2}, result);
+    assertArrayEquals("C1 must be filtered (visited); only C2 remains", new int[] {2}, result);
   }
 
   /**
-   * Siblings with no vector in this field (docIdToOrdinal returns -1) must be skipped because
-   * they have no node in the HNSW graph and cannot be scored.
+   * Siblings with no vector in this field (docIdToOrdinal returns -1) must be skipped because they
+   * have no node in the HNSW graph and cannot be scored.
    */
   public void testPendingSiblingOrdinals_filtersSparseSiblings() throws IOException {
     // 1 parent, 3 children but C1 has no vector:
@@ -251,14 +253,15 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
     int[] docToOrd = {0, -1, 1, -1};
     int[] ordToDoc = {0, 2};
     OrdinalTranslatedKnnCollector collector =
-        new OrdinalTranslatedKnnCollector(makeCollector(10, parents, docToOrd), ord -> ordToDoc[ord]);
+        new OrdinalTranslatedKnnCollector(
+            makeCollector(10, parents, docToOrd), ord -> ordToDoc[ord]);
 
     FixedBitSet visited = new FixedBitSet(4);
 
     // Trigger on C0 (ordinal 0 → docId 0); siblings are C1 (sparse) and C2
     int[] result = collector.pendingSiblingOrdinals(0, visited);
     assertNotNull(result);
-    assertArrayEquals("C1 (no vector) must be filtered; only C2 remains", new int[]{1}, result);
+    assertArrayEquals("C1 (no vector) must be filtered; only C2 remains", new int[] {1}, result);
   }
 
   // ---------------------------------------------------------------------------
@@ -272,8 +275,8 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
    * Builds a block-join float-vector index. Parent p has numChildren children; child c of parent p
    * gets vector: v[i] = (p * numChildren + c + i) * 0.1, then normalised for COSINE/DOT_PRODUCT.
    */
-  private Directory buildIndex(
-      int numParents, int numChildren, VectorSimilarityFunction sim) throws IOException {
+  private Directory buildIndex(int numParents, int numChildren, VectorSimilarityFunction sim)
+      throws IOException {
     Directory dir = newDirectory();
     try (IndexWriter w =
         new IndexWriter(
@@ -282,7 +285,8 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
         List<Document> block = new ArrayList<>();
         for (int c = 0; c < numChildren; c++) {
           float[] vec = childVector(p, c, numChildren);
-          if (sim == VectorSimilarityFunction.COSINE || sim == VectorSimilarityFunction.DOT_PRODUCT) {
+          if (sim == VectorSimilarityFunction.COSINE
+              || sim == VectorSimilarityFunction.DOT_PRODUCT) {
             normalise(vec);
           }
           Document child = new Document();
@@ -319,11 +323,7 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
 
   /** Computes brute-force top-k scores: max similarity per parent, sorted descending. */
   private static float[] bruteForceTopK(
-      float[] query,
-      int numParents,
-      int numChildren,
-      VectorSimilarityFunction sim,
-      int k) {
+      float[] query, int numParents, int numChildren, VectorSimilarityFunction sim, int k) {
     float[] parentBest = new float[numParents];
     Arrays.fill(parentBest, Float.NEGATIVE_INFINITY);
     for (int p = 0; p < numParents; p++) {
@@ -404,8 +404,8 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
   }
 
   /**
-   * The query is close to one parent's children; sibling expansion must find the best child of each discovered parent
-   * rather than whichever child the graph traversal happens to reach first.
+   * The query is close to one parent's children; sibling expansion must find the best child of each
+   * discovered parent rather than whichever child the graph traversal happens to reach first.
    */
   public void testSiblingExpansion_bestChildPerParentFound() throws Exception {
     int numParents = 3, numChildren = 3, k = 2;
@@ -425,15 +425,22 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
 
       assertEquals(k, results.scoreDocs.length);
       for (ScoreDoc sd : results.scoreDocs) {
-        int parentIdx = reader.storedFields().document(sd.doc)
-            .getField("parent").numericValue().intValue();
+        int parentIdx =
+            reader.storedFields().document(sd.doc).getField("parent").numericValue().intValue();
         // verify no other child of the same parent scores higher than the returned one
         for (int c = 0; c < numChildren; c++) {
           float[] vec = childVector(parentIdx, c, numChildren);
           float cScore = sim.compare(query, vec);
           assertTrue(
-              "parent " + parentIdx + " has a better child (score " + cScore
-                  + ") than returned doc " + sd.doc + " (score " + sd.score + ")",
+              "parent "
+                  + parentIdx
+                  + " has a better child (score "
+                  + cScore
+                  + ") than returned doc "
+                  + sd.doc
+                  + " (score "
+                  + sd.score
+                  + ")",
               cScore <= sd.score + 1e-4f);
         }
       }

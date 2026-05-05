@@ -26,18 +26,17 @@ import org.apache.lucene.util.BitSet;
  * collected without requiring full graph traversal.
  *
  * <p>The graph searcher calls {@link #pendingSiblingOrdinals} <em>before</em> invoking {@link
- * org.apache.lucene.search.KnnCollector#collect} for the triggering node, so that the collector
- * can safely inspect its internal state before the parent is registered.
+ * org.apache.lucene.search.KnnCollector#collect} for the triggering node, so that the collector can
+ * safely inspect its internal state before the parent is registered.
  *
  * @lucene.experimental
  */
 public interface ChildrenSiblingExpansion {
 
   /**
-   * Called by the HNSW graph searcher before {@link
-   * org.apache.lucene.search.KnnCollector#collect} is invoked for {@code collectedOrdinal}. The
-   * implementation inspects the node's parent and returns the ordinals of unvisited siblings that
-   * should be scored immediately.
+   * Called by the HNSW graph searcher before {@link org.apache.lucene.search.KnnCollector#collect}
+   * is invoked for {@code collectedOrdinal}. The implementation inspects the node's parent and
+   * returns the ordinals of unvisited siblings that should be scored immediately.
    *
    * <p>The caller is responsible for marking the returned ordinals as visited in {@code
    * visitedOrds} and for scoring and collecting them.

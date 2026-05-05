@@ -376,7 +376,13 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
                 float prevMinSim = results.minCompetitiveSimilarity();
                 siblingScores =
                     scoreSiblings(
-                        results, scorer, candidates, acceptOrds, siblings, numSiblingsToVisit, siblingScores);
+                        results,
+                        scorer,
+                        candidates,
+                        acceptOrds,
+                        siblings,
+                        numSiblingsToVisit,
+                        siblingScores);
                 if (results.minCompetitiveSimilarity() > prevMinSim) {
                   minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
                   shouldExploreMinSim = true;

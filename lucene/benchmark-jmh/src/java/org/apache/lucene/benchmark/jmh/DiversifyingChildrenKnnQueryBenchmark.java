@@ -95,6 +95,7 @@ public class DiversifyingChildrenKnnQueryBenchmark {
 
   /**
    * Sibling correlation scenario:
+   *
    * <ul>
    *   <li>{@code best} — siblings nearly identical (noise = 0.05); best case for expansion.
    *   <li>{@code standard} — siblings moderately correlated (noise = 0.3); realistic case.
@@ -132,9 +133,9 @@ public class DiversifyingChildrenKnnQueryBenchmark {
     // How much siblings are near to each other
     float noiseLevel =
         switch (siblingCorrelation) {
-          case "best"     -> 0.05f; // nearly identical
+          case "best" -> 0.05f; // nearly identical
           case "standard" -> 0.30f; // moderately correlated
-          default         -> Float.NaN; // worst: fully random, no centroid
+          default -> Float.NaN; // worst: fully random, no centroid
         };
 
     Random rnd = new Random(42);
@@ -147,9 +148,10 @@ public class DiversifyingChildrenKnnQueryBenchmark {
         List<Document> block = new ArrayList<>();
         // 4 - 8 - 16 children per parent
         for (int c = 0; c < childrenPerParent; c++) {
-          float[] vec = centroid == null
-              ? randomUnitVector(dim, rnd)
-              : perturbedUnitVector(centroid, noiseLevel, rnd);
+          float[] vec =
+              centroid == null
+                  ? randomUnitVector(dim, rnd)
+                  : perturbedUnitVector(centroid, noiseLevel, rnd);
           // create child doc
           Document child = new Document();
           child.add(new KnnFloatVectorField(FIELD, vec, VectorSimilarityFunction.DOT_PRODUCT));
