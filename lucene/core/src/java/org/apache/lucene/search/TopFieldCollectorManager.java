@@ -179,5 +179,4 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
     }
     return TopDocs.merge(sort, 0, numHits, topDocs);
   }
-
 }
