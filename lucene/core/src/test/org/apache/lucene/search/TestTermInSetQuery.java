@@ -54,7 +54,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.automaton.ByteRunAutomaton;
+import org.apache.lucene.util.automaton.ByteRunnable;
 
 public class TestTermInSetQuery extends LuceneTestCase {
 
@@ -500,7 +500,7 @@ public class TestTermInSetQuery extends LuceneTestCase {
 
           @Override
           public void consumeTermsMatching(
-              Query query, String field, Supplier<ByteRunAutomaton> automaton) {
+              Query query, String field, Supplier<ByteRunnable> automaton) {
             fail("Singleton TermInSetQuery should not try to build ByteRunAutomaton");
           }
         });
@@ -520,8 +520,8 @@ public class TestTermInSetQuery extends LuceneTestCase {
 
           @Override
           public void consumeTermsMatching(
-              Query query, String field, Supplier<ByteRunAutomaton> automaton) {
-            ByteRunAutomaton a = automaton.get();
+              Query query, String field, Supplier<ByteRunnable> automaton) {
+            ByteRunnable a = automaton.get();
             BytesRef test = newBytesRef("nonmatching");
             assertFalse(a.run(test.bytes, test.offset, test.length));
             for (BytesRef term : terms) {

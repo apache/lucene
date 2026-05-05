@@ -41,18 +41,18 @@ public class QueryDecomposer {
    */
   public Set<Query> decompose(Query q) {
 
-    if (q instanceof BooleanQuery) return decomposeBoolean((BooleanQuery) q);
+    if (q instanceof BooleanQuery bq) return decomposeBoolean(bq);
 
-    if (q instanceof DisjunctionMaxQuery) {
+    if (q instanceof DisjunctionMaxQuery dmq) {
       Set<Query> subqueries = new LinkedHashSet<>();
-      for (Query subq : ((DisjunctionMaxQuery) q).getDisjuncts()) {
+      for (Query subq : dmq.getDisjuncts()) {
         subqueries.addAll(decompose(subq));
       }
       return subqueries;
     }
 
-    if (q instanceof BoostQuery) {
-      return decomposeBoostQuery((BoostQuery) q);
+    if (q instanceof BoostQuery bq) {
+      return decomposeBoostQuery(bq);
     }
 
     return Collections.singleton(q);

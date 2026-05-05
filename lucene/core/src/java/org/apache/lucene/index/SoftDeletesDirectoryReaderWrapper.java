@@ -69,13 +69,12 @@ public final class SoftDeletesDirectoryReaderWrapper extends FilterDirectoryRead
     Map<CacheKey, LeafReader> readerCache = new HashMap<>();
     for (LeafReader reader : getSequentialSubReaders()) {
       // we try to reuse the live docs instances here if the reader cache key didn't change
-      if (reader instanceof SoftDeletesFilterLeafReader && reader.getReaderCacheHelper() != null) {
-        readerCache.put(
-            ((SoftDeletesFilterLeafReader) reader).reader.getReaderCacheHelper().getKey(), reader);
-      } else if (reader instanceof SoftDeletesFilterCodecReader
+      if (reader instanceof SoftDeletesFilterLeafReader sdflr
           && reader.getReaderCacheHelper() != null) {
-        readerCache.put(
-            ((SoftDeletesFilterCodecReader) reader).reader.getReaderCacheHelper().getKey(), reader);
+        readerCache.put(sdflr.reader.getReaderCacheHelper().getKey(), reader);
+      } else if (reader instanceof SoftDeletesFilterCodecReader sdfcr
+          && reader.getReaderCacheHelper() != null) {
+        readerCache.put(sdfcr.reader.getReaderCacheHelper().getKey(), reader);
       }
     }
     return new SoftDeletesDirectoryReaderWrapper(

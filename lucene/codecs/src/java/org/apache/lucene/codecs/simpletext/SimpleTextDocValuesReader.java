@@ -916,7 +916,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         } else if (doc >= maxDoc || field.docCount == 0) {
           return DocIdSetIterator.NO_MORE_DOCS;
         } else {
-          return maxDoc;
+          return maxDoc - 1;
         }
       }
 
