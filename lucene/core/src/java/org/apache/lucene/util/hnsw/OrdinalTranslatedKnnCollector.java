@@ -17,10 +17,10 @@
 
 package org.apache.lucene.util.hnsw;
 
-import java.util.Arrays;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitSet;
 
 /**
@@ -81,6 +81,6 @@ public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator
         siblingOrdinals[count++] = sibOrd;
       }
     }
-    return count > 0 ? Arrays.copyOf(siblingOrdinals, count) : null;
+    return count > 0 ? ArrayUtil.copyOfSubArray(siblingOrdinals, 0, count) : null;
   }
 }
