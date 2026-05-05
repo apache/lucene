@@ -78,8 +78,11 @@ import org.openjdk.jmh.annotations.Warmup;
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
+// 4 iterations 1 second each - results discarded
 @Warmup(iterations = 4, time = 1)
+// 5 iterations 1 second each - results recorded (how many calls we can do in 1 sec)
 @Measurement(iterations = 5, time = 1)
+// 3 separate JVM processes
 @Fork(
     value = 3,
     jvmArgsAppend = {"-Xmx4g", "-Xms4g", "-XX:+AlwaysPreTouch"})
@@ -126,41 +129,55 @@ public class DiversifyingChildrenKnnQueryBenchmark {
     tmpDir = Files.createTempDirectory("DiversifyingChildrenKnnQueryBenchmark");
     dir = MMapDirectory.open(tmpDir);
 
+    // How much siblings are near to each other
     float noiseLevel =
         switch (siblingCorrelation) {
-          case "best"     -> 0.05f;
-          case "standard" -> 0.30f;
+          case "best"     -> 0.05f; // nearly identical
+          case "standard" -> 0.30f; // moderately correlated
           default         -> Float.NaN; // worst: fully random, no centroid
         };
 
     Random rnd = new Random(42);
+    // index creation
     try (IndexWriter w = new IndexWriter(dir, new IndexWriterConfig())) {
+      // 5000 parents
       for (int p = 0; p < numParents; p++) {
+        // vector of 128-dim
         float[] centroid = Float.isNaN(noiseLevel) ? null : randomUnitVector(dim, rnd);
         List<Document> block = new ArrayList<>();
+        // 4 - 8 - 16 children per parent
         for (int c = 0; c < childrenPerParent; c++) {
           float[] vec = centroid == null
               ? randomUnitVector(dim, rnd)
               : perturbedUnitVector(centroid, noiseLevel, rnd);
+          // create child doc
           Document child = new Document();
           child.add(new KnnFloatVectorField(FIELD, vec, VectorSimilarityFunction.DOT_PRODUCT));
+          // add to the index block
           block.add(child);
         }
+        // create parent document
         Document parent = new Document();
+        // docType = _parent
         parent.add(new StringField(PARENT_FIELD, PARENT_VALUE, Field.Store.NO));
+        // add to the index block
         block.add(parent);
+        // add to the index writer
         w.addDocuments(block);
       }
+      // compress to one segment
       w.forceMerge(1);
     }
 
     reader = DirectoryReader.open(dir);
     searcher = new IndexSearcher(reader);
+    // parent filter docType = _parent
     parentFilter = new QueryBitSetProducer(new TermQuery(new Term(PARENT_FIELD, PARENT_VALUE)));
 
     Random qrnd = new Random(123);
     queryVectors = new float[NUM_QUERY_VECTORS][];
     for (int i = 0; i < NUM_QUERY_VECTORS; i++) {
+      // random query vectors
       queryVectors[i] = randomUnitVector(dim, qrnd);
     }
   }
@@ -173,6 +190,8 @@ public class DiversifyingChildrenKnnQueryBenchmark {
 
   @Benchmark
   public TopDocs search() throws IOException {
+    // benchmarked part - search
+    // iterates on all the queries in a round-robin
     float[] query = queryVectors[queryIdx++ & (NUM_QUERY_VECTORS - 1)];
     Query knnQuery =
         new DiversifyingChildrenFloatKnnVectorQuery(FIELD, query, null, k, parentFilter);
@@ -194,6 +213,7 @@ public class DiversifyingChildrenKnnQueryBenchmark {
     return normalise(v);
   }
 
+  // Since we use DOT PRODUCT
   private static float[] normalise(float[] v) {
     float norm = 0;
     for (float x : v) norm += x * x;
