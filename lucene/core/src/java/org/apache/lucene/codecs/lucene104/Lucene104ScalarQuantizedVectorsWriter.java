@@ -50,6 +50,7 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.quantization.HadamardRotation;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
@@ -67,6 +68,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private final List<FieldWriter> fields = new ArrayList<>();
   private final IndexOutput meta, vectorData;
   private final ScalarEncoding encoding;
+  private final long rotationSeed;
   private final FlatVectorsWriter rawVectorDelegate;
   private boolean finished;
 
@@ -74,11 +76,13 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   public Lucene104ScalarQuantizedVectorsWriter(
       SegmentWriteState state,
       ScalarEncoding encoding,
+      long rotationSeed,
       FlatVectorsWriter rawVectorDelegate,
       Lucene104ScalarQuantizedVectorScorer vectorsScorer)
       throws IOException {
     super(vectorsScorer);
     this.encoding = encoding;
+    this.rotationSeed = rotationSeed;
     this.segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -120,7 +124,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
       @SuppressWarnings("unchecked")
       FieldWriter fieldWriter =
-          new FieldWriter(fieldInfo, (FlatFieldVectorsWriter<float[]>) rawVectorDelegate);
+          new FieldWriter(
+              fieldInfo, rotationSeed, (FlatFieldVectorsWriter<float[]>) rawVectorDelegate);
       fields.add(fieldWriter);
       return fieldWriter;
     }
@@ -297,6 +302,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       meta.writeBytes(buffer.array(), buffer.array().length);
       meta.writeInt(Float.floatToIntBits(centroidDp));
     }
+    // Rotation seed (VERSION_PRECONDITIONED and later). 0L means preconditioning is disabled.
+    meta.writeLong(rotationSeed);
     OrdToDocDISIReaderConfiguration.writeStoredMeta(
         DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, count, maxDoc, docsWithField);
   }
@@ -522,11 +529,25 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     private final FlatFieldVectorsWriter<float[]> flatFieldVectorsWriter;
     private final float[] dimensionSums;
     private final FloatArrayList magnitudes = new FloatArrayList();
+    /** Rotation applied to every vector; {@code null} when preconditioning is disabled. */
+    private final HadamardRotation rotation;
+    /** Scratch buffer for the rotation path; unused when {@code rotation == null}. */
+    private final float[] rotationScratch;
 
-    FieldWriter(FieldInfo fieldInfo, FlatFieldVectorsWriter<float[]> flatFieldVectorsWriter) {
+    FieldWriter(
+        FieldInfo fieldInfo,
+        long rotationSeed,
+        FlatFieldVectorsWriter<float[]> flatFieldVectorsWriter) {
       this.fieldInfo = fieldInfo;
       this.flatFieldVectorsWriter = flatFieldVectorsWriter;
       this.dimensionSums = new float[fieldInfo.getVectorDimension()];
+      if (rotationSeed == Lucene104ScalarQuantizedVectorsFormat.ROTATION_DISABLED) {
+        this.rotation = null;
+        this.rotationScratch = null;
+      } else {
+        this.rotation = HadamardRotation.create(fieldInfo.getVectorDimension(), rotationSeed);
+        this.rotationScratch = new float[fieldInfo.getVectorDimension()];
+      }
     }
 
     @Override
@@ -565,6 +586,14 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
     @Override
     public void addValue(int docID, float[] vectorValue) throws IOException {
+      // If preconditioning is enabled, rotate the vector up front. The rest of the pipeline —
+      // raw-vector storage, centroid accumulation, quantization, and scoring — all operate in the
+      // rotated basis, which keeps the math consistent.
+      if (rotation != null) {
+        float[] rotated = new float[vectorValue.length];
+        rotation.rotate(vectorValue, rotated, rotationScratch);
+        vectorValue = rotated;
+      }
       flatFieldVectorsWriter.addValue(docID, vectorValue);
       if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
         float dp = VectorUtil.dotProduct(vectorValue, vectorValue);

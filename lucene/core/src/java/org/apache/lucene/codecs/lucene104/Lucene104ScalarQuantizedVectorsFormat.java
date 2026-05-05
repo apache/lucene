@@ -97,12 +97,18 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   public static final String NAME = "Lucene104ScalarQuantizedVectorsFormat";
 
   static final int VERSION_START = 0;
-  static final int VERSION_CURRENT = VERSION_START;
+  /** Version 1 adds an optional per-field {@code rotationSeed} for preconditioning. */
+  static final int VERSION_PRECONDITIONED = 1;
+
+  static final int VERSION_CURRENT = VERSION_PRECONDITIONED;
   static final String META_CODEC_NAME = "Lucene104ScalarQuantizedVectorsFormatMeta";
   static final String VECTOR_DATA_CODEC_NAME = "Lucene104ScalarQuantizedVectorsFormatData";
   static final String META_EXTENSION = "vemq";
   static final String VECTOR_DATA_EXTENSION = "veq";
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
+
+  /** Sentinel {@code rotationSeed} value meaning preconditioning is disabled. */
+  public static final long ROTATION_DISABLED = 0L;
 
   private static final FlatVectorsFormat rawVectorFormat =
       new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
@@ -111,22 +117,42 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
       new Lucene104ScalarQuantizedVectorScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   private final ScalarEncoding encoding;
+  private final long rotationSeed;
 
-  /** Creates a new instance with UNSIGNED_BYTE encoding. */
+  /** Creates a new instance with UNSIGNED_BYTE encoding and preconditioning disabled. */
   public Lucene104ScalarQuantizedVectorsFormat() {
-    this(ScalarEncoding.UNSIGNED_BYTE);
+    this(ScalarEncoding.UNSIGNED_BYTE, ROTATION_DISABLED);
   }
 
-  /** Creates a new instance with the chosen quantization encoding. */
+  /** Creates a new instance with the chosen quantization encoding and preconditioning disabled. */
   public Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding encoding) {
+    this(encoding, ROTATION_DISABLED);
+  }
+
+  /**
+   * Creates a new instance with the chosen quantization encoding and rotation preconditioning.
+   *
+   * <p>When {@code rotationSeed} is non-zero, every float vector is mapped through a deterministic
+   * randomized Hadamard rotation before being quantized, and every query vector is rotated the
+   * same way before scoring. The rotation is an orthogonal transform, so dot product, cosine, and
+   * Euclidean distances are all preserved, but the per-coordinate distribution of the vectors
+   * becomes much more Gaussian. This makes OSQ more robust on datasets whose raw components are
+   * skewed or uniform (e.g. image pixel values, histogram features, non-transformer embeddings).
+   * See {@link org.apache.lucene.util.quantization.HadamardRotation}.
+   *
+   * <p>Seed {@link #ROTATION_DISABLED} disables preconditioning and produces the same on-disk
+   * format as previous versions of this codec.
+   */
+  public Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding encoding, long rotationSeed) {
     super(NAME);
     this.encoding = encoding;
+    this.rotationSeed = rotationSeed;
   }
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene104ScalarQuantizedVectorsWriter(
-        state, encoding, rawVectorFormat.fieldsWriter(state), scorer);
+        state, encoding, rotationSeed, rawVectorFormat.fieldsWriter(state), scorer);
   }
 
   @Override
@@ -146,6 +172,8 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
         + NAME
         + ", encoding="
         + encoding
+        + ", rotationSeed="
+        + (rotationSeed == ROTATION_DISABLED ? "disabled" : Long.toHexString(rotationSeed))
         + ", flatVectorScorer="
         + scorer
         + ", rawVectorFormat="

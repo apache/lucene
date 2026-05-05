@@ -14,4 +14,3 @@
 #  limitations under the License.
 
 org.apache.lucene.sandbox.codecs.faiss.FaissKnnVectorsFormat
-org.apache.lucene.sandbox.codecs.rotation.RotationPreconditionedVectorsFormat

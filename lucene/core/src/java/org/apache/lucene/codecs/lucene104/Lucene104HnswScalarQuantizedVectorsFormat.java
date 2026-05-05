@@ -156,8 +156,33 @@ public class Lucene104HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat 
       int numMergeWorkers,
       ExecutorService mergeExec,
       int tinySegmentsThreshold) {
+    this(
+        encoding,
+        Lucene104ScalarQuantizedVectorsFormat.ROTATION_DISABLED,
+        maxConn,
+        beamWidth,
+        numMergeWorkers,
+        mergeExec,
+        tinySegmentsThreshold);
+  }
+
+  /**
+   * Constructs a format using the given graph construction parameters, scalar quantization, and
+   * rotation preconditioning. A non-zero {@code rotationSeed} enables data-oblivious Hadamard
+   * rotation preconditioning on the backing scalar-quantized format. See {@link
+   * Lucene104ScalarQuantizedVectorsFormat#Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding,
+   * long)} for details.
+   */
+  public Lucene104HnswScalarQuantizedVectorsFormat(
+      ScalarEncoding encoding,
+      long rotationSeed,
+      int maxConn,
+      int beamWidth,
+      int numMergeWorkers,
+      ExecutorService mergeExec,
+      int tinySegmentsThreshold) {
     super(NAME);
-    flatVectorsFormat = new Lucene104ScalarQuantizedVectorsFormat(encoding);
+    flatVectorsFormat = new Lucene104ScalarQuantizedVectorsFormat(encoding, rotationSeed);
     if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
           "maxConn must be positive and less than or equal to "
