@@ -14,10 +14,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene104;
+package org.apache.lucene.codecs.lucene105;
 
-import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
-import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_COMPONENT;
+import static org.apache.lucene.codecs.lucene105.Lucene105ScalarQuantizedVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
+import static org.apache.lucene.codecs.lucene105.Lucene105ScalarQuantizedVectorsFormat.QUANTIZED_VECTOR_COMPONENT;
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import static org.apache.lucene.util.RamUsageEstimator.shallowSizeOfInstance;
@@ -50,6 +50,7 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.quantization.HadamardRotation;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
@@ -59,38 +60,41 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  *
  * @lucene.experimental
  */
-public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
+public class Lucene105ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private static final long SHALLOW_RAM_BYTES_USED =
-      shallowSizeOfInstance(Lucene104ScalarQuantizedVectorsWriter.class);
+      shallowSizeOfInstance(Lucene105ScalarQuantizedVectorsWriter.class);
 
   private final SegmentWriteState segmentWriteState;
   private final List<FieldWriter> fields = new ArrayList<>();
   private final IndexOutput meta, vectorData;
   private final ScalarEncoding encoding;
+  private final long rotationSeed;
   private final FlatVectorsWriter rawVectorDelegate;
   private boolean finished;
 
   /** Sole constructor */
-  public Lucene104ScalarQuantizedVectorsWriter(
+  public Lucene105ScalarQuantizedVectorsWriter(
       SegmentWriteState state,
       ScalarEncoding encoding,
+      long rotationSeed,
       FlatVectorsWriter rawVectorDelegate,
-      Lucene104ScalarQuantizedVectorScorer vectorsScorer)
+      Lucene105ScalarQuantizedVectorScorer vectorsScorer)
       throws IOException {
     super(vectorsScorer);
     this.encoding = encoding;
+    this.rotationSeed = rotationSeed;
     this.segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene104ScalarQuantizedVectorsFormat.META_EXTENSION);
+            Lucene105ScalarQuantizedVectorsFormat.META_EXTENSION);
 
     String vectorDataFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene104ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION);
+            Lucene105ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION);
     this.rawVectorDelegate = rawVectorDelegate;
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
@@ -98,14 +102,14 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
       CodecUtil.writeIndexHeader(
           meta,
-          Lucene104ScalarQuantizedVectorsFormat.META_CODEC_NAME,
-          Lucene104ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+          Lucene105ScalarQuantizedVectorsFormat.META_CODEC_NAME,
+          Lucene105ScalarQuantizedVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
       CodecUtil.writeIndexHeader(
           vectorData,
-          Lucene104ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
-          Lucene104ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+          Lucene105ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
+          Lucene105ScalarQuantizedVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
     } catch (Throwable t) {
@@ -120,7 +124,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
       @SuppressWarnings("unchecked")
       FieldWriter fieldWriter =
-          new FieldWriter(fieldInfo, (FlatFieldVectorsWriter<float[]>) rawVectorDelegate);
+          new FieldWriter(
+              fieldInfo, rotationSeed, (FlatFieldVectorsWriter<float[]>) rawVectorDelegate);
       fields.add(fieldWriter);
       return fieldWriter;
     }
@@ -297,6 +302,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       meta.writeBytes(buffer.array(), buffer.array().length);
       meta.writeInt(Float.floatToIntBits(centroidDp));
     }
+    // Rotation seed — always written. 0 means preconditioning is disabled for this field.
+    meta.writeLong(rotationSeed);
     OrdToDocDISIReaderConfiguration.writeStoredMeta(
         DIRECT_MONOTONIC_BLOCK_SHIFT, meta, vectorData, count, maxDoc, docsWithField);
   }
@@ -421,7 +428,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
   static float[] getCentroid(KnnVectorsReader vectorsReader, String fieldName) {
     vectorsReader = vectorsReader.unwrapReaderForField(fieldName);
-    if (vectorsReader instanceof Lucene104ScalarQuantizedVectorsReader reader) {
+    if (vectorsReader instanceof Lucene105ScalarQuantizedVectorsReader reader) {
       return reader.getCentroid(fieldName);
     }
     return null;
@@ -522,11 +529,25 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     private final FlatFieldVectorsWriter<float[]> flatFieldVectorsWriter;
     private final float[] dimensionSums;
     private final FloatArrayList magnitudes = new FloatArrayList();
+    /** Rotation applied to every vector; {@code null} when preconditioning is disabled. */
+    private final HadamardRotation rotation;
+    /** Scratch buffer for the rotation path; unused when {@code rotation == null}. */
+    private final float[] rotationScratch;
 
-    FieldWriter(FieldInfo fieldInfo, FlatFieldVectorsWriter<float[]> flatFieldVectorsWriter) {
+    FieldWriter(
+        FieldInfo fieldInfo,
+        long rotationSeed,
+        FlatFieldVectorsWriter<float[]> flatFieldVectorsWriter) {
       this.fieldInfo = fieldInfo;
       this.flatFieldVectorsWriter = flatFieldVectorsWriter;
       this.dimensionSums = new float[fieldInfo.getVectorDimension()];
+      if (rotationSeed == Lucene105ScalarQuantizedVectorsFormat.ROTATION_DISABLED) {
+        this.rotation = null;
+        this.rotationScratch = null;
+      } else {
+        this.rotation = HadamardRotation.create(fieldInfo.getVectorDimension(), rotationSeed);
+        this.rotationScratch = new float[fieldInfo.getVectorDimension()];
+      }
     }
 
     @Override
@@ -565,6 +586,14 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
     @Override
     public void addValue(int docID, float[] vectorValue) throws IOException {
+      // If preconditioning is enabled, rotate the vector up front. The rest of the pipeline —
+      // raw-vector storage, centroid accumulation, quantization, and scoring — all operate in the
+      // rotated basis, which keeps the math consistent end to end.
+      if (rotation != null) {
+        float[] rotated = new float[vectorValue.length];
+        rotation.rotate(vectorValue, rotated, rotationScratch);
+        vectorValue = rotated;
+      }
       flatFieldVectorsWriter.addValue(docID, vectorValue);
       if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
         float dp = VectorUtil.dotProduct(vectorValue, vectorValue);

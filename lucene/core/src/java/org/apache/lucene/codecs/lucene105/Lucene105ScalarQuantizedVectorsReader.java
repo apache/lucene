@@ -14,9 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene104;
+package org.apache.lucene.codecs.lucene105;
 
-import static org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION;
+import static org.apache.lucene.codecs.lucene105.Lucene105ScalarQuantizedVectorsFormat.VECTOR_DATA_EXTENSION;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readSimilarityFunction;
 import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader.readVectorEncoding;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
@@ -26,11 +26,11 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
-import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
@@ -60,6 +60,7 @@ import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.quantization.HadamardRotation;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
@@ -71,34 +72,38 @@ import org.apache.lucene.util.quantization.ScalarQuantizer;
  *
  * @lucene.experimental
  */
-public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
+public class Lucene105ScalarQuantizedVectorsReader extends FlatVectorsReader
     implements QuantizedVectorsReader {
 
   private static final long SHALLOW_SIZE =
-      RamUsageEstimator.shallowSizeOfInstance(Lucene104ScalarQuantizedVectorsReader.class);
+      RamUsageEstimator.shallowSizeOfInstance(Lucene105ScalarQuantizedVectorsReader.class);
 
   private final Map<String, FieldEntry> fields = new HashMap<>();
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
-  private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
+  private final Lucene105ScalarQuantizedVectorScorer vectorScorer;
+  /** Lazily built Hadamard rotations, keyed by field name. */
+  private final Map<String, HadamardRotation> rotations = new ConcurrentHashMap<>();
+
   public static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
 
-  public Lucene104ScalarQuantizedVectorsReader(
+  public Lucene105ScalarQuantizedVectorsReader(
       SegmentReadState state,
       FlatVectorsReader rawVectorsReader,
-      Lucene104ScalarQuantizedVectorScorer vectorsScorer)
+      Lucene105ScalarQuantizedVectorScorer vectorsScorer)
       throws IOException {
     // Quantized vectors are accessed randomly from their node ID stored in the HNSW
     // graph.
     this(state, rawVectorsReader, vectorsScorer, DataAccessHint.RANDOM);
   }
 
-  public Lucene104ScalarQuantizedVectorsReader(
+  public Lucene105ScalarQuantizedVectorsReader(
       SegmentReadState state,
       FlatVectorsReader rawVectorsReader,
-      Lucene104ScalarQuantizedVectorScorer vectorsScorer,
+      Lucene105ScalarQuantizedVectorScorer vectorsScorer,
       DataAccessHint accessHint)
       throws IOException {
+    super(vectorsScorer);
     this.vectorScorer = vectorsScorer;
     this.rawVectorsReader = rawVectorsReader;
     int versionMeta = -1;
@@ -106,16 +111,16 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
         IndexFileNames.segmentFileName(
             state.segmentInfo.name,
             state.segmentSuffix,
-            Lucene104ScalarQuantizedVectorsFormat.META_EXTENSION);
+            Lucene105ScalarQuantizedVectorsFormat.META_EXTENSION);
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
       try {
         versionMeta =
             CodecUtil.checkIndexHeader(
                 meta,
-                Lucene104ScalarQuantizedVectorsFormat.META_CODEC_NAME,
-                Lucene104ScalarQuantizedVectorsFormat.VERSION_START,
-                Lucene104ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+                Lucene105ScalarQuantizedVectorsFormat.META_CODEC_NAME,
+                Lucene105ScalarQuantizedVectorsFormat.VERSION_START,
+                Lucene105ScalarQuantizedVectorsFormat.VERSION_CURRENT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
         readFields(meta, state.fieldInfos);
@@ -134,7 +139,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               state,
               versionMeta,
               VECTOR_DATA_EXTENSION,
-              Lucene104ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
+              Lucene105ScalarQuantizedVectorsFormat.VECTOR_DATA_CODEC_NAME,
               state.context.withHints(hints));
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, this);
@@ -187,15 +192,21 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   }
 
   @Override
-  public FlatVectorsScorer getFlatVectorScorer(String field) throws IOException {
-    return vectorScorer;
-  }
-
-  @Override
   public RandomVectorScorer getRandomVectorScorer(String field, float[] target) throws IOException {
     FieldEntry fi = fields.get(field);
     if (fi == null) {
       return null;
+    }
+    // If preconditioning is enabled on this field, rotate the query once up front. Because the
+    // rotation is orthogonal, every similarity computation between this rotated query and the
+    // (rotated) stored vectors equals the similarity between the original query and the original
+    // un-rotated stored vectors.
+    float[] scoringTarget = target;
+    HadamardRotation rotation = rotationOrNull(field, fi);
+    if (rotation != null && target != null) {
+      float[] rotated = new float[target.length];
+      rotation.rotate(target, rotated);
+      scoringTarget = rotated;
     }
     return vectorScorer.getRandomVectorScorer(
         fi.similarityFunction,
@@ -212,7 +223,20 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
             fi.vectorDataOffset,
             fi.vectorDataLength,
             quantizedVectorData),
-        target);
+        scoringTarget);
+  }
+
+  /**
+   * Returns the rotation instance for the given field, or {@code null} if preconditioning is
+   * disabled on that field. Instances are lazily built and cached; they are immutable and
+   * thread-safe.
+   */
+  HadamardRotation rotationOrNull(String field, FieldEntry fi) {
+    if (fi.rotationSeed == Lucene105ScalarQuantizedVectorsFormat.ROTATION_DISABLED) {
+      return null;
+    }
+    return rotations.computeIfAbsent(
+        field, _ -> HadamardRotation.create(fi.dimension, fi.rotationSeed));
   }
 
   @Override
@@ -243,6 +267,15 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     }
 
     FloatVectorValues rawFloatVectorValues = rawVectorsReader.getFloatVectorValues(field);
+
+    // When preconditioning is enabled the raw delegate holds rotated values. External callers
+    // (rerank, CheckIndex, FieldExistsQuery, etc.) expect to see the vectors they indexed, so we
+    // inverse-rotate on the fly here. Merge callers go through {@link #getMergeInstance()} which
+    // returns a lightweight view that skips the inverse rotation.
+    HadamardRotation rotation = rotationOrNull(field, fi);
+    if (rotation != null && rawFloatVectorValues != null) {
+      rawFloatVectorValues = new InverseRotatedFloatVectorValues(rawFloatVectorValues, rotation);
+    }
 
     if (rawFloatVectorValues.size() == 0) {
       return OffHeapScalarQuantizedFloatVectorValues.load(
@@ -333,6 +366,144 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   }
 
   @Override
+  public FlatVectorsReader getMergeInstance() throws IOException {
+    // Expose the raw rotated stored vectors to the merge path so that the downstream merge
+    // operates entirely in rotated space. External readers use {@code this} directly, which does
+    // inverse-rotate stored vectors to honour the "what you indexed is what you read" contract.
+    return new MergeReader();
+  }
+
+  /**
+   * A trivial merge-only view that behaves exactly like the outer reader except that {@link
+   * #getFloatVectorValues(String)} hands through the rotated-basis stored vectors without
+   * inverse-rotating them.
+   */
+  private final class MergeReader extends FlatVectorsReader {
+
+    MergeReader() {
+      super(Lucene105ScalarQuantizedVectorsReader.this.vectorScorer);
+    }
+
+    @Override
+    public RandomVectorScorer getRandomVectorScorer(String field, float[] target)
+        throws IOException {
+      return Lucene105ScalarQuantizedVectorsReader.this.getRandomVectorScorer(field, target);
+    }
+
+    @Override
+    public RandomVectorScorer getRandomVectorScorer(String field, byte[] target)
+        throws IOException {
+      return Lucene105ScalarQuantizedVectorsReader.this.getRandomVectorScorer(field, target);
+    }
+
+    @Override
+    public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+      // Hand through the raw rotated stored vectors without inverse-rotating.
+      FieldEntry fi = fields.get(field);
+      if (fi == null) {
+        return null;
+      }
+      return rawVectorsReader.getFloatVectorValues(field);
+    }
+
+    @Override
+    public ByteVectorValues getByteVectorValues(String field) throws IOException {
+      return Lucene105ScalarQuantizedVectorsReader.this.getByteVectorValues(field);
+    }
+
+    @Override
+    public void checkIntegrity() throws IOException {
+      Lucene105ScalarQuantizedVectorsReader.this.checkIntegrity();
+    }
+
+    @Override
+    public void close() {
+      // no-op: the outer reader owns the resources.
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return Lucene105ScalarQuantizedVectorsReader.this.ramBytesUsed();
+    }
+
+    @Override
+    public KnnVectorsReader unwrapReaderForField(String field) {
+      return Lucene105ScalarQuantizedVectorsReader.this.unwrapReaderForField(field);
+    }
+
+    @Override
+    public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+      return Lucene105ScalarQuantizedVectorsReader.this.getOffHeapByteSize(fieldInfo);
+    }
+  }
+
+  /**
+   * A {@link FloatVectorValues} that inverse-rotates values returned by a backing (rotated)
+   * delegate on access. Used by {@link #getFloatVectorValues(String)} so external callers see the
+   * original vectors they indexed even when preconditioning is enabled.
+   */
+  private static final class InverseRotatedFloatVectorValues extends FloatVectorValues {
+
+    private final FloatVectorValues delegate;
+    private final HadamardRotation rotation;
+    private final float[] out;
+    private final float[] scratch;
+
+    InverseRotatedFloatVectorValues(FloatVectorValues delegate, HadamardRotation rotation) {
+      this.delegate = delegate;
+      this.rotation = rotation;
+      this.out = new float[rotation.dimension()];
+      this.scratch = new float[rotation.dimension()];
+    }
+
+    @Override
+    public float[] vectorValue(int ord) throws IOException {
+      float[] rotated = delegate.vectorValue(ord);
+      rotation.inverseRotate(rotated, out, scratch);
+      return out;
+    }
+
+    @Override
+    public int dimension() {
+      return delegate.dimension();
+    }
+
+    @Override
+    public int size() {
+      return delegate.size();
+    }
+
+    @Override
+    public FloatVectorValues copy() throws IOException {
+      return new InverseRotatedFloatVectorValues(delegate.copy(), rotation);
+    }
+
+    @Override
+    public KnnVectorValues.DocIndexIterator iterator() {
+      return delegate.iterator();
+    }
+
+    @Override
+    public int ordToDoc(int ord) {
+      return delegate.ordToDoc(ord);
+    }
+
+    @Override
+    public VectorScorer scorer(float[] target) throws IOException {
+      float[] rotated = new float[target.length];
+      rotation.rotate(target, rotated);
+      return delegate.scorer(rotated);
+    }
+
+    @Override
+    public VectorScorer rescorer(float[] target) throws IOException {
+      float[] rotated = new float[target.length];
+      rotation.rotate(target, rotated);
+      return delegate.rescorer(rotated);
+    }
+  }
+
+  @Override
   public long ramBytesUsed() {
     long size = SHALLOW_SIZE;
     size +=
@@ -378,8 +549,8 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
           CodecUtil.checkIndexHeader(
               in,
               codecName,
-              Lucene104ScalarQuantizedVectorsFormat.VERSION_START,
-              Lucene104ScalarQuantizedVectorsFormat.VERSION_CURRENT,
+              Lucene105ScalarQuantizedVectorsFormat.VERSION_START,
+              Lucene105ScalarQuantizedVectorsFormat.VERSION_CURRENT,
               state.segmentInfo.getId(),
               state.segmentSuffix);
       if (versionMeta != versionVectorData) {
@@ -567,6 +738,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       ScalarEncoding scalarEncoding,
       float[] centroid,
       float centroidDP,
+      long rotationSeed,
       OrdToDocDISIReaderConfiguration ordToDocDISIReaderConfiguration) {
 
     static FieldEntry create(
@@ -595,6 +767,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       } else {
         centroid = null;
       }
+      long rotationSeed = input.readLong();
       OrdToDocDISIReaderConfiguration conf =
           OrdToDocDISIReaderConfiguration.fromStoredMeta(input, size);
       return new FieldEntry(
@@ -607,6 +780,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
           scalarEncoding,
           centroid,
           centroidDP,
+          rotationSeed,
           conf);
     }
   }

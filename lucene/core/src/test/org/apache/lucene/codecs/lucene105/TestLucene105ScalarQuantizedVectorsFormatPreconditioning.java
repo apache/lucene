@@ -14,14 +14,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene104;
+package org.apache.lucene.codecs.lucene105;
 
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DirectoryReader;
@@ -37,19 +37,19 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
- * Targeted tests for the rotation preconditioning added to {@link
- * Lucene104ScalarQuantizedVectorsFormat}. These tests verify that:
+ * Targeted tests for the rotation preconditioning built into {@link
+ * Lucene105ScalarQuantizedVectorsFormat}. These tests verify that:
  *
  * <ul>
- *   <li>Setting a non-zero {@code rotationSeed} does not corrupt search — top-K results are still
- *       well-formed.
+ *   <li>Setting a non-zero {@code rotationSeed} does not corrupt search — top-K still returns
+ *       well-formed results.
  *   <li>Indexed vectors remain retrievable via {@link
  *       org.apache.lucene.index.FloatVectorValues#vectorValue(int)} (they get inverse-rotated on
  *       the read path).
  *   <li>The {@code toString} reflects the rotation seed for observability.
  * </ul>
  */
-public class TestLucene104ScalarQuantizedVectorsFormatPreconditioning extends LuceneTestCase {
+public class TestLucene105ScalarQuantizedVectorsFormatPreconditioning extends LuceneTestCase {
 
   /** Sanity check: search with preconditioning still returns top-K results near the query. */
   public void testPreconditionedSearchReturnsResults() throws Exception {
@@ -77,9 +77,8 @@ public class TestLucene104ScalarQuantizedVectorsFormatPreconditioning extends Lu
         // Query close to vectors[0]
         float[] query = vectors[0].clone();
         TopDocs top = searcher.search(new KnnFloatVectorQuery("field", query, 5), 5);
-        assertTrue("expected at least 1 hit, got " + top.totalHits.value(), top.totalHits.value() >= 1);
-        // The nearest doc to vectors[0] should typically be doc 0 — but because quantization is
-        // approximate we only assert it is in the returned set.
+        assertTrue(
+            "expected at least 1 hit, got " + top.totalHits.value(), top.totalHits.value() >= 1);
         Set<Integer> ids = new HashSet<>();
         for (var sd : top.scoreDocs) {
           ids.add(sd.doc);
@@ -120,7 +119,8 @@ public class TestLucene104ScalarQuantizedVectorsFormatPreconditioning extends Lu
         assertNotNull(values);
         var it = values.iterator();
         int count = 0;
-        for (int doc = it.nextDoc(); doc != org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+        for (int doc = it.nextDoc();
+            doc != org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
             doc = it.nextDoc()) {
           float[] got = values.vectorValue(it.index());
           // inverse-rotation has ~1e-7 FP drift; use a tolerance.
@@ -136,30 +136,30 @@ public class TestLucene104ScalarQuantizedVectorsFormatPreconditioning extends Lu
     }
   }
 
-  /** Sanity check that a format with rotationSeed=0 produces the same results as the default. */
-  public void testSeedZeroEquivalentToDefault() throws Exception {
-    Lucene104ScalarQuantizedVectorsFormat disabled =
-        new Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding.UNSIGNED_BYTE, 0L);
-    Lucene104ScalarQuantizedVectorsFormat defaultFmt =
-        new Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding.UNSIGNED_BYTE);
+  /** Sanity check that a format with rotationSeed=0 produces the same toString as the default. */
+  public void testSeedZeroEquivalentToDefault() {
+    Lucene105ScalarQuantizedVectorsFormat disabled =
+        new Lucene105ScalarQuantizedVectorsFormat(ScalarEncoding.UNSIGNED_BYTE, 0L);
+    Lucene105ScalarQuantizedVectorsFormat defaultFmt =
+        new Lucene105ScalarQuantizedVectorsFormat(ScalarEncoding.UNSIGNED_BYTE);
     assertEquals(disabled.toString(), defaultFmt.toString());
   }
 
   public void testToStringWithSeed() {
-    Lucene104ScalarQuantizedVectorsFormat f =
-        new Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding.UNSIGNED_BYTE, 0x1234L);
+    Lucene105ScalarQuantizedVectorsFormat f =
+        new Lucene105ScalarQuantizedVectorsFormat(ScalarEncoding.UNSIGNED_BYTE, 0x1234L);
     String s = f.toString();
     assertTrue("toString should include the seed: " + s, s.contains("rotationSeed=1234"));
   }
 
   private static Codec codecWithRotation(ScalarEncoding encoding, long rotationSeed) {
-    KnnVectorsFormat format = new Lucene104ScalarQuantizedVectorsFormat(encoding, rotationSeed);
-    // Use the default codec's name — FilterCodec still needs a name that is resolvable via SPI
-    // when the index is closed and reopened, and Codec.getDefault() is always registered.
+    KnnVectorsFormat format = new Lucene105ScalarQuantizedVectorsFormat(encoding, rotationSeed);
+    // Use the default codec's name — FilterCodec needs a resolvable SPI name when the index is
+    // closed and reopened, and Codec.getDefault() is always registered.
     return new FilterCodec(Codec.getDefault().getName(), Codec.getDefault()) {
       @Override
       public KnnVectorsFormat knnVectorsFormat() {
-        return new org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat() {
+        return new PerFieldKnnVectorsFormat() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
             return format;
@@ -175,12 +175,5 @@ public class TestLucene104ScalarQuantizedVectorsFormatPreconditioning extends Lu
       v[i] = (float) random().nextGaussian();
     }
     return v;
-  }
-
-  // Local helper since we don't extend a test case that provides this. Silences unused-import
-  // warnings on Arrays when the method is referenced elsewhere.
-  @SuppressWarnings("unused")
-  private static String arr(float[] v) {
-    return Arrays.toString(v);
   }
 }

@@ -91,7 +91,6 @@ public class TestLucene104HnswScalarQuantizedVectorsFormat extends BaseKnnVector
             + " maxConn=10, beamWidth=20, tinySegmentsThreshold=100,"
             + " flatVectorFormat=Lucene104ScalarQuantizedVectorsFormat(name=Lucene104ScalarQuantizedVectorsFormat,"
             + " encoding=UNSIGNED_BYTE,"
-            + " rotationSeed=disabled,"
             + " flatVectorScorer=Lucene104ScalarQuantizedVectorScorer(nonQuantizedDelegate=%s()),"
             + " rawVectorFormat=Lucene99FlatVectorsFormat(vectorsScorer=%s())))";
 

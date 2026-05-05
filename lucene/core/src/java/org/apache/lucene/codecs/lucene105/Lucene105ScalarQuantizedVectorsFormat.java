@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene104;
+package org.apache.lucene.codecs.lucene105;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil;
@@ -92,46 +92,70 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncod
  *
  * @lucene.experimental
  */
-public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
+public class Lucene105ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   public static final String QUANTIZED_VECTOR_COMPONENT = "QVEC";
-  public static final String NAME = "Lucene104ScalarQuantizedVectorsFormat";
+  public static final String NAME = "Lucene105ScalarQuantizedVectorsFormat";
 
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
-  static final String META_CODEC_NAME = "Lucene104ScalarQuantizedVectorsFormatMeta";
-  static final String VECTOR_DATA_CODEC_NAME = "Lucene104ScalarQuantizedVectorsFormatData";
+  static final String META_CODEC_NAME = "Lucene105ScalarQuantizedVectorsFormatMeta";
+  static final String VECTOR_DATA_CODEC_NAME = "Lucene105ScalarQuantizedVectorsFormatData";
   static final String META_EXTENSION = "vemq";
   static final String VECTOR_DATA_EXTENSION = "veq";
   static final int DIRECT_MONOTONIC_BLOCK_SHIFT = 16;
 
+  /** Sentinel {@code rotationSeed} value meaning preconditioning is disabled. */
+  public static final long ROTATION_DISABLED = 0L;
+
   private static final FlatVectorsFormat rawVectorFormat =
       new Lucene99FlatVectorsFormat(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
-  private static final Lucene104ScalarQuantizedVectorScorer scorer =
-      new Lucene104ScalarQuantizedVectorScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
+  private static final Lucene105ScalarQuantizedVectorScorer scorer =
+      new Lucene105ScalarQuantizedVectorScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   private final ScalarEncoding encoding;
+  private final long rotationSeed;
 
-  /** Creates a new instance with UNSIGNED_BYTE encoding. */
-  public Lucene104ScalarQuantizedVectorsFormat() {
-    this(ScalarEncoding.UNSIGNED_BYTE);
+  /** Creates a new instance with UNSIGNED_BYTE encoding and preconditioning disabled. */
+  public Lucene105ScalarQuantizedVectorsFormat() {
+    this(ScalarEncoding.UNSIGNED_BYTE, ROTATION_DISABLED);
   }
 
-  /** Creates a new instance with the chosen quantization encoding. */
-  public Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding encoding) {
+  /** Creates a new instance with the chosen quantization encoding and preconditioning disabled. */
+  public Lucene105ScalarQuantizedVectorsFormat(ScalarEncoding encoding) {
+    this(encoding, ROTATION_DISABLED);
+  }
+
+  /**
+   * Creates a new instance with the chosen quantization encoding and rotation preconditioning.
+   *
+   * <p>When {@code rotationSeed} is non-zero, every float vector is mapped through a deterministic
+   * randomized Hadamard rotation before being quantized, and every query vector is rotated the
+   * same way before scoring. The rotation is an orthogonal transform, so dot product, cosine, and
+   * Euclidean distances are all preserved, but the per-coordinate distribution of the vectors
+   * becomes much more Gaussian. This makes OSQ more robust on datasets whose raw components are
+   * skewed or uniform (e.g. image pixel values, histogram features, non-transformer embeddings).
+   * See {@link org.apache.lucene.util.quantization.HadamardRotation}.
+   *
+   * <p>Seed {@link #ROTATION_DISABLED} disables preconditioning; the resulting on-disk format is
+   * then the same shape as the un-preconditioned variant of this codec (with the seed recorded in
+   * metadata as 0).
+   */
+  public Lucene105ScalarQuantizedVectorsFormat(ScalarEncoding encoding, long rotationSeed) {
     super(NAME);
     this.encoding = encoding;
+    this.rotationSeed = rotationSeed;
   }
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new Lucene104ScalarQuantizedVectorsWriter(
-        state, encoding, rawVectorFormat.fieldsWriter(state), scorer);
+    return new Lucene105ScalarQuantizedVectorsWriter(
+        state, encoding, rotationSeed, rawVectorFormat.fieldsWriter(state), scorer);
   }
 
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new Lucene104ScalarQuantizedVectorsReader(
+    return new Lucene105ScalarQuantizedVectorsReader(
         state, rawVectorFormat.fieldsReader(state), scorer);
   }
 
@@ -142,10 +166,12 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
 
   @Override
   public String toString() {
-    return "Lucene104ScalarQuantizedVectorsFormat(name="
+    return "Lucene105ScalarQuantizedVectorsFormat(name="
         + NAME
         + ", encoding="
         + encoding
+        + ", rotationSeed="
+        + (rotationSeed == ROTATION_DISABLED ? "disabled" : Long.toHexString(rotationSeed))
         + ", flatVectorScorer="
         + scorer
         + ", rawVectorFormat="
