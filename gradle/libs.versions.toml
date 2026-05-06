@@ -5,7 +5,7 @@ antlr = "4.13.2"
 # test assertions
 assertj = "3.27.7"
 # analysis/phonetic/ algorithms, gradle build checksums
-commons-codec = "1.21.0"
+commons-codec = "1.22.0"
 # benchmark/ bzip2 compression
 commons-compress = "1.28.0"
 # See ecj-lint.gradle (used for more linting).
@@ -45,7 +45,7 @@ morfologik-ukrainian = "4.9.1"
 # benchmark/ html parsing
 nekohtml = "1.9.22"
 # analysis/opennlp/ support
-opennlp = "2.5.8"
+opennlp = "2.5.9"
 # distribution.tests/ process management
 procfork = "1.0.6"
 # unit tests
