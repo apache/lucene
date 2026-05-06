@@ -31,12 +31,10 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.junit.Test;
 
 /** Testcase for {@link org.apache.lucene.classification.CachingNaiveBayesClassifier} */
 public class TestCachingNaiveBayesClassifier extends ClassificationTestBase<BytesRef> {
 
-  @Test
   public void testBasicUsage() throws Exception {
     LeafReader leafReader = null;
     try {
@@ -57,7 +55,6 @@ public class TestCachingNaiveBayesClassifier extends ClassificationTestBase<Byte
     }
   }
 
-  @Test
   public void testBasicUsageWithQuery() throws Exception {
     LeafReader leafReader = null;
     try {
@@ -74,7 +71,6 @@ public class TestCachingNaiveBayesClassifier extends ClassificationTestBase<Byte
     }
   }
 
-  @Test
   public void testNGramUsage() throws Exception {
     LeafReader leafReader = null;
     try {
@@ -101,7 +97,6 @@ public class TestCachingNaiveBayesClassifier extends ClassificationTestBase<Byte
     }
   }
 
-  @Test
   public void testPerformance() throws Exception {
     MockAnalyzer analyzer = new MockAnalyzer(random());
     int numDocs = atLeast(10);

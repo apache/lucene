@@ -32,7 +32,6 @@ import org.locationtech.spatial4j.shape.Rectangle;
 /** Make sure we are reading the tests as expected */
 public class TestTestFramework extends LuceneTestCase {
 
-  @Test
   public void testQueries() throws IOException {
     String name = StrategyTestCase.QTEST_Cities_Intersects_BBox;
 

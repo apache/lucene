@@ -90,7 +90,6 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InPlaceMergeSorter;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.NamedThreadFactory;
-import org.junit.Test;
 
 public class TestDrillSideways extends FacetTestCase {
 
@@ -2231,7 +2230,6 @@ public class TestDrillSideways extends FacetTestCase {
     IOUtils.close(searcher.getIndexReader(), taxoReader, taxoWriter, dir, taxoDir);
   }
 
-  @Test
   public void testDrillSidewaysSearchUseCorrectIterator() throws Exception {
     // This test reproduces an issue (see GitHub #12211) where DrillSidewaysScorer would ultimately
     // cause multiple consecutive calls to TwoPhaseIterator::matches, which results in a failed

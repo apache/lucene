@@ -283,7 +283,6 @@ public class TestPassageSelector extends LuceneTestCase {
             new OffsetRange(18, Integer.MAX_VALUE)));
   }
 
-  @Test
   public void testHighlightAcrossAllowedValueRange() {
     checkPassages(
         "012>34<|>56<789",

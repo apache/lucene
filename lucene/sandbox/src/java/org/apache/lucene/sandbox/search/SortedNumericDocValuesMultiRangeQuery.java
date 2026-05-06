@@ -31,12 +31,13 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.ConstantScoreScorerSupplier;
 import org.apache.lucene.search.ConstantScoreWeight;
-import org.apache.lucene.search.DocValuesRangeIterator;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.ScorerSupplier;
+import org.apache.lucene.search.SkipBlockRangeIterator;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 
@@ -221,14 +222,21 @@ public class SortedNumericDocValuesMultiRangeQuery extends Query {
       }
 
       SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), fieldName);
-      TwoPhaseIterator iterator;
-      iterator =
-          new TwoPhaseIterator(values) {
+      DocIdSetIterator approximation = values;
+      if (skipper != null) {
+        approximation = new SkipBlockRangeIterator(skipper, lowerValue, upperValue);
+      }
+      TwoPhaseIterator iterator =
+          new TwoPhaseIterator(approximation) {
             final DocValuesMultiRangeQuery.LongRange lookupVal =
                 new DocValuesMultiRangeQuery.LongRange(-Long.MAX_VALUE, -Long.MAX_VALUE);
 
             @Override
             public boolean matches() throws IOException {
+              int doc = approximation().docID();
+              if (values.docID() < doc && values.advance(doc) != doc) {
+                return false;
+              }
               NavigableSet<DocValuesMultiRangeQuery.LongRange> rangeTree = sortedClauses;
               for (int i = 0, count = values.docValueCount(); i < count; ++i) {
                 final long value = values.nextValue();
@@ -259,11 +267,6 @@ public class SortedNumericDocValuesMultiRangeQuery extends Query {
               return sortedClauses.size();
             }
           };
-      if (skipper != null) {
-        iterator =
-            new DocValuesRangeIterator(
-                iterator, skipper, lowerValue, upperValue, sortedClauses.size() > 1);
-      }
       return ConstantScoreScorerSupplier.fromIterator(
           TwoPhaseIterator.asDocIdSetIterator(iterator), score(), scoreMode, maxDoc);
     }
