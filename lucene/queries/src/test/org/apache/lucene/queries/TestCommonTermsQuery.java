@@ -54,7 +54,6 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.PriorityQueue;
-import org.junit.Test;
 
 public class TestCommonTermsQuery extends LuceneTestCase {
 
@@ -356,7 +355,6 @@ public class TestCommonTermsQuery extends LuceneTestCase {
         });
   }
 
-  @Test
   public void testExtend() throws IOException {
     Directory dir = newDirectory();
     MockAnalyzer analyzer = new MockAnalyzer(random());

@@ -26,7 +26,6 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.junit.Assert;
-import org.junit.Test;
 
 public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<ByteBuffersDataOutput> {
   @Override
@@ -39,7 +38,6 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
     return instance.toArrayCopy();
   }
 
-  @Test
   public void testReuse() throws IOException {
     AtomicInteger allocations = new AtomicInteger(0);
     ByteBuffersDataOutput.ByteBufferRecycler reuser =
@@ -71,7 +69,6 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
     assertArrayEquals(data, o.toArrayCopy());
   }
 
-  @Test
   public void testConstructorWithExpectedSize() {
     {
       ByteBuffersDataOutput o = new ByteBuffersDataOutput(0);
@@ -152,7 +149,6 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
         });
   }
 
-  @Test
   public void testSanity() {
     ByteBuffersDataOutput o = newInstance();
     assertEquals(0, o.size());
@@ -169,7 +165,6 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
     assertArrayEquals(new byte[] {1, 2, 3, 4}, o.toArrayCopy());
   }
 
-  @Test
   public void testWriteByteBuffer() {
     ByteBuffersDataOutput o = new ByteBuffersDataOutput();
     byte[] bytes = new byte[1024 * 8 + 10];
@@ -185,7 +180,6 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
         ArrayUtil.copyOfSubArray(bytes, offset, offset + len), o.toArrayCopy());
   }
 
-  @Test
   public void testLargeArrayAdd() {
     ByteBuffersDataOutput o = new ByteBuffersDataOutput();
     int MB = 1024 * 1024;
@@ -204,7 +198,6 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
         ArrayUtil.copyOfSubArray(bytes, offset, offset + len), o.toArrayCopy());
   }
 
-  @Test
   public void testCopyBytesOnHeap() throws IOException {
     byte[] bytes = new byte[1024 * 8 + 10];
     random().nextBytes(bytes);
@@ -222,7 +215,6 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
         o.toArrayCopy(), ArrayUtil.copyOfSubArray(bytes, offset, offset + len));
   }
 
-  @Test
   public void testCopyBytesOnDirectByteBuffer() throws IOException {
     byte[] bytes = new byte[1024 * 8 + 10];
     random().nextBytes(bytes);
@@ -240,7 +232,6 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
         o.toArrayCopy(), ArrayUtil.copyOfSubArray(bytes, offset, offset + len));
   }
 
-  @Test
   public void testToBufferListReturnsReadOnlyBuffers() throws Exception {
     ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
     dst.writeBytes(new byte[100]);
@@ -249,7 +240,6 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
     }
   }
 
-  @Test
   public void testToWriteableBufferListReturnsOriginalBuffers() throws Exception {
     ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
     for (ByteBuffer bb : dst.toWriteableBufferList()) {
@@ -264,7 +254,6 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
     }
   }
 
-  @Test
   public void testRamBytesUsed() {
     ByteBuffersDataOutput out = new ByteBuffersDataOutput();
     // Empty output requires no RAM

@@ -19,11 +19,9 @@ package org.apache.lucene.search;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestFilterWeight extends LuceneTestCase {
 
-  @Test
   public void testDeclaredMethodsOverridden() throws Exception {
     final Class<?> subClass = FilterWeight.class;
     implTestDeclaredMethodsOverridden(subClass.getSuperclass(), subClass);

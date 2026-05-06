@@ -23,7 +23,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.store.MockDirectoryWrapper;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
 
 public class TestPersistentSnapshotDeletionPolicy extends TestSnapshotDeletionPolicy {
 
@@ -44,7 +43,6 @@ public class TestPersistentSnapshotDeletionPolicy extends TestSnapshotDeletionPo
         new KeepOnlyLastCommitDeletionPolicy(), dir, OpenMode.CREATE);
   }
 
-  @Test
   public void testExistingSnapshots() throws Exception {
     int numSnapshots = 3;
     MockDirectoryWrapper dir = newMockDirectory();
@@ -92,7 +90,6 @@ public class TestPersistentSnapshotDeletionPolicy extends TestSnapshotDeletionPo
     dir.close();
   }
 
-  @Test
   public void testNoSnapshotInfos() throws Exception {
     Directory dir = newDirectory();
     new PersistentSnapshotDeletionPolicy(
@@ -100,7 +97,6 @@ public class TestPersistentSnapshotDeletionPolicy extends TestSnapshotDeletionPo
     dir.close();
   }
 
-  @Test
   public void testMissingSnapshots() throws Exception {
     Directory dir = newDirectory();
 
@@ -152,7 +148,6 @@ public class TestPersistentSnapshotDeletionPolicy extends TestSnapshotDeletionPo
     dir.close();
   }
 
-  @Test
   public void testSnapshotRelease() throws Exception {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, getConfig(random(), getDeletionPolicy(dir)));
@@ -170,7 +165,6 @@ public class TestPersistentSnapshotDeletionPolicy extends TestSnapshotDeletionPo
     dir.close();
   }
 
-  @Test
   public void testSnapshotReleaseByGeneration() throws Exception {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, getConfig(random(), getDeletionPolicy(dir)));

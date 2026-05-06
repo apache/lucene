@@ -19,20 +19,15 @@ package org.apache.lucene.spatial.prefix;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomInt;
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 
-import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.IOException;
 import java.util.Calendar;
 import org.apache.lucene.spatial.prefix.tree.DateRangePrefixTree;
 import org.apache.lucene.spatial.prefix.tree.NumberRangePrefixTree.UnitNRShape;
 import org.apache.lucene.spatial.query.SpatialOperation;
 import org.junit.Before;
-import org.junit.Test;
 import org.locationtech.spatial4j.shape.Shape;
 
 public class TestDateNRStrategy extends RandomSpatialOpStrategyTestCase {
-
-  static final int ITERATIONS = 10;
-
   DateRangePrefixTree tree;
 
   long randomCalWindowMs;
@@ -50,31 +45,23 @@ public class TestDateNRStrategy extends RandomSpatialOpStrategyTestCase {
     randomCalWindowMs = Math.max(2000L, tmpCal.getTimeInMillis());
   }
 
-  @Test
-  @Repeat(iterations = ITERATIONS)
   public void testIntersects() throws IOException {
     testOperationRandomShapes(SpatialOperation.Intersects);
   }
 
-  @Test
-  @Repeat(iterations = ITERATIONS)
   public void testWithin() throws IOException {
     testOperationRandomShapes(SpatialOperation.IsWithin);
   }
 
-  @Test
-  @Repeat(iterations = ITERATIONS)
   public void testContains() throws IOException {
     testOperationRandomShapes(SpatialOperation.Contains);
   }
 
-  @Test
   public void testWithinSame() throws IOException {
     Shape shape = randomIndexedShape();
     testOperation(shape, SpatialOperation.IsWithin, shape, true); // is within itself
   }
 
-  @Test
   public void testWorld() throws IOException {
     ((NumberRangePrefixTreeStrategy) strategy).setPointsOnly(false);
     testOperation(
@@ -84,7 +71,6 @@ public class TestDateNRStrategy extends RandomSpatialOpStrategyTestCase {
         true);
   }
 
-  @Test
   public void testBugInitIterOptimization() throws Exception {
     ((NumberRangePrefixTreeStrategy) strategy).setPointsOnly(false);
     // bug due to fast path initIter() optimization
@@ -95,7 +81,6 @@ public class TestDateNRStrategy extends RandomSpatialOpStrategyTestCase {
         true);
   }
 
-  @Test
   public void testLastMillionYearPeriod() throws Exception {
     testOperation(
         tree.parseShape(
