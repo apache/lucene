@@ -348,8 +348,8 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
               mergedGroups,
               sort,
               Sort.RELEVANCE,
-              withinGroupOffset,
-              5,
+              0,
+              withinGroupOffset + 5,
               true);
       shardTopGroups[j] = shard.getIndexSearcher().search(topLevel, scm);
       j++;
