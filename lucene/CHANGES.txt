@@ -216,8 +216,6 @@ Build
   recognizes jdk.CPUTimeSample; CodeProfilingPlugin picks gradle/testing/profiling.cputime.jfc or
   profiling.jfc by host OS. (Prithvi S)
 
-* GITHUB#16036: Upgrade gradle to 9.5.0 (Dawid Weiss)
-
 Other
 ---------------------
 
