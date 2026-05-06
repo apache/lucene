@@ -318,6 +318,12 @@ Optimizations
 ---------------------
 * GITHUB#15861: Optimise PhraseScorer by short circuiting non competitive documents in TOP_SCORES mode. (Prithvi S)
 
+* GITHUB#15868: Optimize DisjunctionMaxBulkScorer by reusing the inner LeafCollector across
+  sub-scorers and resetting windowScores inline during replay instead of Arrays.fill. (Prithvi S)
+
+* Eliminate redundant cardinality() pass in MaxScoreBulkScorer by pre-allocating the
+  doc/score buffer to the max window size. (Prithvi S)
+
 * GITHUB#15637: Lazily allocate ByteArrayDataInputs in SegmentTermsEnumFrame#15637 (Misha Dmitriev)
 
 * GITHUB#15718 Skip per-document stored field reads on sorted indices when no stored fields are present (Francisco Fernández Castaño)
@@ -346,9 +352,6 @@ Optimizations
   boundaries instead of linear scan. (Greg Miller)
 
 * GITHUB#15970: Reduce memory usage of fields with long terms during segment merges. (Alan Woodward)
-
-* GITHUB#15868: Optimize DisjunctionMaxBulkScorer by reusing the inner LeafCollector across
-  sub-scorers and resetting windowScores inline during replay instead of Arrays.fill. (Prithvi S)
 
 * GITHUB#15732: Prevent writing vectors twice during merging HNSW graphs by allowing doing deferred work after calling
   merge for vectors is finshed. (Ignacio Vera)
