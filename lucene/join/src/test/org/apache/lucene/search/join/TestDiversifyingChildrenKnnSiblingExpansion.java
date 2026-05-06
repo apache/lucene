@@ -84,20 +84,6 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
     assertArrayEquals(new int[] {3}, s4);
   }
 
-  public void testFindSiblingDocIds_parentAlreadyInHeap_returnsNull() throws IOException {
-    // 1 parents, 2 children → block: [0,1|2]
-    int numParents = 1, childrenPerParent = 2;
-    BitSet parents = parentBitSet(numParents, childrenPerParent);
-    int[] docToOrd = buildDocToOrd(numParents, childrenPerParent);
-    DiversifyingNearestChildrenKnnCollector c = makeCollector(10, parents, docToOrd);
-
-    // Collect child 0 → parent 2 enters the heap
-    c.collect(0, 0.8f);
-
-    // Now asking for siblings of child 1 (same parent 2) must return null
-    assertNull(c.findSiblingDocIds(1));
-  }
-
   public void testFindSiblingDocIds_singleChildParent_returnsNull() throws IOException {
     // 1 parents, 1 child each → blocks: [0|1]
     int numParents = 1, childrenPerParent = 1;
@@ -218,6 +204,31 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
   // ---------------------------------------------------------------------------
 
   /**
+   * Even when the parent is already in the heap (from a prior expansion), getSiblingOrdinals must
+   * still return unvisited siblings. This allows a budget-truncated first expansion to be continued
+   * when additional children of the same parent are later discovered via normal graph traversal.
+   */
+  public void testGetSiblingOrdinals_parentAlreadyInHeap_returnsUnvisitedSiblings()
+      throws IOException {
+    // 1 parent, 2 children: [C0=doc0, C1=doc1 | P0=doc2]; ordToDoc=[0,1]
+    BitSet parents = parentBitSet(1, 2);
+    int[] docToOrd = buildDocToOrd(1, 2);
+    int[] ordToDoc = {0, 1};
+    OrdinalTranslatedKnnCollector collector =
+        new OrdinalTranslatedKnnCollector(
+            makeCollector(10, parents, docToOrd), ord -> ordToDoc[ord]);
+
+    // Collect C0 → parent 2 enters the heap
+    collector.collect(0, 0.8f);
+
+    // C1 (ordinal 1) is not yet visited; must still be returned as an expansion candidate
+    FixedBitSet visited = new FixedBitSet(3);
+    int[] result = collector.getSiblingOrdinals(0, visited);
+    assertNotEquals("unvisited sibling must be returned even when parent is already in heap", 0, result.length);
+    assertArrayEquals(new int[] {1}, result);
+  }
+
+  /**
    * Siblings whose ordinal is already in visitedOrds must be filtered out to prevent double-scoring
    * when the sibling was independently discovered via normal graph traversal.
    */
@@ -237,7 +248,7 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
 
     // Trigger on C0 (ordinal 0 → docId 0); siblings are C1 and C2
     int[] result = collector.getSiblingOrdinals(0, visited);
-    assertNotNull(result);
+    assertNotEquals(0, result.length);
     assertArrayEquals("C1 must be filtered (visited); only C2 remains", new int[] {2}, result);
   }
 
@@ -260,7 +271,7 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
 
     // Trigger on C0 (ordinal 0 → docId 0); siblings are C1 (sparse) and C2
     int[] result = collector.getSiblingOrdinals(0, visited);
-    assertNotNull(result);
+    assertNotEquals(0, result.length);
     assertArrayEquals("C1 (no vector) must be filtered; only C2 remains", new int[] {1}, result);
   }
 

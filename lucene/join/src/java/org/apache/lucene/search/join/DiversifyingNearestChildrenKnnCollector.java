@@ -113,13 +113,9 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector
     return heap.size();
   }
 
-  // SOLO PER VISITARE LA FAMIGLIA ALTRIMENTI NON LO CHIAMIAMO PROPRIO
+  @Override
   public int[] findSiblingDocIds(int childDocId) {
     int parent = parentBitSet.nextSetBit(childDocId);
-    // Skip if this parent's entry is already in the heap
-    if (heap.containsParent(parent)) {
-      return null;
-    }
     // Find siblings range(prevParent, parent). If parent is 0 there are not prevParents so -1
     int prevParent = parent > 0 ? parentBitSet.prevSetBit(parent - 1) : -1;
     int from = prevParent + 1;

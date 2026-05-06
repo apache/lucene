@@ -38,9 +38,8 @@ package org.apache.lucene.util.hnsw;
 public interface DocSiblingExpansion {
 
   /**
-   * Returns the doc ids of all siblings of {@code childDocId} whose parent has not yet been added
-   * to the result heap, or {@code null} if the parent was already processed or there are no other
-   * siblings.
+   * Returns the doc ids of all siblings of {@code childDocId}, or {@code null} if there are no
+   * other siblings.
    *
    * @param childDocId the document id of the child that is about to be collected
    * @return sibling doc ids, or {@code null}

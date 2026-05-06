@@ -351,18 +351,18 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
               // Fetch siblings BEFORE collect() so the parent is not yet in the heap
               int[] siblings = null;
               int numSiblingsToVisit = 0;
-              // The first check is needed since this method is also called by the GraphBuilderKnnCollector
-              // The second check is needed since we could have a TopKnnCollector at this point
-              if (results instanceof OrdinalTranslatedKnnCollector collector
-                  && collector.supportsSiblingExpansion()) {
-                siblings = collector.getSiblingOrdinals(node, visited);
-                if (siblings != null) {
-                  numSiblingsToVisit =
-                      (int)
-                          Math.min(siblings.length, results.visitLimit() - results.visitedCount());
-                  // Only mark as visited the siblings we will actually score; the rest remain
-                  // reachable via normal graph traversal so a better child can still be found
-                  for (int s = 0; s < numSiblingsToVisit; s++) visited.set(siblings[s]);
+              // The instanceof check is needed: this method is also called with a GraphBuilderKnnCollector
+              if (results instanceof OrdinalTranslatedKnnCollector collector) {
+                if (collector.isSiblingExpansionCollector()) {
+                  siblings = collector.getSiblingOrdinals(node, visited);
+                  if (siblings.length > 0) {
+                    numSiblingsToVisit =
+                        (int)
+                            Math.min(siblings.length, results.visitLimit() - results.visitedCount());
+                    // Only mark as visited the siblings we will actually score; the rest remain
+                    // reachable via normal graph traversal so a better child can still be found
+                    for (int s = 0; s < numSiblingsToVisit; s++) visited.set(siblings[s]);
+                  }
                 }
               }
               if (results.collect(node, score)) {

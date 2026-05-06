@@ -106,24 +106,25 @@ abstract class AbstractHnswGraphSearcher {
         // Fetch siblings BEFORE collect() so the parent is not yet in the heap
         int[] siblings = null;
         int numSiblingsToVisit = 0;
-        // This check is needed since this method is also called by the GraphBuilderKnnCollector
-        if (results instanceof OrdinalTranslatedKnnCollector collector
-            && collector.supportsSiblingExpansion()) {
-          siblings = collector.getSiblingOrdinals(ep, visited);
-          if (siblings != null) {
-            //  how many siblings are actually scored to avoid exceeding the visit budget.
-            //  controls the early termination condition. early terminates the search if we reach
-            //  visitLimit nodes
-            //  if this visit limit is high we just navigate the graph until we do not have any node
-            //  with a score higher than the ones already collected
-            //  Current values it could assume:
-            //  -  No filter → Integer.MAX_VALUE (no constraint tighter than the full segment)
-            //  -  With filter → cardinality (no constraint tighter than the full accepted set)
-            numSiblingsToVisit =
-                (int) Math.min(siblings.length, results.visitLimit() - results.visitedCount());
-            // Only mark as visited the siblings we will actually score; the rest remain
-            // reachable via normal graph traversal so a better child can still be found
-            for (int s = 0; s < numSiblingsToVisit; s++) visited.set(siblings[s]);
+        // The instanceof check is needed: this method is also called with a GraphBuilderKnnCollector
+        if (results instanceof OrdinalTranslatedKnnCollector collector) {
+          if (collector.isSiblingExpansionCollector()) {
+            siblings = collector.getSiblingOrdinals(ep, visited);
+            if (siblings.length > 0) {
+              //  how many siblings are actually scored to avoid exceeding the visit budget.
+              //  controls the early termination condition. early terminates the search if we reach
+              //  visitLimit nodes
+              //  if this visit limit is high we just navigate the graph until we do not have any node
+              //  with a score higher than the ones already collected
+              //  Current values it could assume:
+              //  -  No filter → Integer.MAX_VALUE (no constraint tighter than the full segment)
+              //  -  With filter → cardinality (no constraint tighter than the full accepted set)
+              numSiblingsToVisit =
+                  (int) Math.min(siblings.length, results.visitLimit() - results.visitedCount());
+              // Only mark as visited the siblings we will actually score; the rest remain
+              // reachable via normal graph traversal so a better child can still be found
+              for (int s = 0; s < numSiblingsToVisit; s++) visited.set(siblings[s]);
+            }
           }
         }
         // Collect the ep node here so after we have a correctly updated minCompetitiveSimilarity
