@@ -27,6 +27,14 @@ package org.apache.lucene.util.hnsw;
  *
  * @lucene.experimental
  */
+//  The interface cannot be removed. It exists for a module-boundary reason.
+//  DocSiblingExpansion is in lucene/core, while DiversifyingNearestChildrenKnnCollector is in lucene/join.
+//  The dependency is one-way: join depends on core, never the reverse. So OrdinalTranslatedKnnCollector (in core)
+//  has no way to reference DiversifyingNearestChildrenKnnCollector directly.
+//
+//  The interface is the bridge — it lets core call findSiblingDocIds and docIdToOrdinal on the collector without
+//  creating a circular dependency. Removing it would require either moving OrdinalTranslatedKnnCollector into
+//  join (bigger refactor) or adding a core → join dependency (illegal in this architecture).
 public interface DocSiblingExpansion {
 
   /**

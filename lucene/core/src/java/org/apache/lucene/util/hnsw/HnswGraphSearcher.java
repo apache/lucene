@@ -351,8 +351,10 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
               // Fetch siblings BEFORE collect() so the parent is not yet in the heap
               int[] siblings = null;
               int numSiblingsToVisit = 0;
-              // This check is needed since this method is also called by the GraphBuilderKnnCollector
-              if (results instanceof OrdinalTranslatedKnnCollector collector) {
+              // The first check is needed since this method is also called by the GraphBuilderKnnCollector
+              // The second check is needed since we could have a TopKnnCollector at this point
+              if (results instanceof OrdinalTranslatedKnnCollector collector
+                  && collector.supportsSiblingExpansion()) {
                 siblings = collector.getSiblingOrdinals(node, visited);
                 if (siblings != null) {
                   numSiblingsToVisit =

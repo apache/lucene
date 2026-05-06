@@ -55,12 +55,14 @@ public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator 
         td.scoreDocs);
   }
 
+  public boolean supportsSiblingExpansion() {
+    return collector instanceof DocSiblingExpansion;
+  }
+
   public int[] getSiblingOrdinals(int hnswNode, BitSet visitedHnswNodes) {
-    if (!(collector instanceof DocSiblingExpansion docExpander)) {
-      return null;
-    }
+    DocSiblingExpansion docExpanderCollector = (DocSiblingExpansion) collector;
     int docId = vectorOrdinalToDocId.apply(hnswNode);
-    int[] siblingDocIds = docExpander.findSiblingDocIds(docId);
+    int[] siblingDocIds = docExpanderCollector.findSiblingDocIds(docId);
     if (siblingDocIds == null) {
       return null;
     }
@@ -69,7 +71,7 @@ public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator 
     // so this variable is necessary.
     int count = 0;
     for (int sibDocId : siblingDocIds) {
-      int sibOrd = docExpander.docIdToOrdinal(sibDocId);
+      int sibOrd = docExpanderCollector.docIdToOrdinal(sibDocId);
       //  sibOrd = -1 when a document has no vector for this field.
       //  Such a doc has no node in the HNSW graph and can't be scored, so it must be skipped.
       //  If a sibling was reached via normal graph traversal before sibling expansion triggered,
