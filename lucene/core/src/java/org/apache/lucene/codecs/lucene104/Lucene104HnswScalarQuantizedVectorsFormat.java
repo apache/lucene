@@ -156,8 +156,20 @@ public class Lucene104HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat 
       int numMergeWorkers,
       ExecutorService mergeExec,
       int tinySegmentsThreshold) {
+    this(encoding, false, maxConn, beamWidth, numMergeWorkers, mergeExec, tinySegmentsThreshold);
+  }
+
+  /** Constructs a format with rotation preconditioning support. */
+  public Lucene104HnswScalarQuantizedVectorsFormat(
+      ScalarEncoding encoding,
+      boolean rotationEnabled,
+      int maxConn,
+      int beamWidth,
+      int numMergeWorkers,
+      ExecutorService mergeExec,
+      int tinySegmentsThreshold) {
     super(NAME);
-    flatVectorsFormat = new Lucene104ScalarQuantizedVectorsFormat(encoding);
+    flatVectorsFormat = new Lucene104ScalarQuantizedVectorsFormat(encoding, rotationEnabled);
     if (maxConn <= 0 || maxConn > MAXIMUM_MAX_CONN) {
       throw new IllegalArgumentException(
           "maxConn must be positive and less than or equal to "

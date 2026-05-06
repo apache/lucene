@@ -96,6 +96,9 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   public static final String QUANTIZED_VECTOR_COMPONENT = "QVEC";
   public static final String NAME = "Lucene104ScalarQuantizedVectorsFormat";
 
+  /** FieldInfo attribute key indicating rotation preconditioning is enabled for a field. */
+  public static final String ROTATION_ENABLED_KEY = "Lucene104SQVecRotation";
+
   /**
    * Derives a deterministic rotation seed from a field name. Uses a mixing function so that similar
    * field names produce very different seeds.
@@ -125,28 +128,35 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
       new Lucene104ScalarQuantizedVectorScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   private final ScalarEncoding encoding;
+  private final boolean rotationEnabled;
 
-  /** Creates a new instance with UNSIGNED_BYTE encoding. */
+  /** Creates a new instance with UNSIGNED_BYTE encoding and rotation disabled. */
   public Lucene104ScalarQuantizedVectorsFormat() {
-    this(ScalarEncoding.UNSIGNED_BYTE);
+    this(ScalarEncoding.UNSIGNED_BYTE, false);
   }
 
-  /** Creates a new instance with the chosen quantization encoding. */
+  /** Creates a new instance with the chosen quantization encoding and rotation disabled. */
   public Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding encoding) {
+    this(encoding, false);
+  }
+
+  /** Creates a new instance with the chosen quantization encoding and rotation setting. */
+  public Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding encoding, boolean rotationEnabled) {
     super(NAME);
     this.encoding = encoding;
+    this.rotationEnabled = rotationEnabled;
   }
 
   @Override
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
     return new Lucene104ScalarQuantizedVectorsWriter(
-        state, encoding, rawVectorFormat.fieldsWriter(state), scorer);
+        state, encoding, rotationEnabled, rawVectorFormat.fieldsWriter(state), scorer);
   }
 
   @Override
   public FlatVectorsReader fieldsReader(SegmentReadState state) throws IOException {
     return new Lucene104ScalarQuantizedVectorsReader(
-        state, rawVectorFormat.fieldsReader(state), scorer);
+        state, rawVectorFormat.fieldsReader(state), scorer, rotationEnabled);
   }
 
   @Override

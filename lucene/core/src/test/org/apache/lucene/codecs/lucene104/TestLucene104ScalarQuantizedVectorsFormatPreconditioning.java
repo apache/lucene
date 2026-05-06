@@ -47,7 +47,7 @@ public class TestLucene104ScalarQuantizedVectorsFormatPreconditioning extends Lu
     int dims = 64;
     int numDocs = 200;
 
-    Codec codec = codecWithFormat(new Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding.UNSIGNED_BYTE));
+    Codec codec = codecWithFormat(new Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding.UNSIGNED_BYTE, true));
     IndexWriterConfig iwc = newIndexWriterConfig().setCodec(codec);
 
     try (Directory dir = newDirectory();
@@ -84,7 +84,7 @@ public class TestLucene104ScalarQuantizedVectorsFormatPreconditioning extends Lu
     int dims = 32;
     int numDocs = 8;
 
-    Codec codec = codecWithFormat(new Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding.UNSIGNED_BYTE));
+    Codec codec = codecWithFormat(new Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding.UNSIGNED_BYTE, true));
     IndexWriterConfig iwc = newIndexWriterConfig().setCodec(codec);
 
     try (Directory dir = newDirectory();

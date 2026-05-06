@@ -83,8 +83,10 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
   private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
+  private final FieldInfos fieldInfos;
   /** Lazily built Hadamard rotations, keyed by field name. */
   private final Map<String, HadamardRotation> rotations = new ConcurrentHashMap<>();
+  private final boolean rotationEnabled;
   public static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
 
   public Lucene104ScalarQuantizedVectorsReader(
@@ -92,19 +94,29 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       FlatVectorsReader rawVectorsReader,
       Lucene104ScalarQuantizedVectorScorer vectorsScorer)
       throws IOException {
-    // Quantized vectors are accessed randomly from their node ID stored in the HNSW
-    // graph.
-    this(state, rawVectorsReader, vectorsScorer, DataAccessHint.RANDOM);
+    this(state, rawVectorsReader, vectorsScorer, false, DataAccessHint.RANDOM);
   }
 
   public Lucene104ScalarQuantizedVectorsReader(
       SegmentReadState state,
       FlatVectorsReader rawVectorsReader,
       Lucene104ScalarQuantizedVectorScorer vectorsScorer,
+      boolean rotationEnabled)
+      throws IOException {
+    this(state, rawVectorsReader, vectorsScorer, rotationEnabled, DataAccessHint.RANDOM);
+  }
+
+  public Lucene104ScalarQuantizedVectorsReader(
+      SegmentReadState state,
+      FlatVectorsReader rawVectorsReader,
+      Lucene104ScalarQuantizedVectorScorer vectorsScorer,
+      boolean rotationEnabled,
       DataAccessHint accessHint)
       throws IOException {
     this.vectorScorer = vectorsScorer;
     this.rawVectorsReader = rawVectorsReader;
+    this.rotationEnabled = rotationEnabled;
+    this.fieldInfos = state.fieldInfos;
     int versionMeta = -1;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -203,7 +215,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     }
     // Rotate the query vector to match the rotated stored vectors.
     float[] scoringTarget = target;
-    if (target != null) {
+    if (isRotationEnabled(field) && target != null) {
       HadamardRotation rotation = rotationFor(field, fi.dimension);
       float[] rotated = new float[target.length];
       rotation.rotate(target, rotated);
@@ -231,6 +243,12 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     return rotations.computeIfAbsent(
         field,
         f -> HadamardRotation.create(dimension, Lucene104ScalarQuantizedVectorsFormat.rotationSeed(f)));
+  }
+
+  private boolean isRotationEnabled(String field) {
+    FieldInfo info = fieldInfos.fieldInfo(field);
+    return info != null
+        && "true".equals(info.getAttribute(Lucene104ScalarQuantizedVectorsFormat.ROTATION_ENABLED_KEY));
   }
 
   @Override
@@ -264,8 +282,8 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
 
     // The raw delegate holds rotated values. External callers expect original vectors,
     // so inverse-rotate on the fly. Merge callers go through getMergeInstance() which skips this.
-    HadamardRotation rotation = rotationFor(field, fi.dimension);
-    if (rawFloatVectorValues != null) {
+    if (isRotationEnabled(field) && rawFloatVectorValues != null) {
+      HadamardRotation rotation = rotationFor(field, fi.dimension);
       rawFloatVectorValues = new InverseRotatedFloatVectorValues(rawFloatVectorValues, rotation);
     }
 
