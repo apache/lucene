@@ -29,10 +29,8 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.OfflineSorter;
-import org.junit.Test;
 
 public class TestBytesRefSorters extends LuceneTestCase {
-  @Test
   public void testExternalRefSorter() throws Exception {
     Directory tempDir = newDirectory();
     ExternalRefSorter s = new ExternalRefSorter(new OfflineSorter(tempDir, "temp"));
@@ -40,7 +38,6 @@ public class TestBytesRefSorters extends LuceneTestCase {
     IOUtils.close(s, tempDir);
   }
 
-  @Test
   public void testExternalRefSortersIteratorIsCloseable() throws Exception {
     try (Directory tempDir = newDirectory();
         ExternalRefSorter s = new ExternalRefSorter(new OfflineSorter(tempDir, "temp"))) {
@@ -56,7 +53,6 @@ public class TestBytesRefSorters extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testInMemorySorter() throws Exception {
     check(new InMemorySorter(Comparator.naturalOrder()));
   }

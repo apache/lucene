@@ -32,7 +32,6 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.InfoStream;
-import org.junit.Test;
 
 public class TestIndexWriterConfig extends LuceneTestCase {
 
@@ -40,7 +39,6 @@ public class TestIndexWriterConfig extends LuceneTestCase {
     // Does not implement anything - used only for type checking on IndexWriterConfig.
   }
 
-  @Test
   public void testDefaults() throws Exception {
     IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
     assertEquals(MockAnalyzer.class, conf.getAnalyzer().getClass());
@@ -97,7 +95,6 @@ public class TestIndexWriterConfig extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testSettersChaining() throws Exception {
     // Ensures that every setter returns IndexWriterConfig to allow chaining.
     HashSet<String> liveSetters = new HashSet<>();
@@ -126,7 +123,6 @@ public class TestIndexWriterConfig extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testReuse() throws Exception {
     Directory dir = newDirectory();
     // test that IWC cannot be reused across two IWs
@@ -143,7 +139,6 @@ public class TestIndexWriterConfig extends LuceneTestCase {
     dir.close();
   }
 
-  @Test
   public void testOverrideGetters() throws Exception {
     // Test that IndexWriterConfig overrides all getters, so that javadocs
     // contain all methods for the users. Also, ensures that IndexWriterConfig
@@ -168,7 +163,6 @@ public class TestIndexWriterConfig extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testConstants() throws Exception {
     // Tests that the values of the constants does not change
     assertEquals(-1, IndexWriterConfig.DISABLE_AUTO_FLUSH);
@@ -180,7 +174,6 @@ public class TestIndexWriterConfig extends LuceneTestCase {
     assertEquals(true, IndexWriterConfig.DEFAULT_USE_COMPOUND_FILE_SYSTEM);
   }
 
-  @Test
   public void testToString() throws Exception {
     String str = new IndexWriterConfig(new MockAnalyzer(random())).toString();
     for (Field f : IndexWriterConfig.class.getDeclaredFields()) {
@@ -200,7 +193,6 @@ public class TestIndexWriterConfig extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testInvalidValues() throws Exception {
     IndexWriterConfig conf = new IndexWriterConfig(new MockAnalyzer(random()));
 
