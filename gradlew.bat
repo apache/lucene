@@ -105,10 +105,14 @@ IF NOT EXIST "%APP_HOME%\gradle.properties" (
   endlocal
 )
 
+goto launchGradle
+
 :failWithJvmMessage
 @rem https://github.com/apache/lucene/pull/819
 echo Error: Something went wrong. Make sure you're using the minimum required Java version to compile Lucene.
 goto exitWithErrorLevel
+
+:launchGradle
 
 @rem END OF LUCENE CUSTOMIZATION
 
