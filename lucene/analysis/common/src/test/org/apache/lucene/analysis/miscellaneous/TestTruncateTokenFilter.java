@@ -23,7 +23,6 @@ import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.TestUtil;
-import org.junit.Test;
 
 /** Test the truncate token filter. */
 public class TestTruncateTokenFilter extends BaseTokenStreamTestCase {
@@ -124,15 +123,21 @@ public class TestTruncateTokenFilter extends BaseTokenStreamTestCase {
     checkRandomData(rnd, a, 20 * RANDOM_MULTIPLIER, truncateLength * 2);
   }
 
-  @Test(expected = IllegalArgumentException.class)
   public void testLegacyNonPositiveLength() throws Exception {
-    TruncateTokenFilter.truncateAfterChars(
-        whitespaceMockTokenizer("param must be a positive number"), -48);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          TruncateTokenFilter.truncateAfterChars(
+              whitespaceMockTokenizer("param must be a positive number"), -48);
+        });
   }
 
-  @Test(expected = IllegalArgumentException.class)
   public void testNonPositiveLength() throws Exception {
-    TruncateTokenFilter.truncateAfterCodePoints(
-        whitespaceMockTokenizer("param must be a positive number"), -48);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          TruncateTokenFilter.truncateAfterCodePoints(
+              whitespaceMockTokenizer("param must be a positive number"), -48);
+        });
   }
 }

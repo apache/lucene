@@ -25,9 +25,9 @@ import org.apache.lucene.luke.models.util.IndexUtils;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.NumericUtils;
-import org.junit.Test;
 
 // See: https://github.com/DmitryKey/luke/issues/133
+
 @LuceneTestCase.SuppressCodecs({
   "DummyCompressingStoredFieldsData",
   "HighCompressionCompressingStoredFieldsData",
@@ -36,19 +36,16 @@ import org.junit.Test;
 })
 public class TestDocumentsImpl extends DocumentsTestBase {
 
-  @Test
   public void testGetMaxDoc() {
     DocumentsImpl documents = new DocumentsImpl(reader);
     assertEquals(5, documents.getMaxDoc());
   }
 
-  @Test
   public void testIsLive() {
     DocumentsImpl documents = new DocumentsImpl(reader);
     assertTrue(documents.isLive(0));
   }
 
-  @Test
   public void testGetDocumentFields() {
     DocumentsImpl documents = new DocumentsImpl(reader);
     List<DocumentField> fields = documents.getDocumentFields(0);
@@ -131,7 +128,6 @@ public class TestDocumentsImpl extends DocumentsTestBase {
     assertNull(f5.getNumericValue());
   }
 
-  @Test
   public void testFirstTerm() {
     DocumentsImpl documents = new DocumentsImpl(reader);
     Term term = documents.firstTerm("title").orElseThrow(IllegalStateException::new);
@@ -139,14 +135,12 @@ public class TestDocumentsImpl extends DocumentsTestBase {
     assertEquals("a", term.text());
   }
 
-  @Test
   public void testFirstTerm_notAvailable() {
     DocumentsImpl documents = new DocumentsImpl(reader);
     assertFalse(documents.firstTerm("subject").isPresent());
     assertNull(documents.getCurrentField());
   }
 
-  @Test
   public void testNextTerm() {
     DocumentsImpl documents = new DocumentsImpl(reader);
     documents.firstTerm("title").orElseThrow(IllegalStateException::new);
@@ -158,13 +152,11 @@ public class TestDocumentsImpl extends DocumentsTestBase {
     }
   }
 
-  @Test
   public void testNextTerm_unPositioned() {
     DocumentsImpl documents = new DocumentsImpl(reader);
     assertFalse(documents.nextTerm().isPresent());
   }
 
-  @Test
   public void testSeekTerm() {
     DocumentsImpl documents = new DocumentsImpl(reader);
     documents.firstTerm("title").orElseThrow(IllegalStateException::new);
@@ -174,13 +166,11 @@ public class TestDocumentsImpl extends DocumentsTestBase {
     assertFalse(documents.seekTerm("x").isPresent());
   }
 
-  @Test
   public void testSeekTerm_unPositioned() {
     DocumentsImpl documents = new DocumentsImpl(reader);
     assertFalse(documents.seekTerm("a").isPresent());
   }
 
-  @Test
   public void testFirstTermDoc() {
     DocumentsImpl documents = new DocumentsImpl(reader);
     documents.firstTerm("title").orElseThrow(IllegalStateException::new);
@@ -189,13 +179,11 @@ public class TestDocumentsImpl extends DocumentsTestBase {
     assertTrue(documents.firstTermDoc().isPresent());
   }
 
-  @Test
   public void testFirstTermDoc_unPositioned() {
     DocumentsImpl documents = new DocumentsImpl(reader);
     assertFalse(documents.firstTermDoc().isPresent());
   }
 
-  @Test
   public void testNextTermDoc() {
     DocumentsImpl documents = new DocumentsImpl(reader);
     Term term = documents.firstTerm("title").orElseThrow(IllegalStateException::new);
@@ -208,14 +196,12 @@ public class TestDocumentsImpl extends DocumentsTestBase {
     assertFalse(documents.nextTermDoc().isPresent());
   }
 
-  @Test
   public void testNextTermDoc_unPositioned() {
     DocumentsImpl documents = new DocumentsImpl(reader);
     documents.firstTerm("title").orElseThrow(IllegalStateException::new);
     assertFalse(documents.nextTermDoc().isPresent());
   }
 
-  @Test
   public void testTermPositions() {
     DocumentsImpl documents = new DocumentsImpl(reader);
     documents.firstTerm("author").orElseThrow(IllegalStateException::new);
@@ -228,14 +214,12 @@ public class TestDocumentsImpl extends DocumentsTestBase {
     assertEquals(13, postings.get(0).getEndOffset());
   }
 
-  @Test
   public void testTermPositions_unPositioned() {
     DocumentsImpl documents = new DocumentsImpl(reader);
     documents.firstTerm("author").orElseThrow(IllegalStateException::new);
     assertEquals(0, documents.getTermPositions().size());
   }
 
-  @Test
   public void testTermPositions_noPositions() {
     DocumentsImpl documents = new DocumentsImpl(reader);
     documents.firstTerm("title").orElseThrow(IllegalStateException::new);
@@ -243,7 +227,6 @@ public class TestDocumentsImpl extends DocumentsTestBase {
     assertEquals(0, documents.getTermPositions().size());
   }
 
-  @Test
   public void testClose() throws Exception {
     new DocumentsImpl(reader);
     reader.close();

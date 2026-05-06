@@ -42,7 +42,6 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.VectorUtil;
-import org.junit.Test;
 
 public class TestCheckIndex extends BaseTestCheckIndex {
   private Directory directory;
@@ -59,27 +58,22 @@ public class TestCheckIndex extends BaseTestCheckIndex {
     super.tearDown();
   }
 
-  @Test
   public void testDeletedDocs() throws IOException {
     testDeletedDocs(directory);
   }
 
-  @Test
   public void testChecksumsOnly() throws IOException {
     testChecksumsOnly(directory);
   }
 
-  @Test
   public void testChecksumsOnlyVerbose() throws IOException {
     testChecksumsOnlyVerbose(directory);
   }
 
-  @Test
   public void testObtainsLock() throws IOException {
     testObtainsLock(directory);
   }
 
-  @Test
   public void testCheckIndexAllValid() throws Exception {
     try (Directory dir = newDirectory()) {
       int liveDocCount = 1 + random().nextInt(10);
