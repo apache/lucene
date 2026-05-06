@@ -740,7 +740,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
 
     @Override
     public long ramBytesUsed() {
-      long size = SHALLOW_SIZE;
+      long size = quantizationOverheadBytesUsed();
       size += flatFieldVectorsWriter.ramBytesUsed();
       return size;
     }
