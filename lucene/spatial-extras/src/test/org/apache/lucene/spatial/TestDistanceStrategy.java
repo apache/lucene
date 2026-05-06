@@ -30,7 +30,6 @@ import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTree;
 import org.apache.lucene.spatial.serialized.SerializedDVStrategy;
 import org.apache.lucene.spatial.vector.PointVectorStrategy;
 import org.apache.lucene.util.ArrayUtil;
-import org.junit.Test;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.shape.Point;
 import org.locationtech.spatial4j.shape.Shape;
@@ -79,7 +78,6 @@ public class TestDistanceStrategy extends StrategyTestCase {
     this.strategy = strategy;
   }
 
-  @Test
   public void testDistanceOrder() throws IOException {
     ShapeFactory shapeFactory = ctx.getShapeFactory();
     adoc("100", shapeFactory.pointXY(2, 1));
@@ -91,7 +89,6 @@ public class TestDistanceStrategy extends StrategyTestCase {
     checkDistValueSource(shapeFactory.pointXY(0, 4), 3.6043684f, 0.9975641f, 180f);
   }
 
-  @Test
   public void testRecipScore() throws IOException {
     Point p100 = ctx.getShapeFactory().pointXY(2.02, 0.98);
     adoc("100", p100);

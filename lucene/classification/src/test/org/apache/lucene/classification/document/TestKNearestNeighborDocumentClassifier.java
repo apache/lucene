@@ -21,13 +21,11 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.junit.Test;
 
 /** Tests for {@link org.apache.lucene.classification.KNearestNeighborClassifier} */
 public class TestKNearestNeighborDocumentClassifier
     extends DocumentClassificationTestBase<BytesRef> {
 
-  @Test
   public void testBasicDocumentClassification() throws Exception {
     try {
       Document videoGameDocument = getVideoGameDocument();
@@ -79,7 +77,6 @@ public class TestKNearestNeighborDocumentClassifier
     }
   }
 
-  @Test
   public void testBasicDocumentClassificationScore() throws Exception {
     try {
       Document videoGameDocument = getVideoGameDocument();
@@ -137,7 +134,6 @@ public class TestKNearestNeighborDocumentClassifier
     }
   }
 
-  @Test
   public void testBoostedDocumentClassification() throws Exception {
     try {
       checkCorrectDocumentClassification(
@@ -172,7 +168,6 @@ public class TestKNearestNeighborDocumentClassifier
     }
   }
 
-  @Test
   public void testBasicDocumentClassificationWithQuery() throws Exception {
     try {
       TermQuery query = new TermQuery(new Term(authorFieldName, "ign"));
