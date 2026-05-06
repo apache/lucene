@@ -20,7 +20,6 @@ import java.io.IOException;
 import org.apache.lucene.spatial.SpatialMatchConcern;
 import org.apache.lucene.spatial.StrategyTestCase;
 import org.junit.Before;
-import org.junit.Test;
 import org.locationtech.spatial4j.context.SpatialContext;
 
 public class TestSerializedStrategy extends StrategyTestCase {
@@ -33,14 +32,12 @@ public class TestSerializedStrategy extends StrategyTestCase {
     this.strategy = new SerializedDVStrategy(ctx, "serialized");
   }
 
-  @Test
   public void testBasicOperaions() throws IOException {
     getAddAndVerifyIndexedDocuments(DATA_SIMPLE_BBOX);
 
     executeQueries(SpatialMatchConcern.EXACT, QTEST_Simple_Queries_BBox);
   }
 
-  @Test
   public void testStatesBBox() throws IOException {
     getAddAndVerifyIndexedDocuments(DATA_STATES_BBOX);
 
@@ -48,7 +45,6 @@ public class TestSerializedStrategy extends StrategyTestCase {
     executeQueries(SpatialMatchConcern.FILTER, QTEST_States_Intersects_BBox);
   }
 
-  @Test
   public void testCitiesIntersectsBBox() throws IOException {
     getAddAndVerifyIndexedDocuments(DATA_WORLD_CITIES_POINTS);
 

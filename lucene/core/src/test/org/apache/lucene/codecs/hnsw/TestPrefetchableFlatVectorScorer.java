@@ -20,7 +20,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
-import org.junit.Test;
 
 /**
  * Tests that {@link PrefetchableFlatVectorScorer} overrides all methods from {@link
@@ -28,7 +27,6 @@ import org.junit.Test;
  */
 public class TestPrefetchableFlatVectorScorer extends LuceneTestCase {
 
-  @Test
   public void testDeclaredMethodsOverridden() {
     implTestDeclaredMethodsOverridden(FlatVectorsScorer.class, PrefetchableFlatVectorScorer.class);
     implTestDeclaredMethodsOverridden(

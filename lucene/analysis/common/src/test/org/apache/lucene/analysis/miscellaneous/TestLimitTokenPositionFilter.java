@@ -26,7 +26,6 @@ import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.CharsRefBuilder;
-import org.junit.Test;
 
 public class TestLimitTokenPositionFilter extends BaseTokenStreamTestCase {
 
@@ -120,8 +119,11 @@ public class TestLimitTokenPositionFilter extends BaseTokenStreamTestCase {
     }
   }
 
-  @Test(expected = IllegalArgumentException.class)
   public void testIllegalArguments() throws Exception {
-    new LimitTokenPositionFilter(whitespaceMockTokenizer("one two three four five"), 0);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new LimitTokenPositionFilter(whitespaceMockTokenizer("one two three four five"), 0);
+        });
   }
 }

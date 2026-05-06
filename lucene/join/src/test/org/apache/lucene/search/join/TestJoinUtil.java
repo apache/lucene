@@ -98,7 +98,6 @@ import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.packed.PackedInts;
-import org.junit.Test;
 
 public class TestJoinUtil extends LuceneTestCase {
 
@@ -1466,14 +1465,12 @@ public class TestJoinUtil extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testSingleValueRandomJoin() throws Exception {
     int maxIndexIter = atLeast(1);
     int maxSearchIter = atLeast(1);
     executeRandomJoin(false, maxIndexIter, maxSearchIter, TestUtil.nextInt(random(), 87, 764));
   }
 
-  @Test
   // This test really takes more time, that is why the number of iterations are smaller.
   public void testMultiValueRandomJoin() throws Exception {
     int maxIndexIter = atLeast(1);

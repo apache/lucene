@@ -23,96 +23,80 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.store.AlreadyClosedException;
-import org.junit.Test;
 
 public class TestOverviewImpl extends OverviewTestBase {
 
-  @Test
   public void testGetIndexPath() {
     OverviewImpl overview = new OverviewImpl(reader, indexDir.toString());
     assertEquals(indexDir.toString(), overview.getIndexPath());
   }
 
-  @Test
   public void testGetNumFields() {
     OverviewImpl overview = new OverviewImpl(reader, indexDir.toString());
     assertEquals(2, (long) overview.getNumFields());
   }
 
-  @Test
   public void testGetFieldNames() {
     OverviewImpl overview = new OverviewImpl(reader, indexDir.toString());
     assertEquals(new HashSet<>(Arrays.asList("f1", "f2")), new HashSet<>(overview.getFieldNames()));
   }
 
-  @Test
   public void testGetNumDocuments() {
     OverviewImpl overview = new OverviewImpl(reader, indexDir.toString());
     assertEquals(3, (long) overview.getNumDocuments());
   }
 
-  @Test
   public void testGetNumTerms() {
     OverviewImpl overview = new OverviewImpl(reader, indexDir.toString());
     assertEquals(9, overview.getNumTerms());
   }
 
-  @Test
   public void testHasDeletions() {
     OverviewImpl overview = new OverviewImpl(reader, indexDir.toString());
     assertFalse(overview.hasDeletions());
   }
 
-  @Test
   public void testGetNumDeletedDocs() {
     OverviewImpl overview = new OverviewImpl(reader, indexDir.toString());
     assertEquals(0, (long) overview.getNumDeletedDocs());
   }
 
-  @Test
   public void testIsOptimized() {
     OverviewImpl overview = new OverviewImpl(reader, indexDir.toString());
     assertTrue(overview.isOptimized().isPresent());
   }
 
-  @Test
   public void testGetIndexVersion() {
     OverviewImpl overview = new OverviewImpl(reader, indexDir.toString());
     assertTrue(overview.getIndexVersion().orElseThrow(IllegalStateException::new) > 0);
   }
 
-  @Test
   public void testGetIndexFormat() {
     OverviewImpl overview = new OverviewImpl(reader, indexDir.toString());
     assertEquals("Lucene 8.6 or later", overview.getIndexFormat().get());
   }
 
-  @Test
   public void testGetDirImpl() {
     OverviewImpl overview = new OverviewImpl(reader, indexDir.toString());
     assertEquals(dir.getClass().getName(), overview.getDirImpl().get());
   }
 
-  @Test
   public void testGetCommitDescription() {
     OverviewImpl overview = new OverviewImpl(reader, indexDir.toString());
     assertTrue(overview.getCommitDescription().isPresent());
   }
 
-  @Test
   public void testGetCommitUserData() {
     OverviewImpl overview = new OverviewImpl(reader, indexDir.toString());
     assertTrue(overview.getCommitUserData().isPresent());
   }
 
-  @Test
   public void testGetSortedTermCounts() {
     OverviewImpl overview = new OverviewImpl(reader, indexDir.toString());
     Map<String, Long> countsMap = overview.getSortedTermCounts(TermCountsOrder.COUNT_DESC);
     assertEquals(Arrays.asList("f2", "f1"), new ArrayList<>(countsMap.keySet()));
   }
 
-  @Test
   public void testGetTopTerms() {
     OverviewImpl overview = new OverviewImpl(reader, indexDir.toString());
     List<TermStats> result = overview.getTopTerms("f2", 2);
@@ -121,13 +105,11 @@ public class TestOverviewImpl extends OverviewTestBase {
     assertEquals("f2", result.get(0).getField());
   }
 
-  @Test
   public void testGetTopTerms_illegal_numterms() {
     OverviewImpl overview = new OverviewImpl(reader, indexDir.toString());
     expectThrows(IllegalArgumentException.class, () -> overview.getTopTerms("f2", -1));
   }
 
-  @Test
   public void testClose() throws Exception {
     OverviewImpl overview = new OverviewImpl(reader, indexDir.toString());
     reader.close();
