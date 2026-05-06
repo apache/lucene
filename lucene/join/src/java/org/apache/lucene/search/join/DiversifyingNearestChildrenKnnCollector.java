@@ -113,7 +113,7 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector
     return heap.size();
   }
 
-  @Override
+  // SOLO PER VISITARE LA FAMIGLIA ALTRIMENTI NON LO CHIAMIAMO PROPRIO
   public int[] findSiblingDocIds(int childDocId) {
     int parent = parentBitSet.nextSetBit(childDocId);
     // Skip if this parent's entry is already in the heap
@@ -124,12 +124,12 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector
     int prevParent = parent > 0 ? parentBitSet.prevSetBit(parent - 1) : -1;
     int from = prevParent + 1;
     // Children of parent are all docIds in [from, parent); exclude childDocId itself
-    int capacity = parent - from - 1;
+    int siblingsSize = parent - from - 1;
     // One child case
-    if (capacity == 0) {
+    if (siblingsSize == 0) {
       return null;
     }
-    int[] siblings = new int[capacity];
+    int[] siblings = new int[siblingsSize];
     int idx = 0;
     for (int docId = from; docId < parent; docId++) {
       if (docId != childDocId) {
@@ -139,7 +139,6 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector
     return idx > 0 ? siblings : null;
   }
 
-  @Override
   public int docIdToOrdinal(int docId) {
     // Conditions explanation:
     //  docToOrd == null — buildDocToOrd returns null when the segment has no vector values at all

@@ -106,10 +106,18 @@ abstract class AbstractHnswGraphSearcher {
         // Fetch siblings BEFORE collect() so the parent is not yet in the heap
         int[] siblings = null;
         int numSiblingsToVisit = 0;
+        // This check is needed since this method is also called by the GraphBuilderKnnCollector
         if (results instanceof ChildrenSiblingExpansion expander) {
-          siblings = expander.pendingSiblingOrdinals(ep, visited);
+          siblings = expander.getSiblingOrdinals(ep, visited);
           if (siblings != null) {
             //  how many siblings are actually scored to avoid exceeding the visit budget.
+            //  controls the early termination condition. early terminates the search if we reach
+            //  visitLimit nodes
+            //  if this visit limit is high we just navigate the graph until we do not have any node
+            //  with a score higher than the ones already collected
+            //  Current values it could assume:
+            //  -  No filter → Integer.MAX_VALUE (no constraint tighter than the full segment)
+            //  -  With filter → cardinality (no constraint tighter than the full accepted set)
             numSiblingsToVisit =
                 (int) Math.min(siblings.length, results.visitLimit() - results.visitedCount());
             // Only mark as visited the siblings we will actually score; the rest remain
@@ -121,7 +129,7 @@ abstract class AbstractHnswGraphSearcher {
         results.collect(ep, score);
         if (numSiblingsToVisit > 0) {
           siblingScores =
-              scoreSiblings(
+              scoreHnswNodes(
                   results,
                   scorer,
                   candidates,
@@ -138,36 +146,36 @@ abstract class AbstractHnswGraphSearcher {
    * Scores and collects siblings, adding competitive ones to the candidate queue. Reuses and
    * returns the siblingScores buffer, reallocating only if too small.
    */
-  protected static float[] scoreSiblings(
+  protected static float[] scoreHnswNodes(
       KnnCollector results,
       RandomVectorScorer scorer,
       NeighborQueue candidates,
       Bits acceptOrds,
-      int[] siblings,
+      int[] hnswNodes,
       int numSiblings,
-      float[] siblingScores)
+      float[] scores)
       throws IOException {
     // If siblingScores not defined yet or too small to collect scores a new one is created
     // Otherwise we reuse the old one that will be overridden in bulkScore with new scores
-    if (siblingScores == null || siblingScores.length < numSiblings) {
-      siblingScores = new float[numSiblings];
+    if (scores == null || scores.length < numSiblings) {
+      scores = new float[numSiblings];
     }
-    float maxScore = scorer.bulkScore(siblings, siblingScores, numSiblings);
+    float maxScore = scorer.bulkScore(hnswNodes, scores, numSiblings);
     results.incVisitedCount(numSiblings);
     if (maxScore > results.minCompetitiveSimilarity()) {
       float minSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
       for (int j = 0; j < numSiblings; j++) {
-        float sibScore = siblingScores[j];
+        float sibScore = scores[j];
         // We avoid adding to candidates a sibling with a bad score
         if (sibScore >= minSimilarity) {
-          candidates.add(siblings[j], sibScore);
-          if (acceptOrds == null || acceptOrds.get(siblings[j])) {
-            results.collect(siblings[j], sibScore);
+          candidates.add(hnswNodes[j], sibScore);
+          if (acceptOrds == null || acceptOrds.get(hnswNodes[j])) {
+            results.collect(hnswNodes[j], sibScore);
             minSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
           }
         }
       }
     }
-    return siblingScores;
+    return scores;
   }
 }

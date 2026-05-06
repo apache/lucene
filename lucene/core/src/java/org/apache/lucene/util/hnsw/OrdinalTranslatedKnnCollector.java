@@ -57,11 +57,11 @@ public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator
   }
 
   @Override
-  public int[] pendingSiblingOrdinals(int collectedOrdinal, BitSet visitedOrds) {
+  public int[] getSiblingOrdinals(int hnswNode, BitSet visitedHnswNodes) {
     if (!(collector instanceof DocSiblingExpansion docExpander)) {
       return null;
     }
-    int docId = vectorOrdinalToDocId.apply(collectedOrdinal);
+    int docId = vectorOrdinalToDocId.apply(hnswNode);
     int[] siblingDocIds = docExpander.findSiblingDocIds(docId);
     if (siblingDocIds == null) {
       return null;
@@ -76,8 +76,8 @@ public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator
       //  Such a doc has no node in the HNSW graph and can't be scored, so it must be skipped.
       //  If a sibling was reached via normal graph traversal before sibling expansion triggered,
       // re-adding it would
-      //  cause it to be scored twice. !visitedOrds.get(sibOrd) filters those out.
-      if (sibOrd >= 0 && !visitedOrds.get(sibOrd)) {
+      //  cause it to be scored twice. !visitedHnswNodes.get(sibOrd) filters those out.
+      if (sibOrd >= 0 && !visitedHnswNodes.get(sibOrd)) {
         siblingOrdinals[count++] = sibOrd;
       }
     }

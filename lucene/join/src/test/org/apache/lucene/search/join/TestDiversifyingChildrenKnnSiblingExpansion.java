@@ -53,7 +53,7 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
     extends DiversifyingChildrenKnnCollectorTestCase {
 
   // ---------------------------------------------------------------------------
-  // Unit tests: DocSiblingExpansion — findSiblingDocIds
+  // Unit tests: DiversifyingNearestChildrenKnnCollector — findSiblingDocIds
   // ---------------------------------------------------------------------------
 
   public void testFindSiblingDocIds_returnsAllSiblings() throws IOException {
@@ -129,7 +129,7 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
   }
 
   // ---------------------------------------------------------------------------
-  // Unit tests: DocSiblingExpansion — docIdToOrdinal
+  // Unit tests: DiversifyingNearestChildrenKnnCollector — docIdToOrdinal
   // ---------------------------------------------------------------------------
 
   public void testDocIdToOrdinal_correctMapping() throws IOException {
@@ -214,7 +214,7 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
   }
 
   // ---------------------------------------------------------------------------
-  // Unit tests: OrdinalTranslatedKnnCollector — pendingSiblingOrdinals
+  // Unit tests: OrdinalTranslatedKnnCollector — getSiblingOrdinals
   // ---------------------------------------------------------------------------
 
   /**
@@ -236,7 +236,7 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
     visited.set(1);
 
     // Trigger on C0 (ordinal 0 → docId 0); siblings are C1 and C2
-    int[] result = collector.pendingSiblingOrdinals(0, visited);
+    int[] result = collector.getSiblingOrdinals(0, visited);
     assertNotNull(result);
     assertArrayEquals("C1 must be filtered (visited); only C2 remains", new int[] {2}, result);
   }
@@ -259,7 +259,7 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
     FixedBitSet visited = new FixedBitSet(4);
 
     // Trigger on C0 (ordinal 0 → docId 0); siblings are C1 (sparse) and C2
-    int[] result = collector.pendingSiblingOrdinals(0, visited);
+    int[] result = collector.getSiblingOrdinals(0, visited);
     assertNotNull(result);
     assertArrayEquals("C1 (no vector) must be filtered; only C2 remains", new int[] {1}, result);
   }

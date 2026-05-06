@@ -25,7 +25,7 @@ import org.apache.lucene.util.BitSet;
  * belonging to a newly-discovered parent, all siblings of that parent are immediately scored and
  * collected without requiring full graph traversal.
  *
- * <p>The graph searcher calls {@link #pendingSiblingOrdinals} <em>before</em> invoking {@link
+ * <p>The graph searcher calls {@link #getSiblingOrdinals} <em>before</em> invoking {@link
  * org.apache.lucene.search.KnnCollector#collect} for the triggering node, so that the collector can
  * safely inspect its internal state before the parent is registered.
  *
@@ -46,5 +46,5 @@ public interface ChildrenSiblingExpansion {
    *     marked here — the caller does that
    * @return ordinals of sibling nodes to score next, or {@code null} if none
    */
-  int[] pendingSiblingOrdinals(int collectedOrdinal, BitSet visitedOrds);
+  int[] getSiblingOrdinals(int collectedOrdinal, BitSet visitedOrds);
 }

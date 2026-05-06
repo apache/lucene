@@ -351,8 +351,9 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
               // Fetch siblings BEFORE collect() so the parent is not yet in the heap
               int[] siblings = null;
               int numSiblingsToVisit = 0;
+              // This check is needed since this method is also called by the GraphBuilderKnnCollector
               if (results instanceof ChildrenSiblingExpansion expander) {
-                siblings = expander.pendingSiblingOrdinals(node, visited);
+                siblings = expander.getSiblingOrdinals(node, visited);
                 if (siblings != null) {
                   numSiblingsToVisit =
                       (int)
@@ -375,7 +376,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
               if (numSiblingsToVisit > 0) {
                 float prevMinSim = results.minCompetitiveSimilarity();
                 siblingScores =
-                    scoreSiblings(
+                    scoreHnswNodes(
                         results,
                         scorer,
                         candidates,
