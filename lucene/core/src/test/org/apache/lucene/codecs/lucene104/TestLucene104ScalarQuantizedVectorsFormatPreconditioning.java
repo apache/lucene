@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene105;
+package org.apache.lucene.codecs.lucene104;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -37,27 +37,17 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
- * Targeted tests for the rotation preconditioning built into {@link
- * Lucene105ScalarQuantizedVectorsFormat}. These tests verify that:
- *
- * <ul>
- *   <li>Setting a non-zero {@code rotationSeed} does not corrupt search — top-K still returns
- *       well-formed results.
- *   <li>Indexed vectors remain retrievable via {@link
- *       org.apache.lucene.index.FloatVectorValues#vectorValue(int)} (they get inverse-rotated on
- *       the read path).
- *   <li>The {@code toString} reflects the rotation seed for observability.
- * </ul>
+ * Tests for the always-on rotation preconditioning in {@link
+ * Lucene104ScalarQuantizedVectorsFormat}.
  */
-public class TestLucene105ScalarQuantizedVectorsFormatPreconditioning extends LuceneTestCase {
+public class TestLucene104ScalarQuantizedVectorsFormatPreconditioning extends LuceneTestCase {
 
-  /** Sanity check: search with preconditioning still returns top-K results near the query. */
+  /** Search with preconditioning returns correct top-K results. */
   public void testPreconditionedSearchReturnsResults() throws Exception {
     int dims = 64;
     int numDocs = 200;
-    long seed = 0xabc123L;
 
-    Codec codec = codecWithRotation(ScalarEncoding.UNSIGNED_BYTE, seed);
+    Codec codec = codecWithFormat(new Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding.UNSIGNED_BYTE));
     IndexWriterConfig iwc = newIndexWriterConfig().setCodec(codec);
 
     try (Directory dir = newDirectory();
@@ -74,7 +64,6 @@ public class TestLucene105ScalarQuantizedVectorsFormatPreconditioning extends Lu
 
       try (IndexReader reader = DirectoryReader.open(w)) {
         IndexSearcher searcher = new IndexSearcher(reader);
-        // Query close to vectors[0]
         float[] query = vectors[0].clone();
         TopDocs top = searcher.search(new KnnFloatVectorQuery("field", query, 5), 5);
         assertTrue(
@@ -89,15 +78,13 @@ public class TestLucene105ScalarQuantizedVectorsFormatPreconditioning extends Lu
   }
 
   /**
-   * Verifies that {@link org.apache.lucene.index.LeafReader#getFloatVectorValues(String)} returns
-   * the inverse-rotated (original) vectors, not the stored rotated ones.
+   * Verifies that getFloatVectorValues returns the original (inverse-rotated) vectors.
    */
   public void testGetFloatVectorValuesInverseRotates() throws Exception {
     int dims = 32;
     int numDocs = 8;
-    long seed = 0xdeadbeefL;
 
-    Codec codec = codecWithRotation(ScalarEncoding.UNSIGNED_BYTE, seed);
+    Codec codec = codecWithFormat(new Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding.UNSIGNED_BYTE));
     IndexWriterConfig iwc = newIndexWriterConfig().setCodec(codec);
 
     try (Directory dir = newDirectory();
@@ -123,7 +110,6 @@ public class TestLucene105ScalarQuantizedVectorsFormatPreconditioning extends Lu
             doc != org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
             doc = it.nextDoc()) {
           float[] got = values.vectorValue(it.index());
-          // inverse-rotation has ~1e-7 FP drift; use a tolerance.
           assertArrayEquals(
               "vector for doc " + doc + " should round-trip through rotation",
               indexed[doc],
@@ -136,26 +122,17 @@ public class TestLucene105ScalarQuantizedVectorsFormatPreconditioning extends Lu
     }
   }
 
-  /** Sanity check that a format with rotationSeed=0 produces the same toString as the default. */
-  public void testSeedZeroEquivalentToDefault() {
-    Lucene105ScalarQuantizedVectorsFormat disabled =
-        new Lucene105ScalarQuantizedVectorsFormat(ScalarEncoding.UNSIGNED_BYTE, 0L);
-    Lucene105ScalarQuantizedVectorsFormat defaultFmt =
-        new Lucene105ScalarQuantizedVectorsFormat(ScalarEncoding.UNSIGNED_BYTE);
-    assertEquals(disabled.toString(), defaultFmt.toString());
+  /** Verifies that the rotation seed is deterministic from field name. */
+  public void testRotationSeedDeterministic() {
+    long s1 = Lucene104ScalarQuantizedVectorsFormat.rotationSeed("myfield");
+    long s2 = Lucene104ScalarQuantizedVectorsFormat.rotationSeed("myfield");
+    assertEquals(s1, s2);
+    // Different fields get different seeds
+    long s3 = Lucene104ScalarQuantizedVectorsFormat.rotationSeed("otherfield");
+    assertNotEquals(s1, s3);
   }
 
-  public void testToStringWithSeed() {
-    Lucene105ScalarQuantizedVectorsFormat f =
-        new Lucene105ScalarQuantizedVectorsFormat(ScalarEncoding.UNSIGNED_BYTE, 0x1234L);
-    String s = f.toString();
-    assertTrue("toString should include the seed: " + s, s.contains("rotationSeed=1234"));
-  }
-
-  private static Codec codecWithRotation(ScalarEncoding encoding, long rotationSeed) {
-    KnnVectorsFormat format = new Lucene105ScalarQuantizedVectorsFormat(encoding, rotationSeed);
-    // Use the default codec's name — FilterCodec needs a resolvable SPI name when the index is
-    // closed and reopened, and Codec.getDefault() is always registered.
+  private static Codec codecWithFormat(KnnVectorsFormat format) {
     return new FilterCodec(Codec.getDefault().getName(), Codec.getDefault()) {
       @Override
       public KnnVectorsFormat knnVectorsFormat() {

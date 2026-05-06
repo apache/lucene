@@ -50,6 +50,7 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.quantization.HadamardRotation;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
@@ -334,6 +335,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       segmentWriteState.infoStream.message(
           QUANTIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
     }
+    // mergeState.knnVectorsReaders are merge instances that return rotated vectors
+    // (via MergeReader.getFloatVectorValues), so no additional rotation needed here.
     FloatVectorValues floatVectorValues =
         MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
     if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
@@ -522,11 +525,16 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     private final FlatFieldVectorsWriter<float[]> flatFieldVectorsWriter;
     private final float[] dimensionSums;
     private final FloatArrayList magnitudes = new FloatArrayList();
+    private final HadamardRotation rotation;
+    private final float[] rotationScratch;
 
     FieldWriter(FieldInfo fieldInfo, FlatFieldVectorsWriter<float[]> flatFieldVectorsWriter) {
       this.fieldInfo = fieldInfo;
       this.flatFieldVectorsWriter = flatFieldVectorsWriter;
       this.dimensionSums = new float[fieldInfo.getVectorDimension()];
+      long seed = Lucene104ScalarQuantizedVectorsFormat.rotationSeed(fieldInfo.name);
+      this.rotation = HadamardRotation.create(fieldInfo.getVectorDimension(), seed);
+      this.rotationScratch = new float[fieldInfo.getVectorDimension()];
     }
 
     @Override
@@ -565,6 +573,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
     @Override
     public void addValue(int docID, float[] vectorValue) throws IOException {
+      float[] rotated = new float[vectorValue.length];
+      rotation.rotate(vectorValue, rotated, rotationScratch);
+      vectorValue = rotated;
       flatFieldVectorsWriter.addValue(docID, vectorValue);
       if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
         float dp = VectorUtil.dotProduct(vectorValue, vectorValue);
@@ -750,4 +761,5 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       return new NormalizedFloatVectorValues(values.copy());
     }
   }
+
 }

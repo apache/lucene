@@ -172,6 +172,13 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           float[] centroid = qvectorValues.getCentroid();
           assertEquals(centroid.length, dims);
 
+          // The stored quantized bytes are in rotated space. To verify them, we must
+          // rotate the read-back vectors (which are inverse-rotated) before re-quantizing.
+          var rotation = org.apache.lucene.util.quantization.HadamardRotation.create(
+              dims, Lucene104ScalarQuantizedVectorsFormat.rotationSeed(fieldName));
+          float[] rotatedVec = new float[dims];
+          float[] rotScratch = new float[dims];
+
           OptimizedScalarQuantizer quantizer = new OptimizedScalarQuantizer(similarityFunction);
           byte[] scratch = new byte[encoding.getDiscreteDimensions(dims)];
           byte[] expectedVector = new byte[encoding.getDocPackedLength(scratch.length)];
@@ -182,9 +189,12 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           KnnVectorValues.DocIndexIterator docIndexIterator = vectorValues.iterator();
 
           while (docIndexIterator.nextDoc() != NO_MORE_DOCS) {
+            // Rotate the vector to match the rotated space used for quantization
+            float[] vec = vectorValues.vectorValue(docIndexIterator.index());
+            rotation.rotate(vec, rotatedVec, rotScratch);
             OptimizedScalarQuantizer.QuantizationResult corrections =
                 quantizer.scalarQuantize(
-                    vectorValues.vectorValue(docIndexIterator.index()),
+                    rotatedVec,
                     scratch,
                     encoding.getBits(),
                     centroid);

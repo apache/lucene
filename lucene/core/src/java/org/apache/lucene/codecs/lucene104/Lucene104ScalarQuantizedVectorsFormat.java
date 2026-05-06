@@ -96,6 +96,20 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   public static final String QUANTIZED_VECTOR_COMPONENT = "QVEC";
   public static final String NAME = "Lucene104ScalarQuantizedVectorsFormat";
 
+  /**
+   * Derives a deterministic rotation seed from a field name. Uses a mixing function so that similar
+   * field names produce very different seeds.
+   */
+  public static long rotationSeed(String fieldName) {
+    long h = fieldName.hashCode() * 0x9E3779B97F4A7C15L;
+    h ^= (h >>> 30);
+    h *= 0xBF58476D1CE4E5B9L;
+    h ^= (h >>> 27);
+    h *= 0x94D049BB133111EBL;
+    h ^= (h >>> 31);
+    return h;
+  }
+
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
   static final String META_CODEC_NAME = "Lucene104ScalarQuantizedVectorsFormatMeta";
