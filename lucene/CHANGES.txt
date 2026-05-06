@@ -7,9 +7,6 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
-* GITHUB#15605: Remove unused getCollectors() and internal collector tracking from
-  TopFieldCollectorManager. Clarify thread-safety documentation. (Prudhvi Godithi)
-
 * GITHUB#15929: Rename CollectionStatistics to FieldStats and TermStatistics to TermStats. (Zhou Hui)
 
 * GITHUB#15763: Deprecate Operations.complement() method. This operation can be slow and is not
@@ -92,6 +89,9 @@ API Changes
   To force a classic DFA execution, use Operations.determinize() and AutomatonQuery.
   Also removed QueryParserBase.setDeterminizeWorkLimit/getDeterminizeWorkLimit, which are
   no longer needed. (Dimitris Rempapis)
+
+* GITHUB#15605: Remove unused getCollectors() and internal collector tracking from
+  TopFieldCollectorManager. Clarify thread-safety documentation. (Prudhvi Godithi)
 
 New Features
 ---------------------
