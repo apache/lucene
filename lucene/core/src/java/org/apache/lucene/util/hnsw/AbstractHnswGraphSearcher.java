@@ -107,8 +107,8 @@ abstract class AbstractHnswGraphSearcher {
         int[] siblings = null;
         int numSiblingsToVisit = 0;
         // This check is needed since this method is also called by the GraphBuilderKnnCollector
-        if (results instanceof ChildrenSiblingExpansion expander) {
-          siblings = expander.getSiblingOrdinals(ep, visited);
+        if (results instanceof OrdinalTranslatedKnnCollector collector) {
+          siblings = collector.getSiblingOrdinals(ep, visited);
           if (siblings != null) {
             //  how many siblings are actually scored to avoid exceeding the visit budget.
             //  controls the early termination condition. early terminates the search if we reach

@@ -352,8 +352,8 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
               int[] siblings = null;
               int numSiblingsToVisit = 0;
               // This check is needed since this method is also called by the GraphBuilderKnnCollector
-              if (results instanceof ChildrenSiblingExpansion expander) {
-                siblings = expander.getSiblingOrdinals(node, visited);
+              if (results instanceof OrdinalTranslatedKnnCollector collector) {
+                siblings = collector.getSiblingOrdinals(node, visited);
                 if (siblings != null) {
                   numSiblingsToVisit =
                       (int)

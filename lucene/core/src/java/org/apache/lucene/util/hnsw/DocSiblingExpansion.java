@@ -18,7 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 /**
- * Doc-ID-level companion to {@link ChildrenSiblingExpansion}. Implemented by collectors that
+ * Implemented by collectors that
  * understand parent-child document relationships and can enumerate sibling document ids for a given
  * child document id, as well as translate document ids back to vector ordinals.
  *

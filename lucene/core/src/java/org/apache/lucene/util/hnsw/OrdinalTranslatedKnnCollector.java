@@ -25,11 +25,10 @@ import org.apache.lucene.util.BitSet;
 
 /**
  * Wraps a provided KnnCollector object, translating the provided vectorId ordinal to a documentId.
- * This wrapper implements {@link ChildrenSiblingExpansion}; sibling expansion is active only when
- * the wrapped collector also implements {@link DocSiblingExpansion}.
+ * Sibling expansion is active only when the wrapped collector also implements {@link
+ * DocSiblingExpansion}.
  */
-public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator
-    implements ChildrenSiblingExpansion {
+public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator {
 
   private final IntToIntFunction vectorOrdinalToDocId;
 
@@ -56,7 +55,6 @@ public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator
         td.scoreDocs);
   }
 
-  @Override
   public int[] getSiblingOrdinals(int hnswNode, BitSet visitedHnswNodes) {
     if (!(collector instanceof DocSiblingExpansion docExpander)) {
       return null;
