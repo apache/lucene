@@ -77,7 +77,7 @@ jobs:
   gradleSanityCheck:
     name: "Run tasks (java: ${{ matrix.java-version }}, alt-java: ${{ matrix.uses-alt-java }})"
     timeout-minutes: 30
-    needs: gradleScriptBootstrapCheck
+    needs: [gradleScriptBootstrapCheck, gradleWindowsSanityCheck]
 
     strategy:
       matrix:
