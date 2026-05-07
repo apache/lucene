@@ -56,5 +56,5 @@ public abstract class VectorColumn<T> extends Column {
   }
 
   /** Returns a fresh tuple cursor starting at the beginning of the batch. */
-  public abstract VectorTupleCursor<T> tuples();
+  public abstract ObjectTupleCursor<T> tuples();
 }

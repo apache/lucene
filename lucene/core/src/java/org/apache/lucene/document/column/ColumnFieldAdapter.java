@@ -119,7 +119,7 @@ final class LongColumnAdapter extends ColumnFieldAdapter {
 }
 
 final class BinaryColumnAdapter extends ColumnFieldAdapter {
-  private final BinaryTupleCursor cursor;
+  private final ObjectTupleCursor<BytesRef> cursor;
   private final StoredValue reusableStoredValue;
   private final StoredValue.Type storedType;
   private final boolean tokenized;
@@ -155,13 +155,13 @@ final class BinaryColumnAdapter extends ColumnFieldAdapter {
 
   @Override
   public BytesRef binaryValue() {
-    return cursor.binaryValue();
+    return cursor.value();
   }
 
   @Override
   public String stringValue() {
     if (tokenized) {
-      BytesRef ref = cursor.binaryValue();
+      BytesRef ref = cursor.value();
       return new String(ref.bytes, ref.offset, ref.length, StandardCharsets.UTF_8);
     }
     return null;
@@ -172,7 +172,7 @@ final class BinaryColumnAdapter extends ColumnFieldAdapter {
     if (reusableStoredValue == null) {
       return null;
     }
-    BytesRef value = cursor.binaryValue();
+    BytesRef value = cursor.value();
     switch (storedType) {
       case STRING ->
           reusableStoredValue.setStringValue(

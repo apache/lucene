@@ -44,7 +44,6 @@ import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.document.column.BinaryColumn;
-import org.apache.lucene.document.column.BinaryTupleCursor;
 import org.apache.lucene.document.column.Column;
 import org.apache.lucene.document.column.ColumnBatch;
 import org.apache.lucene.document.column.ColumnFieldAdapter;
@@ -52,8 +51,8 @@ import org.apache.lucene.document.column.ColumnValidation;
 import org.apache.lucene.document.column.LongColumn;
 import org.apache.lucene.document.column.LongTupleCursor;
 import org.apache.lucene.document.column.LongValuesCursor;
+import org.apache.lucene.document.column.ObjectTupleCursor;
 import org.apache.lucene.document.column.VectorColumn;
-import org.apache.lucene.document.column.VectorTupleCursor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -1019,7 +1018,7 @@ final class IndexingChain implements Accountable {
     final DocValuesType dvType = fieldType.docValuesType();
     final boolean hasPoints = fieldType.pointDimensionCount() != 0;
     final PointValuesWriter pointWriter = hasPoints ? pf.pointValuesWriter : null;
-    final BinaryTupleCursor cursor = column.tuples();
+    final ObjectTupleCursor<BytesRef> cursor = column.tuples();
 
     if (dvType == DocValuesType.NONE) {
       // Points only: bytes are passed through unchanged (caller is responsible for producing
@@ -1027,7 +1026,7 @@ final class IndexingChain implements Accountable {
       int batchDocID;
       while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
         ColumnValidation.checkDocID(column, batchDocID, numDocs);
-        pointWriter.addPackedValue(baseDocID + batchDocID, cursor.binaryValue());
+        pointWriter.addPackedValue(baseDocID + batchDocID, cursor.value());
       }
       return;
     }
@@ -1039,7 +1038,7 @@ final class IndexingChain implements Accountable {
         while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           ColumnValidation.checkDocID(column, batchDocID, numDocs);
           int segDocID = baseDocID + batchDocID;
-          BytesRef value = cursor.binaryValue();
+          BytesRef value = cursor.value();
           writer.addValue(segDocID, value);
           if (hasPoints) {
             pointWriter.addPackedValue(segDocID, value);
@@ -1052,7 +1051,7 @@ final class IndexingChain implements Accountable {
         while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           ColumnValidation.checkDocID(column, batchDocID, numDocs);
           int segDocID = baseDocID + batchDocID;
-          BytesRef value = cursor.binaryValue();
+          BytesRef value = cursor.value();
           writer.addValue(segDocID, value);
           if (hasPoints) {
             pointWriter.addPackedValue(segDocID, value);
@@ -1065,7 +1064,7 @@ final class IndexingChain implements Accountable {
         while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           ColumnValidation.checkDocID(column, batchDocID, numDocs);
           int segDocID = baseDocID + batchDocID;
-          BytesRef value = cursor.binaryValue();
+          BytesRef value = cursor.value();
           writer.addValue(segDocID, value);
           if (hasPoints) {
             pointWriter.addPackedValue(segDocID, value);
@@ -1085,7 +1084,7 @@ final class IndexingChain implements Accountable {
       throws IOException {
     final VectorEncoding encoding = fieldType.vectorEncoding();
     final int dimension = fieldType.vectorDimension();
-    final VectorTupleCursor<?> cursor = column.tuples();
+    final ObjectTupleCursor<?> cursor = column.tuples();
     int prevBatchDocID = -1;
     int consumed = 0;
     int batchDocID;
@@ -1096,7 +1095,7 @@ final class IndexingChain implements Accountable {
         while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           ColumnValidation.checkDocID(column, batchDocID, numDocs);
           ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
-          float[] vec = (float[]) cursor.vectorValue();
+          float[] vec = (float[]) cursor.value();
           ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
           writer.addValue(baseDocID + batchDocID, vec);
           prevBatchDocID = batchDocID;
@@ -1109,7 +1108,7 @@ final class IndexingChain implements Accountable {
         while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
           ColumnValidation.checkDocID(column, batchDocID, numDocs);
           ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
-          byte[] vec = (byte[]) cursor.vectorValue();
+          byte[] vec = (byte[]) cursor.value();
           ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
           writer.addValue(baseDocID + batchDocID, vec);
           prevBatchDocID = batchDocID;

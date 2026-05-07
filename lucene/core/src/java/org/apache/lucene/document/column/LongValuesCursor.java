@@ -27,11 +27,17 @@ package org.apache.lucene.document.column;
  */
 public abstract class LongValuesCursor {
 
+  private final int size;
+
   /** Sole constructor. */
-  protected LongValuesCursor() {}
+  protected LongValuesCursor(int size) {
+    this.size = size;
+  }
 
   /** Total number of values this cursor will produce. */
-  public abstract int size();
+  public final int size() {
+    return size;
+  }
 
   /** Returns the next long value. Must not be called more than {@link #size()} times. */
   public abstract long nextLong();

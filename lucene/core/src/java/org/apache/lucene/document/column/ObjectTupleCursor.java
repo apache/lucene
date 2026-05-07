@@ -19,29 +19,30 @@ package org.apache.lucene.document.column;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
- * A tuple cursor over a {@link VectorColumn}. Yields {@code (docID, vectorValue)} pairs.
- * Batch-local doc-ids are returned in strictly increasing order (vectors are single-valued).
+ * A tuple cursor over a {@link Column} whose values are objects. Yields {@code (docID, value)}
+ * pairs. Batch-local doc-ids are returned in non-decreasing order; the same doc-id may repeat for
+ * multi-valued fields (e.g. {@link org.apache.lucene.index.DocValuesType#SORTED_SET SORTED_SET}).
+ * Single-valued columns (e.g. {@link VectorColumn}) emit each doc-id at most once.
  *
- * @param <T> the vector array type, either {@code float[]} or {@code byte[]}
+ * @param <T> the value type
  * @lucene.experimental
  */
-public abstract class VectorTupleCursor<T> {
+public abstract class ObjectTupleCursor<T> {
 
   /** Sole constructor. */
-  protected VectorTupleCursor() {}
+  protected ObjectTupleCursor() {}
 
   /**
-   * Advances to the next doc-id that has a vector and returns it, or {@link
-   * DocIdSetIterator#NO_MORE_DOCS} if exhausted. Doc-ids are batch-local (0 to {@code numDocs - 1})
-   * and strictly increasing.
+   * Advances to the next doc-id that has a value and returns it, or {@link
+   * DocIdSetIterator#NO_MORE_DOCS} if exhausted. Doc-ids are batch-local (0 to {@code numDocs -
+   * 1}).
    */
   public abstract int nextDoc();
 
   /**
-   * Returns the vector at the current cursor position. The returned array may be reused by the
-   * cursor on subsequent calls to {@link #nextDoc()} — the indexing chain copies the value before
-   * advancing. Only valid after a {@code nextDoc()} that returned a value other than {@link
+   * Returns the value at the current cursor position. Only valid until the next call to {@link
+   * #nextDoc()}, and only after a {@code nextDoc()} that returned a value other than {@link
    * DocIdSetIterator#NO_MORE_DOCS}.
    */
-  public abstract T vectorValue();
+  public abstract T value();
 }

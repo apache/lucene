@@ -33,14 +33,13 @@ import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.document.column.BinaryColumn;
-import org.apache.lucene.document.column.BinaryTupleCursor;
 import org.apache.lucene.document.column.Column;
 import org.apache.lucene.document.column.ColumnBatch;
 import org.apache.lucene.document.column.LongColumn;
 import org.apache.lucene.document.column.LongTupleCursor;
 import org.apache.lucene.document.column.LongValuesCursor;
+import org.apache.lucene.document.column.ObjectTupleCursor;
 import org.apache.lucene.document.column.VectorColumn;
-import org.apache.lucene.document.column.VectorTupleCursor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
@@ -2559,8 +2558,8 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     }
 
     @Override
-    public BinaryTupleCursor tuples() {
-      return new BinaryTupleCursor() {
+    public ObjectTupleCursor<BytesRef> tuples() {
+      return new ObjectTupleCursor<>() {
         int pos = -1;
 
         @Override
@@ -2570,7 +2569,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         }
 
         @Override
-        public BytesRef binaryValue() {
+        public BytesRef value() {
           return values[pos];
         }
       };
@@ -2606,13 +2605,8 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
 
     @Override
     public LongValuesCursor values() {
-      return new LongValuesCursor() {
+      return new LongValuesCursor(values.length) {
         int pos = 0;
-
-        @Override
-        public int size() {
-          return values.length;
-        }
 
         @Override
         public long nextLong() {
@@ -2647,8 +2641,8 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     }
 
     @Override
-    public VectorTupleCursor<float[]> tuples() {
-      return new VectorTupleCursor<>() {
+    public ObjectTupleCursor<float[]> tuples() {
+      return new ObjectTupleCursor<>() {
         int pos = -1;
 
         @Override
@@ -2658,7 +2652,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         }
 
         @Override
-        public float[] vectorValue() {
+        public float[] value() {
           return values[pos];
         }
       };
@@ -2678,8 +2672,8 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     }
 
     @Override
-    public VectorTupleCursor<byte[]> tuples() {
-      return new VectorTupleCursor<>() {
+    public ObjectTupleCursor<byte[]> tuples() {
+      return new ObjectTupleCursor<>() {
         int pos = -1;
 
         @Override
@@ -2689,7 +2683,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         }
 
         @Override
-        public byte[] vectorValue() {
+        public byte[] value() {
           return values[pos];
         }
       };
@@ -2705,8 +2699,8 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     }
 
     @Override
-    public VectorTupleCursor<float[]> tuples() {
-      return new VectorTupleCursor<>() {
+    public ObjectTupleCursor<float[]> tuples() {
+      return new ObjectTupleCursor<>() {
         int pos = -1;
 
         @Override
@@ -2716,7 +2710,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         }
 
         @Override
-        public float[] vectorValue() {
+        public float[] value() {
           return values[pos];
         }
       };
@@ -2732,8 +2726,8 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     }
 
     @Override
-    public VectorTupleCursor<byte[]> tuples() {
-      return new VectorTupleCursor<>() {
+    public ObjectTupleCursor<byte[]> tuples() {
+      return new ObjectTupleCursor<>() {
         int pos = -1;
 
         @Override
@@ -2743,7 +2737,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         }
 
         @Override
-        public byte[] vectorValue() {
+        public byte[] value() {
           return values[pos];
         }
       };

@@ -18,6 +18,7 @@ package org.apache.lucene.document.column;
 
 import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.index.IndexableFieldType;
+import org.apache.lucene.util.BytesRef;
 
 /**
  * A {@link Column} that provides variable-size binary values via a tuple cursor. Used for {@link
@@ -52,5 +53,5 @@ public abstract class BinaryColumn extends Column {
   }
 
   /** Returns a fresh tuple cursor starting at the beginning of the batch. */
-  public abstract BinaryTupleCursor tuples();
+  public abstract ObjectTupleCursor<BytesRef> tuples();
 }
