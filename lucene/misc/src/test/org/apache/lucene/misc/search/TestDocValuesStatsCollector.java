@@ -60,7 +60,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
       int numDocs = TestUtil.nextInt(random(), 50, 100);
       for (int i = 0; i < numDocs; i++) {
         indexWriter.addDocument(new Document());
-        if (i % 10 == 0) {
+        if (i != 0 && i % 10 == 0) {
           indexWriter.commit();
         }
       }
