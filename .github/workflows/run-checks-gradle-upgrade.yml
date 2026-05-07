@@ -56,7 +56,6 @@ jobs:
   gradleWindowsSanityCheck:
     name: "Check gradlew help works on Windows."
     timeout-minutes: 30
-    needs: gradleScriptBootstrapCheck
     runs-on: windows-latest
     steps:
       - name: Correct git autocrlf on Windows
