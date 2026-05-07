@@ -39,7 +39,7 @@ jobs:
           conda-remove-defaults: 'true'
 
       - name: Install Faiss
-        run: mamba install faiss-cpu="${FAISS_VERSION}"
+        run: mamba install faiss-cpu="${FAISS_VERSION}" mkl
         env:
           FAISS_VERSION: ${{ matrix.faiss-version }}
 
