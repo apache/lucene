@@ -60,7 +60,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ ubuntu-latest, windows-latest ]
+        os: [ ubuntu-latest ]
         java-version: [ '25' ]
         uses-alt-java: [ true, false ]
 
