@@ -348,20 +348,21 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
           if (score >= minAcceptedSimilarity) {
             candidates.add(node, score);
             if (acceptOrds == null || acceptOrds.get(node)) {
-              // Fetch siblings BEFORE collect() so the parent is not yet in the heap
-              int[] siblings = null;
+              // Fetch siblingsOrd BEFORE collect() so the parent is not yet in the heap
+              int[] siblingsOrd = null;
               int numSiblingsToVisit = 0;
               // The instanceof check is needed: this method is also called with a GraphBuilderKnnCollector
               if (results instanceof OrdinalTranslatedKnnCollector collector) {
                 if (collector.isSiblingExpansionCollector()) {
-                  siblings = collector.getSiblingOrdinals(node, visited);
-                  if (siblings.length > 0) {
+                  siblingsOrd = collector.getSiblingOrdinals(node, visited);
+                  if (siblingsOrd.length > 0) {
+                    // TO DISCUSS IF NECESSARY
                     numSiblingsToVisit =
                         (int)
-                            Math.min(siblings.length, results.visitLimit() - results.visitedCount());
-                    // Only mark as visited the siblings we will actually score; the rest remain
+                            Math.min(siblingsOrd.length, results.visitLimit() - results.visitedCount());
+                    // Only mark as visited the siblingsOrd we will actually score; the rest remain
                     // reachable via normal graph traversal so a better child can still be found
-                    for (int s = 0; s < numSiblingsToVisit; s++) visited.set(siblings[s]);
+                    for (int s = 0; s < numSiblingsToVisit; s++) visited.set(siblingsOrd[s]);
                   }
                 }
               }
@@ -374,16 +375,17 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
                   shouldExploreMinSim = true;
                 }
               }
-              // Score and collect all siblings of the newly-discovered parent
+              // Score and collect all siblingsOrd of the newly-discovered parent
               if (numSiblingsToVisit > 0) {
                 float prevMinSim = results.minCompetitiveSimilarity();
+                // IF NUMSIBLING IS NOT LIMITED WE CAN REMOVE THE VARIABLE AND USE SIBLINGS LENGTH
                 siblingScores =
                     scoreHnswNodes(
                         results,
                         scorer,
                         candidates,
                         acceptOrds,
-                        siblings,
+                        siblingsOrd,
                         numSiblingsToVisit,
                         siblingScores);
                 if (results.minCompetitiveSimilarity() > prevMinSim) {
