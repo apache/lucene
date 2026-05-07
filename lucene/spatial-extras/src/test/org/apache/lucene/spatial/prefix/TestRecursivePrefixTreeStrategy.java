@@ -25,7 +25,6 @@ import org.apache.lucene.spatial.prefix.tree.GeohashPrefixTree;
 import org.apache.lucene.spatial.query.SpatialArgs;
 import org.apache.lucene.spatial.query.SpatialOperation;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.distance.DistanceUtils;
 import org.locationtech.spatial4j.shape.Point;
@@ -44,7 +43,6 @@ public class TestRecursivePrefixTreeStrategy extends StrategyTestCase {
     this.strategy = new RecursivePrefixTreeStrategy(grid, getClass().getSimpleName());
   }
 
-  @Test
   public void testFilterWithVariableScanLevel() throws IOException {
     init(GeohashPrefixTree.getMaxLevelsPossible());
     getAddAndVerifyIndexedDocuments(DATA_WORLD_CITIES_POINTS);
@@ -56,7 +54,6 @@ public class TestRecursivePrefixTreeStrategy extends StrategyTestCase {
     }
   }
 
-  @Test
   public void testOneMeterPrecision() {
     init(GeohashPrefixTree.getMaxLevelsPossible());
     GeohashPrefixTree grid = (GeohashPrefixTree) ((RecursivePrefixTreeStrategy) strategy).getGrid();
@@ -65,7 +62,6 @@ public class TestRecursivePrefixTreeStrategy extends StrategyTestCase {
     assertEquals(11, grid.getLevelForDistance(degrees));
   }
 
-  @Test
   public void testPrecision() throws IOException {
     init(GeohashPrefixTree.getMaxLevelsPossible());
 

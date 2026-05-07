@@ -18,12 +18,10 @@ package org.apache.lucene.analysis.ja.dict;
 
 import org.apache.lucene.analysis.util.CSVUtil;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestUnknownDictionary extends LuceneTestCase {
   public static final String FILENAME = "unk-tokeninfo-dict.obj";
 
-  @Test
   public void testPutCharacterCategory() {
     UnknownDictionaryWriter unkDic = new UnknownDictionaryWriter(10 * 1024 * 1024);
 
@@ -38,7 +36,6 @@ public class TestUnknownDictionary extends LuceneTestCase {
     unkDic.putCharacterCategory(4, "KANJI");
   }
 
-  @Test
   public void testPut() {
     UnknownDictionaryWriter unkDic = new UnknownDictionaryWriter(10 * 1024 * 1024);
     expectThrows(

@@ -45,14 +45,12 @@ import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.util.IOUtils;
-import org.junit.Test;
 
 public class TestDirectoryTaxonomyReader extends FacetTestCase {
 
   private static final FacetLabel ILLEGAL_PATH =
       new FacetLabel("PATH_THAT_CAUSED_IllegalArgumentException");
 
-  @Test
   public void testCloseAfterIncRef() throws Exception {
     Directory dir = newDirectory();
     DirectoryTaxonomyWriter ltw = new DirectoryTaxonomyWriter(dir);
@@ -70,7 +68,6 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     dir.close();
   }
 
-  @Test
   public void testCloseTwice() throws Exception {
     Directory dir = newDirectory();
     DirectoryTaxonomyWriter ltw = new DirectoryTaxonomyWriter(dir);
@@ -84,7 +81,6 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     dir.close();
   }
 
-  @Test
   public void testOpenIfChangedResult() throws Exception {
     Directory dir = null;
     DirectoryTaxonomyWriter ltw = null;
@@ -112,7 +108,6 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     }
   }
 
-  @Test
   public void testAlreadyClosed() throws Exception {
     Directory dir = newDirectory();
     DirectoryTaxonomyWriter ltw = new DirectoryTaxonomyWriter(dir);
@@ -127,12 +122,10 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
   }
 
   /** recreating a taxonomy should work well with a freshly opened taxonomy reader */
-  @Test
   public void testFreshReadRecreatedTaxonomy() throws Exception {
     doTestReadRecreatedTaxonomy(random(), true);
   }
 
-  @Test
   public void testOpenIfChangedReadRecreatedTaxonomy() throws Exception {
     doTestReadRecreatedTaxonomy(random(), false);
   }
@@ -185,7 +178,6 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     }
   }
 
-  @Test
   public void testOpenIfChangedAndRefCount() throws Exception {
     Directory dir = new ByteBuffersDirectory(); // no need for random directories here
 
@@ -212,7 +204,6 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     dir.close();
   }
 
-  @Test
   public void testOpenIfChangedManySegments() throws Exception {
     // test openIfChanged() when the taxonomy contains many segments
     Directory dir = newDirectory();
@@ -258,7 +249,6 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     dir.close();
   }
 
-  @Test
   public void testOpenIfChangedMergedSegment() throws Exception {
     // test openIfChanged() when all index segments were merged - used to be
     // a bug in ParentArray, caught by testOpenIfChangedManySegments - only
@@ -303,7 +293,6 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     dir.close();
   }
 
-  @Test
   public void testOpenIfChangedNoChangesButSegmentMerges() throws Exception {
     // test openIfChanged() when the taxonomy hasn't really changed, but segments
     // were merged. The NRT reader will be reopened, and ParentArray used to assert
@@ -351,7 +340,6 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     dir.close();
   }
 
-  @Test
   public void testOpenIfChangedReuseAfterRecreate() throws Exception {
     // tests that if the taxonomy is recreated, no data is reused from the previous taxonomy
     Directory dir = newDirectory();
@@ -389,7 +377,6 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     dir.close();
   }
 
-  @Test
   public void testOpenIfChangedReuse() throws Exception {
     // test the reuse of data from the old DTR instance
     for (boolean nrt : new boolean[] {false, true}) {
@@ -426,7 +413,6 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     }
   }
 
-  @Test
   public void testOpenIfChangedReplaceTaxonomy() throws Exception {
     // test openIfChanged when replaceTaxonomy is called, which is equivalent to recreate
     // only can work with NRT as well
@@ -556,7 +542,6 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     assertGettingOrdinals(reader, ords, paths);
   }
 
-  @Test
   public void testGetChildren() throws Exception {
     Directory dir = newDirectory();
     DirectoryTaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(dir);
@@ -623,7 +608,6 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     dir.close();
   }
 
-  @Test
   public void testAccountable() throws Exception {
     Directory dir = newDirectory();
     DirectoryTaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(dir);
@@ -651,7 +635,6 @@ public class TestDirectoryTaxonomyReader extends FacetTestCase {
     dir.close();
   }
 
-  @Test
   public void testGetPathAndOrdinalsRandomMultithreading() throws Exception {
     Directory src = newDirectory();
     DirectoryTaxonomyWriter w = new DirectoryTaxonomyWriter(src);

@@ -35,7 +35,6 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.junit.Test;
 
 public class TestMultiCollector extends LuceneTestCase {
 
@@ -317,7 +316,6 @@ public class TestMultiCollector extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testNullCollectors() throws Exception {
     // Tests that the collector rejects all null collectors.
     expectThrows(
@@ -336,7 +334,6 @@ public class TestMultiCollector extends LuceneTestCase {
     c.getLeafCollector(null).setScorer(new SimpleScorable());
   }
 
-  @Test
   public void testSingleCollector() throws Exception {
     // Tests that if a single Collector is input, it is returned (and not MultiCollector).
     DummyCollector dc = new DummyCollector();
@@ -344,7 +341,6 @@ public class TestMultiCollector extends LuceneTestCase {
     assertSame(dc, MultiCollector.wrap(dc, null));
   }
 
-  @Test
   public void testCollector() throws Exception {
     // Tests that the collector delegates calls to input collectors properly.
 
