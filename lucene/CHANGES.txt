@@ -351,7 +351,8 @@ Optimizations
 * GITHUB#15938: Optimize ReaderUtil#partitionByLeaf to use binary search on leaf
   boundaries instead of linear scan. (Greg Miller)
 
-* GITHUB#15970: Reduce memory usage of fields with long terms during segment merges. (Alan Woodward)
+* GITHUB#15970, GITHUB#15977: Speed up TrieBuilder and reduce its memory footprint by replacing the in-memory object
+ tree with a compact prefix-coded byte buffer. (Alan Woodward, Guo Feng)
 
 * GITHUB#15732: Prevent writing vectors twice during merging HNSW graphs by allowing doing deferred work after calling
   merge for vectors is finshed. (Ignacio Vera)
