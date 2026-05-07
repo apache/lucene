@@ -38,11 +38,11 @@ package org.apache.lucene.util.hnsw;
 public interface DocSiblingExpansion {
 
   /**
-   * Returns the doc ids of all siblings of {@code childDocId}, or {@code null} if there are no
+   * Returns the doc ids of all siblings of {@code childDocId}, or an empty array if there are no
    * other siblings.
    *
    * @param childDocId the document id of the child that is about to be collected
-   * @return sibling doc ids, or {@code null}
+   * @return sibling doc ids, or an empty array
    */
   int[] findSiblingDocIds(int childDocId);
 

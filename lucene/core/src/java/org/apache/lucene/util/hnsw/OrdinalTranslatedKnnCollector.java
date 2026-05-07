@@ -68,9 +68,6 @@ public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator 
     //   we then found B through graph traversal. We want to visit it even if we already visited A.
     //   We do not visit siblings in score order.
     int[] siblingDocIds = docExpanderCollector.findSiblingDocIds(docId);
-    if (siblingDocIds == null) {
-      return new int[0];
-    }
     int[] siblingOrdinals = new int[siblingDocIds.length];
     // siblingOrdinals is pre-allocated to siblingDocIds.length and Java initializes int arrays to 0
     // so this variable is necessary.

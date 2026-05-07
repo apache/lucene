@@ -91,7 +91,7 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
     int[] docToOrd = buildDocToOrd(numParents, childrenPerParent);
     DiversifyingNearestChildrenKnnCollector c = makeCollector(10, parents, docToOrd);
 
-    assertNull("sole child has no siblings", c.findSiblingDocIds(0));
+    assertArrayEquals("sole child has no siblings", new int[0], c.findSiblingDocIds(0));
   }
 
   /**

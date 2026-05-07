@@ -120,10 +120,11 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector
     int prevParent = parent > 0 ? parentBitSet.prevSetBit(parent - 1) : -1;
     int from = prevParent + 1;
     // Children of parent are all docIds in [from, parent); exclude childDocId itself
+    // The childDoc itself is scored in collect()
     int siblingsSize = parent - from - 1;
     // One child case
     if (siblingsSize == 0) {
-      return null;
+      return new int[0];
     }
     int[] siblings = new int[siblingsSize];
     int idx = 0;
@@ -132,7 +133,7 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector
         siblings[idx++] = docId;
       }
     }
-    return idx > 0 ? siblings : null;
+    return idx > 0 ? siblings : new int[0];
   }
 
   public int docIdToOrdinal(int docId) {
