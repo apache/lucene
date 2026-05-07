@@ -162,6 +162,15 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
     // fi = null if the field doesn't exist in this segment at all.
     // fi.getVectorDimension() = 0 if the field exist in the segment but was not indexed as a vector
     // field.
+    //
+    // 1. approximateSearch calls newCollector before searchNearestVectors
+    // 2. newCollector calls buildDocToOrd
+    // 3. Only then searchNearestVectors is called
+    // So buildDocToOrd is called for every segment before Lucene gets a chance to short-circuit on no vectors.
+    // The guard in buildDocToOrd is genuinely needed — without it, calling getFloatVectorValues on a segment with
+    // no vectors would return null (as we saw in CodecReader) and .iterator() would NPE.
+    // The alternative would be to guard in newCollector itself before calling getCachedDocToOrd, but the current
+    // placement is fine.
     if (fi == null || fi.getVectorDimension() == 0) {
       return new int[0];
     }
