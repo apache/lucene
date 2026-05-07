@@ -23,6 +23,10 @@ API Changes
 * GITHUB#15584: Add support for termdoc fields that use custom term freqs (via IndexOptions.DOCS_AND_CUSTOM_FREQS).
   IndexWriter counts their terms rather than summing their freqs.  Use
 
+* GITHUB#15605: Deprecate getCollectors() in TopFieldCollectorManager. The internal collector
+  tracking is unnecessary and will be removed in Lucene 11. Clarify thread-safety
+  documentation. (Prudhvi Godithi)
+
 New Features
 ---------------------
 
