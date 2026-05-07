@@ -36,10 +36,6 @@ import org.apache.lucene.util.BitSet;
  */
 public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollectorManager {
 
-  // Sentinel stored in the cache to represent "this segment has no vectors for the field",
-  // because ConcurrentHashMap does not allow null values.
-  private static final int[] NO_VECTORS = new int[0];
-
   // Cache keyed by (segment core cache key → (field name → docToOrd array)).
   // Entries are evicted automatically when the segment is closed via addClosedListener.
   private static final ConcurrentHashMap<IndexReader.CacheKey, ConcurrentHashMap<String, int[]>>
@@ -123,30 +119,51 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
     }
     int[] cached = fieldMap.get(field);
     if (cached != null) {
-      return cached == NO_VECTORS ? null : cached;
+      return cached;
     }
     int[] built = buildDocToOrd(context);
-    int[] stored = built != null ? built : NO_VECTORS;
-    int[] race = fieldMap.putIfAbsent(field, stored);
-    return race != null ? (race == NO_VECTORS ? null : race) : built;
+    int[] race = fieldMap.putIfAbsent(field, built);
+    return race != null ? race : built;
   }
 
   /**
    * Builds a docId-to-ordinal array for the given leaf, mapping each docId to its vector ordinal.
    *
-   * <p>Returns {@code null} if the field has no vector values in this segment at all — sibling
+   * <p>Returns an empty array if the field has no vector values in this segment at all — sibling
    * expansion will be disabled for this leaf.
    *
    * <p>Otherwise returns an array of size {@code maxDoc} where each entry is the vector ordinal for
    * that docId, or {@code -1} if that specific document has no vector (sparse indexing).
    */
+  // Step 1 — Index time: ordinals are assigned by insertion order
+  // In Lucene99FlatVectorsWriter.addValue(), each vector is appended to an ArrayList (vectors.add(copy)) and its docId
+  // is recorded in docsWithField. Documents are always added in ascending docId order (enforced by assert docID >
+  // lastDocID). So ordinal 0 = first doc with a vector, ordinal 1 = second, etc.
+  //
+  // Step 2 — Index time: ordToDoc mapping is written in the same order
+  // In OrdToDocDISIReaderConfiguration.writeStoredMeta(), docsWithField.iterator() is iterated in ascending docId
+  // order, and each docId is written to DirectMonotonicWriter sequentially. The i-th value written becomes ordinal
+  // i — so the ordToDoc array stored on disk is exactly: ordToDoc[0] = first docId, ordToDoc[1] = second docId, ...
+  //
+  // Step 3 — Query time: buildDocToOrd inverts the same ordering
+  // getFloatVectorValues(field).iterator() also yields docIds in ascending order (same set, same order as
+  // docsWithField at index time). The loop:
+  // while (iter.nextDoc() != NO_MORE_DOCS) {
+  //   docToOrd[iter.docID()] = ord++;
+  // }
+  // assigns ord = 0 to the first docId, ord = 1 to the second — exactly inverting the ordToDoc array written at step 2.
+  //
+  // Step 4 — The HNSW graph uses these same ordinals as node IDs
+  // HNSW nodes are identified by their ordinal (the position in the flat vector store). So when the searcher returns
+  // ordinal k as a graph node, docToOrd[docId] = k being correct means docIdToOrdinal will find the right HNSW node
+  // for any sibling docId.
   private int[] buildDocToOrd(LeafReaderContext context) throws IOException {
     FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
     // fi = null if the field doesn't exist in this segment at all.
     // fi.getVectorDimension() = 0 if the field exist in the segment but was not indexed as a vector
     // field.
     if (fi == null || fi.getVectorDimension() == 0) {
-      return null;
+      return new int[0];
     }
     DocIdSetIterator iter =
         switch (fi.getVectorEncoding()) {

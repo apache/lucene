@@ -49,7 +49,7 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector
    * @param searchStrategy The search strategy to use
    * @param parentBitSet The leaf parent bitset
    * @param docToOrd precomputed array mapping docId to vector ordinal; {@code -1} entries mean the
-   *     document has no vector. May be {@code null} to disable sibling expansion.
+   *     document has no vector. An empty array disables sibling expansion.
    */
   public DiversifyingNearestChildrenKnnCollector(
       int k,
@@ -148,7 +148,7 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector
     //  - future refactoring that changes the array size
     //  - misuse when constructing the collector manually (as in tests, e.g. the
     // docIdToOrdinal(9999) test case)
-    if (docToOrd == null || docId >= docToOrd.length) {
+    if (docId >= docToOrd.length) {
       return -1;
     }
     return docToOrd[docId];

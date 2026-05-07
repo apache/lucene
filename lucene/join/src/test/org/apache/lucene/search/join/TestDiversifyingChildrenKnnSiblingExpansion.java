@@ -134,11 +134,11 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
     assertEquals(-1, c.docIdToOrdinal(9999)); // beyond array bounds
   }
 
-  public void testDocIdToOrdinal_nullMapping_alwaysMinusOne() throws IOException {
-    // Collector created without a docToOrd array (sibling expansion disabled)
+  public void testDocIdToOrdinal_emptyMapping_alwaysMinusOne() throws IOException {
+    // Collector created with an empty docToOrd array (sibling expansion disabled)
     BitSet parents = parentBitSet(2, 2);
     DiversifyingNearestChildrenKnnCollector c =
-        new DiversifyingNearestChildrenKnnCollector(5, Integer.MAX_VALUE, null, parents, null);
+        new DiversifyingNearestChildrenKnnCollector(5, Integer.MAX_VALUE, null, parents, new int[0]);
 
     assertEquals(-1, c.docIdToOrdinal(0));
     assertEquals(-1, c.docIdToOrdinal(1));
