@@ -45,6 +45,7 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
   protected int[] bulkNodes = null;
   protected float[] bulkScores = null;
   protected float[] siblingScores = null;
+  protected int[] siblingsOrd = new int[0];
 
   /**
    * HNSW search is roughly logarithmic. This doesn't take maxConn into account, but it is a pretty
@@ -349,12 +350,11 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
             candidates.add(node, score);
             if (acceptOrds == null || acceptOrds.get(node)) {
               // Fetch siblingsOrd BEFORE collect() so the parent is not yet in the heap
-              int[] siblingsOrd = null;
               int numSiblingsToVisit = 0;
               // The instanceof check is needed: this method is also called with a GraphBuilderKnnCollector
               if (results instanceof OrdinalTranslatedKnnCollector collector) {
                 if (collector.isSiblingExpansionCollector()) {
-                  siblingsOrd = collector.getSiblingOrdinals(node, visited);
+                  siblingsOrd = collector.getSiblingOrdinals(node, visited, siblingsOrd);
                   if (siblingsOrd.length > 0) {
                     // TO DISCUSS IF NECESSARY
                     numSiblingsToVisit =

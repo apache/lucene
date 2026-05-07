@@ -223,7 +223,7 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
 
     // C1 (ordinal 1) is not yet visited; must still be returned as an expansion candidate
     FixedBitSet visited = new FixedBitSet(3);
-    int[] result = collector.getSiblingOrdinals(0, visited);
+    int[] result = collector.getSiblingOrdinals(0, visited, new int[0]);
     assertNotEquals("unvisited sibling must be returned even when parent is already in heap", 0, result.length);
     assertArrayEquals(new int[] {1}, result);
   }
@@ -247,7 +247,7 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
     visited.set(1);
 
     // Trigger on C0 (ordinal 0 → docId 0); siblings are C1 and C2
-    int[] result = collector.getSiblingOrdinals(0, visited);
+    int[] result = collector.getSiblingOrdinals(0, visited, new int[0]);
     assertNotEquals(0, result.length);
     assertArrayEquals("C1 must be filtered (visited); only C2 remains", new int[] {2}, result);
   }
@@ -270,7 +270,7 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
     FixedBitSet visited = new FixedBitSet(4);
 
     // Trigger on C0 (ordinal 0 → docId 0); siblings are C1 (sparse) and C2
-    int[] result = collector.getSiblingOrdinals(0, visited);
+    int[] result = collector.getSiblingOrdinals(0, visited, new int[0]);
     assertNotEquals(0, result.length);
     assertArrayEquals("C1 (no vector) must be filtered; only C2 remains", new int[] {1}, result);
   }

@@ -97,6 +97,7 @@ abstract class AbstractHnswGraphSearcher {
     scorer.bulkScore(eps, scores, eps.length);
     results.incVisitedCount(eps.length);
     float[] siblingScores = null;
+    int[] siblingsOrd = new int[0];
     for (int i = 0; i < eps.length; i++) {
       float score = scores[i];
       int ep = eps[i];
@@ -104,12 +105,11 @@ abstract class AbstractHnswGraphSearcher {
       candidates.add(ep, score);
       if (acceptOrds == null || acceptOrds.get(ep)) {
         // Fetch siblingsOrd BEFORE collect() so the parent is not yet in the heap
-        int[] siblingsOrd = null;
         int numSiblingsToVisit = 0;
         // The instanceof check is needed: this method is also called with a GraphBuilderKnnCollector
         if (results instanceof OrdinalTranslatedKnnCollector collector) {
           if (collector.isSiblingExpansionCollector()) {
-            siblingsOrd = collector.getSiblingOrdinals(ep, visited);
+            siblingsOrd = collector.getSiblingOrdinals(ep, visited, siblingsOrd);
             if (siblingsOrd.length > 0) {
               //  how many siblingsOrd are actually scored to avoid exceeding the visit budget.
               //  controls the early termination condition. early terminates the search if we reach

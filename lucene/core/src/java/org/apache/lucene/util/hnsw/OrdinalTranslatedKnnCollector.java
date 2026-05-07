@@ -60,7 +60,7 @@ public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator 
     return collector instanceof DocSiblingExpansion;
   }
 
-  public int[] getSiblingOrdinals(int hnswNode, BitSet visitedHnswNodes) {
+  public int[] getSiblingOrdinals(int hnswNode, BitSet visitedHnswNodes, int[] siblingOrdinals) {
     DocSiblingExpansion docExpanderCollector = (DocSiblingExpansion) collector;
     int docId = vectorOrdinalToDocId.apply(hnswNode);
     // We do not check if parent is in heap since if we already seed A
@@ -68,7 +68,9 @@ public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator 
     //   we then found B through graph traversal. We want to visit it even if we already visited A.
     //   We do not visit siblings in score order.
     int[] siblingDocIds = docExpanderCollector.findSiblingDocIds(docId);
-    int[] siblingOrdinals = new int[siblingDocIds.length];
+    if (siblingOrdinals.length < siblingDocIds.length) {
+        siblingOrdinals = new int[siblingDocIds.length];
+    }
     // siblingOrdinals is pre-allocated to siblingDocIds.length and Java initializes int arrays to 0
     // so this variable is necessary.
     // due to visited result we could have a partial array to return
@@ -82,9 +84,12 @@ public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator 
       //     was never called and the parent is not in the heap. Expansion from a different
       //     child A finds B already visited.
       if (sibOrd >= 0 && !visitedHnswNodes.get(sibOrd)) {
-        siblingOrdinals[count++] = sibOrd;
+          siblingOrdinals[count++] = sibOrd;
       }
     }
-    return count > 0 ? ArrayUtil.copyOfSubArray(siblingOrdinals, 0, count) : new int[0];
+    if (count == 0) {
+      return new int[0];
+    }
+    return count < siblingOrdinals.length ? ArrayUtil.copyOfSubArray(siblingOrdinals, 0, count) : siblingOrdinals;
   }
 }
