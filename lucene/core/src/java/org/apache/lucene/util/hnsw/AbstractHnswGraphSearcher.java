@@ -106,7 +106,8 @@ abstract class AbstractHnswGraphSearcher {
       if (acceptOrds == null || acceptOrds.get(ep)) {
         // Fetch siblingsOrd BEFORE collect() so the parent is not yet in the heap
         int numSiblingsToVisit = 0;
-        // The instanceof check is needed: this method is also called with a GraphBuilderKnnCollector
+        // The instanceof check is needed: this method is also called with a
+        // GraphBuilderKnnCollector
         if (results instanceof OrdinalTranslatedKnnCollector collector) {
           if (collector.isSiblingExpansionCollector()) {
             siblingsOrd = collector.getSiblingOrdinals(ep, visited, siblingsOrd);
@@ -114,7 +115,8 @@ abstract class AbstractHnswGraphSearcher {
               //  how many siblingsOrd are actually scored to avoid exceeding the visit budget.
               //  controls the early termination condition. early terminates the search if we reach
               //  visitLimit nodes
-              //  if this visit limit is high we just navigate the graph until we do not have any node
+              //  if this visit limit is high we just navigate the graph until we do not have any
+              // node
               //  with a score higher than the ones already collected
               //  Current values it could assume:
               //  -  No filter → Integer.MAX_VALUE (no constraint tighter than the full segment)

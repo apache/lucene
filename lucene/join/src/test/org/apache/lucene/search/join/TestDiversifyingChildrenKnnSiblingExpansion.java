@@ -138,7 +138,8 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
     // Collector created with an empty docToOrd array (sibling expansion disabled)
     BitSet parents = parentBitSet(2, 2);
     DiversifyingNearestChildrenKnnCollector c =
-        new DiversifyingNearestChildrenKnnCollector(5, Integer.MAX_VALUE, null, parents, new int[0]);
+        new DiversifyingNearestChildrenKnnCollector(
+            5, Integer.MAX_VALUE, null, parents, new int[0]);
 
     assertEquals(-1, c.docIdToOrdinal(0));
     assertEquals(-1, c.docIdToOrdinal(1));
@@ -224,7 +225,8 @@ public class TestDiversifyingChildrenKnnSiblingExpansion
     // C1 (ordinal 1) is not yet visited; must still be returned as an expansion candidate
     FixedBitSet visited = new FixedBitSet(3);
     int[] result = collector.getSiblingOrdinals(0, visited, new int[0]);
-    assertNotEquals("unvisited sibling must be returned even when parent is already in heap", 0, result.length);
+    assertNotEquals(
+        "unvisited sibling must be returned even when parent is already in heap", 0, result.length);
     assertArrayEquals(new int[] {1}, result);
   }
 

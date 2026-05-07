@@ -136,26 +136,35 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
    * that docId, or {@code -1} if that specific document has no vector (sparse indexing).
    */
   // Step 1 — Index time: ordinals are assigned by insertion order
-  // In Lucene99FlatVectorsWriter.addValue(), each vector is appended to an ArrayList (vectors.add(copy)) and its docId
-  // is recorded in docsWithField. Documents are always added in ascending docId order (enforced by assert docID >
+  // In Lucene99FlatVectorsWriter.addValue(), each vector is appended to an ArrayList
+  // (vectors.add(copy)) and its docId
+  // is recorded in docsWithField. Documents are always added in ascending docId order (enforced by
+  // assert docID >
   // lastDocID). So ordinal 0 = first doc with a vector, ordinal 1 = second, etc.
   //
   // Step 2 — Index time: ordToDoc mapping is written in the same order
-  // In OrdToDocDISIReaderConfiguration.writeStoredMeta(), docsWithField.iterator() is iterated in ascending docId
-  // order, and each docId is written to DirectMonotonicWriter sequentially. The i-th value written becomes ordinal
-  // i — so the ordToDoc array stored on disk is exactly: ordToDoc[0] = first docId, ordToDoc[1] = second docId, ...
+  // In OrdToDocDISIReaderConfiguration.writeStoredMeta(), docsWithField.iterator() is iterated in
+  // ascending docId
+  // order, and each docId is written to DirectMonotonicWriter sequentially. The i-th value written
+  // becomes ordinal
+  // i — so the ordToDoc array stored on disk is exactly: ordToDoc[0] = first docId, ordToDoc[1] =
+  // second docId, ...
   //
   // Step 3 — Query time: buildDocToOrd inverts the same ordering
-  // getFloatVectorValues(field).iterator() also yields docIds in ascending order (same set, same order as
+  // getFloatVectorValues(field).iterator() also yields docIds in ascending order (same set, same
+  // order as
   // docsWithField at index time). The loop:
   // while (iter.nextDoc() != NO_MORE_DOCS) {
   //   docToOrd[iter.docID()] = ord++;
   // }
-  // assigns ord = 0 to the first docId, ord = 1 to the second — exactly inverting the ordToDoc array written at step 2.
+  // assigns ord = 0 to the first docId, ord = 1 to the second — exactly inverting the ordToDoc
+  // array written at step 2.
   //
   // Step 4 — The HNSW graph uses these same ordinals as node IDs
-  // HNSW nodes are identified by their ordinal (the position in the flat vector store). So when the searcher returns
-  // ordinal k as a graph node, docToOrd[docId] = k being correct means docIdToOrdinal will find the right HNSW node
+  // HNSW nodes are identified by their ordinal (the position in the flat vector store). So when the
+  // searcher returns
+  // ordinal k as a graph node, docToOrd[docId] = k being correct means docIdToOrdinal will find the
+  // right HNSW node
   // for any sibling docId.
   private int[] buildDocToOrd(LeafReaderContext context) throws IOException {
     FieldInfo fi = context.reader().getFieldInfos().fieldInfo(field);
@@ -166,10 +175,13 @@ public class DiversifyingNearestChildrenKnnCollectorManager implements KnnCollec
     // 1. approximateSearch calls newCollector before searchNearestVectors
     // 2. newCollector calls buildDocToOrd
     // 3. Only then searchNearestVectors is called
-    // So buildDocToOrd is called for every segment before Lucene gets a chance to short-circuit on no vectors.
-    // The guard in buildDocToOrd is genuinely needed — without it, calling getFloatVectorValues on a segment with
+    // So buildDocToOrd is called for every segment before Lucene gets a chance to short-circuit on
+    // no vectors.
+    // The guard in buildDocToOrd is genuinely needed — without it, calling getFloatVectorValues on
+    // a segment with
     // no vectors would return null (as we saw in CodecReader) and .iterator() would NPE.
-    // The alternative would be to guard in newCollector itself before calling getCachedDocToOrd, but the current
+    // The alternative would be to guard in newCollector itself before calling getCachedDocToOrd,
+    // but the current
     // placement is fine.
     if (fi == null || fi.getVectorDimension() == 0) {
       return new int[0];

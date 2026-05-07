@@ -136,6 +136,7 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector
     return idx > 0 ? siblings : new int[0];
   }
 
+  @Override
   public int docIdToOrdinal(int docId) {
     // Conditions explanation:
     //  docToOrd == null — buildDocToOrd returns null when the segment has no vector values at all
@@ -286,11 +287,6 @@ class DiversifyingNearestChildrenKnnCollector extends AbstractKnnCollector
     /** Returns the number of elements currently stored in the PriorityQueue. */
     public final int size() {
       return size;
-    }
-
-    /** Returns {@code true} if a child of the given parent is already in the heap. */
-    public boolean containsParent(int parentDocId) {
-      return nodeIdHeapIndex.containsKey(parentDocId);
     }
 
     /**

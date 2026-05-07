@@ -351,7 +351,8 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
             if (acceptOrds == null || acceptOrds.get(node)) {
               // Fetch siblingsOrd BEFORE collect() so the parent is not yet in the heap
               int numSiblingsToVisit = 0;
-              // The instanceof check is needed: this method is also called with a GraphBuilderKnnCollector
+              // The instanceof check is needed: this method is also called with a
+              // GraphBuilderKnnCollector
               if (results instanceof OrdinalTranslatedKnnCollector collector) {
                 if (collector.isSiblingExpansionCollector()) {
                   siblingsOrd = collector.getSiblingOrdinals(node, visited, siblingsOrd);
@@ -359,7 +360,8 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
                     // TO DISCUSS IF NECESSARY
                     numSiblingsToVisit =
                         (int)
-                            Math.min(siblingsOrd.length, results.visitLimit() - results.visitedCount());
+                            Math.min(
+                                siblingsOrd.length, results.visitLimit() - results.visitedCount());
                     // Only mark as visited the siblingsOrd we will actually score; the rest remain
                     // reachable via normal graph traversal so a better child can still be found
                     for (int s = 0; s < numSiblingsToVisit; s++) visited.set(siblingsOrd[s]);
