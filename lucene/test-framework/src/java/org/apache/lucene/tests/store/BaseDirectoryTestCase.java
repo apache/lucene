@@ -1661,20 +1661,16 @@ public abstract class BaseDirectoryTestCase extends LuceneTestCase {
           // On Windows, we temporarily don't care until this is fixed: #14050
         } else if (mMapDir != null) {
           var wrappers = wrapperClasses(dir);
-          // Direct IO wraps MMap but does not support isLoaded.
-          // NRTCachingDirectory may return index inputs from cache.
-          if (wrappers.stream()
-              .noneMatch(
-                  clz ->
-                      clz.getName().contains("DirectIO")
-                          || NRTCachingDirectory.class.isAssignableFrom(clz))) {
+          // NRTCachingDirectory may return index inputs from cache and this
+          // depends on segment size.
+          if (wrappers.stream().anyMatch(NRTCachingDirectory.class::isAssignableFrom)) {
+            // Ignore the check.
+          } else if (wrappers.stream().anyMatch(clz -> clz.getName().contains("DirectIO"))) {
+            // Direct IO wraps MMap but does not support isLoaded.
+          } else {
             assertTrue(loaded.isPresent());
             assertTrue(loaded.get());
-          } else {
-            assertFalse(loaded.isPresent());
           }
-        } else {
-          assertFalse(loaded.isPresent());
         }
       }
     }

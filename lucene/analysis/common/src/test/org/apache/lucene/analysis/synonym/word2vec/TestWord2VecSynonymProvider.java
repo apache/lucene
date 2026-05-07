@@ -107,7 +107,6 @@ public class TestWord2VecSynonymProvider extends LuceneTestCase {
     assertEquals(0, actualSynonymsResults.size());
   }
 
-  @Test
   public void testModel_shouldReturnNormalizedVectors() {
     Word2VecModel model = new Word2VecModel(4, 2);
     model.addTermAndVector(new TermAndVector(new BytesRef("a"), new float[] {10, 10}));

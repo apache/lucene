@@ -193,6 +193,7 @@ public class Lucene104HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat 
         state,
         maxConn,
         beamWidth,
+        flatVectorsFormat,
         flatVectorsFormat.fieldsWriter(state),
         numMergeWorkers,
         mergeExec,

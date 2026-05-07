@@ -40,7 +40,6 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.TestVectorUtil;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 import org.junit.Before;
-import org.junit.Test;
 
 public class TestFullPrecisionFloatVectorSimilarityValuesSource extends LuceneTestCase {
 
@@ -84,7 +83,6 @@ public class TestFullPrecisionFloatVectorSimilarityValuesSource extends LuceneTe
 
   // TODO: incredibly slow
   @Nightly
-  @Test
   public void testFullPrecisionVectorSimilarityDVS() throws Exception {
     List<float[]> vectors = new ArrayList<>();
     int numVectors = atLeast(NUM_VECTORS);

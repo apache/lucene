@@ -26,8 +26,8 @@ import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
-import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.MatchesIterator;
@@ -35,7 +35,7 @@ import org.apache.lucene.search.MatchesUtils;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
@@ -102,19 +102,18 @@ public abstract class SpanWeight extends Weight {
       SpanQuery query, IndexSearcher searcher, Map<Term, TermStates> termStates, float boost)
       throws IOException {
     if (termStates == null || termStates.size() == 0 || query.getField() == null) return null;
-    TermStatistics[] termStats = new TermStatistics[termStates.size()];
+    TermStats[] termStats = new TermStats[termStates.size()];
     int termUpTo = 0;
     for (Map.Entry<Term, TermStates> entry : termStates.entrySet()) {
       TermStates ts = entry.getValue();
       if (ts.docFreq() > 0) {
         termStats[termUpTo++] =
-            searcher.termStatistics(entry.getKey(), ts.docFreq(), ts.totalTermFreq());
+            searcher.termStats(entry.getKey(), ts.docFreq(), ts.totalTermFreq());
       }
     }
-    CollectionStatistics collectionStats = searcher.collectionStatistics(query.getField());
+    FieldStats fieldStats = searcher.fieldStats(query.getField());
     if (termUpTo > 0) {
-      return similarity.scorer(
-          boost, collectionStats, ArrayUtil.copyOfSubArray(termStats, 0, termUpTo));
+      return similarity.scorer(boost, fieldStats, ArrayUtil.copyOfSubArray(termStats, 0, termUpTo));
     } else {
       return null; // no terms at all exist, we won't use similarity
     }

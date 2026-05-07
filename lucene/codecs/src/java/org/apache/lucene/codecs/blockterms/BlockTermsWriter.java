@@ -272,7 +272,7 @@ public class BlockTermsWriter extends FieldsConsumer {
                 fieldInfo,
                 numTerms,
                 termsStartPointer,
-                fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0
+                fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS)
                     ? sumTotalTermFreq
                     : -1,
                 sumDocFreq,

@@ -69,7 +69,6 @@ import org.apache.lucene.util.CharsRefBuilder;
 import org.hamcrest.MatcherAssert;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
 
 public class TestSuggestField extends LuceneTestCase {
 
@@ -85,7 +84,6 @@ public class TestSuggestField extends LuceneTestCase {
     dir.close();
   }
 
-  @Test
   public void testEmptySuggestion() throws Exception {
     IllegalArgumentException expected =
         expectThrows(
@@ -93,7 +91,6 @@ public class TestSuggestField extends LuceneTestCase {
     MatcherAssert.assertThat(expected.getMessage(), containsString("value"));
   }
 
-  @Test
   public void testNegativeWeight() throws Exception {
     IllegalArgumentException expected =
         expectThrows(
@@ -101,7 +98,6 @@ public class TestSuggestField extends LuceneTestCase {
     MatcherAssert.assertThat(expected.getMessage(), containsString("weight"));
   }
 
-  @Test
   public void testReservedChars() throws Exception {
     CharsRefBuilder charsRefBuilder = new CharsRefBuilder();
     charsRefBuilder.append("sugg");
@@ -127,7 +123,6 @@ public class TestSuggestField extends LuceneTestCase {
     MatcherAssert.assertThat(expected.getMessage(), containsString("[0x0]"));
   }
 
-  @Test
   public void testEmpty() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -142,7 +137,6 @@ public class TestSuggestField extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testTokenStream() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     SuggestField suggestField = new SuggestField("field", "input", 1);
@@ -179,7 +173,6 @@ public class TestSuggestField extends LuceneTestCase {
         null);
   }
 
-  @Test
   public void testDupSuggestFieldValues() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -438,7 +431,6 @@ public class TestSuggestField extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testNRTDeletedDocFiltering() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     // using IndexWriter instead of RandomIndexWriter
@@ -478,7 +470,6 @@ public class TestSuggestField extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testSuggestOnAllFilteredDocuments() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -514,7 +505,6 @@ public class TestSuggestField extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testSuggestOnAllDeletedDocuments() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     // using IndexWriter instead of RandomIndexWriter
@@ -544,7 +534,6 @@ public class TestSuggestField extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testSuggestOnMostlyDeletedDocuments() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     // using IndexWriter instead of RandomIndexWriter
@@ -575,7 +564,6 @@ public class TestSuggestField extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testMultipleSuggestFieldsPerDoc() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -615,7 +603,6 @@ public class TestSuggestField extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testEarlyTermination() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -645,7 +632,6 @@ public class TestSuggestField extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testMultipleSegments() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -678,7 +664,6 @@ public class TestSuggestField extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testReturnedDocID() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -716,7 +701,6 @@ public class TestSuggestField extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testScoring() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -761,7 +745,6 @@ public class TestSuggestField extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testRealisticKeys() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -812,7 +795,6 @@ public class TestSuggestField extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testThreads() throws Exception {
     final Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
