@@ -42,7 +42,6 @@ import org.assertj.core.api.Assertions;
 import org.assertj.core.api.Assumptions;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Test;
 
 /**
  * Sanity checks concerning the distribution's binary artifacts (modules).
@@ -112,7 +111,6 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
   }
 
   /** Make sure all published module names remain constant, even if we reorganize the build. */
-  @Test
   public void testExpectedDistributionModuleNames() {
     Assertions.assertThat(
             allLuceneModules.stream().map(module -> module.descriptor().name()).sorted())
@@ -153,7 +151,6 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
   }
 
   /** Try to instantiate the demo classes so that we make sure their module layer is complete. */
-  @Test
   public void testDemoClassesCanBeLoaded() {
     ModuleLayer bootLayer = ModuleLayer.boot();
     Assertions.assertThatNoException()
@@ -185,7 +182,6 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
   }
 
   /** Checks that Lucene Core is a MR-JAR and has Panama foreign classes */
-  @Test
   public void testMultiReleaseJar() {
     ModuleLayer bootLayer = ModuleLayer.boot();
     Assertions.assertThatNoException()
@@ -228,7 +224,6 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
   }
 
   /** Make sure we don't publish automatic modules. */
-  @Test
   public void testAllCoreModulesAreNamedModules() {
     Assertions.assertThat(allLuceneModules)
         .allSatisfy(
@@ -239,7 +234,6 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
   }
 
   /** Ensure all modules have the same (expected) version. */
-  @Test
   public void testAllModulesHaveExpectedVersion() {
     String luceneBuildVersion = System.getProperty(VERSION_PROPERTY);
     Assumptions.assumeThat(luceneBuildVersion).isNotNull();
@@ -251,7 +245,6 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
   }
 
   /** Ensure SPIs are equal for the module and classpath layer. */
-  @Test
   public void testModularAndClasspathProvidersAreConsistent() throws IOException {
     for (var module : allLuceneModules) {
       TreeMap<String, TreeSet<String>> modularProviders = getModularServiceProviders(module);
@@ -326,7 +319,6 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
    * <p>This test should be progressively tuned so that certain internal packages are hidden in the
    * module layer.
    */
-  @Test
   public void testAllExportedPackagesInSync() throws IOException {
     for (var module : allLuceneModules) {
       Set<String> jarPackages = getJarPackages(module, _ -> true);
@@ -377,7 +369,6 @@ public class TestModularLayer extends AbstractLuceneDistributionTest {
   }
 
   /** This test ensures that all analysis modules open their resources files to core. */
-  @Test
   public void testAllOpenAnalysisPackagesInSync() throws IOException {
     for (var module : allLuceneModules) {
       if (false == module.descriptor().name().startsWith("org.apache.lucene.analysis.")) {

@@ -30,7 +30,6 @@ import org.apache.lucene.search.WildcardQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 /** Tests for {@link SpanMultiTermQueryWrapper}, wrapping a few MultiTermQueries. */
 public class TestSpanMultiTermQueryWrapper extends LuceneTestCase {
@@ -223,7 +222,6 @@ public class TestSpanMultiTermQueryWrapper extends LuceneTestCase {
     assertEquals(0, searcher.count(spanFirst));
   }
 
-  @Test
   public void testWrappedQueryIsNotModified() {
     final PrefixQuery pq = new PrefixQuery(new Term("field", "test"));
     int pqHash = pq.hashCode();
