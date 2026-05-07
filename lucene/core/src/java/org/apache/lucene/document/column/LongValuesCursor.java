@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.document.column;
 
+import org.apache.lucene.util.NumericUtils;
+
 /**
  * A values cursor over a dense {@link LongColumn}. The cursor produces exactly {@link #size()}
  * values for consecutive batch-local doc-ids starting at 0, one per call to {@link #nextLong()}.
@@ -50,9 +52,52 @@ public abstract class LongValuesCursor {
    * <p>The default implementation calls {@link #nextLong()} in a loop. Override to provide a more
    * efficient bulk fill (for example a {@link System#arraycopy} from a backing array).
    */
-  public void fill(long[] dst, int offset, int length) {
+  public void fillDocValues(long[] dst, int offset, int length) {
     for (int i = 0; i < length; i++) {
       dst[offset + i] = nextLong();
+    }
+  }
+
+  /**
+   * Bulk-encode {@code length} values as 8-byte big-endian sortable long points (sign-flipped so
+   * negatives sort before positives) into {@code dst} starting at byte {@code offset}, advancing
+   * the cursor by {@code length}. Combined consumption across {@link #nextLong()}, {@link
+   * #fillDocValues}, and the {@code fillPoints} variants must not exceed {@link #size()}.
+   *
+   * <p>Values are read in doc-values orientation: callers using this for {@link
+   * org.apache.lucene.document.column.LongColumn.NumericKind#DOUBLE DOUBLE} columns are responsible
+   * for ensuring the cursor's longs are already {@link
+   * org.apache.lucene.util.NumericUtils#doubleToSortableLong sortable-long} encoded, which is the
+   * documented {@link LongColumn} contract.
+   *
+   * <p>The default implementation calls {@link #nextLong()} per value. Override for a tight
+   * indexable loop over a backing array.
+   */
+  public void fillLongPoints(byte[] dst, int offset, int length) {
+    for (int i = 0; i < length; i++) {
+      NumericUtils.longToSortableBytes(nextLong(), dst, offset + (i << 3));
+    }
+  }
+
+  /**
+   * Bulk-encode {@code length} values as 4-byte big-endian sortable int points (sign-flipped so
+   * negatives sort before positives) into {@code dst} starting at byte {@code offset}, advancing
+   * the cursor by {@code length}. Each value is narrowed via {@code (int) nextLong()}. Combined
+   * consumption across {@link #nextLong()}, {@link #fillDocValues}, and the {@code fillPoints}
+   * variants must not exceed {@link #size()}.
+   *
+   * <p>Values are read in doc-values orientation: callers using this for {@link
+   * org.apache.lucene.document.column.LongColumn.NumericKind#FLOAT FLOAT} columns are responsible
+   * for ensuring the cursor's longs are already {@link
+   * org.apache.lucene.util.NumericUtils#floatToSortableInt sortable-int} encoded (in the low 32
+   * bits), which is the documented {@link LongColumn} contract.
+   *
+   * <p>The default implementation calls {@link #nextLong()} per value. Override for a tight
+   * indexable loop over a backing array.
+   */
+  public void fillIntPoints(byte[] dst, int offset, int length) {
+    for (int i = 0; i < length; i++) {
+      NumericUtils.intToSortableBytes((int) nextLong(), dst, offset + (i << 2));
     }
   }
 }

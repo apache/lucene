@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.codecs.MutablePointTree;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
+import org.apache.lucene.document.column.LongValuesCursor;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
@@ -37,6 +38,17 @@ class PointValuesWriter {
   private int numDocs;
   private int lastDocID = -1;
   private final int packedBytesLength;
+
+  /**
+   * Lazily-allocated 1 KB scratch used by the dense bulk paths to stage encoded points before
+   * pushing to {@link #bytesOut} via a single {@code writeBytes}.
+   */
+  private static final int POINTS_BUFFER_BYTES = 1024;
+
+  private static final int POINTS_BUFFER_INT_VALUES = POINTS_BUFFER_BYTES / Integer.BYTES;
+  private static final int POINTS_BUFFER_LONG_VALUES = POINTS_BUFFER_BYTES / Long.BYTES;
+
+  private byte[] densePointsBuffer;
 
   PointValuesWriter(Counter bytesUsed, FieldInfo fieldInfo) {
     this.fieldInfo = fieldInfo;
@@ -78,6 +90,82 @@ class PointValuesWriter {
     }
 
     numPoints++;
+  }
+
+  public void addDense1DIntValues(int firstDocID, LongValuesCursor cursor) throws IOException {
+    validatePackedWidth(Integer.BYTES);
+    final int size = cursor.size();
+    if (size == 0) {
+      return;
+    }
+    final long ramBefore = reserveDense1D(firstDocID, size);
+    final byte[] buffer = pointsDenseBuffer();
+    int remaining = size;
+    while (remaining > 0) {
+      int chunk = Math.min(POINTS_BUFFER_INT_VALUES, remaining);
+      cursor.fillIntPoints(buffer, 0, chunk);
+      bytesOut.writeBytes(buffer, 0, chunk * Integer.BYTES);
+      remaining -= chunk;
+    }
+    commitDense1D(firstDocID, size, ramBefore);
+  }
+
+  public void addDense1DLongValues(int firstDocID, LongValuesCursor cursor) throws IOException {
+    validatePackedWidth(Long.BYTES);
+    final int size = cursor.size();
+    if (size == 0) {
+      return;
+    }
+    final long ramBefore = reserveDense1D(firstDocID, size);
+    final byte[] dense = pointsDenseBuffer();
+    int remaining = size;
+    while (remaining > 0) {
+      int chunk = Math.min(POINTS_BUFFER_LONG_VALUES, remaining);
+      cursor.fillLongPoints(dense, 0, chunk);
+      bytesOut.writeBytes(dense, 0, chunk * Long.BYTES);
+      remaining -= chunk;
+    }
+    commitDense1D(firstDocID, size, ramBefore);
+  }
+
+  private byte[] pointsDenseBuffer() {
+    if (densePointsBuffer == null) {
+      densePointsBuffer = new byte[POINTS_BUFFER_BYTES];
+    }
+    return densePointsBuffer;
+  }
+
+  private void validatePackedWidth(int width) {
+    if (width != packedBytesLength) {
+      throw new IllegalArgumentException(
+          "field="
+              + fieldInfo.name
+              + ": this field's value has length="
+              + width
+              + " but should be "
+              + (fieldInfo.getPointDimensionCount() * fieldInfo.getPointNumBytes()));
+    }
+  }
+
+  private long reserveDense1D(int firstDocID, int size) {
+    assert firstDocID > lastDocID
+        : "firstDocID=" + firstDocID + " must be > lastDocID=" + lastDocID;
+    final int oldLength = docIDs.length;
+    if (oldLength < numPoints + size) {
+      docIDs = ArrayUtil.grow(docIDs, numPoints + size);
+      iwBytesUsed.addAndGet((docIDs.length - oldLength) * (long) Integer.BYTES);
+    }
+    for (int i = 0; i < size; i++) {
+      docIDs[numPoints + i] = firstDocID + i;
+    }
+    return bytes.ramBytesUsed();
+  }
+
+  private void commitDense1D(int firstDocID, int size, long ramBefore) {
+    iwBytesUsed.addAndGet(bytes.ramBytesUsed() - ramBefore);
+    numDocs += size;
+    lastDocID = firstDocID + size - 1;
+    numPoints += size;
   }
 
   /**

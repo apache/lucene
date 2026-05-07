@@ -724,6 +724,10 @@ final class IndexingChain implements Accountable {
       }
 
       PerField pf = getOrAddPerField(fieldName);
+      if (pf == parentPf) {
+        throw new IllegalArgumentException(
+            "\"" + fieldName + "\" is a reserved field and should not be added to any document");
+      }
       validateColumnSchema(fieldName, pf, fieldType);
     }
 
@@ -896,13 +900,14 @@ final class IndexingChain implements Accountable {
     final DocValuesType dvType = fieldType.docValuesType();
     final boolean hasPoints = fieldType.pointDimensionCount() != 0;
 
-    // DV-only path (no points): the bulk dense path remains available.
-    // TODO: can support dense fast path for points
+    // Dense fast path: bulk-feed DV and/or points from a values cursor.
+    if (column.density() == Column.Density.DENSE) {
+      processDenseLongColumn(baseDocID, numDocs, column, pf, dvType, hasPoints);
+      return;
+    }
+
+    // Sparse, DV-only: per-doc tuple-cursor path.
     if (hasPoints == false) {
-      if (column.density() == Column.Density.DENSE) {
-        processDenseLongColumn(baseDocID, numDocs, column, column.values(), pf, dvType);
-        return;
-      }
       LongTupleCursor cursor = column.tuples();
       switch (dvType) {
         case NUMERIC -> {
@@ -929,7 +934,7 @@ final class IndexingChain implements Accountable {
       return;
     }
 
-    // Points (+ optional numeric DV). Always uses the tuple cursor.
+    // Sparse, with points (+ optional numeric DV). Per-doc tuple cursor.
     final LongColumn.NumericKind kind = column.numericKind();
     final int byteWidth =
         (kind == LongColumn.NumericKind.INT || kind == LongColumn.NumericKind.FLOAT)
@@ -988,27 +993,48 @@ final class IndexingChain implements Accountable {
     }
   }
 
+  /**
+   * Bulk-feeds DV and/or points from a {@link LongValuesCursor} for a DENSE {@link LongColumn}.
+   * Handles every {DV, points} combination; each consumer takes its own fresh cursor.
+   *
+   * <p>Process the DV pass first: it does minimal transformation on the backing values, so the
+   * cursor's source array stays warm in cache for the heavier points pass that follows.
+   */
   private static void processDenseLongColumn(
       int baseDocID,
       int numDocs,
       LongColumn column,
-      LongValuesCursor cursor,
       PerField pf,
-      DocValuesType dvType) {
-    ColumnValidation.checkDenseCount(column, cursor.size(), numDocs);
-    switch (dvType) {
-      case NUMERIC -> {
-        NumericDocValuesWriter writer = (NumericDocValuesWriter) pf.docValuesWriter;
-        writer.addDenseValues(baseDocID, cursor);
+      DocValuesType dvType,
+      boolean hasPoints)
+      throws IOException {
+    if (dvType != DocValuesType.NONE) {
+      LongValuesCursor dvCursor = column.values();
+      ColumnValidation.checkDenseCount(column, dvCursor.size(), numDocs);
+      switch (dvType) {
+        case NUMERIC -> {
+          NumericDocValuesWriter writer = (NumericDocValuesWriter) pf.docValuesWriter;
+          writer.addDenseValues(baseDocID, dvCursor);
+        }
+        case SORTED_NUMERIC -> {
+          SortedNumericDocValuesWriter writer = (SortedNumericDocValuesWriter) pf.docValuesWriter;
+          writer.addDenseValues(baseDocID, dvCursor);
+        }
+        // $CASES-OMITTED$
+        default ->
+            throw new IllegalArgumentException(
+                "LongColumn \"" + column.name() + "\" has incompatible docValuesType: " + dvType);
       }
-      case SORTED_NUMERIC -> {
-        SortedNumericDocValuesWriter writer = (SortedNumericDocValuesWriter) pf.docValuesWriter;
-        writer.addDenseValues(baseDocID, cursor);
+    }
+    if (hasPoints) {
+      LongValuesCursor pointsCursor = column.values();
+      ColumnValidation.checkDenseCount(column, pointsCursor.size(), numDocs);
+      final LongColumn.NumericKind kind = column.numericKind();
+      if (kind == LongColumn.NumericKind.INT || kind == LongColumn.NumericKind.FLOAT) {
+        pf.pointValuesWriter.addDense1DIntValues(baseDocID, pointsCursor);
+      } else {
+        pf.pointValuesWriter.addDense1DLongValues(baseDocID, pointsCursor);
       }
-      // $CASES-OMITTED$
-      default ->
-          throw new IllegalArgumentException(
-              "LongColumn \"" + column.name() + "\" has incompatible docValuesType: " + dvType);
     }
   }
 

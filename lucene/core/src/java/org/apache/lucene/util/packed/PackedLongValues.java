@@ -253,7 +253,7 @@ public class PackedLongValues extends LongValues implements Accountable {
       while (remaining > 0) {
         packIfFull();
         int toFill = Math.min(remaining, pending.length - pendingOff);
-        cursor.fill(pending, pendingOff, toFill);
+        cursor.fillDocValues(pending, pendingOff, toFill);
         pendingOff += toFill;
         remaining -= toFill;
         size += toFill;

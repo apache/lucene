@@ -269,6 +269,82 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
+  /**
+   * When a batch is too large for the remaining max-docs capacity, addBatch must fail without
+   * leaking doc reservations. Concretely, after the failure we must still be able to fill the
+   * index up to the configured limit.
+   */
+  public void testAddBatchOverMaxDocsRollsBackReservations() throws IOException {
+    final int maxDocs = 10;
+    Directory dir = newDirectory();
+    try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      IndexWriter.setMaxDocs(maxDocs);
+      try {
+        // Batch is larger than the cap — must throw without reserving any docs permanently.
+        int oversized = maxDocs + 5;
+        int[] docIds = new int[oversized];
+        long[] values = new long[oversized];
+        for (int i = 0; i < oversized; i++) {
+          docIds[i] = i;
+          values[i] = i;
+        }
+        IllegalArgumentException e =
+            expectThrows(
+                IllegalArgumentException.class,
+                () ->
+                    w.addBatch(
+                        simpleBatch(
+                            oversized,
+                            new ArrayLongColumn(
+                                "v", NumericDocValuesField.TYPE, docIds, values))));
+        assertTrue(e.getMessage(), e.getMessage().contains("number of documents"));
+
+        // If reservations leaked, even a single addDocument would now fail. Fill the index up
+        // to the cap and then verify the next addDocument is the one that fails.
+        for (int i = 0; i < maxDocs; i++) {
+          Document doc = new Document();
+          doc.add(new NumericDocValuesField("v", i));
+          w.addDocument(doc);
+        }
+        IllegalArgumentException overflow =
+            expectThrows(
+                IllegalArgumentException.class,
+                () -> {
+                  Document doc = new Document();
+                  doc.add(new NumericDocValuesField("v", 999));
+                  w.addDocument(doc);
+                });
+        assertTrue(overflow.getMessage(), overflow.getMessage().contains("number of documents"));
+      } finally {
+        IndexWriter.setMaxDocs(IndexWriter.MAX_DOCS);
+      }
+    }
+    dir.close();
+  }
+
+  /** A column whose name matches the configured parent field must be rejected. */
+  public void testParentFieldNameRejectedAsColumn() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = newIndexWriterConfig();
+    config.setParentField("_parent");
+    try (IndexWriter w = new IndexWriter(dir, config)) {
+      int[] docIds = {0, 1, 2};
+      long[] values = {1, 2, 3};
+      IllegalArgumentException e =
+          expectThrows(
+              IllegalArgumentException.class,
+              () ->
+                  w.addBatch(
+                      simpleBatch(
+                          3,
+                          new ArrayLongColumn(
+                              "_parent", NumericDocValuesField.TYPE, docIds, values))));
+      assertTrue(e.getMessage(), e.getMessage().contains("_parent"));
+      assertTrue(e.getMessage(), e.getMessage().contains("reserved"));
+    }
+    dir.close();
+  }
+
   public void testPointsColumn() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
@@ -2617,7 +2693,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         }
 
         @Override
-        public void fill(long[] dst, int offset, int length) {
+        public void fillDocValues(long[] dst, int offset, int length) {
           if (pos + length > values.length) {
             throw new IllegalStateException("LongValuesCursor exhausted: size=" + values.length);
           }

@@ -99,7 +99,7 @@ public abstract class LongColumn extends Column {
    * this method. Only numeric {@link org.apache.lucene.document.StoredValue.Type} values are
    * permitted; non-numeric stored data should use a {@link BinaryColumn}.
    */
-  public StoredValue.Type storedType() {
+  public final StoredValue.Type storedType() {
     return switch (numericKind) {
       case INT -> StoredValue.Type.INTEGER;
       case LONG -> StoredValue.Type.LONG;

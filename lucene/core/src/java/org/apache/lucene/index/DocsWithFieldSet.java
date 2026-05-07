@@ -68,6 +68,13 @@ public final class DocsWithFieldSet extends DocIdSet {
    * @param toExclusive one past the last document ID (exclusive)
    */
   public void addRange(int from, int toExclusive) {
+    if (from >= toExclusive) {
+      if (from > toExclusive) {
+        throw new IllegalArgumentException(
+            "from=" + from + " must be <= toExclusive=" + toExclusive);
+      }
+      return;
+    }
     if (from <= lastDocId) {
       throw new IllegalArgumentException(
           "Out of order doc ids: last=" + lastDocId + ", next=" + from);

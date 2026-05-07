@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.IntConsumer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.column.ColumnBatch;
 import org.apache.lucene.index.DocumentsWriterDeleteQueue.DeleteSlice;
@@ -216,6 +217,22 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
     }
   }
 
+  /**
+   * Atomically reserves capacity for {@code n} docs. On failure, fully rolls back so no
+   * reservations leak.
+   */
+  private void reserveDocs(int n) {
+    assert n >= 0;
+    if (n == 0) {
+      return;
+    }
+    if (pendingNumDocs.addAndGet(n) > IndexWriter.getActualMaxDocs()) {
+      pendingNumDocs.addAndGet(-n);
+      throw new IllegalArgumentException(
+          "number of documents in the index cannot exceed " + IndexWriter.getActualMaxDocs());
+    }
+  }
+
   long updateDocuments(
       Iterable<? extends Iterable<? extends IndexableField>> docs,
       DocumentsWriterDeleteQueue.Node<?> deleteNode,
@@ -289,7 +306,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
       ColumnBatch columnBatch,
       DocumentsWriterDeleteQueue.Node<?> deleteNode,
       DocumentsWriter.FlushNotifications flushNotifications,
-      Runnable onNewDocOnRAM)
+      IntConsumer onNewDocsOnRAM)
       throws IOException {
     try {
       testPoint("DocumentsWriterPerThread addBatch start");
@@ -307,24 +324,17 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
       final int docsInRamBefore = numDocsInRAM;
       final int numDocs = columnBatch.numDocs();
       boolean allDocsIndexed = false;
+      // Atomically reserve all doc IDs up front. On failure reserveDocs fully rolls back, so
+      // pendingNumDocs is never left holding orphaned reservations. Done before the try/finally
+      // because nothing has been accounted for yet — if this throws, there is no cleanup to do.
+      reserveDocs(numDocs);
+      numDocsInRAM += numDocs;
+      onNewDocsOnRAM.accept(numDocs);
       try {
-        // Reserve all doc IDs upfront and account for them in numDocsInRAM immediately,
-        // so that deleteLastDocs in the finally block can correctly clean up on failure.
-        // Even on exception, the documents are still added (but marked deleted), matching
-        // the document path semantics.
-        for (int i = 0; i < numDocs; i++) {
-          reserveOneDoc();
-        }
-        numDocsInRAM += numDocs;
-        for (int i = 0; i < numDocs; i++) {
-          onNewDocOnRAM.run();
-        }
-
         indexingChain.processBatch(docsInRamBefore, columnBatch);
 
-        if (numDocs > 1) {
-          segmentInfo.setHasBlocks();
-        }
+        // A batch is N independent documents, not a parent-child block, so we deliberately
+        // do not call segmentInfo.setHasBlocks() here.
         allDocsIndexed = true;
         return finishDocuments(deleteNode, docsInRamBefore);
       } finally {
