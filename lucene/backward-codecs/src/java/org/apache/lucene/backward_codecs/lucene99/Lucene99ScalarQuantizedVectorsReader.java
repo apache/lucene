@@ -66,6 +66,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
       RamUsageEstimator.shallowSizeOfInstance(Lucene99ScalarQuantizedVectorsReader.class);
 
   private final IntObjectHashMap<FieldEntry> fields = new IntObjectHashMap<>();
+  private final FlatVectorsScorer vectorScorer;
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
   private final FieldInfos fieldInfos;
@@ -74,7 +75,7 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
   public Lucene99ScalarQuantizedVectorsReader(
       SegmentReadState state, FlatVectorsReader rawVectorsReader, FlatVectorsScorer scorer)
       throws IOException {
-    super(scorer);
+    this.vectorScorer = scorer;
     this.rawVectorsReader = rawVectorsReader;
     this.fieldInfos = state.fieldInfos;
     int versionMeta = -1;
@@ -261,6 +262,11 @@ public final class Lucene99ScalarQuantizedVectorsReader extends FlatVectorsReade
       IOUtils.closeWhileSuppressingExceptions(t, in);
       throw t;
     }
+  }
+
+  @Override
+  public FlatVectorsScorer getFlatVectorScorer(String field) throws IOException {
+    return vectorScorer;
   }
 
   @Override
