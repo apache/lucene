@@ -776,11 +776,15 @@ final class IndexingChain implements Accountable {
 
   /**
    * Processes row-oriented features (stored fields and term inversion) for columns that have stored
-   * or indexed fields. The outer loop iterates every batch-local doc-id in {@code [0, numDocs)} so
-   * every reserved doc is framed with {@code startStoredFields}/{@code termsHash.startDocument},
-   * matching the single-doc indexing path. For each doc, row columns are consumed while their
-   * cursor head equals the current doc. Doc values and points are handled separately in the
-   * column-oriented pass.
+   * or indexed fields. The outer loop iterates every batch-local doc-id in {@code [0, numDocs)} for
+   * row-eligible columns. Per-doc framing for stored fields and term inversion is gated on whether
+   * the batch actually has any stored / indexed columns: {@code hasStored} gates {@code
+   * startStoredFields}/{@code finishStoredFields} (parallel to {@code hasInverted} gating {@code
+   * termsHash}), so an indexed-only batch never forces the segment's {@code StoredFieldsWriter}
+   * into existence. {@link StoredFieldsConsumer#startDocument(int)} retroactively fills empty
+   * frames for skipped doc-ids when a later doc actually writes a stored field, preserving doc
+   * alignment across the {@code addDocument}/{@code addBatch} boundary. Doc values and points are
+   * handled separately in the column-oriented pass.
    */
   private void processRowColumns(int baseDocID, int numDocs, Iterable<Column> columns)
       throws IOException {
@@ -791,6 +795,7 @@ final class IndexingChain implements Accountable {
     ColumnFieldAdapter[] adapters = new ColumnFieldAdapter[4];
     int[] heads = new int[4];
     boolean hasInverted = false;
+    boolean hasStored = false;
 
     for (Column column : columns) {
       IndexableFieldType fieldType = column.fieldType();
@@ -811,6 +816,9 @@ final class IndexingChain implements Accountable {
       if (fieldType.indexOptions() != IndexOptions.NONE) {
         hasInverted = true;
       }
+      if (fieldType.stored()) {
+        hasStored = true;
+      }
       numRowCols++;
     }
 
@@ -825,7 +833,9 @@ final class IndexingChain implements Accountable {
       if (hasInverted) {
         termsHash.startDocument();
       }
-      startStoredFields(segDocID);
+      if (hasStored) {
+        startStoredFields(segDocID);
+      }
       try {
         for (int i = 0; i < numRowCols; i++) {
           int head = heads[i];
@@ -855,7 +865,9 @@ final class IndexingChain implements Accountable {
           for (int i = 0; i < indexedFieldCount; i++) {
             fields[i].finish(segDocID);
           }
-          finishStoredFields();
+          if (hasStored) {
+            finishStoredFields();
+          }
           if (hasInverted) {
             try {
               termsHash.finishDocument(segDocID);

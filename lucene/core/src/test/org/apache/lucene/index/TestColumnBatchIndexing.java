@@ -902,6 +902,91 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
+  /**
+   * Stored fields appearing in a later batch are correctly aligned to their docIDs even when
+   * earlier batches in the same segment had no stored columns.
+   */
+  public void testStoredFieldsAppearAfterStoredFreeBatch() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    // Batch A: 3 docs, indexed-only string column (no stored).
+    BytesRef[] ids = {newBytesRef("a"), newBytesRef("b"), newBytesRef("c")};
+    w.addBatch(
+        simpleBatch(
+            3, new ArrayBinaryColumn("id", StringField.TYPE_NOT_STORED, new int[] {0, 1, 2}, ids)));
+
+    // Batch B: 3 docs, one stored numeric column.
+    FieldType storedNumericType = new FieldType();
+    storedNumericType.setStored(true);
+    storedNumericType.setDocValuesType(DocValuesType.NUMERIC);
+    storedNumericType.freeze();
+    long[] storedValues = {100, 200, 300};
+    w.addBatch(
+        simpleBatch(
+            3, new ArrayLongColumn("v", storedNumericType, new int[] {0, 1, 2}, storedValues)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    assertEquals(6, leaf.maxDoc());
+
+    StoredFields storedFields = leaf.storedFields();
+    // Docs 0..2 (batch A) had no stored column — empty frames retroactively filled in.
+    for (int i = 0; i < 3; i++) {
+      Document doc = storedFields.document(i);
+      assertNull("doc " + i + " should have no stored 'v' field", doc.getField("v"));
+    }
+    // Docs 3..5 (batch B) have the stored numeric value.
+    for (int i = 0; i < 3; i++) {
+      Document doc = storedFields.document(3 + i);
+      assertEquals(storedValues[i], doc.getField("v").numericValue().longValue());
+    }
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  /**
+   * When no batch in the segment has a stored column, the segment opens cleanly and stored-field
+   * reads return empty docs.
+   */
+  public void testNoStoredFieldsAcrossSegment() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    // Two indexed-only batches (no stored column anywhere).
+    BytesRef[] idsA = {newBytesRef("a"), newBytesRef("b")};
+    w.addBatch(
+        simpleBatch(
+            2, new ArrayBinaryColumn("id", StringField.TYPE_NOT_STORED, new int[] {0, 1}, idsA)));
+    BytesRef[] idsB = {newBytesRef("c"), newBytesRef("d"), newBytesRef("e")};
+    w.addBatch(
+        simpleBatch(
+            3,
+            new ArrayBinaryColumn("id", StringField.TYPE_NOT_STORED, new int[] {0, 1, 2}, idsB)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    assertEquals(5, leaf.maxDoc());
+
+    // Indexed values are still searchable.
+    IndexSearcher s = new IndexSearcher(r);
+    assertEquals(1, s.count(new TermQuery(new Term("id", "a"))));
+    assertEquals(1, s.count(new TermQuery(new Term("id", "e"))));
+
+    // Stored reads return empty docs for every batch-local doc-id.
+    StoredFields storedFields = leaf.storedFields();
+    for (int i = 0; i < leaf.maxDoc(); i++) {
+      Document doc = storedFields.document(i);
+      assertTrue("doc " + i + " should have no stored fields", doc.getFields().isEmpty());
+    }
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
   /** Interleaving addBatch and addDocument keeps doc-ids contiguous and values consistent. */
   public void testAddBatchInterleavedWithAddDocument() throws IOException {
     Directory dir = newDirectory();
