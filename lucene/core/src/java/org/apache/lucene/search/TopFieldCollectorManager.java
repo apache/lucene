@@ -189,11 +189,8 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
   /**
    * Returns the collectors created by this manager.
    *
-   * @deprecated This method and internal collector tracking will be removed in Lucene 11. The
-   *     internal collector tracking is unnecessary since collectors are passed to {@link
-   *     #reduce(Collection)} by {@link IndexSearcher}. Users who need to track collectors (e.g.,
-   *     for early termination detection via {@link TopFieldCollector#isEarlyTerminated()}) should
-   *     maintain their own collection.
+   * @deprecated This method will be removed in Lucene 11. All needed information, including early
+   *     termination, is available in the {@link TopFieldDocs} returned by reduction.
    */
   @Deprecated
   public List<TopFieldCollector> getCollectors() {
