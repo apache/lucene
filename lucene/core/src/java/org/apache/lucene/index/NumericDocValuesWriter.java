@@ -66,9 +66,12 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
   }
 
   public void addDenseValues(int firstDocID, LongValuesCursor cursor) {
+    int numValues = cursor.size();
+    if (numValues == 0) {
+      return;
+    }
     assert firstDocID > lastDocID;
 
-    int numValues = cursor.size();
     pending.add(cursor);
     docsWithField.addRange(firstDocID, firstDocID + numValues);
 

@@ -70,10 +70,12 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
   }
 
   public void addDenseValues(int firstDocID, LongValuesCursor cursor) {
+    int numValues = cursor.size();
+    if (numValues == 0) {
+      return;
+    }
     assert firstDocID > currentDoc;
     finishCurrentDoc();
-
-    int numValues = cursor.size();
 
     // Write values directly to pending — each value is one doc, single-valued.
     // No currentValues[] buffering, no sorting needed.

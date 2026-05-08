@@ -93,7 +93,7 @@ class PointValuesWriter {
   }
 
   public void addDense1DIntValues(int firstDocID, LongValuesCursor cursor) throws IOException {
-    validatePackedWidth(Integer.BYTES);
+    validate1DPacked(Integer.BYTES);
     final int size = cursor.size();
     if (size == 0) {
       return;
@@ -111,7 +111,7 @@ class PointValuesWriter {
   }
 
   public void addDense1DLongValues(int firstDocID, LongValuesCursor cursor) throws IOException {
-    validatePackedWidth(Long.BYTES);
+    validate1DPacked(Long.BYTES);
     final int size = cursor.size();
     if (size == 0) {
       return;
@@ -135,15 +135,17 @@ class PointValuesWriter {
     return densePointsBuffer;
   }
 
-  private void validatePackedWidth(int width) {
-    if (width != packedBytesLength) {
+  private void validate1DPacked(int byteWidth) {
+    if (fieldInfo.getPointDimensionCount() != 1 || fieldInfo.getPointNumBytes() != byteWidth) {
       throw new IllegalArgumentException(
           "field="
               + fieldInfo.name
-              + ": this field's value has length="
-              + width
-              + " but should be "
-              + (fieldInfo.getPointDimensionCount() * fieldInfo.getPointNumBytes()));
+              + ": 1D dense path requires pointDimensionCount=1 and pointNumBytes="
+              + byteWidth
+              + ", got pointDimensionCount="
+              + fieldInfo.getPointDimensionCount()
+              + " pointNumBytes="
+              + fieldInfo.getPointNumBytes());
     }
   }
 
