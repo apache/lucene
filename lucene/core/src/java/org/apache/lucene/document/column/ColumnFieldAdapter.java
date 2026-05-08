@@ -36,7 +36,8 @@ import org.apache.lucene.util.NumericUtils;
  *
  * @lucene.internal
  */
-public abstract class ColumnFieldAdapter extends Field {
+public abstract sealed class ColumnFieldAdapter extends Field
+    permits LongColumnAdapter, BinaryColumnAdapter {
 
   ColumnFieldAdapter(String name, IndexableFieldType fieldType) {
     super(name, fieldType);
@@ -124,6 +125,8 @@ final class BinaryColumnAdapter extends ColumnFieldAdapter {
   private final StoredValue.Type storedType;
   private final boolean tokenized;
   private final boolean indexed;
+  // Cached UTF-8 decode of the cursor's current value. Invalidated on nextDoc()
+  private String cachedString;
 
   BinaryColumnAdapter(BinaryColumn column) {
     super(column.name(), column.fieldType());
@@ -148,8 +151,17 @@ final class BinaryColumnAdapter extends ColumnFieldAdapter {
     };
   }
 
+  private String decodedString() {
+    if (cachedString == null) {
+      BytesRef ref = cursor.value();
+      cachedString = new String(ref.bytes, ref.offset, ref.length, StandardCharsets.UTF_8);
+    }
+    return cachedString;
+  }
+
   @Override
   public int nextDoc() {
+    cachedString = null;
     return cursor.nextDoc();
   }
 
@@ -160,11 +172,7 @@ final class BinaryColumnAdapter extends ColumnFieldAdapter {
 
   @Override
   public String stringValue() {
-    if (tokenized) {
-      BytesRef ref = cursor.value();
-      return new String(ref.bytes, ref.offset, ref.length, StandardCharsets.UTF_8);
-    }
-    return null;
+    return tokenized ? decodedString() : null;
   }
 
   @Override
@@ -172,12 +180,9 @@ final class BinaryColumnAdapter extends ColumnFieldAdapter {
     if (reusableStoredValue == null) {
       return null;
     }
-    BytesRef value = cursor.value();
     switch (storedType) {
-      case STRING ->
-          reusableStoredValue.setStringValue(
-              new String(value.bytes, value.offset, value.length, StandardCharsets.UTF_8));
-      case BINARY -> reusableStoredValue.setBinaryValue(value);
+      case STRING -> reusableStoredValue.setStringValue(decodedString());
+      case BINARY -> reusableStoredValue.setBinaryValue(cursor.value());
       case INTEGER, LONG, FLOAT, DOUBLE, DATA_INPUT ->
           throw new IllegalArgumentException("rejected by ColumnValidation.validateBinaryColumn");
     }

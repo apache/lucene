@@ -16,179 +16,55 @@
  */
 package org.apache.lucene.index;
 
+import static org.apache.lucene.document.column.ColumnBatchTestUtil.ArrayBinaryColumn;
+import static org.apache.lucene.document.column.ColumnBatchTestUtil.ArrayDenseFloatVectorColumn;
+import static org.apache.lucene.document.column.ColumnBatchTestUtil.ArrayDenseLongColumn;
+import static org.apache.lucene.document.column.ColumnBatchTestUtil.ArrayFloatVectorColumn;
+import static org.apache.lucene.document.column.ColumnBatchTestUtil.ArrayLongColumn;
+import static org.apache.lucene.document.column.ColumnBatchTestUtil.ThrowingBinaryColumn;
+import static org.apache.lucene.document.column.ColumnBatchTestUtil.ThrowingDenseLongColumn;
+import static org.apache.lucene.document.column.ColumnBatchTestUtil.ThrowingFloatVectorColumn;
+import static org.apache.lucene.document.column.ColumnBatchTestUtil.ThrowingLongColumn;
+import static org.apache.lucene.document.column.ColumnBatchTestUtil.floatVectorType;
+import static org.apache.lucene.document.column.ColumnBatchTestUtil.simpleBatch;
+
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
+import java.util.concurrent.CountDownLatch;
 import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.Document;
-import org.apache.lucene.document.DoublePoint;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.FloatPoint;
-import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
+import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.document.StringField;
-import org.apache.lucene.document.TextField;
-import org.apache.lucene.document.column.BinaryColumn;
 import org.apache.lucene.document.column.Column;
-import org.apache.lucene.document.column.ColumnBatch;
 import org.apache.lucene.document.column.LongColumn;
-import org.apache.lucene.document.column.LongTupleCursor;
-import org.apache.lucene.document.column.LongValuesCursor;
-import org.apache.lucene.document.column.ObjectTupleCursor;
-import org.apache.lucene.document.column.VectorColumn;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.NumericUtils;
 
-/** Tests for column-oriented batch indexing via {@link IndexWriter#addBatch}. */
+/**
+ * Generic / cross-cutting tests for column-oriented batch indexing via {@link
+ * IndexWriter#addBatch}. Type-specific tests live in {@code
+ * org.apache.lucene.document.column.TestColumnBatch{Long,Binary,Vector}Column}.
+ */
 public class TestColumnBatchIndexing extends LuceneTestCase {
-
-  public void testNumericDocValues() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    long[] values = {10, 20, 30};
-    int[] docIds = {0, 1, 2};
-    w.addBatch(
-        simpleBatch(3, new ArrayLongColumn("numeric", NumericDocValuesField.TYPE, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    NumericDocValues dv = leaf.getNumericDocValues("numeric");
-    for (int i = 0; i < values.length; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(values[i], dv.longValue());
-    }
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, dv.nextDoc());
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testSortedNumericDocValues() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // Doc 0 has two values, doc 1 has one value
-    int[] docIds = {0, 0, 1};
-    long[] values = {5, 15, 25};
-    w.addBatch(
-        simpleBatch(
-            2,
-            new ArrayLongColumn(
-                "sortedNumeric", SortedNumericDocValuesField.TYPE, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    SortedNumericDocValues dv = leaf.getSortedNumericDocValues("sortedNumeric");
-
-    assertEquals(0, dv.nextDoc());
-    assertEquals(2, dv.docValueCount());
-    assertEquals(5, dv.nextValue());
-    assertEquals(15, dv.nextValue());
-
-    assertEquals(1, dv.nextDoc());
-    assertEquals(1, dv.docValueCount());
-    assertEquals(25, dv.nextValue());
-
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, dv.nextDoc());
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testBinaryDocValues() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    BytesRef[] values = {newBytesRef("aaa"), newBytesRef("bbb"), newBytesRef("ccc")};
-    int[] docIds = {0, 1, 2};
-    w.addBatch(
-        simpleBatch(3, new ArrayBinaryColumn("binary", BinaryDocValuesField.TYPE, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    BinaryDocValues dv = leaf.getBinaryDocValues("binary");
-    for (int i = 0; i < values.length; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(values[i], dv.binaryValue());
-    }
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, dv.nextDoc());
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testSortedDocValues() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    BytesRef[] values = {newBytesRef("x"), newBytesRef("y"), newBytesRef("x")};
-    int[] docIds = {0, 1, 2};
-    w.addBatch(
-        simpleBatch(3, new ArrayBinaryColumn("sorted", SortedDocValuesField.TYPE, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    SortedDocValues dv = leaf.getSortedDocValues("sorted");
-
-    assertEquals(0, dv.nextDoc());
-    assertEquals(newBytesRef("x"), dv.lookupOrd(dv.ordValue()));
-    assertEquals(1, dv.nextDoc());
-    assertEquals(newBytesRef("y"), dv.lookupOrd(dv.ordValue()));
-    assertEquals(2, dv.nextDoc());
-    assertEquals(newBytesRef("x"), dv.lookupOrd(dv.ordValue()));
-
-    // "x" and "y" should share ord space
-    assertEquals(2, dv.getValueCount());
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testSortedSetDocValues() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // Doc 0 has two values, doc 1 has one value
-    int[] docIds = {0, 0, 1};
-    BytesRef[] values = {newBytesRef("a"), newBytesRef("b"), newBytesRef("a")};
-    w.addBatch(
-        simpleBatch(
-            2, new ArrayBinaryColumn("sortedSet", SortedSetDocValuesField.TYPE, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    SortedSetDocValues dv = leaf.getSortedSetDocValues("sortedSet");
-
-    assertEquals(0, dv.nextDoc());
-    assertEquals(2, dv.docValueCount());
-    assertEquals(newBytesRef("a"), dv.lookupOrd(dv.nextOrd()));
-    assertEquals(newBytesRef("b"), dv.lookupOrd(dv.nextOrd()));
-
-    assertEquals(1, dv.nextDoc());
-    assertEquals(1, dv.docValueCount());
-    assertEquals(newBytesRef("a"), dv.lookupOrd(dv.nextOrd()));
-
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, dv.nextDoc());
-
-    r.close();
-    w.close();
-    dir.close();
-  }
 
   public void testMultipleColumns() throws IOException {
     Directory dir = newDirectory();
@@ -221,28 +97,6 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  public void testSparseDocValues() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // Only doc 1 has a value (docs 0 and 2 are missing)
-    int[] docIds = {1};
-    long[] values = {42};
-    w.addBatch(
-        simpleBatch(3, new ArrayLongColumn("sparse", NumericDocValuesField.TYPE, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    NumericDocValues dv = leaf.getNumericDocValues("sparse");
-    assertEquals(1, dv.nextDoc());
-    assertEquals(42, dv.longValue());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, dv.nextDoc());
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
   public void testParentFieldIndexed() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig config = newIndexWriterConfig();
@@ -269,11 +123,6 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  /**
-   * When a batch is too large for the remaining max-docs capacity, addBatch must fail without
-   * leaking doc reservations. Concretely, after the failure we must still be able to fill the
-   * index up to the configured limit.
-   */
   public void testAddBatchOverMaxDocsRollsBackReservations() throws IOException {
     final int maxDocs = 10;
     Directory dir = newDirectory();
@@ -295,8 +144,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
                     w.addBatch(
                         simpleBatch(
                             oversized,
-                            new ArrayLongColumn(
-                                "v", NumericDocValuesField.TYPE, docIds, values))));
+                            new ArrayLongColumn("v", NumericDocValuesField.TYPE, docIds, values))));
         assertTrue(e.getMessage(), e.getMessage().contains("number of documents"));
 
         // If reservations leaked, even a single addDocument would now fail. Fill the index up
@@ -322,7 +170,6 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  /** A column whose name matches the configured parent field must be rejected. */
   public void testParentFieldNameRejectedAsColumn() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig config = newIndexWriterConfig();
@@ -342,204 +189,6 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
       assertTrue(e.getMessage(), e.getMessage().contains("_parent"));
       assertTrue(e.getMessage(), e.getMessage().contains("reserved"));
     }
-    dir.close();
-  }
-
-  public void testPointsColumn() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // Create a points-only FieldType (1 dimension, Integer.BYTES)
-    FieldType pointType = new FieldType();
-    pointType.setDimensions(1, Integer.BYTES);
-    pointType.freeze();
-
-    int[] raw = {10, 20, 30};
-    int[] docIds = {0, 1, 2};
-    long[] values = new long[raw.length];
-    for (int i = 0; i < raw.length; i++) {
-      values[i] = raw[i];
-    }
-    w.addBatch(
-        simpleBatch(
-            3,
-            new ArrayLongColumn("point", pointType, LongColumn.NumericKind.INT, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    IndexSearcher searcher = new IndexSearcher(r);
-    assertEquals(1, searcher.count(IntPoint.newExactQuery("point", 10)));
-    assertEquals(1, searcher.count(IntPoint.newExactQuery("point", 20)));
-    assertEquals(1, searcher.count(IntPoint.newExactQuery("point", 30)));
-    assertEquals(0, searcher.count(IntPoint.newExactQuery("point", 99)));
-    assertEquals(3, searcher.count(IntPoint.newRangeQuery("point", 10, 30)));
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testPointsWithDocValues() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // 1D int points + SORTED_NUMERIC DV via the compat layer.
-    FieldType pointAndDvType = new FieldType();
-    pointAndDvType.setDimensions(1, Integer.BYTES);
-    pointAndDvType.setDocValuesType(DocValuesType.SORTED_NUMERIC);
-    pointAndDvType.freeze();
-
-    int[] raw = {10, 20, 30};
-    int[] docIds = {0, 1, 2};
-    long[] values = new long[raw.length];
-    for (int i = 0; i < raw.length; i++) {
-      values[i] = raw[i];
-    }
-    w.addBatch(
-        simpleBatch(
-            3,
-            new ArrayLongColumn(
-                "field", pointAndDvType, LongColumn.NumericKind.INT, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    IndexSearcher searcher = new IndexSearcher(r);
-
-    assertEquals(1, searcher.count(IntPoint.newExactQuery("field", 10)));
-    assertEquals(3, searcher.count(IntPoint.newRangeQuery("field", 10, 30)));
-
-    LeafReader leaf = getOnlyLeafReader(r);
-    SortedNumericDocValues dv = leaf.getSortedNumericDocValues("field");
-    for (int i = 0; i < 3; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(raw[i], dv.nextValue());
-    }
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testSparsePointsColumn() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType pointType = new FieldType();
-    pointType.setDimensions(1, Integer.BYTES);
-    pointType.freeze();
-
-    // Only doc 1 out of 3 has a point value
-    int[] docIds = {1};
-    long[] values = {42};
-    w.addBatch(
-        simpleBatch(
-            3,
-            new ArrayLongColumn("point", pointType, LongColumn.NumericKind.INT, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    IndexSearcher searcher = new IndexSearcher(r);
-    assertEquals(1, searcher.count(IntPoint.newExactQuery("point", 42)));
-    assertEquals(0, searcher.count(IntPoint.newExactQuery("point", 0)));
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testStoredLongColumn() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // stored + NUMERIC doc values
-    FieldType storedNumericType = new FieldType();
-    storedNumericType.setStored(true);
-    storedNumericType.setDocValuesType(DocValuesType.NUMERIC);
-    storedNumericType.freeze();
-
-    int[] docIds = {0, 1, 2};
-    long[] values = {100, 200, 300};
-    w.addBatch(simpleBatch(3, new ArrayLongColumn("val", storedNumericType, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-
-    // Verify stored fields
-    StoredFields storedFields = leaf.storedFields();
-    for (int i = 0; i < 3; i++) {
-      Document doc = storedFields.document(i);
-      assertEquals(values[i], doc.getField("val").numericValue().longValue());
-    }
-
-    // Verify doc values
-    NumericDocValues dv = leaf.getNumericDocValues("val");
-    for (int i = 0; i < 3; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(values[i], dv.longValue());
-    }
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testStoredBinaryColumn() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // stored + SORTED doc values
-    FieldType storedSortedType = new FieldType();
-    storedSortedType.setStored(true);
-    storedSortedType.setDocValuesType(DocValuesType.SORTED);
-    storedSortedType.freeze();
-
-    int[] docIds = {0, 1, 2};
-    BytesRef[] values = {newBytesRef("aaa"), newBytesRef("bbb"), newBytesRef("ccc")};
-    w.addBatch(simpleBatch(3, new ArrayBinaryColumn("val", storedSortedType, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-
-    // Verify stored fields
-    StoredFields storedFields = leaf.storedFields();
-    for (int i = 0; i < 3; i++) {
-      Document doc = storedFields.document(i);
-      assertEquals(values[i], doc.getField("val").binaryValue());
-    }
-
-    // Verify doc values
-    SortedDocValues dv = leaf.getSortedDocValues("val");
-    for (int i = 0; i < 3; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(values[i], dv.lookupOrd(dv.ordValue()));
-    }
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testStoredOnlyColumn() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // stored only — no doc values, no points
-    FieldType storedOnlyType = new FieldType();
-    storedOnlyType.setStored(true);
-    storedOnlyType.freeze();
-
-    int[] docIds = {0, 1, 2};
-    long[] values = {10, 20, 30};
-    w.addBatch(simpleBatch(3, new ArrayLongColumn("stored", storedOnlyType, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-
-    StoredFields storedFields = leaf.storedFields();
-    for (int i = 0; i < 3; i++) {
-      Document doc = storedFields.document(i);
-      assertEquals(values[i], doc.getField("stored").numericValue().longValue());
-    }
-
-    r.close();
-    w.close();
     dir.close();
   }
 
@@ -587,266 +236,6 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  public void testStoredPointsColumn() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // stored + points
-    FieldType storedPointType = new FieldType();
-    storedPointType.setStored(true);
-    storedPointType.setDimensions(1, Integer.BYTES);
-    storedPointType.freeze();
-
-    int[] raw = {10, 20, 30};
-    int[] docIds = {0, 1, 2};
-    long[] values = new long[raw.length];
-    for (int i = 0; i < raw.length; i++) {
-      values[i] = raw[i];
-    }
-    w.addBatch(
-        simpleBatch(
-            3,
-            new ArrayLongColumn(
-                "pt", storedPointType, LongColumn.NumericKind.INT, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-
-    // Verify stored fields — decoded as ints.
-    StoredFields storedFields = leaf.storedFields();
-    for (int i = 0; i < raw.length; i++) {
-      Document doc = storedFields.document(i);
-      assertEquals(raw[i], doc.getField("pt").numericValue().intValue());
-    }
-
-    // Verify points
-    IndexSearcher searcher = new IndexSearcher(r);
-    assertEquals(1, searcher.count(IntPoint.newExactQuery("pt", 10)));
-    assertEquals(3, searcher.count(IntPoint.newRangeQuery("pt", 10, 30)));
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testInvertedColumn() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // StringField-like: DOCS, omitNorms, non-tokenized
-    FieldType stringType = new FieldType();
-    stringType.setIndexOptions(IndexOptions.DOCS);
-    stringType.setOmitNorms(true);
-    stringType.setTokenized(false);
-    stringType.freeze();
-
-    int[] docIds = {0, 1, 2};
-    BytesRef[] values = {newBytesRef("alpha"), newBytesRef("beta"), newBytesRef("alpha")};
-    w.addBatch(simpleBatch(3, new ArrayBinaryColumn("tag", stringType, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    IndexSearcher searcher = new IndexSearcher(r);
-    assertEquals(2, searcher.count(new TermQuery(new Term("tag", "alpha"))));
-    assertEquals(1, searcher.count(new TermQuery(new Term("tag", "beta"))));
-    assertEquals(0, searcher.count(new TermQuery(new Term("tag", "gamma"))));
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testInvertedWithDocValues() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // Inverted + SORTED doc values (like a StringField with doc values)
-    FieldType invertedDvType = new FieldType();
-    invertedDvType.setIndexOptions(IndexOptions.DOCS);
-    invertedDvType.setOmitNorms(true);
-    invertedDvType.setTokenized(false);
-    invertedDvType.setDocValuesType(DocValuesType.SORTED);
-    invertedDvType.freeze();
-
-    int[] docIds = {0, 1, 2};
-    BytesRef[] values = {newBytesRef("x"), newBytesRef("y"), newBytesRef("x")};
-    w.addBatch(simpleBatch(3, new ArrayBinaryColumn("field", invertedDvType, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    IndexSearcher searcher = new IndexSearcher(r);
-
-    // Verify inverted index
-    assertEquals(2, searcher.count(new TermQuery(new Term("field", "x"))));
-    assertEquals(1, searcher.count(new TermQuery(new Term("field", "y"))));
-
-    // Verify doc values
-    LeafReader leaf = getOnlyLeafReader(r);
-    SortedDocValues dv = leaf.getSortedDocValues("field");
-    for (int i = 0; i < 3; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(values[i], dv.lookupOrd(dv.ordValue()));
-    }
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testInvertedWithStored() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // Inverted + stored (like StringField with Store.YES)
-    FieldType invertedStoredType = new FieldType(StringField.TYPE_STORED);
-    invertedStoredType.freeze();
-
-    int[] docIds = {0, 1, 2};
-    BytesRef[] values = {newBytesRef("aaa"), newBytesRef("bbb"), newBytesRef("ccc")};
-    w.addBatch(simpleBatch(3, new ArrayBinaryColumn("field", invertedStoredType, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    IndexSearcher searcher = new IndexSearcher(r);
-
-    // Verify inverted index
-    assertEquals(1, searcher.count(new TermQuery(new Term("field", "aaa"))));
-    assertEquals(1, searcher.count(new TermQuery(new Term("field", "bbb"))));
-
-    // Verify stored fields
-    LeafReader leaf = getOnlyLeafReader(r);
-    StoredFields storedFields = leaf.storedFields();
-    for (int i = 0; i < 3; i++) {
-      Document doc = storedFields.document(i);
-      assertEquals(values[i], doc.getField("field").binaryValue());
-    }
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testInvertedWithStoredAndDocValues() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // Inverted + stored + SORTED doc values
-    FieldType allType = new FieldType();
-    allType.setIndexOptions(IndexOptions.DOCS);
-    allType.setOmitNorms(true);
-    allType.setTokenized(false);
-    allType.setStored(true);
-    allType.setDocValuesType(DocValuesType.SORTED);
-    allType.freeze();
-
-    int[] docIds = {0, 1, 2};
-    BytesRef[] values = {newBytesRef("x"), newBytesRef("y"), newBytesRef("z")};
-    w.addBatch(simpleBatch(3, new ArrayBinaryColumn("field", allType, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    IndexSearcher searcher = new IndexSearcher(r);
-
-    // Verify inverted index
-    assertEquals(1, searcher.count(new TermQuery(new Term("field", "x"))));
-
-    // Verify stored fields
-    StoredFields storedFields = leaf.storedFields();
-    for (int i = 0; i < 3; i++) {
-      assertEquals(values[i], storedFields.document(i).getField("field").binaryValue());
-    }
-
-    // Verify doc values
-    SortedDocValues dv = leaf.getSortedDocValues("field");
-    for (int i = 0; i < 3; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(values[i], dv.lookupOrd(dv.ordValue()));
-    }
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testInvertedSparse() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType stringType = new FieldType();
-    stringType.setIndexOptions(IndexOptions.DOCS);
-    stringType.setOmitNorms(true);
-    stringType.setTokenized(false);
-    stringType.freeze();
-
-    // Only doc 1 out of 3 has a term
-    int[] docIds = {1};
-    BytesRef[] values = {newBytesRef("found")};
-    w.addBatch(simpleBatch(3, new ArrayBinaryColumn("tag", stringType, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    IndexSearcher searcher = new IndexSearcher(r);
-    assertEquals(1, searcher.count(new TermQuery(new Term("tag", "found"))));
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testTokenizedColumn() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriterConfig config = newIndexWriterConfig(new MockAnalyzer(random()));
-    IndexWriter w = new IndexWriter(dir, config);
-
-    // TextField-like: tokenized, DOCS_AND_FREQS_AND_POSITIONS
-    int[] docIds = {0, 1, 2};
-    BytesRef[] values = {
-      newBytesRef("quick brown fox"), newBytesRef("lazy brown dog"), newBytesRef("quick fox jumps")
-    };
-    w.addBatch(
-        simpleBatch(3, new ArrayBinaryColumn("text", TextField.TYPE_NOT_STORED, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    IndexSearcher searcher = new IndexSearcher(r);
-
-    // Each word was tokenized — verify individual terms
-    assertEquals(2, searcher.count(new TermQuery(new Term("text", "quick"))));
-    assertEquals(2, searcher.count(new TermQuery(new Term("text", "brown"))));
-    assertEquals(2, searcher.count(new TermQuery(new Term("text", "fox"))));
-    assertEquals(1, searcher.count(new TermQuery(new Term("text", "lazy"))));
-    assertEquals(1, searcher.count(new TermQuery(new Term("text", "dog"))));
-    assertEquals(1, searcher.count(new TermQuery(new Term("text", "jumps"))));
-    assertEquals(0, searcher.count(new TermQuery(new Term("text", "missing"))));
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testTokenizedWithStored() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriterConfig config = newIndexWriterConfig(new MockAnalyzer(random()));
-    IndexWriter w = new IndexWriter(dir, config);
-
-    int[] docIds = {0, 1};
-    BytesRef[] values = {newBytesRef("hello world"), newBytesRef("goodbye world")};
-    w.addBatch(
-        simpleBatch(2, new ArrayBinaryColumn("text", TextField.TYPE_STORED, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    IndexSearcher searcher = new IndexSearcher(r);
-
-    // Verify tokenized search
-    assertEquals(2, searcher.count(new TermQuery(new Term("text", "world"))));
-    assertEquals(1, searcher.count(new TermQuery(new Term("text", "hello"))));
-
-    // Verify stored fields
-    StoredFields storedFields = leaf.storedFields();
-    assertEquals(values[0], storedFields.document(0).getField("text").binaryValue());
-    assertEquals(values[1], storedFields.document(1).getField("text").binaryValue());
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
   public void testColumnWithNoneDocValuesTypeAndNoPointsThrows() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
@@ -876,138 +265,6 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     int doc = dv.nextDoc();
     assertTrue(doc != DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(42, dv.longValue());
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testStoredWithDocValuesAndPoints() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // stored + SORTED_NUMERIC DV + 4-byte points
-    FieldType allType = new FieldType();
-    allType.setStored(true);
-    allType.setDocValuesType(DocValuesType.SORTED_NUMERIC);
-    allType.setDimensions(1, Integer.BYTES);
-    allType.freeze();
-
-    int[] raw = {10, 20, 30};
-    int[] docIds = {0, 1, 2};
-    long[] values = new long[raw.length];
-    for (int i = 0; i < raw.length; i++) {
-      values[i] = raw[i];
-    }
-    w.addBatch(
-        simpleBatch(
-            3, new ArrayLongColumn("field", allType, LongColumn.NumericKind.INT, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-
-    // Verify stored fields — decoded as ints.
-    StoredFields storedFields = leaf.storedFields();
-    for (int i = 0; i < raw.length; i++) {
-      assertEquals(raw[i], storedFields.document(i).getField("field").numericValue().intValue());
-    }
-
-    // Verify doc values (raw int widened to long).
-    SortedNumericDocValues dv = leaf.getSortedNumericDocValues("field");
-    for (int i = 0; i < raw.length; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(raw[i], dv.nextValue());
-    }
-
-    // Verify points
-    assertEquals(3, leaf.getPointValues("field").size());
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testMultiValuedStoredWithDocValues() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // stored + SORTED_NUMERIC doc values (multi-valued)
-    FieldType storedSortedNumericType = new FieldType();
-    storedSortedNumericType.setStored(true);
-    storedSortedNumericType.setDocValuesType(DocValuesType.SORTED_NUMERIC);
-    storedSortedNumericType.freeze();
-
-    // Doc 0 has two values (10, 20), doc 1 has one value (30)
-    int[] docIds = {0, 0, 1};
-    long[] values = {10, 20, 30};
-    w.addBatch(simpleBatch(2, new ArrayLongColumn("val", storedSortedNumericType, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-
-    // Verify stored fields — each value occurrence is stored separately
-    StoredFields storedFields = leaf.storedFields();
-    Document doc0 = storedFields.document(0);
-    assertEquals(2, doc0.getFields("val").length);
-    assertEquals(10L, doc0.getFields("val")[0].numericValue().longValue());
-    assertEquals(20L, doc0.getFields("val")[1].numericValue().longValue());
-    Document doc1 = storedFields.document(1);
-    assertEquals(1, doc1.getFields("val").length);
-    assertEquals(30L, doc1.getFields("val")[0].numericValue().longValue());
-
-    // Verify doc values
-    SortedNumericDocValues dv = leaf.getSortedNumericDocValues("val");
-    assertEquals(0, dv.nextDoc());
-    assertEquals(2, dv.docValueCount());
-    assertEquals(10, dv.nextValue());
-    assertEquals(20, dv.nextValue());
-    assertEquals(1, dv.nextDoc());
-    assertEquals(1, dv.docValueCount());
-    assertEquals(30, dv.nextValue());
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testDenseNumericDocValues() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    long[] values = {100, 200, 300};
-    w.addBatch(simpleBatch(3, new ArrayDenseLongColumn("val", NumericDocValuesField.TYPE, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-
-    NumericDocValues dv = leaf.getNumericDocValues("val");
-    for (int i = 0; i < 3; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(values[i], dv.longValue());
-    }
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testDenseSortedNumericDocValues() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    long[] values = {10, 20, 30, 40, 50};
-    w.addBatch(
-        simpleBatch(5, new ArrayDenseLongColumn("val", SortedNumericDocValuesField.TYPE, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-
-    SortedNumericDocValues dv = leaf.getSortedNumericDocValues("val");
-    for (int i = 0; i < 5; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(1, dv.docValueCount());
-      assertEquals(values[i], dv.nextValue());
-    }
 
     r.close();
     w.close();
@@ -1077,790 +334,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  public void testIntSparseNumericDocValues() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // Sparse: only docs 0 and 2 have values.
-    int[] docIds = {0, 2};
-    int[] raw = {-7, 9};
-    long[] values = new long[raw.length];
-    for (int i = 0; i < raw.length; i++) {
-      values[i] = raw[i];
-    }
-    w.addBatch(
-        simpleBatch(
-            3,
-            new ArrayLongColumn(
-                "val", NumericDocValuesField.TYPE, LongColumn.NumericKind.INT, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    NumericDocValues dv = leaf.getNumericDocValues("val");
-    assertEquals(0, dv.nextDoc());
-    assertEquals(-7, dv.longValue());
-    assertEquals(2, dv.nextDoc());
-    assertEquals(9, dv.longValue());
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, dv.nextDoc());
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testLongColumnPointWidthMismatchThrows() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType pointType = new FieldType();
-    pointType.setDimensions(1, Integer.BYTES); // expects 4 bytes
-    pointType.freeze();
-
-    // LONG kind implies 8-byte point bytes; should fail validation against a 4-byte point type.
-    expectThrows(
-        IllegalArgumentException.class,
-        () ->
-            w.addBatch(
-                simpleBatch(
-                    1,
-                    new ArrayLongColumn(
-                        "pt",
-                        pointType,
-                        LongColumn.NumericKind.LONG,
-                        new int[] {0},
-                        new long[] {1}))));
-
-    w.close();
-    dir.close();
-  }
-
-  public void testBinaryColumnNumericDVBadFixedSizeThrows() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // Variable-size binary into NUMERIC DV should fail validation (fixedSize=-1).
-    expectThrows(
-        IllegalArgumentException.class,
-        () ->
-            w.addBatch(
-                simpleBatch(
-                    1,
-                    new ArrayBinaryColumn(
-                        "val",
-                        NumericDocValuesField.TYPE,
-                        new int[] {0},
-                        new BytesRef[] {newBytesRef("x")}))));
-
-    w.close();
-    dir.close();
-  }
-
-  public void testLongColumnMultiDimPointsThrows() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType pointType = new FieldType();
-    pointType.setDimensions(2, Long.BYTES);
-    pointType.freeze();
-
-    expectThrows(
-        IllegalArgumentException.class,
-        () ->
-            w.addBatch(
-                simpleBatch(
-                    1, new ArrayLongColumn("pt", pointType, new int[] {0}, new long[] {1}))));
-
-    w.close();
-    dir.close();
-  }
-
-  public void testDenseLongColumnWithStoredFields() throws IOException {
-    // Covers the "single column consumed by both passes via fresh cursors" case: a dense
-    // LongColumn with stored+numeric DV. Row pass uses tuples(), column pass uses values().
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType storedNumericType = new FieldType();
-    storedNumericType.setStored(true);
-    storedNumericType.setDocValuesType(DocValuesType.NUMERIC);
-    storedNumericType.freeze();
-
-    long[] values = {100, 200, 300, 400};
-    w.addBatch(simpleBatch(4, new ArrayDenseLongColumn("val", storedNumericType, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-
-    StoredFields storedFields = leaf.storedFields();
-    for (int i = 0; i < values.length; i++) {
-      assertEquals(values[i], storedFields.document(i).getField("val").numericValue().longValue());
-    }
-
-    NumericDocValues dv = leaf.getNumericDocValues("val");
-    for (int i = 0; i < values.length; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(values[i], dv.longValue());
-    }
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testStoredTypeIntegerFromLongColumn() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType type = new FieldType();
-    type.setStored(true);
-    type.freeze();
-
-    int[] raw = {1, -2, 3};
-    long[] values = new long[raw.length];
-    for (int i = 0; i < raw.length; i++) {
-      values[i] = raw[i];
-    }
-    w.addBatch(
-        simpleBatch(
-            3,
-            new ArrayLongColumn(
-                "val", type, LongColumn.NumericKind.INT, new int[] {0, 1, 2}, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    StoredFields storedFields = leaf.storedFields();
-    for (int i = 0; i < raw.length; i++) {
-      assertEquals(raw[i], storedFields.document(i).getField("val").numericValue().intValue());
-    }
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testStoredTypeLongFromLongColumn() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType type = new FieldType();
-    type.setStored(true);
-    type.freeze();
-
-    long[] raw = {Long.MIN_VALUE, 0L, Long.MAX_VALUE};
-    w.addBatch(simpleBatch(3, new ArrayLongColumn("val", type, new int[] {0, 1, 2}, raw.clone())));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    StoredFields storedFields = leaf.storedFields();
-    for (int i = 0; i < raw.length; i++) {
-      assertEquals(raw[i], storedFields.document(i).getField("val").numericValue().longValue());
-    }
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testStoredTypeFloatFromLongColumn() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType type = new FieldType();
-    type.setStored(true);
-    type.freeze();
-
-    float[] raw = {1.5f, -2.25f, Float.MAX_VALUE};
-    long[] values = new long[raw.length];
-    for (int i = 0; i < raw.length; i++) {
-      values[i] = NumericUtils.floatToSortableInt(raw[i]);
-    }
-    w.addBatch(
-        simpleBatch(
-            3,
-            new ArrayLongColumn(
-                "val", type, LongColumn.NumericKind.FLOAT, new int[] {0, 1, 2}, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    StoredFields storedFields = leaf.storedFields();
-    for (int i = 0; i < raw.length; i++) {
-      assertEquals(
-          raw[i], storedFields.document(i).getField("val").numericValue().floatValue(), 0f);
-    }
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testStoredTypeDoubleFromLongColumn() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType type = new FieldType();
-    type.setStored(true);
-    type.freeze();
-
-    double[] raw = {1.5d, -2.25d, Double.MAX_VALUE};
-    long[] values = new long[raw.length];
-    for (int i = 0; i < raw.length; i++) {
-      values[i] = NumericUtils.doubleToSortableLong(raw[i]);
-    }
-    w.addBatch(
-        simpleBatch(
-            3,
-            new ArrayLongColumn(
-                "val", type, LongColumn.NumericKind.DOUBLE, new int[] {0, 1, 2}, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    StoredFields storedFields = leaf.storedFields();
-    for (int i = 0; i < raw.length; i++) {
-      assertEquals(
-          raw[i], storedFields.document(i).getField("val").numericValue().doubleValue(), 0d);
-    }
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testStoredTypeStringFromBinaryColumn() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType type = new FieldType();
-    type.setStored(true);
-    type.freeze();
-
-    String[] raw = {"hello", "wörld", "🦜"};
-    BytesRef[] values = new BytesRef[raw.length];
-    for (int i = 0; i < raw.length; i++) {
-      values[i] = newBytesRef(raw[i]);
-    }
-    w.addBatch(
-        simpleBatch(
-            3,
-            new ArrayBinaryColumn(
-                "val", type, new int[] {0, 1, 2}, values, StoredValue.Type.STRING)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    StoredFields storedFields = leaf.storedFields();
-    for (int i = 0; i < raw.length; i++) {
-      assertEquals(raw[i], storedFields.document(i).getField("val").stringValue());
-    }
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testStoredTypeFloatWithNumericDV() throws IOException {
-    // FLOAT kind on a LongColumn that also feeds NumericDV.
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType type = new FieldType();
-    type.setStored(true);
-    type.setDocValuesType(DocValuesType.NUMERIC);
-    type.freeze();
-
-    float[] raw = {1.5f, -2.25f, 42.0f};
-    long[] values = new long[raw.length];
-    for (int i = 0; i < raw.length; i++) {
-      values[i] = NumericUtils.floatToSortableInt(raw[i]);
-    }
-    w.addBatch(
-        simpleBatch(
-            3,
-            new ArrayLongColumn(
-                "val", type, LongColumn.NumericKind.FLOAT, new int[] {0, 1, 2}, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-
-    // Stored values decoded as floats.
-    StoredFields storedFields = leaf.storedFields();
-    for (int i = 0; i < raw.length; i++) {
-      assertEquals(
-          raw[i], storedFields.document(i).getField("val").numericValue().floatValue(), 0f);
-    }
-
-    // NumericDV stores the sortable-int encoding sign-extended to long.
-    NumericDocValues dv = leaf.getNumericDocValues("val");
-    for (int i = 0; i < raw.length; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(values[i], dv.longValue());
-    }
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testStoredTypeIntegerWithNumericDV() throws IOException {
-    // INT kind on a LongColumn that also feeds NumericDV.
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType type = new FieldType();
-    type.setStored(true);
-    type.setDocValuesType(DocValuesType.NUMERIC);
-    type.freeze();
-
-    int[] raw = {Integer.MIN_VALUE, -1, 0, 42, Integer.MAX_VALUE};
-    long[] values = new long[raw.length];
-    int[] docIds = new int[raw.length];
-    for (int i = 0; i < raw.length; i++) {
-      docIds[i] = i;
-      values[i] = raw[i];
-    }
-    w.addBatch(
-        simpleBatch(
-            raw.length,
-            new ArrayLongColumn("val", type, LongColumn.NumericKind.INT, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-
-    StoredFields storedFields = leaf.storedFields();
-    for (int i = 0; i < raw.length; i++) {
-      assertEquals(raw[i], storedFields.document(i).getField("val").numericValue().intValue());
-    }
-
-    NumericDocValues dv = leaf.getNumericDocValues("val");
-    for (int i = 0; i < raw.length; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(raw[i], dv.longValue());
-    }
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testStoredTypeDoubleWithNumericDV() throws IOException {
-    // DOUBLE kind on a LongColumn that also feeds NumericDV.
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType type = new FieldType();
-    type.setStored(true);
-    type.setDocValuesType(DocValuesType.NUMERIC);
-    type.freeze();
-
-    double[] raw = {Double.NEGATIVE_INFINITY, -1.5d, 0.0d, 2.25d, Double.POSITIVE_INFINITY};
-    long[] values = new long[raw.length];
-    int[] docIds = new int[raw.length];
-    for (int i = 0; i < raw.length; i++) {
-      docIds[i] = i;
-      values[i] = NumericUtils.doubleToSortableLong(raw[i]);
-    }
-    w.addBatch(
-        simpleBatch(
-            raw.length,
-            new ArrayLongColumn("val", type, LongColumn.NumericKind.DOUBLE, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-
-    StoredFields storedFields = leaf.storedFields();
-    for (int i = 0; i < raw.length; i++) {
-      assertEquals(
-          raw[i], storedFields.document(i).getField("val").numericValue().doubleValue(), 0d);
-    }
-
-    NumericDocValues dv = leaf.getNumericDocValues("val");
-    for (int i = 0; i < raw.length; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(values[i], dv.longValue());
-    }
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testStoredTypeDataInputRejected() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType type = new FieldType();
-    type.setStored(true);
-    type.freeze();
-
-    expectThrows(
-        IllegalArgumentException.class,
-        () ->
-            w.addBatch(
-                simpleBatch(
-                    1,
-                    new ArrayBinaryColumn(
-                        "val",
-                        type,
-                        new int[] {0},
-                        new BytesRef[] {newBytesRef("x")},
-                        StoredValue.Type.DATA_INPUT))));
-
-    w.close();
-    dir.close();
-  }
-
-  public void testBinaryColumnMultiDimPointsOnly() throws IOException {
-    // Plain BinaryColumn with 2-D int points (fixedSize = 2 * 4 = 8). Caller pre-packs bytes via
-    // IntPoint.pack; the chain writes them to points unchanged.
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType pointType = new FieldType();
-    pointType.setDimensions(2, Integer.BYTES);
-    pointType.freeze();
-
-    int[] docIds = {0, 1, 2};
-    BytesRef[] values = {IntPoint.pack(1, 10), IntPoint.pack(2, 20), IntPoint.pack(3, 30)};
-    w.addBatch(simpleBatch(3, new ArrayBinaryColumn("pt", pointType, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    IndexSearcher searcher = new IndexSearcher(r);
-    assertEquals(
-        1, searcher.count(IntPoint.newRangeQuery("pt", new int[] {1, 10}, new int[] {1, 10})));
-    assertEquals(
-        3, searcher.count(IntPoint.newRangeQuery("pt", new int[] {0, 0}, new int[] {10, 100})));
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testBinaryColumnPointsOnlyArbitraryWidth() throws IOException {
-    // 3-D int points (12 bytes) via plain BinaryColumn — arbitrary widths are fine for the
-    // opaque-bytes path since no numeric transform is applied.
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType type = new FieldType();
-    type.setDimensions(3, Integer.BYTES);
-    type.freeze();
-
-    int[][] raw = {{1, 2, 3}, {4, 5, 6}, {10, 20, 30}};
-    BytesRef[] values = new BytesRef[raw.length];
-    int[] docIds = new int[raw.length];
-    for (int i = 0; i < raw.length; i++) {
-      docIds[i] = i;
-      values[i] = IntPoint.pack(raw[i]);
-    }
-    w.addBatch(simpleBatch(raw.length, new ArrayBinaryColumn("pt", type, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    IndexSearcher searcher = new IndexSearcher(r);
-    assertEquals(
-        1, searcher.count(IntPoint.newRangeQuery("pt", new int[] {1, 2, 3}, new int[] {1, 2, 3})));
-    assertEquals(
-        3,
-        searcher.count(
-            IntPoint.newRangeQuery("pt", new int[] {0, 0, 0}, new int[] {100, 100, 100})));
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testBinaryColumnSortedDVAndPoints() throws IOException {
-    // Plain BinaryColumn with SORTED DV + 1-D int point. Same BytesRef goes to both writers.
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType type = new FieldType();
-    type.setDimensions(1, Integer.BYTES);
-    type.setDocValuesType(DocValuesType.SORTED);
-    type.freeze();
-
-    int[] docIds = {0, 1, 2};
-    BytesRef[] values = {IntPoint.pack(10), IntPoint.pack(20), IntPoint.pack(30)};
-    w.addBatch(simpleBatch(3, new ArrayBinaryColumn("field", type, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-
-    SortedDocValues dv = leaf.getSortedDocValues("field");
-    for (int i = 0; i < 3; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(values[i], dv.lookupOrd(dv.ordValue()));
-    }
-
-    IndexSearcher searcher = new IndexSearcher(r);
-    assertEquals(1, searcher.count(IntPoint.newExactQuery("field", 10)));
-    assertEquals(3, searcher.count(IntPoint.newRangeQuery("field", 10, 30)));
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testNumericKindIntPointsAndDV() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType type = new FieldType();
-    type.setDimensions(1, Integer.BYTES);
-    type.setDocValuesType(DocValuesType.SORTED_NUMERIC);
-    type.freeze();
-
-    int[] raw = {-5, -1, 0, 7, Integer.MAX_VALUE};
-    long[] values = new long[raw.length];
-    int[] docIds = new int[raw.length];
-    for (int i = 0; i < raw.length; i++) {
-      docIds[i] = i;
-      values[i] = raw[i];
-    }
-    w.addBatch(
-        simpleBatch(
-            raw.length,
-            new ArrayLongColumn("val", type, LongColumn.NumericKind.INT, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-
-    SortedNumericDocValues dv = leaf.getSortedNumericDocValues("val");
-    for (int i = 0; i < raw.length; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(1, dv.docValueCount());
-      assertEquals(raw[i], dv.nextValue());
-    }
-
-    IndexSearcher searcher = new IndexSearcher(r);
-    assertEquals(
-        raw.length,
-        searcher.count(IntPoint.newRangeQuery("val", Integer.MIN_VALUE, Integer.MAX_VALUE)));
-    assertEquals(1, searcher.count(IntPoint.newExactQuery("val", -5)));
-    assertEquals(3, searcher.count(IntPoint.newRangeQuery("val", -1, 7)));
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testNumericKindLongPointsAndDV() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType type = new FieldType();
-    type.setDimensions(1, Long.BYTES);
-    type.setDocValuesType(DocValuesType.SORTED_NUMERIC);
-    type.freeze();
-
-    long[] raw = {Long.MIN_VALUE, -100L, 0L, 42L, Long.MAX_VALUE};
-    int[] docIds = new int[raw.length];
-    for (int i = 0; i < raw.length; i++) {
-      docIds[i] = i;
-    }
-    w.addBatch(simpleBatch(raw.length, new ArrayLongColumn("val", type, docIds, raw.clone())));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-
-    SortedNumericDocValues dv = leaf.getSortedNumericDocValues("val");
-    for (int i = 0; i < raw.length; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(raw[i], dv.nextValue());
-    }
-
-    IndexSearcher searcher = new IndexSearcher(r);
-    assertEquals(
-        raw.length, searcher.count(LongPoint.newRangeQuery("val", Long.MIN_VALUE, Long.MAX_VALUE)));
-    assertEquals(1, searcher.count(LongPoint.newExactQuery("val", Long.MIN_VALUE)));
-    assertEquals(3, searcher.count(LongPoint.newRangeQuery("val", -100L, 42L)));
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testNumericKindFloatPointsAndDV() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType type = new FieldType();
-    type.setDimensions(1, Float.BYTES);
-    type.setDocValuesType(DocValuesType.SORTED_NUMERIC);
-    type.freeze();
-
-    float[] raw = {Float.NEGATIVE_INFINITY, -1.5f, 0.0f, 2.25f, Float.POSITIVE_INFINITY};
-    long[] values = new long[raw.length];
-    int[] docIds = new int[raw.length];
-    for (int i = 0; i < raw.length; i++) {
-      docIds[i] = i;
-      values[i] = NumericUtils.floatToSortableInt(raw[i]);
-    }
-    w.addBatch(
-        simpleBatch(
-            raw.length,
-            new ArrayLongColumn("val", type, LongColumn.NumericKind.FLOAT, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-
-    // DV stores the sortable-int encoding; decode via sortableIntToFloat.
-    SortedNumericDocValues dv = leaf.getSortedNumericDocValues("val");
-    for (int i = 0; i < raw.length; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(raw[i], NumericUtils.sortableIntToFloat((int) dv.nextValue()), 0f);
-    }
-
-    // Points sort numerically.
-    IndexSearcher searcher = new IndexSearcher(r);
-    assertEquals(
-        raw.length,
-        searcher.count(
-            FloatPoint.newRangeQuery("val", Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY)));
-    assertEquals(1, searcher.count(FloatPoint.newExactQuery("val", -1.5f)));
-    assertEquals(3, searcher.count(FloatPoint.newRangeQuery("val", -1.5f, 2.25f)));
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testNumericKindDoublePointsAndDV() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType type = new FieldType();
-    type.setDimensions(1, Double.BYTES);
-    type.setDocValuesType(DocValuesType.SORTED_NUMERIC);
-    type.freeze();
-
-    double[] raw = {Double.NEGATIVE_INFINITY, -1.5d, 0.0d, 2.25d, Double.POSITIVE_INFINITY};
-    long[] values = new long[raw.length];
-    int[] docIds = new int[raw.length];
-    for (int i = 0; i < raw.length; i++) {
-      docIds[i] = i;
-      values[i] = NumericUtils.doubleToSortableLong(raw[i]);
-    }
-    w.addBatch(
-        simpleBatch(
-            raw.length,
-            new ArrayLongColumn("val", type, LongColumn.NumericKind.DOUBLE, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-
-    SortedNumericDocValues dv = leaf.getSortedNumericDocValues("val");
-    for (int i = 0; i < raw.length; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(raw[i], NumericUtils.sortableLongToDouble(dv.nextValue()), 0d);
-    }
-
-    IndexSearcher searcher = new IndexSearcher(r);
-    assertEquals(
-        raw.length,
-        searcher.count(
-            DoublePoint.newRangeQuery("val", Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY)));
-    assertEquals(1, searcher.count(DoublePoint.newExactQuery("val", -1.5d)));
-    assertEquals(3, searcher.count(DoublePoint.newRangeQuery("val", -1.5d, 2.25d)));
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testNumericKindPointsAndDVMultiDimRejected() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // 2D int: scenario 3 requires 1D.
-    FieldType type = new FieldType();
-    type.setDimensions(2, Integer.BYTES);
-    type.setDocValuesType(DocValuesType.SORTED_NUMERIC);
-    type.freeze();
-
-    expectThrows(
-        IllegalArgumentException.class,
-        () ->
-            w.addBatch(
-                simpleBatch(
-                    1,
-                    new ArrayLongColumn(
-                        "val",
-                        type,
-                        LongColumn.NumericKind.LONG,
-                        new int[] {0},
-                        new long[] {1L}))));
-
-    w.close();
-    dir.close();
-  }
-
-  public void testNumericKindPointsAndDVWidthMismatch() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    // FLOAT kind requires a 4-byte point field; declaring Long.BYTES should throw.
-    FieldType type = new FieldType();
-    type.setDimensions(1, Long.BYTES);
-    type.setDocValuesType(DocValuesType.SORTED_NUMERIC);
-    type.freeze();
-
-    expectThrows(
-        IllegalArgumentException.class,
-        () ->
-            w.addBatch(
-                simpleBatch(
-                    1,
-                    new ArrayLongColumn(
-                        "val",
-                        type,
-                        LongColumn.NumericKind.FLOAT,
-                        new int[] {0},
-                        new long[] {1L}))));
-
-    w.close();
-    dir.close();
-  }
-
-  public void testNumericKindFloatDVOnly() throws IOException {
-    // DV only (no points): LongColumn stores the long value unchanged. For FLOAT, callers feed
-    // sortable-int bits in the low 32 bits, and DV reads them back sign-extended to long.
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType type = new FieldType();
-    type.setDocValuesType(DocValuesType.NUMERIC);
-    type.freeze();
-
-    float[] raw = {1.5f, -2.25f, Float.MAX_VALUE};
-    long[] values = new long[raw.length];
-    int[] docIds = new int[raw.length];
-    for (int i = 0; i < raw.length; i++) {
-      docIds[i] = i;
-      values[i] = NumericUtils.floatToSortableInt(raw[i]);
-    }
-    w.addBatch(
-        simpleBatch(
-            raw.length,
-            new ArrayLongColumn("val", type, LongColumn.NumericKind.FLOAT, docIds, values)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    NumericDocValues dv = leaf.getNumericDocValues("val");
-    for (int i = 0; i < raw.length; i++) {
-      assertEquals(i, dv.nextDoc());
-      assertEquals(values[i], dv.longValue());
-    }
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  /**
-   * With a sparse row column, the batch must still produce {@code numDocs} documents in the
-   * segment, and stored-fields for un-populated docs must be empty (not shifted, not missing). This
-   * guards the row-dense framing contract: every doc-id in {@code [0, numDocs)} is framed
-   * regardless of whether any row column has a value at that doc.
-   */
-  public void testSparseStoredFramingPreservesNumDocs() throws IOException {
+  public void testSparseStoredFieldPreservesNumDocs() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
 
@@ -1889,11 +363,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  /**
-   * With a sparse indexed row column, the segment must still have {@code numDocs} documents, and
-   * the inverted index must reflect only the populated docs. Guards termsHash framing alignment.
-   */
-  public void testSparseIndexedFramingPreservesNumDocs() throws IOException {
+  public void testSparseIndexedFieldsPreservesNumDocs() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
 
@@ -1921,11 +391,6 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  /**
-   * When some docs in the batch have only a DV column (no row column value), framing still happens
-   * for every doc: stored fields must be empty for those docs, inverted index untouched, and DV
-   * values align with their batch doc-ids.
-   */
   public void testSparseRowMixedWithDenseDocValues() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
@@ -1968,11 +433,6 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  /**
-   * Indexing the same logical docs via {@code addBatch} with a sparse row column vs. via {@code
-   * addDocument} one doc at a time must produce segments with the same {@code maxDoc} and the same
-   * stored-field / inverted-index visibility. This is the golden equivalence check.
-   */
   public void testSparseBatchMatchesDocByDoc() throws IOException {
     FieldType storedIndexed = new FieldType(StringField.TYPE_STORED);
     storedIndexed.freeze();
@@ -1998,7 +458,6 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
                   "field", storedIndexed, docIds, refs, StoredValue.Type.STRING)));
     }
 
-    // --- Doc-by-doc path ---
     Directory singleDir = newDirectory();
     try (IndexWriter singleW = new IndexWriter(singleDir, newIndexWriterConfig())) {
       int next = 0;
@@ -2046,7 +505,6 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     singleDir.close();
   }
 
-  /** A row column that returns an out-of-order batch doc-id must be rejected. */
   public void testRowColumnOutOfOrderDocIdThrows() throws IOException {
     Directory dir = newDirectory();
     try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
@@ -2054,7 +512,6 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
       storedOnly.setStored(true);
       storedOnly.freeze();
 
-      // docIds intentionally not non-decreasing.
       int[] docIds = {2, 1};
       BytesRef[] values = {newBytesRef("a"), newBytesRef("b")};
       expectThrows(
@@ -2064,7 +521,6 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  /** A row column that returns a batch doc-id {@code >= numDocs} must be rejected. */
   public void testRowColumnOutOfRangeDocIdThrows() throws IOException {
     Directory dir = newDirectory();
     try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
@@ -2079,125 +535,6 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
           IllegalArgumentException.class,
           () -> w.addBatch(simpleBatch(3, new ArrayBinaryColumn("f", storedOnly, docIds, values))));
     }
-    dir.close();
-  }
-
-  // --- Test Column implementations backed by arrays ---
-
-  // ---- VectorColumn tests ----
-
-  public void testDenseFloatVectorColumn() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType vectorType = floatVectorType(3, VectorSimilarityFunction.EUCLIDEAN);
-    float[][] vectors = {
-      {1f, 2f, 3f}, {4f, 5f, 6f}, {7f, 8f, 9f},
-    };
-    w.addBatch(simpleBatch(3, new ArrayDenseFloatVectorColumn("v", vectorType, vectors)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    FloatVectorValues values = leaf.getFloatVectorValues("v");
-    assertNotNull(values);
-    KnnVectorValues.DocIndexIterator it = values.iterator();
-    for (int i = 0; i < vectors.length; i++) {
-      assertEquals(i, it.nextDoc());
-      assertArrayEquals(vectors[i], values.vectorValue(it.index()), 0f);
-    }
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.nextDoc());
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testDenseByteVectorColumn() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType vectorType = byteVectorType(4, VectorSimilarityFunction.EUCLIDEAN);
-    byte[][] vectors = {
-      {1, 2, 3, 4}, {5, 6, 7, 8}, {9, 10, 11, 12},
-    };
-    w.addBatch(simpleBatch(3, new ArrayDenseByteVectorColumn("v", vectorType, vectors)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    ByteVectorValues values = leaf.getByteVectorValues("v");
-    assertNotNull(values);
-    KnnVectorValues.DocIndexIterator it = values.iterator();
-    for (int i = 0; i < vectors.length; i++) {
-      assertEquals(i, it.nextDoc());
-      assertArrayEquals(vectors[i], values.vectorValue(it.index()));
-    }
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.nextDoc());
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testSparseFloatVectorColumn() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
-    int[] docIds = {0, 2, 5, 9};
-    float[][] vectors = {{1f, 1f}, {2f, 2f}, {3f, 3f}, {4f, 4f}};
-    // pair with a sparse long column so the batch has a defined doc count > vector count
-    int[] anchorIds = {0, 9};
-    long[] anchorVals = {0L, 9L};
-    w.addBatch(
-        simpleBatch(
-            10,
-            new ArrayFloatVectorColumn("v", vectorType, docIds, vectors),
-            new ArrayLongColumn("anchor", NumericDocValuesField.TYPE, anchorIds, anchorVals)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    FloatVectorValues values = leaf.getFloatVectorValues("v");
-    assertNotNull(values);
-    KnnVectorValues.DocIndexIterator it = values.iterator();
-    for (int i = 0; i < docIds.length; i++) {
-      assertEquals(docIds[i], it.nextDoc());
-      assertArrayEquals(vectors[i], values.vectorValue(it.index()), 0f);
-    }
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.nextDoc());
-
-    r.close();
-    w.close();
-    dir.close();
-  }
-
-  public void testSparseByteVectorColumn() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType vectorType = byteVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
-    int[] docIds = {1, 4};
-    byte[][] vectors = {{1, 2}, {3, 4}};
-    int[] anchorIds = {0, 5};
-    long[] anchorVals = {0L, 5L};
-    w.addBatch(
-        simpleBatch(
-            6,
-            new ArrayByteVectorColumn("v", vectorType, docIds, vectors),
-            new ArrayLongColumn("anchor", NumericDocValuesField.TYPE, anchorIds, anchorVals)));
-
-    DirectoryReader r = DirectoryReader.open(w);
-    LeafReader leaf = getOnlyLeafReader(r);
-    ByteVectorValues values = leaf.getByteVectorValues("v");
-    assertNotNull(values);
-    KnnVectorValues.DocIndexIterator it = values.iterator();
-    for (int i = 0; i < docIds.length; i++) {
-      assertEquals(docIds[i], it.nextDoc());
-      assertArrayEquals(vectors[i], values.vectorValue(it.index()));
-    }
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.nextDoc());
-
-    r.close();
-    w.close();
     dir.close();
   }
 
@@ -2268,8 +605,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
 
     // A field type alone is not enough — every batch must have at least one column with data,
     // and a vector-only column with no values is the equivalent of "no documents have this
-    // vector". We pair it with a long anchor to make the batch valid; the vector cursor returns
-    // NO_MORE_DOCS immediately.
+    // vector".
     FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
     int[] anchorIds = {0, 1};
     long[] anchorVals = {0L, 1L};
@@ -2320,503 +656,903 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     dir.close();
   }
 
-  public void testFloatVectorEncodingMismatchFails() throws IOException {
+  public void testLongTupleCursorThrowMidBatchRecovers() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
 
-    // FieldType says FLOAT32 but column carries byte[] vectors.
-    FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
-    byte[][] vectors = {{1, 2}, {3, 4}};
-    expectThrows(
-        ClassCastException.class,
-        () -> w.addBatch(simpleBatch(2, new ArrayDenseByteVectorColumn("v", vectorType, vectors))));
-    w.rollback();
-    dir.close();
-  }
-
-  public void testWrongDimensionFails() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType vectorType = floatVectorType(3, VectorSimilarityFunction.EUCLIDEAN);
-    float[][] vectors = {{1f, 2f, 3f}, {4f, 5f}};
-    IllegalArgumentException e =
+    // 5-doc batch; LongTupleCursor#nextDoc throws at index 2 (during column pass).
+    int[] docIds = {0, 1, 2, 3, 4};
+    long[] values = {10, 20, 30, 40, 50};
+    IllegalStateException expected = new IllegalStateException("boom-long");
+    RuntimeException actual =
         expectThrows(
-            IllegalArgumentException.class,
-            () ->
-                w.addBatch(
-                    simpleBatch(2, new ArrayDenseFloatVectorColumn("v", vectorType, vectors))));
-    assertTrue(e.getMessage(), e.getMessage().contains("expected dimension 3"));
-    w.rollback();
-    dir.close();
-  }
-
-  public void testZeroDimensionFieldTypeFails() {
-    FieldType bad = new FieldType();
-    // No vector attributes set -> vectorDimension() == 0
-    bad.setDocValuesType(DocValuesType.NUMERIC);
-    bad.freeze();
-    IllegalArgumentException e =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> new ArrayDenseFloatVectorColumn("v", bad, new float[][] {{1f, 2f}}));
-    assertTrue(e.getMessage(), e.getMessage().contains("vectorDimension() > 0"));
-  }
-
-  public void testVectorWithDocValuesRejected() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType bad = new FieldType();
-    bad.setVectorAttributes(2, VectorEncoding.FLOAT32, VectorSimilarityFunction.EUCLIDEAN);
-    bad.setDocValuesType(DocValuesType.NUMERIC);
-    bad.freeze();
-    IllegalArgumentException e =
-        expectThrows(
-            IllegalArgumentException.class,
+            RuntimeException.class,
             () ->
                 w.addBatch(
                     simpleBatch(
-                        1, new ArrayDenseFloatVectorColumn("v", bad, new float[][] {{1f, 2f}}))));
-    assertTrue(e.getMessage(), e.getMessage().contains("must be vector-only"));
-    w.rollback();
-    dir.close();
-  }
+                        5,
+                        new ThrowingLongColumn(
+                            "v", NumericDocValuesField.TYPE, docIds, values, 2, expected))));
+    assertSame(expected, actual);
+    // Force the failed batch's DWPT to flush so the cleanup-induced fully-deleted
+    // segment is pruned before the recovery starts a new one.
+    w.commit();
 
-  public void testVectorWithStoredRejected() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType bad = new FieldType();
-    bad.setVectorAttributes(2, VectorEncoding.FLOAT32, VectorSimilarityFunction.EUCLIDEAN);
-    bad.setStored(true);
-    bad.freeze();
-    IllegalArgumentException e =
-        expectThrows(
-            IllegalArgumentException.class,
-            () ->
-                w.addBatch(
-                    simpleBatch(
-                        1, new ArrayDenseFloatVectorColumn("v", bad, new float[][] {{1f, 2f}}))));
-    assertTrue(e.getMessage(), e.getMessage().contains("must be vector-only"));
-    w.rollback();
-    dir.close();
-  }
-
-  public void testVectorWithIndexOptionsRejected() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType bad = new FieldType();
-    bad.setVectorAttributes(2, VectorEncoding.FLOAT32, VectorSimilarityFunction.EUCLIDEAN);
-    bad.setIndexOptions(IndexOptions.DOCS);
-    bad.setTokenized(false);
-    bad.freeze();
-    IllegalArgumentException e =
-        expectThrows(
-            IllegalArgumentException.class,
-            () ->
-                w.addBatch(
-                    simpleBatch(
-                        1, new ArrayDenseFloatVectorColumn("v", bad, new float[][] {{1f, 2f}}))));
-    assertTrue(e.getMessage(), e.getMessage().contains("must be vector-only"));
-    w.rollback();
-    dir.close();
-  }
-
-  public void testVectorWithPointsRejected() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType bad = new FieldType();
-    bad.setVectorAttributes(2, VectorEncoding.FLOAT32, VectorSimilarityFunction.EUCLIDEAN);
-    bad.setDimensions(1, Integer.BYTES);
-    bad.freeze();
-    IllegalArgumentException e =
-        expectThrows(
-            IllegalArgumentException.class,
-            () ->
-                w.addBatch(
-                    simpleBatch(
-                        1, new ArrayDenseFloatVectorColumn("v", bad, new float[][] {{1f, 2f}}))));
-    assertTrue(e.getMessage(), e.getMessage().contains("must be vector-only"));
-    w.rollback();
-    dir.close();
-  }
-
-  public void testDuplicateDocIDFails() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
-    int[] docIds = {0, 0};
-    float[][] vectors = {{1f, 2f}, {3f, 4f}};
-    IllegalArgumentException e =
-        expectThrows(
-            IllegalArgumentException.class,
-            () ->
-                w.addBatch(
-                    simpleBatch(2, new ArrayFloatVectorColumn("v", vectorType, docIds, vectors))));
-    assertTrue(e.getMessage(), e.getMessage().contains("strictly increasing"));
-    w.rollback();
-    dir.close();
-  }
-
-  public void testDecreasingDocIDFails() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
-    int[] docIds = {3, 1};
-    float[][] vectors = {{1f, 2f}, {3f, 4f}};
-    IllegalArgumentException e =
-        expectThrows(
-            IllegalArgumentException.class,
-            () ->
-                w.addBatch(
-                    simpleBatch(4, new ArrayFloatVectorColumn("v", vectorType, docIds, vectors))));
-    assertTrue(e.getMessage(), e.getMessage().contains("strictly increasing"));
-    w.rollback();
-    dir.close();
-  }
-
-  public void testVectorOutOfRangeDocIDFails() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
-    int[] docIds = {0, 5};
-    float[][] vectors = {{1f, 2f}, {3f, 4f}};
-    IllegalArgumentException e =
-        expectThrows(
-            IllegalArgumentException.class,
-            () ->
-                w.addBatch(
-                    simpleBatch(3, new ArrayFloatVectorColumn("v", vectorType, docIds, vectors))));
-    assertTrue(e.getMessage(), e.getMessage().contains("out of range"));
-    w.rollback();
-    dir.close();
-  }
-
-  public void testDenseVectorColumnTooFewValuesFails() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
-    // 2 values declared DENSE but the batch has 3 docs.
-    float[][] vectors = {{1f, 2f}, {3f, 4f}};
-    IllegalArgumentException e =
-        expectThrows(
-            IllegalArgumentException.class,
-            () ->
-                w.addBatch(
-                    simpleBatch(3, new ArrayDenseFloatVectorColumn("v", vectorType, vectors))));
-    assertTrue(e.getMessage(), e.getMessage().contains("Dense column"));
-    w.rollback();
-    dir.close();
-  }
-
-  public void testVectorColumnSchemaConsistencyAcrossBatches() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
-
-    FieldType float32Type = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
+    // Recovery: another batch and a doc-by-doc add must succeed.
+    int[] recoveryIds = {0, 1};
+    long[] recoveryVals = {100, 200};
     w.addBatch(
         simpleBatch(
-            1, new ArrayDenseFloatVectorColumn("v", float32Type, new float[][] {{1f, 2f}})));
+            2, new ArrayLongColumn("v", NumericDocValuesField.TYPE, recoveryIds, recoveryVals)));
+    Document doc = new Document();
+    doc.add(new NumericDocValuesField("v", 999));
+    w.addDocument(doc);
 
-    FieldType byteType = byteVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
-    expectThrows(
-        IllegalArgumentException.class,
-        () ->
-            w.addBatch(
-                simpleBatch(
-                    1, new ArrayDenseByteVectorColumn("v", byteType, new byte[][] {{1, 2}}))));
-    w.rollback();
+    // The failed batch's 5 reserved doc-ids are all marked deleted, the resulting
+    // fully-deleted segment is pruned at flush time, so only the recovery work
+    // remains visible.
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    assertEquals(2 + 1, leaf.maxDoc());
+    assertEquals(2 + 1, leaf.numDocs());
+
+    NumericDocValues dv = leaf.getNumericDocValues("v");
+    assertEquals(0, dv.nextDoc());
+    assertEquals(100, dv.longValue());
+    assertEquals(1, dv.nextDoc());
+    assertEquals(200, dv.longValue());
+    assertEquals(2, dv.nextDoc());
+    assertEquals(999, dv.longValue());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, dv.nextDoc());
+
+    r.close();
+    w.close();
     dir.close();
   }
 
-  private static FieldType floatVectorType(int dimension, VectorSimilarityFunction sim) {
-    FieldType type = new FieldType();
-    type.setVectorAttributes(dimension, VectorEncoding.FLOAT32, sim);
-    type.freeze();
-    return type;
+  public void testLongValuesCursorThrowMidBatchRecovers() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    // 6-doc dense batch; LongValuesCursor#fillDocValues throws partway (after 3 fills).
+    long[] values = {1, 2, 3, 4, 5, 6};
+    IllegalStateException expected = new IllegalStateException("boom-dense");
+    RuntimeException actual =
+        expectThrows(
+            RuntimeException.class,
+            () ->
+                w.addBatch(
+                    simpleBatch(
+                        6,
+                        new ThrowingDenseLongColumn(
+                            "v", NumericDocValuesField.TYPE, values, 3, expected))));
+    assertSame(expected, actual);
+    // Force the failed batch's DWPT to flush so the cleanup-induced fully-deleted
+    // segment is pruned before the recovery starts a new one.
+    w.commit();
+
+    // Recovery via a single addDocument followed by another addBatch.
+    Document doc = new Document();
+    doc.add(new NumericDocValuesField("v", 777));
+    w.addDocument(doc);
+    int[] recoveryIds = {0, 1};
+    long[] recoveryVals = {111, 222};
+    w.addBatch(
+        simpleBatch(
+            2, new ArrayLongColumn("v", NumericDocValuesField.TYPE, recoveryIds, recoveryVals)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    assertEquals(1 + 2, leaf.maxDoc());
+    assertEquals(1 + 2, leaf.numDocs());
+
+    NumericDocValues dv = leaf.getNumericDocValues("v");
+    assertEquals(0, dv.nextDoc());
+    assertEquals(777, dv.longValue());
+    assertEquals(1, dv.nextDoc());
+    assertEquals(111, dv.longValue());
+    assertEquals(2, dv.nextDoc());
+    assertEquals(222, dv.longValue());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, dv.nextDoc());
+
+    r.close();
+    w.close();
+    dir.close();
   }
 
-  private static FieldType byteVectorType(int dimension, VectorSimilarityFunction sim) {
-    FieldType type = new FieldType();
-    type.setVectorAttributes(dimension, VectorEncoding.BYTE, sim);
-    type.freeze();
-    return type;
-  }
+  public void testBinaryTupleCursorThrowMidBatchRecovers() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
 
-  private static ColumnBatch simpleBatch(int numDocs, Column... columns) {
-    return new ColumnBatch() {
-      @Override
-      public int numDocs() {
-        return numDocs;
-      }
-
-      @Override
-      public Iterable<Column> columns() {
-        return List.of(columns);
-      }
+    int[] docIds = {0, 1, 2, 3};
+    BytesRef[] values = {
+      newBytesRef("a"), newBytesRef("b"), newBytesRef("c"), newBytesRef("d"),
     };
+    IllegalStateException expected = new IllegalStateException("boom-binary");
+    RuntimeException actual =
+        expectThrows(
+            RuntimeException.class,
+            () ->
+                w.addBatch(
+                    simpleBatch(
+                        4,
+                        new ThrowingBinaryColumn(
+                            "b", BinaryDocValuesField.TYPE, docIds, values, 1, expected))));
+    assertSame(expected, actual);
+    // Force the failed batch's DWPT to flush so the cleanup-induced fully-deleted
+    // segment is pruned before the recovery starts a new one.
+    w.commit();
+
+    int[] recoveryIds = {0};
+    BytesRef[] recoveryVals = {newBytesRef("ok")};
+    w.addBatch(
+        simpleBatch(
+            1, new ArrayBinaryColumn("b", BinaryDocValuesField.TYPE, recoveryIds, recoveryVals)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    assertEquals(1, leaf.maxDoc());
+    assertEquals(1, leaf.numDocs());
+
+    BinaryDocValues dv = leaf.getBinaryDocValues("b");
+    assertEquals(0, dv.nextDoc());
+    assertEquals(newBytesRef("ok"), dv.binaryValue());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, dv.nextDoc());
+
+    r.close();
+    w.close();
+    dir.close();
   }
 
-  private static class ArrayLongColumn extends LongColumn {
-    private final int[] docIds;
-    private final long[] values;
+  public void testVectorTupleCursorThrowMidBatchRecovers() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
 
-    ArrayLongColumn(String name, IndexableFieldType fieldType, int[] docIds, long[] values) {
-      super(name, fieldType, Density.SPARSE);
-      assert docIds.length == values.length;
-      this.docIds = docIds;
-      this.values = values;
+    FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
+    int[] docIds = {0, 1, 2};
+    float[][] values = {{1f, 1f}, {2f, 2f}, {3f, 3f}};
+    IllegalStateException expected = new IllegalStateException("boom-vector");
+    RuntimeException actual =
+        expectThrows(
+            RuntimeException.class,
+            () ->
+                w.addBatch(
+                    simpleBatch(
+                        3,
+                        new ThrowingFloatVectorColumn(
+                            "v", vectorType, docIds, values, 1, expected))));
+    assertSame(expected, actual);
+    // Force the failed batch's DWPT to flush so the cleanup-induced fully-deleted
+    // segment is pruned before the recovery starts a new one.
+    w.commit();
+
+    // Recover with a clean vector batch.
+    float[][] recovery = {{4f, 4f}};
+    w.addBatch(simpleBatch(1, new ArrayDenseFloatVectorColumn("v", vectorType, recovery)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    assertEquals(1, leaf.maxDoc());
+    assertEquals(1, leaf.numDocs());
+
+    FloatVectorValues vv = leaf.getFloatVectorValues("v");
+    KnnVectorValues.DocIndexIterator it = vv.iterator();
+    assertEquals(0, it.nextDoc());
+    assertArrayEquals(recovery[0], vv.vectorValue(it.index()), 0f);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.nextDoc());
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testEmptyBatch() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    w.addBatch(simpleBatch(0));
+
+    // Writer still functions for follow-up work.
+    w.addBatch(
+        simpleBatch(
+            1,
+            new ArrayLongColumn("v", NumericDocValuesField.TYPE, new int[] {0}, new long[] {42})));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    assertEquals(1, leaf.maxDoc());
+    NumericDocValues dv = leaf.getNumericDocValues("v");
+    assertEquals(0, dv.nextDoc());
+    assertEquals(42, dv.longValue());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, dv.nextDoc());
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testMultipleBatchesIntoOneSegment() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    w.addBatch(
+        simpleBatch(
+            3,
+            new ArrayLongColumn(
+                "v", NumericDocValuesField.TYPE, new int[] {0, 1, 2}, new long[] {10, 20, 30})));
+    w.addBatch(
+        simpleBatch(
+            2,
+            new ArrayLongColumn(
+                "v", NumericDocValuesField.TYPE, new int[] {0, 1}, new long[] {40, 50})));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    assertEquals(5, leaf.maxDoc());
+    NumericDocValues dv = leaf.getNumericDocValues("v");
+    long[] expected = {10, 20, 30, 40, 50};
+    for (int i = 0; i < expected.length; i++) {
+      assertEquals(i, dv.nextDoc());
+      assertEquals(expected[i], dv.longValue());
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, dv.nextDoc());
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  /** Interleaving addBatch and addDocument keeps doc-ids contiguous and values consistent. */
+  public void testAddBatchInterleavedWithAddDocument() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    // batch (3) → doc → batch (2) → doc, expecting docs 0..6 in order.
+    w.addBatch(
+        simpleBatch(
+            3,
+            new ArrayLongColumn(
+                "v", NumericDocValuesField.TYPE, new int[] {0, 1, 2}, new long[] {10, 20, 30})));
+    Document d3 = new Document();
+    d3.add(new NumericDocValuesField("v", 40));
+    w.addDocument(d3);
+    w.addBatch(
+        simpleBatch(
+            2,
+            new ArrayLongColumn(
+                "v", NumericDocValuesField.TYPE, new int[] {0, 1}, new long[] {50, 60})));
+    Document d6 = new Document();
+    d6.add(new NumericDocValuesField("v", 70));
+    w.addDocument(d6);
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    assertEquals(7, leaf.maxDoc());
+    NumericDocValues dv = leaf.getNumericDocValues("v");
+    long[] expected = {10, 20, 30, 40, 50, 60, 70};
+    for (int i = 0; i < expected.length; i++) {
+      assertEquals(i, dv.nextDoc());
+      assertEquals(expected[i], dv.longValue());
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, dv.nextDoc());
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testAddBatchWithDeletes() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType idType = new FieldType(StringField.TYPE_NOT_STORED);
+    idType.freeze();
+
+    BytesRef[] ids = {
+      newBytesRef("a"), newBytesRef("b"), newBytesRef("c"), newBytesRef("d"),
+    };
+    int[] docIds = {0, 1, 2, 3};
+    w.addBatch(simpleBatch(4, new ArrayBinaryColumn("id", idType, docIds, ids)));
+
+    w.deleteDocuments(new Term("id", "b"));
+    w.deleteDocuments(new TermQuery(new Term("id", "d")));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    IndexSearcher s = new IndexSearcher(r);
+    assertEquals(0, s.count(new TermQuery(new Term("id", "b"))));
+    assertEquals(0, s.count(new TermQuery(new Term("id", "d"))));
+    assertEquals(1, s.count(new TermQuery(new Term("id", "a"))));
+    assertEquals(1, s.count(new TermQuery(new Term("id", "c"))));
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testIndexSortWithAddBatch() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = newIndexWriterConfig();
+    config.setIndexSort(new Sort(new SortField("sort", SortField.Type.LONG)));
+    IndexWriter w = new IndexWriter(dir, config);
+
+    // Out-of-order: input is 30, 10, 20 — segment should reorder to 10, 20, 30.
+    long[] values = {30, 10, 20};
+    int[] docIds = {0, 1, 2};
+    w.addBatch(
+        simpleBatch(3, new ArrayLongColumn("sort", NumericDocValuesField.TYPE, docIds, values)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    assertEquals(3, leaf.maxDoc());
+
+    NumericDocValues dv = leaf.getNumericDocValues("sort");
+    long[] sorted = {10, 20, 30};
+    for (int i = 0; i < sorted.length; i++) {
+      assertEquals(i, dv.nextDoc());
+      assertEquals(sorted[i], dv.longValue());
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, dv.nextDoc());
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testForceMergeMixedOriginSegments() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    // Segment A via addDocument: values 10, 20, 30.
+    for (int i = 0; i < 3; i++) {
+      Document doc = new Document();
+      doc.add(new NumericDocValuesField("v", 10L * (i + 1)));
+      w.addDocument(doc);
+    }
+    w.commit();
+
+    // Segment B via addBatch: values 40, 50, 60.
+    w.addBatch(
+        simpleBatch(
+            3,
+            new ArrayLongColumn(
+                "v", NumericDocValuesField.TYPE, new int[] {0, 1, 2}, new long[] {40, 50, 60})));
+    w.commit();
+
+    w.forceMerge(1);
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    assertEquals(6, leaf.maxDoc());
+
+    NumericDocValues dv = leaf.getNumericDocValues("v");
+    long[] expected = {10, 20, 30, 40, 50, 60};
+    for (int i = 0; i < expected.length; i++) {
+      assertEquals(i, dv.nextDoc());
+      assertEquals(expected[i], dv.longValue());
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, dv.nextDoc());
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  /**
+   * Multiple threads calling addBatch concurrently on the same writer produce a consistent index
+   * with every doc reachable by its unique id and the expected total doc count.
+   */
+  public void testConcurrentAddBatch() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    final int numThreads = 4;
+    final int batchesPerThread = 5;
+    final int docsPerBatch = 10;
+    final CountDownLatch start = new CountDownLatch(1);
+    Thread[] threads = new Thread[numThreads];
+    for (int t = 0; t < numThreads; t++) {
+      final int threadIdx = t;
+      threads[t] =
+          new Thread(
+              () -> {
+                try {
+                  start.await();
+                  int[] docIds = new int[docsPerBatch];
+                  for (int i = 0; i < docsPerBatch; i++) {
+                    docIds[i] = i;
+                  }
+                  for (int b = 0; b < batchesPerThread; b++) {
+                    BytesRef[] ids = new BytesRef[docsPerBatch];
+                    for (int i = 0; i < docsPerBatch; i++) {
+                      ids[i] = newBytesRef("t" + threadIdx + "_b" + b + "_d" + i);
+                    }
+                    w.addBatch(
+                        simpleBatch(
+                            docsPerBatch,
+                            new ArrayBinaryColumn("id", StringField.TYPE_NOT_STORED, docIds, ids)));
+                  }
+                } catch (Exception e) {
+                  throw new AssertionError(e);
+                }
+              });
+      threads[t].start();
+    }
+    start.countDown();
+    for (Thread th : threads) {
+      th.join();
     }
 
-    ArrayLongColumn(
-        String name,
-        IndexableFieldType fieldType,
-        NumericKind numericKind,
-        int[] docIds,
-        long[] values) {
-      super(name, fieldType, Density.SPARSE, numericKind);
-      assert docIds.length == values.length;
-      this.docIds = docIds;
-      this.values = values;
+    int totalDocs = numThreads * batchesPerThread * docsPerBatch;
+    DirectoryReader r = DirectoryReader.open(w);
+    assertEquals(totalDocs, r.numDocs());
+    IndexSearcher s = new IndexSearcher(r);
+    for (int t = 0; t < numThreads; t++) {
+      for (int b = 0; b < batchesPerThread; b++) {
+        for (int i = 0; i < docsPerBatch; i++) {
+          Term term = new Term("id", "t" + t + "_b" + b + "_d" + i);
+          assertEquals("missing " + term, 1, s.count(new TermQuery(term)));
+        }
+      }
     }
 
-    @Override
-    public LongTupleCursor tuples() {
-      return new LongTupleCursor() {
-        int pos = -1;
+    r.close();
+    w.close();
+    dir.close();
+  }
 
-        @Override
-        public int nextDoc() {
-          pos++;
-          return pos < docIds.length ? docIds[pos] : DocIdSetIterator.NO_MORE_DOCS;
-        }
+  /** Per-doc payload covering the union of column types we stress in the parity test. */
+  private static final class ParityDoc {
+    Long num; // numeric DV
+    long[] snum; // multi-valued sorted-numeric DV
+    BytesRef binStored; // binary DV + stored
+    BytesRef[] set; // multi-valued sorted-set DV
+    Long lpoint; // single 1-D long point
+    BytesRef tag; // indexed StringField for term queries
+    float[] vec; // float vector
+  }
 
-        @Override
-        public long longValue() {
-          return values[pos];
+  private static ParityDoc randomParityDoc(Random r) {
+    ParityDoc d = new ParityDoc();
+    if (r.nextFloat() < 0.7f) d.num = (long) r.nextInt(1000);
+    if (r.nextFloat() < 0.5f) {
+      int n = TestUtil.nextInt(r, 1, 3);
+      d.snum = new long[n];
+      for (int i = 0; i < n; i++) d.snum[i] = (long) r.nextInt(1000);
+      java.util.Arrays.sort(d.snum);
+    }
+    if (r.nextFloat() < 0.6f) {
+      d.binStored = newBytesRef("b" + r.nextInt(50));
+    }
+    if (r.nextFloat() < 0.5f) {
+      int n = TestUtil.nextInt(r, 1, 3);
+      java.util.TreeSet<String> uniq = new java.util.TreeSet<>();
+      while (uniq.size() < n) uniq.add("s" + r.nextInt(20));
+      d.set = uniq.stream().map(LuceneTestCase::newBytesRef).toArray(BytesRef[]::new);
+    }
+    if (r.nextFloat() < 0.6f) d.lpoint = (long) r.nextInt(10000);
+    if (r.nextFloat() < 0.7f) d.tag = newBytesRef("tag" + r.nextInt(15));
+    if (r.nextFloat() < 0.5f) {
+      d.vec = new float[] {r.nextFloat(), r.nextFloat()};
+    }
+    return d;
+  }
+
+  private static void buildDocByDocIndex(Directory dir, ParityDoc[] docs) throws IOException {
+    try (IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+      for (ParityDoc d : docs) {
+        Document doc = new Document();
+        if (d.num != null) doc.add(new NumericDocValuesField("num", d.num));
+        if (d.snum != null) {
+          for (long v : d.snum) doc.add(new SortedNumericDocValuesField("snum", v));
         }
-      };
+        if (d.binStored != null) {
+          doc.add(new BinaryDocValuesField("bin_stored", d.binStored));
+          doc.add(new StoredField("bin_stored", d.binStored));
+        }
+        if (d.set != null) {
+          for (BytesRef v : d.set) doc.add(new SortedSetDocValuesField("set", v));
+        }
+        if (d.lpoint != null) doc.add(new LongPoint("lpoint", d.lpoint));
+        if (d.tag != null) doc.add(new StringField("tag", d.tag, Field.Store.NO));
+        if (d.vec != null) doc.add(new KnnFloatVectorField("vec", d.vec));
+        w.addDocument(doc);
+      }
+      w.forceMerge(1);
     }
   }
 
-  private static class ArrayBinaryColumn extends BinaryColumn {
-    private final int[] docIds;
-    private final BytesRef[] values;
-    private final StoredValue.Type storedType;
-
-    ArrayBinaryColumn(String name, IndexableFieldType fieldType, int[] docIds, BytesRef[] values) {
-      this(name, fieldType, docIds, values, StoredValue.Type.BINARY);
+  /**
+   * Builds an index by partitioning the docs into random-sized batches and feeding each batch
+   * through addBatch. Every per-batch column carries only the batch-local docs that actually have a
+   * value for that field; columns absent from a batch (no doc has a value) are simply not included.
+   */
+  private static void buildBatchIndex(Directory dir, ParityDoc[] docs, Random r)
+      throws IOException {
+    // Partition into 1..min(4, numDocs) contiguous batches.
+    int numBatches = TestUtil.nextInt(r, 1, Math.min(4, Math.max(1, docs.length)));
+    int[] starts = new int[numBatches + 1];
+    starts[0] = 0;
+    starts[numBatches] = docs.length;
+    for (int i = 1; i < numBatches; i++) {
+      starts[i] = TestUtil.nextInt(r, starts[i - 1] + 1, docs.length - (numBatches - i));
     }
 
-    ArrayBinaryColumn(
-        String name,
-        IndexableFieldType fieldType,
-        int[] docIds,
-        BytesRef[] values,
-        StoredValue.Type storedType) {
-      super(name, fieldType, Density.SPARSE);
-      assert docIds.length == values.length;
-      this.docIds = docIds;
-      this.values = values;
-      this.storedType = storedType;
-    }
+    // Field types used on the batch path.
+    FieldType binStoredType = new FieldType();
+    binStoredType.setDocValuesType(DocValuesType.BINARY);
+    binStoredType.setStored(true);
+    binStoredType.freeze();
+    FieldType lpointType = new FieldType();
+    lpointType.setDimensions(1, Long.BYTES);
+    lpointType.freeze();
+    FieldType tagType = StringField.TYPE_NOT_STORED;
+    FieldType vecType = new FieldType();
+    vecType.setVectorAttributes(2, VectorEncoding.FLOAT32, VectorSimilarityFunction.EUCLIDEAN);
+    vecType.freeze();
 
-    @Override
-    public StoredValue.Type storedType() {
-      return storedType;
-    }
+    try (IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+      for (int bi = 0; bi < numBatches; bi++) {
+        int from = starts[bi];
+        int toExcl = starts[bi + 1];
+        int batchSize = toExcl - from;
+        List<Column> cols = new ArrayList<>();
 
-    @Override
-    public ObjectTupleCursor<BytesRef> tuples() {
-      return new ObjectTupleCursor<>() {
-        int pos = -1;
+        // num: single-valued NUMERIC
+        addLongTupleColumn(cols, "num", NumericDocValuesField.TYPE, docs, from, toExcl, d -> d.num);
 
-        @Override
-        public int nextDoc() {
-          pos++;
-          return pos < docIds.length ? docIds[pos] : DocIdSetIterator.NO_MORE_DOCS;
-        }
+        // snum: multi-valued SORTED_NUMERIC
+        addLongMultiColumn(
+            cols, "snum", SortedNumericDocValuesField.TYPE, docs, from, toExcl, d -> d.snum);
 
-        @Override
-        public BytesRef value() {
-          return values[pos];
-        }
-      };
-    }
-  }
+        // bin_stored: BINARY DV + stored
+        addBinaryTupleColumn(
+            cols, "bin_stored", binStoredType, docs, from, toExcl, d -> d.binStored);
 
-  /** Dense {@link LongColumn} with an optional bulk values cursor. */
-  private static class ArrayDenseLongColumn extends LongColumn {
-    private final long[] values;
+        // set: multi-valued SORTED_SET
+        addBinaryMultiColumn(
+            cols, "set", SortedSetDocValuesField.TYPE, docs, from, toExcl, d -> d.set);
 
-    ArrayDenseLongColumn(String name, IndexableFieldType fieldType, long[] values) {
-      super(name, fieldType, Density.DENSE);
-      this.values = values;
-    }
+        // lpoint: 1-D long point
+        addLongTupleColumn(
+            cols,
+            "lpoint",
+            lpointType,
+            LongColumn.NumericKind.LONG,
+            docs,
+            from,
+            toExcl,
+            d -> d.lpoint);
 
-    @Override
-    public LongTupleCursor tuples() {
-      return new LongTupleCursor() {
-        int pos = -1;
+        // tag: indexed StringField
+        addBinaryTupleColumn(cols, "tag", tagType, docs, from, toExcl, d -> d.tag);
 
-        @Override
-        public int nextDoc() {
-          pos++;
-          return pos < values.length ? pos : DocIdSetIterator.NO_MORE_DOCS;
-        }
+        // vec: float vectors (sparse)
+        addFloatVectorColumn(cols, "vec", vecType, docs, from, toExcl);
 
-        @Override
-        public long longValue() {
-          return values[pos];
-        }
-      };
-    }
+        w.addBatch(
+            new org.apache.lucene.document.column.ColumnBatch() {
+              @Override
+              public int numDocs() {
+                return batchSize;
+              }
 
-    @Override
-    public LongValuesCursor values() {
-      return new LongValuesCursor(values.length) {
-        int pos = 0;
-
-        @Override
-        public long nextLong() {
-          if (pos >= values.length) {
-            throw new IllegalStateException("LongValuesCursor exhausted: size=" + values.length);
-          }
-          return values[pos++];
-        }
-
-        @Override
-        public void fillDocValues(long[] dst, int offset, int length) {
-          if (pos + length > values.length) {
-            throw new IllegalStateException("LongValuesCursor exhausted: size=" + values.length);
-          }
-          System.arraycopy(values, pos, dst, offset, length);
-          pos += length;
-        }
-      };
+              @Override
+              public Iterable<Column> columns() {
+                return cols;
+              }
+            });
+      }
+      w.forceMerge(1);
     }
   }
 
-  private static class ArrayFloatVectorColumn extends VectorColumn<float[]> {
-    private final int[] docIds;
-    private final float[][] values;
-
-    ArrayFloatVectorColumn(
-        String name, IndexableFieldType fieldType, int[] docIds, float[][] values) {
-      super(name, fieldType, Density.SPARSE);
-      assert docIds.length == values.length;
-      this.docIds = docIds;
-      this.values = values;
-    }
-
-    @Override
-    public ObjectTupleCursor<float[]> tuples() {
-      return new ObjectTupleCursor<>() {
-        int pos = -1;
-
-        @Override
-        public int nextDoc() {
-          pos++;
-          return pos < docIds.length ? docIds[pos] : DocIdSetIterator.NO_MORE_DOCS;
-        }
-
-        @Override
-        public float[] value() {
-          return values[pos];
-        }
-      };
-    }
+  private interface DocFn<T> {
+    T apply(ParityDoc d);
   }
 
-  private static class ArrayByteVectorColumn extends VectorColumn<byte[]> {
-    private final int[] docIds;
-    private final byte[][] values;
-
-    ArrayByteVectorColumn(
-        String name, IndexableFieldType fieldType, int[] docIds, byte[][] values) {
-      super(name, fieldType, Density.SPARSE);
-      assert docIds.length == values.length;
-      this.docIds = docIds;
-      this.values = values;
-    }
-
-    @Override
-    public ObjectTupleCursor<byte[]> tuples() {
-      return new ObjectTupleCursor<>() {
-        int pos = -1;
-
-        @Override
-        public int nextDoc() {
-          pos++;
-          return pos < docIds.length ? docIds[pos] : DocIdSetIterator.NO_MORE_DOCS;
-        }
-
-        @Override
-        public byte[] value() {
-          return values[pos];
-        }
-      };
-    }
+  private static void addLongTupleColumn(
+      List<Column> cols,
+      String name,
+      IndexableFieldType type,
+      ParityDoc[] docs,
+      int from,
+      int toExcl,
+      DocFn<Long> getter) {
+    addLongTupleColumn(cols, name, type, LongColumn.NumericKind.LONG, docs, from, toExcl, getter);
   }
 
-  private static class ArrayDenseFloatVectorColumn extends VectorColumn<float[]> {
-    private final float[][] values;
-
-    ArrayDenseFloatVectorColumn(String name, IndexableFieldType fieldType, float[][] values) {
-      super(name, fieldType, Density.DENSE);
-      this.values = values;
+  private static void addLongTupleColumn(
+      List<Column> cols,
+      String name,
+      IndexableFieldType type,
+      LongColumn.NumericKind kind,
+      ParityDoc[] docs,
+      int from,
+      int toExcl,
+      DocFn<Long> getter) {
+    int n = 0;
+    for (int i = from; i < toExcl; i++) if (getter.apply(docs[i]) != null) n++;
+    if (n == 0) return;
+    int[] docIds = new int[n];
+    long[] values = new long[n];
+    int p = 0;
+    for (int i = from; i < toExcl; i++) {
+      Long v = getter.apply(docs[i]);
+      if (v != null) {
+        docIds[p] = i - from;
+        values[p] = v;
+        p++;
+      }
     }
-
-    @Override
-    public ObjectTupleCursor<float[]> tuples() {
-      return new ObjectTupleCursor<>() {
-        int pos = -1;
-
-        @Override
-        public int nextDoc() {
-          pos++;
-          return pos < values.length ? pos : DocIdSetIterator.NO_MORE_DOCS;
-        }
-
-        @Override
-        public float[] value() {
-          return values[pos];
-        }
-      };
-    }
+    cols.add(new ArrayLongColumn(name, type, kind, docIds, values));
   }
 
-  private static class ArrayDenseByteVectorColumn extends VectorColumn<byte[]> {
-    private final byte[][] values;
+  private static void addLongMultiColumn(
+      List<Column> cols,
+      String name,
+      IndexableFieldType type,
+      ParityDoc[] docs,
+      int from,
+      int toExcl,
+      DocFn<long[]> getter) {
+    int n = 0;
+    for (int i = from; i < toExcl; i++) {
+      long[] v = getter.apply(docs[i]);
+      if (v != null) n += v.length;
+    }
+    if (n == 0) return;
+    int[] docIds = new int[n];
+    long[] values = new long[n];
+    int p = 0;
+    for (int i = from; i < toExcl; i++) {
+      long[] v = getter.apply(docs[i]);
+      if (v != null) {
+        for (long x : v) {
+          docIds[p] = i - from;
+          values[p] = x;
+          p++;
+        }
+      }
+    }
+    cols.add(new ArrayLongColumn(name, type, docIds, values));
+  }
 
-    ArrayDenseByteVectorColumn(String name, IndexableFieldType fieldType, byte[][] values) {
-      super(name, fieldType, Density.DENSE);
-      this.values = values;
+  private static void addBinaryTupleColumn(
+      List<Column> cols,
+      String name,
+      IndexableFieldType type,
+      ParityDoc[] docs,
+      int from,
+      int toExcl,
+      DocFn<BytesRef> getter) {
+    int n = 0;
+    for (int i = from; i < toExcl; i++) if (getter.apply(docs[i]) != null) n++;
+    if (n == 0) return;
+    int[] docIds = new int[n];
+    BytesRef[] values = new BytesRef[n];
+    int p = 0;
+    for (int i = from; i < toExcl; i++) {
+      BytesRef v = getter.apply(docs[i]);
+      if (v != null) {
+        docIds[p] = i - from;
+        values[p] = v;
+        p++;
+      }
+    }
+    cols.add(new ArrayBinaryColumn(name, type, docIds, values));
+  }
+
+  private static void addBinaryMultiColumn(
+      List<Column> cols,
+      String name,
+      IndexableFieldType type,
+      ParityDoc[] docs,
+      int from,
+      int toExcl,
+      DocFn<BytesRef[]> getter) {
+    int n = 0;
+    for (int i = from; i < toExcl; i++) {
+      BytesRef[] v = getter.apply(docs[i]);
+      if (v != null) n += v.length;
+    }
+    if (n == 0) return;
+    int[] docIds = new int[n];
+    BytesRef[] values = new BytesRef[n];
+    int p = 0;
+    for (int i = from; i < toExcl; i++) {
+      BytesRef[] v = getter.apply(docs[i]);
+      if (v != null) {
+        for (BytesRef x : v) {
+          docIds[p] = i - from;
+          values[p] = x;
+          p++;
+        }
+      }
+    }
+    cols.add(new ArrayBinaryColumn(name, type, docIds, values));
+  }
+
+  private static void addFloatVectorColumn(
+      List<Column> cols,
+      String name,
+      IndexableFieldType type,
+      ParityDoc[] docs,
+      int from,
+      int toExcl) {
+    int n = 0;
+    for (int i = from; i < toExcl; i++) if (docs[i].vec != null) n++;
+    if (n == 0) return;
+    int[] docIds = new int[n];
+    float[][] values = new float[n][];
+    int p = 0;
+    for (int i = from; i < toExcl; i++) {
+      if (docs[i].vec != null) {
+        docIds[p] = i - from;
+        values[p] = docs[i].vec;
+        p++;
+      }
+    }
+    cols.add(new ArrayFloatVectorColumn(name, type, docIds, values));
+  }
+
+  public void testRandomizedParityVsDocByDoc() throws IOException {
+    Random r = random();
+    int numDocs = TestUtil.nextInt(r, 30, 80);
+    ParityDoc[] docs = new ParityDoc[numDocs];
+    for (int i = 0; i < numDocs; i++) {
+      docs[i] = randomParityDoc(r);
     }
 
-    @Override
-    public ObjectTupleCursor<byte[]> tuples() {
-      return new ObjectTupleCursor<>() {
-        int pos = -1;
+    Directory batchDir = newDirectory();
+    Directory docDir = newDirectory();
+    buildBatchIndex(batchDir, docs, r);
+    buildDocByDocIndex(docDir, docs);
 
-        @Override
-        public int nextDoc() {
-          pos++;
-          return pos < values.length ? pos : DocIdSetIterator.NO_MORE_DOCS;
-        }
+    try (DirectoryReader bR = DirectoryReader.open(batchDir);
+        DirectoryReader dR = DirectoryReader.open(docDir)) {
+      LeafReader bL = getOnlyLeafReader(bR);
+      LeafReader dL = getOnlyLeafReader(dR);
 
-        @Override
-        public byte[] value() {
-          return values[pos];
+      assertEquals("maxDoc", dL.maxDoc(), bL.maxDoc());
+      assertEquals("numDocs", dL.numDocs(), bL.numDocs());
+      assertEquals(numDocs, bL.maxDoc());
+
+      // Numeric DV
+      assertNumericDocValuesEqual(dL.getNumericDocValues("num"), bL.getNumericDocValues("num"));
+      // Sorted Numeric DV
+      assertSortedNumericDocValuesEqual(
+          dL.getSortedNumericDocValues("snum"), bL.getSortedNumericDocValues("snum"));
+      // Binary DV (paired with stored)
+      assertBinaryDocValuesEqual(
+          dL.getBinaryDocValues("bin_stored"), bL.getBinaryDocValues("bin_stored"));
+      // Sorted Set DV
+      assertSortedSetDocValuesEqual(
+          dL.getSortedSetDocValues("set"), bL.getSortedSetDocValues("set"));
+
+      // Stored fields per doc
+      StoredFields bSF = bL.storedFields();
+      StoredFields dSF = dL.storedFields();
+      for (int i = 0; i < numDocs; i++) {
+        BytesRef expected = docs[i].binStored;
+        IndexableField dF = dSF.document(i).getField("bin_stored");
+        IndexableField bF = bSF.document(i).getField("bin_stored");
+        if (expected == null) {
+          assertNull("doc " + i + " bin_stored doc-path", dF);
+          assertNull("doc " + i + " bin_stored batch-path", bF);
+        } else {
+          assertEquals(expected, dF.binaryValue());
+          assertEquals(expected, bF.binaryValue());
         }
-      };
+      }
+
+      // Point query parity
+      IndexSearcher dS = new IndexSearcher(dR);
+      IndexSearcher bS = new IndexSearcher(bR);
+      for (long pq : new long[] {0L, 100L, 5000L, 9999L}) {
+        assertEquals(
+            "lpoint exact " + pq,
+            dS.count(LongPoint.newExactQuery("lpoint", pq)),
+            bS.count(LongPoint.newExactQuery("lpoint", pq)));
+      }
+      assertEquals(
+          "lpoint range",
+          dS.count(LongPoint.newRangeQuery("lpoint", 0L, 9999L)),
+          bS.count(LongPoint.newRangeQuery("lpoint", 0L, 9999L)));
+
+      // Term query parity for the inverted "tag" field.
+      for (int i = 0; i < 15; i++) {
+        Term t = new Term("tag", "tag" + i);
+        assertEquals("tag " + t, dS.count(new TermQuery(t)), bS.count(new TermQuery(t)));
+      }
+
+      // Vector parity per doc (codec may reorder storage; iterate by doc-id).
+      FloatVectorValues dV = dL.getFloatVectorValues("vec");
+      FloatVectorValues bV = bL.getFloatVectorValues("vec");
+      assertVectorsEqual(dV, bV, docs);
     }
+    batchDir.close();
+    docDir.close();
+  }
+
+  private static void assertNumericDocValuesEqual(NumericDocValues a, NumericDocValues b)
+      throws IOException {
+    if (a == null && b == null) return;
+    assertNotNull(a);
+    assertNotNull(b);
+    int da, db;
+    while ((da = a.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      db = b.nextDoc();
+      assertEquals(da, db);
+      assertEquals("num docID " + da, a.longValue(), b.longValue());
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, b.nextDoc());
+  }
+
+  private static void assertSortedNumericDocValuesEqual(
+      SortedNumericDocValues a, SortedNumericDocValues b) throws IOException {
+    if (a == null && b == null) return;
+    assertNotNull(a);
+    assertNotNull(b);
+    int da, db;
+    while ((da = a.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      db = b.nextDoc();
+      assertEquals(da, db);
+      int ca = a.docValueCount();
+      assertEquals("snum count docID " + da, ca, b.docValueCount());
+      for (int i = 0; i < ca; i++) {
+        assertEquals("snum value docID " + da, a.nextValue(), b.nextValue());
+      }
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, b.nextDoc());
+  }
+
+  private static void assertBinaryDocValuesEqual(BinaryDocValues a, BinaryDocValues b)
+      throws IOException {
+    if (a == null && b == null) return;
+    assertNotNull(a);
+    assertNotNull(b);
+    int da, db;
+    while ((da = a.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      db = b.nextDoc();
+      assertEquals(da, db);
+      assertEquals("bin docID " + da, a.binaryValue(), b.binaryValue());
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, b.nextDoc());
+  }
+
+  private static void assertSortedSetDocValuesEqual(SortedSetDocValues a, SortedSetDocValues b)
+      throws IOException {
+    if (a == null && b == null) return;
+    assertNotNull(a);
+    assertNotNull(b);
+    int da, db;
+    while ((da = a.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      db = b.nextDoc();
+      assertEquals(da, db);
+      int ca = a.docValueCount();
+      assertEquals("set count docID " + da, ca, b.docValueCount());
+      for (int i = 0; i < ca; i++) {
+        assertEquals("set value docID " + da, a.lookupOrd(a.nextOrd()), b.lookupOrd(b.nextOrd()));
+      }
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, b.nextDoc());
+  }
+
+  private static void assertVectorsEqual(
+      FloatVectorValues dV, FloatVectorValues bV, ParityDoc[] docs) throws IOException {
+    if (dV == null && bV == null) return;
+    assertNotNull(dV);
+    assertNotNull(bV);
+    KnnVectorValues.DocIndexIterator dIt = dV.iterator();
+    KnnVectorValues.DocIndexIterator bIt = bV.iterator();
+    int nDoc;
+    while ((nDoc = dIt.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      assertEquals(nDoc, bIt.nextDoc());
+      float[] expected = docs[nDoc].vec;
+      assertNotNull("expected vector at doc " + nDoc, expected);
+      assertArrayEquals(expected, dV.vectorValue(dIt.index()), 0f);
+      assertArrayEquals(expected, bV.vectorValue(bIt.index()), 0f);
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bIt.nextDoc());
   }
 }
