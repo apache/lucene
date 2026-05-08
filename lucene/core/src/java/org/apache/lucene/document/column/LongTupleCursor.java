@@ -27,9 +27,6 @@ import org.apache.lucene.search.DocIdSetIterator;
  */
 public abstract class LongTupleCursor {
 
-  /** Sole constructor. */
-  protected LongTupleCursor() {}
-
   /**
    * Advances to the next doc-id that has a value and returns it, or {@link
    * DocIdSetIterator#NO_MORE_DOCS} if exhausted. Doc-ids are batch-local (0 to {@code numDocs -

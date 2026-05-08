@@ -31,7 +31,15 @@ public abstract class LongValuesCursor {
 
   private final int size;
 
-  /** Sole constructor. */
+  /**
+   * Creates a cursor that will produce exactly {@code size} values, one per batch-local doc-id in
+   * {@code [0, size)}. {@code size} is fixed for the cursor's lifetime and must equal the dense
+   * column's {@code numDocs}.
+   *
+   * <p>Lucene's internal indexing paths will not consume past {@code size} across {@link
+   * #nextLong()}, {@link #fillDocValues}, and the {@code fillPoints} variants. Defensive throws on
+   * overrun are still encouraged to catch misuse from external callers.
+   */
   protected LongValuesCursor(int size) {
     this.size = size;
   }

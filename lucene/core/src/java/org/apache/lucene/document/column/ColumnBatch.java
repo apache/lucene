@@ -25,9 +25,6 @@ package org.apache.lucene.document.column;
  */
 public abstract class ColumnBatch {
 
-  /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
-  protected ColumnBatch() {}
-
   /**
    * Returns the number of documents in this batch. All column doc-ids must be in the range [0,
    * numDocs()).
