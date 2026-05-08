@@ -1000,7 +1000,10 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
 
   public void testForceMergeMixedOriginSegments() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    // Pin a non-mock merge policy: MockRandomMergePolicy.reorder may reverse doc-ids during
+    // merge, which is legitimate behavior but defeats the strict per-doc-id assertions below.
+    IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(new TieredMergePolicy());
+    IndexWriter w = new IndexWriter(dir, iwc);
 
     // Segment A via addDocument: values 10, 20, 30.
     for (int i = 0; i < 3; i++) {
