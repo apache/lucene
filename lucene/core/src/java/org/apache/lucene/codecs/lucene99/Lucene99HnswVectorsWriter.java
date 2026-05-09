@@ -451,7 +451,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         } else {
           RandomVectorScorerSupplier scorerSupplier =
               flatVectorsReader
-                  .getFlatVectorScorer()
+                  .getFlatVectorScorer(fieldInfo.getName())
                   .getRandomVectorScorerSupplier(
                       fieldInfo.getVectorSimilarityFunction(), vectorValues);
           buildAndWriteGraph(fieldInfo, mergeState, vectorValues, scorerSupplier, totalVectorCount);

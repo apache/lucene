@@ -23,9 +23,11 @@ API Changes
 * GITHUB#15584: Add support for termdoc fields that use custom term freqs (via IndexOptions.DOCS_AND_CUSTOM_FREQS).
   IndexWriter counts their terms rather than summing their freqs.  Use
 
-* GITHUB#15605: Deprecate TopFieldCollectorManager#getCollectors. The result of the search
-  operation is returned as part of a TopFieldDocs instance, there is no need to check the state
-  of each collector after search. (Prudhvi Godithi)
+* GITHUB#16043: Add field parameter to FlatVectorsReader.getFlatVectorScorer to match the other
+  scorer methods in that class. (Simon Cooper)
+
+* GITHUB#15605: Remove unused getCollectors() and internal collector tracking from
+  TopFieldCollectorManager. Clarify thread-safety documentation. (Prudhvi Godithi)
 
 New Features
 ---------------------
