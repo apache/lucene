@@ -37,9 +37,11 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NoMergePolicy;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -212,6 +214,116 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
       assertTrue(range.minDoc() >= 40);
       assertTrue(range.maxDoc() <= 60);
     }
+
+    reader.close();
+    dir.close();
+  }
+
+  /** Multi-segment index: optimized rewrite must match plain boolean hits on every leaf. */
+  public void testBooleanNumericFilterOnPrimaryIndexSortFieldMultiSegmentEquivalentToBoolean()
+      throws IOException {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setMergePolicy(NoMergePolicy.INSTANCE);
+    iwc.setIndexSort(
+        new Sort(LongField.newSortField("sort", false, SortedNumericSelector.Type.MIN)));
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+
+    for (int i = 50; i >= 41; --i) {
+      Document doc = new Document();
+      doc.add(new LongField("sort", i, Field.Store.NO));
+      doc.add(new StringField("all", "x", Field.Store.NO));
+      iw.addDocument(doc);
+    }
+    iw.commit(false);
+
+    for (int i = 40; i >= 31; --i) {
+      Document doc = new Document();
+      doc.add(new LongField("sort", i, Field.Store.NO));
+      doc.add(new StringField("all", "x", Field.Store.NO));
+      iw.addDocument(doc);
+    }
+    iw.commit(false);
+
+    DirectoryReader reader = iw.getReader();
+    assertTrue(reader.leaves().size() >= 2);
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    Query filter = LongField.newRangeQuery("sort", 42, 47);
+    Query booleanQuery =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new org.apache.lucene.index.Term("all", "x")), BooleanClause.Occur.MUST)
+            .add(filter, BooleanClause.Occur.FILTER)
+            .build();
+
+    Query rewritten = searcher.rewrite(booleanQuery);
+    MatcherAssert.assertThat(rewritten, instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+
+    final int maxDoc = searcher.getIndexReader().maxDoc();
+    TopDocs td1 = searcher.search(booleanQuery, maxDoc, Sort.INDEXORDER);
+    TopDocs td2 = searcher.search(rewritten, maxDoc, Sort.INDEXORDER);
+    assertEquals(td1.totalHits.value(), td2.totalHits.value());
+    assertEquals(td1.scoreDocs.length, td2.scoreDocs.length);
+    for (int i = 0; i < td1.scoreDocs.length; i++) {
+      assertEquals(td1.scoreDocs[i].doc, td2.scoreDocs[i].doc);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * Bundled Europarl one-line-per-doc text ({@link LineFileDocs} default) with index primary sort on
+   * {@code title}: same hits for boolean vs {@link FilteredOnPrimaryIndexSortFieldQuery} rewrite.
+   */
+  public void testBooleanPrimarySortFilterWithLineFileDocs() throws IOException {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(16)));
+    iwc.setIndexSort(
+        new Sort(
+            KeywordField.newSortField(
+                "title", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST)));
+
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+
+    final int numDocs = atLeast(120);
+    final int anchorOrdinal = numDocs / 2;
+    String anchorTitle = null;
+    String anchorDocId = null;
+
+    try (LineFileDocs docs = new LineFileDocs(random())) {
+      for (int i = 0; i < numDocs; i++) {
+        Document d = docs.nextDoc();
+        if (i == anchorOrdinal) {
+          anchorTitle = d.getField("title").stringValue();
+          anchorDocId = d.getField("docid").stringValue();
+        }
+        iw.addDocument(d);
+      }
+    }
+
+    DirectoryReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    Query booleanQuery =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("docid", anchorDocId)), BooleanClause.Occur.MUST)
+            .add(new TermQuery(new Term("title", anchorTitle)), BooleanClause.Occur.FILTER)
+            .build();
+
+    Query rewritten = searcher.rewrite(booleanQuery);
+    MatcherAssert.assertThat(rewritten, instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+
+    TopDocs td1 = searcher.search(booleanQuery, 10);
+    TopDocs td2 = searcher.search(rewritten, 10);
+    assertEquals(1, td1.totalHits.value());
+    assertEquals(1, td2.totalHits.value());
+    assertEquals(td1.scoreDocs[0].doc, td2.scoreDocs[0].doc);
 
     reader.close();
     dir.close();

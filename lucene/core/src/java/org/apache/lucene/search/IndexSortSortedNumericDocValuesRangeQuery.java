@@ -66,7 +66,8 @@ import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
  *
  * @lucene.experimental
  */
-public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery {
+public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery
+    implements PrimarySortAlignable {
 
   private final Query fallbackQuery;
 
@@ -550,6 +551,22 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
       return null;
     }
     return new DocIdRange(itAndCount.minDoc(), itAndCount.maxDoc());
+  }
+
+  @Override
+  public boolean canOptimize(IndexSearcher searcher) throws IOException {
+    String field = getField();
+    for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
+      if (PrimarySortAlignables.primaryIndexSortField(context, field) != null) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Override
+  public DocIdRange denseDocIdRangeOrNull(LeafReaderContext context) throws IOException {
+    return getDenseDocIdRangeForPrimarySort(context);
   }
 
   /**
