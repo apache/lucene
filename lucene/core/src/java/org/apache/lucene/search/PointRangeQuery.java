@@ -22,6 +22,7 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import org.apache.lucene.document.IntPoint;
+import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
@@ -51,7 +52,7 @@ import org.apache.lucene.util.IntsRef;
  * @see PointValues
  * @lucene.experimental
  */
-public abstract class PointRangeQuery extends Query {
+public abstract class PointRangeQuery extends Query implements PrimarySortAlignable {
   final String field;
   final int numDims;
   final int bytesPerDim;
@@ -647,5 +648,47 @@ public abstract class PointRangeQuery extends Query {
               + bytesPerDim);
     }
     return true;
+  }
+
+  @Override
+  public boolean canOptimize(IndexSearcher searcher) throws IOException {
+    if (numDims != 1 || (bytesPerDim != Integer.BYTES && bytesPerDim != Long.BYTES)) {
+      return false;
+    }
+    for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
+      if (PrimarySortAlignables.primaryIndexSortField(ctx, field) == null) {
+        continue;
+      }
+      PointValues pts = ctx.reader().getPointValues(field);
+      if (pts != null && pts.getNumDimensions() == 1) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Override
+  public DocIdRange denseDocIdRangeOrNull(LeafReaderContext context) throws IOException {
+    if (numDims != 1 || (bytesPerDim != Integer.BYTES && bytesPerDim != Long.BYTES)) {
+      return null;
+    }
+    if (PrimarySortAlignables.primaryIndexSortField(context, field) == null) {
+      return null;
+    }
+    PointValues pts = context.reader().getPointValues(field);
+    if (pts == null || pts.getNumDimensions() != 1) {
+      return null;
+    }
+    final long lowerLong;
+    final long upperLong;
+    if (bytesPerDim == Integer.BYTES) {
+      lowerLong = IntPoint.decodeDimension(lowerPoint, 0);
+      upperLong = IntPoint.decodeDimension(upperPoint, 0);
+    } else {
+      lowerLong = LongPoint.decodeDimension(lowerPoint, 0);
+      upperLong = LongPoint.decodeDimension(upperPoint, 0);
+    }
+    return IndexSortSortedNumericDocValuesRangeQuery.denseDocIdRangeOrNullForSortedNumericBounds(
+        context, field, lowerLong, upperLong);
   }
 }

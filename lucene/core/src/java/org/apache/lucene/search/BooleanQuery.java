@@ -606,6 +606,17 @@ public class BooleanQuery extends Query implements Iterable<BooleanClause> {
     return super.rewrite(indexSearcher);
   }
 
+  /**
+   * If this boolean has at least one optimizable {@link Occur#FILTER} on the primary index sort
+   * field, rewrite to {@link FilteredOnPrimaryIndexSortFieldQuery}.
+   *
+   * <p><b>Multiple FILTER clauses:</b> only the <em>first</em> FILTER in this query's clause
+   * iteration order (builder order) for which {@link
+   * FilteredOnPrimaryIndexSortFieldQuery#canOptimize(Query, IndexSearcher)} returns true supplies
+   * the per-leaf doc-id bounds for {@link org.apache.lucene.search.BulkScorer} narrowing. Any other
+   * FILTER clauses remain inside the rewritten inner query and still constrain matches; reordering
+   * FILTER clauses does not change results, only which filter defines the bulk window.
+   */
   private Query rewriteFilteredOnPrimaryIndexSortField(IndexSearcher indexSearcher)
       throws IOException {
     BooleanClause selectedFilterClause = null;

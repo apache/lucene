@@ -17,7 +17,6 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.Objects;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -26,22 +25,28 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
 
-/** Package-private helpers for {@link PrimarySortAlignable}. */
-final class PrimarySortAlignables {
+/**
+ * Shared utilities for {@link PrimarySortAlignable} queries. Callers normally rely on {@code
+ * instanceof} {@link PrimarySortAlignable} rather than using this class directly.
+ *
+ * @lucene.experimental
+ */
+public final class PrimarySortAlignables {
 
   private PrimarySortAlignables() {}
 
-  static PrimarySortAlignable asAlignableOrNull(Query filter) {
-    if (filter instanceof PrimarySortAlignable psa) {
-      return psa;
+  /** True if any segment's primary {@link SortField} targets {@code field}. */
+  public static boolean canOptimizePrimarySortOnField(IndexSearcher searcher, String field)
+      throws IOException {
+    for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
+      if (primaryIndexSortField(context, field) != null) {
+        return true;
+      }
     }
-    if (filter instanceof TermQuery tq) {
-      return new PrimarySortTermAlignable(tq);
-    }
-    return null;
+    return false;
   }
 
-  static SortField primaryIndexSortField(LeafReaderContext context, String field) {
+  public static SortField primaryIndexSortField(LeafReaderContext context, String field) {
     Sort indexSort = context.reader().getMetaData().sort();
     if (indexSort != null
         && indexSort.getSort().length > 0
@@ -51,6 +56,14 @@ final class PrimarySortAlignables {
     return null;
   }
 
+  /**
+   * Contiguous matching doc-id half-open interval for a term filter on a primary {@link
+   * SortedSetSortField}, or {@code null} when a safe dense block cannot be proved.
+   *
+   * <p>Callers rely on agreement between postings and singleton sorted-set doc values: same doc
+   * count as the binary-search range, first/last postings land on range ends, and no posting exists
+   * past the range. Returning {@code null} is always safe (fallback to full boolean).
+   */
   static DocIdRange termFilterDenseDocIdRange(LeafReaderContext context, Term term)
       throws IOException {
     if (primaryIndexSortField(context, term.field()) instanceof SortedSetSortField == false) {
@@ -133,35 +146,5 @@ final class PrimarySortAlignables {
     int direction = sortField.getReverse() ? -1 : 1;
 
     return doc -> direction * leafFieldComparator.compareTop(doc);
-  }
-
-  private static final class PrimarySortTermAlignable implements PrimarySortAlignable {
-    private final TermQuery termQuery;
-
-    PrimarySortTermAlignable(TermQuery termQuery) {
-      this.termQuery = Objects.requireNonNull(termQuery);
-    }
-
-    @Override
-    public String getField() {
-      return termQuery.getTerm().field();
-    }
-
-    @Override
-    public boolean canOptimize(IndexSearcher searcher) throws IOException {
-      String field = getField();
-      for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
-        if (primaryIndexSortField(context, field) instanceof SortedSetSortField
-            && DocValues.unwrapSingleton(DocValues.getSortedSet(context.reader(), field)) != null) {
-          return true;
-        }
-      }
-      return false;
-    }
-
-    @Override
-    public DocIdRange denseDocIdRangeOrNull(LeafReaderContext context) throws IOException {
-      return termFilterDenseDocIdRange(context, termQuery.getTerm());
-    }
   }
 }

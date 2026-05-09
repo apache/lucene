@@ -16,14 +16,21 @@
  */
 package org.apache.lucene.search;
 
-record DocIdRange(int minDoc, int maxDoc) {
-  DocIdRange {
+/**
+ * Half-open doc id interval {@code [minDoc, maxDoc)} used to narrow bulk scoring when a filter
+ * aligns with the primary index sort.
+ *
+ * @lucene.experimental
+ */
+public record DocIdRange(int minDoc, int maxDoc) {
+  public DocIdRange {
     if (minDoc < 0 || maxDoc < minDoc) {
       throw new IllegalArgumentException("Invalid doc ID range [" + minDoc + ", " + maxDoc + ")");
     }
   }
 
-  boolean isEmpty() {
+  /** True when {@code minDoc == maxDoc} (no documents in {@code [minDoc, maxDoc)}). */
+  public boolean isEmpty() {
     return minDoc == maxDoc;
   }
 }

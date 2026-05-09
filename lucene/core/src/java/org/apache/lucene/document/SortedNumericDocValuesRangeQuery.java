@@ -27,15 +27,19 @@ import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.ConstantScoreScorerSupplier;
 import org.apache.lucene.search.ConstantScoreWeight;
+import org.apache.lucene.search.DocIdRange;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocValuesRangeIterator;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.IndexSortSortedNumericDocValuesRangeQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.NumericDocValuesRangeQuery;
 import org.apache.lucene.search.NumericFieldStats;
 import org.apache.lucene.search.NumericFieldStats.Stats;
+import org.apache.lucene.search.PrimarySortAlignable;
+import org.apache.lucene.search.PrimarySortAlignables;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -44,7 +48,8 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 
-final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery {
+final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery
+    implements PrimarySortAlignable {
 
   SortedNumericDocValuesRangeQuery(String field, long lowerValue, long upperValue) {
     super(field, lowerValue, upperValue);
@@ -191,6 +196,17 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
         return -1;
       }
     };
+  }
+
+  @Override
+  public boolean canOptimize(IndexSearcher searcher) throws IOException {
+    return PrimarySortAlignables.canOptimizePrimarySortOnField(searcher, field);
+  }
+
+  @Override
+  public DocIdRange denseDocIdRangeOrNull(LeafReaderContext context) throws IOException {
+    return IndexSortSortedNumericDocValuesRangeQuery.denseDocIdRangeOrNullForSortedNumericBounds(
+        context, field, lowerValue, upperValue);
   }
 
   private DocIdSetIterator getDocIdSetIteratorOrNullForPrimarySort(

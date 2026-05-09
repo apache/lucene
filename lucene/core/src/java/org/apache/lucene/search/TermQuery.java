@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Objects;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -36,7 +37,7 @@ import org.apache.lucene.util.IOSupplier;
  * A Query that matches documents containing a term. This may be combined with other terms with a
  * {@link BooleanQuery}.
  */
-public class TermQuery extends Query {
+public class TermQuery extends Query implements PrimarySortAlignable {
 
   private final Term term;
   private final TermStates perReaderTermState;
@@ -335,6 +336,28 @@ public class TermQuery extends Query {
    */
   public TermStates getTermStates() {
     return perReaderTermState;
+  }
+
+  @Override
+  public String getField() {
+    return term.field();
+  }
+
+  @Override
+  public boolean canOptimize(IndexSearcher searcher) throws IOException {
+    String field = term.field();
+    for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
+      if (PrimarySortAlignables.primaryIndexSortField(context, field) instanceof SortedSetSortField
+          && DocValues.unwrapSingleton(DocValues.getSortedSet(context.reader(), field)) != null) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  @Override
+  public DocIdRange denseDocIdRangeOrNull(LeafReaderContext context) throws IOException {
+    return PrimarySortAlignables.termFilterDenseDocIdRange(context, term);
   }
 
   /** Returns true iff <code>other</code> is equal to <code>this</code>. */

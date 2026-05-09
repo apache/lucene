@@ -20,6 +20,7 @@ import static org.hamcrest.Matchers.instanceOf;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
@@ -214,6 +215,129 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
       assertTrue(range.minDoc() >= 40);
       assertTrue(range.maxDoc() <= 60);
     }
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * Slow sorted-numeric range ({@link SortedNumericDocValuesField#newSlowRangeQuery}) as FILTER
+   * still implements {@link PrimarySortAlignable}.
+   */
+  public void testBooleanFilterOptimizesWithSlowSortedNumericRangeQuery() throws IOException {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(16)));
+    iwc.setIndexSort(
+        new Sort(LongField.newSortField("sort", false, SortedNumericSelector.Type.MIN)));
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+
+    for (int i = 99; i >= 0; --i) {
+      Document doc = new Document();
+      doc.add(new LongField("sort", i, Field.Store.NO));
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+
+    DirectoryReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    Query filter = SortedNumericDocValuesField.newSlowRangeQuery("sort", 40, 59);
+    Query query =
+        new BooleanQuery.Builder()
+            .add(new RecordingMatchAllQuery(), BooleanClause.Occur.MUST)
+            .add(filter, BooleanClause.Occur.FILTER)
+            .build();
+    MatcherAssert.assertThat(
+        searcher.rewrite(query), instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+    assertEquals(20, searcher.search(query, 100).totalHits.value());
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * Standalone {@link LongPoint#newRangeQuery} FILTER (no {@link
+   * IndexSortSortedNumericDocValuesRangeQuery} wrapper) on a primary-sorted long field.
+   */
+  public void testBooleanFilterOptimizesWithPointRangeQueryOnly() throws IOException {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(16)));
+    iwc.setIndexSort(
+        new Sort(LongField.newSortField("sort", false, SortedNumericSelector.Type.MIN)));
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+
+    for (int i = 99; i >= 0; --i) {
+      Document doc = new Document();
+      doc.add(new LongField("sort", i, Field.Store.NO));
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+
+    DirectoryReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    Query filter = LongPoint.newRangeQuery("sort", 40, 59);
+    Query query =
+        new BooleanQuery.Builder()
+            .add(new RecordingMatchAllQuery(), BooleanClause.Occur.MUST)
+            .add(filter, BooleanClause.Occur.FILTER)
+            .build();
+    MatcherAssert.assertThat(
+        searcher.rewrite(query), instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+    assertEquals(20, searcher.search(query, 100).totalHits.value());
+
+    reader.close();
+    dir.close();
+  }
+
+  /** Slow sorted-set range as FILTER on a primary {@link SortedSetSortField}. */
+  public void testBooleanFilterOptimizesWithSlowSortedSetRangeQuery() throws IOException {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(16)));
+    iwc.setIndexSort(
+        new Sort(
+            KeywordField.newSortField(
+                "category", false, SortedSetSelector.Type.MIN, SortField.STRING_LAST)));
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+
+    for (int i = 0; i < 100; ++i) {
+      Document doc = new Document();
+      String category;
+      if (i < 30) {
+        category = "articles";
+      } else if (i < 50) {
+        category = "books";
+      } else {
+        category = "music";
+      }
+      doc.add(new KeywordField("category", category, Field.Store.NO));
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+
+    DirectoryReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    Query filter =
+        SortedSetDocValuesField.newSlowRangeQuery(
+            "category", new BytesRef("articles"), new BytesRef("books"), true, true);
+    Query query =
+        new BooleanQuery.Builder()
+            .add(new RecordingMatchAllQuery(), BooleanClause.Occur.MUST)
+            .add(filter, BooleanClause.Occur.FILTER)
+            .build();
+    MatcherAssert.assertThat(
+        searcher.rewrite(query), instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+    assertEquals(50, searcher.search(query, 200).totalHits.value());
 
     reader.close();
     dir.close();
@@ -551,6 +675,11 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     dir.close();
   }
 
+  /**
+   * Two FILTERs on the same primary-sort long field: only the first in builder order participates
+   * in bulk bounds; intersection semantics must match either order (see {@link BooleanQuery}
+   * rewrite javadoc).
+   */
   public void testBooleanQueryWithTwoOptimizableFiltersOnPrimaryIndexSortField()
       throws IOException {
     Directory dir = newDirectory();
@@ -583,6 +712,8 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
   private static void assertTwoOptimizableFiltersMatch(
       IndexSearcher searcher, Query firstFilter, Query secondFilter) throws IOException {
+    // Intersect(firstFilter, secondFilter) must equal search hits regardless of FILTER clause
+    // order.
     // Use RecordingMatchAllQuery for MUST: MatchAllDocsQuery is dropped when every other clause is
     // FILTER, and the rewritten query would not be a bare FilteredOnPrimaryIndexSortFieldQuery.
     RecordingMatchAllQuery recordingQuery = new RecordingMatchAllQuery();
@@ -597,6 +728,96 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
     TopDocs topDocs = searcher.search(query, 100);
     assertEquals(20, topDocs.totalHits.value());
+  }
+
+  /**
+   * {@link FilteredOnPrimaryIndexSortFieldQuery} narrows {@link BulkScorer} windows to the proven
+   * dense doc-id interval: windows disjoint from that interval collect nothing; adjacent slices
+   * compose; {@link ScorerSupplier#cost()} reflects the narrow range.
+   */
+  public void testFilteredOnPrimaryIndexSortFieldQueryBulkScorerSlicesAndCost() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setIndexSort(
+        new Sort(LongField.newSortField("sort", false, SortedNumericSelector.Type.MIN)));
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+    for (int i = 99; i >= 0; --i) {
+      Document doc = new Document();
+      doc.add(new LongField("sort", i, Field.Store.NO));
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+    DirectoryReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    RecordingMatchAllQuery recordingQuery = new RecordingMatchAllQuery();
+    Query filter = LongField.newRangeQuery("sort", 40, 59);
+    Query booleanQuery =
+        new BooleanQuery.Builder()
+            .add(recordingQuery, BooleanClause.Occur.MUST)
+            .add(filter, BooleanClause.Occur.FILTER)
+            .build();
+    Query rewritten = searcher.rewrite(booleanQuery);
+    MatcherAssert.assertThat(rewritten, instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+
+    Weight optWeight = searcher.createWeight(rewritten, ScoreMode.COMPLETE_NO_SCORES, 1f);
+    Weight origWeight = searcher.createWeight(booleanQuery, ScoreMode.COMPLETE_NO_SCORES, 1f);
+    LeafReaderContext ctx = reader.leaves().get(0);
+
+    ScorerSupplier optSs = optWeight.scorerSupplier(ctx);
+    ScorerSupplier origSs = origWeight.scorerSupplier(ctx);
+    assertNotNull(optSs);
+    assertNotNull(origSs);
+    assertTrue(optSs.cost() <= origSs.cost());
+    assertEquals(20L, optSs.cost());
+
+    final int leafMax = ctx.reader().maxDoc();
+
+    // [0, 40) does not intersect filter dense range [40, 60) on doc ids.
+    assertTrue(bulkCollectDocs(optWeight, ctx, 0, 40).isEmpty());
+
+    // Full leaf window collects the 20 matching docs (doc ids 40..59 inclusive).
+    List<Integer> expected = new ArrayList<>();
+    for (int d = 40; d <= 59; ++d) {
+      expected.add(d);
+    }
+    List<Integer> fullPass = bulkCollectDocs(optWeight, ctx, 0, leafMax);
+    Collections.sort(fullPass);
+    assertEquals(expected, fullPass);
+
+    // Two adjacent slices must agree with one full pass (fresh BulkScorer per call).
+    List<Integer> chunked = new ArrayList<>();
+    chunked.addAll(bulkCollectDocs(optWeight, ctx, 0, 55));
+    chunked.addAll(bulkCollectDocs(optWeight, ctx, 55, leafMax));
+    Collections.sort(chunked);
+    assertEquals(expected, chunked);
+
+    reader.close();
+    dir.close();
+  }
+
+  private static List<Integer> bulkCollectDocs(
+      Weight weight, LeafReaderContext ctx, int min, int max) throws IOException {
+    ScorerSupplier scorerSupplier = weight.scorerSupplier(ctx);
+    assertNotNull(scorerSupplier);
+    BulkScorer bulkScorer = scorerSupplier.bulkScorer();
+    assertNotNull(bulkScorer);
+    List<Integer> docs = new ArrayList<>();
+    bulkScorer.score(
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) throws IOException {}
+
+          @Override
+          public void collect(int doc) throws IOException {
+            docs.add(doc);
+          }
+        },
+        null,
+        min,
+        max);
+    return docs;
   }
 
   public void testBooleanTermFilterOnPrimaryIndexSortFieldStillAppliesPostingsFilter()
@@ -705,7 +926,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
                   SimpleScorable scorable = new SimpleScorable();
                   scorable.setScore(queryScore);
                   collector.setScorer(scorable);
-                  for (int doc = min; doc < max; ++doc) {
+                  for (int doc = min; doc < max && doc < maxDoc; ++doc) {
                     if (acceptDocs == null || acceptDocs.get(doc)) {
                       collector.collect(doc);
                     }

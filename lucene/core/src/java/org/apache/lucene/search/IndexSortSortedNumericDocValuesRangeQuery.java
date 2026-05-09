@@ -555,18 +555,29 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
 
   @Override
   public boolean canOptimize(IndexSearcher searcher) throws IOException {
-    String field = getField();
-    for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
-      if (PrimarySortAlignables.primaryIndexSortField(context, field) != null) {
-        return true;
-      }
-    }
-    return false;
+    return PrimarySortAlignables.canOptimizePrimarySortOnField(searcher, getField());
   }
 
   @Override
   public DocIdRange denseDocIdRangeOrNull(LeafReaderContext context) throws IOException {
     return getDenseDocIdRangeForPrimarySort(context);
+  }
+
+  /**
+   * Dense doc-id span for the same primary-sort fast path as this query, for sorted-numeric bounds
+   * {@code field}, {@code lowerValue}, and {@code upperValue} (same semantics as this class's
+   * constructor). Used when the filter query is not an {@code
+   * IndexSortSortedNumericDocValuesRangeQuery} instance but matches those bounds (e.g. {@code
+   * SortedNumericDocValuesRangeQuery} or a 1D {@link PointRangeQuery}).
+   *
+   * @lucene.experimental
+   */
+  public static DocIdRange denseDocIdRangeOrNullForSortedNumericBounds(
+      LeafReaderContext context, String field, long lowerValue, long upperValue)
+      throws IOException {
+    return new IndexSortSortedNumericDocValuesRangeQuery(
+            field, lowerValue, upperValue, MatchNoDocsQuery.INSTANCE)
+        .denseDocIdRangeOrNull(context);
   }
 
   /**

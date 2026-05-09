@@ -134,9 +134,8 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#15139: BooleanQuery rewrites so a FILTER on the primary index sort field can restrict
-  the remaining clauses' BulkScorer to a contiguous doc id range when safe (sorted numeric range
-  filters; single-valued sorted-set term filters with dense postings). (Prithvi S)
+* GITHUB#15139: BooleanQuery may narrow BulkScorer per leaf when a FILTER matches primary index sort
+  and a dense doc-id range is provable (with per-leaf fallback); first qualifying FILTER only if several apply. (Prithvi S)
 
 * GITHUB#15681, GITHUB#15833: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 

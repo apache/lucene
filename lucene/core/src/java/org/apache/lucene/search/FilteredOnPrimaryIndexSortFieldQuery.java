@@ -21,6 +21,13 @@ import java.util.Objects;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.Bits;
 
+/**
+ * Bulk-scoring narrowing for a boolean whose FILTER aligns with the primary index sort.
+ *
+ * <p>When several FILTER clauses are optimizable, {@link BooleanQuery} passes only the first in
+ * clause order as this query's {@code filter} argument; remaining FILTERs stay in the inner boolean
+ * passed as {@code query}.
+ */
 final class FilteredOnPrimaryIndexSortFieldQuery extends Query {
   private final Query query;
   private final Query filter;
@@ -32,13 +39,13 @@ final class FilteredOnPrimaryIndexSortFieldQuery extends Query {
     this.filter = Objects.requireNonNull(filter);
     this.primarySortAlignable =
         Objects.requireNonNull(
-            PrimarySortAlignables.asAlignableOrNull(filter),
+            filter instanceof PrimarySortAlignable psa ? psa : null,
             "filter must implement a primary-sort bulk-scoring alignment");
     this.fallbackQuery = Objects.requireNonNull(fallbackQuery);
   }
 
   static boolean canOptimize(Query filter, IndexSearcher searcher) throws IOException {
-    PrimarySortAlignable alignment = PrimarySortAlignables.asAlignableOrNull(filter);
+    PrimarySortAlignable alignment = filter instanceof PrimarySortAlignable psa ? psa : null;
     return alignment != null && alignment.canOptimize(searcher);
   }
 
@@ -71,6 +78,7 @@ final class FilteredOnPrimaryIndexSortFieldQuery extends Query {
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+        final DocIdRange narrowRange = primarySortAlignable.denseDocIdRangeOrNull(context);
         final ScorerSupplier fallbackSupplier = fallbackWeight.scorerSupplier(context);
         if (fallbackSupplier == null) {
           return null;
@@ -82,23 +90,30 @@ final class FilteredOnPrimaryIndexSortFieldQuery extends Query {
         return new ScorerSupplier() {
           @Override
           public Scorer get(long leadCost) throws IOException {
+            // Non-bulk path must use the full boolean: TopScorer uses Scorers, not BulkScorer.
             return fallbackSupplier.get(leadCost);
           }
 
           @Override
           public BulkScorer bulkScorer() throws IOException {
-            final DocIdRange range = primarySortAlignable.denseDocIdRangeOrNull(context);
-            if (range == null) {
+            if (narrowRange == null) {
               return fallbackSupplier.bulkScorer();
             }
-            if (range.isEmpty()) {
+            if (narrowRange.isEmpty()) {
               return emptyBulkScorer();
             }
-            return new RangeFilteredBulkScorer(querySupplier.bulkScorer(), range);
+            return new RangeFilteredBulkScorer(querySupplier.bulkScorer(), narrowRange);
           }
 
           @Override
           public long cost() {
+            if (narrowRange != null) {
+              if (narrowRange.isEmpty()) {
+                return 0L;
+              }
+              long span = (long) narrowRange.maxDoc() - narrowRange.minDoc();
+              return Math.min(fallbackSupplier.cost(), span);
+            }
             return fallbackSupplier.cost();
           }
 
