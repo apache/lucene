@@ -24,9 +24,8 @@ import org.apache.lucene.index.LeafReaderContext;
  * when the index's primary sort order aligns with the filter's field. Used to narrow bulk scoring
  * for boolean queries with a single such {@link BooleanClause.Occur#FILTER} clause.
  *
- * <p>Implementations include {@link IndexSortSortedNumericDocValuesRangeQuery}. {@link
- * TermQuery} filters are adapted internally (see {@link
- * PrimarySortAlignables#asAlignableOrNull(Query)}).
+ * <p>Implementations include {@link IndexSortSortedNumericDocValuesRangeQuery}. {@link TermQuery}
+ * filters are adapted internally (see {@link PrimarySortAlignables#asAlignableOrNull(Query)}).
  *
  * @lucene.experimental
  */

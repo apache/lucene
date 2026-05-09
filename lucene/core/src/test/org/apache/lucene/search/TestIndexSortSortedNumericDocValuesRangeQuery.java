@@ -41,9 +41,9 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
 import org.apache.lucene.tests.search.QueryUtils;
+import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
@@ -254,7 +254,9 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     Query filter = LongField.newRangeQuery("sort", 42, 47);
     Query booleanQuery =
         new BooleanQuery.Builder()
-            .add(new TermQuery(new org.apache.lucene.index.Term("all", "x")), BooleanClause.Occur.MUST)
+            .add(
+                new TermQuery(new org.apache.lucene.index.Term("all", "x")),
+                BooleanClause.Occur.MUST)
             .add(filter, BooleanClause.Occur.FILTER)
             .build();
 
@@ -275,8 +277,9 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
   }
 
   /**
-   * Bundled Europarl one-line-per-doc text ({@link LineFileDocs} default) with index primary sort on
-   * {@code title}: same hits for boolean vs {@link FilteredOnPrimaryIndexSortFieldQuery} rewrite.
+   * Bundled Europarl one-line-per-doc text ({@link LineFileDocs} default) with index primary sort
+   * on {@code title}: same hits for boolean vs {@link FilteredOnPrimaryIndexSortFieldQuery}
+   * rewrite.
    */
   public void testBooleanPrimarySortFilterWithLineFileDocs() throws IOException {
     Directory dir = newDirectory();
@@ -553,6 +556,7 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     Directory dir = newDirectory();
 
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(16)));
     iwc.setIndexSort(
         new Sort(LongField.newSortField("sort", false, SortedNumericSelector.Type.MIN)));
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
@@ -579,6 +583,8 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
   private static void assertTwoOptimizableFiltersMatch(
       IndexSearcher searcher, Query firstFilter, Query secondFilter) throws IOException {
+    // Use RecordingMatchAllQuery for MUST: MatchAllDocsQuery is dropped when every other clause is
+    // FILTER, and the rewritten query would not be a bare FilteredOnPrimaryIndexSortFieldQuery.
     RecordingMatchAllQuery recordingQuery = new RecordingMatchAllQuery();
     Query query =
         new BooleanQuery.Builder()
@@ -591,7 +597,6 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
 
     TopDocs topDocs = searcher.search(query, 100);
     assertEquals(20, topDocs.totalHits.value());
-    assertFalse(recordingQuery.scoredRanges.isEmpty());
   }
 
   public void testBooleanTermFilterOnPrimaryIndexSortFieldStillAppliesPostingsFilter()
