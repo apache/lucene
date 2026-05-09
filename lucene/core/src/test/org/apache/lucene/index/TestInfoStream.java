@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -34,7 +35,7 @@ public class TestInfoStream extends LuceneTestCase {
   /** we shouldn't have test points unless we ask */
   public void testTestPointsOff() throws Exception {
     Directory dir = newDirectory();
-    IndexWriterConfig iwc = new IndexWriterConfig(null);
+    IndexWriterConfig iwc = new IndexWriterConfig((Analyzer) null);
     iwc.setInfoStream(
         new InfoStream() {
           @Override
@@ -60,7 +61,7 @@ public class TestInfoStream extends LuceneTestCase {
   /** but they should work when we need */
   public void testTestPointsOn() throws Exception {
     Directory dir = newDirectory();
-    IndexWriterConfig iwc = new IndexWriterConfig(null);
+    IndexWriterConfig iwc = new IndexWriterConfig((Analyzer) null);
     AtomicBoolean seenTestPoint = new AtomicBoolean();
     iwc.setInfoStream(
         new InfoStream() {

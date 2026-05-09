@@ -20,6 +20,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
@@ -566,7 +567,7 @@ public class TestPointValues extends LuceneTestCase {
 
   public void testPointsFieldMissingFromOneSegment() throws Exception {
     Directory dir = FSDirectory.open(createTempDir());
-    IndexWriterConfig iwc = new IndexWriterConfig(null);
+    IndexWriterConfig iwc = new IndexWriterConfig((Analyzer) null);
     IndexWriter w = new IndexWriter(dir, iwc);
     Document doc = new Document();
     doc.add(new StringField("id", "0", Field.Store.NO));
@@ -631,7 +632,7 @@ public class TestPointValues extends LuceneTestCase {
 
   public void testCheckIndexIncludesPoints() throws Exception {
     Directory dir = new ByteBuffersDirectory();
-    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(null));
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig((Analyzer) null));
     Document doc = new Document();
     doc.add(new IntPoint("int1", 17));
     w.addDocument(doc);
@@ -669,7 +670,8 @@ public class TestPointValues extends LuceneTestCase {
   public void testMergedStatsOneSegmentWithoutPoints() throws IOException {
     Directory dir = new ByteBuffersDirectory();
     IndexWriter w =
-        new IndexWriter(dir, new IndexWriterConfig(null).setMergePolicy(NoMergePolicy.INSTANCE));
+        new IndexWriter(
+            dir, new IndexWriterConfig((Analyzer) null).setMergePolicy(NoMergePolicy.INSTANCE));
     w.addDocument(new Document());
     DirectoryReader.open(w).close();
     Document doc = new Document();
@@ -690,7 +692,7 @@ public class TestPointValues extends LuceneTestCase {
 
   public void testMergedStatsAllPointsDeleted() throws IOException {
     Directory dir = new ByteBuffersDirectory();
-    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(null));
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig((Analyzer) null));
     w.addDocument(new Document());
     Document doc = new Document();
     doc.add(new IntPoint("field", Integer.MIN_VALUE));
@@ -728,7 +730,7 @@ public class TestPointValues extends LuceneTestCase {
     final int numDims = TestUtil.nextInt(random(), 1, 8);
     final int numBytesPerDim = TestUtil.nextInt(random(), 1, 16);
     Directory dir = new ByteBuffersDirectory();
-    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(null));
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig((Analyzer) null));
     final int numDocs = TestUtil.nextInt(random(), 10, 20);
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();

@@ -86,6 +86,7 @@ public class TestIndexWriterConfig extends LuceneTestCase {
     getters.add("getUseCompoundFile");
     getters.add("isCheckPendingFlushOnUpdate");
     getters.add("getSoftDeletesField");
+    getters.add("getIndexWriterRAMManager");
 
     for (Method m : IndexWriterConfig.class.getDeclaredMethods()) {
       if (m.getDeclaringClass() == IndexWriterConfig.class && m.getName().startsWith("get")) {
