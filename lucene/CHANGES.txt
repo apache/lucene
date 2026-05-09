@@ -90,6 +90,9 @@ API Changes
   Also removed QueryParserBase.setDeterminizeWorkLimit/getDeterminizeWorkLimit, which are
   no longer needed. (Dimitris Rempapis)
 
+* GITHUB#15605: Remove unused getCollectors() and internal collector tracking from
+  TopFieldCollectorManager. Clarify thread-safety documentation. (Prudhvi Godithi)
+
 New Features
 ---------------------
 * GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
@@ -219,6 +222,8 @@ Build
   only on Linux), and fall back to legacy wall-clock execution sampling elsewhere. ProfileResults
   recognizes jdk.CPUTimeSample; CodeProfilingPlugin picks gradle/testing/profiling.cputime.jfc or
   profiling.jfc by host OS. (Prithvi S)
+
+* GITHUB#16036: Upgrade gradle to 9.5.0 (Dawid Weiss)
 
 Other
 ---------------------
@@ -355,7 +360,8 @@ Optimizations
 * GITHUB#15938: Optimize ReaderUtil#partitionByLeaf to use binary search on leaf
   boundaries instead of linear scan. (Greg Miller)
 
-* GITHUB#15970: Reduce memory usage of fields with long terms during segment merges. (Alan Woodward)
+* GITHUB#15970, GITHUB#15977: Speed up TrieBuilder and reduce its memory footprint by replacing the in-memory object
+ tree with a compact prefix-coded byte buffer. (Alan Woodward, Guo Feng)
 
 * GITHUB#15732: Prevent writing vectors twice during merging HNSW graphs by allowing doing deferred work after calling
   merge for vectors is finshed. (Ignacio Vera)
