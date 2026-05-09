@@ -195,7 +195,9 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     iw.forceMerge(1);
 
     DirectoryReader reader = iw.getReader();
-    IndexSearcher searcher = newSearcher(reader);
+    // Plain IndexSearcher — AssertingIndexSearcher may route bulk scoring through the Scorer
+    // path, bypassing RecordingMatchAllQuery's custom BulkScorer.
+    IndexSearcher searcher = new IndexSearcher(reader);
     iw.close();
 
     RecordingMatchAllQuery recordingQuery = new RecordingMatchAllQuery();
