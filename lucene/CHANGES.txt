@@ -278,6 +278,9 @@ API Changes
 * GITHUB#15584: Add support for termdoc fields that use custom term freqs (via IndexOptions.DOCS_AND_CUSTOM_FREQS).
   IndexWriter counts their terms rather than summing their freqs.  Use
 
+* GITHUB#16043: Add field parameter to FlatVectorsReader.getFlatVectorScorer to match the other
+  scorer methods in that class. (Simon Cooper)
+
 New Features
 ---------------------
 
