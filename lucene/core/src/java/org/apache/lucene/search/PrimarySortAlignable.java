@@ -43,15 +43,6 @@ public interface PrimarySortAlignable {
   boolean canOptimize(IndexSearcher searcher) throws IOException;
 
   /**
-   * Whether a dense doc id interval can be derived on this leaf from primary sort layout.
-   *
-   * <p>Default: {@code denseDocIdRangeOrNull(context) != null}.
-   */
-  default boolean supportsDenseLeafRange(LeafReaderContext context) throws IOException {
-    return denseDocIdRangeOrNull(context) != null;
-  }
-
-  /**
    * Matching docs as {@code [minDoc, maxDoc)} on this leaf, or {@code null} if unknown / not dense.
    */
   DocIdRange denseDocIdRangeOrNull(LeafReaderContext context) throws IOException;

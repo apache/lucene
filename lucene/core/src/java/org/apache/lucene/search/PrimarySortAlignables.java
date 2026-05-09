@@ -35,7 +35,11 @@ public final class PrimarySortAlignables {
 
   private PrimarySortAlignables() {}
 
-  /** True if any segment's primary {@link SortField} targets {@code field}. */
+  /**
+   * True if any segment's primary {@link SortField} targets {@code field}.
+   *
+   * @lucene.internal
+   */
   public static boolean canOptimizePrimarySortOnField(IndexSearcher searcher, String field)
       throws IOException {
     for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
@@ -46,6 +50,11 @@ public final class PrimarySortAlignables {
     return false;
   }
 
+  /**
+   * Returns the primary index sort field if it targets {@code field}, or {@code null}.
+   *
+   * @lucene.internal
+   */
   public static SortField primaryIndexSortField(LeafReaderContext context, String field) {
     Sort indexSort = context.reader().getMetaData().sort();
     if (indexSort != null

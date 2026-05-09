@@ -231,6 +231,10 @@ final class SortedSetDocValuesRangeQuery extends Query implements PrimarySortAli
 
   @Override
   public DocIdRange denseDocIdRangeOrNull(LeafReaderContext context) throws IOException {
+    if (!(PrimarySortAlignables.primaryIndexSortField(context, field)
+        instanceof SortedSetSortField)) {
+      return null;
+    }
     if (context.reader().getFieldInfos().fieldInfo(field) == null) {
       return null;
     }

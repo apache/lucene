@@ -570,7 +570,15 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
    * IndexSortSortedNumericDocValuesRangeQuery} instance but matches those bounds (e.g. {@code
    * SortedNumericDocValuesRangeQuery} or a 1D {@link PointRangeQuery}).
    *
-   * @lucene.experimental
+   * <p>This allocates a short-lived query instance internally. It is called once per leaf at weight
+   * creation time, not on a hot scoring path.
+   *
+   * @param context the leaf reader context
+   * @param field the sorted-numeric field name (must be the primary index sort field)
+   * @param lowerValue inclusive lower bound
+   * @param upperValue inclusive upper bound
+   * @return the dense doc-id range, or {@code null} if a safe range cannot be determined
+   * @lucene.internal
    */
   public static DocIdRange denseDocIdRangeOrNullForSortedNumericBounds(
       LeafReaderContext context, String field, long lowerValue, long upperValue)
