@@ -452,6 +452,7 @@ public abstract class PointRangeQuery extends Query implements PrimarySortAligna
     };
   }
 
+  @Override
   public String getField() {
     return field;
   }
