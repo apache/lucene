@@ -141,17 +141,6 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
     return heads.values();
   }
 
-  /**
-   * Returns the sort values for a given group.
-   *
-   * @param groupValue the group value
-   * @return the sort values, or null if not available
-   */
-  public Object[] getSortValues(T groupValue) {
-    GroupHead<T> head = heads.get(groupValue);
-    return head != null ? head.getSortValues() : null;
-  }
-
   @Override
   public void collect(int doc) throws IOException {
     groupSelector.advanceTo(doc);
@@ -264,9 +253,7 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
      *
      * @return the sort values, or null if not stored
      */
-    protected Object[] getSortValues() {
-      return null;
-    }
+    protected abstract Object[] getSortValues();
   }
 
   /** General implementation using a {@link FieldComparator} to select the group head */

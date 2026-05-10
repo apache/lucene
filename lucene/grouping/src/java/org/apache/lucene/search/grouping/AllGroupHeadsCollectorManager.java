@@ -21,33 +21,57 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.CollectorManager;
+import org.apache.lucene.search.FieldComparator;
+import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
- * A CollectorManager implementation for AllGroupHeadsCollector.
+ * A {@link CollectorManager} implementation for {@link AllGroupHeadsCollector} that collects the
+ * most relevant document (group head) for each group across multiple segments and merges the
+ * per-segment results into a single {@link GroupHeadsResult}.
  *
+ * <p>Example usage:
+ *
+ * <pre class="prettyprint">
+ * IndexSearcher searcher = ...; // your IndexSearcher
+ * AllGroupHeadsCollectorManager&lt;BytesRef&gt; manager =
+ *     new AllGroupHeadsCollectorManager&lt;&gt;(
+ *         () -&gt; new TermGroupSelector("category"), Sort.RELEVANCE);
+ * GroupHeadsResult result = searcher.search(new MatchAllDocsQuery(), manager);
+ * Bits groupHeadsBits = result.retrieveGroupHeads(searcher.getIndexReader().maxDoc());
+ * </pre>
+ *
+ * @param <T> the type of the group value
  * @lucene.experimental
  */
 public class AllGroupHeadsCollectorManager<T>
     implements CollectorManager<
         AllGroupHeadsCollector<T>, AllGroupHeadsCollectorManager.GroupHeadsResult> {
 
-  /** Result wrapper that allows retrieving group heads as int[] or Bits. */
-  public static class GroupHeadsResult {
+  /** Holds the merged group heads and provides access as an {@code int[]} or {@link Bits}. */
+  public static final class GroupHeadsResult {
     private final int[] groupHeads;
 
-    GroupHeadsResult(int[] groupHeads) {
+    private GroupHeadsResult(int[] groupHeads) {
       this.groupHeads = groupHeads;
     }
 
+    /** Returns the group head document IDs as an array. */
     public int[] retrieveGroupHeads() {
       return groupHeads;
     }
 
+    /**
+     * Returns the group head document IDs as a {@link Bits} set of size {@code maxDoc}, suitable
+     * for use as a filter.
+     *
+     * @param maxDoc The maxDoc of the top level {@link IndexReader}.
+     */
     public Bits retrieveGroupHeads(int maxDoc) {
       FixedBitSet result = new FixedBitSet(maxDoc);
       for (int docId : groupHeads) {
@@ -106,13 +130,13 @@ public class AllGroupHeadsCollectorManager<T>
     Collection<? extends AllGroupHeadsCollector.GroupHead<T>> heads =
         collector.getCollectedGroupHeads();
     for (AllGroupHeadsCollector.GroupHead<T> head : heads) {
-      Object[] sortValues = collector.getSortValues(head.groupValue);
+      Object[] sortValues = head.getSortValues();
       GroupHeadWithValues existing = mergedHeads.get(head.groupValue);
       if (existing == null) {
         mergedHeads.put(head.groupValue, new GroupHeadWithValues(head.doc, sortValues));
       } else if (sortValues != null && existing.sortValues != null) {
         int cmp = compareValues(sortValues, existing.sortValues, sortFields);
-        if (cmp > 0 || (cmp == 0 && head.doc < existing.doc)) {
+        if (cmp < 0 || (cmp == 0 && head.doc < existing.doc)) {
           mergedHeads.put(head.groupValue, new GroupHeadWithValues(head.doc, sortValues));
         }
       }
@@ -122,21 +146,10 @@ public class AllGroupHeadsCollectorManager<T>
   @SuppressWarnings({"unchecked", "rawtypes"})
   private int compareValues(Object[] values1, Object[] values2, SortField[] sortFields) {
     for (int i = 0; i < sortFields.length; i++) {
-      int cmp = 0;
-      if (values1[i] == null) {
-        cmp = values2[i] == null ? 0 : -1;
-      } else if (values2[i] == null) {
-        cmp = 1;
-      } else if (values1[i] instanceof Comparable comparable) {
-        cmp = comparable.compareTo(values2[i]);
-      }
+      FieldComparator comparator = sortFields[i].getComparator(1, Pruning.NONE);
+      int cmp = comparator.compareValues(values1[i], values2[i]);
       if (cmp != 0) {
-        // For SCORE type, natural order is descending (higher is better)
-        // For other types, natural order is ascending (lower is better)
-        // reverse=true flips the natural order
-        boolean naturalDescending = sortFields[i].getType() == SortField.Type.SCORE;
-        boolean wantDescending = naturalDescending != sortFields[i].getReverse();
-        return wantDescending ? cmp : -cmp;
+        return sortFields[i].getReverse() ? -cmp : cmp;
       }
     }
     return 0;
