@@ -20,7 +20,6 @@ import static org.apache.lucene.search.knn.KnnSearchStrategy.Hnsw.DEFAULT;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.Objects;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
@@ -62,7 +61,7 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
   private final Query childFilter;
   private final int k;
   private final float[] query;
-  private final boolean blockRescore;
+  private final boolean rescoreBlocks;
 
   /**
    * Create a DiversifyingChildrenFloatKnnVectorQuery.
@@ -104,11 +103,15 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
   /**
    * Create a DiversifyingChildrenFloatKnnVectorQuery with optional post-HNSW block rescoring.
    *
-   * <p>When {@code blockRescore} is {@code true}, after the approximate HNSW search completes, all
-   * children in each found parent's block are scored to guarantee the truly best child is returned —
-   * not merely the sibling the graph traversal happened to reach first. This adds O(k &times;
-   * childrenPerParent) extra scoring work; enable it when block sizes are small or result quality is
-   * more important than latency.
+   * <p>When {@code rescoreBlocks} is {@code true}, after the approximate HNSW search completes, all
+   * children in each found parent's block are scored to guarantee the truly best child is returned
+   * — not merely the sibling the graph traversal happened to reach first. This adds O(k &times;
+   * childrenPerParent) extra scoring work; enable it when block sizes are small or result quality
+   * is more important than latency.
+   *
+   * <p>This applies only to the approximate (HNSW) search path. When the index is small enough that
+   * Lucene falls back to exact search, all children are already scored exhaustively and no
+   * additional rescoring is performed.
    *
    * @param field the query field
    * @param query the vector query
@@ -116,7 +119,7 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
    * @param k how many parent documents to return given the matching children
    * @param parentsFilter Filter identifying the parent documents.
    * @param searchStrategy the search strategy to use.
-   * @param blockRescore if {@code true}, enables post-HNSW block rescoring.
+   * @param rescoreBlocks if {@code true}, enables post-HNSW block rescoring.
    * @lucene.experimental
    */
   public DiversifyingChildrenFloatKnnVectorQuery(
@@ -126,13 +129,13 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
       int k,
       BitSetProducer parentsFilter,
       KnnSearchStrategy searchStrategy,
-      boolean blockRescore) {
+      boolean rescoreBlocks) {
     super(field, query, k, childFilter, searchStrategy);
     this.childFilter = childFilter;
     this.parentsFilter = parentsFilter;
     this.k = k;
     this.query = query;
-    this.blockRescore = blockRescore;
+    this.rescoreBlocks = rescoreBlocks;
   }
 
   @Override
@@ -206,7 +209,7 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
     }
     context.reader().searchNearestVectors(field, query, collector, acceptDocs);
     TopDocs results = collector.topDocs();
-    if (!blockRescore || results.scoreDocs.length == 0) {
+    if (!rescoreBlocks || results.scoreDocs.length == 0) {
       return results;
     }
     BitSet parentBitSet = parentsFilter.getBitSet(context);
@@ -226,13 +229,10 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
 
   /**
    * For each parent already found by approximate search, scores all children in that parent's block
-   * to ensure the truly best child is returned — not merely the sibling the graph traversal happened
-   * to reach first. Children are processed in ascending docId order so the sequential {@link
-   * VectorScorer} only advances forward. Extra nodes scored are added to {@link
+   * to ensure the truly best child is returned — not merely the sibling the graph traversal
+   * happened to reach first. Children are processed in ascending docId order so the sequential
+   * {@link VectorScorer} only advances forward. Extra nodes scored are added to {@link
    * TotalHits#value()}.
-   *
-   * <p>This method is package-private so that {@link DiversifyingChildrenByteKnnVectorQuery} can
-   * reuse the same implementation rather than duplicating it.
    */
   static TopDocs blockRescore(
       TopDocs results, AcceptDocs acceptDocs, BitSet parentBitSet, VectorScorer scorer)
@@ -243,7 +243,7 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
     // Sort by docId so parent blocks are visited in ascending order — the forward-only
     // VectorScorer cannot go backwards.
     ScoreDoc[] scoreDocs = results.scoreDocs.clone();
-    Arrays.sort(scoreDocs, Comparator.comparingInt(sd -> sd.doc));
+    Arrays.sort(scoreDocs, (a, b) -> Integer.compare(a.doc, b.doc));
 
     long extraVisited = 0;
     for (ScoreDoc scoreDoc : scoreDocs) {
@@ -256,10 +256,11 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
           continue;
         }
         if (scorerIter.advance(child) == child) {
-          // Don't double-count the child HNSW already visited.
-          if (child != hnswBestChild) {
-            extraVisited++;
+          if (child == hnswBestChild) {
+            // Advance past the child HNSW already scored; no need to re-compute.
+            continue;
           }
+          extraVisited++;
           float s = scorer.score();
           if (s > scoreDoc.score) {
             scoreDoc.score = s;
@@ -293,7 +294,7 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
     if (!super.equals(o)) return false;
     DiversifyingChildrenFloatKnnVectorQuery that = (DiversifyingChildrenFloatKnnVectorQuery) o;
     return k == that.k
-        && blockRescore == that.blockRescore
+        && rescoreBlocks == that.rescoreBlocks
         && Objects.equals(parentsFilter, that.parentsFilter)
         && Objects.equals(childFilter, that.childFilter)
         && Arrays.equals(query, that.query);
@@ -301,7 +302,7 @@ public class DiversifyingChildrenFloatKnnVectorQuery extends KnnFloatVectorQuery
 
   @Override
   public int hashCode() {
-    int result = Objects.hash(super.hashCode(), parentsFilter, childFilter, k, blockRescore);
+    int result = Objects.hash(super.hashCode(), parentsFilter, childFilter, k, rescoreBlocks);
     result = 31 * result + Arrays.hashCode(query);
     return result;
   }

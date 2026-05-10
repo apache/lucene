@@ -37,6 +37,7 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.join.BitSetProducer;
 import org.apache.lucene.search.join.DiversifyingChildrenFloatKnnVectorQuery;
 import org.apache.lucene.search.join.QueryBitSetProducer;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.VectorUtil;
@@ -60,22 +61,21 @@ import org.openjdk.jmh.infra.Blackhole;
  * index (children + parent marker per block), using the default HNSW approximate path ({@code
  * childFilter == null}).
  *
- * <p>The {@code blockRescore} parameter switches the feature on/off so both modes can be compared
+ * <p>The {@code rescoreBlocks} parameter switches the feature on/off so both modes can be compared
  * in a single run (see <a href="https://github.com/apache/lucene/issues/15839">LUCENE-15839</a>).
  * Extra work scales roughly with {@code topK * childrenPerParent}.
  *
- * <p>Indicative results on Apple M-series, JDK 25, dim=96, topK=64, 4096 parent blocks (lower is
- * better):
+ * <p>Indicative results — 3 forks, 5 warmup / 10 measurement iterations, JDK 25, {@code -Xmx2g},
+ * dim=96, topK=64, 4096 parent blocks (lower is better):
  *
  * <pre>
- * blockRescore  childrenPerParent  Score (ms/op)
- * false         8                  0.123
- * false         32                 0.226
- * false         64                 0.254
- * true          8                  0.151  (+23%)
- * true          32                 0.316  (+40%)
- * true          64                 0.412  (+62%)
+ * childrenPerParent  rescoreBlocks=false    rescoreBlocks=true
+ * 8                  0.117 ± 0.002 ms/op    0.149 ± 0.002 ms/op  (+27%)
+ * 32                 0.237 ± 0.006 ms/op    0.326 ± 0.009 ms/op  (+38%)
+ * 64                 0.259 ± 0.005 ms/op    0.426 ± 0.013 ms/op  (+64%)
  * </pre>
+ *
+ * <p>Overhead grows with block width (and with {@code topK}).
  *
  * <p>Example:
  *
@@ -83,16 +83,16 @@ import org.openjdk.jmh.infra.Blackhole;
  * ./gradlew :lucene:benchmark-jmh:assemble
  * cd lucene/benchmark-jmh/build/benchmarks
  * java -jar lucene-benchmark-jmh-*-SNAPSHOT.jar DiversifyingChildrenFloatKnnJoin \\
- *     -f 2 -wi 3 -i 8 -tu ms
+ *     -f 3 -wi 5 -i 10 -tu ms
  * }</pre>
  */
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
-@Warmup(iterations = 3, time = 1)
-@Measurement(iterations = 6, time = 1)
+@Warmup(iterations = 5, time = 1)
+@Measurement(iterations = 10, time = 1)
 @Fork(
-    value = 2,
+    value = 3,
     jvmArgsAppend = {
       "-Xmx2g",
       "-Xms2g",
@@ -117,12 +117,12 @@ public class DiversifyingChildrenFloatKnnJoinBenchmark {
 
   /**
    * Whether to enable post-HNSW block rescoring. When {@code true}, after HNSW search all children
-   * in each found parent's block are scored to guarantee the best child is returned. Compare
-   * {@code false} (baseline / no rescoring) against {@code true} (rescoring enabled) to measure
-   * latency overhead.
+   * in each found parent's block are scored to guarantee the best child is returned. Compare {@code
+   * false} (baseline / no rescoring) against {@code true} (rescoring enabled) to measure latency
+   * overhead.
    */
   @Param({"false", "true"})
-  public boolean blockRescore;
+  public boolean rescoreBlocks;
 
   private Directory directory;
   private IndexSearcher searcher;
@@ -176,12 +176,9 @@ public class DiversifyingChildrenFloatKnnJoinBenchmark {
     searcher = new IndexSearcher(reader);
     BitSetProducer parentsFilter =
         new QueryBitSetProducer(new TermQuery(new Term("docType", "_parent")));
+    // [1, 0, ..., 0] is already L2-normalized.
     float[] queryVector = new float[dimension];
     queryVector[0] = 1f;
-    for (int i = 1; i < dimension; i++) {
-      queryVector[i] = 0f;
-    }
-    VectorUtil.l2normalize(queryVector, false);
     diversifyingJoinQuery =
         new DiversifyingChildrenFloatKnnVectorQuery(
             "vec",
@@ -189,8 +186,8 @@ public class DiversifyingChildrenFloatKnnJoinBenchmark {
             null,
             topK,
             parentsFilter,
-            org.apache.lucene.search.knn.KnnSearchStrategy.Hnsw.DEFAULT,
-            blockRescore);
+            KnnSearchStrategy.Hnsw.DEFAULT,
+            rescoreBlocks);
   }
 
   @TearDown(Level.Trial)

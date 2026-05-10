@@ -35,6 +35,7 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -42,6 +43,7 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BitSet;
@@ -245,7 +247,7 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
   }
 
   /**
-   * End-to-end verification: with {@code blockRescore=true}, the query always returns the best
+   * End-to-end verification: with {@code rescoreBlocks=true}, the query always returns the best
    * child for each found parent (no sibling should outscore the returned child).
    *
    * <p>The invariant test uses a fresh {@link VectorScorer} per parent (docId-based, not
@@ -295,7 +297,7 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
         IndexSearcher searcher = new IndexSearcher(reader);
         BitSetProducer parentFilter = parentFilter(reader);
 
-        // blockRescore=true to enable the feature under test.
+        // rescoreBlocks=true to enable the feature under test.
         DiversifyingChildrenFloatKnnVectorQuery query =
             new DiversifyingChildrenFloatKnnVectorQuery(
                 "field",
@@ -303,7 +305,7 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
                 null,
                 numParents,
                 parentFilter,
-                org.apache.lucene.search.knn.KnnSearchStrategy.Hnsw.DEFAULT,
+                KnnSearchStrategy.Hnsw.DEFAULT,
                 true);
         TopDocs results = searcher.search(query, numParents);
 
@@ -314,9 +316,8 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
           int parent = parentBitSet.nextSetBit(sd.doc);
           int prevParent = parent > 0 ? parentBitSet.prevSetBit(parent - 1) : -1;
           // Re-score siblings with a fresh docId-based scorer and verify nothing beats the result.
-          VectorScorer sibScorer =
-              leaf.reader().getFloatVectorValues("field").scorer(queryVector);
-          org.apache.lucene.search.DocIdSetIterator sibIter = sibScorer.iterator();
+          VectorScorer sibScorer = leaf.reader().getFloatVectorValues("field").scorer(queryVector);
+          DocIdSetIterator sibIter = sibScorer.iterator();
           for (int child = prevParent + 1; child < parent; child++) {
             if (sibIter.advance(child) == child) {
               float sibScore = sibScorer.score();

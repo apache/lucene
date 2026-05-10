@@ -60,7 +60,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
   private final Query childFilter;
   private final int k;
   private final byte[] query;
-  private final boolean blockRescore;
+  private final boolean rescoreBlocks;
 
   /**
    * Create a ToParentBlockJoinByteVectorQuery.
@@ -102,10 +102,15 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
   /**
    * Create a DiversifyingChildrenByteKnnVectorQuery with optional post-HNSW block rescoring.
    *
-   * <p>When {@code blockRescore} is {@code true}, after the approximate HNSW search completes, all
-   * children in each found parent's block are scored to guarantee the truly best child is returned.
-   * See {@link DiversifyingChildrenFloatKnnVectorQuery#DiversifyingChildrenFloatKnnVectorQuery(
-   * String, float[], Query, int, BitSetProducer, KnnSearchStrategy, boolean)} for details.
+   * <p>When {@code rescoreBlocks} is {@code true}, after the approximate HNSW search completes, all
+   * children in each found parent's block are scored to guarantee the truly best child is returned
+   * — not merely the sibling the graph traversal happened to reach first. This adds O(k &times;
+   * childrenPerParent) extra scoring work; enable it when block sizes are small or result quality
+   * is more important than latency.
+   *
+   * <p>This applies only to the approximate (HNSW) search path. When the index is small enough that
+   * Lucene falls back to exact search, all children are already scored exhaustively and no
+   * additional rescoring is performed.
    *
    * @param field the query field
    * @param query the vector query
@@ -113,7 +118,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
    * @param k how many parent documents to return given the matching children
    * @param parentsFilter Filter identifying the parent documents.
    * @param searchStrategy the search strategy to use.
-   * @param blockRescore if {@code true}, enables post-HNSW block rescoring.
+   * @param rescoreBlocks if {@code true}, enables post-HNSW block rescoring.
    * @lucene.experimental
    */
   public DiversifyingChildrenByteKnnVectorQuery(
@@ -123,13 +128,13 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
       int k,
       BitSetProducer parentsFilter,
       KnnSearchStrategy searchStrategy,
-      boolean blockRescore) {
+      boolean rescoreBlocks) {
     super(field, query, k, childFilter, searchStrategy);
     this.childFilter = childFilter;
     this.parentsFilter = parentsFilter;
     this.k = k;
     this.query = query;
-    this.blockRescore = blockRescore;
+    this.rescoreBlocks = rescoreBlocks;
   }
 
   @Override
@@ -204,7 +209,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
     }
     context.reader().searchNearestVectors(field, query, collector, acceptDocs);
     TopDocs results = collector.topDocs();
-    if (!blockRescore || results.scoreDocs.length == 0) {
+    if (!rescoreBlocks || results.scoreDocs.length == 0) {
       return results;
     }
     BitSet parentBitSet = parentsFilter.getBitSet(context);
@@ -243,7 +248,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
     if (!super.equals(o)) return false;
     DiversifyingChildrenByteKnnVectorQuery that = (DiversifyingChildrenByteKnnVectorQuery) o;
     return k == that.k
-        && blockRescore == that.blockRescore
+        && rescoreBlocks == that.rescoreBlocks
         && Objects.equals(parentsFilter, that.parentsFilter)
         && Objects.equals(childFilter, that.childFilter)
         && Arrays.equals(query, that.query);
@@ -251,7 +256,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
 
   @Override
   public int hashCode() {
-    int result = Objects.hash(super.hashCode(), parentsFilter, childFilter, k, blockRescore);
+    int result = Objects.hash(super.hashCode(), parentsFilter, childFilter, k, rescoreBlocks);
     result = 31 * result + Arrays.hashCode(query);
     return result;
   }
