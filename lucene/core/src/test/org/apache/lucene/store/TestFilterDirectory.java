@@ -22,7 +22,6 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Set;
 import org.apache.lucene.tests.store.BaseDirectoryTestCase;
-import org.junit.Test;
 
 public class TestFilterDirectory extends BaseDirectoryTestCase {
 
@@ -31,7 +30,6 @@ public class TestFilterDirectory extends BaseDirectoryTestCase {
     return new FilterDirectory(new ByteBuffersDirectory()) {};
   }
 
-  @Test
   public void testOverrides() throws Exception {
     // verify that all methods of Directory are overridden by FilterDirectory,
     // except those under the 'exclude' list

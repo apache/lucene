@@ -18,28 +18,23 @@ package org.apache.lucene.core.tests;
 
 import org.apache.lucene.core.tests.main.EmptyReference;
 import org.apache.lucene.index.IndexWriter;
-import org.junit.Test;
 
 /** Intentionally not a subclass of {@code LuceneTestCase}. */
 public class TestRuntimeDependenciesSane {
-  @Test
   public void testExternalDependenciesAreModules() {
     isModule(org.junit.Test.class);
   }
 
-  @Test
   public void testInterProjectDependenciesAreModules() {
     // The core Lucene should be a modular dependency.
     isModule(IndexWriter.class);
   }
 
-  @Test
   public void testTestSourceSetIsAModule() {
     // The test source set itself should be loaded as a module.
     isModule(getClass());
   }
 
-  @Test
   public void testMainSourceSetIsAModule() {
     // The test source set itself should be loaded as a module.
     isModule(EmptyReference.class);
