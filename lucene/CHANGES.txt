@@ -184,6 +184,8 @@ Bug Fixes
 
 * GITHUB#15939: Fix thread-safety issues with NFARunAutomaton. (Dimitris Rempapis)
 
+* GITHUB#16046: Fix double-counting of underlying Automaton in CompiledAutomaton#ramBytesUsed. (Eugene Rizhkov)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
