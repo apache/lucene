@@ -27,8 +27,7 @@ import org.apache.lucene.util.BytesRef;
  * Tests primary-sort FILTER optimization with {@link SortedSetDocValuesField#newSlowRangeQuery} on
  * a primary {@link SortedSetSortField}.
  */
-public class TestPrimarySortFilterWithSlowSortedSetRange
-    extends BasePrimarySortFilterTestCase {
+public class TestPrimarySortFilterWithSlowSortedSetRange extends BasePrimarySortFilterTestCase {
 
   @Override
   protected Sort buildIndexSort() {

@@ -43,8 +43,7 @@ final class RecordingMatchAllQuery extends Query {
         return new ScorerSupplier() {
           @Override
           public Scorer get(long leadCost) throws IOException {
-            return new ConstantScoreScorer(
-                queryScore, scoreMode, DocIdSetIterator.all(maxDoc));
+            return new ConstantScoreScorer(queryScore, scoreMode, DocIdSetIterator.all(maxDoc));
           }
 
           @Override

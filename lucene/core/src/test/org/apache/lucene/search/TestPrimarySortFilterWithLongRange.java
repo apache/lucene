@@ -31,8 +31,7 @@ public class TestPrimarySortFilterWithLongRange extends BasePrimarySortFilterTes
 
   @Override
   protected Sort buildIndexSort() {
-    return new Sort(
-        LongField.newSortField("sort", false, SortedNumericSelector.Type.MIN));
+    return new Sort(LongField.newSortField("sort", false, SortedNumericSelector.Type.MIN));
   }
 
   @Override

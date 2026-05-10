@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -112,9 +111,9 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
    * BooleanQuery with the filter as FILTER rewrites to {@link FilteredOnPrimaryIndexSortFieldQuery}
    * (possibly wrapped, e.g. in {@link ConstantScoreQuery}).
    *
-   * <p>Uses {@link RecordingMatchAllQuery} as the MUST clause: {@link MatchAllDocsQuery} + FILTER is
-   * rewritten to {@link ConstantScoreQuery} earlier in {@link BooleanQuery#rewrite}, which prevents
-   * the primary-sort optimization from applying at the query shape we need to assert here.
+   * <p>Uses {@link RecordingMatchAllQuery} as the MUST clause: {@link MatchAllDocsQuery} + FILTER
+   * is rewritten to {@link ConstantScoreQuery} earlier in {@link BooleanQuery#rewrite}, which
+   * prevents the primary-sort optimization from applying at the query shape we need to assert here.
    */
   public void testRewriteProducesFilteredQuery() throws IOException {
     try (Directory dir = newDirectory()) {
@@ -154,7 +153,6 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
       IndexWriterConfig iwc = buildIndexWriterConfig();
       try (RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc)) {
         for (int i = 0; i < NUM_DOCS; i++) {
-          Document doc = new Document();
           addDocument(iw.w, i);
           if (i % 25 == 24) {
             iw.commit();
@@ -166,13 +164,10 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
         IndexSearcher searcher = newSearcher(reader);
 
         Query filter = buildFilterQuery();
-        Query withFilteredOnPrimary =
-            buildBooleanQuery(new RecordingMatchAllQuery(), filter);
-        Query simpleMatchAllAndFilter =
-            buildBooleanQuery(new MatchAllDocsQuery(), filter);
+        Query withFilteredOnPrimary = buildBooleanQuery(new RecordingMatchAllQuery(), filter);
+        Query simpleMatchAllAndFilter = buildBooleanQuery(new MatchAllDocsQuery(), filter);
 
-        TopDocs tdOpt =
-            searcher.search(withFilteredOnPrimary, NUM_DOCS, Sort.INDEXORDER, true);
+        TopDocs tdOpt = searcher.search(withFilteredOnPrimary, NUM_DOCS, Sort.INDEXORDER, true);
         TopDocs tdSimple =
             searcher.search(simpleMatchAllAndFilter, NUM_DOCS, Sort.INDEXORDER, true);
         assertEquals(tdSimple.totalHits.value(), tdOpt.totalHits.value());
@@ -253,9 +248,7 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
     }
   }
 
-  /**
-   * MUST_NOT clause must still be respected after primary-sort FILTER rewrite.
-   */
+  /** MUST_NOT clause must still be respected after primary-sort FILTER rewrite. */
   public void testMustNotInteraction() throws IOException {
     try (Directory dir = newDirectory()) {
       buildAndPopulateIndex(dir, true);
@@ -310,10 +303,7 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
   }
 
   private static Query buildBooleanQuery(Query must, Query filter) {
-    return new BooleanQuery.Builder()
-        .add(must, Occur.MUST)
-        .add(filter, Occur.FILTER)
-        .build();
+    return new BooleanQuery.Builder().add(must, Occur.MUST).add(filter, Occur.FILTER).build();
   }
 
   private void assertTwoFiltersMatch(IndexSearcher searcher, Query first, Query second)

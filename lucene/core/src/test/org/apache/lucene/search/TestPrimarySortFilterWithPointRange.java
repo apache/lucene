@@ -35,8 +35,7 @@ public class TestPrimarySortFilterWithPointRange extends BasePrimarySortFilterTe
 
   @Override
   protected Sort buildIndexSort() {
-    return new Sort(
-        LongField.newSortField("sort", false, SortedNumericSelector.Type.MIN));
+    return new Sort(LongField.newSortField("sort", false, SortedNumericSelector.Type.MIN));
   }
 
   @Override

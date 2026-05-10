@@ -19,9 +19,6 @@ package org.apache.lucene.search;
 import static org.hamcrest.Matchers.instanceOf;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 import java.util.Random;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.document.Document;
@@ -47,8 +44,6 @@ import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-
-
 import org.apache.lucene.util.BytesRef;
 import org.hamcrest.MatcherAssert;
 
@@ -448,7 +443,9 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     iw.forceMerge(1);
 
     DirectoryReader reader = iw.getReader();
-    IndexSearcher searcher = newSearcher(reader);
+    // Plain IndexSearcher: AssertingIndexSearcher may bypass BulkScorer, so RecordingMatchAllQuery
+    // would record no windows.
+    IndexSearcher searcher = new IndexSearcher(reader);
     iw.close();
 
     RecordingMatchAllQuery recordingQuery = new RecordingMatchAllQuery();
@@ -502,7 +499,9 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     iw.forceMerge(1);
 
     DirectoryReader reader = iw.getReader();
-    IndexSearcher searcher = newSearcher(reader);
+    // Plain IndexSearcher: AssertingIndexSearcher may bypass BulkScorer, so RecordingMatchAllQuery
+    // would record no windows.
+    IndexSearcher searcher = new IndexSearcher(reader);
     iw.close();
 
     RecordingMatchAllQuery recordingQuery = new RecordingMatchAllQuery();
@@ -558,7 +557,9 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     iw.forceMerge(1);
 
     DirectoryReader reader = iw.getReader();
-    IndexSearcher searcher = newSearcher(reader);
+    // Plain IndexSearcher: AssertingIndexSearcher may bypass BulkScorer, so RecordingMatchAllQuery
+    // would record no windows.
+    IndexSearcher searcher = new IndexSearcher(reader);
     iw.close();
 
     RecordingMatchAllQuery recordingQuery = new RecordingMatchAllQuery();
