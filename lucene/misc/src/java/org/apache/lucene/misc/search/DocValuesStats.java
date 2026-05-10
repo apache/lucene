@@ -73,30 +73,24 @@ public abstract class DocValuesStats<T> {
     ++missing;
   }
 
-  void merge(DocValuesStats<?> other) {
+  /**
+   * Merges the statistics from {@code other} into this instance. After the call, this instance
+   * reflects the combined statistics of both segments as if they had been collected together.
+   * Subclasses that track additional statistics (e.g. mean, variance, sum) must override this
+   * method, call {@code super.merge(other)}, and combine their own fields accordingly.
+   *
+   * @param other the stats instance to merge into this one; must be of the same concrete type
+   */
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  protected void merge(DocValuesStats<T> other) {
     count += other.count;
     missing += other.missing;
-    if (other.min != null && (min == null || compareValues(other.min, min) < 0)) {
-      copyMin(other);
+    if (other.min != null && (min == null || ((Comparable) other.min).compareTo(min) < 0)) {
+      min = other.min;
     }
-    if (other.max != null && (max == null || compareValues(other.max, max) > 0)) {
-      copyMax(other);
+    if (other.max != null && (max == null || ((Comparable) other.max).compareTo(max) > 0)) {
+      max = other.max;
     }
-  }
-
-  @SuppressWarnings("unchecked")
-  void copyMin(DocValuesStats<?> other) {
-    min = (T) other.min;
-  }
-
-  @SuppressWarnings("unchecked")
-  void copyMax(DocValuesStats<?> other) {
-    max = (T) other.max;
-  }
-
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  int compareValues(Object a, Object b) {
-    return ((Comparable) a).compareTo(b);
   }
 
   /** The field for which these stats were computed. */
@@ -169,9 +163,9 @@ public abstract class DocValuesStats<T> {
      */
     public abstract T sum();
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
-    void merge(DocValuesStats<?> other) {
+    protected void merge(DocValuesStats<T> other) {
       NumericDocValuesStats<T> otherStats = (NumericDocValuesStats<T>) other;
 
       this.missing += otherStats.missing();
@@ -200,10 +194,10 @@ public abstract class DocValuesStats<T> {
       this.mean = combinedMean;
       this.count = totalCount;
 
-      if (compareValues(otherStats.min(), min()) < 0) {
+      if (((Comparable) otherStats.min()).compareTo(min()) < 0) {
         this.min = otherStats.min();
       }
-      if (compareValues(otherStats.max(), max()) > 0) {
+      if (((Comparable) otherStats.max()).compareTo(max()) > 0) {
         this.max = otherStats.max();
       }
     }
@@ -240,9 +234,9 @@ public abstract class DocValuesStats<T> {
     }
 
     @Override
-    void merge(DocValuesStats<?> other) {
+    protected void merge(DocValuesStats<Long> other) {
       super.merge(other);
-      sum += ((LongDocValuesStats) other).sum;
+      sum += ((NumericDocValuesStats<Long>) other).sum();
     }
   }
 
@@ -278,9 +272,9 @@ public abstract class DocValuesStats<T> {
     }
 
     @Override
-    void merge(DocValuesStats<?> other) {
+    protected void merge(DocValuesStats<Double> other) {
       super.merge(other);
-      this.sum += ((DoubleDocValuesStats) other).sum;
+      this.sum += ((NumericDocValuesStats<Double>) other).sum();
     }
   }
 
@@ -336,9 +330,9 @@ public abstract class DocValuesStats<T> {
      */
     public abstract T sum();
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "rawtypes"})
     @Override
-    void merge(DocValuesStats<?> other) {
+    protected void merge(DocValuesStats<T> other) {
       SortedNumericDocValuesStats<T> otherStats = (SortedNumericDocValuesStats<T>) other;
 
       this.missing += otherStats.missing();
@@ -371,10 +365,10 @@ public abstract class DocValuesStats<T> {
       this.valuesCount = totalValuesCount;
       this.count += otherStats.count();
 
-      if (compareValues(otherStats.min(), min()) < 0) {
+      if (((Comparable) otherStats.min()).compareTo(min()) < 0) {
         this.min = otherStats.min();
       }
-      if (compareValues(otherStats.max(), max()) > 0) {
+      if (((Comparable) otherStats.max()).compareTo(max()) > 0) {
         this.max = otherStats.max();
       }
     }
@@ -418,9 +412,9 @@ public abstract class DocValuesStats<T> {
     }
 
     @Override
-    void merge(DocValuesStats<?> other) {
+    protected void merge(DocValuesStats<Long> other) {
       super.merge(other);
-      sum += ((SortedLongDocValuesStats) other).sum();
+      sum += ((SortedNumericDocValuesStats<Long>) other).sum();
     }
   }
 
@@ -463,9 +457,9 @@ public abstract class DocValuesStats<T> {
     }
 
     @Override
-    void merge(DocValuesStats<?> other) {
+    protected void merge(DocValuesStats<Double> other) {
       super.merge(other);
-      this.sum += ((SortedDoubleDocValuesStats) other).sum;
+      this.sum += ((SortedNumericDocValuesStats<Double>) other).sum();
     }
   }
 

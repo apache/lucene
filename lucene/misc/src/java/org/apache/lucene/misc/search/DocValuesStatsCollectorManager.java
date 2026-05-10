@@ -35,7 +35,7 @@ import org.apache.lucene.search.CollectorManager;
  *
  * @param <S> the type of {@link DocValuesStats}
  */
-public class DocValuesStatsCollectorManager<S extends DocValuesStats<?>>
+public class DocValuesStatsCollectorManager<T, S extends DocValuesStats<T>>
     implements CollectorManager<DocValuesStatsCollector, S> {
 
   private final Supplier<S> statsSupplier;

@@ -57,12 +57,9 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
   public void testNoDocsWithField() throws IOException {
     try (Directory dir = newDirectory();
         RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir)) {
-      int numDocs = TestUtil.nextInt(random(), 50, 100);
+      int numDocs = TestUtil.nextInt(random(), 1, 100);
       for (int i = 0; i < numDocs; i++) {
         indexWriter.addDocument(new Document());
-        if (i != 0 && i % 10 == 0) {
-          indexWriter.commit();
-        }
       }
 
       try (DirectoryReader reader = indexWriter.getReader()) {
@@ -109,10 +106,9 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
   public void testDocsWithLongValues() throws IOException {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig config = newIndexWriterConfig();
-      config.setMaxBufferedDocs(10);
       try (RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir, config)) {
         String field = "numeric";
-        int numDocs = TestUtil.nextInt(random(), 50, 100);
+        int numDocs = TestUtil.nextInt(random(), 1, 100);
         long[] docValues = new long[numDocs];
         int nextVal = 1;
         for (int i = 0; i < numDocs; i++) {
@@ -123,12 +119,10 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
             docValues[i] = nextVal;
             ++nextVal;
           }
-          if (i != 0 && i % 10 == 0) {
-            indexWriter.commit();
-          }
           indexWriter.addDocument(doc);
         }
 
+        // 20% of cases delete some docs
         if (random().nextDouble() < 0.2) {
           for (int i = 0; i < numDocs; i++) {
             if (random().nextBoolean()) {
@@ -167,10 +161,9 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
   public void testDocsWithDoubleValues() throws IOException {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig config = newIndexWriterConfig();
-      config.setMaxBufferedDocs(10);
       try (RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir, config)) {
         String field = "numeric";
-        int numDocs = TestUtil.nextInt(random(), 50, 100);
+        int numDocs = TestUtil.nextInt(random(), 1, 100);
         double[] docValues = new double[numDocs];
         double nextVal = 1.0;
         for (int i = 0; i < numDocs; i++) {
@@ -181,12 +174,10 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
             docValues[i] = nextVal;
             ++nextVal;
           }
-          if (i != 0 && i % 10 == 0) {
-            indexWriter.commit();
-          }
           indexWriter.addDocument(doc);
         }
 
+        // 20% of cases delete some docs
         if (random().nextDouble() < 0.2) {
           for (int i = 0; i < numDocs; i++) {
             if (random().nextBoolean()) {
@@ -225,10 +216,9 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
   public void testDocsWithMultipleLongValues() throws IOException {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig config = newIndexWriterConfig();
-      config.setMaxBufferedDocs(10);
       try (RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir, config)) {
         String field = "numeric";
-        int numDocs = TestUtil.nextInt(random(), 50, 100);
+        int numDocs = TestUtil.nextInt(random(), 1, 100);
         long[][] docValues = new long[numDocs][];
         long nextVal = 1;
         for (int i = 0; i < numDocs; i++) {
@@ -243,12 +233,10 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
             }
             doc.add(new StringField("id", "doc" + i, Store.NO));
           }
-          if (i != 0 && i % 10 == 0) {
-            indexWriter.commit();
-          }
           indexWriter.addDocument(doc);
         }
 
+        // 20% of cases delete some docs
         if (random().nextDouble() < 0.2) {
           for (int i = 0; i < numDocs; i++) {
             if (random().nextBoolean()) {
@@ -290,10 +278,9 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
   public void testDocsWithMultipleDoubleValues() throws IOException {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig config = newIndexWriterConfig();
-      config.setMaxBufferedDocs(10);
       try (RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir, config)) {
         String field = "numeric";
-        int numDocs = TestUtil.nextInt(random(), 50, 100);
+        int numDocs = TestUtil.nextInt(random(), 1, 100);
         double[][] docValues = new double[numDocs][];
         double nextVal = 1;
         for (int i = 0; i < numDocs; i++) {
@@ -308,12 +295,10 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
             }
             doc.add(new StringField("id", "doc" + i, Store.NO));
           }
-          if (i != 0 && i % 10 == 0) {
-            indexWriter.commit();
-          }
           indexWriter.addDocument(doc);
         }
 
+        // 20% of cases delete some docs
         if (random().nextDouble() < 0.2) {
           for (int i = 0; i < numDocs; i++) {
             if (random().nextBoolean()) {
@@ -357,7 +342,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
     try (Directory dir = newDirectory();
         RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir)) {
       String field = "sorted";
-      int numDocs = TestUtil.nextInt(random(), 50, 100);
+      int numDocs = TestUtil.nextInt(random(), 1, 100);
       BytesRef[] docValues = new BytesRef[numDocs];
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();
@@ -366,9 +351,6 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
           doc.add(new SortedDocValuesField(field, val));
           doc.add(new StringField("id", "doc" + i, Store.NO));
           docValues[i] = val;
-        }
-        if (i != 0 && i % 10 == 0) {
-          indexWriter.commit();
         }
         indexWriter.addDocument(doc);
       }
@@ -406,7 +388,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
     try (Directory dir = newDirectory();
         RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir)) {
       String field = "sorted";
-      int numDocs = TestUtil.nextInt(random(), 50, 100);
+      int numDocs = TestUtil.nextInt(random(), 1, 100);
       BytesRef[][] docValues = new BytesRef[numDocs][];
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();
@@ -419,9 +401,6 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
             docValues[i][j] = val;
           }
           doc.add(new StringField("id", "doc" + i, Store.NO));
-        }
-        if (i != 0 && i % 10 == 0) {
-          indexWriter.commit();
         }
         indexWriter.addDocument(doc);
       }
