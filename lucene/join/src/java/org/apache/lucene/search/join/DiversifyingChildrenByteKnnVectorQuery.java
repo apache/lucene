@@ -60,6 +60,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
   private final Query childFilter;
   private final int k;
   private final byte[] query;
+  private final boolean blockRescore;
 
   /**
    * Create a ToParentBlockJoinByteVectorQuery.
@@ -72,7 +73,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
    */
   public DiversifyingChildrenByteKnnVectorQuery(
       String field, byte[] query, Query childFilter, int k, BitSetProducer parentsFilter) {
-    this(field, query, childFilter, k, parentsFilter, DEFAULT);
+    this(field, query, childFilter, k, parentsFilter, DEFAULT, false);
   }
 
   /**
@@ -95,11 +96,40 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
       int k,
       BitSetProducer parentsFilter,
       KnnSearchStrategy searchStrategy) {
+    this(field, query, childFilter, k, parentsFilter, searchStrategy, false);
+  }
+
+  /**
+   * Create a DiversifyingChildrenByteKnnVectorQuery with optional post-HNSW block rescoring.
+   *
+   * <p>When {@code blockRescore} is {@code true}, after the approximate HNSW search completes, all
+   * children in each found parent's block are scored to guarantee the truly best child is returned.
+   * See {@link DiversifyingChildrenFloatKnnVectorQuery#DiversifyingChildrenFloatKnnVectorQuery(
+   * String, float[], Query, int, BitSetProducer, KnnSearchStrategy, boolean)} for details.
+   *
+   * @param field the query field
+   * @param query the vector query
+   * @param childFilter the child filter
+   * @param k how many parent documents to return given the matching children
+   * @param parentsFilter Filter identifying the parent documents.
+   * @param searchStrategy the search strategy to use.
+   * @param blockRescore if {@code true}, enables post-HNSW block rescoring.
+   * @lucene.experimental
+   */
+  public DiversifyingChildrenByteKnnVectorQuery(
+      String field,
+      byte[] query,
+      Query childFilter,
+      int k,
+      BitSetProducer parentsFilter,
+      KnnSearchStrategy searchStrategy,
+      boolean blockRescore) {
     super(field, query, k, childFilter, searchStrategy);
     this.childFilter = childFilter;
     this.parentsFilter = parentsFilter;
     this.k = k;
     this.query = query;
+    this.blockRescore = blockRescore;
   }
 
   @Override
@@ -173,7 +203,25 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
       return NO_RESULTS;
     }
     context.reader().searchNearestVectors(field, query, collector, acceptDocs);
-    return collector.topDocs();
+    TopDocs results = collector.topDocs();
+    if (!blockRescore || results.scoreDocs.length == 0) {
+      return results;
+    }
+    BitSet parentBitSet = parentsFilter.getBitSet(context);
+    if (parentBitSet == null) {
+      return results;
+    }
+    ByteVectorValues vectorValues = context.reader().getByteVectorValues(field);
+    if (vectorValues == null) {
+      return results;
+    }
+    VectorScorer scorer = vectorValues.scorer(query);
+    if (scorer == null) {
+      return results;
+    }
+    // Delegate to the shared static implementation in the float variant.
+    return DiversifyingChildrenFloatKnnVectorQuery.blockRescore(
+        results, acceptDocs, parentBitSet, scorer);
   }
 
   @Override
@@ -195,6 +243,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
     if (!super.equals(o)) return false;
     DiversifyingChildrenByteKnnVectorQuery that = (DiversifyingChildrenByteKnnVectorQuery) o;
     return k == that.k
+        && blockRescore == that.blockRescore
         && Objects.equals(parentsFilter, that.parentsFilter)
         && Objects.equals(childFilter, that.childFilter)
         && Arrays.equals(query, that.query);
@@ -202,7 +251,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
 
   @Override
   public int hashCode() {
-    int result = Objects.hash(super.hashCode(), parentsFilter, childFilter, k);
+    int result = Objects.hash(super.hashCode(), parentsFilter, childFilter, k, blockRescore);
     result = 31 * result + Arrays.hashCode(query);
     return result;
   }

@@ -18,6 +18,8 @@
 package org.apache.lucene.search.join;
 
 import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
+import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
+import static org.apache.lucene.search.TotalHits.Relation.EQUAL_TO;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -30,13 +32,19 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BitSet;
 
 public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVectorQueryTestCase {
 
@@ -150,5 +158,193 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
       v[i] = random.nextFloat();
     }
     return v;
+  }
+
+  /**
+   * Directly proves that {@code blockRescore} corrects a suboptimal HNSW result: we manually
+   * construct a {@link TopDocs} where every parent is represented by its worst child (the one
+   * pointing away from the query), then verify the static rescore method replaces it with the best
+   * child (the one pointing toward the query).
+   *
+   * <p>This test does not depend on HNSW traversal order and will always demonstrate the
+   * correction.
+   */
+  public void testBlockRescoreCorrectsSuboptimalResult() throws IOException {
+    // 3 parents, each with 2 children:
+    //   child "bad"  → vec orthogonal to query  (DOT_PRODUCT Lucene score ≈ 0.5)
+    //   child "good" → vec aligned with query   (DOT_PRODUCT Lucene score ≈ 1.0)
+    final float[] queryVector = new float[] {1f, 0f};
+
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(
+              d,
+              new IndexWriterConfig()
+                  .setCodec(TestUtil.getDefaultCodec())
+                  .setMergePolicy(newMergePolicy(random(), false)))) {
+        for (int p = 0; p < 3; p++) {
+          List<Document> block = new ArrayList<>();
+          // bad child: orthogonal to query
+          Document bad = new Document();
+          bad.add(new KnnFloatVectorField("field", new float[] {0f, 1f}, DOT_PRODUCT));
+          block.add(bad);
+          // good child: aligned with query
+          Document good = new Document();
+          good.add(new KnnFloatVectorField("field", new float[] {1f, 0f}, DOT_PRODUCT));
+          block.add(good);
+          block.add(makeParent(new int[] {0, 1}));
+          w.addDocuments(block);
+        }
+        w.forceMerge(1);
+      }
+
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        LeafReaderContext leaf = reader.leaves().get(0);
+        BitSetProducer parentFilter = parentFilter(reader);
+        BitSet parentBitSet = parentFilter.getBitSet(leaf);
+
+        // Score the bad child of each parent so we know its score.
+        VectorScorer badScorer = leaf.reader().getFloatVectorValues("field").scorer(queryVector);
+        badScorer.iterator().advance(0); // bad child of parent 0 is docId 0
+        float badScore = badScorer.score();
+
+        // Manually construct a TopDocs that reports only the BAD child per parent —
+        // simulating an HNSW run that reached the wrong sibling first.
+        //   parent 0 → docId 2,  children are docId 0 (bad) and docId 1 (good)
+        //   parent 1 → docId 5,  children are docId 3 (bad) and docId 4 (good)
+        //   parent 2 → docId 8,  children are docId 6 (bad) and docId 7 (good)
+        ScoreDoc[] badResults =
+            new ScoreDoc[] {
+              new ScoreDoc(0, badScore), // bad child of parent 0
+              new ScoreDoc(3, badScore), // bad child of parent 1
+              new ScoreDoc(6, badScore), // bad child of parent 2
+            };
+        TopDocs badTopDocs = new TopDocs(new TotalHits(10, EQUAL_TO), badResults);
+
+        // Rescore using the static package-private method.
+        VectorScorer scorer = leaf.reader().getFloatVectorValues("field").scorer(queryVector);
+        TopDocs corrected =
+            DiversifyingChildrenFloatKnnVectorQuery.blockRescore(
+                badTopDocs, null, parentBitSet, scorer);
+
+        assertEquals(3, corrected.scoreDocs.length);
+        // Every result should now be the GOOD child (one per parent).
+        assertEquals(1, corrected.scoreDocs[0].doc); // good child of parent 0
+        assertEquals(4, corrected.scoreDocs[1].doc); // good child of parent 1
+        assertEquals(7, corrected.scoreDocs[2].doc); // good child of parent 2
+        // Scores must be strictly better than the bad-child scores.
+        for (ScoreDoc sd : corrected.scoreDocs) {
+          assertTrue(
+              "expected score > badScore after rescoring, got " + sd.score,
+              sd.score > badScore + 1e-5f);
+        }
+        // visitedCount must have grown: each parent had 1 extra sibling scored.
+        assertEquals(10 + 3, corrected.totalHits.value());
+      }
+    }
+  }
+
+  /**
+   * End-to-end verification: with {@code blockRescore=true}, the query always returns the best
+   * child for each found parent (no sibling should outscore the returned child).
+   *
+   * <p>The invariant test uses a fresh {@link VectorScorer} per parent (docId-based, not
+   * ordinal-based) to avoid the ordinal/docId confusion that plagues {@code
+   * FloatVectorValues.vectorValue(int ord)}.
+   */
+  public void testBlockRescoreReturnsBestChildPerParent() throws IOException {
+    final int numParents = 20;
+    final int childrenPerParent = 8;
+    final int dim = 4;
+    final float[] queryVector = new float[] {1f, 0f, 0f, 0f};
+
+    try (Directory d = newDirectory()) {
+      try (IndexWriter w =
+          new IndexWriter(
+              d,
+              new IndexWriterConfig()
+                  .setCodec(TestUtil.getDefaultCodec())
+                  .setMergePolicy(newMergePolicy(random(), false)))) {
+        for (int p = 0; p < numParents; p++) {
+          List<Document> block = new ArrayList<>();
+          int[] childIds = new int[childrenPerParent];
+          for (int c = 0; c < childrenPerParent; c++) {
+            // Last child per parent (c == childrenPerParent - 1) is aligned with the query.
+            // All other children use dims 1-3, so DOT_PRODUCT with [1,0,0,0] == 0 → score 0.5.
+            float[] vec = new float[dim];
+            if (c == childrenPerParent - 1) {
+              vec[0] = 1f;
+              vec[1] = (p + 1) * 1e-4f; // tiny perturbation to keep vectors distinct
+            } else {
+              vec[1 + (c % (dim - 1))] = 1f;
+            }
+            normalize(vec);
+            Document doc = new Document();
+            doc.add(new KnnFloatVectorField("field", vec, DOT_PRODUCT));
+            block.add(doc);
+            childIds[c] = c;
+          }
+          block.add(makeParent(childIds));
+          w.addDocuments(block);
+        }
+        w.forceMerge(1);
+      }
+
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        assertEquals(1, reader.leaves().size());
+        IndexSearcher searcher = new IndexSearcher(reader);
+        BitSetProducer parentFilter = parentFilter(reader);
+
+        // blockRescore=true to enable the feature under test.
+        DiversifyingChildrenFloatKnnVectorQuery query =
+            new DiversifyingChildrenFloatKnnVectorQuery(
+                "field",
+                queryVector,
+                null,
+                numParents,
+                parentFilter,
+                org.apache.lucene.search.knn.KnnSearchStrategy.Hnsw.DEFAULT,
+                true);
+        TopDocs results = searcher.search(query, numParents);
+
+        LeafReaderContext leaf = reader.leaves().get(0);
+        BitSet parentBitSet = parentFilter.getBitSet(leaf);
+
+        for (ScoreDoc sd : results.scoreDocs) {
+          int parent = parentBitSet.nextSetBit(sd.doc);
+          int prevParent = parent > 0 ? parentBitSet.prevSetBit(parent - 1) : -1;
+          // Re-score siblings with a fresh docId-based scorer and verify nothing beats the result.
+          VectorScorer sibScorer =
+              leaf.reader().getFloatVectorValues("field").scorer(queryVector);
+          org.apache.lucene.search.DocIdSetIterator sibIter = sibScorer.iterator();
+          for (int child = prevParent + 1; child < parent; child++) {
+            if (sibIter.advance(child) == child) {
+              float sibScore = sibScorer.score();
+              assertTrue(
+                  "block rescore missed a better child: parent="
+                      + parent
+                      + " returnedChild="
+                      + sd.doc
+                      + " returnedScore="
+                      + sd.score
+                      + " siblingChild="
+                      + child
+                      + " siblingScore="
+                      + sibScore,
+                  sd.score + 1e-5f >= sibScore);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private static void normalize(float[] v) {
+    float norm = 0f;
+    for (float x : v) norm += x * x;
+    norm = (float) Math.sqrt(norm);
+    if (norm > 0f) {
+      for (int i = 0; i < v.length; i++) v[i] /= norm;
+    }
   }
 }

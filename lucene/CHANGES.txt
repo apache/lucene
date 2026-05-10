@@ -108,6 +108,11 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#15839: DiversifyingChildren KNN queries now support optional post-HNSW block rescoring:
+  when enabled, all children in each found parent's block are scored after approximate search,
+  guaranteeing the best child per parent is returned and correctly tracking extra visited nodes.
+  (Prithvi S)
+
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
 
 * GITHUB#15682: Use ArrayDeque instead of LinkedList in CompoundWordTokenFilterBase.java. (Renato Haeberli)
