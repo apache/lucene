@@ -47,7 +47,8 @@ import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.Bits;
+
+
 import org.apache.lucene.util.BytesRef;
 import org.hamcrest.MatcherAssert;
 
@@ -178,50 +179,6 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
     }
   }
 
-  public void testBooleanFilterOnPrimaryIndexSortFieldRestrictsBulkScoringRange()
-      throws IOException {
-    Directory dir = newDirectory();
-
-    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-    iwc.setIndexSort(
-        new Sort(LongField.newSortField("sort", false, SortedNumericSelector.Type.MIN)));
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
-
-    for (int i = 99; i >= 0; --i) {
-      Document doc = new Document();
-      doc.add(new LongField("sort", i, Field.Store.NO));
-      iw.addDocument(doc);
-    }
-    iw.forceMerge(1);
-
-    DirectoryReader reader = iw.getReader();
-    // Plain IndexSearcher — AssertingIndexSearcher may route bulk scoring through the Scorer
-    // path, bypassing RecordingMatchAllQuery's custom BulkScorer.
-    IndexSearcher searcher = new IndexSearcher(reader);
-    iw.close();
-
-    RecordingMatchAllQuery recordingQuery = new RecordingMatchAllQuery();
-    Query filter = LongField.newRangeQuery("sort", 40, 59);
-    Query query =
-        new BooleanQuery.Builder()
-            .add(recordingQuery, BooleanClause.Occur.MUST)
-            .add(filter, BooleanClause.Occur.FILTER)
-            .build();
-    MatcherAssert.assertThat(
-        searcher.rewrite(query), instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
-
-    TopDocs topDocs = searcher.search(query, 100);
-    assertEquals(20, topDocs.totalHits.value());
-    assertFalse(recordingQuery.scoredRanges.isEmpty());
-    for (DocIdRange range : recordingQuery.scoredRanges) {
-      assertTrue(range.minDoc() >= 40);
-      assertTrue(range.maxDoc() <= 60);
-    }
-
-    reader.close();
-    dir.close();
-  }
-
   /**
    * Slow sorted-numeric range ({@link SortedNumericDocValuesField#newSlowRangeQuery}) as FILTER
    * still implements {@link PrimarySortAlignable}.
@@ -252,8 +209,9 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
             .add(new RecordingMatchAllQuery(), BooleanClause.Occur.MUST)
             .add(filter, BooleanClause.Occur.FILTER)
             .build();
-    MatcherAssert.assertThat(
-        searcher.rewrite(query), instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+    assertNotNull(
+        BasePrimarySortFilterTestCase.unwrapFilteredOnPrimaryIndexSortFieldQuery(
+            searcher.rewrite(query)));
     assertEquals(20, searcher.search(query, 100).totalHits.value());
 
     reader.close();
@@ -290,8 +248,9 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
             .add(new RecordingMatchAllQuery(), BooleanClause.Occur.MUST)
             .add(filter, BooleanClause.Occur.FILTER)
             .build();
-    MatcherAssert.assertThat(
-        searcher.rewrite(query), instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+    assertNotNull(
+        BasePrimarySortFilterTestCase.unwrapFilteredOnPrimaryIndexSortFieldQuery(
+            searcher.rewrite(query)));
     assertEquals(20, searcher.search(query, 100).totalHits.value());
 
     reader.close();
@@ -337,8 +296,9 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
             .add(new RecordingMatchAllQuery(), BooleanClause.Occur.MUST)
             .add(filter, BooleanClause.Occur.FILTER)
             .build();
-    MatcherAssert.assertThat(
-        searcher.rewrite(query), instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+    assertNotNull(
+        BasePrimarySortFilterTestCase.unwrapFilteredOnPrimaryIndexSortFieldQuery(
+            searcher.rewrite(query)));
     assertEquals(50, searcher.search(query, 200).totalHits.value());
 
     reader.close();
@@ -387,7 +347,8 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
             .build();
 
     Query rewritten = searcher.rewrite(booleanQuery);
-    MatcherAssert.assertThat(rewritten, instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+    assertNotNull(
+        BasePrimarySortFilterTestCase.unwrapFilteredOnPrimaryIndexSortFieldQuery(rewritten));
 
     final int maxDoc = searcher.getIndexReader().maxDoc();
     TopDocs td1 = searcher.search(booleanQuery, maxDoc, Sort.INDEXORDER);
@@ -446,7 +407,8 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
             .build();
 
     Query rewritten = searcher.rewrite(booleanQuery);
-    MatcherAssert.assertThat(rewritten, instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+    assertNotNull(
+        BasePrimarySortFilterTestCase.unwrapFilteredOnPrimaryIndexSortFieldQuery(rewritten));
 
     TopDocs td1 = searcher.search(booleanQuery, 10);
     TopDocs td2 = searcher.search(rewritten, 10);
@@ -496,8 +458,9 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
             .add(recordingQuery, BooleanClause.Occur.MUST)
             .add(filter, BooleanClause.Occur.FILTER)
             .build();
-    MatcherAssert.assertThat(
-        searcher.rewrite(query), instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+    assertNotNull(
+        BasePrimarySortFilterTestCase.unwrapFilteredOnPrimaryIndexSortFieldQuery(
+            searcher.rewrite(query)));
 
     TopDocs topDocs = searcher.search(query, 100);
     assertEquals(20, topDocs.totalHits.value());
@@ -549,8 +512,9 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
             .add(recordingQuery, BooleanClause.Occur.MUST)
             .add(filter, BooleanClause.Occur.FILTER)
             .build();
-    MatcherAssert.assertThat(
-        searcher.rewrite(query), instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+    assertNotNull(
+        BasePrimarySortFilterTestCase.unwrapFilteredOnPrimaryIndexSortFieldQuery(
+            searcher.rewrite(query)));
 
     TopDocs topDocs = searcher.search(query, 100);
     assertEquals(20, topDocs.totalHits.value());
@@ -606,8 +570,9 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
                 new TermQuery(new org.apache.lucene.index.Term("excluded", "yes")),
                 BooleanClause.Occur.MUST_NOT)
             .build();
-    MatcherAssert.assertThat(
-        searcher.rewrite(query), instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+    assertNotNull(
+        BasePrimarySortFilterTestCase.unwrapFilteredOnPrimaryIndexSortFieldQuery(
+            searcher.rewrite(query)));
 
     TopDocs topDocs = searcher.search(query, 100);
     assertEquals(10, topDocs.totalHits.value());
@@ -667,8 +632,9 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
                 new TermQuery(new org.apache.lucene.index.Term("category", "books")),
                 BooleanClause.Occur.FILTER)
             .build();
-    MatcherAssert.assertThat(
-        searcher.rewrite(query), instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+    assertNotNull(
+        BasePrimarySortFilterTestCase.unwrapFilteredOnPrimaryIndexSortFieldQuery(
+            searcher.rewrite(query)));
 
     TopDocs topDocs = searcher.search(query, 30);
     assertEquals(15, topDocs.totalHits.value());
@@ -725,101 +691,12 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
             .add(firstFilter, BooleanClause.Occur.FILTER)
             .add(secondFilter, BooleanClause.Occur.FILTER)
             .build();
-    MatcherAssert.assertThat(
-        searcher.rewrite(query), instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+    assertNotNull(
+        BasePrimarySortFilterTestCase.unwrapFilteredOnPrimaryIndexSortFieldQuery(
+            searcher.rewrite(query)));
 
     TopDocs topDocs = searcher.search(query, 100);
     assertEquals(20, topDocs.totalHits.value());
-  }
-
-  /**
-   * {@link FilteredOnPrimaryIndexSortFieldQuery} narrows {@link BulkScorer} windows to the proven
-   * dense doc-id interval: windows disjoint from that interval collect nothing; adjacent slices
-   * compose; {@link ScorerSupplier#cost()} reflects the narrow range.
-   */
-  public void testFilteredOnPrimaryIndexSortFieldQueryBulkScorerSlicesAndCost() throws IOException {
-    Directory dir = newDirectory();
-    IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-    iwc.setIndexSort(
-        new Sort(LongField.newSortField("sort", false, SortedNumericSelector.Type.MIN)));
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
-    for (int i = 99; i >= 0; --i) {
-      Document doc = new Document();
-      doc.add(new LongField("sort", i, Field.Store.NO));
-      iw.addDocument(doc);
-    }
-    iw.forceMerge(1);
-    DirectoryReader reader = iw.getReader();
-    IndexSearcher searcher = newSearcher(reader);
-    iw.close();
-
-    RecordingMatchAllQuery recordingQuery = new RecordingMatchAllQuery();
-    Query filter = LongField.newRangeQuery("sort", 40, 59);
-    Query booleanQuery =
-        new BooleanQuery.Builder()
-            .add(recordingQuery, BooleanClause.Occur.MUST)
-            .add(filter, BooleanClause.Occur.FILTER)
-            .build();
-    Query rewritten = searcher.rewrite(booleanQuery);
-    MatcherAssert.assertThat(rewritten, instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
-
-    Weight optWeight = searcher.createWeight(rewritten, ScoreMode.COMPLETE_NO_SCORES, 1f);
-    Weight origWeight = searcher.createWeight(booleanQuery, ScoreMode.COMPLETE_NO_SCORES, 1f);
-    LeafReaderContext ctx = reader.leaves().get(0);
-
-    ScorerSupplier optSs = optWeight.scorerSupplier(ctx);
-    ScorerSupplier origSs = origWeight.scorerSupplier(ctx);
-    assertNotNull(optSs);
-    assertNotNull(origSs);
-    assertTrue(optSs.cost() <= origSs.cost());
-    assertEquals(20L, optSs.cost());
-
-    final int leafMax = ctx.reader().maxDoc();
-
-    // [0, 40) does not intersect filter dense range [40, 60) on doc ids.
-    assertTrue(bulkCollectDocs(optWeight, ctx, 0, 40).isEmpty());
-
-    // Full leaf window collects the 20 matching docs (doc ids 40..59 inclusive).
-    List<Integer> expected = new ArrayList<>();
-    for (int d = 40; d <= 59; ++d) {
-      expected.add(d);
-    }
-    List<Integer> fullPass = bulkCollectDocs(optWeight, ctx, 0, leafMax);
-    Collections.sort(fullPass);
-    assertEquals(expected, fullPass);
-
-    // Two adjacent slices must agree with one full pass (fresh BulkScorer per call).
-    List<Integer> chunked = new ArrayList<>();
-    chunked.addAll(bulkCollectDocs(optWeight, ctx, 0, 55));
-    chunked.addAll(bulkCollectDocs(optWeight, ctx, 55, leafMax));
-    Collections.sort(chunked);
-    assertEquals(expected, chunked);
-
-    reader.close();
-    dir.close();
-  }
-
-  private static List<Integer> bulkCollectDocs(
-      Weight weight, LeafReaderContext ctx, int min, int max) throws IOException {
-    ScorerSupplier scorerSupplier = weight.scorerSupplier(ctx);
-    assertNotNull(scorerSupplier);
-    BulkScorer bulkScorer = scorerSupplier.bulkScorer();
-    assertNotNull(bulkScorer);
-    List<Integer> docs = new ArrayList<>();
-    bulkScorer.score(
-        new LeafCollector() {
-          @Override
-          public void setScorer(Scorable scorer) throws IOException {}
-
-          @Override
-          public void collect(int doc) throws IOException {
-            docs.add(doc);
-          }
-        },
-        null,
-        min,
-        max);
-    return docs;
   }
 
   public void testBooleanTermFilterOnPrimaryIndexSortFieldStillAppliesPostingsFilter()
@@ -892,90 +769,15 @@ public class TestIndexSortSortedNumericDocValuesRangeQuery extends LuceneTestCas
             .add(recordingQuery, BooleanClause.Occur.MUST)
             .add(filter, BooleanClause.Occur.FILTER)
             .build();
-    MatcherAssert.assertThat(
-        searcher.rewrite(query), instanceOf(FilteredOnPrimaryIndexSortFieldQuery.class));
+    assertNotNull(
+        BasePrimarySortFilterTestCase.unwrapFilteredOnPrimaryIndexSortFieldQuery(
+            searcher.rewrite(query)));
 
     TopDocs topDocs = searcher.search(query, 20);
     assertEquals(10, topDocs.totalHits.value());
 
     reader.close();
     dir.close();
-  }
-
-  private static class RecordingMatchAllQuery extends Query {
-    final List<DocIdRange> scoredRanges = new ArrayList<>();
-
-    @Override
-    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost) {
-      return new ConstantScoreWeight(this, boost) {
-        @Override
-        public ScorerSupplier scorerSupplier(LeafReaderContext context) {
-          final int maxDoc = context.reader().maxDoc();
-          final float queryScore = score();
-          return new ScorerSupplier() {
-            @Override
-            public Scorer get(long leadCost) throws IOException {
-              return new ConstantScoreScorer(queryScore, scoreMode, DocIdSetIterator.all(maxDoc));
-            }
-
-            @Override
-            public BulkScorer bulkScorer() {
-              return new BulkScorer() {
-                @Override
-                public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
-                    throws IOException {
-                  scoredRanges.add(new DocIdRange(min, max));
-                  SimpleScorable scorable = new SimpleScorable();
-                  scorable.setScore(queryScore);
-                  collector.setScorer(scorable);
-                  for (int doc = min; doc < max && doc < maxDoc; ++doc) {
-                    if (acceptDocs == null || acceptDocs.get(doc)) {
-                      collector.collect(doc);
-                    }
-                  }
-                  return max == maxDoc ? DocIdSetIterator.NO_MORE_DOCS : max;
-                }
-
-                @Override
-                public long cost() {
-                  return maxDoc;
-                }
-              };
-            }
-
-            @Override
-            public long cost() {
-              return maxDoc;
-            }
-          };
-        }
-
-        @Override
-        public boolean isCacheable(LeafReaderContext ctx) {
-          return true;
-        }
-      };
-    }
-
-    @Override
-    public String toString(String field) {
-      return "RecordingMatchAllQuery";
-    }
-
-    @Override
-    public void visit(QueryVisitor visitor) {
-      visitor.visitLeaf(this);
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-      return this == obj;
-    }
-
-    @Override
-    public int hashCode() {
-      return System.identityHashCode(this);
-    }
   }
 
   public void testEquals() {
