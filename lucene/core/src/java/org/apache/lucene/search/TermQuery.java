@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Objects;
-import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -341,18 +340,6 @@ public class TermQuery extends Query implements PrimarySortAlignable {
   @Override
   public String getField() {
     return term.field();
-  }
-
-  @Override
-  public boolean canOptimize(IndexSearcher searcher) throws IOException {
-    String field = term.field();
-    for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
-      if (PrimarySortAlignables.primaryIndexSortField(context, field) instanceof SortedSetSortField
-          && DocValues.unwrapSingleton(DocValues.getSortedSet(context.reader(), field)) != null) {
-        return true;
-      }
-    }
-    return false;
   }
 
   @Override

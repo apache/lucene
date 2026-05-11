@@ -652,23 +652,6 @@ public abstract class PointRangeQuery extends Query implements PrimarySortAligna
   }
 
   @Override
-  public boolean canOptimize(IndexSearcher searcher) throws IOException {
-    if (numDims != 1 || (bytesPerDim != Integer.BYTES && bytesPerDim != Long.BYTES)) {
-      return false;
-    }
-    for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
-      if (PrimarySortAlignables.primaryIndexSortField(ctx, field) == null) {
-        continue;
-      }
-      PointValues pts = ctx.reader().getPointValues(field);
-      if (pts != null && pts.getNumDimensions() == 1) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  @Override
   public DocIdRange denseDocIdRangeOrNull(LeafReaderContext context) throws IOException {
     if (numDims != 1 || (bytesPerDim != Integer.BYTES && bytesPerDim != Long.BYTES)) {
       return null;

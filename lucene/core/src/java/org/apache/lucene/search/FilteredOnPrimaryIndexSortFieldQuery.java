@@ -45,8 +45,10 @@ final class FilteredOnPrimaryIndexSortFieldQuery extends Query {
   }
 
   static boolean canOptimize(Query filter, IndexSearcher searcher) throws IOException {
-    PrimarySortAlignable alignment = filter instanceof PrimarySortAlignable psa ? psa : null;
-    return alignment != null && alignment.canOptimize(searcher);
+    if (!(filter instanceof PrimarySortAlignable psa)) {
+      return false;
+    }
+    return PrimarySortAlignables.canOptimizePrimarySortOnField(searcher, psa.getField());
   }
 
   @Override
@@ -78,7 +80,10 @@ final class FilteredOnPrimaryIndexSortFieldQuery extends Query {
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-        final DocIdRange narrowRange = primarySortAlignable.denseDocIdRangeOrNull(context);
+        final DocIdRange narrowRange =
+            context.reader().hasDeletions()
+                ? null
+                : primarySortAlignable.denseDocIdRangeOrNull(context);
         final ScorerSupplier fallbackSupplier = fallbackWeight.scorerSupplier(context);
         if (fallbackSupplier == null) {
           return null;

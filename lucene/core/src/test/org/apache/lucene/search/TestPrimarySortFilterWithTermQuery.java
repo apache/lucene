@@ -21,12 +21,31 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KeywordField;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.tests.util.TestUtil;
 
 /**
  * Tests primary-sort FILTER optimization with {@link TermQuery} on a primary {@link
  * SortedSetSortField}.
  */
 public class TestPrimarySortFilterWithTermQuery extends BasePrimarySortFilterTestCase {
+
+  // Docs 0..articlesCount-1 → "articles", then booksCount docs → "books", rest → "music".
+  private int articlesCount;
+  private int booksCount;
+
+  @Override
+  public void setUp() throws Exception {
+    super.setUp(); // sets numDocs
+    articlesCount = TestUtil.nextInt(random(), 1, Math.max(1, numDocs / 3));
+    int musicCount = TestUtil.nextInt(random(), 1, Math.max(1, numDocs / 3));
+    booksCount = numDocs - articlesCount - musicCount;
+    if (booksCount <= 0) {
+      // Distribute evenly as a safe fallback
+      articlesCount = numDocs / 3;
+      musicCount = numDocs / 3;
+      booksCount = numDocs - articlesCount - musicCount;
+    }
+  }
 
   @Override
   protected Sort buildIndexSort() {
@@ -39,9 +58,9 @@ public class TestPrimarySortFilterWithTermQuery extends BasePrimarySortFilterTes
   protected void addDocument(IndexWriter writer, int i) throws IOException {
     Document doc = new Document();
     String category;
-    if (i < 30) {
+    if (i < articlesCount) {
       category = "articles";
-    } else if (i < 50) {
+    } else if (i < articlesCount + booksCount) {
       category = "books";
     } else {
       category = "music";
@@ -57,6 +76,6 @@ public class TestPrimarySortFilterWithTermQuery extends BasePrimarySortFilterTes
 
   @Override
   protected int expectedFilteredHitCount() {
-    return 20;
+    return booksCount;
   }
 }

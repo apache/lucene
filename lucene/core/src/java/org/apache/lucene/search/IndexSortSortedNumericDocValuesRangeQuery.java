@@ -554,11 +554,6 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
   }
 
   @Override
-  public boolean canOptimize(IndexSearcher searcher) throws IOException {
-    return PrimarySortAlignables.canOptimizePrimarySortOnField(searcher, getField());
-  }
-
-  @Override
   public DocIdRange denseDocIdRangeOrNull(LeafReaderContext context) throws IOException {
     return getDenseDocIdRangeForPrimarySort(context);
   }

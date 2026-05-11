@@ -39,7 +39,6 @@ import org.apache.lucene.search.NumericDocValuesRangeQuery;
 import org.apache.lucene.search.NumericFieldStats;
 import org.apache.lucene.search.NumericFieldStats.Stats;
 import org.apache.lucene.search.PrimarySortAlignable;
-import org.apache.lucene.search.PrimarySortAlignables;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -196,11 +195,6 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery
         return -1;
       }
     };
-  }
-
-  @Override
-  public boolean canOptimize(IndexSearcher searcher) throws IOException {
-    return PrimarySortAlignables.canOptimizePrimarySortOnField(searcher, field);
   }
 
   @Override

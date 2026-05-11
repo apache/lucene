@@ -24,11 +24,12 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
-import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.junit.Assert;
 
 /**
@@ -44,16 +45,21 @@ import org.junit.Assert;
  */
 public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
 
-  /** Total number of documents to index. */
-  protected static final int NUM_DOCS = 100;
+  /** Number of documents indexed; randomized per test run in {@link #setUp()}. */
+  protected int numDocs;
+
+  @Override
+  public void setUp() throws Exception {
+    super.setUp();
+    numDocs = TestUtil.nextInt(random(), 50, 200);
+  }
 
   /**
    * When the index maps doc {@code n} to the {@code n}-th sort key in order (so the filter's dense
    * doc-id interval is known), return the interval and expected stats for bulk-scorer checks.
    *
-   * <p>{@link #testBulkScorerNarrowingCostAndRecording} assumes {@link #NUM_DOCS} documents and a
-   * force-merged single segment; {@code expectedOptimizedLeafCost} is asserted per leaf under that
-   * fixture only.
+   * <p>{@link #testBulkScorerNarrowingCostAndRecording} assumes a force-merged single segment;
+   * {@code expectedOptimizedLeafCost} is asserted per leaf under that fixture only.
    */
   protected record DensePrimarySortBulkChecks(
       int denseMinDocInclusive,
@@ -94,6 +100,7 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
   private IndexWriterConfig buildIndexWriterConfig() {
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
     iwc.setIndexSort(buildIndexSort());
+    iwc.setMergePolicy(newMergePolicy());
     return iwc;
   }
 
@@ -136,7 +143,7 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = newSearcher(reader);
         Query query = buildBooleanQuery(new MatchAllDocsQuery(), buildFilterQuery());
-        TopDocs topDocs = searcher.search(query, NUM_DOCS);
+        TopDocs topDocs = searcher.search(query, numDocs);
         assertEquals(expectedFilteredHitCount(), topDocs.totalHits.value());
       }
     }
@@ -149,12 +156,16 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
    */
   public void testMultiSegmentEquivalentToSimpleBoolean() throws IOException {
     try (Directory dir = newDirectory()) {
-      // Build multi-segment index
-      IndexWriterConfig iwc = buildIndexWriterConfig();
-      try (RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc)) {
-        for (int i = 0; i < NUM_DOCS; i++) {
-          addDocument(iw.w, i);
-          if (i % 25 == 24) {
+      // NoMergePolicy preserves the explicit segment boundaries we create below.
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setIndexSort(buildIndexSort());
+      iwc.setMergePolicy(NoMergePolicy.INSTANCE);
+      try (IndexWriter iw = new IndexWriter(dir, iwc)) {
+        // Commit at a random split point to guarantee at least two segments.
+        int split = TestUtil.nextInt(random(), 1, numDocs - 1);
+        for (int i = 0; i < numDocs; i++) {
+          addDocument(iw, i);
+          if (i == split - 1) {
             iw.commit();
           }
         }
@@ -167,9 +178,9 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
         Query withFilteredOnPrimary = buildBooleanQuery(new RecordingMatchAllQuery(), filter);
         Query simpleMatchAllAndFilter = buildBooleanQuery(new MatchAllDocsQuery(), filter);
 
-        TopDocs tdOpt = searcher.search(withFilteredOnPrimary, NUM_DOCS, Sort.INDEXORDER, true);
+        TopDocs tdOpt = searcher.search(withFilteredOnPrimary, numDocs, Sort.INDEXORDER, true);
         TopDocs tdSimple =
-            searcher.search(simpleMatchAllAndFilter, NUM_DOCS, Sort.INDEXORDER, true);
+            searcher.search(simpleMatchAllAndFilter, numDocs, Sort.INDEXORDER, true);
         assertEquals(tdSimple.totalHits.value(), tdOpt.totalHits.value());
         for (int i = 0; i < tdSimple.scoreDocs.length; i++) {
           assertEquals(tdSimple.scoreDocs[i].doc, tdOpt.scoreDocs[i].doc);
@@ -223,7 +234,7 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
             unwrapFilteredOnPrimaryIndexSortFieldQuery(plainRewritten));
 
         recordingQuery.clearRecordedRanges();
-        TopDocs topDocs = plainSearcher.search(booleanQuery, NUM_DOCS);
+        TopDocs topDocs = plainSearcher.search(booleanQuery, numDocs);
         assertEquals(d.expectedMatchingDocs(), topDocs.totalHits.value());
         assertFalse(recordingQuery.scoredRanges.isEmpty());
         for (DocIdRange range : recordingQuery.scoredRanges) {
@@ -262,7 +273,7 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
                 .add(filter, Occur.FILTER)
                 .add(new MatchAllDocsQuery(), Occur.MUST_NOT)
                 .build();
-        TopDocs topDocs = searcher.search(query, NUM_DOCS);
+        TopDocs topDocs = searcher.search(query, numDocs);
         assertEquals(0, topDocs.totalHits.value());
       }
     }
@@ -283,7 +294,7 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
             "should not optimize on unsorted index",
             unwrapFilteredOnPrimaryIndexSortFieldQuery(rewritten));
         // But must still return correct results
-        TopDocs topDocs = searcher.search(query, NUM_DOCS);
+        TopDocs topDocs = searcher.search(query, numDocs);
         assertEquals(expectedFilteredHitCount(), topDocs.totalHits.value());
       }
     }
@@ -295,7 +306,7 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
     IndexWriterConfig iwc =
         sorted ? buildIndexWriterConfig() : new IndexWriterConfig(new MockAnalyzer(random()));
     try (IndexWriter writer = new IndexWriter(dir, iwc)) {
-      for (int i = 0; i < NUM_DOCS; i++) {
+      for (int i = 0; i < numDocs; i++) {
         addDocument(writer, i);
       }
       writer.forceMerge(1);
@@ -318,7 +329,7 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
     assertNotNull(
         "expected FilteredOnPrimaryIndexSortFieldQuery in rewrite chain",
         unwrapFilteredOnPrimaryIndexSortFieldQuery(rewritten));
-    TopDocs topDocs = searcher.search(query, NUM_DOCS);
+    TopDocs topDocs = searcher.search(query, numDocs);
     assertEquals(expectedFilteredHitCount(), topDocs.totalHits.value());
   }
 

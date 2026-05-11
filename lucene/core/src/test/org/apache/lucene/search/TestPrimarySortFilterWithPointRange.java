@@ -21,16 +21,41 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 
 /**
  * Tests primary-sort FILTER optimization with {@link LongPoint#newRangeQuery} (standalone point
  * range, not wrapped in {@link IndexSortSortedNumericDocValuesRangeQuery}).
+ *
+ * <p>SimpleText is suppressed because its {@code PointTree} traversal does not support the BKD
+ * in-order navigation used by {@code IndexSortSortedNumericDocValuesRangeQuery}, causing the
+ * optimization to produce an empty range even when matches exist.
  */
+@LuceneTestCase.SuppressCodecs("SimpleText")
 public class TestPrimarySortFilterWithPointRange extends BasePrimarySortFilterTestCase {
+
+  private long filterLo;
+  private long filterHi;
+  private long widerFilterLo;
+  private long widerFilterHi;
+
+  @Override
+  public void setUp() throws Exception {
+    super.setUp(); // sets numDocs
+    filterLo = TestUtil.nextInt(random(), 1, numDocs / 2);
+    filterHi = TestUtil.nextInt(random(), (int) filterLo + 1, numDocs - 2);
+    widerFilterLo = TestUtil.nextInt(random(), 0, (int) filterLo);
+    widerFilterHi = TestUtil.nextInt(random(), (int) filterHi, numDocs - 1);
+  }
 
   @Override
   protected DensePrimarySortBulkChecks densePrimarySortBulkChecksOrNull() {
-    return new DensePrimarySortBulkChecks(40, 60, 20, 20L);
+    return new DensePrimarySortBulkChecks(
+        (int) filterLo,
+        (int) filterHi + 1,
+        (int) (filterHi - filterLo + 1),
+        filterHi - filterLo + 1);
   }
 
   @Override
@@ -47,16 +72,16 @@ public class TestPrimarySortFilterWithPointRange extends BasePrimarySortFilterTe
 
   @Override
   protected Query buildFilterQuery() {
-    return LongPoint.newRangeQuery("sort", 40, 59);
+    return LongPoint.newRangeQuery("sort", filterLo, filterHi);
   }
 
   @Override
   protected int expectedFilteredHitCount() {
-    return 20;
+    return (int) (filterHi - filterLo + 1);
   }
 
   @Override
   protected Query buildWiderFilterQuery() {
-    return LongPoint.newRangeQuery("sort", 20, 79);
+    return LongPoint.newRangeQuery("sort", widerFilterLo, widerFilterHi);
   }
 }

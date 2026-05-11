@@ -39,7 +39,6 @@ import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortedSetSortField;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
@@ -216,17 +215,6 @@ final class SortedSetDocValuesRangeQuery extends Query implements PrimarySortAli
       }
     }
     return new OrdBounds(minOrd, maxOrd);
-  }
-
-  @Override
-  public boolean canOptimize(IndexSearcher searcher) throws IOException {
-    for (LeafReaderContext context : searcher.getIndexReader().leaves()) {
-      SortField sf = PrimarySortAlignables.primaryIndexSortField(context, field);
-      if (sf instanceof SortedSetSortField) {
-        return true;
-      }
-    }
-    return false;
   }
 
   @Override
