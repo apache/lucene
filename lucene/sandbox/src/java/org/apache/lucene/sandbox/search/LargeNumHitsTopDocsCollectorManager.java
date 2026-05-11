@@ -24,6 +24,15 @@ import org.apache.lucene.search.TopDocs;
 /**
  * CollectorManager for {@link LargeNumHitsTopDocsCollector} that enables concurrent collection of
  * top docs across multiple segments.
+ *
+ * <p>Example usage:
+ *
+ * <pre class="prettyprint">
+ * IndexSearcher searcher = ...; // your IndexSearcher
+ * TopDocs topDocs = searcher.search(new MatchAllDocsQuery(),
+ *     new LargeNumHitsTopDocsCollectorManager(100_000));
+ * System.out.println("Total hits: " + topDocs.totalHits.value());
+ * </pre>
  */
 public class LargeNumHitsTopDocsCollectorManager
     implements CollectorManager<LargeNumHitsTopDocsCollector, TopDocs> {
