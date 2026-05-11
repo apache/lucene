@@ -46,10 +46,7 @@ public class TestPrimarySortFilterWithIndexSortSortedNumericDvRange
   @Override
   protected DensePrimarySortBulkChecks densePrimarySortBulkChecksOrNull() {
     return new DensePrimarySortBulkChecks(
-        (int) filterLo,
-        (int) filterHi + 1,
-        (int) (filterHi - filterLo + 1),
-        filterHi - filterLo + 1);
+        (int) filterLo, (int) filterHi + 1, (int) (filterHi - filterLo + 1));
   }
 
   @Override

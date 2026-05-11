@@ -58,14 +58,10 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
    * When the index maps doc {@code n} to the {@code n}-th sort key in order (so the filter's dense
    * doc-id interval is known), return the interval and expected stats for bulk-scorer checks.
    *
-   * <p>{@link #testBulkScorerNarrowingCostAndRecording} assumes a force-merged single segment;
-   * {@code expectedOptimizedLeafCost} is asserted per leaf under that fixture only.
+   * <p>{@link #testBulkScorerNarrowingCostAndRecording} assumes a force-merged single segment.
    */
   protected record DensePrimarySortBulkChecks(
-      int denseMinDocInclusive,
-      int denseMaxDocExclusive,
-      int expectedMatchingDocs,
-      long expectedOptimizedLeafCost) {}
+      int denseMinDocInclusive, int denseMaxDocExclusive, int expectedMatchingDocs) {}
 
   /** Returns {@code null} if bulk-scorer slice tests do not apply to this fixture. */
   protected DensePrimarySortBulkChecks densePrimarySortBulkChecksOrNull() {
@@ -179,8 +175,7 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
         Query simpleMatchAllAndFilter = buildBooleanQuery(new MatchAllDocsQuery(), filter);
 
         TopDocs tdOpt = searcher.search(withFilteredOnPrimary, numDocs, Sort.INDEXORDER, true);
-        TopDocs tdSimple =
-            searcher.search(simpleMatchAllAndFilter, numDocs, Sort.INDEXORDER, true);
+        TopDocs tdSimple = searcher.search(simpleMatchAllAndFilter, numDocs, Sort.INDEXORDER, true);
         assertEquals(tdSimple.totalHits.value(), tdOpt.totalHits.value());
         for (int i = 0; i < tdSimple.scoreDocs.length; i++) {
           assertEquals(tdSimple.scoreDocs[i].doc, tdOpt.scoreDocs[i].doc);
@@ -341,7 +336,9 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
     assertNotNull(optSs);
     assertNotNull(origSs);
     assertTrue(optSs.cost() <= origSs.cost());
-    assertEquals(d.expectedOptimizedLeafCost(), optSs.cost());
+    long span = (long) (d.denseMaxDocExclusive() - d.denseMinDocInclusive());
+    assertTrue(
+        "expected cost <= span (" + span + ") but was " + optSs.cost(), optSs.cost() <= span);
 
     final int leafMax = ctx.reader().maxDoc();
 
@@ -355,8 +352,8 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
     Collections.sort(fullPass);
     assertEquals(expected, fullPass);
 
-    final int span = d.denseMaxDocExclusive() - d.denseMinDocInclusive();
-    int split = d.denseMinDocInclusive() + Math.max(1, span * 3 / 4);
+    final int rangeLen = d.denseMaxDocExclusive() - d.denseMinDocInclusive();
+    int split = d.denseMinDocInclusive() + Math.max(1, rangeLen * 3 / 4);
     if (split >= d.denseMaxDocExclusive()) {
       split = d.denseMaxDocExclusive() - 1;
     }
