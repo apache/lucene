@@ -142,7 +142,7 @@ abstract class AbstractHnswGraphSearcher {
       float[] scores)
       throws IOException {
     int numNodes = hnswNodesOrd.length;
-    // If siblingScores not defined yet or too small to collect scores a new one is created
+    // If scores not defined yet or too small to collect scores a new one is created
     // Otherwise we reuse the old one that will be overridden in bulkScore with new scores
     if (scores == null || scores.length < numNodes) {
       scores = new float[numNodes];
