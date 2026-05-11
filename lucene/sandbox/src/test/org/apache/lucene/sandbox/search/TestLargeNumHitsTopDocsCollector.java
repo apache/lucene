@@ -18,9 +18,15 @@
 package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -146,6 +152,48 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
         preScore = scoreDoc.score;
       }
     }
+  }
+
+  public void testInvalidNumHitsInConstructor() {
+    expectThrows(IllegalArgumentException.class, () -> new LargeNumHitsTopDocsCollectorManager(0));
+    expectThrows(IllegalArgumentException.class, () -> new LargeNumHitsTopDocsCollectorManager(-1));
+  }
+
+  public void testReduceWithZeroHitCollector() throws IOException {
+    // reduce() must skip collectors with 0 hits without throwing IllegalArgumentException.
+    Directory localDir = newDirectory();
+    IndexWriter writer = new IndexWriter(localDir, newIndexWriterConfig());
+    Document doc = new Document();
+    doc.add(newStringField("field", "hit", Field.Store.NO));
+    writer.addDocument(doc);
+    writer.commit();
+    writer.addDocument(new Document());
+    writer.commit();
+    writer.close();
+
+    DirectoryReader localReader = DirectoryReader.open(localDir);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+    // Override slices() to force one slice (and thus one collector) per segment.
+    IndexSearcher searcher =
+        new IndexSearcher(localReader, executor) {
+          @Override
+          protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
+            return leaves.stream()
+                .map(
+                    l ->
+                        new LeafSlice(
+                            List.of(LeafReaderContextPartition.createForEntireSegment(l))))
+                .toArray(LeafSlice[]::new);
+          }
+        };
+    TopDocs result =
+        searcher.search(
+            new TermQuery(new Term("field", "hit")), new LargeNumHitsTopDocsCollectorManager(10));
+    assertEquals(1, result.totalHits.value());
+
+    executor.shutdown();
+    localReader.close();
+    localDir.close();
   }
 
   private void runNumHits(int numHits) throws IOException {
