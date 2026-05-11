@@ -19,7 +19,7 @@ package org.apache.lucene.analysis.ko.dict;
 import org.apache.lucene.analysis.ko.POS;
 
 /** Morphological information for user dictionary. */
-final class UserMorphData implements KoMorphData {
+public final class UserMorphData implements KoMorphData {
   private static final int WORD_COST = -100000;
 
   // NNG left
@@ -28,10 +28,16 @@ final class UserMorphData implements KoMorphData {
   // length, length... indexed by compound ID or null for simple noun
   private final int[][] segmentations;
   private final short[] rightIds;
+  public String[] metadatas;
 
   UserMorphData(int[][] segmentations, short[] rightIds) {
     this.segmentations = segmentations;
     this.rightIds = rightIds;
+  }
+
+  UserMorphData(int[][] segmentations, short[] rightIds, String[] metadatas) {
+    this(segmentations, rightIds);
+    this.metadatas = metadatas;
   }
 
   @Override
@@ -79,10 +85,12 @@ final class UserMorphData implements KoMorphData {
     if (segs == null) {
       return null;
     }
+    String metadata = metadatas[morphId];
     int offset = 0;
     Morpheme[] morphemes = new Morpheme[segs.length];
     for (int i = 0; i < segs.length; i++) {
-      morphemes[i] = new Morpheme(POS.Tag.NNG, new String(surfaceForm, off + offset, segs[i]));
+      morphemes[i] =
+          new Morpheme(POS.Tag.NNG, new String(surfaceForm, off + offset, segs[i]), metadata);
       offset += segs[i];
     }
     return morphemes;

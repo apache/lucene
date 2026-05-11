@@ -44,4 +44,6 @@ public abstract class Token extends org.apache.lucene.analysis.morph.Token {
    * token.
    */
   public abstract KoMorphData.Morpheme[] getMorphemes();
+
+  public abstract String getMetadata();
 }

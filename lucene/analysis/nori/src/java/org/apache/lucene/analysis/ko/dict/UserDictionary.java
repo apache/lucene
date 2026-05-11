@@ -34,6 +34,7 @@ import org.apache.lucene.util.fst.PositiveIntOutputs;
  * (세종시 세종 시).
  */
 public final class UserDictionary implements Dictionary<UserMorphData> {
+  public static final String METADATA_SEPARATOR = " >> ";
   // text -> wordID
   private final TokenInfoFST fst;
 
@@ -82,10 +83,19 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
 
     String lastToken = null;
     List<int[]> _segmentations = new ArrayList<>(entries.size());
+    List<String> _metadatas = new ArrayList<>(entries.size());
     short[] rightIds = new short[entries.size()];
     long ord = 0;
     int entryIndex = 0;
     for (String entry : entries) {
+      if (entry.contains(METADATA_SEPARATOR)) {
+        var split = entry.split(METADATA_SEPARATOR);
+        entry = split[0];
+        var metadata = split[1];
+        _metadatas.add(metadata);
+      } else {
+        _metadatas.add(null);
+      }
       String[] splits = entry.split("\\s+");
       String token = splits[0];
       if (token.equals(lastToken)) {
@@ -138,7 +148,8 @@ public final class UserDictionary implements Dictionary<UserMorphData> {
     this.fst =
         new TokenInfoFST(FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader()));
     int[][] segmentations = _segmentations.toArray(new int[_segmentations.size()][]);
-    this.morphAtts = new UserMorphData(segmentations, rightIds);
+    String[] metadatas = _metadatas.toArray(String[]::new);
+    this.morphAtts = new UserMorphData(segmentations, rightIds, metadatas);
   }
 
   public TokenInfoFST getFST() {
