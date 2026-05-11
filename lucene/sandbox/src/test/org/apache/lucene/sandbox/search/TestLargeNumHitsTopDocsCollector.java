@@ -41,6 +41,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.NamedThreadFactory;
 
 public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
   private Directory dir;
@@ -172,7 +173,8 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
     writer.close();
 
     DirectoryReader localReader = DirectoryReader.open(localDir);
-    ExecutorService executor = Executors.newFixedThreadPool(2);
+    ExecutorService executor =
+        Executors.newFixedThreadPool(2, new NamedThreadFactory("testReduceWithZeroHitCollector"));
     // Override slices() to force one slice (and thus one collector) per segment.
     IndexSearcher searcher =
         new IndexSearcher(localReader, executor) {
