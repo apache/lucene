@@ -367,6 +367,8 @@ Optimizations
 
 * GITHUB#16001: IndexSearcher.count() was calling query.rewrite twice, a regression since v9.10 (David Smiley)
 
+* GITHUB#16048: Defer Sorter.DocMap packing until after flush (Tim Brooks)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
