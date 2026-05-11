@@ -33,6 +33,7 @@ import java.util.Objects;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
@@ -94,7 +95,6 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
       FlatVectorsReader rawVectorsReader,
       Lucene102BinaryFlatVectorsScorer vectorsScorer)
       throws IOException {
-    super(vectorsScorer);
     this.vectorScorer = vectorsScorer;
     this.rawVectorsReader = rawVectorsReader;
     int versionMeta = -1;
@@ -175,6 +175,11 @@ public class Lucene102BinaryQuantizedVectorsReader extends FlatVectorsReader
               + ") = "
               + numQuantizedVectorBytes);
     }
+  }
+
+  @Override
+  public FlatVectorsScorer getFlatVectorScorer(String field) throws IOException {
+    return vectorScorer;
   }
 
   @Override
