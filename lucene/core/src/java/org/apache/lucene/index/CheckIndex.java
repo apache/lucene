@@ -1558,7 +1558,7 @@ public final class CheckIndex implements Closeable {
 
       // term vectors cannot omit TF:
       final boolean expectedHasFreqs =
-          (isVectors || fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0);
+          (isVectors || fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS));
 
       if (hasFreqs != expectedHasFreqs) {
         throw new CheckIndexException(
@@ -1572,7 +1572,7 @@ public final class CheckIndex implements Closeable {
 
       if (isVectors == false) {
         final boolean expectedHasPositions =
-            fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+            fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
         if (hasPositions != expectedHasPositions) {
           throw new CheckIndexException(
               "field \""
@@ -1596,9 +1596,8 @@ public final class CheckIndex implements Closeable {
 
         final boolean expectedHasOffsets =
             fieldInfo
-                    .getIndexOptions()
-                    .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-                >= 0;
+                .getIndexOptions()
+                .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
         if (hasOffsets != expectedHasOffsets) {
           throw new CheckIndexException(
               "field \""
@@ -4226,7 +4225,7 @@ public final class CheckIndex implements Closeable {
                 Terms terms = tfv.terms(field);
                 TermsEnum termsEnum = terms.iterator();
                 final boolean postingsHasFreq =
-                    fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
+                    fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS);
                 final boolean postingsHasPayload = fieldInfo.hasPayloads();
                 final boolean vectorsHasPayload = terms.hasPayloads();
 

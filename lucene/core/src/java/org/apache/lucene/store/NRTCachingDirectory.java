@@ -116,7 +116,7 @@ public class NRTCachingDirectory extends FilterDirectory implements Accountable 
     final Set<String> files = new TreeSet<>();
     Collections.addAll(files, cacheDirectory.listAll());
     Collections.addAll(files, in.listAll());
-    return files.toArray(new String[0]);
+    return files.toArray(String[]::new);
   }
 
   @Override

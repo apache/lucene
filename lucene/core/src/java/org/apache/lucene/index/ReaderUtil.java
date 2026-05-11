@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.index;
 
+import java.util.Arrays;
 import java.util.List;
+import org.apache.lucene.search.ScoreDoc;
 
 /**
  * Common util methods for dealing with {@link IndexReader}s and {@link IndexReaderContext}s.
@@ -24,6 +26,8 @@ import java.util.List;
  * @lucene.internal
  */
 public final class ReaderUtil {
+
+  private static final int[] EMPTY_INT_ARRAY = new int[0];
 
   private ReaderUtil() {} // no instance
 
@@ -88,5 +92,48 @@ public final class ReaderUtil {
       }
     }
     return hi;
+  }
+
+  /**
+   * Partitions global doc IDs from ScoreDoc array by leaf. Extracts doc IDs, sorts them, and
+   * partitions across leaves.
+   *
+   * @param hits the ScoreDoc array (typically from TopDocs.scoreDocs)
+   * @param leaves the index reader's leaves
+   * @return array indexed by leaf ord, containing global doc IDs for that leaf (empty if no hits)
+   */
+  public static int[][] partitionByLeaf(ScoreDoc[] hits, List<LeafReaderContext> leaves) {
+    int numLeaves = leaves.size();
+    int[][] result = new int[numLeaves][];
+    if (hits.length == 0) {
+      Arrays.fill(result, EMPTY_INT_ARRAY);
+      return result;
+    }
+    int[] sortedDocIds = new int[hits.length];
+    for (int i = 0; i < hits.length; i++) {
+      sortedDocIds[i] = hits[i].doc;
+    }
+    Arrays.sort(sortedDocIds);
+    int from = 0;
+    int leafIdx = 0;
+    for (; leafIdx < numLeaves && from < sortedDocIds.length; leafIdx++) {
+      LeafReaderContext leaf = leaves.get(leafIdx);
+      int leafEnd = leaf.docBase + leaf.reader().maxDoc();
+      if (sortedDocIds[from] >= leafEnd) {
+        result[leafIdx] = EMPTY_INT_ARRAY;
+        continue;
+      }
+      int to = Arrays.binarySearch(sortedDocIds, from, sortedDocIds.length, leafEnd);
+      if (to < 0) {
+        to = -to - 1;
+      }
+      int count = to - from;
+      assert count > 0;
+      result[leafIdx] = new int[count];
+      System.arraycopy(sortedDocIds, from, result[leafIdx], 0, count);
+      from = to;
+    }
+    Arrays.fill(result, leafIdx, numLeaves, EMPTY_INT_ARRAY);
+    return result;
   }
 }

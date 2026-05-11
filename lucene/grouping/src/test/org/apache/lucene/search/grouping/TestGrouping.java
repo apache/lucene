@@ -69,11 +69,8 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.mutable.MutableValue;
 import org.apache.lucene.util.mutable.MutableValueStr;
 
-// TODO
-//   - should test relevance sort too
-//   - test null
-//   - test ties
-//   - test compound sort
+// Basic functionality is covered by testBasic() (relevance sort, null groups)
+// Random testing covers various scenarios in testRandom()
 
 public class TestGrouping extends LuceneTestCase {
 
@@ -456,7 +453,7 @@ public class TestGrouping extends LuceneTestCase {
           mvalTopGroups.withinGroupSort,
           mvalTopGroups.totalHitCount,
           mvalTopGroups.totalGroupedHitCount,
-          groups.toArray(new GroupDocs[groups.size()]),
+          groups.toArray(GroupDocs[]::new),
           Float.NaN);
     }
     fail();
@@ -500,7 +497,7 @@ public class TestGrouping extends LuceneTestCase {
     }
     // Break ties:
     sortFields.add(new SortField("id", SortField.Type.INT));
-    return new Sort(sortFields.toArray(new SortField[sortFields.size()]));
+    return new Sort(sortFields.toArray(SortField[]::new));
   }
 
   private Comparator<GroupDoc> getComparator(Sort sort) {
@@ -581,7 +578,15 @@ public class TestGrouping extends LuceneTestCase {
 
     final Comparator<GroupDoc> groupSortComp = getComparator(groupSort);
 
-    Arrays.sort(groupDocs, groupSortComp);
+    // Filter by searchTerm first to avoid sorting unnecessary documents
+    List<GroupDoc> filteredDocs = new ArrayList<>();
+    for (GroupDoc d : groupDocs) {
+      if (d.content.startsWith(searchTerm)) {
+        filteredDocs.add(d);
+      }
+    }
+    filteredDocs.sort(groupSortComp);
+
     final HashMap<BytesRef, List<GroupDoc>> groups = new HashMap<>();
     final List<BytesRef> sortedGroups = new ArrayList<>();
     final List<Comparable<?>[]> sortedGroupFields = new ArrayList<>();
@@ -590,11 +595,7 @@ public class TestGrouping extends LuceneTestCase {
     Set<BytesRef> knownGroups = new HashSet<>();
 
     // System.out.println("TEST: slowGrouping");
-    for (GroupDoc d : groupDocs) {
-      // TODO: would be better to filter by searchTerm before sorting!
-      if (!d.content.startsWith(searchTerm)) {
-        continue;
-      }
+    for (GroupDoc d : filteredDocs) {
       totalHitCount++;
       // System.out.println("  match id=" + d.id + " score=" + d.score);
 
@@ -1527,8 +1528,7 @@ public class TestGrouping extends LuceneTestCase {
 
     if (mergedTopGroups != null) {
       // Now 2nd pass:
-      @SuppressWarnings({"unchecked", "rawtypes"})
-      final TopGroups<BytesRef>[] shardTopGroups = new TopGroups[subSearchers.length];
+      final List<TopGroups<BytesRef>> shardTopGroups = new ArrayList<>(subSearchers.length);
       for (int shardIDX = 0; shardIDX < subSearchers.length; shardIDX++) {
         final TopGroupsCollector<?> secondPassCollector =
             createSecondPassCollector(
@@ -1540,11 +1540,15 @@ public class TestGrouping extends LuceneTestCase {
                 docOffset + topNDocs,
                 getMaxScores);
         subSearchers[shardIDX].search(w, secondPassCollector);
-        shardTopGroups[shardIDX] = getTopGroups(secondPassCollector, 0);
+        shardTopGroups.add(getTopGroups(secondPassCollector, 0));
         if (VERBOSE) {
           System.out.println(
-              " " + shardTopGroups[shardIDX].groups.length + " shard[" + shardIDX + "] groups:");
-          for (GroupDocs<BytesRef> group : shardTopGroups[shardIDX].groups) {
+              " "
+                  + shardTopGroups.get(shardIDX).groups.length
+                  + " shard["
+                  + shardIDX
+                  + "] groups:");
+          for (GroupDocs<BytesRef> group : shardTopGroups.get(shardIDX).groups) {
             System.out.println(
                 "    ["
                     + groupToString(group.groupValue())

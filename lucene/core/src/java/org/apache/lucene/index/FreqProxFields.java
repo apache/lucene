@@ -93,7 +93,7 @@ class FreqProxFields extends Fields {
 
     @Override
     public boolean hasFreqs() {
-      return terms.indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
+      return terms.indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS);
     }
 
     @Override
@@ -101,8 +101,7 @@ class FreqProxFields extends Fields {
       // NOTE: the in-memory buffer may have indexed offsets
       // because that's what FieldInfo said when we started,
       // but during indexing this may have been downgraded:
-      return terms.indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-          >= 0;
+      return terms.indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
     }
 
     @Override
@@ -110,7 +109,7 @@ class FreqProxFields extends Fields {
       // NOTE: the in-memory buffer may have indexed positions
       // because that's what FieldInfo said when we started,
       // but during indexing this may have been downgraded:
-      return terms.indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+      return terms.indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
     }
 
     @Override
@@ -240,8 +239,8 @@ class FreqProxFields extends Fields {
           throw new IllegalArgumentException("did not index offsets");
         }
 
-        if (reuse instanceof FreqProxPostingsEnum) {
-          posEnum = (FreqProxPostingsEnum) reuse;
+        if (reuse instanceof FreqProxPostingsEnum fppe) {
+          posEnum = fppe;
           if (posEnum.postingsArray != postingsArray) {
             posEnum = new FreqProxPostingsEnum(terms, postingsArray);
           }
@@ -260,8 +259,8 @@ class FreqProxFields extends Fields {
         throw new IllegalArgumentException("did not index freq");
       }
 
-      if (reuse instanceof FreqProxDocsEnum) {
-        docsEnum = (FreqProxDocsEnum) reuse;
+      if (reuse instanceof FreqProxDocsEnum fpde) {
+        docsEnum = fpde;
         if (docsEnum.postingsArray != postingsArray) {
           docsEnum = new FreqProxDocsEnum(terms, postingsArray);
         }

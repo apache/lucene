@@ -374,6 +374,13 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       }
 
       @Override
+      public boolean preferSeekExact() {
+        // Prefer seekExact() to seekCeil() when processing updates and deletes,
+        // since seekExact() passes through the bloom filter.
+        return true;
+      }
+
+      @Override
       public String toString() {
         return getClass().getSimpleName() + "(filter=" + filter.toString() + ")";
       }

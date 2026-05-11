@@ -51,7 +51,6 @@ import org.apache.lucene.tests.analysis.MockLowerCaseFilter;
 import org.apache.lucene.tests.analysis.MockSynonymAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.util.automaton.TooComplexToDeterminizeException;
 
 /** Tests QueryParser. */
 public class TestQueryParser extends QueryParserTestBase {
@@ -528,17 +527,6 @@ public class TestQueryParser extends QueryParserTestBase {
     expectedQBuilder.setSlop(3);
     expected = new BoostQuery(expectedQBuilder.build(), 2f);
     assertEquals(expected, qp.parse("\"中国\"~3^2"));
-  }
-
-  /** LUCENE-6677: make sure wildcard query respects determinizeWorkLimit. */
-  public void testWildcardDeterminizeWorkLimit() throws Exception {
-    QueryParser qp = new QueryParser(FIELD, new MockAnalyzer(random()));
-    qp.setDeterminizeWorkLimit(1);
-    expectThrows(
-        TooComplexToDeterminizeException.class,
-        () -> {
-          qp.parse("a*aaaaaaa");
-        });
   }
 
   // TODO: Remove this specialization once the flexible standard parser gets multi-word synonym

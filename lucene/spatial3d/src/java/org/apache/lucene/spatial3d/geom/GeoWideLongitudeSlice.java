@@ -210,10 +210,9 @@ class GeoWideLongitudeSlice extends GeoBaseBBox {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof GeoWideLongitudeSlice)) {
+    if (!(o instanceof GeoWideLongitudeSlice other)) {
       return false;
     }
-    GeoWideLongitudeSlice other = (GeoWideLongitudeSlice) o;
     return super.equals(other) && other.leftLon == leftLon && other.rightLon == rightLon;
   }
 

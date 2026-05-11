@@ -2362,8 +2362,9 @@ class GeoComplexPolygon extends GeoBasePolygon {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof GeoComplexPolygon)) return false;
-    final GeoComplexPolygon other = (GeoComplexPolygon) o;
+    if (!(o instanceof GeoComplexPolygon other)) {
+      return false;
+    }
     return super.equals(other)
         && testPoint1InSet == other.testPoint1InSet
         && testPoint1.equals(other.testPoint1)

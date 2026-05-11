@@ -25,12 +25,12 @@ import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.TextField;
@@ -54,7 +54,7 @@ public class TestDoc extends LuceneTestCase {
 
   private Path workDir;
   private Path indexDir;
-  private LinkedList<Path> files;
+  private Collection<Path> files;
 
   /**
    * Set the test case. This test case needs a few text files created in the current working
@@ -72,7 +72,7 @@ public class TestDoc extends LuceneTestCase {
     Directory directory = newFSDirectory(indexDir);
     directory.close();
 
-    files = new LinkedList<>();
+    files = new ArrayList<>();
     files.add(createOutput("test.txt", "This is the first test file"));
 
     files.add(createOutput("test2.txt", "This is the second test file"));
