@@ -218,18 +218,27 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
   }
 
   /**
-   * Atomically reserves capacity for {@code n} docs. On failure, fully rolls back so no
-   * reservations leak.
+   * Atomically reserves capacity for {@code n} docs.
+   *
+   * @throws IllegalArgumentException if reserving {@code n} docs would exceed the maximum number of
+   *     documents allowed in the index
    */
   private void reserveDocs(int n) {
     assert n >= 0;
     if (n == 0) {
       return;
     }
-    if (pendingNumDocs.addAndGet(n) > IndexWriter.getActualMaxDocs()) {
-      pendingNumDocs.addAndGet(-n);
-      throw new IllegalArgumentException(
-          "number of documents in the index cannot exceed " + IndexWriter.getActualMaxDocs());
+    final int maxDocs = IndexWriter.getActualMaxDocs();
+    while (true) {
+      long current = pendingNumDocs.get();
+      long next = current + n;
+      if (next > maxDocs) {
+        throw new IllegalArgumentException(
+            "number of documents in the index cannot exceed " + maxDocs);
+      }
+      if (pendingNumDocs.compareAndSet(current, next)) {
+        return;
+      }
     }
   }
 

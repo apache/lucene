@@ -78,9 +78,6 @@ module org.apache.lucene.core {
       org.apache.lucene.benchmark.jmh;
   exports org.apache.lucene.document.column;
 
-  opens org.apache.lucene.document.column to
-      org.apache.lucene.test_framework;
-
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.standard.StandardTokenizerFactory;
   provides org.apache.lucene.codecs.Codec with
