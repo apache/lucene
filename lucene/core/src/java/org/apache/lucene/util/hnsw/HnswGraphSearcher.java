@@ -350,22 +350,12 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
             candidates.add(node, score);
             if (acceptOrds == null || acceptOrds.get(node)) {
               // Fetch siblingsOrd BEFORE collect() so the parent is not yet in the heap
-              int numSiblingsToVisit = 0;
               // The instanceof check is needed: this method is also called with a
               // GraphBuilderKnnCollector
               if (results instanceof OrdinalTranslatedKnnCollector collector) {
                 if (collector.isSiblingExpansionCollector()) {
                   siblingsOrd = collector.getSiblingOrdinals(node, visited, siblingsOrd);
-                  if (siblingsOrd.length > 0) {
-                    // TO DISCUSS IF NECESSARY
-                    numSiblingsToVisit =
-                        (int)
-                            Math.min(
-                                siblingsOrd.length, results.visitLimit() - results.visitedCount());
-                    // Only mark as visited the siblingsOrd we will actually score; the rest remain
-                    // reachable via normal graph traversal so a better child can still be found
-                    for (int s = 0; s < numSiblingsToVisit; s++) visited.set(siblingsOrd[s]);
-                  }
+                  for (int ord : siblingsOrd) visited.set(ord);
                 }
               }
               if (results.collect(node, score)) {
@@ -378,9 +368,8 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
                 }
               }
               // Score and collect all siblingsOrd of the newly-discovered parent
-              if (numSiblingsToVisit > 0) {
+              if (siblingsOrd.length > 0) {
                 float prevMinSim = results.minCompetitiveSimilarity();
-                // IF NUMSIBLING IS NOT LIMITED WE CAN REMOVE THE VARIABLE AND USE SIBLINGS LENGTH
                 siblingScores =
                     scoreHnswNodes(
                         results,
@@ -388,7 +377,6 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
                         candidates,
                         acceptOrds,
                         siblingsOrd,
-                        numSiblingsToVisit,
                         siblingScores);
                 if (results.minCompetitiveSimilarity() > prevMinSim) {
                   minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
