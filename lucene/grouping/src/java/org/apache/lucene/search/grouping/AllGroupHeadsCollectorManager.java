@@ -54,7 +54,7 @@ public class AllGroupHeadsCollectorManager<T>
         AllGroupHeadsCollector<T>, AllGroupHeadsCollectorManager.GroupHeadsResult> {
 
   /** Holds the merged group heads and provides access as an {@code int[]} or {@link Bits}. */
-  public static final class GroupHeadsResult {
+  public static class GroupHeadsResult {
     private final int[] groupHeads;
 
     private GroupHeadsResult(int[] groupHeads) {
@@ -81,7 +81,7 @@ public class AllGroupHeadsCollectorManager<T>
     }
   }
 
-  private static class GroupHeadWithValues {
+  private static final class GroupHeadWithValues {
     int doc;
     final Object[] sortValues;
 
