@@ -28,9 +28,12 @@ import org.apache.lucene.search.DocIdSetIterator;
 public abstract class LongTupleCursor {
 
   /**
-   * Advances to the next doc-id that has a value and returns it, or {@link
-   * DocIdSetIterator#NO_MORE_DOCS} if exhausted. Doc-ids are batch-local (0 to {@code numDocs -
-   * 1}).
+   * Advances to the next tuple and returns its doc-id, or {@link
+   * DocIdSetIterator#NO_MORE_DOCS} if exhausted.
+   *
+   * <p>Returned doc-ids are batch-local (0 to {@code numDocs - 1}) and are emitted in
+   * non-decreasing order. The same doc-id may be returned multiple times when a document 
+   * has multiple values.
    */
   public abstract int nextDoc();
 
