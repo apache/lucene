@@ -92,7 +92,7 @@ class PointValuesWriter {
     numPoints++;
   }
 
-  public void addDense1DIntValues(int firstDocID, LongValuesCursor cursor) throws IOException {
+ void addDense1DIntValues(int firstDocID, LongValuesCursor cursor) throws IOException {
     validate1DPacked(Integer.BYTES);
     final int size = cursor.size();
     if (size == 0) {
@@ -110,7 +110,7 @@ class PointValuesWriter {
     commitDense1D(firstDocID, size, ramBefore);
   }
 
-  public void addDense1DLongValues(int firstDocID, LongValuesCursor cursor) throws IOException {
+ void addDense1DLongValues(int firstDocID, LongValuesCursor cursor) throws IOException {
     validate1DPacked(Long.BYTES);
     final int size = cursor.size();
     if (size == 0) {

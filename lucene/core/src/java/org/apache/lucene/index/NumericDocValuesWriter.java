@@ -65,7 +65,7 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
     lastDocID = docID;
   }
 
-  public void addDenseValues(int firstDocID, LongValuesCursor cursor) {
+ void addDenseValues(int firstDocID, LongValuesCursor cursor) {
     int numValues = cursor.size();
     if (numValues == 0) {
       return;
