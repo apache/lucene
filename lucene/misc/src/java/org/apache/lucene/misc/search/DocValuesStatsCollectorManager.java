@@ -28,11 +28,12 @@ import org.apache.lucene.search.CollectorManager;
  *
  * <pre class="prettyprint">
  * IndexSearcher searcher = ...; // your IndexSearcher
- * DocValuesStatsCollectorManager&lt;DocValuesStats.LongDocValuesStats&gt; manager =
+ * DocValuesStatsCollectorManager&lt;Long, DocValuesStats.LongDocValuesStats&gt; manager =
  *     new DocValuesStatsCollectorManager&lt;&gt;(() -&gt; new DocValuesStats.LongDocValuesStats("price"));
  * DocValuesStats.LongDocValuesStats stats = searcher.search(new MatchAllDocsQuery(), manager);
  * </pre>
  *
+ * @param <T> the type of the DocValues field value
  * @param <S> the type of {@link DocValuesStats}
  */
 public class DocValuesStatsCollectorManager<T, S extends DocValuesStats<T>>

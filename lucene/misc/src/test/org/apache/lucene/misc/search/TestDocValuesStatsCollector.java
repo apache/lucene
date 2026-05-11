@@ -35,7 +35,6 @@ import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.misc.search.DocValuesStats.DoubleDocValuesStats;
 import org.apache.lucene.misc.search.DocValuesStats.LongDocValuesStats;
@@ -105,8 +104,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
 
   public void testDocsWithLongValues() throws IOException {
     try (Directory dir = newDirectory()) {
-      IndexWriterConfig config = newIndexWriterConfig();
-      try (RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir, config)) {
+      try (RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir)) {
         String field = "numeric";
         int numDocs = TestUtil.nextInt(random(), 1, 100);
         long[] docValues = new long[numDocs];
@@ -160,8 +158,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
 
   public void testDocsWithDoubleValues() throws IOException {
     try (Directory dir = newDirectory()) {
-      IndexWriterConfig config = newIndexWriterConfig();
-      try (RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir, config)) {
+      try (RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir)) {
         String field = "numeric";
         int numDocs = TestUtil.nextInt(random(), 1, 100);
         double[] docValues = new double[numDocs];
@@ -215,8 +212,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
 
   public void testDocsWithMultipleLongValues() throws IOException {
     try (Directory dir = newDirectory()) {
-      IndexWriterConfig config = newIndexWriterConfig();
-      try (RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir, config)) {
+      try (RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir)) {
         String field = "numeric";
         int numDocs = TestUtil.nextInt(random(), 1, 100);
         long[][] docValues = new long[numDocs][];
@@ -277,8 +273,7 @@ public class TestDocValuesStatsCollector extends LuceneTestCase {
 
   public void testDocsWithMultipleDoubleValues() throws IOException {
     try (Directory dir = newDirectory()) {
-      IndexWriterConfig config = newIndexWriterConfig();
-      try (RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir, config)) {
+      try (RandomIndexWriter indexWriter = new RandomIndexWriter(random(), dir)) {
         String field = "numeric";
         int numDocs = TestUtil.nextInt(random(), 1, 100);
         double[][] docValues = new double[numDocs][];

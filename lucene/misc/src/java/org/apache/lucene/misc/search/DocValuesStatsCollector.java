@@ -70,7 +70,7 @@ public class DocValuesStatsCollector implements Collector {
   }
 
   /** Returns the statistics computed by this collector. */
-  public DocValuesStats<?> getStats() {
+  DocValuesStats<?> getStats() {
     return stats;
   }
 }

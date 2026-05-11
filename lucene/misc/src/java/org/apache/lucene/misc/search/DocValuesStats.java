@@ -28,8 +28,8 @@ import org.apache.lucene.util.BytesRef;
 /** Holds statistics for a DocValues field. */
 public abstract class DocValuesStats<T> {
 
-  int missing = 0;
-  int count = 0;
+  protected int missing = 0;
+  protected int count = 0;
 
   protected final String field;
 
