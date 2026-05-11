@@ -69,7 +69,7 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
     updateBytesUsed();
   }
 
-  public void addDenseValues(int firstDocID, LongValuesCursor cursor) {
+ void addDenseValues(int firstDocID, LongValuesCursor cursor) {
     int numValues = cursor.size();
     if (numValues == 0) {
       return;
@@ -89,12 +89,13 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
       }
     }
 
+    final int endDocID = firstDocID + numValues;
     // Bulk-add consecutive doc-ids
-    docsWithField.addRange(firstDocID, firstDocID + numValues);
+    docsWithField.addRange(firstDocID, endDocID);
 
     // Set currentDoc to last written doc so ordering is maintained.
     // currentUpto stays 0 — nothing buffered.
-    currentDoc = firstDocID + numValues - 1;
+    currentDoc = endDocID - 1;
 
     updateBytesUsed();
   }
