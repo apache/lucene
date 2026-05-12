@@ -57,7 +57,6 @@ final class PanamaDocValuesRangeSupport implements DocValuesRangeSupport {
     }
 
     // Stack-allocated scratch buffer — vectorLen is at most 8 for AVX-512 (64 bytes).
-    // Avoids ThreadLocal overhead which showed up as ~5% CPU in profiling.
     final long[] scratch = new long[vectorLen];
     final int loopBound = fromDoc + LONG_SPECIES.loopBound(toDoc - fromDoc);
 
