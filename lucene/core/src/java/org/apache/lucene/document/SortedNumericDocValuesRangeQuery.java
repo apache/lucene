@@ -32,13 +32,13 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocValuesRangeIterator;
 import org.apache.lucene.search.FieldExistsQuery;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.IndexSortSortedNumericDocValuesRangeQuery;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.NumericDocValuesRangeQuery;
 import org.apache.lucene.search.NumericFieldStats;
 import org.apache.lucene.search.NumericFieldStats.Stats;
 import org.apache.lucene.search.PrimarySortAlignable;
+import org.apache.lucene.search.PrimarySortAlignables;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -199,7 +199,7 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery
 
   @Override
   public DocIdRange denseDocIdRangeOrNull(LeafReaderContext context) throws IOException {
-    return IndexSortSortedNumericDocValuesRangeQuery.denseDocIdRangeOrNullForSortedNumericBounds(
+    return PrimarySortAlignables.denseDocIdRangeOrNullForSortedNumericBounds(
         context, field, lowerValue, upperValue);
   }
 

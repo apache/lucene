@@ -66,6 +66,31 @@ public final class PrimarySortAlignables {
   }
 
   /**
+   * Dense doc-id span for the sorted-numeric primary-sort fast path, for bounds {@code field},
+   * {@code lowerValue}, and {@code upperValue} (inclusive, same semantics as {@link
+   * IndexSortSortedNumericDocValuesRangeQuery}). Used when the filter query exposes sorted-numeric
+   * bounds (e.g. {@code SortedNumericDocValuesRangeQuery} or a 1D {@link PointRangeQuery}) but is
+   * not itself an {@link IndexSortSortedNumericDocValuesRangeQuery}.
+   *
+   * <p>This allocates a short-lived query instance internally. It is called once per leaf at weight
+   * creation time, not on a hot scoring path.
+   *
+   * @param context the leaf reader context
+   * @param field the sorted-numeric field name (must be the primary index sort field)
+   * @param lowerValue inclusive lower bound
+   * @param upperValue inclusive upper bound
+   * @return the dense doc-id range, or {@code null} if a safe range cannot be determined
+   * @lucene.internal
+   */
+  public static DocIdRange denseDocIdRangeOrNullForSortedNumericBounds(
+      LeafReaderContext context, String field, long lowerValue, long upperValue)
+      throws IOException {
+    return new IndexSortSortedNumericDocValuesRangeQuery(
+            field, lowerValue, upperValue, MatchNoDocsQuery.INSTANCE)
+        .denseDocIdRangeOrNull(context);
+  }
+
+  /**
    * Contiguous matching doc-id half-open interval for a term filter on a primary {@link
    * SortedSetSortField}, or {@code null} when a safe dense block cannot be proved.
    *

@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -73,6 +74,14 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
 
   /** Adds a single document at logical position {@code i} (0-based) to the writer. */
   protected abstract void addDocument(IndexWriter writer, int i) throws IOException;
+
+  /**
+   * Adds a document that does NOT contain the primary-sort field. The default is an empty document;
+   * subclasses may override if they need other fields on the sparse doc.
+   */
+  protected void addEmptyDocument(IndexWriter writer) throws IOException {
+    writer.addDocument(new Document());
+  }
 
   /**
    * Returns the FILTER query that selects a contiguous sub-range of the sorted index. The query
@@ -132,13 +141,22 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
     }
   }
 
-  /** Filtered search returns exactly the expected number of hits. */
+  /**
+   * Filtered search returns exactly the expected number of hits via the optimized rewrite path.
+   * Uses {@link RecordingMatchAllQuery} (not {@link MatchAllDocsQuery}) because {@link
+   * MatchAllDocsQuery}+FILTER short-circuits to {@link ConstantScoreQuery} before the primary-sort
+   * rewrite would apply.
+   */
   public void testFilteredHitCount() throws IOException {
     try (Directory dir = newDirectory()) {
       buildAndPopulateIndex(dir, true);
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = newSearcher(reader);
-        Query query = buildBooleanQuery(new MatchAllDocsQuery(), buildFilterQuery());
+        Query query = buildBooleanQuery(new RecordingMatchAllQuery(), buildFilterQuery());
+        Query rewritten = searcher.rewrite(query);
+        assertNotNull(
+            "expected FilteredOnPrimaryIndexSortFieldQuery in rewrite chain",
+            unwrapFilteredOnPrimaryIndexSortFieldQuery(rewritten));
         TopDocs topDocs = searcher.search(query, numDocs);
         assertEquals(expectedFilteredHitCount(), topDocs.totalHits.value());
       }
@@ -173,6 +191,11 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
         Query filter = buildFilterQuery();
         Query withFilteredOnPrimary = buildBooleanQuery(new RecordingMatchAllQuery(), filter);
         Query simpleMatchAllAndFilter = buildBooleanQuery(new MatchAllDocsQuery(), filter);
+
+        Query rewritten = searcher.rewrite(withFilteredOnPrimary);
+        assertNotNull(
+            "expected FilteredOnPrimaryIndexSortFieldQuery in rewrite chain",
+            unwrapFilteredOnPrimaryIndexSortFieldQuery(rewritten));
 
         TopDocs tdOpt = searcher.search(withFilteredOnPrimary, numDocs, Sort.INDEXORDER, true);
         TopDocs tdSimple = searcher.search(simpleMatchAllAndFilter, numDocs, Sort.INDEXORDER, true);
@@ -261,13 +284,20 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = newSearcher(reader);
         Query filter = buildFilterQuery();
-        // Add a MUST_NOT that excludes all docs — should return 0 hits
+        // The MUST_NOT clause matches every doc, so the final result must be 0 hits. We use
+        // RecordingMatchAllQuery instead of MatchAllDocsQuery because BooleanQuery#rewrite
+        // short-circuits to MatchNoDocsQuery when MUST_NOT contains MatchAllDocsQuery, which
+        // would skip the primary-sort rewrite we are trying to exercise.
         Query query =
             new BooleanQuery.Builder()
-                .add(new MatchAllDocsQuery(), Occur.MUST)
+                .add(new RecordingMatchAllQuery(), Occur.MUST)
                 .add(filter, Occur.FILTER)
-                .add(new MatchAllDocsQuery(), Occur.MUST_NOT)
+                .add(new RecordingMatchAllQuery(), Occur.MUST_NOT)
                 .build();
+        Query rewritten = searcher.rewrite(query);
+        assertNotNull(
+            "expected FilteredOnPrimaryIndexSortFieldQuery in rewrite chain",
+            unwrapFilteredOnPrimaryIndexSortFieldQuery(rewritten));
         TopDocs topDocs = searcher.search(query, numDocs);
         assertEquals(0, topDocs.totalHits.value());
       }
@@ -276,14 +306,15 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
 
   /**
    * On an unsorted index the filter must NOT trigger the optimization (no rewrite to
-   * FilteredOnPrimaryIndexSortFieldQuery).
+   * FilteredOnPrimaryIndexSortFieldQuery). Uses {@link RecordingMatchAllQuery} so the shape stays
+   * eligible for the rewrite if it were going to happen.
    */
   public void testUnsortedIndexDoesNotOptimize() throws IOException {
     try (Directory dir = newDirectory()) {
       buildAndPopulateIndex(dir, false);
       try (DirectoryReader reader = DirectoryReader.open(dir)) {
         IndexSearcher searcher = newSearcher(reader);
-        Query query = buildBooleanQuery(new MatchAllDocsQuery(), buildFilterQuery());
+        Query query = buildBooleanQuery(new RecordingMatchAllQuery(), buildFilterQuery());
         Query rewritten = searcher.rewrite(query);
         assertNull(
             "should not optimize on unsorted index",
@@ -291,6 +322,47 @@ public abstract class BasePrimarySortFilterTestCase extends LuceneTestCase {
         // But must still return correct results
         TopDocs topDocs = searcher.search(query, numDocs);
         assertEquals(expectedFilteredHitCount(), topDocs.totalHits.value());
+      }
+    }
+  }
+
+  /**
+   * Sparse index: a fraction of docs do not have the primary-sort field. The boolean still rewrites
+   * to {@link FilteredOnPrimaryIndexSortFieldQuery}, but {@code denseDocIdRangeOrNull} returns
+   * {@code null} on non-dense leaves so the per-leaf bulk path falls back to the original boolean.
+   * Results must match a non-optimized boolean query.
+   */
+  public void testSparseIndexResultsCorrect() throws IOException {
+    final int sparseDocs = TestUtil.nextInt(random(), 5, numDocs / 2);
+    final int total = numDocs + sparseDocs;
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = buildIndexWriterConfig();
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < numDocs; i++) {
+          addDocument(writer, i);
+        }
+        for (int i = 0; i < sparseDocs; i++) {
+          addEmptyDocument(writer);
+        }
+        writer.forceMerge(1);
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = newSearcher(reader);
+        Query filter = buildFilterQuery();
+        Query optShape = buildBooleanQuery(new RecordingMatchAllQuery(), filter);
+        Query rewritten = searcher.rewrite(optShape);
+        assertNotNull(
+            "expected FilteredOnPrimaryIndexSortFieldQuery in rewrite chain",
+            unwrapFilteredOnPrimaryIndexSortFieldQuery(rewritten));
+
+        Query baseline = buildBooleanQuery(new MatchAllDocsQuery(), filter);
+        TopDocs opt = searcher.search(optShape, total, Sort.INDEXORDER, true);
+        TopDocs base = searcher.search(baseline, total, Sort.INDEXORDER, true);
+        assertEquals(base.totalHits.value(), opt.totalHits.value());
+        assertEquals(expectedFilteredHitCount(), opt.totalHits.value());
+        for (int i = 0; i < base.scoreDocs.length; i++) {
+          assertEquals(base.scoreDocs[i].doc, opt.scoreDocs[i].doc);
+        }
       }
     }
   }

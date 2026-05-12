@@ -559,31 +559,6 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
   }
 
   /**
-   * Dense doc-id span for the same primary-sort fast path as this query, for sorted-numeric bounds
-   * {@code field}, {@code lowerValue}, and {@code upperValue} (same semantics as this class's
-   * constructor). Used when the filter query is not an {@code
-   * IndexSortSortedNumericDocValuesRangeQuery} instance but matches those bounds (e.g. {@code
-   * SortedNumericDocValuesRangeQuery} or a 1D {@link PointRangeQuery}).
-   *
-   * <p>This allocates a short-lived query instance internally. It is called once per leaf at weight
-   * creation time, not on a hot scoring path.
-   *
-   * @param context the leaf reader context
-   * @param field the sorted-numeric field name (must be the primary index sort field)
-   * @param lowerValue inclusive lower bound
-   * @param upperValue inclusive upper bound
-   * @return the dense doc-id range, or {@code null} if a safe range cannot be determined
-   * @lucene.internal
-   */
-  public static DocIdRange denseDocIdRangeOrNullForSortedNumericBounds(
-      LeafReaderContext context, String field, long lowerValue, long upperValue)
-      throws IOException {
-    return new IndexSortSortedNumericDocValuesRangeQuery(
-            field, lowerValue, upperValue, MatchNoDocsQuery.INSTANCE)
-        .denseDocIdRangeOrNull(context);
-  }
-
-  /**
    * Computes the document IDs that lie within the range [lowerValue, upperValue] by performing
    * binary search on the field's doc values.
    *

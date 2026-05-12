@@ -672,7 +672,7 @@ public abstract class PointRangeQuery extends Query implements PrimarySortAligna
       lowerLong = LongPoint.decodeDimension(lowerPoint, 0);
       upperLong = LongPoint.decodeDimension(upperPoint, 0);
     }
-    return IndexSortSortedNumericDocValuesRangeQuery.denseDocIdRangeOrNullForSortedNumericBounds(
+    return PrimarySortAlignables.denseDocIdRangeOrNullForSortedNumericBounds(
         context, field, lowerLong, upperLong);
   }
 }
