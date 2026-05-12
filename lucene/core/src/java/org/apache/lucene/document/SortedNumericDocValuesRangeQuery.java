@@ -25,6 +25,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.search.BatchDocValuesRangeIterator;
 import org.apache.lucene.search.ConstantScoreScorerSupplier;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -145,6 +146,14 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
               return ConstantScoreScorerSupplier.fromIterator(
                   psIterator, score(), scoreMode, maxDoc);
             }
+            // Use batch iterator: plain DocIdSetIterator (not TwoPhaseIterator) so that
+            // DenseConjunctionBulkScorer takes the bitset path and calls intoBitSet(),
+            // which dispatches to NumericDocValues.rangeIntoBitSet() (SIMD when available).
+            return ConstantScoreScorerSupplier.fromIterator(
+                new BatchDocValuesRangeIterator(singleton, skipper, lowerValue, upperValue),
+                score(),
+                scoreMode,
+                maxDoc);
           }
           return ConstantScoreScorerSupplier.fromIterator(
               TwoPhaseIterator.asDocIdSetIterator(
