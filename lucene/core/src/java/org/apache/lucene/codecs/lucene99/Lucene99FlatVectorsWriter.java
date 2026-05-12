@@ -71,11 +71,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
   /**
    * Constructs a writer that uses the supplied {@code strategyFactory} to build per-field vector
-   * storage. The factory is consulted on every {@link #addField(FieldInfo)} call and may return a
-   * {@link FlatFieldVectorsWriter} backed by any storage (on-heap, off-heap, paged, memory-mapped,
-   * ...). The returned writer is consumed verbatim — its {@link
-   * FlatFieldVectorsWriter#getVectors()}, {@link FlatFieldVectorsWriter#getDocsWithFieldSet()} and
-   * lifecycle methods drive this writer's flush / sort / ram-accounting paths.
+   * storage. The factory is consulted on every {@link #addField(FieldInfo)} call and returns a
+   * user-defined {@link FlatFieldVectorsWriter}.
    *
    * <p>Note: the strategy is only consulted during indexing (i.e. via {@link #addField(FieldInfo)}
    * and the subsequent {@link #flush}). Merges write directly to the new segment via {@link
@@ -358,8 +355,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
   /**
    * Per-field writer used by {@link Lucene99FlatVectorsWriter}. The outer writer consumes a {@code
-   * FieldWriter} via four accessor methods rather than direct field reads, allowing two concrete
-   * subclasses to share the same write pipeline:
+   * FieldWriter}; its two concrete implementations share the same write pipeline:
    *
    * <ul>
    *   <li>{@link Default} — used when no strategy factory is supplied (the historic behavior).
@@ -380,9 +376,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
   /**
    * Default {@link FieldWriter} implementation: stores vectors on-heap in an {@link ArrayList},
-   * defensively copying each value via {@link #copyValue} on {@link #addValue}. This is the
-   * implementation used when {@link Lucene99FlatVectorsWriter} is constructed without a strategy
-   * factory.
+   * copying each value via {@link #copyValue} on {@link #addValue}. This is the implementation used
+   * when {@link Lucene99FlatVectorsWriter} is constructed without a strategy factory.
    */
   private abstract static class Default<T> extends FieldWriter<T> {
     private static final long SHALLOW_RAM_BYTES_USED =
