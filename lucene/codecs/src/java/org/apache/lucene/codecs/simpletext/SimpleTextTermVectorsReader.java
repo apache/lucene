@@ -34,6 +34,7 @@ import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.TE
 import static org.apache.lucene.codecs.simpletext.SimpleTextTermVectorsWriter.VECTORS_EXTENSION;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.Map;
@@ -306,7 +307,7 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
         }
         return ttf;
       } catch (IOException e) {
-        throw new RuntimeException(e);
+        throw new UncheckedIOException(e);
       }
     }
 
