@@ -328,7 +328,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
       }
     }
 
-    byte[][][] docValuesArray = docValues.toArray(new byte[docValues.size()][][]);
+    byte[][][] docValuesArray = docValues.toArray(byte[][][]::new);
     int[] docIDsArray = new int[docIDs.size()];
     for (int i = 0; i < docIDsArray.length; i++) {
       docIDsArray[i] = docIDs.get(i);
