@@ -769,7 +769,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
     }
 
     @Override
-    public long getSumDocFreq() throws IOException {
+    public long getSumDocFreq() {
       return sumDocFreq;
     }
 

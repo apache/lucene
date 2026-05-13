@@ -235,12 +235,12 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       }
 
       @Override
-      public long getSumTotalTermFreq() throws IOException {
+      public long getSumTotalTermFreq() {
         return delegateTerms.getSumTotalTermFreq();
       }
 
       @Override
-      public long getSumDocFreq() throws IOException {
+      public long getSumDocFreq() {
         return delegateTerms.getSumDocFreq();
       }
 

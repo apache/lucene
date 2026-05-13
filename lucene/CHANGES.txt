@@ -94,7 +94,8 @@ API Changes
   TopFieldCollectorManager. Clarify thread-safety documentation. (Prudhvi Godithi)
 
 * GITHUB#16052: Remove IOException from LeafReader#getPointValues, LeafReader#terms,
-  LeafReader#getDocCount signatures. (Ignacio Vera)
+  LeafReader#getDocCount, LeafReader#getSumDocFreq and LeafReader#getSumTotalTermFreq
+  signatures. (Ignacio Vera)
 
 New Features
 ---------------------

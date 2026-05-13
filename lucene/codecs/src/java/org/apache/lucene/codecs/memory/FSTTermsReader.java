@@ -246,7 +246,7 @@ public class FSTTermsReader extends FieldsProducer {
     }
 
     @Override
-    public long getSumDocFreq() throws IOException {
+    public long getSumDocFreq() {
       return sumDocFreq;
     }
 
