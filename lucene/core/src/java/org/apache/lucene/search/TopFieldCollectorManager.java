@@ -61,8 +61,12 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
   }
 
   /**
-   * Creates a new {@link TopFieldCollectorManager} from the given arguments, with thread-safe
-   * internal states.
+   * Creates a new {@link TopFieldCollectorManager} from the given arguments.
+   *
+   * <p>Thread safety is guaranteed for the shared internal states (hit counting, minimum score
+   * propagation) across collectors created by {@link #newCollector()}. Note that {@link
+   * #newCollector()} itself is designed to be called from a single thread; {@link IndexSearcher}
+   * handles this by calling it sequentially before parallel slice execution.
    *
    * <p><b>NOTE</b>: The instances returned by this method pre-allocate a full array of length
    * <code>numHits</code>.
@@ -182,6 +186,13 @@ public class TopFieldCollectorManager implements CollectorManager<TopFieldCollec
     return TopDocs.merge(sort, 0, numHits, topDocs);
   }
 
+  /**
+   * Returns the collectors created by this manager.
+   *
+   * @deprecated This method will be removed in Lucene 11. All needed information, including early
+   *     termination, is available in the {@link TopFieldDocs} returned by reduction.
+   */
+  @Deprecated
   public List<TopFieldCollector> getCollectors() {
     return collectors;
   }
