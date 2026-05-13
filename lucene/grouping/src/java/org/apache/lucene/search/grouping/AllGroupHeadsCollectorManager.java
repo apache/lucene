@@ -23,8 +23,6 @@ import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.CollectorManager;
-import org.apache.lucene.search.FieldComparator;
-import org.apache.lucene.search.Pruning;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.util.Bits;
@@ -108,12 +106,12 @@ public class AllGroupHeadsCollectorManager<T>
 
   @Override
   public AllGroupHeadsCollector<T> newCollector() throws IOException {
-    return AllGroupHeadsCollector.newCollector(groupSelectorFactory.get(), sortWithinGroup, true);
+    return AllGroupHeadsCollector.newCollector(groupSelectorFactory.get(), sortWithinGroup);
   }
 
   @Override
   public GroupHeadsResult reduce(Collection<AllGroupHeadsCollector<T>> collectors) {
-    Map<Object, GroupHeadWithValues> mergedHeads = new HashMap<>();
+    Map<T, GroupHeadWithValues> mergedHeads = new HashMap<>();
     SortField[] sortFields = sortWithinGroup.getSort();
 
     for (AllGroupHeadsCollector<T> collector : collectors) {
@@ -125,7 +123,7 @@ public class AllGroupHeadsCollectorManager<T>
 
   private void mergeCollectorHeads(
       AllGroupHeadsCollector<T> collector,
-      Map<Object, GroupHeadWithValues> mergedHeads,
+      Map<T, GroupHeadWithValues> mergedHeads,
       SortField[] sortFields) {
     Collection<? extends AllGroupHeadsCollector.GroupHead<T>> heads =
         collector.getCollectedGroupHeads();
@@ -146,10 +144,21 @@ public class AllGroupHeadsCollectorManager<T>
   @SuppressWarnings({"unchecked", "rawtypes"})
   private int compareValues(Object[] values1, Object[] values2, SortField[] sortFields) {
     for (int i = 0; i < sortFields.length; i++) {
-      FieldComparator comparator = sortFields[i].getComparator(1, Pruning.NONE);
-      int cmp = comparator.compareValues(values1[i], values2[i]);
+      int cmp = 0;
+      if (values1[i] == null) {
+        cmp = values2[i] == null ? 0 : -1;
+      } else if (values2[i] == null) {
+        cmp = 1;
+      } else if (values1[i] instanceof Comparable) {
+        cmp = ((Comparable) values1[i]).compareTo(values2[i]);
+      }
       if (cmp != 0) {
-        return sortFields[i].getReverse() ? -cmp : cmp;
+        // For SCORE type, natural order is descending (higher is better)
+        // For other types, natural order is ascending (lower is better)
+        // reverse=true flips the natural order
+        boolean naturalDescending = sortFields[i].getType() == SortField.Type.SCORE;
+        boolean wantDescending = naturalDescending != sortFields[i].getReverse();
+        return wantDescending ? -cmp : cmp;
       }
     }
     return 0;

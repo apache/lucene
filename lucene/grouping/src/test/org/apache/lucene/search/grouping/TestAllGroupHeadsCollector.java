@@ -354,9 +354,8 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
         final String searchTerm = "real" + random().nextInt(3);
         boolean sortByScoreOnly = random().nextBoolean();
         Sort sortWithinGroup = getRandomSort(sortByScoreOnly);
-        AllGroupHeadsCollectorManager<BytesRef> allGroupHeadsCollectorManager =
-            new AllGroupHeadsCollectorManager<>(
-                () -> new TermGroupSelector("group"), sortWithinGroup);
+        AllGroupHeadsCollectorManager<?> allGroupHeadsCollectorManager =
+            createRandomCollectorManager("group", sortWithinGroup);
         AllGroupHeadsCollectorManager.GroupHeadsResult groupHeadsResult =
             s.search(new TermQuery(new Term("content", searchTerm)), allGroupHeadsCollectorManager);
         int[] expectedGroupHeads =
