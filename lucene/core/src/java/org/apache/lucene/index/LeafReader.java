@@ -415,7 +415,7 @@ public abstract non-sealed class LeafReader extends IndexReader {
    * Returns the {@link PointValues} used for numeric or spatial searches for the given field, or
    * null if there are no point fields.
    */
-  public abstract PointValues getPointValues(String field) throws IOException;
+  public abstract PointValues getPointValues(String field);
 
   /**
    * Checks consistency of this reader.

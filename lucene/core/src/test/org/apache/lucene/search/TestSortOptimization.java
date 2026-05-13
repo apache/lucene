@@ -1468,7 +1468,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
 
     @Override
-    public PointValues getPointValues(String field) throws IOException {
+    public PointValues getPointValues(String field) {
       return null;
     }
 
