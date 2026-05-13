@@ -45,6 +45,9 @@ public abstract class FlatFieldVectorsWriter<T> extends KnnFieldVectorsWriter<T>
    * FloatVectorValues#fromFloats} / {@link ByteVectorValues#fromBytes}. Subclasses backed by
    * alternative storage may override to return a richer view (e.g. one that exposes capability
    * information to scorers, or avoids heap materialization).
+   *
+   * @param encoding  the vector encoding/element type
+   * @param dim       the field's declared vector dimension
    */
   @SuppressWarnings("unchecked")
   public KnnVectorValues asKnnVectorValues(VectorEncoding encoding, int dim) throws IOException {
