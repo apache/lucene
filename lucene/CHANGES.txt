@@ -93,11 +93,8 @@ API Changes
 * GITHUB#15605: Remove unused getCollectors() and internal collector tracking from
   TopFieldCollectorManager. Clarify thread-safety documentation. (Prudhvi Godithi)
 
-* GITHUB#16057: Remove IOException from LeafReader#getPointValues signature. (Ignacio Vera)
-
-* GITHUB#16058: Remove IOException from LeafReader#terms signature. (Ignacio Vera)
-
-* GITHUB#16058: Remove IOException from LeafReader#getDocCount signature. (Ignacio Vera)
+* GITHUB#16052: Remove IOException from LeafReader#getPointValues, LeafReader#terms,
+  LeafReader#getDocCount signatures. (Ignacio Vera)
 
 New Features
 ---------------------
