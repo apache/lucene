@@ -1770,7 +1770,7 @@ public class MemoryIndex {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return memoryFields.terms(field);
     }
 

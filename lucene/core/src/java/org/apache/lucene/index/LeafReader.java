@@ -131,7 +131,7 @@ public abstract non-sealed class LeafReader extends IndexReader {
   }
 
   /** Returns the {@link Terms} index for this field, or null if it has none. */
-  public abstract Terms terms(String field) throws IOException;
+  public abstract Terms terms(String field);
 
   /**
    * Returns {@link PostingsEnum} for the specified term. This will return null if either the field

@@ -117,7 +117,7 @@ final class FreqProxTermsWriter extends TermsHash {
           new FilterLeafReader.FilterFields(fields) {
 
             @Override
-            public Terms terms(final String field) throws IOException {
+            public Terms terms(final String field) {
               Terms terms = in.terms(field);
               if (terms == null) {
                 return null;

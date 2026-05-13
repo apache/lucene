@@ -255,7 +255,7 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     ensureOpen();
     LeafReader leafReader = termsFieldToReader.get(field);
     return leafReader == null ? null : leafReader.terms(field);

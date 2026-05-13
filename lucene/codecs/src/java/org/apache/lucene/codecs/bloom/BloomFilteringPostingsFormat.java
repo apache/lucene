@@ -191,7 +191,7 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       FuzzySet filter = bloomsByFieldName.get(field);
       if (filter == null) {
         return delegateFieldsProducer.terms(field);

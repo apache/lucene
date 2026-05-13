@@ -599,7 +599,7 @@ public class TestMatchesIterator extends MatchesTestBase {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       Terms terms = super.terms(field);
       if (terms == null) {
         return null;

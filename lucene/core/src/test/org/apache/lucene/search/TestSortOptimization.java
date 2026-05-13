@@ -1463,7 +1463,7 @@ public class TestSortOptimization extends LuceneTestCase {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return null;
     }
 

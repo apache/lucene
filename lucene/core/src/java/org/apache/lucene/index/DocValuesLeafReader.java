@@ -29,7 +29,7 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
-  public final Terms terms(String field) throws IOException {
+  public final Terms terms(String field) {
     throw new UnsupportedOperationException();
   }
 

@@ -42,8 +42,7 @@ public final class MultiTerms extends Terms {
    * @param subSlices A parallel array (matching {@code subs}) describing the sub-reader slices.
    * @lucene.internal
    */
-  public MultiTerms(Terms[] subs, ReaderSlice[] subSlices)
-      throws IOException { // TODO make private?
+  public MultiTerms(Terms[] subs, ReaderSlice[] subSlices) { // TODO make private?
     this.subs = subs;
     this.subSlices = subSlices;
 

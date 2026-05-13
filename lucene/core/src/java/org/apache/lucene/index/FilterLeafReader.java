@@ -77,7 +77,7 @@ public abstract class FilterLeafReader extends LeafReader {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return in.terms(field);
     }
 
@@ -407,7 +407,7 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     ensureOpen();
     return in.terms(field);
   }
