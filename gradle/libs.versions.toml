@@ -5,7 +5,7 @@ antlr = "4.13.2"
 # test assertions
 assertj = "3.27.7"
 # analysis/phonetic/ algorithms, gradle build checksums
-commons-codec = "1.21.0"
+commons-codec = "1.22.0"
 # benchmark/ bzip2 compression
 commons-compress = "1.28.0"
 # See ecj-lint.gradle (used for more linting).
@@ -35,7 +35,7 @@ jts = "1.20.0"
 # unit tests
 junit = "4.13.2"
 # @keep Minimum gradle version to run the build
-minGradle = "9.4.1"
+minGradle = "9.5.0"
 # @keep This is the minimum required Java version.
 minJava = "25"
 # analysis/morfologik polish support
@@ -45,7 +45,7 @@ morfologik-ukrainian = "4.9.1"
 # benchmark/ html parsing
 nekohtml = "1.9.22"
 # analysis/opennlp/ support
-opennlp = "2.5.8"
+opennlp = "2.5.9"
 # distribution.tests/ process management
 procfork = "1.0.6"
 # unit tests
@@ -104,12 +104,12 @@ junitplatform = [
 ]
 
 [plugins]
-benmanes-versions = "com.github.ben-manes.versions:0.53.0"
+benmanes-versions = "com.github.ben-manes.versions:0.54.0"
 carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.2"
 carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.2.1"
 errorprone = "net.ltgt.errorprone:5.1.0"
 forbiddenapis = "de.thetaphi.forbiddenapis:3.10"
-jacocolog = "org.barfuin.gradle.jacocolog:4.0.1"
+jacocolog = "org.barfuin.gradle.jacocolog:4.0.2"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
 spotless = "com.diffplug.spotless:8.4.0"
 undercouch-download = "de.undercouch.download:5.7.0"

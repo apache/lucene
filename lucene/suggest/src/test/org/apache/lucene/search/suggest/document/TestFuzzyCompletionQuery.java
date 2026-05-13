@@ -30,7 +30,6 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
 
 public class TestFuzzyCompletionQuery extends LuceneTestCase {
   public Directory dir;
@@ -45,7 +44,6 @@ public class TestFuzzyCompletionQuery extends LuceneTestCase {
     dir.close();
   }
 
-  @Test
   public void testFuzzyQuery() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -79,7 +77,6 @@ public class TestFuzzyCompletionQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testFuzzyContextQuery() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -117,7 +114,6 @@ public class TestFuzzyCompletionQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testFuzzyFilteredContextQuery() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =

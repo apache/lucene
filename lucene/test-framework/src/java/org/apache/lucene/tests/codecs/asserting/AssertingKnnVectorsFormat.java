@@ -38,6 +38,7 @@ import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.tests.search.AssertingAcceptDocs;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /** Wraps the default KnnVectorsFormat and provides additional assertions. */
@@ -88,10 +89,10 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
       assert fieldInfo != null;
       assert mergeState != null;
-      delegate.mergeOneField(fieldInfo, mergeState);
+      return delegate.mergeOneField(fieldInfo, mergeState);
     }
 
     @Override

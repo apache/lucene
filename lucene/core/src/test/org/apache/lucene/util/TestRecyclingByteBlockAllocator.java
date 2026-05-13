@@ -21,7 +21,6 @@ import java.util.HashSet;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Before;
-import org.junit.Test;
 
 /** Testcase for {@link RecyclingByteBlockAllocator} */
 public class TestRecyclingByteBlockAllocator extends LuceneTestCase {
@@ -37,7 +36,6 @@ public class TestRecyclingByteBlockAllocator extends LuceneTestCase {
     return new RecyclingByteBlockAllocator(random().nextInt(97), Counter.newCounter());
   }
 
-  @Test
   public void testAllocate() {
     RecyclingByteBlockAllocator allocator = newAllocator();
     HashSet<byte[]> set = new HashSet<>();
@@ -57,7 +55,6 @@ public class TestRecyclingByteBlockAllocator extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testAllocateAndRecycle() {
     RecyclingByteBlockAllocator allocator = newAllocator();
     HashSet<byte[]> allocated = new HashSet<>();
@@ -94,7 +91,6 @@ public class TestRecyclingByteBlockAllocator extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testAllocateAndFree() {
     RecyclingByteBlockAllocator allocator = newAllocator();
     HashSet<byte[]> allocated = new HashSet<>();

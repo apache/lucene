@@ -1556,7 +1556,8 @@ public abstract class LuceneTestCase extends Assert {
     if (!newType.stored() && random.nextBoolean()) {
       newType.setStored(true); // randomly store it
     }
-    if (newType.indexOptions() != IndexOptions.NONE) {
+    if (newType.indexOptions() != IndexOptions.NONE
+        && newType.indexOptions() != IndexOptions.DOCS_AND_CUSTOM_FREQS) {
       if (!newType.storeTermVectors() && random.nextBoolean()) {
         newType.setStoreTermVectors(true);
         if (!newType.storeTermVectorPositions()) {
@@ -1571,7 +1572,6 @@ public abstract class LuceneTestCase extends Assert {
         if (value instanceof String && !newType.storeTermVectorOffsets()) {
           newType.setStoreTermVectorOffsets(random.nextBoolean());
         }
-
         if (VERBOSE) {
           System.out.println("NOTE: LuceneTestCase: upgrade name=" + name + " type=" + newType);
         }

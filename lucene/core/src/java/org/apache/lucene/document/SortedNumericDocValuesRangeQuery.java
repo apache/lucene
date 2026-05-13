@@ -136,7 +136,7 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
         SortedNumericDocValues values = DocValues.getSortedNumeric(context.reader(), field);
         final NumericDocValues singleton = DocValues.unwrapSingleton(values);
         final DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
-        TwoPhaseIterator iterator;
+
         if (singleton != null) {
           if (skipper != null) {
             final DocIdSetIterator psIterator =
@@ -146,47 +146,19 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
                   psIterator, score(), scoreMode, maxDoc);
             }
           }
-          iterator =
-              new TwoPhaseIterator(singleton) {
-                @Override
-                public boolean matches() throws IOException {
-                  final long value = singleton.longValue();
-                  return value >= lowerValue && value <= upperValue;
-                }
-
-                @Override
-                public float matchCost() {
-                  return 2; // 2 comparisons
-                }
-              };
-        } else {
-          iterator =
-              new TwoPhaseIterator(values) {
-                @Override
-                public boolean matches() throws IOException {
-                  for (int i = 0, count = values.docValueCount(); i < count; ++i) {
-                    final long value = values.nextValue();
-                    if (value < lowerValue) {
-                      continue;
-                    }
-                    // Values are sorted, so the first value that is >= lowerValue is our best
-                    // candidate
-                    return value <= upperValue;
-                  }
-                  return false; // all values were < lowerValue
-                }
-
-                @Override
-                public float matchCost() {
-                  return 2; // 2 comparisons
-                }
-              };
-        }
-        if (skipper != null) {
-          iterator = new DocValuesRangeIterator(iterator, skipper, lowerValue, upperValue, false);
+          return ConstantScoreScorerSupplier.fromIterator(
+              TwoPhaseIterator.asDocIdSetIterator(
+                  DocValuesRangeIterator.forRange(singleton, skipper, lowerValue, upperValue)),
+              score(),
+              scoreMode,
+              maxDoc);
         }
         return ConstantScoreScorerSupplier.fromIterator(
-            TwoPhaseIterator.asDocIdSetIterator(iterator), score(), scoreMode, maxDoc);
+            TwoPhaseIterator.asDocIdSetIterator(
+                DocValuesRangeIterator.forRange(values, skipper, lowerValue, upperValue)),
+            score(),
+            scoreMode,
+            maxDoc);
       }
 
       @Override

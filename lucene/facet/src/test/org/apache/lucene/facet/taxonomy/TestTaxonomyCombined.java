@@ -30,7 +30,6 @@ import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
 import org.apache.lucene.util.SuppressForbidden;
-import org.junit.Test;
 
 @SuppressCodecs("SimpleText")
 public class TestTaxonomyCombined extends FacetTestCase {
@@ -159,7 +158,6 @@ public class TestTaxonomyCombined extends FacetTestCase {
    * do not test here that after writing the index can be read - this will be done in more tests
    * below.
    */
-  @Test
   public void testWriter() throws Exception {
     Directory indexDir = newDirectory();
     TaxonomyWriter tw = new DirectoryTaxonomyWriter(indexDir);
@@ -175,7 +173,6 @@ public class TestTaxonomyCombined extends FacetTestCase {
    * testWriterTwice is exactly like testWriter, except that after adding all the categories, we add
    * them again, and see that we get the same old ids again - not new categories.
    */
-  @Test
   public void testWriterTwice() throws Exception {
     Directory indexDir = newDirectory();
     TaxonomyWriter tw = new DirectoryTaxonomyWriter(indexDir);
@@ -197,7 +194,6 @@ public class TestTaxonomyCombined extends FacetTestCase {
    * with writing and reading correctly just to the cache, testWriterTwice2 checks also the actual
    * disk read part of the writer:
    */
-  @Test
   public void testWriterTwice2() throws Exception {
     Directory indexDir = newDirectory();
     TaxonomyWriter tw = new DirectoryTaxonomyWriter(indexDir);
@@ -219,7 +215,6 @@ public class TestTaxonomyCombined extends FacetTestCase {
    * sessions. This test used to fail because of a bug involving commit(), explained below, and now
    * should succeed.
    */
-  @Test
   public void testWriterTwice3() throws Exception {
     Directory indexDir = newDirectory();
     // First, create and fill the taxonomy
@@ -251,7 +246,6 @@ public class TestTaxonomyCombined extends FacetTestCase {
    * cases, and therefore may be more helpful for debugging a problem than testWriter() which is
    * hard to know why or where it failed.
    */
-  @Test
   public void testWriterSimpler() throws Exception {
     Directory indexDir = newDirectory();
     TaxonomyWriter tw = new DirectoryTaxonomyWriter(indexDir);
@@ -295,7 +289,6 @@ public class TestTaxonomyCombined extends FacetTestCase {
    * Test writing an empty index, and seeing that a reader finds in it the root category, and only
    * it. We check all the methods on that root category return the expected results.
    */
-  @Test
   public void testRootOnly() throws Exception {
     Directory indexDir = newDirectory();
     TaxonomyWriter tw = new DirectoryTaxonomyWriter(indexDir);
@@ -317,7 +310,6 @@ public class TestTaxonomyCombined extends FacetTestCase {
    * before opening the reader. We want to see that the root is visible to the reader not only after
    * the writer is closed, but immediately after it is created.
    */
-  @Test
   public void testRootOnly2() throws Exception {
     Directory indexDir = newDirectory();
     TaxonomyWriter tw = new DirectoryTaxonomyWriter(indexDir);
@@ -337,7 +329,6 @@ public class TestTaxonomyCombined extends FacetTestCase {
    * getCategory() and getOrdinal()). We test that after writing the index, it can be read and all
    * the categories and ordinals are there just as we expected them to be.
    */
-  @Test
   public void testReaderBasic() throws Exception {
     Directory indexDir = newDirectory();
     TaxonomyWriter tw = new DirectoryTaxonomyWriter(indexDir);
@@ -405,7 +396,6 @@ public class TestTaxonomyCombined extends FacetTestCase {
    * they should not be tested! Until they are removed (*if* they are removed), these tests should
    * remain to see that they still work correctly.
    */
-  @Test
   public void testReaderParent() throws Exception {
     Directory indexDir = newDirectory();
     TaxonomyWriter tw = new DirectoryTaxonomyWriter(indexDir);
@@ -460,7 +450,6 @@ public class TestTaxonomyCombined extends FacetTestCase {
    *
    * <p>This test code is virtually identical to that of testReaderParent().
    */
-  @Test
   public void testWriterParent1() throws Exception {
     Directory indexDir = newDirectory();
     TaxonomyWriter tw = new DirectoryTaxonomyWriter(indexDir);
@@ -476,7 +465,6 @@ public class TestTaxonomyCombined extends FacetTestCase {
     indexDir.close();
   }
 
-  @Test
   public void testWriterParent2() throws Exception {
     Directory indexDir = newDirectory();
     TaxonomyWriter tw = new DirectoryTaxonomyWriter(indexDir);
@@ -535,7 +523,6 @@ public class TestTaxonomyCombined extends FacetTestCase {
    * Test TaxonomyReader's child browsing method, getChildrenArrays() This only tests for
    * correctness of the data on one example - we have below further tests on data refresh etc.
    */
-  @Test
   public void testChildrenArrays() throws Exception {
     Directory indexDir = newDirectory();
     TaxonomyWriter tw = new DirectoryTaxonomyWriter(indexDir);
@@ -596,7 +583,6 @@ public class TestTaxonomyCombined extends FacetTestCase {
    * taxonomies, because we do not need to build the expected list of categories like we did in the
    * above test.
    */
-  @Test
   public void testChildrenArraysInvariants() throws Exception {
     Directory indexDir = newDirectory();
     TaxonomyWriter tw = new DirectoryTaxonomyWriter(indexDir);
@@ -681,7 +667,6 @@ public class TestTaxonomyCombined extends FacetTestCase {
   }
 
   /** Test how getChildrenArrays() deals with the taxonomy's growth: */
-  @Test
   public void testChildrenArraysGrowth() throws Exception {
     Directory indexDir = newDirectory();
     TaxonomyWriter tw = new DirectoryTaxonomyWriter(indexDir);
@@ -720,7 +705,6 @@ public class TestTaxonomyCombined extends FacetTestCase {
   }
 
   // Test that getParentArrays is valid when retrieved during refresh
-  @Test
   public void testTaxonomyReaderRefreshRaces() throws Exception {
     // compute base child arrays - after first chunk, and after the other
     Directory indexDirBase = newDirectory();
@@ -879,7 +863,6 @@ public class TestTaxonomyCombined extends FacetTestCase {
    * happens when the two processes do their actual work at exactly the same time. It also doesn't
    * test multi-threading.
    */
-  @Test
   public void testSeparateReaderAndWriter() throws Exception {
     Directory indexDir = newDirectory();
     TaxonomyWriter tw = new DirectoryTaxonomyWriter(indexDir);
@@ -934,7 +917,6 @@ public class TestTaxonomyCombined extends FacetTestCase {
     indexDir.close();
   }
 
-  @Test
   public void testSeparateReaderAndWriter2() throws Exception {
     Directory indexDir = newDirectory();
     TaxonomyWriter tw = new DirectoryTaxonomyWriter(indexDir);
@@ -1038,7 +1020,6 @@ public class TestTaxonomyCombined extends FacetTestCase {
    * Basic test for TaxonomyWriter.getParent(). This is similar to testWriter above, except we also
    * check the parents of the added categories, not just the categories themselves.
    */
-  @Test
   public void testWriterCheckPaths() throws Exception {
     Directory indexDir = newDirectory();
     TaxonomyWriter tw = new DirectoryTaxonomyWriter(indexDir);
@@ -1056,7 +1037,6 @@ public class TestTaxonomyCombined extends FacetTestCase {
    * paths. We repeat the path checking yet again after closing and opening the index for writing
    * again - to see that the reading of existing data from disk works as well.
    */
-  @Test
   public void testWriterCheckPaths2() throws Exception {
     Directory indexDir = newDirectory();
     TaxonomyWriter tw = new DirectoryTaxonomyWriter(indexDir);
@@ -1074,7 +1054,6 @@ public class TestTaxonomyCombined extends FacetTestCase {
     indexDir.close();
   }
 
-  @Test
   public void testNRT() throws Exception {
     Directory dir = newDirectory();
     DirectoryTaxonomyWriter writer = new DirectoryTaxonomyWriter(dir);

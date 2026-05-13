@@ -37,7 +37,6 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
 
 public class TestContextQuery extends LuceneTestCase {
   public Directory dir;
@@ -52,7 +51,6 @@ public class TestContextQuery extends LuceneTestCase {
     dir.close();
   }
 
-  @Test
   public void testIllegalInnerQuery() throws Exception {
     IllegalArgumentException expected =
         expectThrows(
@@ -66,7 +64,6 @@ public class TestContextQuery extends LuceneTestCase {
     assertTrue(expected.getMessage().contains(ContextQuery.class.getSimpleName()));
   }
 
-  @Test
   public void testSimpleContextQuery() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -106,7 +103,6 @@ public class TestContextQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testContextQueryOnSuggestField() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -142,7 +138,6 @@ public class TestContextQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testNonExactContextQuery() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -179,7 +174,6 @@ public class TestContextQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testContextPrecedenceBoost() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -210,7 +204,6 @@ public class TestContextQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testEmptyContext() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -240,7 +233,6 @@ public class TestContextQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testEmptyContextWithBoosts() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -278,7 +270,6 @@ public class TestContextQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testSameSuggestionMultipleContext() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -317,7 +308,6 @@ public class TestContextQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testMixedContextQuery() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -356,7 +346,6 @@ public class TestContextQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testFilteringContextQuery() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -392,7 +381,6 @@ public class TestContextQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testContextQueryRewrite() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -427,7 +415,6 @@ public class TestContextQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testMultiContextQuery() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -468,7 +455,6 @@ public class TestContextQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testBigNumberOfContextsQuery() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -500,7 +486,6 @@ public class TestContextQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testAllContextQuery() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -536,7 +521,6 @@ public class TestContextQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testRandomContextQueryScoring() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     try (RandomIndexWriter iw =
