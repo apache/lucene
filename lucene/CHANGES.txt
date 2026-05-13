@@ -95,7 +95,7 @@ API Changes
 
 * GITHUB#16057: Remove IOException from LeafReader#getPointValues signature. (Ignacio Vera)
 
-* GITHUB#16057: Remove IOException from LeafReader#terms signature. (Ignacio Vera)
+* GITHUB#16058: Remove IOException from LeafReader#terms signature. (Ignacio Vera)
 
 New Features
 ---------------------
