@@ -1027,7 +1027,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       return 1;
     }
 
