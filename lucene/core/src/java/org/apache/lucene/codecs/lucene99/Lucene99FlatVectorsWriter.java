@@ -66,9 +66,17 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   private final List<FieldData> fields = new ArrayList<>();
   private boolean finished;
 
+  /**
+   * Constructs a writer that uses the default factory to build per-field vector storage. This
+   * default factory creates instances of {@link FlatFieldVectorsWriter} that store vector data as a
+   * List of on-heap arrays, one per-vector (see {@code DefaultFieldWriter}).
+   *
+   * @param state the segment write state
+   * @param scorer the flat vectors scorer used to score vectors at index-build time
+   */
   public Lucene99FlatVectorsWriter(SegmentWriteState state, FlatVectorsScorer scorer)
       throws IOException {
-    this(state, scorer, Default::create);
+    this(state, scorer, DefaultFieldWriter::create);
   }
 
   /**
@@ -350,9 +358,9 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
    * implementation used when {@link Lucene99FlatVectorsWriter} is constructed without a strategy
    * factory.
    */
-  private abstract static class Default<T> extends FlatFieldVectorsWriter<T> {
+  private abstract static class DefaultFieldWriter<T> extends FlatFieldVectorsWriter<T> {
     private static final long SHALLOW_RAM_BYTES_USED =
-        RamUsageEstimator.shallowSizeOfInstance(Default.class);
+        RamUsageEstimator.shallowSizeOfInstance(DefaultFieldWriter.class);
     private final FieldInfo fieldInfo;
     private final DocsWithFieldSet docsWithField;
     private final List<T> vectors;
@@ -364,14 +372,14 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       int dim = fieldInfo.getVectorDimension();
       return switch (fieldInfo.getVectorEncoding()) {
         case BYTE ->
-            new Lucene99FlatVectorsWriter.Default<byte[]>(fieldInfo) {
+            new DefaultFieldWriter<byte[]>(fieldInfo) {
               @Override
               public byte[] copyValue(byte[] value) {
                 return ArrayUtil.copyOfSubArray(value, 0, dim);
               }
             };
         case FLOAT32 ->
-            new Lucene99FlatVectorsWriter.Default<float[]>(fieldInfo) {
+            new DefaultFieldWriter<float[]>(fieldInfo) {
               @Override
               public float[] copyValue(float[] value) {
                 return ArrayUtil.copyOfSubArray(value, 0, dim);
@@ -380,7 +388,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       };
     }
 
-    Default(FieldInfo fieldInfo) {
+    DefaultFieldWriter(FieldInfo fieldInfo) {
       super();
       this.fieldInfo = fieldInfo;
       this.docsWithField = new DocsWithFieldSet();
