@@ -395,7 +395,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
             similarity.scorer(
                 boost,
                 searcher.collectionStatistics(field),
-                allTermStats.toArray(TermStatistics[]::new));
+                allTermStats.toArray(new TermStatistics[allTermStats.size()]));
       }
     }
 
@@ -415,7 +415,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
         TermStates termStates = ent.value;
         assert termStates.wasBuiltFor(ReaderUtil.getTopLevelContext(context))
             : "The top-reader used to create Weight is not the same as the current reader's top-reader ("
-                + ReaderUtil.getTopLevelContext(context);
+            + ReaderUtil.getTopLevelContext(context);
         BytesRef term = idToTerm.get(ent.key);
         IOSupplier<TermState> supplier = termStates.get(context);
         TermState state = supplier == null ? null : supplier.get();
@@ -548,7 +548,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
         }
       }
       if (matchesAny == false) {
-        mpq.add(terms.toArray(Term[]::new), pos);
+        mpq.add(terms.toArray(new Term[terms.size()]), pos);
         if (pq != null) {
           if (terms.size() == 1) {
             pq.add(terms.get(0), pos);
