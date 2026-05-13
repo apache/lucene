@@ -308,8 +308,7 @@ final class ConjunctionDISI extends FilterDocIdSetIterator {
       CollectionUtil.timSort(
           twoPhaseIterators, (o1, o2) -> Float.compare(o1.matchCost(), o2.matchCost()));
 
-      this.twoPhaseIterators =
-          twoPhaseIterators.toArray(TwoPhaseIterator[]::new);
+      this.twoPhaseIterators = twoPhaseIterators.toArray(TwoPhaseIterator[]::new);
 
       // Compute the matchCost as the total matchCost of the sub iterators.
       // TODO: This could be too high because the matching is done cheapest first: give the lower

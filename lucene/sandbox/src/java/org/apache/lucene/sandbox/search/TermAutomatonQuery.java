@@ -392,9 +392,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
       } else {
         stats =
             similarity.scorer(
-                boost,
-                searcher.fieldStats(field),
-                allTermStats.toArray(TermStats[]::new));
+                boost, searcher.fieldStats(field), allTermStats.toArray(TermStats[]::new));
       }
     }
 
@@ -414,7 +412,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
         TermStates termStates = ent.value;
         assert termStates.wasBuiltFor(ReaderUtil.getTopLevelContext(context))
             : "The top-reader used to create Weight is not the same as the current reader's top-reader ("
-            + ReaderUtil.getTopLevelContext(context);
+                + ReaderUtil.getTopLevelContext(context);
         BytesRef term = idToTerm.get(ent.key);
         IOSupplier<TermState> supplier = termStates.get(context);
         TermState state = supplier == null ? null : supplier.get();

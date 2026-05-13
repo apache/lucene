@@ -913,8 +913,7 @@ public class TestBlockJoin extends LuceneTestCase {
       // Merge both sorts:
       final List<SortField> sortFields = new ArrayList<>(Arrays.asList(parentSort.getSort()));
       sortFields.addAll(Arrays.asList(childSort.getSort()));
-      final Sort parentAndChildSort =
-          new Sort(sortFields.toArray(SortField[]::new));
+      final Sort parentAndChildSort = new Sort(sortFields.toArray(SortField[]::new));
 
       final TopDocs results = s.search(parentQuery, r.numDocs(), parentAndChildSort);
 

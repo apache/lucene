@@ -214,8 +214,7 @@ public class PhraseHelper {
 
   /** Returns the terms that are position-insensitive (sorted). */
   public BytesRef[] getAllPositionInsensitiveTerms() {
-    BytesRef[] result =
-        positionInsensitiveTerms.toArray(BytesRef[]::new);
+    BytesRef[] result = positionInsensitiveTerms.toArray(BytesRef[]::new);
     Arrays.sort(result);
     return result;
   }

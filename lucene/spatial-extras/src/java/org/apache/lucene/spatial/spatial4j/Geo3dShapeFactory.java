@@ -314,8 +314,7 @@ public class Geo3dShapeFactory implements S2ShapeFactory {
     @Override
     public Shape build() {
       GeoPath path =
-          GeoPathFactory.makeGeoPath(
-              planetModel, distance, points.toArray(GeoPoint[]::new));
+          GeoPathFactory.makeGeoPath(planetModel, distance, points.toArray(GeoPoint[]::new));
       return new Geo3dShape<>(path, context);
     }
   }
