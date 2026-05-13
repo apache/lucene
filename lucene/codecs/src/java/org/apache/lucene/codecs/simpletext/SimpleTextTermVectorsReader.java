@@ -261,7 +261,7 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return fields.get(field);
     }
 

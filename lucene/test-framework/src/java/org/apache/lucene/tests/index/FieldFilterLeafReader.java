@@ -137,7 +137,7 @@ public final class FieldFilterLeafReader extends FilterLeafReader {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     return hasField(field) ? super.terms(field) : null;
   }
 
@@ -198,7 +198,7 @@ public final class FieldFilterLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return hasField(field) ? super.terms(field) : null;
     }
   }

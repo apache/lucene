@@ -468,7 +468,7 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public Terms terms(String field) throws IOException {
+      public Terms terms(String field) {
         Terms terms = postingsReader.terms(field);
         return terms == null
             ? null

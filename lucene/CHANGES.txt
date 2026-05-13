@@ -95,6 +95,8 @@ API Changes
 
 * GITHUB#16057: Remove IOException from LeafReader#getPointValues signature. (Ignacio Vera)
 
+* GITHUB#16057: Remove IOException from LeafReader#terms signature. (Ignacio Vera)
+
 New Features
 ---------------------
 * GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and

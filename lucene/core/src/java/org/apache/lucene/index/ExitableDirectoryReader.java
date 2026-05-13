@@ -87,7 +87,7 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       Terms terms = in.terms(field);
       if (terms == null) {
         return null;

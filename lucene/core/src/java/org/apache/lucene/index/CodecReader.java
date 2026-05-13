@@ -114,7 +114,7 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
-  public final Terms terms(String field) throws IOException {
+  public final Terms terms(String field) {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);
     if (fi == null || fi.getIndexOptions() == IndexOptions.NONE) {

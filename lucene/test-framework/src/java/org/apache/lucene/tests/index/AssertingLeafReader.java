@@ -113,7 +113,7 @@ public class AssertingLeafReader extends FilterLeafReader {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     Terms terms = super.terms(field);
     return terms == null ? null : new AssertingTerms(terms);
   }
@@ -190,7 +190,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       assertThread("Fields", creationThread);
       Terms terms = super.terms(field);
       return terms == null ? null : new AssertingTerms(terms);

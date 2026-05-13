@@ -452,7 +452,7 @@ public class WeightedSpanTermExtractor {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return super.terms(DelegatingLeafReader.FIELD_NAME);
     }
 

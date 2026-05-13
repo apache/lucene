@@ -542,7 +542,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return fields.terms(field);
     }
 
