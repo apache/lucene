@@ -113,7 +113,7 @@ public abstract non-sealed class LeafReader extends IndexReader {
   }
 
   @Override
-  public final int getDocCount(String field) throws IOException {
+  public final int getDocCount(String field) {
     final Terms terms = terms(field);
     if (terms == null) {
       return 0;

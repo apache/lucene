@@ -231,7 +231,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       assertThread("Terms", creationThread);
       final int docCount = in.getDocCount();
       assert docCount > 0;

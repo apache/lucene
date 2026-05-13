@@ -131,7 +131,7 @@ public abstract class FilterLeafReader extends LeafReader {
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       return in.getDocCount();
     }
 

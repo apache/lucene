@@ -149,7 +149,7 @@ public class TestMultiTermsEnum extends LuceneTestCase {
         }
 
         @Override
-        public int getDocCount() throws IOException {
+        public int getDocCount() {
           throw new UnsupportedOperationException();
         }
 

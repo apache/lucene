@@ -222,7 +222,7 @@ public final class MultiTerms extends Terms {
   }
 
   @Override
-  public int getDocCount() throws IOException {
+  public int getDocCount() {
     int sum = 0;
     for (Terms terms : subs) {
       final int v = terms.getDocCount();
