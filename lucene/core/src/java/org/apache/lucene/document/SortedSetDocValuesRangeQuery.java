@@ -119,39 +119,31 @@ final class SortedSetDocValuesRangeQuery extends Query {
         }
         DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
         SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
+        final SortedDocValues singleton = DocValues.unwrapSingleton(values);
+        if (singleton != null && skipper != null && isDensePrimarySort(context.reader(), skipper)) {
+          final long minOrd = minOrd(values);
+          final long maxOrd = maxOrd(values);
+          if (minOrd > maxOrd || minOrd > skipper.maxValue() || maxOrd < skipper.minValue()) {
+            return null;
+          }
+          if (skipper.minValue() >= minOrd && skipper.maxValue() <= maxOrd) {
+            return ConstantScoreScorerSupplier.matchAll(
+                score(), scoreMode, context.reader().maxDoc());
+          }
+          final DocIdSetIterator psIterator =
+              getDocIdSetIteratorForDensePrimarySort(
+                  context.reader(), singleton, skipper, minOrd, maxOrd);
+          return ConstantScoreScorerSupplier.fromIterator(
+              psIterator, score(), scoreMode, context.reader().maxDoc());
+        }
 
         // implement ScorerSupplier, since we do some expensive stuff to make a scorer
         return new ConstantScoreScorerSupplier(score(), scoreMode, context.reader().maxDoc()) {
           @Override
           public DocIdSetIterator iterator(long leadCost) throws IOException {
 
-            final long minOrd;
-            if (lowerValue == null) {
-              minOrd = 0;
-            } else {
-              final long ord = values.lookupTerm(lowerValue);
-              if (ord < 0) {
-                minOrd = -1 - ord;
-              } else if (lowerInclusive) {
-                minOrd = ord;
-              } else {
-                minOrd = ord + 1;
-              }
-            }
-
-            final long maxOrd;
-            if (upperValue == null) {
-              maxOrd = values.getValueCount() - 1;
-            } else {
-              final long ord = values.lookupTerm(upperValue);
-              if (ord < 0) {
-                maxOrd = -2 - ord;
-              } else if (upperInclusive) {
-                maxOrd = ord;
-              } else {
-                maxOrd = ord - 1;
-              }
-            }
+            final long minOrd = minOrd(values);
+            final long maxOrd = maxOrd(values);
 
             // no terms matched in this segment
             if (minOrd > maxOrd
@@ -168,16 +160,7 @@ final class SortedSetDocValuesRangeQuery extends Query {
               return DocIdSetIterator.all(skipper.docCount());
             }
 
-            final SortedDocValues singleton = DocValues.unwrapSingleton(values);
             if (singleton != null) {
-              if (skipper != null) {
-                final DocIdSetIterator psIterator =
-                    getDocIdSetIteratorOrNullForPrimarySort(
-                        context.reader(), singleton, skipper, minOrd, maxOrd);
-                if (psIterator != null) {
-                  return psIterator;
-                }
-              }
               return TwoPhaseIterator.asDocIdSetIterator(
                   DocValuesRangeIterator.forOrdinalRange(singleton, skipper, minOrd, maxOrd));
             }
@@ -199,23 +182,62 @@ final class SortedSetDocValuesRangeQuery extends Query {
     };
   }
 
-  private DocIdSetIterator getDocIdSetIteratorOrNullForPrimarySort(
+  private long minOrd(SortedSetDocValues values) throws IOException {
+    final long minOrd;
+    if (lowerValue == null) {
+      minOrd = 0;
+    } else {
+      final long ord = values.lookupTerm(lowerValue);
+      if (ord < 0) {
+        minOrd = -1 - ord;
+      } else if (lowerInclusive) {
+        minOrd = ord;
+      } else {
+        minOrd = ord + 1;
+      }
+    }
+    return minOrd;
+  }
+
+  private long maxOrd(SortedSetDocValues values) throws IOException {
+    final long maxOrd;
+    if (upperValue == null) {
+      maxOrd = values.getValueCount() - 1;
+    } else {
+      final long ord = values.lookupTerm(upperValue);
+      if (ord < 0) {
+        maxOrd = -2 - ord;
+      } else if (upperInclusive) {
+        maxOrd = ord;
+      } else {
+        maxOrd = ord - 1;
+      }
+    }
+    return maxOrd;
+  }
+
+  private boolean isDensePrimarySort(LeafReader reader, DocValuesSkipper skipper) {
+    if (skipper.docCount() != reader.maxDoc()) {
+      return false;
+    }
+    final Sort indexSort = reader.getMetaData().sort();
+    if (indexSort == null
+        || indexSort.getSort().length == 0
+        || indexSort.getSort()[0].getField().equals(field) == false) {
+      return false;
+    }
+    return true;
+  }
+
+  private DocIdSetIterator getDocIdSetIteratorForDensePrimarySort(
       LeafReader reader,
       SortedDocValues sortedDocValues,
       DocValuesSkipper skipper,
       long minOrd,
       long maxOrd)
       throws IOException {
-    if (skipper.docCount() != reader.maxDoc()) {
-      return null;
-    }
+    assert isDensePrimarySort(reader, skipper);
     final Sort indexSort = reader.getMetaData().sort();
-    if (indexSort == null
-        || indexSort.getSort().length == 0
-        || indexSort.getSort()[0].getField().equals(field) == false) {
-      return null;
-    }
-
     final int minDocID;
     final int maxDocID;
     if (indexSort.getSort()[0].getReverse()) {
