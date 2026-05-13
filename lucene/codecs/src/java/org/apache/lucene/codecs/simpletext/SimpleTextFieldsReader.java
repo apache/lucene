@@ -817,6 +817,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
         return null;
       } else {
         try {
+          // TODO: rework SimpleTextTerms to avoid IO during construction
           terms = new SimpleTextTerms(field, fp, maxDoc);
         } catch (IOException e) {
           throw new UncheckedIOException(e);
