@@ -1194,7 +1194,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
           if (VERBOSE) {
             System.out.println("TEST: now use addIndexes(CodecReader[]) to switch writers");
           }
-          saveW.addIndexes(subs.toArray(new CodecReader[subs.size()]));
+          saveW.addIndexes(subs.toArray(CodecReader[]::new));
         } else {
           if (VERBOSE) {
             System.out.println(

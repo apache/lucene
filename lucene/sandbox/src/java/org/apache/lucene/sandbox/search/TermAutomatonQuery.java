@@ -395,7 +395,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
             similarity.scorer(
                 boost,
                 searcher.collectionStatistics(field),
-                allTermStats.toArray(new TermStatistics[allTermStats.size()]));
+                allTermStats.toArray(TermStatistics[]::new));
       }
     }
 
@@ -548,7 +548,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
         }
       }
       if (matchesAny == false) {
-        mpq.add(terms.toArray(new Term[terms.size()]), pos);
+        mpq.add(terms.toArray(Term[]::new), pos);
         if (pq != null) {
           if (terms.size() == 1) {
             pq.add(terms.get(0), pos);

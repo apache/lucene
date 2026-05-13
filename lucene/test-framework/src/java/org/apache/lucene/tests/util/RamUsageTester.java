@@ -350,7 +350,7 @@ public final class RamUsageTester {
     cachedInfo =
         new ClassCache(
             RamUsageEstimator.alignObjectSize(shallowInstanceSize),
-            referenceFields.toArray(new Field[0]));
+            referenceFields.toArray(Field[]::new));
     return cachedInfo;
   }
 

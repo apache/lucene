@@ -289,7 +289,7 @@ public class TestPostingsOffsets extends LuceneTestCase {
       }
       doc.add(
           new Field(
-              "content", new CannedTokenStream(tokens.toArray(new Token[tokens.size()])), ft));
+              "content", new CannedTokenStream(tokens.toArray(Token[]::new)), ft));
       w.addDocument(doc);
     }
     final DirectoryReader r = w.getReader();

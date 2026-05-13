@@ -218,7 +218,7 @@ public class WeightedSpanTermExtractor {
         for (List<SpanQuery> disjuncts : disjunctLists) {
           if (disjuncts != null) {
             clauses[position++] =
-                new SpanOrQuery(disjuncts.toArray(new SpanQuery[disjuncts.size()]));
+                new SpanOrQuery(disjuncts.toArray(SpanQuery[]::new));
           } else {
             ++positionGaps;
           }

@@ -1072,7 +1072,7 @@ public class TestDrillSideways extends FacetTestCase {
           values.add(s);
         }
       }
-      dimValues[dim] = values.toArray(new String[0]);
+      dimValues[dim] = values.toArray(String[]::new);
       valueCount *= 2;
     }
 

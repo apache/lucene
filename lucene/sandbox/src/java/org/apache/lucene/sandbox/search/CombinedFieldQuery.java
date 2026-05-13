@@ -142,7 +142,7 @@ public final class CombinedFieldQuery extends Query implements Accountable {
       if (size > IndexSearcher.getMaxClauseCount()) {
         throw new IndexSearcher.TooManyClauses();
       }
-      BytesRef[] terms = termsSet.toArray(new BytesRef[0]);
+      BytesRef[] terms = termsSet.toArray(BytesRef[]::new);
       return new CombinedFieldQuery(new TreeMap<>(fieldAndWeights), terms);
     }
   }
