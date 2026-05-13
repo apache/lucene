@@ -1817,7 +1817,7 @@ public class AssertingLeafReader extends FilterLeafReader {
   }
 
   @Override
-  public PointValues getPointValues(String field) throws IOException {
+  public PointValues getPointValues(String field) {
     PointValues values = in.getPointValues(field);
     if (values == null) {
       return null;

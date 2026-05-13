@@ -205,7 +205,7 @@ class SimpleTextPointsReader extends PointsReader {
   }
 
   @Override
-  public PointValues getValues(String fieldName) throws IOException {
+  public PointValues getValues(String fieldName) {
     FieldInfo fieldInfo = readState.fieldInfos.fieldInfo(fieldName);
     if (fieldInfo == null) {
       throw new IllegalArgumentException("field=\"" + fieldName + "\" is unrecognized");

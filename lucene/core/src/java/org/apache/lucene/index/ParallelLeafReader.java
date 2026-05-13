@@ -443,7 +443,7 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public PointValues getPointValues(String fieldName) throws IOException {
+  public PointValues getPointValues(String fieldName) {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
     return reader == null ? null : reader.getPointValues(fieldName);
