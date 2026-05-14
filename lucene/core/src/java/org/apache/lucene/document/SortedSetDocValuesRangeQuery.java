@@ -208,7 +208,7 @@ final class SortedSetDocValuesRangeQuery extends Query {
           public long cost() {
             if (skipperMinDocId == -1) {
               try {
-                // Similar to PointValues, IOExceptions needs to be catch and rethrown as
+                // Similar to PointValues, IOExceptions needs to be caught and rethrown as
                 // UncheckedIOException
                 computeSkipperDocIds();
               } catch (IOException e) {
@@ -226,8 +226,7 @@ final class SortedSetDocValuesRangeQuery extends Query {
             minOrd = minOrd(values);
             maxOrd = maxOrd(values);
             if (minOrd > maxOrd || minOrd > skipper.maxValue() || maxOrd < skipper.minValue()) {
-              skipperMinDocId = DocIdSetIterator.NO_MORE_DOCS;
-              skipperMaxDocId = DocIdSetIterator.NO_MORE_DOCS;
+              skipperMinDocId = skipperMaxDocId = DocIdSetIterator.NO_MORE_DOCS;
               skipperMinDocIdSet = skipperMaxDocIdSet = true;
               return;
             }
