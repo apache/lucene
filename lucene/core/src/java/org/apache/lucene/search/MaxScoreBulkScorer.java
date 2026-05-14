@@ -53,9 +53,19 @@ final class MaxScoreBulkScorer extends BulkScorer {
   private final DocAndFloatFeatureBuffer docAndScoreBuffer = new DocAndFloatFeatureBuffer();
   private final DocAndScoreAccBuffer docAndScoreAccBuffer;
 
+  private final boolean loadFilterIntoBitset;
+  private FixedBitSet filterWindowMatches;
+  private final FilterBits filterBits = new FilterBits();
+
   MaxScoreBulkScorer(int maxDoc, List<Scorer> scorers, Scorer filter) throws IOException {
     this.maxDoc = maxDoc;
     this.filter = filter == null ? null : new DisiWrapper(filter, false);
+    this.loadFilterIntoBitset =
+        this.filter != null
+            && this.filter.twoPhaseView == null
+            && maxDoc >= INNER_WINDOW_SIZE
+            && this.filter.cost >= maxDoc / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE
+            && hasFastIntoBitSet(this.filter.approximation);
     allScorers = new DisiWrapper[scorers.size()];
     scratch = new DisiWrapper[allScorers.length];
     int i = 0;
@@ -147,7 +157,9 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
   private void scoreInnerWindow(
       LeafCollector collector, Bits acceptDocs, int max, DisiWrapper filter) throws IOException {
-    if (filter != null) {
+    if (filter != null && loadFilterIntoBitset) {
+      scoreInnerWindowWithBitsetFilter(collector, acceptDocs, max, filter);
+    } else if (filter != null) {
       scoreInnerWindowWithFilter(collector, acceptDocs, max, filter);
     } else {
       DisiWrapper top = essentialQueue.top();
@@ -164,12 +176,52 @@ final class MaxScoreBulkScorer extends BulkScorer {
     }
   }
 
+  private void scoreInnerWindowWithBitsetFilter(
+      LeafCollector collector, Bits acceptDocs, int max, DisiWrapper filter) throws IOException {
+    DisiWrapper top = essentialQueue.top();
+    assert top.doc < max;
+    while (top.doc < filter.doc) {
+      // Must use the iterator as `top` might be a two-phase iterator
+      top.doc = top.iterator.advance(filter.doc);
+      top = essentialQueue.updateTop();
+    }
+
+    // Only score an inner window, after that we'll check if the min competitive score has
+    // increased enough for a more favorable partitioning to be used.
+    int innerWindowMin = top.doc;
+    int innerWindowMax = MathUtil.unsignedMin(max, innerWindowMin + INNER_WINDOW_SIZE);
+    if (top.doc >= max) {
+      return;
+    }
+
+    int innerWindowSize = innerWindowMax - innerWindowMin;
+    if (filterWindowMatches == null) {
+      filterWindowMatches = new FixedBitSet(INNER_WINDOW_SIZE);
+    } else {
+      filterWindowMatches.clear(0, innerWindowSize);
+    }
+    if (filter.doc < innerWindowMax) {
+      if (filter.doc < innerWindowMin) {
+        filter.doc = filter.approximation.advance(innerWindowMin);
+      }
+      if (filter.doc < innerWindowMax) {
+        filter.approximation.intoBitSet(innerWindowMax, filterWindowMatches, innerWindowMin);
+        filter.doc = filter.approximation.docID();
+      }
+    }
+
+    filterBits.set(filterWindowMatches, innerWindowMin, acceptDocs);
+    Bits filterAcceptDocs = filterBits;
+
+    // When there is a single essential clause in this window, we still collect into a bitset
+    // first and then call scoreNonEssentialClauses once, to make sure that minCompetitiveScore
+    // doesn't change in the middle of the window, which could cause different results compared
+    // to the non-bitset path.
+    scoreInnerWindowMultipleEssentialClauses(collector, filterAcceptDocs, innerWindowMax);
+  }
+
   private void scoreInnerWindowWithFilter(
       LeafCollector collector, Bits acceptDocs, int max, DisiWrapper filter) throws IOException {
-
-    // TODO: Sometimes load the filter into a bitset and use the more optimized execution paths with
-    // this bitset as `acceptDocs`
-
     DisiWrapper top = essentialQueue.top();
     assert top.doc < max;
     while (top.doc < filter.doc) {
@@ -453,8 +505,53 @@ final class MaxScoreBulkScorer extends BulkScorer {
     return next;
   }
 
+  private static boolean hasFastIntoBitSet(DocIdSetIterator disi) {
+    // Unwrap ConstantScoreScorer's wrapper to check the underlying delegate
+    if (disi instanceof ConstantScoreScorer.DocIdSetIteratorWrapper) {
+      disi = ((ConstantScoreScorer.DocIdSetIteratorWrapper) disi).delegate;
+    }
+    Class<?> clazz = disi.getClass();
+    while (clazz != Object.class) {
+      if (clazz == DocIdSetIterator.class || clazz == AbstractDocIdSetIterator.class) {
+        return false;
+      }
+      try {
+        clazz.getDeclaredMethod("intoBitSet", int.class, FixedBitSet.class, int.class);
+        return true;
+      } catch (NoSuchMethodException e) {
+        clazz = clazz.getSuperclass();
+      }
+    }
+    return false;
+  }
+
   @Override
   public long cost() {
     return cost;
+  }
+
+  private static final class FilterBits implements Bits {
+    private FixedBitSet bitSet;
+    private int offset;
+    private Bits andWith;
+
+    void set(FixedBitSet bitSet, int offset, Bits andWith) {
+      this.bitSet = bitSet;
+      this.offset = offset;
+      this.andWith = andWith;
+    }
+
+    @Override
+    public boolean get(int index) {
+      if (andWith != null && !andWith.get(index)) {
+        return false;
+      }
+      return bitSet.get(index - offset);
+    }
+
+    @Override
+    public int length() {
+      return offset + bitSet.length();
+    }
   }
 }

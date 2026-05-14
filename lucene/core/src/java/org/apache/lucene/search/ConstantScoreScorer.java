@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * A constant-scoring {@link Scorer}.
@@ -27,7 +28,7 @@ import org.apache.lucene.util.Bits;
  */
 public final class ConstantScoreScorer extends Scorer {
 
-  private class DocIdSetIteratorWrapper extends DocIdSetIterator {
+  class DocIdSetIteratorWrapper extends DocIdSetIterator {
     int doc = -1;
     DocIdSetIterator delegate;
 
@@ -53,6 +54,12 @@ public final class ConstantScoreScorer extends Scorer {
     @Override
     public long cost() {
       return delegate.cost();
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      delegate.intoBitSet(upTo, bitSet, offset);
+      doc = delegate.docID();
     }
   }
 
