@@ -76,6 +76,7 @@ module org.apache.lucene.core {
   exports org.apache.lucene.codecs.hnsw;
   exports org.apache.lucene.internal.vectorization to
       org.apache.lucene.benchmark.jmh;
+  exports org.apache.lucene.document.column;
 
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.standard.StandardTokenizerFactory;

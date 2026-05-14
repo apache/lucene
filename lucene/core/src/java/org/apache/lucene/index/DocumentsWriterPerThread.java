@@ -31,7 +31,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.IntConsumer;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.document.column.ColumnBatch;
 import org.apache.lucene.index.DocumentsWriterDeleteQueue.DeleteSlice;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
@@ -215,6 +217,31 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
     }
   }
 
+  /**
+   * Atomically reserves capacity for {@code n} docs.
+   *
+   * @throws IllegalArgumentException if reserving {@code n} docs would exceed the maximum number of
+   *     documents allowed in the index
+   */
+  private void reserveDocs(int n) {
+    assert n >= 0;
+    if (n == 0) {
+      return;
+    }
+    final int maxDocs = IndexWriter.getActualMaxDocs();
+    while (true) {
+      long current = pendingNumDocs.get();
+      long next = current + n;
+      if (next > maxDocs) {
+        throw new IllegalArgumentException(
+            "number of documents in the index cannot exceed " + maxDocs);
+      }
+      if (pendingNumDocs.compareAndSet(current, next)) {
+        return;
+      }
+    }
+  }
+
   long updateDocuments(
       Iterable<? extends Iterable<? extends IndexableField>> docs,
       DocumentsWriterDeleteQueue.Node<?> deleteNode,
@@ -281,6 +308,53 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
       }
     } finally {
       maybeAbort("updateDocuments", flushNotifications);
+    }
+  }
+
+  long updateBatch(
+      ColumnBatch columnBatch,
+      DocumentsWriterDeleteQueue.Node<?> deleteNode,
+      DocumentsWriter.FlushNotifications flushNotifications,
+      IntConsumer onNewDocsOnRAM)
+      throws IOException {
+    try {
+      testPoint("DocumentsWriterPerThread addBatch start");
+      assert abortingException == null : "DWPT has hit aborting exception but is still indexing";
+      if (INFO_VERBOSE && infoStream.isEnabled("DWPT")) {
+        infoStream.message(
+            "DWPT",
+            Thread.currentThread().getName()
+                + " update batch"
+                + " docID="
+                + numDocsInRAM
+                + " seg="
+                + segmentInfo.name);
+      }
+      final int docsInRamBefore = numDocsInRAM;
+      final int numDocs = columnBatch.numDocs();
+      boolean allDocsIndexed = false;
+      // Atomically reserve all doc IDs up front. On failure reserveDocs fully rolls back, so
+      // pendingNumDocs is never left holding orphaned reservations. Done before the try/finally
+      // because nothing has been accounted for yet — if this throws, there is no cleanup to do.
+      reserveDocs(numDocs);
+      numDocsInRAM += numDocs;
+      onNewDocsOnRAM.accept(numDocs);
+      try {
+        indexingChain.processBatch(docsInRamBefore, columnBatch);
+
+        // A batch is N independent documents, not a parent-child block, so we deliberately
+        // do not call segmentInfo.setHasBlocks() here.
+        allDocsIndexed = true;
+        return finishDocuments(deleteNode, docsInRamBefore);
+      } finally {
+        if (!allDocsIndexed && !aborted) {
+          // the iterator threw an exception that is not aborting
+          // go and mark all docs from this block as deleted
+          deleteLastDocs(numDocsInRAM - docsInRamBefore);
+        }
+      }
+    } finally {
+      maybeAbort("updateBatch", flushNotifications);
     }
   }
 
