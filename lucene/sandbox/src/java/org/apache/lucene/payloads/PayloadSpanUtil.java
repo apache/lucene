@@ -140,8 +140,7 @@ public class PayloadSpanUtil {
         for (int i = 0; i < disjunctLists.length; ++i) {
           List<Query> disjuncts = disjunctLists[i];
           if (disjuncts != null) {
-            clauses[position++] =
-                new SpanOrQuery(disjuncts.toArray(new SpanQuery[disjuncts.size()]));
+            clauses[position++] = new SpanOrQuery(disjuncts.toArray(SpanQuery[]::new));
           } else {
             ++positionGaps;
           }

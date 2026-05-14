@@ -550,7 +550,7 @@ public class TestContextQuery extends LuceneTestCase {
           iw.commit();
         }
       }
-      Entry[] expectedResults = expectedEntries.toArray(new Entry[expectedEntries.size()]);
+      Entry[] expectedResults = expectedEntries.toArray(Entry[]::new);
 
       ArrayUtil.introSort(
           expectedResults,

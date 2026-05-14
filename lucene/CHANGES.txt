@@ -93,6 +93,8 @@ API Changes
 * GITHUB#15605: Remove unused getCollectors() and internal collector tracking from
   TopFieldCollectorManager. Clarify thread-safety documentation. (Prudhvi Godithi)
 
+* GITHUB#: Add junit5/jupiter support to the test-framework module. (Dawid Weiss)
+
 * GITHUB#16052: Remove IOException from LeafReader#getPointValues, LeafReader#terms,
   LeafReader#getDocCount signatures. (Ignacio Vera)
 
@@ -137,7 +139,7 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#15681, GITHUB#15833: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
+* GITHUB#15681, GITHUB#15833, GITHUB#16056: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
 
@@ -281,6 +283,8 @@ API Changes
 
 * GITHUB#16043: Add field parameter to FlatVectorsReader.getFlatVectorScorer to match the other
   scorer methods in that class. (Simon Cooper)
+
+* GITHUB#15990: Add experimental api to IndexWriter for columnar indexing. (Tim Brooks)
 
 New Features
 ---------------------

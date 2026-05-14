@@ -21,7 +21,6 @@ import static org.apache.lucene.geo.GeoUtils.MAX_LON_INCL;
 import static org.apache.lucene.geo.GeoUtils.MIN_LAT_INCL;
 import static org.apache.lucene.geo.GeoUtils.MIN_LON_INCL;
 
-import com.carrotsearch.randomizedtesting.RandomizedContext;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -39,6 +38,7 @@ import org.apache.lucene.geo.Line;
 import org.apache.lucene.geo.Point;
 import org.apache.lucene.geo.Polygon;
 import org.apache.lucene.geo.Rectangle;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.SloppyMath;
@@ -589,7 +589,7 @@ public class GeoTestUtil {
 
   /** Keep it simple, we don't need to take arbitrary Random for geo tests */
   private static Random random() {
-    return RandomizedContext.current().getRandom();
+    return LuceneTestCase.nonAssertingRandom(LuceneTestCase.random());
   }
 
   /**

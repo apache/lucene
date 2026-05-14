@@ -221,7 +221,7 @@ public class TestKnnFloatVectorQuery extends BaseKnnVectorQueryTestCase {
         for (int doc = 0; doc < 30; doc += 1 + random().nextInt(5)) {
           scoreDocsList.add(new ScoreDoc(doc, randomFloat()));
         }
-        ScoreDoc[] scoreDocs = scoreDocsList.toArray(new ScoreDoc[0]);
+        ScoreDoc[] scoreDocs = scoreDocsList.toArray(ScoreDoc[]::new);
         int[] docs = new int[scoreDocs.length];
         float[] scores = new float[scoreDocs.length];
         float maxScore = Float.MIN_VALUE;
