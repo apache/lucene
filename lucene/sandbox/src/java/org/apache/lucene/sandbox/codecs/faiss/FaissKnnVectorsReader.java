@@ -119,7 +119,10 @@ final class FaissKnnVectorsReader extends KnnVectorsReader {
           throw new CorruptIndexException("Duplicate field: " + fieldMeta.name, meta);
         }
         IndexInput indexInput = data.slice(fieldMeta.name, fieldMeta.offset, fieldMeta.length);
-        indexMap.put(fieldMeta.name, FaissLibrary.INSTANCE.readIndex(indexInput));
+        FieldInfo fi = state.fieldInfos.fieldInfo(fieldMeta.name);
+        indexMap.put(
+            fieldMeta.name,
+            FaissLibrary.INSTANCE.readIndex(indexInput, fi.getVectorSimilarityFunction()));
       }
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, this);
