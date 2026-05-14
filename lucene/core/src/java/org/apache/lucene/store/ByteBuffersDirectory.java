@@ -247,7 +247,7 @@ public final class ByteBuffersDirectory extends BaseDirectory {
       return local.clone();
     }
 
-    final IndexOutput createOutput(
+    IndexOutput createOutput(
         BiFunction<String, ByteBuffersDataOutput, IndexInput> outputToInput) throws IOException {
       if (content != null) {
         throw new IOException("Can only write to a file once: " + fileName);

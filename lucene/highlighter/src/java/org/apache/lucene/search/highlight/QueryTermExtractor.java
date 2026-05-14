@@ -55,7 +55,7 @@ public final class QueryTermExtractor {
    * @param query Query to extract term texts from
    * @return an array of the terms used in a query, plus their weights.
    */
-  public static final WeightedTerm[] getTerms(Query query) {
+  public static WeightedTerm[] getTerms(Query query) {
     return getTerms(query, false);
   }
 
@@ -68,7 +68,7 @@ public final class QueryTermExtractor {
    * @param fieldName the field on which Inverse Document Frequency (IDF) calculations are based
    * @return an array of the terms used in a query, plus their weights.
    */
-  public static final WeightedTerm[] getIdfWeightedTerms(
+  public static WeightedTerm[] getIdfWeightedTerms(
       Query query, IndexReader reader, String fieldName) {
     WeightedTerm[] terms = getTerms(query, false, fieldName);
     int totalNumDocs = reader.maxDoc();
@@ -107,7 +107,7 @@ public final class QueryTermExtractor {
    * @param prohibited <code>true</code> to extract "prohibited" terms, too
    * @return an array of the terms used in a query, plus their weights.
    */
-  public static final WeightedTerm[] getTerms(Query query, boolean prohibited) {
+  public static WeightedTerm[] getTerms(Query query, boolean prohibited) {
     return getTerms(query, prohibited, null);
   }
 
