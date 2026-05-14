@@ -370,6 +370,10 @@ Optimizations
 
 * GITHUB#16001: IndexSearcher.count() was calling query.rewrite twice, a regression since v9.10 (David Smiley)
 
+* GITHUB16061#: Improve cost estimation in SortedSetDocValuesRangeQuery when using DocValuesSkipper and the field
+  is dense and is the primary sort of the index and reduce the number of doc values visited. (Ignacio Vera)
+
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent

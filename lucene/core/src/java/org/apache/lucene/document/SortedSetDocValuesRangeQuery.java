@@ -219,7 +219,7 @@ final class SortedSetDocValuesRangeQuery extends Query {
               return skipperMaxDocId - skipperMinDocId;
             }
             // TODO: expose skipper block size here?
-            return 4096 + skipperMaxDocId - skipperMinDocId;
+            return Math.min(context.reader().maxDoc(), 4096 + skipperMaxDocId - skipperMinDocId);
           }
 
           private void computeSkipperDocIds() throws IOException {

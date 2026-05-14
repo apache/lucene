@@ -762,8 +762,10 @@ public class TestDocValuesQueries extends LuceneTestCase {
         new Sort(new SortField("dv", SortField.Type.STRING, random().nextBoolean())));
     int numBlocks = random().nextInt(4, 16);
     int[] sizes = new int[numBlocks];
+    int totalDocs = 0;
     for (int i = 0; i < numBlocks; i++) {
       sizes[i] = random().nextInt(1, 250);
+      totalDocs += sizes[i];
     }
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir, config);
     for (int i = 0; i < numBlocks; i++) {
@@ -794,7 +796,8 @@ public class TestDocValuesQueries extends LuceneTestCase {
       Weight weight = rewritten.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
       ScorerSupplier supplier = weight.scorerSupplier(ctx);
       assertThat(supplier.cost(), greaterThanOrEqualTo((long) sizes[i]));
-      assertThat(supplier.cost(), lessThanOrEqualTo((long) sizes[i] + 2 * 4096));
+      assertThat(
+          supplier.cost(), lessThanOrEqualTo(Math.min((long) sizes[i] + 2 * 4096, totalDocs)));
     }
     reader.close();
     dir.close();
