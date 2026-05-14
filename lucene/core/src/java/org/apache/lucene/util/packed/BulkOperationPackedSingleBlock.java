@@ -32,12 +32,12 @@ final class BulkOperationPackedSingleBlock extends BulkOperation {
   }
 
   @Override
-  public int longBlockCount() {
+  public final int longBlockCount() {
     return BLOCK_COUNT;
   }
 
   @Override
-  public int byteBlockCount() {
+  public final int byteBlockCount() {
     return BLOCK_COUNT * 8;
   }
 
@@ -47,7 +47,7 @@ final class BulkOperationPackedSingleBlock extends BulkOperation {
   }
 
   @Override
-  public int byteValueCount() {
+  public final int byteValueCount() {
     return valueCount;
   }
 
