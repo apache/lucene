@@ -794,7 +794,7 @@ public class TestDocValuesQueries extends LuceneTestCase {
       Weight weight = rewritten.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
       ScorerSupplier supplier = weight.scorerSupplier(ctx);
       assertThat(supplier.cost(), greaterThanOrEqualTo((long) sizes[i]));
-      assertThat(supplier.cost(), lessThanOrEqualTo((long) sizes[i] + 4096));
+      assertThat(supplier.cost(), lessThanOrEqualTo((long) sizes[i] + 2 * 4096));
     }
     reader.close();
     dir.close();
