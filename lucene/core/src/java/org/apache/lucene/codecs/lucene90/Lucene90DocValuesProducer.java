@@ -398,7 +398,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               .getDocValuesRangeSupport();
 
   // Static helper so anonymous inner classes can call DocValuesRangeSupport from the outer class
-  static void rangeIntoBitSetVectorized(
+  static void rangeIntoBitSet(
       org.apache.lucene.util.LongValues values,
       int fromDoc,
       int toDoc,
@@ -639,7 +639,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
                   org.apache.lucene.util.FixedBitSet bitSet,
                   int offset) {
                 // Use SIMD via VectorizationProvider when available, scalar fallback otherwise
-                rangeIntoBitSetVectorized(
+                Lucene90DocValuesProducer.rangeIntoBitSet(
                     values, fromDoc, toDoc, minValue, maxValue, bitSet, offset);
               }
             };

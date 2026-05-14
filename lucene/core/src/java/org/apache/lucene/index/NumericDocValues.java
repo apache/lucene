@@ -20,6 +20,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.FieldExistsQuery;
+import org.apache.lucene.util.FixedBitSet;
 
 /** A per-document numeric value. */
 public abstract class NumericDocValues extends DocValuesIterator {
@@ -109,12 +110,7 @@ public abstract class NumericDocValues extends DocValuesIterator {
    * @param offset subtracted from each doc ID before setting the bit
    */
   public void rangeIntoBitSet(
-      int fromDoc,
-      int toDoc,
-      long minValue,
-      long maxValue,
-      org.apache.lucene.util.FixedBitSet bitSet,
-      int offset)
+      int fromDoc, int toDoc, long minValue, long maxValue, FixedBitSet bitSet, int offset)
       throws IOException {
     for (int d = fromDoc; d < toDoc; d++) {
       if (advanceExact(d)) {

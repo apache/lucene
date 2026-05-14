@@ -43,19 +43,6 @@ final class PanamaDocValuesRangeSupport implements DocValuesRangeSupport {
       int offset) {
     final int vectorLen = LONG_SPECIES.length();
 
-    // Only use SIMD if vector length >= 4 (AVX-256 or better).
-    // On 128-bit SIMD (2 longs), the scratch buffer overhead outweighs the benefit.
-    if (vectorLen < 4) {
-      // Scalar fallback: tight loop that JIT can auto-vectorize
-      for (int d = fromDoc; d < toDoc; d++) {
-        long v = values.get(d);
-        if (v >= minValue && v <= maxValue) {
-          bitSet.set(d - offset);
-        }
-      }
-      return;
-    }
-
     // Stack-allocated scratch buffer — vectorLen is at most 8 for AVX-512 (64 bytes).
     final long[] scratch = new long[vectorLen];
     final int loopBound = fromDoc + LONG_SPECIES.loopBound(toDoc - fromDoc);

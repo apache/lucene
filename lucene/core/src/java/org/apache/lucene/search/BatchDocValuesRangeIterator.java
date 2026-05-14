@@ -72,12 +72,46 @@ public final class BatchDocValuesRangeIterator extends DocIdSetIterator {
       return doc = blockDoc;
     }
 
+    // For YES_IF_PRESENT blocks, all values are in range so we only need to check which docs have
+    // the value.
+    if (blockIterator.getMatch() == SkipBlockRangeIterator.Match.YES_IF_PRESENT) {
+      int docToCheck = Math.max(target, blockDoc);
+      int currentBlockEnd = blockIterator.blockEnd();
+      while (true) {
+        if (values.advanceExact(docToCheck)) {
+          return doc = docToCheck;
+        }
+        docToCheck++;
+        if (docToCheck >= currentBlockEnd) {
+          blockDoc = blockIterator.advance(docToCheck);
+          if (blockDoc == NO_MORE_DOCS) {
+            return doc = NO_MORE_DOCS;
+          }
+          docToCheck = blockDoc;
+          SkipBlockRangeIterator.Match nextMatch = blockIterator.getMatch();
+          if (nextMatch == SkipBlockRangeIterator.Match.YES) {
+            return doc = docToCheck;
+          }
+          if (nextMatch != SkipBlockRangeIterator.Match.YES_IF_PRESENT) {
+            // This is a MAYBE block, break out of the loop.
+            break;
+          }
+          currentBlockEnd = blockIterator.blockEnd();
+        }
+      }
+      // If we reached here, it means that we are now pointing to a MAYBE block
+    }
+
     // For MAYBE blocks, scan forward to find a matching doc
     int docToCheck = Math.max(target, blockDoc);
     // Use the actual block boundary (not docIDRunEnd which returns doc+1 for MAYBE blocks)
     int currentBlockEnd = blockIterator.blockEnd();
     while (docToCheck != NO_MORE_DOCS) {
       if (values.advanceExact(docToCheck)) {
+        // If we landed in a YES_IF_PRESENT block, skip the range check
+        if (blockIterator.getMatch() == SkipBlockRangeIterator.Match.YES_IF_PRESENT) {
+          return doc = docToCheck;
+        }
         long v = values.longValue();
         if (v >= minValue && v <= maxValue) {
           return doc = docToCheck;
@@ -141,7 +175,8 @@ public final class BatchDocValuesRangeIterator extends DocIdSetIterator {
           break;
 
         case YES_IF_PRESENT:
-          // All docs with values match — need to check which docs have values
+          // All values in this block are in range, but the field is sparse so some docs
+          // may not have a value. No range check needed here.
           for (int d = blockStart; d < blockEnd; d++) {
             if (values.advanceExact(d)) {
               bitSet.set(d - offset);
