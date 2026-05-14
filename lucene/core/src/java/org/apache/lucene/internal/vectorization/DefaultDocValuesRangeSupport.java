@@ -35,7 +35,7 @@ final class DefaultDocValuesRangeSupport implements DocValuesRangeSupport {
       long maxValue,
       FixedBitSet bitSet,
       int offset) {
-    // Scalar tight loop — JIT may auto-vectorize this on modern JVMs.
+    // Scalar fallback implementation
     for (int d = fromDoc; d < toDoc; d++) {
       long v = values.get(d);
       if (v >= minValue && v <= maxValue) {

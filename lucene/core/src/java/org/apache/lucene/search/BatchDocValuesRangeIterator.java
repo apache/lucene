@@ -28,7 +28,7 @@ import org.apache.lucene.util.FixedBitSet;
  * bits directly in a {@link FixedBitSet}, enabling the {@link DenseConjunctionBulkScorer} to use
  * the faster bitset intersection path.
  *
- * <p>This is used for dense single-valued numeric fields with a skip index.
+ * <p>This is used for single-valued numeric fields with a skip index.
  */
 public final class BatchDocValuesRangeIterator extends DocIdSetIterator {
 
@@ -67,7 +67,7 @@ public final class BatchDocValuesRangeIterator extends DocIdSetIterator {
       return doc = NO_MORE_DOCS;
     }
 
-    // For YES blocks, all docs match — find the first doc with a value
+    // For YES blocks, all docs have values in range, so return the first doc
     if (blockIterator.getMatch() == SkipBlockRangeIterator.Match.YES) {
       return doc = blockDoc;
     }
@@ -160,9 +160,7 @@ public final class BatchDocValuesRangeIterator extends DocIdSetIterator {
       int blockStart = Math.max(doc, blockIterator.docID());
       SkipBlockRangeIterator.Match match = blockIterator.getMatch();
 
-      // For YES/YES_IF_PRESENT: docIDRunEnd() respects multi-level block promotion.
-      // For MAYBE: docIDRunEnd() returns doc+1 (conservative), but we need the actual
-      // block boundary to bulk-evaluate the whole block with rangeIntoBitSet().
+      // Use blockEnd() for MAYBE blocks since docIDRunEnd() is conservative (returns doc+1)
       int blockEnd =
           match == SkipBlockRangeIterator.Match.MAYBE
               ? Math.min(upTo, blockIterator.blockEnd())

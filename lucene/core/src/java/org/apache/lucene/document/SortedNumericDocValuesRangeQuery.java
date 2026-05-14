@@ -146,9 +146,7 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
               return ConstantScoreScorerSupplier.fromIterator(
                   psIterator, score(), scoreMode, maxDoc);
             }
-            // Use batch iterator: plain DocIdSetIterator (not TwoPhaseIterator) so that
-            // DenseConjunctionBulkScorer takes the bitset path and calls intoBitSet(),
-            // which dispatches to NumericDocValues.rangeIntoBitSet() (SIMD when available).
+            // Use batch iterator for bulk block evaluation via intoBitSet()
             return ConstantScoreScorerSupplier.fromIterator(
                 new BatchDocValuesRangeIterator(singleton, skipper, lowerValue, upperValue),
                 score(),

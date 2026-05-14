@@ -43,7 +43,7 @@ final class PanamaDocValuesRangeSupport implements DocValuesRangeSupport {
       int offset) {
     final int vectorLen = LONG_SPECIES.length();
 
-    // Stack-allocated scratch buffer — vectorLen is at most 8 for AVX-512 (64 bytes).
+    // Scratch buffer for loading values before SIMD comparison
     final long[] scratch = new long[vectorLen];
     final int loopBound = fromDoc + LONG_SPECIES.loopBound(toDoc - fromDoc);
 

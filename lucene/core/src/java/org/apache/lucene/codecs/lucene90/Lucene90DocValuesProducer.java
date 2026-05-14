@@ -397,7 +397,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           org.apache.lucene.internal.vectorization.VectorizationProvider.getInstance()
               .getDocValuesRangeSupport();
 
-  // Static helper so anonymous inner classes can call DocValuesRangeSupport from the outer class
   static void rangeIntoBitSet(
       org.apache.lucene.util.LongValues values,
       int fromDoc,
@@ -638,7 +637,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
                   long maxValue,
                   org.apache.lucene.util.FixedBitSet bitSet,
                   int offset) {
-                // Use SIMD via VectorizationProvider when available, scalar fallback otherwise
+                // Bulk range evaluation via DocValuesRangeSupport
                 Lucene90DocValuesProducer.rangeIntoBitSet(
                     values, fromDoc, toDoc, minValue, maxValue, bitSet, offset);
               }
@@ -660,7 +659,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
                   long maxValue,
                   org.apache.lucene.util.FixedBitSet bitSet,
                   int offset) {
-                // Tight loop — JIT can auto-vectorize this (gcd/delta encoding)
+                // Per-doc evaluation for gcd/delta encoded fields
                 for (int d = fromDoc; d < toDoc; d++) {
                   long v = mul * values.get(d) + delta;
                   if (v >= minValue && v <= maxValue) {
