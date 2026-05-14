@@ -551,8 +551,8 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
    * than the provided minimum supported major version. If the commit's version is older, an {@link
    * IndexFormatTooOldException} will be thrown.
    */
-  public static SegmentInfos readLatestCommit(
-      Directory directory, int minSupportedMajorVersion) throws IOException {
+  public static SegmentInfos readLatestCommit(Directory directory, int minSupportedMajorVersion)
+      throws IOException {
     return new FindSegmentsFile<SegmentInfos>(directory) {
       @Override
       protected SegmentInfos doBody(String segmentFileName) throws IOException {
