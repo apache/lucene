@@ -27,7 +27,6 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.not;
 
-import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.BufferedInputStream;
@@ -326,7 +325,7 @@ public final class TestUtil {
       checker.setFailFast(failFast);
       checker.setInfoStream(new PrintStream(output, false, UTF_8), false);
       if (concurrent) {
-        checker.setThreadCount(RandomizedTest.randomIntBetween(2, 5));
+        checker.setThreadCount(RandomNumbers.randomIntBetween(LuceneTestCase.random(), 2, 5));
       } else {
         checker.setThreadCount(1);
       }

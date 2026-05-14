@@ -18,8 +18,6 @@ package org.apache.lucene.spatial.spatial4j;
 
 import static org.locationtech.spatial4j.distance.DistanceUtils.DEGREES_TO_RADIANS;
 
-import org.junit.Rule;
-import org.locationtech.spatial4j.TestLog;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.shape.Circle;
 import org.locationtech.spatial4j.shape.Point;
@@ -29,8 +27,6 @@ import org.locationtech.spatial4j.shape.ShapeFactory;
 
 public abstract class ShapeRectRelationTestCase extends RandomizedShapeTestCase {
   protected static final double RADIANS_PER_DEGREE = Math.PI / 180.0;
-
-  @Rule public final TestLog testLog = TestLog.instance;
 
   protected int maxRadius = 180;
 
