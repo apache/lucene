@@ -17,6 +17,7 @@
 package org.apache.lucene.document;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.Objects;
 import java.util.function.LongPredicate;
 import org.apache.lucene.index.DocValues;
@@ -119,39 +120,17 @@ final class SortedSetDocValuesRangeQuery extends Query {
         }
         DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
         SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
-
+        final SortedDocValues singleton = DocValues.unwrapSingleton(values);
+        if (singleton != null && skipper != null && isDensePrimarySort(context.reader(), skipper)) {
+          return getScorerSupplierFromDensePrimarySort(context, singleton, values, skipper);
+        }
         // implement ScorerSupplier, since we do some expensive stuff to make a scorer
         return new ConstantScoreScorerSupplier(score(), scoreMode, context.reader().maxDoc()) {
           @Override
           public DocIdSetIterator iterator(long leadCost) throws IOException {
 
-            final long minOrd;
-            if (lowerValue == null) {
-              minOrd = 0;
-            } else {
-              final long ord = values.lookupTerm(lowerValue);
-              if (ord < 0) {
-                minOrd = -1 - ord;
-              } else if (lowerInclusive) {
-                minOrd = ord;
-              } else {
-                minOrd = ord + 1;
-              }
-            }
-
-            final long maxOrd;
-            if (upperValue == null) {
-              maxOrd = values.getValueCount() - 1;
-            } else {
-              final long ord = values.lookupTerm(upperValue);
-              if (ord < 0) {
-                maxOrd = -2 - ord;
-              } else if (upperInclusive) {
-                maxOrd = ord;
-              } else {
-                maxOrd = ord - 1;
-              }
-            }
+            final long minOrd = minOrd(values);
+            final long maxOrd = maxOrd(values);
 
             // no terms matched in this segment
             if (minOrd > maxOrd
@@ -168,16 +147,7 @@ final class SortedSetDocValuesRangeQuery extends Query {
               return DocIdSetIterator.all(skipper.docCount());
             }
 
-            final SortedDocValues singleton = DocValues.unwrapSingleton(values);
             if (singleton != null) {
-              if (skipper != null) {
-                final DocIdSetIterator psIterator =
-                    getDocIdSetIteratorOrNullForPrimarySort(
-                        context.reader(), singleton, skipper, minOrd, maxOrd);
-                if (psIterator != null) {
-                  return psIterator;
-                }
-              }
               return TwoPhaseIterator.asDocIdSetIterator(
                   DocValuesRangeIterator.forOrdinalRange(singleton, skipper, minOrd, maxOrd));
             }
@@ -192,6 +162,129 @@ final class SortedSetDocValuesRangeQuery extends Query {
         };
       }
 
+      private ScorerSupplier getScorerSupplierFromDensePrimarySort(
+          LeafReaderContext context,
+          SortedDocValues singleton,
+          SortedSetDocValues values,
+          DocValuesSkipper skipper) {
+        final Sort indexSort = context.reader().getMetaData().sort();
+        return new ConstantScoreScorerSupplier(score(), scoreMode, context.reader().maxDoc()) {
+          int skipperMinDocId = -1, skipperMaxDocId = -1;
+          long minOrd, maxOrd;
+          boolean skipperMinDocIdExact = false, skipperMaxDocIdExact = false;
+
+          @Override
+          public DocIdSetIterator iterator(long leadCost) throws IOException {
+            if (skipperMinDocId == -1) {
+              computeSkipperDocIds();
+            }
+            final int minDocID;
+            final int maxDocID;
+            if (indexSort.getSort()[0].getReverse()) {
+              minDocID =
+                  skipperMinDocIdExact
+                      ? skipperMinDocId
+                      : nextDoc(skipperMinDocId, singleton, l -> l <= maxOrd);
+              maxDocID =
+                  skipperMaxDocIdExact
+                      ? skipperMaxDocId
+                      : nextDoc(skipperMaxDocId, singleton, l -> l < minOrd);
+            } else {
+              minDocID =
+                  skipperMinDocIdExact
+                      ? skipperMinDocId
+                      : nextDoc(skipperMinDocId, singleton, l -> l >= minOrd);
+              maxDocID =
+                  skipperMaxDocIdExact
+                      ? skipperMaxDocId
+                      : nextDoc(skipperMaxDocId, singleton, l -> l > maxOrd);
+            }
+            return minDocID == maxDocID
+                ? DocIdSetIterator.empty()
+                : DocIdSetIterator.range(minDocID, maxDocID);
+          }
+
+          @Override
+          public long cost() {
+            if (skipperMinDocId == -1) {
+              try {
+                // Similar to PointValues, IOExceptions needs to be caught and rethrown as
+                // UncheckedIOException
+                computeSkipperDocIds();
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
+            }
+            if (skipperMinDocIdExact && skipperMaxDocIdExact) {
+              return skipperMaxDocId - skipperMinDocId;
+            }
+            // TODO: expose skipper block size here?
+            return Math.min(context.reader().maxDoc(), 4096 + skipperMaxDocId - skipperMinDocId);
+          }
+
+          private void computeSkipperDocIds() throws IOException {
+            minOrd = minOrd(values);
+            maxOrd = upperValue != null && upperValue.equals(lowerValue) ? minOrd : maxOrd(values);
+            if (minOrd > maxOrd || minOrd > skipper.maxValue() || maxOrd < skipper.minValue()) {
+              skipperMinDocId = skipperMaxDocId = DocIdSetIterator.NO_MORE_DOCS;
+              skipperMinDocIdExact = skipperMaxDocIdExact = true;
+              return;
+            }
+            if (skipper.minValue() >= minOrd && skipper.maxValue() <= maxOrd) {
+              skipperMinDocId = 0;
+              skipperMaxDocId = skipper.docCount();
+              skipperMinDocIdExact = skipperMaxDocIdExact = true;
+              return;
+            }
+            if (indexSort.getSort()[0].getReverse()) {
+              if (skipper.maxValue() <= maxOrd) {
+                skipperMinDocId = 0;
+                skipperMinDocIdExact = true;
+              } else {
+                skipper.advance(Long.MIN_VALUE, maxOrd);
+                skipperMinDocId = skipper.minDocID(0);
+                skipperMinDocIdExact = skipper.maxValue(0) == maxOrd;
+              }
+              if (skipper.minValue() >= minOrd) {
+                skipperMaxDocId = skipper.docCount();
+                skipperMaxDocIdExact = true;
+              } else {
+                skipper.advance(Long.MIN_VALUE, minOrd);
+                skipperMaxDocId =
+                    skipper.minValue(0) == minOrd ? skipper.maxDocID(0) + 1 : skipper.minDocID(0);
+                // we can read the next block, if the maxValue is different to minOrd, then we
+                // should be done, we
+                // don't need to visit the doc values. But what is more expensive, visit one doc
+                // value or one skipper block?
+                skipperMaxDocIdExact = false;
+              }
+            } else {
+              if (skipper.minValue() >= minOrd) {
+                skipperMinDocId = 0;
+                skipperMinDocIdExact = true;
+              } else {
+                skipper.advance(minOrd, Long.MAX_VALUE);
+                skipperMinDocId = skipper.minDocID(0);
+                skipperMinDocIdExact = skipper.minValue(0) == minOrd;
+              }
+              if (skipper.maxValue() <= maxOrd) {
+                skipperMaxDocId = skipper.docCount();
+                skipperMaxDocIdExact = true;
+              } else {
+                skipper.advance(maxOrd, Long.MAX_VALUE);
+                skipperMaxDocId =
+                    skipper.maxValue(0) == maxOrd ? skipper.maxDocID(0) + 1 : skipper.minDocID(0);
+                // we can read the next block, if the minValue is different to maxOrd, then we
+                // should be done, we
+                // don't need to visit the doc values. But what is more expensive, visit one doc
+                // value or one skipper block?
+                skipperMaxDocIdExact = false;
+              }
+            }
+          }
+        };
+      }
+
       @Override
       public boolean isCacheable(LeafReaderContext ctx) {
         return DocValues.isCacheable(ctx, field);
@@ -199,55 +292,51 @@ final class SortedSetDocValuesRangeQuery extends Query {
     };
   }
 
-  private DocIdSetIterator getDocIdSetIteratorOrNullForPrimarySort(
-      LeafReader reader,
-      SortedDocValues sortedDocValues,
-      DocValuesSkipper skipper,
-      long minOrd,
-      long maxOrd)
-      throws IOException {
+  private long minOrd(SortedSetDocValues values) throws IOException {
+    final long minOrd;
+    if (lowerValue == null) {
+      minOrd = 0;
+    } else {
+      final long ord = values.lookupTerm(lowerValue);
+      if (ord < 0) {
+        minOrd = -1 - ord;
+      } else if (lowerInclusive) {
+        minOrd = ord;
+      } else {
+        minOrd = ord + 1;
+      }
+    }
+    return minOrd;
+  }
+
+  private long maxOrd(SortedSetDocValues values) throws IOException {
+    final long maxOrd;
+    if (upperValue == null) {
+      maxOrd = values.getValueCount() - 1;
+    } else {
+      final long ord = values.lookupTerm(upperValue);
+      if (ord < 0) {
+        maxOrd = -2 - ord;
+      } else if (upperInclusive) {
+        maxOrd = ord;
+      } else {
+        maxOrd = ord - 1;
+      }
+    }
+    return maxOrd;
+  }
+
+  private boolean isDensePrimarySort(LeafReader reader, DocValuesSkipper skipper) {
     if (skipper.docCount() != reader.maxDoc()) {
-      return null;
+      return false;
     }
     final Sort indexSort = reader.getMetaData().sort();
     if (indexSort == null
         || indexSort.getSort().length == 0
         || indexSort.getSort()[0].getField().equals(field) == false) {
-      return null;
+      return false;
     }
-
-    final int minDocID;
-    final int maxDocID;
-    if (indexSort.getSort()[0].getReverse()) {
-      if (skipper.maxValue() <= maxOrd) {
-        minDocID = 0;
-      } else {
-        skipper.advance(Long.MIN_VALUE, maxOrd);
-        minDocID = nextDoc(skipper.minDocID(0), sortedDocValues, l -> l <= maxOrd);
-      }
-      if (skipper.minValue() >= minOrd) {
-        maxDocID = skipper.docCount();
-      } else {
-        skipper.advance(Long.MIN_VALUE, minOrd);
-        maxDocID = nextDoc(skipper.minDocID(0), sortedDocValues, l -> l < minOrd);
-      }
-    } else {
-      if (skipper.minValue() >= minOrd) {
-        minDocID = 0;
-      } else {
-        skipper.advance(minOrd, Long.MAX_VALUE);
-        minDocID = nextDoc(skipper.minDocID(0), sortedDocValues, l -> l >= minOrd);
-      }
-      if (skipper.maxValue() <= maxOrd) {
-        maxDocID = skipper.docCount();
-      } else {
-        skipper.advance(maxOrd, Long.MAX_VALUE);
-        maxDocID = nextDoc(skipper.minDocID(0), sortedDocValues, l -> l > maxOrd);
-      }
-    }
-    return minDocID == maxDocID
-        ? DocIdSetIterator.empty()
-        : DocIdSetIterator.range(minDocID, maxDocID);
+    return true;
   }
 
   private static int nextDoc(int startDoc, SortedDocValues docValues, LongPredicate predicate)
