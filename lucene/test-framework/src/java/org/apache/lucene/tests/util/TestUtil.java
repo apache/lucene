@@ -1445,7 +1445,7 @@ public final class TestUtil {
         leaves.add(SlowCodecReaderWrapper.wrap(context.reader()));
       }
     }
-    writer.addIndexes(leaves.toArray(new CodecReader[0]));
+    writer.addIndexes(leaves.toArray(CodecReader[]::new));
   }
 
   /** just tries to configure things to keep the open file count lowish */

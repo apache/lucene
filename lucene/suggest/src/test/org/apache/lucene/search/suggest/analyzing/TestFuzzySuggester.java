@@ -1051,7 +1051,7 @@ public class TestFuzzySuggester extends LuceneTestCase {
     }
 
     Collections.shuffle(answers, random());
-    suggest.build(new InputArrayIterator(answers.toArray(new Input[answers.size()])));
+    suggest.build(new InputArrayIterator(answers.toArray(Input[]::new)));
 
     final int ITERS = atLeast(100);
     for (int iter = 0; iter < ITERS; iter++) {

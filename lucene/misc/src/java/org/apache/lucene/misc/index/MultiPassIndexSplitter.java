@@ -110,7 +110,7 @@ public class MultiPassIndexSplitter {
       System.err.println("Writing part " + (i + 1) + " ...");
       // pass the subreaders directly, as our wrapper's numDocs/hasDeletetions are not up-to-date
       final List<? extends FakeDeleteLeafIndexReader> sr = input.getSequentialSubReadersWrapper();
-      w.addIndexes(sr.toArray(new CodecReader[sr.size()])); // TODO: maybe take List<IR> here?
+      w.addIndexes(sr.toArray(CodecReader[]::new)); // TODO: maybe take List<IR> here?
       w.close();
     }
     System.err.println("Done.");
@@ -177,7 +177,7 @@ public class MultiPassIndexSplitter {
     if (indexes.size() == 1) {
       input = indexes.get(0);
     } else {
-      input = new MultiReader(indexes.toArray(new IndexReader[indexes.size()]));
+      input = new MultiReader(indexes.toArray(IndexReader[]::new));
     }
     splitter.split(input, dirs, seq);
   }
