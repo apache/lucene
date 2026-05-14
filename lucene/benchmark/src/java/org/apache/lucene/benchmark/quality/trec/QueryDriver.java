@@ -90,7 +90,7 @@ public class QueryDriver {
       if (fieldSpec.indexOf('N') >= 0) fieldSet.add("narrative");
 
       // set the parsing of quality queries into Lucene queries.
-      QualityQueryParser qqParser = new SimpleQQParser(fieldSet.toArray(new String[0]), "body");
+      QualityQueryParser qqParser = new SimpleQQParser(fieldSet.toArray(String[]::new), "body");
 
       // run the benchmark
       QualityBenchmark qrun = new QualityBenchmark(qqs, qqParser, searcher, docNameField);

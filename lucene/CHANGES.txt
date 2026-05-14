@@ -93,6 +93,9 @@ API Changes
 * GITHUB#15605: Remove unused getCollectors() and internal collector tracking from
   TopFieldCollectorManager. Clarify thread-safety documentation. (Prudhvi Godithi)
 
+* GITHUB#16052: Remove IOException from LeafReader#getPointValues, LeafReader#terms,
+  LeafReader#getDocCount signatures. (Ignacio Vera)
+
 New Features
 ---------------------
 * GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
@@ -134,7 +137,7 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#15681, GITHUB#15833: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
+* GITHUB#15681, GITHUB#15833, GITHUB#16056: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
 

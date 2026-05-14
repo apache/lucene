@@ -187,7 +187,7 @@ public class SimpleNaiveBayesDocumentClassifier extends SimpleNaiveBayesClassifi
     }
     tokenizedText.end();
     tokenizedText.close();
-    return tokens.toArray(new String[0]);
+    return tokens.toArray(String[]::new);
   }
 
   /**

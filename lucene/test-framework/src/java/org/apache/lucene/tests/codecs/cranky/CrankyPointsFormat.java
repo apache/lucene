@@ -115,7 +115,7 @@ class CrankyPointsFormat extends PointsFormat {
     }
 
     @Override
-    public PointValues getValues(String fieldName) throws IOException {
+    public PointValues getValues(String fieldName) {
       final PointValues delegate = this.delegate.getValues(fieldName);
       if (delegate == null) {
         return null;

@@ -59,7 +59,7 @@ public final class SpanOrQuery extends SpanQuery {
 
   /** Return the clauses whose spans are matched. */
   public SpanQuery[] getClauses() {
-    return clauses.toArray(new SpanQuery[clauses.size()]);
+    return clauses.toArray(SpanQuery[]::new);
   }
 
   @Override

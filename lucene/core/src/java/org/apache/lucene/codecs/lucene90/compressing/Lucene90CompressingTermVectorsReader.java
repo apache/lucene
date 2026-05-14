@@ -898,7 +898,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       final FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
       if (fieldInfo == null) {
         return null;
@@ -1027,7 +1027,7 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       return 1;
     }
 
