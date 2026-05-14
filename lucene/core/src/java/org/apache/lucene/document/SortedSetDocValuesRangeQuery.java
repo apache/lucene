@@ -171,7 +171,7 @@ final class SortedSetDocValuesRangeQuery extends Query {
         return new ConstantScoreScorerSupplier(score(), scoreMode, context.reader().maxDoc()) {
           int skipperMinDocId = -1, skipperMaxDocId = -1;
           long minOrd, maxOrd;
-          boolean skipperMinDocIdSet = false, skipperMaxDocIdSet = false;
+          boolean skipperMinDocIdExact = false, skipperMaxDocIdExact = false;
 
           @Override
           public DocIdSetIterator iterator(long leadCost) throws IOException {
@@ -182,20 +182,20 @@ final class SortedSetDocValuesRangeQuery extends Query {
             final int maxDocID;
             if (indexSort.getSort()[0].getReverse()) {
               minDocID =
-                  skipperMinDocIdSet
+                  skipperMinDocIdExact
                       ? skipperMinDocId
                       : nextDoc(skipperMinDocId, singleton, l -> l <= maxOrd);
               maxDocID =
-                  skipperMaxDocIdSet
+                  skipperMaxDocIdExact
                       ? skipperMaxDocId
                       : nextDoc(skipperMaxDocId, singleton, l -> l < minOrd);
             } else {
               minDocID =
-                  skipperMinDocIdSet
+                  skipperMinDocIdExact
                       ? skipperMinDocId
                       : nextDoc(skipperMinDocId, singleton, l -> l >= minOrd);
               maxDocID =
-                  skipperMaxDocIdSet
+                  skipperMaxDocIdExact
                       ? skipperMaxDocId
                       : nextDoc(skipperMaxDocId, singleton, l -> l > maxOrd);
             }
@@ -215,7 +215,7 @@ final class SortedSetDocValuesRangeQuery extends Query {
                 throw new UncheckedIOException(e);
               }
             }
-            if (skipperMinDocIdSet && skipperMaxDocIdSet) {
+            if (skipperMinDocIdExact && skipperMaxDocIdExact) {
               return skipperMaxDocId - skipperMinDocId;
             }
             // TODO: expose skipper block size here?
@@ -227,31 +227,31 @@ final class SortedSetDocValuesRangeQuery extends Query {
             maxOrd = maxOrd(values);
             if (minOrd > maxOrd || minOrd > skipper.maxValue() || maxOrd < skipper.minValue()) {
               skipperMinDocId = skipperMaxDocId = DocIdSetIterator.NO_MORE_DOCS;
-              skipperMinDocIdSet = skipperMaxDocIdSet = true;
+              skipperMinDocIdExact = skipperMaxDocIdExact = true;
               return;
             }
             if (skipper.minValue() >= minOrd && skipper.maxValue() <= maxOrd) {
               skipperMinDocId = 0;
               skipperMaxDocId = skipper.docCount();
-              skipperMinDocIdSet = skipperMaxDocIdSet = true;
+              skipperMinDocIdExact = skipperMaxDocIdExact = true;
               return;
             }
             if (indexSort.getSort()[0].getReverse()) {
               if (skipper.maxValue() <= maxOrd) {
                 skipperMinDocId = 0;
-                skipperMinDocIdSet = true;
+                skipperMinDocIdExact = true;
               } else {
                 skipper.advance(Long.MIN_VALUE, maxOrd);
                 skipperMinDocId = skipper.minDocID(0);
-                skipperMinDocIdSet = false;
+                skipperMinDocIdExact = false;
               }
               if (skipper.minValue() >= minOrd) {
                 skipperMaxDocId = skipper.docCount();
-                skipperMaxDocIdSet = true;
+                skipperMaxDocIdExact = true;
               } else {
                 skipper.advance(Long.MIN_VALUE, minOrd);
                 skipperMaxDocId = skipper.minDocID(0);
-                skipperMaxDocIdSet = false;
+                skipperMaxDocIdExact = false;
               }
             } else {
               if (skipper.minValue() >= minOrd) {
@@ -259,15 +259,15 @@ final class SortedSetDocValuesRangeQuery extends Query {
               } else {
                 skipper.advance(minOrd, Long.MAX_VALUE);
                 skipperMinDocId = skipper.minDocID(0);
-                skipperMinDocIdSet = false;
+                skipperMinDocIdExact = false;
               }
               if (skipper.maxValue() <= maxOrd) {
                 skipperMaxDocId = skipper.docCount();
-                skipperMaxDocIdSet = true;
+                skipperMaxDocIdExact = true;
               } else {
                 skipper.advance(maxOrd, Long.MAX_VALUE);
                 skipperMaxDocId = skipper.minDocID(0);
-                skipperMaxDocIdSet = false;
+                skipperMaxDocIdExact = false;
               }
             }
           }
