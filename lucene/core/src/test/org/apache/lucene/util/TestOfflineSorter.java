@@ -169,7 +169,7 @@ public class TestOfflineSorter extends LuceneTestCase {
       data.add(current);
       howMuchDataInBytes -= current.length;
     }
-    byte[][] bytes = data.toArray(new byte[data.size()][]);
+    byte[][] bytes = data.toArray(byte[][]::new);
     return bytes;
   }
 
@@ -192,7 +192,7 @@ public class TestOfflineSorter extends LuceneTestCase {
         length = 256;
       }
     }
-    byte[][] bytes = data.toArray(new byte[data.size()][]);
+    byte[][] bytes = data.toArray(byte[][]::new);
     return bytes;
   }
 

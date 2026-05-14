@@ -57,7 +57,7 @@ public final class FieldFilterLeafReader extends FilterLeafReader {
         filteredInfos.add(fi);
       }
     }
-    fieldInfos = new FieldInfos(filteredInfos.toArray(new FieldInfo[filteredInfos.size()]));
+    fieldInfos = new FieldInfos(filteredInfos.toArray(FieldInfo[]::new));
   }
 
   boolean hasField(String field) {
