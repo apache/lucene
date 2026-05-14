@@ -21,10 +21,10 @@ import java.lang.invoke.MethodHandle;
 import java.text.ParseException;
 import java.util.Map;
 import org.apache.lucene.expressions.Expression;
-import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCaseJupiter;
 
 /** Base class for testing JS compiler */
-public abstract class CompilerTestCase extends LuceneTestCase {
+public abstract class CompilerTestCase extends LuceneTestCaseJupiter {
 
   /** compiles expression for sourceText with default functions list */
   protected Expression compile(String sourceText) throws ParseException {

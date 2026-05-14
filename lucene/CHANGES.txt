@@ -93,6 +93,8 @@ API Changes
 * GITHUB#15605: Remove unused getCollectors() and internal collector tracking from
   TopFieldCollectorManager. Clarify thread-safety documentation. (Prudhvi Godithi)
 
+* GITHUB#: Add junit5/jupiter support to the test-framework module. (Dawid Weiss)
+
 * GITHUB#16052: Remove IOException from LeafReader#getPointValues, LeafReader#terms,
   LeafReader#getDocCount signatures. (Ignacio Vera)
 
