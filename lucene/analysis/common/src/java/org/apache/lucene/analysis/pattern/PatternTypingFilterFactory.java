@@ -109,7 +109,7 @@ public class PatternTypingFilterFactory extends TokenFilterFactory implements Re
       Pattern compiled = Pattern.compile(split[0]);
       ruleList.add(new PatternTypingRule(compiled, flagsVal, split[1]));
     }
-    this.rules = ruleList.toArray(new PatternTypingRule[0]);
+    this.rules = ruleList.toArray(PatternTypingRule[]::new);
   }
 
   @Override

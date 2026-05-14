@@ -35,7 +35,7 @@ abstract class ConjunctionSpans extends Spans {
     if (subSpans.size() < 2) {
       throw new IllegalArgumentException("Less than 2 subSpans.size():" + subSpans.size());
     }
-    this.subSpans = subSpans.toArray(new Spans[subSpans.size()]);
+    this.subSpans = subSpans.toArray(Spans[]::new);
     this.conjunction = intersectSpans(subSpans);
     this.atFirstInCurrentDoc = true; // ensure for doc -1 that start/end positions are -1
   }

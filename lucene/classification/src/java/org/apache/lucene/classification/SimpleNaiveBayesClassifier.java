@@ -203,7 +203,7 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
         tokenStream.end();
       }
     }
-    return result.toArray(new String[0]);
+    return result.toArray(String[]::new);
   }
 
   private double calculateLogLikelihood(String[] tokenizedText, Term term, int docsWithClass)

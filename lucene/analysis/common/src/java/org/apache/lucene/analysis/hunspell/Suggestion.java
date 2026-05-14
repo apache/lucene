@@ -36,7 +36,7 @@ class Suggestion {
     if (originalCase == WordCase.UPPER && speller.dictionary.checkSharpS && raw.contains("ß")) {
       result.add(cleanOutput(speller, raw));
     }
-    this.result = result.toArray(new String[0]);
+    this.result = result.toArray(String[]::new);
   }
 
   private String adjustSuggestionCase(String candidate, String misspelled, WordCase originalCase) {

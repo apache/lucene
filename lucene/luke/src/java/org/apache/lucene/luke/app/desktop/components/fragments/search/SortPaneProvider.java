@@ -183,7 +183,7 @@ public final class SortPaneProvider implements SortTabOperator {
               isReverse(orderCombo2))
           .ifPresent(li::add);
     }
-    return new Sort(li.toArray(new SortField[0]));
+    return new Sort(li.toArray(SortField[]::new));
   }
 
   private boolean isReverse(JComboBox<String> order) {

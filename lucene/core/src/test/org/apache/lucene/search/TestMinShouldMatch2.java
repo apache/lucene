@@ -253,7 +253,7 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
     termsList.addAll(Arrays.asList(commonTerms));
     termsList.addAll(Arrays.asList(mediumTerms));
     termsList.addAll(Arrays.asList(rareTerms));
-    String[] terms = termsList.toArray(new String[0]);
+    String[] terms = termsList.toArray(String[]::new);
 
     for (int minNrShouldMatch = 1; minNrShouldMatch < terms.length; minNrShouldMatch++) {
       Scorer expected = scorer(terms, minNrShouldMatch, Mode.DOC_VALUES);
@@ -272,7 +272,7 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
     termsList.addAll(Arrays.asList(commonTerms));
     termsList.addAll(Arrays.asList(mediumTerms));
     termsList.addAll(Arrays.asList(rareTerms));
-    String[] terms = termsList.toArray(new String[0]);
+    String[] terms = termsList.toArray(String[]::new);
 
     for (int amount = 25; amount < 200; amount += 25) {
       for (int minNrShouldMatch = 1; minNrShouldMatch < terms.length; minNrShouldMatch++) {
@@ -295,7 +295,7 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
     termsList.addAll(Arrays.asList(rareTerms));
     Collections.shuffle(termsList, random());
     for (int numTerms = 2; numTerms <= termsList.size(); numTerms++) {
-      String[] terms = termsList.subList(0, numTerms).toArray(new String[0]);
+      String[] terms = termsList.subList(0, numTerms).toArray(String[]::new);
       for (int minNrShouldMatch = 1; minNrShouldMatch < terms.length; minNrShouldMatch++) {
         Scorer expected = scorer(terms, minNrShouldMatch, Mode.DOC_VALUES);
         Scorer actual = scorer(terms, minNrShouldMatch, Mode.SCORER);
@@ -319,7 +319,7 @@ public class TestMinShouldMatch2 extends LuceneTestCase {
 
     for (int amount = 25; amount < 200; amount += 25) {
       for (int numTerms = 2; numTerms <= termsList.size(); numTerms++) {
-        String[] terms = termsList.subList(0, numTerms).toArray(new String[0]);
+        String[] terms = termsList.subList(0, numTerms).toArray(String[]::new);
         for (int minNrShouldMatch = 1; minNrShouldMatch < terms.length; minNrShouldMatch++) {
           Scorer expected = scorer(terms, minNrShouldMatch, Mode.DOC_VALUES);
           Scorer actual = scorer(terms, minNrShouldMatch, Mode.SCORER);
