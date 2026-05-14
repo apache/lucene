@@ -543,7 +543,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     rptGroups = new PhrasePositions[rgs.size()][];
     Comparator<PhrasePositions> cmprtr = Comparator.comparingInt(pp -> pp.offset);
     for (int i = 0; i < rptGroups.length; i++) {
-      PhrasePositions[] rg = rgs.get(i).toArray(new PhrasePositions[0]);
+      PhrasePositions[] rg = rgs.get(i).toArray(PhrasePositions[]::new);
       Arrays.sort(rg, cmprtr);
       rptGroups[i] = rg;
       for (int j = 0; j < rg.length; j++) {
@@ -642,7 +642,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
         }
       }
     }
-    return rp.toArray(new PhrasePositions[0]);
+    return rp.toArray(PhrasePositions[]::new);
   }
 
   /**
@@ -690,7 +690,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
   private HashMap<Term, Integer> termGroups(
       LinkedHashMap<Term, Integer> tord, ArrayList<FixedBitSet> bb) throws IOException {
     HashMap<Term, Integer> tg = new HashMap<>();
-    Term[] t = tord.keySet().toArray(new Term[0]);
+    Term[] t = tord.keySet().toArray(Term[]::new);
     for (int i = 0; i < bb.size(); i++) { // i is the group no.
       FixedBitSet bits = bb.get(i);
       for (int ord = bits.nextSetBit(0);

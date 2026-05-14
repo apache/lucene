@@ -303,7 +303,7 @@ public class TestFSTs extends LuceneTestCase {
           final String term = getRandomString(random);
           termsSet.add(toIntsRef(term, inputMode));
         }
-        doTest(inputMode, termsSet.toArray(new IntsRef[0]));
+        doTest(inputMode, termsSet.toArray(IntsRef[]::new));
       }
     }
   }
@@ -1156,7 +1156,7 @@ public class TestFSTs extends LuceneTestCase {
     ArrayList<String> out = new ArrayList<>();
     StringBuilder b = new StringBuilder();
     s.generate(out, b, 'a', 'i', 10);
-    String[] input = out.toArray(new String[0]);
+    String[] input = out.toArray(String[]::new);
     Arrays.sort(input);
     FST<Object> fst = s.compile(input);
     FST.Arc<Object> arc = fst.getFirstArc(new FST.Arc<>());

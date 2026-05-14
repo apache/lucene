@@ -21,15 +21,16 @@ import org.apache.lucene.tests.store.BaseDirectoryWrapper;
 import org.junit.Assert;
 
 /**
- * Attempts to close a {@link BaseDirectoryWrapper}.
- *
- * @see LuceneTestCase#newDirectory(java.util.Random)
+ * Fails the test if the {@link BaseDirectoryWrapper} hasn't been closed and the test has no other
+ * failures.
  */
-final class CloseableDirectory implements Closeable {
-  private final BaseDirectoryWrapper dir;
-  private final TestRuleMarkFailure failureMarker;
+final class AssertDirectoryClosed implements Closeable {
+  static final String MSG_PREFIX = "Directory not closed: ";
 
-  public CloseableDirectory(BaseDirectoryWrapper dir, TestRuleMarkFailure failureMarker) {
+  private final BaseDirectoryWrapper dir;
+  private final SuiteFailureState failureMarker;
+
+  AssertDirectoryClosed(BaseDirectoryWrapper dir, SuiteFailureState failureMarker) {
     this.dir = dir;
     this.failureMarker = failureMarker;
   }
@@ -40,11 +41,14 @@ final class CloseableDirectory implements Closeable {
     // failures.
     try {
       if (failureMarker.wasSuccessful() && dir.isOpen()) {
-        Assert.fail("Directory not closed: " + dir);
+        Assert.fail(MSG_PREFIX + dir);
       }
     } finally {
-      // TODO: perform real close of the delegate: LUCENE-4058
-      // dir.close();
+      try {
+        dir.close();
+      } catch (Throwable _) {
+        // ignore, we can't do much about it. LUCENE-4058
+      }
     }
   }
 }

@@ -44,7 +44,7 @@ final class MultiTermHighlighting {
       Query query, Predicate<String> fieldMatcher, boolean lookInSpan) {
     AutomataCollector collector = new AutomataCollector(lookInSpan, fieldMatcher);
     query.visit(collector);
-    return collector.runAutomata.toArray(new LabelledCharArrayMatcher[0]);
+    return collector.runAutomata.toArray(LabelledCharArrayMatcher[]::new);
   }
 
   /**
