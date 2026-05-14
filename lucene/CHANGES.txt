@@ -159,6 +159,10 @@ Bug Fixes
   chars and no longer produce half surrogates. There are new factory parameters available
   to configure legacy prefix chars and new codepoint behaviour.  (Uwe Schindler, Michael Sokolov)
 
+* GITHUB#15967: Fix IndexWriter's HNSW InfoStream progress during concurrent merges to show elapsed
+  time since merge start instead of duplicate incremental/total times. Add per-chunk completion
+  logging with sub-millisecond precision to aid merge concurrency debugging. (Prithvi S)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
