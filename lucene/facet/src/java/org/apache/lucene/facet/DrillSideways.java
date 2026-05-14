@@ -373,7 +373,7 @@ public class DrillSideways {
     final String[] drillSidewaysDims;
     final FacetsCollector[] drillSidewaysCollectors;
     if (query.getDims().isEmpty() == false) {
-      drillSidewaysDims = query.getDims().keySet().toArray(new String[0]);
+      drillSidewaysDims = query.getDims().keySet().toArray(String[]::new);
       int numDims = query.getDims().size();
       assert drillSidewaysCollectorManagers != null;
       assert drillSidewaysCollectorManagers.size() == numDims;

@@ -759,7 +759,7 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
         int index = random().nextInt(numDocs);
         toDelete.add(new Term("index", String.valueOf(index)));
       }
-      w.deleteDocuments(toDelete.toArray(new Term[0]));
+      w.deleteDocuments(toDelete.toArray(Term[]::new));
       w.commit();
 
       int hits = 50;

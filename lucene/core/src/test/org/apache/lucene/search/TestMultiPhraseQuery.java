@@ -77,11 +77,11 @@ public class TestMultiPhraseQuery extends LuceneTestCase {
       }
     } while (te.next() != null);
 
-    query1builder.add(termsWithPrefix.toArray(new Term[0]));
+    query1builder.add(termsWithPrefix.toArray(Term[]::new));
     MultiPhraseQuery query1 = query1builder.build();
     assertEquals("body:\"blueberry (piccadilly pie pizza)\"", query1.toString());
 
-    query2builder.add(termsWithPrefix.toArray(new Term[0]));
+    query2builder.add(termsWithPrefix.toArray(Term[]::new));
     MultiPhraseQuery query2 = query2builder.build();
     assertEquals("body:\"strawberry (piccadilly pie pizza)\"", query2.toString());
 
@@ -103,7 +103,7 @@ public class TestMultiPhraseQuery extends LuceneTestCase {
       }
     } while (te.next() != null);
 
-    query3builder.add(termsWithPrefix.toArray(new Term[0]));
+    query3builder.add(termsWithPrefix.toArray(Term[]::new));
     query3builder.add(new Term("body", "pizza"));
 
     MultiPhraseQuery query3 = query3builder.build();

@@ -491,8 +491,7 @@ public final class RandomGeo3dShapeGenerator {
       }
       try {
         GeoPath path =
-            GeoPathFactory.makeGeoPath(
-                planetModel, 0, geoPoints.toArray(new GeoPoint[geoPoints.size()]));
+            GeoPathFactory.makeGeoPath(planetModel, 0, geoPoints.toArray(GeoPoint[]::new));
         if (!constraints.valid(path)) {
           continue;
         }
@@ -524,8 +523,7 @@ public final class RandomGeo3dShapeGenerator {
       double width = randomCutoffAngle();
       try {
         GeoPath path =
-            GeoPathFactory.makeGeoPath(
-                planetModel, width, geoPoints.toArray(new GeoPoint[geoPoints.size()]));
+            GeoPathFactory.makeGeoPath(planetModel, width, geoPoints.toArray(GeoPoint[]::new));
         if (!constraints.valid(path)) {
           continue;
         }
