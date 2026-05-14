@@ -29,6 +29,8 @@ API Changes
 * GITHUB#16042: Deprecate TopFieldCollectorManager#getCollectors. The result of the search operation is returned
   as part of a TopFieldDocs instance, there is no need to check the state of each collector after search. (Prudhvi Godithi)
 
+* GITHUB#15990: Add experimental api to IndexWriter for columnar indexing. (Tim Brooks)
+
 New Features
 ---------------------
 
