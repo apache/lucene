@@ -224,7 +224,7 @@ final class SortedSetDocValuesRangeQuery extends Query {
 
           private void computeSkipperDocIds() throws IOException {
             minOrd = minOrd(values);
-            maxOrd = upperValue.equals(lowerValue) ? minOrd : maxOrd(values);
+            maxOrd = upperValue != null && upperValue.equals(lowerValue) ? minOrd : maxOrd(values);
             if (minOrd > maxOrd || minOrd > skipper.maxValue() || maxOrd < skipper.minValue()) {
               skipperMinDocId = skipperMaxDocId = DocIdSetIterator.NO_MORE_DOCS;
               skipperMinDocIdExact = skipperMaxDocIdExact = true;
