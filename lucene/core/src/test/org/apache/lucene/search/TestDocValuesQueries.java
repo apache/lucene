@@ -44,6 +44,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
 
@@ -749,5 +750,42 @@ public class TestDocValuesQueries extends LuceneTestCase {
         }
       }
     }
+  }
+
+  public void testPrimarySortDenseSortedDocValuesExactMatch() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec());
+    config.setIndexSort(
+        new Sort(new SortField("dv", SortField.Type.STRING, random().nextBoolean())));
+    int numBlocks = random().nextInt(4, 16);
+    int[] sizes = new int[numBlocks];
+    for (int i = 0; i < numBlocks; i++) {
+      sizes[i] = random().nextInt(1, 250);
+    }
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, config);
+    for (int i = 0; i < numBlocks; i++) {
+      BytesRef bytesRef = new BytesRef("" + i);
+      for (int j = 0; j < sizes[i]; j++) {
+        Document doc = new Document();
+        doc.add(SortedDocValuesField.indexedField("dv", bytesRef));
+        iw.addDocument(doc);
+      }
+    }
+    iw.commit();
+    iw.forceMerge(1);
+
+    final IndexReader reader = iw.getReader();
+    final IndexSearcher searcher = newSearcher(reader, false);
+    iw.close();
+
+    for (int i = 0; i < numBlocks; i++) {
+      final Query q1 =
+          SortedDocValuesField.newSlowRangeQuery(
+              "dv", new BytesRef("" + i), new BytesRef("" + i), true, true);
+      assertEquals(sizes[i], searcher.count(q1));
+      assertEquals(sizes[i], searcher.search(q1, 1000).totalHits.value());
+    }
+    reader.close();
+    dir.close();
   }
 }

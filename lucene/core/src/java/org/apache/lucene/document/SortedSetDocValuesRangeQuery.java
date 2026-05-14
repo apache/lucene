@@ -224,7 +224,7 @@ final class SortedSetDocValuesRangeQuery extends Query {
 
           private void computeSkipperDocIds() throws IOException {
             minOrd = minOrd(values);
-            maxOrd = maxOrd(values);
+            maxOrd = upperValue.equals(lowerValue) ? minOrd : maxOrd(values);
             if (minOrd > maxOrd || minOrd > skipper.maxValue() || maxOrd < skipper.minValue()) {
               skipperMinDocId = skipperMaxDocId = DocIdSetIterator.NO_MORE_DOCS;
               skipperMinDocIdExact = skipperMaxDocIdExact = true;
@@ -243,14 +243,19 @@ final class SortedSetDocValuesRangeQuery extends Query {
               } else {
                 skipper.advance(Long.MIN_VALUE, maxOrd);
                 skipperMinDocId = skipper.minDocID(0);
-                skipperMinDocIdExact = false;
+                skipperMinDocIdExact = skipper.maxValue(0) == maxOrd;
               }
               if (skipper.minValue() >= minOrd) {
                 skipperMaxDocId = skipper.docCount();
                 skipperMaxDocIdExact = true;
               } else {
                 skipper.advance(Long.MIN_VALUE, minOrd);
-                skipperMaxDocId = skipper.minDocID(0);
+                skipperMaxDocId =
+                    skipper.minValue(0) == minOrd ? skipper.maxDocID(0) : skipper.minDocID(0);
+                // we can read the next block, if the maxValue is different to minOrd, then we
+                // should be done, we
+                // don't need to visit the doc values. But what is more expensive, visit one doc
+                // value or one skipper block?
                 skipperMaxDocIdExact = false;
               }
             } else {
@@ -259,14 +264,19 @@ final class SortedSetDocValuesRangeQuery extends Query {
               } else {
                 skipper.advance(minOrd, Long.MAX_VALUE);
                 skipperMinDocId = skipper.minDocID(0);
-                skipperMinDocIdExact = false;
+                skipperMinDocIdExact = skipper.minValue(0) == minOrd;
               }
               if (skipper.maxValue() <= maxOrd) {
                 skipperMaxDocId = skipper.docCount();
                 skipperMaxDocIdExact = true;
               } else {
                 skipper.advance(maxOrd, Long.MAX_VALUE);
-                skipperMaxDocId = skipper.minDocID(0);
+                skipperMaxDocId =
+                    skipper.maxValue(0) == maxOrd ? skipper.maxDocID(0) : skipper.minDocID(0);
+                // we can read the next block, if the minValue is different to maxOrd, then we
+                // should be done, we
+                // don't need to visit the doc values. But what is more expensive, visit one doc
+                // value or one skipper block?
                 skipperMaxDocIdExact = false;
               }
             }
