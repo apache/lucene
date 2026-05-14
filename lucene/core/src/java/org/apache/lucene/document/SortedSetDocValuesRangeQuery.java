@@ -251,7 +251,7 @@ final class SortedSetDocValuesRangeQuery extends Query {
               } else {
                 skipper.advance(Long.MIN_VALUE, minOrd);
                 skipperMaxDocId =
-                    skipper.minValue(0) == minOrd ? skipper.maxDocID(0) : skipper.minDocID(0);
+                    skipper.minValue(0) == minOrd ? skipper.maxDocID(0) + 1 : skipper.minDocID(0);
                 // we can read the next block, if the maxValue is different to minOrd, then we
                 // should be done, we
                 // don't need to visit the doc values. But what is more expensive, visit one doc
@@ -261,6 +261,7 @@ final class SortedSetDocValuesRangeQuery extends Query {
             } else {
               if (skipper.minValue() >= minOrd) {
                 skipperMinDocId = 0;
+                skipperMinDocIdExact = true;
               } else {
                 skipper.advance(minOrd, Long.MAX_VALUE);
                 skipperMinDocId = skipper.minDocID(0);
@@ -272,7 +273,7 @@ final class SortedSetDocValuesRangeQuery extends Query {
               } else {
                 skipper.advance(maxOrd, Long.MAX_VALUE);
                 skipperMaxDocId =
-                    skipper.maxValue(0) == maxOrd ? skipper.maxDocID(0) : skipper.minDocID(0);
+                    skipper.maxValue(0) == maxOrd ? skipper.maxDocID(0) + 1 : skipper.minDocID(0);
                 // we can read the next block, if the minValue is different to maxOrd, then we
                 // should be done, we
                 // don't need to visit the doc values. But what is more expensive, visit one doc
