@@ -156,10 +156,6 @@ Optimizations
 
 Bug Fixes
 ---------------------
-* GITHUB#15967: Fix IndexWriter's HNSW InfoStream progress during concurrent merges to show elapsed
-  time since merge start instead of duplicate incremental/total times. Add per-chunk completion
-  logging with sub-millisecond precision to aid merge concurrency debugging. (Prithvi S)
-
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
@@ -421,6 +417,10 @@ Bug Fixes
 * GITHUB#15899, GITHUB#15900: Improve TruncateTokenFilter to truncate on codepoints not
   chars and no longer produce half surrogates. There are new factory parameters available
   to configure legacy prefix chars and new codepoint behaviour.  (Uwe Schindler, Michael Sokolov)
+
+* GITHUB#15967: Fix IndexWriter's HNSW InfoStream progress during concurrent merges to show elapsed
+  time since merge start instead of duplicate incremental/total times. Add per-chunk completion
+  logging with sub-millisecond precision to aid merge concurrency debugging. (Prithvi S)
 
 Other
 ---------------------
