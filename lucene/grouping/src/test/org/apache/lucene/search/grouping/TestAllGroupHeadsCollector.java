@@ -511,7 +511,7 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
     } else if (!scoreOnly) {
       sortFields.add(new SortField("id", SortField.Type.INT));
     }
-    return new Sort(sortFields.toArray(new SortField[0]));
+    return new Sort(sortFields.toArray(SortField[]::new));
   }
 
   private Comparator<GroupDoc> getComparator(

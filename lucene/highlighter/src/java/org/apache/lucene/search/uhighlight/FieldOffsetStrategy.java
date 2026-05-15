@@ -117,7 +117,7 @@ public abstract class FieldOffsetStrategy {
     LeafReader leafReader =
         new FilterLeafReader(_leafReader) {
           @Override
-          public Terms terms(String field) throws IOException {
+          public Terms terms(String field) {
             if (components.fieldMatcher().test(field)) {
               return super.terms(components.field());
             } else {

@@ -129,7 +129,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
         assertTrue(wrap.toString(), wrap.toString().startsWith("SortingCodecReader("));
         readers.add(wrap);
       }
-      w.addIndexes(readers.toArray(new CodecReader[0]));
+      w.addIndexes(readers.toArray(CodecReader[]::new));
     }
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
@@ -236,7 +236,7 @@ public class TestSortingCodecReader extends LuceneTestCase {
               assertNotSame(termVectorsReader, clone);
               clone.close();
             }
-            writer.addIndexes(readers.toArray(new CodecReader[0]));
+            writer.addIndexes(readers.toArray(CodecReader[]::new));
           }
           assumeTrue("must have at least one doc", actualNumDocs > 0);
           try (DirectoryReader r = DirectoryReader.open(writer)) {

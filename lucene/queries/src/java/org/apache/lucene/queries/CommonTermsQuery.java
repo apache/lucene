@@ -112,7 +112,7 @@ public class CommonTermsQuery extends Query {
     final List<LeafReaderContext> leaves = reader.leaves();
     final int maxDoc = reader.maxDoc();
     final TermStates[] contextArray = new TermStates[terms.size()];
-    final Term[] queryTerms = this.terms.toArray(new Term[0]);
+    final Term[] queryTerms = this.terms.toArray(Term[]::new);
     collectTermStates(reader, leaves, contextArray, queryTerms);
     return buildQuery(maxDoc, contextArray, queryTerms);
   }

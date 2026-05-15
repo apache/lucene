@@ -261,7 +261,7 @@ public class QualityStats {
 
   /** Returns the recallPoints. */
   public RecallPoint[] getRecallPoints() {
-    return recallPoints.toArray(new RecallPoint[0]);
+    return recallPoints.toArray(RecallPoint[]::new);
   }
 
   /**

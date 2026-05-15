@@ -89,11 +89,7 @@ public abstract class CompletionQuery extends Query {
     Terms terms;
     for (LeafReaderContext context : indexSearcher.getLeafContexts()) {
       LeafReader leafReader = context.reader();
-      try {
-        if ((terms = leafReader.terms(getField())) == null) {
-          continue;
-        }
-      } catch (IOException _) {
+      if ((terms = leafReader.terms(getField())) == null) {
         continue;
       }
       if (terms instanceof CompletionTerms completionTerms) {

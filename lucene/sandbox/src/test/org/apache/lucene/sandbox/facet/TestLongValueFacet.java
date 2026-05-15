@@ -775,7 +775,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
         fieldName,
         new String[0],
         VALUE_CANT_BE_COMPUTED,
-        labelsAndValues.toArray(new LabelAndValue[0]),
+        labelsAndValues.toArray(LabelAndValue[]::new),
         childCount);
   }
 
@@ -810,7 +810,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
         field,
         new String[0],
         VALUE_CANT_BE_COMPUTED,
-        labelsAndValues.toArray(new LabelAndValue[0]),
+        labelsAndValues.toArray(LabelAndValue[]::new),
         childCount);
   }
 
@@ -836,7 +836,7 @@ public class TestLongValueFacet extends SandboxFacetTestCase {
         field,
         new String[0],
         VALUE_CANT_BE_COMPUTED,
-        labelsAndValues.toArray(new LabelAndValue[0]),
+        labelsAndValues.toArray(LabelAndValue[]::new),
         childCount);
   }
 }
