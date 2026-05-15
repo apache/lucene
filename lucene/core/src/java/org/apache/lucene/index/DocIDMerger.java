@@ -20,6 +20,7 @@ package org.apache.lucene.index;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 import org.apache.lucene.search.DocIdSetIterator; // javadocs
 import org.apache.lucene.util.PriorityQueue;
@@ -166,16 +167,15 @@ public abstract class DocIDMerger<T extends DocIDMerger.Sub> {
     public void reset() throws IOException {
       // caller may not have fully consumed the queue:
       queue.clear();
-      current = null;
-      boolean first = true;
-      for (T sub : subs) {
-        if (first) {
-          // by setting mappedDocID = -1, this entry is guaranteed to be the top of the queue
-          // so the first call to next() will advance it
-          sub.mappedDocID = -1;
-          current = sub;
-          first = false;
-        } else if (sub.nextMappedDoc() != NO_MORE_DOCS) {
+      Iterator<T> it = subs.iterator();
+      T sub = it.next();
+      // by setting mappedDocID = -1, this entry is guaranteed to be less than any real doc ID
+      // so the first call to next() will advance it
+      sub.mappedDocID = -1;
+      current = sub;
+      while (it.hasNext()) {
+        sub = it.next();
+        if (sub.nextMappedDoc() != NO_MORE_DOCS) {
           queue.add(sub);
         } // else all docs in this sub were deleted; do not add it to the queue!
       }
@@ -197,7 +197,9 @@ public abstract class DocIDMerger<T extends DocIDMerger.Sub> {
         } else {
           current = queue.pop();
         }
-      } else if (queue.size() > 0) {
+      } else {
+        // queue cannot be empty here: if it were, queueMinDocID == NO_MORE_DOCS, and any valid
+        // nextDoc would satisfy nextDoc < queueMinDocID, taking the fast path above
         assert queueMinDocID == queue.top().mappedDocID;
         assert nextDoc > queueMinDocID;
         T newCurrent = queue.top();
