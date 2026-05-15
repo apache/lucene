@@ -31,6 +31,7 @@ import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCase.Nightly;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
@@ -165,12 +166,27 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends LuceneTestCase {
     assertEquals("Should match only docs where score=0", expectedScore0, searcher.count(combined));
   }
 
-  public void testIntoBitSetMatchesBruteForce() throws Exception {
-    LeafReaderContext ctx = reader.leaves().get(0);
+  /** Directly tests intoBitSet() against a linear scan reference. */
+  public void testIntoBitSetMatchesLinearScan() throws Exception {
+    doTestIntoBitSetMatchesLinearScan(reader);
+  }
+
+  /** Large-scale version — 100 skip blocks */
+  @Nightly
+  public void testIntoBitSetMatchesLinearScanHuge() throws Exception {
+    try (Directory hugeDir = newDirectory()) {
+      buildIndex(hugeDir, 4096 * 100);
+      try (DirectoryReader r = DirectoryReader.open(hugeDir)) {
+        doTestIntoBitSetMatchesLinearScan(r);
+      }
+    }
+  }
+
+  private void doTestIntoBitSetMatchesLinearScan(DirectoryReader r) throws Exception {
+    LeafReaderContext ctx = r.leaves().get(0);
     int maxDoc = ctx.reader().maxDoc();
     int windowSize = DenseConjunctionBulkScorer.WINDOW_SIZE; // 4096
 
-    // Scan all docs manually and record which match range [20, 40]
     FixedBitSet expected = new FixedBitSet(windowSize);
     NumericDocValues refValues = ctx.reader().getNumericDocValues("age");
     for (int d = 0; d < Math.min(maxDoc, windowSize); d++) {
@@ -179,13 +195,12 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends LuceneTestCase {
       }
     }
 
-    // BatchDocValuesRangeIterator path
     DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper("age");
     NumericDocValues dv = ctx.reader().getNumericDocValues("age");
     assertNotNull("Field must have a skip index", skipper);
 
     BatchDocValuesRangeIterator iter = new BatchDocValuesRangeIterator(dv, skipper, 20, 40);
-    iter.nextDoc(); // position to first matching doc
+    iter.nextDoc();
 
     FixedBitSet actual = new FixedBitSet(windowSize);
     iter.intoBitSet(Math.min(maxDoc, windowSize), actual, 0);
@@ -194,21 +209,34 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends LuceneTestCase {
         "intoBitSet must set exactly the same bits as linear scan",
         expected.cardinality(),
         actual.cardinality());
-    // Verify bit-by-bit
     FixedBitSet diff = expected.clone();
     diff.xor(actual);
     assertEquals("No bits should differ", 0, diff.cardinality());
   }
 
+  /** Tests YES block path — range covers all values, all docs match. */
   public void testIntoBitSetAllMatchRange() throws Exception {
-    LeafReaderContext ctx = reader.leaves().get(0);
+    doTestIntoBitSetAllMatchRange(reader);
+  }
+
+  @Nightly
+  public void testIntoBitSetAllMatchRangeHuge() throws Exception {
+    try (Directory hugeDir = newDirectory()) {
+      buildIndex(hugeDir, 4096 * 100);
+      try (DirectoryReader r = DirectoryReader.open(hugeDir)) {
+        doTestIntoBitSetAllMatchRange(r);
+      }
+    }
+  }
+
+  private void doTestIntoBitSetAllMatchRange(DirectoryReader r) throws Exception {
+    LeafReaderContext ctx = r.leaves().get(0);
     int maxDoc = ctx.reader().maxDoc();
 
     DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper("age");
     NumericDocValues dv = ctx.reader().getNumericDocValues("age");
     assertNotNull(skipper);
 
-    // Range [0, 99] covers all values — all docs should match
     BatchDocValuesRangeIterator iter = new BatchDocValuesRangeIterator(dv, skipper, 0, 99);
     iter.nextDoc();
 
@@ -218,15 +246,29 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends LuceneTestCase {
     assertEquals("All docs should match range [0,99]", maxDoc, bitSet.cardinality());
   }
 
+  /** Tests NO block path — range matches nothing. */
   public void testIntoBitSetNoMatchRange() throws Exception {
-    LeafReaderContext ctx = reader.leaves().get(0);
+    doTestIntoBitSetNoMatchRange(reader);
+  }
+
+  @Nightly
+  public void testIntoBitSetNoMatchRangeHuge() throws Exception {
+    try (Directory hugeDir = newDirectory()) {
+      buildIndex(hugeDir, 4096 * 100);
+      try (DirectoryReader r = DirectoryReader.open(hugeDir)) {
+        doTestIntoBitSetNoMatchRange(r);
+      }
+    }
+  }
+
+  private void doTestIntoBitSetNoMatchRange(DirectoryReader r) throws Exception {
+    LeafReaderContext ctx = r.leaves().get(0);
     int maxDoc = ctx.reader().maxDoc();
 
     DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper("age");
     NumericDocValues dv = ctx.reader().getNumericDocValues("age");
     assertNotNull(skipper);
 
-    // Range [200, 300] — no values exist in this range
     BatchDocValuesRangeIterator iter = new BatchDocValuesRangeIterator(dv, skipper, 200, 300);
     iter.nextDoc();
 
@@ -236,15 +278,24 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends LuceneTestCase {
     assertEquals("No docs should match out-of-range query", 0, bitSet.cardinality());
   }
 
+  /** Tests YES_IF_PRESENT block path — sparse field, only even docs have a value. */
   public void testIntoBitSetSparseField() throws Exception {
+    doTestIntoBitSetSparseField(1000);
+  }
+
+  @Nightly
+  public void testIntoBitSetSparseFieldHuge() throws Exception {
+    doTestIntoBitSetSparseField(4096 * 20);
+  }
+
+  private void doTestIntoBitSetSparseField(int numDocs) throws Exception {
     try (Directory sparseDir = newDirectory()) {
       IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
       IndexWriter w = new IndexWriter(sparseDir, iwc);
-      int numDocs = 1000;
       List<Integer> expectedDocs = new ArrayList<>();
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();
-        if (i % 2 == 0) { // only even docs have the field
+        if (i % 2 == 0) {
           long val = i % 100;
           doc.add(NumericDocValuesField.indexedField("sparse", val));
           if (val >= 20 && val <= 40) expectedDocs.add(i);
@@ -258,7 +309,7 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends LuceneTestCase {
 
         DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper("sparse");
         NumericDocValues dv = ctx.reader().getNumericDocValues("sparse");
-        if (skipper == null) return; // codec doesn't support skip index
+        if (skipper == null) return;
 
         BatchDocValuesRangeIterator iter = new BatchDocValuesRangeIterator(dv, skipper, 20, 40);
         iter.nextDoc();
@@ -266,13 +317,10 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends LuceneTestCase {
         FixedBitSet bitSet = new FixedBitSet(numDocs);
         iter.intoBitSet(numDocs, bitSet, 0);
 
-        // Verify count matches expected
         assertEquals(
             "Sparse field intoBitSet must match expected count",
             expectedDocs.size(),
             bitSet.cardinality());
-
-        // Verify no odd docs (which have no value) are set
         for (int i = 1; i < numDocs; i += 2) {
           assertFalse("Odd doc " + i + " has no value and must not be set", bitSet.get(i));
         }
@@ -280,10 +328,24 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends LuceneTestCase {
     }
   }
 
+  /** Tests advance() returns the same docs as a linear scan. */
   public void testAdvanceCorrectness() throws Exception {
-    LeafReaderContext ctx = reader.leaves().get(0);
+    doTestAdvanceCorrectness(reader);
+  }
 
-    // Collect all matching doc IDs beforehand
+  @Nightly
+  public void testAdvanceCorrectnessHuge() throws Exception {
+    try (Directory hugeDir = newDirectory()) {
+      buildIndex(hugeDir, 4096 * 100);
+      try (DirectoryReader r = DirectoryReader.open(hugeDir)) {
+        doTestAdvanceCorrectness(r);
+      }
+    }
+  }
+
+  private void doTestAdvanceCorrectness(DirectoryReader r) throws Exception {
+    LeafReaderContext ctx = r.leaves().get(0);
+
     List<Integer> expected = new ArrayList<>();
     NumericDocValues refValues = ctx.reader().getNumericDocValues("age");
     for (int d = 0; d < ctx.reader().maxDoc(); d++) {
@@ -303,5 +365,18 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends LuceneTestCase {
     }
 
     assertEquals("advance() must return same docs as expected", expected, actual);
+  }
+
+  /** Helper: builds an index with {@code numDocs} docs, values = i % 100. */
+  private void buildIndex(Directory dir, int numDocs) throws Exception {
+    IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+    try (IndexWriter w = new IndexWriter(dir, iwc)) {
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        doc.add(NumericDocValuesField.indexedField("age", i % 100));
+        w.addDocument(doc);
+      }
+      w.forceMerge(1);
+    }
   }
 }
