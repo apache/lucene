@@ -14,12 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
+package org.apache.lucene.document;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.function.LongPredicate;
 import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.search.ConstantScoreScorerSupplier;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.SortField;
 
 /**
  * Constant-score supplier that uses a {@link DocValuesSkipper} to approximate the document interval
@@ -30,10 +34,8 @@ import org.apache.lucene.index.DocValuesSkipper;
  * skipper interval at a boundary is not exact for the query range, {@link #nextDoc} scans forward
  * from that doc to the first document whose value satisfies the appropriate comparison, producing a
  * tight {@link DocIdSetIterator#range} iterator.
- *
- * @lucene.internal
  */
-public abstract class SortedSkipperScorerSupplier extends ConstantScoreScorerSupplier {
+abstract class SortedSkipperScorerSupplier extends ConstantScoreScorerSupplier {
 
   private final DocValuesSkipper skipper;
   private final SortField sortField;
@@ -49,7 +51,7 @@ public abstract class SortedSkipperScorerSupplier extends ConstantScoreScorerSup
    * @param maxDoc exclusive upper bound of doc IDs on this leaf (typically {@link
    *     org.apache.lucene.index.LeafReader#maxDoc()})
    */
-  public SortedSkipperScorerSupplier(
+  SortedSkipperScorerSupplier(
       DocValuesSkipper skipper, SortField sortField, float score, ScoreMode scoreMode, int maxDoc) {
     super(score, scoreMode, maxDoc);
     this.skipper = skipper;

@@ -37,7 +37,6 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
-import org.apache.lucene.search.SortedSkipperScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BytesRef;
@@ -122,8 +121,12 @@ final class SortedSetDocValuesRangeQuery extends Query {
         DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
         SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
         final SortedDocValues singleton = DocValues.unwrapSingleton(values);
-        if (singleton != null && skipper != null && isDensePrimarySort(context.reader(), skipper)) {
-          return getScorerSupplierFromDensePrimarySort(context, singleton, values, skipper);
+        SortField primarySortField = null;
+        if (singleton != null
+            && skipper != null
+            && (primarySortField = densePrimarySort(context.reader(), skipper)) != null) {
+          return getScorerSupplierFromDensePrimarySort(
+              context, singleton, values, skipper, primarySortField);
         }
         // implement ScorerSupplier, since we do some expensive stuff to make a scorer
         return new ConstantScoreScorerSupplier(score(), scoreMode, context.reader().maxDoc()) {
@@ -167,8 +170,8 @@ final class SortedSetDocValuesRangeQuery extends Query {
           LeafReaderContext context,
           SortedDocValues singleton,
           SortedSetDocValues values,
-          DocValuesSkipper skipper) {
-        final SortField sortField = context.reader().getMetaData().sort().getSort()[0];
+          DocValuesSkipper skipper,
+          SortField sortField) {
         return new SortedSkipperScorerSupplier(
             skipper, sortField, score(), scoreMode, context.reader().maxDoc()) {
           long minOrd = -1, maxOrd = -1;
@@ -246,16 +249,16 @@ final class SortedSetDocValuesRangeQuery extends Query {
     return maxOrd;
   }
 
-  private boolean isDensePrimarySort(LeafReader reader, DocValuesSkipper skipper) {
+  private SortField densePrimarySort(LeafReader reader, DocValuesSkipper skipper) {
     if (skipper.docCount() != reader.maxDoc()) {
-      return false;
+      return null;
     }
     final Sort indexSort = reader.getMetaData().sort();
     if (indexSort == null
         || indexSort.getSort().length == 0
         || indexSort.getSort()[0].getField().equals(field) == false) {
-      return false;
+      return null;
     }
-    return true;
+    return indexSort.getSort()[0];
   }
 }
