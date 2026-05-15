@@ -258,18 +258,4 @@ final class SortedSetDocValuesRangeQuery extends Query {
     }
     return true;
   }
-
-  private static int nextDoc(int startDoc, SortedDocValues docValues, LongPredicate predicate)
-      throws IOException {
-    int doc = docValues.docID();
-    if (startDoc > doc) {
-      doc = docValues.advance(startDoc);
-    }
-    for (; doc < DocIdSetIterator.NO_MORE_DOCS; doc = docValues.nextDoc()) {
-      if (predicate.test(docValues.ordValue())) {
-        break;
-      }
-    }
-    return doc;
-  }
 }
