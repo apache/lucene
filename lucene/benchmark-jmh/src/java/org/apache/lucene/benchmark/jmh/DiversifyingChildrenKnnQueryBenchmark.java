@@ -83,10 +83,10 @@ import org.openjdk.jmh.annotations.Warmup;
 @BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
-@Warmup(iterations = 5, time = 2)
-@Measurement(iterations = 5, time = 2)
+@Warmup(iterations = 3, time = 2)
+@Measurement(iterations = 3, time = 2)
 @Fork(
-    value = 3,
+    value = 1,
     jvmArgsAppend = {"-Xmx4g", "-Xms4g", "-XX:+AlwaysPreTouch"})
 public class DiversifyingChildrenKnnQueryBenchmark {
 
@@ -95,10 +95,10 @@ public class DiversifyingChildrenKnnQueryBenchmark {
   private static final String PARENT_VALUE = "_parent";
   private static final int NUM_QUERY_VECTORS = 256;
 
-  @Param({"5000", "20000"})
+  @Param({"5000"})
   public int numParents;
 
-  @Param({"4", "8", "50"})
+  @Param({"4", "50"})
   public int childrenPerParent;
 
   @Param({"10", "100"})
