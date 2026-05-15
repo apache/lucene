@@ -220,7 +220,7 @@ public class MultiPassIndexSplitter {
       return null;
     }
 
-    final List<? extends FakeDeleteLeafIndexReader> getSequentialSubReadersWrapper() {
+    List<? extends FakeDeleteLeafIndexReader> getSequentialSubReadersWrapper() {
       return getSequentialSubReaders();
     }
 

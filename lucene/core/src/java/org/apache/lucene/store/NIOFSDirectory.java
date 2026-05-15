@@ -156,7 +156,7 @@ public class NIOFSDirectory extends FSDirectory {
     }
 
     @Override
-    public final long length() {
+    public long length() {
       return end - off;
     }
 

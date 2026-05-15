@@ -59,7 +59,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
     abortingException = throwable;
   }
 
-  final boolean isAborted() {
+  boolean isAborted() {
     return aborted;
   }
 
@@ -200,7 +200,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
     this.hasParentField = indexWriterConfig.getParentField() != null;
   }
 
-  final void testPoint(String message) {
+  void testPoint(String message) {
     if (enableTestPoints) {
       assert infoStream.isEnabled("TP"); // don't enable unless you need them.
       infoStream.message("TP", message);

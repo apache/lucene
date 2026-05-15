@@ -154,12 +154,12 @@ public class PackedLongValues extends LongValues implements Accountable {
     }
 
     /** Whether or not there are remaining values. */
-    public final boolean hasNext() {
+    public boolean hasNext() {
       return pOff < currentCount;
     }
 
     /** Return the next long in the buffer. */
-    public final long next() {
+    public long next() {
       assert hasNext();
       long result = currentValues[pOff++];
       if (pOff == currentCount) {
