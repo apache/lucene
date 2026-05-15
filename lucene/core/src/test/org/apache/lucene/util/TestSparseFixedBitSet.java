@@ -17,6 +17,7 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
+import java.util.Random;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.tests.util.BaseBitSetTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -104,5 +105,33 @@ public class TestSparseFixedBitSet extends BaseBitSetTestCase<SparseFixedBitSet>
     BitSet orCopy = new SparseFixedBitSet(size);
     orCopy.or(new BitSetIterator(original, size));
     assertTrue(Math.abs(original.ramBytesUsed() - orCopy.ramBytesUsed()) <= 64L);
+  }
+
+  private static int bruteNextUnset(SparseFixedBitSet set, int from, int upperBound) {
+    for (int i = from; i < upperBound; i++) {
+      if (set.get(i) == false) {
+        return i;
+      }
+    }
+    return DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  public void testNextClearBit() {
+    Random rand = random();
+    final int outer = TEST_NIGHTLY ? 300 : 60;
+    for (int iter = 0; iter < outer; iter++) {
+      final int n = TestUtil.nextInt(rand, 1, 40_000);
+      final SparseFixedBitSet set = new SparseFixedBitSet(n);
+      final int numSets = TestUtil.nextInt(rand, 0, Math.min(n, 8_000));
+      for (int s = 0; s < numSets; s++) {
+        set.set(rand.nextInt(n));
+      }
+      for (int t = 0; t < 300; t++) {
+        final int from = rand.nextInt(n);
+        assertEquals(bruteNextUnset(set, from, n), set.nextClearBit(from));
+        final int ub = from + 1 + rand.nextInt(n - from);
+        assertEquals(bruteNextUnset(set, from, ub), set.nextClearBit(from, ub));
+      }
+    }
   }
 }
