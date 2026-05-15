@@ -379,6 +379,7 @@ Optimizations
 * GITHUB#16061, GITHUB#16070: Improve cost estimation in SortedSetDocValuesRangeQuery when using DocValuesSkipper
   and the field is dense and is the primary sort of the index to reduce the number of doc values visited. (Ignacio Vera)
 
+* GITHUB#16048: Defer Sorter.DocMap packing until after flush (Tim Brooks)
 
 Bug Fixes
 ---------------------
