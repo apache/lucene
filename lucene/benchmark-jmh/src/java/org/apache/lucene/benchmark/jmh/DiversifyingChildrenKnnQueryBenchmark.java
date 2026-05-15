@@ -57,8 +57,8 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
 /**
- * Benchmarks end-to-end latency of {@link DiversifyingChildrenFloatKnnVectorQuery} across
- * different parent-child corpus shapes.
+ * Benchmarks end-to-end latency of {@link DiversifyingChildrenFloatKnnVectorQuery} across different
+ * parent-child corpus shapes.
  *
  * <p>Each parent document owns {@code childrenPerParent} child documents, each carrying a random
  * float vector. The query asks for the top-{@code k} children whose parents are all distinct
@@ -128,7 +128,9 @@ public class DiversifyingChildrenKnnQueryBenchmark {
           Document childDoc = new Document();
           childDoc.add(
               new KnnFloatVectorField(
-                  FIELD, randomUnitVector(dim, randomForDoc), VectorSimilarityFunction.DOT_PRODUCT));
+                  FIELD,
+                  randomUnitVector(dim, randomForDoc),
+                  VectorSimilarityFunction.DOT_PRODUCT));
           block.add(childDoc);
         }
         Document parentDoc = new Document();
