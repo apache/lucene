@@ -457,6 +457,8 @@ Other
 
 * GITHUB#15960: Move parent field from DWPT to IndexingChain. (Tim Brooks)
 
+* GITHUB#16073: Simplify SortedDocIDMerger.next(). (Tim Brooks)
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes
