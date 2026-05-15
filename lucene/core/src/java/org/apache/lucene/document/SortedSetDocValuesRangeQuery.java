@@ -121,7 +121,7 @@ final class SortedSetDocValuesRangeQuery extends Query {
         DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
         SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
         final SortedDocValues singleton = DocValues.unwrapSingleton(values);
-        SortField primarySortField = null;
+        final SortField primarySortField;
         if (singleton != null
             && skipper != null
             && (primarySortField = densePrimarySort(context.reader(), skipper)) != null) {
