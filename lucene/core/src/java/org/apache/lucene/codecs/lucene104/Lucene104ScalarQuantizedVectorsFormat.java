@@ -128,16 +128,16 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
       new Lucene104ScalarQuantizedVectorScorer(FlatVectorScorerUtil.getLucene99FlatVectorsScorer());
 
   private final ScalarEncoding encoding;
-  private final boolean rotationEnabled;
+  private boolean rotationEnabled = true;
 
   /** Creates a new instance with UNSIGNED_BYTE encoding and rotation disabled. */
   public Lucene104ScalarQuantizedVectorsFormat() {
-    this(ScalarEncoding.UNSIGNED_BYTE, false);
+    this(ScalarEncoding.UNSIGNED_BYTE, true);
   }
 
   /** Creates a new instance with the chosen quantization encoding and rotation disabled. */
   public Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding encoding) {
-    this(encoding, false);
+    this(encoding, true);
   }
 
   /** Creates a new instance with the chosen quantization encoding and rotation setting. */
