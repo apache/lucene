@@ -507,7 +507,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               fieldInfo.getVectorSimilarityFunction(), vectorValues);
       return CloseableRandomVectorScorerSupplier.create(supplier, vectorValues.size(), () -> {});
     }
-    FloatVectorValues floatVectorValues = getFloatVectorValues(fieldInfo.name);
+    FloatVectorValues floatVectorValues = rawVectorsReader.getFloatVectorValues(fieldInfo.name);
     OptimizedScalarQuantizer quantizer =
         new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
     String tempScoreQuantizedVectorName = null;
