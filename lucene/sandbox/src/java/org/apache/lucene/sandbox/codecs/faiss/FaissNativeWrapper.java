@@ -197,19 +197,6 @@ final class FaissNativeWrapper {
     }
   }
 
-  private final MethodHandle faiss_Index_metric_type$MH =
-      getHandle("faiss_Index_metric_type", FunctionDescriptor.of(JAVA_INT, ADDRESS));
-
-  int faiss_Index_metric_type(MemorySegment indexPointer) {
-    try {
-      return (int) faiss_Index_metric_type$MH.invokeExact(indexPointer);
-    } catch (RuntimeException | Error e) {
-      throw e;
-    } catch (Throwable t) {
-      throw new AssertionError(t);
-    }
-  }
-
   private final MethodHandle faiss_Index_d$MH =
       getHandle("faiss_Index_d", FunctionDescriptor.of(JAVA_INT, ADDRESS));
 

@@ -209,6 +209,9 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
         docsOffset += perDocByteSize;
       }
 
+      // NOTE: Faiss does not have a native cosine metric, so we L2-normalize vectors and use
+      // METRIC_INNER_PRODUCT. This adds overhead at indexing and query time. If vectors are
+      // already normalized and raw vector retrieval is not needed, DOT_PRODUCT is preferred.
       if (function == COSINE) {
         wrapper.faiss_fvec_renorm_L2(dimension, size, docs);
       }
@@ -322,6 +325,7 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
 
         // Allocate queries in native memory
         MemorySegment queries = temp.allocateFrom(JAVA_FLOAT, query);
+        // See indexing-time comment about COSINE overhead.
         if (function == COSINE) {
           wrapper.faiss_fvec_renorm_L2(dimension, 1, queries);
         }
