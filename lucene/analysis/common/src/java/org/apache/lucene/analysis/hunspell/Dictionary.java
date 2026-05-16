@@ -34,7 +34,19 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.ParseException;
-import java.util.*;
+import java.util.AbstractList;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 import org.apache.lucene.analysis.hunspell.SortingStrategy.EntryAccumulator;
 import org.apache.lucene.analysis.hunspell.SortingStrategy.EntrySupplier;
@@ -981,10 +993,10 @@ public class Dictionary {
     while (end >= 0 && end < line.length()) {
       if (line.charAt(end) == '\t'
           || end > 0
-              && end + 3 < line.length()
-              && Character.isLetter(line.charAt(end + 1))
-              && Character.isLetter(line.charAt(end + 2))
-              && line.charAt(end + 3) == ':') {
+          && end + 3 < line.length()
+          && Character.isLetter(line.charAt(end + 1))
+          && Character.isLetter(line.charAt(end + 2))
+          && line.charAt(end + 3) == ':') {
         break;
       }
       end = indexOfSpaceOrTab(line, end + 1);
@@ -1610,7 +1622,7 @@ public class Dictionary {
     final String[] starting, ending, middle;
 
     Breaks(Collection<String> starting, Collection<String> ending, Collection<String> middle) {
-      this.starting = starting.toArray(new String[0]);
+      this.starting = starting.toArray(String[]::new);
       this.ending = ending.toArray(String[]::new);
       this.middle = middle.toArray(String[]::new);
     }
