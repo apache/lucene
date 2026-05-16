@@ -993,10 +993,10 @@ public class Dictionary {
     while (end >= 0 && end < line.length()) {
       if (line.charAt(end) == '\t'
           || end > 0
-          && end + 3 < line.length()
-          && Character.isLetter(line.charAt(end + 1))
-          && Character.isLetter(line.charAt(end + 2))
-          && line.charAt(end + 3) == ':') {
+              && end + 3 < line.length()
+              && Character.isLetter(line.charAt(end + 1))
+              && Character.isLetter(line.charAt(end + 2))
+              && line.charAt(end + 3) == ':') {
         break;
       }
       end = indexOfSpaceOrTab(line, end + 1);
@@ -1622,7 +1622,7 @@ public class Dictionary {
     final String[] starting, ending, middle;
 
     Breaks(Collection<String> starting, Collection<String> ending, Collection<String> middle) {
-      this.starting = starting.toArray(String[]::new);
+      this.starting = starting.toArray(new String[starting.size()]);
       this.ending = ending.toArray(String[]::new);
       this.middle = middle.toArray(String[]::new);
     }
