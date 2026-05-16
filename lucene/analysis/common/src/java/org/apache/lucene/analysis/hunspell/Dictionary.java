@@ -34,19 +34,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.ParseException;
-import java.util.AbstractList;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
 import java.util.stream.Collectors;
 import org.apache.lucene.analysis.hunspell.SortingStrategy.EntryAccumulator;
 import org.apache.lucene.analysis.hunspell.SortingStrategy.EntrySupplier;
@@ -1622,7 +1610,7 @@ public class Dictionary {
     final String[] starting, ending, middle;
 
     Breaks(Collection<String> starting, Collection<String> ending, Collection<String> middle) {
-      this.starting = starting.toArray(String[]::new);
+      this.starting = starting.toArray(new String[0]);
       this.ending = ending.toArray(String[]::new);
       this.middle = middle.toArray(String[]::new);
     }
