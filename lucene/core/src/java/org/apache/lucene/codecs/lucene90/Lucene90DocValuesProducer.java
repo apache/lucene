@@ -403,7 +403,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       int toDoc,
       long minValue,
       long maxValue,
-      org.apache.lucene.util.FixedBitSet bitSet,
+      FixedBitSet bitSet,
       int offset) {
     DOC_VALUES_RANGE_SUPPORT.rangeIntoBitSet(
         values, fromDoc, toDoc, minValue, maxValue, bitSet, offset);
@@ -635,7 +635,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
                   int toDoc,
                   long minValue,
                   long maxValue,
-                  org.apache.lucene.util.FixedBitSet bitSet,
+                  FixedBitSet bitSet,
                   int offset) {
                 // Bulk range evaluation via DocValuesRangeSupport
                 Lucene90DocValuesProducer.rangeIntoBitSet(
@@ -657,7 +657,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
                   int toDoc,
                   long minValue,
                   long maxValue,
-                  org.apache.lucene.util.FixedBitSet bitSet,
+                  FixedBitSet bitSet,
                   int offset) {
                 // Per-doc evaluation for gcd/delta encoded fields
                 for (int d = fromDoc; d < toDoc; d++) {

@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import org.apache.lucene.codecs.lucene104.Lucene104Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -30,14 +31,13 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Tests correctness of {@link BatchDocValuesRangeIterator} and its {@code intoBitSet()} path,
  * including YES, YES_IF_PRESENT, and MAYBE block states.
  */
-public class TestSkipBlockRangeIteratorIntoBitSet extends LuceneTestCase {
+public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTests {
 
   // Use enough docs to span at least 4 skip blocks (default skip block size = 4096 docs).
   private static final int DOC_COUNT = 4096 * 4;
@@ -295,9 +295,10 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends LuceneTestCase {
       for (int i = 0; i < numDocs; i++) {
         Document doc = new Document();
         if (i % 2 == 0) {
-          long val = i % 100;
+          // All values within [20, 40] so blocks are YES_IF_PRESENT (not MAYBE)
+          long val = 20 + (i % 21);
           doc.add(NumericDocValuesField.indexedField("sparse", val));
-          if (val >= 20 && val <= 40) expectedDocs.add(i);
+          expectedDocs.add(i);
         }
         w.addDocument(doc);
       }
@@ -327,22 +328,22 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends LuceneTestCase {
     }
   }
 
-  /** Tests advance() returns the same docs as a linear scan. */
-  public void testAdvanceCorrectness() throws Exception {
-    doTestAdvanceCorrectness(reader);
+  /** Tests nextDoc() and advance() return the same docs as a linear scan. */
+  public void testIterationCorrectness() throws Exception {
+    doTestIterationCorrectness(reader);
   }
 
   @Nightly
-  public void testAdvanceCorrectnessHuge() throws Exception {
+  public void testIterationCorrectnessHuge() throws Exception {
     try (Directory hugeDir = newDirectory()) {
       buildIndex(hugeDir, 4096 * 100);
       try (DirectoryReader r = DirectoryReader.open(hugeDir)) {
-        doTestAdvanceCorrectness(r);
+        doTestIterationCorrectness(r);
       }
     }
   }
 
-  private void doTestAdvanceCorrectness(DirectoryReader r) throws Exception {
+  private void doTestIterationCorrectness(DirectoryReader r) throws Exception {
     LeafReaderContext ctx = r.leaves().get(0);
 
     List<Integer> expected = new ArrayList<>();
@@ -352,7 +353,9 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends LuceneTestCase {
         expected.add(d);
       }
     }
+    assertTrue("Test requires some matching docs", expected.size() > 0);
 
+    // Test 1: nextDoc() returns all matching docs in order
     DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper("age");
     NumericDocValues dv = ctx.reader().getNumericDocValues("age");
     assertNotNull(skipper);
@@ -362,8 +365,51 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends LuceneTestCase {
     for (int d = iter.nextDoc(); d != DocIdSetIterator.NO_MORE_DOCS; d = iter.nextDoc()) {
       actual.add(d);
     }
+    assertEquals("nextDoc() must return same docs as expected", expected, actual);
 
-    assertEquals("advance() must return same docs as expected", expected, actual);
+    // Test 2: advance() forward through the iterator with random skips.
+    // Uses a single iterator instance and advances forward multiple times,
+    // verifying each advance lands on the correct next matching doc.
+    skipper = ctx.reader().getDocValuesSkipper("age");
+    dv = ctx.reader().getNumericDocValues("age");
+    iter = new BatchDocValuesRangeIterator(dv, skipper, 20, 40);
+    Random rng = random();
+    int idx = 0;
+    while (idx < expected.size()) {
+      int target = expected.get(idx);
+      int doc = iter.advance(target);
+      assertEquals("advance(" + target + ") must return the target", target, doc);
+      // Skip forward by a random amount (1-5 matching docs)
+      idx += rng.nextInt(5) + 1;
+    }
+
+    // Test 3: advance() to a non-matching doc lands on the next match.
+    // Picks random targets between consecutive matches and verifies
+    // advance returns the next matching doc after the target.
+    skipper = ctx.reader().getDocValuesSkipper("age");
+    dv = ctx.reader().getNumericDocValues("age");
+    iter = new BatchDocValuesRangeIterator(dv, skipper, 20, 40);
+    int prevDoc = -1;
+    for (int i = 0; i < expected.size() && i < 20; i++) {
+      int matchDoc = expected.get(i);
+      if (matchDoc > prevDoc + 1) {
+        // Target a gap between previous position and this match
+        int target = prevDoc + 1 + rng.nextInt(matchDoc - prevDoc - 1);
+        int doc = iter.advance(target);
+        assertEquals(
+            "advance(" + target + ") must skip to next match at " + matchDoc, matchDoc, doc);
+        prevDoc = doc;
+      } else {
+        prevDoc = matchDoc;
+      }
+    }
+
+    // Test 4: advance() past all docs returns NO_MORE_DOCS
+    skipper = ctx.reader().getDocValuesSkipper("age");
+    dv = ctx.reader().getNumericDocValues("age");
+    iter = new BatchDocValuesRangeIterator(dv, skipper, 20, 40);
+    int doc = iter.advance(ctx.reader().maxDoc());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, doc);
   }
 
   /** Helper: builds an index with {@code numDocs} docs, values = i % 100. */
@@ -377,5 +423,125 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends LuceneTestCase {
       }
       w.forceMerge(1);
     }
+  }
+
+  /**
+   * Tests BatchDocValuesRangeIterator using the fake NumericDocValues and DocValuesSkipper from
+   * BaseDocValuesSkipperTests, which exercises all block types (YES, NO, MAYBE, YES_IF_PRESENT)
+   * across both dense and sparse regions.
+   */
+  public void testAllBlockTypesWithFakeSkipper() throws Exception {
+    long queryMin = 10;
+    long queryMax = 20;
+
+    // Collect expected matching docs by brute-force scan (up to 2048, the skipper's range)
+    List<Integer> expected = new ArrayList<>();
+    NumericDocValues refValues = docValues(queryMin, queryMax);
+    for (int d = refValues.nextDoc();
+        d != DocIdSetIterator.NO_MORE_DOCS && d < 2048;
+        d = refValues.nextDoc()) {
+      long v = refValues.longValue();
+      if (v >= queryMin && v <= queryMax) {
+        expected.add(d);
+      }
+    }
+    assertTrue("Should have matching docs", expected.size() > 0);
+
+    // Test nextDoc() through all block types
+    NumericDocValues values = wrapWithAdvanceExact(docValues(queryMin, queryMax));
+    DocValuesSkipper skipper = docValuesSkipper(queryMin, queryMax, true);
+    BatchDocValuesRangeIterator iter =
+        new BatchDocValuesRangeIterator(values, skipper, queryMin, queryMax);
+    List<Integer> actual = new ArrayList<>();
+    for (int d = iter.nextDoc(); d != DocIdSetIterator.NO_MORE_DOCS; d = iter.nextDoc()) {
+      actual.add(d);
+    }
+    assertEquals("Must return same docs across all block types", expected, actual);
+
+    // Test advance() across block types:
+    // - advance into YES block (docs 0-127)
+    // - advance into NO block, should skip to MAYBE (docs 512+)
+    // - advance into MAYBE block
+    // - advance into YES_IF_PRESENT block (docs 1024+, sparse)
+    // - advance past end
+    values = wrapWithAdvanceExact(docValues(queryMin, queryMax));
+    skipper = docValuesSkipper(queryMin, queryMax, true);
+    iter = new BatchDocValuesRangeIterator(values, skipper, queryMin, queryMax);
+
+    // advance into YES block — should land exactly on target
+    assertEquals(50, iter.advance(50));
+    // advance within same YES block
+    assertEquals(100, iter.advance(100));
+    // advance into NO block (128-511) — should skip to first MAYBE match (doc 514)
+    int doc = iter.advance(200);
+    assertTrue("advance(200) should skip NO blocks, got " + doc, doc >= 512);
+    assertTrue("advance(200) result must be in expected", expected.contains(doc));
+    // advance into sparse region (YES_IF_PRESENT, docs 1024+)
+    doc = iter.advance(1024);
+    assertTrue("advance(1024) should find a doc >= 1024, got " + doc, doc >= 1024);
+    assertTrue("advance(1024) result must be in expected", expected.contains(doc));
+    // advance past all docs
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iter.advance(2048));
+
+    // Test intoBitSet() across all block types
+    values = wrapWithAdvanceExact(docValues(queryMin, queryMax));
+    skipper = docValuesSkipper(queryMin, queryMax, true);
+    iter = new BatchDocValuesRangeIterator(values, skipper, queryMin, queryMax);
+    int firstDoc = iter.nextDoc();
+
+    FixedBitSet bitSet = new FixedBitSet(2048);
+    iter.intoBitSet(2048, bitSet, 0);
+
+    // All expected docs after firstDoc should be set
+    for (int expectedDoc : expected) {
+      if (expectedDoc > firstDoc) {
+        assertTrue("Doc " + expectedDoc + " should be set in bitset", bitSet.get(expectedDoc));
+      }
+    }
+    // No unexpected docs should be set
+    for (int d = bitSet.nextSetBit(0);
+        d != DocIdSetIterator.NO_MORE_DOCS;
+        d = d + 1 < bitSet.length() ? bitSet.nextSetBit(d + 1) : DocIdSetIterator.NO_MORE_DOCS) {
+      assertTrue("Doc " + d + " set in bitset but not in expected", expected.contains(d));
+    }
+  }
+
+  /**
+   * Wraps a fake NumericDocValues (which only supports advance/nextDoc) to also support
+   * advanceExact by delegating to advance().
+   */
+  private static NumericDocValues wrapWithAdvanceExact(NumericDocValues delegate) {
+    return new NumericDocValues() {
+      @Override
+      public int docID() {
+        return delegate.docID();
+      }
+
+      @Override
+      public int nextDoc() throws java.io.IOException {
+        return delegate.nextDoc();
+      }
+
+      @Override
+      public int advance(int target) throws java.io.IOException {
+        return delegate.advance(target);
+      }
+
+      @Override
+      public boolean advanceExact(int target) throws java.io.IOException {
+        int doc = delegate.advance(target);
+        return doc == target;
+      }
+
+      @Override
+      public long longValue() throws java.io.IOException {
+        return delegate.longValue();
+      }
+
+      @Override
+      public long cost() {
+        return delegate.cost();
+      }
+    };
   }
 }

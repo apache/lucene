@@ -58,7 +58,6 @@ public final class BatchDocValuesRangeIterator extends DocIdSetIterator {
 
   @Override
   public int advance(int target) throws IOException {
-    // Use the block iterator to skip NO blocks
     int blockDoc = blockIterator.docID();
     if (blockDoc < target) {
       blockDoc = blockIterator.advance(target);
@@ -72,39 +71,12 @@ public final class BatchDocValuesRangeIterator extends DocIdSetIterator {
       return doc = blockDoc;
     }
 
-    // For YES_IF_PRESENT blocks, all values are in range so we only need to check which docs have
-    // the value.
-    if (blockIterator.getMatch() == SkipBlockRangeIterator.Match.YES_IF_PRESENT) {
-      int docToCheck = Math.max(target, blockDoc);
-      int currentBlockEnd = blockIterator.blockEnd();
-      while (true) {
-        if (values.advanceExact(docToCheck)) {
-          return doc = docToCheck;
-        }
-        docToCheck++;
-        if (docToCheck >= currentBlockEnd) {
-          blockDoc = blockIterator.advance(docToCheck);
-          if (blockDoc == NO_MORE_DOCS) {
-            return doc = NO_MORE_DOCS;
-          }
-          docToCheck = blockDoc;
-          SkipBlockRangeIterator.Match nextMatch = blockIterator.getMatch();
-          if (nextMatch == SkipBlockRangeIterator.Match.YES) {
-            return doc = docToCheck;
-          }
-          if (nextMatch != SkipBlockRangeIterator.Match.YES_IF_PRESENT) {
-            // This is a MAYBE block, break out of the loop.
-            break;
-          }
-          currentBlockEnd = blockIterator.blockEnd();
-        }
-      }
-      // If we reached here, it means that we are now pointing to a MAYBE block
-    }
-
-    // For MAYBE blocks, scan forward to find a matching doc
+    // Scan forward through YES_IF_PRESENT and MAYBE blocks to find a matching doc.
+    // - YES_IF_PRESENT: all values are in range, but some docs may not have a value.
+    //   We only need to check presence via advanceExact().
+    // - MAYBE: docs may or may not have a value, and values may or may not be in range.
+    //   We need both a presence check (advanceExact) and a range check (longValue).
     int docToCheck = Math.max(target, blockDoc);
-    // Use the actual block boundary (not docIDRunEnd which returns doc+1 for MAYBE blocks)
     int currentBlockEnd = blockIterator.blockEnd();
     while (docToCheck != NO_MORE_DOCS) {
       if (values.advanceExact(docToCheck)) {
@@ -112,6 +84,7 @@ public final class BatchDocValuesRangeIterator extends DocIdSetIterator {
         if (blockIterator.getMatch() == SkipBlockRangeIterator.Match.YES_IF_PRESENT) {
           return doc = docToCheck;
         }
+        // This is a MAYBE block. We need to verify if the value is in range
         long v = values.longValue();
         if (v >= minValue && v <= maxValue) {
           return doc = docToCheck;
