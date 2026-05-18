@@ -21,6 +21,7 @@ import java.util.List;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.LRUQueryCache;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
@@ -140,5 +141,24 @@ public class TestRangeFilteredBulkScorer extends LuceneTestCase {
     for (int i = 0; i < expected.size(); i++) {
       assertArrayEquals(expected.get(i), actual.get(i));
     }
+  }
+
+  public void testIntoCacheAndCount() throws Exception {
+    int rangeMin = 20;
+    int rangeMaxExclusive = 80;
+    BulkScorer bs = newBulkScorer(rangeMin, rangeMaxExclusive);
+    int leafMaxDoc = 1000;
+
+    LRUQueryCache.CacheAndCount cached = bs.intoCacheAndCount(leafMaxDoc);
+    assertEquals(rangeMaxExclusive - rangeMin, cached.count());
+
+    DocIdSetIterator expected = DocIdSetIterator.range(rangeMin, rangeMaxExclusive);
+    DocIdSetIterator actual = cached.iterator();
+    for (int doc = expected.nextDoc();
+        doc != DocIdSetIterator.NO_MORE_DOCS;
+        doc = expected.nextDoc()) {
+      assertEquals(doc, actual.nextDoc());
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, actual.nextDoc());
   }
 }

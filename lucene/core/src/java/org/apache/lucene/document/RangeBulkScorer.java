@@ -19,10 +19,13 @@ package org.apache.lucene.document;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.search.BulkScorer;
+import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.LRUQueryCache;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * A {@link BulkScorer} that restricts collection to the half-open doc ID interval {@code [minDocID,
@@ -94,5 +97,33 @@ final class RangeBulkScorer extends BulkScorer {
   @Override
   public long cost() {
     return maxDocID - minDocID;
+  }
+
+  @Override
+  public LRUQueryCache.CacheAndCount intoCacheAndCount(int maxDoc) {
+    DocIdSet docIdSet = new RangeDocIdSet(minDocID, maxDocID);
+    return new LRUQueryCache.CacheAndCount(docIdSet, maxDocID - minDocID);
+  }
+
+  private static class RangeDocIdSet extends DocIdSet {
+    private static final long BASE_RAM_BYTES_USED =
+        RamUsageEstimator.shallowSizeOfInstance(RangeDocIdSet.class);
+    private final int minDocID;
+    private final int maxDocID;
+
+    RangeDocIdSet(int minDocID, int maxDocID) {
+      this.minDocID = minDocID;
+      this.maxDocID = maxDocID;
+    }
+
+    @Override
+    public DocIdSetIterator iterator() {
+      return DocIdSetIterator.range(minDocID, maxDocID);
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return BASE_RAM_BYTES_USED;
+    }
   }
 }

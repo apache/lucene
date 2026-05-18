@@ -572,13 +572,7 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
    * and a {@link BitDocIdSet} over a {@link FixedBitSet} otherwise.
    */
   protected CacheAndCount cacheImpl(BulkScorer scorer, int maxDoc) throws IOException {
-    if (scorer.cost() * 100 >= maxDoc) {
-      // FixedBitSet is faster for dense sets and will enable the random-access
-      // optimization in ConjunctionDISI
-      return cacheIntoBitSet(scorer, maxDoc);
-    } else {
-      return cacheIntoRoaringDocIdSet(scorer, maxDoc);
-    }
+    return scorer.intoCacheAndCount(maxDoc);
   }
 
   /**
@@ -599,88 +593,6 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     final CacheAndCount cached = cacheImpl(scorerSupplier.bulkScorer(), context.reader().maxDoc());
     putIfAbsent(weight.getQuery(), cached, cacheKey);
     return cached;
-  }
-
-  private static CacheAndCount cacheIntoBitSet(BulkScorer scorer, int maxDoc) throws IOException {
-    final FixedBitSet bitSet = new FixedBitSet(maxDoc);
-    int[] count = new int[1];
-    scorer.score(
-        new LeafCollector() {
-
-          private int[] buffer;
-
-          @Override
-          public void setScorer(Scorable scorer) {}
-
-          @Override
-          public void collect(int doc) {
-            count[0]++;
-            bitSet.set(doc);
-          }
-
-          @Override
-          public void collectRange(int min, int max) {
-            count[0] += max - min;
-            bitSet.set(min, max);
-          }
-
-          @Override
-          public void collect(DocIdStream stream) {
-            if (buffer == null) {
-              buffer = new int[128];
-            }
-            for (int c = stream.intoArray(buffer); c != 0; c = stream.intoArray(buffer)) {
-              for (int i = 0; i < c; ++i) {
-                bitSet.set(buffer[i]);
-              }
-              count[0] += c;
-            }
-          }
-        },
-        null,
-        0,
-        DocIdSetIterator.NO_MORE_DOCS);
-    return new CacheAndCount(new BitDocIdSet(bitSet, count[0]), count[0]);
-  }
-
-  private static CacheAndCount cacheIntoRoaringDocIdSet(BulkScorer scorer, int maxDoc)
-      throws IOException {
-    RoaringDocIdSet.Builder builder = new RoaringDocIdSet.Builder(maxDoc);
-    scorer.score(
-        new LeafCollector() {
-
-          private int[] buffer = null;
-
-          @Override
-          public void setScorer(Scorable scorer) {}
-
-          @Override
-          public void collect(int doc) {
-            builder.add(doc);
-          }
-
-          @Override
-          public void collectRange(int min, int max) {
-            builder.add(min, max);
-          }
-
-          @Override
-          public void collect(DocIdStream stream) {
-            if (buffer == null) {
-              buffer = new int[128];
-            }
-            for (int c = stream.intoArray(buffer); c != 0; c = stream.intoArray(buffer)) {
-              for (int i = 0; i < c; ++i) {
-                builder.add(buffer[i]);
-              }
-            }
-          }
-        },
-        null,
-        0,
-        DocIdSetIterator.NO_MORE_DOCS);
-    RoaringDocIdSet cache = builder.build();
-    return new CacheAndCount(cache, cache.cardinality());
   }
 
   /**

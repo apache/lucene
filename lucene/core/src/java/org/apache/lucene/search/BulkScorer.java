@@ -17,7 +17,10 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.util.BitDocIdSet;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.RoaringDocIdSet;
 
 /**
  * This class is used to score a range of documents at once, and is returned by {@link
@@ -78,4 +81,113 @@ public abstract class BulkScorer {
 
   /** Same as {@link DocIdSetIterator#cost()} for bulk scorers. */
   public abstract long cost();
+
+  /**
+   * Materializes all matching document IDs in {@code [0, maxDoc)} into a {@link DocIdSet} together
+   * with an exact match count, for use by {@link LRUQueryCache} (see {@link
+   * LRUQueryCache#cacheImpl}).
+   *
+   * <p>Implementations score from document 0 up to {@link DocIdSetIterator#NO_MORE_DOCS} with no
+   * {@code acceptDocs} filter.
+   *
+   * <p>The default representation is chosen from {@link #cost()} versus {@code maxDoc}: when {@code
+   * cost * 100 >= maxDoc} (estimated density at least 1%), a dense {@link BitDocIdSet} is used;
+   * otherwise a sparse {@link RoaringDocIdSet} is built.
+   *
+   * @param maxDoc one past the maximum document ID in the index (e.g. {@link
+   *     org.apache.lucene.index.LeafReader#maxDoc()})
+   * @return the cached doc-id set and its cardinality
+   * @throws IOException if scoring fails
+   * @see LRUQueryCache.CacheAndCount
+   */
+  public LRUQueryCache.CacheAndCount intoCacheAndCount(int maxDoc) throws IOException {
+    if (cost() * 100 >= maxDoc) {
+      // FixedBitSet is faster for dense sets and will enable the random-access
+      // optimization in ConjunctionDISI
+      return cacheIntoBitSet(maxDoc);
+    } else {
+      return cacheIntoRoaringDocIdSet(maxDoc);
+    }
+  }
+
+  private LRUQueryCache.CacheAndCount cacheIntoBitSet(int maxDoc) throws IOException {
+    final FixedBitSet bitSet = new FixedBitSet(maxDoc);
+    int[] count = new int[1];
+    score(
+        new LeafCollector() {
+
+          private int[] buffer;
+
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            count[0]++;
+            bitSet.set(doc);
+          }
+
+          @Override
+          public void collectRange(int min, int max) {
+            count[0] += max - min;
+            bitSet.set(min, max);
+          }
+
+          @Override
+          public void collect(DocIdStream stream) {
+            if (buffer == null) {
+              buffer = new int[128];
+            }
+            for (int c = stream.intoArray(buffer); c != 0; c = stream.intoArray(buffer)) {
+              for (int i = 0; i < c; ++i) {
+                bitSet.set(buffer[i]);
+              }
+              count[0] += c;
+            }
+          }
+        },
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
+    return new LRUQueryCache.CacheAndCount(new BitDocIdSet(bitSet, count[0]), count[0]);
+  }
+
+  private LRUQueryCache.CacheAndCount cacheIntoRoaringDocIdSet(int maxDoc) throws IOException {
+    RoaringDocIdSet.Builder builder = new RoaringDocIdSet.Builder(maxDoc);
+    score(
+        new LeafCollector() {
+
+          private int[] buffer = null;
+
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            builder.add(doc);
+          }
+
+          @Override
+          public void collectRange(int min, int max) {
+            builder.add(min, max);
+          }
+
+          @Override
+          public void collect(DocIdStream stream) {
+            if (buffer == null) {
+              buffer = new int[128];
+            }
+            for (int c = stream.intoArray(buffer); c != 0; c = stream.intoArray(buffer)) {
+              for (int i = 0; i < c; ++i) {
+                builder.add(buffer[i]);
+              }
+            }
+          }
+        },
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
+    RoaringDocIdSet cache = builder.build();
+    return new LRUQueryCache.CacheAndCount(cache, cache.cardinality());
+  }
 }
