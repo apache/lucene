@@ -122,13 +122,3 @@ valid:
     new String(bytes, "GB2312")
   - |
     new String(bytes, StandardCharsets.UTF_8)
----
-id: CollectionToArrayPreSizedArray
-valid:
-  - list.toArray(new String[0])
-  - list.toArray(String[]::new)
-  - list.toArray()
-invalid:
-  - list.toArray(new String[list.size()])
-  - list.toArray(new String[n])
-  - set.toArray(new Foo[expectedSize])

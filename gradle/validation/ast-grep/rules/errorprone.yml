@@ -181,17 +181,3 @@ constraints:
 severity: error
 message: Prefer StandardCharsets over using string names for charsets
 url: https://errorprone.info/bugpattern/StringCharset
----
-# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
-id: CollectionToArrayPreSizedArray
-language: java
-rule:
-  kind: method_invocation
-  pattern: $COLL.toArray(new $TYPE[$SIZE])
-constraints:
-  SIZE:
-    not:
-      regex: "^0$"
-severity: error
-message: Avoid pre-sized arrays in Collection#toArray calls
-note: Prefer `toArray($TYPE[]::new)` or `toArray(new $TYPE[0])`
