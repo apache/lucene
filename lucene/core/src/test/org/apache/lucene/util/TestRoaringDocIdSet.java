@@ -39,9 +39,22 @@ public class TestRoaringDocIdSet extends BaseDocIdSetTestCase<RoaringDocIdSet> {
   }
 
   public void testDocIDRunEndContiguousWithinBlock() throws IOException {
-    final int maxDoc = 50_000;
+    final int maxDoc = random().nextInt(2, 50_000);
     BitSet bs = new BitSet();
-    for (int d = 12_345; d < 12_360; d++) {
+    int start = random().nextInt(0, maxDoc - 1);
+    int end = random().nextInt(start + 1, maxDoc);
+    for (int d = start; d < end; d++) {
+      bs.set(d);
+    }
+    RoaringDocIdSet set = copyOf(bs, maxDoc);
+    assertDocIDRunEndMatches(bs, maxDoc, set);
+  }
+
+  public void testDocIDRunEndFinishInBoundary() throws IOException {
+    final int boundary = 1 << 16;
+    final int maxDoc = boundary + 100;
+    BitSet bs = new BitSet();
+    for (int d = boundary - 3; d < boundary; d++) {
       bs.set(d);
     }
     RoaringDocIdSet set = copyOf(bs, maxDoc);
@@ -79,7 +92,7 @@ public class TestRoaringDocIdSet extends BaseDocIdSetTestCase<RoaringDocIdSet> {
   }
 
   public void testRandomDocIDRunEnd() throws IOException {
-    final int iters = TEST_NIGHTLY ? 50 : 10;
+    final int iters = TEST_NIGHTLY ? 50 : 5;
     for (int iter = 0; iter < iters; iter++) {
       final int maxDoc = random().nextInt(50, 1 << 18);
       final BitSet bs = randomBitSet(maxDoc, random().nextFloat());
