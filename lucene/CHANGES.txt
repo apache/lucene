@@ -231,6 +231,8 @@ Build
 Other
 ---------------------
 
+* GITHUB#16063: Remove redundant final modifiers. (Zhou Hui)
+
 * GITHUB#14801: Removed all security manager and java.security-related code, which is effectively dead
   in Java 24+. (Dawid Weiss)
 
@@ -376,6 +378,11 @@ Optimizations
 
 * GITHUB#16001: IndexSearcher.count() was calling query.rewrite twice, a regression since v9.10 (David Smiley)
 
+* GITHUB#16061, GITHUB#16070: Improve cost estimation in SortedSetDocValuesRangeQuery when using DocValuesSkipper
+  and the field is dense and is the primary sort of the index to reduce the number of doc values visited. (Ignacio Vera)
+
+* GITHUB#16048: Defer Sorter.DocMap packing until after flush (Tim Brooks)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
@@ -419,6 +426,10 @@ Bug Fixes
 * GITHUB#15899, GITHUB#15900: Improve TruncateTokenFilter to truncate on codepoints not
   chars and no longer produce half surrogates. There are new factory parameters available
   to configure legacy prefix chars and new codepoint behaviour.  (Uwe Schindler, Michael Sokolov)
+
+* GITHUB#15967: Fix IndexWriter's HNSW InfoStream progress during concurrent merges to show elapsed
+  time since merge start instead of duplicate incremental/total times. Add per-chunk completion
+  logging with sub-millisecond precision to aid merge concurrency debugging. (Prithvi S)
 
 Other
 ---------------------
