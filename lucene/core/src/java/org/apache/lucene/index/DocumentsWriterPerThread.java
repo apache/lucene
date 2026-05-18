@@ -481,7 +481,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
           "DWPT",
           "flush postings as segment " + flushState.segmentInfo.name + " numDocs=" + numDocsInRAM);
     }
-    final Sorter.DocMap sortMap;
+    final Sorter.PackableDocMap packableSortMap;
     try {
       DocIdSetIterator softDeletedDocs;
       if (indexWriterConfig.getSoftDeletesField() != null) {
@@ -489,7 +489,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
       } else {
         softDeletedDocs = null;
       }
-      sortMap = indexingChain.flush(flushState);
+      packableSortMap = indexingChain.flush(flushState);
       if (softDeletedDocs == null) {
         flushState.softDelCountOnFlush = 0;
       } else {
@@ -570,8 +570,10 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
               segmentDeletes,
               flushState.liveDocs,
               flushState.delCountOnFlush,
-              sortMap);
-      sealFlushedSegment(fs, sortMap, flushNotifications);
+              packableSortMap != null
+                  ? packableSortMap.pack()
+                  : null); // Use a packed version as the lifetime of FlushedSegment is long.
+      sealFlushedSegment(fs, packableSortMap, flushNotifications);
       if (infoStream.isEnabled("DWPT")) {
         infoStream.message(
             "DWPT",

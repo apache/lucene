@@ -237,7 +237,7 @@ final class IndexingChain implements Accountable {
     };
   }
 
-  private Sorter.DocMap maybeSortSegment(SegmentWriteState state) throws IOException {
+  private Sorter.PackableDocMap maybeSortSegment(SegmentWriteState state) throws IOException {
     Sort indexSort = state.segmentInfo.getIndexSort();
     if (indexSort == null) {
       return null;
@@ -283,15 +283,15 @@ final class IndexingChain implements Accountable {
     }
     Sorter sorter = new Sorter(indexSort);
     // returns null if the documents are already sorted
-    return sorter.sort(
+    return sorter.sortAndLeaveUnpacked(
         state.segmentInfo.maxDoc(), comparators.toArray(IndexSorter.DocComparator[]::new));
   }
 
-  Sorter.DocMap flush(SegmentWriteState state) throws IOException {
+  Sorter.PackableDocMap flush(SegmentWriteState state) throws IOException {
 
     // NOTE: caller (DocumentsWriterPerThread) handles
     // aborting on any exception from this method
-    Sorter.DocMap sortMap = maybeSortSegment(state);
+    Sorter.PackableDocMap sortMap = maybeSortSegment(state);
     int maxDoc = state.segmentInfo.maxDoc();
     long t0 = System.nanoTime();
     writeNorms(state, sortMap);
