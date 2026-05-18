@@ -1622,7 +1622,7 @@ public class Dictionary {
     final String[] starting, ending, middle;
 
     Breaks(Collection<String> starting, Collection<String> ending, Collection<String> middle) {
-      this.starting = starting.toArray(String[]::new);
+      this.starting = starting.toArray(new String[starting.size()]);
       this.ending = ending.toArray(String[]::new);
       this.middle = middle.toArray(String[]::new);
     }
