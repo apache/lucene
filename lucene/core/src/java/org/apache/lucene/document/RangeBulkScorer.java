@@ -51,6 +51,7 @@ final class RangeBulkScorer extends BulkScorer {
 
   @Override
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
+    collector.setScorer(scorer);
     DocIdSetIterator competitiveIterator = collector.competitiveIterator();
     if (competitiveIterator != null) {
       if (competitiveIterator.docID() > min) {
@@ -59,7 +60,6 @@ final class RangeBulkScorer extends BulkScorer {
         min = Math.min(min, max);
       }
     }
-    collector.setScorer(scorer);
     if (max <= minDocID) {
       iterator.advance(minDocID);
     } else if (min >= maxDocID) {
@@ -71,19 +71,19 @@ final class RangeBulkScorer extends BulkScorer {
       if (acceptDocs == null) {
         collector.collectRange(filteredMin, filteredMax);
       } else {
-        int segmentStart = -1;
+        int rangeStart = -1;
         for (int doc = filteredMin; doc < filteredMax; doc++) {
           if (acceptDocs.get(doc)) {
-            if (segmentStart < 0) {
-              segmentStart = doc;
+            if (rangeStart < 0) {
+              rangeStart = doc;
             }
-          } else if (segmentStart >= 0) {
-            collector.collectRange(segmentStart, doc);
-            segmentStart = -1;
+          } else if (rangeStart >= 0) {
+            collector.collectRange(rangeStart, doc);
+            rangeStart = -1;
           }
         }
-        if (segmentStart >= 0) {
-          collector.collectRange(segmentStart, filteredMax);
+        if (rangeStart >= 0) {
+          collector.collectRange(rangeStart, filteredMax);
         }
       }
       iterator.advance(filteredMax);
