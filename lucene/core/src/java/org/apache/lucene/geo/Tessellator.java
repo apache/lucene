@@ -1663,12 +1663,12 @@ public final class Tessellator {
     }
 
     /** get the x value */
-    public final double getX() {
+    public double getX() {
       return polyX[vrtxIdx];
     }
 
     /** get the y value */
-    public final double getY() {
+    public double getY() {
       return polyY[vrtxIdx];
     }
 

@@ -116,6 +116,54 @@ public class RoaringDocIdSet extends DocIdSet {
         currentBlock = block;
       }
 
+      appendDocInCurrentBlock(docId, block);
+      return this;
+    }
+
+    /**
+     * Add a contiguous half-open range {@code [min, max)} of doc ids. Doc ids must remain in
+     * non-decreasing order relative to prior {@link #add(int)} calls; {@code min} must be strictly
+     * greater than the last document added (if any). Equivalent to calling {@link #add(int)} for
+     * each {@code min <= doc < max}, but uses a more efficient implementation for dense ranges.
+     *
+     * @param min inclusive lower bound (must be {@code >= 0})
+     * @param max exclusive upper bound
+     * @throws IllegalArgumentException if {@code min > max}, if {@code min <= lastDocId}, or if
+     *     {@code max} exceeds {@link #Builder(int) maxDoc}
+     */
+    public Builder add(int min, int max) {
+      if (min > max) {
+        throw new IllegalArgumentException("min must be <= max, got min=" + min + " max=" + max);
+      }
+      if (min == max) {
+        return this;
+      }
+      if (min <= lastDocId) {
+        throw new IllegalArgumentException(
+            "Doc ids must be added in-order, got range starting at "
+                + min
+                + " which is <= lastDocID="
+                + lastDocId);
+      }
+      if (max > maxDoc) {
+        throw new IllegalArgumentException(
+            "max must be <= maxDoc (" + maxDoc + "), got max=" + max);
+      }
+      int doc = min;
+      while (doc < max) {
+        final int block = doc >>> 16;
+        final int blockEnd = Math.min(max, (block + 1) << 16);
+        if (block != currentBlock) {
+          flush();
+          currentBlock = block;
+        }
+        appendRangeInCurrentBlock(doc, blockEnd, block);
+        doc = blockEnd;
+      }
+      return this;
+    }
+
+    private void appendDocInCurrentBlock(int docId, int block) {
       if (currentBlockCardinality < MAX_ARRAY_LENGTH) {
         buffer[currentBlockCardinality] = (short) docId;
       } else {
@@ -127,12 +175,36 @@ public class RoaringDocIdSet extends DocIdSet {
             denseBuffer.set(doc & 0xFFFF);
           }
         }
-        denseBuffer.set(docId & 0xFFFF);
+        denseBuffer.set(docId - (block << 16));
       }
 
       lastDocId = docId;
       currentBlockCardinality += 1;
-      return this;
+    }
+
+    private void appendRangeInCurrentBlock(int fromDoc, int toDocExclusive, int block) {
+      assert (fromDoc >>> 16) == block;
+      assert (toDocExclusive >>> 16) == block || toDocExclusive == (block + 1) << 16;
+      assert fromDoc < toDocExclusive;
+      final int span = toDocExclusive - fromDoc;
+      if (currentBlockCardinality + span < MAX_ARRAY_LENGTH) {
+        for (int d = fromDoc; d < toDocExclusive; d++) {
+          buffer[currentBlockCardinality++] = (short) d;
+        }
+        lastDocId = toDocExclusive - 1;
+      } else {
+        int offset = block << 16;
+        if (denseBuffer == null) {
+          final int numBits = Math.min(1 << 16, maxDoc - offset);
+          denseBuffer = new FixedBitSet(numBits);
+          for (int i = 0; i < currentBlockCardinality; i++) {
+            denseBuffer.set(buffer[i] & 0xFFFF);
+          }
+        }
+        denseBuffer.set(fromDoc - offset, toDocExclusive - offset);
+        lastDocId = toDocExclusive - 1;
+        currentBlockCardinality += span;
+      }
     }
 
     /** Add the content of the provided {@link DocIdSetIterator}. */
@@ -225,6 +297,17 @@ public class RoaringDocIdSet extends DocIdSet {
           for (int i = from; i < to; ++i) {
             bitSet.set(docId(i) - offset);
           }
+        }
+
+        @Override
+        public int docIDRunEnd() {
+          int runEnd = doc + 1;
+          int j = i + 1;
+          while (j < docIDs.length && (docIDs[j] & 0xFFFF) == runEnd) {
+            runEnd++;
+            j++;
+          }
+          return runEnd;
         }
       };
     }
@@ -332,6 +415,29 @@ public class RoaringDocIdSet extends DocIdSet {
           break;
         }
       }
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      assert doc != NO_MORE_DOCS && sub != null;
+      int b = block;
+      long globalEnd = ((long) b << 16) + (long) sub.docIDRunEnd();
+      // Merge with the next block when the sub-run ends exactly on a 64K boundary and the next
+      // block's first doc is the immediate successor (local doc 0).
+      while (globalEnd == ((long) (b + 1) << 16) && globalEnd < (long) Integer.MAX_VALUE) {
+        int nb = b + 1;
+        if (nb >= docIdSets.length || docIdSets[nb] == null) {
+          break;
+        }
+        DocIdSetIterator nextIt = docIdSets[nb].iterator();
+        int first = nextIt.nextDoc();
+        if (first != 0) {
+          break;
+        }
+        b = nb;
+        globalEnd = ((long) b << 16) + (long) nextIt.docIDRunEnd();
+      }
+      return globalEnd >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) globalEnd;
     }
 
     @Override

@@ -58,6 +58,11 @@ public class TestDocValuesQueries extends LuceneTestCase {
     return TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(random().nextInt(4, 16)));
   }
 
+  private Codec getCodec(int skipIntervalSize) {
+    // small interval size to test with many intervals
+    return TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(skipIntervalSize));
+  }
+
   public void testDuelPointRangeSortedNumericRangeQuery() throws IOException {
     doTestDuelPointRangeNumericRangeQuery(true, 1, false);
   }
@@ -757,15 +762,14 @@ public class TestDocValuesQueries extends LuceneTestCase {
 
   public void testPrimarySortDenseSortedDocValuesExactMatch() throws IOException {
     Directory dir = newDirectory();
-    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec());
+    int skipIntervalSize = random().nextInt(4, 4096);
+    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(skipIntervalSize));
     config.setIndexSort(
         new Sort(new SortField("dv", SortField.Type.STRING, random().nextBoolean())));
     int numBlocks = random().nextInt(4, 16);
     int[] sizes = new int[numBlocks];
-    int totalDocs = 0;
     for (int i = 0; i < numBlocks; i++) {
       sizes[i] = random().nextInt(1, 250);
-      totalDocs += sizes[i];
     }
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir, config);
     for (int i = 0; i < numBlocks; i++) {
@@ -796,8 +800,7 @@ public class TestDocValuesQueries extends LuceneTestCase {
       Weight weight = rewritten.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
       ScorerSupplier supplier = weight.scorerSupplier(ctx);
       assertThat(supplier.cost(), greaterThanOrEqualTo((long) sizes[i]));
-      assertThat(
-          supplier.cost(), lessThanOrEqualTo(Math.min((long) sizes[i] + 2 * 4096, totalDocs)));
+      assertThat(supplier.cost(), lessThanOrEqualTo(sizes[i] + 2L * skipIntervalSize));
     }
     reader.close();
     dir.close();

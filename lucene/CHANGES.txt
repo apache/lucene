@@ -229,6 +229,8 @@ Build
 Other
 ---------------------
 
+* GITHUB#16063: Remove redundant final modifiers. (Zhou Hui)
+
 * GITHUB#14801: Removed all security manager and java.security-related code, which is effectively dead
   in Java 24+. (Dawid Weiss)
 
@@ -329,6 +331,8 @@ Improvements
 * GITHUB#15989: DocValuesRangeIterator always tries to use skipper-based block iteration
   as its approximation. (Alan Woodward)
 
+* GITHUB#16000: Clarify that Accountable#ramBytesUsed() reports JVM heap memory only. (Luca Cavanna)
+
 Optimizations
 ---------------------
 * GITHUB#15861: Optimise PhraseScorer by short circuiting non competitive documents in TOP_SCORES mode. (Prithvi S)
@@ -377,9 +381,19 @@ Optimizations
 * GITHUB#16050: Add SIMD-accelerated bulk range evaluation for dense numeric doc values via
   BatchDocValuesRangeIterator and DocValuesRangeSupport. (Sagar Upadhyaya)
 
-* GITHUB16061#: Improve cost estimation in SortedSetDocValuesRangeQuery when using DocValuesSkipper and the field
-  is dense and is the primary sort of the index and reduce the number of doc values visited. (Ignacio Vera)
+* GITHUB#16061, GITHUB#16070: Improve cost estimation in SortedSetDocValuesRangeQuery when using DocValuesSkipper
+  and the field is dense and is the primary sort of the index to reduce the number of doc values visited. (Ignacio Vera)
 
+* GITHUB#16048: Defer Sorter.DocMap packing until after flush (Tim Brooks)
+
+* GITHUB#16072: Added efficient implementations for BitSetIterator#docIDRunEnd. (Ignacio Vera)
+
+* GITHUB#16077: Added efficient implementations if the method #docIDRunEnd for the iterators used
+  by RoaringDocIdSet. (Ignacio Vera)
+
+* GITHUB#16080: Add a BulkScrer implementation spcialized for filters that match dense ranges. (Ignacio Vera)
+
+* GITHUB#16081: Implement LeafCollector#collectRange in the collectors used in LRUCache. (Ignacio Vera)
 
 Bug Fixes
 ---------------------
