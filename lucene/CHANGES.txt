@@ -386,6 +386,8 @@ Optimizations
 * GITHUB#16077: Added efficient implementations if the method #docIDRunEnd for the iterators used
   by RoaringDocIdSet. (Ignacio Vera)
 
+* GITHUB#16081: Implement LeafCollector#collectRange in the collectors used in LRUCache. (Ignacio Vera)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
