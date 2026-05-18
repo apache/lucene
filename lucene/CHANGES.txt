@@ -388,6 +388,8 @@ Optimizations
 * GITHUB#16077: Added efficient implementations if the method #docIDRunEnd for the iterators used
   by RoaringDocIdSet. (Ignacio Vera)
 
+* GITHUB#16080: Add a BulkScrer implementation spcialized for filters that match dense ranges. (Ignacio Vera)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent

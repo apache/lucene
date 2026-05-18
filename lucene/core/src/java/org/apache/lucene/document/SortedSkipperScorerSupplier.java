@@ -20,10 +20,15 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.function.LongPredicate;
 import org.apache.lucene.index.DocValuesSkipper;
-import org.apache.lucene.search.ConstantScoreScorerSupplier;
+import org.apache.lucene.search.BulkScorer;
+import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.util.Bits;
 
 /**
  * Constant-score supplier that uses a {@link DocValuesSkipper} to approximate the document interval
@@ -35,10 +40,12 @@ import org.apache.lucene.search.SortField;
  * from that doc to the first document whose value satisfies the appropriate comparison, producing a
  * tight {@link DocIdSetIterator#range} iterator.
  */
-abstract class SortedSkipperScorerSupplier extends ConstantScoreScorerSupplier {
+abstract class SortedSkipperScorerSupplier extends ScorerSupplier {
 
   private final DocValuesSkipper skipper;
   private final SortField sortField;
+  private final ScoreMode scoreMode;
+  private final float score;
   private int skipperMinDocId = -1, skipperMaxDocId = -1;
   private boolean skipperMinDocIdExact = false, skipperMaxDocIdExact = false;
 
@@ -47,13 +54,12 @@ abstract class SortedSkipperScorerSupplier extends ConstantScoreScorerSupplier {
    * @param sortField leaf primary sort; {@link SortField#getReverse()} controls how range endpoints
    *     map to ordinal or value predicates
    * @param score constant score assigned to hits
-   * @param scoreMode scoring mode passed to {@link ConstantScoreScorerSupplier}
-   * @param maxDoc exclusive upper bound of doc IDs on this leaf (typically {@link
-   *     org.apache.lucene.index.LeafReader#maxDoc()})
+   * @param scoreMode scoring mode passed to {@link RangeBulkScorer}
    */
   SortedSkipperScorerSupplier(
-      DocValuesSkipper skipper, SortField sortField, float score, ScoreMode scoreMode, int maxDoc) {
-    super(score, scoreMode, maxDoc);
+      DocValuesSkipper skipper, SortField sortField, float score, ScoreMode scoreMode) {
+    this.scoreMode = scoreMode;
+    this.score = score;
     this.skipper = skipper;
     this.sortField = sortField;
   }
@@ -75,26 +81,24 @@ abstract class SortedSkipperScorerSupplier extends ConstantScoreScorerSupplier {
   protected abstract int nextDoc(int startDocID, LongPredicate predicate) throws IOException;
 
   @Override
-  public DocIdSetIterator iterator(long leadCost) throws IOException {
-    if (skipperMinDocId == -1) {
-      computeSkipperDocIds();
+  public final Scorer get(long leadCost) throws IOException {
+    DocIdRange range = range();
+    DocIdSetIterator iterator =
+        range.minDocID() == range.maxDocID()
+            ? DocIdSetIterator.empty()
+            : DocIdSetIterator.range(range.minDocID(), range.maxDocID());
+    return new ConstantScoreScorer(score, scoreMode, iterator);
+  }
+
+  @Override
+  public final BulkScorer bulkScorer() throws IOException {
+    DocIdRange range = range();
+    if (range.minDocID() == range.maxDocID()) {
+      return emptyBulkScorer();
     }
-    long minOrd = getLowerValue();
-    long maxOrd = getUpperValue();
-    final int minDocID;
-    final int maxDocID;
-    if (sortField.getReverse()) {
-      minDocID =
-          skipperMinDocIdExact ? skipperMinDocId : nextDoc(skipperMinDocId, l -> l <= maxOrd);
-      maxDocID = skipperMaxDocIdExact ? skipperMaxDocId : nextDoc(skipperMaxDocId, l -> l < minOrd);
-    } else {
-      minDocID =
-          skipperMinDocIdExact ? skipperMinDocId : nextDoc(skipperMinDocId, l -> l >= minOrd);
-      maxDocID = skipperMaxDocIdExact ? skipperMaxDocId : nextDoc(skipperMaxDocId, l -> l > maxOrd);
-    }
-    return minDocID == maxDocID
-        ? DocIdSetIterator.empty()
-        : DocIdSetIterator.range(minDocID, maxDocID);
+    DocIdSetIterator iterator = DocIdSetIterator.range(range.minDocID(), range.maxDocID());
+    return new RangeBulkScorer(
+        new ConstantScoreScorer(score, scoreMode, iterator), range.minDocID(), range.maxDocID());
   }
 
   @Override
@@ -112,6 +116,26 @@ abstract class SortedSkipperScorerSupplier extends ConstantScoreScorerSupplier {
       return skipperMaxDocId - skipperMinDocId;
     }
     return skipperMaxDocId - skipperMinDocId + skipper.docCount(0);
+  }
+
+  private DocIdRange range() throws IOException {
+    if (skipperMinDocId == -1) {
+      computeSkipperDocIds();
+    }
+    long minOrd = getLowerValue();
+    long maxOrd = getUpperValue();
+    final int minDocID;
+    final int maxDocID;
+    if (sortField.getReverse()) {
+      minDocID =
+          skipperMinDocIdExact ? skipperMinDocId : nextDoc(skipperMinDocId, l -> l <= maxOrd);
+      maxDocID = skipperMaxDocIdExact ? skipperMaxDocId : nextDoc(skipperMaxDocId, l -> l < minOrd);
+    } else {
+      minDocID =
+          skipperMinDocIdExact ? skipperMinDocId : nextDoc(skipperMinDocId, l -> l >= minOrd);
+      maxDocID = skipperMaxDocIdExact ? skipperMaxDocId : nextDoc(skipperMaxDocId, l -> l > maxOrd);
+    }
+    return new DocIdRange(minDocID, maxDocID);
   }
 
   private void computeSkipperDocIds() throws IOException {
@@ -175,5 +199,21 @@ abstract class SortedSkipperScorerSupplier extends ConstantScoreScorerSupplier {
         }
       }
     }
+  }
+
+  record DocIdRange(int minDocID, int maxDocID) {}
+
+  private static BulkScorer emptyBulkScorer() {
+    return new BulkScorer() {
+      @Override
+      public int score(LeafCollector collector, Bits acceptDocs, int min, int max) {
+        return DocIdSetIterator.NO_MORE_DOCS;
+      }
+
+      @Override
+      public long cost() {
+        return 0;
+      }
+    };
   }
 }
