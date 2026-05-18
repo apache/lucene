@@ -524,4 +524,84 @@ public class ColumnBatchTestUtil {
       };
     }
   }
+
+  /** Sparse {@link DictionaryColumn} backed by parallel docId/ordinal arrays. */
+  public static class ArrayDictionaryColumn extends DictionaryColumn {
+    private final int[] docIds;
+    private final int[] ords;
+
+    public ArrayDictionaryColumn(
+        String name,
+        IndexableFieldType fieldType,
+        BytesRef[] dictionary,
+        int[] docIds,
+        int[] ords) {
+      super(name, fieldType, Density.SPARSE, dictionary);
+      assert docIds.length == ords.length;
+      this.docIds = docIds;
+      this.ords = ords;
+    }
+
+    @Override
+    public OrdinalsTupleCursor tuples() {
+      return new OrdinalsTupleCursor() {
+        int pos = -1;
+
+        @Override
+        public int nextDoc() {
+          pos++;
+          return pos < docIds.length ? docIds[pos] : DocIdSetIterator.NO_MORE_DOCS;
+        }
+
+        @Override
+        public int ordValue() {
+          return ords[pos];
+        }
+      };
+    }
+  }
+
+  /** Dense {@link DictionaryColumn} backed by a contiguous ordinal array. */
+  public static class ArrayDenseDictionaryColumn extends DictionaryColumn {
+    private final int[] ords;
+
+    public ArrayDenseDictionaryColumn(
+        String name, IndexableFieldType fieldType, BytesRef[] dictionary, int[] ords) {
+      super(name, fieldType, Density.DENSE, dictionary);
+      this.ords = ords;
+    }
+
+    @Override
+    public OrdinalsTupleCursor tuples() {
+      return new OrdinalsTupleCursor() {
+        int pos = -1;
+
+        @Override
+        public int nextDoc() {
+          pos++;
+          return pos < ords.length ? pos : DocIdSetIterator.NO_MORE_DOCS;
+        }
+
+        @Override
+        public int ordValue() {
+          return ords[pos];
+        }
+      };
+    }
+
+    @Override
+    public OrdinalsCursor values() {
+      return new OrdinalsCursor(ords.length) {
+        int pos = 0;
+
+        @Override
+        public int nextOrd() {
+          if (pos >= ords.length) {
+            throw new IllegalStateException("OrdinalsCursor exhausted: size=" + ords.length);
+          }
+          return ords[pos++];
+        }
+      };
+    }
+  }
 }

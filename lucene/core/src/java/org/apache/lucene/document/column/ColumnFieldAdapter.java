@@ -37,7 +37,7 @@ import org.apache.lucene.util.NumericUtils;
  * @lucene.internal
  */
 public abstract sealed class ColumnFieldAdapter extends Field
-    permits LongColumnAdapter, BinaryColumnAdapter {
+    permits LongColumnAdapter, BinaryColumnAdapter, DictionaryColumnAdapter {
 
   ColumnFieldAdapter(String name, IndexableFieldType fieldType) {
     super(name, fieldType);
@@ -49,6 +49,8 @@ public abstract sealed class ColumnFieldAdapter extends Field
       return new LongColumnAdapter(lc);
     } else if (column instanceof BinaryColumn bc) {
       return new BinaryColumnAdapter(bc);
+    } else if (column instanceof DictionaryColumn dc) {
+      return new DictionaryColumnAdapter(dc);
     } else {
       throw new IllegalArgumentException("Unknown column type: " + column.getClass().getName());
     }
@@ -202,6 +204,44 @@ final class BinaryColumnAdapter extends ColumnFieldAdapter {
     if (tokenized) {
       return analyzer.tokenStream(name(), stringValue());
     }
+    return null;
+  }
+}
+
+final class DictionaryColumnAdapter extends ColumnFieldAdapter {
+  private final OrdinalsTupleCursor cursor;
+  private final BytesRef[] dictionary;
+  private final StoredValue reusableStoredValue;
+
+  DictionaryColumnAdapter(DictionaryColumn column) {
+    super(column.name(), column.fieldType());
+    this.cursor = column.tuples();
+    this.dictionary = column.dictionary();
+    this.reusableStoredValue =
+        column.fieldType().stored() ? new StoredValue(new BytesRef()) : null;
+  }
+
+  @Override
+  public int nextDoc() {
+    return cursor.nextDoc();
+  }
+
+  @Override
+  public BytesRef binaryValue() {
+    return dictionary[cursor.ordValue()];
+  }
+
+  @Override
+  public StoredValue storedValue() {
+    if (reusableStoredValue == null) {
+      return null;
+    }
+    reusableStoredValue.setBinaryValue(dictionary[cursor.ordValue()]);
+    return reusableStoredValue;
+  }
+
+  @Override
+  public InvertableType invertableType() {
     return null;
   }
 }

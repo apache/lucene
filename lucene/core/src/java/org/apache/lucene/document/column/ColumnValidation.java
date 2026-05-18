@@ -134,6 +134,41 @@ public final class ColumnValidation {
     }
   }
 
+  /** Validates a {@link DictionaryColumn} against the field type it will feed. */
+  public static void validateDictionaryColumn(DictionaryColumn column, IndexableFieldType fieldType) {
+    final DocValuesType dv = fieldType.docValuesType();
+    if (dv != DocValuesType.SORTED && dv != DocValuesType.SORTED_SET) {
+      throw new IllegalArgumentException(
+          "DictionaryColumn \""
+              + column.name()
+              + "\" requires SORTED or SORTED_SET doc values; got "
+              + dv);
+    }
+    if (fieldType.indexOptions() != IndexOptions.NONE) {
+      throw new IllegalArgumentException(
+          "DictionaryColumn \""
+              + column.name()
+              + "\" does not support inverted indexing (indexOptions must be NONE)");
+    }
+    if (fieldType.pointDimensionCount() != 0) {
+      throw new IllegalArgumentException(
+          "DictionaryColumn \""
+              + column.name()
+              + "\" does not support points (pointDimensionCount must be 0)");
+    }
+    if (fieldType.stored()) {
+      final StoredValue.Type storedType = column.storedType();
+      if (storedType != StoredValue.Type.BINARY) {
+        throw new IllegalArgumentException(
+            "DictionaryColumn \""
+                + column.name()
+                + "\" storedType="
+                + storedType
+                + " is not supported; only BINARY is allowed");
+      }
+    }
+  }
+
   /** Validates a {@link VectorColumn} against the field type it will feed. */
   public static void validateVectorColumn(VectorColumn<?> column, IndexableFieldType fieldType) {
     if (fieldType.vectorDimension() <= 0) {

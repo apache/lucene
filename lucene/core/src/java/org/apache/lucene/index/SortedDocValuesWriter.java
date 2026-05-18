@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
+import org.apache.lucene.document.column.OrdinalsCursor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ByteBlockPool;
 import org.apache.lucene.util.BytesRef;
@@ -86,6 +87,78 @@ class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
     docsWithField.add(docID);
 
     lastDocID = docID;
+  }
+
+  /**
+   * Adds a single dictionary-encoded value for the given doc. The ordinal must be in {@code [0,
+   * dictionary.length)}. At most one call per docID in monotonically increasing order.
+   */
+  void addOrdinalValue(int docID, BytesRef[] dictionary, int ord) {
+    if (docID <= lastDocID) {
+      throw new IllegalArgumentException(
+          "DocValuesField \""
+              + fieldInfo.name
+              + "\" appears more than once in this document (only one value is allowed per field)");
+    }
+    if (ord < 0 || ord >= dictionary.length) {
+      throw new IllegalArgumentException(
+          "DocValuesField \""
+              + fieldInfo.name
+              + "\": ordinal "
+              + ord
+              + " is out of range [0, "
+              + dictionary.length
+              + ")");
+    }
+    addOneValue(dictionary[ord]);
+    docsWithField.add(docID);
+    lastDocID = docID;
+  }
+
+  /**
+   * Bulk-adds one dictionary-encoded value per consecutive doc-id starting at {@code firstDocID}.
+   * The cursor provides exactly one ordinal per doc; all ordinals must be in {@code [0,
+   * dictionary.length)}.
+   *
+   * <p>This path performs one {@code BytesRefHash} lookup per distinct used dictionary entry
+   * rather than one per document, which is a significant win when the dictionary is much smaller
+   * than the number of documents.
+   */
+  void addDenseOrdinalValues(int firstDocID, BytesRef[] dictionary, OrdinalsCursor cursor) {
+    int n = cursor.size();
+    if (n == 0) {
+      return;
+    }
+    assert firstDocID > lastDocID;
+    int[] ordToHash = new int[dictionary.length];
+    Arrays.fill(ordToHash, -1);
+    for (int i = 0; i < n; i++) {
+      int ord = cursor.nextOrd();
+      if (ord < 0 || ord >= dictionary.length) {
+        throw new IllegalArgumentException(
+            "DocValuesField \""
+                + fieldInfo.name
+                + "\": ordinal "
+                + ord
+                + " is out of range [0, "
+                + dictionary.length
+                + ")");
+      }
+      int id = ordToHash[ord];
+      if (id < 0) {
+        id = hash.add(dictionary[ord]);
+        if (id < 0) {
+          id = -id - 1;
+        } else {
+          iwBytesUsed.addAndGet(2 * Integer.BYTES);
+        }
+        ordToHash[ord] = id;
+      }
+      pending.add(id);
+    }
+    docsWithField.addRange(firstDocID, firstDocID + n);
+    lastDocID = firstDocID + n - 1;
+    updateBytesUsed();
   }
 
   private void addOneValue(BytesRef value) {
