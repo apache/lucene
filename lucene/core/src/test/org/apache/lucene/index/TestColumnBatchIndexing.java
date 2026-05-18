@@ -459,7 +459,9 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     }
 
     Directory singleDir = newDirectory();
-    try (IndexWriter singleW = new IndexWriter(singleDir, newIndexWriterConfig())) {
+    try (IndexWriter singleW =
+        new IndexWriter(
+            singleDir, newIndexWriterConfig().setMergePolicy(new TieredMergePolicy()))) {
       int next = 0;
       for (int d = 0; d < totalDocs; d++) {
         Document doc = new Document();
@@ -470,6 +472,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         }
         singleW.addDocument(doc);
       }
+      singleW.forceMerge(1);
     }
 
     try (DirectoryReader batchR = DirectoryReader.open(batchDir);
@@ -575,7 +578,8 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
 
   public void testVectorAcrossMultipleBatches() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    IndexWriter w =
+        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(new TieredMergePolicy()));
 
     FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
     float[][] firstBatch = {{1f, 1f}, {2f, 2f}};
@@ -583,6 +587,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     w.addBatch(simpleBatch(2, new ArrayDenseFloatVectorColumn("v", vectorType, firstBatch)));
     w.addBatch(simpleBatch(3, new ArrayDenseFloatVectorColumn("v", vectorType, secondBatch)));
 
+    w.forceMerge(1);
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
     FloatVectorValues values = leaf.getFloatVectorValues("v");
@@ -658,7 +663,8 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
 
   public void testLongTupleCursorThrowMidBatchRecovers() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    IndexWriter w =
+        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(new TieredMergePolicy()));
 
     // 5-doc batch; LongTupleCursor#nextDoc throws at index 2 (during column pass).
     int[] docIds = {0, 1, 2, 3, 4};
@@ -691,6 +697,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     // The failed batch's 5 reserved doc-ids are all marked deleted, the resulting
     // fully-deleted segment is pruned at flush time, so only the recovery work
     // remains visible.
+    w.forceMerge(1);
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
     assertEquals(2 + 1, leaf.maxDoc());
@@ -712,7 +719,8 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
 
   public void testLongValuesCursorThrowMidBatchRecovers() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    IndexWriter w =
+        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(new TieredMergePolicy()));
 
     // 6-doc dense batch; LongValuesCursor#fillDocValues throws partway (after 3 fills).
     long[] values = {1, 2, 3, 4, 5, 6};
@@ -741,6 +749,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         simpleBatch(
             2, new ArrayLongColumn("v", NumericDocValuesField.TYPE, recoveryIds, recoveryVals)));
 
+    w.forceMerge(1);
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
     assertEquals(1 + 2, leaf.maxDoc());
@@ -873,7 +882,8 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
 
   public void testMultipleBatchesIntoOneSegment() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    IndexWriter w =
+        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(new TieredMergePolicy()));
 
     w.addBatch(
         simpleBatch(
@@ -886,6 +896,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
             new ArrayLongColumn(
                 "v", NumericDocValuesField.TYPE, new int[] {0, 1}, new long[] {40, 50})));
 
+    w.forceMerge(1);
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
     assertEquals(5, leaf.maxDoc());
@@ -908,7 +919,8 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
    */
   public void testStoredFieldsAppearAfterStoredFreeBatch() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    IndexWriter w =
+        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(new TieredMergePolicy()));
 
     // Batch A: 3 docs, indexed-only string column (no stored).
     BytesRef[] ids = {newBytesRef("a"), newBytesRef("b"), newBytesRef("c")};
@@ -926,6 +938,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         simpleBatch(
             3, new ArrayLongColumn("v", storedNumericType, new int[] {0, 1, 2}, storedValues)));
 
+    w.forceMerge(1);
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
     assertEquals(6, leaf.maxDoc());
@@ -953,7 +966,8 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
    */
   public void testNoStoredFieldsAcrossSegment() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    IndexWriter w =
+        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(new TieredMergePolicy()));
 
     // Two indexed-only batches (no stored column anywhere).
     BytesRef[] idsA = {newBytesRef("a"), newBytesRef("b")};
@@ -966,6 +980,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
             3,
             new ArrayBinaryColumn("id", StringField.TYPE_NOT_STORED, new int[] {0, 1, 2}, idsB)));
 
+    w.forceMerge(1);
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
     assertEquals(5, leaf.maxDoc());
@@ -990,7 +1005,8 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
   /** Interleaving addBatch and addDocument keeps doc-ids contiguous and values consistent. */
   public void testAddBatchInterleavedWithAddDocument() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    IndexWriter w =
+        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(new TieredMergePolicy()));
 
     // batch (3) → doc → batch (2) → doc, expecting docs 0..6 in order.
     w.addBatch(
@@ -1010,6 +1026,7 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     d6.add(new NumericDocValuesField("v", 70));
     w.addDocument(d6);
 
+    w.forceMerge(1);
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
     assertEquals(7, leaf.maxDoc());

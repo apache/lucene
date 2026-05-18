@@ -126,7 +126,7 @@ final class SortedSetDocValuesRangeQuery extends Query {
             && skipper != null
             && (primarySortField = densePrimarySort(context.reader(), skipper)) != null) {
           return getScorerSupplierFromDensePrimarySort(
-              context, singleton, values, skipper, primarySortField);
+              singleton, values, skipper, primarySortField);
         }
         // implement ScorerSupplier, since we do some expensive stuff to make a scorer
         return new ConstantScoreScorerSupplier(score(), scoreMode, context.reader().maxDoc()) {
@@ -167,13 +167,11 @@ final class SortedSetDocValuesRangeQuery extends Query {
       }
 
       private ScorerSupplier getScorerSupplierFromDensePrimarySort(
-          LeafReaderContext context,
           SortedDocValues singleton,
           SortedSetDocValues values,
           DocValuesSkipper skipper,
           SortField sortField) {
-        return new SortedSkipperScorerSupplier(
-            skipper, sortField, score(), scoreMode, context.reader().maxDoc()) {
+        return new SortedSkipperScorerSupplier(skipper, sortField, score(), scoreMode) {
           long minOrd = -1, maxOrd = -1;
 
           @Override
