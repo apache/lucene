@@ -381,6 +381,8 @@ Optimizations
 
 * GITHUB#16048: Defer Sorter.DocMap packing until after flush (Tim Brooks)
 
+* GITHUB#16072: Added efficient implementations for BitSetIterator#docIDRunEnd. (Ignacio Vera)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
