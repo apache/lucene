@@ -186,6 +186,11 @@ public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
       public int docCount() {
         return 1024 + 1024 / 2;
       }
+
+      @Override
+      public int maxValueCount() {
+        return 1;
+      }
     };
   }
 }

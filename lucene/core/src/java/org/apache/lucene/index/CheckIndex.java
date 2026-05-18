@@ -3624,6 +3624,20 @@ public final class CheckIndex implements Closeable {
               + " > "
               + skipper.maxValue());
     }
+    if (skipper.maxValueCount() < -1) {
+      throw new CheckIndexException(
+          "skipper dv iterator for field: "
+              + fieldName
+              + " reports invalid maxValueCount, got "
+              + skipper.maxValueCount());
+    }
+    if (skipper.docCount() == 0 && skipper.maxValueCount() != 0) {
+      throw new CheckIndexException(
+          "skipper dv iterator for field: "
+              + fieldName
+              + " reports maxValueCount for an empty field, got "
+              + skipper.maxValueCount());
+    }
     int docCount = 0;
     int doc;
     while (true) {
