@@ -128,12 +128,14 @@ public final class MergingHnswGraphBuilder extends HnswGraphBuilder {
       updateGraph(graphs[i], ordMaps[i]);
     }
 
-    // TODO: optimize to iterate only over unset bits in initializedNodes
     if (initializedNodes != null) {
-      for (int node = 0; node < maxOrd; node++) {
-        if (initializedNodes.get(node) == false) {
-          addGraphNode(node);
-        }
+      for (int node = initializedNodes.nextUnsetBit(0);
+          node != NO_MORE_DOCS;
+          node =
+              node + 1 >= maxOrd
+                  ? NO_MORE_DOCS
+                  : initializedNodes.nextUnsetBit(node + 1)) {
+        addGraphNode(node);
       }
     }
 

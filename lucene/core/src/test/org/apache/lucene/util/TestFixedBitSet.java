@@ -356,6 +356,58 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     checkNextSetBitArray(new int[0], setBits.length + random().nextInt(10));
   }
 
+  private void checkNextUnsetBitArray(int[] setBits, int numBits) {
+    FixedBitSet obs = makeFixedBitSet(setBits, numBits);
+    java.util.BitSet bs = makeBitSet(setBits);
+
+    int aa = 0;
+    int bb = 0;
+    while (true) {
+      aa = bs.nextClearBit(aa);
+      if (aa >= numBits) {
+        aa = DocIdSetIterator.NO_MORE_DOCS;
+      }
+      bb = bb < obs.length() ? obs.nextUnsetBit(bb) : DocIdSetIterator.NO_MORE_DOCS;
+      assertEquals(aa, bb);
+      if (aa == DocIdSetIterator.NO_MORE_DOCS) {
+        break;
+      }
+      aa++;
+      bb++;
+    }
+  }
+
+  public void testNextUnsetBit() {
+    // Empty bitset: all bits are unset
+    checkNextUnsetBitArray(new int[0], 100);
+
+    // Full bitset: no bits are unset
+    int[] allBits = new int[100];
+    for (int i = 0; i < 100; i++) {
+      allBits[i] = i;
+    }
+    checkNextUnsetBitArray(allBits, 100);
+
+    // Sparse set bits
+    checkNextUnsetBitArray(new int[] {0, 50, 99}, 100);
+
+    // Random
+    int[] setBits = new int[random().nextInt(1000)];
+    for (int i = 0; i < setBits.length; i++) {
+      setBits[i] = random().nextInt(setBits.length);
+    }
+    checkNextUnsetBitArray(setBits, setBits.length + random().nextInt(10));
+
+    // Single bit at boundary
+    checkNextUnsetBitArray(new int[] {0}, 1);
+    checkNextUnsetBitArray(new int[] {0}, 65); // crosses word boundary
+    checkNextUnsetBitArray(new int[] {63, 64}, 128); // at word boundaries
+
+    // Ghost bits: numBits not aligned to word boundary
+    checkNextUnsetBitArray(new int[] {0, 1, 2}, 67);
+    checkNextUnsetBitArray(new int[] {}, 65);
+  }
+
   public void testEnsureCapacity() {
     FixedBitSet bits = new FixedBitSet(5);
     bits.set(1);

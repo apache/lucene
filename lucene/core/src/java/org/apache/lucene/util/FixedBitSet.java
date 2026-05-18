@@ -367,6 +367,32 @@ public final class FixedBitSet extends BitSet {
     return DocIdSetIterator.NO_MORE_DOCS;
   }
 
+  /**
+   * Returns the index of the first unset bit starting at the index specified. {@link
+   * DocIdSetIterator#NO_MORE_DOCS} is returned if there are no more unset bits.
+   */
+  public int nextUnsetBit(int index) {
+    assert index >= 0 && index < numBits : "index=" + index + ", numBits=" + numBits;
+    int i = index >> 6;
+    long word = bits[i] >> index; // skip all the bits to the right of index
+    word = ~word; // invert: set bits become 0, unset bits become 1
+
+    if (word != 0) {
+      int result = index + Long.numberOfTrailingZeros(word);
+      return result < numBits ? result : DocIdSetIterator.NO_MORE_DOCS;
+    }
+
+    while (++i < numWords) {
+      word = ~bits[i];
+      if (word != 0) {
+        int result = (i << 6) + Long.numberOfTrailingZeros(word);
+        return result < numBits ? result : DocIdSetIterator.NO_MORE_DOCS;
+      }
+    }
+
+    return DocIdSetIterator.NO_MORE_DOCS;
+  }
+
   @Override
   public int prevSetBit(int index) {
     assert index >= 0 && index < numBits : "index=" + index + " numBits=" + numBits;
