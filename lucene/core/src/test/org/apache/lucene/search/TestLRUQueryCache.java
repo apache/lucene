@@ -1117,6 +1117,36 @@ public class TestLRUQueryCache extends LuceneTestCase {
     queryCache.close();
   }
 
+  public void testCachePopulationUsesLeafCollectorCollectRange() throws IOException {
+    final LRUQueryCache queryCache =
+        new LRUQueryCache(1_000_000, Long.MAX_VALUE, _ -> true, Float.POSITIVE_INFINITY);
+    final int maxDoc = random().nextInt(100, 1_000_000);
+    final int minDocId = random().nextInt(0, maxDoc - 1);
+    final int maxDocId = random().nextInt(minDocId + 1, maxDoc);
+    LRUQueryCache.CacheAndCount cacheAndCount =
+        queryCache.cacheImpl(
+            new BulkScorer() {
+              @Override
+              public int score(LeafCollector collector, Bits acceptDocs, int min, int max)
+                  throws IOException {
+                collector.collectRange(minDocId, maxDocId);
+                return max;
+              }
+
+              @Override
+              public long cost() {
+                return maxDocId - minDocId;
+              }
+            },
+            1_000_000);
+    assertEquals(maxDocId - minDocId, cacheAndCount.count());
+    DocIdSetIterator iterator = cacheAndCount.iterator();
+    assertEquals(minDocId, iterator.advance(0));
+    assertEquals(maxDocId, iterator.docIDRunEnd());
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, iterator.advance(maxDocId));
+    queryCache.close();
+  }
+
   public void testQuerySizeBytesAreCached() throws IOException {
     try (Directory dir = newDirectory();
         RandomIndexWriter w = new RandomIndexWriter(random(), dir)) {
