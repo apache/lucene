@@ -176,7 +176,7 @@ public class TestRoaringDocIdSet extends BaseDocIdSetTestCase<RoaringDocIdSet> {
     RoaringDocIdSet.Builder b = new RoaringDocIdSet.Builder(maxDoc);
     int index = 0;
     int iters = 0;
-    while (iters++ < 10) {
+    while (index + 1 < maxDoc && iters++ < 10) {
       int end = random().nextInt(index + 1, maxDoc);
       expected.set(index, end);
       b.add(index, end);
