@@ -55,7 +55,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
   private final boolean loadFilterIntoBitset;
   private FixedBitSet filterWindowMatches;
-  private final FilterBits filterBits = new FilterBits();
 
   MaxScoreBulkScorer(int maxDoc, List<Scorer> scorers, Scorer filter) throws IOException {
     this.maxDoc = maxDoc;
@@ -156,7 +155,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
   private void scoreInnerWindow(
       LeafCollector collector, Bits acceptDocs, int max, DisiWrapper filter) throws IOException {
-    if (filter != null && loadFilterIntoBitset) {
+    if (loadFilterIntoBitset) {
       scoreInnerWindowWithBitsetFilter(collector, acceptDocs, max, filter);
     } else if (filter != null) {
       scoreInnerWindowWithFilter(collector, acceptDocs, max, filter);
@@ -209,8 +208,23 @@ final class MaxScoreBulkScorer extends BulkScorer {
       }
     }
 
-    filterBits.set(filterWindowMatches, innerWindowMin, acceptDocs);
-    Bits filterAcceptDocs = filterBits;
+    if (acceptDocs != null) {
+      acceptDocs.applyMask(filterWindowMatches, innerWindowMin);
+    }
+    final FixedBitSet fwm = filterWindowMatches;
+    final int offset = innerWindowMin;
+    Bits filterAcceptDocs =
+        new Bits() {
+          @Override
+          public boolean get(int index) {
+            return fwm.get(index - offset);
+          }
+
+          @Override
+          public int length() {
+            return offset + fwm.length();
+          }
+        };
 
     // When there is a single essential clause in this window, we still collect into a bitset
     // first and then call scoreNonEssentialClauses once, to make sure that minCompetitiveScore
@@ -509,28 +523,4 @@ final class MaxScoreBulkScorer extends BulkScorer {
     return cost;
   }
 
-  private static final class FilterBits implements Bits {
-    private FixedBitSet bitSet;
-    private int offset;
-    private Bits andWith;
-
-    void set(FixedBitSet bitSet, int offset, Bits andWith) {
-      this.bitSet = bitSet;
-      this.offset = offset;
-      this.andWith = andWith;
-    }
-
-    @Override
-    public boolean get(int index) {
-      if (andWith != null && !andWith.get(index)) {
-        return false;
-      }
-      return bitSet.get(index - offset);
-    }
-
-    @Override
-    public int length() {
-      return offset + bitSet.length();
-    }
-  }
 }

@@ -28,7 +28,7 @@ import org.apache.lucene.util.FixedBitSet;
  */
 public final class ConstantScoreScorer extends Scorer {
 
-  class DocIdSetIteratorWrapper extends DocIdSetIterator {
+  private class DocIdSetIteratorWrapper extends DocIdSetIterator {
     int doc = -1;
     DocIdSetIterator delegate;
 
