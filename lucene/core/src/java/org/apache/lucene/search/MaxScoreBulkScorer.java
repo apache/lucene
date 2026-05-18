@@ -64,8 +64,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
         this.filter != null
             && this.filter.twoPhaseView == null
             && maxDoc >= INNER_WINDOW_SIZE
-            && this.filter.cost >= maxDoc / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE
-            && hasFastIntoBitSet(this.filter.approximation);
+            && this.filter.cost >= maxDoc / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE;
     allScorers = new DisiWrapper[scorers.size()];
     scratch = new DisiWrapper[allScorers.length];
     int i = 0;
@@ -503,26 +502,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
       }
     }
     return next;
-  }
-
-  private static boolean hasFastIntoBitSet(DocIdSetIterator disi) {
-    // Unwrap ConstantScoreScorer's wrapper to check the underlying delegate
-    if (disi instanceof ConstantScoreScorer.DocIdSetIteratorWrapper) {
-      disi = ((ConstantScoreScorer.DocIdSetIteratorWrapper) disi).delegate;
-    }
-    Class<?> clazz = disi.getClass();
-    while (clazz != Object.class) {
-      if (clazz == DocIdSetIterator.class || clazz == AbstractDocIdSetIterator.class) {
-        return false;
-      }
-      try {
-        clazz.getDeclaredMethod("intoBitSet", int.class, FixedBitSet.class, int.class);
-        return true;
-      } catch (NoSuchMethodException e) {
-        clazz = clazz.getSuperclass();
-      }
-    }
-    return false;
   }
 
   @Override
