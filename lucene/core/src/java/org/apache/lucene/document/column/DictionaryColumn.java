@@ -36,14 +36,10 @@ import org.apache.lucene.util.BytesRef;
  * in that case.
  *
  * <p>The caller supplies a fixed {@code BytesRef[] dictionary} at construction. Per-doc ordinals
- * returned by cursors index into this dictionary. Lucene performs one {@code BytesRefHash} lookup
- * per distinct used entry rather than one per document, which is a significant win when the
- * dictionary is much smaller than the number of documents (the typical columnar case).
+ * returned by cursors index into this dictionary.
  *
  * <p>Duplicate dictionary entries are permitted; two slots with the same bytes will both resolve to
- * the same Lucene-level ordinal, with only a minor per-batch performance cost (one extra hash
- * probe per duplicated slot). The dictionary may be in any order; the doc-values writer handles
- * sorting at flush time.
+ * the same Lucene-level ordinal. The dictionary may be in any order.
  *
  * <p>The dictionary array and the backing byte arrays of its entries must not be mutated after the
  * column is constructed and until the enclosing segment has been flushed.
