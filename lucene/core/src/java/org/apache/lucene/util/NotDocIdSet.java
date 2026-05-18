@@ -78,13 +78,10 @@ public final class NotDocIdSet extends DocIdSet {
       }
 
       @Override
-      public int docIDRunEnd() throws IOException {
+      public int docIDRunEnd() {
         assert doc != NO_MORE_DOCS;
-        int skipped = nextSkippedDoc;
-        if (doc > skipped) {
-          skipped = inIterator.advance(doc);
-        }
-        return Math.min(skipped, maxDoc);
+        assert nextSkippedDoc > doc;
+        return Math.min(nextSkippedDoc, maxDoc);
       }
 
       @Override
