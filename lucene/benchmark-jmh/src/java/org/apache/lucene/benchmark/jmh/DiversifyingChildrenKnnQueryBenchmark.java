@@ -83,8 +83,8 @@ import org.openjdk.jmh.annotations.Warmup;
 @BenchmarkMode(Mode.SampleTime)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
-@Warmup(iterations = 3, time = 2)
-@Measurement(iterations = 3, time = 2)
+@Warmup(iterations = 5, time = 2)
+@Measurement(iterations = 5, time = 5)
 @Fork(
     value = 1,
     jvmArgsAppend = {"-Xmx4g", "-Xms4g", "-XX:+AlwaysPreTouch"})
