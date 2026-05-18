@@ -348,5 +348,14 @@ public abstract class BaseBitSetTestCase<T extends BitSet> extends LuceneTestCas
       }
       return next;
     }
+
+    @Override
+    public int nextClearBit(int start, int upperBound) {
+      int next = bitSet.nextClearBit(start);
+      if (next == -1 || next >= upperBound) {
+        next = DocIdSetIterator.NO_MORE_DOCS;
+      }
+      return next;
+    }
   }
 }
