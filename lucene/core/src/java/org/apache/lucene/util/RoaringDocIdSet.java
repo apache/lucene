@@ -226,6 +226,17 @@ public class RoaringDocIdSet extends DocIdSet {
             bitSet.set(docId(i) - offset);
           }
         }
+
+        @Override
+        public int docIDRunEnd() {
+          int runEnd = doc + 1;
+          int j = i + 1;
+          while (j < docIDs.length && (docIDs[j] & 0xFFFF) == runEnd) {
+            runEnd++;
+            j++;
+          }
+          return runEnd;
+        }
       };
     }
   }
@@ -332,6 +343,29 @@ public class RoaringDocIdSet extends DocIdSet {
           break;
         }
       }
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      assert doc != NO_MORE_DOCS && sub != null;
+      int b = block;
+      long globalEnd = ((long) b << 16) + (long) sub.docIDRunEnd();
+      // Merge with the next block when the sub-run ends exactly on a 64K boundary and the next
+      // block's first doc is the immediate successor (local doc 0).
+      while (globalEnd == ((long) (b + 1) << 16) && globalEnd < (long) Integer.MAX_VALUE) {
+        int nb = b + 1;
+        if (nb >= docIdSets.length || docIdSets[nb] == null) {
+          break;
+        }
+        DocIdSetIterator nextIt = docIdSets[nb].iterator();
+        int first = nextIt.nextDoc();
+        if (first != 0) {
+          break;
+        }
+        b = nb;
+        globalEnd = ((long) b << 16) + (long) nextIt.docIDRunEnd();
+      }
+      return globalEnd >= Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) globalEnd;
     }
 
     @Override
