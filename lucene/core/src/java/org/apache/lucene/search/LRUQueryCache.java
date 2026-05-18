@@ -610,16 +610,22 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
           private int[] buffer;
 
           @Override
-          public void setScorer(Scorable scorer) throws IOException {}
+          public void setScorer(Scorable scorer) {}
 
           @Override
-          public void collect(int doc) throws IOException {
+          public void collect(int doc) {
             count[0]++;
             bitSet.set(doc);
           }
 
           @Override
-          public void collect(DocIdStream stream) throws IOException {
+          public void collectRange(int min, int max) {
+            count[0] += max - min;
+            bitSet.set(min, max);
+          }
+
+          @Override
+          public void collect(DocIdStream stream) {
             if (buffer == null) {
               buffer = new int[128];
             }
@@ -646,15 +652,20 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
           private int[] buffer = null;
 
           @Override
-          public void setScorer(Scorable scorer) throws IOException {}
+          public void setScorer(Scorable scorer) {}
 
           @Override
-          public void collect(int doc) throws IOException {
+          public void collect(int doc) {
             builder.add(doc);
           }
 
           @Override
-          public void collect(DocIdStream stream) throws IOException {
+          public void collectRange(int min, int max) {
+            builder.add(min, max);
+          }
+
+          @Override
+          public void collect(DocIdStream stream) {
             if (buffer == null) {
               buffer = new int[128];
             }
