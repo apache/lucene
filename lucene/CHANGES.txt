@@ -331,6 +331,8 @@ Improvements
 * GITHUB#15989: DocValuesRangeIterator always tries to use skipper-based block iteration
   as its approximation. (Alan Woodward)
 
+* GITHUB#16000: Clarify that Accountable#ramBytesUsed() reports JVM heap memory only. (Luca Cavanna)
+
 Optimizations
 ---------------------
 * GITHUB#15861: Optimise PhraseScorer by short circuiting non competitive documents in TOP_SCORES mode. (Prithvi S)
