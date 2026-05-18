@@ -117,9 +117,9 @@ public final class HadamardRotation {
 
   /**
    * Applies the rotation: {@code out = R * in}. Preserves L2 norm. {@code in} and {@code out} must
-   * both have length {@link #dimension()}. {@code in} and {@code out} may be the same array. A
-   * new scratch buffer is allocated internally; for hot paths prefer {@link #rotate(float[],
-   * float[], float[])} to reuse a caller-owned scratch buffer.
+   * both have length {@link #dimension()}. {@code in} and {@code out} may be the same array. A new
+   * scratch buffer is allocated internally; for hot paths prefer {@link #rotate(float[], float[],
+   * float[])} to reuse a caller-owned scratch buffer.
    */
   public void rotate(float[] in, float[] out) {
     rotate(in, out, new float[dim]);
@@ -165,8 +165,8 @@ public final class HadamardRotation {
    * Applies the inverse rotation: {@code out = R^T * in}. Since the composed transform is
    * orthogonal, the inverse equals the transpose. Internally, because FWHT (normalized) is
    * self-inverse and sign flips / permutations are also self-inverse, the inverse just applies the
-   * steps in reverse order. Useful when a caller wants to recover the original vector from a
-   * stored rotated one.
+   * steps in reverse order. Useful when a caller wants to recover the original vector from a stored
+   * rotated one.
    */
   public void inverseRotate(float[] in, float[] out, float[] scratch) {
     if (in.length != dim || out.length != dim || scratch.length != dim) {

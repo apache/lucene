@@ -141,6 +141,8 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
   }
 
   public void testQuantizedVectorsWriteAndRead() throws IOException {
+    // This test verifies rotation behavior, so explicitly enable rotation.
+    format = new Lucene104ScalarQuantizedVectorsFormat(encoding, true);
     String fieldName = "field";
     int numVectors = random().nextInt(99, 500);
     int dims = random().nextInt(4, 65);
@@ -149,7 +151,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
     VectorSimilarityFunction similarityFunction = randomSimilarity();
     KnnFloatVectorField knnField = new KnnFloatVectorField(fieldName, vector, similarityFunction);
     try (Directory dir = newDirectory()) {
-      try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig().setCodec(getCodec()))) {
         for (int i = 0; i < numVectors; i++) {
           Document doc = new Document();
           knnField.setVectorValue(randomVector(dims));
@@ -174,8 +176,9 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
 
           // The stored quantized bytes are in rotated space. To verify them, we must
           // rotate the read-back vectors (which are inverse-rotated) before re-quantizing.
-          var rotation = org.apache.lucene.util.quantization.HadamardRotation.create(
-              dims, Lucene104ScalarQuantizedVectorsFormat.rotationSeed(fieldName));
+          var rotation =
+              org.apache.lucene.util.quantization.HadamardRotation.create(
+                  dims, Lucene104ScalarQuantizedVectorsFormat.rotationSeed(fieldName));
           float[] rotatedVec = new float[dims];
           float[] rotScratch = new float[dims];
 
@@ -193,11 +196,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
             float[] vec = vectorValues.vectorValue(docIndexIterator.index());
             rotation.rotate(vec, rotatedVec, rotScratch);
             OptimizedScalarQuantizer.QuantizationResult corrections =
-                quantizer.scalarQuantize(
-                    rotatedVec,
-                    scratch,
-                    encoding.getBits(),
-                    centroid);
+                quantizer.scalarQuantize(rotatedVec, scratch, encoding.getBits(), centroid);
             switch (encoding) {
               case UNSIGNED_BYTE, SEVEN_BIT ->
                   System.arraycopy(scratch, 0, expectedVector, 0, dims);

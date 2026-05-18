@@ -44,10 +44,8 @@ public class TestHadamardRotation extends LuceneTestCase {
 
   public void testLengthMismatchThrows() {
     HadamardRotation r = HadamardRotation.create(16, 42L);
-    expectThrows(
-        IllegalArgumentException.class, () -> r.rotate(new float[8], new float[16]));
-    expectThrows(
-        IllegalArgumentException.class, () -> r.rotate(new float[16], new float[8]));
+    expectThrows(IllegalArgumentException.class, () -> r.rotate(new float[8], new float[16]));
+    expectThrows(IllegalArgumentException.class, () -> r.rotate(new float[16], new float[8]));
   }
 
   /** Orthogonality: ||R x|| == ||x|| for many random vectors and dims. */
@@ -129,8 +127,8 @@ public class TestHadamardRotation extends LuceneTestCase {
   }
 
   /**
-   * Functional test: a skewed input (mostly zeros with a couple of huge values) should be
-   * "spread" by the rotation so that component variance is more evenly distributed.
+   * Functional test: a skewed input (mostly zeros with a couple of huge values) should be "spread"
+   * by the rotation so that component variance is more evenly distributed.
    */
   public void testSpreadsConcentratedInput() {
     int dim = 256;
@@ -148,9 +146,7 @@ public class TestHadamardRotation extends LuceneTestCase {
     }
     // For a truly spreading rotation, max component should be roughly 10/sqrt(d) = ~0.625.
     // Accept any value < 5 (= 50% of norm) as clear evidence of spreading.
-    assertTrue(
-        "Rotation should spread energy; saw maxAbs=" + maxAbs,
-        maxAbs < 5f);
+    assertTrue("Rotation should spread energy; saw maxAbs=" + maxAbs, maxAbs < 5f);
     // Also verify norm is still ~10.
     assertEquals(10.0, l2Norm(rotated), 1e-3);
   }

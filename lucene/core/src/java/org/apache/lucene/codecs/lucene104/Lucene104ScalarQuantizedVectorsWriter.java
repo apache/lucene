@@ -124,7 +124,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
       @SuppressWarnings("unchecked")
       FieldWriter fieldWriter =
-          new FieldWriter(fieldInfo, rotationEnabled, (FlatFieldVectorsWriter<float[]>) rawVectorDelegate);
+          new FieldWriter(
+              fieldInfo, rotationEnabled, (FlatFieldVectorsWriter<float[]>) rawVectorDelegate);
       fields.add(fieldWriter);
       return fieldWriter;
     }
@@ -531,7 +532,10 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     private final HadamardRotation rotation;
     private final float[] rotationScratch;
 
-    FieldWriter(FieldInfo fieldInfo, boolean rotationEnabled, FlatFieldVectorsWriter<float[]> flatFieldVectorsWriter) {
+    FieldWriter(
+        FieldInfo fieldInfo,
+        boolean rotationEnabled,
+        FlatFieldVectorsWriter<float[]> flatFieldVectorsWriter) {
       this.fieldInfo = fieldInfo;
       this.flatFieldVectorsWriter = flatFieldVectorsWriter;
       this.dimensionSums = new float[fieldInfo.getVectorDimension()];
@@ -772,5 +776,4 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       return new NormalizedFloatVectorValues(values.copy());
     }
   }
-
 }

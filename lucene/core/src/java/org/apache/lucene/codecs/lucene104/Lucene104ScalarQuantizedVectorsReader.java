@@ -84,9 +84,10 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   private final FlatVectorsReader rawVectorsReader;
   private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
   private final FieldInfos fieldInfos;
+
   /** Lazily built Hadamard rotations, keyed by field name. */
   private final Map<String, HadamardRotation> rotations = new ConcurrentHashMap<>();
-  private final boolean rotationEnabled;
+
   public static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
 
   public Lucene104ScalarQuantizedVectorsReader(
@@ -115,7 +116,6 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       throws IOException {
     this.vectorScorer = vectorsScorer;
     this.rawVectorsReader = rawVectorsReader;
-    this.rotationEnabled = rotationEnabled;
     this.fieldInfos = state.fieldInfos;
     int versionMeta = -1;
     String metaFileName =
@@ -242,13 +242,16 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   private HadamardRotation rotationFor(String field, int dimension) {
     return rotations.computeIfAbsent(
         field,
-        f -> HadamardRotation.create(dimension, Lucene104ScalarQuantizedVectorsFormat.rotationSeed(f)));
+        f ->
+            HadamardRotation.create(
+                dimension, Lucene104ScalarQuantizedVectorsFormat.rotationSeed(f)));
   }
 
   private boolean isRotationEnabled(String field) {
     FieldInfo info = fieldInfos.fieldInfo(field);
     return info != null
-        && "true".equals(info.getAttribute(Lucene104ScalarQuantizedVectorsFormat.ROTATION_ENABLED_KEY));
+        && "true"
+            .equals(info.getAttribute(Lucene104ScalarQuantizedVectorsFormat.ROTATION_ENABLED_KEY));
   }
 
   @Override
@@ -721,13 +724,16 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   }
 
   /**
-   * Merge-only view that skips inverse rotation in getFloatVectorValues so that the merge
-   * operates entirely in rotated space.
+   * Merge-only view that skips inverse rotation in getFloatVectorValues so that the merge operates
+   * entirely in rotated space.
    */
   private final class MergeReader extends FlatVectorsReader {
 
-    MergeReader() {
-      super(Lucene104ScalarQuantizedVectorsReader.this.vectorScorer);
+    MergeReader() {}
+
+    @Override
+    public FlatVectorsScorer getFlatVectorScorer(String field) throws IOException {
+      return Lucene104ScalarQuantizedVectorsReader.this.getFlatVectorScorer(field);
     }
 
     @Override
@@ -745,6 +751,10 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     @Override
     public FloatVectorValues getFloatVectorValues(String field) throws IOException {
       // Return raw rotated vectors without inverse-rotating for merge.
+      FieldEntry fi = fields.get(field);
+      if (fi == null) {
+        return null;
+      }
       return rawVectorsReader.getFloatVectorValues(field);
     }
 
@@ -767,21 +777,23 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     }
 
     @Override
-    public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+    public void search(
+        String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
       Lucene104ScalarQuantizedVectorsReader.this.search(field, target, knnCollector, acceptDocs);
     }
 
     @Override
-    public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+    public void search(
+        String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
       Lucene104ScalarQuantizedVectorsReader.this.search(field, target, knnCollector, acceptDocs);
     }
   }
 
   /**
-   * Wraps a FloatVectorValues and inverse-rotates each vector on access so external callers
-   * see the original (unrotated) vectors.
+   * Wraps a FloatVectorValues and inverse-rotates each vector on access so external callers see the
+   * original (unrotated) vectors.
    */
   private static final class InverseRotatedFloatVectorValues extends FloatVectorValues {
 
