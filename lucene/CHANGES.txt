@@ -383,7 +383,7 @@ Optimizations
 
 * GITHUB#16072: Added efficient implementations for BitSetIterator#docIDRunEnd. (Ignacio Vera)
 
-* GITHUB#16077: Added efficient implementations if the method #docIDRunEnd for the iteerators used
+* GITHUB#16077: Added efficient implementations if the method #docIDRunEnd for the iterators used
   by RoaringDocIdSet. (Ignacio Vera)
 
 Bug Fixes
