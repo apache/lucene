@@ -431,6 +431,8 @@ Bug Fixes
   time since merge start instead of duplicate incremental/total times. Add per-chunk completion
   logging with sub-millisecond precision to aid merge concurrency debugging. (Prithvi S)
 
+* GITHUB#15878: Fix LargeNumHitsTopDocsCollector not handling requested hit count correctly (Binlong Gao)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
