@@ -229,6 +229,8 @@ Build
 Other
 ---------------------
 
+* GITHUB#16074: Ban presized collection#toArray. (Zhou Hui)
+
 * GITHUB#16063: Remove redundant final modifiers. (Zhou Hui)
 
 * GITHUB#14801: Removed all security manager and java.security-related code, which is effectively dead
@@ -288,6 +290,9 @@ API Changes
 
 * GITHUB#15990: Add experimental api to IndexWriter for columnar indexing. (Tim Brooks)
 
+* GITHUB#16062: Add FlatFieldVectorsWriter.asKnnVectorValues to return directly a KnnVectorValues "view" over
+  vectors to be written. (Lorenzo Dematte)
+
 New Features
 ---------------------
 
@@ -323,6 +328,8 @@ Improvements
   factor should lie in [0, 1]; with higher values producing better recall using more graph exploration. Earlier, this
   buffer was controlled by an explicit parameter (set as `resultSimilarity` - `traversalSimilarity`), which is now
   deprecated. (Kaival Parikh)
+
+* GITHUB#15653: Introduce DocValuesStatsCollectorManager to parallelize search when using DocValuesStatsCollector. (Binlong Gao)
 
 * GITHUB#15976: Store DocValuesSkipper data in their own file. (Alan Woodward)
 
@@ -384,6 +391,10 @@ Optimizations
 * GITHUB#16061, GITHUB#16070: Improve cost estimation in SortedSetDocValuesRangeQuery when using DocValuesSkipper
   and the field is dense and is the primary sort of the index to reduce the number of doc values visited. (Ignacio Vera)
 
+* GITHUB#16061, GITHUB#16070, GITHUB#16085: Improve cost estimation in SortedSetDocValuesRangeQuery  and
+  SortedNumericDocValuesRangeQuery when using DocValuesSkipper, the field is dense and is the primary sort of
+  the index to reduce the number of doc values visited. (Ignacio Vera)
+
 * GITHUB#16048: Defer Sorter.DocMap packing until after flush (Tim Brooks)
 
 * GITHUB#16072: Added efficient implementations for BitSetIterator#docIDRunEnd. (Ignacio Vera)
@@ -394,6 +405,8 @@ Optimizations
 * GITHUB#16080: Add a BulkScrer implementation spcialized for filters that match dense ranges. (Ignacio Vera)
 
 * GITHUB#16081: Implement LeafCollector#collectRange in the collectors used in LRUCache. (Ignacio Vera)
+
+* GITHUB#16084: Added range encoding to  RoaringDocIdSet. (Ignacio Vera)
 
 Bug Fixes
 ---------------------
@@ -442,6 +455,8 @@ Bug Fixes
 * GITHUB#15967: Fix IndexWriter's HNSW InfoStream progress during concurrent merges to show elapsed
   time since merge start instead of duplicate incremental/total times. Add per-chunk completion
   logging with sub-millisecond precision to aid merge concurrency debugging. (Prithvi S)
+
+* GITHUB#15878: Fix LargeNumHitsTopDocsCollector not handling requested hit count correctly (Binlong Gao)
 
 Other
 ---------------------
