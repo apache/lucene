@@ -3483,13 +3483,8 @@ public class IndexWriter
       }
     }
 
-    final MergePolicy.AbortChecker mergeAbortChecker;
-    if (config.getMergeAbortCheckIntervalBytes() > 0) {
-      mergeAbortChecker =
-          new MergePolicy.AbortChecker(merge, config.getMergeAbortCheckIntervalBytes());
-    } else {
-      mergeAbortChecker = MergePolicy.AbortChecker.NO_OP;
-    }
+    final MergePolicy.AbortChecker mergeAbortChecker =
+        MergePolicy.AbortChecker.create(merge, config.getMergeAbortCheckIntervalBytes());
 
     SegmentMerger merger =
         new SegmentMerger(
@@ -5293,13 +5288,8 @@ public class IndexWriter
         }
       }
 
-      final MergePolicy.AbortChecker mergeAbortChecker;
-      if (config.getMergeAbortCheckIntervalBytes() > 0) {
-        mergeAbortChecker =
-            new MergePolicy.AbortChecker(merge, config.getMergeAbortCheckIntervalBytes());
-      } else {
-        mergeAbortChecker = MergePolicy.AbortChecker.NO_OP;
-      }
+      final MergePolicy.AbortChecker mergeAbortChecker =
+          MergePolicy.AbortChecker.create(merge, config.getMergeAbortCheckIntervalBytes());
 
       final SegmentMerger merger =
           new SegmentMerger(

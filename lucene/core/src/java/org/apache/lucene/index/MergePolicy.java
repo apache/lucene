@@ -578,6 +578,20 @@ public abstract class MergePolicy {
    */
   public static final class AbortChecker {
 
+    /**
+     * Creates an {@link AbortChecker} for the given merge. If {@code abortCheckIntervalBytes} is
+     * zero or negative, returns {@link AbortChecker#NO_OP}.
+     *
+     * @param merge the merge to check for abort
+     * @param abortCheckIntervalBytes interval in bytes between abort checks, or 0 to disable
+     */
+    public static AbortChecker create(OneMerge merge, int abortCheckIntervalBytes) {
+      if (merge != null && abortCheckIntervalBytes > 0) {
+        return new AbortChecker(merge, abortCheckIntervalBytes);
+      }
+      return AbortChecker.NO_OP;
+    }
+
     /** A no-op checker */
     public static final AbortChecker NO_OP = new AbortChecker(null, 0);
 

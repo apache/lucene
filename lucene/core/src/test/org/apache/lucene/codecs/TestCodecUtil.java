@@ -121,14 +121,14 @@ public class TestCodecUtil extends LuceneTestCase {
     // is not aborted
     try (IndexInput notAborted = new ByteBuffersIndexInput(out.toDataInput(), "not aborted")) {
       MergePolicy.AbortChecker checker =
-          new MergePolicy.AbortChecker(new MergePolicy.OneMerge(), 1);
+          MergePolicy.AbortChecker.create(new MergePolicy.OneMerge(), 1);
       assertEquals(checksum, CodecUtil.checksumEntireFile(notAborted, checker));
     }
 
     // When the merge is aborted, checksumming should throw MergeAbortedException
     try (IndexInput aborted = new ByteBuffersIndexInput(out.toDataInput(), "aborted")) {
       MergePolicy.OneMerge merge = new MergePolicy.OneMerge();
-      MergePolicy.AbortChecker checker = new MergePolicy.AbortChecker(merge, 3);
+      MergePolicy.AbortChecker checker = MergePolicy.AbortChecker.create(merge, 3);
       merge.setAborted();
       expectThrows(
           MergePolicy.MergeAbortedException.class,
