@@ -592,7 +592,9 @@ public abstract class MergePolicy {
 
     /** Checks if the merge should be aborted, throwing MergeAbortedException if so. */
     public void checkAborted() throws MergeAbortedException {
-      oneMerge.checkAborted();
+      if (oneMerge != null) {
+        oneMerge.checkAborted();
+      }
     }
 
     /** Interval in bytes between abort checks during merge integrity verification. */
