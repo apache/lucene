@@ -263,6 +263,8 @@ Other
 
 * GITHUB#15893: Refactor to move common SHOULD/MUST dedup logic inside BooleanQuery into a common function. (Sagar Upadhyaya)
 
+* GITHUB#16082: Added a new JMH microbenchmark for DiversifyingChildrenFloatKnnVectorQuery. (Anna Ruggero via Alessandro Benedetti)
+
 ======================= Lucene 10.5.0 =======================
 
 API Changes
