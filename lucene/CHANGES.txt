@@ -392,6 +392,8 @@ Optimizations
 
 * GITHUB#16081: Implement LeafCollector#collectRange in the collectors used in LRUCache. (Ignacio Vera)
 
+* GITHUB#16084: Added range encoding to  RoaringDocIdSet. (Ignacio Vera)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent

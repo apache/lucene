@@ -249,7 +249,7 @@ public class RoaringDocIdSet extends DocIdSet {
 
     @Override
     public long ramBytesUsed() {
-      // it is a static class
+      // we use a static instance
       return 0;
     }
   }
