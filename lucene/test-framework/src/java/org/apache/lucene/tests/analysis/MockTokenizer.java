@@ -16,13 +16,13 @@
  */
 package org.apache.lucene.tests.analysis;
 
-import com.carrotsearch.randomizedtesting.RandomizedContext;
 import java.io.IOException;
 import java.nio.CharBuffer;
 import java.util.Random;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.AttributeFactory;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
 import org.apache.lucene.util.automaton.Operations;
@@ -105,7 +105,7 @@ public class MockTokenizer extends Tokenizer {
   private boolean enableChecks = true;
 
   // evil: but we don't change the behavior with this random, we only switch up how we read
-  private final Random random = new Random(RandomizedContext.current().getRandom().nextLong());
+  private final Random random;
 
   public MockTokenizer(
       AttributeFactory factory,
@@ -117,6 +117,7 @@ public class MockTokenizer extends Tokenizer {
     this.lowerCase = lowerCase;
     this.state = 0;
     this.maxTokenLength = maxTokenLength;
+    this.random = new Random(LuceneTestCase.random().nextLong());
   }
 
   public MockTokenizer(CharacterRunAutomaton runAutomaton, boolean lowerCase, int maxTokenLength) {

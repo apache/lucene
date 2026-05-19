@@ -90,6 +90,14 @@ API Changes
   Also removed QueryParserBase.setDeterminizeWorkLimit/getDeterminizeWorkLimit, which are
   no longer needed. (Dimitris Rempapis)
 
+* GITHUB#15605: Remove unused getCollectors() and internal collector tracking from
+  TopFieldCollectorManager. Clarify thread-safety documentation. (Prudhvi Godithi)
+
+* GITHUB#: Add junit5/jupiter support to the test-framework module. (Dawid Weiss)
+
+* GITHUB#16052: Remove IOException from LeafReader#getPointValues, LeafReader#terms,
+  LeafReader#getDocCount signatures. (Ignacio Vera)
+
 New Features
 ---------------------
 * GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
@@ -133,7 +141,7 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#15681, GITHUB#15833: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
+* GITHUB#15681, GITHUB#15833, GITHUB#16056: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
 
@@ -218,8 +226,14 @@ Build
   recognizes jdk.CPUTimeSample; CodeProfilingPlugin picks gradle/testing/profiling.cputime.jfc or
   profiling.jfc by host OS. (Prithvi S)
 
+* GITHUB#16036: Upgrade gradle to 9.5.0 (Dawid Weiss)
+
 Other
 ---------------------
+
+* GITHUB#16074: Ban presized collection#toArray. (Zhou Hui)
+
+* GITHUB#16063: Remove redundant final modifiers. (Zhou Hui)
 
 * GITHUB#14801: Removed all security manager and java.security-related code, which is effectively dead
   in Java 24+. (Dawid Weiss)
@@ -273,6 +287,11 @@ API Changes
 * GITHUB#15584: Add support for termdoc fields that use custom term freqs (via IndexOptions.DOCS_AND_CUSTOM_FREQS).
   IndexWriter counts their terms rather than summing their freqs.  Use
 
+* GITHUB#16043: Add field parameter to FlatVectorsReader.getFlatVectorScorer to match the other
+  scorer methods in that class. (Simon Cooper)
+
+* GITHUB#15990: Add experimental api to IndexWriter for columnar indexing. (Tim Brooks)
+
 New Features
 ---------------------
 
@@ -316,6 +335,8 @@ Improvements
 * GITHUB#15989: DocValuesRangeIterator always tries to use skipper-based block iteration
   as its approximation. (Alan Woodward)
 
+* GITHUB#16000: Clarify that Accountable#ramBytesUsed() reports JVM heap memory only. (Luca Cavanna)
+
 Optimizations
 ---------------------
 * GITHUB#15861: Optimise PhraseScorer by short circuiting non competitive documents in TOP_SCORES mode. (Prithvi S)
@@ -353,12 +374,27 @@ Optimizations
 * GITHUB#15938: Optimize ReaderUtil#partitionByLeaf to use binary search on leaf
   boundaries instead of linear scan. (Greg Miller)
 
-* GITHUB#15970: Reduce memory usage of fields with long terms during segment merges. (Alan Woodward)
+* GITHUB#15970, GITHUB#15977: Speed up TrieBuilder and reduce its memory footprint by replacing the in-memory object
+ tree with a compact prefix-coded byte buffer. (Alan Woodward, Guo Feng)
 
 * GITHUB#15732: Prevent writing vectors twice during merging HNSW graphs by allowing doing deferred work after calling
   merge for vectors is finshed. (Ignacio Vera)
 
 * GITHUB#16001: IndexSearcher.count() was calling query.rewrite twice, a regression since v9.10 (David Smiley)
+
+* GITHUB#16061, GITHUB#16070: Improve cost estimation in SortedSetDocValuesRangeQuery when using DocValuesSkipper
+  and the field is dense and is the primary sort of the index to reduce the number of doc values visited. (Ignacio Vera)
+
+* GITHUB#16048: Defer Sorter.DocMap packing until after flush (Tim Brooks)
+
+* GITHUB#16072: Added efficient implementations for BitSetIterator#docIDRunEnd. (Ignacio Vera)
+
+* GITHUB#16077: Added efficient implementations if the method #docIDRunEnd for the iterators used
+  by RoaringDocIdSet. (Ignacio Vera)
+
+* GITHUB#16080: Add a BulkScrer implementation spcialized for filters that match dense ranges. (Ignacio Vera)
+
+* GITHUB#16081: Implement LeafCollector#collectRange in the collectors used in LRUCache. (Ignacio Vera)
 
 Bug Fixes
 ---------------------
@@ -403,6 +439,10 @@ Bug Fixes
 * GITHUB#15899, GITHUB#15900: Improve TruncateTokenFilter to truncate on codepoints not
   chars and no longer produce half surrogates. There are new factory parameters available
   to configure legacy prefix chars and new codepoint behaviour.  (Uwe Schindler, Michael Sokolov)
+
+* GITHUB#15967: Fix IndexWriter's HNSW InfoStream progress during concurrent merges to show elapsed
+  time since merge start instead of duplicate incremental/total times. Add per-chunk completion
+  logging with sub-millisecond precision to aid merge concurrency debugging. (Prithvi S)
 
 Other
 ---------------------

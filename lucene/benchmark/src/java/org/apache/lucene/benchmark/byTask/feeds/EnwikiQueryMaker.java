@@ -187,7 +187,7 @@ public class EnwikiQueryMaker extends AbstractQueryMaker {
       }
     }
 
-    return queries.toArray(new Query[0]);
+    return queries.toArray(Query[]::new);
   }
 
   @Override

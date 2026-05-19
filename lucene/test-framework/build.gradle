@@ -30,7 +30,13 @@ dependencies {
   })
   moduleApi deps.hamcrest
 
+  moduleApi(deps.randomizedtesting.jupiter)
+  moduleApi(deps.junitplatform.jupiter)
+
   moduleImplementation project(':lucene:codecs')
+
+  moduleTestImplementation deps.junitplatform.testkit
+  moduleTestImplementation deps.assertj
 }
 
 //

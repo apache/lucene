@@ -1291,7 +1291,7 @@ public class TestGeo3DPoint extends LuceneTestCase {
       }
       */
 
-      final Polygon[] holes = holeList.toArray(new Polygon[0]);
+      final Polygon[] holes = holeList.toArray(Polygon[]::new);
 
       // Finally, build the polygon and return it
       final double[] lats = new double[polyPoints.size() + 1];

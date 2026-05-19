@@ -62,6 +62,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
       RamUsageEstimator.shallowSizeOfInstance(Lucene99FlatVectorsFormat.class);
 
   private final IntObjectHashMap<FieldEntry> fields = new IntObjectHashMap<>();
+  private final FlatVectorsScorer vectorScorer;
   private final IndexInput vectorData;
   private final FieldInfos fieldInfos;
   private final IOContext dataContext;
@@ -81,8 +82,8 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   public Lucene99FlatVectorsReader(
       SegmentReadState state, FlatVectorsScorer scorer, DataAccessHint accessHint)
       throws IOException {
-    super(scorer);
     int versionMeta = readMetadata(state);
+    this.vectorScorer = scorer;
     this.fieldInfos = state.fieldInfos;
     FileOpenHint[] hints =
         Stream.of(FileTypeHint.DATA, FileDataHint.KNN_VECTORS, accessHint)
@@ -249,6 +250,11 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
         fieldEntry.vectorDataOffset,
         fieldEntry.vectorDataLength,
         vectorData);
+  }
+
+  @Override
+  public FlatVectorsScorer getFlatVectorScorer(String field) throws IOException {
+    return vectorScorer;
   }
 
   @Override

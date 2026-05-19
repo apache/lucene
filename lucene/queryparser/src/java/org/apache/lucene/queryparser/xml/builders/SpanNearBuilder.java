@@ -45,7 +45,7 @@ public class SpanNearBuilder extends SpanBuilderBase {
         spans.add(factory.getSpanQuery((Element) kid));
       }
     }
-    SpanQuery[] spanQueries = spans.toArray(new SpanQuery[spans.size()]);
+    SpanQuery[] spanQueries = spans.toArray(SpanQuery[]::new);
     return new SpanNearQuery(spanQueries, slop, inOrder);
   }
 }

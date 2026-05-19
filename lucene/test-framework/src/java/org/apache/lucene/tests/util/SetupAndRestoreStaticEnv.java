@@ -23,11 +23,9 @@ import static org.apache.lucene.tests.util.LuceneTestCase.TEST_POSTINGSFORMAT;
 import static org.apache.lucene.tests.util.LuceneTestCase.VERBOSE;
 import static org.apache.lucene.tests.util.LuceneTestCase.assumeFalse;
 import static org.apache.lucene.tests.util.LuceneTestCase.localeForLanguageTag;
-import static org.apache.lucene.tests.util.LuceneTestCase.random;
 import static org.apache.lucene.tests.util.LuceneTestCase.randomLocale;
 import static org.apache.lucene.tests.util.LuceneTestCase.randomTimeZone;
 
-import com.carrotsearch.randomizedtesting.RandomizedContext;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.PrintStream;
 import java.util.Arrays;
@@ -35,6 +33,7 @@ import java.util.HashSet;
 import java.util.Locale;
 import java.util.Random;
 import java.util.TimeZone;
+import java.util.function.Supplier;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.PostingsFormat;
@@ -50,18 +49,22 @@ import org.apache.lucene.tests.codecs.mockrandom.MockRandomPostingsFormat;
 import org.apache.lucene.tests.index.RandomCodec;
 import org.apache.lucene.tests.search.similarities.AssertingSimilarity;
 import org.apache.lucene.tests.search.similarities.RandomSimilarity;
-import org.apache.lucene.tests.util.LuceneTestCase.LiveIWCFlushMode;
 import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
+import org.apache.lucene.tests.util.LuceneTestCaseParent.LiveIWCFlushMode;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.PrintStreamInfoStream;
 import org.junit.internal.AssumptionViolatedException;
 
-/** Setup and restore suite-level environment (fine grained junk that doesn't fit anywhere else). */
-final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
+/** Setup and restore suite-level environment (fine-grained junk that doesn't fit anywhere else). */
+final class SetupAndRestoreStaticEnv implements BeforeAfterCallback {
+  private final Supplier<Random> randomSupplier;
+  private final Supplier<Class<?>> targetClassSupplier;
+
   private Codec savedCodec;
   private Locale savedLocale;
   private TimeZone savedTimeZone;
   private InfoStream savedInfoStream;
+  private LiveIWCFlushMode flushMode;
 
   Locale locale;
   TimeZone timeZone;
@@ -75,6 +78,16 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
    * @see SuppressCodecs
    */
   HashSet<String> avoidCodecs;
+
+  SetupAndRestoreStaticEnv(
+      Supplier<Random> randomSupplier, Supplier<Class<?>> targetClassSupplier) {
+    this.randomSupplier = randomSupplier;
+    this.targetClassSupplier = targetClassSupplier;
+  }
+
+  LuceneTestCaseParent.LiveIWCFlushMode getLiveIWCFlushMode() {
+    return flushMode;
+  }
 
   static class ThreadNameFixingPrintStreamInfoStream extends PrintStreamInfoStream {
     public ThreadNameFixingPrintStreamInfoStream(PrintStream out) {
@@ -104,7 +117,7 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
   }
 
   @Override
-  protected void before() throws Exception {
+  public void before() throws Exception {
     // if verbose: print some debugging stuff about which codecs are loaded.
     if (VERBOSE) {
       System.out.println("Loaded codecs: " + Codec.availableCodecs());
@@ -112,7 +125,7 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
     }
 
     savedInfoStream = InfoStream.getDefault();
-    final Random random = RandomizedContext.current().getRandom();
+    final Random random = randomSupplier.get();
     final boolean v = random.nextBoolean();
     if (INFOSTREAM) {
       InfoStream.setDefault(new ThreadNameFixingPrintStreamInfoStream(System.out));
@@ -120,7 +133,7 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
       InfoStream.setDefault(new NullInfoStream());
     }
 
-    Class<?> targetClass = RandomizedContext.current().getTargetClass();
+    Class<?> targetClass = targetClassSupplier.get();
     avoidCodecs = new HashSet<>();
     if (targetClass.isAnnotationPresent(SuppressCodecs.class)) {
       SuppressCodecs a = targetClass.getAnnotation(SuppressCodecs.class);
@@ -211,10 +224,10 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
     Locale.setDefault(locale);
 
     savedTimeZone = TimeZone.getDefault();
-    TimeZone randomTimeZone = randomTimeZone(random());
+    TimeZone randomTimeZone = randomTimeZone(random);
     timeZone = testTimeZone.equals("random") ? randomTimeZone : TimeZone.getTimeZone(testTimeZone);
     TimeZone.setDefault(timeZone);
-    similarity = new AssertingSimilarity(new RandomSimilarity(random()));
+    similarity = new AssertingSimilarity(new RandomSimilarity(random));
 
     // Check codec restrictions once at class level.
     try {
@@ -232,22 +245,13 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
     // just the doc count to flush by, else both.
     // This way the assertMemory in DocumentsWriterFlushControl sometimes runs (when we always flush
     // by RAM).
-    LiveIWCFlushMode flushMode;
-    switch (random().nextInt(3)) {
-      case 0:
-        flushMode = LiveIWCFlushMode.BY_RAM;
-        break;
-      case 1:
-        flushMode = LiveIWCFlushMode.BY_DOCS;
-        break;
-      case 2:
-        flushMode = LiveIWCFlushMode.EITHER;
-        break;
-      default:
-        throw new AssertionError();
-    }
-
-    LuceneTestCase.setLiveIWCFlushMode(flushMode);
+    this.flushMode =
+        switch (random.nextInt(3)) {
+          case 0 -> LiveIWCFlushMode.BY_RAM;
+          case 1 -> LiveIWCFlushMode.BY_DOCS;
+          case 2 -> LiveIWCFlushMode.EITHER;
+          default -> throw new AssertionError();
+        };
 
     initialized = true;
   }
@@ -281,7 +285,7 @@ final class TestRuleSetupAndRestoreClassEnv extends AbstractBeforeAfterRule {
 
   /** After suite cleanup (always invoked). */
   @Override
-  protected void after() throws Exception {
+  public void after() throws Exception {
     Codec.setDefault(savedCodec);
     InfoStream.setDefault(savedInfoStream);
     if (savedLocale != null) Locale.setDefault(savedLocale);

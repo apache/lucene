@@ -158,7 +158,7 @@ public abstract class TopTermsRewrite<B> extends TermCollectingRewrite<B> {
         });
 
     final B b = getTopLevelBuilder();
-    final ScoreTerm[] scoreTerms = stQueue.toArray(new ScoreTerm[stQueue.size()]);
+    final ScoreTerm[] scoreTerms = stQueue.toArray(ScoreTerm[]::new);
     ArrayUtil.timSort(scoreTerms, (st1, st2) -> st1.bytes.get().compareTo(st2.bytes.get()));
 
     for (final ScoreTerm st : scoreTerms) {

@@ -136,7 +136,7 @@ final class IntervalBuilder {
     if (sources.size() == 1) {
       return sources.get(0);
     }
-    IntervalsSource[] sourcesArray = sources.toArray(new IntervalsSource[0]);
+    IntervalsSource[] sourcesArray = sources.toArray(IntervalsSource[]::new);
     if (maxGaps == 0 && ordered) {
       return Intervals.phrase(sourcesArray);
     }
@@ -183,7 +183,7 @@ final class IntervalBuilder {
         if (synonyms.size() == 1) {
           terms.add(extend(synonyms.get(0), spaces));
         } else if (synonyms.size() > 1) {
-          terms.add(extend(Intervals.or(synonyms.toArray(new IntervalsSource[0])), spaces));
+          terms.add(extend(Intervals.or(synonyms.toArray(IntervalsSource[]::new)), spaces));
         }
         synonyms.clear();
         spaces = posInc - 1;
@@ -193,7 +193,7 @@ final class IntervalBuilder {
     if (synonyms.size() == 1) {
       terms.add(extend(synonyms.get(0), spaces));
     } else {
-      terms.add(extend(Intervals.or(synonyms.toArray(new IntervalsSource[0])), spaces));
+      terms.add(extend(Intervals.or(synonyms.toArray(IntervalsSource[]::new)), spaces));
     }
     return combineSources(terms, maxGaps, ordered);
   }
@@ -224,7 +224,7 @@ final class IntervalBuilder {
           paths.add(phrase);
         }
         if (paths.size() > 0) {
-          clauses.add(Intervals.or(paths.toArray(new IntervalsSource[0])));
+          clauses.add(Intervals.or(paths.toArray(IntervalsSource[]::new)));
         }
       } else {
         Iterator<TokenStream> it = graph.getFiniteStrings(start, end);
