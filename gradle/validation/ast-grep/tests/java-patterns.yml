@@ -133,3 +133,13 @@ valid:
     * Something and...
     * {@inheritDoc}
     */
+---
+id: CollectionToArrayPreSizedArray
+valid:
+  - list.toArray(new String[0])
+  - list.toArray(String[]::new)
+  - list.toArray()
+invalid:
+  - list.toArray(new String[list.size()])
+  - list.toArray(new String[n])
+  - set.toArray(new Foo[expectedSize])

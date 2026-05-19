@@ -229,6 +229,8 @@ Build
 Other
 ---------------------
 
+* GITHUB#16074: Ban presized collection#toArray. (Zhou Hui)
+
 * GITHUB#16063: Remove redundant final modifiers. (Zhou Hui)
 
 * GITHUB#14801: Removed all security manager and java.security-related code, which is effectively dead
