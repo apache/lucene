@@ -38,7 +38,7 @@ public class RoaringDocIdSet extends DocIdSet {
   // The maximum length for an array, beyond that point we switch to a bitset
   private static final int MAX_ARRAY_LENGTH = 1 << 12;
   // The minimum length for a range, beyond that point we build a range if the block is dense
-  private static final int MIN_RANGE_LENGTH = 3;
+  private static final int MIN_RANGE_LENGTH = 2;
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(RoaringDocIdSet.class);
 
@@ -73,11 +73,10 @@ public class RoaringDocIdSet extends DocIdSet {
       if (currentBlockCardinality == BLOCK_SIZE) {
         // all docs in the block
         sets[currentBlock] = AllDocIdSet.INSTANCE;
-      } else if (currentBlockCardinality > MIN_RANGE_LENGTH
+      } else if (currentBlockCardinality >= MIN_RANGE_LENGTH
           && currentBlockCardinality == lastDocId - firstDocId + 1) {
         // doc ids are continuous, use range encoding
-        int offset = (currentBlock << 16);
-        sets[currentBlock] = new RangeDocIdSet(firstDocId - offset, lastDocId - offset + 1);
+        sets[currentBlock] = new RangeDocIdSet((short) firstDocId, (short) lastDocId);
       } else if (currentBlockCardinality <= MAX_ARRAY_LENGTH) {
         // Use sparse encoding
         assert denseBuffer == null;
@@ -260,17 +259,17 @@ public class RoaringDocIdSet extends DocIdSet {
     private static final long BASE_RAM_BYTES_USED =
         RamUsageEstimator.shallowSizeOfInstance(RangeDocIdSet.class);
 
-    final int minDocId;
-    final int maxDocId;
+    final short minDocId;
+    final short maxDocId;
 
-    private RangeDocIdSet(int minDocId, int maxDocId) {
+    private RangeDocIdSet(short minDocId, short maxDocId) {
       this.minDocId = minDocId;
       this.maxDocId = maxDocId;
     }
 
     @Override
     public DocIdSetIterator iterator() {
-      return DocIdSetIterator.range(minDocId, maxDocId);
+      return DocIdSetIterator.range(minDocId & 0xFFFF, (maxDocId & 0xFFFF) + 1);
     }
 
     @Override
