@@ -310,14 +310,14 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
     // result as the query run against shards and merged back together after each phase.
 
     FirstPassGroupingCollectorManager<T> firstPassGroupingCollectorManager =
-        new FirstPassGroupingCollectorManager<>(this::getGroupSelector, sort, 5);
+        new FirstPassGroupingCollectorManager<>(this::getGroupSelector, sort, 0, 5);
     Collection<SearchGroup<T>> singletonGroups =
         control.getIndexSearcher().search(topLevel, firstPassGroupingCollectorManager);
 
     List<Collection<SearchGroup<T>>> shardGroups = new ArrayList<>();
     for (Shard shard : shards) {
       FirstPassGroupingCollectorManager<T> fcm =
-          new FirstPassGroupingCollectorManager<>(this::getGroupSelector, sort, 5);
+          new FirstPassGroupingCollectorManager<>(this::getGroupSelector, sort, 0, 5);
       Collection<SearchGroup<T>> topGroups = shard.getIndexSearcher().search(topLevel, fcm);
       shardGroups.add(topGroups);
     }

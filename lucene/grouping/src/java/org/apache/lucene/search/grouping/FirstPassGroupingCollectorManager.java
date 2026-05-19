@@ -24,26 +24,54 @@ import java.util.function.Supplier;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.Sort;
 
-/** A CollectorManager implementation for FirstPassGroupingCollector. */
+/**
+ * A CollectorManager implementation for {@link FirstPassGroupingCollector} that supports parallel
+ * collection and merges results across segments.
+ *
+ * <p>Example usage:
+ *
+ * <pre class="prettyprint">
+ * IndexSearcher searcher = new IndexSearcher(reader);
+ * Sort groupSort = Sort.RELEVANCE;
+ * int topNGroups = 10;
+ *
+ * FirstPassGroupingCollectorManager&lt;BytesRef&gt; manager =
+ *     new FirstPassGroupingCollectorManager&lt;&gt;(
+ *         () -&gt; new TermGroupSelector("category"),
+ *         groupSort,
+ *         0,
+ *         topNGroups);
+ *
+ * Collection&lt;SearchGroup&lt;BytesRef&gt;&gt; topGroups = searcher.search(query, manager);
+ *
+ * // topGroups can then be passed to SecondPassGroupingCollector for full group results
+ * </pre>
+ *
+ * @lucene.experimental
+ */
 public class FirstPassGroupingCollectorManager<T>
     implements CollectorManager<FirstPassGroupingCollector<T>, Collection<SearchGroup<T>>> {
 
   private final Supplier<GroupSelector<T>> groupSelectorFactory;
   private final Sort groupSort;
+  private final int groupOffset;
   private final int topNGroups;
   private final boolean ignoreDocsWithoutGroupField;
-  private final List<FirstPassGroupingCollector<T>> collectors;
 
   /**
    * Creates a new FirstPassGroupingCollectorManager.
    *
    * @param groupSelectorFactory factory to create group selectors for each collector
    * @param groupSort the sort to use for groups
+   * @param groupOffset The offset in the collected groups
    * @param topNGroups the number of top groups to collect
    */
   public FirstPassGroupingCollectorManager(
-      Supplier<GroupSelector<T>> groupSelectorFactory, Sort groupSort, int topNGroups) {
-    this(groupSelectorFactory, groupSort, topNGroups, false);
+      Supplier<GroupSelector<T>> groupSelectorFactory,
+      Sort groupSort,
+      int groupOffset,
+      int topNGroups) {
+    this(groupSelectorFactory, groupSort, groupOffset, topNGroups, false);
   }
 
   /**
@@ -51,42 +79,36 @@ public class FirstPassGroupingCollectorManager<T>
    *
    * @param groupSelectorFactory factory to create group selectors for each collector
    * @param groupSort the sort to use for groups
+   * @param groupOffset The offset in the collected groups
    * @param topNGroups the number of top groups to collect
    * @param ignoreDocsWithoutGroupField whether to ignore documents without a group field
    */
   public FirstPassGroupingCollectorManager(
       Supplier<GroupSelector<T>> groupSelectorFactory,
       Sort groupSort,
+      int groupOffset,
       int topNGroups,
       boolean ignoreDocsWithoutGroupField) {
     this.groupSelectorFactory = groupSelectorFactory;
     this.groupSort = groupSort;
+    this.groupOffset = groupOffset;
     this.topNGroups = topNGroups;
     this.ignoreDocsWithoutGroupField = ignoreDocsWithoutGroupField;
-    this.collectors = new ArrayList<>();
   }
 
   @Override
   public FirstPassGroupingCollector<T> newCollector() throws IOException {
-    FirstPassGroupingCollector<T> collector =
-        new FirstPassGroupingCollector<>(
-            groupSelectorFactory.get(), groupSort, topNGroups, ignoreDocsWithoutGroupField);
-    collectors.add(collector);
-    return collector;
+    return new FirstPassGroupingCollector<>(
+        groupSelectorFactory.get(),
+        groupSort,
+        groupOffset + topNGroups,
+        ignoreDocsWithoutGroupField);
   }
 
   @Override
   public Collection<SearchGroup<T>> reduce(Collection<FirstPassGroupingCollector<T>> collectors)
       throws IOException {
-    if (collectors.isEmpty()) {
-      return null;
-    }
-
-    if (collectors.size() == 1) {
-      return collectors.iterator().next().getTopGroups(0);
-    }
-
-    List<Collection<SearchGroup<T>>> allGroups = new ArrayList<>();
+    final List<Collection<SearchGroup<T>>> allGroups = new ArrayList<>();
     for (FirstPassGroupingCollector<T> collector : collectors) {
       Collection<SearchGroup<T>> groups = collector.getTopGroups(0);
       if (groups != null) {
@@ -94,10 +116,6 @@ public class FirstPassGroupingCollectorManager<T>
       }
     }
 
-    return SearchGroup.merge(allGroups, 0, topNGroups, groupSort);
-  }
-
-  public List<FirstPassGroupingCollector<T>> getCollectors() {
-    return collectors;
+    return SearchGroup.merge(allGroups, groupOffset, topNGroups, groupSort);
   }
 }
