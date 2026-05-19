@@ -37,6 +37,8 @@ public class RoaringDocIdSet extends DocIdSet {
   private static final int BLOCK_SIZE = 1 << 16;
   // The maximum length for an array, beyond that point we switch to a bitset
   private static final int MAX_ARRAY_LENGTH = 1 << 12;
+  // The minimum length for a range, beyond that point we build a range if the block is dense
+  private static final int MIN_RANGE_LENGTH = 3;
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(RoaringDocIdSet.class);
 
@@ -47,6 +49,7 @@ public class RoaringDocIdSet extends DocIdSet {
     private final DocIdSet[] sets;
 
     private int cardinality;
+    private int firstDocId;
     private int lastDocId;
     private int currentBlock;
     private int currentBlockCardinality;
@@ -67,7 +70,15 @@ public class RoaringDocIdSet extends DocIdSet {
 
     private void flush() {
       assert currentBlockCardinality <= BLOCK_SIZE;
-      if (currentBlockCardinality <= MAX_ARRAY_LENGTH) {
+      if (currentBlockCardinality == BLOCK_SIZE) {
+        // all docs in the block
+        sets[currentBlock] = AllDocIdSet.INSTANCE;
+      } else if (currentBlockCardinality > MIN_RANGE_LENGTH
+          && currentBlockCardinality == lastDocId - firstDocId + 1) {
+        // doc ids are continuous, use range encoding
+        int offset = (currentBlock << 16);
+        sets[currentBlock] = new RangeDocIdSet(firstDocId - offset, lastDocId - offset + 1);
+      } else if (currentBlockCardinality <= MAX_ARRAY_LENGTH) {
         // Use sparse encoding
         assert denseBuffer == null;
         if (currentBlockCardinality > 0) {
@@ -114,6 +125,7 @@ public class RoaringDocIdSet extends DocIdSet {
         // we went to a different block, let's flush what we buffered and start from fresh
         flush();
         currentBlock = block;
+        firstDocId = docId;
       }
 
       appendDocInCurrentBlock(docId, block);
@@ -156,6 +168,7 @@ public class RoaringDocIdSet extends DocIdSet {
         if (block != currentBlock) {
           flush();
           currentBlock = block;
+          firstDocId = doc;
         }
         appendRangeInCurrentBlock(doc, blockEnd, block);
         doc = blockEnd;
@@ -164,6 +177,7 @@ public class RoaringDocIdSet extends DocIdSet {
     }
 
     private void appendDocInCurrentBlock(int docId, int block) {
+      assert docId >= firstDocId;
       if (currentBlockCardinality < MAX_ARRAY_LENGTH) {
         buffer[currentBlockCardinality] = (short) docId;
       } else {
@@ -183,6 +197,7 @@ public class RoaringDocIdSet extends DocIdSet {
     }
 
     private void appendRangeInCurrentBlock(int fromDoc, int toDocExclusive, int block) {
+      assert fromDoc >= firstDocId;
       assert (fromDoc >>> 16) == block;
       assert (toDocExclusive >>> 16) == block || toDocExclusive == (block + 1) << 16;
       assert fromDoc < toDocExclusive;
@@ -219,6 +234,48 @@ public class RoaringDocIdSet extends DocIdSet {
     public RoaringDocIdSet build() {
       flush();
       return new RoaringDocIdSet(sets, cardinality);
+    }
+  }
+
+  private static class AllDocIdSet extends DocIdSet {
+
+    private static final AllDocIdSet INSTANCE = new AllDocIdSet();
+
+    private AllDocIdSet() {}
+
+    @Override
+    public DocIdSetIterator iterator() {
+      return DocIdSetIterator.range(0, BLOCK_SIZE);
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      // it is a static class
+      return 0;
+    }
+  }
+
+  private static class RangeDocIdSet extends DocIdSet {
+
+    private static final long BASE_RAM_BYTES_USED =
+        RamUsageEstimator.shallowSizeOfInstance(RangeDocIdSet.class);
+
+    final int minDocId;
+    final int maxDocId;
+
+    private RangeDocIdSet(int minDocId, int maxDocId) {
+      this.minDocId = minDocId;
+      this.maxDocId = maxDocId;
+    }
+
+    @Override
+    public DocIdSetIterator iterator() {
+      return DocIdSetIterator.range(minDocId, maxDocId);
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return BASE_RAM_BYTES_USED;
     }
   }
 
