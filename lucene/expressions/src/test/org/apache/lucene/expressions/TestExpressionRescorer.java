@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.expressions;
 
+import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -32,20 +33,23 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCaseJupiter;
+import org.apache.lucene.util.IOUtils;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class TestExpressionRescorer extends LuceneTestCase {
+public class TestExpressionRescorer extends LuceneTestCaseJupiter {
   IndexSearcher searcher;
   DirectoryReader reader;
   Directory dir;
 
-  @Override
-  public void setUp() throws Exception {
-    super.setUp();
+  @BeforeEach
+  final void beforeEach(Random random) throws Exception {
     dir = newDirectory();
     RandomIndexWriter iw =
         new RandomIndexWriter(
-            random(), dir, newIndexWriterConfig().setSimilarity(new ClassicSimilarity()));
+            random, dir, newIndexWriterConfig().setSimilarity(new ClassicSimilarity()));
 
     Document doc = new Document();
     doc.add(newStringField("id", "1", Field.Store.YES));
@@ -72,13 +76,12 @@ public class TestExpressionRescorer extends LuceneTestCase {
     iw.close();
   }
 
-  @Override
-  public void tearDown() throws Exception {
-    reader.close();
-    dir.close();
-    super.tearDown();
+  @AfterEach
+  final void afterEach() throws Exception {
+    IOUtils.close(reader, dir);
   }
 
+  @Test
   public void testBasic() throws Exception {
 
     // create a sort field and sort by it (reverse order)

@@ -17,6 +17,7 @@
 package org.apache.lucene.expressions;
 
 import java.io.IOException;
+import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -30,19 +31,22 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCaseJupiter;
+import org.apache.lucene.util.IOUtils;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class TestExpressionValueSource extends LuceneTestCase {
+public class TestExpressionValueSource extends LuceneTestCaseJupiter {
   DirectoryReader reader;
   Directory dir;
 
-  @Override
-  public void setUp() throws Exception {
-    super.setUp();
+  @BeforeEach
+  final void beforeEach(Random random) throws Exception {
     dir = newDirectory();
-    IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
+    IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random));
     iwc.setMergePolicy(newLogMergePolicy());
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, iwc);
+    RandomIndexWriter iw = new RandomIndexWriter(random, dir, iwc);
 
     Document doc = new Document();
     doc.add(newStringField("id", "1", Field.Store.YES));
@@ -68,13 +72,12 @@ public class TestExpressionValueSource extends LuceneTestCase {
     iw.close();
   }
 
-  @Override
-  public void tearDown() throws Exception {
-    reader.close();
-    dir.close();
-    super.tearDown();
+  @AfterEach
+  final void afterEach() throws Exception {
+    IOUtils.close(reader, dir);
   }
 
+  @Test
   public void testDoubleValuesSourceTypes() throws Exception {
     Expression expr = JavascriptCompiler.compile("2*popularity + count");
     SimpleBindings bindings = new SimpleBindings();
@@ -95,6 +98,7 @@ public class TestExpressionValueSource extends LuceneTestCase {
   }
 
   @SuppressWarnings({"unlikely-arg-type", "SelfAssertion"})
+  @Test
   public void testDoubleValuesSourceEquals() throws Exception {
     Expression expr = JavascriptCompiler.compile("sqrt(a) + ln(b)");
 
@@ -127,6 +131,7 @@ public class TestExpressionValueSource extends LuceneTestCase {
     assertFalse(vs1.equals(vs4));
   }
 
+  @Test
   public void testFibonacciExpr() throws Exception {
     int n = 40;
     SimpleBindings bindings = new SimpleBindings();
@@ -150,6 +155,7 @@ public class TestExpressionValueSource extends LuceneTestCase {
     assertEquals(fib(n), (int) values.doubleValue());
   }
 
+  @Test
   public void testLazyDependencies() throws Exception {
     SimpleBindings bindings = new SimpleBindings();
     bindings.add("f0", DoubleValuesSource.constant(1));
@@ -187,6 +193,7 @@ public class TestExpressionValueSource extends LuceneTestCase {
     return curr;
   }
 
+  @Test
   public void testRewrite() throws Exception {
     Expression expr = JavascriptCompiler.compile("a");
 

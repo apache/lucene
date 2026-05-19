@@ -76,6 +76,24 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     } while (aa != DocIdSetIterator.NO_MORE_DOCS);
   }
 
+  void doNextClearBit(java.util.BitSet a, FixedBitSet b) {
+    assertEquals(a.cardinality(), b.cardinality());
+    final int len = b.length();
+    int aa = -1;
+    int bb = -1;
+    do {
+      final int from = aa + 1;
+      if (from >= len) {
+        aa = DocIdSetIterator.NO_MORE_DOCS;
+      } else {
+        int nc = a.nextClearBit(from);
+        aa = nc < len ? nc : DocIdSetIterator.NO_MORE_DOCS;
+      }
+      bb = bb < len - 1 ? b.nextClearBit(bb + 1) : DocIdSetIterator.NO_MORE_DOCS;
+      assertEquals(aa, bb);
+    } while (aa != DocIdSetIterator.NO_MORE_DOCS);
+  }
+
   void doPrevSetBit(java.util.BitSet a, FixedBitSet b) {
     assertEquals(a.cardinality(), b.cardinality());
     int aa = a.size() + random().nextInt(100);
@@ -175,6 +193,8 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
 
       doNextSetBit(aa, bb); // a problem here is from clear() or nextSetBit
 
+      doNextClearBit(aa, bb);
+
       doPrevSetBit(aa, bb);
 
       fromIndex = random().nextInt(sz / 2);
@@ -185,6 +205,8 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
       bb.set(fromIndex, toIndex);
 
       doNextSetBit(aa, bb); // a problem here is from set() or nextSetBit
+
+      doNextClearBit(aa, bb);
 
       doPrevSetBit(aa, bb);
 

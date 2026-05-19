@@ -69,7 +69,7 @@ public final class CSVUtil {
       return new String[0];
     }
 
-    return result.toArray(new String[0]);
+    return result.toArray(String[]::new);
   }
 
   private static String unQuoteUnEscape(String original) {

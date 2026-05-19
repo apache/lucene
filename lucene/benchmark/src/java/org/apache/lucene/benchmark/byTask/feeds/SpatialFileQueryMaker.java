@@ -87,7 +87,7 @@ public class SpatialFileQueryMaker extends AbstractQueryMaker {
     } finally {
       src.close();
     }
-    return queries.toArray(new Query[queries.size()]);
+    return queries.toArray(Query[]::new);
   }
 
   protected Query makeQueryFromShape(Shape shape) {

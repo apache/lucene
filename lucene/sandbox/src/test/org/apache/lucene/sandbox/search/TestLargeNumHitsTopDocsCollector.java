@@ -17,6 +17,8 @@
 
 package org.apache.lucene.sandbox.search;
 
+import static org.apache.lucene.search.TopDocsCollector.EMPTY_TOPDOCS;
+
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -80,7 +82,15 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
     runNumHits(25);
   }
 
-  public void testIllegalArguments() throws IOException {
+  public void testInvalidRequestedHitCount() {
+    for (int n : new int[] {0, -1}) {
+      IllegalArgumentException e =
+          expectThrows(IllegalArgumentException.class, () -> new LargeNumHitsTopDocsCollector(n));
+      assertTrue(e.getMessage().contains("requestedHitCount must be > 0"));
+    }
+  }
+
+  public void testTopDocs() throws IOException {
     IndexSearcher searcher = newSearcher(reader);
     LargeNumHitsTopDocsCollector largeCollector = new LargeNumHitsTopDocsCollector(15);
     TopScoreDocCollectorManager regularCollectorManager =
@@ -92,13 +102,12 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
     assertEquals(largeCollector.totalHits, topDocs.totalHits.value());
 
     IllegalArgumentException expected =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              largeCollector.topDocs(350_000);
-            });
+        expectThrows(IllegalArgumentException.class, () -> largeCollector.topDocs(-1));
 
-    assertTrue(expected.getMessage().contains("Incorrect number of hits requested"));
+    assertTrue(expected.getMessage().contains("Number of hits requested must not be negative"));
+
+    assertEquals(EMPTY_TOPDOCS, largeCollector.topDocs(0));
+    assertEquals(largeCollector.totalHits, largeCollector.topDocs(35_000).totalHits.value());
   }
 
   public void testNoPQBuild() throws IOException {

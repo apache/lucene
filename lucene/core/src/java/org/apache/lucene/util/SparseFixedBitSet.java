@@ -348,6 +348,90 @@ public class SparseFixedBitSet extends BitSet {
     return res < upperBound ? res : DocIdSetIterator.NO_MORE_DOCS;
   }
 
+  @Override
+  public int nextClearBit(int index) {
+    int res = nextClearBitInRange(index, length);
+    return res < length ? res : DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  @Override
+  public int nextClearBit(int start, int upperBound) {
+    int res = nextClearBitInRange(start, upperBound);
+    return res < upperBound ? res : DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  /**
+   * First unset bit in {@code [fromGlobal, upperBound)} within block {@code i4096}, or {@link
+   * DocIdSetIterator#NO_MORE_DOCS} if none.
+   */
+  private int firstClearInBlock(int i4096, int fromGlobal, int upperBound) {
+    final int blockBase = i4096 << 12;
+    final int blockEnd = Math.min(blockBase + 4096, length);
+    int from = Math.max(fromGlobal, blockBase);
+    final int blockCap = Math.min(upperBound, blockEnd);
+    if (from >= blockCap) {
+      return DocIdSetIterator.NO_MORE_DOCS;
+    }
+    if (indices[i4096] == 0) {
+      return from;
+    }
+    final long index = indices[i4096];
+    final long[] bitArray = bits[i4096];
+    int pos = from;
+    while (pos < blockCap) {
+      final int i64 = pos >>> 6;
+      final long i64bit = 1L << i64;
+      final int wStart = i64 << 6;
+      if (wStart >= blockEnd) {
+        break;
+      }
+      if ((index & i64bit) == 0) {
+        if (pos < blockCap) {
+          return pos;
+        }
+        pos = wStart + 64;
+        continue;
+      }
+      final int o = Long.bitCount(index & (i64bit - 1));
+      final long wordBits = bitArray[o];
+      final int sub = pos - wStart;
+      final long tail = wordBits >>> sub;
+      final int span = 64 - sub;
+      final long spanMask = (sub == 0) ? -1L : ((1L << span) - 1);
+      final long inv = (~tail) & spanMask;
+      if (inv != 0) {
+        final int cand = pos + Long.numberOfTrailingZeros(inv);
+        if (cand < blockCap) {
+          return cand;
+        }
+      }
+      pos = wStart + 64;
+    }
+    return DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  /**
+   * Returns the next unset bit in {@code [start, upperBound)}, or {@link
+   * DocIdSetIterator#NO_MORE_DOCS} if there is none.
+   */
+  private int nextClearBitInRange(int start, int upperBound) {
+    assert start < length;
+    assert upperBound > start && upperBound <= length
+        : "upperBound=" + upperBound + ", start=" + start + ", length=" + length;
+    int i4096 = start >>> 12;
+    final int i4096Upper = upperBound == length ? indices.length : blockCount(upperBound);
+    int from = start;
+    while (i4096 < i4096Upper) {
+      final int res = firstClearInBlock(i4096, from, upperBound);
+      if (res != DocIdSetIterator.NO_MORE_DOCS) {
+        return res;
+      }
+      i4096++;
+      from = i4096 << 12;
+    }
+    return DocIdSetIterator.NO_MORE_DOCS;
+  }
+
   /**
    * Returns the next set bit in the specified range, but treats `upperBound` as a best-effort hint
    * rather than a hard requirement. Note that this may return a result that is >= upperBound in

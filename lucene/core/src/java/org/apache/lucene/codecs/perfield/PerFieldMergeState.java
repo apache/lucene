@@ -241,7 +241,7 @@ final class PerFieldMergeState {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       if (!filtered.contains(field)) {
         throw new IllegalArgumentException(
             "The field named '"

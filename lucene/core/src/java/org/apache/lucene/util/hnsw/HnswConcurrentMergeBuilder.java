@@ -22,8 +22,10 @@ import static org.apache.lucene.util.hnsw.HnswGraphBuilder.HNSW_COMPONENT;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.Callable;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.TaskExecutor;
@@ -76,10 +78,16 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
     if (frozen) {
       throw new IllegalStateException("graph has already been built");
     }
+    long mergeStartTimeNs = System.nanoTime();
     if (infoStream.isEnabled(HNSW_COMPONENT)) {
       infoStream.message(
           HNSW_COMPONENT,
           "build graph from " + maxOrd + " vectors, with " + workers.length + " workers");
+    }
+    AtomicLong cumulativeWorkTimeNs = new AtomicLong();
+    for (ConcurrentMergeWorker worker : workers) {
+      worker.setMergeStartTimeNs(mergeStartTimeNs);
+      worker.setCumulativeWorkTimeNs(cumulativeWorkTimeNs);
     }
     List<Callable<Void>> futures = new ArrayList<>();
     for (int i = 0; i < workers.length; i++) {
@@ -91,6 +99,20 @@ public class HnswConcurrentMergeBuilder implements HnswBuilder {
           });
     }
     taskExecutor.invokeAll(futures);
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      double wallClockMs = (System.nanoTime() - mergeStartTimeNs) / 1_000_000.0;
+      double totalWorkerMs = cumulativeWorkTimeNs.get() / 1_000_000.0;
+      double effectiveConcurrency = wallClockMs > 0 ? totalWorkerMs / wallClockMs : 0;
+      infoStream.message(
+          HNSW_COMPONENT,
+          String.format(
+              Locale.ROOT,
+              "merge completed: %d vectors, %.2f ms wall clock, %.2f ms cumulative worker time, %.2fx effective concurrency",
+              maxOrd,
+              wallClockMs,
+              totalWorkerMs,
+              effectiveConcurrency));
+    }
     return getCompletedGraph();
   }
 
