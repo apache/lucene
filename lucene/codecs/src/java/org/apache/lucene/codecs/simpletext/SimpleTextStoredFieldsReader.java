@@ -36,6 +36,7 @@ import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.store.AlreadyClosedException;
@@ -226,4 +227,7 @@ public class SimpleTextStoredFieldsReader extends StoredFieldsReader {
 
   @Override
   public void checkIntegrity() throws IOException {}
+
+  @Override
+  public void checkIntegrity(MergePolicy.AbortChecker abortChecker) throws IOException {}
 }

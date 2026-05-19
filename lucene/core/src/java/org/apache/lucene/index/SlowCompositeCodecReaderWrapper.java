@@ -146,9 +146,14 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
 
     @Override
     public void checkIntegrity() throws IOException {
+      checkIntegrity(MergePolicy.AbortChecker.NO_OP);
+    }
+
+    @Override
+    public void checkIntegrity(MergePolicy.AbortChecker abortChecker) throws IOException {
       for (StoredFieldsReader reader : readers) {
         if (reader != null) {
-          reader.checkIntegrity();
+          reader.checkIntegrity(abortChecker);
         }
       }
     }

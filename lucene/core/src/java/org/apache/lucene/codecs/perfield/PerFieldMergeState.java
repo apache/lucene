@@ -69,7 +69,8 @@ final class PerFieldMergeState {
         in.maxDocs,
         in.infoStream,
         in.intraMergeTaskExecutor,
-        in.needsIndexSort);
+        in.needsIndexSort,
+        in.abortChecker);
   }
 
   private static class FilterFieldInfos extends FieldInfos {

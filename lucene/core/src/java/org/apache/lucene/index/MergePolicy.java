@@ -571,6 +571,37 @@ public abstract class MergePolicy {
   }
 
   /**
+   * Interface for checking whether a merge has been aborted. Implementations should throw {@link
+   * MergeAbortedException} if the merge should stop.
+   *
+   * @lucene.experimental
+   */
+  public static final class AbortChecker {
+
+    /** A no-op checker */
+    public static final AbortChecker NO_OP = new AbortChecker(null, 0);
+
+    private final OneMerge oneMerge;
+    private final int abortCheckIntervalBytes;
+
+    public AbortChecker(OneMerge oneMerge, int abortCheckIntervalBytes) {
+      assert oneMerge != null || abortCheckIntervalBytes == 0 : abortCheckIntervalBytes;
+      this.oneMerge = oneMerge;
+      this.abortCheckIntervalBytes = abortCheckIntervalBytes;
+    }
+
+    /** Checks if the merge should be aborted, throwing MergeAbortedException if so. */
+    public void checkAborted() throws MergeAbortedException {
+      oneMerge.checkAborted();
+    }
+
+    /** Interval in bytes between abort checks during merge integrity verification. */
+    public int getAbortCheckIntervalBytes() {
+      return abortCheckIntervalBytes;
+    }
+  }
+
+  /**
    * Thrown when a merge was explicitly aborted because {@link IndexWriter#abortMerges} was called.
    * Normally this exception is privately caught and suppressed by {@link IndexWriter}.
    */

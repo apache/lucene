@@ -307,6 +307,11 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
+      public void checkIntegrity(MergePolicy.AbortChecker abortChecker) throws IOException {
+        // We already checkIntegrity the entire reader up front
+      }
+
+      @Override
       public void close() {}
     };
   }

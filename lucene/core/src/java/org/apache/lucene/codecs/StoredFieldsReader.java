@@ -18,6 +18,7 @@ package org.apache.lucene.codecs;
 
 import java.io.Closeable;
 import java.io.IOException;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.StoredFields;
 
@@ -46,6 +47,13 @@ public abstract class StoredFieldsReader extends StoredFields implements Cloneab
    * @lucene.internal
    */
   public abstract void checkIntegrity() throws IOException;
+
+  /**
+   * Checks consistency of this reader, with periodic merge abort checking.
+   *
+   * @lucene.internal
+   */
+  public abstract void checkIntegrity(MergePolicy.AbortChecker abortChecker) throws IOException;
 
   /**
    * Returns an instance optimized for merging. This instance may not be cloned.

@@ -107,7 +107,8 @@ public class TestSegmentMerger extends LuceneTestCase {
             mergedDir,
             new FieldInfos.FieldNumbers(null, null),
             newIOContext(random(), IOContext.merge(new MergeInfo(-1, -1, false, -1))),
-            new SameThreadExecutorService());
+            new SameThreadExecutorService(),
+            MergePolicy.AbortChecker.NO_OP);
     MergeState mergeState = merger.merge();
     merger.cleanupMerge();
     int docsMerged = mergeState.segmentInfo.maxDoc();

@@ -515,6 +515,11 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
+      public void checkIntegrity(MergePolicy.AbortChecker abortChecker) throws IOException {
+        delegate.checkIntegrity(abortChecker);
+      }
+
+      @Override
       public void close() throws IOException {
         delegate.close();
       }

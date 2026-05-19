@@ -20,6 +20,7 @@ package org.apache.lucene.codecs;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
 import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.ByteBuffersIndexInput;
@@ -97,6 +98,42 @@ public class TestCodecUtil extends LuceneTestCase {
     IndexInput input = new ByteBuffersIndexInput(out.toDataInput(), "temp");
     CodecUtil.checksumEntireFile(input);
     input.close();
+  }
+
+  public void testChecksumEntireFileWithAbortChecker() throws Exception {
+    ByteBuffersDataOutput out = new ByteBuffersDataOutput();
+    IndexOutput output = new ByteBuffersIndexOutput(out, "temp", "temp");
+    CodecUtil.writeHeader(output, "FooBar", 5);
+    output.writeString("this is the data");
+    CodecUtil.writeFooter(output);
+    output.close();
+
+    IndexInput input = new ByteBuffersIndexInput(out.toDataInput(), "temp");
+    final long checksum = CodecUtil.checksumEntireFile(input);
+    input.close();
+
+    // NO_OP abort checker should behave like the single-arg overload
+    try (IndexInput noop = new ByteBuffersIndexInput(out.toDataInput(), "no op")) {
+      assertEquals(checksum, CodecUtil.checksumEntireFile(noop, MergePolicy.AbortChecker.NO_OP));
+    }
+
+    // Abort checker with a positive value should behave like the single-arg overload when the merge
+    // is not aborted
+    try (IndexInput notAborted = new ByteBuffersIndexInput(out.toDataInput(), "not aborted")) {
+      MergePolicy.AbortChecker checker =
+          new MergePolicy.AbortChecker(new MergePolicy.OneMerge(), 1);
+      assertEquals(checksum, CodecUtil.checksumEntireFile(notAborted, checker));
+    }
+
+    // When the merge is aborted, checksumming should throw MergeAbortedException
+    try (IndexInput aborted = new ByteBuffersIndexInput(out.toDataInput(), "aborted")) {
+      MergePolicy.OneMerge merge = new MergePolicy.OneMerge();
+      MergePolicy.AbortChecker checker = new MergePolicy.AbortChecker(merge, 3);
+      merge.setAborted();
+      expectThrows(
+          MergePolicy.MergeAbortedException.class,
+          () -> CodecUtil.checksumEntireFile(aborted, checker));
+    }
   }
 
   public void testCheckFooterValid() throws Exception {

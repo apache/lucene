@@ -3483,6 +3483,14 @@ public class IndexWriter
       }
     }
 
+    final MergePolicy.AbortChecker mergeAbortChecker;
+    if (config.getMergeAbortCheckIntervalBytes() > 0) {
+      mergeAbortChecker =
+          new MergePolicy.AbortChecker(merge, config.getMergeAbortCheckIntervalBytes());
+    } else {
+      mergeAbortChecker = MergePolicy.AbortChecker.NO_OP;
+    }
+
     SegmentMerger merger =
         new SegmentMerger(
             readers,
@@ -3491,7 +3499,8 @@ public class IndexWriter
             trackingDir,
             globalFieldNumberMap,
             context,
-            intraMergeExecutor);
+            intraMergeExecutor,
+            mergeAbortChecker);
     try {
       if (!merger.shouldMerge()) {
         return;
@@ -5284,6 +5293,14 @@ public class IndexWriter
         }
       }
 
+      final MergePolicy.AbortChecker mergeAbortChecker;
+      if (config.getMergeAbortCheckIntervalBytes() > 0) {
+        mergeAbortChecker =
+            new MergePolicy.AbortChecker(merge, config.getMergeAbortCheckIntervalBytes());
+      } else {
+        mergeAbortChecker = MergePolicy.AbortChecker.NO_OP;
+      }
+
       final SegmentMerger merger =
           new SegmentMerger(
               mergeReaders,
@@ -5292,7 +5309,8 @@ public class IndexWriter
               dirWrapper,
               globalFieldNumberMap,
               context,
-              intraMergeExecutor);
+              intraMergeExecutor,
+              mergeAbortChecker);
       MergeState mergeState = merger.mergeState;
       MergeState.DocMap[] docMaps;
       try {

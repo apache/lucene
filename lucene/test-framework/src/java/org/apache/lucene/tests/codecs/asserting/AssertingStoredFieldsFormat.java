@@ -23,6 +23,7 @@ import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.StoredFieldsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.StoredFieldDataInput;
 import org.apache.lucene.index.StoredFieldVisitor;
@@ -86,6 +87,11 @@ public class AssertingStoredFieldsFormat extends StoredFieldsFormat {
     @Override
     public void checkIntegrity() throws IOException {
       in.checkIntegrity();
+    }
+
+    @Override
+    public void checkIntegrity(MergePolicy.AbortChecker abortChecker) throws IOException {
+      in.checkIntegrity(abortChecker);
     }
 
     @Override

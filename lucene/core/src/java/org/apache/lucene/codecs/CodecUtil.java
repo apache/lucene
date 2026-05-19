@@ -22,6 +22,7 @@ import java.util.Arrays;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.IndexFormatTooNewException;
 import org.apache.lucene.index.IndexFormatTooOldException;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
@@ -604,9 +605,31 @@ public final class CodecUtil {
    * extract the checksum value, call {@link #retrieveChecksum}.
    */
   public static long checksumEntireFile(IndexInput input) throws IOException {
+    return checksumEntireFile(input, MergePolicy.AbortChecker.NO_OP);
+  }
+
+  /**
+   * Like {@link #checksumEntireFile(IndexInput)}, but periodically checks if the operation should
+   * be aborted via the provided {@link org.apache.lucene.index.MergePolicy.AbortChecker}. This is
+   * useful during merge operations where the merge may be cancelled while a long-running integrity
+   * check is in progress.
+   *
+   * @param input the index input to checksum
+   * @param abortChecker checked periodically during the read; throws {@link
+   *     org.apache.lucene.index.MergePolicy.MergeAbortedException} if the operation should stop
+   */
+  public static long checksumEntireFile(IndexInput input, MergePolicy.AbortChecker abortChecker)
+      throws IOException {
     IndexInput clone = input.clone();
     clone.seek(0);
-    ChecksumIndexInput in = new BufferedChecksumIndexInput(clone);
+    final ChecksumIndexInput in;
+    int intervalBytes = abortChecker.getAbortCheckIntervalBytes();
+    if (intervalBytes > 0) {
+      in = new AbortableBufferedChecksumIndexInput(clone, abortChecker, intervalBytes);
+    } else {
+      assert abortChecker == MergePolicy.AbortChecker.NO_OP : abortChecker;
+      in = new BufferedChecksumIndexInput(clone);
+    }
     assert in.getFilePointer() == 0;
     if (in.length() < footerLength()) {
       throw new CorruptIndexException(
@@ -674,5 +697,39 @@ public final class CodecUtil {
   /** read long value from header / footer with big endian order */
   public static long readBELong(DataInput in) throws IOException {
     return (((long) readBEInt(in)) << 32) | (readBEInt(in) & 0xFFFFFFFFL);
+  }
+
+  /**
+   * A {@link BufferedChecksumIndexInput} that periodically checks if the current merge should be
+   * aborted.
+   *
+   * <p>The check is performed in {@link #readBytes} since that is what {@link
+   * ChecksumIndexInput#seek} calls in a loop to compute the checksum.
+   */
+  private static final class AbortableBufferedChecksumIndexInput
+      extends BufferedChecksumIndexInput {
+
+    private final MergePolicy.AbortChecker abortChecker;
+    private final int intervalBytes;
+    private long bytesSinceLastCheck;
+
+    AbortableBufferedChecksumIndexInput(
+        IndexInput delegate, MergePolicy.AbortChecker abortChecker, int intervalBytes) {
+      super(delegate);
+      this.abortChecker = abortChecker;
+      this.intervalBytes = intervalBytes;
+      // set to trigger a check before the first read
+      this.bytesSinceLastCheck = intervalBytes;
+    }
+
+    @Override
+    public void readBytes(byte[] b, int offset, int len) throws IOException {
+      bytesSinceLastCheck += len;
+      if (bytesSinceLastCheck >= intervalBytes) {
+        abortChecker.checkAborted();
+        bytesSinceLastCheck = 0L;
+      }
+      super.readBytes(b, offset, len);
+    }
   }
 }

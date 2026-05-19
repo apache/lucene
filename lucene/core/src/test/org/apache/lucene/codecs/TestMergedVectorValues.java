@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
@@ -39,8 +40,23 @@ public class TestMergedVectorValues extends LuceneTestCase {
         new KnnVectorsWriter.ByteVectorValuesSub(x -> x, ByteVectorValues.fromBytes(vectors, 1));
     MergeState state =
         new MergeState(
-            null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-            null, false);
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            MergePolicy.AbortChecker.NO_OP);
 
     // Run the test
     ByteVectorValues values =
@@ -67,8 +83,23 @@ public class TestMergedVectorValues extends LuceneTestCase {
         new KnnVectorsWriter.FloatVectorValuesSub(x -> x, FloatVectorValues.fromFloats(vectors, 1));
     MergeState state =
         new MergeState(
-            null, null, null, null, null, null, null, null, null, null, null, null, null, null,
-            null, false);
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            false,
+            MergePolicy.AbortChecker.NO_OP);
 
     // Run the test
     FloatVectorValues values =

@@ -24,6 +24,7 @@ import java.io.UncheckedIOException;
 import java.util.Objects;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
@@ -155,6 +156,11 @@ final class FieldsIndexReader extends FieldsIndex {
 
   @Override
   void checkIntegrity() throws IOException {
-    CodecUtil.checksumEntireFile(indexInput);
+    checkIntegrity(MergePolicy.AbortChecker.NO_OP);
+  }
+
+  @Override
+  public void checkIntegrity(MergePolicy.AbortChecker abortChecker) throws IOException {
+    CodecUtil.checksumEntireFile(indexInput, abortChecker);
   }
 }

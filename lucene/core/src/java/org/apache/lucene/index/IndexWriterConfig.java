@@ -561,4 +561,21 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
     this.parentField = parentField;
     return this;
   }
+
+  /**
+   * Expert: sets the interval in bytes between abort checks during merge integrity verification.
+   * During merges, codec readers verify file integrity by reading entire files to compute
+   * checksums. This setting controls how often the merge abort flag is checked during these reads.
+   * Smaller values allow merges to be aborted more promptly but add slight overhead.
+   *
+   * @param intervalBytes the interval in bytes, must be positive
+   */
+  public IndexWriterConfig setMergeAbortCheckIntervalBytes(int intervalBytes) {
+    if (intervalBytes <= 0) {
+      throw new IllegalArgumentException(
+          "mergeAbortCheckIntervalBytes must be positive, got: " + intervalBytes);
+    }
+    this.mergeAbortCheckIntervalBytes = intervalBytes;
+    return this;
+  }
 }
