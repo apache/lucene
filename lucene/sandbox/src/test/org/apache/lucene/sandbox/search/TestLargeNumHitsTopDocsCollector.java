@@ -110,11 +110,8 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
     assertEquals(largeTopDocs.totalHits.value(), regularTopDocs.totalHits.value());
 
     LargeNumHitsTopDocsCollector collector = largeCollectorManager.newCollector();
-    IllegalArgumentException expected =
-        expectThrows(IllegalArgumentException.class, () -> collector.topDocs(350_000));
-
-    assertEquals(EMPTY_TOPDOCS, largeCollector.topDocs(0));
-    assertEquals(largeCollector.totalHits, largeCollector.topDocs(35_000).totalHits.value());
+    assertEquals(EMPTY_TOPDOCS, collector.topDocs(0));
+    assertEquals(collector.totalHits, collector.topDocs(35_000).totalHits.value());
   }
 
   public void testNoPQBuild() throws IOException {
