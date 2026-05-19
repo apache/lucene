@@ -267,7 +267,7 @@ final class WANDScorer extends Scorer {
   }
 
   @Override
-  public final Collection<ChildScorable> getChildren() throws IOException {
+  public Collection<ChildScorable> getChildren() throws IOException {
     List<ChildScorable> matchingChildren = new ArrayList<>();
     advanceAllTail();
     for (DisiWrapper s = lead; s != null; s = s.next) {

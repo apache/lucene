@@ -129,7 +129,7 @@ public final class Sorter {
   }
 
   /** Computes the old-to-new permutation over the given comparator. */
-  private static Sorter.DocMap sort(final int maxDoc, IndexSorter.DocComparator comparator) {
+  private static PackableDocMap sort(final int maxDoc, IndexSorter.DocComparator comparator) {
     // check if the index is sorted
     boolean sorted = true;
     for (int i = 1; i < maxDoc; ++i) {
@@ -168,30 +168,7 @@ public final class Sorter {
       docs[(int) newToOld.get(i)] = i;
     } // docs is now the oldToNew mapping
 
-    final PackedLongValues.Builder oldToNewBuilder =
-        PackedLongValues.monotonicBuilder(PackedInts.COMPACT);
-    for (int i = 0; i < maxDoc; ++i) {
-      oldToNewBuilder.add(docs[i]);
-    }
-    final PackedLongValues oldToNew = oldToNewBuilder.build();
-
-    return new Sorter.DocMap() {
-
-      @Override
-      public int oldToNew(int docID) {
-        return (int) oldToNew.get(docID);
-      }
-
-      @Override
-      public int newToOld(int docID) {
-        return (int) newToOld.get(docID);
-      }
-
-      @Override
-      public int size() {
-        return maxDoc;
-      }
-    };
+    return new PackableDocMap(docs, newToOld, maxDoc);
   }
 
   /**
@@ -241,6 +218,12 @@ public final class Sorter {
   }
 
   DocMap sort(int maxDoc, IndexSorter.DocComparator[] comparators) throws IOException {
+    PackableDocMap packableDocMap = sortAndLeaveUnpacked(maxDoc, comparators);
+    return packableDocMap != null ? packableDocMap.pack() : packableDocMap;
+  }
+
+  PackableDocMap sortAndLeaveUnpacked(int maxDoc, IndexSorter.DocComparator[] comparators)
+      throws IOException {
     final IndexSorter.DocComparator comparator =
         (docID1, docID2) -> {
           for (int i = 0; i < comparators.length; i++) {
@@ -269,5 +252,61 @@ public final class Sorter {
   @Override
   public String toString() {
     return getID();
+  }
+
+  /** A {@link DocMap} that can keep oldToNew in either packed or unpacked form. */
+  static final class PackableDocMap extends DocMap {
+
+    private final PackedLongValues newToOld;
+    private final int maxDoc;
+
+    private final int[] oldToNewUnpacked;
+    private final PackedLongValues oldToNewPacked;
+
+    private PackableDocMap(int[] oldToNewUnpacked, PackedLongValues newToOld, int maxDoc) {
+      this.oldToNewUnpacked = oldToNewUnpacked;
+      this.oldToNewPacked = null;
+      this.newToOld = newToOld;
+      this.maxDoc = maxDoc;
+    }
+
+    private PackableDocMap(PackedLongValues oldToNewPacked, PackedLongValues newToOld, int maxDoc) {
+      this.oldToNewUnpacked = null;
+      this.oldToNewPacked = oldToNewPacked;
+      this.newToOld = newToOld;
+      this.maxDoc = maxDoc;
+    }
+
+    @Override
+    public int oldToNew(int docID) {
+      if (oldToNewUnpacked != null) {
+        return oldToNewUnpacked[docID];
+      } else {
+        return (int) oldToNewPacked.get(docID);
+      }
+    }
+
+    @Override
+    public int newToOld(int docID) {
+      return (int) newToOld.get(docID);
+    }
+
+    /** Pack the internal representations into more compact forms. No-op if already packed. */
+    DocMap pack() {
+      if (oldToNewPacked != null) {
+        return this;
+      }
+      final PackedLongValues.Builder oldToNewBuilder =
+          PackedLongValues.monotonicBuilder(PackedInts.COMPACT);
+      for (int i = 0; i < maxDoc; ++i) {
+        oldToNewBuilder.add(oldToNewUnpacked[i]);
+      }
+      return new PackableDocMap(oldToNewBuilder.build(), newToOld, maxDoc);
+    }
+
+    @Override
+    public int size() {
+      return maxDoc;
+    }
   }
 }

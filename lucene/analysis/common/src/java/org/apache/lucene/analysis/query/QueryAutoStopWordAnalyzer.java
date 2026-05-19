@@ -191,6 +191,6 @@ public final class QueryAutoStopWordAnalyzer extends AnalyzerWrapper {
         allStopWords.add(new Term(field, text));
       }
     }
-    return allStopWords.toArray(new Term[allStopWords.size()]);
+    return allStopWords.toArray(Term[]::new);
   }
 }

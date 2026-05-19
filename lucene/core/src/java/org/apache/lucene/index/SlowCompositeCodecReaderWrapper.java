@@ -542,7 +542,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return fields.terms(field);
     }
 
@@ -594,7 +594,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public PointValues getValues(String field) throws IOException {
+    public PointValues getValues(String field) {
       List<PointValuesSub> values = new ArrayList<>();
       for (int i = 0; i < readers.length; ++i) {
         FieldInfo fi = codecReaders[i].getFieldInfos().fieldInfo(field);

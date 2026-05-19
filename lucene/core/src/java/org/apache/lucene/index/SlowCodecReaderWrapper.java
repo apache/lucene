@@ -148,7 +148,7 @@ public final class SlowCodecReaderWrapper {
     return new PointsReader() {
 
       @Override
-      public PointValues getValues(String field) throws IOException {
+      public PointValues getValues(String field) {
         return reader.getPointValues(field);
       }
 
@@ -359,7 +359,7 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public Terms terms(String field) throws IOException {
+      public Terms terms(String field) {
         return reader.terms(field);
       }
 

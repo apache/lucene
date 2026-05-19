@@ -48,7 +48,7 @@ public class OverlaySingleDocTermsLeafReader extends FilterLeafReader {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     if (!in2Field.equals(field)) {
       return in.terms(field);
     }

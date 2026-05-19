@@ -112,7 +112,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
         dimension,
         path,
         VALUE_CANT_BE_COMPUTED,
-        labelsAndValues.toArray(new LabelAndValue[0]),
+        labelsAndValues.toArray(LabelAndValue[]::new),
         childCount);
   }
 
@@ -148,7 +148,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
         dimension,
         path,
         VALUE_CANT_BE_COMPUTED,
-        labelsAndValues.toArray(new LabelAndValue[0]),
+        labelsAndValues.toArray(LabelAndValue[]::new),
         childCount);
   }
 
@@ -172,7 +172,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
         dimension,
         new String[0],
         VALUE_CANT_BE_COMPUTED,
-        labelsAndValues.toArray(new LabelAndValue[0]),
+        labelsAndValues.toArray(LabelAndValue[]::new),
         childCount);
   }
 

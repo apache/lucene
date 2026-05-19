@@ -17,6 +17,8 @@
 
 package org.apache.lucene.sandbox.search;
 
+import static org.apache.lucene.search.TopDocsCollector.EMPTY_TOPDOCS;
+
 import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -87,7 +89,15 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
     runNumHits(25);
   }
 
-  public void testIllegalArguments() throws IOException {
+  public void testInvalidRequestedHitCount() {
+    for (int n : new int[] {0, -1}) {
+      IllegalArgumentException e =
+          expectThrows(IllegalArgumentException.class, () -> new LargeNumHitsTopDocsCollector(n));
+      assertTrue(e.getMessage().contains("requestedHitCount must be > 0"));
+    }
+  }
+
+  public void testTopDocs() throws IOException {
     IndexSearcher searcher = newSearcher(reader);
     LargeNumHitsTopDocsCollectorManager largeCollectorManager =
         new LargeNumHitsTopDocsCollectorManager(15);
@@ -103,7 +113,8 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
     IllegalArgumentException expected =
         expectThrows(IllegalArgumentException.class, () -> collector.topDocs(350_000));
 
-    assertTrue(expected.getMessage().contains("Incorrect number of hits requested"));
+    assertEquals(EMPTY_TOPDOCS, largeCollector.topDocs(0));
+    assertEquals(largeCollector.totalHits, largeCollector.topDocs(35_000).totalHits.value());
   }
 
   public void testNoPQBuild() throws IOException {

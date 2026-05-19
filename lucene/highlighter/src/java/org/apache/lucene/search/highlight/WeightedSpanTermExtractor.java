@@ -217,8 +217,7 @@ public class WeightedSpanTermExtractor {
         final SpanQuery[] clauses = new SpanQuery[distinctPositions];
         for (List<SpanQuery> disjuncts : disjunctLists) {
           if (disjuncts != null) {
-            clauses[position++] =
-                new SpanOrQuery(disjuncts.toArray(new SpanQuery[disjuncts.size()]));
+            clauses[position++] = new SpanOrQuery(disjuncts.toArray(SpanQuery[]::new));
           } else {
             ++positionGaps;
           }
@@ -452,7 +451,7 @@ public class WeightedSpanTermExtractor {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return super.terms(DelegatingLeafReader.FIELD_NAME);
     }
 
