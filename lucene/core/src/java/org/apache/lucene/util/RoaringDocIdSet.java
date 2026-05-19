@@ -37,8 +37,6 @@ public class RoaringDocIdSet extends DocIdSet {
   private static final int BLOCK_SIZE = 1 << 16;
   // The maximum length for an array, beyond that point we switch to a bitset
   private static final int MAX_ARRAY_LENGTH = 1 << 12;
-  // The minimum length for a range, beyond that point we build a range if the block is dense
-  private static final int MIN_RANGE_LENGTH = 2;
   private static final long BASE_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(RoaringDocIdSet.class);
 
@@ -73,9 +71,9 @@ public class RoaringDocIdSet extends DocIdSet {
       if (currentBlockCardinality == BLOCK_SIZE) {
         // all docs in the block
         sets[currentBlock] = AllDocIdSet.INSTANCE;
-      } else if (currentBlockCardinality >= MIN_RANGE_LENGTH
+      } else if (currentBlockCardinality > 0
           && currentBlockCardinality == lastDocId - firstDocId + 1) {
-        // doc ids are continuous, use range encoding
+        // doc ids are continuous, use range encoding. Even for a unique value it uses less heap.
         sets[currentBlock] = new RangeDocIdSet((short) firstDocId, (short) lastDocId);
       } else if (currentBlockCardinality <= MAX_ARRAY_LENGTH) {
         // Use sparse encoding

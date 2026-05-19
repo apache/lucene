@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import static org.hamcrest.Matchers.greaterThan;
+
 import java.io.IOException;
 import java.util.BitSet;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -124,20 +126,56 @@ public class TestRoaringDocIdSet extends BaseDocIdSetTestCase<RoaringDocIdSet> {
 
   public void testAddRangeSmall() throws IOException {
     int maxDoc = 100;
-    BitSet expected = new BitSet(maxDoc);
-    expected.set(10, 80);
-    RoaringDocIdSet.Builder b = new RoaringDocIdSet.Builder(maxDoc);
-    b.add(10, 80);
-    assertEquals(maxDoc, expected, b.build());
+    long bytesSparseValues;
+    long bytesDenseRange;
+    {
+      BitSet expected = new BitSet(maxDoc);
+      expected.set(10, 79);
+      expected.set(80);
+      RoaringDocIdSet.Builder b = new RoaringDocIdSet.Builder(maxDoc);
+      b.add(10, 79);
+      b.add(80);
+      RoaringDocIdSet set = b.build();
+      assertEquals(maxDoc, expected, set);
+      bytesSparseValues = set.ramBytesUsed();
+    }
+    {
+      BitSet expected = new BitSet(maxDoc);
+      expected.set(10, 80);
+      RoaringDocIdSet.Builder b = new RoaringDocIdSet.Builder(maxDoc);
+      b.add(10, 80);
+      RoaringDocIdSet set = b.build();
+      assertEquals(maxDoc, expected, set);
+      bytesDenseRange = set.ramBytesUsed();
+    }
+    assertThat(bytesSparseValues, greaterThan(bytesDenseRange));
   }
 
-  public void testAddRangeDenseBlockUsesBitSetEncoding() throws IOException {
+  public void testAddRangeDenseBig() throws IOException {
     int maxDoc = 50_000;
-    BitSet expected = new BitSet(maxDoc);
-    expected.set(7, 43_000);
-    RoaringDocIdSet.Builder b = new RoaringDocIdSet.Builder(maxDoc);
-    b.add(7, 43_000);
-    assertEquals(maxDoc, expected, b.build());
+    long bytesSparseValues;
+    long bytesDenseRange;
+    {
+      BitSet expected = new BitSet(maxDoc);
+      expected.set(7, 42_999);
+      expected.set(43_000);
+      RoaringDocIdSet.Builder b = new RoaringDocIdSet.Builder(maxDoc);
+      b.add(7, 42_999);
+      b.add(43_000);
+      RoaringDocIdSet set = b.build();
+      assertEquals(maxDoc, expected, set);
+      bytesSparseValues = set.ramBytesUsed();
+    }
+    {
+      BitSet expected = new BitSet(maxDoc);
+      expected.set(7, 43_000);
+      RoaringDocIdSet.Builder b = new RoaringDocIdSet.Builder(maxDoc);
+      b.add(7, 43_000);
+      RoaringDocIdSet set = b.build();
+      assertEquals(maxDoc, expected, set);
+      bytesDenseRange = set.ramBytesUsed();
+    }
+    assertThat(bytesSparseValues, greaterThan(bytesDenseRange));
   }
 
   public void testAddRangeCrossesBlockBoundary() throws IOException {
