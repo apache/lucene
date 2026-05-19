@@ -326,6 +326,8 @@ Improvements
   buffer was controlled by an explicit parameter (set as `resultSimilarity` - `traversalSimilarity`), which is now
   deprecated. (Kaival Parikh)
 
+* GITHUB#15653: Introduce DocValuesStatsCollectorManager to parallelize search when using DocValuesStatsCollector. (Binlong Gao)
+
 * GITHUB#15976: Store DocValuesSkipper data in their own file. (Alan Woodward)
 
 * GITHUB#15574, GITHUB#15995: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
