@@ -36,6 +36,7 @@ public class HelpPlugin extends LuceneGradlePlugin {
       List.of(
           new HelpFile("Workflow", "help/workflow.txt", "Typical workflow commands."),
           new HelpFile("Tests", "help/tests.txt", "Tests, filtering, beasting, etc."),
+          new HelpFile("Precommit", "help/precommit.txt", "Precommit checks."),
           new HelpFile("Formatting", "help/formatting.txt", "Code formatting conventions."),
           new HelpFile("Jvms", "help/jvms.txt", "Using alternative or EA JVM toolchains."),
           new HelpFile(

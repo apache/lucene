@@ -27,7 +27,6 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.lessThanOrEqualTo;
 import static org.hamcrest.Matchers.not;
 
-import com.carrotsearch.randomizedtesting.RandomizedTest;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.BufferedInputStream;
@@ -326,7 +325,7 @@ public final class TestUtil {
       checker.setFailFast(failFast);
       checker.setInfoStream(new PrintStream(output, false, UTF_8), false);
       if (concurrent) {
-        checker.setThreadCount(RandomizedTest.randomIntBetween(2, 5));
+        checker.setThreadCount(RandomNumbers.randomIntBetween(LuceneTestCase.random(), 2, 5));
       } else {
         checker.setThreadCount(1);
       }
@@ -1333,6 +1332,16 @@ public final class TestUtil {
   }
 
   /**
+   * Returns the actual default codec (e.g. LuceneMNCodec) for this version of Lucene. This may be
+   * different from {@link Codec#getDefault()} because that is randomized.
+   */
+  public static Codec getDefaultCodec(boolean shouldUseCfs) {
+    Codec codec = getDefaultCodec();
+    codec.compoundFormat().setShouldUseCompoundFile(shouldUseCfs);
+    return codec;
+  }
+
+  /**
    * Returns the actual default postings format (e.g. LuceneMNPostingsFormat) for this version of
    * Lucene.
    */
@@ -1435,14 +1444,14 @@ public final class TestUtil {
         leaves.add(SlowCodecReaderWrapper.wrap(context.reader()));
       }
     }
-    writer.addIndexes(leaves.toArray(new CodecReader[0]));
+    writer.addIndexes(leaves.toArray(CodecReader[]::new));
   }
 
   /** just tries to configure things to keep the open file count lowish */
   public static void reduceOpenFiles(IndexWriter w) {
     // keep number of open files lowish
     MergePolicy mp = w.getConfig().getMergePolicy();
-    mp.setNoCFSRatio(1.0);
+    w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(true);
     if (mp instanceof LogMergePolicy lmp) {
       lmp.setMergeFactor(Math.min(5, lmp.getMergeFactor()));
     } else if (mp instanceof TieredMergePolicy tmp) {

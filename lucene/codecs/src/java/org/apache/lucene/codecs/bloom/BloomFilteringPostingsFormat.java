@@ -191,7 +191,7 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       FuzzySet filter = bloomsByFieldName.get(field);
       if (filter == null) {
         return delegateFieldsProducer.terms(field);
@@ -245,7 +245,7 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       }
 
       @Override
-      public int getDocCount() throws IOException {
+      public int getDocCount() {
         return delegateTerms.getDocCount();
       }
 
@@ -371,6 +371,13 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       @Override
       public ImpactsEnum impacts(int flags) throws IOException {
         return delegate().impacts(flags);
+      }
+
+      @Override
+      public boolean preferSeekExact() {
+        // Prefer seekExact() to seekCeil() when processing updates and deletes,
+        // since seekExact() passes through the bloom filter.
+        return true;
       }
 
       @Override

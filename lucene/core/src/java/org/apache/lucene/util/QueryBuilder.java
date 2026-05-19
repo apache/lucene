@@ -155,8 +155,8 @@ public class QueryBuilder {
 
     Query query =
         createFieldQuery(analyzer, BooleanClause.Occur.SHOULD, field, queryText, false, 0);
-    if (query instanceof BooleanQuery) {
-      query = addMinShouldMatchToBoolean((BooleanQuery) query, fraction);
+    if (query instanceof BooleanQuery bq) {
+      query = addMinShouldMatchToBoolean(bq, fraction);
     }
     return query;
   }
@@ -478,9 +478,9 @@ public class QueryBuilder {
 
       if (positionIncrement > 0 && multiTerms.size() > 0) {
         if (enablePositionIncrements) {
-          mpqb.add(multiTerms.toArray(new Term[0]), position);
+          mpqb.add(multiTerms.toArray(Term[]::new), position);
         } else {
-          mpqb.add(multiTerms.toArray(new Term[0]));
+          mpqb.add(multiTerms.toArray(Term[]::new));
         }
         multiTerms.clear();
       }
@@ -489,9 +489,9 @@ public class QueryBuilder {
     }
 
     if (enablePositionIncrements) {
-      mpqb.add(multiTerms.toArray(new Term[0]), position);
+      mpqb.add(multiTerms.toArray(Term[]::new), position);
     } else {
-      mpqb.add(multiTerms.toArray(new Term[0]));
+      mpqb.add(multiTerms.toArray(Term[]::new));
     }
     return mpqb.build();
   }

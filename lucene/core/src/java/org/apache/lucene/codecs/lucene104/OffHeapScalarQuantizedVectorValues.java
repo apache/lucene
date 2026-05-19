@@ -19,7 +19,6 @@ package org.apache.lucene.codecs.lucene104;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
-import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -30,6 +29,7 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
+import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 
 /**
  * Scalar quantized vector values loaded from off-heap
@@ -134,6 +134,11 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
   }
 
   @Override
+  public IndexInput getSlice() {
+    return slice;
+  }
+
+  @Override
   public float getCentroidDP() {
     return centroidDp;
   }
@@ -169,7 +174,7 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
 
   @Override
   public int getVectorByteLength() {
-    return dimension;
+    return vectorValue.length;
   }
 
   static void packNibbles(byte[] unpacked, byte[] packed) {

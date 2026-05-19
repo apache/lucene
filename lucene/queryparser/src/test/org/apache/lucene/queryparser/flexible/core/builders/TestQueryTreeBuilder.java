@@ -23,11 +23,9 @@ import org.apache.lucene.queryparser.flexible.core.nodes.QueryNodeImpl;
 import org.apache.lucene.queryparser.flexible.core.parser.EscapeQuerySyntax;
 import org.apache.lucene.queryparser.flexible.core.util.UnescapedCharSequence;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestQueryTreeBuilder extends LuceneTestCase {
 
-  @Test
   public void testSetFieldBuilder() throws QueryNodeException {
     QueryTreeBuilder qtb = new QueryTreeBuilder();
     qtb.setBuilder("field", new DummyBuilder());

@@ -70,4 +70,18 @@ public class TestMemoryAccountingBitsetCollector extends LuceneTestCase {
           searcher.search(MatchAllDocsQuery.INSTANCE, bitSetCollector);
         });
   }
+
+  public void testCollectedResult() throws Exception {
+    CollectorMemoryTracker tracker =
+        new CollectorMemoryTracker("testMemoryTracker", Long.MAX_VALUE);
+    MemoryAccountingBitsetCollector collector = new MemoryAccountingBitsetCollector(tracker);
+
+    IndexSearcher searcher = new IndexSearcher(reader);
+    searcher.search(MatchAllDocsQuery.INSTANCE, collector);
+
+    assertEquals(1000, collector.bitSet.cardinality());
+    for (int i = 0; i < 1000; i++) {
+      assertTrue(collector.bitSet.get(i));
+    }
+  }
 }

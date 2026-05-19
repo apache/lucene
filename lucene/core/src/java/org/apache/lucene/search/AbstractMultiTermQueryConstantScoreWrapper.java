@@ -50,10 +50,10 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
 
   @Override
   public long ramBytesUsed() {
-    if (query instanceof Accountable) {
+    if (query instanceof Accountable accountable) {
       return RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
           + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-          + ((Accountable) query).ramBytesUsed();
+          + accountable.ramBytesUsed();
     }
     return RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
         + RamUsageEstimator.NUM_BYTES_OBJECT_REF

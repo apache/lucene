@@ -1243,11 +1243,7 @@ public class TestIndexWriter extends LuceneTestCase {
       // handles open.
       FSDirectory dir = new NIOFSDirectory(indexPath);
 
-      MergePolicy mergePolicy = newLogMergePolicy(true);
-
-      // This test expects all of its segments to be in CFS
-      mergePolicy.setNoCFSRatio(1.0);
-      mergePolicy.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
+      MergePolicy mergePolicy = newLogMergePolicy();
 
       IndexWriter w =
           new IndexWriter(
@@ -1255,6 +1251,9 @@ public class TestIndexWriter extends LuceneTestCase {
               newIndexWriterConfig(new MockAnalyzer(random()))
                   .setMergePolicy(mergePolicy)
                   .setUseCompoundFile(true));
+      // This test expects all of its segments to be in CFS
+      w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(true);
+      w.getConfig().getCodec().compoundFormat().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
       Document doc = new Document();
       doc.add(newTextField("field", "go", Field.Store.NO));
       w.addDocument(doc);
@@ -1462,7 +1461,7 @@ public class TestIndexWriter extends LuceneTestCase {
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setRAMBufferSizeMB(0.01)
                 .setMergePolicy(newLogMergePolicy()));
-    indexWriter.getConfig().getMergePolicy().setNoCFSRatio(0.0);
+    indexWriter.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
 
     String BIG =
         "alskjhlaksjghlaksjfhalksvjepgjioefgjnsdfjgefgjhelkgjhqewlrkhgwlekgrhwelkgjhwelkgrhwlkejg";
@@ -4951,6 +4950,45 @@ public class TestIndexWriter extends LuceneTestCase {
     }
   }
 
+  public void testSingleDocBlockWritesParentField() throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setParentField("parent");
+      try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+        // Single-document "block" — the lone doc is both first and last in the block
+        Document single = new Document();
+        single.add(new StringField("id", "s0", Field.Store.YES));
+        writer.addDocuments(List.of(single));
+
+        // Multi-document block for comparison
+        Document child = new Document();
+        child.add(new StringField("id", "c0", Field.Store.YES));
+        Document parent = new Document();
+        parent.add(new StringField("id", "p0", Field.Store.YES));
+        writer.addDocuments(List.of(child, parent));
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        // 3 docs total: doc0=single, doc1=child, doc2=parent
+        assertEquals(3, reader.numDocs());
+        LeafReader leaf = reader.leaves().get(0).reader();
+        NumericDocValues parentDV = leaf.getNumericDocValues("parent");
+        assertNotNull(parentDV);
+
+        // doc 0 (the single-doc block) should be a parent
+        assertEquals(0, parentDV.nextDoc());
+        assertEquals(-1, parentDV.longValue());
+
+        // doc 2 (last doc of the multi-doc block) should be a parent
+        assertEquals(2, parentDV.nextDoc());
+        assertEquals(-1, parentDV.longValue());
+
+        // no more parents
+        assertEquals(DocIdSetIterator.NO_MORE_DOCS, parentDV.nextDoc());
+      }
+    }
+  }
+
   public void testDocValuesMixedSkippingIndex() throws Exception {
     try (Directory dir = newDirectory()) {
       try (IndexWriter writer =
@@ -4963,7 +5001,6 @@ public class TestIndexWriter extends LuceneTestCase {
         doc2.add(new SortedNumericDocValuesField("test", random().nextLong()));
         IllegalArgumentException ex =
             expectThrows(IllegalArgumentException.class, () -> writer.addDocument(doc2));
-        ex.printStackTrace();
         assertEquals(
             "Inconsistency of field data structures across documents for field [test] of doc [1]. doc values skip index type: expected 'RANGE', but it has 'NONE'.",
             ex.getMessage());

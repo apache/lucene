@@ -24,7 +24,7 @@ import org.junit.runner.Description;
 import org.junit.runners.model.Statement;
 
 /** A rule for marking failed tests and suites. */
-public final class TestRuleMarkFailure implements TestRule {
+public final class TestRuleMarkFailure implements TestRule, BeforeAfterCallback, SuiteFailureState {
   private final TestRuleMarkFailure[] chained;
   private volatile boolean failures;
 
@@ -33,13 +33,16 @@ public final class TestRuleMarkFailure implements TestRule {
   }
 
   @Override
+  public void before() throws Exception {
+    reset();
+  }
+
+  @Override
   public Statement apply(final Statement s, Description d) {
     return new Statement() {
       @Override
       public void evaluate() throws Throwable {
-        // Clear status at start.
-        failures = false;
-
+        reset();
         try {
           s.evaluate();
         } catch (Throwable t) {
@@ -96,7 +99,12 @@ public final class TestRuleMarkFailure implements TestRule {
   }
 
   /** Check if this object was successful (the opposite of {@link #hadFailures()}). */
+  @Override
   public boolean wasSuccessful() {
     return !hadFailures();
+  }
+
+  private void reset() {
+    failures = false;
   }
 }

@@ -479,10 +479,7 @@ public class TestDistinctValuesCollector extends AbstractGroupingTestCase {
 
     w.close();
     return new IndexContext(
-        dir,
-        reader,
-        searchTermToGroupCounts,
-        contentStrings.toArray(new String[contentStrings.size()]));
+        dir, reader, searchTermToGroupCounts, contentStrings.toArray(String[]::new));
   }
 
   private record IndexContext(

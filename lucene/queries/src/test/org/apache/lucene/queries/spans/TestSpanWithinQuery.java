@@ -29,7 +29,6 @@ import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Test;
 
 /** Basic tests for SpanWithinQuery */
 public class TestSpanWithinQuery extends LuceneTestCase {
@@ -118,12 +117,15 @@ public class TestSpanWithinQuery extends LuceneTestCase {
     check(query, expectedDocs);
   }
 
-  @Test(expected = IllegalArgumentException.class)
   public void testDifferentFieldsThrowsIllegalArgumentException() {
     SpanQuery big = new SpanTermQuery(new Term("field1", "one"));
     SpanQuery little = new SpanTermQuery(new Term("field2", "two"));
 
-    new SpanWithinQuery(big, little);
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new SpanWithinQuery(big, little);
+        });
   }
 
   public void testToString() {

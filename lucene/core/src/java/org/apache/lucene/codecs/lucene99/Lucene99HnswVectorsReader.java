@@ -35,6 +35,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
@@ -54,12 +55,13 @@ import org.apache.lucene.util.GroupVIntUtil;
 import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
 import org.apache.lucene.util.hnsw.OrdinalTranslatedKnnCollector;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.packed.DirectMonotonicReader;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.BaseQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
@@ -419,17 +421,26 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
-  public QuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
-    if (flatVectorsReader instanceof QuantizedVectorsReader) {
-      return ((QuantizedVectorsReader) flatVectorsReader).getQuantizedVectorValues(field);
+  public BaseQuantizedByteVectorValues getQuantizedVectorValues(String field) throws IOException {
+    if (flatVectorsReader instanceof QuantizedVectorsReader qvr) {
+      return qvr.getQuantizedVectorValues(field);
     }
     return null;
   }
 
   @Override
   public ScalarQuantizer getQuantizationState(String field) {
-    if (flatVectorsReader instanceof QuantizedVectorsReader) {
-      return ((QuantizedVectorsReader) flatVectorsReader).getQuantizationState(field);
+    if (flatVectorsReader instanceof QuantizedVectorsReader qvr) {
+      return qvr.getQuantizationState(field);
+    }
+    return null;
+  }
+
+  @Override
+  public CloseableRandomVectorScorerSupplier getRandomVectorScorerSupplierForMerge(
+      FieldInfo fieldInfo, SegmentWriteState segmentWriteState) throws IOException {
+    if (flatVectorsReader instanceof QuantizedVectorsReader qvr) {
+      return qvr.getRandomVectorScorerSupplierForMerge(fieldInfo, segmentWriteState);
     }
     return null;
   }
@@ -561,15 +572,17 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
       arcCount = dataIn.readVInt();
       assert arcCount <= currentNeighborsBuffer.length : "too many neighbors: " + arcCount;
       if (arcCount > 0) {
+        int sum = 0;
         if (version >= VERSION_GROUPVARINT) {
           GroupVIntUtil.readGroupVInts(dataIn, currentNeighborsBuffer, arcCount);
-          for (int i = 1; i < arcCount; i++) {
-            currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + currentNeighborsBuffer[i];
+          for (int i = 0; i < arcCount; i++) {
+            sum += currentNeighborsBuffer[i];
+            currentNeighborsBuffer[i] = sum;
           }
         } else {
-          currentNeighborsBuffer[0] = dataIn.readVInt();
-          for (int i = 1; i < arcCount; i++) {
-            currentNeighborsBuffer[i] = currentNeighborsBuffer[i - 1] + dataIn.readVInt();
+          for (int i = 0; i < arcCount; i++) {
+            sum += dataIn.readVInt();
+            currentNeighborsBuffer[i] = sum;
           }
         }
       }

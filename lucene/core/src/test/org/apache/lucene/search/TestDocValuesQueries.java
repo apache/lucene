@@ -17,7 +17,9 @@
 package org.apache.lucene.search;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -29,6 +31,7 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.LongField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
@@ -37,12 +40,14 @@ import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
 
@@ -51,6 +56,11 @@ public class TestDocValuesQueries extends LuceneTestCase {
   private Codec getCodec() {
     // small interval size to test with many intervals
     return TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(random().nextInt(4, 16)));
+  }
+
+  private Codec getCodec(int skipIntervalSize) {
+    // small interval size to test with many intervals
+    return TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(skipIntervalSize));
   }
 
   public void testDuelPointRangeSortedNumericRangeQuery() throws IOException {
@@ -722,5 +732,77 @@ public class TestDocValuesQueries extends LuceneTestCase {
             containsString("SortedNumericDocValuesRangeQuery"));
       }
     }
+  }
+
+  public void testRewriteWorksWithPointsButNoSkipIndex() throws IOException {
+    try (Directory dir = newDirectory()) {
+      try (RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
+        for (int i = 0; i < 100; i++) {
+          final Document doc = new Document();
+          doc.add(new LongField("field", 100 + i, Field.Store.NO));
+          iw.addDocument(doc);
+        }
+        iw.commit();
+        try (IndexReader reader = iw.getReader()) {
+          final IndexSearcher searcher = new IndexSearcher(reader);
+          // Query range [0, 50] is entirely below field range [100, 199]
+          Query query = SortedNumericDocValuesField.newSlowRangeQuery("field", 0, 50);
+          Query rewritten = searcher.rewrite(query);
+          assertThat(rewritten, instanceOf(MatchNoDocsQuery.class));
+
+          // Query range [0, 250] covers entire field range [100, 199]
+          // and all docs have a value
+          query = SortedNumericDocValuesField.newSlowRangeQuery("field", 0, 250);
+          rewritten = searcher.rewrite(query);
+          assertThat(rewritten, instanceOf(MatchAllDocsQuery.class));
+        }
+      }
+    }
+  }
+
+  public void testPrimarySortDenseSortedDocValuesExactMatch() throws IOException {
+    Directory dir = newDirectory();
+    int skipIntervalSize = random().nextInt(4, 4096);
+    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(skipIntervalSize));
+    config.setIndexSort(
+        new Sort(new SortField("dv", SortField.Type.STRING, random().nextBoolean())));
+    int numBlocks = random().nextInt(4, 16);
+    int[] sizes = new int[numBlocks];
+    for (int i = 0; i < numBlocks; i++) {
+      sizes[i] = random().nextInt(1, 250);
+    }
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, config);
+    for (int i = 0; i < numBlocks; i++) {
+      BytesRef bytesRef = new BytesRef("" + i);
+      for (int j = 0; j < sizes[i]; j++) {
+        Document doc = new Document();
+        doc.add(SortedDocValuesField.indexedField("dv", bytesRef));
+        iw.addDocument(doc);
+      }
+    }
+    iw.commit();
+    iw.forceMerge(1);
+
+    final IndexReader reader = iw.getReader();
+    final IndexSearcher searcher = newSearcher(reader, false);
+    iw.close();
+
+    for (int i = 0; i < numBlocks; i++) {
+      final Query q =
+          SortedDocValuesField.newSlowRangeQuery(
+              "dv", new BytesRef("" + i), new BytesRef("" + i), true, true);
+      assertEquals(sizes[i], searcher.count(q));
+      assertEquals(sizes[i], searcher.search(q, 1000).totalHits.value());
+      // check cost
+      assertEquals(1, reader.leaves().size());
+      LeafReaderContext ctx = reader.leaves().get(0);
+      Query rewritten = searcher.rewrite(q);
+      Weight weight = rewritten.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
+      ScorerSupplier supplier = weight.scorerSupplier(ctx);
+      assertThat(supplier.cost(), greaterThanOrEqualTo((long) sizes[i]));
+      assertThat(supplier.cost(), lessThanOrEqualTo(sizes[i] + 2L * skipIntervalSize));
+    }
+    reader.close();
+    dir.close();
   }
 }

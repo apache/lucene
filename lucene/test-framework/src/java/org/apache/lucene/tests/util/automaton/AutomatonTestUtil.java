@@ -21,9 +21,9 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Random;
 import java.util.Set;
 import org.apache.lucene.tests.util.TestUtil;
@@ -51,6 +51,28 @@ public class AutomatonTestUtil extends Assert {
 
   /** Maximum level of recursion allowed in recursive operations. */
   public static final int MAX_RECURSION_LEVEL = 1000;
+
+  /**
+   * Returns an automaton that accepts the difference of the languages of the given automata.
+   *
+   * <p>This is a test utility method that wraps {@link Operations#intersection} and {@link
+   * Operations#complement}. It is provided here for testing purposes as the minus operation can be
+   * slow and is not recommended for production use.
+   *
+   * @param a1 the first automaton
+   * @param a2 the second automaton
+   * @param determinizeWorkLimit maximum effort to spend determinizing the complement
+   * @return automaton accepting the difference
+   */
+  public static Automaton minus(Automaton a1, Automaton a2, int determinizeWorkLimit) {
+    if (Operations.isEmpty(a1) || a1 == a2) {
+      return org.apache.lucene.util.automaton.Automata.makeEmpty();
+    }
+    if (Operations.isEmpty(a2)) {
+      return a1;
+    }
+    return Operations.intersection(a1, Operations.complement(a2, determinizeWorkLimit));
+  }
 
   /** Returns random string, including full unicode range. */
   public static String randomRegexp(Random r) {
@@ -167,7 +189,7 @@ public class AutomatonTestUtil extends Assert {
       leadsToAccept = new HashMap<>();
       final Map<Integer, List<ArrivingTransition>> allArriving = new HashMap<>();
 
-      final LinkedList<Integer> q = new LinkedList<>();
+      final Queue<Integer> q = new ArrayDeque<>();
       final Set<Integer> seen = new HashSet<>();
 
       // reverse map the transitions, so we can quickly look
@@ -191,7 +213,7 @@ public class AutomatonTestUtil extends Assert {
       // Breadth-first search, from accept states,
       // backwards:
       while (q.isEmpty() == false) {
-        final int s = q.removeFirst();
+        final int s = q.remove();
         List<ArrivingTransition> arriving = allArriving.get(s);
         if (arriving != null) {
           for (ArrivingTransition at : arriving) {
@@ -288,7 +310,7 @@ public class AutomatonTestUtil extends Assert {
       case 2:
         return Operations.intersection(a1, a2);
       default:
-        return Operations.minus(a1, a2, DEFAULT_MAX_DETERMINIZED_STATES);
+        return minus(a1, a2, DEFAULT_MAX_DETERMINIZED_STATES);
     }
   }
 
@@ -426,7 +448,7 @@ public class AutomatonTestUtil extends Assert {
     int[] points = a.getStartPoints();
     // subset construction
     Map<Set<Integer>, Set<Integer>> sets = new HashMap<>();
-    LinkedList<Set<Integer>> worklist = new LinkedList<>();
+    Queue<Set<Integer>> worklist = new ArrayDeque<>();
     Map<Set<Integer>, Integer> newstate = new HashMap<>();
     sets.put(initialset, initialset);
     worklist.add(initialset);
@@ -435,7 +457,7 @@ public class AutomatonTestUtil extends Assert {
     newstate.put(initialset, 0);
     Transition t = new Transition();
     while (worklist.size() > 0) {
-      Set<Integer> s = worklist.removeFirst();
+      Set<Integer> s = worklist.remove();
       int r = newstate.get(s);
       for (int q : s) {
         if (a.isAccept(q)) {

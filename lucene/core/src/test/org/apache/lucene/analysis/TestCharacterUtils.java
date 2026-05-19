@@ -23,7 +23,6 @@ import org.apache.lucene.analysis.CharacterUtils.CharacterBuffer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
-import org.junit.Test;
 
 /** TestCase for the {@link CharacterUtils} class. */
 public class TestCharacterUtils extends LuceneTestCase {
@@ -54,7 +53,6 @@ public class TestCharacterUtils extends LuceneTestCase {
         ArrayUtil.copyOfSubArray(restored, o3, o3 + charCount));
   }
 
-  @Test
   public void testNewCharacterBuffer() {
     CharacterBuffer newCharacterBuffer = CharacterUtils.newCharacterBuffer(1024);
     assertEquals(1024, newCharacterBuffer.getBuffer().length);
@@ -74,7 +72,6 @@ public class TestCharacterUtils extends LuceneTestCase {
         });
   }
 
-  @Test
   public void testFillNoHighSurrogate() throws IOException {
     Reader reader = new StringReader("helloworld");
     CharacterBuffer buffer = CharacterUtils.newCharacterBuffer(6);
@@ -90,7 +87,6 @@ public class TestCharacterUtils extends LuceneTestCase {
     assertFalse(CharacterUtils.fill(buffer, reader));
   }
 
-  @Test
   public void testFill() throws IOException {
     String input = "1234\ud801\udc1c789123\ud801\ud801\udc1c\ud801";
     Reader reader = new StringReader(input);

@@ -43,7 +43,6 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.junit.Test;
 
 /**
  * Tests highlighting for matters *expressly* relating to term vectors.
@@ -144,7 +143,7 @@ public class TestUnifiedHighlighterTermVec extends UnifiedHighlighterTestBase {
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(numDocs, topDocs.totalHits.value());
     Map<String, String[]> fieldToSnippets =
-        highlighter.highlightFields(fields.toArray(new String[numTvFields]), query, topDocs);
+        highlighter.highlightFields(fields.toArray(String[]::new), query, topDocs);
     String[] expectedSnippetsByDoc = new String[numDocs];
     Arrays.fill(expectedSnippetsByDoc, "some <b>test</b> text");
     for (String field : fields) {
@@ -205,7 +204,6 @@ public class TestUnifiedHighlighterTermVec extends UnifiedHighlighterTestBase {
     }
   }
 
-  @Test(expected = IllegalArgumentException.class)
   public void testUserFailedToIndexOffsets() throws IOException {
     FieldType fieldType = new FieldType(tvType); // note: it's indexed too
     fieldType.setStoreTermVectorPositions(random().nextBoolean());
@@ -216,24 +214,23 @@ public class TestUnifiedHighlighterTermVec extends UnifiedHighlighterTestBase {
     doc.add(new Field("body", "term vectors", fieldType));
     iw.addDocument(doc);
 
-    IndexReader ir = iw.getReader();
-    iw.close();
+    try (IndexReader ir = iw.getReader()) {
+      iw.close();
 
-    IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.Builder uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
-    UnifiedHighlighter highlighter =
-        new UnifiedHighlighter(uhBuilder) {
-          @Override
-          protected Set<HighlightFlag> getFlags(String field) {
-            return Collections.emptySet(); // no WEIGHT_MATCHES
-          }
-        };
-    TermQuery query = new TermQuery(new Term("body", "vectors"));
-    TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
-    try {
-      highlighter.highlight("body", query, topDocs, 1); // should throw
-    } finally {
-      ir.close();
+      IndexSearcher searcher = newSearcher(ir);
+      UnifiedHighlighter.Builder uhBuilder =
+          new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
+      UnifiedHighlighter highlighter =
+          new UnifiedHighlighter(uhBuilder) {
+            @Override
+            protected Set<HighlightFlag> getFlags(String field) {
+              return Collections.emptySet(); // no WEIGHT_MATCHES
+            }
+          };
+      TermQuery query = new TermQuery(new Term("body", "vectors"));
+      TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
+      expectThrows(
+          IllegalArgumentException.class, () -> highlighter.highlight("body", query, topDocs, 1));
     }
   }
 }

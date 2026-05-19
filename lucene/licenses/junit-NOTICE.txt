@@ -1,2 +1,5 @@
-JUnit (under lib/junit-4.10.jar) is licensed under the Common Public License v. 1.0
-See http://junit.sourceforge.net/cpl-v10.html
+   ===================================================================================
+   ==  Notices and attributions required by libraries that the project depends on   ==
+   ===================================================================================
+
+ The JUnit (4) depends on Java Hamcrest (http://hamcrest.org/JavaHamcrest/).

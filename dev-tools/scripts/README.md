@@ -194,4 +194,3 @@ and prints a regular expression that will match all of them
 ### gitignore-gen.sh
 
 TBD
-

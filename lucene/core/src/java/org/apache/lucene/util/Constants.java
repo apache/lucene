@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util;
 
+import java.lang.foreign.ValueLayout;
 import java.util.Locale;
 import java.util.Optional;
 import org.apache.lucene.store.ReadAdvice;
@@ -71,16 +72,7 @@ public final class Constants {
       HotspotVMOptions.get("UseJVMCICompiler").map(Boolean::valueOf).orElse(false);
 
   /** True iff running on a 64bit JVM */
-  public static final boolean JRE_IS_64BIT = is64Bit();
-
-  private static boolean is64Bit() {
-    final String datamodel = getSysProp("sun.arch.data.model");
-    if (datamodel != null) {
-      return datamodel.contains("64");
-    } else {
-      return (OS_ARCH != null && OS_ARCH.contains("64"));
-    }
-  }
+  public static final boolean JRE_IS_64BIT = (ValueLayout.ADDRESS.byteSize() == Long.BYTES);
 
   /** true if FMA likely means a cpu instruction and not BigDecimal logic. */
   private static final boolean HAS_FMA =
@@ -104,6 +96,18 @@ public final class Constants {
 
   /** true iff we know VFMA has faster throughput than separate vmul/vadd. */
   public static final boolean HAS_FAST_VECTOR_FMA = hasFastVectorFMA();
+
+  public static final boolean NATIVE_DOT_PRODUCT_ENABLED = enableNativeDotProduct();
+
+  private static boolean enableNativeDotProduct() {
+    return Boolean.parseBoolean(getSysProp("lucene.useNativeDotProduct", "false"));
+  }
+
+  public static final boolean NATIVE_STRICT_MODE = hasNativeStrictModeOn();
+
+  private static boolean hasNativeStrictModeOn() {
+    return Boolean.parseBoolean(getSysProp("lucene.useNativeStrict", "false"));
+  }
 
   /** true iff we know FMA has faster throughput than separate mul/add. */
   public static final boolean HAS_FAST_SCALAR_FMA = hasFastScalarFMA();

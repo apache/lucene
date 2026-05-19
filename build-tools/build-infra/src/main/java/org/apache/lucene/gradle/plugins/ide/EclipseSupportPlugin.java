@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
+import org.apache.lucene.gradle.SuppressForbidden;
 import org.apache.lucene.gradle.plugins.LuceneGradlePlugin;
 import org.apache.lucene.gradle.plugins.java.EcjLintPlugin;
 import org.apache.tools.ant.filters.ReplaceTokens;
@@ -72,6 +73,11 @@ public class EclipseSupportPlugin extends LuceneGradlePlugin {
     if (rootProject.getGradle().getStartParameter().getTaskNames().contains("eclipse")) {
       configureEclipseIdeSettings(rootProject, eclipseJavaVersionOption.get());
     }
+  }
+
+  @SuppressForbidden(reason = "Ant's ReplaceTokens filter requires a Hashtable as parameter")
+  private static <K, V> Hashtable<K, V> newHashtable(Map<K, V> map) {
+    return new Hashtable<>(map);
   }
 
   private void configureEclipseIdeSettings(Project project, String eclipseJavaVersion) {
@@ -120,7 +126,7 @@ public class EclipseSupportPlugin extends LuceneGradlePlugin {
                   task.filter(
                       Map.of(
                           "tokens",
-                          new Hashtable<>(
+                          newHashtable(
                               Map.ofEntries(
                                   Map.entry("eclipseJavaVersion", eclipseJavaVersion),
                                   Map.entry("ecj-lint-config", ecjLintProps)))),

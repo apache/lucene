@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.SplittableRandom;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.KnnCollector;
@@ -64,9 +64,13 @@ public class HnswGraphBuilder implements HnswBuilder {
   @SuppressWarnings("NonFinalStaticField")
   public static long randSeed = DEFAULT_RAND_SEED;
 
+  private static final int MAX_BULK_SCORE_NODES = 8;
+
   protected final int M; // max number of connections on upper layers
   private final double ml;
 
+  private final int[] bulkScoreNodes; // for bulk scoring
+  private final float[] bulkScores; // for bulk scoring
   private final SplittableRandom random;
   protected final UpdateableRandomVectorScorer scorer;
   protected final HnswGraphSearcher graphSearcher;
@@ -80,6 +84,29 @@ public class HnswGraphBuilder implements HnswBuilder {
 
   protected InfoStream infoStream = InfoStream.getDefault();
   protected boolean frozen;
+
+  /**
+   * Merge-level start time in nanoseconds. When set, the periodic progress prints (every 10K
+   * vectors) show elapsed time since the overall merge began rather than since the current chunk
+   * began. A value of -1 means not set (non-concurrent path).
+   */
+  private long mergeStartTimeNs = -1;
+
+  /**
+   * Shared accumulator for total worker time across all concurrent merge workers. Each chunk's
+   * elapsed time is added here so that effective concurrency can be computed at merge end.
+   */
+  private AtomicLong cumulativeWorkTimeNs;
+
+  /** Set the merge-level start time so progress prints show time since merge began. */
+  void setMergeStartTimeNs(long mergeStartTimeNs) {
+    this.mergeStartTimeNs = mergeStartTimeNs;
+  }
+
+  /** Set the shared accumulator for tracking cumulative worker time across concurrent chunks. */
+  void setCumulativeWorkTimeNs(AtomicLong cumulativeWorkTimeNs) {
+    this.cumulativeWorkTimeNs = cumulativeWorkTimeNs;
+  }
 
   public static HnswGraphBuilder create(
       RandomVectorScorerSupplier scorerSupplier, int M, int beamWidth, long seed)
@@ -156,6 +183,10 @@ public class HnswGraphBuilder implements HnswBuilder {
     this.hnsw = hnsw;
     this.hnswLock = hnswLock;
     this.graphSearcher = graphSearcher;
+    // pick a number that keeps us from scoring TOO much for diversity checking
+    // but enough to take advantage of bulk scoring
+    this.bulkScoreNodes = new int[MAX_BULK_SCORE_NODES];
+    this.bulkScores = new float[MAX_BULK_SCORE_NODES];
     entryCandidates = new GraphBuilderKnnCollector(1);
     beamCandidates = new GraphBuilderKnnCollector(beamWidth);
     beamCandidates0 = new GraphBuilderKnnCollector(Math.min(beamWidth / 2, M * 3));
@@ -196,15 +227,29 @@ public class HnswGraphBuilder implements HnswBuilder {
     if (frozen) {
       throw new IllegalStateException("This HnswGraphBuilder is frozen and cannot be updated");
     }
-    long start = System.nanoTime(), t = start;
-    if (infoStream.isEnabled(HNSW_COMPONENT)) {
-      infoStream.message(HNSW_COMPONENT, "addVectors [" + minOrd + " " + maxOrd + ")");
-    }
+    long startNs = System.nanoTime();
+    long progressStartNs = mergeStartTimeNs != -1 ? mergeStartTimeNs : startNs;
     for (int node = minOrd; node < maxOrd; node++) {
       addGraphNode(node);
       if ((node % 10000 == 0) && infoStream.isEnabled(HNSW_COMPONENT)) {
-        t = printGraphBuildStatus(node, start, t);
+        printGraphBuildStatus(node, progressStartNs);
       }
+    }
+    long chunkedElapsedNs = System.nanoTime() - startNs;
+    if (cumulativeWorkTimeNs != null) {
+      cumulativeWorkTimeNs.addAndGet(chunkedElapsedNs);
+    }
+    if (infoStream.isEnabled(HNSW_COMPONENT)) {
+      double elapsedMs = chunkedElapsedNs / 1_000_000.0;
+      infoStream.message(
+          HNSW_COMPONENT,
+          String.format(
+              Locale.ROOT,
+              "addVectors [%d %d): %d vectors in %.2f ms",
+              minOrd,
+              maxOrd,
+              maxOrd - minOrd,
+              elapsedMs));
     }
   }
 
@@ -331,17 +376,10 @@ public class HnswGraphBuilder implements HnswBuilder {
     addGraphNodeInternal(node, scorer, eps0);
   }
 
-  private long printGraphBuildStatus(int node, long start, long t) {
-    long now = System.nanoTime();
+  private void printGraphBuildStatus(int node, long startNs) {
+    double elapsedMs = (System.nanoTime() - startNs) / 1_000_000.0;
     infoStream.message(
-        HNSW_COMPONENT,
-        String.format(
-            Locale.ROOT,
-            "built %d in %d/%d ms",
-            node,
-            TimeUnit.NANOSECONDS.toMillis(now - t),
-            TimeUnit.NANOSECONDS.toMillis(now - start)));
-    return now;
+        HNSW_COMPONENT, String.format(Locale.ROOT, "built %d in %.2f ms", node, elapsedMs));
   }
 
   void addDiverseNeighbors(
@@ -470,9 +508,11 @@ public class HnswGraphBuilder implements HnswBuilder {
    */
   private boolean diversityCheck(float score, NeighborArray neighbors, RandomVectorScorer scorer)
       throws IOException {
-    for (int i = 0; i < neighbors.size(); i++) {
-      float neighborSimilarity = scorer.score(neighbors.nodes()[i]);
-      if (neighborSimilarity >= score) {
+    final int bulkScoreChunk = Math.min((neighbors.size() + 1) / 2, bulkScoreNodes.length);
+    for (int scored = 0; scored < neighbors.size(); scored += bulkScoreChunk) {
+      int chunkSize = Math.min(bulkScoreChunk, neighbors.size() - scored);
+      System.arraycopy(neighbors.nodes(), scored, bulkScoreNodes, 0, chunkSize);
+      if (scorer.bulkScore(bulkScoreNodes, bulkScores, chunkSize) >= score) {
         return false;
       }
     }

@@ -39,8 +39,6 @@ public class TestMergeOnFlushMergePolicy extends BaseMergePolicyTestCase {
     Random r = random();
     MergePolicy mergePolicy = newMergePolicy();
     MergeOnFlushMergePolicy mergeOnFlushPolicy = new MergeOnFlushMergePolicy(mergePolicy);
-    mergeOnFlushPolicy.setMaxCFSSegmentSizeMB(mergePolicy.getMaxCFSSegmentSizeMB());
-    mergeOnFlushPolicy.setNoCFSRatio(mergePolicy.getNoCFSRatio());
     mergeOnFlushPolicy.setSmallSegmentThresholdMB(TestUtil.nextInt(r, 1, 100));
     if (mergePolicy instanceof TieredMergePolicy) {
       ((TieredMergePolicy) mergePolicy)

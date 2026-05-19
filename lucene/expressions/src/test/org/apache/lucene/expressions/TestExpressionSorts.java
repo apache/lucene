@@ -18,6 +18,7 @@ package org.apache.lucene.expressions;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
 import org.apache.lucene.document.Field;
@@ -40,24 +41,27 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.util.English;
-import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCaseJupiter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.IOUtils;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests some basic expressions against different queries, and fieldcache/docvalues fields against
  * an equivalent sort.
  */
-public class TestExpressionSorts extends LuceneTestCase {
+public class TestExpressionSorts extends LuceneTestCaseJupiter {
   private Directory dir;
   private IndexReader reader;
   private IndexSearcher searcher;
 
-  @Override
-  public void setUp() throws Exception {
-    super.setUp();
+  @BeforeEach
+  final void beforeEach(Random random) throws Exception {
     dir = newDirectory();
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    RandomIndexWriter iw = new RandomIndexWriter(random, dir);
     int numDocs = atLeast(500);
     for (int i = 0; i < numDocs; i++) {
       Document document = new Document();
@@ -74,13 +78,12 @@ public class TestExpressionSorts extends LuceneTestCase {
     searcher = newSearcher(reader);
   }
 
-  @Override
-  public void tearDown() throws Exception {
-    reader.close();
-    dir.close();
-    super.tearDown();
+  @AfterEach
+  final void afterEach() throws Exception {
+    IOUtils.close(reader, dir);
   }
 
+  @Test
   public void testQueries() throws Exception {
     int n = atLeast(1);
     for (int i = 0; i < n; i++) {

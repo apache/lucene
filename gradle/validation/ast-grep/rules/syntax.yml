@@ -38,36 +38,3 @@ severity: hint
 note: |
   Treesitter parse error: editors, code review, and tools may treat it incorrectly.
   Disable false-positives with `// ast-grep-ignore`
----
-# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/rule.json
-id: json-syntax
-language: json
-rule:
-  kind: ERROR
-message: Parse Error
-severity: hint
-note: |
-  Treesitter parse error: editors, code review, and tools may treat it incorrectly.
-  Check for trailing commas and comments, which JSON forbids.
----
-# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/rule.json
-id: python-syntax
-language: python
-rule:
-  kind: ERROR
-message: Parse Error
-severity: hint
-note: |
-  Treesitter parse error: editors, code review, and tools may treat it incorrectly.
-  Disable false-positives with `# ast-grep-ignore`
----
-# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/rule.json
-id: yaml-syntax
-language: yml
-rule:
-  kind: ERROR
-message: Parse Error
-severity: hint
-note: |
-  Treesitter parse error: editors, code review, and tools may treat it incorrectly.
-  Disable false-positives with `# ast-grep-ignore`

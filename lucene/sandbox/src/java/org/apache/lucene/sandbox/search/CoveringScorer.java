@@ -61,7 +61,7 @@ final class CoveringScorer extends Scorer {
   }
 
   @Override
-  public final Collection<ChildScorable> getChildren() throws IOException {
+  public Collection<ChildScorable> getChildren() throws IOException {
     List<ChildScorable> matchingChildren = new ArrayList<>();
     setTopListAndFreqIfNecessary();
     for (DisiWrapper s = topList; s != null; s = s.next) {

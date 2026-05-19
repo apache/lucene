@@ -51,7 +51,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
   private final double[] windowScores = new double[INNER_WINDOW_SIZE];
 
   private final DocAndFloatFeatureBuffer docAndScoreBuffer = new DocAndFloatFeatureBuffer();
-  private final DocAndScoreAccBuffer docAndScoreAccBuffer = new DocAndScoreAccBuffer();
+  private final DocAndScoreAccBuffer docAndScoreAccBuffer;
 
   MaxScoreBulkScorer(int maxDoc, List<Scorer> scorers, Scorer filter) throws IOException {
     this.maxDoc = maxDoc;
@@ -68,6 +68,8 @@ final class MaxScoreBulkScorer extends BulkScorer {
     this.cost = cost;
     essentialQueue = DisiPriorityQueue.ofMaxSize(allScorers.length);
     maxScoreSums = new double[allScorers.length];
+    docAndScoreAccBuffer = new DocAndScoreAccBuffer();
+    docAndScoreAccBuffer.growNoCopy(INNER_WINDOW_SIZE);
   }
 
   // Number of outer windows that have been evaluated
@@ -263,7 +265,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
       top = essentialQueue.updateTop();
     } while (top.doc < innerWindowMax);
 
-    docAndScoreAccBuffer.growNoCopy(windowMatches.cardinality(0, innerWindowSize));
     docAndScoreAccBuffer.size = 0;
     windowMatches.forEach(
         0,

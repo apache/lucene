@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.index;
 
-import java.io.IOException;
 import java.util.Iterator;
 import org.apache.lucene.codecs.FieldsProducer;
 
@@ -37,14 +36,11 @@ public abstract class Fields implements Iterable<String> {
   public abstract Iterator<String> iterator();
 
   /** Get the {@link Terms} for this field. This will return null if the field does not exist. */
-  public abstract Terms terms(String field) throws IOException;
+  public abstract Terms terms(String field);
 
   /**
    * Returns the number of fields or -1 if the number of distinct field names is unknown. If &gt;=
    * 0, {@link #iterator} will return as many field names.
    */
   public abstract int size();
-
-  /** Zero-length {@code Fields} array. */
-  public static final Fields[] EMPTY_ARRAY = new Fields[0];
 }

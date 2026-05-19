@@ -28,6 +28,7 @@ import static org.apache.lucene.codecs.simpletext.SimpleTextFieldsWriter.TERM;
 import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_LIST;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
@@ -229,14 +230,14 @@ class SimpleTextFieldsReader extends FieldsProducer {
     @Override
     public PostingsEnum postings(PostingsEnum reuse, int flags) throws IOException {
 
-      boolean hasPositions = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+      boolean hasPositions = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
       if (hasPositions && PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS)) {
 
         SimpleTextPostingsEnum docsAndPositionsEnum;
         if (reuse != null
-            && reuse instanceof SimpleTextPostingsEnum
-            && ((SimpleTextPostingsEnum) reuse).canReuse(SimpleTextFieldsReader.this.in)) {
-          docsAndPositionsEnum = (SimpleTextPostingsEnum) reuse;
+            && reuse instanceof SimpleTextPostingsEnum simpleTextPostingsEnum
+            && simpleTextPostingsEnum.canReuse(SimpleTextFieldsReader.this.in)) {
+          docsAndPositionsEnum = simpleTextPostingsEnum;
         } else {
           docsAndPositionsEnum = new SimpleTextPostingsEnum();
         }
@@ -245,9 +246,9 @@ class SimpleTextFieldsReader extends FieldsProducer {
 
       SimpleTextDocsEnum docsEnum;
       if (reuse != null
-          && reuse instanceof SimpleTextDocsEnum
-          && ((SimpleTextDocsEnum) reuse).canReuse(SimpleTextFieldsReader.this.in)) {
-        docsEnum = (SimpleTextDocsEnum) reuse;
+          && reuse instanceof SimpleTextDocsEnum simpleTextDocsEnum
+          && simpleTextDocsEnum.canReuse(SimpleTextFieldsReader.this.in)) {
+        docsEnum = simpleTextDocsEnum;
       } else {
         docsEnum = new SimpleTextDocsEnum();
       }
@@ -467,9 +468,8 @@ class SimpleTextFieldsReader extends FieldsProducer {
         long fp, IndexOptions indexOptions, int docFreq, long skipPointer) throws IOException {
       nextDocStart = fp;
       docID = -1;
-      readPositions = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
-      readOffsets =
-          indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
+      readPositions = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+      readOffsets = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
       if (!readOffsets) {
         startOffset = -1;
         endOffset = -1;
@@ -774,26 +774,25 @@ class SimpleTextFieldsReader extends FieldsProducer {
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       return docCount;
     }
 
     @Override
     public boolean hasFreqs() {
-      return fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
+      return fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS);
     }
 
     @Override
     public boolean hasOffsets() {
       return fieldInfo
-              .getIndexOptions()
-              .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-          >= 0;
+          .getIndexOptions()
+          .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
     }
 
     @Override
     public boolean hasPositions() {
-      return fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+      return fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
     }
 
     @Override
@@ -810,14 +809,19 @@ class SimpleTextFieldsReader extends FieldsProducer {
   private final Map<String, SimpleTextTerms> termsCache = new HashMap<>();
 
   @Override
-  public synchronized Terms terms(String field) throws IOException {
+  public synchronized Terms terms(String field) {
     SimpleTextTerms terms = termsCache.get(field);
     if (terms == null) {
       Long fp = fields.get(field);
       if (fp == null) {
         return null;
       } else {
-        terms = new SimpleTextTerms(field, fp, maxDoc);
+        try {
+          // TODO: rework SimpleTextTerms to avoid IO during construction
+          terms = new SimpleTextTerms(field, fp, maxDoc);
+        } catch (IOException e) {
+          throw new UncheckedIOException(e);
+        }
         termsCache.put(field, terms);
       }
     }
