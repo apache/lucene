@@ -448,7 +448,7 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
     assertTrue("Should have matching docs", expected.size() > 0);
 
     // Test nextDoc() through all block types
-    NumericDocValues values = wrapWithAdvanceExact(docValues(queryMin, queryMax));
+    NumericDocValues values = docValues(queryMin, queryMax);
     DocValuesSkipper skipper = docValuesSkipper(queryMin, queryMax, true);
     BatchDocValuesRangeIterator iter =
         new BatchDocValuesRangeIterator(values, skipper, queryMin, queryMax);
@@ -464,7 +464,7 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
     // - advance into MAYBE block
     // - advance into YES_IF_PRESENT block (docs 1024+, sparse)
     // - advance past end
-    values = wrapWithAdvanceExact(docValues(queryMin, queryMax));
+    values = docValues(queryMin, queryMax);
     skipper = docValuesSkipper(queryMin, queryMax, true);
     iter = new BatchDocValuesRangeIterator(values, skipper, queryMin, queryMax);
 
@@ -484,7 +484,7 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, iter.advance(2048));
 
     // Test intoBitSet() across all block types
-    values = wrapWithAdvanceExact(docValues(queryMin, queryMax));
+    values = docValues(queryMin, queryMax);
     skipper = docValuesSkipper(queryMin, queryMax, true);
     iter = new BatchDocValuesRangeIterator(values, skipper, queryMin, queryMax);
     int firstDoc = iter.nextDoc();
@@ -504,44 +504,5 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
         d = d + 1 < bitSet.length() ? bitSet.nextSetBit(d + 1) : DocIdSetIterator.NO_MORE_DOCS) {
       assertTrue("Doc " + d + " set in bitset but not in expected", expected.contains(d));
     }
-  }
-
-  /**
-   * Wraps a fake NumericDocValues (which only supports advance/nextDoc) to also support
-   * advanceExact by delegating to advance().
-   */
-  private static NumericDocValues wrapWithAdvanceExact(NumericDocValues delegate) {
-    return new NumericDocValues() {
-      @Override
-      public int docID() {
-        return delegate.docID();
-      }
-
-      @Override
-      public int nextDoc() throws java.io.IOException {
-        return delegate.nextDoc();
-      }
-
-      @Override
-      public int advance(int target) throws java.io.IOException {
-        return delegate.advance(target);
-      }
-
-      @Override
-      public boolean advanceExact(int target) throws java.io.IOException {
-        int doc = delegate.advance(target);
-        return doc == target;
-      }
-
-      @Override
-      public long longValue() throws java.io.IOException {
-        return delegate.longValue();
-      }
-
-      @Override
-      public long cost() {
-        return delegate.cost();
-      }
-    };
   }
 }

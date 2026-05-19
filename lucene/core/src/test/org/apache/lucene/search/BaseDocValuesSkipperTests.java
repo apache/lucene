@@ -36,7 +36,8 @@ public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
 
       @Override
       public boolean advanceExact(int target) throws IOException {
-        throw new UnsupportedOperationException();
+        int advanced = advance(target);
+        return advanced == target;
       }
 
       @Override
