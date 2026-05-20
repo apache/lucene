@@ -192,11 +192,10 @@ final class MaxScoreBulkScorer extends BulkScorer {
       return;
     }
 
-    int innerWindowSize = innerWindowMax - innerWindowMin;
     if (filterWindowMatches == null) {
       filterWindowMatches = new FixedBitSet(INNER_WINDOW_SIZE);
     } else {
-      filterWindowMatches.clear(0, innerWindowSize);
+      filterWindowMatches.clear();
     }
     if (filter.doc < innerWindowMax) {
       if (filter.doc < innerWindowMin) {
@@ -522,5 +521,4 @@ final class MaxScoreBulkScorer extends BulkScorer {
   public long cost() {
     return cost;
   }
-
 }
