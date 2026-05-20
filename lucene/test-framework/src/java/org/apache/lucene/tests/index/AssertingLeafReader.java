@@ -1406,6 +1406,12 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
+    public int maxValueCount() {
+      assertThread("Doc values skipper", creationThread);
+      return in.maxValueCount();
+    }
+
+    @Override
     public int maxDocID(int level) {
       assertThread("Doc values skipper", creationThread);
       Objects.checkIndex(level, numLevels());

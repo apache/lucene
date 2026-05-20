@@ -52,6 +52,9 @@ New Features
   or mixed) via log-odds fusion with softplus gating and sqrt(n) confidence scaling.
   (Jaepil Jeong)
 
+* GITHUB#15794: Add DocValuesSkipper metadata for the maximum number of values
+  on any document in a field. (Prithvi S)
+
 Improvements
 ---------------------
 * GITHUB#15711: DirectoryTaxonomyReader.getBulkPath() now uses getPathFromCache. (Shubham Sharma)

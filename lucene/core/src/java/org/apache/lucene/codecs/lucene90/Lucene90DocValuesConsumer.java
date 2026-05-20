@@ -270,14 +270,17 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     long globalMaxValue = Long.MIN_VALUE;
     long globalMinValue = Long.MAX_VALUE;
     int globalDocCount = 0;
+    int globalMaxValueCount = 0;
     int maxDocId = -1;
     final List<SkipAccumulator> accumulators = new ArrayList<>();
     SkipAccumulator accumulator = null;
     final int maxAccumulators = 1 << (SKIP_INDEX_LEVEL_SHIFT * (SKIP_INDEX_MAX_LEVEL - 1));
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
+      final int valueCount = values.docValueCount();
       final long firstValue = values.nextValue();
+      globalMaxValueCount = Math.max(globalMaxValueCount, valueCount);
       if (accumulator != null
-          && accumulator.isDone(skipIndexIntervalSize, values.docValueCount(), firstValue, doc)) {
+          && accumulator.isDone(skipIndexIntervalSize, valueCount, firstValue, doc)) {
         globalMaxValue = Math.max(globalMaxValue, accumulator.maxValue);
         globalMinValue = Math.min(globalMinValue, accumulator.minValue);
         globalDocCount += accumulator.docCount;
@@ -294,7 +297,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
       }
       accumulator.nextDoc(doc);
       accumulator.accumulate(firstValue);
-      for (int i = 1, end = values.docValueCount(); i < end; ++i) {
+      for (int i = 1; i < valueCount; ++i) {
         accumulator.accumulate(values.nextValue());
       }
     }
@@ -314,6 +317,7 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     assert globalDocCount <= maxDocId + 1;
     meta.writeInt(globalDocCount);
     meta.writeInt(maxDocId);
+    meta.writeInt(globalMaxValueCount);
   }
 
   private void writeLevels(List<SkipAccumulator> accumulators) throws IOException {
