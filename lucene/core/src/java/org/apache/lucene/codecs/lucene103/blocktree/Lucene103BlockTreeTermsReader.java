@@ -284,7 +284,7 @@ public final class Lucene103BlockTreeTermsReader extends FieldsProducer {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     assert field != null;
     FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
     return fieldInfo == null ? null : fieldMap.get(fieldInfo.number);

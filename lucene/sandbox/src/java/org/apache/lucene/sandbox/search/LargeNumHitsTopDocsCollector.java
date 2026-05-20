@@ -48,6 +48,9 @@ public final class LargeNumHitsTopDocsCollector implements Collector {
   int totalHits;
 
   public LargeNumHitsTopDocsCollector(int requestedHitCount) {
+    if (requestedHitCount <= 0) {
+      throw new IllegalArgumentException("requestedHitCount must be > 0");
+    }
     this.requestedHitCount = requestedHitCount;
     this.totalHits = 0;
   }
@@ -111,10 +114,14 @@ public final class LargeNumHitsTopDocsCollector implements Collector {
 
   /** Returns the top docs that were collected by this collector. */
   public TopDocs topDocs(int howMany) {
-
-    if (howMany <= 0 || howMany > totalHits) {
-      throw new IllegalArgumentException("Incorrect number of hits requested");
+    if (howMany < 0) {
+      throw new IllegalArgumentException(
+          "Number of hits requested must not be negative but value was " + howMany);
     }
+    if (howMany == 0) {
+      return EMPTY_TOPDOCS;
+    }
+    howMany = Math.min(howMany, totalHits);
 
     ScoreDoc[] results = new ScoreDoc[howMany];
 

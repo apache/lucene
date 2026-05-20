@@ -20,13 +20,23 @@ import java.util.Collection;
 import java.util.Collections;
 
 /**
- * An object whose RAM usage can be computed.
+ * An object whose JVM heap memory usage can be computed.
+ *
+ * <p>Implementations should only account for memory allocated on the Java heap (i.e. memory managed
+ * by the JVM garbage collector). Off-heap resources such as memory-mapped files or native direct
+ * buffers should not be included; those should be tracked separately if needed (see e.g. {@link
+ * org.apache.lucene.codecs.KnnVectorsReader#getOffHeapByteSize}).
  *
  * @lucene.internal
  */
 public interface Accountable {
 
-  /** Return the memory usage of this object in bytes. Negative values are illegal. */
+  /**
+   * Returns an estimate of the JVM heap memory used by this object in bytes. The method name uses
+   * "ram" for historical reasons; only JVM heap memory should be reported. Off-heap resources such
+   * as memory-mapped files or native direct buffers should not be included. Negative values are
+   * illegal.
+   */
   long ramBytesUsed();
 
   /**

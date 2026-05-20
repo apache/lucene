@@ -132,6 +132,7 @@ import org.apache.lucene.util.packed.DirectWriter;
  * <ol>
  *   <li><code>.dvd</code>: DocValues data
  *   <li><code>.dvm</code>: DocValues metadata
+ *   <li><code>.dvs</code>: DocValues skip index (since version 1)
  * </ol>
  *
  * @lucene.experimental
@@ -158,21 +159,37 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   @Override
   public DocValuesConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
     return new Lucene90DocValuesConsumer(
-        state, skipIndexIntervalSize, DATA_CODEC, DATA_EXTENSION, META_CODEC, META_EXTENSION);
+        state,
+        skipIndexIntervalSize,
+        DATA_CODEC,
+        DATA_EXTENSION,
+        META_CODEC,
+        META_EXTENSION,
+        SKIP_INDEX_CODEC,
+        SKIP_INDEX_EXTENSION);
   }
 
   @Override
   public DocValuesProducer fieldsProducer(SegmentReadState state) throws IOException {
     return new Lucene90DocValuesProducer(
-        state, DATA_CODEC, DATA_EXTENSION, META_CODEC, META_EXTENSION);
+        state,
+        DATA_CODEC,
+        DATA_EXTENSION,
+        META_CODEC,
+        META_EXTENSION,
+        SKIP_INDEX_CODEC,
+        SKIP_INDEX_EXTENSION);
   }
 
   static final String DATA_CODEC = "Lucene90DocValuesData";
   static final String DATA_EXTENSION = "dvd";
   static final String META_CODEC = "Lucene90DocValuesMetadata";
   static final String META_EXTENSION = "dvm";
+  static final String SKIP_INDEX_CODEC = "Lucene90DocValuesSkipIndex";
+  static final String SKIP_INDEX_EXTENSION = "dvs";
   static final int VERSION_START = 0;
-  static final int VERSION_CURRENT = VERSION_START;
+  static final int VERSION_SKIPPER_SEPARATE_FILE = 1;
+  static final int VERSION_CURRENT = VERSION_SKIPPER_SEPARATE_FILE;
 
   // indicates docvalues type
   static final byte NUMERIC = 0;

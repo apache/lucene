@@ -121,7 +121,7 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
   }
 
   private static PrefixCodedTerms packTerms(String field, Collection<BytesRef> terms) {
-    BytesRef[] sortedTerms = terms.toArray(new BytesRef[0]);
+    BytesRef[] sortedTerms = terms.toArray(BytesRef[]::new);
     // already sorted if we are a SortedSet with natural order
     boolean sorted =
         terms instanceof SortedSet && ((SortedSet<BytesRef>) terms).comparator() == null;

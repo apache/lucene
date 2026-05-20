@@ -40,7 +40,6 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Test;
 
 /**
  * Test BooleanQuery2 against BooleanQuery by overriding the standard query parser. This also tests
@@ -268,7 +267,6 @@ public class TestBoolean2 extends LuceneTestCase {
     CheckHits.checkEqual(query, hits1, hits2);
   }
 
-  @Test
   public void testQueries01() throws Exception {
     BooleanQuery.Builder query = new BooleanQuery.Builder();
     query.add(new TermQuery(new Term(field, "w3")), BooleanClause.Occur.MUST);
@@ -277,7 +275,6 @@ public class TestBoolean2 extends LuceneTestCase {
     queriesTest(query.build(), expDocNrs);
   }
 
-  @Test
   public void testQueries02() throws Exception {
     BooleanQuery.Builder query = new BooleanQuery.Builder();
     query.add(new TermQuery(new Term(field, "w3")), BooleanClause.Occur.MUST);
@@ -286,7 +283,6 @@ public class TestBoolean2 extends LuceneTestCase {
     queriesTest(query.build(), expDocNrs);
   }
 
-  @Test
   public void testQueries03() throws Exception {
     BooleanQuery.Builder query = new BooleanQuery.Builder();
     query.add(new TermQuery(new Term(field, "w3")), BooleanClause.Occur.SHOULD);
@@ -295,7 +291,6 @@ public class TestBoolean2 extends LuceneTestCase {
     queriesTest(query.build(), expDocNrs);
   }
 
-  @Test
   public void testQueries04() throws Exception {
     BooleanQuery.Builder query = new BooleanQuery.Builder();
     query.add(new TermQuery(new Term(field, "w3")), BooleanClause.Occur.SHOULD);
@@ -304,7 +299,6 @@ public class TestBoolean2 extends LuceneTestCase {
     queriesTest(query.build(), expDocNrs);
   }
 
-  @Test
   public void testQueries05() throws Exception {
     BooleanQuery.Builder query = new BooleanQuery.Builder();
     query.add(new TermQuery(new Term(field, "w3")), BooleanClause.Occur.MUST);
@@ -313,7 +307,6 @@ public class TestBoolean2 extends LuceneTestCase {
     queriesTest(query.build(), expDocNrs);
   }
 
-  @Test
   public void testQueries06() throws Exception {
     BooleanQuery.Builder query = new BooleanQuery.Builder();
     query.add(new TermQuery(new Term(field, "w3")), BooleanClause.Occur.MUST);
@@ -323,7 +316,6 @@ public class TestBoolean2 extends LuceneTestCase {
     queriesTest(query.build(), expDocNrs);
   }
 
-  @Test
   public void testQueries07() throws Exception {
     BooleanQuery.Builder query = new BooleanQuery.Builder();
     query.add(new TermQuery(new Term(field, "w3")), BooleanClause.Occur.MUST_NOT);
@@ -333,7 +325,6 @@ public class TestBoolean2 extends LuceneTestCase {
     queriesTest(query.build(), expDocNrs);
   }
 
-  @Test
   public void testQueries08() throws Exception {
     BooleanQuery.Builder query = new BooleanQuery.Builder();
     query.add(new TermQuery(new Term(field, "w3")), BooleanClause.Occur.MUST);
@@ -343,7 +334,6 @@ public class TestBoolean2 extends LuceneTestCase {
     queriesTest(query.build(), expDocNrs);
   }
 
-  @Test
   public void testQueries09() throws Exception {
     BooleanQuery.Builder query = new BooleanQuery.Builder();
     query.add(new TermQuery(new Term(field, "w3")), BooleanClause.Occur.MUST);
@@ -354,7 +344,6 @@ public class TestBoolean2 extends LuceneTestCase {
     queriesTest(query.build(), expDocNrs);
   }
 
-  @Test
   public void testRandomQueries() throws Exception {
     String[] vals = {"w1", "w2", "w3", "w4", "w5", "xx", "yy", "zzz"};
 

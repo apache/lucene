@@ -74,7 +74,8 @@ public class TestUsageTrackingFilterCachingPolicy extends LuceneTestCase {
 
     IndexSearcher searcher = new IndexSearcher(reader);
     UsageTrackingQueryCachingPolicy policy = new UsageTrackingQueryCachingPolicy();
-    LRUQueryCache cache = new LRUQueryCache(10, Long.MAX_VALUE, _ -> true, Float.POSITIVE_INFINITY);
+    LRUQueryCache cache =
+        new LRUQueryCache(10, Long.MAX_VALUE, _ -> true, Float.POSITIVE_INFINITY, 1, null);
     searcher.setQueryCache(cache);
     searcher.setQueryCachingPolicy(policy);
 

@@ -18,12 +18,10 @@ package org.apache.lucene.search;
 
 import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 /** Tests for {@link HnswQueueSaturationCollector} */
 public class TestHnswQueueSaturationCollector extends LuceneTestCase {
 
-  @Test
   public void testDelegate() {
     Random random = random();
     int numDocs = 100;
@@ -43,7 +41,6 @@ public class TestHnswQueueSaturationCollector extends LuceneTestCase {
         1e-3);
   }
 
-  @Test
   public void testEarlyExpectedExit() {
     int numDocs = 1000;
     int k = 10;
@@ -62,7 +59,6 @@ public class TestHnswQueueSaturationCollector extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testDelegateVsSaturateEarlyExit() {
     Random random = random();
     int numDocs = 10000;
@@ -81,7 +77,6 @@ public class TestHnswQueueSaturationCollector extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testEarlyExitRelation() {
     Random random = random();
     int numDocs = 10000;

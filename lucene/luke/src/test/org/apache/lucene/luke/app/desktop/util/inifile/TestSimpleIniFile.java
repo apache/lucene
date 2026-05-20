@@ -25,11 +25,9 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestSimpleIniFile extends LuceneTestCase {
 
-  @Test
   public void testStore() throws IOException {
     Path path = saveTestIni();
     assertTrue(Files.exists(path));
@@ -49,7 +47,6 @@ public class TestSimpleIniFile extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testLoad() throws IOException {
     Path path = saveTestIni();
 
@@ -62,7 +59,6 @@ public class TestSimpleIniFile extends LuceneTestCase {
     assertEquals(2, sections.get("section2").size());
   }
 
-  @Test
   public void testPut() {
     SimpleIniFile iniFile = new SimpleIniFile();
     iniFile.put("section1", "s1", "aaa");
@@ -76,7 +72,6 @@ public class TestSimpleIniFile extends LuceneTestCase {
     assertNull(sections.get("section2").get("b2"));
   }
 
-  @Test
   public void testGet() throws IOException {
     Path path = saveTestIni();
     SimpleIniFile iniFile = new SimpleIniFile();

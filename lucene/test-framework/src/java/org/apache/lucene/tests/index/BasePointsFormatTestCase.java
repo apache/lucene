@@ -328,7 +328,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
       }
     }
 
-    byte[][][] docValuesArray = docValues.toArray(new byte[docValues.size()][][]);
+    byte[][][] docValuesArray = docValues.toArray(byte[][][]::new);
     int[] docIDsArray = new int[docIDs.size()];
     for (int i = 0; i < docIDsArray.length; i++) {
       docIDsArray[i] = docIDs.get(i);
@@ -1194,7 +1194,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
           if (VERBOSE) {
             System.out.println("TEST: now use addIndexes(CodecReader[]) to switch writers");
           }
-          saveW.addIndexes(subs.toArray(new CodecReader[subs.size()]));
+          saveW.addIndexes(subs.toArray(CodecReader[]::new));
         } else {
           if (VERBOSE) {
             System.out.println(

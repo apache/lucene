@@ -17,7 +17,6 @@
 package org.apache.lucene.search.grouping;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.function.Supplier;
@@ -32,10 +31,10 @@ public class TopGroupsCollectorManager<T>
   private final Collection<SearchGroup<T>> searchGroups;
   private final Sort groupSort;
   private final Sort sortWithinGroup;
+  private final int withinGroupOffset;
   private final int maxDocsPerGroup;
   private final boolean getMaxScores;
   private final TopGroups.ScoreMergeMode scoreMergeMode;
-  private final List<TopGroupsCollector<T>> collectors;
 
   /**
    * Creates a new TopGroupsCollectorManager.
@@ -44,6 +43,7 @@ public class TopGroupsCollectorManager<T>
    * @param searchGroups the search groups from the first pass
    * @param groupSort the sort to use for groups
    * @param sortWithinGroup the sort to use within each group
+   * @param withinGroupOffset the offset within each group to start collecting documents
    * @param maxDocsPerGroup the maximum number of documents per group
    * @param getMaxScores whether to compute max scores
    */
@@ -52,6 +52,7 @@ public class TopGroupsCollectorManager<T>
       Collection<SearchGroup<T>> searchGroups,
       Sort groupSort,
       Sort sortWithinGroup,
+      int withinGroupOffset,
       int maxDocsPerGroup,
       boolean getMaxScores) {
     this(
@@ -59,6 +60,7 @@ public class TopGroupsCollectorManager<T>
         searchGroups,
         groupSort,
         sortWithinGroup,
+        withinGroupOffset,
         maxDocsPerGroup,
         getMaxScores,
         TopGroups.ScoreMergeMode.None);
@@ -71,6 +73,7 @@ public class TopGroupsCollectorManager<T>
    * @param searchGroups the search groups from the first pass
    * @param groupSort the sort to use for groups
    * @param sortWithinGroup the sort to use within each group
+   * @param withinGroupOffset the offset within each group to start collecting documents
    * @param maxDocsPerGroup the maximum number of documents per group
    * @param getMaxScores whether to compute max scores
    * @param scoreMergeMode the mode for merging scores across shards
@@ -80,6 +83,7 @@ public class TopGroupsCollectorManager<T>
       Collection<SearchGroup<T>> searchGroups,
       Sort groupSort,
       Sort sortWithinGroup,
+      int withinGroupOffset,
       int maxDocsPerGroup,
       boolean getMaxScores,
       TopGroups.ScoreMergeMode scoreMergeMode) {
@@ -87,56 +91,34 @@ public class TopGroupsCollectorManager<T>
     this.searchGroups = searchGroups;
     this.groupSort = groupSort;
     this.sortWithinGroup = sortWithinGroup;
+    this.withinGroupOffset = withinGroupOffset;
     this.maxDocsPerGroup = maxDocsPerGroup;
     this.getMaxScores = getMaxScores;
     this.scoreMergeMode = scoreMergeMode;
-    this.collectors = new ArrayList<>();
   }
 
   @Override
   public TopGroupsCollector<T> newCollector() throws IOException {
-    TopGroupsCollector<T> collector =
-        new TopGroupsCollector<>(
-            groupSelectorFactory.get(),
-            searchGroups,
-            groupSort,
-            sortWithinGroup,
-            maxDocsPerGroup,
-            getMaxScores);
-    collectors.add(collector);
-    return collector;
+    return new TopGroupsCollector<>(
+        groupSelectorFactory.get(),
+        searchGroups,
+        groupSort,
+        sortWithinGroup,
+        withinGroupOffset + maxDocsPerGroup,
+        getMaxScores);
   }
 
   @Override
   public TopGroups<T> reduce(Collection<TopGroupsCollector<T>> collectors) throws IOException {
-    if (collectors.isEmpty()) {
-      return null;
-    }
-
-    if (collectors.size() == 1) {
-      return collectors.iterator().next().getTopGroups(0);
-    }
-
     // Merge results from multiple collectors
-    List<TopGroups<T>> shardGroupsList = new ArrayList<>();
-    for (TopGroupsCollector<T> collector : collectors) {
-      TopGroups<T> groups = collector.getTopGroups(0);
-      if (groups != null) {
-        shardGroupsList.add(groups);
-      }
-    }
+    List<TopGroups<T>> shardGroupsList = collectors.stream().map(c -> c.getTopGroups(0)).toList();
 
-    if (shardGroupsList.isEmpty()) {
-      return null;
-    }
-
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    TopGroups<T>[] shardGroups = (TopGroups<T>[]) shardGroupsList.toArray(TopGroups[]::new);
     return TopGroups.merge(
-        shardGroups, groupSort, sortWithinGroup, 0, maxDocsPerGroup, scoreMergeMode);
-  }
-
-  public List<TopGroupsCollector<T>> getCollectors() {
-    return collectors;
+        shardGroupsList,
+        groupSort,
+        sortWithinGroup,
+        withinGroupOffset,
+        maxDocsPerGroup,
+        scoreMergeMode);
   }
 }
