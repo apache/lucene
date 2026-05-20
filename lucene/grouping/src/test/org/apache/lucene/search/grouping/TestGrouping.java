@@ -1512,17 +1512,13 @@ public class TestGrouping extends LuceneTestCase {
         SearchGroup.merge(shardGroups, groupOffset, topNGroups, groupSort);
     if (VERBOSE) {
       System.out.println(" top groups merged:");
-      if (mergedTopGroups == null) {
-        System.out.println("    null");
-      } else {
-        System.out.println("    " + mergedTopGroups.size() + " top groups:");
-        for (SearchGroup<BytesRef> group : mergedTopGroups) {
-          System.out.println(
-              "    ["
-                  + groupToString(group.groupValue)
-                  + "] groupSort="
-                  + Arrays.toString(group.sortValues));
-        }
+      System.out.println("    " + mergedTopGroups.size() + " top groups:");
+      for (SearchGroup<BytesRef> group : mergedTopGroups) {
+        System.out.println(
+            "    ["
+                + groupToString(group.groupValue)
+                + "] groupSort="
+                + Arrays.toString(group.sortValues));
       }
     }
 
