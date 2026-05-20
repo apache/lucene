@@ -286,7 +286,9 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     // For byte vector fields (which bypass our FieldWriter), this is the only accounting.
     total += rawVectorDelegate.ramBytesUsed();
     for (FieldWriter field : fields) {
-      // Add quantization-specific overhead not tracked by the delegate
+      // quantizationOverheadBytesUsed() intentionally excludes flatFieldVectorsWriter
+      // because rawVectorDelegate.ramBytesUsed() already accounts for all flat vector
+      // data at the writer level. Calling field.ramBytesUsed() here would double-count.
       total += field.quantizationOverheadBytesUsed();
     }
     return total;

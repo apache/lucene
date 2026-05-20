@@ -515,6 +515,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     // quantization-specific overhead (magnitudes, dimensionSums) on top.
     total += rawVectorDelegate.ramBytesUsed();
     for (FieldWriter field : fields) {
+      // quantizationOverheadBytesUsed() intentionally excludes flatFieldVectorsWriter
+      // because rawVectorDelegate.ramBytesUsed() already accounts for all flat vector
+      // data at the writer level. Calling field.ramBytesUsed() here would double-count.
       total += field.quantizationOverheadBytesUsed();
     }
     return total;
