@@ -17,7 +17,9 @@
 package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.TopDocs;
 
@@ -37,6 +39,7 @@ import org.apache.lucene.search.TopDocs;
 public class LargeNumHitsTopDocsCollectorManager
     implements CollectorManager<LargeNumHitsTopDocsCollector, TopDocs> {
   private final int numHits;
+  private final List<LargeNumHitsTopDocsCollector> collectors;
 
   /**
    * Creates a new {@link LargeNumHitsTopDocsCollectorManager} given the number of hits to collect.
@@ -48,11 +51,14 @@ public class LargeNumHitsTopDocsCollectorManager
       throw new IllegalArgumentException("numHits must be > 0, got " + numHits);
     }
     this.numHits = numHits;
+    this.collectors = new ArrayList<>();
   }
 
   @Override
   public LargeNumHitsTopDocsCollector newCollector() {
-    return new LargeNumHitsTopDocsCollector(numHits);
+    LargeNumHitsTopDocsCollector collector = new LargeNumHitsTopDocsCollector(numHits);
+    this.collectors.add(collector);
+    return collector;
   }
 
   @Override
@@ -60,5 +66,9 @@ public class LargeNumHitsTopDocsCollectorManager
     final TopDocs[] topDocs =
         collectors.stream().map(LargeNumHitsTopDocsCollector::topDocs).toArray(TopDocs[]::new);
     return TopDocs.merge(0, numHits, topDocs);
+  }
+
+  List<LargeNumHitsTopDocsCollector> getCollectors() {
+    return this.collectors;
   }
 }

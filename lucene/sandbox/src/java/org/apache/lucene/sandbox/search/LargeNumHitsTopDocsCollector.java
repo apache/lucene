@@ -45,7 +45,7 @@ public final class LargeNumHitsTopDocsCollector implements Collector {
   // package private for testing
   HitQueue pq;
   ScoreDoc pqTop;
-  private int totalHits;
+  int totalHits;
 
   public LargeNumHitsTopDocsCollector(int requestedHitCount) {
     if (requestedHitCount <= 0) {

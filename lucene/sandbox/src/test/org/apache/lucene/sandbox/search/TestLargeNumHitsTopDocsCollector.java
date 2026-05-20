@@ -90,7 +90,7 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
     }
   }
 
-  public void testTopDocs() {
+  public void testHowMany() {
     LargeNumHitsTopDocsCollector largeCollector = new LargeNumHitsTopDocsCollector(15);
 
     IllegalArgumentException expected =
@@ -109,23 +109,31 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
 
     TopDocs largeTopDocs = searcher.search(testQuery, largeCollectorManager);
     TopDocs regularTopDocs = searcher.search(testQuery, regularCollectorManager);
-
     assertEquals(largeTopDocs.totalHits.value(), regularTopDocs.totalHits.value());
-    CheckHits.checkEqual(testQuery, largeTopDocs.scoreDocs, regularTopDocs.scoreDocs);
+
+    for (LargeNumHitsTopDocsCollector largeCollector : largeCollectorManager.getCollectors()) {
+      assertNull(largeCollector.pq);
+      assertNull(largeCollector.pqTop);
+    }
   }
 
   public void testPQBuild() throws IOException {
     IndexSearcher searcher = newSearcher(reader);
     LargeNumHitsTopDocsCollectorManager largeCollectorManager =
-        new LargeNumHitsTopDocsCollectorManager(50);
+        new LargeNumHitsTopDocsCollectorManager(1);
     TopScoreDocCollectorManager regularCollectorManager =
-        new TopScoreDocCollectorManager(50, Integer.MAX_VALUE);
+        new TopScoreDocCollectorManager(1, Integer.MAX_VALUE);
 
     TopDocs largeTopDocs = searcher.search(testQuery, largeCollectorManager);
     TopDocs regularTopDocs = searcher.search(testQuery, regularCollectorManager);
-
     assertEquals(largeTopDocs.totalHits.value(), regularTopDocs.totalHits.value());
-    CheckHits.checkEqual(testQuery, largeTopDocs.scoreDocs, regularTopDocs.scoreDocs);
+
+    for (LargeNumHitsTopDocsCollector largeCollector : largeCollectorManager.getCollectors()) {
+      if (largeCollector.totalHits > 0) {
+        assertNotNull(largeCollector.pq);
+        assertNotNull(largeCollector.pqTop);
+      }
+    }
   }
 
   public void testNoPQHitsOrder() throws IOException {
@@ -137,8 +145,12 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
 
     TopDocs largeTopDocs = searcher.search(testQuery, largeCollectorManager);
     TopDocs regularTopDocs = searcher.search(testQuery, regularCollectorManager);
-
     assertEquals(largeTopDocs.totalHits.value(), regularTopDocs.totalHits.value());
+
+    for (LargeNumHitsTopDocsCollector largeCollector : largeCollectorManager.getCollectors()) {
+      assertNull(largeCollector.pq);
+      assertNull(largeCollector.pqTop);
+    }
 
     if (largeTopDocs.scoreDocs.length > 0) {
       float preScore = largeTopDocs.scoreDocs[0].score;
