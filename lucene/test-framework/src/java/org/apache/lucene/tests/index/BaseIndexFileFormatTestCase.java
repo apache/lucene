@@ -411,7 +411,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             }
 
             @Override
-            public Terms terms(String field) throws IOException {
+            public Terms terms(String field) {
               return oneDocReader.terms(field);
             }
 

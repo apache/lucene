@@ -45,7 +45,7 @@ public abstract class PointsReader implements Closeable {
    * Return {@link PointValues} for the given {@code field}. The behavior is undefined if the given
    * field doesn't have points enabled on its {@link FieldInfo}.
    */
-  public abstract PointValues getValues(String field) throws IOException;
+  public abstract PointValues getValues(String field);
 
   /**
    * Returns an instance optimized for merging. This instance may only be used in the thread that

@@ -17,43 +17,13 @@
 package org.apache.lucene.tests.util;
 
 import com.carrotsearch.randomizedtesting.ThreadFilter;
-import java.util.concurrent.ForkJoinWorkerThread;
-import org.apache.lucene.util.Constants;
 
 /** Last minute patches. */
 public class QuickPatchThreadsFilter implements ThreadFilter {
-  static final boolean isJ9;
-
-  static {
-    isJ9 = Constants.JAVA_VENDOR.startsWith("IBM");
-  }
+  private static final IsSystemThread delegate = new IsSystemThread();
 
   @Override
   public boolean reject(Thread t) {
-    if (isJ9) {
-      // LUCENE-6518
-      if ("ClassCache Reaper".equals(t.getName())) {
-        return true;
-      }
-
-      // LUCENE-4736
-      StackTraceElement[] stack = t.getStackTrace();
-      if (stack.length > 0
-          && stack[stack.length - 1].getClassName().equals("java.util.Timer$TimerImpl")) {
-        return true;
-      }
-    }
-
-    if (t instanceof ForkJoinWorkerThread
-        && t.getName().startsWith("ForkJoinPool.commonPool-worker")
-        && t.isDaemon()) {
-      // GH-14066: filter out common pool's worker threads. Assume they have completed
-      // all background tasks and are idle.
-      return true;
-    }
-
-    // Also filter out JNA Cleaner threads, which is static per-JVM and not under the
-    // control of a test suite.
-    return t.getName().equals("JNA Cleaner");
+    return delegate.test(t);
   }
 }

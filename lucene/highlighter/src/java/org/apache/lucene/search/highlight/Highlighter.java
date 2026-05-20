@@ -146,7 +146,7 @@ public class Highlighter {
         fragTexts.add(frag[i].toString());
       }
     }
-    return fragTexts.toArray(new String[0]);
+    return fragTexts.toArray(String[]::new);
   }
 
   /**
@@ -168,8 +168,8 @@ public class Highlighter {
     OffsetAttribute offsetAtt = tokenStream.addAttribute(OffsetAttribute.class);
     TextFragment currentFrag = new TextFragment(newText, newText.length(), docFrags.size());
 
-    if (fragmentScorer instanceof QueryScorer) {
-      ((QueryScorer) fragmentScorer).setMaxDocCharsToAnalyze(maxDocCharsToAnalyze);
+    if (fragmentScorer instanceof QueryScorer qs) {
+      qs.setMaxDocCharsToAnalyze(maxDocCharsToAnalyze);
     }
 
     TokenStream newStream = fragmentScorer.init(tokenStream);
@@ -303,7 +303,7 @@ public class Highlighter {
             fragTexts.add(frag[i]);
           }
         }
-        frag = fragTexts.toArray(new TextFragment[0]);
+        frag = fragTexts.toArray(TextFragment[]::new);
       }
 
       return frag;

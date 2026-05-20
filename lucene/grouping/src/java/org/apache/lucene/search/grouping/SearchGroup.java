@@ -25,6 +25,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableSet;
+import java.util.Objects;
 import java.util.TreeSet;
 import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.Pruning;
@@ -62,17 +63,7 @@ public class SearchGroup<T> {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
 
-    SearchGroup<?> that = (SearchGroup<?>) o;
-
-    if (groupValue == null) {
-      if (that.groupValue != null) {
-        return false;
-      }
-    } else if (!groupValue.equals(that.groupValue)) {
-      return false;
-    }
-
-    return true;
+    return Objects.equals(groupValue, ((SearchGroup<?>) o).groupValue);
   }
 
   @Override
@@ -124,8 +115,7 @@ public class SearchGroup<T> {
 
     // Only for assert
     private boolean neverEquals(Object _other) {
-      if (_other instanceof MergedGroup) {
-        MergedGroup<?> other = (MergedGroup<?>) _other;
+      if (_other instanceof MergedGroup<?> other) {
         if (groupValue == null) {
           assert other.groupValue != null;
         } else {
@@ -141,16 +131,7 @@ public class SearchGroup<T> {
       // same groupValue
       assert neverEquals(_other);
 
-      if (_other instanceof MergedGroup) {
-        MergedGroup<?> other = (MergedGroup<?>) _other;
-        if (groupValue == null) {
-          return other.groupValue == null;
-        } else {
-          return groupValue.equals(other.groupValue);
-        }
-      } else {
-        return false;
-      }
+      return _other instanceof MergedGroup<?> other && Objects.equals(groupValue, other.groupValue);
     }
 
     @Override
@@ -267,13 +248,17 @@ public class SearchGroup<T> {
           // System.out.println("      competes=" + competes);
 
           if (competes) {
-            // Group's sort changed -- remove & re-insert
-            if (mergedGroup.inQueue) {
+            // Group's sort changed -- remove & re-insert, update first group in place for
+            // efficiency
+            boolean skipHeavyOps = queue.first() == mergedGroup;
+            if (mergedGroup.inQueue && !skipHeavyOps) {
               queue.remove(mergedGroup);
             }
             mergedGroup.topValues = group.sortValues;
             mergedGroup.minShardIndex = shard.shardIndex;
-            queue.add(mergedGroup);
+            if (!skipHeavyOps) {
+              queue.add(mergedGroup);
+            }
             mergedGroup.inQueue = true;
           }
         }

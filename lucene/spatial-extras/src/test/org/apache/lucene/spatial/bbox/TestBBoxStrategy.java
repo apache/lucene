@@ -26,7 +26,6 @@ import org.apache.lucene.spatial.query.SpatialArgs;
 import org.apache.lucene.spatial.query.SpatialOperation;
 import org.apache.lucene.spatial.util.ShapeAreaValueSource;
 import org.junit.Ignore;
-import org.junit.Test;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.context.SpatialContextFactory;
 import org.locationtech.spatial4j.distance.DistanceUtils;
@@ -80,7 +79,6 @@ public class TestBBoxStrategy extends RandomSpatialOpStrategyTestCase {
     return randomIndexedShape();
   }
 
-  @Test
   public void testOperations() throws IOException {
     // setup
     if (random().nextInt(4) > 0) { // 75% of the time choose geo (more interesting to test)
@@ -107,7 +105,6 @@ public class TestBBoxStrategy extends RandomSpatialOpStrategyTestCase {
     }
   }
 
-  @Test
   public void testIntersectsBugDatelineEdge() throws IOException {
     setupGeo();
     testOperation(
@@ -117,7 +114,6 @@ public class TestBBoxStrategy extends RandomSpatialOpStrategyTestCase {
         true);
   }
 
-  @Test
   public void testIntersectsWorldDatelineEdge() throws IOException {
     setupGeo();
     testOperation(
@@ -127,7 +123,6 @@ public class TestBBoxStrategy extends RandomSpatialOpStrategyTestCase {
         true);
   }
 
-  @Test
   public void testWithinBugDatelineEdge() throws IOException {
     setupGeo();
     testOperation(
@@ -137,7 +132,6 @@ public class TestBBoxStrategy extends RandomSpatialOpStrategyTestCase {
         true);
   }
 
-  @Test
   public void testContainsBugDatelineEdge() throws IOException {
     setupGeo();
     testOperation(
@@ -147,7 +141,6 @@ public class TestBBoxStrategy extends RandomSpatialOpStrategyTestCase {
         true);
   }
 
-  @Test
   public void testWorldContainsXDL() throws IOException {
     setupGeo();
     testOperation(
@@ -158,7 +151,6 @@ public class TestBBoxStrategy extends RandomSpatialOpStrategyTestCase {
   }
 
   /** See https://github.com/spatial4j/spatial4j/issues/85 */
-  @Test
   public void testAlongDatelineOppositeSign() throws IOException {
     // Due to Spatial4j bug #85, we can't simply do:
     //    testOperation(indexedShape,
@@ -189,7 +181,6 @@ public class TestBBoxStrategy extends RandomSpatialOpStrategyTestCase {
 
   // OLD STATIC TESTS (worthless?)
 
-  @Test
   @Ignore("Overlaps not supported")
   public void testBasicOperaions() throws IOException {
     setupGeo();
@@ -198,7 +189,6 @@ public class TestBBoxStrategy extends RandomSpatialOpStrategyTestCase {
     executeQueries(SpatialMatchConcern.EXACT, QTEST_Simple_Queries_BBox);
   }
 
-  @Test
   public void testStatesBBox() throws IOException {
     setupGeo();
     getAddAndVerifyIndexedDocuments(DATA_STATES_BBOX);
@@ -207,7 +197,6 @@ public class TestBBoxStrategy extends RandomSpatialOpStrategyTestCase {
     executeQueries(SpatialMatchConcern.FILTER, QTEST_States_Intersects_BBox);
   }
 
-  @Test
   public void testCitiesIntersectsBBox() throws IOException {
     setupGeo();
     getAddAndVerifyIndexedDocuments(DATA_WORLD_CITIES_POINTS);

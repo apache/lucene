@@ -22,7 +22,6 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.util.NumericUtils;
 
 /**
  * Utility class for retrieving global numeric field statistics from index metadata structures,
@@ -65,7 +64,10 @@ public final class NumericFieldStats {
   private static Stats getStatsFromPoints(IndexReader reader, String field) throws IOException {
     final byte[] minPacked = PointValues.getMinPackedValue(reader, field);
     final byte[] maxPacked = PointValues.getMaxPackedValue(reader, field);
-    if (minPacked == null || maxPacked == null) {
+    if (minPacked == null
+        || maxPacked == null
+        || minPacked.length > Long.BYTES
+        || maxPacked.length > Long.BYTES) {
       return null;
     }
     final int docCount = PointValues.getDocCount(reader, field);
@@ -101,31 +103,17 @@ public final class NumericFieldStats {
   }
 
   /**
-   * Decodes a packed {@code byte[]} point value into a {@code long}. {@link PointValues} stores
-   * numeric values as big-endian byte arrays with the sign bit flipped for sortable ordering.
-   * {@code IntField} produces 4-byte arrays and {@code LongField} produces 8-byte arrays, so we
-   * dispatch on length to call the appropriate {@link NumericUtils} decoder. The {@code int} case
-   * widens to {@code long} via standard Java sign extension, which preserves the original value.
-   *
-   * <p>We return {@code long} unconditionally because the query layer already works with {@code
-   * long} bounds (e.g. {@code SortedNumericDocValuesRangeQuery} stores its range as {@code long}
-   * even for {@code IntField} queries). Callers that need the original {@code int} value can safely
-   * narrow with {@code Math.toIntExact()}, which will never throw for values originating from an
-   * {@code IntField}.
+   * Decodes a packed {@code byte[]} point value into a {@code long}. Handles any packed value
+   * length from 1 to 8 bytes, covering {@code HalfFloatPoint} (2 bytes), {@code IntField} (4
+   * bytes), {@code LongField} (8 bytes), and any other width that uses the standard sortable
+   * encoding (big-endian with sign bit flipped).
    */
   private static long decodeLong(byte[] packed) {
-    return switch (packed.length) {
-      case Integer.BYTES -> NumericUtils.sortableBytesToInt(packed, 0);
-      case Long.BYTES -> NumericUtils.sortableBytesToLong(packed, 0);
-      default ->
-          throw new IllegalArgumentException(
-              "Unsupported packed value length: "
-                  + packed.length
-                  + " (expected "
-                  + Long.BYTES
-                  + " or "
-                  + Integer.BYTES
-                  + ")");
-    };
+    assert packed.length >= 1 && packed.length <= Long.BYTES;
+    long result = (byte) (packed[0] ^ 0x80);
+    for (int i = 1; i < packed.length; i++) {
+      result = (result << 8) | (packed[i] & 0xFF);
+    }
+    return result;
   }
 }

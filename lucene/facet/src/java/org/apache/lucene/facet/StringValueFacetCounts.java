@@ -168,7 +168,7 @@ public class StringValueFacetCounts extends Facets {
         field,
         new String[0],
         totalDocCount,
-        labelValues.toArray(new LabelAndValue[0]),
+        labelValues.toArray(LabelAndValue[]::new),
         labelValues.size());
   }
 

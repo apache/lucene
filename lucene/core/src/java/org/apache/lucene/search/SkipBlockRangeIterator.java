@@ -27,9 +27,21 @@ import org.apache.lucene.util.FixedBitSet;
  */
 public class SkipBlockRangeIterator extends AbstractDocIdSetIterator {
 
+  /** The match state of the current positioned block */
+  public enum Match {
+    /** All documents in the block match */
+    YES,
+    /** All documents in the block with a value match */
+    YES_IF_PRESENT,
+    /** Some of the documents in the block match */
+    MAYBE
+  }
+
   private final DocValuesSkipper skipper;
   private final long minValue;
   private final long maxValue;
+
+  private Match match = Match.MAYBE;
 
   /**
    * Creates a new SkipBlockRangeIterator
@@ -66,7 +78,32 @@ public class SkipBlockRangeIterator extends AbstractDocIdSetIterator {
 
     // Find the next matching block (could be the current block)
     skipper.advance(minValue, maxValue);
-    return doc = Math.max(target, skipper.minDocID(0));
+    int nextDoc = Math.max(target, skipper.minDocID(0));
+    if (nextDoc == DocIdSetIterator.NO_MORE_DOCS) {
+      this.match = Match.MAYBE;
+    } else {
+      this.match = classifyBlock();
+    }
+    return doc = nextDoc;
+  }
+
+  private Match classifyBlock() {
+    if (skipper.minValue(0) >= minValue && skipper.maxValue(0) <= maxValue) {
+      if (skipper.maxDocID(0) - skipper.minDocID(0) == skipper.docCount(0) - 1) {
+        return Match.YES;
+      }
+      return Match.YES_IF_PRESENT;
+    }
+    return Match.MAYBE;
+  }
+
+  /**
+   * Returns the match state of the current positioned block
+   *
+   * <p>Should only be called when the iterator is positioned
+   */
+  public Match getMatch() {
+    return match;
   }
 
   @Override
@@ -76,11 +113,14 @@ public class SkipBlockRangeIterator extends AbstractDocIdSetIterator {
 
   @Override
   public int docIDRunEnd() throws IOException {
+    if (match != Match.YES) {
+      return doc + 1;
+    }
     int maxDoc = skipper.maxDocID(0);
     int nextLevel = 1;
     while (nextLevel < skipper.numLevels()
-        && skipper.minValue(nextLevel) < maxValue
-        && skipper.maxValue(nextLevel) > minValue) {
+        && skipper.minValue(nextLevel) >= minValue
+        && skipper.maxValue(nextLevel) <= maxValue) {
       maxDoc = skipper.maxDocID(nextLevel);
       nextLevel++;
     }

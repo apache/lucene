@@ -42,9 +42,9 @@ public class Geo3dDistanceCalculator implements DistanceCalculator {
 
   @Override
   public double distance(Point from, Point to) {
-    if (from instanceof Geo3dPointShape && to instanceof Geo3dPointShape) {
-      GeoPointShape pointShape1 = ((Geo3dPointShape) from).shape;
-      GeoPointShape pointShape2 = ((Geo3dPointShape) to).shape;
+    if (from instanceof Geo3dPointShape gps1 && to instanceof Geo3dPointShape gps2) {
+      GeoPointShape pointShape1 = gps1.shape;
+      GeoPointShape pointShape2 = gps2.shape;
       return planetModel.surfaceDistance(pointShape1.getCenter(), pointShape2.getCenter())
           * DistanceUtils.RADIANS_TO_DEGREES;
     }
@@ -54,8 +54,8 @@ public class Geo3dDistanceCalculator implements DistanceCalculator {
   @Override
   public double distance(Point from, double toX, double toY) {
     GeoPoint fromGeoPoint;
-    if (from instanceof Geo3dPointShape) {
-      fromGeoPoint = (((Geo3dPointShape) from).shape).getCenter();
+    if (from instanceof Geo3dPointShape gps) {
+      fromGeoPoint = (gps.shape).getCenter();
     } else {
       fromGeoPoint =
           new GeoPoint(

@@ -90,8 +90,8 @@ public class PayloadScoreQuery extends SpanQuery {
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     Query matchRewritten = wrappedQuery.rewrite(indexSearcher);
-    if (wrappedQuery != matchRewritten && matchRewritten instanceof SpanQuery) {
-      return new PayloadScoreQuery((SpanQuery) matchRewritten, function, decoder, includeSpanScore);
+    if (wrappedQuery != matchRewritten && matchRewritten instanceof SpanQuery sq) {
+      return new PayloadScoreQuery(sq, function, decoder, includeSpanScore);
     }
     return super.rewrite(indexSearcher);
   }

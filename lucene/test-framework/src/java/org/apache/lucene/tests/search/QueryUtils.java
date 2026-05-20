@@ -195,7 +195,7 @@ public class QueryUtils {
     return new LeafReader() {
 
       @Override
-      public Terms terms(String field) throws IOException {
+      public Terms terms(String field) {
         return null;
       }
 

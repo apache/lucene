@@ -20,11 +20,9 @@ import java.io.IOException;
 import java.util.Random;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
-import org.junit.Test;
 
 public class TestJapaneseCompletionAnalyzer extends BaseTokenStreamTestCase {
 
-  @Test
   public void testCompletionDefault() throws IOException {
     // mode=INDEX (default)
     Analyzer analyzer = new JapaneseCompletionAnalyzer();
@@ -38,7 +36,6 @@ public class TestJapaneseCompletionAnalyzer extends BaseTokenStreamTestCase {
     analyzer.close();
   }
 
-  @Test
   public void testCompletionQuery() throws IOException {
     // mode=QUERY
     Analyzer analyzer = new JapaneseCompletionAnalyzer(null, JapaneseCompletionFilter.Mode.QUERY);
@@ -53,7 +50,6 @@ public class TestJapaneseCompletionAnalyzer extends BaseTokenStreamTestCase {
   }
 
   /** blast random strings against the analyzer */
-  @Test
   public void testRandom() throws IOException {
     Random random = random();
     final Analyzer a = new JapaneseCompletionAnalyzer();
@@ -62,7 +58,6 @@ public class TestJapaneseCompletionAnalyzer extends BaseTokenStreamTestCase {
   }
 
   /** blast some random large strings through the analyzer */
-  @Test
   public void testRandomHugeStrings() throws Exception {
     Random random = random();
     final Analyzer a = new JapaneseCompletionAnalyzer();
