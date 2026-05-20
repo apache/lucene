@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.CollectorManager;
+import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.util.Bits;
@@ -125,42 +126,39 @@ public class AllGroupHeadsCollectorManager<T>
       AllGroupHeadsCollector<T> collector,
       Map<T, GroupHeadWithValues> mergedHeads,
       SortField[] sortFields) {
-    Collection<? extends AllGroupHeadsCollector.GroupHead<T>> heads =
-        collector.getCollectedGroupHeads();
-    for (AllGroupHeadsCollector.GroupHead<T> head : heads) {
+    for (AllGroupHeadsCollector.GroupHead<T> head : collector.getCollectedGroupHeads()) {
       Object[] sortValues = head.getSortValues();
       GroupHeadWithValues existing = mergedHeads.get(head.groupValue);
-      if (existing == null) {
+      if (existing == null || isCompetitive(head, sortValues, existing, sortFields)) {
         mergedHeads.put(head.groupValue, new GroupHeadWithValues(head.doc, sortValues));
-      } else if (sortValues != null && existing.sortValues != null) {
-        int cmp = compareValues(sortValues, existing.sortValues, sortFields);
-        if (cmp < 0 || (cmp == 0 && head.doc < existing.doc)) {
-          mergedHeads.put(head.groupValue, new GroupHeadWithValues(head.doc, sortValues));
-        }
       }
     }
   }
 
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  private int compareValues(Object[] values1, Object[] values2, SortField[] sortFields) {
-    for (int i = 0; i < sortFields.length; i++) {
-      int cmp = 0;
-      if (values1[i] == null) {
-        cmp = values2[i] == null ? 0 : -1;
-      } else if (values2[i] == null) {
-        cmp = 1;
-      } else if (values1[i] instanceof Comparable) {
-        cmp = ((Comparable) values1[i]).compareTo(values2[i]);
+  @SuppressWarnings({"rawtypes"})
+  private boolean isCompetitive(
+      AllGroupHeadsCollector.GroupHead<T> head,
+      Object[] sortValues,
+      GroupHeadWithValues existing,
+      SortField[] sortFields) {
+    FieldComparator[] comparators = head.getComparators();
+    int cmp;
+    // null comparators means sorting by relevance
+    if (comparators == null) {
+      cmp = Float.compare((float) sortValues[0], (float) existing.sortValues[0]);
+      return cmp > 0 || (cmp == 0 && head.doc < existing.doc);
+    } else {
+      cmp = 0;
+      for (int i = 0; i < sortFields.length; i++) {
+        @SuppressWarnings({"unchecked"})
+        int c = comparators[i].compareValues(sortValues[i], existing.sortValues[i]);
+        c = sortFields[i].getReverse() ? -c : c;
+        if (c != 0) {
+          cmp = c;
+          break;
+        }
       }
-      if (cmp != 0) {
-        // For SCORE type, natural order is descending (higher is better)
-        // For other types, natural order is ascending (lower is better)
-        // reverse=true flips the natural order
-        boolean naturalDescending = sortFields[i].getType() == SortField.Type.SCORE;
-        boolean wantDescending = naturalDescending != sortFields[i].getReverse();
-        return wantDescending ? -cmp : cmp;
-      }
+      return cmp < 0 || (cmp == 0 && head.doc < existing.doc);
     }
-    return 0;
   }
 }

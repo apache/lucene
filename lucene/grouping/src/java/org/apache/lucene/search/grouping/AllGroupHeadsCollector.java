@@ -239,6 +239,13 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
      * @return the sort values, or null if not stored
      */
     protected abstract Object[] getSortValues();
+
+    /**
+     * Returns the field comparators used to determine the group head ordering.
+     *
+     * @return the comparators, one per sort field
+     */
+    protected abstract FieldComparator[] getComparators();
   }
 
   /** General implementation using a {@link FieldComparator} to select the group head */
@@ -313,6 +320,11 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
     protected Object[] getSortValues() {
       return sortValues;
     }
+
+    @Override
+    protected FieldComparator[] getComparators() {
+      return comparators;
+    }
   }
 
   /** Specialized implementation for sorting by score */
@@ -368,6 +380,11 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
     @Override
     protected Object[] getSortValues() {
       return sortValues;
+    }
+
+    @Override
+    protected FieldComparator[] getComparators() {
+      return null;
     }
   }
 }
