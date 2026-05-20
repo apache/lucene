@@ -137,6 +137,9 @@ Improvements
 
 * GITHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
 
+* GITHUB#XXXX: Replace deprecated IndexSearcher#search(Query, Collector) usage with CollectorManager
+  in JoinUtil#createJoinQuery for the GlobalOrdinalsCollector case. (Luca Cavanna)
+
 Optimizations
 ---------------------
 * GITHUB#15681, GITHUB#15833, GITHUB#16056: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
