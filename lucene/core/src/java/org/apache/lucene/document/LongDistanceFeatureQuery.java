@@ -57,7 +57,7 @@ final class LongDistanceFeatureQuery extends Query {
   }
 
   @Override
-  public final boolean equals(Object o) {
+  public boolean equals(Object o) {
     return sameClassAs(o) && equalsTo(getClass().cast(o));
   }
 

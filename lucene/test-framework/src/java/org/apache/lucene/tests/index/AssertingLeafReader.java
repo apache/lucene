@@ -113,7 +113,7 @@ public class AssertingLeafReader extends FilterLeafReader {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     Terms terms = super.terms(field);
     return terms == null ? null : new AssertingTerms(terms);
   }
@@ -190,7 +190,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       assertThread("Fields", creationThread);
       Terms terms = super.terms(field);
       return terms == null ? null : new AssertingTerms(terms);
@@ -231,7 +231,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       assertThread("Terms", creationThread);
       final int docCount = in.getDocCount();
       assert docCount > 0;
@@ -1817,7 +1817,7 @@ public class AssertingLeafReader extends FilterLeafReader {
   }
 
   @Override
-  public PointValues getPointValues(String field) throws IOException {
+  public PointValues getPointValues(String field) {
     PointValues values = in.getPointValues(field);
     if (values == null) {
       return null;

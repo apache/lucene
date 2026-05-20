@@ -29,7 +29,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
-import org.apache.lucene.search.CollectionStatistics;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
@@ -37,7 +37,7 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.SearcherLifetimeManager;
 import org.apache.lucene.search.SearcherManager;
 import org.apache.lucene.search.Sort;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.store.Directory;
@@ -101,7 +101,7 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
     }
   }
 
-  // We share collection stats for these fields on each node
+  // We share field stats for these fields on each node
   // reopen:
   private final String[] fieldsToShare = new String[] {"body", "title"};
 
@@ -109,7 +109,7 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
   // other nodes.  This is just a mock (since it goes and
   // directly updates all other nodes, in RAM)... in a real
   // env this would hit the wire, sending version &
-  // collection stats to all other nodes:
+  // field stats to all other nodes:
   void broadcastNodeReopen(int nodeID, long version, IndexSearcher newSearcher) throws IOException {
 
     if (VERBOSE) {
@@ -122,16 +122,16 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
               + newSearcher.getIndexReader().maxDoc());
     }
 
-    // Broadcast new collection stats for this node to all
+    // Broadcast new field stats for this node to all
     // other nodes:
     for (String field : fieldsToShare) {
-      final CollectionStatistics stats = newSearcher.collectionStatistics(field);
+      final FieldStats stats = newSearcher.fieldStats(field);
       if (stats != null) {
         for (NodeState node : nodes) {
-          // Don't put my own collection stats into the cache;
+          // Don't put my own field stats into the cache;
           // we pull locally:
           if (node.myNodeID != nodeID) {
-            node.collectionStatsCache.put(new FieldAndShardVersion(nodeID, version, field), stats);
+            node.fieldStatsCache.put(new FieldAndShardVersion(nodeID, version, field), stats);
           }
         }
       }
@@ -169,10 +169,10 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
 
   // Mock: in a real env, this would hit the wire and get
   // term stats from remote node
-  Map<Term, TermStatistics> getNodeTermStats(Set<Term> terms, int nodeID, long version)
+  Map<Term, TermStats> getNodeTermStats(Set<Term> terms, int nodeID, long version)
       throws IOException {
     final NodeState node = nodes[nodeID];
-    final Map<Term, TermStatistics> stats = new HashMap<>();
+    final Map<Term, TermStats> stats = new HashMap<>();
     final IndexSearcher s = node.searchers.acquire(version);
     if (s == null) {
       throw new SearcherExpiredException("node=" + nodeID + " version=" + version);
@@ -181,7 +181,7 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
       for (Term term : terms) {
         final TermStates ts = TermStates.build(s, term, true);
         if (ts.docFreq() > 0) {
-          stats.put(term, s.termStatistics(term, ts.docFreq(), ts.totalTermFreq()));
+          stats.put(term, s.termStats(term, ts.docFreq(), ts.totalTermFreq()));
         }
       }
     } finally {
@@ -204,10 +204,8 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
     // local cache...?  And still LRU otherwise (for the
     // still-live searchers).
 
-    private final Map<FieldAndShardVersion, CollectionStatistics> collectionStatsCache =
-        new ConcurrentHashMap<>();
-    private final Map<TermAndShardVersion, TermStatistics> termStatsCache =
-        new ConcurrentHashMap<>();
+    private final Map<FieldAndShardVersion, FieldStats> fieldStatsCache = new ConcurrentHashMap<>();
+    private final Map<TermAndShardVersion, TermStats> termStatsCache = new ConcurrentHashMap<>();
 
     /**
      * Matches docs in the local shard but scores based on aggregated stats ("mock distributed
@@ -249,7 +247,7 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
             }
           }
           if (missing.size() != 0) {
-            for (Map.Entry<Term, TermStatistics> ent :
+            for (Map.Entry<Term, TermStats> ent :
                 getNodeTermStats(missing, nodeID, nodeVersions[nodeID]).entrySet()) {
               if (ent.getValue() != null) {
                 final TermAndShardVersion key =
@@ -264,16 +262,15 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
       }
 
       @Override
-      public TermStatistics termStatistics(Term term, int docFreq, long totalTermFreq)
-          throws IOException {
+      public TermStats termStats(Term term, int docFreq, long totalTermFreq) throws IOException {
         assert term != null;
         long distributedDocFreq = 0;
         long distributedTotalTermFreq = 0;
         for (int nodeID = 0; nodeID < nodeVersions.length; nodeID++) {
 
-          final TermStatistics subStats;
+          final TermStats subStats;
           if (nodeID == myNodeID) {
-            subStats = super.termStatistics(term, docFreq, totalTermFreq);
+            subStats = super.termStats(term, docFreq, totalTermFreq);
           } else {
             final TermAndShardVersion key =
                 new TermAndShardVersion(nodeID, nodeVersions[nodeID], term);
@@ -290,11 +287,11 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
           distributedTotalTermFreq += nodeTotalTermFreq;
         }
         assert distributedDocFreq > 0;
-        return new TermStatistics(term.bytes(), distributedDocFreq, distributedTotalTermFreq);
+        return new TermStats(term.bytes(), distributedDocFreq, distributedTotalTermFreq);
       }
 
       @Override
-      public CollectionStatistics collectionStatistics(String field) throws IOException {
+      public FieldStats fieldStats(String field) throws IOException {
         // TODO: we could compute this on init and cache,
         // since we are re-inited whenever any nodes have a
         // new reader
@@ -306,11 +303,11 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
         for (int nodeID = 0; nodeID < nodeVersions.length; nodeID++) {
           final FieldAndShardVersion key =
               new FieldAndShardVersion(nodeID, nodeVersions[nodeID], field);
-          final CollectionStatistics nodeStats;
+          final FieldStats nodeStats;
           if (nodeID == myNodeID) {
-            nodeStats = super.collectionStatistics(field);
+            nodeStats = super.fieldStats(field);
           } else {
-            nodeStats = collectionStatsCache.get(key);
+            nodeStats = fieldStatsCache.get(key);
           }
           if (nodeStats == null) {
             continue; // field not in sub at all
@@ -332,7 +329,7 @@ public abstract class ShardSearchingTestBase extends LuceneTestCase {
         if (maxDoc == 0) {
           return null; // field not found across any node whatsoever
         } else {
-          return new CollectionStatistics(field, maxDoc, docCount, sumTotalTermFreq, sumDocFreq);
+          return new FieldStats(field, maxDoc, docCount, sumTotalTermFreq, sumDocFreq);
         }
       }
 

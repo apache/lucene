@@ -53,10 +53,30 @@ jobs:
             exit 1
           fi
 
+  gradleWindowsSanityCheck:
+    name: "Check gradlew help works on Windows."
+    timeout-minutes: 30
+    runs-on: windows-latest
+    steps:
+      - name: Correct git autocrlf on Windows
+        run: git config --global core.autocrlf false
+
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/prepare-for-build
+        with:
+          java-version: '25'
+          use-cache: false
+
+      - run: ./gradlew help
+
   gradleSanityCheck:
     name: "Run tasks (java: ${{ matrix.java-version }}, alt-java: ${{ matrix.uses-alt-java }})"
     timeout-minutes: 30
-    needs: gradleScriptBootstrapCheck
+    needs: [gradleScriptBootstrapCheck, gradleWindowsSanityCheck]
 
     strategy:
       matrix:

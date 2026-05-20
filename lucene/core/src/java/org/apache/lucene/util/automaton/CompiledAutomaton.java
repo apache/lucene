@@ -254,7 +254,7 @@ public class CompiledAutomaton implements Accountable {
       this.automaton = null;
       this.runAutomaton = null;
       this.sinkState = -1;
-      this.nfaRunAutomaton = new NFARunAutomaton(binary, 0xff);
+      this.nfaRunAutomaton = new NFARunAutomaton(binary, 0x100);
     } else {
       // We already had a DFA (or threw exception), according to mike UTF32toUTF8 won't "blow up"
       binary = Operations.determinize(binary, Integer.MAX_VALUE);
@@ -366,7 +366,7 @@ public class CompiledAutomaton implements Accountable {
     if (visitor.acceptField(field)) {
       switch (type) {
         case NORMAL:
-          visitor.consumeTermsMatching(parent, field, () -> runAutomaton);
+          visitor.consumeTermsMatching(parent, field, this::getByteRunnable);
           break;
         case NONE:
           break;

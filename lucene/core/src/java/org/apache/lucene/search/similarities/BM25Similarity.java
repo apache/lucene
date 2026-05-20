@@ -18,9 +18,9 @@ package org.apache.lucene.search.similarities;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.FieldStats;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.SmallFloat;
 
@@ -141,8 +141,8 @@ public class BM25Similarity extends Similarity {
   }
 
   /** The default implementation computes the average as <code>sumTotalTermFreq / docCount</code> */
-  protected float avgFieldLength(CollectionStatistics collectionStats) {
-    return (float) (collectionStats.sumTotalTermFreq() / (double) collectionStats.docCount());
+  protected float avgFieldLength(FieldStats fieldStats) {
+    return (float) (fieldStats.sumTotalTermFreq() / (double) fieldStats.docCount());
   }
 
   /** Cache of decoded bytes. */
@@ -163,20 +163,20 @@ public class BM25Similarity extends Similarity {
    * idf(docFreq, docCount);
    * </code></pre>
    *
-   * Note that {@link CollectionStatistics#docCount()} is used instead of {@link
+   * Note that {@link FieldStats#docCount()} is used instead of {@link
    * org.apache.lucene.index.IndexReader#numDocs() IndexReader#numDocs()} because also {@link
-   * TermStatistics#docFreq()} is used, and when the latter is inaccurate, so is {@link
-   * CollectionStatistics#docCount()}, and in the same direction. In addition, {@link
-   * CollectionStatistics#docCount()} does not skew when fields are sparse.
+   * TermStats#docFreq()} is used, and when the latter is inaccurate, so is {@link
+   * FieldStats#docCount()}, and in the same direction. In addition, {@link FieldStats#docCount()}
+   * does not skew when fields are sparse.
    *
-   * @param collectionStats collection-level statistics
+   * @param fieldStats field-level statistics
    * @param termStats term-level statistics for the term
    * @return an Explain object that includes both an idf score factor and an explanation for the
    *     term.
    */
-  public Explanation idfExplain(CollectionStatistics collectionStats, TermStatistics termStats) {
+  public Explanation idfExplain(FieldStats fieldStats, TermStats termStats) {
     final long df = termStats.docFreq();
-    final long docCount = collectionStats.docCount();
+    final long docCount = fieldStats.docCount();
     final float idf = idf(df, docCount);
     return Explanation.match(
         idf,
@@ -190,16 +190,16 @@ public class BM25Similarity extends Similarity {
    *
    * <p>The default implementation sums the idf factor for each term in the phrase.
    *
-   * @param collectionStats collection-level statistics
+   * @param fieldStats field-level statistics
    * @param termStats term-level statistics for the terms in the phrase
    * @return an Explain object that includes both an idf score factor for the phrase and an
    *     explanation for each term.
    */
-  public Explanation idfExplain(CollectionStatistics collectionStats, TermStatistics[] termStats) {
+  public Explanation idfExplain(FieldStats fieldStats, TermStats[] termStats) {
     double idf = 0d; // sum into a double before casting into a float
     List<Explanation> details = new ArrayList<>();
-    for (final TermStatistics stat : termStats) {
-      Explanation idfExplain = idfExplain(collectionStats, stat);
+    for (final TermStats stat : termStats) {
+      Explanation idfExplain = idfExplain(fieldStats, stat);
       details.add(idfExplain);
       idf += idfExplain.getValue().floatValue();
     }
@@ -207,13 +207,12 @@ public class BM25Similarity extends Similarity {
   }
 
   @Override
-  public final SimScorer scorer(
-      float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
+  public final SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
     Explanation idf =
         termStats.length == 1
-            ? idfExplain(collectionStats, termStats[0])
-            : idfExplain(collectionStats, termStats);
-    float avgdl = avgFieldLength(collectionStats);
+            ? idfExplain(fieldStats, termStats[0])
+            : idfExplain(fieldStats, termStats);
+    float avgdl = avgFieldLength(fieldStats);
 
     float[] cache = new float[256];
     for (int i = 0; i < cache.length; i++) {
@@ -222,7 +221,7 @@ public class BM25Similarity extends Similarity {
     return new BM25Scorer(boost, k1, b, idf, avgdl, cache);
   }
 
-  /** Collection statistics for the BM25 model. */
+  /** Field statistics for the BM25 model. */
   private static class BM25Scorer extends SimScorer {
     /** query boost */
     private final float boost;

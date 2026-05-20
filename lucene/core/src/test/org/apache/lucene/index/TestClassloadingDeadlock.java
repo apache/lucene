@@ -46,17 +46,15 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.SuppressForbidden;
 import org.junit.Assert;
-import org.junit.Test;
 import org.junit.runner.RunWith;
 
 /* WARNING: This test does *not* extend LuceneTestCase to prevent static class
- * initialization when spawned as subprocess (and please let default codecs alive)! */
+ * initialization when spawned as a subprocess (and please let default codecs alive)! */
 
 @RunWith(RandomizedRunner.class)
 public class TestClassloadingDeadlock extends Assert {
   private static final int MAX_TIME_SECONDS = 30;
 
-  @Test
   @SuppressForbidden(reason = "Uses Path.toFile because ProcessBuilder requires it.")
   public void testDeadlock() throws Exception {
     // pick random codec names for stress test in separate process:

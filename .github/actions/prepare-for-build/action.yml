@@ -32,7 +32,7 @@ runs:
 
     - name: Cache gradle-wrapper.jar
       if: ${{ fromJSON(inputs.use-cache) }}
-      uses: actions/cache@668228422ae6a00e4ad889ee87cd7109ec5666a7 # v5.0.4
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
       with:
         path: gradle/wrapper/gradle-wrapper.jar
         key: gradle-wrapper-${{ hashFiles('gradle/wrapper/gradle-wrapper.jar.sha256') }}
@@ -40,7 +40,7 @@ runs:
     # This includes "smart" caching of gradle dependencies.
     - name: Set up Gradle
       if: ${{ fromJSON(inputs.use-cache) }}
-      uses: gradle/actions/setup-gradle@39e147cb9de83bb9910b8ef8bd7fff0ee20fcd6f # v6.0.1
+      uses: gradle/actions/setup-gradle@50e97c2cd7a37755bbfafc9c5b7cafaece252f6e # v6.1.0
       with:
         # increase expiry time for the temp. develocity token.
         # https://github.com/gradle/actions/blob/main/docs/setup-gradle.md#increasing-the-expiry-time-for-develocity-access-tokens

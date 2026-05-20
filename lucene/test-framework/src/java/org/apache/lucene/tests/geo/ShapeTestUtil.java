@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.tests.geo;
 
-import com.carrotsearch.randomizedtesting.RandomizedContext;
 import com.carrotsearch.randomizedtesting.generators.BiasedNumbers;
 import java.util.ArrayList;
 import java.util.Random;
@@ -243,7 +242,7 @@ public class ShapeTestUtil {
 
   /** Keep it simple, we don't need to take arbitrary Random for geo tests */
   private static Random random() {
-    return RandomizedContext.current().getRandom();
+    return LuceneTestCase.nonAssertingRandom(LuceneTestCase.random());
   }
 
   /** Simple slow point in polygon check (for testing) */

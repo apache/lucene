@@ -293,7 +293,7 @@ public class TestDocIdSetBuilder extends LuceneTestCase {
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       return docCount;
     }
 
