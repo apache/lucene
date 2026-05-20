@@ -156,7 +156,7 @@ public class Lucene104HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat 
       int numMergeWorkers,
       ExecutorService mergeExec,
       int tinySegmentsThreshold) {
-    this(encoding, false, maxConn, beamWidth, numMergeWorkers, mergeExec, tinySegmentsThreshold);
+    this(encoding, true, maxConn, beamWidth, numMergeWorkers, mergeExec, tinySegmentsThreshold);
   }
 
   /** Constructs a format with rotation preconditioning support. */
