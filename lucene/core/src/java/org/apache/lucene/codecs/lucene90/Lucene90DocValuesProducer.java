@@ -247,7 +247,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
                 }
               }
             }
-            //$CASES-OMITTED$
+            // $CASES-OMITTED$
             default -> {
               // leave as -1
             }
