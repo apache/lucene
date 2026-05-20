@@ -19,6 +19,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -64,10 +65,7 @@ public class TestAllFilesHaveChecksumFooter extends LuceneTestCase {
       }
       if (si.info.getUseCompoundFile()) {
         try (Directory cfsDir =
-            si.info
-                .getCodec()
-                .compoundFormat()
-                .getCompoundReader(dir, si.info, newIOContext(random()))) {
+            si.info.getCodec().compoundFormat().getCompoundReader(dir, si.info)) {
           for (String cfsFile : cfsDir.listAll()) {
             checkFooter(cfsDir, cfsFile);
           }
@@ -77,7 +75,7 @@ public class TestAllFilesHaveChecksumFooter extends LuceneTestCase {
   }
 
   private void checkFooter(Directory dir, String file) throws IOException {
-    try (IndexInput in = dir.openInput(file, newIOContext(random()))) {
+    try (IndexInput in = dir.openInput(file, IOContext.READONCE)) {
       CodecUtil.checksumEntireFile(in);
     }
   }

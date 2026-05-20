@@ -36,7 +36,7 @@ public class ExtractWikipedia {
 
   private Path outputDir;
 
-  public static int count = 0;
+  private int count = 0;
 
   static final int BASE = 10;
   protected DocMaker docMaker;
@@ -96,9 +96,7 @@ public class ExtractWikipedia {
             doc.get(DocMaker.DATE_FIELD),
             doc.get(DocMaker.BODY_FIELD));
       }
-    } catch (
-        @SuppressWarnings("unused")
-        NoMoreDataException e) {
+    } catch (NoMoreDataException _) {
       // continue
     }
     long finish = System.currentTimeMillis();

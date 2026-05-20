@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.tests.geo;
 
-import com.carrotsearch.randomizedtesting.RandomizedContext;
 import com.carrotsearch.randomizedtesting.generators.BiasedNumbers;
 import java.util.ArrayList;
 import java.util.Random;
@@ -46,9 +45,7 @@ public class ShapeTestUtil {
         double radius = random.nextDouble() * 0.5 * Float.MAX_VALUE + 1.0;
         try {
           return createRegularPolygon(nextFloat(random), nextFloat(random), radius, gons);
-        } catch (
-            @SuppressWarnings("unused")
-            IllegalArgumentException iae) {
+        } catch (IllegalArgumentException _) {
           // something went wrong, try again
         }
       }
@@ -245,7 +242,7 @@ public class ShapeTestUtil {
 
   /** Keep it simple, we don't need to take arbitrary Random for geo tests */
   private static Random random() {
-    return RandomizedContext.current().getRandom();
+    return LuceneTestCase.nonAssertingRandom(LuceneTestCase.random());
   }
 
   /** Simple slow point in polygon check (for testing) */

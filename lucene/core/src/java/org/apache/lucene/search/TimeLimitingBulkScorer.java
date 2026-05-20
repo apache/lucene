@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.MathUtil;
 
 /**
  * The {@link TimeLimitingBulkScorer} is used to timeout search requests that take longer than the
@@ -69,7 +70,7 @@ final class TimeLimitingBulkScorer extends BulkScorer {
   public int score(LeafCollector collector, Bits acceptDocs, int min, int max) throws IOException {
     int interval = INTERVAL;
     while (min < max) {
-      final int newMax = (int) Math.min((long) min + interval, max);
+      final int newMax = MathUtil.unsignedMin(min + interval, max);
       final int newInterval =
           interval + (interval >> 1); // increase the interval by 50% on each iteration
       // overflow check

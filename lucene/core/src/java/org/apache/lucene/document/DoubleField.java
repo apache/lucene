@@ -179,6 +179,20 @@ public final class DoubleField extends Field {
    */
   public static SortField newSortField(
       String field, boolean reverse, SortedNumericSelector.Type selector) {
-    return new SortedNumericSortField(field, SortField.Type.DOUBLE, reverse, selector);
+    return new SortedNumericSortField(field, SortField.Type.DOUBLE, reverse, selector, null);
+  }
+
+  /**
+   * Create a new {@link SortField} for double values.
+   *
+   * @param field field name. must not be {@code null}.
+   * @param reverse true if natural order should be reversed.
+   * @param selector custom selector type for choosing the sort value from the set.
+   * @param missingValue a sort value to use for documents with no value in the field
+   */
+  public static SortField newSortField(
+      String field, boolean reverse, SortedNumericSelector.Type selector, double missingValue) {
+    return new SortedNumericSortField(
+        field, SortField.Type.DOUBLE, reverse, selector, missingValue);
   }
 }

@@ -23,5 +23,4 @@ package org.apache.lucene.queryparser.flexible.core.nodes;
  * @see FieldableNode
  * @see ValueQueryNode
  */
-public interface FieldValuePairQueryNode<T extends Object>
-    extends FieldableNode, ValueQueryNode<T> {}
+public interface FieldValuePairQueryNode<T> extends FieldableNode, ValueQueryNode<T> {}

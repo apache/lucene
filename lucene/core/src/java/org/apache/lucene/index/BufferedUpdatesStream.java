@@ -114,19 +114,11 @@ final class BufferedUpdatesStream implements Accountable {
     return bytesUsed.get();
   }
 
-  static class ApplyDeletesResult {
-
-    // True if any actual deletes took place:
-    final boolean anyDeletes;
-
-    // If non-null, contains segments that are 100% deleted
-    final List<SegmentCommitInfo> allDeleted;
-
-    ApplyDeletesResult(boolean anyDeletes, List<SegmentCommitInfo> allDeleted) {
-      this.anyDeletes = anyDeletes;
-      this.allDeleted = allDeleted;
-    }
-  }
+  /**
+   * @param anyDeletes True if any actual deletes took place:
+   * @param allDeleted If non-null, contains segments that are 100% deleted
+   */
+  record ApplyDeletesResult(boolean anyDeletes, List<SegmentCommitInfo> allDeleted) {}
 
   /**
    * Waits for all in-flight packets, which are already being resolved concurrently by indexing

@@ -56,12 +56,18 @@ import org.apache.lucene.store.IndexOutput;
  *   <li><b>[vlong]</b> length of this field's vectors, in bytes
  *   <li><b>[vint]</b> dimension of this field's vectors
  *   <li><b>[int]</b> the number of documents having values for this field
- *   <li><b>[int8]</b> if equals to -1, dense – all documents have values for a field. If equals to
- *       0, sparse – some documents missing values.
+ *   <li><b>[int8]</b> if equals to -2, empty - no vector values. If equals to -1, dense – all
+ *       documents have values for a field. If equals to 0, sparse – some documents missing values.
  *   <li>DocIds were encoded by {@link IndexedDISI#writeBitSet(DocIdSetIterator, IndexOutput, byte)}
  *   <li>OrdToDoc was encoded by {@link org.apache.lucene.util.packed.DirectMonotonicWriter}, note
  *       that only in sparse case
  * </ul>
+ *
+ * <p>NOTE: Arm Neoverse machines have a performance overhead in reading data that is not aligned to
+ * 64 bytes, so this format aligns the <code>.vec</code> file to that size. There may be a
+ * performance penalty in searching of float vectors that do <b>not</b> have a dimension of a
+ * multiple of 16 (equivalent to 64 bytes), because the alignment will not hold for all vectors in
+ * the file.
  *
  * @lucene.experimental
  */

@@ -18,12 +18,12 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.util.LongBitSet;
 
 /**
  * Rewrites MultiTermQueries into a filter, using DocValues for term enumeration.
@@ -160,71 +160,18 @@ public final class DocValuesRewriteMethod extends MultiTermQuery.RewriteMethod {
               // query with the values present in the doc values:
               TermsEnum termsEnum = getTermsEnum(values);
               assert termsEnum != null;
-
-              if (termsEnum.next() == null) {
-                // no matching terms
-                return new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty());
-              }
-
-              // Create a bit set for the "term set" ordinals (these are the terms provided by the
-              // query that are actually present in the doc values field). Cannot use FixedBitSet
-              // because we require long index (ord):
-              final LongBitSet termSet = new LongBitSet(values.getValueCount());
-              long maxOrd = -1;
-              do {
-                long ord = termsEnum.ord();
-                if (ord >= 0) {
-                  assert ord > maxOrd;
-                  maxOrd = ord;
-                  termSet.set(ord);
-                }
-              } while (termsEnum.next() != null);
-
-              // no terms matched in this segment
-              if (maxOrd < 0) {
-                return new ConstantScoreScorer(score(), scoreMode, DocIdSetIterator.empty());
-              }
-
-              final SortedDocValues singleton = DocValues.unwrapSingleton(values);
-              final TwoPhaseIterator iterator;
-              final long max = maxOrd;
-              if (singleton != null) {
-                iterator =
-                    new TwoPhaseIterator(singleton) {
-                      @Override
-                      public boolean matches() throws IOException {
-                        return termSet.get(singleton.ordValue());
-                      }
-
-                      @Override
-                      public float matchCost() {
-                        return 3; // lookup in a bitset
-                      }
-                    };
-              } else {
-                iterator =
-                    new TwoPhaseIterator(values) {
-                      @Override
-                      public boolean matches() throws IOException {
-                        for (int i = 0; i < values.docValueCount(); i++) {
-                          long value = values.nextOrd();
-                          if (value > max) {
-                            return false; // values are sorted, terminate
-                          } else if (termSet.get(value)) {
-                            return true;
-                          }
-                        }
-                        return false;
-                      }
-
-                      @Override
-                      public float matchCost() {
-                        return 3; // lookup in a bitset
-                      }
-                    };
-              }
-
-              return new ConstantScoreScorer(score(), scoreMode, iterator);
+              // Leverage a DV skipper if one was indexed for the field:
+              DocValuesSkipper skipper = context.reader().getDocValuesSkipper(query.field);
+              SortedDocValues singleton = DocValues.unwrapSingleton(values);
+              return singleton == null
+                  ? new ConstantScoreScorer(
+                      score(),
+                      scoreMode,
+                      DocValuesRangeIterator.forOrdinalSet(values, skipper, termsEnum))
+                  : new ConstantScoreScorer(
+                      score(),
+                      scoreMode,
+                      DocValuesRangeIterator.forOrdinalSet(singleton, skipper, termsEnum));
             }
 
             @Override

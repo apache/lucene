@@ -121,9 +121,7 @@ public class TestAllAnalyzersHaveFactories extends LuceneTestCase {
             ((ResourceLoaderAware) instance).inform(loader);
           }
           assertSame(c, instance.create().getClass());
-        } catch (
-            @SuppressWarnings("unused")
-            IllegalArgumentException e) {
+        } catch (IllegalArgumentException _) {
           // TODO: For now pass because some factories have not yet a default config that always
           // works
         }
@@ -147,9 +145,7 @@ public class TestAllAnalyzersHaveFactories extends LuceneTestCase {
           if (KeywordTokenizer.class != createdClazz) {
             assertSame(c, createdClazz);
           }
-        } catch (
-            @SuppressWarnings("unused")
-            IllegalArgumentException e) {
+        } catch (IllegalArgumentException _) {
           // TODO: For now pass because some factories have not yet a default config that always
           // works
         }
@@ -170,9 +166,7 @@ public class TestAllAnalyzersHaveFactories extends LuceneTestCase {
           if (StringReader.class != createdClazz) {
             assertSame(c, createdClazz);
           }
-        } catch (
-            @SuppressWarnings("unused")
-            IllegalArgumentException e) {
+        } catch (IllegalArgumentException _) {
           // TODO: For now pass because some factories have not yet a default config that always
           // works
         }

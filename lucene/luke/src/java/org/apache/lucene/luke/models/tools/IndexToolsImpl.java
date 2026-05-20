@@ -81,8 +81,8 @@ public final class IndexToolsImpl extends LukeModel implements IndexTools {
 
   @Override
   public void optimize(boolean expunge, int maxNumSegments, PrintStream ps) {
-    if (reader instanceof DirectoryReader) {
-      Directory dir = ((DirectoryReader) reader).directory();
+    if (reader instanceof DirectoryReader dr) {
+      Directory dir = dr.directory();
       try (IndexWriter writer =
           IndexUtils.createWriter(dir, null, useCompound, keepAllCommits, ps)) {
         IndexUtils.optimizeIndex(writer, expunge, maxNumSegments);
@@ -99,8 +99,8 @@ public final class IndexToolsImpl extends LukeModel implements IndexTools {
     try {
       if (dir != null) {
         return IndexUtils.checkIndex(dir, ps);
-      } else if (reader instanceof DirectoryReader) {
-        Directory dir = ((DirectoryReader) reader).directory();
+      } else if (reader instanceof DirectoryReader dr) {
+        Directory dir = dr.directory();
         return IndexUtils.checkIndex(dir, ps);
       } else {
         throw new IllegalStateException("Directory is not set.");
@@ -127,8 +127,8 @@ public final class IndexToolsImpl extends LukeModel implements IndexTools {
   public void addDocument(Document doc, Analyzer analyzer) {
     Objects.requireNonNull(analyzer);
 
-    if (reader instanceof DirectoryReader) {
-      Directory dir = ((DirectoryReader) reader).directory();
+    if (reader instanceof DirectoryReader dr) {
+      Directory dir = dr.directory();
       try (IndexWriter writer =
           IndexUtils.createWriter(dir, analyzer, useCompound, keepAllCommits)) {
         writer.addDocument(doc);
@@ -145,8 +145,8 @@ public final class IndexToolsImpl extends LukeModel implements IndexTools {
   public void deleteDocuments(Query query) {
     Objects.requireNonNull(query);
 
-    if (reader instanceof DirectoryReader) {
-      Directory dir = ((DirectoryReader) reader).directory();
+    if (reader instanceof DirectoryReader dr) {
+      Directory dir = dr.directory();
       try (IndexWriter writer = IndexUtils.createWriter(dir, null, useCompound, keepAllCommits)) {
         writer.deleteDocuments(query);
         writer.commit();
@@ -191,9 +191,7 @@ public final class IndexToolsImpl extends LukeModel implements IndexTools {
       if (writer != null) {
         try {
           writer.close();
-        } catch (
-            @SuppressWarnings("unused")
-            IOException e) {
+        } catch (IOException _) {
         }
       }
     }
@@ -201,7 +199,10 @@ public final class IndexToolsImpl extends LukeModel implements IndexTools {
 
   @Override
   public String exportTerms(String destDir, String field, String delimiter) {
-    String filename = "terms_" + field + "_" + System.currentTimeMillis() + ".out";
+    // Sanitize field name for use in file name: replace forbidden characters on Windows
+    // (< > : " /\ | ? *) with '_' to avoid file creation failure.
+    String sanitizedFieldName = field.replaceAll("[<>:\"/\\\\|?*]", "_");
+    String filename = "terms_" + sanitizedFieldName + "_" + System.currentTimeMillis() + ".out";
     Path path = Paths.get(destDir, filename);
     try {
       Terms terms = MultiTerms.getTerms(reader, field);

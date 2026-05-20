@@ -315,8 +315,7 @@ public final class SearchImpl extends LukeModel implements Search {
     } else {
       int hitsThreshold = exactHitsCount ? Integer.MAX_VALUE : DEFAULT_TOTAL_HITS_THRESHOLD;
       TopScoreDocCollectorManager collectorManager =
-          new TopScoreDocCollectorManager(
-              pageSize, after, hitsThreshold, searcher.getSlices().length > 1);
+          new TopScoreDocCollectorManager(pageSize, after, hitsThreshold);
       topDocs = searcher.search(query, collectorManager);
     }
 
@@ -342,9 +341,9 @@ public final class SearchImpl extends LukeModel implements Search {
     // proceed to next page
     currentPage += 1;
 
-    if (totalHits.value == 0
-        || (totalHits.relation == TotalHits.Relation.EQUAL_TO
-            && currentPage * (long) pageSize >= totalHits.value)) {
+    if (totalHits.value() == 0
+        || (totalHits.relation() == TotalHits.Relation.EQUAL_TO
+            && currentPage * (long) pageSize >= totalHits.value())) {
       log.warning("No more next search results are available.");
       return Optional.empty();
     }
@@ -392,19 +391,9 @@ public final class SearchImpl extends LukeModel implements Search {
   }
 
   private Similarity createSimilarity(SimilarityConfig config) {
-    Similarity similarity;
-
-    if (config.isUseClassicSimilarity()) {
-      ClassicSimilarity tfidf = new ClassicSimilarity();
-      tfidf.setDiscountOverlaps(config.isDiscountOverlaps());
-      similarity = tfidf;
-    } else {
-      BM25Similarity bm25 =
-          new BM25Similarity(config.getK1(), config.getB(), config.isDiscountOverlaps());
-      similarity = bm25;
-    }
-
-    return similarity;
+    return config.isUseClassicSimilarity()
+        ? new ClassicSimilarity(config.isDiscountOverlaps())
+        : new BM25Similarity(config.getK1(), config.getB(), config.isDiscountOverlaps());
   }
 
   @Override
@@ -471,8 +460,8 @@ public final class SearchImpl extends LukeModel implements Search {
     for (SortField sf : candidates) {
       if (sf instanceof SortedSetSortField) {
         return Optional.of(new SortedSetSortField(sf.getField(), reverse));
-      } else if (sf instanceof SortedNumericSortField) {
-        SortField.Type sfType = ((SortedNumericSortField) sf).getNumericType();
+      } else if (sf instanceof SortedNumericSortField snsf) {
+        SortField.Type sfType = snsf.getNumericType();
         if (sfType.name().equals(type)) {
           return Optional.of(new SortedNumericSortField(sf.getField(), sfType, reverse));
         }

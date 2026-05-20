@@ -240,6 +240,11 @@ final class GlobalOrdinalsWithScoreQuery extends Query implements Accountable {
       // the memory used by the cache
       return false;
     }
+
+    @Override
+    public int count(LeafReaderContext context) {
+      return -1;
+    }
   }
 
   static final class OrdinalMapScorer extends BaseGlobalOrdinalScorer {

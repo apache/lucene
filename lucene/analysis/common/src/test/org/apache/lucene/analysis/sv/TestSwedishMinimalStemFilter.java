@@ -20,7 +20,10 @@ import static org.apache.lucene.tests.analysis.VocabularyAssert.assertVocabulary
 
 import java.io.IOException;
 import java.nio.file.Files;
-import org.apache.lucene.analysis.*;
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.CharArraySet;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.analysis.miscellaneous.SetKeywordMarkerFilter;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;

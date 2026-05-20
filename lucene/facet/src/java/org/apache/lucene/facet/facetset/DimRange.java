@@ -21,25 +21,11 @@ import org.apache.lucene.util.NumericUtils;
 /**
  * Defines a single range in a {@link FacetSet} dimension.
  *
+ * @param min Inclusive min
+ * @param max Inclusive max
  * @lucene.experimental
  */
-public class DimRange {
-  /** Inclusive min */
-  public final long min;
-
-  /** Inclusive max */
-  public final long max;
-
-  /**
-   * Creates a LongRange.
-   *
-   * @param min inclusive min value in range
-   * @param max inclusive max value in range
-   */
-  public DimRange(long min, long max) {
-    this.min = min;
-    this.max = max;
-  }
+public record DimRange(long min, long max) {
 
   /**
    * Creates a {@link DimRange} for the given min and max long values. This method is also suitable

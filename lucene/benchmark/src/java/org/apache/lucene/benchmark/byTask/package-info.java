@@ -81,9 +81,9 @@
  * <ul>
  *   <li>./gradlew -p lucene/benchmark getReuters run <br>
  *       - would run the <code>micro-standard.alg</code> "algorithm".
- *   <li>./gradlew -p lucene/benchmark getReuters run -Ptask.alg=conf/compound-penalty.alg <br>
+ *   <li>./gradlew -p lucene/benchmark getReuters run -PtaskAlg=conf/compound-penalty.alg <br>
  *       - would run the <code>compound-penalty.alg</code> "algorithm".
- *   <li>./gradlew -p lucene/benchmark getReuters run -Ptask.alg=[full-path-to-your-alg-file] <br>
+ *   <li>./gradlew -p lucene/benchmark getReuters run -PtaskAlg=[full-path-to-your-alg-file] <br>
  *       - would run <code>your perf test</code> "algorithm".
  *   <li>java org.apache.lucene.benchmark.byTask.programmatic.Sample <br>
  *       - would run a performance test programmatically - without using an alg file. This is less
@@ -131,7 +131,7 @@
  * benchmark.ext.classpath property:
  *
  * <ul>
- *   <li>./gradlew -p lucene/benchmark run -Ptask.alg=[full-path-to-your-alg-file] <span
+ *   <li>./gradlew -p lucene/benchmark run -PtaskAlg=[full-path-to-your-alg-file] <span
  *       style="color: #FF0000">-Dbenchmark.ext.classpath=/mydir/classes </span> -Dtask.mem=512M
  * </ul>
  *
@@ -201,7 +201,7 @@
  *       <br>
  *       Example - <span style="color: #FF0066">AddDoc(2000)</span> - would add a document of size
  *       2000 (~bytes). <br>
- *       See conf/task-sample.alg for how this can be used, for instance, to check which is faster,
+ *       See conf/sample.alg for how this can be used, for instance, to check which is faster,
  *       adding many smaller documents, or few larger documents. Next candidates for supporting a
  *       parameter may be the Search tasks, for controlling the query size.
  *   <li><b>Statistic recording elimination</b>: - a sequence can also end with '<span style="color:
@@ -217,7 +217,7 @@
  *       #FF0066">: N : R</span>' just after sequence closing tag. This would specify repetition of
  *       N with rate of R operations/sec. Use '<span style="color: #FF0066">R/sec</span>' or '<span
  *       style="color: #FF0066">R/min</span>' to explicitly specify that the rate is per second or
- *       per minute. The default is per second, <br>
+ *       per minute. The default is per second. <br>
  *       Example - <span style="color: #FF0066">[ AddDoc ] : 400 : 3</span> - would do 400 addDoc in
  *       parallel, starting up to 3 threads per second. <br>
  *       Example - <span style="color: #FF0066">{ AddDoc } : 100 : 200/min</span> - would do 100
@@ -253,9 +253,9 @@
  *             name. So, if AddDoc was executed 2000 times, only 1 report line would be created for
  *             it, aggregating all those 2000 statistic records.
  *         <li><span style="color: #FF0066">RepSelectByPref &nbsp; prefixWord</span> - all records
- *             for tasks whose name start with <span style="color: #FF0066">prefixWord</span>.
+ *             for tasks whose name starts with <span style="color: #FF0066">prefixWord</span>.
  *         <li><span style="color: #FF0066">RepSumByPref &nbsp; prefixWord</span> - all records for
- *             tasks whose name start with <span style="color: #FF0066">prefixWord</span>,
+ *             tasks whose name starts with <span style="color: #FF0066">prefixWord</span>,
  *             aggregated by their full task name.
  *         <li><span style="color: #FF0066">RepSumByNameRound</span> - all statistics, aggregated by
  *             name and by <span style="color: #FF0066">Round</span>. So, if AddDoc was executed
@@ -308,7 +308,7 @@
  *             #FF0066">OpenIndex</span> both leave the index open for later update operations.
  *             <span style="color: #FF0066">CloseIndex</span> would close it.
  *         <li><span style="color: #FF0066">OpenReader</span>, similarly, would leave an index
- *             reader open for later search operations. But this have further semantics. If a Read
+ *             reader open for later search operations. But this has further semantics. If a Read
  *             operation is performed, and an open reader exists, it would be used. Otherwise, the
  *             read operation would open its own reader and close it when the read operation is
  *             done. This allows testing various scenarios - sharing a reader, searching with "cold"
@@ -352,7 +352,7 @@
  *       to use for the performance test.
  *   <li><b>Index work parameters</b>: Multi int/boolean values would be iterated with calls to
  *       NewRound. There would be also added as columns in the reports, first string in the sequence
- *       is the column name. (Make sure it is no shorter than any value in the sequence).
+ *       is the column name. (Make sure it is not shorter than any value in the sequence).
  *       <ul>
  *         <li><span style="color: #FF0066">max.buffered</span> <br>
  *             Example: max.buffered=buf:10:10:100:100 - this would define using maxBufferedDocs of
@@ -494,7 +494,7 @@
  * </pre>
  *
  * <p>The command line for running this sample: <br>
- * <code>./gradlew -p lucene/benchmark getReuters run -Ptask.alg=conf/sample.alg</code>
+ * <code>./gradlew -p lucene/benchmark getReuters run -PtaskAlg=conf/sample.alg</code>
  *
  * <p>The output report from running this test contains the following:
  *

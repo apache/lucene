@@ -86,9 +86,6 @@ final class IndexFileDeleter implements Closeable {
   final boolean startingCommitDeleted;
   private SegmentInfos lastSegmentInfos;
 
-  /** Change to true to see details of reference counts when infoStream is enabled */
-  public static boolean VERBOSE_REF_COUNTS = false;
-
   private final FileDeleter fileDeleter;
 
   private final IndexWriter writer;
@@ -276,9 +273,7 @@ final class IndexFileDeleter implements Closeable {
         try {
           maxSegmentGen =
               Math.max(SegmentInfos.generationFromSegmentsFileName(fileName), maxSegmentGen);
-        } catch (
-            @SuppressWarnings("unused")
-            NumberFormatException ignore) {
+        } catch (NumberFormatException _) {
           // trash file: we have to handle this since we allow anything starting with 'segments'
           // here
         }
@@ -288,9 +283,7 @@ final class IndexFileDeleter implements Closeable {
               Math.max(
                   SegmentInfos.generationFromSegmentsFileName(fileName.substring(8)),
                   maxSegmentGen);
-        } catch (
-            @SuppressWarnings("unused")
-            NumberFormatException ignore) {
+        } catch (NumberFormatException _) {
           // trash file: we have to handle this since we allow anything starting with
           // 'pending_segments' here
         }
@@ -313,9 +306,7 @@ final class IndexFileDeleter implements Closeable {
 
         try {
           curGen = Math.max(curGen, IndexFileNames.parseGeneration(fileName));
-        } catch (
-            @SuppressWarnings("unused")
-            NumberFormatException ignore) {
+        } catch (NumberFormatException _) {
           // trash file: we have to handle this since codec regex is only so good
         }
         maxPerSegmentGen.put(segmentName, curGen);
@@ -398,9 +389,7 @@ final class IndexFileDeleter implements Closeable {
     try {
       ensureOpen();
       return false;
-    } catch (
-        @SuppressWarnings("unused")
-        AlreadyClosedException ace) {
+    } catch (AlreadyClosedException _) {
       return true;
     }
   }
@@ -602,7 +591,7 @@ final class IndexFileDeleter implements Closeable {
   }
 
   private void logInfo(FileDeleter.MsgType msgType, String msg) {
-    if (msgType == FileDeleter.MsgType.REF && VERBOSE_REF_COUNTS == false) {
+    if (msgType == FileDeleter.MsgType.REF) {
       // do not log anything
     } else {
       if (infoStream.isEnabled("IFD")) {

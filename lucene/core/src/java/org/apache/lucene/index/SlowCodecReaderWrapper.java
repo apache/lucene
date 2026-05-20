@@ -21,6 +21,7 @@ import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.Map;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -28,6 +29,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 
@@ -47,8 +49,8 @@ public final class SlowCodecReaderWrapper {
    * (slow) view is returned.
    */
   public static CodecReader wrap(final LeafReader reader) throws IOException {
-    if (reader instanceof CodecReader) {
-      return (CodecReader) reader;
+    if (reader instanceof CodecReader cr) {
+      return cr;
     } else {
       // simulate it slowly, over the leafReader api:
       reader.checkIntegrity();
@@ -146,7 +148,7 @@ public final class SlowCodecReaderWrapper {
     return new PointsReader() {
 
       @Override
-      public PointValues getValues(String field) throws IOException {
+      public PointValues getValues(String field) {
         return reader.getPointValues(field);
       }
 
@@ -173,13 +175,15 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+      public void search(
+          String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
           throws IOException {
         reader.searchNearestVectors(field, target, knnCollector, acceptDocs);
       }
 
       @Override
-      public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+      public void search(
+          String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
           throws IOException {
         reader.searchNearestVectors(field, target, knnCollector, acceptDocs);
       }
@@ -187,6 +191,25 @@ public final class SlowCodecReaderWrapper {
       @Override
       public void checkIntegrity() {
         // We already checkIntegrity the entire reader up front
+      }
+
+      @Override
+      public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+        SegmentReader segmentReader = segmentReader(reader);
+        var vectorsReader = segmentReader.getVectorReader();
+        vectorsReader = vectorsReader.unwrapReaderForField(fieldInfo.name);
+        return vectorsReader.getOffHeapByteSize(fieldInfo);
+      }
+
+      static SegmentReader segmentReader(LeafReader reader) {
+        if (reader instanceof SegmentReader sr) {
+          return sr;
+        } else if (reader instanceof final FilterLeafReader fReader) {
+          return segmentReader(FilterLeafReader.unwrap(fReader));
+        } else if (reader instanceof final FilterCodecReader fReader) {
+          return segmentReader(FilterCodecReader.unwrap(fReader));
+        }
+        throw new AssertionError("unexpected reader [" + reader + "]");
       }
 
       @Override
@@ -297,6 +320,11 @@ public final class SlowCodecReaderWrapper {
     }
     return new TermVectorsReader() {
       @Override
+      public void prefetch(int docID) throws IOException {
+        termVectors.prefetch(docID);
+      }
+
+      @Override
       public Fields get(int docID) throws IOException {
         return termVectors.get(docID);
       }
@@ -331,7 +359,7 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public Terms terms(String field) throws IOException {
+      public Terms terms(String field) {
         return reader.terms(field);
       }
 

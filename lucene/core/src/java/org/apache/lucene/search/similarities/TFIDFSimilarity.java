@@ -18,12 +18,10 @@ package org.apache.lucene.search.similarities;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.index.FieldInvertState;
-import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.util.SmallFloat;
 
 /**
@@ -326,33 +324,14 @@ import org.apache.lucene.util.SmallFloat;
  */
 public abstract class TFIDFSimilarity extends Similarity {
 
-  /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
-  public TFIDFSimilarity() {}
-
-  /**
-   * True if overlap tokens (tokens with a position of increment of zero) are discounted from the
-   * document's length.
-   */
-  protected boolean discountOverlaps = true;
-
-  /**
-   * Determines whether overlap tokens (Tokens with 0 position increment) are ignored when computing
-   * norm. By default this is true, meaning overlap tokens do not count when computing norms.
-   *
-   * @lucene.experimental
-   * @see #computeNorm
-   */
-  public void setDiscountOverlaps(boolean v) {
-    discountOverlaps = v;
+  /** Default constructor: parameter-free */
+  public TFIDFSimilarity() {
+    super();
   }
 
-  /**
-   * Returns true if overlap tokens are discounted from the document's length.
-   *
-   * @see #setDiscountOverlaps
-   */
-  public boolean getDiscountOverlaps() {
-    return discountOverlaps;
+  /** Primary constructor. */
+  public TFIDFSimilarity(boolean discountOverlaps) {
+    super(discountOverlaps);
   }
 
   /**
@@ -374,24 +353,24 @@ public abstract class TFIDFSimilarity extends Similarity {
    *
    * <p>The default implementation uses:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * idf(docFreq, docCount);
-   * </pre>
+   * </code></pre>
    *
-   * Note that {@link CollectionStatistics#docCount()} is used instead of {@link
+   * Note that {@link FieldStats#docCount()} is used instead of {@link
    * org.apache.lucene.index.IndexReader#numDocs() IndexReader#numDocs()} because also {@link
-   * TermStatistics#docFreq()} is used, and when the latter is inaccurate, so is {@link
-   * CollectionStatistics#docCount()}, and in the same direction. In addition, {@link
-   * CollectionStatistics#docCount()} does not skew when fields are sparse.
+   * TermStats#docFreq()} is used, and when the latter is inaccurate, so is {@link
+   * FieldStats#docCount()}, and in the same direction. In addition, {@link FieldStats#docCount()}
+   * does not skew when fields are sparse.
    *
-   * @param collectionStats collection-level statistics
+   * @param fieldStats collection-level statistics
    * @param termStats term-level statistics for the term
    * @return an Explain object that includes both an idf score factor and an explanation for the
    *     term.
    */
-  public Explanation idfExplain(CollectionStatistics collectionStats, TermStatistics termStats) {
+  public Explanation idfExplain(FieldStats fieldStats, TermStats termStats) {
     final long df = termStats.docFreq();
-    final long docCount = collectionStats.docCount();
+    final long docCount = fieldStats.docCount();
     final float idf = idf(df, docCount);
     return Explanation.match(
         idf,
@@ -405,16 +384,16 @@ public abstract class TFIDFSimilarity extends Similarity {
    *
    * <p>The default implementation sums the idf factor for each term in the phrase.
    *
-   * @param collectionStats collection-level statistics
+   * @param fieldStats collection-level statistics
    * @param termStats term-level statistics for the terms in the phrase
    * @return an Explain object that includes both an idf score factor for the phrase and an
    *     explanation for each term.
    */
-  public Explanation idfExplain(CollectionStatistics collectionStats, TermStatistics[] termStats) {
+  public Explanation idfExplain(FieldStats fieldStats, TermStats[] termStats) {
     double idf = 0d; // sum into a double before casting into a float
     List<Explanation> subs = new ArrayList<>();
-    for (final TermStatistics stat : termStats) {
-      Explanation idfExplain = idfExplain(collectionStats, stat);
+    for (final TermStats stat : termStats) {
+      Explanation idfExplain = idfExplain(fieldStats, stat);
       subs.add(idfExplain);
       idf += idfExplain.getValue().floatValue();
     }
@@ -438,7 +417,7 @@ public abstract class TFIDFSimilarity extends Similarity {
   /**
    * Compute an index-time normalization value for this field instance.
    *
-   * @param length the number of terms in the field, optionally {@link #setDiscountOverlaps(boolean)
+   * @param length the number of terms in the field, optionally {@link #getDiscountOverlaps()
    *     discounting overlaps}
    * @return a length normalization value
    */
@@ -454,25 +433,11 @@ public abstract class TFIDFSimilarity extends Similarity {
   }
 
   @Override
-  public final long computeNorm(FieldInvertState state) {
-    final int numTerms;
-    if (state.getIndexOptions() == IndexOptions.DOCS && state.getIndexCreatedVersionMajor() >= 8) {
-      numTerms = state.getUniqueTermCount();
-    } else if (discountOverlaps) {
-      numTerms = state.getLength() - state.getNumOverlap();
-    } else {
-      numTerms = state.getLength();
-    }
-    return SmallFloat.intToByte4(numTerms);
-  }
-
-  @Override
-  public final SimScorer scorer(
-      float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
+  public final SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
     final Explanation idf =
         termStats.length == 1
-            ? idfExplain(collectionStats, termStats[0])
-            : idfExplain(collectionStats, termStats);
+            ? idfExplain(fieldStats, termStats[0])
+            : idfExplain(fieldStats, termStats);
     float[] normTable = new float[256];
     for (int i = 1; i < 256; ++i) {
       float norm = lengthNorm(LENGTH_TABLE[i]);
@@ -482,10 +447,7 @@ public abstract class TFIDFSimilarity extends Similarity {
     return new TFIDFScorer(boost, idf, normTable);
   }
 
-  /**
-   * Collection statistics for the TF-IDF model. The only statistic of interest to this model is
-   * idf.
-   */
+  /** Field statistics for the TF-IDF model. The only statistic of interest to this model is idf. */
   class TFIDFScorer extends SimScorer {
     /** The idf and its explanation */
     private final Explanation idf;
@@ -515,7 +477,7 @@ public abstract class TFIDFSimilarity extends Similarity {
     }
 
     private Explanation explainScore(Explanation freq, long encodedNorm, float[] normTable) {
-      List<Explanation> subs = new ArrayList<Explanation>();
+      List<Explanation> subs = new ArrayList<>();
       if (boost != 1F) {
         subs.add(Explanation.match(boost, "boost"));
       }

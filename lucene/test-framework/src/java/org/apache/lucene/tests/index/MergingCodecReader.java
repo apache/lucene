@@ -30,14 +30,14 @@ import org.apache.lucene.util.CloseableThreadLocal;
 public class MergingCodecReader extends FilterCodecReader {
 
   private final CloseableThreadLocal<StoredFieldsReader> fieldsReader =
-      new CloseableThreadLocal<StoredFieldsReader>() {
+      new CloseableThreadLocal<>() {
         @Override
         protected StoredFieldsReader initialValue() {
           return in.getFieldsReader().getMergeInstance();
         }
       };
   private final CloseableThreadLocal<NormsProducer> normsReader =
-      new CloseableThreadLocal<NormsProducer>() {
+      new CloseableThreadLocal<>() {
         @Override
         protected NormsProducer initialValue() {
           NormsProducer norms = in.getNormsReader();
@@ -49,7 +49,7 @@ public class MergingCodecReader extends FilterCodecReader {
         }
       };
   private final CloseableThreadLocal<DocValuesProducer> docValuesReader =
-      new CloseableThreadLocal<DocValuesProducer>() {
+      new CloseableThreadLocal<>() {
         @Override
         protected DocValuesProducer initialValue() {
           DocValuesProducer docValues = in.getDocValuesReader();

@@ -37,7 +37,6 @@ import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IntsRef;
-import org.junit.Test;
 
 public class TestDictionary extends LuceneTestCase {
 
@@ -188,6 +187,17 @@ public class TestDictionary extends LuceneTestCase {
     loadForgivingDictionary("forgivable-errors-num.aff", "single-word.dic");
   }
 
+  /** simple tests for dictionary problems seen in the wild */
+  public void testCommonForgivableErrors() throws Exception {
+    Dictionary dictionary = loadForgivingDictionary("common-errors.aff", "common-errors.dic");
+    // try to ensure we still parsed the affixes correctly, despite the problems
+    String expectedSuffixes[] = {"ing", "ed"};
+    for (String suffix : expectedSuffixes) {
+      char reversed[] = new StringBuilder(suffix).reverse().toString().toCharArray();
+      assertNotNull("checking for " + suffix, dictionary.lookupSuffix(reversed));
+    }
+  }
+
   private Dictionary loadDictionary(String aff, String dic) throws IOException, ParseException {
     try (InputStream affixStream = getClass().getResourceAsStream(aff);
         InputStream dicStream = getClass().getResourceAsStream(dic);
@@ -204,6 +214,11 @@ public class TestDictionary extends LuceneTestCase {
       return new Dictionary(tempDir, "dictionary", affixStream, dicStream) {
         @Override
         protected boolean tolerateAffixRuleCountMismatches() {
+          return true;
+        }
+
+        @Override
+        protected boolean tolerateRepRuleCountMismatches() {
           return true;
         }
 
@@ -309,7 +324,6 @@ public class TestDictionary extends LuceneTestCase {
     assertNotNull(Dictionary.getFlagParsingStrategy("FLAG    UTF-8", UTF_8));
   }
 
-  @Test
   public void testUtf8Flag() {
     Dictionary.FlagParsingStrategy strategy =
         Dictionary.getFlagParsingStrategy("FLAG\tUTF-8", Dictionary.DEFAULT_CHARSET);
@@ -320,7 +334,6 @@ public class TestDictionary extends LuceneTestCase {
     assertEquals(src, new String(strategy.parseFlags(asAscii)));
   }
 
-  @Test
   public void testCustomMorphologicalData() throws IOException, ParseException {
     Dictionary dic = loadDictionary("morphdata.aff", "morphdata.dic");
     assertNull(dic.lookupEntries("nonexistent"));

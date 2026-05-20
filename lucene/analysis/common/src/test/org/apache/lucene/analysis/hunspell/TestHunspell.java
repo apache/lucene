@@ -37,7 +37,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestHunspell extends LuceneTestCase {
   public void testCheckCanceled() throws Exception {
@@ -108,14 +107,12 @@ public class TestHunspell extends LuceneTestCase {
     assertEquals(Collections.emptyList(), noLimit.suggest(word.substring(0, 5), timeLimitMs));
   }
 
-  @Test
   public void testStemmingApi() throws Exception {
     Hunspell hunspell = loadNoTimeout("simple");
     assertEquals(Collections.singletonList("apach"), hunspell.getRoots("apache"));
     assertEquals(Collections.singletonList("foo"), hunspell.getRoots("foo"));
   }
 
-  @Test
   public void testAnalysisApi() throws Exception {
     Hunspell hunspell = loadNoTimeout("base");
     assertEquals(hunspell.analyzeSimpleWord("nonexistent"), List.of());
@@ -123,26 +120,22 @@ public class TestHunspell extends LuceneTestCase {
     checkAffixedWord(word, "create", List.of("A"), List.of("D"));
   }
 
-  @Test
   public void testAnalysisSeveralSuffixes() throws Exception {
     Hunspell hunspell = loadNoTimeout("needaffix5");
     AffixedWord word = hunspell.analyzeSimpleWord("pseudoprefoopseudosufbar").get(0);
     checkAffixedWord(word, "foo", List.of("C"), List.of("B", "A"));
   }
 
-  @Test
   public void testAnalysisFlagLong() throws Exception {
     AffixedWord word = loadNoTimeout("flaglong").analyzeSimpleWord("foos").get(0);
     checkAffixedWord(word, "foo", List.of(), List.of("Y1"));
   }
 
-  @Test
   public void testAnalysisFlagNum() throws Exception {
     AffixedWord word = loadNoTimeout("flagnum").analyzeSimpleWord("foos").get(0);
     checkAffixedWord(word, "foo", List.of(), List.of("65000"));
   }
 
-  @Test
   public void testAnalysisMorphData() throws Exception {
     List<AffixedWord> words = loadNoTimeout("morphdata").analyzeSimpleWord("works");
     assertEquals(2, words.size());
@@ -175,7 +168,6 @@ public class TestHunspell extends LuceneTestCase {
     return new Hunspell(dictionary, TimeoutPolicy.NO_TIMEOUT, () -> {});
   }
 
-  @Test
   public void testExpandRootApi() throws Exception {
     Hunspell h = loadNoTimeout("base");
     String[] createFormsBase = {
@@ -208,7 +200,6 @@ public class TestHunspell extends LuceneTestCase {
         nonExistentRoot.stream().map(w -> w.getWord()).collect(Collectors.toSet()));
   }
 
-  @Test
   public void testCompressingApi() throws Exception {
     Hunspell h = loadNoTimeout("base");
     String[] createQuery = {"create", "created", "creates", "creating", "creation"};
@@ -222,7 +213,6 @@ public class TestHunspell extends LuceneTestCase {
         loadNoTimeout("compress"), "toEdit=[], toAdd=[form/X], extra=[forms]", "form", "formx");
   }
 
-  @Test
   public void testCompressingIsMinimal() throws Exception {
     Hunspell h = loadNoTimeout("compress");
     checkCompression(
@@ -236,14 +226,12 @@ public class TestHunspell extends LuceneTestCase {
     assertEquals("toEdit=[], toAdd=[f/abc], extra=[]", fAbc.internalsToString());
   }
 
-  @Test
   public void testCompressingIsFastOnLargeUnrelatedWordSets() throws Exception {
     Hunspell h = loadNoTimeout("compress");
     String[] letters = {"a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l"};
     checkCompression(h, "toEdit=[], toAdd=[a, b, c, d, e, f, g, h, i, j, k, l], extra=[]", letters);
   }
 
-  @Test
   public void testCompressingWithProhibition() throws Exception {
     WordFormGenerator gen = new WordFormGenerator(loadNoTimeout("compress").dictionary);
     assertEquals(
@@ -258,7 +246,6 @@ public class TestHunspell extends LuceneTestCase {
     assertEquals(expected, h.compress(List.of(words)).internalsToString());
   }
 
-  @Test
   public void testSuggestionOrderStabilityOnDictionaryEditing() throws IOException, ParseException {
     String original = "some_word";
 

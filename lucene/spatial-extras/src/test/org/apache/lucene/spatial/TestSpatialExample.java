@@ -174,7 +174,7 @@ public class TestSpatialExample extends LuceneTestCase {
           strategy.makeDistanceValueSource(pt, DistanceUtils.DEG_TO_KM); // the distance (in km)
       Sort distSort =
           new Sort(valueSource.getSortField(false)).rewrite(indexSearcher); // false=asc dist
-      TopDocs docs = indexSearcher.search(new MatchAllDocsQuery(), 10, distSort);
+      TopDocs docs = indexSearcher.search(MatchAllDocsQuery.INSTANCE, 10, distSort);
       assertDocMatchedIds(indexSearcher, docs, 4, 20, 2);
       // To get the distance, we could compute from stored values like earlier.
       // However in this example we sorted on it, and the distance will get
@@ -197,8 +197,8 @@ public class TestSpatialExample extends LuceneTestCase {
 
   private void assertDocMatchedIds(IndexSearcher indexSearcher, TopDocs docs, int... ids)
       throws IOException {
-    assert docs.totalHits.relation == Relation.EQUAL_TO;
-    int[] gotIds = new int[Math.toIntExact(docs.totalHits.value)];
+    assert docs.totalHits.relation() == Relation.EQUAL_TO;
+    int[] gotIds = new int[Math.toIntExact(docs.totalHits.value())];
     for (int i = 0; i < gotIds.length; i++) {
       gotIds[i] =
           indexSearcher

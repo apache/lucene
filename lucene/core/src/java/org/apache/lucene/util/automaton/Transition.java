@@ -16,12 +16,18 @@
  */
 package org.apache.lucene.util.automaton;
 
+import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.RamUsageEstimator;
+
 /**
  * Holds one transition from an {@link Automaton}. This is typically used temporarily when iterating
  * through transitions by invoking {@link Automaton#initTransition} and {@link
  * Automaton#getNextTransition}.
  */
-public class Transition {
+public class Transition implements Accountable {
+
+  /** static estimation of bytes used */
+  public static final long BYTES_USED = RamUsageEstimator.shallowSizeOfInstance(Transition.class);
 
   /** Sole constructor. */
   public Transition() {}
@@ -47,5 +53,10 @@ public class Transition {
   @Override
   public String toString() {
     return source + " --> " + dest + " " + (char) min + "-" + (char) max;
+  }
+
+  @Override
+  public long ramBytesUsed() {
+    return BYTES_USED;
   }
 }

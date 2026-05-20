@@ -18,16 +18,10 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
 import org.apache.lucene.util.BitUtil;
-import org.apache.lucene.util.GroupVIntUtil;
 
 /**
  * Abstract base class for performing read operations of Lucene's low-level data types.
@@ -100,32 +94,6 @@ public abstract class DataInput implements Cloneable {
   }
 
   /**
-   * Read all the group varints, including the tail vints. we need a long[] because this is what
-   * postings are using, all longs are actually required to be integers.
-   *
-   * @param dst the array to read ints into.
-   * @param limit the number of int values to read.
-   * @lucene.experimental
-   */
-  public final void readGroupVInts(long[] dst, int limit) throws IOException {
-    int i;
-    for (i = 0; i <= limit - 4; i += 4) {
-      readGroupVInt(dst, i);
-    }
-    for (; i < limit; ++i) {
-      dst[i] = readVInt() & 0xFFFFFFFFL;
-    }
-  }
-
-  /**
-   * Override if you have a efficient implementation. In general this is when the input supports
-   * random access.
-   */
-  protected void readGroupVInt(long[] dst, int offset) throws IOException {
-    GroupVIntUtil.readGroupVInt(this, dst, offset);
-  }
-
-  /**
    * Reads an int stored in variable-length format. Reads between one and five bytes. Smaller values
    * take fewer bytes. Negative numbers are supported, but should be avoided.
    *
@@ -134,11 +102,13 @@ public abstract class DataInput implements Cloneable {
    * @see DataOutput#writeVInt(int)
    */
   public int readVInt() throws IOException {
-    byte b = readByte();
-    int i = b & 0x7F;
-    for (int shift = 7; (b & 0x80) != 0; shift += 7) {
-      b = readByte();
+    int i = 0;
+    for (int shift = 0; shift < 32; shift += 7) {
+      byte b = readByte();
       i |= (b & 0x7F) << shift;
+      if ((b & 0x80) == 0) {
+        break;
+      }
     }
     return i;
   }
@@ -212,11 +182,14 @@ public abstract class DataInput implements Cloneable {
    * @see DataOutput#writeVLong(long)
    */
   public long readVLong() throws IOException {
-    byte b = readByte();
-    long i = b & 0x7F;
-    for (int shift = 7; (b & 0x80) != 0; shift += 7) {
-      b = readByte();
-      i |= (b & 0x7FL) << shift;
+    long i = 0;
+    // NB: we may be called internally to decode negative (10 byte) values.
+    for (int shift = 0; shift < 64; shift += 7) {
+      byte b = readByte();
+      i |= (long) (b & 0x7F) << shift;
+      if ((b & 0x80) == 0) {
+        break;
+      }
     }
     return i;
   }
@@ -270,17 +243,17 @@ public abstract class DataInput implements Cloneable {
   public Map<String, String> readMapOfStrings() throws IOException {
     int count = readVInt();
     if (count == 0) {
-      return Collections.emptyMap();
+      return Map.of();
     } else if (count == 1) {
-      return Collections.singletonMap(readString(), readString());
+      return Map.of(readString(), readString());
     } else {
-      Map<String, String> map = count > 10 ? new HashMap<>() : new TreeMap<>();
+      @SuppressWarnings("unchecked")
+      Map.Entry<String, String>[] entries =
+          (Map.Entry<String, String>[]) new Map.Entry<?, ?>[count];
       for (int i = 0; i < count; i++) {
-        final String key = readString();
-        final String val = readString();
-        map.put(key, val);
+        entries[i] = Map.entry(readString(), readString());
       }
-      return Collections.unmodifiableMap(map);
+      return Map.ofEntries(entries);
     }
   }
 
@@ -292,15 +265,15 @@ public abstract class DataInput implements Cloneable {
   public Set<String> readSetOfStrings() throws IOException {
     int count = readVInt();
     if (count == 0) {
-      return Collections.emptySet();
+      return Set.of();
     } else if (count == 1) {
-      return Collections.singleton(readString());
+      return Set.of(readString());
     } else {
-      Set<String> set = count > 10 ? new HashSet<>() : new TreeSet<>();
+      String[] set = new String[count];
       for (int i = 0; i < count; i++) {
-        set.add(readString());
+        set[i] = readString();
       }
-      return Collections.unmodifiableSet(set);
+      return Set.of(set);
     }
   }
 

@@ -17,13 +17,12 @@
 
 package org.apache.lucene.util.hnsw;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.ByteVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -56,7 +55,7 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
   }
 
   @Override
-  AbstractMockVectorValues<byte[]> vectorValues(int size, int dimension) {
+  MockByteVectorValues vectorValues(int size, int dimension) {
     return MockByteVectorValues.fromValues(createRandomByteVectors(size, dimension, random()));
   }
 
@@ -65,7 +64,7 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
   }
 
   @Override
-  AbstractMockVectorValues<byte[]> vectorValues(float[][] values) {
+  MockByteVectorValues vectorValues(float[][] values) {
     byte[][] bValues = new byte[values.length][];
     // The case when all floats fit within a byte already.
     boolean scaleSimple = fitsInByte(values[0][0]);
@@ -86,42 +85,35 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
   }
 
   @Override
-  AbstractMockVectorValues<byte[]> vectorValues(
-      int size,
-      int dimension,
-      AbstractMockVectorValues<byte[]> pregeneratedVectorValues,
-      int pregeneratedOffset) {
+  MockByteVectorValues vectorValues(
+      int size, int dimension, KnnVectorValues pregeneratedVectorValues, int pregeneratedOffset) {
+
+    MockByteVectorValues pvv = (MockByteVectorValues) pregeneratedVectorValues;
     byte[][] vectors = new byte[size][];
-    byte[][] randomVectors =
-        createRandomByteVectors(size - pregeneratedVectorValues.values.length, dimension, random());
+    byte[][] randomVectors = createRandomByteVectors(size - pvv.values.length, dimension, random());
 
     for (int i = 0; i < pregeneratedOffset; i++) {
       vectors[i] = randomVectors[i];
     }
 
-    int currentDoc;
-    while ((currentDoc = pregeneratedVectorValues.nextDoc()) != NO_MORE_DOCS) {
-      vectors[pregeneratedOffset + currentDoc] = pregeneratedVectorValues.values[currentDoc];
+    for (int currentOrd = 0; currentOrd < pvv.size(); currentOrd++) {
+      vectors[pregeneratedOffset + currentOrd] = pvv.values[currentOrd];
     }
 
-    for (int i = pregeneratedOffset + pregeneratedVectorValues.values.length;
-        i < vectors.length;
-        i++) {
-      vectors[i] = randomVectors[i - pregeneratedVectorValues.values.length];
+    for (int i = pregeneratedOffset + pvv.values.length; i < vectors.length; i++) {
+      vectors[i] = randomVectors[i - pvv.values.length];
     }
 
     return MockByteVectorValues.fromValues(vectors);
   }
 
   @Override
-  AbstractMockVectorValues<byte[]> vectorValues(LeafReader reader, String fieldName)
-      throws IOException {
+  MockByteVectorValues vectorValues(LeafReader reader, String fieldName) throws IOException {
     ByteVectorValues vectorValues = reader.getByteVectorValues(fieldName);
     byte[][] vectors = new byte[reader.maxDoc()][];
-    while (vectorValues.nextDoc() != NO_MORE_DOCS) {
-      vectors[vectorValues.docID()] =
-          ArrayUtil.copyOfSubArray(
-              vectorValues.vectorValue(), 0, vectorValues.vectorValue().length);
+    for (int i = 0; i < vectorValues.size(); i++) {
+      vectors[vectorValues.ordToDoc(i)] =
+          ArrayUtil.copyOfSubArray(vectorValues.vectorValue(i), 0, vectorValues.dimension());
     }
     return MockByteVectorValues.fromValues(vectors);
   }

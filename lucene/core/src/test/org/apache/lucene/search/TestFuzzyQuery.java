@@ -44,7 +44,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.IntsRef;
-import org.apache.lucene.util.automaton.ByteRunAutomaton;
+import org.apache.lucene.util.automaton.ByteRunnable;
 import org.apache.lucene.util.automaton.LevenshteinAutomata;
 
 /** Tests {@link FuzzyQuery}. */
@@ -422,7 +422,7 @@ public class TestFuzzyQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(mr);
     FuzzyQuery fq = new FuzzyQuery(new Term("field", "z123456"), 1, 0, 2, false);
     TopDocs docs = searcher.search(fq, 2);
-    assertEquals(5, docs.totalHits.value); // 5 docs, from the a and b's
+    assertEquals(5, docs.totalHits.value()); // 5 docs, from the a and b's
     mr.close();
     ir1.close();
     ir2.close();
@@ -623,7 +623,7 @@ public class TestFuzzyQuery extends LuceneTestCase {
       // we don't look at scores here:
       List<TermAndScore>[] expected = new List[3];
       for (int ed = 0; ed < 3; ed++) {
-        expected[ed] = new ArrayList<TermAndScore>();
+        expected[ed] = new ArrayList<>();
       }
       for (String term : terms) {
         if (term.startsWith(queryPrefix) == false) {
@@ -705,14 +705,7 @@ public class TestFuzzyQuery extends LuceneTestCase {
     IOUtils.close(r, dir);
   }
 
-  private static class TermAndScore implements Comparable<TermAndScore> {
-    final String term;
-    final float score;
-
-    public TermAndScore(String term, float score) {
-      this.term = term;
-      this.score = score;
-    }
+  private record TermAndScore(String term, float score) implements Comparable<TermAndScore> {
 
     @Override
     public int compareTo(TermAndScore other) {
@@ -724,11 +717,6 @@ public class TestFuzzyQuery extends LuceneTestCase {
       } else {
         return term.compareTo(other.term);
       }
-    }
-
-    @Override
-    public String toString() {
-      return term + " score=" + score;
     }
   }
 
@@ -813,9 +801,9 @@ public class TestFuzzyQuery extends LuceneTestCase {
         new QueryVisitor() {
           @Override
           public void consumeTermsMatching(
-              Query query, String field, Supplier<ByteRunAutomaton> automaton) {
+              Query query, String field, Supplier<ByteRunnable> automaton) {
             visited.set(true);
-            ByteRunAutomaton a = automaton.get();
+            ByteRunnable a = automaton.get();
             assertMatches(a, "blob");
             assertMatches(a, "bolb");
             assertMatches(a, "blobby");
@@ -825,12 +813,12 @@ public class TestFuzzyQuery extends LuceneTestCase {
     assertTrue(visited.get());
   }
 
-  private static void assertMatches(ByteRunAutomaton automaton, String text) {
+  private static void assertMatches(ByteRunnable automaton, String text) {
     BytesRef b = newBytesRef(text);
     assertTrue(automaton.run(b.bytes, b.offset, b.length));
   }
 
-  private static void assertNoMatches(ByteRunAutomaton automaton, String text) {
+  private static void assertNoMatches(ByteRunnable automaton, String text) {
     BytesRef b = newBytesRef(text);
     assertFalse(automaton.run(b.bytes, b.offset, b.length));
   }

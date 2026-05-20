@@ -57,7 +57,7 @@ public final class FieldValueHighlighters {
       int maxLeadingCharacters, String ellipsis, Set<String> fields) {
     PassageSelector passageSelector = defaultPassageSelector();
     PassageFormatter passageFormatter = new PassageFormatter(ellipsis, "", "");
-    return new AbstractFieldValueHighlighter((field, hasMatches) -> fields.contains(field)) {
+    return new AbstractFieldValueHighlighter((field, _) -> fields.contains(field)) {
       @Override
       public List<String> format(
           String field,
@@ -119,7 +119,7 @@ public final class FieldValueHighlighters {
       String field, String... moreFields) {
     HashSet<String> matchFields = new HashSet<>(Arrays.asList(moreFields));
     matchFields.add(field);
-    return new AbstractFieldValueHighlighter((fld, hasMatches) -> matchFields.contains(fld)) {
+    return new AbstractFieldValueHighlighter((fld, _) -> matchFields.contains(fld)) {
       @Override
       public Collection<String> alwaysFetchedFields() {
         return matchFields;
@@ -142,7 +142,7 @@ public final class FieldValueHighlighters {
    * emitted).
    */
   public static MatchHighlighter.FieldValueHighlighter skipRemaining() {
-    return new AbstractFieldValueHighlighter((field, hasMatches) -> true) {
+    return new AbstractFieldValueHighlighter((_, _) -> true) {
       @Override
       public List<String> format(
           String field,

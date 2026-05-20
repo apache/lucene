@@ -16,15 +16,8 @@
  */
 package org.apache.lucene.facet.taxonomy.writercache;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.util.SuppressForbidden;
 
 /**
  * Similar to {@link StringBuilder}, but with a more efficient growing strategy. This class uses
@@ -32,15 +25,11 @@ import org.apache.lucene.util.SuppressForbidden;
  *
  * @lucene.experimental
  */
-class CharBlockArray implements Appendable, Serializable, CharSequence {
-
-  private static final long serialVersionUID = 1L;
+class CharBlockArray implements Appendable, CharSequence {
 
   private static final int DefaultBlockSize = 32 * 1024; // 32 KB default size
 
-  static final class Block implements Serializable, Cloneable {
-    private static final long serialVersionUID = 1L;
-
+  static final class Block implements Cloneable {
     final char[] chars;
     int length;
 
@@ -184,35 +173,5 @@ class CharBlockArray implements Appendable, Serializable, CharSequence {
       sb.append(b.chars, 0, b.length);
     }
     return sb.toString();
-  }
-
-  @SuppressForbidden(
-      reason = "TODO: don't use java serialization here, inefficient and unnecessary")
-  void flush(OutputStream out) throws IOException {
-    ObjectOutputStream oos = null;
-    try {
-      oos = new ObjectOutputStream(out);
-      oos.writeObject(this);
-      oos.flush();
-    } finally {
-      if (oos != null) {
-        oos.close();
-      }
-    }
-  }
-
-  @SuppressForbidden(
-      reason = "TODO: don't use java serialization here, inefficient and unnecessary")
-  public static CharBlockArray open(InputStream in) throws IOException, ClassNotFoundException {
-    ObjectInputStream ois = null;
-    try {
-      ois = new ObjectInputStream(in);
-      CharBlockArray a = (CharBlockArray) ois.readObject();
-      return a;
-    } finally {
-      if (ois != null) {
-        ois.close();
-      }
-    }
   }
 }

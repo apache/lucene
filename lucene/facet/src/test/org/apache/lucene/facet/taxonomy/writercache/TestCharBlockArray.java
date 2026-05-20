@@ -16,14 +16,10 @@
  */
 package org.apache.lucene.facet.taxonomy.writercache;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.nio.ByteBuffer;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import org.apache.lucene.facet.FacetTestCase;
 
 public class TestCharBlockArray extends FacetTestCase {
@@ -89,19 +85,6 @@ public class TestCharBlockArray extends FacetTestCase {
     }
 
     assertEqualsInternal("GrowingCharArray<->StringBuilder mismatch.", builder, array);
-
-    Path tempDir = createTempDir("growingchararray");
-    Path f = tempDir.resolve("GrowingCharArrayTest.tmp");
-    BufferedOutputStream out = new BufferedOutputStream(Files.newOutputStream(f));
-    array.flush(out);
-    out.flush();
-    out.close();
-
-    BufferedInputStream in = new BufferedInputStream(Files.newInputStream(f));
-    array = CharBlockArray.open(in);
-    assertEqualsInternal(
-        "GrowingCharArray<->StringBuilder mismatch after flush/load.", builder, array);
-    in.close();
   }
 
   private static void assertEqualsInternal(

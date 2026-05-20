@@ -95,7 +95,7 @@ class TermsQuery extends MultiTermQuery implements Accountable {
   }
 
   @Override
-  public long getTermsCount() throws IOException {
+  public long getTermsCount() {
     return terms.size();
   }
 

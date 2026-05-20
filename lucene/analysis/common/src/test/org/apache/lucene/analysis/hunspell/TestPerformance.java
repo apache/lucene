@@ -220,9 +220,7 @@ public class TestPerformance extends LuceneTestCase {
     List<String> fromOptimized;
     try {
       fromOptimized = optimized.suggestWithTimeout(word, Hunspell.SUGGEST_TIME_LIMIT, () -> {});
-    } catch (
-        @SuppressWarnings("unused")
-        SuggestionTimeoutException e) {
+    } catch (SuggestionTimeoutException _) {
       System.out.println("Timeout happened for " + word + ", skipping");
       return false;
     }

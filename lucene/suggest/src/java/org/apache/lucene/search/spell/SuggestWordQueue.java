@@ -33,16 +33,13 @@ public final class SuggestWordQueue extends PriorityQueue<SuggestWord> {
    */
   public static final Comparator<SuggestWord> DEFAULT_COMPARATOR = new SuggestWordScoreComparator();
 
-  private Comparator<SuggestWord> comparator;
-
   /**
    * Use the {@link #DEFAULT_COMPARATOR}
    *
    * @param size The size of the queue
    */
   public SuggestWordQueue(int size) {
-    super(size);
-    comparator = DEFAULT_COMPARATOR;
+    this(size, DEFAULT_COMPARATOR);
   }
 
   /**
@@ -52,13 +49,6 @@ public final class SuggestWordQueue extends PriorityQueue<SuggestWord> {
    * @param comparator The comparator.
    */
   public SuggestWordQueue(int size, Comparator<SuggestWord> comparator) {
-    super(size);
-    this.comparator = comparator;
-  }
-
-  @Override
-  protected final boolean lessThan(SuggestWord wa, SuggestWord wb) {
-    int val = comparator.compare(wa, wb);
-    return val < 0;
+    super(size, (a, b) -> comparator.compare(a, b) < 0);
   }
 }

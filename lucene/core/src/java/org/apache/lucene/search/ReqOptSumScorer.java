@@ -73,7 +73,7 @@ class ReqOptSumScorer extends Scorer {
       optScorer.advanceShallow(0);
       this.reqMaxScore = reqScorer.getMaxScore(NO_MORE_DOCS);
       this.approximation =
-          new DocIdSetIterator() {
+          new FilterDocIdSetIterator(reqApproximation) {
             int upTo = -1;
             float maxScore;
 
@@ -162,16 +162,6 @@ class ReqOptSumScorer extends Scorer {
                   }
                 }
               }
-            }
-
-            @Override
-            public int docID() {
-              return reqApproximation.docID();
-            }
-
-            @Override
-            public long cost() {
-              return reqApproximation.cost();
             }
           };
     }

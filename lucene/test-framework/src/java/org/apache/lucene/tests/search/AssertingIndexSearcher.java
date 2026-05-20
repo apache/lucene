@@ -17,12 +17,10 @@
 package org.apache.lucene.tests.search;
 
 import java.io.IOException;
-import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
@@ -72,7 +70,7 @@ public class AssertingIndexSearcher extends IndexSearcher {
   }
 
   @Override
-  protected void search(List<LeafReaderContext> leaves, Weight weight, Collector collector)
+  protected void search(LeafReaderContextPartition[] leaves, Weight weight, Collector collector)
       throws IOException {
     assert weight instanceof AssertingWeight;
     AssertingCollector assertingCollector = AssertingCollector.wrap(collector);

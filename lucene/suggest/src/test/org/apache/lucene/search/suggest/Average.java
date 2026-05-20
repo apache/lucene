@@ -19,19 +19,15 @@ package org.apache.lucene.search.suggest;
 import java.util.List;
 import java.util.Locale;
 
-/** Average with standard deviation. */
-final class Average {
-  /** Average (in milliseconds). */
-  public final double avg;
-
-  /** Standard deviation (in milliseconds). */
-  public final double stddev;
-
+/**
+ * Average with standard deviation.
+ *
+ * @param avg Average (in milliseconds).
+ * @param stddev Standard deviation (in milliseconds).
+ */
+record Average(double avg, double stddev) {
   /** */
-  Average(double avg, double stddev) {
-    this.avg = avg;
-    this.stddev = stddev;
-  }
+  Average {}
 
   @Override
   public String toString() {

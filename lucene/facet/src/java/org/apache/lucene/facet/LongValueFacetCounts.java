@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.facet.FacetsCollector.MatchingDocs;
 import org.apache.lucene.index.DocValues;
@@ -172,19 +173,19 @@ public class LongValueFacetCounts extends Facets {
       throws IOException {
 
     for (MatchingDocs hits : matchingDocs) {
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         continue;
       }
       initializeCounters();
 
-      LongValues fv = valueSource.getValues(hits.context, null);
+      LongValues fv = valueSource.getValues(hits.context(), null);
 
       // NOTE: this is not as efficient as working directly with the doc values APIs in the sparse
       // case
       // because we are doing a linear scan across all hits, but this API is more flexible since a
       // LongValuesSource can compute interesting values at query time
 
-      DocIdSetIterator docs = hits.bits.iterator();
+      DocIdSetIterator docs = hits.bits().iterator();
       for (int doc = docs.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
         // Skip missing docs:
         if (fv.advanceExact(doc)) {
@@ -201,14 +202,14 @@ public class LongValueFacetCounts extends Facets {
   private void count(MultiLongValuesSource valuesSource, List<MatchingDocs> matchingDocs)
       throws IOException {
     for (MatchingDocs hits : matchingDocs) {
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         continue;
       }
       initializeCounters();
 
-      MultiLongValues multiValues = valuesSource.getValues(hits.context);
+      MultiLongValues multiValues = valuesSource.getValues(hits.context());
 
-      DocIdSetIterator docs = hits.bits.iterator();
+      DocIdSetIterator docs = hits.bits().iterator();
       for (int doc = docs.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; ) {
         // Skip missing docs:
         if (multiValues.advanceExact(doc)) {
@@ -235,18 +236,20 @@ public class LongValueFacetCounts extends Facets {
   /** Counts from the field's indexed doc values. */
   private void count(String field, List<MatchingDocs> matchingDocs) throws IOException {
     for (MatchingDocs hits : matchingDocs) {
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         continue;
       }
       initializeCounters();
 
-      SortedNumericDocValues multiValues = DocValues.getSortedNumeric(hits.context.reader(), field);
+      SortedNumericDocValues multiValues =
+          DocValues.getSortedNumeric(hits.context().reader(), field);
       NumericDocValues singleValues = DocValues.unwrapSingleton(multiValues);
 
       if (singleValues != null) {
 
         DocIdSetIterator it =
-            ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), singleValues));
+            ConjunctionUtils.intersectIterators(
+                Arrays.asList(hits.bits().iterator(), singleValues));
 
         for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
           increment(singleValues.longValue());
@@ -255,7 +258,7 @@ public class LongValueFacetCounts extends Facets {
       } else {
 
         DocIdSetIterator it =
-            ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), multiValues));
+            ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits().iterator(), multiValues));
 
         for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
           int limit = multiValues.docValueCount();
@@ -402,7 +405,7 @@ public class LongValueFacetCounts extends Facets {
         field,
         new String[0],
         totCount,
-        labelValues.toArray(new LabelAndValue[0]),
+        labelValues.toArray(LabelAndValue[]::new),
         labelValues.size());
   }
 
@@ -417,14 +420,12 @@ public class LongValueFacetCounts extends Facets {
       return new FacetResult(field, new String[0], totCount, new LabelAndValue[0], 0);
     }
 
+    // sort by count descending, breaking ties by value ascending:
     PriorityQueue<Entry> pq =
-        new PriorityQueue<>(Math.min(topN, counts.length + hashCounts.size())) {
-          @Override
-          protected boolean lessThan(Entry a, Entry b) {
-            // sort by count descending, breaking ties by value ascending:
-            return a.count < b.count || (a.count == b.count && a.value > b.value);
-          }
-        };
+        PriorityQueue.usingComparator(
+            Math.min(topN, counts.length + hashCounts.size()),
+            Comparator.<Entry>comparingInt(e -> e.count)
+                .thenComparing(Comparator.<Entry>comparingLong(dv -> dv.value).reversed()));
 
     int childCount = 0;
     Entry e = null;
@@ -539,7 +540,7 @@ public class LongValueFacetCounts extends Facets {
         field,
         new String[0],
         totCount,
-        labelValues.toArray(new LabelAndValue[0]),
+        labelValues.toArray(LabelAndValue[]::new),
         labelValues.size());
   }
 

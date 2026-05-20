@@ -33,10 +33,10 @@ public class TestConcurrentApproximatePriorityQueue extends LuceneTestCase {
     pq.add(3, 3);
     pq.add(10, 10);
     pq.add(7, 7);
-    assertEquals(Integer.valueOf(10), pq.poll(x -> true));
-    assertEquals(Integer.valueOf(7), pq.poll(x -> true));
-    assertEquals(Integer.valueOf(3), pq.poll(x -> true));
-    assertNull(pq.poll(x -> true));
+    assertEquals(Integer.valueOf(10), pq.poll(_ -> true));
+    assertEquals(Integer.valueOf(7), pq.poll(_ -> true));
+    assertEquals(Integer.valueOf(3), pq.poll(_ -> true));
+    assertNull(pq.poll(_ -> true));
   }
 
   public void testPollFromDifferentThread() throws Exception {
@@ -53,10 +53,10 @@ public class TestConcurrentApproximatePriorityQueue extends LuceneTestCase {
         new Thread() {
           @Override
           public void run() {
-            assertEquals(Integer.valueOf(10), pq.poll(x -> true));
-            assertEquals(Integer.valueOf(7), pq.poll(x -> true));
-            assertEquals(Integer.valueOf(3), pq.poll(x -> true));
-            assertNull(pq.poll(x -> true));
+            assertEquals(Integer.valueOf(10), pq.poll(_ -> true));
+            assertEquals(Integer.valueOf(7), pq.poll(_ -> true));
+            assertEquals(Integer.valueOf(3), pq.poll(_ -> true));
+            assertNull(pq.poll(_ -> true));
           }
         };
     t.start();
@@ -95,9 +95,9 @@ public class TestConcurrentApproximatePriorityQueue extends LuceneTestCase {
     t.start();
     takeLock.await();
     pq.add(1, 1); // The lock is taken so this needs to go to a different queue
-    assertEquals(Integer.valueOf(1), pq.poll(x -> true));
+    assertEquals(Integer.valueOf(1), pq.poll(_ -> true));
     releaseLock.countDown();
-    assertEquals(Integer.valueOf(3), pq.poll(x -> true));
-    assertNull(pq.poll(x -> true));
+    assertEquals(Integer.valueOf(3), pq.poll(_ -> true));
+    assertNull(pq.poll(_ -> true));
   }
 }

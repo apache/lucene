@@ -22,7 +22,7 @@ import java.util.Locale;
 /** Formatting utilities (for reports). */
 public class Format {
 
-  private static NumberFormat[] numFormat = {
+  private static final NumberFormat[] numFormat = {
     NumberFormat.getInstance(Locale.ROOT),
     NumberFormat.getInstance(Locale.ROOT),
     NumberFormat.getInstance(Locale.ROOT),

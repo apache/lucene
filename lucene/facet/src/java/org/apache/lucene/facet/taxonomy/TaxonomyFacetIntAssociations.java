@@ -63,13 +63,14 @@ public class TaxonomyFacetIntAssociations extends IntTaxonomyFacets {
       AssociationAggregationFunction aggregationFunction, List<MatchingDocs> matchingDocs)
       throws IOException {
     for (MatchingDocs hits : matchingDocs) {
-      if (hits.totalHits == 0) {
+      if (hits.totalHits() == 0) {
         continue;
       }
       initializeValueCounters();
 
-      BinaryDocValues dv = DocValues.getBinary(hits.context.reader(), indexFieldName);
-      DocIdSetIterator it = ConjunctionUtils.intersectIterators(List.of(hits.bits.iterator(), dv));
+      BinaryDocValues dv = DocValues.getBinary(hits.context().reader(), indexFieldName);
+      DocIdSetIterator it =
+          ConjunctionUtils.intersectIterators(List.of(hits.bits().iterator(), dv));
 
       for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
         final BytesRef bytesRef = dv.binaryValue();

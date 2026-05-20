@@ -37,7 +37,6 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.IOUtils;
-import org.junit.Test;
 
 public class TestMultipleIndexFields extends FacetTestCase {
 
@@ -60,7 +59,6 @@ public class TestMultipleIndexFields extends FacetTestCase {
     return config;
   }
 
-  @Test
   public void testDefault() throws Exception {
     Directory indexDir = newDirectory();
     Directory taxoDir = newDirectory();
@@ -86,7 +84,7 @@ public class TestMultipleIndexFields extends FacetTestCase {
     // prepare searcher to search against
     IndexSearcher searcher = newSearcher(ir);
 
-    FacetsCollector sfc = performSearch(tr, ir, searcher);
+    FacetsCollector sfc = performSearch(searcher);
 
     // Obtain facets results and hand-test them
     assertCorrectResults(getTaxonomyFacetCounts(tr, config, sfc));
@@ -97,7 +95,6 @@ public class TestMultipleIndexFields extends FacetTestCase {
     IOUtils.close(tr, ir, tw, indexDir, taxoDir);
   }
 
-  @Test
   public void testCustom() throws Exception {
     Directory indexDir = newDirectory();
     Directory taxoDir = newDirectory();
@@ -124,7 +121,7 @@ public class TestMultipleIndexFields extends FacetTestCase {
     // prepare searcher to search against
     IndexSearcher searcher = newSearcher(ir);
 
-    FacetsCollector sfc = performSearch(tr, ir, searcher);
+    FacetsCollector sfc = performSearch(searcher);
 
     Map<String, Facets> facetsMap = new HashMap<>();
     facetsMap.put("Author", getTaxonomyFacetCounts(tr, config, sfc, "$author"));
@@ -140,7 +137,6 @@ public class TestMultipleIndexFields extends FacetTestCase {
     IOUtils.close(tr, ir, tw, indexDir, taxoDir);
   }
 
-  @Test
   public void testTwoCustomsSameField() throws Exception {
     Directory indexDir = newDirectory();
     Directory taxoDir = newDirectory();
@@ -168,7 +164,7 @@ public class TestMultipleIndexFields extends FacetTestCase {
     // prepare searcher to search against
     IndexSearcher searcher = newSearcher(ir);
 
-    FacetsCollector sfc = performSearch(tr, ir, searcher);
+    FacetsCollector sfc = performSearch(searcher);
 
     Map<String, Facets> facetsMap = new HashMap<>();
     Facets facets2 = getTaxonomyFacetCounts(tr, config, sfc, "$music");
@@ -197,7 +193,6 @@ public class TestMultipleIndexFields extends FacetTestCase {
     fail("no ordinals found for " + field);
   }
 
-  @Test
   public void testDifferentFieldsAndText() throws Exception {
     Directory indexDir = newDirectory();
     Directory taxoDir = newDirectory();
@@ -225,7 +220,7 @@ public class TestMultipleIndexFields extends FacetTestCase {
     // prepare searcher to search against
     IndexSearcher searcher = newSearcher(ir);
 
-    FacetsCollector sfc = performSearch(tr, ir, searcher);
+    FacetsCollector sfc = performSearch(searcher);
 
     Map<String, Facets> facetsMap = new HashMap<>();
     facetsMap.put("Band", getTaxonomyFacetCounts(tr, config, sfc, "$bands"));
@@ -242,7 +237,6 @@ public class TestMultipleIndexFields extends FacetTestCase {
     IOUtils.close(tr, ir, tw, indexDir, taxoDir);
   }
 
-  @Test
   public void testSomeSameSomeDifferent() throws Exception {
     Directory indexDir = newDirectory();
     Directory taxoDir = newDirectory();
@@ -271,7 +265,7 @@ public class TestMultipleIndexFields extends FacetTestCase {
     // prepare searcher to search against
     IndexSearcher searcher = newSearcher(ir);
 
-    FacetsCollector sfc = performSearch(tr, ir, searcher);
+    FacetsCollector sfc = performSearch(searcher);
 
     Map<String, Facets> facetsMap = new HashMap<>();
     Facets facets2 = getTaxonomyFacetCounts(tr, config, sfc, "$music");
@@ -300,9 +294,8 @@ public class TestMultipleIndexFields extends FacetTestCase {
         new String[0],
         2,
         5,
-        new LabelAndValue[] {
-          new LabelAndValue("Punk", 1), new LabelAndValue("Rock & Pop", 4),
-        });
+        new LabelAndValue("Punk", 1),
+        new LabelAndValue("Rock & Pop", 4));
     assertEquals(
         "dim=Band path=[Rock & Pop] value=4 childCount=4\n  The Beatles (1)\n  U2 (1)\n  REM (1)\n  Dave Matthews Band (1)\n",
         facets.getTopChildren(10, "Band", "Rock & Pop").toString());
@@ -312,12 +305,10 @@ public class TestMultipleIndexFields extends FacetTestCase {
         new String[] {"Rock & Pop"},
         4,
         4,
-        new LabelAndValue[] {
-          new LabelAndValue("Dave Matthews Band", 1),
-          new LabelAndValue("REM", 1),
-          new LabelAndValue("The Beatles", 1),
-          new LabelAndValue("U2", 1),
-        });
+        new LabelAndValue("Dave Matthews Band", 1),
+        new LabelAndValue("REM", 1),
+        new LabelAndValue("The Beatles", 1),
+        new LabelAndValue("U2", 1));
 
     assertEquals(
         "dim=Author path=[] value=3 childCount=3\n  Mark Twain (1)\n  Stephen King (1)\n  Kurt Vonnegut (1)\n",
@@ -328,18 +319,15 @@ public class TestMultipleIndexFields extends FacetTestCase {
         new String[0],
         3,
         3,
-        new LabelAndValue[] {
-          new LabelAndValue("Kurt Vonnegut", 1),
-          new LabelAndValue("Mark Twain", 1),
-          new LabelAndValue("Stephen King", 1),
-        });
+        new LabelAndValue("Kurt Vonnegut", 1),
+        new LabelAndValue("Mark Twain", 1),
+        new LabelAndValue("Stephen King", 1));
   }
 
-  private FacetsCollector performSearch(TaxonomyReader tr, IndexReader ir, IndexSearcher searcher)
-      throws IOException {
-    FacetsCollector fc = new FacetsCollector();
-    FacetsCollector.search(searcher, new MatchAllDocsQuery(), 10, fc);
-    return fc;
+  private FacetsCollector performSearch(IndexSearcher searcher) throws IOException {
+    return FacetsCollectorManager.search(
+            searcher, MatchAllDocsQuery.INSTANCE, 10, new FacetsCollectorManager())
+        .facetsCollector();
   }
 
   private void seedIndex(TaxonomyWriter tw, RandomIndexWriter iw, FacetsConfig config)

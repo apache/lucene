@@ -90,18 +90,16 @@
 
     - name: Checkout main
       git:
-        repo: "git@github.com:{{ (main_branch | split(':'))[0] }}/lucene.git"
+        repo: "https://github.com/{{ (main_branch | split(':'))[0] }}/lucene.git"
         version: "{{ (main_branch | split(':'))[1] }}"
         dest: main
-        accept_newhostkey: true
         depth: 1
 
     - name: Checkout patch
       git:
-        repo: "git@github.com:{{ (patch_branch | split(':'))[0] }}/lucene.git"
+        repo: "https://github.com/{{ (patch_branch | split(':'))[0] }}/lucene.git"
         version: "{{ (patch_branch | split(':'))[1] }}"
         dest: patch
-        accept_newhostkey: true
         depth: 1
 
     - name: Assemble Sources
@@ -112,13 +110,24 @@
         - main
         - patch
 
-    - name: Run benchmark
-      command:
-        cmd: "{{ jmh_command }} -rff ~/{{ item }}.txt {{ jmh_args }}"
-        chdir: "{{ item }}"
+    - name: Locate benchmark jar
+      find:
+        paths: "{{ item }}/{{ jmh_jar_path }}"
+        pattern: "{{ jmh_jar_glob }}"
+      register: found_jmh_jars
       loop:
         - main
         - patch
+
+    - name: Run benchmark
+      command:
+        cmd: "java -jar {{ jmh_jar }} -rf text -rff ~/{{ item }}.txt {{ jmh_args }}"
+      loop:
+        - main
+        - patch
+      vars:
+        jmh_jars: "{{ found_jmh_jars.results | selectattr('item', 'eq', item) | map(attribute='files') }}"
+        jmh_jar: "{{ jmh_jars | first | map(attribute='path') | first }}"
 
     - name: Read main results
       command:

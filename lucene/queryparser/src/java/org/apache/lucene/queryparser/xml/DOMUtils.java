@@ -16,16 +16,17 @@
  */
 package org.apache.lucene.queryparser.xml;
 
-import java.io.Reader;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
-import org.xml.sax.InputSource;
 
-/** Helper methods for parsing XML */
+/**
+ * Helper methods for parsing XML.
+ *
+ * @lucene.internal
+ */
 public class DOMUtils {
+
+  private DOMUtils() {}
 
   public static Element getChildByTagOrFail(Element e, String name) throws ParserException {
     Element kid = getChildByTagName(e, name);
@@ -91,8 +92,7 @@ public class DOMUtils {
       if ((n == element) || (n == null)) {
         return null;
       }
-      if (n instanceof Element) {
-        Element parent = (Element) n;
+      if (n instanceof Element parent) {
         return getAttributeWithInheritance(parent, attributeName);
       }
       return null; // we reached the top level of the document without finding attribute
@@ -174,33 +174,5 @@ public class DOMUtils {
           }
       }
     }
-  }
-
-  /**
-   * Helper method to parse an XML file into a DOM tree, given a reader.
-   *
-   * @param is reader of the XML file to be parsed
-   * @return an org.w3c.dom.Document object
-   */
-  public static Document loadXML(Reader is) {
-    DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-    DocumentBuilder db = null;
-
-    try {
-      db = dbf.newDocumentBuilder();
-    } catch (Exception se) {
-      throw new RuntimeException("Parser configuration error", se);
-    }
-
-    // Step 3: parse the input file
-    org.w3c.dom.Document doc = null;
-    try {
-      doc = db.parse(new InputSource(is));
-      // doc = db.parse(is);
-    } catch (Exception se) {
-      throw new RuntimeException("Error parsing file:" + se, se);
-    }
-
-    return doc;
   }
 }

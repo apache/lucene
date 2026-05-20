@@ -17,31 +17,13 @@
 package org.apache.lucene.tests.util;
 
 import com.carrotsearch.randomizedtesting.ThreadFilter;
-import org.apache.lucene.util.Constants;
 
 /** Last minute patches. */
 public class QuickPatchThreadsFilter implements ThreadFilter {
-  static final boolean isJ9;
-
-  static {
-    isJ9 = Constants.JAVA_VENDOR.startsWith("IBM");
-  }
+  private static final IsSystemThread delegate = new IsSystemThread();
 
   @Override
   public boolean reject(Thread t) {
-    if (isJ9) {
-      // LUCENE-6518
-      if ("ClassCache Reaper".equals(t.getName())) {
-        return true;
-      }
-
-      // LUCENE-4736
-      StackTraceElement[] stack = t.getStackTrace();
-      if (stack.length > 0
-          && stack[stack.length - 1].getClassName().equals("java.util.Timer$TimerImpl")) {
-        return true;
-      }
-    }
-    return false;
+    return delegate.test(t);
   }
 }

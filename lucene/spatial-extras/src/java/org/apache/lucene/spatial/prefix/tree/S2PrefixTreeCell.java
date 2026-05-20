@@ -278,7 +278,7 @@ class S2PrefixTreeCell implements CellCanPrune {
   @Override
   public int hashCode() {
     if (cellId == null) {
-      return super.hashCode();
+      return System.identityHashCode(this);
     }
     return this.cellId.hashCode();
   }

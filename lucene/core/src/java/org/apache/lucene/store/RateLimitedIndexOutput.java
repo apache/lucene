@@ -31,7 +31,7 @@ public final class RateLimitedIndexOutput extends FilterIndexOutput {
   private long bytesSinceLastPause;
 
   /**
-   * Cached here not not always have to call RateLimiter#getMinPauseCheckBytes() which does volatile
+   * Cached here to not always have to call RateLimiter#getMinPauseCheckBytes() which does volatile
    * read.
    */
   private long currentMinPauseCheckBytes;

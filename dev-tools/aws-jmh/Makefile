@@ -17,15 +17,15 @@ export ANSIBLE_HOST_KEY_CHECKING=false
 export ANSIBLE_FORKS=10
 
 ifeq ($(AWS_ACCESS_KEY_ID),)
-  $(error AWS_ACCESS_KEY_ID is not set)
+$(error AWS_ACCESS_KEY_ID is not set)
 endif
 
 ifeq ($(AWS_SECRET_ACCESS_KEY),)
-  $(error AWS_SECRET_ACCESS_KEY is not set)
+$(error AWS_SECRET_ACCESS_KEY is not set)
 endif
 
 ifeq ($(PATCH_BRANCH),)
-  $(error PATCH_BRANCH is not set)
+$(error PATCH_BRANCH is not set)
 endif
 
 # runs benchmark across AWS instances

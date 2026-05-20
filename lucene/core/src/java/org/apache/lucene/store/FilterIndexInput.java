@@ -21,7 +21,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import org.apache.lucene.internal.tests.TestSecrets;
 
 /**
- * IndexInput implementation that delegates calls to another directory. This class can be used to
+ * IndexInput implementation that delegates calls to another IndexInput. This class can be used to
  * add limitations on top of an existing {@link IndexInput} implementation or to add additional
  * sanity checks for tests. However, if you plan to write your own {@link IndexInput}
  * implementation, you should consider extending directly {@link IndexInput} or {@link DataInput}
@@ -42,8 +42,8 @@ public class FilterIndexInput extends IndexInput {
    * returns it
    */
   public static IndexInput unwrap(IndexInput in) {
-    while (in instanceof FilterIndexInput) {
-      in = ((FilterIndexInput) in).in;
+    while (in instanceof FilterIndexInput fii) {
+      in = fii.in;
     }
     return in;
   }
@@ -53,8 +53,8 @@ public class FilterIndexInput extends IndexInput {
    * instance and returns it
    */
   public static IndexInput unwrapOnlyTest(IndexInput in) {
-    while (in instanceof FilterIndexInput && TEST_FILTER_INPUTS.contains(in.getClass())) {
-      in = ((FilterIndexInput) in).in;
+    while (in instanceof FilterIndexInput fii && TEST_FILTER_INPUTS.contains(in.getClass())) {
+      in = fii.in;
     }
     return in;
   }

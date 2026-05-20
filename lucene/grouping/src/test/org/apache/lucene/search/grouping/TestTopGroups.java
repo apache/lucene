@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.search.grouping;
 
+import java.util.List;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TotalHits;
@@ -125,11 +126,11 @@ public class TestTopGroups extends LuceneTestCase {
               : createEmptyGroupDocs(redGroupValue, new Object[] {redAntSize});
 
       shard1TopGroups =
-          new TopGroups<String>(
+          new TopGroups<>(
               sort.getSort() /* groupSort */,
               sort.getSort() /* withinGroupSort */,
-              group1.scoreDocs.length + group2.scoreDocs.length /* totalHitCount */,
-              group1.scoreDocs.length + group2.scoreDocs.length /* totalGroupedHitCount */,
+              group1.scoreDocs().length + group2.scoreDocs().length /* totalHitCount */,
+              group1.scoreDocs().length + group2.scoreDocs().length /* totalGroupedHitCount */,
               combineGroupDocs(group1, group2) /* groups */,
               (haveBlueWhale
                   ? blueWhaleScore
@@ -159,11 +160,11 @@ public class TestTopGroups extends LuceneTestCase {
               : createEmptyGroupDocs(redGroupValue, new Object[] {redSquirrelSize});
 
       shard2TopGroups =
-          new TopGroups<String>(
+          new TopGroups<>(
               sort.getSort() /* groupSort */,
               sort.getSort() /* withinGroupSort */,
-              group1.scoreDocs.length + group2.scoreDocs.length /* totalHitCount */,
-              group1.scoreDocs.length + group2.scoreDocs.length /* totalGroupedHitCount */,
+              group1.scoreDocs().length + group2.scoreDocs().length /* totalHitCount */,
+              group1.scoreDocs().length + group2.scoreDocs().length /* totalGroupedHitCount */,
               combineGroupDocs(group1, group2) /* groups */,
               (haveRedSquirrel
                   ? redSquirrelScore
@@ -172,7 +173,7 @@ public class TestTopGroups extends LuceneTestCase {
 
     final TopGroups<String> mergedTopGroups =
         TopGroups.<String>merge(
-            combineTopGroups(shard1TopGroups, shard2TopGroups),
+            List.of(shard1TopGroups, shard2TopGroups),
             sort /* groupSort */,
             sort /* docSort */,
             0 /* docOffset */,
@@ -191,16 +192,16 @@ public class TestTopGroups extends LuceneTestCase {
 
     assertEquals(2, mergedTopGroups.groups.length);
     {
-      assertEquals(blueGroupValue, mergedTopGroups.groups[0].groupValue);
+      assertEquals(blueGroupValue, mergedTopGroups.groups[0].groupValue());
       final float expectedBlueMaxScore =
           (haveBlueWhale ? blueWhaleScore : (haveBlueDragonfly ? blueDragonflyScore : Float.NaN));
-      checkMaxScore(expectedBlueMaxScore, mergedTopGroups.groups[0].maxScore);
+      checkMaxScore(expectedBlueMaxScore, mergedTopGroups.groups[0].maxScore());
     }
     {
-      assertEquals(redGroupValue, mergedTopGroups.groups[1].groupValue);
+      assertEquals(redGroupValue, mergedTopGroups.groups[1].groupValue());
       final float expectedRedMaxScore =
           (haveRedSquirrel ? redSquirrelScore : (haveRedAnt ? redAntScore : Float.NaN));
-      checkMaxScore(expectedRedMaxScore, mergedTopGroups.groups[1].maxScore);
+      checkMaxScore(expectedRedMaxScore, mergedTopGroups.groups[1].maxScore());
     }
 
     final float expectedMaxScore =
@@ -226,7 +227,7 @@ public class TestTopGroups extends LuceneTestCase {
 
   private static GroupDocs<String> createEmptyGroupDocs(
       String groupValue, Object[] groupSortValues) {
-    return new GroupDocs<String>(
+    return new GroupDocs<>(
         Float.NaN /* score */,
         Float.NaN /* maxScore */,
         new TotalHits(0, TotalHits.Relation.EQUAL_TO),
@@ -237,7 +238,7 @@ public class TestTopGroups extends LuceneTestCase {
 
   private static GroupDocs<String> createSingletonGroupDocs(
       String groupValue, Object[] groupSortValues, int docId, float docScore, int shardIndex) {
-    return new GroupDocs<String>(
+    return new GroupDocs<>(
         Float.NaN /* score */,
         docScore /* maxScore */,
         new TotalHits(1, TotalHits.Relation.EQUAL_TO),
@@ -250,15 +251,6 @@ public class TestTopGroups extends LuceneTestCase {
       GroupDocs<String> group0, GroupDocs<String> group1) {
     @SuppressWarnings({"unchecked", "rawtypes"})
     final GroupDocs<String>[] groups = new GroupDocs[2];
-    groups[0] = group0;
-    groups[1] = group1;
-    return groups;
-  }
-
-  private static TopGroups<String>[] combineTopGroups(
-      TopGroups<String> group0, TopGroups<String> group1) {
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    final TopGroups<String>[] groups = new TopGroups[2];
     groups[0] = group0;
     groups[1] = group1;
     return groups;

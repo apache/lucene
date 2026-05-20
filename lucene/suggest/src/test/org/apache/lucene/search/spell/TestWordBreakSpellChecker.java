@@ -89,20 +89,24 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
   }
 
   public void testMaxEvaluations() throws Exception {
-    final int maxEvals = 100;
-
     try (IndexReader ir = DirectoryReader.open(dir)) {
+
+      final String input = "ab".repeat(5);
+      final int maxEvals = 100;
+      final int maxSuggestions = maxEvals * 2; // plenty
+
       WordBreakSpellChecker wbsp = new WordBreakSpellChecker();
-      wbsp.setMaxChanges(10);
       wbsp.setMinBreakWordLength(1);
       wbsp.setMinSuggestionFrequency(1);
-      wbsp.setMaxEvaluations(100);
 
-      Term term = new Term("abba", "ab".repeat(5));
+      wbsp.setMaxChanges(2 * input.length()); // plenty
+      wbsp.setMaxEvaluations(maxEvals);
+
+      Term term = new Term("abba", input);
       SuggestWord[][] sw =
           wbsp.suggestWordBreaks(
               term,
-              500,
+              maxSuggestions,
               ir,
               SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX,
               BreakSuggestionSortMethod.NUM_CHANGES_THEN_MAX_FREQUENCY);
@@ -112,6 +116,45 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
 
       // if maxEvaluations is respected, we can't possibly have more suggestions than that
       MatcherAssert.assertThat(sw.length, lessThan(maxEvals));
+    }
+  }
+
+  public void testSmallMaxEvaluations() throws Exception {
+    // even using small maxEvals (relative to maxChanges) should produce
+    // good results if possible
+
+    try (IndexReader ir = DirectoryReader.open(dir)) {
+
+      final int maxEvals = TestUtil.nextInt(random(), 6, 20);
+      final int maxSuggestions = maxEvals * 10; // plenty
+
+      WordBreakSpellChecker wbsp = new WordBreakSpellChecker();
+      wbsp.setMinBreakWordLength(1);
+      wbsp.setMinSuggestionFrequency(1);
+
+      wbsp.setMaxChanges(maxEvals * 10); // plenty
+      wbsp.setMaxEvaluations(maxEvals);
+
+      Term term = new Term("abba", "ababab");
+      SuggestWord[][] sw =
+          wbsp.suggestWordBreaks(
+              term,
+              maxSuggestions,
+              ir,
+              SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX,
+              BreakSuggestionSortMethod.NUM_CHANGES_THEN_MAX_FREQUENCY);
+
+      // sanity check that our suggester isn't completely broken
+      MatcherAssert.assertThat(sw.length, greaterThan(0));
+
+      // if maxEvaluations is respected, we can't possibly have more suggestions than that
+      MatcherAssert.assertThat(sw.length, lessThan(maxEvals));
+
+      // we should have been able to find this "optimal" (due to fewest num changes)
+      // suggestion before hitting our small maxEvals (and before any suggests with more breaks)
+      assertEquals(2, sw[0].length);
+      assertEquals("aba", sw[0][0].string);
+      assertEquals("bab", sw[0][1].string);
     }
   }
 
@@ -140,17 +183,17 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
       assertSuggestionEquals(cs[2], "yeight", 1.0f, 4, 5);
 
       for (int i = 3; i < 5; i++) {
-        assertEquals(3, cs[i].originalTermIndexes.length);
-        assertEquals(2, cs[i].suggestion.score, 0);
+        assertEquals(3, cs[i].originalTermIndexes().length);
+        assertEquals(2, cs[i].suggestion().score, 0);
         assertTrue(
-            (cs[i].originalTermIndexes[0] == 1
-                    && cs[i].originalTermIndexes[1] == 2
-                    && cs[i].originalTermIndexes[2] == 3
-                    && cs[i].suggestion.string.equals("hundredeight"))
-                || (cs[i].originalTermIndexes[0] == 3
-                    && cs[i].originalTermIndexes[1] == 4
-                    && cs[i].originalTermIndexes[2] == 5
-                    && cs[i].suggestion.string.equals("eightyeight")));
+            (cs[i].originalTermIndexes()[0] == 1
+                    && cs[i].originalTermIndexes()[1] == 2
+                    && cs[i].originalTermIndexes()[2] == 3
+                    && cs[i].suggestion().string.equals("hundredeight"))
+                || (cs[i].originalTermIndexes()[0] == 3
+                    && cs[i].originalTermIndexes()[1] == 4
+                    && cs[i].originalTermIndexes()[2] == 5
+                    && cs[i].suggestion().string.equals("eightyeight")));
       }
 
       cs = wbsp.suggestWordCombinations(terms, 5, ir, SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX);
@@ -385,8 +428,8 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
             wbsp.suggestWordCombinations(terms, originals.size(), ir, SuggestMode.SUGGEST_ALWAYS);
         boolean failed = true;
         for (CombineSuggestion cs1 : cs) {
-          assertEquals(2, cs1.originalTermIndexes.length);
-          if (cs1.suggestion.string.equals(left + right)) {
+          assertEquals(2, cs1.originalTermIndexes().length);
+          if (cs1.suggestion().string.equals(left + right)) {
             failed = false;
           }
         }
@@ -405,9 +448,9 @@ public class TestWordBreakSpellChecker extends LuceneTestCase {
 
   private static void assertSuggestionEquals(
       CombineSuggestion cs, String word, float score, int... termIndexes) {
-    assertEquals(word, cs.suggestion.string);
-    assertEquals(score, cs.suggestion.score, 0);
-    assertArrayEquals(termIndexes, cs.originalTermIndexes);
+    assertEquals(word, cs.suggestion().string);
+    assertEquals(score, cs.suggestion().score, 0);
+    assertArrayEquals(termIndexes, cs.originalTermIndexes());
   }
 
   private static void assertSuggestionEquals(SuggestWord sw, String word, float score) {

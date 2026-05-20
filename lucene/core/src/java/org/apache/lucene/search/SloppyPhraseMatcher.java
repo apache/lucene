@@ -19,19 +19,18 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.List;
-import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsSource;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.PriorityQueue;
 
 /**
  * Find all slop-valid position-combinations (matches) encountered while traversing/hopping the
@@ -56,7 +55,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
 
   private final int slop;
   private final int numPostings;
-  private final PhraseQueue pq; // for advancing min position
+  private final PriorityQueue<PhrasePositions> pq; // for advancing min position
   private final boolean captureLeadMatch;
 
   private final DocIdSetIterator approximation;
@@ -80,6 +79,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
 
   private boolean positioned;
   private int matchLength;
+  private boolean freqsLoaded;
 
   public SloppyPhraseMatcher(
       PhraseQuery.PostingsAndFreq[] postings,
@@ -92,7 +92,22 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     this.slop = slop;
     this.numPostings = postings.length;
     this.captureLeadMatch = captureLeadMatch;
-    pq = new PhraseQueue(postings.length);
+    pq =
+        PriorityQueue.usingLessThan(
+            postings.length,
+            (pp1, pp2) -> {
+              if (pp1.position == pp2.position)
+                // same doc and pp.position, so decide by actual term positions.
+                // rely on: pp.position == tp.position - offset.
+                if (pp1.offset == pp2.offset) {
+                  return pp1.ord < pp2.ord;
+                } else {
+                  return pp1.offset < pp2.offset;
+                }
+              else {
+                return pp1.position < pp2.position;
+              }
+            });
     phrasePositions = new PhrasePositions[postings.length];
     for (int i = 0; i < postings.length; ++i) {
       phrasePositions[i] =
@@ -112,14 +127,20 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
           public Impacts getImpacts() throws IOException {
             return new Impacts() {
 
+              private final FreqAndNormBuffer impactBuffer = new FreqAndNormBuffer();
+
+              {
+                impactBuffer.add(Integer.MAX_VALUE, 1);
+              }
+
               @Override
               public int numLevels() {
                 return 1;
               }
 
               @Override
-              public List<Impact> getImpacts(int level) {
-                return Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
+              public FreqAndNormBuffer getImpacts(int level) {
+                return impactBuffer;
               }
 
               @Override
@@ -147,18 +168,29 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
 
   @Override
   float maxFreq() throws IOException {
-    // every term position in each postings list can be at the head of at most
-    // one matching phrase, so the maximum possible phrase freq is the sum of
-    // the freqs of the postings lists.
+    // Load freqs eagerly so maxFreq() can be called before resetPositions() in TOP_SCORES
+    // mode. PhraseScorer uses this to short-circuit non-competitive documents
+    // before paying the cost of resetPositions() + initPhrasePositions().
     float maxFreq = 0;
     for (PhrasePositions phrasePosition : phrasePositions) {
-      maxFreq += phrasePosition.postings.freq();
+      phrasePosition.freq = phrasePosition.postings.freq();
+      maxFreq += phrasePosition.freq;
     }
+    freqsLoaded = true;
     return maxFreq;
   }
 
   @Override
-  public void reset() throws IOException {
+  public void resetPositions() throws IOException {
+    if (freqsLoaded) {
+      // Freqs already loaded by maxFreq().
+      freqsLoaded = false;
+    } else {
+      // Freqs not yet loaded. Load them now.
+      for (PhrasePositions phrasePosition : phrasePositions) {
+        phrasePosition.freq = phrasePosition.postings.freq();
+      }
+    }
     this.positioned = initPhrasePositions();
     this.matchLength = Integer.MAX_VALUE;
     this.leadPosition = Integer.MAX_VALUE;
@@ -511,7 +543,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     rptGroups = new PhrasePositions[rgs.size()][];
     Comparator<PhrasePositions> cmprtr = Comparator.comparingInt(pp -> pp.offset);
     for (int i = 0; i < rptGroups.length; i++) {
-      PhrasePositions[] rg = rgs.get(i).toArray(new PhrasePositions[0]);
+      PhrasePositions[] rg = rgs.get(i).toArray(PhrasePositions[]::new);
       Arrays.sort(rg, cmprtr);
       rptGroups[i] = rg;
       for (int j = 0; j < rg.length; j++) {
@@ -589,7 +621,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
     HashMap<Term, Integer> tcnt = new HashMap<>();
     for (PhrasePositions pp : phrasePositions) {
       for (Term t : pp.terms) {
-        Integer cnt = tcnt.compute(t, (key, old) -> old == null ? 1 : 1 + old);
+        Integer cnt = tcnt.compute(t, (_, old) -> old == null ? 1 : 1 + old);
         if (cnt == 2) {
           tord.put(t, tord.size());
         }
@@ -610,7 +642,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
         }
       }
     }
-    return rp.toArray(new PhrasePositions[0]);
+    return rp.toArray(PhrasePositions[]::new);
   }
 
   /**
@@ -658,7 +690,7 @@ public final class SloppyPhraseMatcher extends PhraseMatcher {
   private HashMap<Term, Integer> termGroups(
       LinkedHashMap<Term, Integer> tord, ArrayList<FixedBitSet> bb) throws IOException {
     HashMap<Term, Integer> tg = new HashMap<>();
-    Term[] t = tord.keySet().toArray(new Term[0]);
+    Term[] t = tord.keySet().toArray(Term[]::new);
     for (int i = 0; i < bb.size(); i++) { // i is the group no.
       FixedBitSet bits = bb.get(i);
       for (int ord = bits.nextSetBit(0);

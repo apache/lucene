@@ -51,12 +51,18 @@ import org.junit.BeforeClass;
 
 /** */
 public class TestPayloadTermQuery extends LuceneTestCase {
+  @SuppressWarnings("NonFinalStaticField")
   private static IndexSearcher searcher;
+
+  @SuppressWarnings("NonFinalStaticField")
   private static IndexReader reader;
-  private static Similarity similarity = new BoostingSimilarity();
+
+  private static final Similarity similarity = new BoostingSimilarity();
   private static final byte[] payloadField = new byte[] {1};
   private static final byte[] payloadMultiField1 = new byte[] {2};
   private static final byte[] payloadMultiField2 = new byte[] {4};
+
+  @SuppressWarnings("NonFinalStaticField")
   protected static Directory directory;
 
   private static class PayloadAnalyzer extends Analyzer {
@@ -162,7 +168,7 @@ public class TestPayloadTermQuery extends LuceneTestCase {
     TopDocs hits = searcher.search(query, 100);
     assertTrue("hits is null and it shouldn't be", hits != null);
     assertTrue(
-        "hits Size: " + hits.totalHits.value + " is not: " + 100, hits.totalHits.value == 100);
+        "hits Size: " + hits.totalHits.value() + " is not: " + 100, hits.totalHits.value() == 100);
 
     // they should all have the exact same score, because they all contain seventy once, and we set
     // all the other similarity factors to be 1
@@ -216,7 +222,7 @@ public class TestPayloadTermQuery extends LuceneTestCase {
     TopDocs hits = searcher.search(query, 100);
     assertTrue("hits is null and it shouldn't be", hits != null);
     assertTrue(
-        "hits Size: " + hits.totalHits.value + " is not: " + 100, hits.totalHits.value == 100);
+        "hits Size: " + hits.totalHits.value() + " is not: " + 100, hits.totalHits.value() == 100);
 
     // they should all have the exact same score, because they all contain seventy once, and we set
     // all the other similarity factors to be 1
@@ -260,7 +266,8 @@ public class TestPayloadTermQuery extends LuceneTestCase {
             PayloadDecoder.FLOAT_DECODER);
     TopDocs hits = searcher.search(query, 100);
     assertTrue("hits is null and it shouldn't be", hits != null);
-    assertTrue("hits Size: " + hits.totalHits.value + " is not: " + 0, hits.totalHits.value == 0);
+    assertTrue(
+        "hits Size: " + hits.totalHits.value() + " is not: " + 0, hits.totalHits.value() == 0);
   }
 
   public void testNoPayload() throws Exception {
@@ -281,7 +288,8 @@ public class TestPayloadTermQuery extends LuceneTestCase {
     query.add(c2);
     TopDocs hits = searcher.search(query.build(), 100);
     assertTrue("hits is null and it shouldn't be", hits != null);
-    assertTrue("hits Size: " + hits.totalHits.value + " is not: " + 1, hits.totalHits.value == 1);
+    assertTrue(
+        "hits Size: " + hits.totalHits.value() + " is not: " + 1, hits.totalHits.value() == 1);
     int[] results = new int[1];
     results[0] = 0; // hits.scoreDocs[0].doc;
     CheckHits.checkHitCollector(

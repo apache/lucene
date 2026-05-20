@@ -19,7 +19,6 @@ package org.apache.lucene.document;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
-import java.util.Comparator;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.PointInSetQuery;
 import org.apache.lucene.search.PointRangeQuery;
@@ -288,14 +287,7 @@ public class InetAddressPoint extends Field {
       sortedValues[i] = encode(values[i]);
     }
 
-    Arrays.sort(
-        sortedValues,
-        new Comparator<byte[]>() {
-          @Override
-          public int compare(byte[] a, byte[] b) {
-            return Arrays.compareUnsigned(a, 0, BYTES, b, 0, BYTES);
-          }
-        });
+    Arrays.sort(sortedValues, (a, b) -> Arrays.compareUnsigned(a, 0, BYTES, b, 0, BYTES));
 
     final BytesRef encoded = new BytesRef(new byte[BYTES]);
 

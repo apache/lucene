@@ -108,9 +108,9 @@ public class ExtendableQueryParser extends QueryParser {
       throws ParseException {
     final Pair<String, String> splitExtensionField =
         this.extensions.splitExtensionField(defaultField, field);
-    final ParserExtension extension = this.extensions.getExtension(splitExtensionField.cud);
+    final ParserExtension extension = this.extensions.getExtension(splitExtensionField.cud());
     if (extension != null) {
-      return extension.parse(new ExtensionQuery(this, splitExtensionField.cur, queryText));
+      return extension.parse(new ExtensionQuery(this, splitExtensionField.cur(), queryText));
     }
     return super.getFieldQuery(field, queryText, quoted);
   }

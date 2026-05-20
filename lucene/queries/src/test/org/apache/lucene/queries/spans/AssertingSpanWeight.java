@@ -23,8 +23,8 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.ScorerSupplier;
+import org.apache.lucene.search.similarities.Similarity.SimScorer;
 
 /** Wraps a SpanWeight with additional asserts */
 public class AssertingSpanWeight extends SpanWeight {
@@ -55,8 +55,8 @@ public class AssertingSpanWeight extends SpanWeight {
   }
 
   @Override
-  public LeafSimScorer getSimScorer(LeafReaderContext context) throws IOException {
-    return in.getSimScorer(context);
+  public SimScorer getSimScorer() {
+    return in.getSimScorer();
   }
 
   @Override

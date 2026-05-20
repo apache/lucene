@@ -19,11 +19,9 @@ package org.apache.lucene.demo.facet;
 import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestRangeFacetsExample extends LuceneTestCase {
 
-  @Test
   public void testSimple() throws Exception {
     RangeFacetsExample example = new RangeFacetsExample();
     example.index();
@@ -49,13 +47,12 @@ public class TestRangeFacetsExample extends LuceneTestCase {
     example.close();
   }
 
-  @Test
   @SuppressWarnings("unchecked")
   public void testDrillDown() throws Exception {
     RangeFacetsExample example = new RangeFacetsExample();
     example.index();
     TopDocs hits = example.drillDown(example.PAST_SIX_HOURS);
-    assertEquals(22, hits.totalHits.value);
+    assertEquals(22, hits.totalHits.value());
     example.close();
   }
 }

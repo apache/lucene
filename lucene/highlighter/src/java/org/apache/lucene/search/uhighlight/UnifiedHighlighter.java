@@ -62,7 +62,6 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InPlaceMergeSorter;
 
@@ -684,7 +683,7 @@ public class UnifiedHighlighter {
    *   <li>If there's a field info it has {@link
    *       IndexOptions#DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS} then {@link OffsetSource#POSTINGS}
    *       is returned.
-   *   <li>If there's a field info and {@link FieldInfo#hasVectors()} then {@link
+   *   <li>If there's a field info and {@link FieldInfo#hasTermVectors()} then {@link
    *       OffsetSource#TERM_VECTORS} is returned (note we can't check here if the TV has offsets;
    *       if there isn't then an exception will get thrown down the line).
    *   <li>Fall-back: {@link OffsetSource#ANALYSIS} is returned.
@@ -698,11 +697,11 @@ public class UnifiedHighlighter {
     FieldInfo fieldInfo = getFieldInfo(field);
     if (fieldInfo != null) {
       if (fieldInfo.getIndexOptions() == IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) {
-        return fieldInfo.hasVectors()
+        return fieldInfo.hasTermVectors()
             ? OffsetSource.POSTINGS_WITH_TERM_VECTORS
             : OffsetSource.POSTINGS;
       }
-      if (fieldInfo.hasVectors()) { // unfortunately we can't also check if the TV has offsets
+      if (fieldInfo.hasTermVectors()) { // unfortunately we can't also check if the TV has offsets
         return OffsetSource.TERM_VECTORS;
       }
     }
@@ -776,13 +775,13 @@ public class UnifiedHighlighter {
    *
    * <p>Conceptually, this behaves as a more efficient form of:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * Map m = new HashMap();
    * for (String field : fields) {
    * m.put(field, highlight(field, query, topDocs));
    * }
    * return m;
-   * </pre>
+   * </code></pre>
    *
    * @param fields field names to highlight. Must have a stored string value.
    * @param query query to highlight.
@@ -806,13 +805,13 @@ public class UnifiedHighlighter {
    *
    * <p>Conceptually, this behaves as a more efficient form of:
    *
-   * <pre class="prettyprint">
+   * <pre><code class="language-java">
    * Map m = new HashMap();
    * for (String field : fields) {
    * m.put(field, highlight(field, query, topDocs, maxPassages));
    * }
    * return m;
-   * </pre>
+   * </code></pre>
    *
    * @param fields field names to highlight. Must have a stored string value.
    * @param query query to highlight.
@@ -975,8 +974,8 @@ public class UnifiedHighlighter {
                   ? indexReaderWithTermVecCache
                   : searcher.getIndexReader();
           final LeafReader leafReader;
-          if (indexReader instanceof LeafReader) {
-            leafReader = (LeafReader) indexReader;
+          if (indexReader instanceof LeafReader lr) {
+            leafReader = lr;
           } else {
             List<LeafReaderContext> leaves = indexReader.leaves();
             LeafReaderContext leafReaderContext = leaves.get(ReaderUtil.subIndex(docId, leaves));
@@ -1001,7 +1000,7 @@ public class UnifiedHighlighter {
     //    caller simply iterates it to build another structure.
 
     // field -> object highlights parallel to docIdsIn
-    Map<String, Object[]> resultMap = CollectionUtil.newHashMap(fields.length);
+    Map<String, Object[]> resultMap = HashMap.newHashMap(fields.length);
     for (int f = 0; f < fields.length; f++) {
       resultMap.put(fields[f], highlightDocsInByField[f]);
     }
@@ -1214,7 +1213,7 @@ public class UnifiedHighlighter {
         filteredTerms.add(term.bytes());
       }
     }
-    return filteredTerms.toArray(new BytesRef[filteredTerms.size()]);
+    return filteredTerms.toArray(BytesRef[]::new);
   }
 
   protected PhraseHelper getPhraseHelper(
@@ -1252,19 +1251,17 @@ public class UnifiedHighlighter {
   }
 
   protected OffsetSource getOptimizedOffsetSource(UHComponents components) {
-    OffsetSource offsetSource = getOffsetSource(components.getField());
+    OffsetSource offsetSource = getOffsetSource(components.field());
 
     // null automata means unknown, so assume a possibility
     boolean mtqOrRewrite =
-        components.getAutomata() == null
-            || components.getAutomata().length > 0
-            || components.getPhraseHelper().willRewrite()
+        components.automata() == null
+            || components.automata().length > 0
+            || components.phraseHelper().willRewrite()
             || components.hasUnrecognizedQueryPart();
 
     // null terms means unknown, so assume something to highlight
-    if (mtqOrRewrite == false
-        && components.getTerms() != null
-        && components.getTerms().length == 0) {
+    if (mtqOrRewrite == false && components.terms() != null && components.terms().length == 0) {
       return OffsetSource.NONE_NEEDED; // nothing to highlight
     }
 
@@ -1295,9 +1292,9 @@ public class UnifiedHighlighter {
       OffsetSource offsetSource, UHComponents components) {
     switch (offsetSource) {
       case ANALYSIS:
-        if (!components.getPhraseHelper().hasPositionSensitivity()
-            && !components.getHighlightFlags().contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED)
-            && !components.getHighlightFlags().contains(HighlightFlag.WEIGHT_MATCHES)) {
+        if (!components.phraseHelper().hasPositionSensitivity()
+            && !components.highlightFlags().contains(HighlightFlag.PASSAGE_RELEVANCY_OVER_SPEED)
+            && !components.highlightFlags().contains(HighlightFlag.WEIGHT_MATCHES)) {
           // skip using a memory index since it's pure term filtering
           return new TokenStreamOffsetStrategy(components, getIndexAnalyzer());
         } else {
@@ -1455,8 +1452,8 @@ public class UnifiedHighlighter {
         return;
       }
       StringBuilder curValueBuilder;
-      if (curValue instanceof StringBuilder) {
-        curValueBuilder = (StringBuilder) curValue;
+      if (curValue instanceof StringBuilder sb) {
+        curValueBuilder = sb;
       } else {
         // upgrade String to StringBuilder. Choose a good initial size.
         curValueBuilder =

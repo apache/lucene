@@ -59,7 +59,7 @@ public class TestDocumentsWriterPerThreadPool extends LuceneTestCase {
       assertEquals(1, pool.size());
       pool.marksAsFreeAndUnlock(second);
       assertEquals(1, pool.size());
-      for (DocumentsWriterPerThread lastPerThead : pool.filterAndLock(x -> true)) {
+      for (DocumentsWriterPerThread lastPerThead : pool.filterAndLock(_ -> true)) {
         pool.checkout(lastPerThead);
         lastPerThead.unlock();
       }
@@ -93,9 +93,7 @@ public class TestDocumentsWriterPerThreadPool extends LuceneTestCase {
                   latch.countDown();
                   pool.getAndLock();
                   fail();
-                } catch (
-                    @SuppressWarnings("unused")
-                    AlreadyClosedException e) {
+                } catch (AlreadyClosedException _) {
                   // fine
                 }
               });
@@ -107,7 +105,7 @@ public class TestDocumentsWriterPerThreadPool extends LuceneTestCase {
       first.unlock();
       pool.close();
       pool.unlockNewWriters();
-      for (DocumentsWriterPerThread perThread : pool.filterAndLock(x -> true)) {
+      for (DocumentsWriterPerThread perThread : pool.filterAndLock(_ -> true)) {
         assertTrue(pool.checkout(perThread));
         perThread.unlock();
       }

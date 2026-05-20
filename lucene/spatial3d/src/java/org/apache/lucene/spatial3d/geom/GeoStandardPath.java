@@ -44,7 +44,7 @@ class GeoStandardPath extends GeoBasePath {
   protected final double cosAngle;
 
   /** The original list of path points */
-  protected final List<GeoPoint> points = new ArrayList<GeoPoint>();
+  protected final List<GeoPoint> points = new ArrayList<>();
 
   /** The b-tree of PathComponents */
   protected PathComponent rootComponent;
@@ -395,10 +395,9 @@ class GeoStandardPath extends GeoBasePath {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof GeoStandardPath)) {
+    if (!(o instanceof GeoStandardPath p)) {
       return false;
     }
-    GeoStandardPath p = (GeoStandardPath) o;
     if (!super.equals(p)) {
       return false;
     }
@@ -430,14 +429,7 @@ class GeoStandardPath extends GeoBasePath {
         + "}}";
   }
 
-  private static class DistancePair {
-    public final double pathCenterDistance;
-    public final double distanceAlongPath;
-
-    public DistancePair(final double pathCenterDistance, final double distanceAlongPath) {
-      this.pathCenterDistance = pathCenterDistance;
-      this.distanceAlongPath = distanceAlongPath;
-    }
+  private record DistancePair(double pathCenterDistance, double distanceAlongPath) {
 
     @Override
     public String toString() {
@@ -806,8 +798,8 @@ class GeoStandardPath extends GeoBasePath {
 
     @Override
     public void getBounds(final Bounds bounds) {
-      if (bounds instanceof XYZBounds) {
-        this.bounds.addBounds((XYZBounds) bounds);
+      if (bounds instanceof XYZBounds xyzBounds) {
+        this.bounds.addBounds(xyzBounds);
       } else {
         child1.getBounds(bounds);
         child2.getBounds(bounds);
@@ -978,10 +970,9 @@ class GeoStandardPath extends GeoBasePath {
 
     @Override
     public boolean equals(final Object o) {
-      if (!(o instanceof BaseSegmentEndpoint)) {
+      if (!(o instanceof BaseSegmentEndpoint other)) {
         return false;
       }
-      final BaseSegmentEndpoint other = (BaseSegmentEndpoint) o;
       return point.equals(other.point) && planetModel.equals(other.planetModel);
     }
 

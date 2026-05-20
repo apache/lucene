@@ -31,14 +31,12 @@ import org.apache.lucene.tests.util.LineFileDocs;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
-import org.junit.Test;
 
 public class TestRollingUpdates extends LuceneTestCase {
 
   // Just updates the same set of N docs over and over, to
   // stress out deletions
 
-  @Test
   public void testRollingUpdates() throws Exception {
     Random random = new Random(random().nextLong());
     final BaseDirectoryWrapper dir = newDirectory();
@@ -83,7 +81,7 @@ public class TestRollingUpdates extends LuceneTestCase {
       final boolean doUpdate;
       if (s != null && updateCount < SIZE) {
         TopDocs hits = s.search(new TermQuery(idTerm), 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
         doUpdate = w.tryDeleteDocument(r, hits.scoreDocs[0].doc) == -1;
         if (VERBOSE) {
           if (doUpdate) {

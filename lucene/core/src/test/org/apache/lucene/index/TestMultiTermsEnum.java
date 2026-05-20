@@ -75,7 +75,7 @@ public class TestMultiTermsEnum extends LuceneTestCase {
       }
 
       @Override
-      public Terms terms(String field) throws IOException {
+      public Terms terms(String field) {
         if ("deleted".equals(field)) {
           Terms deletedTerms = super.terms("deleted");
           if (deletedTerms != null) {
@@ -149,7 +149,7 @@ public class TestMultiTermsEnum extends LuceneTestCase {
         }
 
         @Override
-        public int getDocCount() throws IOException {
+        public int getDocCount() {
           throw new UnsupportedOperationException();
         }
 
@@ -188,7 +188,7 @@ public class TestMultiTermsEnum extends LuceneTestCase {
       @Override
       public Iterator<String> iterator() {
         final Iterator<FieldInfo> fieldInfoIterator = newFieldInfo.iterator();
-        return new Iterator<String>() {
+        return new Iterator<>() {
           @Override
           public boolean hasNext() {
             return fieldInfoIterator.hasNext();
@@ -212,7 +212,7 @@ public class TestMultiTermsEnum extends LuceneTestCase {
       }
 
       @Override
-      public Terms terms(String field) throws IOException {
+      public Terms terms(String field) {
         return delegate.terms(field);
       }
 

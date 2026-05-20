@@ -19,6 +19,8 @@ package org.apache.lucene.index;
 import static org.apache.lucene.util.VectorUtil.cosine;
 import static org.apache.lucene.util.VectorUtil.dotProduct;
 import static org.apache.lucene.util.VectorUtil.dotProductScore;
+import static org.apache.lucene.util.VectorUtil.normalizeDistanceToUnitInterval;
+import static org.apache.lucene.util.VectorUtil.normalizeToUnitInterval;
 import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
 import static org.apache.lucene.util.VectorUtil.squareDistance;
 
@@ -33,7 +35,7 @@ public enum VectorSimilarityFunction {
   EUCLIDEAN {
     @Override
     public float compare(float[] v1, float[] v2) {
-      return 1 / (1 + squareDistance(v1, v2));
+      return normalizeDistanceToUnitInterval(squareDistance(v1, v2));
     }
 
     @Override
@@ -52,7 +54,7 @@ public enum VectorSimilarityFunction {
   DOT_PRODUCT {
     @Override
     public float compare(float[] v1, float[] v2) {
-      return Math.max((1 + dotProduct(v1, v2)) / 2, 0);
+      return normalizeToUnitInterval(dotProduct(v1, v2));
     }
 
     @Override
@@ -66,14 +68,11 @@ public enum VectorSimilarityFunction {
    * vectors to unit length, and instead use {@link VectorSimilarityFunction#DOT_PRODUCT}. You
    * should only use this function if you need to preserve the original vectors and cannot normalize
    * them in advance. The similarity score is normalised to assure it is positive.
-   *
-   * @deprecated Use MAXIMUM_INNER_PRODUCT or DOT_PRODUCT instead
    */
-  @Deprecated
   COSINE {
     @Override
     public float compare(float[] v1, float[] v2) {
-      return Math.max((1 + cosine(v1, v2)) / 2, 0);
+      return normalizeToUnitInterval(cosine(v1, v2));
     }
 
     @Override

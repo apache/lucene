@@ -70,7 +70,7 @@ public class TestClassicSimilarity extends BaseSimilarityTestCase {
   public void testHit() throws IOException {
     Query query = new TermQuery(new Term("test", "hit"));
     TopDocs topDocs = indexSearcher.search(query, 1);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     assertEquals(1, topDocs.scoreDocs.length);
     assertTrue(topDocs.scoreDocs[0].score != 0);
   }
@@ -78,13 +78,13 @@ public class TestClassicSimilarity extends BaseSimilarityTestCase {
   public void testMiss() throws IOException {
     Query query = new TermQuery(new Term("test", "miss"));
     TopDocs topDocs = indexSearcher.search(query, 1);
-    assertEquals(0, topDocs.totalHits.value);
+    assertEquals(0, topDocs.totalHits.value());
   }
 
   public void testEmpty() throws IOException {
     Query query = new TermQuery(new Term("empty", "miss"));
     TopDocs topDocs = indexSearcher.search(query, 1);
-    assertEquals(0, topDocs.totalHits.value);
+    assertEquals(0, topDocs.totalHits.value());
   }
 
   public void testBQHit() throws IOException {
@@ -93,7 +93,7 @@ public class TestClassicSimilarity extends BaseSimilarityTestCase {
             .add(new TermQuery(new Term("test", "hit")), Occur.SHOULD)
             .build();
     TopDocs topDocs = indexSearcher.search(query, 1);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     assertEquals(1, topDocs.scoreDocs.length);
     assertTrue(topDocs.scoreDocs[0].score != 0);
   }
@@ -105,7 +105,7 @@ public class TestClassicSimilarity extends BaseSimilarityTestCase {
             .add(new TermQuery(new Term("test", "miss")), Occur.SHOULD)
             .build();
     TopDocs topDocs = indexSearcher.search(query, 1);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     assertEquals(1, topDocs.scoreDocs.length);
     assertTrue(topDocs.scoreDocs[0].score != 0);
   }
@@ -117,7 +117,7 @@ public class TestClassicSimilarity extends BaseSimilarityTestCase {
             .add(new TermQuery(new Term("empty", "miss")), Occur.SHOULD)
             .build();
     TopDocs topDocs = indexSearcher.search(query, 1);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     assertEquals(1, topDocs.scoreDocs.length);
     assertTrue(topDocs.scoreDocs[0].score != 0);
   }
@@ -125,7 +125,7 @@ public class TestClassicSimilarity extends BaseSimilarityTestCase {
   public void testDMQHit() throws IOException {
     Query query = new DisjunctionMaxQuery(Arrays.asList(new TermQuery(new Term("test", "hit"))), 0);
     TopDocs topDocs = indexSearcher.search(query, 1);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     assertEquals(1, topDocs.scoreDocs.length);
     assertTrue(topDocs.scoreDocs[0].score != 0);
   }
@@ -137,7 +137,7 @@ public class TestClassicSimilarity extends BaseSimilarityTestCase {
                 new TermQuery(new Term("test", "hit")), new TermQuery(new Term("test", "miss"))),
             0);
     TopDocs topDocs = indexSearcher.search(query, 1);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     assertEquals(1, topDocs.scoreDocs.length);
     assertTrue(topDocs.scoreDocs[0].score != 0);
   }
@@ -149,7 +149,7 @@ public class TestClassicSimilarity extends BaseSimilarityTestCase {
                 new TermQuery(new Term("test", "hit")), new TermQuery(new Term("empty", "miss"))),
             0);
     TopDocs topDocs = indexSearcher.search(query, 1);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
     assertEquals(1, topDocs.scoreDocs.length);
     assertTrue(topDocs.scoreDocs[0].score != 0);
   }
@@ -157,7 +157,7 @@ public class TestClassicSimilarity extends BaseSimilarityTestCase {
   public void testSaneNormValues() throws IOException {
     ClassicSimilarity sim = new ClassicSimilarity();
     TFIDFSimilarity.TFIDFScorer stats =
-        (TFIDFSimilarity.TFIDFScorer) sim.scorer(1f, indexSearcher.collectionStatistics("test"));
+        (TFIDFSimilarity.TFIDFScorer) sim.scorer(1f, indexSearcher.fieldStats("test"));
     for (int i = 0; i < 256; i++) {
       float boost = stats.normTable[i];
       assertFalse("negative boost: " + boost + ", byte=" + i, boost < 0.0f);

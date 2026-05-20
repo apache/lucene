@@ -32,7 +32,6 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.IOUtils;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.Test;
 
 public class TestFacetQuery extends FacetTestCase {
 
@@ -92,19 +91,17 @@ public class TestFacetQuery extends FacetTestCase {
     config = null;
   }
 
-  @Test
   public void testSingleValued() throws Exception {
     TopDocs topDocs = searcher.search(new FacetQuery("Author", "Mark Twain"), 10);
-    assertEquals(1, topDocs.totalHits.value);
+    assertEquals(1, topDocs.totalHits.value());
   }
 
-  @Test
   public void testMultiValued() throws Exception {
     TopDocs topDocs =
         searcher.search(
             new MultiFacetQuery(
                 "Author", new String[] {"Mark Twain"}, new String[] {"Kurt Vonnegut"}),
             10);
-    assertEquals(2, topDocs.totalHits.value);
+    assertEquals(2, topDocs.totalHits.value());
   }
 }

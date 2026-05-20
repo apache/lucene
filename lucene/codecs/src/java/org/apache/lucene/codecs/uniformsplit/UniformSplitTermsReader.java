@@ -107,7 +107,6 @@ public class UniformSplitTermsReader extends FieldsProducer {
       throws IOException {
     IndexInput dictionaryInput = null;
     IndexInput blockInput = null;
-    boolean success = false;
     try {
       this.postingsReader = postingsReader;
       String segmentName = state.segmentInfo.name;
@@ -165,12 +164,9 @@ public class UniformSplitTermsReader extends FieldsProducer {
       List<String> fieldNames = new ArrayList<>(fieldToTermsMap.keySet());
       Collections.sort(fieldNames);
       sortedFieldNames = Collections.unmodifiableList(fieldNames);
-
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(blockInput, dictionaryInput);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, blockInput, dictionaryInput);
+      throw t;
     }
   }
 

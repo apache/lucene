@@ -267,7 +267,7 @@ public class ComplexPhraseQueryParser extends QueryParser {
       // clauses can be complex
       // Booleans e.g. nots and ors etc
       int numNegatives = 0;
-      if (!(contents instanceof BooleanQuery)) {
+      if (!(contents instanceof BooleanQuery bq)) {
         throw new IllegalArgumentException(
             "Unknown query type \""
                 + contents.getClass().getName()
@@ -275,7 +275,6 @@ public class ComplexPhraseQueryParser extends QueryParser {
                 + phrasedQueryStringContents
                 + "\"");
       }
-      BooleanQuery bq = (BooleanQuery) contents;
       SpanQuery[] allSpanClauses = new SpanQuery[bq.clauses().size()];
       // For all clauses e.g. one* two~
       int i = 0;
@@ -288,15 +287,15 @@ public class ComplexPhraseQueryParser extends QueryParser {
           numNegatives++;
         }
 
-        while (qc instanceof BoostQuery) {
-          qc = ((BoostQuery) qc).getQuery();
+        while (qc instanceof BoostQuery boostQuery) {
+          qc = boostQuery.getQuery();
         }
 
         if (qc instanceof BooleanQuery || qc instanceof SynonymQuery) {
           ArrayList<SpanQuery> sc = new ArrayList<>();
-          BooleanQuery booleanCaluse =
-              qc instanceof BooleanQuery ? (BooleanQuery) qc : convert((SynonymQuery) qc);
-          addComplexPhraseClause(sc, booleanCaluse);
+          BooleanQuery booleanClause =
+              qc instanceof BooleanQuery booleanQuery ? booleanQuery : convert((SynonymQuery) qc);
+          addComplexPhraseClause(sc, booleanClause);
           if (sc.size() > 0) {
             allSpanClauses[i] = sc.get(0);
           } else {
@@ -315,8 +314,7 @@ public class ComplexPhraseQueryParser extends QueryParser {
               new SpanTermQuery(
                   new Term(field, "Dummy clause because no terms found - must match nothing"));
         } else {
-          if (qc instanceof TermQuery) {
-            TermQuery tq = (TermQuery) qc;
+          if (qc instanceof TermQuery tq) {
             allSpanClauses[i] = new SpanTermQuery(tq.getTerm());
           } else {
             throw new IllegalArgumentException(
@@ -346,7 +344,7 @@ public class ComplexPhraseQueryParser extends QueryParser {
         i += 1;
       }
 
-      SpanQuery[] includeClauses = positiveClauses.toArray(new SpanQuery[positiveClauses.size()]);
+      SpanQuery[] includeClauses = positiveClauses.toArray(SpanQuery[]::new);
 
       SpanQuery include = null;
       if (includeClauses.length == 1) {
@@ -389,12 +387,10 @@ public class ComplexPhraseQueryParser extends QueryParser {
           chosenList = nots;
         }
 
-        if (childQuery instanceof TermQuery) {
-          TermQuery tq = (TermQuery) childQuery;
+        if (childQuery instanceof TermQuery tq) {
           SpanQuery stq = new SpanTermQuery(tq.getTerm());
           chosenList.add(stq);
-        } else if (childQuery instanceof BooleanQuery) {
-          BooleanQuery cbq = (BooleanQuery) childQuery;
+        } else if (childQuery instanceof BooleanQuery cbq) {
           addComplexPhraseClause(chosenList, cbq);
         } else if (childQuery instanceof MatchNoDocsQuery) {
           // Insert fake term e.g. phrase query was for "Fred Smithe*" and
@@ -413,11 +409,11 @@ public class ComplexPhraseQueryParser extends QueryParser {
       if (ors.size() == 0) {
         return;
       }
-      SpanOrQuery soq = new SpanOrQuery(ors.toArray(new SpanQuery[ors.size()]));
+      SpanOrQuery soq = new SpanOrQuery(ors.toArray(SpanQuery[]::new));
       if (nots.size() == 0) {
         spanClauses.add(soq);
       } else {
-        SpanOrQuery snqs = new SpanOrQuery(nots.toArray(new SpanQuery[nots.size()]));
+        SpanOrQuery snqs = new SpanOrQuery(nots.toArray(SpanQuery[]::new));
         SpanNotQuery snq = new SpanNotQuery(soq, snqs);
         spanClauses.add(snq);
       }

@@ -388,26 +388,12 @@ public class TestDocumentWriter extends LuceneTestCase {
                 field, new float[] {1, 2, 3, 4}, VectorSimilarityFunction.EUCLIDEAN));
   }
 
-  private static class MockIndexableField implements IndexableField {
-
-    private final String field;
-    private final BytesRef value;
-    private final IndexableFieldType fieldType;
-
-    MockIndexableField(String field, BytesRef value, IndexableFieldType fieldType) {
-      this.field = field;
-      this.value = value;
-      this.fieldType = fieldType;
-    }
+  private record MockIndexableField(String field, BytesRef value, IndexableFieldType fieldType)
+      implements IndexableField {
 
     @Override
     public String name() {
       return field;
-    }
-
-    @Override
-    public IndexableFieldType fieldType() {
-      return fieldType;
     }
 
     @Override
@@ -570,7 +556,7 @@ public class TestDocumentWriter extends LuceneTestCase {
         {
           Terms terms = leafReader.terms("field");
           assertEquals(1, terms.getSumDocFreq());
-          if (ft.indexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0) {
+          if (ft.indexOptions().subsumes(IndexOptions.DOCS_AND_FREQS)) {
             assertEquals(2, terms.getSumTotalTermFreq());
           } else {
             assertEquals(1, terms.getSumTotalTermFreq());
@@ -579,7 +565,7 @@ public class TestDocumentWriter extends LuceneTestCase {
           assertTrue(termsEnum.seekExact(new BytesRef("a")));
           PostingsEnum pe = termsEnum.postings(null, PostingsEnum.ALL);
           assertEquals(0, pe.nextDoc());
-          if (ft.indexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0) {
+          if (ft.indexOptions().subsumes(IndexOptions.DOCS_AND_FREQS)) {
             assertEquals(2, pe.freq());
           } else {
             assertEquals(1, pe.freq());

@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.analysis.tokenattributes;
 
+import java.util.Objects;
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 
@@ -194,13 +195,12 @@ public class PackedTokenAttributeImpl extends CharTermAttributeImpl
   public boolean equals(Object obj) {
     if (obj == this) return true;
 
-    if (obj instanceof PackedTokenAttributeImpl) {
-      final PackedTokenAttributeImpl other = (PackedTokenAttributeImpl) obj;
+    if (obj instanceof PackedTokenAttributeImpl other) {
       return (startOffset == other.startOffset
           && endOffset == other.endOffset
           && positionIncrement == other.positionIncrement
           && positionLength == other.positionLength
-          && (type == null ? other.type == null : type.equals(other.type))
+          && Objects.equals(type, other.type)
           && termFrequency == other.termFrequency
           && super.equals(obj));
     } else {
@@ -222,8 +222,7 @@ public class PackedTokenAttributeImpl extends CharTermAttributeImpl
 
   @Override
   public void copyTo(AttributeImpl target) {
-    if (target instanceof PackedTokenAttributeImpl) {
-      final PackedTokenAttributeImpl to = (PackedTokenAttributeImpl) target;
+    if (target instanceof PackedTokenAttributeImpl to) {
       to.copyBuffer(buffer(), 0, length());
       to.positionIncrement = positionIncrement;
       to.positionLength = positionLength;

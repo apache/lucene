@@ -18,6 +18,7 @@ package org.apache.lucene.benchmark.quality.utils;
 
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.Comparator;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiTerms;
@@ -99,7 +100,8 @@ public class QualityQueriesFinder {
   }
 
   private String[] bestTerms(String field, int numTerms) throws IOException {
-    PriorityQueue<TermDf> pq = new TermsDfQueue(numTerms);
+    PriorityQueue<TermDf> pq =
+        PriorityQueue.usingComparator(numTerms, Comparator.comparingInt(tdf -> tdf.df));
     IndexReader ir = DirectoryReader.open(dir);
     try {
       int threshold = ir.maxDoc() / 10; // ignore words too common.
@@ -134,17 +136,6 @@ public class QualityQueriesFinder {
     TermDf(String word, int freq) {
       this.word = word;
       this.df = freq;
-    }
-  }
-
-  private static class TermsDfQueue extends PriorityQueue<TermDf> {
-    TermsDfQueue(int maxSize) {
-      super(maxSize);
-    }
-
-    @Override
-    protected boolean lessThan(TermDf tf1, TermDf tf2) {
-      return tf1.df < tf2.df;
     }
   }
 }

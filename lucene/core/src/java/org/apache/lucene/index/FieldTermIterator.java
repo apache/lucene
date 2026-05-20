@@ -29,9 +29,4 @@ abstract class FieldTermIterator implements BytesRefIterator {
    * may use == to detect a change in field.
    */
   abstract String field();
-
-  /** Del gen of the current term. */
-  // TODO: this is really per-iterator not per term, but when we use MergedPrefixCodedTermsIterator
-  // we need to know which iterator we are on
-  abstract long delGen();
 }

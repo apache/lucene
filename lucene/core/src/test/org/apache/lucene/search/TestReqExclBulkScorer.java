@@ -103,7 +103,9 @@ public class TestReqExclBulkScorer extends LuceneTestCase {
               actualMatches.set(doc);
             }
           },
-          null);
+          null,
+          0,
+          DocIdSetIterator.NO_MORE_DOCS);
     } else {
       int next = 0;
       while (next < maxDoc) {

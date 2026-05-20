@@ -391,9 +391,7 @@ public class CheckHits {
     // TODO: clean this up if we use junit 5 (the assert message is costly)
     try {
       assertEquals(score, value, 0d);
-    } catch (
-        @SuppressWarnings("unused")
-        Exception e) {
+    } catch (Exception _) {
       fail(
           q
               + ": score(doc="
@@ -450,9 +448,7 @@ public class CheckHits {
               if (descr.substring(k2).trim().equals("times others of:")) {
                 maxTimesOthers = true;
               }
-            } catch (
-                @SuppressWarnings("unused")
-                NumberFormatException e) {
+            } catch (NumberFormatException _) {
             }
           }
         }
@@ -502,9 +498,7 @@ public class CheckHits {
         // TODO: clean this up if we use junit 5 (the assert message is costly)
         try {
           assertEquals(combined, value, maxError);
-        } catch (
-            @SuppressWarnings("unused")
-            Exception e) {
+        } catch (Exception _) {
           fail(
               q
                   + ": actual subDetails combined=="
@@ -554,9 +548,9 @@ public class CheckHits {
     }
 
     @Override
-    public void search(Query query, Collector results) throws IOException {
+    public void search(Query query, Collector collector) throws IOException {
       checkExplanations(query);
-      super.search(query, results);
+      super.search(query, collector);
     }
 
     @Override
@@ -654,6 +648,10 @@ public class CheckHits {
     private final Weight weight;
     private LeafReaderContext context;
     int lastCheckedDoc = -1;
+    // with intra-segment concurrency, we may start from a doc id that isn't -1. We need to make
+    // sure that we don't go outside of the bounds of the current slice, meaning -1 can't be
+    // reliably used to signal that we are collecting the first doc for a given segment partition.
+    boolean collectedOnce = false;
 
     public MatchesAsserter(Query query, IndexSearcher searcher) throws IOException {
       this.weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1);
@@ -671,7 +669,7 @@ public class CheckHits {
       assertNotNull(
           "Unexpected null Matches object in doc" + doc + " for query " + this.weight.getQuery(),
           matches);
-      if (lastCheckedDoc != doc - 1) {
+      if (collectedOnce && lastCheckedDoc != doc - 1) {
         assertNull(
             "Unexpected non-null Matches object in non-matching doc"
                 + doc
@@ -679,6 +677,7 @@ public class CheckHits {
                 + this.weight.getQuery(),
             this.weight.matches(context, doc - 1));
       }
+      collectedOnce = true;
       lastCheckedDoc = doc;
     }
 
@@ -700,12 +699,10 @@ public class CheckHits {
 
   private static void doCheckTopScores(Query query, IndexSearcher searcher, int numHits)
       throws IOException {
-    boolean supportsConcurrency = searcher.getSlices().length > 1;
     TopScoreDocCollectorManager complete =
-        new TopScoreDocCollectorManager(
-            numHits, null, Integer.MAX_VALUE, supportsConcurrency); // COMPLETE
+        new TopScoreDocCollectorManager(numHits, null, Integer.MAX_VALUE); // COMPLETE
     TopScoreDocCollectorManager topScores =
-        new TopScoreDocCollectorManager(numHits, null, 1, supportsConcurrency); // TOP_SCORES
+        new TopScoreDocCollectorManager(numHits, null, 1); // TOP_SCORES
     TopDocs completeTopDocs = searcher.search(query, complete);
     TopDocs topScoresTopDocs = searcher.search(query, topScores);
     checkEqual(query, completeTopDocs.scoreDocs, topScoresTopDocs.scoreDocs);

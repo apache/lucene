@@ -26,12 +26,12 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.SuppressForbidden;
 import org.apache.lucene.util.ThreadInterruptedException;
-import org.junit.Test;
 
 //
 // This was developed for Lucene In Action,
@@ -97,7 +97,6 @@ public class TestSnapshotDeletionPolicy extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testSnapshotDeletionPolicy() throws Exception {
     Directory fsDir = newDirectory();
     runTest(random(), fsDir);
@@ -230,7 +229,7 @@ public class TestSnapshotDeletionPolicy extends LuceneTestCase {
 
   @SuppressForbidden(reason = "Thread sleep")
   private void readFile(Directory dir, String name) throws Exception {
-    IndexInput input = dir.openInput(name, newIOContext(random()));
+    IndexInput input = dir.openInput(name, IOContext.READONCE);
     try {
       long size = dir.fileLength(name);
       long bytesLeft = size;
@@ -252,7 +251,6 @@ public class TestSnapshotDeletionPolicy extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testBasicSnapshots() throws Exception {
     int numSnapshots = 3;
 
@@ -280,7 +278,6 @@ public class TestSnapshotDeletionPolicy extends LuceneTestCase {
     dir.close();
   }
 
-  @Test
   public void testMultiThreadedSnapshotting() throws Exception {
     Directory dir = newDirectory();
 
@@ -333,7 +330,6 @@ public class TestSnapshotDeletionPolicy extends LuceneTestCase {
     dir.close();
   }
 
-  @Test
   public void testRollbackToOldSnapshot() throws Exception {
     int numSnapshots = 2;
     Directory dir = newDirectory();
@@ -360,7 +356,6 @@ public class TestSnapshotDeletionPolicy extends LuceneTestCase {
     dir.close();
   }
 
-  @Test
   public void testReleaseSnapshot() throws Exception {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, getConfig(random(), getDeletionPolicy()));
@@ -384,7 +379,6 @@ public class TestSnapshotDeletionPolicy extends LuceneTestCase {
     dir.close();
   }
 
-  @Test
   public void testSnapshotLastCommitTwice() throws Exception {
     Directory dir = newDirectory();
 
@@ -411,7 +405,6 @@ public class TestSnapshotDeletionPolicy extends LuceneTestCase {
     dir.close();
   }
 
-  @Test
   public void testMissingCommits() throws Exception {
     // Tests the behavior of SDP when commits that are given at ctor are missing
     // on onInit().

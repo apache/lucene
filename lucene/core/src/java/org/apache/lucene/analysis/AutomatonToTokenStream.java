@@ -18,8 +18,9 @@
 package org.apache.lucene.analysis;
 
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.LinkedList;
+import java.util.Deque;
 import java.util.List;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute;
@@ -61,10 +62,10 @@ public class AutomatonToTokenStream {
       throw new IllegalArgumentException("Start node has incoming edges, creating cycle");
     }
 
-    LinkedList<RemapNode> noIncomingEdges = new LinkedList<>();
+    Deque<RemapNode> noIncomingEdges = new ArrayDeque<>();
     IntIntHashMap idToPos = new IntIntHashMap();
     noIncomingEdges.addLast(new RemapNode(0, 0));
-    while (noIncomingEdges.isEmpty() == false) {
+    while (!noIncomingEdges.isEmpty()) {
       RemapNode currState = noIncomingEdges.removeFirst();
       for (int i = 0; i < transitions[currState.id].length; i++) {
         indegree[transitions[currState.id][i].dest] -= 1;
@@ -170,24 +171,8 @@ public class AutomatonToTokenStream {
   }
 
   /** Edge between position nodes. These edges will be output as tokens in the TokenStream */
-  private static class EdgeToken {
-    public final int destination;
-    public final int value;
-
-    public EdgeToken(int destination, int value) {
-      this.destination = destination;
-      this.value = value;
-    }
-  }
+  private record EdgeToken(int destination, int value) {}
 
   /** Node that contains original node id and position in TokenStream */
-  private static class RemapNode {
-    public final int id;
-    public final int pos;
-
-    public RemapNode(int id, int pos) {
-      this.id = id;
-      this.pos = pos;
-    }
-  }
+  private record RemapNode(int id, int pos) {}
 }

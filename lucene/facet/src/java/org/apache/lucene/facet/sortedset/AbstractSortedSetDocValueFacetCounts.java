@@ -40,20 +40,6 @@ import org.apache.lucene.util.PriorityQueue;
 /** Base class for SSDV faceting implementations. */
 abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
 
-  private static final Comparator<FacetResult> FACET_RESULT_COMPARATOR =
-      new Comparator<>() {
-        @Override
-        public int compare(FacetResult a, FacetResult b) {
-          if (a.value.intValue() > b.value.intValue()) {
-            return -1;
-          } else if (b.value.intValue() > a.value.intValue()) {
-            return 1;
-          } else {
-            return a.dim.compareTo(b.dim);
-          }
-        }
-      };
-
   final SortedSetDocValuesReaderState state;
   final FacetsConfig stateConfig;
   final SortedSetDocValues dv;
@@ -105,7 +91,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     pathCount = adjustPathCountIfNecessary(dimConfig, iterationCursor.pathOrd, pathCount);
 
     return new FacetResult(
-        dim, path, pathCount, labelValues.toArray(new LabelAndValue[0]), labelValues.size());
+        dim, path, pathCount, labelValues.toArray(LabelAndValue[]::new), labelValues.size());
   }
 
   @Override
@@ -140,7 +126,16 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     }
 
     // Sort by highest count:
-    results.sort(FACET_RESULT_COMPARATOR);
+    results.sort(
+        (a, b) -> {
+          if (a.value.intValue() > b.value.intValue()) {
+            return -1;
+          } else if (b.value.intValue() > a.value.intValue()) {
+            return 1;
+          } else {
+            return a.dim.compareTo(b.dim);
+          }
+        });
     return results;
   }
 
@@ -156,18 +151,10 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     // Creates priority queue to store top dimensions and sort by their aggregated values/hits and
     // string values.
     PriorityQueue<DimValue> pq =
-        new PriorityQueue<>(topNDims) {
-          @Override
-          protected boolean lessThan(DimValue a, DimValue b) {
-            if (a.value > b.value) {
-              return false;
-            } else if (a.value < b.value) {
-              return true;
-            } else {
-              return a.dim.compareTo(b.dim) > 0;
-            }
-          }
-        };
+        PriorityQueue.usingComparator(
+            topNDims,
+            Comparator.<DimValue>comparingInt(dv -> dv.value)
+                .thenComparing(dv -> dv.dim, Comparator.reverseOrder()));
 
     // Keep track of intermediate results, if we compute them, so we can reuse them later:
     Map<String, TopChildrenForPath> intermediateResults = null;
@@ -183,7 +170,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
         dimCount = getCount(dimOrd);
       } else {
         OrdRange ordRange = state.getOrdRange(dim);
-        int dimOrd = ordRange.start;
+        int dimOrd = ordRange.start();
         if (dimConfig.multiValued) {
           if (dimConfig.requireDimCount) {
             // If a dim is configured as multi-valued and requires dim count, we index dim counts
@@ -284,7 +271,7 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
         // means dimension was never indexed
         return null;
       }
-      pathOrd = ordRange.start;
+      pathOrd = ordRange.start();
       childIterator = ordRange.iterator();
       if (dimConfig.multiValued && dimConfig.requireDimCount) {
         // If the dim is multi-valued and requires dim counts, we know we've explicitly indexed
@@ -322,8 +309,6 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
   private TopChildrenForPath computeTopChildren(
       PrimitiveIterator.OfInt childOrds, int topN, DimConfig dimConfig, int pathOrd) {
     TopOrdAndIntQueue q = null;
-    int bottomCount = 0;
-    int bottomOrd = Integer.MAX_VALUE;
     int pathCount = 0;
     int childCount = 0;
 
@@ -334,23 +319,17 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
       if (count > 0) {
         pathCount += count;
         childCount++;
-        if (count > bottomCount || (count == bottomCount && ord < bottomOrd)) {
-          if (q == null) {
-            // Lazy init, so we don't create this for the
-            // sparse case unnecessarily
-            q = new TopOrdAndIntQueue(topN);
-          }
-          if (reuse == null) {
-            reuse = (TopOrdAndIntQueue.OrdAndInt) q.newOrdAndValue();
-          }
-          reuse.ord = ord;
-          reuse.value = count;
-          reuse = (TopOrdAndIntQueue.OrdAndInt) q.insertWithOverflow(reuse);
-          if (q.size() == topN) {
-            bottomCount = ((TopOrdAndIntQueue.OrdAndInt) q.top()).value;
-            bottomOrd = q.top().ord;
-          }
+        if (q == null) {
+          // Lazy init, so we don't create this for the
+          // sparse case unnecessarily
+          q = new TopOrdAndIntQueue(topN);
         }
+        if (reuse == null) {
+          reuse = (TopOrdAndIntQueue.OrdAndInt) q.newOrdAndValue();
+        }
+        reuse.ord = ord;
+        reuse.value = count;
+        reuse = (TopOrdAndIntQueue.OrdAndInt) q.insertWithOverflow(reuse);
       }
     }
 
@@ -420,13 +399,5 @@ abstract class AbstractSortedSetDocValueFacetCounts extends Facets {
     }
   }
 
-  static final class ChildIterationCursor {
-    final int pathOrd;
-    final PrimitiveIterator.OfInt childIterator;
-
-    ChildIterationCursor(int pathOrd, PrimitiveIterator.OfInt childIterator) {
-      this.pathOrd = pathOrd;
-      this.childIterator = childIterator;
-    }
-  }
+  record ChildIterationCursor(int pathOrd, PrimitiveIterator.OfInt childIterator) {}
 }

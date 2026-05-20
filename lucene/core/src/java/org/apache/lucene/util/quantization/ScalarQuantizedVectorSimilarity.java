@@ -40,10 +40,14 @@ public interface ScalarQuantizedVectorSimilarity {
       VectorSimilarityFunction sim, float constMultiplier, byte bits) {
     return switch (sim) {
       case EUCLIDEAN -> new Euclidean(constMultiplier);
-      case COSINE, DOT_PRODUCT -> new DotProduct(
-          constMultiplier, bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::dotProduct);
-      case MAXIMUM_INNER_PRODUCT -> new MaximumInnerProduct(
-          constMultiplier, bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::dotProduct);
+      case COSINE, DOT_PRODUCT ->
+          new DotProduct(
+              constMultiplier,
+              bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::uint8DotProduct);
+      case MAXIMUM_INNER_PRODUCT ->
+          new MaximumInnerProduct(
+              constMultiplier,
+              bits <= 4 ? VectorUtil::int4DotProduct : VectorUtil::uint8DotProduct);
     };
   }
 
@@ -60,7 +64,7 @@ public interface ScalarQuantizedVectorSimilarity {
     @Override
     public float score(
         byte[] queryVector, float queryVectorOffset, byte[] storedVector, float vectorOffset) {
-      int squareDistance = VectorUtil.squareDistance(storedVector, queryVector);
+      int squareDistance = VectorUtil.uint8SquareDistance(storedVector, queryVector);
       float adjustedDistance = squareDistance * constMultiplier;
       return 1 / (1f + adjustedDistance);
     }

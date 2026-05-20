@@ -74,7 +74,7 @@ public class ParallelMatcher<T extends QueryMatch> extends CandidateMatcher<T> {
   }
 
   @Override
-  protected void matchQuery(String queryId, Query matchQuery, Map<String, String> metadata)
+  public void matchQuery(String queryId, Query matchQuery, Map<String, String> metadata)
       throws IOException {
     try {
       queue.put(new MatcherTask(queryId, matchQuery, metadata));
@@ -138,35 +138,15 @@ public class ParallelMatcher<T extends QueryMatch> extends CandidateMatcher<T> {
     }
   }
 
-  private static class MatcherTask {
-
-    final String id;
-    final Query matchQuery;
-    final Map<String, String> metadata;
-
-    private MatcherTask(String id, Query matchQuery, Map<String, String> metadata) {
-      this.id = id;
-      this.matchQuery = matchQuery;
-      this.metadata = metadata;
-    }
-  }
+  private record MatcherTask(String id, Query matchQuery, Map<String, String> metadata) {}
 
   /* Marker object placed on the queue after all matches are done, to indicate to the
   worker threads that they should finish */
   private static final MatcherTask END = new MatcherTask("", null, Collections.emptyMap());
 
-  private static class ParallelMatcherFactory<T extends QueryMatch> implements MatcherFactory<T> {
-
-    private final ExecutorService executor;
-    private final MatcherFactory<T> matcherFactory;
-    private final int threads;
-
-    ParallelMatcherFactory(
-        ExecutorService executor, MatcherFactory<T> matcherFactory, int threads) {
-      this.executor = executor;
-      this.matcherFactory = matcherFactory;
-      this.threads = threads;
-    }
+  private record ParallelMatcherFactory<T extends QueryMatch>(
+      ExecutorService executor, MatcherFactory<T> matcherFactory, int threads)
+      implements MatcherFactory<T> {
 
     @Override
     public ParallelMatcher<T> createMatcher(IndexSearcher searcher) {

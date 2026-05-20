@@ -37,9 +37,9 @@ public interface QueryTimeListener {
       MatcherFactory<T> factory, QueryTimeListener listener) {
     return searcher -> {
       CandidateMatcher<T> matcher = factory.createMatcher(searcher);
-      return new CandidateMatcher<T>(searcher) {
+      return new CandidateMatcher<>(searcher) {
         @Override
-        protected void matchQuery(String queryId, Query matchQuery, Map<String, String> metadata)
+        public void matchQuery(String queryId, Query matchQuery, Map<String, String> metadata)
             throws IOException {
           long t = System.nanoTime();
           matcher.matchQuery(queryId, matchQuery, metadata);

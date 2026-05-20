@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.compound;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.logging.Logger;
 import org.apache.lucene.analysis.CharArraySet;
 import org.apache.lucene.analysis.TokenFilterFactory;
 import org.apache.lucene.analysis.TokenStream;
@@ -27,20 +28,23 @@ import org.apache.lucene.util.ResourceLoaderAware;
 /**
  * Factory for {@link DictionaryCompoundWordTokenFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_dictcomp" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
  *     &lt;filter class="solr.DictionaryCompoundWordTokenFilterFactory" dictionary="dictionary.txt"
  *         minWordSize="5" minSubwordSize="2" maxSubwordSize="15" onlyLongestMatch="true"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @since 3.1
  * @lucene.spi {@value #NAME}
  */
 public class DictionaryCompoundWordTokenFilterFactory extends TokenFilterFactory
     implements ResourceLoaderAware {
+
+  private static final Logger LOG =
+      Logger.getLogger(DictionaryCompoundWordTokenFilterFactory.class.getName());
 
   /** SPI name */
   public static final String NAME = "dictionaryCompoundWord";
@@ -50,7 +54,7 @@ public class DictionaryCompoundWordTokenFilterFactory extends TokenFilterFactory
   private final int minWordSize;
   private final int minSubwordSize;
   private final int maxSubwordSize;
-  private final boolean onlyLongestMatch;
+  private final boolean onlyLongestMatchIgnoreSubwords;
 
   /** Creates a new DictionaryCompoundWordTokenFilterFactory */
   public DictionaryCompoundWordTokenFilterFactory(Map<String, String> args) {
@@ -61,7 +65,14 @@ public class DictionaryCompoundWordTokenFilterFactory extends TokenFilterFactory
         getInt(args, "minSubwordSize", CompoundWordTokenFilterBase.DEFAULT_MIN_SUBWORD_SIZE);
     maxSubwordSize =
         getInt(args, "maxSubwordSize", CompoundWordTokenFilterBase.DEFAULT_MAX_SUBWORD_SIZE);
-    onlyLongestMatch = getBoolean(args, "onlyLongestMatch", true);
+
+    boolean onlyLongestMatch = getBoolean(args, "onlyLongestMatch", true);
+    if (onlyLongestMatch)
+      LOG.warning(
+          "onlyLongestMatch has been removed and replaced by onlyLongestMatchIgnoreSubwords");
+
+    onlyLongestMatchIgnoreSubwords = getBoolean(args, "onlyLongestMatchIgnoreSubwords", true);
+
     if (!args.isEmpty()) {
       throw new IllegalArgumentException("Unknown parameters: " + args);
     }
@@ -84,6 +95,11 @@ public class DictionaryCompoundWordTokenFilterFactory extends TokenFilterFactory
       return input;
     }
     return new DictionaryCompoundWordTokenFilter(
-        input, dictionary, minWordSize, minSubwordSize, maxSubwordSize, onlyLongestMatch);
+        input,
+        dictionary,
+        minWordSize,
+        minSubwordSize,
+        maxSubwordSize,
+        onlyLongestMatchIgnoreSubwords);
   }
 }

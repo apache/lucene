@@ -25,7 +25,7 @@ import org.apache.lucene.util.Version;
 public class TestAnalysisSPILoader extends LuceneTestCase {
 
   private Map<String, String> versionArgOnly() {
-    return new HashMap<String, String>() {
+    return new HashMap<>() {
       {
         put("luceneMatchVersion", Version.LATEST.toString());
       }
@@ -48,13 +48,13 @@ public class TestAnalysisSPILoader extends LuceneTestCase {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          TokenizerFactory.forName("sdfsdfsdfdsfsdfsdf", new HashMap<String, String>());
+          TokenizerFactory.forName("sdfsdfsdfdsfsdfsdf", new HashMap<>());
         });
 
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          TokenizerFactory.forName("!(**#$U*#$*", new HashMap<String, String>());
+          TokenizerFactory.forName("!(**#$U*#$*", new HashMap<>());
         });
   }
 
@@ -98,13 +98,13 @@ public class TestAnalysisSPILoader extends LuceneTestCase {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          TokenFilterFactory.forName("sdfsdfsdfdsfsdfsdf", new HashMap<String, String>());
+          TokenFilterFactory.forName("sdfsdfsdfdsfsdfsdf", new HashMap<>());
         });
 
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          TokenFilterFactory.forName("!(**#$U*#$*", new HashMap<String, String>());
+          TokenFilterFactory.forName("!(**#$U*#$*", new HashMap<>());
         });
   }
 
@@ -148,13 +148,13 @@ public class TestAnalysisSPILoader extends LuceneTestCase {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          CharFilterFactory.forName("sdfsdfsdfdsfsdfsdf", new HashMap<String, String>());
+          CharFilterFactory.forName("sdfsdfsdfdsfsdfsdf", new HashMap<>());
         });
 
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          CharFilterFactory.forName("!(**#$U*#$*", new HashMap<String, String>());
+          CharFilterFactory.forName("!(**#$U*#$*", new HashMap<>());
         });
   }
 

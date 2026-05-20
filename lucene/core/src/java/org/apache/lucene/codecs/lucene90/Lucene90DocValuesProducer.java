@@ -16,17 +16,18 @@
  */
 package org.apache.lucene.codecs.lucene90;
 
+import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_INDEX_JUMP_LENGTH_PER_LEVEL;
+import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_INDEX_MAX_LEVEL;
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SHIFT;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -40,14 +41,16 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.RandomAccessInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.compress.LZ4;
@@ -56,13 +59,14 @@ import org.apache.lucene.util.packed.DirectReader;
 
 /** reader for {@link Lucene90DocValuesFormat} */
 final class Lucene90DocValuesProducer extends DocValuesProducer {
-  private final Map<String, NumericEntry> numerics;
-  private final Map<String, BinaryEntry> binaries;
-  private final Map<String, SortedEntry> sorted;
-  private final Map<String, SortedSetEntry> sortedSets;
-  private final Map<String, SortedNumericEntry> sortedNumerics;
-  private final Map<String, DocValuesSkipperEntry> skippers;
+  private final IntObjectHashMap<NumericEntry> numerics;
+  private final IntObjectHashMap<BinaryEntry> binaries;
+  private final IntObjectHashMap<SortedEntry> sorted;
+  private final IntObjectHashMap<SortedSetEntry> sortedSets;
+  private final IntObjectHashMap<SortedNumericEntry> sortedNumerics;
+  private final IntObjectHashMap<DocValuesSkipperEntry> skippers;
   private final IndexInput data;
+  private final IndexInput skipIndexData;
   private final int maxDoc;
   private int version = -1;
   private final boolean merging;
@@ -73,17 +77,19 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       String dataCodec,
       String dataExtension,
       String metaCodec,
-      String metaExtension)
+      String metaExtension,
+      String skipIndexCodec,
+      String skipIndexExtension)
       throws IOException {
     String metaName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, metaExtension);
     this.maxDoc = state.segmentInfo.maxDoc();
-    numerics = new HashMap<>();
-    binaries = new HashMap<>();
-    sorted = new HashMap<>();
-    sortedSets = new HashMap<>();
-    sortedNumerics = new HashMap<>();
-    skippers = new HashMap<>();
+    numerics = new IntObjectHashMap<>();
+    binaries = new IntObjectHashMap<>();
+    sorted = new IntObjectHashMap<>();
+    sortedSets = new IntObjectHashMap<>();
+    sortedNumerics = new IntObjectHashMap<>();
+    skippers = new IntObjectHashMap<>();
     merging = false;
 
     // read in the entries from the metadata file.
@@ -111,11 +117,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
     String dataName =
         IndexFileNames.segmentFileName(state.segmentInfo.name, state.segmentSuffix, dataExtension);
-    // Doc-values have a forward-only access pattern, so pass ReadAdvice.NORMAL to perform
-    // readahead.
-    this.data =
-        state.directory.openInput(dataName, state.context.withReadAdvice(ReadAdvice.NORMAL));
-    boolean success = false;
+    // Doc-values have a forward-only access pattern
+    this.data = state.directory.openInput(dataName, state.context.withHints(FileTypeHint.DATA));
     try {
       final int version2 =
           CodecUtil.checkIndexHeader(
@@ -135,24 +138,52 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       // for FOOTER_MAGIC + algorithmID. This is cheap and can detect some forms of corruption
       // such as file truncation.
       CodecUtil.retrieveChecksum(data);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, data);
+      throw t;
+    }
 
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this.data);
+    if (version >= Lucene90DocValuesFormat.VERSION_SKIPPER_SEPARATE_FILE) {
+      IndexInput skipIn = null;
+      try {
+        String skipIndexName =
+            IndexFileNames.segmentFileName(
+                state.segmentInfo.name, state.segmentSuffix, skipIndexExtension);
+        skipIn =
+            state.directory.openInput(skipIndexName, state.context.withHints(FileTypeHint.INDEX));
+        final int skipVersion =
+            CodecUtil.checkIndexHeader(
+                skipIn,
+                skipIndexCodec,
+                Lucene90DocValuesFormat.VERSION_SKIPPER_SEPARATE_FILE,
+                Lucene90DocValuesFormat.VERSION_CURRENT,
+                state.segmentInfo.getId(),
+                state.segmentSuffix);
+        if (version != skipVersion) {
+          throw new CorruptIndexException(
+              "Format versions mismatch: meta=" + version + ", skipIndex=" + skipVersion, skipIn);
+        }
+        CodecUtil.retrieveChecksum(skipIn);
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, data, skipIn);
+        throw t;
       }
+      this.skipIndexData = skipIn;
+    } else {
+      this.skipIndexData = null;
     }
   }
 
   // Used for cloning
   private Lucene90DocValuesProducer(
-      Map<String, NumericEntry> numerics,
-      Map<String, BinaryEntry> binaries,
-      Map<String, SortedEntry> sorted,
-      Map<String, SortedSetEntry> sortedSets,
-      Map<String, SortedNumericEntry> sortedNumerics,
-      Map<String, DocValuesSkipperEntry> skippers,
+      IntObjectHashMap<NumericEntry> numerics,
+      IntObjectHashMap<BinaryEntry> binaries,
+      IntObjectHashMap<SortedEntry> sorted,
+      IntObjectHashMap<SortedSetEntry> sortedSets,
+      IntObjectHashMap<SortedNumericEntry> sortedNumerics,
+      IntObjectHashMap<DocValuesSkipperEntry> skippers,
       IndexInput data,
+      IndexInput skipIndexData,
       int maxDoc,
       int version,
       boolean merging) {
@@ -163,6 +194,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     this.sortedNumerics = sortedNumerics;
     this.skippers = skippers;
     this.data = data.clone();
+    this.skipIndexData = skipIndexData != null ? skipIndexData.clone() : null;
     this.maxDoc = maxDoc;
     this.version = version;
     this.merging = merging;
@@ -178,6 +210,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         sortedNumerics,
         skippers,
         data,
+        skipIndexData,
         maxDoc,
         version,
         true);
@@ -190,19 +223,19 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         throw new CorruptIndexException("Invalid field number: " + fieldNumber, meta);
       }
       byte type = meta.readByte();
-      if (info.hasDocValuesSkipIndex()) {
-        skippers.put(info.name, readDocValueSkipperMeta(meta));
+      if (info.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
+        skippers.put(info.number, readDocValueSkipperMeta(meta));
       }
       if (type == Lucene90DocValuesFormat.NUMERIC) {
-        numerics.put(info.name, readNumeric(meta));
+        numerics.put(info.number, readNumeric(meta));
       } else if (type == Lucene90DocValuesFormat.BINARY) {
-        binaries.put(info.name, readBinary(meta));
+        binaries.put(info.number, readBinary(meta));
       } else if (type == Lucene90DocValuesFormat.SORTED) {
-        sorted.put(info.name, readSorted(meta));
+        sorted.put(info.number, readSorted(meta));
       } else if (type == Lucene90DocValuesFormat.SORTED_SET) {
-        sortedSets.put(info.name, readSortedSet(meta));
+        sortedSets.put(info.number, readSortedSet(meta));
       } else if (type == Lucene90DocValuesFormat.SORTED_NUMERIC) {
-        sortedNumerics.put(info.name, readSortedNumeric(meta));
+        sortedNumerics.put(info.number, readSortedNumeric(meta));
       } else {
         throw new CorruptIndexException("invalid type: " + type, meta);
       }
@@ -352,7 +385,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
   @Override
   public void close() throws IOException {
-    data.close();
+    IOUtils.close(data, skipIndexData);
   }
 
   private record DocValuesSkipperEntry(
@@ -427,7 +460,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
   @Override
   public NumericDocValues getNumeric(FieldInfo field) throws IOException {
-    NumericEntry entry = numerics.get(field.name);
+    NumericEntry entry = numerics.get(field.number);
     return getNumeric(entry);
   }
 
@@ -468,6 +501,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     public long cost() {
       return maxDoc;
     }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return maxDoc;
+    }
   }
 
   private abstract static class SparseNumericDocValues extends NumericDocValues {
@@ -499,8 +537,18 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     }
 
     @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      disi.intoBitSet(upTo, bitSet, offset);
+    }
+
+    @Override
     public long cost() {
       return disi.cost();
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return disi.docIDRunEnd();
     }
   }
 
@@ -745,6 +793,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       doc = target;
       return true;
     }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return maxDoc;
+    }
   }
 
   private abstract static class SparseBinaryDocValues extends BinaryDocValues {
@@ -779,17 +832,27 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     public boolean advanceExact(int target) throws IOException {
       return disi.advanceExact(target);
     }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      disi.intoBitSet(upTo, bitSet, offset);
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return disi.docIDRunEnd();
+    }
   }
 
   @Override
   public BinaryDocValues getBinary(FieldInfo field) throws IOException {
-    BinaryEntry entry = binaries.get(field.name);
+    BinaryEntry entry = binaries.get(field.number);
 
     if (entry.docsWithFieldOffset == -2) {
       return DocValues.emptyBinary();
     }
 
-    final IndexInput bytesSlice = data.slice("fixed-binary", entry.dataOffset, entry.dataLength);
+    final RandomAccessInput bytesSlice = data.randomAccessSlice(entry.dataOffset, entry.dataLength);
     // Prefetch the first page of data. Following pages are expected to get prefetched through
     // read-ahead.
     if (bytesSlice.length() > 0) {
@@ -806,8 +869,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
           @Override
           public BytesRef binaryValue() throws IOException {
-            bytesSlice.seek((long) doc * length);
-            bytesSlice.readBytes(bytes.bytes, 0, length);
+            bytesSlice.readBytes((long) doc * length, bytes.bytes, 0, length);
             return bytes;
           }
         };
@@ -829,8 +891,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           public BytesRef binaryValue() throws IOException {
             long startOffset = addresses.get(doc);
             bytes.length = (int) (addresses.get(doc + 1L) - startOffset);
-            bytesSlice.seek(startOffset);
-            bytesSlice.readBytes(bytes.bytes, 0, bytes.length);
+            bytesSlice.readBytes(startOffset, bytes.bytes, 0, bytes.length);
             return bytes;
           }
         };
@@ -853,8 +914,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
           @Override
           public BytesRef binaryValue() throws IOException {
-            bytesSlice.seek((long) disi.index() * length);
-            bytesSlice.readBytes(bytes.bytes, 0, length);
+            bytesSlice.readBytes((long) disi.index() * length, bytes.bytes, 0, length);
             return bytes;
           }
         };
@@ -877,8 +937,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             final int index = disi.index();
             long startOffset = addresses.get(index);
             bytes.length = (int) (addresses.get(index + 1L) - startOffset);
-            bytesSlice.seek(startOffset);
-            bytesSlice.readBytes(bytes.bytes, 0, bytes.length);
+            bytesSlice.readBytes(startOffset, bytes.bytes, 0, bytes.length);
             return bytes;
           }
         };
@@ -888,7 +947,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
   @Override
   public SortedDocValues getSorted(FieldInfo field) throws IOException {
-    SortedEntry entry = sorted.get(field.name);
+    SortedEntry entry = sorted.get(field.number);
     return getSorted(entry);
   }
 
@@ -951,6 +1010,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           public long cost() {
             return maxDoc;
           }
+
+          @Override
+          public int docIDRunEnd() throws IOException {
+            return maxDoc;
+          }
         };
       } else if (ordsEntry.docsWithFieldOffset >= 0) { // sparse but non-empty
         final IndexedDISI disi =
@@ -990,8 +1054,18 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
 
           @Override
+          public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+            disi.intoBitSet(upTo, bitSet, offset);
+          }
+
+          @Override
           public long cost() {
             return disi.cost();
+          }
+
+          @Override
+          public int docIDRunEnd() throws IOException {
+            return disi.docIDRunEnd();
           }
         };
       }
@@ -1028,6 +1102,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       @Override
       public long cost() {
         return ords.cost();
+      }
+
+      @Override
+      public int docIDRunEnd() throws IOException {
+        return ords.docIDRunEnd();
       }
     };
   }
@@ -1122,12 +1201,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     final IndexInput bytes;
     final long blockMask;
     final LongValues indexAddresses;
-    final IndexInput indexBytes;
+    final RandomAccessInput indexBytes;
     final BytesRef term;
+    final BytesRef blockBuffer;
+    final ByteArrayDataInput blockInput;
     long ord = -1;
-
-    BytesRef blockBuffer = null;
-    ByteArrayDataInput blockInput = null;
     long currentCompressedBlockStart = -1;
     long currentCompressedBlockEnd = -1;
 
@@ -1144,13 +1222,14 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       indexAddresses =
           DirectMonotonicReader.getInstance(
               entry.termsIndexAddressesMeta, indexAddressesSlice, merging);
-      indexBytes = data.slice("terms-index", entry.termsIndexOffset, entry.termsIndexLength);
+      indexBytes = data.randomAccessSlice(entry.termsIndexOffset, entry.termsIndexLength);
       term = new BytesRef(entry.maxTermLength);
 
       // add the max term length for the dictionary
       // add 7 padding bytes can help decompression run faster.
       int bufferSize = entry.maxBlockLength + entry.maxTermLength + LZ4_DECOMPRESSOR_PADDING;
       blockBuffer = new BytesRef(new byte[bufferSize], 0, bufferSize);
+      blockInput = new ByteArrayDataInput();
     }
 
     @Override
@@ -1202,8 +1281,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       assert index >= 0 && index <= (entry.termsDictSize - 1) >>> entry.termsDictIndexShift;
       final long start = indexAddresses.get(index);
       term.length = (int) (indexAddresses.get(index + 1) - start);
-      indexBytes.seek(start);
-      indexBytes.readBytes(term.bytes, 0, term.length);
+      indexBytes.readBytes(start, term.bytes, 0, term.length);
       return term;
     }
 
@@ -1327,8 +1405,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         }
 
         // Reset the buffer.
-        blockInput =
-            new ByteArrayDataInput(blockBuffer.bytes, blockBuffer.offset, blockBuffer.length);
+        blockInput.reset(blockBuffer.bytes, blockBuffer.offset, blockBuffer.length);
       }
     }
 
@@ -1365,7 +1442,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
   @Override
   public SortedNumericDocValues getSortedNumeric(FieldInfo field) throws IOException {
-    SortedNumericEntry entry = sortedNumerics.get(field.name);
+    SortedNumericEntry entry = sortedNumerics.get(field.number);
     return getSortedNumeric(entry);
   }
 
@@ -1438,6 +1515,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         public int docValueCount() {
           return count;
         }
+
+        @Override
+        public int docIDRunEnd() throws IOException {
+          return maxDoc;
+        }
       };
     } else {
       // sparse
@@ -1495,6 +1577,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           return count;
         }
 
+        @Override
+        public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+          set = false;
+          disi.intoBitSet(upTo, bitSet, offset);
+        }
+
         private void set() {
           if (set == false) {
             final int index = disi.index();
@@ -1504,13 +1592,18 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             set = true;
           }
         }
+
+        @Override
+        public int docIDRunEnd() throws IOException {
+          return disi.docIDRunEnd();
+        }
       };
     }
   }
 
   @Override
   public SortedSetDocValues getSortedSet(FieldInfo field) throws IOException {
-    SortedSetEntry entry = sortedSets.get(field.name);
+    SortedSetEntry entry = sortedSets.get(field.number);
     if (entry.singleValueEntry != null) {
       return DocValues.singleton(getSorted(entry.singleValueEntry));
     }
@@ -1593,6 +1686,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           public long cost() {
             return maxDoc;
           }
+
+          @Override
+          public int docIDRunEnd() throws IOException {
+            return maxDoc;
+          }
         };
       } else if (ordsEntry.docsWithFieldOffset >= 0) { // sparse but non-empty
         final IndexedDISI disi =
@@ -1646,6 +1744,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
 
           @Override
+          public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+            set = false;
+            disi.intoBitSet(upTo, bitSet, offset);
+          }
+
+          @Override
           public long cost() {
             return disi.cost();
           }
@@ -1658,6 +1762,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               count = (int) (end - curr);
               set = true;
             }
+          }
+
+          @Override
+          public int docIDRunEnd() throws IOException {
+            return disi.docIDRunEnd();
           }
         };
       }
@@ -1700,12 +1809,20 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       public long cost() {
         return ords.cost();
       }
+
+      @Override
+      public int docIDRunEnd() throws IOException {
+        return ords.docIDRunEnd();
+      }
     };
   }
 
   @Override
   public void checkIntegrity() throws IOException {
     CodecUtil.checksumEntireFile(data);
+    if (skipIndexData != null) {
+      CodecUtil.checksumEntireFile(skipIndexData);
+    }
   }
 
   /**
@@ -1784,36 +1901,60 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
   @Override
   public DocValuesSkipper getSkipper(FieldInfo field) throws IOException {
-    final DocValuesSkipperEntry entry = skippers.get(field.name);
+    final DocValuesSkipperEntry entry = skippers.get(field.number);
 
-    final IndexInput input = data.slice("doc value skipper", entry.offset, entry.length);
-    // Prefetch the first page of data. Following pages are expected to get prefetched through
-    // read-ahead.
-    if (input.length() > 0) {
-      input.prefetch(0, 1);
-    }
+    final IndexInput skipperSource = skipIndexData != null ? skipIndexData : data;
+    final IndexInput input = skipperSource.slice("doc value skipper", entry.offset, entry.length);
+    // TODO: should we write to disk the actual max level for this segment?
     return new DocValuesSkipper() {
-      int minDocID = -1;
-      int maxDocID = -1;
-      long minValue, maxValue;
-      int docCount;
+      final int[] minDocID = new int[SKIP_INDEX_MAX_LEVEL];
+      final int[] maxDocID = new int[SKIP_INDEX_MAX_LEVEL];
+
+      {
+        for (int i = 0; i < SKIP_INDEX_MAX_LEVEL; i++) {
+          minDocID[i] = maxDocID[i] = -1;
+        }
+      }
+
+      final long[] minValue = new long[SKIP_INDEX_MAX_LEVEL];
+      final long[] maxValue = new long[SKIP_INDEX_MAX_LEVEL];
+      final int[] docCount = new int[SKIP_INDEX_MAX_LEVEL];
+      int levels = 1;
 
       @Override
       public void advance(int target) throws IOException {
         if (target > entry.maxDocId) {
-          minDocID = DocIdSetIterator.NO_MORE_DOCS;
-          maxDocID = DocIdSetIterator.NO_MORE_DOCS;
+          // skipper is exhausted
+          for (int i = 0; i < SKIP_INDEX_MAX_LEVEL; i++) {
+            minDocID[i] = maxDocID[i] = DocIdSetIterator.NO_MORE_DOCS;
+          }
         } else {
+          // find next interval
+          assert target > maxDocID[0]
+              : "target " + target + " must be bigger that current interval " + maxDocID[0];
           while (true) {
-            maxDocID = input.readInt();
-            if (maxDocID >= target) {
-              minDocID = input.readInt();
-              maxValue = input.readLong();
-              minValue = input.readLong();
-              docCount = input.readInt();
+            levels = input.readByte();
+            assert levels <= SKIP_INDEX_MAX_LEVEL && levels > 0
+                : "level out of range [" + levels + "]";
+            boolean valid = true;
+            // check if current interval is competitive or we can jump to the next position
+            for (int level = levels - 1; level >= 0; level--) {
+              if ((maxDocID[level] = input.readInt()) < target) {
+                input.skipBytes(SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level]); // the jump for the level
+                valid = false;
+                break;
+              }
+              minDocID[level] = input.readInt();
+              maxValue[level] = input.readLong();
+              minValue[level] = input.readLong();
+              docCount[level] = input.readInt();
+            }
+            if (valid) {
+              // adjust levels
+              while (levels < SKIP_INDEX_MAX_LEVEL && maxDocID[levels] >= target) {
+                levels++;
+              }
               break;
-            } else {
-              input.skipBytes(24);
             }
           }
         }
@@ -1821,32 +1962,32 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
       @Override
       public int numLevels() {
-        return 1;
+        return levels;
       }
 
       @Override
       public int minDocID(int level) {
-        return minDocID;
+        return minDocID[level];
       }
 
       @Override
       public int maxDocID(int level) {
-        return maxDocID;
+        return maxDocID[level];
       }
 
       @Override
       public long minValue(int level) {
-        return minValue;
+        return minValue[level];
       }
 
       @Override
       public long maxValue(int level) {
-        return maxValue;
+        return maxValue[level];
       }
 
       @Override
       public int docCount(int level) {
-        return docCount;
+        return docCount[level];
       }
 
       @Override

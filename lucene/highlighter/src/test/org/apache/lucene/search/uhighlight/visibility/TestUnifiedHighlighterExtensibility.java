@@ -47,7 +47,6 @@ import org.apache.lucene.search.uhighlight.UnifiedHighlighter;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
-import org.junit.Test;
 
 /** Helps us be aware of visibility/extensibility concerns. */
 public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
@@ -56,7 +55,6 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
    * This test is for maintaining the extensibility of the FieldOffsetStrategy for customizations
    * out of package.
    */
-  @Test
   public void testFieldOffsetStrategyExtensibility() {
     final UnifiedHighlighter.OffsetSource offsetSource =
         UnifiedHighlighter.OffsetSource.NONE_NEEDED;
@@ -64,8 +62,8 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
         new FieldOffsetStrategy(
             new UHComponents(
                 "field",
-                (s) -> false,
-                new MatchAllDocsQuery(),
+                (_) -> false,
+                MatchAllDocsQuery.INSTANCE,
                 new BytesRef[0],
                 PhraseHelper.NONE,
                 new LabelledCharArrayMatcher[0],
@@ -95,7 +93,6 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
    * This test is for maintaining the extensibility of the UnifiedHighlighter for customizations out
    * of package.
    */
-  @Test
   public void testUnifiedHighlighterExtensibility() {
     final int maxLength = 1000;
     UnifiedHighlighter.Builder uhBuilder =
@@ -175,14 +172,14 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
             OffsetSource offsetSource = getOptimizedOffsetSource(components);
 
             // test all is accessible
-            components.getField();
-            components.getFieldMatcher();
-            components.getQuery();
-            components.getTerms();
-            components.getPhraseHelper();
-            components.getAutomata();
+            components.field();
+            components.fieldMatcher();
+            components.query();
+            components.terms();
+            components.phraseHelper();
+            components.automata();
             components.hasUnrecognizedQueryPart();
-            components.getHighlightFlags();
+            components.highlightFlags();
 
             return new CustomFieldHighlighter(
                 field,
@@ -230,7 +227,6 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
     assertEquals(uh.getMaxLength(), maxLength);
   }
 
-  @Test
   public void testPassageFormatterExtensibility() {
     final Object formattedResponse = new Object();
     PassageFormatter formatter =
@@ -243,7 +239,6 @@ public class TestUnifiedHighlighterExtensibility extends LuceneTestCase {
     assertEquals(formattedResponse, formatter.format(new Passage[0], ""));
   }
 
-  @Test
   public void testFieldHiglighterExtensibility() {
     final String fieldName = "fieldName";
     FieldHighlighter fieldHighlighter =

@@ -66,7 +66,6 @@ import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
-import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -1101,8 +1100,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
             new Term("field", "[a-z][123]"),
             RegExp.ALL,
             0,
-            name -> null,
-            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
+            _ -> null,
             MultiTermQuery.SCORING_BOOLEAN_REWRITE);
     assertTrue(getQuery("/[A-Z][123]/^0.5", qp) instanceof BoostQuery);
     assertTrue(((BoostQuery) getQuery("/[A-Z][123]/^0.5", qp)).getQuery() instanceof RegexpQuery);
@@ -1163,8 +1161,8 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
   public void testMatchAllDocs() throws Exception {
     CommonQueryParserConfiguration qp =
         getParserConfig(new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false));
-    assertEquals(new MatchAllDocsQuery(), getQuery("*:*", qp));
-    assertEquals(new MatchAllDocsQuery(), getQuery("(*:*)", qp));
+    assertEquals(MatchAllDocsQuery.INSTANCE, getQuery("*:*", qp));
+    assertEquals(MatchAllDocsQuery.INSTANCE, getQuery("(*:*)", qp));
     BooleanQuery bq = (BooleanQuery) getQuery("+*:* -*:*", qp);
     assertEquals(2, bq.clauses().size());
     for (BooleanClause clause : bq) {
@@ -1207,7 +1205,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     IndexSearcher s = newSearcher(r);
 
     Query q = getQuery("\"wizard of ozzy\"", a);
-    assertEquals(1, s.search(q, 1).totalHits.value);
+    assertEquals(1, s.search(q, 1).totalHits.value());
     r.close();
     dir.close();
   }
@@ -1354,10 +1352,10 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     String oldDefaultField = getDefaultField();
     setDefaultField("key");
     CommonQueryParserConfiguration qp = getParserConfig(new MockAnalyzer(random()));
-    assertEquals(new MatchAllDocsQuery(), getQuery(new MatchAllDocsQuery().toString(), qp));
+    assertEquals(MatchAllDocsQuery.INSTANCE, getQuery(MatchAllDocsQuery.INSTANCE.toString(), qp));
 
     // test parsing with non-default boost
-    Query query = new MatchAllDocsQuery();
+    Query query = MatchAllDocsQuery.INSTANCE;
     query = new BoostQuery(query, 2.3f);
     assertEquals(query, getQuery(query.toString(), qp));
     setDefaultField(oldDefaultField);

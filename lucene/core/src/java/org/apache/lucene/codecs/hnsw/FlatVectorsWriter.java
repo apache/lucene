@@ -18,11 +18,10 @@
 package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
-import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.MergeState;
-import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
+import org.apache.lucene.util.IORunnable;
 
 /**
  * Vectors' writer for a field that allows additional indexing logic to be implemented by the caller
@@ -46,32 +45,22 @@ public abstract class FlatVectorsWriter extends KnnVectorsWriter {
   }
 
   /**
-   * Add a new field for indexing, allowing the user to provide a writer that the flat vectors
-   * writer can delegate to if additional indexing logic is required.
+   * Add a new field for indexing
    *
    * @param fieldInfo fieldInfo of the field to add
-   * @param indexWriter the writer to delegate to, can be null
    * @return a writer for the field
    * @throws IOException if an I/O error occurs when adding the field
    */
-  public abstract FlatFieldVectorsWriter<?> addField(
-      FieldInfo fieldInfo, KnnFieldVectorsWriter<?> indexWriter) throws IOException;
+  @Override
+  public abstract FlatFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException;
 
   @Override
-  public FlatFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
-    return addField(fieldInfo, null);
+  public final IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState)
+      throws IOException {
+    mergeOneFlatVectorField(fieldInfo, mergeState);
+    return null;
   }
 
-  /**
-   * Write the field for merging, providing a scorer over the newly merged flat vectors. This way
-   * any additional merging logic can be implemented by the user of this class.
-   *
-   * @param fieldInfo fieldInfo of the field to merge
-   * @param mergeState mergeState of the segments to merge
-   * @return a scorer over the newly merged flat vectors, which should be closed as it holds a
-   *     temporary file handle to read over the newly merged vectors
-   * @throws IOException if an I/O error occurs when merging
-   */
-  public abstract CloseableRandomVectorScorerSupplier mergeOneFieldToIndex(
-      FieldInfo fieldInfo, MergeState mergeState) throws IOException;
+  public abstract void mergeOneFlatVectorField(FieldInfo fieldInfo, MergeState mergeState)
+      throws IOException;
 }

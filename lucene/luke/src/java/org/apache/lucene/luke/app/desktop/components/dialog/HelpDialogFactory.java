@@ -38,6 +38,7 @@ import org.apache.lucene.luke.app.desktop.util.MessageUtils;
 /** Factory of help dialog */
 public final class HelpDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static HelpDialogFactory instance;
 
   private final Preferences prefs;
@@ -96,7 +97,7 @@ public final class HelpDialogFactory implements DialogOpener.DialogFactory {
     JPanel footer = new JPanel(new FlowLayout(FlowLayout.TRAILING));
     footer.setOpaque(false);
     JButton closeBtn = new JButton(MessageUtils.getLocalizedMessage("button.close"));
-    closeBtn.addActionListener(e -> dialog.dispose());
+    closeBtn.addActionListener(_ -> dialog.dispose());
     footer.add(closeBtn);
     panel.add(footer, BorderLayout.PAGE_END);
 

@@ -17,10 +17,18 @@
 
 package org.apache.lucene.util.bkd;
 
+import java.util.List;
 import org.apache.lucene.util.ArrayUtil;
 
-/** Basic parameters for indexing points on the BKD tree. */
-public final class BKDConfig {
+/**
+ * Basic parameters for indexing points on the BKD tree.
+ *
+ * @param numDims How many dimensions we are storing at the leaf (data) node
+ * @param numIndexDims How many dimensions we are indexing in the internal nodes
+ * @param bytesPerDim How many bytes each value in each dimension takes.
+ * @param maxPointsInLeafNode max points allowed on a Leaf block
+ */
+public record BKDConfig(int numDims, int numIndexDims, int bytesPerDim, int maxPointsInLeafNode) {
 
   /** Default maximum number of point in each leaf block */
   public static final int DEFAULT_MAX_POINTS_IN_LEAF_NODE = 512;
@@ -31,48 +39,21 @@ public final class BKDConfig {
   /** Maximum number of index dimensions */
   public static final int MAX_INDEX_DIMS = 8;
 
-  /** How many dimensions we are storing at the leaf (data) nodes */
-  public final int numDims;
+  private static final List<BKDConfig> DEFAULT_CONFIGS =
+      List.of(
+          // cover the most common types for 1 and 2 dimensions.
+          new BKDConfig(1, 1, 2, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
+          new BKDConfig(1, 1, 4, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
+          new BKDConfig(1, 1, 8, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
+          new BKDConfig(1, 1, 16, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
+          new BKDConfig(2, 2, 2, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
+          new BKDConfig(2, 2, 4, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
+          new BKDConfig(2, 2, 8, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
+          new BKDConfig(2, 2, 16, DEFAULT_MAX_POINTS_IN_LEAF_NODE),
+          // cover lucene shapes
+          new BKDConfig(7, 4, 4, DEFAULT_MAX_POINTS_IN_LEAF_NODE));
 
-  /** How many dimensions we are indexing in the internal nodes */
-  public final int numIndexDims;
-
-  /** How many bytes each value in each dimension takes. */
-  public final int bytesPerDim;
-
-  /** max points allowed on a Leaf block */
-  public final int maxPointsInLeafNode;
-
-  /** numDataDims * bytesPerDim */
-  public final int packedBytesLength;
-
-  /** numIndexDims * bytesPerDim */
-  public final int packedIndexBytesLength;
-
-  /** packedBytesLength plus docID size */
-  public final int bytesPerDoc;
-
-  public BKDConfig(
-      final int numDims,
-      final int numIndexDims,
-      final int bytesPerDim,
-      final int maxPointsInLeafNode) {
-    verifyParams(numDims, numIndexDims, bytesPerDim, maxPointsInLeafNode);
-    this.numDims = numDims;
-    this.numIndexDims = numIndexDims;
-    this.bytesPerDim = bytesPerDim;
-    this.maxPointsInLeafNode = maxPointsInLeafNode;
-    this.packedIndexBytesLength = numIndexDims * bytesPerDim;
-    this.packedBytesLength = numDims * bytesPerDim;
-    // dimensional values (numDims * bytesPerDim) + docID (int)
-    this.bytesPerDoc = this.packedBytesLength + Integer.BYTES;
-  }
-
-  private static void verifyParams(
-      final int numDims,
-      final int numIndexDims,
-      final int bytesPerDim,
-      final int maxPointsInLeafNode) {
+  public BKDConfig {
     // Check inputs are on bounds
     if (numDims < 1 || numDims > MAX_DIMS) {
       throw new IllegalArgumentException(
@@ -100,5 +81,31 @@ public final class BKDConfig {
               + "); got "
               + maxPointsInLeafNode);
     }
+  }
+
+  public static BKDConfig of(
+      int numDims, int numIndexDims, int bytesPerDim, int maxPointsInLeafNode) {
+    final BKDConfig config = new BKDConfig(numDims, numIndexDims, bytesPerDim, maxPointsInLeafNode);
+    final int defaultConfigIndex = BKDConfig.DEFAULT_CONFIGS.indexOf(config);
+    if (defaultConfigIndex != -1) {
+      return BKDConfig.DEFAULT_CONFIGS.get(defaultConfigIndex);
+    } else {
+      return config;
+    }
+  }
+
+  /** numDims * bytesPerDim */
+  public int packedBytesLength() {
+    return numDims * bytesPerDim;
+  }
+
+  /** numIndexDims * bytesPerDim */
+  public int packedIndexBytesLength() {
+    return numIndexDims * bytesPerDim;
+  }
+
+  /** (numDims * bytesPerDim) + Integer.BYTES (packedBytesLength plus docID size) */
+  public int bytesPerDoc() {
+    return packedBytesLength() + Integer.BYTES;
   }
 }

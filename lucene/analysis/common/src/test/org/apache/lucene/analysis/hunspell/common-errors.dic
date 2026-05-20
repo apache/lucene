@@ -1,0 +1,9 @@
+# Dictionary for testing common mistakes to tolerate in dictionaries.
+# Purpose is to test that we still behave well even with the common mistakes.
+# Lucene parser seems to be really strict with these numbers.
+# I wonder if we should just ignore them entirely and parse in a different way?
+# Have the suspicion that maybe C hunspell just uses them as a "hint" to size data?
+# Add more flags if you need to the "testword" for any more affix bugs found.
+# Or add more words if the problem is instead around this file.
+1
+testword/AB

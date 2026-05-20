@@ -37,10 +37,10 @@ import org.apache.lucene.search.suggest.BitsProducer;
  * that provides a concrete implementation of this query. Example below shows using this query to
  * retrieve the top 5 documents.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *  SuggestIndexSearcher searcher = new SuggestIndexSearcher(reader);
  *  TopSuggestDocs suggestDocs = searcher.suggest(query, 5);
- * </pre>
+ * </code></pre>
  *
  * This query rewrites to an appropriate {@link CompletionQuery} depending on the type ({@link
  * SuggestField} or {@link ContextSuggestField}) of the field the query is run against.
@@ -89,17 +89,10 @@ public abstract class CompletionQuery extends Query {
     Terms terms;
     for (LeafReaderContext context : indexSearcher.getLeafContexts()) {
       LeafReader leafReader = context.reader();
-      try {
-        if ((terms = leafReader.terms(getField())) == null) {
-          continue;
-        }
-      } catch (
-          @SuppressWarnings("unused")
-          IOException e) {
+      if ((terms = leafReader.terms(getField())) == null) {
         continue;
       }
-      if (terms instanceof CompletionTerms) {
-        CompletionTerms completionTerms = (CompletionTerms) terms;
+      if (terms instanceof CompletionTerms completionTerms) {
         byte t = completionTerms.getType();
         if (first) {
           type = t;

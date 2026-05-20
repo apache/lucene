@@ -37,8 +37,9 @@ class BlockIntervalsSource extends ConjunctionIntervalsSource {
   private static List<IntervalsSource> flatten(List<IntervalsSource> sources) {
     List<IntervalsSource> flattened = new ArrayList<>();
     for (IntervalsSource s : sources) {
-      if (s instanceof BlockIntervalsSource) {
-        flattened.addAll(((BlockIntervalsSource) s).subSources);
+      if (s instanceof BlockIntervalsSource bis) {
+        // Block sources can be flattened because they do not increase the gap (gap = 0)
+        flattened.addAll(bis.subSources);
       } else {
         flattened.add(s);
       }
@@ -76,9 +77,10 @@ class BlockIntervalsSource extends ConjunctionIntervalsSource {
 
   @Override
   public boolean equals(Object other) {
-    if (other instanceof BlockIntervalsSource == false) return false;
-    BlockIntervalsSource b = (BlockIntervalsSource) other;
-    return Objects.equals(this.subSources, b.subSources);
+    if (other instanceof BlockIntervalsSource b) {
+      return Objects.equals(this.subSources, b.subSources);
+    }
+    return false;
   }
 
   @Override

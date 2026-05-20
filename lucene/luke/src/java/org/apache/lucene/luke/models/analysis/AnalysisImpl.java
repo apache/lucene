@@ -72,7 +72,7 @@ public final class AnalysisImpl implements Analysis {
 
     // reload available tokenizers, charfilters, and tokenfilters
     URLClassLoader classLoader =
-        new URLClassLoader(urls.toArray(new URL[0]), this.getClass().getClassLoader());
+        new URLClassLoader(urls.toArray(URL[]::new), this.getClass().getClassLoader());
     CharFilterFactory.reloadCharFilters(classLoader);
     TokenizerFactory.reloadTokenizers(classLoader);
     TokenFilterFactory.reloadTokenFilters(classLoader);
@@ -128,7 +128,7 @@ public final class AnalysisImpl implements Analysis {
       AttributeImpl att = itr.next();
       Map<String, String> attValues = new LinkedHashMap<>();
       att.reflectWith(
-          (attClass, key, value) -> {
+          (_, key, value) -> {
             if (value != null) attValues.put(key, value.toString());
           });
       attributes.add(new TokenAttribute(att.getClass().getSimpleName(), attValues));
@@ -167,16 +167,16 @@ public final class AnalysisImpl implements Analysis {
 
       // set tokenizer
       builder.withTokenizer(
-          config.getTokenizerConfig().getName(), config.getTokenizerConfig().getParams());
+          config.getTokenizerConfig().name(), config.getTokenizerConfig().params());
 
       // add char filters
       for (CustomAnalyzerConfig.ComponentConfig cfConf : config.getCharFilterConfigs()) {
-        builder.addCharFilter(cfConf.getName(), cfConf.getParams());
+        builder.addCharFilter(cfConf.name(), cfConf.params());
       }
 
       // add token filters
       for (CustomAnalyzerConfig.ComponentConfig tfConf : config.getTokenFilterConfigs()) {
-        builder.addTokenFilter(tfConf.getName(), tfConf.getParams());
+        builder.addTokenFilter(tfConf.name(), tfConf.params());
       }
 
       // build analyzer
@@ -249,18 +249,14 @@ public final class AnalysisImpl implements Analysis {
             new NamedTokens(TokenFilterFactory.findSPIName(tokenFilterFactory.getClass()), tokens));
         try {
           listBasedTokenStream.close();
-        } catch (
-            @SuppressWarnings("unused")
-            IOException e) {
+        } catch (IOException _) {
           // do nothing;
         }
         listBasedTokenStream = new ListBasedTokenStream(listBasedTokenStream, attributeSources);
       }
       try {
         listBasedTokenStream.close();
-      } catch (
-          @SuppressWarnings("unused")
-          IOException e) {
+      } catch (IOException _) {
         // do nothing.
       } finally {
         reader.close();

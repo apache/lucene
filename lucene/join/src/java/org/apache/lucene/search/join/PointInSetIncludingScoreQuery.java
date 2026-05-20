@@ -55,7 +55,7 @@ abstract class PointInSetIncludingScoreQuery extends Query implements Accountabl
   protected static final long BASE_RAM_BYTES =
       RamUsageEstimator.shallowSizeOfInstance(PointInSetIncludingScoreQuery.class);
 
-  static BiFunction<byte[], Class<? extends Number>, String> toString =
+  static final BiFunction<byte[], Class<? extends Number>, String> toString =
       (value, numericType) -> {
         if (Integer.class.equals(numericType)) {
           return Integer.toString(IntPoint.decodeDimension(value, 0));

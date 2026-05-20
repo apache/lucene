@@ -17,12 +17,15 @@
 package org.apache.lucene.search.similarities;
 
 import java.util.Collections;
+import java.util.Objects;
+import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.FieldInvertState;
-import org.apache.lucene.search.CollectionStatistics;
+import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.util.SmallFloat;
 
 /**
@@ -45,12 +48,11 @@ import org.apache.lucene.util.SmallFloat;
  * is in this norm, but it is most useful for encoding length normalization information.
  *
  * <p>Implementations should carefully consider how the normalization is encoded: while Lucene's
- * {@link BM25Similarity} encodes length normalization information with {@link SmallFloat} into a
+ * default implementation encodes length normalization information with {@link SmallFloat} into a
  * single byte, this might not be suitable for all purposes.
  *
  * <p>Many formulas require the use of average document length, which can be computed via a
- * combination of {@link CollectionStatistics#sumTotalTermFreq()} and {@link
- * CollectionStatistics#docCount()}.
+ * combination of {@link FieldStats#sumTotalTermFreq()} and {@link FieldStats#docCount()}.
  *
  * <p>Additional scoring factors can be stored in named {@link NumericDocValuesField}s and accessed
  * at query-time with {@link org.apache.lucene.index.LeafReader#getNumericDocValues(String)}.
@@ -67,13 +69,12 @@ import org.apache.lucene.util.SmallFloat;
  * steps:
  *
  * <ol>
- *   <li>The {@link #scorer(float, CollectionStatistics, TermStatistics...)} method is called a
- *       single time, allowing the implementation to compute any statistics (such as IDF, average
- *       document length, etc) across <i>the entire collection</i>. The {@link TermStatistics} and
- *       {@link CollectionStatistics} passed in already contain all of the raw statistics involved,
- *       so a Similarity can freely use any combination of statistics without causing any additional
- *       I/O. Lucene makes no assumption about what is stored in the returned {@link
- *       Similarity.SimScorer} object.
+ *   <li>The {@link #scorer(float, FieldStats, TermStats...)} method is called a single time,
+ *       allowing the implementation to compute any statistics (such as IDF, average document
+ *       length, etc) across <i>the entire field</i>. The {@link TermStats} and {@link FieldStats}
+ *       passed in already contain all of the raw statistics involved, so a Similarity can freely
+ *       use any combination of statistics without causing any additional I/O. Lucene makes no
+ *       assumption about what is stored in the returned {@link Similarity.SimScorer} object.
  *   <li>Then {@link SimScorer#score(float, long)} is called for every matching document to compute
  *       its score.
  * </ol>
@@ -88,13 +89,49 @@ import org.apache.lucene.util.SmallFloat;
  * @lucene.experimental
  */
 public abstract class Similarity {
-  /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
-  // Explicitly declared so that we have non-empty javadoc
-  protected Similarity() {}
+  /**
+   * True if overlap tokens (tokens with a position of increment of zero) are discounted from the
+   * document's length.
+   */
+  private final boolean discountOverlaps;
 
   /**
-   * Computes the normalization value for a field, given the accumulated state of term processing
-   * for this field (see {@link FieldInvertState}).
+   * Returns true if overlap tokens are discounted from the document's length.
+   *
+   * @see #computeNorm
+   */
+  public final boolean getDiscountOverlaps() {
+    return discountOverlaps;
+  }
+
+  /** Default constructor. (For invocation by subclass constructors, typically implicit.) */
+  protected Similarity() {
+    this(true);
+  }
+
+  /**
+   * Expert constructor that allows adjustment of {@link #getDiscountOverlaps()} at index-time.
+   *
+   * <p>Overlap tokens are tokens such as synonyms, that have a {@link PositionIncrementAttribute}
+   * of zero from the analysis chain.
+   *
+   * <p><b>NOTE</b>: If you modify this parameter, you'll need to re-index for it to take effect.
+   *
+   * @param discountOverlaps true if overlap tokens should not impact document length for scoring.
+   */
+  protected Similarity(boolean discountOverlaps) {
+    this.discountOverlaps = discountOverlaps;
+  }
+
+  /**
+   * Computes the normalization value for a field at index-time.
+   *
+   * <p>The default implementation uses {@link SmallFloat#intToByte4} to encode the number of terms
+   * as a single byte.
+   *
+   * <p><b>WARNING</b>: The default implementation is used by Lucene's supplied Similarity classes,
+   * which means you can change the Similarity at runtime without reindexing. If you override this
+   * method, you'll need to re-index documents for it to take effect.
    *
    * <p>Matches in longer fields are less precise, so implementations of this method usually set
    * smaller values when <code>state.getLength()</code> is large, and larger values when <code>
@@ -108,29 +145,53 @@ public abstract class Similarity {
    * <p>{@code 0} is not a legal norm, so {@code 1} is the norm that produces the highest scores.
    *
    * @lucene.experimental
-   * @param state current processing state for this field
+   * @param state accumulated state of term processing for this field
    * @return computed norm value
    */
-  public abstract long computeNorm(FieldInvertState state);
+  public long computeNorm(FieldInvertState state) {
+    final int numTerms;
+    if (state.getIndexOptions() == IndexOptions.DOCS) {
+      numTerms = state.getUniqueTermCount();
+    } else if (discountOverlaps) {
+      numTerms = state.getLength() - state.getNumOverlap();
+    } else {
+      numTerms = state.getLength();
+    }
+    return SmallFloat.intToByte4(numTerms);
+  }
 
   /**
-   * Compute any collection-level weight (e.g. IDF, average document length, etc) needed for scoring
-   * a query.
+   * Computes the weight for a query term based on how many times it appears in the query. This is
+   * used during query rewriting to compute the boost for duplicate query terms.
+   *
+   * <p>The default implementation returns {@code queryTermFrequency} as a float, which preserves
+   * the existing linear boost behavior. Subclasses may override this to apply saturation (e.g.
+   * BM25's k3 parameter).
+   *
+   * @param queryTermFrequency the number of times a term appears in the query
+   * @return the computed weight for this query term frequency
+   * @lucene.experimental
+   */
+  public float computeQueryTermWeight(int queryTermFrequency) {
+    return (float) queryTermFrequency;
+  }
+
+  /**
+   * Compute any field-level weight (e.g. IDF, average document length, etc) needed for scoring a
+   * query.
    *
    * @param boost a multiplicative factor to apply to the produces scores
-   * @param collectionStats collection-level statistics, such as the number of tokens in the
-   *     collection.
+   * @param fieldStats field-level statistics, such as the number of tokens in the field.
    * @param termStats term-level statistics, such as the document frequency of a term across the
-   *     collection.
+   *     field.
    * @return SimWeight object with the information this Similarity needs to score a query.
    */
-  public abstract SimScorer scorer(
-      float boost, CollectionStatistics collectionStats, TermStatistics... termStats);
+  public abstract SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats);
 
   /**
-   * Stores the weight for a query across the indexed collection. This abstract implementation is
-   * empty; descendants of {@code Similarity} should subclass {@code SimWeight} and define the
-   * statistics they require in the subclass. Examples include idf, average field length, etc.
+   * Stores the weight for a query across the indexed field. This abstract implementation is empty;
+   * descendants of {@code Similarity} should subclass {@code SimWeight} and define the statistics
+   * they require in the subclass. Examples include idf, average field length, etc.
    */
   public abstract static class SimScorer {
 
@@ -161,6 +222,16 @@ public abstract class Similarity {
     public abstract float score(float freq, long norm);
 
     /**
+     * Return a {@link BulkSimScorer} that produces the exact same scores as this {@link SimScorer}
+     * but is more efficient at bulk-computing scores.
+     *
+     * <p><b>NOTE</b>: The returned instance is not thread-safe.
+     */
+    public BulkSimScorer asBulkSimScorer() {
+      return new DefaultBulkSimScorer(this);
+    }
+
+    /**
      * Explain the score for a single document
      *
      * @param freq Explanation of how the sloppy term frequency was computed
@@ -173,6 +244,40 @@ public abstract class Similarity {
           score(freq.getValue().floatValue(), norm),
           "score(freq=" + freq.getValue() + "), with freq of:",
           Collections.singleton(freq));
+    }
+  }
+
+  /** Specialization of {@link SimScorer} for bulk-computation of scores. */
+  public interface BulkSimScorer {
+
+    /**
+     * Bulk computation of scores. For each index {@code i} in [0, size), scores[i] is computed as
+     * score(freqs[i], norms[i]). The default implementation does the following:
+     *
+     * <pre><code class="language-java">
+     * for (int i = 0; i &lt; size; ++i) {
+     *   scores[i] = score(freqs[i], norms[i]);
+     * }
+     * </code></pre>
+     *
+     * <p><b>NOTE</b>: It is legal to pass the same {@code freqs} and {@code scores} arrays.
+     */
+    void score(int size, float[] freqs, long[] norms, float[] scores);
+  }
+
+  private static class DefaultBulkSimScorer implements BulkSimScorer {
+
+    private final SimScorer scorer;
+
+    DefaultBulkSimScorer(SimScorer scorer) {
+      this.scorer = Objects.requireNonNull(scorer);
+    }
+
+    @Override
+    public void score(int size, float[] freqs, long[] norms, float[] scores) {
+      for (int i = 0; i < size; ++i) {
+        scores[i] = scorer.score(freqs[i], norms[i]);
+      }
     }
   }
 }

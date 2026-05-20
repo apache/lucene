@@ -120,11 +120,10 @@ public class FacetLabel implements Comparable<FacetLabel> {
 
   @Override
   public boolean equals(Object obj) {
-    if (obj instanceof FacetLabel == false) {
+    if (!(obj instanceof FacetLabel other)) {
       return false;
     }
 
-    FacetLabel other = (FacetLabel) obj;
     if (length != other.length) {
       return false; // not same length, cannot be equal
     }
@@ -176,6 +175,14 @@ public class FacetLabel implements Comparable<FacetLabel> {
     } else {
       return new FacetLabel(this, length);
     }
+  }
+
+  /** Get the last component. */
+  public String lastComponent() {
+    if (components.length == 0) {
+      throw new UnsupportedOperationException("components is empty");
+    }
+    return components[components.length - 1];
   }
 
   /** Returns a string representation of the path. */

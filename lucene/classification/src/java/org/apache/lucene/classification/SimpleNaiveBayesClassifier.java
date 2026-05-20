@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -105,9 +104,9 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
     ClassificationResult<BytesRef> assignedClass = null;
     double maxscore = -Double.MAX_VALUE;
     for (ClassificationResult<BytesRef> c : assignedClasses) {
-      if (c.getScore() > maxscore) {
+      if (c.score() > maxscore) {
         assignedClass = c;
-        maxscore = c.getScore();
+        maxscore = c.score();
       }
     }
     return assignedClass;
@@ -192,7 +191,7 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
    * @throws IOException if tokenization fails
    */
   protected String[] tokenize(String text) throws IOException {
-    Collection<String> result = new LinkedList<>();
+    Collection<String> result = new ArrayList<>();
     for (String textFieldName : textFieldNames) {
       try (TokenStream tokenStream = analyzer.tokenStream(textFieldName, text)) {
         CharTermAttribute charTermAttribute = tokenStream.addAttribute(CharTermAttribute.class);
@@ -203,7 +202,7 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
         tokenStream.end();
       }
     }
-    return result.toArray(new String[0]);
+    return result.toArray(String[]::new);
   }
 
   private double calculateLogLikelihood(String[] tokenizedText, Term term, int docsWithClass)
@@ -297,13 +296,13 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
     if (!assignedClasses.isEmpty()) {
       Collections.sort(assignedClasses);
       // this is a negative number closest to 0 = a
-      double smax = assignedClasses.get(0).getScore();
+      double smax = assignedClasses.get(0).score();
 
       double sumLog = 0;
       // log(sum(exp(x_n-a)))
       for (ClassificationResult<BytesRef> cr : assignedClasses) {
         // getScore-smax <=0 (both negative, smax is the smallest abs()
-        sumLog += Math.exp(cr.getScore() - smax);
+        sumLog += Math.exp(cr.score() - smax);
       }
       // loga=a+log(sum(exp(x_n-a))) = log(sum(exp(x_n)))
       double loga = smax;
@@ -311,8 +310,8 @@ public class SimpleNaiveBayesClassifier implements Classifier<BytesRef> {
 
       // 1/sum*x = exp(log(x))*1/sum = exp(log(x)-log(sum))
       for (ClassificationResult<BytesRef> cr : assignedClasses) {
-        double scoreDiff = cr.getScore() - loga;
-        returnList.add(new ClassificationResult<>(cr.getAssignedClass(), Math.exp(scoreDiff)));
+        double scoreDiff = cr.score() - loga;
+        returnList.add(new ClassificationResult<>(cr.assignedClass(), Math.exp(scoreDiff)));
       }
     }
     return returnList;

@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.stream.Stream;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -84,7 +85,7 @@ public class TestSortRescorer extends LuceneTestCase {
 
     // Just first pass query
     TopDocs hits = searcher.search(query, 10);
-    assertEquals(3, hits.totalHits.value);
+    assertEquals(3, hits.totalHits.value());
     assertEquals("3", r.storedFields().document(hits.scoreDocs[0].doc).get("id"));
     assertEquals("1", r.storedFields().document(hits.scoreDocs[1].doc).get("id"));
     assertEquals("2", r.storedFields().document(hits.scoreDocs[2].doc).get("id"));
@@ -93,7 +94,7 @@ public class TestSortRescorer extends LuceneTestCase {
     Sort sort = new Sort(new SortField("popularity", SortField.Type.INT, true));
     Rescorer rescorer = new SortRescorer(sort);
     hits = rescorer.rescore(searcher, hits, 10);
-    assertEquals(3, hits.totalHits.value);
+    assertEquals(3, hits.totalHits.value());
     assertEquals("2", r.storedFields().document(hits.scoreDocs[0].doc).get("id"));
     assertEquals("1", r.storedFields().document(hits.scoreDocs[1].doc).get("id"));
     assertEquals("3", r.storedFields().document(hits.scoreDocs[2].doc).get("id"));
@@ -120,7 +121,7 @@ public class TestSortRescorer extends LuceneTestCase {
 
     // Just first pass query
     TopDocs hits = searcher.search(query, 10);
-    assertEquals(3, hits.totalHits.value);
+    assertEquals(3, hits.totalHits.value());
     assertEquals("3", r.storedFields().document(hits.scoreDocs[0].doc).get("id"));
     assertEquals("1", r.storedFields().document(hits.scoreDocs[1].doc).get("id"));
     assertEquals("2", r.storedFields().document(hits.scoreDocs[2].doc).get("id"));
@@ -131,7 +132,7 @@ public class TestSortRescorer extends LuceneTestCase {
     Sort sort = new Sort(source.getSortField(true));
     Rescorer rescorer = new SortRescorer(sort);
     hits = rescorer.rescore(searcher, hits, 10);
-    assertEquals(3, hits.totalHits.value);
+    assertEquals(3, hits.totalHits.value());
     assertEquals("2", r.storedFields().document(hits.scoreDocs[0].doc).get("id"));
     assertEquals("1", r.storedFields().document(hits.scoreDocs[1].doc).get("id"));
     assertEquals("3", r.storedFields().document(hits.scoreDocs[2].doc).get("id"));
@@ -213,11 +214,8 @@ public class TestSortRescorer extends LuceneTestCase {
           }
         });
 
-    boolean fail = false;
-    for (int i = 0; i < numHits; i++) {
-      fail |= expected[i].intValue() != hits2.scoreDocs[i].doc;
-    }
-    assertFalse(fail);
+    Integer[] rescored = Stream.of(hits2.scoreDocs).map(d -> d.doc).toArray(Integer[]::new);
+    assertArrayEquals(expected, rescored);
 
     r.close();
     dir.close();

@@ -51,7 +51,7 @@ cd lucene
 git clone git@github.com:apache/lucene.git main
 cd main
 # For each branch that you want a separate directory created for, add a worktree
-git worktree add ../9x branch_9x
+git worktree add ../10x branch_10x
 ----
 
 === Using the Worktrees

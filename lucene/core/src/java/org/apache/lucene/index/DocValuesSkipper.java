@@ -98,4 +98,93 @@ public abstract class DocValuesSkipper {
 
   /** Return the global number of documents with a value for the field. */
   public abstract int docCount();
+
+  /**
+   * Advance this skipper so that all levels intersects the range given by {@code minValue} and
+   * {@code maxValue}. If there are no intersecting levels, the skipper is exhausted.
+   */
+  public final void advance(long minValue, long maxValue) throws IOException {
+    if (minDocID(0) == -1) {
+      // #advance has not been called yet
+      advance(0);
+    }
+    // check if the current interval intersects the provided range
+    while (minDocID(0) != DocIdSetIterator.NO_MORE_DOCS
+        && ((minValue(0) > maxValue || maxValue(0) < minValue))) {
+      int maxDocID = maxDocID(0);
+      int nextLevel = 1;
+      // check if the next levels intersects to skip as many docs as possible
+      while (nextLevel < numLevels()
+          && (minValue(nextLevel) > maxValue || maxValue(nextLevel) < minValue)) {
+        maxDocID = maxDocID(nextLevel);
+        nextLevel++;
+      }
+      advance(maxDocID + 1);
+    }
+  }
+
+  /**
+   * Returns the minimum value for a field across all segments, or {@link Long#MIN_VALUE} if not
+   * available
+   *
+   * @param reader the index reader to be queried
+   * @param field the field to retrieve values for
+   */
+  public static long globalMinValue(IndexReader reader, String field) throws IOException {
+    long minValue = Long.MAX_VALUE;
+    for (LeafReaderContext ctx : reader.leaves()) {
+      if (ctx.reader().getFieldInfos().fieldInfo(field) == null) {
+        continue; // no field values in this segment, so we can ignore it
+      }
+      DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper(field);
+      if (skipper == null) {
+        // minimum cannot be computed correctly since skipper is not enabled for some leaf
+        return Long.MIN_VALUE;
+      } else {
+        minValue = Math.min(minValue, skipper.minValue());
+      }
+    }
+    return minValue;
+  }
+
+  /**
+   * Returns the maximum value for a field across all segments, or {@link Long#MIN_VALUE} if not
+   * available
+   *
+   * @param reader the index reader to be queried
+   * @param field the field to retrieve values for
+   */
+  public static long globalMaxValue(IndexReader reader, String field) throws IOException {
+    long maxValue = Long.MIN_VALUE;
+    for (LeafReaderContext ctx : reader.leaves()) {
+      if (ctx.reader().getFieldInfos().fieldInfo(field) == null) {
+        continue; // no field values in this segment, so we can ignore it
+      }
+      DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper(field);
+      if (skipper == null) {
+        // maximum cannot be computed correctly since skipper is not enabled for some leaf
+        return Long.MAX_VALUE;
+      } else {
+        maxValue = Math.max(maxValue, skipper.maxValue());
+      }
+    }
+    return maxValue;
+  }
+
+  /**
+   * Returns the total skipper document count for a field across all segments
+   *
+   * @param reader the index reader to be queried
+   * @param field the field to retrieve values for
+   */
+  public static int globalDocCount(IndexReader reader, String field) throws IOException {
+    int docCount = 0;
+    for (LeafReaderContext ctx : reader.leaves()) {
+      DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper(field);
+      if (skipper != null) {
+        docCount += skipper.docCount();
+      }
+    }
+    return docCount;
+  }
 }

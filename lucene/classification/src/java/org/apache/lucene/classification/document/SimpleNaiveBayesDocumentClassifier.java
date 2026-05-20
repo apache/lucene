@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import org.apache.lucene.analysis.Analyzer;
@@ -80,9 +79,9 @@ public class SimpleNaiveBayesDocumentClassifier extends SimpleNaiveBayesClassifi
     ClassificationResult<BytesRef> assignedClass = null;
     double maxscore = -Double.MAX_VALUE;
     for (ClassificationResult<BytesRef> c : assignedClasses) {
-      if (c.getScore() > maxscore) {
+      if (c.score() > maxscore) {
         assignedClass = c;
-        maxscore = c.getScore();
+        maxscore = c.score();
       }
     }
     return assignedClass;
@@ -154,7 +153,7 @@ public class SimpleNaiveBayesDocumentClassifier extends SimpleNaiveBayesClassifi
     for (int i = 0; i < textFieldNames.length; i++) {
       String fieldName = textFieldNames[i];
       float boost = 1;
-      List<String[]> tokenizedValues = new LinkedList<>();
+      List<String[]> tokenizedValues = new ArrayList<>();
       if (fieldName.contains("^")) {
         String[] field2boost = fieldName.split("\\^");
         fieldName = field2boost[0];
@@ -180,7 +179,7 @@ public class SimpleNaiveBayesDocumentClassifier extends SimpleNaiveBayesClassifi
    * @throws java.io.IOException If tokenization fails because there is a low-level I/O error
    */
   protected String[] getTokenArray(TokenStream tokenizedText) throws IOException {
-    Collection<String> tokens = new LinkedList<>();
+    Collection<String> tokens = new ArrayList<>();
     CharTermAttribute charTermAttribute = tokenizedText.addAttribute(CharTermAttribute.class);
     tokenizedText.reset();
     while (tokenizedText.incrementToken()) {
@@ -188,7 +187,7 @@ public class SimpleNaiveBayesDocumentClassifier extends SimpleNaiveBayesClassifi
     }
     tokenizedText.end();
     tokenizedText.close();
-    return tokens.toArray(new String[0]);
+    return tokens.toArray(String[]::new);
   }
 
   /**

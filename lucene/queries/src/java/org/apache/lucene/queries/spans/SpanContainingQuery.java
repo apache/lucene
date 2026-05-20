@@ -20,10 +20,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Map;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.ScorerSupplier;
 
@@ -144,8 +144,8 @@ public final class SpanContainingQuery extends SpanContainQuery {
       if (spans == null) {
         return null;
       }
-      final LeafSimScorer docScorer = getSimScorer(context);
-      final var scorer = new SpanScorer(spans, docScorer);
+      final NumericDocValues norms = context.reader().getNormValues(field);
+      final var scorer = new SpanScorer(spans, getSimScorer(), norms);
       return new DefaultScorerSupplier(scorer);
     }
   }

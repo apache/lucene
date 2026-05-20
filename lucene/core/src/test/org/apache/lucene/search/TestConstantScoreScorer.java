@@ -178,10 +178,13 @@ public class TestConstantScoreScorer extends LuceneTestCase {
 
       writer =
           new RandomIndexWriter(
-              random(),
-              directory,
-              newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
-
+              random(), directory, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+      writer
+          .w
+          .getConfig()
+          .getCodec()
+          .compoundFormat()
+          .setShouldUseCompoundFile(random().nextBoolean());
       for (String VALUE : VALUES) {
         Document doc = new Document();
         doc.add(newTextField(FIELD, VALUE, Field.Store.YES));
@@ -241,8 +244,8 @@ public class TestConstantScoreScorer extends LuceneTestCase {
 
     TopScoreDocCollectorManager c = new TopScoreDocCollectorManager(10, 10);
     TopDocs topDocs = is.search(new ConstantScoreQuery(new TermQuery(new Term("key", "foo"))), c);
-    assertEquals(11, topDocs.totalHits.value);
-    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
+    assertEquals(11, topDocs.totalHits.value());
+    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
 
     c = new TopScoreDocCollectorManager(10, 10);
     Query query =
@@ -251,8 +254,8 @@ public class TestConstantScoreScorer extends LuceneTestCase {
             .add(new ConstantScoreQuery(new TermQuery(new Term("key", "bar"))), Occur.FILTER)
             .build();
     topDocs = is.search(query, c);
-    assertEquals(11, topDocs.totalHits.value);
-    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation);
+    assertEquals(11, topDocs.totalHits.value());
+    assertEquals(TotalHits.Relation.GREATER_THAN_OR_EQUAL_TO, topDocs.totalHits.relation());
 
     iw.close();
     ir.close();

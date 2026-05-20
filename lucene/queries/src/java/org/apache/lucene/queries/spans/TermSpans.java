@@ -21,7 +21,6 @@ import java.util.Objects;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.LeafSimScorer;
 
 /**
  * Expert: Public for extension only. This does not work correctly for terms that indexed at
@@ -37,7 +36,7 @@ public class TermSpans extends Spans {
   protected boolean readPayload;
   private final float positionsCost;
 
-  public TermSpans(LeafSimScorer scorer, PostingsEnum postings, Term term, float positionsCost) {
+  public TermSpans(PostingsEnum postings, Term term, float positionsCost) {
     this.postings = Objects.requireNonNull(postings);
     this.term = Objects.requireNonNull(term);
     this.doc = -1;

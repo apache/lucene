@@ -17,6 +17,8 @@
 
 package org.apache.lucene.search.grouping;
 
+import static org.apache.lucene.search.grouping.TopGroups.nonNANmax;
+
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Objects;
@@ -31,7 +33,8 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopDocsCollector;
 import org.apache.lucene.search.TopFieldCollector;
-import org.apache.lucene.search.TopScoreDocCollector;
+import org.apache.lucene.search.TopFieldCollectorManager;
+import org.apache.lucene.search.TopScoreDocCollectorManager;
 import org.apache.lucene.util.ArrayUtil;
 
 /**
@@ -127,15 +130,17 @@ public class TopGroupsCollector<T> extends SecondPassGroupingCollector<T> {
         supplier =
             () ->
                 new TopDocsAndMaxScoreCollector(
-                    true, TopScoreDocCollector.create(maxDocsPerGroup, Integer.MAX_VALUE), null);
+                    true,
+                    new TopScoreDocCollectorManager(maxDocsPerGroup, null, Integer.MAX_VALUE)
+                        .newCollector(),
+                    null);
       } else {
         supplier =
             () -> {
               TopFieldCollector topDocsCollector =
-                  TopFieldCollector.create(
-                      withinGroupSort,
-                      maxDocsPerGroup,
-                      Integer.MAX_VALUE); // TODO: disable exact counts?
+                  new TopFieldCollectorManager(
+                          withinGroupSort, maxDocsPerGroup, null, Integer.MAX_VALUE)
+                      .newCollector(); // TODO: disable exact counts?
               MaxScoreCollector maxScoreCollector = getMaxScores ? new MaxScoreCollector() : null;
               return new TopDocsAndMaxScoreCollector(false, topDocsCollector, maxScoreCollector);
             };
@@ -201,7 +206,7 @@ public class TopGroupsCollector<T> extends SecondPassGroupingCollector<T> {
               topDocs.scoreDocs,
               group.groupValue,
               group.sortValues);
-      maxScore = Math.max(maxScore, groupMaxScore);
+      maxScore = nonNANmax(maxScore, groupMaxScore);
     }
 
     return new TopGroups<>(

@@ -61,7 +61,7 @@ public abstract class ViterbiNBest<T extends Token, U extends MorphData>
   protected final void backtraceNBest(final Position endPosData, final boolean useEOS)
       throws IOException {
     if (lattice == null) {
-      lattice = new Lattice<U>();
+      lattice = new Lattice<>();
     }
 
     final int endPos = endPosData.getPos();

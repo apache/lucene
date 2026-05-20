@@ -70,7 +70,7 @@ public class TestDemo extends LuceneTestCase {
 
         Query query = new TermQuery(new Term("fieldname", "text"));
         TopDocs hits = searcher.search(query, 1);
-        assertEquals(1, hits.totalHits.value);
+        assertEquals(1, hits.totalHits.value());
 
         // Iterate through the results.
         StoredFields storedFields = searcher.storedFields();

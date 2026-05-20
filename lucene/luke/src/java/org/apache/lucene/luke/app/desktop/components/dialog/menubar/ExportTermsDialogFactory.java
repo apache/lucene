@@ -66,6 +66,7 @@ public final class ExportTermsDialogFactory implements DialogOpener.DialogFactor
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+  @SuppressWarnings("NonFinalStaticField")
   private static ExportTermsDialogFactory instance;
 
   private final IndexToolsFactory indexToolsFactory = new IndexToolsFactory();
@@ -74,9 +75,9 @@ public final class ExportTermsDialogFactory implements DialogOpener.DialogFactor
 
   private final IndexHandler indexHandler;
 
-  private final JComboBox<String> fieldCombo = new JComboBox<String>();
+  private final JComboBox<String> fieldCombo = new JComboBox<>();
 
-  private final JComboBox<String> delimiterCombo = new JComboBox<String>();
+  private final JComboBox<String> delimiterCombo = new JComboBox<>();
 
   private final JTextField destDir = new JTextField();
 
@@ -199,7 +200,7 @@ public final class ExportTermsDialogFactory implements DialogOpener.DialogFactor
     execButtons.add(exportBtn);
     JButton closeBtn = new JButton(MessageUtils.getLocalizedMessage("button.close"));
     closeBtn.setMargin(new Insets(3, 0, 3, 0));
-    closeBtn.addActionListener(e -> dialog.dispose());
+    closeBtn.addActionListener(_ -> dialog.dispose());
     execButtons.add(closeBtn);
     return execButtons;
   }
@@ -233,7 +234,7 @@ public final class ExportTermsDialogFactory implements DialogOpener.DialogFactor
           Executors.newSingleThreadExecutor(new NamedThreadFactory("export-terms-dialog"));
 
       SwingWorker<Void, Void> task =
-          new SwingWorker<Void, Void>() {
+          new SwingWorker<>() {
 
             String filename;
 

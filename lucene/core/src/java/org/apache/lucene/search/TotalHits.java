@@ -24,8 +24,14 @@ import java.util.Objects;
  * documents. Given that it is often enough to have a lower bounds of the number of hits, such as
  * "there are more than 1000 hits", Lucene has options to stop counting as soon as a threshold has
  * been reached in order to improve query times.
+ *
+ * @param value The value of the total hit count. Must be interpreted in the context of {@link
+ *     #relation}.
+ * @param relation Whether {@link #value} is the exact hit count, in which case {@link #relation} is
+ *     equal to {@link Relation#EQUAL_TO}, or a lower bound of the total hit count, in which case
+ *     {@link #relation} is equal to {@link Relation#GREATER_THAN_OR_EQUAL_TO}.
  */
-public final class TotalHits {
+public record TotalHits(long value, Relation relation) {
 
   /** How the {@link TotalHits#value} should be interpreted. */
   public enum Relation {
@@ -35,40 +41,12 @@ public final class TotalHits {
     GREATER_THAN_OR_EQUAL_TO
   }
 
-  /** The value of the total hit count. Must be interpreted in the context of {@link #relation}. */
-  public final long value;
-
-  /**
-   * Whether {@link #value} is the exact hit count, in which case {@link #relation} is equal to
-   * {@link Relation#EQUAL_TO}, or a lower bound of the total hit count, in which case {@link
-   * #relation} is equal to {@link Relation#GREATER_THAN_OR_EQUAL_TO}.
-   */
-  public final Relation relation;
-
   /** Sole constructor. */
-  public TotalHits(long value, Relation relation) {
+  public TotalHits {
     if (value < 0) {
       throw new IllegalArgumentException("value must be >= 0, got " + value);
     }
-    this.value = value;
-    this.relation = Objects.requireNonNull(relation);
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    TotalHits totalHits = (TotalHits) o;
-    return value == totalHits.value && relation == totalHits.relation;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(value, relation);
+    Objects.requireNonNull(relation);
   }
 
   @Override

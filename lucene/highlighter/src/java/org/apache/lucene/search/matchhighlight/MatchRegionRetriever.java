@@ -43,6 +43,7 @@ import org.apache.lucene.search.FilterMatchesIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.MatchesIterator;
+import org.apache.lucene.search.MatchesUtils;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -217,7 +218,7 @@ public class MatchRegionRetriever {
     highlightDocuments(
         Arrays.stream(topDocs.scoreDocs).mapToInt(scoreDoc -> scoreDoc.doc).sorted().iterator(),
         consumer,
-        field -> Integer.MAX_VALUE);
+        _ -> Integer.MAX_VALUE);
   }
 
   /**
@@ -397,6 +398,10 @@ public class MatchRegionRetriever {
       ToIntFunction<String> maxHitsPerField,
       Map<String, List<OffsetRange>> outputHighlights)
       throws IOException {
+    if (queryAffectedHighlightedFields.isEmpty()) {
+      return;
+    }
+
     Matches matches = weight.matches(leafReaderContext, contextDocId);
     if (matches == null) {
       return;
@@ -404,7 +409,7 @@ public class MatchRegionRetriever {
 
     for (String field : queryAffectedHighlightedFields) {
       MatchesIterator matchesIterator = matches.getMatches(field);
-      if (matchesIterator == null) {
+      if (matchesIterator == null || matchesIterator == MatchesUtils.MATCH_WITH_NO_TERMS) {
         // No matches on this field, even though the field was part of the query. This may be
         // possible
         // with complex queries that source non-text fields (have no "hit regions" in any textual
@@ -475,7 +480,7 @@ public class MatchRegionRetriever {
     return (field) -> {
       FieldInfo fieldInfo = fieldInfos.fieldInfo(field);
       if (fieldInfo == null) {
-        return (mi, doc) -> {
+        return (_, _) -> {
           throw new IOException("FieldInfo is null for field: " + field);
         };
       }
@@ -487,6 +492,7 @@ public class MatchRegionRetriever {
         case DOCS_AND_FREQS_AND_POSITIONS:
           return new OffsetsFromPositions(field, analyzer);
 
+        case DOCS_AND_CUSTOM_FREQS:
         case DOCS_AND_FREQS:
         case DOCS:
           // By default retrieve offsets from individual tokens
@@ -500,7 +506,7 @@ public class MatchRegionRetriever {
 
         case NONE:
         default:
-          return (matchesIterator, doc) -> {
+          return (_, _) -> {
             throw new IOException(
                 "Field is indexed without positions and/or offsets: "
                     + field
@@ -557,7 +563,7 @@ public class MatchRegionRetriever {
     }
 
     private void addField(FieldInfo field, String value) {
-      fieldValues.computeIfAbsent(field.name, v -> new ArrayList<>()).add(value);
+      fieldValues.computeIfAbsent(field.name, _ -> new ArrayList<>()).add(value);
     }
 
     @Override

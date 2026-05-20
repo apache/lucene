@@ -50,7 +50,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.junit.Test;
 
 public class TestAnalyzingInfixSuggester extends LuceneTestCase {
 
@@ -227,19 +226,15 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
     a.close();
   }
 
-  /** Used to return highlighted result; see {@link LookupResult#highlightKey} */
-  private static final class LookupHighlightFragment {
-    /** Portion of text for this fragment. */
-    public final String text;
-
-    /** True if this text matched a part of the user's query. */
-    public final boolean isHit;
-
+  /**
+   * Used to return highlighted result; see {@link LookupResult#highlightKey}
+   *
+   * @param text Portion of text for this fragment.
+   * @param isHit True if this text matched a part of the user's query.
+   */
+  private record LookupHighlightFragment(String text, boolean isHit) {
     /** Sole constructor. */
-    public LookupHighlightFragment(String text, boolean isHit) {
-      this.text = text;
-      this.isHit = isHit;
-    }
+    private LookupHighlightFragment {}
 
     @Override
     public String toString() {
@@ -1336,7 +1331,6 @@ public class TestAnalyzingInfixSuggester extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testAddPrefixMatch() throws IOException {
     Analyzer a = new MockAnalyzer(random(), MockTokenizer.WHITESPACE, false);
     Directory dir = newDirectory();

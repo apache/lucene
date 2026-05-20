@@ -107,12 +107,12 @@ public class ConfusionMatrixGenerator {
               time += end - start;
 
               if (result != null) {
-                T assignedClass = result.getAssignedClass();
+                T assignedClass = result.assignedClass();
                 if (assignedClass != null) {
                   counter++;
                   String classified =
-                      assignedClass instanceof BytesRef
-                          ? ((BytesRef) assignedClass).utf8ToString()
+                      assignedClass instanceof BytesRef bytesRef
+                          ? bytesRef.utf8ToString()
                           : assignedClass.toString();
 
                   String correctAnswer;
@@ -137,9 +137,7 @@ public class ConfusionMatrixGenerator {
                   }
                 }
               }
-            } catch (
-                @SuppressWarnings("unused")
-                TimeoutException timeoutException) {
+            } catch (TimeoutException _) {
               // add classification timeout
               time += 5000;
             } catch (ExecutionException | InterruptedException executionException) {

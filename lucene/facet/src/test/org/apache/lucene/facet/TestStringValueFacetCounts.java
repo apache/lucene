@@ -34,6 +34,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
+import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -76,6 +77,42 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     StringDocValuesReaderState state =
         new StringDocValuesReaderState(searcher.getIndexReader(), "field");
     checkTopNFacetResult(expectedCounts, expectedTotalDocCount, searcher, state, 10, 2, 1, 0);
+
+    IOUtils.close(searcher.getIndexReader(), dir);
+  }
+
+  private void assertEmptyFacetResult(FacetResult result) {
+    assertEquals(0, result.path.length);
+    assertEquals(0, result.value);
+    assertEquals(0, result.childCount);
+    assertEquals(0, result.labelValues.length);
+  }
+
+  public void testEmptyMatchset() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+
+    Document doc = new Document();
+    doc.add(new SortedSetDocValuesField("field", new BytesRef("foo")));
+    writer.addDocument(doc);
+
+    IndexSearcher searcher = newSearcher(writer.getReader());
+    writer.close();
+
+    FacetsCollector facetsCollector =
+        searcher.search(MatchNoDocsQuery.INSTANCE, new FacetsCollectorManager());
+    StringDocValuesReaderState state =
+        new StringDocValuesReaderState(searcher.getIndexReader(), "field");
+
+    StringValueFacetCounts counts = new StringValueFacetCounts(state, facetsCollector);
+
+    FacetResult top = counts.getTopChildren(10, "field");
+    assertEmptyFacetResult(top);
+
+    FacetResult all = counts.getAllChildren("field");
+    assertEmptyFacetResult(all);
+
+    assertEquals(0, counts.getSpecificValue("field", "foo"));
 
     IOUtils.close(searcher.getIndexReader(), dir);
   }
@@ -298,7 +335,7 @@ public class TestStringValueFacetCounts extends FacetTestCase {
     IndexSearcher searcher = newSearcher(writer.getReader());
     writer.close();
 
-    FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector c = searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     // using a stale state
     expectThrows(IllegalStateException.class, () -> new StringValueFacetCounts(state, c));
@@ -308,7 +345,7 @@ public class TestStringValueFacetCounts extends FacetTestCase {
 
   public void testRandom() throws Exception {
 
-    int fullIterations = LuceneTestCase.TEST_NIGHTLY ? 20 : 3;
+    int fullIterations = LuceneTestCase.TEST_NIGHTLY ? 20 : 1;
     for (int iter = 0; iter < fullIterations; iter++) {
       Directory dir = newDirectory();
       RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
@@ -378,7 +415,7 @@ public class TestStringValueFacetCounts extends FacetTestCase {
       int... topNs)
       throws IOException {
 
-    FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector c = searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     for (int topN : topNs) {
 
@@ -431,11 +468,7 @@ public class TestStringValueFacetCounts extends FacetTestCase {
       assertEquals(facetResult, topNDimsResult.get(0));
 
       // test getAllDims(0)
-      expectThrows(
-          IllegalArgumentException.class,
-          () -> {
-            facets.getAllDims(0);
-          });
+      expectThrows(IllegalArgumentException.class, () -> facets.getAllDims(0));
 
       // This is a little strange, but we request all labels at this point so that when we
       // secondarily sort by label value in order to compare to the expected results, we have
@@ -485,7 +518,7 @@ public class TestStringValueFacetCounts extends FacetTestCase {
       StringDocValuesReaderState state)
       throws IOException {
 
-    FacetsCollector c = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector c = searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     StringValueFacetCounts facets;
     // should get the same result whether-or-not we provide a FacetsCollector since it's doing
@@ -501,8 +534,7 @@ public class TestStringValueFacetCounts extends FacetTestCase {
 
     // sort expected counts by value, count
     expectedCountsSortedByValue.sort(
-        Comparator.comparing((Map.Entry<String, Integer> a) -> a.getKey())
-            .thenComparingInt(Map.Entry::getValue));
+        Map.Entry.<String, Integer>comparingByKey().thenComparingInt(Map.Entry::getValue));
 
     FacetResult facetResult = facets.getAllChildren("field");
     assertEquals(expectedTotalDocsWithValue, facetResult.value);

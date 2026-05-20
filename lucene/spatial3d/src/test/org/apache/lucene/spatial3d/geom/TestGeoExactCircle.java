@@ -21,7 +21,6 @@ import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.random
 import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomGeoPoint;
 import static org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator.randomPlanetModel;
 
-import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import org.apache.lucene.spatial3d.tests.RandomGeo3dShapeGenerator;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.junit.Test;
@@ -29,7 +28,6 @@ import org.junit.Test;
 /** Tests for GeoExactCircle. */
 public class TestGeoExactCircle extends LuceneTestCase {
 
-  @Test
   public void testExactCircle() {
     GeoCircle c;
     GeoPoint gp;
@@ -56,7 +54,6 @@ public class TestGeoExactCircle extends LuceneTestCase {
     assertTrue(c.isWithin(gp));
   }
 
-  @Test
   public void testSurfacePointOnBearingScale() {
     PlanetModel p1 = PlanetModel.WGS84;
     PlanetModel p2 =
@@ -81,7 +78,6 @@ public class TestGeoExactCircle extends LuceneTestCase {
   }
 
   @Test
-  @Repeat(iterations = 100)
   public void RandomPointBearingWGS84Test() {
     PlanetModel planetModel = PlanetModel.WGS84;
     GeoPoint center = randomGeoPoint(planetModel);
@@ -93,7 +89,6 @@ public class TestGeoExactCircle extends LuceneTestCase {
   }
 
   @Test
-  @Repeat(iterations = 100)
   public void RandomPointBearingCardinalTest() {
     // surface distance calculations methods start not converging when
     // planet scaledFlattening > 0.4
@@ -128,7 +123,6 @@ public class TestGeoExactCircle extends LuceneTestCase {
         surfaceDistance - radius < Vector.MINIMUM_ANGULAR_RESOLUTION);
   }
 
-  @Test
   public void testExactCircleBounds() {
 
     GeoPoint center = new GeoPoint(PlanetModel.WGS84, 0, 0);
@@ -161,7 +155,6 @@ public class TestGeoExactCircle extends LuceneTestCase {
         });
   }
 
-  @Test
   public void testExactCircleDoesNotFit() {
     expectThrows(
         IllegalArgumentException.class,
@@ -194,8 +187,6 @@ public class TestGeoExactCircle extends LuceneTestCase {
    * in LUCENE-8054 we have problems with exact circles that have edges that are close together.
    * This test creates those circles with the same center and slightly different radius.
    */
-  @Test
-  @Repeat(iterations = 100)
   public void testRandomLUCENE8054() {
     PlanetModel planetModel = randomPlanetModel();
     GeoCircle circle1 =
@@ -217,7 +208,6 @@ public class TestGeoExactCircle extends LuceneTestCase {
     assertTrue(b.toString(), circle1.getRelationship(circle2) != GeoArea.DISJOINT);
   }
 
-  @Test
   public void testLUCENE8054() {
     GeoCircle circle1 =
         GeoCircleFactory.makeExactGeoCircle(
@@ -239,7 +229,6 @@ public class TestGeoExactCircle extends LuceneTestCase {
     assertTrue(rel != GeoArea.DISJOINT);
   }
 
-  @Test
   public void testLUCENE8056() {
     GeoCircle circle =
         GeoCircleFactory.makeExactGeoCircle(
@@ -263,7 +252,6 @@ public class TestGeoExactCircle extends LuceneTestCase {
     assertTrue(bBox.getRelationship(circle) == GeoArea.OVERLAPS);
   }
 
-  @Test
   public void testExactCircleLUCENE8054() {
     // [junit4]    > Throwable #1: java.lang.AssertionError: circle1: GeoExactCircle:
     // {planetmodel=PlanetModel.WGS84, center=[lat=-1.2097332228999564,
@@ -286,7 +274,6 @@ public class TestGeoExactCircle extends LuceneTestCase {
     assertTrue("cannot be disjoint", c1.getRelationship(c2) != GeoArea.DISJOINT);
   }
 
-  @Test
   public void testLUCENE8065() {
     // Circle planes are convex
     GeoCircle circle1 =

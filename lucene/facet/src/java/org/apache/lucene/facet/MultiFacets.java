@@ -80,7 +80,7 @@ public class MultiFacets extends Facets {
   @Override
   public List<FacetResult> getAllDims(int topN) throws IOException {
     validateTopN(topN);
-    List<FacetResult> results = new ArrayList<FacetResult>();
+    List<FacetResult> results = new ArrayList<>();
 
     // First add the specific dim's facets:
     for (Map.Entry<String, Facets> ent : dimToFacets.entrySet()) {

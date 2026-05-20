@@ -31,7 +31,10 @@ module org.apache.lucene.suggest {
       org.apache.lucene.search.suggest.document.Completion50PostingsFormat,
       org.apache.lucene.search.suggest.document.Completion84PostingsFormat,
       org.apache.lucene.search.suggest.document.Completion90PostingsFormat,
-      org.apache.lucene.search.suggest.document.Completion99PostingsFormat;
+      org.apache.lucene.search.suggest.document.Completion99PostingsFormat,
+      org.apache.lucene.search.suggest.document.Completion912PostingsFormat,
+      org.apache.lucene.search.suggest.document.Completion101PostingsFormat,
+      org.apache.lucene.search.suggest.document.Completion104PostingsFormat;
   provides org.apache.lucene.analysis.TokenFilterFactory with
       org.apache.lucene.search.suggest.analyzing.SuggestStopFilterFactory;
 }

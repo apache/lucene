@@ -42,8 +42,7 @@ public final class MultiTerms extends Terms {
    * @param subSlices A parallel array (matching {@code subs}) describing the sub-reader slices.
    * @lucene.internal
    */
-  public MultiTerms(Terms[] subs, ReaderSlice[] subSlices)
-      throws IOException { // TODO make private?
+  public MultiTerms(Terms[] subs, ReaderSlice[] subSlices) { // TODO make private?
     this.subs = subs;
     this.subSlices = subSlices;
 
@@ -89,7 +88,7 @@ public final class MultiTerms extends Terms {
       return null;
     } else {
       return new MultiTerms(
-          termsPerLeaf.toArray(EMPTY_ARRAY), slicePerLeaf.toArray(ReaderSlice.EMPTY_ARRAY));
+          termsPerLeaf.toArray(Terms[]::new), slicePerLeaf.toArray(ReaderSlice[]::new));
     }
   }
 
@@ -145,7 +144,7 @@ public final class MultiTerms extends Terms {
     }
 
     if (termsEnums.size() > 0) {
-      return new MultiTermsEnum(subSlices).reset(termsEnums.toArray(TermsEnumIndex.EMPTY_ARRAY));
+      return new MultiTermsEnum(subSlices).reset(termsEnums.toArray(TermsEnumIndex[]::new));
     } else {
       return TermsEnum.EMPTY;
     }
@@ -189,7 +188,7 @@ public final class MultiTerms extends Terms {
     }
 
     if (termsEnums.size() > 0) {
-      return new MultiTermsEnum(subSlices).reset(termsEnums.toArray(TermsEnumIndex.EMPTY_ARRAY));
+      return new MultiTermsEnum(subSlices).reset(termsEnums.toArray(TermsEnumIndex[]::new));
     } else {
       return TermsEnum.EMPTY;
     }
@@ -223,7 +222,7 @@ public final class MultiTerms extends Terms {
   }
 
   @Override
-  public int getDocCount() throws IOException {
+  public int getDocCount() {
     int sum = 0;
     for (Terms terms : subs) {
       final int v = terms.getDocCount();

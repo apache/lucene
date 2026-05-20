@@ -126,7 +126,7 @@ public class CachingNaiveBayesClassifier extends SimpleNaiveBayesClassifier {
         int removeIdx = -1;
         int i = 0;
         for (ClassificationResult<BytesRef> cr : ret) {
-          if (cr.getAssignedClass().equals(cclass)) {
+          if (cr.assignedClass().equals(cclass)) {
             removeIdx = i;
             break;
           }
@@ -137,7 +137,7 @@ public class CachingNaiveBayesClassifier extends SimpleNaiveBayesClassifier {
           ClassificationResult<BytesRef> toRemove = ret.get(removeIdx);
           ret.add(
               new ClassificationResult<>(
-                  toRemove.getAssignedClass(), toRemove.getScore() + Math.log(wordProbability)));
+                  toRemove.assignedClass(), toRemove.score() + Math.log(wordProbability)));
           ret.remove(removeIdx);
         }
       }

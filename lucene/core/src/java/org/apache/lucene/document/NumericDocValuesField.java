@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.document;
 
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.search.IndexOrDocValuesQuery;
 import org.apache.lucene.search.Query;
@@ -24,9 +25,9 @@ import org.apache.lucene.search.Query;
  * Field that stores a per-document <code>long</code> value for scoring, sorting or value retrieval.
  * Here's an example usage:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   document.add(new NumericDocValuesField(name, 22L));
- * </pre>
+ * </code></pre>
  *
  * <p>If you also need to store the value, you should add a separate {@link StoredField} instance.
  */
@@ -42,13 +43,13 @@ public class NumericDocValuesField extends Field {
     TYPE.freeze();
 
     INDEXED_TYPE = new FieldType(TYPE);
-    INDEXED_TYPE.setDocValuesSkipIndex(true);
+    INDEXED_TYPE.setDocValuesSkipIndexType(DocValuesSkipIndexType.RANGE);
     INDEXED_TYPE.freeze();
   }
 
   /**
    * Creates a new {@link NumericDocValuesField} with the specified 64-bit long value that also
-   * creates a {@link FieldType#hasDocValuesSkipIndex() skip index}.
+   * creates a {@link FieldType#docValuesSkipIndexType() skip index}.
    *
    * @param name field name
    * @param value 64-bit long value

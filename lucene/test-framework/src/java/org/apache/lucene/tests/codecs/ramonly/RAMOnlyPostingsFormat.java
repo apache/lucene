@@ -119,7 +119,7 @@ public final class RAMOnlyPostingsFormat extends PostingsFormat {
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       return docCount;
     }
 
@@ -130,18 +130,17 @@ public final class RAMOnlyPostingsFormat extends PostingsFormat {
 
     @Override
     public boolean hasFreqs() {
-      return info.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
+      return info.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS);
     }
 
     @Override
     public boolean hasOffsets() {
-      return info.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-          >= 0;
+      return info.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
     }
 
     @Override
     public boolean hasPositions() {
-      return info.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+      return info.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
     }
 
     @Override
@@ -209,9 +208,8 @@ public final class RAMOnlyPostingsFormat extends PostingsFormat {
 
         FieldInfo fieldInfo = state.fieldInfos.fieldInfo(field);
         if (fieldInfo
-                .getIndexOptions()
-                .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-            >= 0) {
+            .getIndexOptions()
+            .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)) {
           throw new UnsupportedOperationException("this codec cannot index offsets");
         }
 
@@ -226,11 +224,10 @@ public final class RAMOnlyPostingsFormat extends PostingsFormat {
         int enumFlags;
 
         IndexOptions indexOptions = fieldInfo.getIndexOptions();
-        boolean writeFreqs = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
-        boolean writePositions =
-            indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+        boolean writeFreqs = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS);
+        boolean writePositions = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
         boolean writeOffsets =
-            indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
+            indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
         boolean writePayloads = fieldInfo.hasPayloads();
 
         if (writeFreqs == false) {
@@ -327,9 +324,9 @@ public final class RAMOnlyPostingsFormat extends PostingsFormat {
     }
 
     public void finishTerm(BytesRef text, TermStats stats) {
-      assert stats.docFreq > 0;
-      assert stats.docFreq == current.docs.size();
-      current.totalTermFreq = stats.totalTermFreq;
+      assert stats.docFreq() > 0;
+      assert stats.docFreq() == current.docs.size();
+      current.totalTermFreq = stats.totalTermFreq();
       field.termToDocs.put(current.term, current);
     }
 

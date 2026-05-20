@@ -26,7 +26,7 @@ import org.apache.lucene.tests.search.BaseExplanationTestCase;
 /** TestExplanations subclass focusing on payload queries */
 public class TestPayloadExplanations extends BaseExplanationTestCase {
 
-  private static PayloadFunction[] functions =
+  private static final PayloadFunction[] functions =
       new PayloadFunction[] {
         new AveragePayloadFunction(), new MinPayloadFunction(), new MaxPayloadFunction(),
       };

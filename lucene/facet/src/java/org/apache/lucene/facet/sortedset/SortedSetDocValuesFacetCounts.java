@@ -28,7 +28,6 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiDocValues;
-import org.apache.lucene.index.MultiDocValues.MultiSortedSetDocValues;
 import org.apache.lucene.index.OrdinalMap;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.SortedDocValues;
@@ -174,7 +173,7 @@ public class SortedSetDocValuesFacetCounts extends AbstractSortedSetDocValueFace
   private void countOneSegment(
       OrdinalMap ordinalMap, LeafReader reader, int segOrd, MatchingDocs hits, Bits liveDocs)
       throws IOException {
-    if (hits != null && hits.totalHits == 0) {
+    if (hits != null && hits.totalHits() == 0) {
       return;
     }
 
@@ -197,7 +196,7 @@ public class SortedSetDocValuesFacetCounts extends AbstractSortedSetDocValueFace
       assert liveDocs != null;
       it = FacetUtils.liveDocsDISI(valuesIt, liveDocs);
     } else {
-      it = ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits.iterator(), valuesIt));
+      it = ConjunctionUtils.intersectIterators(Arrays.asList(hits.bits().iterator(), valuesIt));
     }
 
     // TODO: yet another option is to count all segs
@@ -214,7 +213,7 @@ public class SortedSetDocValuesFacetCounts extends AbstractSortedSetDocValueFace
 
       int numSegOrds = (int) multiValues.getValueCount();
 
-      if (hits != null && hits.totalHits < numSegOrds / 10) {
+      if (hits != null && hits.totalHits() < numSegOrds / 10) {
         // Remap every ord to global ord as we iterate:
         if (singleValues != null) {
           for (int doc = it.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = it.nextDoc()) {
@@ -279,8 +278,8 @@ public class SortedSetDocValuesFacetCounts extends AbstractSortedSetDocValueFace
     // TODO: is this right?  really, we need a way to
     // verify that this ordinalMap "matches" the leaves in
     // matchingDocs...
-    if (dv instanceof MultiDocValues.MultiSortedSetDocValues && matchingDocs.size() > 1) {
-      ordinalMap = ((MultiSortedSetDocValues) dv).mapping;
+    if (dv instanceof MultiDocValues.MultiSortedSetDocValues multiDv && matchingDocs.size() > 1) {
+      ordinalMap = multiDv.mapping;
     } else {
       ordinalMap = null;
     }
@@ -293,12 +292,12 @@ public class SortedSetDocValuesFacetCounts extends AbstractSortedSetDocValueFace
       // the top-level reader passed to the
       // SortedSetDocValuesReaderState, else cryptic
       // AIOOBE can happen:
-      if (ReaderUtil.getTopLevelContext(hits.context).reader() != reader) {
+      if (ReaderUtil.getTopLevelContext(hits.context()).reader() != reader) {
         throw new IllegalStateException(
             "the SortedSetDocValuesReaderState provided to this class does not match the reader being searched; you must create a new SortedSetDocValuesReaderState every time you open a new IndexReader");
       }
 
-      countOneSegment(ordinalMap, hits.context.reader(), hits.context.ord, hits, null);
+      countOneSegment(ordinalMap, hits.context().reader(), hits.context().ord, hits, null);
     }
   }
 
@@ -310,8 +309,8 @@ public class SortedSetDocValuesFacetCounts extends AbstractSortedSetDocValueFace
     // TODO: is this right?  really, we need a way to
     // verify that this ordinalMap "matches" the leaves in
     // matchingDocs...
-    if (dv instanceof MultiDocValues.MultiSortedSetDocValues) {
-      ordinalMap = ((MultiSortedSetDocValues) dv).mapping;
+    if (dv instanceof MultiDocValues.MultiSortedSetDocValues multiDv) {
+      ordinalMap = multiDv.mapping;
     } else {
       ordinalMap = null;
     }

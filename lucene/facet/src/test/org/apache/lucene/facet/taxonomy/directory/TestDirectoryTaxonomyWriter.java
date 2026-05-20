@@ -46,13 +46,12 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
-import org.junit.Test;
 
 public class TestDirectoryTaxonomyWriter extends FacetTestCase {
 
   // A No-Op TaxonomyWriterCache which always discards all given categories, and
   // always returns true in put(), to indicate some cache entries were cleared.
-  private static TaxonomyWriterCache NO_OP_CACHE =
+  private static final TaxonomyWriterCache NO_OP_CACHE =
       new TaxonomyWriterCache() {
 
         @Override
@@ -82,7 +81,6 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
         }
       };
 
-  @Test
   public void testCommit() throws Exception {
     // Verifies that nothing is committed to the underlying Directory, if
     // commit() wasn't called.
@@ -101,7 +99,6 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     dir.close();
   }
 
-  @Test
   public void testCommitUserData() throws Exception {
     // Verifies taxonomy commit data
     Directory dir = newDirectory();
@@ -165,7 +162,6 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     dir.close();
   }
 
-  @Test
   public void testRollback() throws Exception {
     // Verifies that if rollback is called, DTW is closed.
     Directory dir = newDirectory();
@@ -183,7 +179,6 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     dir.close();
   }
 
-  @Test
   public void testRecreateRollback() throws Exception {
     // Tests rollback with OpenMode.CREATE
     Directory dir = newDirectory();
@@ -195,7 +190,6 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     dir.close();
   }
 
-  @Test
   public void testEnsureOpen() throws Exception {
     // verifies that an exception is thrown if DTW was closed
     Directory dir = newDirectory();
@@ -222,7 +216,6 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     taxoWriter.commit();
   }
 
-  @Test
   public void testRecreateAndRefresh() throws Exception {
     // DirTaxoWriter lost the INDEX_EPOCH property if it was opened in
     // CREATE_OR_APPEND (or commit(userData) called twice), which could lead to
@@ -267,7 +260,6 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     }
   }
 
-  @Test
   public void testBackwardsCompatibility() throws Exception {
     // tests that if the taxonomy index doesn't have the INDEX_EPOCH
     // property (supports pre-3.6 indexes), all still works.
@@ -318,37 +310,35 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     Thread[] addThreads = new Thread[RandomNumbers.randomIntBetween(random(), 1, 12)];
     for (int z = 0; z < addThreads.length; z++) {
       addThreads[z] =
-          new Thread() {
-            @Override
-            public void run() {
-              Random random = random();
-              while (numCats.decrementAndGet() > 0) {
-                try {
-                  int value = random.nextInt(range);
-                  FacetLabel cp =
-                      new FacetLabel(
-                          Integer.toString(value / 1000),
-                          Integer.toString(value / 10000),
-                          Integer.toString(value / 100000),
-                          Integer.toString(value));
-                  int ord = tw.addCategory(cp);
-                  assertTrue(
-                      "invalid parent for ordinal " + ord + ", category " + cp,
-                      tw.getParent(ord) != -1);
-                  String l1 = FacetsConfig.pathToString(cp.components, 1);
-                  String l2 = FacetsConfig.pathToString(cp.components, 2);
-                  String l3 = FacetsConfig.pathToString(cp.components, 3);
-                  String l4 = FacetsConfig.pathToString(cp.components, 4);
-                  values.put(l1, l1);
-                  values.put(l2, l2);
-                  values.put(l3, l3);
-                  values.put(l4, l4);
-                } catch (IOException e) {
-                  throw new RuntimeException(e);
+          new Thread(
+              () -> {
+                Random random = random();
+                while (numCats.decrementAndGet() > 0) {
+                  try {
+                    int value = random.nextInt(range);
+                    FacetLabel cp =
+                        new FacetLabel(
+                            Integer.toString(value / 1000),
+                            Integer.toString(value / 10000),
+                            Integer.toString(value / 100000),
+                            Integer.toString(value));
+                    int ord = tw.addCategory(cp);
+                    assertTrue(
+                        "invalid parent for ordinal " + ord + ", category " + cp,
+                        tw.getParent(ord) != -1);
+                    String l1 = FacetsConfig.pathToString(cp.components, 1);
+                    String l2 = FacetsConfig.pathToString(cp.components, 2);
+                    String l3 = FacetsConfig.pathToString(cp.components, 3);
+                    String l4 = FacetsConfig.pathToString(cp.components, 4);
+                    values.put(l1, l1);
+                    values.put(l2, l2);
+                    values.put(l3, l3);
+                    values.put(l4, l4);
+                  } catch (IOException e) {
+                    throw new RuntimeException(e);
+                  }
                 }
-              }
-            }
-          };
+              });
     }
 
     for (Thread t : addThreads) t.start();
@@ -390,7 +380,6 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     return Long.parseLong(infos.getUserData().get(DirectoryTaxonomyWriter.INDEX_EPOCH));
   }
 
-  @Test
   public void testReplaceTaxonomy() throws Exception {
     Directory input = newDirectory();
     DirectoryTaxonomyWriter taxoWriter = new DirectoryTaxonomyWriter(input);
@@ -431,7 +420,6 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     input.close();
   }
 
-  @Test
   public void testReaderFreshness() throws Exception {
     // ensures that the internal index reader is always kept fresh. Previously,
     // this simple scenario failed, if the cache just evicted the category that
@@ -446,7 +434,6 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     dir.close();
   }
 
-  @Test
   public void testCommitNoEmptyCommits() throws Exception {
     // LUCENE-4972: DTW used to create empty commits even if no changes were made
     Directory dir = newDirectory();
@@ -463,7 +450,6 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     dir.close();
   }
 
-  @Test
   public void testCloseNoEmptyCommits() throws Exception {
     // LUCENE-4972: DTW used to create empty commits even if no changes were made
     Directory dir = newDirectory();
@@ -480,7 +466,6 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     dir.close();
   }
 
-  @Test
   public void testPrepareCommitNoEmptyCommits() throws Exception {
     // LUCENE-4972: DTW used to create empty commits even if no changes were made
     Directory dir = newDirectory();
@@ -500,7 +485,6 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
   }
 
   // TODO: this test can hit pathological cases: it adds only a few docs, what is going on?
-  @Test
   @Nightly
   public void testHugeLabel() throws Exception {
     Directory indexDir = newDirectory(), taxoDir = newDirectory();
@@ -542,12 +526,11 @@ public class TestDirectoryTaxonomyWriter extends FacetTestCase {
     IndexSearcher searcher = new IndexSearcher(indexReader);
     DrillDownQuery ddq = new DrillDownQuery(new FacetsConfig());
     ddq.add("dim", bigs);
-    assertEquals(1, searcher.search(ddq, 10).totalHits.value);
+    assertEquals(1, searcher.search(ddq, 10).totalHits.value());
 
     IOUtils.close(indexReader, taxoReader, indexDir, taxoDir);
   }
 
-  @Test
   public void testReplaceTaxoWithLargeTaxonomy() throws Exception {
     Directory srcTaxoDir = newDirectory(), targetTaxoDir = newDirectory();
 

@@ -106,9 +106,10 @@ public class TestSegmentMerger extends LuceneTestCase {
             InfoStream.getDefault(),
             mergedDir,
             new FieldInfos.FieldNumbers(null, null),
-            newIOContext(random(), new IOContext(new MergeInfo(-1, -1, false, -1))),
+            newIOContext(random(), IOContext.merge(new MergeInfo(-1, -1, false, -1))),
             new SameThreadExecutorService());
     MergeState mergeState = merger.merge();
+    merger.cleanupMerge();
     int docsMerged = mergeState.segmentInfo.maxDoc();
     assertTrue(docsMerged == 2);
     // Should be able to open a new SegmentReader against the new directory
@@ -138,7 +139,7 @@ public class TestSegmentMerger extends LuceneTestCase {
 
     int tvCount = 0;
     for (FieldInfo fieldInfo : mergedReader.getFieldInfos()) {
-      if (fieldInfo.hasVectors()) {
+      if (fieldInfo.hasTermVectors()) {
         tvCount++;
       }
     }

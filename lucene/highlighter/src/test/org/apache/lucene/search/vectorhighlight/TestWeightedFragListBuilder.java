@@ -56,7 +56,7 @@ public class TestWeightedFragListBuilder extends AbstractTestCase {
     float totalSubInfoBoost = 0;
     for (WeightedFragInfo info : ffl.getFragInfos()) {
       for (SubInfo subInfo : info.getSubInfos()) {
-        totalSubInfoBoost += subInfo.getBoost();
+        totalSubInfoBoost += subInfo.boost();
       }
     }
     assertEquals(expectedTotalSubInfoBoost, totalSubInfoBoost, .0000001);

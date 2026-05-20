@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.util.Bits;
@@ -48,6 +49,7 @@ import org.apache.lucene.util.Version;
  * behavior</em>.
  */
 public class ParallelLeafReader extends LeafReader {
+
   private final FieldInfos fieldInfos;
   private final LeafReader[] parallelReaders, storedFieldsReaders;
   private final Set<LeafReader> completeReaderSet =
@@ -128,7 +130,7 @@ public class ParallelLeafReader extends LeafReader {
     for (final LeafReader reader : this.parallelReaders) {
       LeafMetaData leafMetaData = reader.getMetaData();
 
-      Sort leafIndexSort = leafMetaData.getSort();
+      Sort leafIndexSort = leafMetaData.sort();
       if (indexSort == null) {
         indexSort = leafIndexSort;
       } else if (leafIndexSort != null && indexSort.equals(leafIndexSort) == false) {
@@ -140,13 +142,13 @@ public class ParallelLeafReader extends LeafReader {
       }
 
       if (createdVersionMajor == -1) {
-        createdVersionMajor = leafMetaData.getCreatedVersionMajor();
-      } else if (createdVersionMajor != leafMetaData.getCreatedVersionMajor()) {
+        createdVersionMajor = leafMetaData.createdVersionMajor();
+      } else if (createdVersionMajor != leafMetaData.createdVersionMajor()) {
         throw new IllegalArgumentException(
             "cannot combine LeafReaders that have different creation versions: saw both version="
                 + createdVersionMajor
                 + " and "
-                + leafMetaData.getCreatedVersionMajor());
+                + leafMetaData.createdVersionMajor());
       }
 
       final FieldInfos readerFieldInfos = reader.getFieldInfos();
@@ -158,7 +160,7 @@ public class ParallelLeafReader extends LeafReader {
           // only add these if the reader responsible for that field name is the current:
           // TODO consider populating 1st leaf with vectors even if the field name has been seen on
           // a previous leaf
-          if (fieldInfo.hasVectors()) {
+          if (fieldInfo.hasTermVectors()) {
             tvFieldToReader.put(fieldInfo.name, reader);
           }
           // TODO consider populating 1st leaf with terms even if the field name has been seen on a
@@ -177,7 +179,7 @@ public class ParallelLeafReader extends LeafReader {
     Version minVersion = Version.LATEST;
     boolean hasBlocks = false;
     for (final LeafReader reader : this.parallelReaders) {
-      Version leafVersion = reader.getMetaData().getMinVersion();
+      Version leafVersion = reader.getMetaData().minVersion();
       hasBlocks |= reader.getMetaData().hasBlocks();
       if (leafVersion == null) {
         minVersion = null;
@@ -195,7 +197,6 @@ public class ParallelLeafReader extends LeafReader {
       if (!closeSubReaders) {
         reader.incRef();
       }
-      reader.registerParentReader(this);
     }
   }
 
@@ -254,7 +255,7 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     ensureOpen();
     LeafReader leafReader = termsFieldToReader.get(field);
     return leafReader == null ? null : leafReader.terms(field);
@@ -325,19 +326,46 @@ public class ParallelLeafReader extends LeafReader {
   @Override
   public TermVectors termVectors() throws IOException {
     ensureOpen();
-    // TODO: optimize
+
+    Map<LeafReader, TermVectors> readerToTermVectors = new IdentityHashMap<>();
+    for (LeafReader reader : parallelReaders) {
+      if (reader.getFieldInfos().hasTermVectors()) {
+        TermVectors termVectors = reader.termVectors();
+        readerToTermVectors.put(reader, termVectors);
+      }
+    }
+
     return new TermVectors() {
+      @Override
+      public void prefetch(int docID) throws IOException {
+        // Prefetch all vectors. Note that this may be wasteful if the consumer doesn't need to read
+        // all the fields but we have no way to know what fields the consumer needs.
+        for (TermVectors termVectors : readerToTermVectors.values()) {
+          termVectors.prefetch(docID);
+        }
+      }
+
       @Override
       public Fields get(int docID) throws IOException {
         ParallelFields fields = null;
-        for (Map.Entry<String, LeafReader> ent : tvFieldToReader.entrySet()) {
-          String fieldName = ent.getKey();
-          Terms vector = ent.getValue().termVectors().get(docID, fieldName);
-          if (vector != null) {
+
+        // Step 2: Fetch all term vectors once per reader
+        for (Map.Entry<LeafReader, TermVectors> entry : readerToTermVectors.entrySet()) {
+          TermVectors termVectors = entry.getValue();
+          Fields docFields = termVectors.get(docID); // Fetch all fields at once
+
+          if (docFields != null) {
             if (fields == null) {
               fields = new ParallelFields();
             }
-            fields.addField(fieldName, vector);
+
+            // Step 3: Aggregate only required fields
+            for (String fieldName : docFields) {
+              Terms vector = docFields.terms(fieldName);
+              if (vector != null) {
+                fields.addField(fieldName, vector);
+              }
+            }
           }
         }
 
@@ -415,7 +443,7 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public PointValues getPointValues(String fieldName) throws IOException {
+  public PointValues getPointValues(String fieldName) {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
     return reader == null ? null : reader.getPointValues(fieldName);
@@ -437,7 +465,7 @@ public class ParallelLeafReader extends LeafReader {
 
   @Override
   public void searchNearestVectors(
-      String fieldName, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+      String fieldName, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
@@ -448,7 +476,7 @@ public class ParallelLeafReader extends LeafReader {
 
   @Override
   public void searchNearestVectors(
-      String fieldName, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+      String fieldName, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);

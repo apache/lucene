@@ -50,8 +50,7 @@ public class DisjunctionMaxQueryBuilder implements QueryBuilder {
     final int nlLen = nl.getLength();
     for (int i = 0; i < nlLen; i++) {
       Node node = nl.item(i);
-      if (node instanceof Element) { // all elements are disjuncts.
-        Element queryElem = (Element) node;
+      if (node instanceof Element queryElem) { // all elements are disjuncts.
         Query q = factory.getQuery(queryElem);
         disjuncts.add(q);
       }

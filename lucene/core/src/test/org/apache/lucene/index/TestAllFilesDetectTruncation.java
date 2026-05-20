@@ -65,7 +65,7 @@ public class TestAllFilesDetectTruncation extends LuceneTestCase {
     // time we test truncation of .cfs/.cfe too:
     if (cfs == false) {
       conf.setUseCompoundFile(false);
-      conf.getMergePolicy().setNoCFSRatio(0.0);
+      conf.getCodec().compoundFormat().setShouldUseCompoundFile(false);
     }
 
     RandomIndexWriter riw = new RandomIndexWriter(random(), dir, conf);
@@ -144,15 +144,13 @@ public class TestAllFilesDetectTruncation extends LuceneTestCase {
               // In some rare cases, the codec footer would still appear as correct even though the
               // file has been truncated. We just skip the test is this rare case.
               return;
-            } catch (
-                @SuppressWarnings("unused")
-                CorruptIndexException e) {
+            } catch (CorruptIndexException _) {
               // expected
             }
           }
 
           try (IndexOutput out = dirCopy.createOutput(name, IOContext.DEFAULT);
-              IndexInput in = dir.openInput(name, IOContext.DEFAULT)) {
+              IndexInput in = dir.openInput(name, IOContext.READONCE)) {
             out.copyBytes(in, victimLength - lostBytes);
           }
         }

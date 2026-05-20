@@ -49,23 +49,13 @@ final class TermCounts {
   Map<String, Long> sortedTermCounts(TermCountsOrder order) {
     Objects.requireNonNull(order);
 
-    Comparator<Map.Entry<String, Long>> comparator;
-    switch (order) {
-      case NAME_ASC:
-        comparator = Map.Entry.comparingByKey();
-        break;
-      case NAME_DESC:
-        comparator = Map.Entry.<String, Long>comparingByKey().reversed();
-        break;
-      case COUNT_ASC:
-        comparator = Map.Entry.comparingByValue();
-        break;
-      case COUNT_DESC:
-        comparator = Map.Entry.<String, Long>comparingByValue().reversed();
-        break;
-      default:
-        comparator = Map.Entry.comparingByKey();
-    }
+    Comparator<Map.Entry<String, Long>> comparator =
+        switch (order) {
+          case NAME_ASC -> Map.Entry.comparingByKey();
+          case NAME_DESC -> Map.Entry.<String, Long>comparingByKey().reversed();
+          case COUNT_ASC -> Map.Entry.comparingByValue();
+          case COUNT_DESC -> Map.Entry.<String, Long>comparingByValue().reversed();
+        };
     return sortedTermCounts(comparator);
   }
 
@@ -74,6 +64,6 @@ final class TermCounts {
         .sorted(comparator)
         .collect(
             Collectors.toMap(
-                Map.Entry::getKey, Map.Entry::getValue, (v1, v2) -> v1, LinkedHashMap::new));
+                Map.Entry::getKey, Map.Entry::getValue, (v1, _) -> v1, LinkedHashMap::new));
   }
 }

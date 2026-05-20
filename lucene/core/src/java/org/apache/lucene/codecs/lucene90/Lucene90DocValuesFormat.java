@@ -132,35 +132,64 @@ import org.apache.lucene.util.packed.DirectWriter;
  * <ol>
  *   <li><code>.dvd</code>: DocValues data
  *   <li><code>.dvm</code>: DocValues metadata
+ *   <li><code>.dvs</code>: DocValues skip index (since version 1)
  * </ol>
  *
  * @lucene.experimental
  */
 public final class Lucene90DocValuesFormat extends DocValuesFormat {
 
+  private final int skipIndexIntervalSize;
+
   /** Default constructor. */
   public Lucene90DocValuesFormat() {
+    this(DEFAULT_SKIP_INDEX_INTERVAL_SIZE);
+  }
+
+  /** Doc values fields format with specified skipIndexIntervalSize. */
+  public Lucene90DocValuesFormat(int skipIndexIntervalSize) {
     super("Lucene90");
+    if (skipIndexIntervalSize < 2) {
+      throw new IllegalArgumentException(
+          "skipIndexIntervalSize must be > 1, got [" + skipIndexIntervalSize + "]");
+    }
+    this.skipIndexIntervalSize = skipIndexIntervalSize;
   }
 
   @Override
   public DocValuesConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
     return new Lucene90DocValuesConsumer(
-        state, DATA_CODEC, DATA_EXTENSION, META_CODEC, META_EXTENSION);
+        state,
+        skipIndexIntervalSize,
+        DATA_CODEC,
+        DATA_EXTENSION,
+        META_CODEC,
+        META_EXTENSION,
+        SKIP_INDEX_CODEC,
+        SKIP_INDEX_EXTENSION);
   }
 
   @Override
   public DocValuesProducer fieldsProducer(SegmentReadState state) throws IOException {
     return new Lucene90DocValuesProducer(
-        state, DATA_CODEC, DATA_EXTENSION, META_CODEC, META_EXTENSION);
+        state,
+        DATA_CODEC,
+        DATA_EXTENSION,
+        META_CODEC,
+        META_EXTENSION,
+        SKIP_INDEX_CODEC,
+        SKIP_INDEX_EXTENSION);
   }
 
   static final String DATA_CODEC = "Lucene90DocValuesData";
   static final String DATA_EXTENSION = "dvd";
   static final String META_CODEC = "Lucene90DocValuesMetadata";
   static final String META_EXTENSION = "dvm";
+  static final String SKIP_INDEX_CODEC = "Lucene90DocValuesSkipIndex";
+  static final String SKIP_INDEX_EXTENSION = "dvs";
   static final int VERSION_START = 0;
-  static final int VERSION_CURRENT = VERSION_START;
+  static final int VERSION_SKIPPER_SEPARATE_FILE = 1;
+  static final int VERSION_CURRENT = VERSION_SKIPPER_SEPARATE_FILE;
 
   // indicates docvalues type
   static final byte NUMERIC = 0;
@@ -182,6 +211,36 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   static final int TERMS_DICT_REVERSE_INDEX_SIZE = 1 << TERMS_DICT_REVERSE_INDEX_SHIFT;
   static final int TERMS_DICT_REVERSE_INDEX_MASK = TERMS_DICT_REVERSE_INDEX_SIZE - 1;
 
-  static final int SKIP_INDEX_INTERVAL_SHIFT = 12;
-  static final int SKIP_INDEX_INTERVAL_SIZE = 1 << SKIP_INDEX_INTERVAL_SHIFT;
+  // number of documents in an interval
+  private static final int DEFAULT_SKIP_INDEX_INTERVAL_SIZE = 4096;
+  // bytes on an interval:
+  //   * 1 byte : number of levels
+  //   * 16 bytes: min / max value,
+  //   * 8 bytes:  min / max docID
+  //   * 4 bytes: number of documents
+  private static final long SKIP_INDEX_INTERVAL_BYTES = 29L;
+  // number of intervals represented as a shift to create a new level, this is 1 << 3 == 8
+  // intervals.
+  static final int SKIP_INDEX_LEVEL_SHIFT = 3;
+  // max number of levels
+  // Increasing this number, it increases how much heap we need at index time.
+  // we currently need (1 * 8 * 8 * 8)  = 512 accumulators on heap
+  static final int SKIP_INDEX_MAX_LEVEL = 4;
+  // number of bytes to skip when skipping a level. It does not take into account the
+  // current interval that is being read.
+  static final long[] SKIP_INDEX_JUMP_LENGTH_PER_LEVEL = new long[SKIP_INDEX_MAX_LEVEL];
+
+  static {
+    // Size of the interval minus read bytes (1 byte for level and 4 bytes for maxDocID)
+    SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[0] = SKIP_INDEX_INTERVAL_BYTES - 5L;
+    for (int level = 1; level < SKIP_INDEX_MAX_LEVEL; level++) {
+      // jump from previous level
+      SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level] = SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level - 1];
+      // nodes added by new level
+      SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level] +=
+          (1 << (level * SKIP_INDEX_LEVEL_SHIFT)) * SKIP_INDEX_INTERVAL_BYTES;
+      // remove the byte levels added in the previous level
+      SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level] -= (1 << ((level - 1) * SKIP_INDEX_LEVEL_SHIFT));
+    }
+  }
 }

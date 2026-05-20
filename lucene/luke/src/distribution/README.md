@@ -13,21 +13,18 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
- -->
+-->
 
 # Luke
 
 This is Luke, Apache Lucene low-level index inspection and repair utility.
 
 Luke requires Java ${required.java.version}. You can start it with:
-```
-java -jar ${luke.cmd}
-```
+
+    java -jar ${luke.cmd}
 
 or, using Java modules:
 
-```
-java --module-path . --add-modules jdk.unsupported --module org.apache.lucene.luke
-```
+    java --module-path . --add-modules jdk.unsupported --module org.apache.lucene.luke
 
 Happy index hacking!

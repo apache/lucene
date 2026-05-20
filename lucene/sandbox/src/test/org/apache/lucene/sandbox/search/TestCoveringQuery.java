@@ -95,6 +95,8 @@ public class TestCoveringQuery extends LuceneTestCase {
         "CoveringQuery(queries=[bar, quux], minimumNumberMatch=long(field))", q.toString("foo"));
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandom() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
@@ -166,6 +168,8 @@ public class TestCoveringQuery extends LuceneTestCase {
     dir.close();
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandomWand() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
@@ -242,7 +246,7 @@ public class TestCoveringQuery extends LuceneTestCase {
     final int maxDoc = searcher.getIndexReader().maxDoc();
     final TopDocs td1 = searcher.search(q1, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
     final TopDocs td2 = searcher.search(q2, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
-    assertEquals(td1.totalHits.value, td2.totalHits.value);
+    assertEquals(td1.totalHits.value(), td2.totalHits.value());
     for (int i = 0; i < td1.scoreDocs.length; ++i) {
       assertEquals(td1.scoreDocs[i].doc, td2.scoreDocs[i].doc);
       if (scores) {

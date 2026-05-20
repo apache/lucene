@@ -44,6 +44,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.NumericUtils;
 
 /** Distance query for {@link LatLonPoint}. */
@@ -134,7 +135,7 @@ final class LatLonPointDistanceQuery extends Query {
         LatLonPoint.checkCompatible(fieldInfo);
 
         // matching docids
-        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
         final IntersectVisitor visitor = getIntersectVisitor(result);
 
         return new ScorerSupplier() {
@@ -234,6 +235,11 @@ final class LatLonPointDistanceQuery extends Query {
           }
 
           @Override
+          public void visit(IntsRef ref) {
+            adder.add(ref);
+          }
+
+          @Override
           public void visit(DocIdSetIterator iterator) throws IOException {
             adder.add(iterator);
           }
@@ -267,6 +273,14 @@ final class LatLonPointDistanceQuery extends Query {
           public void visit(int docID) {
             result.clear(docID);
             cost[0]--;
+          }
+
+          @Override
+          public void visit(IntsRef ref) {
+            for (int i = 0; i < ref.length; i++) {
+              result.clear(ref.ints[ref.offset + i]);
+            }
+            cost[0] = Math.max(0, cost[0] - ref.length);
           }
 
           @Override

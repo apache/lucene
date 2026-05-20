@@ -130,15 +130,7 @@ class WritableQueryIndex extends QueryIndex {
     }
   }
 
-  private static class Indexable {
-    final QueryCacheEntry queryCacheEntry;
-    final Document document;
-
-    private Indexable(QueryCacheEntry queryCacheEntry, Document document) {
-      this.queryCacheEntry = queryCacheEntry;
-      this.document = document;
-    }
-  }
+  private record Indexable(QueryCacheEntry queryCacheEntry, Document document) {}
 
   private void populateQueryCache(MonitorQuerySerializer serializer, QueryDecomposer decomposer)
       throws IOException {
@@ -146,7 +138,7 @@ class WritableQueryIndex extends QueryIndex {
       // No query serialization happening here - check that the cache is empty
       IndexSearcher searcher = manager.acquire();
       try {
-        if (searcher.count(new MatchAllDocsQuery()) != 0) {
+        if (searcher.count(MatchAllDocsQuery.INSTANCE) != 0) {
           throw new IllegalStateException(
               "Attempting to open a non-empty monitor query index with no MonitorQuerySerializer");
         }
@@ -160,7 +152,7 @@ class WritableQueryIndex extends QueryIndex {
     purgeCache(
         newCache ->
             scan(
-                (id, cacheEntry, dataValues) -> {
+                (id, _, dataValues) -> {
                   if (ids.contains(id)) {
                     // this is a branch of a query that has already been reconstructed, but
                     // then split by decomposition - we don't need to parse it again
@@ -242,7 +234,7 @@ class WritableQueryIndex extends QueryIndex {
     purgeCache(
         newCache ->
             scan(
-                (id, query, dataValues) -> {
+                (_, query, _) -> {
                   if (query != null) newCache.put(query.cacheId, query);
                 }));
     lastPurged = System.nanoTime();
@@ -250,7 +242,7 @@ class WritableQueryIndex extends QueryIndex {
   }
 
   @Override
-  /**
+  /*
    * Remove unused queries from the query cache.
    *
    * <p>This is normally called from a background thread at a rate set by configurePurgeFrequency().

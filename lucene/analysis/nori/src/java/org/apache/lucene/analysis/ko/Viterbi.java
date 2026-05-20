@@ -268,19 +268,19 @@ final class Viterbi
               final KoMorphData.Morpheme morpheme = morphemes[i];
               final Token compoundToken;
               if (token.getPOSType() == POS.Type.COMPOUND) {
-                assert endOffset - morpheme.surfaceForm.length() >= 0;
+                assert endOffset - morpheme.surfaceForm().length() >= 0;
                 compoundToken =
                     new DecompoundToken(
-                        morpheme.posTag,
-                        morpheme.surfaceForm,
-                        endOffset - morpheme.surfaceForm.length(),
+                        morpheme.posTag(),
+                        morpheme.surfaceForm(),
+                        endOffset - morpheme.surfaceForm().length(),
                         endOffset,
                         backType);
               } else {
                 compoundToken =
                     new DecompoundToken(
-                        morpheme.posTag,
-                        morpheme.surfaceForm,
+                        morpheme.posTag(),
+                        morpheme.surfaceForm(),
                         token.getStartOffset(),
                         token.getEndOffset(),
                         backType);
@@ -289,7 +289,7 @@ final class Viterbi
                 compoundToken.setPositionIncrement(0);
               }
               ++posLen;
-              endOffset -= morpheme.surfaceForm.length();
+              endOffset -= morpheme.surfaceForm().length();
               pending.add(compoundToken);
               if (VERBOSE) {
                 System.out.println("    add token=" + pending.get(pending.size() - 1));

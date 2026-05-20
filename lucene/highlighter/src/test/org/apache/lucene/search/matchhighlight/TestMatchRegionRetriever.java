@@ -69,7 +69,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Before;
-import org.junit.Test;
 
 public class TestMatchRegionRetriever extends LuceneTestCase {
   private static final String FLD_ID = IndexBuilder.FLD_ID;
@@ -160,12 +159,10 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
         }
       };
 
-  @Test
   public void testTermQueryWithOffsets() throws Exception {
     checkTermQuery(FLD_TEXT_POS_OFFS);
   }
 
-  @Test
   public void testTermQueryWithPositions() throws Exception {
     checkTermQuery(FLD_TEXT_POS);
   }
@@ -188,12 +185,10 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
             });
   }
 
-  @Test
   public void testBooleanMultifieldQueryWithOffsets() throws Exception {
     checkBooleanMultifieldQuery(FLD_TEXT_POS_OFFS);
   }
 
-  @Test
   public void testBooleanMultifieldQueryWithPositions() throws Exception {
     checkBooleanMultifieldQuery(FLD_TEXT_POS);
   }
@@ -221,12 +216,10 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
             });
   }
 
-  @Test
   public void testVariousQueryTypesWithOffsets() throws Exception {
     checkVariousQueryTypes(FLD_TEXT_POS_OFFS);
   }
 
-  @Test
   public void testVariousQueryTypesWithPositions() throws Exception {
     checkVariousQueryTypes(FLD_TEXT_POS);
   }
@@ -295,7 +288,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
                       fmt("2: (%s: 'bar >baz< foo xyz')", field)));
 
               MatcherAssert.assertThat(
-                  highlights(reader, new MatchAllDocsQuery()), Matchers.hasSize(0));
+                  highlights(reader, MatchAllDocsQuery.INSTANCE), Matchers.hasSize(0));
             });
 
     new IndexBuilder(this::toField)
@@ -313,7 +306,6 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
             });
   }
 
-  @Test
   public void testIntervalQueryHighlightCrossingMultivalueBoundary() throws Exception {
     String field = FLD_TEXT_POS;
     new IndexBuilder(this::toField)
@@ -331,7 +323,6 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
             });
   }
 
-  @Test
   public void testIntervalQueries() throws Exception {
     String field = FLD_TEXT_POS_OFFS;
 
@@ -395,12 +386,10 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
             });
   }
 
-  @Test
   public void testDegenerateIntervalsWithPositions() throws Exception {
     testDegenerateIntervals(FLD_TEXT_POS);
   }
 
-  @Test
   public void testDegenerateIntervalsWithOffsets() throws Exception {
     testDegenerateIntervals(FLD_TEXT_POS_OFFS);
   }
@@ -425,12 +414,10 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
             });
   }
 
-  @Test
   public void testMultivaluedFieldsWithOffsets() throws Exception {
     checkMultivaluedFields(FLD_TEXT_POS_OFFS);
   }
 
-  @Test
   public void testMultivaluedFieldsWithPositions() throws Exception {
     checkMultivaluedFields(FLD_TEXT_POS);
   }
@@ -452,7 +439,6 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
             });
   }
 
-  @Test
   public void testMultiFieldHighlights() throws Exception {
     for (String[] fieldPairs :
         new String[][] {
@@ -490,7 +476,6 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
    * Rewritten Boolean queries may omit matches from {@link
    * org.apache.lucene.search.BooleanClause.Occur#SHOULD} clauses. Check that this isn't the case.
    */
-  @Test
   public void testNoRewrite() throws Exception {
     String field1 = FLD_TEXT_POS_OFFS1;
     String field2 = FLD_TEXT_POS_OFFS2;
@@ -524,12 +509,10 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
             });
   }
 
-  @Test
   public void testNestedQueryHitsWithOffsets() throws Exception {
     checkNestedQueryHits(FLD_TEXT_POS_OFFS);
   }
 
-  @Test
   public void testNestedQueryHitsWithPositions() throws Exception {
     checkNestedQueryHits(FLD_TEXT_POS);
   }
@@ -561,12 +544,10 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
             });
   }
 
-  @Test
   public void testGraphQueryWithOffsets() throws Exception {
     checkGraphQuery(FLD_TEXT_SYNONYMS_POS_OFFS);
   }
 
-  @Test
   public void testGraphQueryWithPositions() throws Exception {
     checkGraphQuery(FLD_TEXT_SYNONYMS_POS);
   }
@@ -604,12 +585,10 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
             });
   }
 
-  @Test
   public void testSpanQueryWithOffsets() throws Exception {
     checkSpanQueries(FLD_TEXT_POS_OFFS);
   }
 
-  @Test
   public void testSpanQueryWithPositions() throws Exception {
     checkSpanQueries(FLD_TEXT_POS);
   }
@@ -673,7 +652,6 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
    * checks the {@link OffsetsFromValues} strategy that returns highlights over entire indexed
    * values.
    */
-  @Test
   public void testTextFieldNoPositionsOffsetFromValues() throws Exception {
     String field = FLD_TEXT_NOPOS;
 
@@ -707,7 +685,6 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
    *
    * <p>Such field structure is often useful for multivalued "keyword-like" fields.
    */
-  @Test
   public void testTextFieldNoPositionsOffsetsFromTokens() throws Exception {
     String field = FLD_TEXT_NOPOS;
 
@@ -748,7 +725,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
     AsciiMatchRangeHighlighter formatter = new AsciiMatchRangeHighlighter(analyzer);
 
     MatchRegionRetriever.MatchOffsetsConsumer highlightCollector =
-        (docId, leafReader, leafDocId, fieldValueProvider, fieldHighlights) -> {
+        (_, leafReader, leafDocId, _, fieldHighlights) -> {
           StringBuilder sb = new StringBuilder();
 
           Document document = leafReader.storedFields().document(leafDocId);
@@ -767,8 +744,8 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
           }
         };
 
-    Predicate<String> fieldsToLoadUnconditionally = fieldName -> false;
-    Predicate<String> fieldsToLoadIfWithHits = fieldName -> true;
+    Predicate<String> fieldsToLoadUnconditionally = _ -> false;
+    Predicate<String> fieldsToLoadIfWithHits = _ -> true;
     MatchRegionRetriever highlighter =
         new MatchRegionRetriever(
             searcher,
@@ -781,7 +758,7 @@ public class TestMatchRegionRetriever extends LuceneTestCase {
     highlighter.highlightDocuments(
         Arrays.stream(topDocs.scoreDocs).mapToInt(scoreDoc -> scoreDoc.doc).sorted().iterator(),
         highlightCollector,
-        field -> Integer.MAX_VALUE,
+        _ -> Integer.MAX_VALUE,
         maxBlockSize,
         maxBlocksProcessedInParallel);
 

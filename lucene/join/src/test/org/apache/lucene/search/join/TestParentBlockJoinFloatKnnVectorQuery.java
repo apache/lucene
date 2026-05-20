@@ -22,6 +22,7 @@ import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -29,10 +30,13 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.TestUtil;
 
 public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVectorQueryTestCase {
 
@@ -74,7 +78,10 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
     try (Directory d = newDirectory()) {
       try (IndexWriter w =
           new IndexWriter(
-              d, new IndexWriterConfig().setMergePolicy(newMergePolicy(random(), false)))) {
+              d,
+              new IndexWriterConfig()
+                  .setCodec(TestUtil.getDefaultCodec())
+                  .setMergePolicy(newMergePolicy(random(), false)))) {
         for (int j = 1; j <= 5; j++) {
           List<Document> toAdd = new ArrayList<>();
           Document doc = new Document();
@@ -110,6 +117,20 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
     }
   }
 
+  public void testToString() {
+    // test without filter
+    Query query = getParentJoinKnnQuery("field", new float[] {0, 1}, null, 10, null);
+    assertEquals(
+        "DiversifyingChildrenFloatKnnVectorQuery:field[0.0,...][10]", query.toString("ignored"));
+
+    // test with filter
+    Query filter = new TermQuery(new Term("id", "text"));
+    query = getParentJoinKnnQuery("field", new float[] {0.0f, 1.0f}, filter, 10, null);
+    assertEquals(
+        "DiversifyingChildrenFloatKnnVectorQuery:field[0.0,...][10][id:text]",
+        query.toString("ignored"));
+  }
+
   @Override
   Field getKnnVectorField(String name, float[] vector) {
     return new KnnFloatVectorField(name, vector);
@@ -119,5 +140,15 @@ public class TestParentBlockJoinFloatKnnVectorQuery extends ParentBlockJoinKnnVe
   Field getKnnVectorField(
       String name, float[] vector, VectorSimilarityFunction vectorSimilarityFunction) {
     return new KnnFloatVectorField(name, vector, vectorSimilarityFunction);
+  }
+
+  @Override
+  float[] randomVector(int dim) {
+    float[] v = new float[dim];
+    Random random = random();
+    for (int i = 0; i < dim; i++) {
+      v[i] = random.nextFloat();
+    }
+    return v;
   }
 }

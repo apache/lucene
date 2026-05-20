@@ -51,11 +51,11 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.SloppyPhraseMatcher;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOSupplier;
 import org.apache.lucene.util.mutable.MutableValueBool;
 
 /**
@@ -152,7 +152,7 @@ public class PhraseWildcardQuery extends Query {
     List<LeafReaderContext> sizeSortedSegments =
         new SegmentTermsSizeComparator().createTermsSizeSortedCopyOf(reader.leaves());
 
-    // TermsData will contain the collected TermState and TermStatistics for all the terms
+    // TermsData will contain the collected TermState and TermStats for all the terms
     // of the phrase. It is filled during PhraseTerm.collectTermData() calls below.
     TermsData termsData = createTermsData(sizeSortedSegments.size());
 
@@ -254,8 +254,8 @@ public class PhraseWildcardQuery extends Query {
             .getSimilarity()
             .scorer(
                 boost,
-                searcher.collectionStatistics(field),
-                termsData.termStatsList.toArray(new TermStatistics[0]));
+                searcher.fieldStats(field),
+                termsData.termStatsList.toArray(org.apache.lucene.search.TermStats[]::new));
       }
 
       @Override
@@ -322,10 +322,9 @@ public class PhraseWildcardQuery extends Query {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof PhraseWildcardQuery)) {
+    if (!(o instanceof PhraseWildcardQuery pwq)) {
       return false;
     }
-    PhraseWildcardQuery pwq = (PhraseWildcardQuery) o;
     return slop == pwq.slop && phraseTerms.equals(pwq.phraseTerms);
   }
 
@@ -362,7 +361,8 @@ public class PhraseWildcardQuery extends Query {
   }
 
   /**
-   * Collects the {@link TermState} and {@link TermStatistics} for a single-term without expansion.
+   * Collects the {@link TermState} and {@link org.apache.lucene.search.TermStats} for a single-term
+   * without expansion.
    *
    * @param termsData receives the collected data.
    */
@@ -387,7 +387,8 @@ public class PhraseWildcardQuery extends Query {
       Terms terms = leafReaderContext.reader().terms(term.field());
       if (terms != null) {
         checkTermsHavePositions(terms);
-        TermState termState = termStates.get(leafReaderContext);
+        IOSupplier<TermState> supplier = termStates.get(leafReaderContext);
+        TermState termState = supplier == null ? null : supplier.get();
         if (termState != null) {
           termMatchesInSegment = true;
           numMatches++;
@@ -405,13 +406,14 @@ public class PhraseWildcardQuery extends Query {
     // Collect the term stats across all segments.
     if (termStates.docFreq() > 0) {
       termsData.termStatsList.add(
-          searcher.termStatistics(term, termStates.docFreq(), termStates.totalTermFreq()));
+          searcher.termStats(term, termStates.docFreq(), termStates.totalTermFreq()));
     }
     return numMatches;
   }
 
   /**
-   * Collects the {@link TermState} and {@link TermStatistics} for a multi-term with expansion.
+   * Collects the {@link TermState} and {@link org.apache.lucene.search.TermStats} for a multi-term
+   * with expansion.
    *
    * @param remainingMultiTerms the number of remaining multi-terms to process, including the
    *     current one, excluding the multi-terms already processed.
@@ -472,8 +474,8 @@ public class PhraseWildcardQuery extends Query {
   }
 
   /**
-   * Collects the {@link TermState} list and {@link TermStatistics} for a multi-term on a specific
-   * index segment.
+   * Collects the {@link TermState} list and {@link org.apache.lucene.search.TermStats} for a
+   * multi-term on a specific index segment.
    *
    * @param remainingExpansions the number of remaining expansions allowed for the segment.
    * @param shouldStopSegmentIteration to be set to true to stop the segment iteration calling this
@@ -536,7 +538,8 @@ public class PhraseWildcardQuery extends Query {
    * Collect the term stats across all segments.
    *
    * @param termStatsMap input map of already collected {@link TermStats}.
-   * @param termsData receives the {@link TermStatistics} computed for all {@link TermStats}.
+   * @param termsData receives the {@link org.apache.lucene.search.TermStats} computed for all
+   *     {@link TermStats}.
    * @param termData receives all the collected {@link Term}.
    */
   protected void collectMultiTermStats(
@@ -554,7 +557,7 @@ public class PhraseWildcardQuery extends Query {
       TermStats termStats = termStatsEntry.getValue();
       if (termStats.docFreq > 0) {
         termsData.termStatsList.add(
-            searcher.termStatistics(term, termStats.docFreq, termStats.totalTermFreq));
+            searcher.termStats(term, termStats.docFreq, termStats.totalTermFreq));
       }
     }
   }
@@ -688,10 +691,11 @@ public class PhraseWildcardQuery extends Query {
     protected abstract Query getQuery();
 
     /**
-     * Collects {@link TermState} and {@link TermStatistics} for the term without expansion. It must
-     * be called only if {@link #hasExpansions()} returns false. Simplified version of {@code
-     * #collectTermData(PhraseWildcardQuery, IndexSearcher, List, int, int, TermsData)} with less
-     * arguments. This method throws {@link UnsupportedOperationException} if not overridden.
+     * Collects {@link TermState} and {@link org.apache.lucene.search.TermStats} for the term
+     * without expansion. It must be called only if {@link #hasExpansions()} returns false.
+     * Simplified version of {@code #collectTermData(PhraseWildcardQuery, IndexSearcher, List, int,
+     * int, TermsData)} with less arguments. This method throws {@link
+     * UnsupportedOperationException} if not overridden.
      */
     protected int collectTermData(
         PhraseWildcardQuery query,
@@ -703,7 +707,8 @@ public class PhraseWildcardQuery extends Query {
     }
 
     /**
-     * Collects {@link TermState} and {@link TermStatistics} for the term (potentially expanded).
+     * Collects {@link TermState} and {@link org.apache.lucene.search.TermStats} for the term
+     * (potentially expanded).
      *
      * @param termsData {@link TermsData} to update with the collected terms and stats.
      * @return The number of expansions or matches in all segments; or 0 if this term does not match
@@ -776,10 +781,9 @@ public class PhraseWildcardQuery extends Query {
 
     @Override
     public boolean equals(Object o) {
-      if (!(o instanceof SingleTerm)) {
+      if (!(o instanceof SingleTerm singleTerm)) {
         return false;
       }
-      SingleTerm singleTerm = (SingleTerm) o;
       return term.equals(singleTerm.term);
     }
 
@@ -829,10 +833,9 @@ public class PhraseWildcardQuery extends Query {
 
     @Override
     public boolean equals(Object o) {
-      if (!(o instanceof MultiTerm)) {
+      if (!(o instanceof MultiTerm multiTerm)) {
         return false;
       }
-      MultiTerm multiTerm = (MultiTerm) o;
       return query.equals(multiTerm.query);
     }
 
@@ -843,14 +846,14 @@ public class PhraseWildcardQuery extends Query {
   }
 
   /**
-   * Holds the {@link TermState} and {@link TermStatistics} for all the matched and collected {@link
-   * Term}, for all phrase terms, for all segments.
+   * Holds the {@link TermState} and {@link org.apache.lucene.search.TermStats} for all the matched
+   * and collected {@link Term}, for all phrase terms, for all segments.
    */
   protected static class TermsData {
 
     protected final int numTerms;
     protected final int numSegments;
-    protected final List<TermStatistics> termStatsList;
+    protected final List<org.apache.lucene.search.TermStats> termStatsList;
     protected final TermData[] termDataPerPosition;
     protected int numTermsMatching;
 
@@ -886,14 +889,14 @@ public class PhraseWildcardQuery extends Query {
       builder.append("numSegments=").append(numSegments);
       builder.append(", termDataPerPosition=").append(Arrays.asList(termDataPerPosition));
       builder.append(", termsStatsList=[");
-      for (TermStatistics termStatistics : termStatsList) {
+      for (org.apache.lucene.search.TermStats termStats : termStatsList) {
         builder
             .append("{")
-            .append(termStatistics.term().utf8ToString())
+            .append(termStats.term().utf8ToString())
             .append(", ")
-            .append(termStatistics.docFreq())
+            .append(termStats.docFreq())
             .append(", ")
-            .append(termStatistics.totalTermFreq())
+            .append(termStats.totalTermFreq())
             .append("}");
       }
       builder.append("]");

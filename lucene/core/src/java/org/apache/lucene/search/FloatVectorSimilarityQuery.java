@@ -23,7 +23,7 @@ import java.util.Objects;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.util.Bits;
+import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.util.VectorUtil;
 
 /**
@@ -41,32 +41,14 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
    *
    * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
    * @param target the target of the search.
-   * @param traversalSimilarity (lower) similarity score for graph traversal.
-   * @param resultSimilarity (higher) similarity score for result collection.
+   * @param resultSimilarity similarity score for result collection.
+   * @param decay decay factor for graph traversal buffer.
    * @param filter a filter applied before the vector search.
    */
   public FloatVectorSimilarityQuery(
-      String field,
-      float[] target,
-      float traversalSimilarity,
-      float resultSimilarity,
-      Query filter) {
-    super(field, traversalSimilarity, resultSimilarity, filter);
+      String field, float[] target, float resultSimilarity, float decay, Query filter) {
+    super(field, resultSimilarity, decay, filter);
     this.target = VectorUtil.checkFinite(Objects.requireNonNull(target, "target"));
-  }
-
-  /**
-   * Search for all (approximate) float vectors above a similarity threshold using {@link
-   * VectorSimilarityCollector}.
-   *
-   * @param field a field that has been indexed as a {@link KnnFloatVectorField}.
-   * @param target the target of the search.
-   * @param traversalSimilarity (lower) similarity score for graph traversal.
-   * @param resultSimilarity (higher) similarity score for result collection.
-   */
-  public FloatVectorSimilarityQuery(
-      String field, float[] target, float traversalSimilarity, float resultSimilarity) {
-    this(field, target, traversalSimilarity, resultSimilarity, null);
   }
 
   /**
@@ -81,7 +63,7 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
    */
   public FloatVectorSimilarityQuery(
       String field, float[] target, float resultSimilarity, Query filter) {
-    this(field, target, resultSimilarity, resultSimilarity, filter);
+    this(field, target, resultSimilarity, DEFAULT_DECAY, filter);
   }
 
   /**
@@ -93,7 +75,7 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
    * @param resultSimilarity similarity score for result collection.
    */
   public FloatVectorSimilarityQuery(String field, float[] target, float resultSimilarity) {
-    this(field, target, resultSimilarity, resultSimilarity, null);
+    this(field, target, resultSimilarity, null);
   }
 
   @Override
@@ -108,10 +90,13 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
 
   @Override
   @SuppressWarnings("resource")
-  protected TopDocs approximateSearch(LeafReaderContext context, Bits acceptDocs, int visitLimit)
+  protected TopDocs approximateSearch(
+      LeafReaderContext context,
+      AcceptDocs acceptDocs,
+      int visitLimit,
+      KnnCollectorManager knnCollectorManager)
       throws IOException {
-    KnnCollector collector =
-        new VectorSimilarityCollector(traversalSimilarity, resultSimilarity, visitLimit);
+    KnnCollector collector = knnCollectorManager.newCollector(visitLimit, null, context);
     context.reader().searchNearestVectors(field, target, collector, acceptDocs);
     return collector.topDocs();
   }
@@ -120,12 +105,12 @@ public class FloatVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
   public String toString(String field) {
     return String.format(
         Locale.ROOT,
-        "%s[field=%s target=[%f...] traversalSimilarity=%f resultSimilarity=%f filter=%s]",
+        "%s[field=%s target=[%f...] resultSimilarity=%f decay=%f filter=%s]",
         getClass().getSimpleName(),
         field,
         target[0],
-        traversalSimilarity,
         resultSimilarity,
+        decay,
         filter);
   }
 

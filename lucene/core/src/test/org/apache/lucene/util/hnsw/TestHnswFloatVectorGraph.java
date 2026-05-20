@@ -17,13 +17,12 @@
 
 package org.apache.lucene.util.hnsw;
 
-import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-
 import com.carrotsearch.randomizedtesting.RandomizedTest;
 import java.io.IOException;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -60,52 +59,44 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
   }
 
   @Override
-  AbstractMockVectorValues<float[]> vectorValues(int size, int dimension) {
+  MockVectorValues vectorValues(int size, int dimension) {
     return MockVectorValues.fromValues(createRandomFloatVectors(size, dimension, random()));
   }
 
   @Override
-  AbstractMockVectorValues<float[]> vectorValues(float[][] values) {
+  MockVectorValues vectorValues(float[][] values) {
     return MockVectorValues.fromValues(values);
   }
 
   @Override
-  AbstractMockVectorValues<float[]> vectorValues(LeafReader reader, String fieldName)
-      throws IOException {
+  MockVectorValues vectorValues(LeafReader reader, String fieldName) throws IOException {
     FloatVectorValues vectorValues = reader.getFloatVectorValues(fieldName);
     float[][] vectors = new float[reader.maxDoc()][];
-    while (vectorValues.nextDoc() != NO_MORE_DOCS) {
-      vectors[vectorValues.docID()] =
-          ArrayUtil.copyOfSubArray(
-              vectorValues.vectorValue(), 0, vectorValues.vectorValue().length);
+    for (int i = 0; i < vectorValues.size(); i++) {
+      vectors[vectorValues.ordToDoc(i)] =
+          ArrayUtil.copyOfSubArray(vectorValues.vectorValue(i), 0, vectorValues.dimension());
     }
     return MockVectorValues.fromValues(vectors);
   }
 
   @Override
-  AbstractMockVectorValues<float[]> vectorValues(
-      int size,
-      int dimension,
-      AbstractMockVectorValues<float[]> pregeneratedVectorValues,
-      int pregeneratedOffset) {
+  MockVectorValues vectorValues(
+      int size, int dimension, KnnVectorValues pregeneratedVectorValues, int pregeneratedOffset) {
+    MockVectorValues pvv = (MockVectorValues) pregeneratedVectorValues;
     float[][] vectors = new float[size][];
     float[][] randomVectors =
-        createRandomFloatVectors(
-            size - pregeneratedVectorValues.values.length, dimension, random());
+        createRandomFloatVectors(size - pvv.values.length, dimension, random());
 
     for (int i = 0; i < pregeneratedOffset; i++) {
       vectors[i] = randomVectors[i];
     }
 
-    int currentDoc;
-    while ((currentDoc = pregeneratedVectorValues.nextDoc()) != NO_MORE_DOCS) {
-      vectors[pregeneratedOffset + currentDoc] = pregeneratedVectorValues.values[currentDoc];
+    for (int currentOrd = 0; currentOrd < pvv.size(); currentOrd++) {
+      vectors[pregeneratedOffset + currentOrd] = pvv.values[currentOrd];
     }
 
-    for (int i = pregeneratedOffset + pregeneratedVectorValues.values.length;
-        i < vectors.length;
-        i++) {
-      vectors[i] = randomVectors[i - pregeneratedVectorValues.values.length];
+    for (int i = pregeneratedOffset + pvv.values.length; i < vectors.length; i++) {
+      vectors[i] = randomVectors[i - pvv.values.length];
     }
 
     return MockVectorValues.fromValues(vectors);
@@ -129,7 +120,7 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
   public void testSearchWithSkewedAcceptOrds() throws IOException {
     int nDoc = 1000;
     similarityFunction = VectorSimilarityFunction.EUCLIDEAN;
-    RandomAccessVectorValues.Floats vectors = circularVectorValues(nDoc);
+    FloatVectorValues vectors = circularVectorValues(nDoc);
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
     HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
     OnHeapHnswGraph hnsw = builder.build(vectors.size());

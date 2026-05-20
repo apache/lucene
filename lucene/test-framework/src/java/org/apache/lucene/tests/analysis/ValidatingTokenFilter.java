@@ -18,11 +18,11 @@ package org.apache.lucene.tests.analysis;
 
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.ArrayDeque;
 import java.util.HashMap;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Queue;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
@@ -60,7 +60,7 @@ public final class ValidatingTokenFilter extends TokenFilter {
   private final CharTermAttribute termAtt = getAttribute(CharTermAttribute.class);
 
   // record the last MAX_DEBUG_TOKENS tokens seen so they can be dumped on failure
-  private final List<Token> tokens = new LinkedList<>();
+  private final Queue<Token> tokens = new ArrayDeque<>();
 
   private final String name;
 
@@ -200,7 +200,7 @@ public final class ValidatingTokenFilter extends TokenFilter {
 
   private void addToken(int startOffset, int endOffset, int posInc) {
     if (tokens.size() == MAX_DEBUG_TOKENS) {
-      tokens.remove(0);
+      tokens.remove();
     }
     tokens.add(new Token(termAtt.toString(), posInc, startOffset, endOffset));
   }

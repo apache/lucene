@@ -21,8 +21,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import org.apache.lucene.codecs.lucene99.Lucene99PostingsFormat;
-import org.apache.lucene.codecs.lucene99.Lucene99PostingsReader;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsReader;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -38,6 +38,7 @@ import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOSupplier;
 
 /**
  * A Query that matches documents containing a particular sequence of terms. A PhraseQuery is built
@@ -51,21 +52,21 @@ import org.apache.lucene.util.BytesRef;
  * Also, Leading holes don't have any particular meaning for this query and will be ignored. For
  * instance this query:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * PhraseQuery.Builder builder = new PhraseQuery.Builder();
  * builder.add(new Term("body", "one"), 4);
  * builder.add(new Term("body", "two"), 5);
  * PhraseQuery pq = builder.build();
- * </pre>
+ * </code></pre>
  *
  * is equivalent to the below query:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * PhraseQuery.Builder builder = new PhraseQuery.Builder();
  * builder.add(new Term("body", "one"), 0);
  * builder.add(new Term("body", "two"), 1);
  * PhraseQuery pq = builder.build();
- * </pre>
+ * </code></pre>
  */
 public class PhraseQuery extends Query {
 
@@ -73,12 +74,14 @@ public class PhraseQuery extends Query {
   public static class Builder {
 
     private int slop;
+    private int maxTerms;
     private final List<Term> terms;
     private final IntArrayList positions;
 
     /** Sole constructor. */
     public Builder() {
       slop = 0;
+      maxTerms = -1;
       terms = new ArrayList<>();
       positions = new IntArrayList();
     }
@@ -90,6 +93,18 @@ public class PhraseQuery extends Query {
      */
     public Builder setSlop(int slop) {
       this.slop = slop;
+      return this;
+    }
+
+    /**
+     * Set the maximum number of terms allowed in the phrase query. This helps prevent excessive
+     * memory usage for very long phrases.
+     *
+     * <p>If the number of terms added via {@link #add(Term)} or {@link #add(Term, int)} exceeds
+     * this threshold, an {@link IllegalArgumentException} will be thrown.
+     */
+    public Builder setMaxTerms(int maxTerms) {
+      this.maxTerms = maxTerms;
       return this;
     }
 
@@ -127,6 +142,13 @@ public class PhraseQuery extends Query {
                 + " and "
                 + terms.get(0).field());
       }
+      if (maxTerms > 0 && terms.size() >= maxTerms) {
+        throw new IllegalArgumentException(
+            "The current number of terms is "
+                + terms.size()
+                + ", which exceeds the limit of "
+                + maxTerms);
+      }
       terms.add(term);
       positions.add(position);
       return this;
@@ -134,7 +156,7 @@ public class PhraseQuery extends Query {
 
     /** Build a phrase query based on the terms that have been added. */
     public PhraseQuery build() {
-      Term[] terms = this.terms.toArray(new Term[0]);
+      Term[] terms = this.terms.toArray(Term[]::new);
       return new PhraseQuery(slop, terms, positions.toArray());
     }
   }
@@ -344,7 +366,7 @@ public class PhraseQuery extends Query {
       this.position = position;
       nTerms = terms == null ? 0 : terms.size();
       if (nTerms > 0) {
-        Term[] terms2 = terms.toArray(new Term[0]);
+        Term[] terms2 = terms.toArray(Term[]::new);
         if (nTerms > 1) {
           Arrays.sort(terms2);
         }
@@ -398,20 +420,19 @@ public class PhraseQuery extends Query {
   /**
    * A guess of the average number of simple operations for the initial seek and buffer refill per
    * document for the positions of a term. See also {@link
-   * Lucene99PostingsReader.BlockImpactsPostingsEnum#nextPosition()}.
+   * Lucene104PostingsReader.BlockPostingsEnum#nextPosition()}.
    *
    * <p>Aside: Instead of being constant this could depend among others on {@link
-   * Lucene99PostingsFormat#BLOCK_SIZE}, {@link TermsEnum#docFreq()}, {@link
+   * Lucene104PostingsFormat#BLOCK_SIZE}, {@link TermsEnum#docFreq()}, {@link
    * TermsEnum#totalTermFreq()}, {@link DocIdSetIterator#cost()} (expected number of matching docs),
    * {@link LeafReader#maxDoc()} (total number of docs in the segment), and the seek time and block
    * size of the device storing the index.
    */
-  private static final int TERM_POSNS_SEEK_OPS_PER_DOC = 128;
+  private static final int TERM_POSNS_SEEK_OPS_PER_DOC = 256;
 
   /**
-   * Number of simple operations in {@link
-   * Lucene99PostingsReader.BlockImpactsPostingsEnum#nextPosition()} when no seek or buffer refill
-   * is done.
+   * Number of simple operations in {@link Lucene104PostingsReader.BlockPostingsEnum#nextPosition()}
+   * when no seek or buffer refill is done.
    */
   private static final int TERM_OPS_PER_POS = 7;
 
@@ -448,7 +469,7 @@ public class PhraseQuery extends Query {
               "PhraseWeight requires that the first position is 0, call rewrite first");
         }
         states = new TermStates[terms.length];
-        TermStatistics[] termStats = new TermStatistics[terms.length];
+        TermStats[] termStats = new TermStats[terms.length];
         int termUpTo = 0;
         for (int i = 0; i < terms.length; i++) {
           final Term term = terms[i];
@@ -456,16 +477,13 @@ public class PhraseQuery extends Query {
           if (scoreMode.needsScores()) {
             TermStates ts = states[i];
             if (ts.docFreq() > 0) {
-              termStats[termUpTo++] =
-                  searcher.termStatistics(term, ts.docFreq(), ts.totalTermFreq());
+              termStats[termUpTo++] = searcher.termStats(term, ts.docFreq(), ts.totalTermFreq());
             }
           }
         }
         if (termUpTo > 0) {
           return similarity.scorer(
-              boost,
-              searcher.collectionStatistics(field),
-              ArrayUtil.copyOfSubArray(termStats, 0, termUpTo));
+              boost, searcher.fieldStats(field), ArrayUtil.copyOfSubArray(termStats, 0, termUpTo));
         } else {
           return null; // no terms at all, we won't use similarity
         }
@@ -498,7 +516,8 @@ public class PhraseQuery extends Query {
 
         for (int i = 0; i < terms.length; i++) {
           final Term t = terms[i];
-          final TermState state = states[i].get(context);
+          final IOSupplier<TermState> supplier = states[i].get(context);
+          final TermState state = supplier == null ? null : supplier.get();
           if (state == null) {
             /* term doesnt exist in this segment */
             assert termNotInReader(reader, t) : "no termstate found but term exists in reader";

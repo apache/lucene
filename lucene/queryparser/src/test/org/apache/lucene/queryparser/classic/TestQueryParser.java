@@ -51,7 +51,6 @@ import org.apache.lucene.tests.analysis.MockLowerCaseFilter;
 import org.apache.lucene.tests.analysis.MockSynonymAnalyzer;
 import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.util.automaton.TooComplexToDeterminizeException;
 
 /** Tests QueryParser. */
 public class TestQueryParser extends QueryParserTestBase {
@@ -328,7 +327,7 @@ public class TestQueryParser extends QueryParserTestBase {
 
   @Override
   public void testNewFieldQuery() throws Exception {
-    /** ordinary behavior, synonyms form uncoordinated boolean query */
+    /* ordinary behavior, synonyms form uncoordinated boolean query */
     QueryParser dumb = new QueryParser(FIELD, new Analyzer1());
     Query expanded =
         new SynonymQuery.Builder(FIELD)
@@ -336,10 +335,10 @@ public class TestQueryParser extends QueryParserTestBase {
             .addTerm(new Term(FIELD, "dog"))
             .build();
     assertEquals(expanded, dumb.parse("\"dogs\""));
-    /** even with the phrase operator the behavior is the same */
+    /* even with the phrase operator the behavior is the same */
     assertEquals(expanded, dumb.parse("dogs"));
 
-    /** custom behavior, the synonyms are expanded, unless you use quote operator */
+    /* custom behavior, the synonyms are expanded, unless you use quote operator */
     QueryParser smart = new SmartQueryParser();
     assertEquals(expanded, smart.parse("dogs"));
 
@@ -528,17 +527,6 @@ public class TestQueryParser extends QueryParserTestBase {
     expectedQBuilder.setSlop(3);
     expected = new BoostQuery(expectedQBuilder.build(), 2f);
     assertEquals(expected, qp.parse("\"中国\"~3^2"));
-  }
-
-  /** LUCENE-6677: make sure wildcard query respects determinizeWorkLimit. */
-  public void testWildcardDeterminizeWorkLimit() throws Exception {
-    QueryParser qp = new QueryParser(FIELD, new MockAnalyzer(random()));
-    qp.setDeterminizeWorkLimit(1);
-    expectThrows(
-        TooComplexToDeterminizeException.class,
-        () -> {
-          qp.parse("a*aaaaaaa");
-        });
   }
 
   // TODO: Remove this specialization once the flexible standard parser gets multi-word synonym
@@ -865,7 +853,7 @@ public class TestQueryParser extends QueryParserTestBase {
 
     QueryParser parser2 = new QueryParser("*", new ASCIIAnalyzer());
     parser2.setAllowLeadingWildcard(false);
-    assertEquals(new MatchAllDocsQuery(), parser2.parse("*"));
+    assertEquals(MatchAllDocsQuery.INSTANCE, parser2.parse("*"));
   }
 
   public void testWildCardEscapes() throws ParseException, IOException {

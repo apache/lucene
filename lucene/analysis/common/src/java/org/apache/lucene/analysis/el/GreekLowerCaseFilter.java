@@ -53,18 +53,18 @@ public final class GreekLowerCaseFilter extends TokenFilter {
 
   private int lowerCase(int codepoint) {
     switch (codepoint) {
-        /* There are two lowercase forms of sigma:
-         *   U+03C2: small final sigma (end of word)
-         *   U+03C3: small sigma (otherwise)
-         *
-         * Standardize both to U+03C3
-         */
+      /* There are two lowercase forms of sigma:
+       *   U+03C2: small final sigma (end of word)
+       *   U+03C3: small sigma (otherwise)
+       *
+       * Standardize both to U+03C3
+       */
       case '\u03C2': /* small final sigma */
         return '\u03C3'; /* small sigma */
 
-        /* Some greek characters contain diacritics.
-         * This filter removes these, converting to the lowercase base form.
-         */
+      /* Some greek characters contain diacritics.
+       * This filter removes these, converting to the lowercase base form.
+       */
 
       case '\u0386': /* capital alpha with tonos */
       case '\u03AC': /* small alpha with tonos */
@@ -100,9 +100,9 @@ public final class GreekLowerCaseFilter extends TokenFilter {
       case '\u03CE': /* small omega with tonos */
         return '\u03C9'; /* small omega */
 
-        /* The previous implementation did the conversion below.
-         * Only implemented for backwards compatibility with old indexes.
-         */
+      /* The previous implementation did the conversion below.
+       * Only implemented for backwards compatibility with old indexes.
+       */
 
       case '\u03A2': /* reserved */
         return '\u03C2'; /* small final sigma */

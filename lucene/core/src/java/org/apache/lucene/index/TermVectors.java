@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import org.apache.lucene.analysis.tokenattributes.OffsetAttribute; // javadocs
+import org.apache.lucene.store.IndexInput;
 
 /**
  * API for reading term vectors.
@@ -29,6 +30,18 @@ public abstract class TermVectors {
 
   /** Sole constructor. (For invocation by subclass constructors, typically implicit.) */
   protected TermVectors() {}
+
+  /**
+   * Optional method: Give a hint to this {@link TermVectors} instance that the given document will
+   * be read in the near future. This typically delegates to {@link IndexInput#prefetch} and is
+   * useful to parallelize I/O across multiple documents.
+   *
+   * <p>NOTE: This API is expected to be called on a small enough set of doc IDs that they could all
+   * fit in the page cache. If you plan on retrieving a very large number of documents, it may be a
+   * good idea to perform calls to {@link #prefetch} and {@link #get} in batches instead of
+   * prefetching all documents up-front.
+   */
+  public void prefetch(int docID) throws IOException {}
 
   /**
    * Returns term vectors for this document, or null if term vectors were not indexed.

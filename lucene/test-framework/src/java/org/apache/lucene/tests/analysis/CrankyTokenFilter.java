@@ -22,7 +22,7 @@ import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
 
 /**
- * Throws IOException from random Tokenstream methods.
+ * Throws IOException from random TokenStream methods.
  *
  * <p>This can be used to simulate a buggy analyzer in IndexWriter, where we must delete the
  * document but not abort everything in the buffer.

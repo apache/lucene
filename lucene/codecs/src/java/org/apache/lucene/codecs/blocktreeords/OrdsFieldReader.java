@@ -79,7 +79,8 @@ final class OrdsFieldReader extends Terms {
     // }
 
     rootBlockFP =
-        (new ByteArrayDataInput(rootCode.bytes.bytes, rootCode.bytes.offset, rootCode.bytes.length))
+        (new ByteArrayDataInput(
+                    rootCode.bytes().bytes, rootCode.bytes().offset, rootCode.bytes().length))
                 .readVLong()
             >>> OrdsBlockTreeTermsWriter.OUTPUT_FLAGS_NUM_BITS;
 
@@ -125,20 +126,19 @@ final class OrdsFieldReader extends Terms {
 
   @Override
   public boolean hasFreqs() {
-    return fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
+    return fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS);
   }
 
   @Override
   public boolean hasOffsets() {
     return fieldInfo
-            .getIndexOptions()
-            .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-        >= 0;
+        .getIndexOptions()
+        .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
   }
 
   @Override
   public boolean hasPositions() {
-    return fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+    return fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
   }
 
   @Override

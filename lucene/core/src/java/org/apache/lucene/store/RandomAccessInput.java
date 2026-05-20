@@ -17,6 +17,7 @@
 package org.apache.lucene.store;
 
 import java.io.IOException;
+import java.util.Optional;
 import org.apache.lucene.util.BitUtil; // javadocs
 
 /**
@@ -76,5 +77,16 @@ public interface RandomAccessInput {
    *
    * @see IndexInput#prefetch
    */
-  default void prefetch(long offset, long length) throws IOException {}
+  default boolean prefetch(long offset, long length) throws IOException {
+    return false;
+  }
+
+  /**
+   * Returns a hint whether all the contents of this input are resident in physical memory.
+   *
+   * @see IndexInput#isLoaded()
+   */
+  default Optional<Boolean> isLoaded() {
+    return Optional.empty();
+  }
 }

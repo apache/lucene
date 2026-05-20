@@ -23,7 +23,7 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestMathUtil extends LuceneTestCase {
 
-  static long[] PRIMES = new long[] {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
+  private static final long[] PRIMES = new long[] {2, 3, 5, 7, 11, 13, 17, 19, 23, 29};
 
   static long randomLong() {
     if (random().nextBoolean()) {
@@ -180,5 +180,20 @@ public class TestMathUtil extends LuceneTestCase {
     assertEquals(0, MathUtil.atanh(0), 0);
     assertEquals(0.5493061443340549, MathUtil.atanh(0.5), epsilon);
     assertEquals(Double.POSITIVE_INFINITY, MathUtil.atanh(1), 0);
+  }
+
+  public void testUnsignedMin() {
+    assertEquals(0, MathUtil.unsignedMin(0, 0));
+    assertEquals(0, MathUtil.unsignedMin(0, 3));
+    assertEquals(0, MathUtil.unsignedMin(3, 0));
+    assertEquals(0, MathUtil.unsignedMin(0, Integer.MAX_VALUE));
+    assertEquals(0, MathUtil.unsignedMin(Integer.MAX_VALUE, 0));
+    assertEquals(Integer.MAX_VALUE, MathUtil.unsignedMin(Integer.MAX_VALUE, Integer.MAX_VALUE + 1));
+    assertEquals(Integer.MAX_VALUE, MathUtil.unsignedMin(Integer.MAX_VALUE + 1, Integer.MAX_VALUE));
+    assertEquals(Integer.MAX_VALUE, MathUtil.unsignedMin(Integer.MAX_VALUE, Integer.MIN_VALUE));
+    assertEquals(Integer.MAX_VALUE, MathUtil.unsignedMin(Integer.MIN_VALUE, Integer.MAX_VALUE));
+    assertEquals(Integer.MIN_VALUE, MathUtil.unsignedMin(Integer.MIN_VALUE, -1));
+    assertEquals(Integer.MIN_VALUE, MathUtil.unsignedMin(-1, Integer.MIN_VALUE));
+    assertEquals(Integer.MIN_VALUE, MathUtil.unsignedMin(Integer.MIN_VALUE, Integer.MIN_VALUE));
   }
 }

@@ -21,6 +21,7 @@ import java.util.Comparator;
 import java.util.Set;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.CompoundFormat;
 import org.apache.lucene.index.IndexWriter.IndexReaderWarmer;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.search.IndexSearcher;
@@ -159,8 +160,8 @@ public class LiveIndexWriterConfig {
    * <p>The maximum RAM limit is inherently determined by the JVMs available memory. Yet, an {@link
    * IndexWriter} session can consume a significantly larger amount of memory than the given RAM
    * limit since this limit is just an indicator when to flush memory resident documents to the
-   * Directory. Flushes are likely happen concurrently while other threads adding documents to the
-   * writer. For application stability the available memory in the JVM should be significantly
+   * Directory. Flushes are likely to happen concurrently while other threads adding documents to
+   * the writer. For application stability the available memory in the JVM should be significantly
    * larger than the RAM buffer used for indexing.
    *
    * <p><b>NOTE</b>: the account of RAM usage for pending deletions is only approximate.
@@ -368,9 +369,8 @@ public class LiveIndexWriterConfig {
    *
    * <p>Use <code>false</code> for batch indexing with very large ram buffer settings.
    *
-   * <p><b>Note: To control compound file usage during segment merges see {@link
-   * MergePolicy#setNoCFSRatio(double)} and {@link MergePolicy#setMaxCFSSegmentSizeMB(double)}. This
-   * setting only applies to newly created segments.</b>
+   * <p><b>Note: To control compound file usage during segment merges. More here: {@link
+   * CompoundFormat}</b>.
    */
   public LiveIndexWriterConfig setUseCompoundFile(boolean useCompoundFile) {
     this.useCompoundFile = useCompoundFile;

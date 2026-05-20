@@ -13,7 +13,7 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
- -->
+-->
 
 # Index backwards compatibility
 
@@ -34,6 +34,7 @@ we create fresh copies of the codec and format, and move the existing ones
 into backwards-codecs.
 
 Older codecs are tested in two ways:
+
 * Through unit tests like TestLucene80NormsFormat, which checks we can write
 then read data using each old format
 * Through TestBackwardsCompatibility, which loads indices created in previous

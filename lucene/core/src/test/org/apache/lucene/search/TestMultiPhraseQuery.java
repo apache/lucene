@@ -17,7 +17,8 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
-import java.util.LinkedList;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
@@ -61,7 +62,7 @@ public class TestMultiPhraseQuery extends LuceneTestCase {
     query1builder.add(new Term("body", "blueberry"));
     query2builder.add(new Term("body", "strawberry"));
 
-    LinkedList<Term> termsWithPrefix = new LinkedList<>();
+    List<Term> termsWithPrefix = new ArrayList<>();
 
     // this TermEnum gives "piccadilly", "pie" and "pizza".
     String prefix = "pi";
@@ -76,11 +77,11 @@ public class TestMultiPhraseQuery extends LuceneTestCase {
       }
     } while (te.next() != null);
 
-    query1builder.add(termsWithPrefix.toArray(new Term[0]));
+    query1builder.add(termsWithPrefix.toArray(Term[]::new));
     MultiPhraseQuery query1 = query1builder.build();
     assertEquals("body:\"blueberry (piccadilly pie pizza)\"", query1.toString());
 
-    query2builder.add(termsWithPrefix.toArray(new Term[0]));
+    query2builder.add(termsWithPrefix.toArray(Term[]::new));
     MultiPhraseQuery query2 = query2builder.build();
     assertEquals("body:\"strawberry (piccadilly pie pizza)\"", query2.toString());
 
@@ -102,7 +103,7 @@ public class TestMultiPhraseQuery extends LuceneTestCase {
       }
     } while (te.next() != null);
 
-    query3builder.add(termsWithPrefix.toArray(new Term[0]));
+    query3builder.add(termsWithPrefix.toArray(Term[]::new));
     query3builder.add(new Term("body", "pizza"));
 
     MultiPhraseQuery query3 = query3builder.build();
@@ -305,7 +306,7 @@ public class TestMultiPhraseQuery extends LuceneTestCase {
     query1builder.add(term2);
     query1 = query1builder.build();
 
-    assertFalse(query1.hashCode() == query2.hashCode());
+    assertNotEquals(query1.hashCode(), query2.hashCode());
     assertFalse(query1.equals(query2));
 
     query2builder.add(term2);
@@ -367,10 +368,10 @@ public class TestMultiPhraseQuery extends LuceneTestCase {
       mpqb.add(new Term[] {new Term("field", "b"), new Term("field", "c")}, 0);
     }
     TopDocs hits = s.search(mpqb.build(), 2);
-    assertEquals(2, hits.totalHits.value);
+    assertEquals(2, hits.totalHits.value());
     assertEquals(hits.scoreDocs[0].score, hits.scoreDocs[1].score, 1e-5);
     /*
-    for(int hit=0;hit<hits.totalHits.value;hit++) {
+    for(int hit=0;hit<hits.totalHits.value();hit++) {
       ScoreDoc sd = hits.scoreDocs[hit];
       System.out.println("  hit doc=" + sd.doc + " score=" + sd.score);
     }
@@ -458,10 +459,10 @@ public class TestMultiPhraseQuery extends LuceneTestCase {
     }
 
     TopDocs hits = s.search(q, 1);
-    assertEquals("wrong number of results", nExpected, hits.totalHits.value);
+    assertEquals("wrong number of results", nExpected, hits.totalHits.value());
 
     if (VERBOSE) {
-      for (int hit = 0; hit < hits.totalHits.value; hit++) {
+      for (int hit = 0; hit < hits.totalHits.value(); hit++) {
         ScoreDoc sd = hits.scoreDocs[hit];
         System.out.println("  hit doc=" + sd.doc + " score=" + sd.score);
       }

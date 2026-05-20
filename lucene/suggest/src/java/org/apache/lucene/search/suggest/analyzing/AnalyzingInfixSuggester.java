@@ -332,7 +332,6 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
         writer = null;
       }
 
-      boolean success = false;
       try {
         // First pass: build a temporary normal Lucene index,
         // just indexing the suggestions as they iterate:
@@ -360,19 +359,17 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
           commit();
         }
         setAndCloseOldSearcherManager(new SearcherManager(writer, null));
-        success = true;
-      } finally {
-        if (success) {
-          if (closeIndexWriterOnBuild) {
-            writer.close();
-            writer = null;
-          }
-        } else { // failure
-          if (writer != null) {
-            writer.rollback();
-            writer = null;
-          }
+      } catch (Throwable t) {
+        if (writer != null) {
+          writer.rollback();
+          writer = null;
         }
+        throw t;
+      }
+
+      if (closeIndexWriterOnBuild) {
+        writer.close();
+        writer = null;
       }
     }
   }
@@ -739,8 +736,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
       searcherMgrReadLock.unlock();
     }
     try {
-      TopFieldCollectorManager c =
-          new TopFieldCollectorManager(SORT, num, null, 1, searcher.getSlices().length > 1);
+      TopFieldCollectorManager c = new TopFieldCollectorManager(SORT, num, null, 1);
       // System.out.println("got searcher=" + searcher);
       TopFieldDocs hits = searcher.search(finalQuery, c);
 
@@ -808,7 +804,7 @@ public class AnalyzingInfixSuggester extends Lookup implements Closeable {
           leaves.get(segment).reader().getSortedSetDocValues(CONTEXTS_FIELD_NAME);
       Set<BytesRef> contexts;
       if (contextsDV != null) {
-        contexts = new HashSet<BytesRef>();
+        contexts = new HashSet<>();
         int targetDocID = fd.doc - leaves.get(segment).docBase;
         if (contextsDV.advance(targetDocID) == targetDocID) {
           for (int j = 0; j < contextsDV.docValueCount(); j++) {

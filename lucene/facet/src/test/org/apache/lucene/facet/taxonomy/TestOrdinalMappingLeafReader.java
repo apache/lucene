@@ -24,6 +24,7 @@ import org.apache.lucene.facet.FacetResult;
 import org.apache.lucene.facet.FacetTestCase;
 import org.apache.lucene.facet.Facets;
 import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
 import org.apache.lucene.facet.FacetsConfig;
 import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
@@ -41,7 +42,6 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.junit.Before;
-import org.junit.Test;
 
 public class TestOrdinalMappingLeafReader extends FacetTestCase {
 
@@ -56,7 +56,6 @@ public class TestOrdinalMappingLeafReader extends FacetTestCase {
     facetConfig.setIndexFieldName("tag", "$tags"); // add custom index field name
   }
 
-  @Test
   public void testTaxonomyMergeUtils() throws Exception {
     Directory srcIndexDir = newDirectory();
     Directory srcTaxoDir = newDirectory();
@@ -89,8 +88,10 @@ public class TestOrdinalMappingLeafReader extends FacetTestCase {
     DirectoryTaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoDir);
     IndexSearcher searcher = newSearcher(indexReader);
 
-    FacetsCollector collector = new FacetsCollector();
-    FacetsCollector.search(searcher, new MatchAllDocsQuery(), 10, collector);
+    FacetsCollector collector =
+        FacetsCollectorManager.search(
+                searcher, MatchAllDocsQuery.INSTANCE, 10, new FacetsCollectorManager())
+            .facetsCollector();
 
     // tag facets
     Facets tagFacets = new FastTaxonomyFacetCounts("$tags", taxoReader, facetConfig, collector);

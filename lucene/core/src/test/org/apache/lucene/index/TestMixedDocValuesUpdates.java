@@ -476,7 +476,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
     for (LeafReaderContext c : reader.leaves()) {
       TopDocs topDocs =
           new IndexSearcher(c.reader()).search(new TermQuery(new Term("id", "" + doc)), 10);
-      if (topDocs.totalHits.value == 1) {
+      if (topDocs.totalHits.value() == 1) {
         assertNull(numericIdValues);
         assertNull(binaryIdValues);
         numericIdValues = c.reader().getNumericDocValues("numericId");
@@ -484,7 +484,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
         binaryIdValues = c.reader().getBinaryDocValues("binaryId");
         assertEquals(topDocs.scoreDocs[0].doc, binaryIdValues.advance(topDocs.scoreDocs[0].doc));
       } else {
-        assertEquals(0, topDocs.totalHits.value);
+        assertEquals(0, topDocs.totalHits.value());
       }
     }
 
@@ -564,7 +564,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
           Long value = values[i];
           TopDocs topDocs =
               new IndexSearcher(reader).search(new TermQuery(new Term("id", "" + i)), 10);
-          assertEquals(topDocs.totalHits.value, 1);
+          assertEquals(topDocs.totalHits.value(), 1);
           int docID = topDocs.scoreDocs[0].doc;
           List<LeafReaderContext> leaves = reader.leaves();
           int subIndex = ReaderUtil.subIndex(docID, leaves);
@@ -591,7 +591,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
     do { // retry if we just committing a merge
       try (DirectoryReader reader = DirectoryReader.open(writer)) {
         TopDocs topDocs = new IndexSearcher(reader).search(new TermQuery(doc), 10);
-        assertEquals(1, topDocs.totalHits.value);
+        assertEquals(1, topDocs.totalHits.value());
         int theDoc = topDocs.scoreDocs[0].doc;
         seqId = writer.tryUpdateDocValue(reader, theDoc, fields);
       }
@@ -676,7 +676,7 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
       IndexSearcher searcher = new IndexSearcher(reader);
 
       TopDocs is_live = searcher.search(new FieldExistsQuery("is_live"), 5);
-      assertEquals(numHits, is_live.totalHits.value);
+      assertEquals(numHits, is_live.totalHits.value());
       StoredFields storedFields = reader.storedFields();
       for (ScoreDoc doc : is_live.scoreDocs) {
         int id = Integer.parseInt(storedFields.document(doc.doc).get("id"));
@@ -751,5 +751,32 @@ public class TestMixedDocValuesUpdates extends LuceneTestCase {
           "Can't update [NUMERIC] doc values; the field [id] has inconsistent doc values' type of [NONE].",
           exception.getMessage());
     }
+  }
+
+  public void testLongRunValuesReset() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig());
+    int numDocs = atLeast(65536);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      doc.add(new StringField("id", String.valueOf(i), Store.NO));
+      if (i == 0 || i == numDocs - 1 || random().nextBoolean()) {
+        doc.add(new NumericDocValuesField("numeric", 1));
+      }
+      writer.addDocument(doc);
+    }
+    writer.flush();
+
+    for (int i = 1; i < numDocs - 1; i++) {
+      writer.updateDocValues(
+          new Term("id", String.valueOf(i)), new NumericDocValuesField("numeric", null));
+    }
+
+    try (IndexReader reader = writer.getReader(true, true)) {
+      IndexSearcher searcher = new IndexSearcher(reader);
+      assertEquals(2, searcher.count(new FieldExistsQuery("numeric")));
+    }
+
+    IOUtils.close(writer, dir);
   }
 }

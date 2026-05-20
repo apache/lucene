@@ -19,6 +19,7 @@ package org.apache.lucene.queryparser.flexible.core.messages;
 import org.apache.lucene.queryparser.flexible.messages.NLS;
 
 /** Flexible Query Parser message bundle class */
+@SuppressWarnings("NonFinalStaticField")
 public class QueryParserMessages extends NLS {
   private static final String BUNDLE_NAME = QueryParserMessages.class.getName();
 

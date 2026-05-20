@@ -49,7 +49,7 @@ public class TestTermVectorsReader extends LuceneTestCase {
   private Directory dir;
   private SegmentCommitInfo seg;
   private FieldInfos fieldInfos = FieldInfos.EMPTY;
-  private static int TERM_FREQ = 3;
+  private static final int TERM_FREQ = 3;
 
   private static class TestToken implements Comparable<TestToken> {
     String text;
@@ -98,9 +98,10 @@ public class TestTermVectorsReader extends LuceneTestCase {
             dir,
             newIndexWriterConfig(new MyAnalyzer())
                 .setMaxBufferedDocs(-1)
-                .setMergePolicy(newLogMergePolicy(false, 10))
+                .setMergePolicy(newLogMergePolicy(10))
                 .setUseCompoundFile(false));
 
+    writer.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
     Document doc = new Document();
     for (int i = 0; i < testFields.length; i++) {
       FieldType customType = new FieldType(TextField.TYPE_NOT_STORED);
@@ -190,7 +191,7 @@ public class TestTermVectorsReader extends LuceneTestCase {
     DirectoryReader reader = DirectoryReader.open(dir);
     for (LeafReaderContext ctx : reader.leaves()) {
       SegmentReader sr = (SegmentReader) ctx.reader();
-      assertTrue(sr.getFieldInfos().hasVectors());
+      assertTrue(sr.getFieldInfos().hasTermVectors());
     }
     reader.close();
   }

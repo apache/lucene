@@ -29,13 +29,13 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
 
 /**
  * Writes vector values and knn graphs to index segments.
@@ -188,12 +188,13 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
     int count = 0;
     ByteBuffer binaryVector =
         ByteBuffer.allocate(vectors.dimension() * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
-    for (int docV = vectors.nextDoc(); docV != NO_MORE_DOCS; docV = vectors.nextDoc(), count++) {
+    KnnVectorValues.DocIndexIterator iter = vectors.iterator();
+    for (int docV = iter.nextDoc(); docV != NO_MORE_DOCS; docV = iter.nextDoc()) {
       // write vector
-      float[] vectorValue = vectors.vectorValue();
+      float[] vectorValue = vectors.vectorValue(iter.index());
       binaryVector.asFloatBuffer().put(vectorValue);
       output.writeBytes(binaryVector.array(), binaryVector.limit());
-      docIds[count] = docV;
+      docIds[count++] = docV;
     }
 
     if (docIds.length > count) {
@@ -234,7 +235,7 @@ public final class Lucene90HnswVectorsWriter extends BufferingKnnVectorsWriter {
 
   private void writeGraph(
       IndexOutput graphData,
-      RandomAccessVectorValues.Floats vectorValues,
+      FloatVectorValues vectorValues,
       VectorSimilarityFunction similarityFunction,
       long graphDataOffset,
       long[] offsets,

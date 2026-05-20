@@ -16,8 +16,6 @@
  */
 package org.apache.lucene.util.automaton;
 
-import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
-
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -81,44 +79,46 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
       // check that the dfa for n-1 accepts a subset of the dfa for n
       if (n > 0) {
         assertTrue(
-            Operations.subsetOf(
+            AutomatonTestUtil.subsetOf(
                 Operations.removeDeadStates(automata[n - 1]),
                 Operations.removeDeadStates(automata[n])));
         assertTrue(
-            Operations.subsetOf(
+            AutomatonTestUtil.subsetOf(
                 Operations.removeDeadStates(automata[n - 1]),
                 Operations.removeDeadStates(tautomata[n])));
         assertTrue(
-            Operations.subsetOf(
+            AutomatonTestUtil.subsetOf(
                 Operations.removeDeadStates(tautomata[n - 1]),
                 Operations.removeDeadStates(automata[n])));
         assertTrue(
-            Operations.subsetOf(
+            AutomatonTestUtil.subsetOf(
                 Operations.removeDeadStates(tautomata[n - 1]),
                 Operations.removeDeadStates(tautomata[n])));
         assertNotSame(automata[n - 1], automata[n]);
       }
       // check that Lev(N) is a subset of LevT(N)
       assertTrue(
-          Operations.subsetOf(
+          AutomatonTestUtil.subsetOf(
               Operations.removeDeadStates(automata[n]), Operations.removeDeadStates(tautomata[n])));
       // special checks for specific n
       switch (n) {
         case 0:
           // easy, matches the string itself
           assertTrue(
-              Operations.sameLanguage(
+              AutomatonTestUtil.sameLanguage(
                   Automata.makeString(s), Operations.removeDeadStates(automata[0])));
           assertTrue(
-              Operations.sameLanguage(
+              AutomatonTestUtil.sameLanguage(
                   Automata.makeString(s), Operations.removeDeadStates(tautomata[0])));
           break;
         case 1:
           // generate a lev1 naively, and check the accepted lang is the same.
           assertTrue(
-              Operations.sameLanguage(naiveLev1(s), Operations.removeDeadStates(automata[1])));
+              AutomatonTestUtil.sameLanguage(
+                  naiveLev1(s), Operations.removeDeadStates(automata[1])));
           assertTrue(
-              Operations.sameLanguage(naiveLev1T(s), Operations.removeDeadStates(tautomata[1])));
+              AutomatonTestUtil.sameLanguage(
+                  naiveLev1T(s), Operations.removeDeadStates(tautomata[1])));
           break;
         default:
           assertBruteForce(s, automata[n], n);
@@ -132,15 +132,10 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
    * Return an automaton that accepts all 1-character insertions, deletions, and substitutions of s.
    */
   private Automaton naiveLev1(String s) {
-    Automaton a = Automata.makeString(s);
-    a = Operations.union(a, insertionsOf(s));
-    a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
-    a = Operations.union(a, deletionsOf(s));
-    a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
-    a = Operations.union(a, substitutionsOf(s));
-    a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
-
-    return a;
+    return Operations.determinize(
+        Operations.union(
+            List.of(Automata.makeString(s), insertionsOf(s), deletionsOf(s), substitutionsOf(s))),
+        Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
   }
 
   /**
@@ -148,10 +143,15 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
    * transpositions of s.
    */
   private Automaton naiveLev1T(String s) {
-    Automaton a = naiveLev1(s);
-    a = Operations.union(a, transpositionsOf(s));
-    a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
-    return a;
+    return Operations.determinize(
+        Operations.union(
+            List.of(
+                Automata.makeString(s),
+                insertionsOf(s),
+                deletionsOf(s),
+                substitutionsOf(s),
+                transpositionsOf(s))),
+        Operations.DEFAULT_DETERMINIZE_WORK_LIMIT);
   }
 
   /** Return an automaton that accepts all 1-character insertions of s (inserting one character) */
@@ -159,15 +159,13 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
     List<Automaton> list = new ArrayList<>();
 
     for (int i = 0; i <= s.length(); i++) {
-      Automaton a = Automata.makeString(s.substring(0, i));
-      a = Operations.concatenate(a, Automata.makeAnyChar());
-      a = Operations.concatenate(a, Automata.makeString(s.substring(i)));
-      list.add(a);
+      Automaton pre = Automata.makeString(s.substring(0, i));
+      Automaton middle = Automata.makeAnyChar();
+      Automaton post = Automata.makeString(s.substring(i));
+      list.add(Operations.concatenate(List.of(pre, middle, post)));
     }
 
-    Automaton a = Operations.union(list);
-    a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
-    return a;
+    return Operations.union(list);
   }
 
   /** Return an automaton that accepts all 1-character deletions of s (deleting one character). */
@@ -175,14 +173,12 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
     List<Automaton> list = new ArrayList<>();
 
     for (int i = 0; i < s.length(); i++) {
-      Automaton a = Automata.makeString(s.substring(0, i));
-      a = Operations.concatenate(a, Automata.makeString(s.substring(i + 1)));
-      list.add(a);
+      Automaton pre = Automata.makeString(s.substring(0, i));
+      Automaton post = Automata.makeString(s.substring(i + 1));
+      list.add(Operations.concatenate(List.of(pre, post)));
     }
 
-    Automaton a = Operations.union(list);
-    a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
-    return a;
+    return Operations.union(list);
   }
 
   /**
@@ -192,15 +188,13 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
     List<Automaton> list = new ArrayList<>();
 
     for (int i = 0; i < s.length(); i++) {
-      Automaton a = Automata.makeString(s.substring(0, i));
-      a = Operations.concatenate(a, Automata.makeAnyChar());
-      a = Operations.concatenate(a, Automata.makeString(s.substring(i + 1)));
-      list.add(a);
+      Automaton pre = Automata.makeString(s.substring(0, i));
+      Automaton middle = Automata.makeAnyChar();
+      Automaton post = Automata.makeString(s.substring(i + 1));
+      list.add(Operations.concatenate(List.of(pre, middle, post)));
     }
 
-    Automaton a = Operations.union(list);
-    a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
-    return a;
+    return Operations.union(list);
   }
 
   /**
@@ -222,9 +216,7 @@ public class TestLevenshteinAutomata extends LuceneTestCase {
         list.add(Automata.makeString(st));
       }
     }
-    Automaton a = Operations.union(list);
-    a = MinimizationOperations.minimize(a, DEFAULT_DETERMINIZE_WORK_LIMIT);
-    return a;
+    return Operations.union(list);
   }
 
   private void assertBruteForce(String input, Automaton dfa, int distance) {

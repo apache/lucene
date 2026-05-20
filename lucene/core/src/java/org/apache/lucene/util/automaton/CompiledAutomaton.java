@@ -254,7 +254,7 @@ public class CompiledAutomaton implements Accountable {
       this.automaton = null;
       this.runAutomaton = null;
       this.sinkState = -1;
-      this.nfaRunAutomaton = new NFARunAutomaton(binary, 0xff);
+      this.nfaRunAutomaton = new NFARunAutomaton(binary, 0x100);
     } else {
       // We already had a DFA (or threw exception), according to mike UTF32toUTF8 won't "blow up"
       binary = Operations.determinize(binary, Integer.MAX_VALUE);
@@ -366,7 +366,7 @@ public class CompiledAutomaton implements Accountable {
     if (visitor.acceptField(field)) {
       switch (type) {
         case NORMAL:
-          visitor.consumeTermsMatching(parent, field, () -> runAutomaton);
+          visitor.consumeTermsMatching(parent, field, this::getByteRunnable);
           break;
         case NONE:
           break;
@@ -510,6 +510,7 @@ public class CompiledAutomaton implements Accountable {
     final int prime = 31;
     int result = 1;
     result = prime * result + ((runAutomaton == null) ? 0 : runAutomaton.hashCode());
+    result = prime * result + ((nfaRunAutomaton == null) ? 0 : nfaRunAutomaton.hashCode());
     result = prime * result + ((term == null) ? 0 : term.hashCode());
     result = prime * result + ((type == null) ? 0 : type.hashCode());
     return result;
@@ -538,6 +539,7 @@ public class CompiledAutomaton implements Accountable {
         + RamUsageEstimator.sizeOfObject(automaton)
         + RamUsageEstimator.sizeOfObject(commonSuffixRef)
         + RamUsageEstimator.sizeOfObject(runAutomaton)
+        + RamUsageEstimator.sizeOfObject(nfaRunAutomaton)
         + RamUsageEstimator.sizeOfObject(term)
         + RamUsageEstimator.sizeOfObject(transition);
   }

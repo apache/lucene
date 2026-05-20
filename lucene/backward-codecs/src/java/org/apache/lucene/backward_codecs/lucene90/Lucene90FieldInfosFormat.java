@@ -23,6 +23,7 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.FieldInfosFormat;
 import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -186,7 +187,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
                     storePayloads,
                     indexOptions,
                     docValuesType,
-                    false,
+                    DocValuesSkipIndexType.NONE,
                     dvGen,
                     attributes,
                     pointDataDimensionCount,
@@ -269,7 +270,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
     // We "mirror" IndexOptions enum values with the constants below; let's try to ensure if we add
     // a new IndexOption while this format is
     // still used for writing, we remember to fix this encoding:
-    assert IndexOptions.values().length == 5;
+    assert IndexOptions.values().length == 6;
   }
 
   private static byte indexOptionsByte(IndexOptions indexOptions) {
@@ -284,6 +285,8 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
         return 3;
       case DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS:
         return 4;
+      case DOCS_AND_CUSTOM_FREQS:
+        return 5;
       default:
         // BUG:
         throw new AssertionError("unhandled IndexOptions: " + indexOptions);
@@ -302,6 +305,8 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
         return IndexOptions.DOCS_AND_FREQS_AND_POSITIONS;
       case 4:
         return IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS;
+      case 5:
+        return IndexOptions.DOCS_AND_CUSTOM_FREQS;
       default:
         // BUG
         throw new CorruptIndexException("invalid IndexOptions byte: " + b, input);
@@ -333,7 +338,7 @@ public final class Lucene90FieldInfosFormat extends FieldInfosFormat {
         output.writeVInt(fi.number);
 
         byte bits = 0x0;
-        if (fi.hasVectors()) bits |= STORE_TERMVECTOR;
+        if (fi.hasTermVectors()) bits |= STORE_TERMVECTOR;
         if (fi.omitsNorms()) bits |= OMIT_NORMS;
         if (fi.hasPayloads()) bits |= STORE_PAYLOADS;
         if (fi.isSoftDeletesField()) bits |= SOFT_DELETES_FIELD;

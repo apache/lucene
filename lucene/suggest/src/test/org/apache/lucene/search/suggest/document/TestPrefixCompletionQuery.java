@@ -46,7 +46,6 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
 
 public class TestPrefixCompletionQuery extends LuceneTestCase {
 
@@ -142,7 +141,6 @@ public class TestPrefixCompletionQuery extends LuceneTestCase {
     iw.close();
   }
 
-  @Test
   public void testEmptyPrefixQuery() throws Exception {
     Analyzer analyzer = new MockAnalyzer(random());
     RandomIndexWriter iw =
@@ -193,7 +191,7 @@ public class TestPrefixCompletionQuery extends LuceneTestCase {
     // if at most half of the top scoring documents have been filtered out
     // the search should be admissible for a single segment
     TopSuggestDocs suggest = indexSearcher.suggest(query, num, false);
-    assertTrue(suggest.totalHits.value >= 1);
+    assertTrue(suggest.totalHits.value() >= 1);
     assertEquals("abc_" + topScore, suggest.scoreLookupDocs()[0].key.toString());
     assertEquals((float) topScore, suggest.scoreLookupDocs()[0].score, 0);
 
@@ -481,7 +479,7 @@ public class TestPrefixCompletionQuery extends LuceneTestCase {
 
     PrefixCompletionQuery query =
         new PrefixCompletionQuery(analyzer, new Term("suggest_field", "app"));
-    assertEquals(0, indexSearcher.suggest(query, 3, false).totalHits.value);
+    assertEquals(0, indexSearcher.suggest(query, 3, false).totalHits.value());
 
     query = new PrefixCompletionQuery(analyzer, new Term("suggest_field2", "app"));
     assertSuggestions(indexSearcher.suggest(query, 3, false), new Entry("apples", 3));

@@ -71,8 +71,8 @@ final class SimpleTextBKDReader extends PointValues {
     this.pointCount = pointCount;
     this.docCount = docCount;
     this.version = SimpleTextBKDWriter.VERSION_CURRENT;
-    assert minPackedValue.length == config.packedIndexBytesLength;
-    assert maxPackedValue.length == config.packedIndexBytesLength;
+    assert minPackedValue.length == config.packedIndexBytesLength();
+    assert maxPackedValue.length == config.packedIndexBytesLength();
   }
 
   @Override
@@ -99,8 +99,8 @@ final class SimpleTextBKDReader extends PointValues {
     private SimpleTextPointTree(
         IndexInput in, int nodeID, int level, byte[] minPackedValue, byte[] maxPackedValue) {
       this.in = in;
-      this.scratchDocIDs = new int[config.maxPointsInLeafNode];
-      this.scratchPackedValue = new byte[config.packedBytesLength];
+      this.scratchDocIDs = new int[config.maxPointsInLeafNode()];
+      this.scratchPackedValue = new byte[config.packedBytesLength()];
       this.nodeID = nodeID;
       this.rootNode = nodeID;
       this.level = level;
@@ -145,38 +145,39 @@ final class SimpleTextBKDReader extends PointValues {
     private void pushLeft() {
       int address = nodeID * bytesPerIndexEntry;
       // final int splitDimPos;
-      if (config.numIndexDims == 1) {
+      if (config.numIndexDims() == 1) {
         splitDims[level] = 0;
       } else {
         splitDims[level] = (splitPackedValues[address++] & 0xff);
       }
-      final int splitDimPos = splitDims[level] * config.bytesPerDim;
+      final int splitDimPos = splitDims[level] * config.bytesPerDim();
       if (splitDimValueStack[level] == null) {
-        splitDimValueStack[level] = new byte[config.bytesPerDim];
+        splitDimValueStack[level] = new byte[config.bytesPerDim()];
       }
       // save the dimension we are going to change
       System.arraycopy(
-          maxPackedValue, splitDimPos, splitDimValueStack[level], 0, config.bytesPerDim);
+          maxPackedValue, splitDimPos, splitDimValueStack[level], 0, config.bytesPerDim());
       assert Arrays.compareUnsigned(
                   maxPackedValue,
                   splitDimPos,
-                  splitDimPos + config.bytesPerDim,
+                  splitDimPos + config.bytesPerDim(),
                   splitPackedValues,
                   address,
-                  address + config.bytesPerDim)
+                  address + config.bytesPerDim())
               >= 0
-          : "config.bytesPerDim="
-              + config.bytesPerDim
+          : "config.bytesPerDim()="
+              + config.bytesPerDim()
               + " splitDim="
               + splitDims[level]
-              + " config.numIndexDims="
-              + config.numIndexDims
+              + " config.numIndexDims()="
+              + config.numIndexDims()
               + " config.numDims="
-              + config.numDims;
+              + config.numDims();
       nodeID *= 2;
       level++;
       // add the split dim value:
-      System.arraycopy(splitPackedValues, address, maxPackedValue, splitDimPos, config.bytesPerDim);
+      System.arraycopy(
+          splitPackedValues, address, maxPackedValue, splitDimPos, config.bytesPerDim());
     }
 
     @Override
@@ -191,37 +192,38 @@ final class SimpleTextBKDReader extends PointValues {
 
     private void pushRight() {
       int address = nodeID * bytesPerIndexEntry;
-      if (config.numIndexDims == 1) {
+      if (config.numIndexDims() == 1) {
         splitDims[level] = 0;
       } else {
         splitDims[level] = (splitPackedValues[address++] & 0xff);
       }
-      final int splitDimPos = splitDims[level] * config.bytesPerDim;
+      final int splitDimPos = splitDims[level] * config.bytesPerDim();
       // we should have already visit the left node
       assert splitDimValueStack[level] != null;
       // save the dimension we are going to change
       System.arraycopy(
-          minPackedValue, splitDimPos, splitDimValueStack[level], 0, config.bytesPerDim);
+          minPackedValue, splitDimPos, splitDimValueStack[level], 0, config.bytesPerDim());
       assert Arrays.compareUnsigned(
                   minPackedValue,
                   splitDimPos,
-                  splitDimPos + config.bytesPerDim,
+                  splitDimPos + config.bytesPerDim(),
                   splitPackedValues,
                   address,
-                  address + config.bytesPerDim)
+                  address + config.bytesPerDim())
               <= 0
-          : "config.bytesPerDim="
-              + config.bytesPerDim
+          : "config.bytesPerDim()="
+              + config.bytesPerDim()
               + " splitDim="
               + splitDims[level]
-              + " config.numIndexDims="
-              + config.numIndexDims
+              + " config.numIndexDims()="
+              + config.numIndexDims()
               + " config.numDims="
-              + config.numDims;
+              + config.numDims();
       nodeID = 2 * nodeID + 1;
       level++;
       // add the split dim value:
-      System.arraycopy(splitPackedValues, address, minPackedValue, splitDimPos, config.bytesPerDim);
+      System.arraycopy(
+          splitPackedValues, address, minPackedValue, splitDimPos, config.bytesPerDim());
     }
 
     @Override
@@ -242,16 +244,16 @@ final class SimpleTextBKDReader extends PointValues {
             splitDimValueStack[level],
             0,
             maxPackedValue,
-            splitDims[level] * config.bytesPerDim,
-            config.bytesPerDim);
+            splitDims[level] * config.bytesPerDim(),
+            config.bytesPerDim());
       } else {
 
         System.arraycopy(
             splitDimValueStack[level],
             0,
             minPackedValue,
-            splitDims[level] * config.bytesPerDim,
-            config.bytesPerDim);
+            splitDims[level] * config.bytesPerDim(),
+            config.bytesPerDim());
       }
     }
 
@@ -290,7 +292,7 @@ final class SimpleTextBKDReader extends PointValues {
     private long sizeFromBalancedTree(int leftMostLeafNode, int rightMostLeafNode) {
       // number of points that need to be distributed between leaves, one per leaf
       final int extraPoints =
-          Math.toIntExact(((long) config.maxPointsInLeafNode * leafNodeOffset) - pointCount);
+          Math.toIntExact(((long) config.maxPointsInLeafNode() * leafNodeOffset) - pointCount);
       assert extraPoints < leafNodeOffset : "point excess should be lower than leafNodeOffset";
       // offset where we stop adding one point to the leaves
       final int nodeOffset = leafNodeOffset - extraPoints;
@@ -298,9 +300,9 @@ final class SimpleTextBKDReader extends PointValues {
       for (int node = leftMostLeafNode; node <= rightMostLeafNode; node++) {
         // offsetPosition provides which extra point will be added to this node
         if (balanceTreeNodePosition(0, leafNodeOffset, node - leafNodeOffset, 0, 0) < nodeOffset) {
-          count += config.maxPointsInLeafNode;
+          count += config.maxPointsInLeafNode();
         } else {
-          count += config.maxPointsInLeafNode - 1;
+          count += config.maxPointsInLeafNode() - 1;
         }
       }
       return count;
@@ -376,14 +378,14 @@ final class SimpleTextBKDReader extends PointValues {
         // Again, this time reading values and checking with the visitor
         visitor.grow(count);
         // NOTE: we don't do prefix coding, so we ignore commonPrefixLengths
-        assert scratchPackedValue.length == config.packedBytesLength;
+        assert scratchPackedValue.length == config.packedBytesLength();
         BytesRefBuilder scratch = new BytesRefBuilder();
         for (int i = 0; i < count; i++) {
           readLine(in, scratch);
           assert startsWith(scratch, BLOCK_VALUE);
           BytesRef br = SimpleTextUtil.fromBytesRefString(stripPrefix(scratch, BLOCK_VALUE));
-          assert br.length == config.packedBytesLength;
-          System.arraycopy(br.bytes, br.offset, scratchPackedValue, 0, config.packedBytesLength);
+          assert br.length == config.packedBytesLength();
+          System.arraycopy(br.bytes, br.offset, scratchPackedValue, 0, config.packedBytesLength());
           visitor.visit(scratchDocIDs[i], scratchPackedValue);
         }
       } else {
@@ -443,17 +445,17 @@ final class SimpleTextBKDReader extends PointValues {
 
   @Override
   public int getNumDimensions() throws IOException {
-    return config.numDims;
+    return config.numDims();
   }
 
   @Override
   public int getNumIndexDimensions() throws IOException {
-    return config.numIndexDims;
+    return config.numIndexDims();
   }
 
   @Override
   public int getBytesPerDimension() throws IOException {
-    return config.bytesPerDim;
+    return config.bytesPerDim();
   }
 
   @Override

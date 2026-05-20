@@ -23,13 +23,13 @@ import org.apache.lucene.analysis.TokenStream;
 /**
  * Factory for {@link CodepointCountFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_lngth" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
  *     &lt;filter class="solr.CodepointCountFilterFactory" min="0" max="1" /&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @since 4.5.1
  * @lucene.spi {@value #NAME}

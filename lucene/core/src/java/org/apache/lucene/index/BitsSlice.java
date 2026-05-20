@@ -32,8 +32,8 @@ final class BitsSlice implements Bits {
   // start is inclusive; end is exclusive (length = end-start)
   public BitsSlice(Bits parent, ReaderSlice slice) {
     this.parent = parent;
-    this.start = slice.start;
-    this.length = slice.length;
+    this.start = slice.start();
+    this.length = slice.length();
     assert length >= 0 : "length=" + length;
   }
 

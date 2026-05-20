@@ -40,7 +40,7 @@ public class TestPerSegmentDeletes extends LuceneTestCase {
     iwc.setMergeScheduler(new SerialMergeScheduler());
     iwc.setMaxBufferedDocs(5000);
     iwc.setRAMBufferSizeMB(100);
-    RangeMergePolicy fsmp = new RangeMergePolicy(false);
+    RangeMergePolicy fsmp = new RangeMergePolicy();
     iwc.setMergePolicy(fsmp);
     IndexWriter writer = new IndexWriter(dir, iwc);
     for (int x = 0; x < 5; x++) {
@@ -236,11 +236,7 @@ public class TestPerSegmentDeletes extends LuceneTestCase {
     int start;
     int length;
 
-    private final boolean useCompoundFile;
-
-    private RangeMergePolicy(boolean useCompoundFile) {
-      this.useCompoundFile = useCompoundFile;
-    }
+    private RangeMergePolicy() {}
 
     @Override
     public MergeSpecification findMerges(
@@ -270,12 +266,6 @@ public class TestPerSegmentDeletes extends LuceneTestCase {
     public MergeSpecification findForcedDeletesMerges(
         SegmentInfos segmentInfos, MergeContext mergeContext) throws IOException {
       return null;
-    }
-
-    @Override
-    public boolean useCompoundFile(
-        SegmentInfos segments, SegmentCommitInfo newSegment, MergeContext mergeContext) {
-      return useCompoundFile;
     }
   }
 }

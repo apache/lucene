@@ -16,9 +16,11 @@
  */
 package org.apache.lucene.tests.geo;
 
-import static org.apache.lucene.geo.GeoUtils.*;
+import static org.apache.lucene.geo.GeoUtils.MAX_LAT_INCL;
+import static org.apache.lucene.geo.GeoUtils.MAX_LON_INCL;
+import static org.apache.lucene.geo.GeoUtils.MIN_LAT_INCL;
+import static org.apache.lucene.geo.GeoUtils.MIN_LON_INCL;
 
-import com.carrotsearch.randomizedtesting.RandomizedContext;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -36,6 +38,7 @@ import org.apache.lucene.geo.Line;
 import org.apache.lucene.geo.Point;
 import org.apache.lucene.geo.Polygon;
 import org.apache.lucene.geo.Rectangle;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.SloppyMath;
@@ -459,9 +462,7 @@ public class GeoTestUtil {
             random().nextDouble() * GeoUtils.EARTH_MEAN_RADIUS_METERS * Math.PI / 2.0 + 1.0;
         try {
           return createRegularPolygon(nextLatitude(), nextLongitude(), radiusMeters, gons);
-        } catch (
-            @SuppressWarnings("unused")
-            IllegalArgumentException iae) {
+        } catch (IllegalArgumentException _) {
           // we tried to cross dateline or pole ... try again
         }
       }
@@ -588,7 +589,7 @@ public class GeoTestUtil {
 
   /** Keep it simple, we don't need to take arbitrary Random for geo tests */
   private static Random random() {
-    return RandomizedContext.current().getRandom();
+    return LuceneTestCase.nonAssertingRandom(LuceneTestCase.random());
   }
 
   /**
@@ -651,8 +652,7 @@ public class GeoTestUtil {
     // encode each object
     for (Object o : flattened) {
       // tostring
-      if (o instanceof double[]) {
-        double[] point = (double[]) o;
+      if (o instanceof double[] point) {
         sb.append("<!-- point: ");
         sb.append(point[0]).append(',').append(point[1]);
         sb.append(" -->\n");
@@ -668,8 +668,7 @@ public class GeoTestUtil {
         gon = boxPolygon((Rectangle) o);
         style = "fill:lightskyblue;stroke:black;stroke-width:0.2%;stroke-dasharray:0.5%,1%;";
         opacity = "0.3";
-      } else if (o instanceof double[]) {
-        double[] point = (double[]) o;
+      } else if (o instanceof double[] point) {
         gon =
             boxPolygon(
                 new Rectangle(
@@ -794,7 +793,7 @@ public class GeoTestUtil {
 
   private static class Loader {
 
-    static Loader LOADER = new Loader();
+    static final Loader LOADER = new Loader();
 
     String readShape(String name) throws IOException {
       InputStream is = getClass().getResourceAsStream(name);

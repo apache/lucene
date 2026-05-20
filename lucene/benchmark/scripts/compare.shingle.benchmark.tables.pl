@@ -6,7 +6,7 @@
 # The ASF licenses this file to You under the Apache License, Version 2.0
 # (the "License"); you may not use this file except in compliance with
 # the License.  You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
@@ -26,7 +26,7 @@
 #
 #   100 * (unpatched-elapsed - patched-elapsed / patched-elapsed)
 #
-# where (un)patched-elapsed values have had the no-shingle-filter 
+# where (un)patched-elapsed values have had the no-shingle-filter
 # (StandardAnalyzer) elapsed time subtracted from them.
 #
 #
@@ -102,7 +102,7 @@ close PATCHED;
 print "||Max Shingle Size||Unigrams?||Unpatched||Patched||StandardAnalyzer||Improvement||\n";
 for my $max_shingle_size (sort { $a <=> $b } keys %unpatched_stats) {
   for my $output_unigrams (sort keys %{$unpatched_stats{$max_shingle_size}}) {
-    my $improvement 
+    my $improvement
       = ( $unpatched_stats{$max_shingle_size}{$output_unigrams}
         - $patched_stats{$max_shingle_size}{$output_unigrams})
       / ( $patched_stats{$max_shingle_size}{$output_unigrams}

@@ -172,10 +172,9 @@ abstract class BaseXYZSolid extends BasePlanetObject implements XYZSolid {
 
   @Override
   public boolean equals(Object o) {
-    if (!(o instanceof BaseXYZSolid)) {
+    if (!(o instanceof BaseXYZSolid other)) {
       return false;
     }
-    BaseXYZSolid other = (BaseXYZSolid) o;
     return super.equals(other);
   }
 

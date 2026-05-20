@@ -43,6 +43,7 @@ import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
@@ -53,8 +54,9 @@ import org.apache.lucene.util.automaton.CompiledAutomaton;
  *
  * <p>A choice of {@link BloomFilterFactory} can be passed to tailor Bloom Filter settings on a
  * per-field basis. The default configuration is {@link DefaultBloomFilterFactory} which allocates a
- * ~8mb bitset and hashes values using {@link MurmurHash64}. This should be suitable for most
- * purposes.
+ * ~8mb bitset and hashes values using {@link
+ * org.apache.lucene.util.StringHelper#murmurhash3_x64_128(BytesRef)}. This should be suitable for
+ * most purposes.
  *
  * <p>The format of the blm file is as follows:
  *
@@ -149,10 +151,8 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       String bloomFileName =
           IndexFileNames.segmentFileName(
               state.segmentInfo.name, state.segmentSuffix, BLOOM_EXTENSION);
-      ChecksumIndexInput bloomIn = null;
-      boolean success = false;
-      try {
-        bloomIn = state.directory.openChecksumInput(bloomFileName);
+
+      try (ChecksumIndexInput bloomIn = state.directory.openChecksumInput(bloomFileName)) {
         CodecUtil.checkIndexHeader(
             bloomIn,
             BLOOM_CODEC_NAME,
@@ -174,12 +174,9 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
           bloomsByFieldName.put(fieldInfo.name, bloom);
         }
         CodecUtil.checkFooter(bloomIn);
-        IOUtils.close(bloomIn);
-        success = true;
-      } finally {
-        if (!success) {
-          IOUtils.closeWhileHandlingException(bloomIn, delegateFieldsProducer);
-        }
+      } catch (Throwable t) {
+        IOUtils.closeWhileSuppressingExceptions(t, delegateFieldsProducer);
+        throw t;
       }
     }
 
@@ -194,7 +191,7 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       FuzzySet filter = bloomsByFieldName.get(field);
       if (filter == null) {
         return delegateFieldsProducer.terms(field);
@@ -248,7 +245,7 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       }
 
       @Override
-      public int getDocCount() throws IOException {
+      public int getDocCount() {
         return delegateTerms.getDocCount();
       }
 
@@ -315,12 +312,21 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       }
 
       @Override
-      public boolean seekExact(BytesRef text) throws IOException {
+      public IOBooleanSupplier prepareSeekExact(BytesRef text) throws IOException {
         // The magical fail-fast speed up that is the entire point of all of
         // this code - save a disk seek if there is a match on an in-memory
         // structure
         // that may occasionally give a false positive but guaranteed no false
         // negatives
+        if (filter.contains(text) == ContainsResult.NO) {
+          return null;
+        }
+        return delegate().prepareSeekExact(text);
+      }
+
+      @Override
+      public boolean seekExact(BytesRef text) throws IOException {
+        // See #prepareSeekExact
         if (filter.contains(text) == ContainsResult.NO) {
           return false;
         }
@@ -365,6 +371,13 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       @Override
       public ImpactsEnum impacts(int flags) throws IOException {
         return delegate().impacts(flags);
+      }
+
+      @Override
+      public boolean preferSeekExact() {
+        // Prefer seekExact() to seekCeil() when processing updates and deletes,
+        // since seekExact() passes through the bloom filter.
+        return true;
       }
 
       @Override

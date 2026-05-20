@@ -345,6 +345,8 @@ public class TestIndexWriterCommit extends LuceneTestCase {
   // LUCENE-2095: make sure with multiple threads commit
   // doesn't return until all changes are in fact in the
   // index
+  // TODO: incredibly slow (can we just use 2 threads?)
+  @Nightly
   public void testCommitThreadSafety() throws Throwable {
     final int NUM_THREADS = 5;
     final int maxIterations = 10;

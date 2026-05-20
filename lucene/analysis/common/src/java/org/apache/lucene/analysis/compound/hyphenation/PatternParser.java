@@ -172,8 +172,7 @@ public class PatternParser extends DefaultHandler {
     ArrayList<Object> res = new ArrayList<>();
     for (int i = 0; i < ex.size(); i++) {
       Object item = ex.get(i);
-      if (item instanceof String) {
-        String str = (String) item;
+      if (item instanceof String str) {
         StringBuilder buf = new StringBuilder();
         for (int j = 0; j < str.length(); j++) {
           char c = str.charAt(j);
@@ -203,8 +202,8 @@ public class PatternParser extends DefaultHandler {
     StringBuilder res = new StringBuilder();
     for (int i = 0; i < ex.size(); i++) {
       Object item = ex.get(i);
-      if (item instanceof String) {
-        res.append((String) item);
+      if (item instanceof String s) {
+        res.append(s);
       } else {
         if (((Hyphen) item).noBreak != null) {
           res.append(((Hyphen) item).noBreak);

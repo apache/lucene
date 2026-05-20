@@ -22,10 +22,15 @@ module org.apache.lucene.test_framework {
   requires org.apache.lucene.codecs;
   requires transitive junit;
   requires transitive randomizedtesting.runner;
+  requires transitive com.carrotsearch.randomizedtesting;
+  requires transitive org.junit.jupiter.api;
+  requires org.hamcrest;
 
   // Open certain packages for junit because it scans methods via reflection.
   opens org.apache.lucene.tests.index to
       junit;
+  opens org.apache.lucene.tests.util to
+      org.junit.platform.commons;
 
   exports org.apache.lucene.tests.analysis.standard;
   exports org.apache.lucene.tests.analysis;
@@ -49,7 +54,6 @@ module org.apache.lucene.test_framework {
   exports org.apache.lucene.tests.store;
   exports org.apache.lucene.tests.util.automaton;
   exports org.apache.lucene.tests.util.fst;
-  exports org.apache.lucene.tests.util.hnsw;
   exports org.apache.lucene.tests.util;
 
   provides org.apache.lucene.codecs.Codec with

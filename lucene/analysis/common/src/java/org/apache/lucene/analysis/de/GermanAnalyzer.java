@@ -64,7 +64,7 @@ public final class GermanAnalyzer extends StopwordAnalyzerBase {
    *
    * @return a set of default German-stopwords
    */
-  public static final CharArraySet getDefaultStopSet() {
+  public static CharArraySet getDefaultStopSet() {
     return DefaultSetHolder.DEFAULT_SET;
   }
 
@@ -85,8 +85,6 @@ public final class GermanAnalyzer extends StopwordAnalyzerBase {
       }
     }
   }
-
-  /** Contains the stopwords used with the {@link StopFilter}. */
 
   /** Contains words that should be indexed but not stemmed. */
   private final CharArraySet exclusionSet;

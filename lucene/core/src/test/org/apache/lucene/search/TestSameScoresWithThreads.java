@@ -96,7 +96,7 @@ public class TestSameScoresWithThreads extends LuceneTestCase {
                     for (Map.Entry<BytesRef, TopDocs> ent : shuffled) {
                       TopDocs actual = s.search(new TermQuery(new Term("body", ent.getKey())), 100);
                       TopDocs expected = ent.getValue();
-                      assertEquals(expected.totalHits.value, actual.totalHits.value);
+                      assertEquals(expected.totalHits.value(), actual.totalHits.value());
                       assertEquals(
                           "query=" + ent.getKey().utf8ToString(),
                           expected.scoreDocs.length,

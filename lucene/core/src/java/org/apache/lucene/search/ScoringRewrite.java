@@ -49,7 +49,7 @@ public abstract class ScoringRewrite<B> extends TermCollectingRewrite<B> {
    * of terms exceeds {@link IndexSearcher#getMaxClauseCount}.
    */
   public static final ScoringRewrite<BooleanQuery.Builder> SCORING_BOOLEAN_REWRITE =
-      new ScoringRewrite<BooleanQuery.Builder>() {
+      new ScoringRewrite<>() {
         @Override
         protected BooleanQuery.Builder getTopLevelBuilder() {
           return new BooleanQuery.Builder();

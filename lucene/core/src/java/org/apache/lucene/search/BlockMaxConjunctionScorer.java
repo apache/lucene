@@ -29,15 +29,18 @@ import java.util.List;
  */
 final class BlockMaxConjunctionScorer extends Scorer {
   final Scorer[] scorers;
+  final Scorable[] scorables;
   final DocIdSetIterator[] approximations;
   final TwoPhaseIterator[] twoPhases;
   float minScore;
 
   /** Create a new {@link BlockMaxConjunctionScorer} from scoring clauses. */
   BlockMaxConjunctionScorer(Collection<Scorer> scorersList) throws IOException {
-    this.scorers = scorersList.toArray(new Scorer[scorersList.size()]);
+    this.scorers = scorersList.toArray(Scorer[]::new);
     // Sort scorer by cost
     Arrays.sort(this.scorers, Comparator.comparingLong(s -> s.iterator().cost()));
+    this.scorables =
+        Arrays.stream(scorers).map(ScorerUtil::likelyTermScorer).toArray(Scorable[]::new);
 
     this.approximations = new DocIdSetIterator[scorers.length];
     List<TwoPhaseIterator> twoPhaseList = new ArrayList<>();
@@ -50,9 +53,10 @@ final class BlockMaxConjunctionScorer extends Scorer {
       } else {
         approximations[i] = scorer.iterator();
       }
+      approximations[i] = ScorerUtil.likelyImpactsEnum(approximations[i]);
       scorer.advanceShallow(0);
     }
-    this.twoPhases = twoPhaseList.toArray(new TwoPhaseIterator[twoPhaseList.size()]);
+    this.twoPhases = twoPhaseList.toArray(TwoPhaseIterator[]::new);
     Arrays.sort(this.twoPhases, Comparator.comparingDouble(TwoPhaseIterator::matchCost));
   }
 
@@ -93,20 +97,10 @@ final class BlockMaxConjunctionScorer extends Scorer {
   private DocIdSetIterator approximation() {
     final DocIdSetIterator lead = approximations[0];
 
-    return new DocIdSetIterator() {
+    return new FilterDocIdSetIterator(lead) {
 
       float maxScore;
       int upTo = -1;
-
-      @Override
-      public int docID() {
-        return lead.docID();
-      }
-
-      @Override
-      public long cost() {
-        return lead.cost();
-      }
 
       private void moveToNextBlock(int target) throws IOException {
         if (minScore == 0) {
@@ -207,7 +201,7 @@ final class BlockMaxConjunctionScorer extends Scorer {
   @Override
   public float score() throws IOException {
     double score = 0;
-    for (Scorer scorer : scorers) {
+    for (Scorable scorer : scorables) {
       score += scorer.score();
     }
     return (float) score;

@@ -79,6 +79,9 @@ class StoredFieldsConsumer {
       case BINARY:
         writer.writeField(info, value.getBinaryValue());
         break;
+      case DATA_INPUT:
+        writer.writeField(info, value.getDataInputValue());
+        break;
       case STRING:
         writer.writeField(info, value.getStringValue());
         break;
@@ -93,9 +96,8 @@ class StoredFieldsConsumer {
 
   void finish(int maxDoc) throws IOException {
     while (lastDoc < maxDoc - 1) {
-      startDocument(lastDoc);
+      startDocument(lastDoc + 1);
       finishDocument();
-      ++lastDoc;
     }
   }
 

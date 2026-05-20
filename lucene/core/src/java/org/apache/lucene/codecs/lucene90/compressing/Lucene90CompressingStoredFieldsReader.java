@@ -51,15 +51,17 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentInfo;
+import org.apache.lucene.index.StoredFieldDataInput;
 import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
+import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
@@ -131,7 +133,6 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
       throws IOException {
     this.compressionMode = compressionMode;
     final String segment = si.name;
-    boolean success = false;
     fieldInfos = fn;
     numDocs = si.maxDoc();
 
@@ -140,7 +141,8 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     ChecksumIndexInput metaIn = null;
     try {
       // Open the data file
-      fieldsStream = d.openInput(fieldsStreamFN, context.withReadAdvice(ReadAdvice.RANDOM));
+      fieldsStream =
+          d.openInput(fieldsStreamFN, context.withHints(FileTypeHint.DATA, DataAccessHint.RANDOM));
       version =
           CodecUtil.checkIndexHeader(
               fieldsStream, formatName, VERSION_START, VERSION_CURRENT, si.getId(), segmentSuffix);
@@ -222,18 +224,16 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
       CodecUtil.checkFooter(metaIn, null);
       metaIn.close();
-
-      success = true;
     } catch (Throwable t) {
-      if (metaIn != null) {
-        CodecUtil.checkFooter(metaIn, t);
-        throw new AssertionError("unreachable");
-      } else {
-        throw t;
-      }
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(this, metaIn);
+      try {
+        if (metaIn != null) {
+          CodecUtil.checkFooter(metaIn, t);
+          throw new AssertionError("unreachable");
+        } else {
+          throw t;
+        }
+      } finally {
+        IOUtils.closeWhileSuppressingExceptions(t, this, metaIn);
       }
     }
   }
@@ -261,7 +261,7 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
     switch (bits & TYPE_MASK) {
       case BYTE_ARR:
         int length = in.readVInt();
-        visitor.binaryField(info, in, length);
+        visitor.binaryField(info, new StoredFieldDataInput(in, length));
         break;
       case STRING:
         visitor.stringField(info, in.readString());
@@ -440,19 +440,16 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
 
     /** Reset this block so that it stores state for the block that contains the given doc id. */
     void reset(int docID) throws IOException {
-      boolean success = false;
       try {
         doReset(docID);
-        success = true;
-      } finally {
-        if (success == false) {
-          // if the read failed, set chunkDocs to 0 so that it does not
-          // contain any docs anymore and is not reused. This should help
-          // get consistent exceptions when trying to get several
-          // documents which are in the same corrupted block since it will
-          // force the header to be decoded again
-          chunkDocs = 0;
-        }
+      } catch (Throwable t) {
+        // if the read failed, set chunkDocs to 0 so that it does not
+        // contain any docs anymore and is not reused. This should help
+        // get consistent exceptions when trying to get several
+        // documents which are in the same corrupted block since it will
+        // force the header to be decoded again
+        chunkDocs = 0;
+        throw t;
       }
     }
 

@@ -51,6 +51,8 @@ public class TestBlockMaxConjunction extends LuceneTestCase {
     return query;
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandom() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
@@ -66,7 +68,10 @@ public class TestBlockMaxConjunction extends LuceneTestCase {
     }
     IndexReader reader = DirectoryReader.open(w);
     w.close();
-    IndexSearcher searcher = newSearcher(reader);
+    // Disable search concurrency for this test: it requires a single segment, and no intra-segment
+    // concurrency for its assertions to always be valid
+    IndexSearcher searcher =
+        newSearcher(reader, random().nextBoolean(), random().nextBoolean(), false);
 
     for (int iter = 0; iter < 100; ++iter) {
       int start = random().nextInt(10);

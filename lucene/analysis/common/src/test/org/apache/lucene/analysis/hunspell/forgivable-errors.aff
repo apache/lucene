@@ -1,4 +1,4 @@
-REP 1
+REP 0
 REP foo bar goo doo zoo
 
 COMPOUNDWORDMAX 2 y

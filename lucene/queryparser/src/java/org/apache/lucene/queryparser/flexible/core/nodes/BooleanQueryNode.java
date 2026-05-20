@@ -37,7 +37,7 @@ public class BooleanQueryNode extends QueryNodeImpl {
 
   @Override
   public String toString() {
-    if (getChildren() == null || getChildren().size() == 0) return "<boolean operation='default'/>";
+    if (getChildren() == null || getChildren().isEmpty()) return "<boolean operation='default'/>";
     StringBuilder sb = new StringBuilder();
     sb.append("<boolean operation='default'>");
     for (QueryNode child : getChildren()) {
@@ -50,7 +50,7 @@ public class BooleanQueryNode extends QueryNodeImpl {
 
   @Override
   public CharSequence toQueryString(EscapeQuerySyntax escapeSyntaxParser) {
-    if (getChildren() == null || getChildren().size() == 0) return "";
+    if (getChildren() == null || getChildren().isEmpty()) return "";
 
     StringBuilder sb = new StringBuilder();
     String filler = "";
@@ -62,15 +62,11 @@ public class BooleanQueryNode extends QueryNodeImpl {
     // in case is root or the parent is a group node avoid parenthesis
     if ((getParent() != null && getParent() instanceof GroupQueryNode) || isRoot())
       return sb.toString();
-    else return "( " + sb.toString() + " )";
+    else return "( " + sb + " )";
   }
 
   @Override
   public QueryNode cloneTree() throws CloneNotSupportedException {
-    BooleanQueryNode clone = (BooleanQueryNode) super.cloneTree();
-
-    // nothing to do here
-
-    return clone;
+    return super.cloneTree();
   }
 }

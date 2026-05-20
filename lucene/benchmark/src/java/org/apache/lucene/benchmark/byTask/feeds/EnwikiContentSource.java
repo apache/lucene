@@ -238,7 +238,7 @@ public class EnwikiContentSource extends ContentSource {
           time = null;
           id = null;
           break;
-          // intentional fall-through.
+        // intentional fall-through.
         case BODY:
         case DATE:
         case TITLE:

@@ -35,7 +35,7 @@ public class AllGroupsCollector<T> extends SimpleCollector {
 
   private final GroupSelector<T> groupSelector;
 
-  private final Set<T> groups = new HashSet<T>();
+  private final Set<T> groups = new HashSet<>();
 
   /**
    * Create a new AllGroupsCollector

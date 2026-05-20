@@ -62,11 +62,11 @@ public interface SerializableObject {
   public static PlanetObject readPlanetObject(final InputStream inputStream) throws IOException {
     final PlanetModel pm = new PlanetModel(inputStream);
     final SerializableObject so = readObject(pm, inputStream);
-    if (!(so instanceof PlanetObject)) {
+    if (!(so instanceof PlanetObject po)) {
       throw new IOException(
           "Type of object is not expected PlanetObject: " + so.getClass().getName());
     }
-    return (PlanetObject) so;
+    return po;
   }
 
   /**
@@ -131,11 +131,11 @@ public interface SerializableObject {
       // Invoke it
       final Object object = c.newInstance(planetModel, inputStream);
       // check whether caste will work
-      if (!(object instanceof SerializableObject)) {
+      if (!(object instanceof SerializableObject so)) {
         throw new IOException(
             "Object " + clazz.getName() + " does not implement SerializableObject");
       }
-      return (SerializableObject) object;
+      return so;
     } catch (InstantiationException e) {
       throw new IOException(
           "Instantiation exception for class " + clazz.getName() + ": " + e.getMessage(), e);
@@ -165,11 +165,11 @@ public interface SerializableObject {
       // Invoke it
       final Object object = c.newInstance(inputStream);
       // check whether caste will work
-      if (!(object instanceof SerializableObject)) {
+      if (!(object instanceof SerializableObject so)) {
         throw new IOException(
             "Object " + clazz.getName() + " does not implement SerializableObject");
       }
-      return (SerializableObject) object;
+      return so;
     } catch (InstantiationException e) {
       throw new IOException(
           "Instantiation exception for class " + clazz.getName() + ": " + e.getMessage(), e);
@@ -192,7 +192,7 @@ public interface SerializableObject {
    * @param clazz is the class to write.
    */
   static void writeClass(final OutputStream outputStream, final Class<?> clazz) throws IOException {
-    Integer index = StandardObjects.classRegsitry.get(clazz);
+    Integer index = StandardObjects.CLASS_REGISTRY.get(clazz);
     if (index == null) {
       writeBoolean(outputStream, false);
       writeString(outputStream, clazz.getName());
@@ -213,7 +213,7 @@ public interface SerializableObject {
     boolean standard = readBoolean(inputStream);
     if (standard) {
       int index = inputStream.read();
-      return StandardObjects.codeRegsitry.get(index);
+      return StandardObjects.CODE_REGISTRY.get(index);
     } else {
       String className = readString(inputStream);
       return Class.forName(className);

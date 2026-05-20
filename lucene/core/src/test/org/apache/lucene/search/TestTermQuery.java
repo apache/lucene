@@ -43,6 +43,7 @@ import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.IOUtils;
 
 public class TestTermQuery extends LuceneTestCase {
@@ -56,7 +57,7 @@ public class TestTermQuery extends LuceneTestCase {
     try (MultiReader multiReader = new MultiReader()) {
       context = multiReader.getContext();
       IndexSearcher searcher = new IndexSearcher(context);
-      QueryUtils.checkEqual(
+      QueryUtils.checkUnequal(
           new TermQuery(new Term("foo", "bar")),
           new TermQuery(
               new Term("foo", "bar"), TermStates.build(searcher, new Term("foo", "bar"), true)));
@@ -183,7 +184,7 @@ public class TestTermQuery extends LuceneTestCase {
     Similarity existingSimilarity = searcher.getSimilarity();
 
     for (ScoreMode scoreMode : ScoreMode.values()) {
-      final AtomicReference<ScoreMode> scoreModeInWeight = new AtomicReference<ScoreMode>();
+      final AtomicReference<ScoreMode> scoreModeInWeight = new AtomicReference<>();
       final AtomicBoolean scorerCalled = new AtomicBoolean();
       searcher.setSimilarity(
           new Similarity() { // Wrapping existing similarity for testing
@@ -193,10 +194,9 @@ public class TestTermQuery extends LuceneTestCase {
             }
 
             @Override
-            public SimScorer scorer(
-                float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
+            public SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
               scorerCalled.set(true);
-              return existingSimilarity.scorer(boost, collectionStats, termStats);
+              return existingSimilarity.scorer(boost, fieldStats, termStats);
             }
           });
       TermQuery termQuery =
@@ -246,7 +246,7 @@ public class TestTermQuery extends LuceneTestCase {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       Terms terms = super.terms(field);
       return terms == null
           ? null
@@ -256,6 +256,11 @@ public class TestTermQuery extends LuceneTestCase {
               return new FilterTermsEnum(super.iterator()) {
                 @Override
                 public SeekStatus seekCeil(BytesRef text) throws IOException {
+                  throw new AssertionError("no seek");
+                }
+
+                @Override
+                public IOBooleanSupplier prepareSeekExact(BytesRef text) throws IOException {
                   throw new AssertionError("no seek");
                 }
 

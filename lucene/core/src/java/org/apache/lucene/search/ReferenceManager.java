@@ -101,8 +101,8 @@ public abstract class ReferenceManager<G> implements Closeable {
       if (getRefCount(ref) == 0 && current == ref) {
         assert ref != null;
         /* if we can't increment the reader but we are
-        still the current reference the RM is in a
-        illegal states since we can't make any progress
+        still the current reference the RM is in an
+        illegal state since we can't make any progress
         anymore. The reference is closed but the RM still
         holds on to it as the actual instance.
         This can only happen if somebody outside of the RM

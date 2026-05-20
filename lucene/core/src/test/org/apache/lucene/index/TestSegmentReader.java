@@ -90,7 +90,7 @@ public class TestSegmentReader extends LuceneTestCase {
       } else {
         notIndexedFieldNames.add(name);
       }
-      if (fieldInfo.hasVectors()) {
+      if (fieldInfo.hasTermVectors()) {
         tvFieldNames.add(name);
       } else if (fieldInfo.getIndexOptions() != IndexOptions.NONE) {
         noTVFieldNames.add(name);

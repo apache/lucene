@@ -69,8 +69,8 @@ public class TestBPIndexReorderer extends LuceneTestCase {
   public void doTestSingleTerm(ForkJoinPool pool) throws IOException {
     Directory dir = newDirectory();
     IndexWriter w =
-        new IndexWriter(
-            dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     Document doc = new Document();
     StoredField idField = new StoredField("id", "");
     doc.add(idField);
@@ -116,11 +116,10 @@ public class TestBPIndexReorderer extends LuceneTestCase {
     CodecReader codecReader = SlowCodecReaderWrapper.wrap(leafRealer);
 
     BPIndexReorderer reorderer = new BPIndexReorderer();
-    reorderer.setForkJoinPool(pool);
     reorderer.setMinDocFreq(2);
     reorderer.setMinPartitionSize(1);
     reorderer.setMaxIters(10);
-    CodecReader reordered = reorderer.reorder(codecReader, dir);
+    CodecReader reordered = reorderer.reorder(codecReader, dir, pool);
     String[] ids = new String[codecReader.maxDoc()];
     StoredFields storedFields = reordered.storedFields();
     for (int i = 0; i < codecReader.maxDoc(); ++i) {
@@ -160,9 +159,8 @@ public class TestBPIndexReorderer extends LuceneTestCase {
     IndexWriter w =
         new IndexWriter(
             dir,
-            newIndexWriterConfig()
-                .setParentField("parent")
-                .setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+            newIndexWriterConfig().setParentField("parent").setMergePolicy(newLogMergePolicy()));
+    w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
 
     w.addDocuments(createBlock("1", "lucene", "search", "lucene")); // 0-2
     w.addDocuments(createBlock("2", "lucene")); // 3
@@ -180,11 +178,10 @@ public class TestBPIndexReorderer extends LuceneTestCase {
     CodecReader codecReader = SlowCodecReaderWrapper.wrap(leafRealer);
 
     BPIndexReorderer reorderer = new BPIndexReorderer();
-    reorderer.setForkJoinPool(pool);
     reorderer.setMinDocFreq(2);
     reorderer.setMinPartitionSize(1);
     reorderer.setMaxIters(10);
-    CodecReader reordered = reorderer.reorder(codecReader, dir);
+    CodecReader reordered = reorderer.reorder(codecReader, dir, pool);
     StoredFields storedFields = reordered.storedFields();
 
     assertEquals("2", storedFields.document(0).get("id"));
@@ -257,8 +254,8 @@ public class TestBPIndexReorderer extends LuceneTestCase {
   public void testMultiTerm() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w =
-        new IndexWriter(
-            dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy(random().nextBoolean())));
+        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()));
+    w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     Document doc = new Document();
     StoredField idField = new StoredField("id", "");
     doc.add(idField);
@@ -307,7 +304,7 @@ public class TestBPIndexReorderer extends LuceneTestCase {
     reorderer.setMinDocFreq(2);
     reorderer.setMinPartitionSize(1);
     reorderer.setMaxIters(10);
-    CodecReader reordered = reorderer.reorder(codecReader, dir);
+    CodecReader reordered = reorderer.reorder(codecReader, dir, null);
     String[] ids = new String[codecReader.maxDoc()];
     StoredFields storedFields = reordered.storedFields();
     for (int i = 0; i < codecReader.maxDoc(); ++i) {

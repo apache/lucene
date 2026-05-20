@@ -183,7 +183,7 @@ public class TestTermsEnum2 extends LuceneTestCase {
 
       Automaton actual =
           Operations.determinize(Automata.makeStringUnion(found), DEFAULT_DETERMINIZE_WORK_LIMIT);
-      assertTrue(Operations.sameLanguage(expected, actual));
+      assertTrue(AutomatonTestUtil.sameLanguage(expected, actual));
     }
   }
 }

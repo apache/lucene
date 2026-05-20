@@ -167,6 +167,7 @@ public class TestCharTermAttributeImpl extends LuceneTestCase {
     }
   }
 
+  @SuppressWarnings("UnnecessaryStringBuilder")
   public void testAppendableInterface() {
     CharTermAttributeImpl t = new CharTermAttributeImpl();
     Formatter formatter = new Formatter(t, Locale.ROOT);
@@ -216,6 +217,7 @@ public class TestCharTermAttributeImpl extends LuceneTestCase {
     assertEquals("4testenull", t.toString());
   }
 
+  @SuppressWarnings("UnnecessaryStringBuilder")
   public void testAppendableInterfaceWithLongSequences() {
     CharTermAttributeImpl t = new CharTermAttributeImpl();
     t.append((CharSequence) "01234567890123456789012345678901234567890123456789");

@@ -17,8 +17,11 @@
 package org.apache.lucene.index;
 
 import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.util.BitSet;
+import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.SparseFixedBitSet;
 import org.apache.lucene.util.packed.AbstractPagedMutable;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PagedGrowableWriter;
@@ -130,23 +133,104 @@ final class NumericDocValuesFieldUpdates extends DocValuesFieldUpdates {
         + RamUsageEstimator.NUM_BYTES_OBJECT_REF;
   }
 
-  static class SingleValueNumericDocValuesFieldUpdates extends SingleValueDocValuesFieldUpdates {
+  static class SingleValueNumericDocValuesFieldUpdates extends DocValuesFieldUpdates {
 
     private final long value;
+    private final BitSet bitSet;
+    private BitSet hasNoValue;
+    private boolean hasAtLeastOneValue;
 
     SingleValueNumericDocValuesFieldUpdates(long delGen, String field, int maxDoc, long value) {
       super(maxDoc, delGen, field, DocValuesType.NUMERIC);
+      this.bitSet = new SparseFixedBitSet(maxDoc);
       this.value = value;
     }
 
+    // pkg private for testing
+    long longValue() {
+      return value;
+    }
+
     @Override
-    protected BytesRef binaryValue() {
+    void add(int doc, long value) {
+      assert this.value == value;
+      bitSet.set(doc);
+      this.hasAtLeastOneValue = true;
+      if (hasNoValue != null) {
+        hasNoValue.clear(doc);
+      }
+    }
+
+    @Override
+    void add(int doc, BytesRef value) {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    protected long longValue() {
-      return value;
+    synchronized void reset(int doc) {
+      bitSet.set(doc);
+      this.hasAtLeastOneValue = true;
+      if (hasNoValue == null) {
+        hasNoValue = new SparseFixedBitSet(maxDoc);
+      }
+      hasNoValue.set(doc);
+    }
+
+    @Override
+    void add(int docId, Iterator iterator) {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    synchronized boolean any() {
+      return super.any() || hasAtLeastOneValue;
+    }
+
+    @Override
+    public long ramBytesUsed() {
+      return super.ramBytesUsed()
+          + bitSet.ramBytesUsed()
+          + (hasNoValue == null ? 0 : hasNoValue.ramBytesUsed());
+    }
+
+    @Override
+    Iterator iterator() {
+      BitSetIterator iterator = new BitSetIterator(bitSet, maxDoc);
+      return new DocValuesFieldUpdates.Iterator() {
+
+        @Override
+        public int docID() {
+          return iterator.docID();
+        }
+
+        @Override
+        public int nextDoc() {
+          return iterator.nextDoc();
+        }
+
+        @Override
+        long longValue() {
+          return value;
+        }
+
+        @Override
+        BytesRef binaryValue() {
+          throw new UnsupportedOperationException();
+        }
+
+        @Override
+        long delGen() {
+          return delGen;
+        }
+
+        @Override
+        boolean hasValue() {
+          if (hasNoValue != null) {
+            return hasNoValue.get(docID()) == false;
+          }
+          return true;
+        }
+      };
     }
   }
 }

@@ -29,10 +29,9 @@ import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_LIST
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.codecs.MultiLevelSkipListReader;
-import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.BufferedChecksumIndexInput;
@@ -56,7 +55,7 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
   private final CharsRefBuilder scratchUTF16 = new CharsRefBuilder();
   private final BytesRefBuilder scratch = new BytesRefBuilder();
   private Impacts impacts;
-  private List<List<Impact>> perLevelImpacts;
+  private List<FreqAndNormBuffer> perLevelImpacts;
   private long nextSkipDocFP = -1;
   private int numLevels = 1;
   private boolean hasSkipList = false;
@@ -80,7 +79,7 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
           }
 
           @Override
-          public List<Impact> getImpacts(int level) {
+          public FreqAndNormBuffer getImpacts(int level) {
             assert level < numLevels;
             return perLevelImpacts.get(level);
           }
@@ -100,14 +99,16 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
       // End of postings don't have skip data anymore, so we fill with dummy data
       // like SlowImpactsEnum.
       numLevels = 1;
-      perLevelImpacts.add(0, Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L)));
+      FreqAndNormBuffer freqAndNorms = new FreqAndNormBuffer();
+      freqAndNorms.add(Integer.MAX_VALUE, 1L);
+      perLevelImpacts.add(0, freqAndNorms);
     }
     return result;
   }
 
   @Override
   protected int readSkipData(int level, IndexInput skipStream) throws IOException {
-    perLevelImpacts.get(level).clear();
+    perLevelImpacts.get(level).size = 0;
     int skipDoc = DocIdSetIterator.NO_MORE_DOCS;
     ChecksumIndexInput input = new BufferedChecksumIndexInput(skipStream);
     int freq = 1;
@@ -142,8 +143,7 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
       } else if (StringHelper.startsWith(scratch.get(), NORM)) {
         scratchUTF16.copyUTF8Bytes(scratch.bytes(), NORM.length, scratch.length() - NORM.length);
         long norm = Long.parseLong(scratchUTF16.toString());
-        Impact impact = new Impact(freq, norm);
-        perLevelImpacts.get(level).add(impact);
+        perLevelImpacts.get(level).add(freq, norm);
       }
     }
     return skipDoc;
@@ -178,8 +178,8 @@ class SimpleTextSkipReader extends MultiLevelSkipListReader {
     numLevels = 1;
     perLevelImpacts = new ArrayList<>(maxNumberOfSkipLevels);
     for (int level = 0; level < maxNumberOfSkipLevels; level++) {
-      List<Impact> impacts = new ArrayList<>();
-      impacts.add(new Impact(Integer.MAX_VALUE, 1L));
+      FreqAndNormBuffer impacts = new FreqAndNormBuffer();
+      impacts.add(Integer.MAX_VALUE, 1L);
       perLevelImpacts.add(level, impacts);
     }
     hasSkipList = false;

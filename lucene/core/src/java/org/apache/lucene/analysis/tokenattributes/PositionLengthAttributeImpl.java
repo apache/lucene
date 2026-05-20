@@ -51,8 +51,7 @@ public class PositionLengthAttributeImpl extends AttributeImpl implements Positi
       return true;
     }
 
-    if (other instanceof PositionLengthAttributeImpl) {
-      PositionLengthAttributeImpl _other = (PositionLengthAttributeImpl) other;
+    if (other instanceof PositionLengthAttributeImpl _other) {
       return positionLength == _other.positionLength;
     }
 

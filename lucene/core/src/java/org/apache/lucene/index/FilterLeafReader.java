@@ -18,10 +18,12 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Iterator;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.Unwrappable;
 
 /**
@@ -46,8 +48,8 @@ public abstract class FilterLeafReader extends LeafReader {
    * FilterLeafReader}.
    */
   public static LeafReader unwrap(LeafReader reader) {
-    while (reader instanceof FilterLeafReader) {
-      reader = ((FilterLeafReader) reader).getDelegate();
+    while (reader instanceof FilterLeafReader flr) {
+      reader = flr.getDelegate();
     }
     return reader;
   }
@@ -75,7 +77,7 @@ public abstract class FilterLeafReader extends LeafReader {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return in.terms(field);
     }
 
@@ -129,7 +131,7 @@ public abstract class FilterLeafReader extends LeafReader {
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       return in.getDocCount();
     }
 
@@ -161,6 +163,7 @@ public abstract class FilterLeafReader extends LeafReader {
 
   /** Base class for filtering {@link TermsEnum} implementations. */
   public abstract static class FilterTermsEnum extends TermsEnum {
+
     /** The underlying TermsEnum instance. */
     protected final TermsEnum in;
 
@@ -234,6 +237,11 @@ public abstract class FilterLeafReader extends LeafReader {
     @Override
     public void seekExact(BytesRef term, TermState state) throws IOException {
       in.seekExact(term, state);
+    }
+
+    @Override
+    public IOBooleanSupplier prepareSeekExact(BytesRef text) throws IOException {
+      return in.prepareSeekExact(text);
     }
 
     @Override
@@ -327,7 +335,6 @@ public abstract class FilterLeafReader extends LeafReader {
       throw new NullPointerException("incoming LeafReader must not be null");
     }
     this.in = in;
-    in.registerParentReader(this);
   }
 
   @Override
@@ -342,7 +349,7 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public PointValues getPointValues(String field) throws IOException {
+  public PointValues getPointValues(String field) {
     return in.getPointValues(field);
   }
 
@@ -358,13 +365,15 @@ public abstract class FilterLeafReader extends LeafReader {
 
   @Override
   public void searchNearestVectors(
-      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+      String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
     in.searchNearestVectors(field, target, knnCollector, acceptDocs);
   }
 
   @Override
   public void searchNearestVectors(
-      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+      String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
     in.searchNearestVectors(field, target, knnCollector, acceptDocs);
   }
 
@@ -398,7 +407,7 @@ public abstract class FilterLeafReader extends LeafReader {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     ensureOpen();
     return in.terms(field);
   }

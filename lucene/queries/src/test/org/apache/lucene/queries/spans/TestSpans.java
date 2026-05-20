@@ -349,14 +349,15 @@ public class TestSpans extends LuceneTestCase {
     // This throws exception (it shouldn't)
     assertEquals(
         1,
-        searcher.search(
+        searcher
+            .search(
                 createSpan(
                     0,
                     true,
                     new SpanQuery[] {createSpan(4, false, "chased", "cat"), createSpan("ate")}),
                 10)
             .totalHits
-            .value);
+            .value());
     reader.close();
     dir.close();
   }

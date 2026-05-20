@@ -53,7 +53,7 @@ public class TestTermPresearcher extends PresearcherTestBase {
       Map<String, Long> timings = new HashMap<>();
       QueryTimeListener timeListener =
           (queryId, timeInNanos) ->
-              timings.compute(queryId, (q, t) -> t == null ? timeInNanos : t + timeInNanos);
+              timings.compute(queryId, (_, t) -> t == null ? timeInNanos : t + timeInNanos);
       MatchingQueries<QueryMatch> matches =
           monitor.match(
               buildDoc(TEXTFIELD, "this is a test document"),
@@ -104,7 +104,7 @@ public class TestTermPresearcher extends PresearcherTestBase {
 
     QueryAnalyzer analyzer = new QueryAnalyzer();
     QueryTree qt =
-        analyzer.buildTree(new MatchAllDocsQuery(), TermFilteredPresearcher.DEFAULT_WEIGHTOR);
+        analyzer.buildTree(MatchAllDocsQuery.INSTANCE, TermFilteredPresearcher.DEFAULT_WEIGHTOR);
 
     TermFilteredPresearcher presearcher = new TermFilteredPresearcher();
     Map<String, BytesRefHash> extractedTerms = presearcher.collectTerms(qt);

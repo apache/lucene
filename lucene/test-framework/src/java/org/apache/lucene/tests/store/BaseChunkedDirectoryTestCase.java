@@ -33,6 +33,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.GroupVIntUtil;
 
 /**
  * Base class for Directories that "chunk" the input into blocks.
@@ -60,7 +61,7 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
   public void testCloneClose() throws Exception {
     Directory dir = getDirectory(createTempDir("testCloneClose"));
     IndexOutput io = dir.createOutput("bytes", newIOContext(random()));
-    final long[] values = new long[] {0, 7, 11, 9};
+    final int[] values = new int[] {0, 7, 11, 9};
     io.writeVInt(5);
     io.writeGroupVInts(values, values.length);
     io.close();
@@ -77,7 +78,7 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
     expectThrows(
         AlreadyClosedException.class,
         () -> {
-          two.readGroupVInts(values, values.length);
+          GroupVIntUtil.readGroupVInts(two, values, values.length);
         });
     assertEquals(5, three.readVInt());
     one.close();
@@ -88,7 +89,7 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
   public void testCloneSliceClose() throws Exception {
     Directory dir = getDirectory(createTempDir("testCloneSliceClose"));
     IndexOutput io = dir.createOutput("bytes", newIOContext(random()));
-    final long[] values = new long[] {0, 7, 11, 9};
+    final int[] values = new int[] {0, 7, 11, 9};
     io.writeInt(1);
     io.writeInt(2);
     io.writeGroupVInts(values, values.length); // will write 5 bytes
@@ -105,7 +106,7 @@ public abstract class BaseChunkedDirectoryTestCase extends BaseDirectoryTestCase
     expectThrows(
         AlreadyClosedException.class,
         () -> {
-          one.readGroupVInts(values, values.length);
+          GroupVIntUtil.readGroupVInts(one, values, values.length);
         });
     assertEquals(2, two.readInt());
     // reopen a new slice "another":

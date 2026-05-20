@@ -27,6 +27,7 @@ import java.util.Set;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.FilterDirectoryReader;
@@ -42,7 +43,6 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.junit.Test;
 
 /**
  * Tests highlighting for matters *expressly* relating to term vectors.
@@ -55,6 +55,52 @@ public class TestUnifiedHighlighterTermVec extends UnifiedHighlighterTestBase {
 
   public TestUnifiedHighlighterTermVec() {
     super(randomFieldType(random()));
+  }
+
+  public void testTermVecButNoPositions1() throws Exception {
+    testTermVecButNoPositions("x", "y", "y x", "<b>y</b> <b>x</b>");
+  }
+
+  public void testTermVecButNoPositions2() throws Exception {
+    testTermVecButNoPositions("y", "x", "y x", "<b>y</b> <b>x</b>");
+  }
+
+  public void testTermVecButNoPositions3() throws Exception {
+    testTermVecButNoPositions("zzz", "yyy", "zzz yyy", "<b>zzz</b> <b>yyy</b>");
+  }
+
+  public void testTermVecButNoPositions4() throws Exception {
+    testTermVecButNoPositions("zzz", "yyy", "yyy zzz", "<b>yyy</b> <b>zzz</b>");
+  }
+
+  public void testTermVecButNoPositions(String aaa, String bbb, String indexed, String expected)
+      throws Exception {
+    final FieldType tvNoPosType = new FieldType(TextField.TYPE_STORED);
+    tvNoPosType.setStoreTermVectors(true);
+    tvNoPosType.setStoreTermVectorOffsets(true);
+    tvNoPosType.freeze();
+
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, indexAnalyzer);
+
+    Field body = new Field("body", indexed, tvNoPosType);
+    Document document = new Document();
+    document.add(body);
+    iw.addDocument(document);
+    try (IndexReader ir = iw.getReader()) {
+      iw.close();
+      IndexSearcher searcher = newSearcher(ir);
+      BooleanQuery query =
+          new BooleanQuery.Builder()
+              .add(new TermQuery(new Term("body", aaa)), BooleanClause.Occur.MUST)
+              .add(new TermQuery(new Term("body", bbb)), BooleanClause.Occur.MUST)
+              .build();
+      TopDocs topDocs = searcher.search(query, 10);
+      assertEquals(1, topDocs.totalHits.value());
+      UnifiedHighlighter highlighter = UnifiedHighlighter.builder(searcher, indexAnalyzer).build();
+      String[] snippets = highlighter.highlight("body", query, topDocs, 2);
+      assertEquals(1, snippets.length);
+      assertTrue(snippets[0], snippets[0].contains(expected));
+    }
   }
 
   public void testFetchTermVecsOncePerDoc() throws IOException {
@@ -95,9 +141,9 @@ public class TestUnifiedHighlighterTermVec extends UnifiedHighlighterTestBase {
     }
     BooleanQuery query = queryBuilder.build();
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
-    assertEquals(numDocs, topDocs.totalHits.value);
+    assertEquals(numDocs, topDocs.totalHits.value());
     Map<String, String[]> fieldToSnippets =
-        highlighter.highlightFields(fields.toArray(new String[numTvFields]), query, topDocs);
+        highlighter.highlightFields(fields.toArray(String[]::new), query, topDocs);
     String[] expectedSnippetsByDoc = new String[numDocs];
     Arrays.fill(expectedSnippetsByDoc, "some <b>test</b> text");
     for (String field : fields) {
@@ -158,7 +204,6 @@ public class TestUnifiedHighlighterTermVec extends UnifiedHighlighterTestBase {
     }
   }
 
-  @Test(expected = IllegalArgumentException.class)
   public void testUserFailedToIndexOffsets() throws IOException {
     FieldType fieldType = new FieldType(tvType); // note: it's indexed too
     fieldType.setStoreTermVectorPositions(random().nextBoolean());
@@ -169,24 +214,23 @@ public class TestUnifiedHighlighterTermVec extends UnifiedHighlighterTestBase {
     doc.add(new Field("body", "term vectors", fieldType));
     iw.addDocument(doc);
 
-    IndexReader ir = iw.getReader();
-    iw.close();
+    try (IndexReader ir = iw.getReader()) {
+      iw.close();
 
-    IndexSearcher searcher = newSearcher(ir);
-    UnifiedHighlighter.Builder uhBuilder = new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
-    UnifiedHighlighter highlighter =
-        new UnifiedHighlighter(uhBuilder) {
-          @Override
-          protected Set<HighlightFlag> getFlags(String field) {
-            return Collections.emptySet(); // no WEIGHT_MATCHES
-          }
-        };
-    TermQuery query = new TermQuery(new Term("body", "vectors"));
-    TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
-    try {
-      highlighter.highlight("body", query, topDocs, 1); // should throw
-    } finally {
-      ir.close();
+      IndexSearcher searcher = newSearcher(ir);
+      UnifiedHighlighter.Builder uhBuilder =
+          new UnifiedHighlighter.Builder(searcher, indexAnalyzer);
+      UnifiedHighlighter highlighter =
+          new UnifiedHighlighter(uhBuilder) {
+            @Override
+            protected Set<HighlightFlag> getFlags(String field) {
+              return Collections.emptySet(); // no WEIGHT_MATCHES
+            }
+          };
+      TermQuery query = new TermQuery(new Term("body", "vectors"));
+      TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
+      expectThrows(
+          IllegalArgumentException.class, () -> highlighter.highlight("body", query, topDocs, 1));
     }
   }
 }

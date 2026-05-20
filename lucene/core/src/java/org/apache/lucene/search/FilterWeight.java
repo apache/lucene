@@ -23,10 +23,6 @@ import org.apache.lucene.index.LeafReaderContext;
  * A {@code FilterWeight} contains another {@code Weight} and implements all abstract methods by
  * calling the contained weight's method.
  *
- * <p>Note that {@code FilterWeight} does not override the non-abstract {@link
- * Weight#bulkScorer(LeafReaderContext)} method and subclasses of {@code FilterWeight} must provide
- * their bulkScorer implementation if required.
- *
  * @lucene.internal
  */
 public abstract class FilterWeight extends Weight {
@@ -66,5 +62,10 @@ public abstract class FilterWeight extends Weight {
   @Override
   public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
     return in.scorerSupplier(context);
+  }
+
+  @Override
+  public int count(LeafReaderContext context) throws IOException {
+    return in.count(context);
   }
 }

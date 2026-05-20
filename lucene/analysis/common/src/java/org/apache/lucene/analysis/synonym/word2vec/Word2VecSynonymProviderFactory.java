@@ -34,7 +34,7 @@ public class Word2VecSynonymProviderFactory {
     DL4J
   }
 
-  private static Map<String, Word2VecSynonymProvider> word2vecSynonymProviders =
+  private static final Map<String, Word2VecSynonymProvider> word2vecSynonymProviders =
       new ConcurrentHashMap<>();
 
   public static Word2VecSynonymProvider getSynonymProvider(

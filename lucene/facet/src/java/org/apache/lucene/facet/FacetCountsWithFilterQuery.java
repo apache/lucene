@@ -59,7 +59,7 @@ public abstract class FacetCountsWithFilterQuery extends Facets {
   protected DocIdSetIterator createIterator(
       FacetsCollector.MatchingDocs hits, DocIdSetIterator... iterators) throws IOException {
     List<DocIdSetIterator> allIterators = new ArrayList<>();
-    allIterators.add(hits.bits.iterator());
+    allIterators.add(hits.bits().iterator());
     allIterators.addAll(Arrays.asList(iterators));
     if (allIterators.stream().anyMatch(Objects::isNull)) {
       // if any of the iterators are null, there are no matching docs
@@ -67,12 +67,12 @@ public abstract class FacetCountsWithFilterQuery extends Facets {
     }
 
     if (fastMatchQuery != null) {
-      final IndexReaderContext topLevelContext = ReaderUtil.getTopLevelContext(hits.context);
+      final IndexReaderContext topLevelContext = ReaderUtil.getTopLevelContext(hits.context());
       final IndexSearcher searcher = new IndexSearcher(topLevelContext);
       searcher.setQueryCache(null);
       final Weight fastMatchWeight =
           searcher.createWeight(searcher.rewrite(fastMatchQuery), ScoreMode.COMPLETE_NO_SCORES, 1);
-      final Scorer s = fastMatchWeight.scorer(hits.context);
+      final Scorer s = fastMatchWeight.scorer(hits.context());
       if (s == null) {
         // no matching docs by the fast match query
         return null;

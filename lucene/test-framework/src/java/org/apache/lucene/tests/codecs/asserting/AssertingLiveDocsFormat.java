@@ -20,10 +20,13 @@ import java.io.IOException;
 import java.util.Collection;
 import org.apache.lucene.codecs.LiveDocsFormat;
 import org.apache.lucene.index.SegmentCommitInfo;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.LiveDocs;
 
 /** Just like the default live docs format but with additional asserts. */
 public class AssertingLiveDocsFormat extends LiveDocsFormat {
@@ -35,6 +38,9 @@ public class AssertingLiveDocsFormat extends LiveDocsFormat {
     Bits raw = in.readLiveDocs(dir, info, context);
     assert raw != null;
     check(raw, info.info.maxDoc(), info.getDelCount());
+    if (raw instanceof LiveDocs) {
+      return new AssertingLiveDocs((LiveDocs) raw);
+    }
     return new AssertingBits(raw);
   }
 
@@ -89,8 +95,41 @@ public class AssertingLiveDocsFormat extends LiveDocsFormat {
     }
 
     @Override
+    public void applyMask(FixedBitSet bitSet, int offset) {
+      assert offset >= 0;
+      in.applyMask(bitSet, offset);
+    }
+
+    @Override
     public String toString() {
       return "Asserting(" + in + ")";
+    }
+  }
+
+  static class AssertingLiveDocs extends AssertingBits implements LiveDocs {
+    private final LiveDocs liveDocs;
+
+    AssertingLiveDocs(LiveDocs liveDocs) {
+      super(liveDocs);
+      this.liveDocs = liveDocs;
+    }
+
+    @Override
+    public int deletedCount() {
+      int count = liveDocs.deletedCount();
+      assert count >= 0;
+      assert count <= length();
+      return count;
+    }
+
+    @Override
+    public DocIdSetIterator liveDocsIterator() {
+      return liveDocs.liveDocsIterator();
+    }
+
+    @Override
+    public DocIdSetIterator deletedDocsIterator() {
+      return liveDocs.deletedDocsIterator();
     }
   }
 }

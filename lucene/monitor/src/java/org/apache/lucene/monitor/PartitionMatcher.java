@@ -51,18 +51,7 @@ public class PartitionMatcher<T extends QueryMatch> extends CandidateMatcher<T> 
 
   private final CandidateMatcher<T> resolvingMatcher;
 
-  private static class MatchTask {
-
-    final String queryId;
-    final Query matchQuery;
-    final Map<String, String> metadata;
-
-    private MatchTask(String queryId, Query matchQuery, Map<String, String> metadata) {
-      this.queryId = queryId;
-      this.matchQuery = matchQuery;
-      this.metadata = metadata;
-    }
-  }
+  private record MatchTask(String queryId, Query matchQuery, Map<String, String> metadata) {}
 
   private final List<MatchTask> tasks = new ArrayList<>();
 
@@ -79,7 +68,7 @@ public class PartitionMatcher<T extends QueryMatch> extends CandidateMatcher<T> 
   }
 
   @Override
-  protected void matchQuery(String queryId, Query matchQuery, Map<String, String> metadata) {
+  public void matchQuery(String queryId, Query matchQuery, Map<String, String> metadata) {
     tasks.add(new MatchTask(queryId, matchQuery, metadata));
   }
 
@@ -135,18 +124,9 @@ public class PartitionMatcher<T extends QueryMatch> extends CandidateMatcher<T> 
     }
   }
 
-  private static class PartitionMatcherFactory<T extends QueryMatch> implements MatcherFactory<T> {
-
-    private final ExecutorService executor;
-    private final MatcherFactory<T> matcherFactory;
-    private final int threads;
-
-    PartitionMatcherFactory(
-        ExecutorService executor, MatcherFactory<T> matcherFactory, int threads) {
-      this.executor = executor;
-      this.matcherFactory = matcherFactory;
-      this.threads = threads;
-    }
+  private record PartitionMatcherFactory<T extends QueryMatch>(
+      ExecutorService executor, MatcherFactory<T> matcherFactory, int threads)
+      implements MatcherFactory<T> {
 
     @Override
     public PartitionMatcher<T> createMatcher(IndexSearcher searcher) {

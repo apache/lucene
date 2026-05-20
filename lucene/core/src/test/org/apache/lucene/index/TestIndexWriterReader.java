@@ -51,7 +51,6 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.ThreadInterruptedException;
 import org.apache.lucene.util.Version;
-import org.junit.Test;
 
 @SuppressCodecs("SimpleText") // too slow here
 public class TestIndexWriterReader extends LuceneTestCase {
@@ -647,7 +646,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
             newIndexWriterConfig(new MockAnalyzer(random()))
                 .setMaxBufferedDocs(2)
                 .setMaxFullFlushMergeWaitMillis(0)
-                .setMergedSegmentWarmer((leafReader) -> warmCount.incrementAndGet())
+                .setMergedSegmentWarmer((_) -> warmCount.incrementAndGet())
                 .setMergeScheduler(new ConcurrentMergeScheduler())
                 .setMergePolicy(newLogMergePolicy()));
 
@@ -999,6 +998,8 @@ public class TestIndexWriterReader extends LuceneTestCase {
   public void testSegmentWarmer() throws Exception {
     Directory dir = newDirectory();
     final AtomicBoolean didWarm = new AtomicBoolean();
+    LogMergePolicy mp = newLogMergePolicy(10);
+    mp.setTargetSearchConcurrency(1);
     IndexWriter w =
         new IndexWriter(
             dir,
@@ -1012,7 +1013,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
                       assertEquals(20, count);
                       didWarm.set(true);
                     })
-                .setMergePolicy(newLogMergePolicy(10)));
+                .setMergePolicy(mp));
 
     Document doc = new Document();
     doc.add(newStringField("foo", "bar", Field.Store.NO));
@@ -1045,6 +1046,8 @@ public class TestIndexWriterReader extends LuceneTestCase {
             return true;
           }
         };
+    LogMergePolicy mp = newLogMergePolicy(10);
+    mp.setTargetSearchConcurrency(1);
     IndexWriter w =
         new IndexWriter(
             dir,
@@ -1053,7 +1056,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
                 .setReaderPooling(true)
                 .setInfoStream(infoStream)
                 .setMergedSegmentWarmer(new SimpleMergedSegmentWarmer(infoStream))
-                .setMergePolicy(newLogMergePolicy(10)));
+                .setMergePolicy(mp));
 
     Document doc = new Document();
     doc.add(newStringField("foo", "bar", Field.Store.NO));
@@ -1102,7 +1105,6 @@ public class TestIndexWriterReader extends LuceneTestCase {
     d.close();
   }
 
-  @Test
   public void testNRTOpenExceptions() throws Exception {
     // LUCENE-5262: test that several failed attempts to obtain an NRT reader
     // don't leak file handles.
@@ -1217,9 +1219,7 @@ public class TestIndexWriterReader extends LuceneTestCase {
                       ASC_SORT ? points.getMinPackedValue() : points.getMaxPackedValue();
                   return LongPoint.decodeDimension(sortValue, 0);
                 }
-              } catch (
-                  @SuppressWarnings("unused")
-                  IOException e) {
+              } catch (IOException _) {
               }
               return MISSING_VALUE;
             });

@@ -31,7 +31,7 @@ import org.apache.lucene.benchmark.byTask.utils.Config;
  */
 public class SortableSingleDocSource extends SingleDocSource {
 
-  private static String[] COUNTRIES =
+  private static final String[] COUNTRIES =
       new String[] {
         "European Union",
         "United States",

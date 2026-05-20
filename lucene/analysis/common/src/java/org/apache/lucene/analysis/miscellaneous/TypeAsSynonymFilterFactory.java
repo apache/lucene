@@ -27,13 +27,13 @@ import org.apache.lucene.analysis.TokenStream;
  *
  * <p>In Solr this might be used as such
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_type_as_synonym" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.UAX29URLEmailTokenizerFactory"/&gt;
  *     &lt;filter class="solr.TypeAsSynonymFilterFactory" prefix="_type_" synFlagsMask="5" ignore="foo,bar"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * <p>If the optional {@code prefix} parameter is used, the specified value will be prepended to the
  * type, e.g. with prefix="_type_", for a token "example.com" with type "&lt;URL&gt;", the emitted

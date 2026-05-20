@@ -45,12 +45,12 @@ import org.apache.lucene.util.graph.GraphTokenStreamFiniteStrings;
  *
  * <p>Example usage:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   QueryBuilder builder = new QueryBuilder(analyzer);
  *   Query a = builder.createBooleanQuery("body", "just a test");
  *   Query b = builder.createPhraseQuery("body", "another test");
  *   Query c = builder.createMinShouldMatchQuery("body", "another test", 0.5f);
- * </pre>
+ * </code></pre>
  *
  * <p>This can also be used as a subclass for query parsers to make it easier to interact with the
  * analysis chain. Factory methods such as {@code newTermQuery} are provided so that the generated
@@ -62,18 +62,16 @@ public class QueryBuilder {
   protected boolean enableGraphQueries = true;
   protected boolean autoGenerateMultiTermSynonymsPhraseQuery = false;
 
-  /** Wraps a term and boost */
-  public static class TermAndBoost {
-    /** the term */
-    public final BytesRef term;
-
-    /** the boost */
-    public final float boost;
-
+  /**
+   * Wraps a term and boost
+   *
+   * @param term the term
+   * @param boost the boost
+   */
+  public record TermAndBoost(BytesRef term, float boost) {
     /** Creates a new TermAndBoost */
-    public TermAndBoost(BytesRef term, float boost) {
-      this.term = BytesRef.deepCopyOf(term);
-      this.boost = boost;
+    public TermAndBoost {
+      term = BytesRef.deepCopyOf(term);
     }
   }
 
@@ -157,8 +155,8 @@ public class QueryBuilder {
 
     Query query =
         createFieldQuery(analyzer, BooleanClause.Occur.SHOULD, field, queryText, false, 0);
-    if (query instanceof BooleanQuery) {
-      query = addMinShouldMatchToBoolean((BooleanQuery) query, fraction);
+    if (query instanceof BooleanQuery bq) {
+      query = addMinShouldMatchToBoolean(bq, fraction);
     }
     return query;
   }
@@ -480,9 +478,9 @@ public class QueryBuilder {
 
       if (positionIncrement > 0 && multiTerms.size() > 0) {
         if (enablePositionIncrements) {
-          mpqb.add(multiTerms.toArray(new Term[0]), position);
+          mpqb.add(multiTerms.toArray(Term[]::new), position);
         } else {
-          mpqb.add(multiTerms.toArray(new Term[0]));
+          mpqb.add(multiTerms.toArray(Term[]::new));
         }
         multiTerms.clear();
       }
@@ -491,9 +489,9 @@ public class QueryBuilder {
     }
 
     if (enablePositionIncrements) {
-      mpqb.add(multiTerms.toArray(new Term[0]), position);
+      mpqb.add(multiTerms.toArray(Term[]::new), position);
     } else {
-      mpqb.add(multiTerms.toArray(new Term[0]));
+      mpqb.add(multiTerms.toArray(Term[]::new));
     }
     return mpqb.build();
   }

@@ -16,7 +16,7 @@
  */
 
 
-apply plugin: 'java-library'
+
 
 description = 'Collectors for grouping search results'
 

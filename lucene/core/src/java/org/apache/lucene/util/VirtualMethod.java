@@ -17,8 +17,6 @@
 package org.apache.lucene.util;
 
 import java.lang.reflect.Method;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -35,12 +33,12 @@ import java.util.Set;
  * <p>Define <strong>static final</strong> fields in the base class ({@code BaseClass}), where the
  * old and new method are declared:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *  static final VirtualMethod&lt;BaseClass&gt; newMethod =
  *   new VirtualMethod&lt;BaseClass&gt;(BaseClass.class, "newName", parameters...);
  *  static final VirtualMethod&lt;BaseClass&gt; oldMethod =
  *   new VirtualMethod&lt;BaseClass&gt;(BaseClass.class, "oldName", parameters...);
- * </pre>
+ * </code></pre>
  *
  * <p>This enforces the singleton status of these objects, as the maintenance of the cache would be
  * too costly else. If you try to create a second instance of for the same method/{@code baseClass}
@@ -49,7 +47,7 @@ import java.util.Set;
  * <p>To detect if e.g. the old method was overridden by a more far subclass on the inheritance path
  * to the current instance's class, use a <strong>non-static</strong> field:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *  final boolean isDeprecatedMethodOverridden =
  *   AccessController.doPrivileged((PrivilegedAction&lt;Boolean&gt;) () -&gt;
  *    (oldMethod.getImplementationDistance(this.getClass()) &gt; newMethod.getImplementationDistance(this.getClass())));
@@ -58,12 +56,7 @@ import java.util.Set;
  *  final boolean isDeprecatedMethodOverridden =
  *   AccessController.doPrivileged((PrivilegedAction&lt;Boolean&gt;) () -&gt;
  *    VirtualMethod.compareImplementationDistance(this.getClass(), oldMethod, newMethod) &gt; 0);
- * </pre>
- *
- * <p>It is important to use {@link AccessController#doPrivileged(PrivilegedAction)} for the actual
- * call to get the implementation distance because the subclass may be in a different package. The
- * static constructors do not need to use {@code AccessController} because it just initializes our
- * own method reference. The caller should have access to all declared members in its own class.
+ * </code></pre>
  *
  * <p>{@link #getImplementationDistance} returns the distance of the subclass that overrides this
  * method. The one with the larger distance should be used preferable. This way also more
@@ -81,7 +74,7 @@ public final class VirtualMethod<C> {
   private final String method;
   private final Class<?>[] parameters;
   private final ClassValue<Integer> distanceOfClass =
-      new ClassValue<Integer>() {
+      new ClassValue<>() {
         @Override
         protected Integer computeValue(Class<?> subclazz) {
           return Integer.valueOf(reflectImplementationDistance(subclazz));
@@ -147,9 +140,7 @@ public final class VirtualMethod<C> {
         try {
           clazz.getDeclaredMethod(method, parameters);
           overridden = true;
-        } catch (
-            @SuppressWarnings("unused")
-            NoSuchMethodException nsme) {
+        } catch (NoSuchMethodException _) {
         }
       }
 

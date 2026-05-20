@@ -31,6 +31,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.KeywordField;
+import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FilterDirectoryReader;
@@ -51,8 +52,9 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.automaton.ByteRunAutomaton;
+import org.apache.lucene.util.automaton.ByteRunnable;
 
 public class TestTermInSetQuery extends LuceneTestCase {
 
@@ -101,12 +103,14 @@ public class TestTermInSetQuery extends LuceneTestCase {
 
     TermInSetQuery query = new TermInSetQuery(field, queryTerms);
     TopDocs topDocs = searcher.search(query, numDocs);
-    assertEquals(numDocs, topDocs.totalHits.value);
+    assertEquals(numDocs, topDocs.totalHits.value());
 
     reader.close();
     dir.close();
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testDuel() throws IOException {
     final int iters = atLeast(2);
     final String field = "f";
@@ -119,11 +123,14 @@ public class TestTermInSetQuery extends LuceneTestCase {
       }
       Directory dir = newDirectory();
       RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
-      final int numDocs = atLeast(100);
+      final int numDocs = atLeast(10_000);
       for (int i = 0; i < numDocs; ++i) {
         Document doc = new Document();
         final BytesRef term = allTerms.get(random().nextInt(allTerms.size()));
         doc.add(new StringField(field, term, Store.NO));
+        // Also include a doc values field with a skip-list so we can test doc-value rewrite as
+        // well:
+        doc.add(SortedSetDocValuesField.indexedField(field, term));
         iw.addDocument(doc);
       }
       if (numTerms > 1 && random().nextBoolean()) {
@@ -154,7 +161,9 @@ public class TestTermInSetQuery extends LuceneTestCase {
         }
         final Query q1 = new ConstantScoreQuery(bq.build());
         final Query q2 = new TermInSetQuery(field, queryTerms);
+        final Query q3 = new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, field, queryTerms);
         assertSameMatches(searcher, new BoostQuery(q1, boost), new BoostQuery(q2, boost), true);
+        assertSameMatches(searcher, new BoostQuery(q1, boost), new BoostQuery(q3, boost), false);
       }
 
       reader.close();
@@ -225,12 +234,59 @@ public class TestTermInSetQuery extends LuceneTestCase {
     }
   }
 
+  /**
+   * Make sure the doc values skipper isn't making the incorrect assumption that the min/max terms
+   * from a TermInSetQuery don't form a continuous range.
+   */
+  public void testSkipperOptimizationGapAssumption() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    // Index the first 10,000 docs all with the term "b" to get some skip list blocks with the range
+    // [b, b]:
+    for (int i = 0; i < 10_000; i++) {
+      Document doc = new Document();
+      BytesRef term = new BytesRef("b");
+      doc.add(new SortedSetDocValuesField("field", term));
+      doc.add(SortedSetDocValuesField.indexedField("idx_field", term));
+      iw.addDocument(doc);
+    }
+
+    // Index a couple more docs with terms "a" and "c":
+    Document doc = new Document();
+    BytesRef term = new BytesRef("a");
+    doc.add(new SortedSetDocValuesField("field", term));
+    doc.add(SortedSetDocValuesField.indexedField("idx_field", term));
+    iw.addDocument(doc);
+    doc = new Document();
+    term = new BytesRef("c");
+    doc.add(new SortedSetDocValuesField("field", term));
+    doc.add(SortedSetDocValuesField.indexedField("idx_field", term));
+    iw.addDocument(doc);
+
+    iw.commit();
+    IndexReader reader = iw.getReader();
+    IndexSearcher searcher = newSearcher(reader);
+    iw.close();
+
+    // Our query is for (or "a" "c") which should use a skip-list optimization to exclude blocks of
+    // documents that fall outside the range [a, c]. We want to test that they don't incorrectly do
+    // the inverse and include all docs in a block that fall within [a, c] (which is why we have
+    // blocks of only "b" docs up-front):
+    List<BytesRef> queryTerms = List.of(new BytesRef("a"), new BytesRef("c"));
+    Query q1 = new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, "field", queryTerms);
+    Query q2 = new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, "idx_field", queryTerms);
+    assertSameMatches(searcher, q1, q2, false);
+
+    reader.close();
+    dir.close();
+  }
+
   private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)
       throws IOException {
     final int maxDoc = searcher.getIndexReader().maxDoc();
     final TopDocs td1 = searcher.search(q1, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
     final TopDocs td2 = searcher.search(q2, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
-    assertEquals(td1.totalHits.value, td2.totalHits.value);
+    assertEquals(td1.totalHits.value(), td2.totalHits.value());
     for (int i = 0; i < td1.scoreDocs.length; ++i) {
       assertEquals(td1.scoreDocs[i].doc, td2.scoreDocs[i].doc);
       if (scores) {
@@ -263,12 +319,12 @@ public class TestTermInSetQuery extends LuceneTestCase {
 
     TermInSetQuery tq1 = new TermInSetQuery("thing", List.of(newBytesRef("apple")));
     TermInSetQuery tq2 = new TermInSetQuery("thing", List.of(newBytesRef("orange")));
-    assertFalse(tq1.hashCode() == tq2.hashCode());
+    assertNotEquals(tq1.hashCode(), tq2.hashCode());
 
     // different fields with the same term should have differing hashcodes
     tq1 = new TermInSetQuery("thing", List.of(newBytesRef("apple")));
     tq2 = new TermInSetQuery("thing2", List.of(newBytesRef("apple")));
-    assertFalse(tq1.hashCode() == tq2.hashCode());
+    assertNotEquals(tq1.hashCode(), tq2.hashCode());
   }
 
   public void testSimpleEquals() {
@@ -347,7 +403,7 @@ public class TestTermInSetQuery extends LuceneTestCase {
       }
 
       @Override
-      public Terms terms(String field) throws IOException {
+      public Terms terms(String field) {
         Terms terms = super.terms(field);
         if (terms == null) {
           return null;
@@ -444,7 +500,7 @@ public class TestTermInSetQuery extends LuceneTestCase {
 
           @Override
           public void consumeTermsMatching(
-              Query query, String field, Supplier<ByteRunAutomaton> automaton) {
+              Query query, String field, Supplier<ByteRunnable> automaton) {
             fail("Singleton TermInSetQuery should not try to build ByteRunAutomaton");
           }
         });
@@ -464,8 +520,8 @@ public class TestTermInSetQuery extends LuceneTestCase {
 
           @Override
           public void consumeTermsMatching(
-              Query query, String field, Supplier<ByteRunAutomaton> automaton) {
-            ByteRunAutomaton a = automaton.get();
+              Query query, String field, Supplier<ByteRunnable> automaton) {
+            ByteRunnable a = automaton.get();
             BytesRef test = newBytesRef("nonmatching");
             assertFalse(a.run(test.bytes, test.offset, test.length));
             for (BytesRef term : terms) {
@@ -473,5 +529,20 @@ public class TestTermInSetQuery extends LuceneTestCase {
             }
           }
         });
+  }
+
+  public void testTermsIterator() throws IOException {
+    TermInSetQuery empty = new TermInSetQuery("field", Collections.emptyList());
+    BytesRefIterator it = empty.getBytesRefIterator();
+    assertNull(it.next());
+
+    TermInSetQuery query =
+        new TermInSetQuery(
+            "field", List.of(newBytesRef("term1"), newBytesRef("term2"), newBytesRef("term3")));
+    it = query.getBytesRefIterator();
+    assertEquals(newBytesRef("term1"), it.next());
+    assertEquals(newBytesRef("term2"), it.next());
+    assertEquals(newBytesRef("term3"), it.next());
+    assertNull(it.next());
   }
 }

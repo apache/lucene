@@ -17,7 +17,6 @@
 package org.apache.lucene.backward_index;
 
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
-import static org.apache.lucene.util.Version.LUCENE_9_0_0;
 
 import com.carrotsearch.randomizedtesting.annotations.ParametersFactory;
 import java.io.IOException;
@@ -52,8 +51,8 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.LogByteSizeMergePolicy;
 import org.apache.lucene.index.MultiBits;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.MultiTerms;
@@ -95,7 +94,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
   private static final int DOCS_COUNT = 35;
   private static final int DELETED_ID = 7;
 
-  private static final int KNN_VECTOR_MIN_SUPPORTED_VERSION = LUCENE_9_0_0.major;
+  private static final int KNN_VECTOR_MIN_SUPPORTED_VERSION = Version.fromBits(9, 0, 0).major;
   private static final String KNN_VECTOR_FIELD = "knn_field";
   private static final FieldType KNN_VECTOR_FIELD_TYPE =
       KnnFloatVectorField.createFieldType(3, VectorSimilarityFunction.COSINE);
@@ -125,15 +124,14 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
   }
 
   static void createIndex(Directory dir, boolean doCFS, boolean fullyMerged) throws IOException {
-    LogByteSizeMergePolicy mp = new LogByteSizeMergePolicy();
-    mp.setNoCFSRatio(doCFS ? 1.0 : 0.0);
-    mp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     // TODO: remove randomness
     IndexWriterConfig conf =
         new IndexWriterConfig(new MockAnalyzer(random()))
             .setMaxBufferedDocs(10)
             .setCodec(TestUtil.getDefaultCodec())
             .setMergePolicy(NoMergePolicy.INSTANCE);
+    conf.getCodec().compoundFormat().setShouldUseCompoundFile(doCFS);
+    conf.getCodec().compoundFormat().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     IndexWriter writer = new IndexWriter(dir, conf);
 
     for (int i = 0; i < DOCS_COUNT; i++) {
@@ -147,14 +145,13 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
 
     if (!fullyMerged) {
       // open fresh writer so we get no prx file in the added segment
-      mp = new LogByteSizeMergePolicy();
-      mp.setNoCFSRatio(doCFS ? 1.0 : 0.0);
       // TODO: remove randomness
       conf =
           new IndexWriterConfig(new MockAnalyzer(random()))
               .setMaxBufferedDocs(10)
               .setCodec(TestUtil.getDefaultCodec())
               .setMergePolicy(NoMergePolicy.INSTANCE);
+      conf.getCodec().compoundFormat().setShouldUseCompoundFile(doCFS);
       writer = new IndexWriter(dir, conf);
       addNoProxDoc(writer);
       writer.close();
@@ -477,10 +474,14 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
         FloatVectorValues values = ctx.reader().getFloatVectorValues(KNN_VECTOR_FIELD);
         if (values != null) {
           assertEquals(KNN_VECTOR_FIELD_TYPE.vectorDimension(), values.dimension());
-          for (int doc = values.nextDoc(); doc != NO_MORE_DOCS; doc = values.nextDoc()) {
+          KnnVectorValues.DocIndexIterator it = values.iterator();
+          for (int doc = it.nextDoc(); doc != NO_MORE_DOCS; doc = it.nextDoc()) {
             float[] expectedVector = {KNN_VECTOR[0], KNN_VECTOR[1], KNN_VECTOR[2] + 0.1f * cnt};
             assertArrayEquals(
-                "vectors do not match for doc=" + cnt, expectedVector, values.vectorValue(), 0);
+                "vectors do not match for doc=" + cnt,
+                expectedVector,
+                values.vectorValue(it.index()),
+                0);
             cnt++;
           }
         }
@@ -537,6 +538,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
         new IndexWriter(
             dir,
             newIndexWriterConfig(new MockAnalyzer(random))
+                .setCodec(TestUtil.getDefaultCodec())
                 .setOpenMode(IndexWriterConfig.OpenMode.APPEND)
                 .setMergePolicy(newLogMergePolicy()));
     // add 10 docs
@@ -575,6 +577,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
         new IndexWriter(
             dir,
             newIndexWriterConfig(new MockAnalyzer(random))
+                .setCodec(TestUtil.getDefaultCodec())
                 .setOpenMode(IndexWriterConfig.OpenMode.APPEND)
                 .setMergePolicy(newLogMergePolicy()));
     writer.forceMerge(1);
@@ -626,6 +629,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
         new IndexWriter(
             dir,
             newIndexWriterConfig(new MockAnalyzer(random))
+                .setCodec(TestUtil.getDefaultCodec())
                 .setOpenMode(IndexWriterConfig.OpenMode.APPEND));
     writer.forceMerge(1);
     writer.close();
@@ -828,7 +832,7 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
           expectThrows(IllegalArgumentException.class, () -> TestUtil.addIndexesSlowly(w, reader));
       assertEquals(
           e.getMessage(),
-          "Cannot merge a segment that has been created with major version 9 into this index which has been created by major version 10");
+          "Cannot merge a segment that has been created with major version 10 into this index which has been created by major version 11");
       w.close();
       targetDir2.close();
 
@@ -856,7 +860,10 @@ public class TestBasicBackwardsCompatibility extends BackwardsCompatibilityTestB
             () -> StandardDirectoryReader.open(commit, Version.LATEST.major, null));
     assertTrue(
         ex.getMessage()
-            .contains("only supports reading from version " + Version.LATEST.major + " upwards."));
+            .contains(
+                "This Lucene version only supports indexes with major version "
+                    + Version.LATEST.major
+                    + " or later"));
     // now open with allowed min version
     StandardDirectoryReader.open(commit, Version.MIN_SUPPORTED_MAJOR, null).close();
   }

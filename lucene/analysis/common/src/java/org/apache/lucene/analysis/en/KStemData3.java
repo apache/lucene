@@ -42,7 +42,7 @@ package org.apache.lucene.analysis.en;
 class KStemData3 {
   private KStemData3() {}
 
-  static String[] data = {
+  static final String[] data = {
     "distasteful", "distemper", "distempered", "distend", "distension",
     "distil", "distill", "distillation", "distiller", "distillery",
     "distinct", "distinction", "distinctive", "distinguish", "distinguishable",

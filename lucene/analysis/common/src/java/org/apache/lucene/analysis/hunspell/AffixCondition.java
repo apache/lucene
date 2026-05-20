@@ -121,9 +121,7 @@ interface AffixCondition {
         return ALWAYS_FALSE;
       }
       return regexpCondition(kind, condition.substring(0, split), conditionChars - strip.length());
-    } catch (
-        @SuppressWarnings("unused")
-        PatternSyntaxException e) {
+    } catch (PatternSyntaxException _) {
       return ALWAYS_FALSE;
     } catch (Throwable e) {
       throw new IllegalArgumentException("On line: " + line, e);

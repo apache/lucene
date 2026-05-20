@@ -1,0 +1,21 @@
+# Some vector APIs are only fast on specific hardware, and fallback to very slow
+# pure-java implementations. List them here, to prevent traps.
+
+@defaultMessage Potentially slow on some CPUs, please check Constants.HAS_FAST_VECTOR_FMA: FMA may fallback to BigDecimal
+jdk.incubator.vector.Float16#fma(**)
+jdk.incubator.vector.FloatVector#fma(**)
+jdk.incubator.vector.DoubleVector#fma(**)
+jdk.incubator.vector.VectorOperators#FMA
+
+@defaultMessage Potentially slow on some CPUs, please check Constants.HAS_FAST_COMPRESS_MASK_CAST: Need SVE and AVX2 support
+jdk.incubator.vector.ByteVector#compress(**)
+jdk.incubator.vector.IntVector#compress(**)
+jdk.incubator.vector.ShortVector#compress(**)
+jdk.incubator.vector.LongVector#compress(**)
+jdk.incubator.vector.VectorOperators#COMPRESS_BITS
+jdk.incubator.vector.ByteVector#expand(**)
+jdk.incubator.vector.IntVector#expand(**)
+jdk.incubator.vector.ShortVector#expand(**)
+jdk.incubator.vector.LongVector#expand(**)
+jdk.incubator.vector.VectorOperators#EXPAND_BITS
+jdk.incubator.vector.VectorMask#cast(**)

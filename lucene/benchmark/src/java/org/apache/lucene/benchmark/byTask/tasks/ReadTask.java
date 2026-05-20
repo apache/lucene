@@ -24,7 +24,7 @@ import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.MultiBits;
 import org.apache.lucene.index.StoredFields;
-import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
@@ -112,16 +112,13 @@ public abstract class ReadTask extends PerfTask {
             // pulling the Weight ourselves:
             int totalHitsThreshold = withTotalHits() ? Integer.MAX_VALUE : 1;
             TopFieldCollectorManager collectorManager =
-                new TopFieldCollectorManager(
-                    sort, numHits, null, totalHitsThreshold, searcher.getSlices().length > 1);
+                new TopFieldCollectorManager(sort, numHits, null, totalHitsThreshold);
             hits = searcher.search(q, collectorManager);
           } else {
             hits = searcher.search(q, numHits);
           }
         } else {
-          Collector collector = createCollector();
-
-          searcher.search(q, collector);
+          searcher.search(q, createCollectorManager());
           // hits = collector.topDocs();
         }
 
@@ -184,9 +181,8 @@ public abstract class ReadTask extends PerfTask {
     return res;
   }
 
-  protected Collector createCollector() throws Exception {
-    return new TopScoreDocCollectorManager(numHits(), withTotalHits() ? Integer.MAX_VALUE : 1)
-        .newCollector();
+  protected CollectorManager<?, ?> createCollectorManager() throws Exception {
+    return new TopScoreDocCollectorManager(numHits(), withTotalHits() ? Integer.MAX_VALUE : 1);
   }
 
   protected Document retrieveDoc(StoredFields storedFields, int id) throws IOException {

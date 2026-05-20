@@ -44,24 +44,35 @@ public abstract class Axiomatic extends SimilarityBase {
   protected final int queryLen;
 
   /**
-   * Constructor setting all Axiomatic hyperparameters
+   * Constructor setting all Axiomatic hyperparameters and using default discountOverlaps value.
    *
    * @param s hyperparam for the growth function
    * @param queryLen the query length
    * @param k hyperparam for the primitive weighting function
    */
   public Axiomatic(float s, int queryLen, float k) {
+    this(true, s, queryLen, k);
+  }
+
+  /**
+   * Constructor setting all Axiomatic hyperparameters
+   *
+   * @param discountOverlaps true if overlap tokens should not impact document length for scoring.
+   * @param s hyperparam for the growth function
+   * @param queryLen the query length
+   * @param k hyperparam for the primitive weighting function
+   */
+  public Axiomatic(boolean discountOverlaps, float s, int queryLen, float k) {
+    super(discountOverlaps);
     if (Float.isFinite(s) == false || Float.isNaN(s) || s < 0 || s > 1) {
       throw new IllegalArgumentException("illegal s value: " + s + ", must be between 0 and 1");
     }
     if (Float.isFinite(k) == false || Float.isNaN(k) || k < 0 || k > 1) {
       throw new IllegalArgumentException("illegal k value: " + k + ", must be between 0 and 1");
     }
-    if (queryLen < 0 || queryLen > Integer.MAX_VALUE) {
+    if (queryLen < 0) {
       throw new IllegalArgumentException(
-          "illegal query length value: "
-              + queryLen
-              + ", must be larger 0 and smaller than MAX_INT");
+          "illegal query length value: " + queryLen + ", must be larger 0");
     }
     this.s = s;
     this.queryLen = queryLen;

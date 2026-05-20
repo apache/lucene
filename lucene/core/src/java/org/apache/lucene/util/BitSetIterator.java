@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.util;
 
+import java.io.IOException;
+import org.apache.lucene.search.AbstractDocIdSetIterator;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
@@ -23,12 +25,12 @@ import org.apache.lucene.search.DocIdSetIterator;
  *
  * @lucene.internal
  */
-public class BitSetIterator extends DocIdSetIterator {
+public class BitSetIterator extends AbstractDocIdSetIterator {
 
   private static <T extends BitSet> T getBitSet(
       DocIdSetIterator iterator, Class<? extends T> clazz) {
-    if (iterator instanceof BitSetIterator) {
-      BitSet bits = ((BitSetIterator) iterator).bits;
+    if (iterator instanceof BitSetIterator bsi) {
+      BitSet bits = bsi.bits;
       assert bits != null;
       if (clazz.isInstance(bits)) {
         return clazz.cast(bits);
@@ -52,7 +54,6 @@ public class BitSetIterator extends DocIdSetIterator {
   private final BitSet bits;
   private final int length;
   private final long cost;
-  private int doc = -1;
 
   /** Sole constructor. */
   public BitSetIterator(BitSet bits, long cost) {
@@ -67,11 +68,6 @@ public class BitSetIterator extends DocIdSetIterator {
   /** Return the wrapped {@link BitSet}. */
   public BitSet getBitSet() {
     return bits;
-  }
-
-  @Override
-  public int docID() {
-    return doc;
   }
 
   /** Set the current doc id that this iterator is on. */
@@ -95,5 +91,30 @@ public class BitSetIterator extends DocIdSetIterator {
   @Override
   public long cost() {
     return cost;
+  }
+
+  @Override
+  public int docIDRunEnd() {
+    assert doc != NO_MORE_DOCS;
+    int next = doc + 1;
+    if (next >= length) {
+      return length;
+    }
+    int end = bits.nextClearBit(next);
+    return end == NO_MORE_DOCS ? length : end;
+  }
+
+  @Override
+  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+    if (upTo > doc && bits instanceof FixedBitSet fixedBits) {
+      int actualUpto = Math.min(upTo, length);
+      // The destination bit set may be shorter than this bit set. This is only legal if all bits
+      // beyond offset + bitSet.length() are clear. If not, the below call to `super.intoBitSet`
+      // will throw an exception.
+      actualUpto = MathUtil.unsignedMin(actualUpto, offset + bitSet.length());
+      FixedBitSet.orRange(fixedBits, doc, bitSet, doc - offset, actualUpto - doc);
+      advance(actualUpto); // set the current doc
+    }
+    super.intoBitSet(upTo, bitSet, offset);
   }
 }

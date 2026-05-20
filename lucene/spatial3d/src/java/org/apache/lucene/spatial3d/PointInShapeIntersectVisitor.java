@@ -27,6 +27,7 @@ import org.apache.lucene.spatial3d.geom.GeoShape;
 import org.apache.lucene.spatial3d.geom.PlanetModel.DocValueEncoder;
 import org.apache.lucene.spatial3d.geom.XYZBounds;
 import org.apache.lucene.util.DocIdSetBuilder;
+import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.NumericUtils;
 
 class PointInShapeIntersectVisitor implements IntersectVisitor {
@@ -65,6 +66,11 @@ class PointInShapeIntersectVisitor implements IntersectVisitor {
   @Override
   public void visit(DocIdSetIterator iterator) throws IOException {
     adder.add(iterator);
+  }
+
+  @Override
+  public void visit(IntsRef ref) throws IOException {
+    adder.add(ref);
   }
 
   @Override

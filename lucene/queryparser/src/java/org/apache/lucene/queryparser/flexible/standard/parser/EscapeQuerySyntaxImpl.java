@@ -169,8 +169,8 @@ public class EscapeQuerySyntaxImpl implements EscapeQuerySyntax {
 
     // escape wildcards and the escape char (this has to be performed before anything else)
     // since we need to preserve the UnescapedCharSequence and escape the original escape chars
-    if (text instanceof UnescapedCharSequence) {
-      text = ((UnescapedCharSequence) text).toStringEscaped(wildcardChars);
+    if (text instanceof UnescapedCharSequence ucs) {
+      text = ucs.toStringEscaped(wildcardChars);
     } else {
       text = new UnescapedCharSequence(text).toStringEscaped(wildcardChars);
     }

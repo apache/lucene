@@ -167,7 +167,7 @@ public final class WeakIdentityMap<K, V> {
     final Iterator<IdentityWeakReference> iterator = backingStore.keySet().iterator();
     // IMPORTANT: Don't use oal.util.FilterIterator here:
     // We need *strong* reference to current key after setNext()!!!
-    return new Iterator<K>() {
+    return new Iterator<>() {
       // holds strong reference to next element in backing iterator:
       private Object next = null;
       // the backing iterator was already consumed:
@@ -265,8 +265,7 @@ public final class WeakIdentityMap<K, V> {
       if (this == o) {
         return true;
       }
-      if (o instanceof IdentityWeakReference) {
-        final IdentityWeakReference ref = (IdentityWeakReference) o;
+      if (o instanceof IdentityWeakReference ref) {
         if (this.get() == ref.get()) {
           return true;
         }

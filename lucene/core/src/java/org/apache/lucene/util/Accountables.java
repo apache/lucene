@@ -94,18 +94,11 @@ public class Accountables {
    */
   public static Collection<Accountable> namedAccountables(
       String prefix, Map<?, ? extends Accountable> in) {
-    List<Accountable> resources = new ArrayList<>();
+    List<Accountable> resources = new ArrayList<>(in.size());
     for (Map.Entry<?, ? extends Accountable> kv : in.entrySet()) {
       resources.add(namedAccountable(prefix + " '" + kv.getKey() + "'", kv.getValue()));
     }
-    Collections.sort(
-        resources,
-        new Comparator<Accountable>() {
-          @Override
-          public int compare(Accountable o1, Accountable o2) {
-            return o1.toString().compareTo(o2.toString());
-          }
-        });
+    resources.sort(Comparator.comparing(Object::toString));
     return Collections.unmodifiableList(resources);
   }
 

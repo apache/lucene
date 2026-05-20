@@ -67,10 +67,10 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
       Query filtered =
           new BooleanQuery.Builder()
               .add(topLevel, BooleanClause.Occur.MUST)
-              .add(filterQuery(topGroups.groups[i].groupValue), BooleanClause.Occur.FILTER)
+              .add(filterQuery(topGroups.groups[i].groupValue()), BooleanClause.Occur.FILTER)
               .build();
       TopDocs td = searcher.search(filtered, 10);
-      assertScoreDocsEquals(topGroups.groups[i].scoreDocs, td.scoreDocs);
+      assertScoreDocsEquals(topGroups.groups[i].scoreDocs(), td.scoreDocs);
       if (i == 0) {
         assertEquals(td.scoreDocs[0].doc, topDoc.scoreDocs[0].doc);
         assertEquals(td.scoreDocs[0].score, topDoc.scoreDocs[0].score, 0);
@@ -105,10 +105,10 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
       Query filtered =
           new BooleanQuery.Builder()
               .add(topLevel, BooleanClause.Occur.MUST)
-              .add(filterQuery(topGroups.groups[i].groupValue), BooleanClause.Occur.FILTER)
+              .add(filterQuery(topGroups.groups[i].groupValue()), BooleanClause.Occur.FILTER)
               .build();
       TopDocs td = searcher.search(filtered, 10);
-      assertScoreDocsEquals(topGroups.groups[i].scoreDocs, td.scoreDocs);
+      assertScoreDocsEquals(topGroups.groups[i].scoreDocs(), td.scoreDocs);
       // The top group should have sort values equal to the sort values of the top doc of
       // a top-level search sorted by the same Sort; subsequent groups should have sort values
       // that compare lower than their predecessor.
@@ -116,7 +116,7 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
         assertSortsBefore(topGroups.groups[i - 1], topGroups.groups[i]);
       } else {
         assertArrayEquals(
-            ((FieldDoc) topDoc.scoreDocs[0]).fields, topGroups.groups[0].groupSortValues);
+            ((FieldDoc) topDoc.scoreDocs[0]).fields, topGroups.groups[0].groupSortValues());
       }
     }
 
@@ -148,19 +148,19 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
       // top score returned by a simple search with no grouping; subsequent groups should
       // all have equal or lower maxScores
       if (i == 0) {
-        assertEquals(topDoc.scoreDocs[0].score, topGroups.groups[0].maxScore, 0);
+        assertEquals(topDoc.scoreDocs[0].score, topGroups.groups[0].maxScore(), 0);
       } else {
-        assertTrue(topGroups.groups[i].maxScore <= topGroups.groups[i - 1].maxScore);
+        assertTrue(topGroups.groups[i].maxScore() <= topGroups.groups[i - 1].maxScore());
       }
       // Groups themselves are ordered by a defined Sort, and each should give the same result as
       // the top-level query, filtered by the group value, with the same Sort
       Query filtered =
           new BooleanQuery.Builder()
               .add(topLevel, BooleanClause.Occur.MUST)
-              .add(filterQuery(topGroups.groups[i].groupValue), BooleanClause.Occur.FILTER)
+              .add(filterQuery(topGroups.groups[i].groupValue()), BooleanClause.Occur.FILTER)
               .build();
       TopDocs td = searcher.search(filtered, 10, sort);
-      assertScoreDocsEquals(td.scoreDocs, topGroups.groups[i].scoreDocs);
+      assertScoreDocsEquals(td.scoreDocs, topGroups.groups[i].scoreDocs());
     }
 
     shard.close();
@@ -324,25 +324,40 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
     Collection<SearchGroup<T>> mergedGroups = SearchGroup.merge(shardGroups, 0, 5, sort);
     assertEquals(singletonGroups, mergedGroups);
 
-    TopGroupsCollector<T> singletonSecondPass =
-        new TopGroupsCollector<>(
-            getGroupSelector(), singletonGroups, sort, Sort.RELEVANCE, 5, true);
-    control.getIndexSearcher().search(topLevel, singletonSecondPass);
-    TopGroups<T> singletonTopGroups = singletonSecondPass.getTopGroups(0);
+    final int withinGroupOffset = random().nextInt(numDocs);
+    TopGroupsCollectorManager<T> topGroupsCollectorManager =
+        new TopGroupsCollectorManager<>(
+            this::getGroupSelector,
+            singletonGroups,
+            sort,
+            Sort.RELEVANCE,
+            withinGroupOffset,
+            5,
+            true);
+    TopGroups<T> singletonTopGroups =
+        control.getIndexSearcher().search(topLevel, topGroupsCollectorManager);
 
-    // TODO why does SearchGroup.merge() take a list but TopGroups.merge() take an array?
-    @SuppressWarnings("unchecked")
-    TopGroups<T>[] shardTopGroups = (TopGroups<T>[]) new TopGroups<?>[shards.length];
-    int j = 0;
+    List<TopGroups<T>> shardTopGroups = new ArrayList<>(shards.length);
     for (Shard shard : shards) {
-      TopGroupsCollector<T> sc =
-          new TopGroupsCollector<>(getGroupSelector(), mergedGroups, sort, Sort.RELEVANCE, 5, true);
-      shard.getIndexSearcher().search(topLevel, sc);
-      shardTopGroups[j] = sc.getTopGroups(0);
-      j++;
+      TopGroupsCollectorManager<T> scm =
+          new TopGroupsCollectorManager<>(
+              this::getGroupSelector,
+              mergedGroups,
+              sort,
+              Sort.RELEVANCE,
+              0,
+              withinGroupOffset + 5,
+              true);
+      shardTopGroups.add(shard.getIndexSearcher().search(topLevel, scm));
     }
     TopGroups<T> mergedTopGroups =
-        TopGroups.merge(shardTopGroups, sort, Sort.RELEVANCE, 0, 5, TopGroups.ScoreMergeMode.None);
+        TopGroups.merge(
+            shardTopGroups,
+            sort,
+            Sort.RELEVANCE,
+            withinGroupOffset,
+            5,
+            TopGroups.ScoreMergeMode.None);
     assertNotNull(mergedTopGroups);
 
     assertEquals(singletonTopGroups.totalGroupedHitCount, mergedTopGroups.totalGroupedHitCount);
@@ -350,10 +365,11 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
     assertEquals(singletonTopGroups.totalGroupCount, mergedTopGroups.totalGroupCount);
     assertEquals(singletonTopGroups.groups.length, mergedTopGroups.groups.length);
     for (int i = 0; i < singletonTopGroups.groups.length; i++) {
-      assertEquals(singletonTopGroups.groups[i].groupValue, mergedTopGroups.groups[i].groupValue);
       assertEquals(
-          singletonTopGroups.groups[i].scoreDocs.length,
-          mergedTopGroups.groups[i].scoreDocs.length);
+          singletonTopGroups.groups[i].groupValue(), mergedTopGroups.groups[i].groupValue());
+      assertEquals(
+          singletonTopGroups.groups[i].scoreDocs().length,
+          mergedTopGroups.groups[i].scoreDocs().length);
     }
 
     control.close();
@@ -378,9 +394,52 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
     }
   }
 
+  public void testIgnoreDocsWithoutGroupField() throws IOException {
+    Shard shard = new Shard();
+
+    // Add documents with group field
+    Document doc = new Document();
+    doc.add(new TextField("text", "foo", Field.Store.NO));
+    addGroupField(doc, 1);
+    shard.writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new TextField("text", "foo", Field.Store.NO));
+    addGroupField(doc, 2);
+    shard.writer.addDocument(doc);
+
+    // Add document without group field
+    doc = new Document();
+    doc.add(new TextField("text", "foo", Field.Store.NO));
+    shard.writer.addDocument(doc);
+
+    IndexSearcher searcher = shard.getIndexSearcher();
+    Query query = new TermQuery(new Term("text", "foo"));
+
+    // Test default behavior (include null group)
+    GroupingSearch grouping1 = new GroupingSearch(getGroupSelector());
+    TopGroups<T> groups1 = grouping1.search(searcher, query, 0, 10);
+    int defaultGroupCount = groups1.groups.length;
+
+    // Test ignoring docs without group field
+    GroupingSearch grouping2 = new GroupingSearch(getGroupSelector());
+    grouping2.setIgnoreDocsWithoutGroupField(true);
+    TopGroups<T> groups2 = grouping2.search(searcher, query, 0, 10);
+    int ignoreGroupCount = groups2.groups.length;
+
+    assertTrue(
+        "Expected ignoreGroupCount <= defaultGroupCount, got "
+            + ignoreGroupCount
+            + " vs "
+            + defaultGroupCount,
+        ignoreGroupCount <= defaultGroupCount);
+
+    shard.close();
+  }
+
   private void assertSortsBefore(GroupDocs<T> first, GroupDocs<T> second) {
-    Object[] groupSortValues = second.groupSortValues;
-    Object[] prevSortValues = first.groupSortValues;
+    Object[] groupSortValues = second.groupSortValues();
+    Object[] prevSortValues = first.groupSortValues();
     assertTrue(((BytesRef) prevSortValues[0]).compareTo((BytesRef) groupSortValues[0]) <= 0);
     if (prevSortValues[0].equals(groupSortValues[0])) {
       assertTrue((long) prevSortValues[1] <= (long) groupSortValues[1]);

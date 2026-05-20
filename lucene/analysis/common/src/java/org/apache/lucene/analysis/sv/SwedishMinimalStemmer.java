@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.analysis.sv;
 
 /*
  * The code is inspired from original code located at: http://members.unine.ch/jacques.savoy/clef/
@@ -49,6 +48,8 @@ package org.apache.lucene.analysis.sv;
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
+
+package org.apache.lucene.analysis.sv;
 
 import static org.apache.lucene.analysis.util.StemmerUtil.endsWith;
 

@@ -22,15 +22,7 @@ import org.apache.lucene.analysis.morph.MorphData;
 /** Represents Korean morphological information. */
 public interface KoMorphData extends MorphData {
   /** A morpheme extracted from a compound token. */
-  class Morpheme {
-    public final POS.Tag posTag;
-    public final String surfaceForm;
-
-    public Morpheme(POS.Tag posTag, String surfaceForm) {
-      this.posTag = posTag;
-      this.surfaceForm = surfaceForm;
-    }
-  }
+  record Morpheme(POS.Tag posTag, String surfaceForm) {}
 
   /**
    * Get the {@link org.apache.lucene.analysis.ko.POS.Type} of specified word (morpheme, compound,

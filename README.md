@@ -13,7 +13,7 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
- -->
+-->
 
 # Apache Lucene
 
@@ -23,10 +23,11 @@ Apache Lucene is a high-performance, full-featured text search engine library
 written in Java.
 
 [![Build Status](https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-main/badge/icon?subject=Lucene)](https://ci-builds.apache.org/job/Lucene/job/Lucene-Artifacts-main/)
+[![Revved up by Develocity](https://img.shields.io/badge/Revved%20up%20by-Develocity-06A0CE?logo=Gradle&labelColor=02303A)](https://develocity.apache.org/scans?search.buildToolType=gradle&search.rootProjectNames=lucene-root)
 
 ## Online Documentation
 
-This README file only contains basic setup instructions.  For more
+This README file only contains basic setup instructions. For more
 comprehensive documentation, visit:
 
 - Latest Releases: <https://lucene.apache.org/core/documentation.html>
@@ -37,13 +38,17 @@ comprehensive documentation, visit:
 
 ## Building
 
-### Basic steps:
-  
-1. Install OpenJDK 21.
+### Basic steps
+
+1. Install JDK 25 using your package manager or download manually from
+[OpenJDK](https://jdk.java.net/),
+[Adoptium](https://adoptium.net/temurin/releases),
+[Azul](https://www.azul.com/downloads/),
+[Oracle](https://www.oracle.com/java/technologies/downloads/) or any other JDK provider.
 2. Clone Lucene's git repository (or download the source distribution).
 3. Run gradle launcher script (`gradlew`).
 
-We'll assume that you know how to get and set up the JDK - if you don't, then we suggest starting at https://jdk.java.net/ and learning more about Java, before returning to this README.
+We'll assume that you know how to get and set up the JDK - if you don't, then we suggest starting at <https://jdk.java.net/> and learning more about Java, before returning to this README.
 
 ## Contributing
 

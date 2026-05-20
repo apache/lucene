@@ -16,6 +16,16 @@
  */
 package org.apache.lucene.search;
 
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH;
+import static org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN;
+import static org.apache.lucene.search.AbstractVectorSimilarityQuery.DECAY_MAX_APPROXIMATION;
+import static org.apache.lucene.search.AbstractVectorSimilarityQuery.DECAY_MAX_QUALITY;
+import static org.apache.lucene.search.AbstractVectorSimilarityQuery.DEFAULT_DECAY;
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+import static org.hamcrest.Matchers.either;
+import static org.hamcrest.Matchers.greaterThan;
+import static org.hamcrest.Matchers.lessThan;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -26,18 +36,23 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.IntStream;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.IntField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.hnsw.HnswTestUtil;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.hnsw.HnswUtil;
 
 @LuceneTestCase.SuppressCodecs("SimpleText")
 abstract class BaseVectorSimilarityQueryTestCase<
@@ -56,10 +71,10 @@ abstract class BaseVectorSimilarityQueryTestCase<
   abstract F getVectorField(String name, V vector, VectorSimilarityFunction function);
 
   abstract Q getVectorQuery(
-      String field, V vector, float traversalSimilarity, float resultSimilarity, Query filter);
+      String field, V vector, float resultSimilarity, float decay, Query filter);
 
   abstract Q getThrowingVectorQuery(
-      String field, V vector, float traversalSimilarity, float resultSimilarity, Query filter);
+      String field, V vector, float resultSimilarity, float decay, Query filter);
 
   public void testEquals() {
     String field1 = "f1", field2 = "f2";
@@ -70,40 +85,76 @@ abstract class BaseVectorSimilarityQueryTestCase<
       vector2 = getRandomVector(dim);
     } while (checkEquals(vector1, vector2));
 
-    float traversalSimilarity1 = 0.3f, traversalSimilarity2 = 0.4f;
     float resultSimilarity1 = 0.4f, resultSimilarity2 = 0.5f;
+    float decay1 = 0.5f, decay2 = 0.6f;
 
     Query filter1 = new TermQuery(new Term("t1", "v1"));
     Query filter2 = new TermQuery(new Term("t2", "v2"));
 
-    Query query = getVectorQuery(field1, vector1, traversalSimilarity1, resultSimilarity1, filter1);
+    Query query = getVectorQuery(field1, vector1, resultSimilarity1, decay1, filter1);
 
     // Everything is equal
-    assertEquals(
-        query, getVectorQuery(field1, vector1, traversalSimilarity1, resultSimilarity1, filter1));
+    assertEquals(query, getVectorQuery(field1, vector1, resultSimilarity1, decay1, filter1));
 
     // Null check
-    assertNotEquals(query, null);
+    assertNotEquals(null, query);
 
     // Different field
-    assertNotEquals(
-        query, getVectorQuery(field2, vector1, traversalSimilarity1, resultSimilarity1, filter1));
+    assertNotEquals(query, getVectorQuery(field2, vector1, resultSimilarity1, decay1, filter1));
 
     // Different vector
-    assertNotEquals(
-        query, getVectorQuery(field1, vector2, traversalSimilarity1, resultSimilarity1, filter1));
+    assertNotEquals(query, getVectorQuery(field1, vector2, resultSimilarity1, decay1, filter1));
 
-    // Different traversalSimilarity
-    assertNotEquals(
-        query, getVectorQuery(field1, vector1, traversalSimilarity2, resultSimilarity1, filter1));
+    // Different decay
+    assertNotEquals(query, getVectorQuery(field1, vector1, resultSimilarity1, decay2, filter1));
 
     // Different resultSimilarity
-    assertNotEquals(
-        query, getVectorQuery(field1, vector1, traversalSimilarity1, resultSimilarity2, filter1));
+    assertNotEquals(query, getVectorQuery(field1, vector1, resultSimilarity2, decay1, filter1));
 
     // Different filter
-    assertNotEquals(
-        query, getVectorQuery(field1, vector1, traversalSimilarity1, resultSimilarity1, filter2));
+    assertNotEquals(query, getVectorQuery(field1, vector1, resultSimilarity1, decay1, filter2));
+  }
+
+  public void testIllegalParams() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () ->
+            getVectorQuery(
+                vectorField,
+                getRandomVector(dim),
+                Float.NaN, // illegal resultSimilarity
+                DEFAULT_DECAY,
+                null));
+
+    expectThrows(
+        IllegalArgumentException.class,
+        () ->
+            getVectorQuery(
+                vectorField,
+                getRandomVector(dim),
+                0f,
+                Float.NaN, // illegal decay
+                null));
+
+    expectThrows(
+        IllegalArgumentException.class,
+        () ->
+            getVectorQuery(
+                vectorField,
+                getRandomVector(dim),
+                0f,
+                Math.nextDown(DECAY_MAX_APPROXIMATION), // illegal decay
+                null));
+
+    expectThrows(
+        IllegalArgumentException.class,
+        () ->
+            getVectorQuery(
+                vectorField,
+                getRandomVector(dim),
+                0f,
+                Math.nextUp(DECAY_MAX_QUALITY), // illegal decay
+                null));
   }
 
   public void testEmptyIndex() throws IOException {
@@ -116,11 +167,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
       Query query =
           getVectorQuery(
-              vectorField,
-              getRandomVector(dim),
-              Float.NEGATIVE_INFINITY,
-              Float.NEGATIVE_INFINITY,
-              null);
+              vectorField, getRandomVector(dim), Float.NEGATIVE_INFINITY, DECAY_MAX_QUALITY, null);
 
       // Check that no vectors are found
       assertEquals(0, searcher.count(query));
@@ -131,15 +178,12 @@ abstract class BaseVectorSimilarityQueryTestCase<
     try (Directory indexStore = getIndexStore(getRandomVectors(numDocs, dim));
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
+      assumeTrue("graph is disconnected", HnswUtil.graphIsRooted(reader, vectorField));
 
       // All vectors are above -Infinity
       Query query1 =
           getVectorQuery(
-              vectorField,
-              getRandomVector(dim),
-              Float.NEGATIVE_INFINITY,
-              Float.NEGATIVE_INFINITY,
-              null);
+              vectorField, getRandomVector(dim), Float.NEGATIVE_INFINITY, DECAY_MAX_QUALITY, null);
 
       // Check that all vectors are found
       assertEquals(numDocs, searcher.count(query1));
@@ -147,11 +191,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
       // No vectors are above +Infinity
       Query query2 =
           getVectorQuery(
-              vectorField,
-              getRandomVector(dim),
-              Float.POSITIVE_INFINITY,
-              Float.POSITIVE_INFINITY,
-              null);
+              vectorField, getRandomVector(dim), Float.POSITIVE_INFINITY, DECAY_MAX_QUALITY, null);
 
       // Check that no vectors are found
       assertEquals(0, searcher.count(query2));
@@ -166,7 +206,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
     try (Directory indexStore = getIndexStore(getRandomVectors(numDocs, dim));
         IndexReader reader = DirectoryReader.open(indexStore)) {
-      assumeTrue("graph is disconnected", HnswTestUtil.graphIsConnected(reader, vectorField));
+      assumeTrue("graph is disconnected", HnswUtil.graphIsRooted(reader, vectorField));
       IndexSearcher searcher = newSearcher(reader);
 
       Query query =
@@ -174,7 +214,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
               vectorField,
               getRandomVector(dim),
               Float.NEGATIVE_INFINITY,
-              Float.NEGATIVE_INFINITY,
+              DECAY_MAX_QUALITY,
               filter);
 
       ScoreDoc[] scoreDocs = searcher.search(query, numDocs).scoreDocs;
@@ -201,7 +241,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
               vectorField,
               getRandomVector(dim),
               Float.NEGATIVE_INFINITY,
-              Float.NEGATIVE_INFINITY,
+              DECAY_MAX_QUALITY,
               filter1);
 
       // Check that no vectors are found
@@ -214,7 +254,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
               vectorField,
               getRandomVector(dim),
               Float.NEGATIVE_INFINITY,
-              Float.NEGATIVE_INFINITY,
+              DECAY_MAX_QUALITY,
               filter2);
 
       // Check that no vectors are found
@@ -235,7 +275,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
               vectorField,
               getRandomVector(newDim),
               Float.NEGATIVE_INFINITY,
-              Float.NEGATIVE_INFINITY,
+              DECAY_MAX_QUALITY,
               null);
 
       // Check that an exception for differing dimensions is thrown
@@ -262,18 +302,14 @@ abstract class BaseVectorSimilarityQueryTestCase<
               "random_field",
               getRandomVector(dim),
               Float.NEGATIVE_INFINITY,
-              Float.NEGATIVE_INFINITY,
+              DECAY_MAX_QUALITY,
               null);
       assertEquals(0, searcher.count(query1));
 
       // Indexed as int field
       Query query2 =
           getVectorQuery(
-              idField,
-              getRandomVector(dim),
-              Float.NEGATIVE_INFINITY,
-              Float.NEGATIVE_INFINITY,
-              null);
+              idField, getRandomVector(dim), Float.NEGATIVE_INFINITY, DECAY_MAX_QUALITY, null);
       assertEquals(0, searcher.count(query2));
     }
   }
@@ -291,7 +327,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
       w.commit();
 
       try (IndexReader reader = DirectoryReader.open(indexStore)) {
-        assumeTrue("graph is disconnected", HnswTestUtil.graphIsConnected(reader, vectorField));
+        assumeTrue("graph is disconnected", HnswUtil.graphIsRooted(reader, vectorField));
         IndexSearcher searcher = newSearcher(reader);
 
         Query query =
@@ -299,7 +335,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
                 vectorField,
                 getRandomVector(dim),
                 Float.NEGATIVE_INFINITY,
-                Float.NEGATIVE_INFINITY,
+                DECAY_MAX_QUALITY,
                 null);
 
         ScoreDoc[] scoreDocs = searcher.search(query, numDocs).scoreDocs;
@@ -307,7 +343,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
           int id = getId(searcher, scoreDoc.doc);
 
           // Check that returned document is not deleted
-          assertFalse(id >= startIndex && id <= endIndex);
+          assertThat(id, either(lessThan(startIndex)).or(greaterThan(endIndex)));
         }
         // Check that all live docs are returned
         assertEquals(numDocs - endIndex + startIndex - 1, scoreDocs.length);
@@ -319,7 +355,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
     try (Directory dir = getIndexStore(getRandomVectors(numDocs, dim));
         IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       // Delete all documents
-      w.deleteDocuments(new MatchAllDocsQuery());
+      w.deleteDocuments(MatchAllDocsQuery.INSTANCE);
       w.commit();
 
       try (IndexReader reader = DirectoryReader.open(dir)) {
@@ -330,7 +366,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
                 vectorField,
                 getRandomVector(dim),
                 Float.NEGATIVE_INFINITY,
-                Float.NEGATIVE_INFINITY,
+                DECAY_MAX_QUALITY,
                 null);
 
         // Check that no vectors are found
@@ -350,11 +386,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
       Query query1 =
           getVectorQuery(
-              vectorField,
-              getRandomVector(dim),
-              Float.NEGATIVE_INFINITY,
-              Float.NEGATIVE_INFINITY,
-              null);
+              vectorField, getRandomVector(dim), Float.NEGATIVE_INFINITY, DECAY_MAX_QUALITY, null);
       ScoreDoc[] scoreDocs1 = searcher.search(query1, numDocs).scoreDocs;
 
       Query query2 = new BoostQuery(query1, boost);
@@ -376,7 +408,7 @@ abstract class BaseVectorSimilarityQueryTestCase<
     }
   }
 
-  public void testVectorsAboveSimilarity() throws IOException {
+  void testVectorsAboveSimilarity() throws IOException {
     // Pick number of docs to accept
     int numAccepted = random().nextInt(numDocs / 3, numDocs / 2);
     float delta = 1e-3f;
@@ -396,12 +428,15 @@ abstract class BaseVectorSimilarityQueryTestCase<
       }
     }
 
-    try (Directory indexStore = getIndexStore(vectors);
+    // TODO test with random codec params via getIndexStore(vectors);
+    // this is challenging because scores will vary in a quantized index
+    // and precomputing as above will not be accurate
+    try (Directory indexStore = getStableIndexStore(vectors);
         IndexReader reader = DirectoryReader.open(indexStore)) {
       IndexSearcher searcher = newSearcher(reader);
 
       Query query =
-          getVectorQuery(vectorField, queryVector, Float.NEGATIVE_INFINITY, resultSimilarity, null);
+          getVectorQuery(vectorField, queryVector, resultSimilarity, DECAY_MAX_QUALITY, null);
 
       ScoreDoc[] scoreDocs = searcher.search(query, numDocs).scoreDocs;
       for (ScoreDoc scoreDoc : scoreDocs) {
@@ -421,8 +456,8 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
   public void testFallbackToExact() throws IOException {
     // Restrictive filter, along with similarity to visit a large number of nodes
-    int numFiltered = random().nextInt(numDocs / 10, numDocs / 5);
-    int targetVisited = random().nextInt(numFiltered * 2, numDocs);
+    int numFiltered = numDocs / 5;
+    int targetVisited = numDocs;
 
     V[] vectors = getRandomVectors(numDocs, dim);
     V queryVector = getRandomVector(dim);
@@ -436,14 +471,24 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
       Query query =
           getThrowingVectorQuery(
-              vectorField, queryVector, resultSimilarity, resultSimilarity, filter);
+              vectorField, queryVector, resultSimilarity, DECAY_MAX_APPROXIMATION, filter);
 
-      // Falls back to exact search
+      // Falls back to exact search, even with DECAY_MAX_APPROXIMATION
       expectThrows(UnsupportedOperationException.class, () -> searcher.count(query));
+
+      Query exactQuery =
+          getThrowingVectorQuery(
+              vectorField, queryVector, Float.NEGATIVE_INFINITY, DECAY_MAX_QUALITY, null);
+
+      // Exact search should be used directly with DECAY_MAX_QUALITY
+      expectThrows(UnsupportedOperationException.class, () -> searcher.count(exactQuery));
     }
   }
 
+  @Monster("indexes and searches a large number of vectors")
   public void testApproximate() throws IOException {
+    numDocs = 1000;
+
     // Non-restrictive filter, along with similarity to visit a small number of nodes
     int numFiltered = numDocs - 1;
     int targetVisited = random().nextInt(1, numFiltered / 10);
@@ -455,7 +500,14 @@ abstract class BaseVectorSimilarityQueryTestCase<
     Query filter = IntField.newSetQuery(idField, getFiltered(numFiltered));
 
     try (Directory indexStore = getIndexStore(vectors);
-        IndexWriter w = new IndexWriter(indexStore, newIndexWriterConfig())) {
+        IndexWriter w =
+            new IndexWriter(
+                indexStore,
+                newIndexWriterConfig()
+                    .setCodec(
+                        TestUtil.alwaysKnnVectorsFormat(
+                            new Lucene99HnswVectorsFormat(
+                                DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, 0))))) {
       // Force merge because smaller segments have few filtered docs and often fall back to exact
       // search, making this test flaky
       w.forceMerge(1);
@@ -464,13 +516,66 @@ abstract class BaseVectorSimilarityQueryTestCase<
       try (IndexReader reader = DirectoryReader.open(indexStore)) {
         IndexSearcher searcher = newSearcher(reader);
 
+        // Use DECAY_MAX_APPROXIMATION to avoid fallback to exact search
         Query query =
             getThrowingVectorQuery(
-                vectorField, queryVector, resultSimilarity, resultSimilarity, filter);
+                vectorField, queryVector, resultSimilarity, DECAY_MAX_APPROXIMATION, filter);
 
         // Does not fall back to exact search
         assertTrue(searcher.count(query) <= numFiltered);
       }
+    }
+  }
+
+  /** Test that the query times out correctly. */
+  public void testTimeout() throws IOException {
+    V[] vectors = getRandomVectors(numDocs, dim);
+    V queryVector = getRandomVector(dim);
+
+    try (Directory indexStore = getIndexStore(vectors);
+        IndexReader reader = DirectoryReader.open(indexStore)) {
+      assumeTrue("graph is fully reachable", HnswUtil.graphIsRooted(reader, vectorField));
+      IndexSearcher searcher = newSearcher(reader);
+
+      // This query is cacheable, explicitly prevent it
+      searcher.setQueryCache(null);
+
+      // Use Math.nextDown(DECAY_MAX_QUALITY) to ensure approximate graph search is used,
+      // since DECAY_MAX_QUALITY now triggers exact search which bypasses graph traversal
+      float highQualityNoExact = Math.nextDown(DECAY_MAX_QUALITY);
+
+      Query query =
+          new CountingQuery(
+              getVectorQuery(
+                  vectorField, queryVector, Float.NEGATIVE_INFINITY, highQualityNoExact, null));
+      assertEquals(numDocs, searcher.count(query)); // Expect some results without timeout
+
+      searcher.setTimeout(() -> true); // Immediately timeout
+      assertEquals(0, searcher.count(query)); // Expect no results with the timeout
+
+      searcher.setTimeout(new CountingQueryTimeout(numDocs - 1)); // Do not score all docs
+      int count = searcher.count(query);
+      assertTrue(
+          "0 < count=" + count + " < numDocs=" + numDocs,
+          count > 0 && count < numDocs); // Expect partial results
+
+      // Test timeout with filter
+      int numFiltered = random().nextInt(numDocs / 2, numDocs);
+      Query filter = IntField.newSetQuery(idField, getFiltered(numFiltered));
+      Query filteredQuery =
+          new CountingQuery(
+              getVectorQuery(
+                  vectorField, queryVector, Float.NEGATIVE_INFINITY, highQualityNoExact, filter));
+
+      searcher.setTimeout(() -> false); // Set a timeout which is never met
+      assertEquals(numFiltered, searcher.count(filteredQuery));
+
+      searcher.setTimeout(
+          new CountingQueryTimeout(numFiltered - 1)); // Timeout before scoring all filtered docs
+      int filteredCount = searcher.count(filteredQuery);
+      assertTrue(
+          "0 < filteredCount=" + filteredCount + " < numFiltered=" + numFiltered,
+          filteredCount > 0 && filteredCount < numFiltered); // Expect partial results
     }
   }
 
@@ -509,13 +614,20 @@ abstract class BaseVectorSimilarityQueryTestCase<
 
   @SuppressWarnings("unchecked")
   V[] getRandomVectors(int numDocs, int dim) {
-    return (V[]) IntStream.range(0, numDocs).mapToObj(i -> getRandomVector(dim)).toArray();
+    return (V[]) IntStream.range(0, numDocs).mapToObj(_ -> getRandomVector(dim)).toArray();
   }
 
   @SafeVarargs
   final Directory getIndexStore(V... vectors) throws IOException {
     Directory dir = newDirectory();
-    try (RandomIndexWriter writer = new RandomIndexWriter(random(), dir)) {
+    try (RandomIndexWriter writer =
+        new RandomIndexWriter(
+            random(),
+            dir,
+            newIndexWriterConfig()
+                .setCodec(
+                    TestUtil.alwaysKnnVectorsFormat(
+                        new Lucene99HnswVectorsFormat(DEFAULT_MAX_CONN, DEFAULT_BEAM_WIDTH, 0))))) {
       for (int i = 0; i < vectors.length; ++i) {
         Document doc = new Document();
         doc.add(getVectorField(vectorField, vectors[i], function));
@@ -524,5 +636,110 @@ abstract class BaseVectorSimilarityQueryTestCase<
       }
     }
     return dir;
+  }
+
+  @SafeVarargs
+  final Directory getStableIndexStore(V... vectors) throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = new IndexWriterConfig().setCodec(TestUtil.getDefaultCodec());
+    try (IndexWriter writer = new IndexWriter(dir, iwc)) {
+      for (int i = 0; i < vectors.length; ++i) {
+        Document doc = new Document();
+        doc.add(getVectorField(vectorField, vectors[i], function));
+        doc.add(new IntField(idField, i, Field.Store.YES));
+        writer.addDocument(doc);
+      }
+    }
+    return dir;
+  }
+
+  private static class CountingQueryTimeout implements QueryTimeout {
+    private int remaining;
+
+    public CountingQueryTimeout(int count) {
+      remaining = count;
+    }
+
+    @Override
+    public boolean shouldExit() {
+      if (remaining > 0) {
+        remaining--;
+        return false;
+      }
+      return true;
+    }
+  }
+
+  /**
+   * A {@link Query} that emulates {@link Weight#count(LeafReaderContext)} by counting number of
+   * docs of underlying {@link Scorer#iterator()}. TODO: This is a workaround to count partial
+   * results of {@link #delegate} because {@link TimeLimitingBulkScorer} immediately discards
+   * results after timeout.
+   */
+  private static class CountingQuery extends Query {
+    private final Query delegate;
+
+    private CountingQuery(Query delegate) {
+      this.delegate = delegate;
+    }
+
+    @Override
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+        throws IOException {
+      return new Weight(this) {
+        final Weight delegateWeight = delegate.createWeight(searcher, scoreMode, boost);
+
+        @Override
+        public Explanation explain(LeafReaderContext context, int doc) throws IOException {
+          return delegateWeight.explain(context, doc);
+        }
+
+        @Override
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          return delegateWeight.scorerSupplier(context);
+        }
+
+        @Override
+        public int count(LeafReaderContext context) throws IOException {
+          Scorer scorer = scorer(context);
+          if (scorer == null) {
+            return 0;
+          }
+
+          int count = 0;
+          DocIdSetIterator iterator = scorer.iterator();
+          while (iterator.nextDoc() != NO_MORE_DOCS) {
+            count++;
+          }
+          return count;
+        }
+
+        @Override
+        public boolean isCacheable(LeafReaderContext ctx) {
+          return delegateWeight.isCacheable(ctx);
+        }
+      };
+    }
+
+    @Override
+    public String toString(String field) {
+      return String.format(
+          Locale.ROOT, "%s[%s]", getClass().getSimpleName(), delegate.toString(field));
+    }
+
+    @Override
+    public void visit(QueryVisitor visitor) {
+      visitor.visitLeaf(this);
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return sameClassAs(obj) && delegate.equals(((CountingQuery) obj).delegate);
+    }
+
+    @Override
+    public int hashCode() {
+      return delegate.hashCode();
+    }
   }
 }

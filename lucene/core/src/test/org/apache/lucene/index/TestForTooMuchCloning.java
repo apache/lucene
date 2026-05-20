@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.index;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
@@ -35,17 +36,25 @@ public class TestForTooMuchCloning extends LuceneTestCase {
   // during merging and searching:
   public void test() throws Exception {
     final MockDirectoryWrapper dir = newMockDirectory();
+    dir.setVerboseClone(false); // set true to view clone stacks.
     final TieredMergePolicy tmp = new TieredMergePolicy();
-    tmp.setMaxMergeAtOnce(2);
+    tmp.setSegmentsPerTier(2);
+    AtomicInteger segmentsMerged = new AtomicInteger();
     final RandomIndexWriter w =
         new RandomIndexWriter(
             random(),
             dir,
             newIndexWriterConfig(new MockAnalyzer(random()))
+                // to reduce flakiness on merge clone count
+                .setMergeScheduler(new SerialMergeScheduler())
                 .setMaxBufferedDocs(2)
-                // use a FilterMP otherwise RIW will randomly reconfigure
-                // the MP while the test runs
-                .setMergePolicy(new FilterMergePolicy(tmp)));
+                .setMergePolicy(
+                    new OneMergeWrappingMergePolicy(
+                        tmp,
+                        oneMerge -> {
+                          segmentsMerged.addAndGet(oneMerge.segments.size());
+                          return oneMerge;
+                        })));
     final int numDocs = 20;
     for (int docs = 0; docs < numDocs; docs++) {
       StringBuilder sb = new StringBuilder();
@@ -62,7 +71,7 @@ public class TestForTooMuchCloning extends LuceneTestCase {
     // System.out.println("merge clone count=" + cloneCount);
     assertTrue(
         "too many calls to IndexInput.clone during merging: " + dir.getInputCloneCount(),
-        dir.getInputCloneCount() < 500);
+        dir.getInputCloneCount() < (r.leaves().size() + segmentsMerged.get()) * 50);
 
     final IndexSearcher s = newSearcher(r);
     // important: set this after newSearcher, it might have run checkindex
@@ -75,12 +84,17 @@ public class TestForTooMuchCloning extends LuceneTestCase {
     final TopDocs hits =
         s.search(
             new TermRangeQuery("field", new BytesRef(), new BytesRef("\uFFFF"), true, true), 10);
-    assertTrue(hits.totalHits.value > 0);
+    assertTrue(hits.totalHits.value() > 0);
     final int queryCloneCount = dir.getInputCloneCount() - cloneCount;
     // System.out.println("query clone count=" + queryCloneCount);
+    // It is rather difficult to reliably predict how many query clone calls will be performed. One
+    // important factor is the number of segment partitions being searched, but it depends as well
+    // on the terms being indexed, and the distribution of the matches across the documents, which
+    // affects how the query gets rewritten and the subsequent number of clone calls it will
+    // perform.
     assertTrue(
         "too many calls to IndexInput.clone during TermRangeQuery: " + queryCloneCount,
-        queryCloneCount < 50);
+        queryCloneCount <= Math.max(s.getLeafContexts().size(), s.getSlices().length) * 7);
     r.close();
     dir.close();
   }

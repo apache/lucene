@@ -23,7 +23,12 @@ import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.LongRange;
-import org.apache.lucene.facet.*;
+import org.apache.lucene.facet.FacetResult;
+import org.apache.lucene.facet.FacetTestCase;
+import org.apache.lucene.facet.Facets;
+import org.apache.lucene.facet.FacetsCollector;
+import org.apache.lucene.facet.FacetsCollectorManager;
+import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -95,7 +100,7 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
     w.close();
 
     IndexSearcher s = newSearcher(r);
-    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector fc = s.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     Facets facets =
         new MatchingFacetSetsCounts(
@@ -179,7 +184,7 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
     w.close();
 
     IndexSearcher s = newSearcher(r);
-    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector fc = s.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     Facets facets =
         new MatchingFacetSetsCounts(
@@ -263,7 +268,7 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
     w.close();
 
     IndexSearcher s = newSearcher(r);
-    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector fc = s.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     Facets facets =
         new MatchingFacetSetsCounts(
@@ -355,7 +360,7 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
     w.close();
 
     IndexSearcher s = newSearcher(r);
-    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector fc = s.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     Facets facets =
         new MatchingFacetSetsCounts(
@@ -450,7 +455,7 @@ public class TestRangeFacetSetMatcher extends FacetTestCase {
     w.close();
 
     IndexSearcher s = newSearcher(r);
-    FacetsCollector fc = s.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector fc = s.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     Query fastMatchQuery =
         new BooleanQuery.Builder()

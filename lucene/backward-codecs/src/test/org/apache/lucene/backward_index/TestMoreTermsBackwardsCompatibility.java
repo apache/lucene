@@ -31,13 +31,15 @@ import org.apache.lucene.index.LogByteSizeMergePolicy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LineFileDocs;
+import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Version;
 
+@LuceneTestCase.AwaitsFix(bugUrl = "https://github.com/apache/lucene/issues/13847")
 public class TestMoreTermsBackwardsCompatibility extends BackwardsCompatibilityTestBase {
 
-  static final String INDEX_NAME = "moreterms";
+  static final String INDEX_NAME = "unsupported.moreterms";
 
   static final String SUFFIX = "";
 
@@ -48,15 +50,13 @@ public class TestMoreTermsBackwardsCompatibility extends BackwardsCompatibilityT
   @ParametersFactory(argumentFormatting = "Lucene-Version:%1$s; Pattern: %2$s")
   public static Iterable<Object[]> testVersionsFactory() {
     List<Object[]> params = new ArrayList<>();
-    params.add(new Object[] {Version.LUCENE_9_0_0, createPattern(INDEX_NAME, SUFFIX)});
+    params.add(new Object[] {Version.fromBits(9, 0, 0), createPattern(INDEX_NAME, SUFFIX)});
     return params;
   }
 
   @Override
   protected void createIndex(Directory directory) throws IOException {
     LogByteSizeMergePolicy mp = new LogByteSizeMergePolicy();
-    mp.setNoCFSRatio(1.0);
-    mp.setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     MockAnalyzer analyzer = new MockAnalyzer(random());
     analyzer.setMaxTokenLength(TestUtil.nextInt(random(), 1, IndexWriter.MAX_TERM_LENGTH));
 
@@ -65,6 +65,8 @@ public class TestMoreTermsBackwardsCompatibility extends BackwardsCompatibilityT
             .setMergePolicy(mp)
             .setCodec(TestUtil.getDefaultCodec())
             .setUseCompoundFile(false);
+    conf.getCodec().compoundFormat().setShouldUseCompoundFile(true);
+    conf.getCodec().compoundFormat().setMaxCFSSegmentSizeMB(Double.POSITIVE_INFINITY);
     IndexWriter writer = new IndexWriter(directory, conf);
     LineFileDocs docs = new LineFileDocs(new Random(0));
     for (int i = 0; i < 50; i++) {
