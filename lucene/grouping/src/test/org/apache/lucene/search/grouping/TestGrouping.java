@@ -293,9 +293,8 @@ public class TestGrouping extends LuceneTestCase {
       String groupField, Sort groupSort, int topDocs) throws IOException {
     if (random().nextBoolean()) {
       ValueSource vs = new BytesRefFieldSource(groupField);
-      Map<Object, Object> context = new HashMap<>();
       return new FirstPassGroupingCollectorManager<>(
-              () -> new ValueSourceGroupSelector(vs, context), groupSort, 0, topDocs)
+              () -> new ValueSourceGroupSelector(vs, new HashMap<>()), groupSort, 0, topDocs)
           .newCollector();
     } else {
       return new FirstPassGroupingCollectorManager<>(
@@ -315,9 +314,8 @@ public class TestGrouping extends LuceneTestCase {
           () -> new TermGroupSelector(groupField), groupSort, groupOffset, topNGroups);
     } else {
       ValueSource vs = new BytesRefFieldSource(groupField);
-      Map<Object, Object> context = new HashMap<>();
       return new FirstPassGroupingCollectorManager<>(
-          () -> new ValueSourceGroupSelector(vs, context), groupSort, groupOffset, topNGroups);
+          () -> new ValueSourceGroupSelector(vs, new HashMap<>()), groupSort, groupOffset, topNGroups);
     }
   }
 
@@ -376,9 +374,8 @@ public class TestGrouping extends LuceneTestCase {
         sg.sortValues = mergedTopGroup.sortValues;
         mvalSearchGroups.add(sg);
       }
-      Map<Object, Object> context = new HashMap<>();
       return new TopGroupsCollectorManager<>(
-          () -> new ValueSourceGroupSelector(vs, context),
+          () -> new ValueSourceGroupSelector(vs, new HashMap<>()),
           mvalSearchGroups,
           groupSort,
           sortWithinGroup,
