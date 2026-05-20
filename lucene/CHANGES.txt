@@ -137,9 +137,6 @@ Improvements
 
 * GITHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
 
-* GITHUB#XXXX: Replace deprecated IndexSearcher#search(Query, Collector) usage with CollectorManager
-  in JoinUtil#createJoinQuery for the GlobalOrdinalsCollector case. (Luca Cavanna)
-
 Optimizations
 ---------------------
 * GITHUB#15681, GITHUB#15833, GITHUB#16056: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
@@ -345,6 +342,9 @@ Improvements
   as its approximation. (Alan Woodward)
 
 * GITHUB#16000: Clarify that Accountable#ramBytesUsed() reports JVM heap memory only. (Luca Cavanna)
+
+* GITHUB#16091: Replace deprecated IndexSearcher#search(Query, Collector) usage with CollectorManager
+  in JoinUtil#createJoinQuery for the GlobalOrdinalsCollector case. (Luca Cavanna)
 
 Optimizations
 ---------------------
