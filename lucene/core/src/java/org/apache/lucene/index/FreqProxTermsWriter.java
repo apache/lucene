@@ -59,7 +59,7 @@ final class FreqProxTermsWriter extends TermsHash {
       FrozenBufferedUpdates.TermDocsIterator iterator =
           new FrozenBufferedUpdates.TermDocsIterator(fields, true);
 
-      // Since we have already applied delete-by-docID, liveDocs maybe not null.
+      // Since we have already applied delete-by-docID, liveDocs may not be null.
       if (state.liveDocs == null) {
         state.liveDocs = new FixedBitSet(state.segmentInfo.maxDoc());
         state.liveDocs.set(0, state.segmentInfo.maxDoc());
