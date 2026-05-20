@@ -311,6 +311,10 @@ New Features
   or mixed) via log-odds fusion with softplus gating and sqrt(n) confidence scaling.
   (Jaepil Jeong)
 
+# GITHUB#16029: Scalar quantization option to disable centering and writing of float vectors. This
+  reduces vector storage costs by 4x or more but also reduces quantization accuracy.
+  (Trevor McCulloch)
+
 Improvements
 ---------------------
 * GITHUB#15823: Implement method to add all stream elements into a PriorityQueue.
