@@ -25,6 +25,7 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.search.BatchDocValuesRangeIterator;
 import org.apache.lucene.search.ConstantScoreScorerSupplier;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -140,9 +141,16 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
 
         final SortField primarySortField;
         if (singleton != null) {
-          if (skipper != null
-              && (primarySortField = densePrimarySort(context.reader(), skipper)) != null) {
-            return getScorerSupplierFromDensePrimarySort(singleton, skipper, primarySortField);
+          if (skipper != null) {
+            if ((primarySortField = densePrimarySort(context.reader(), skipper)) != null) {
+              return getScorerSupplierFromDensePrimarySort(singleton, skipper, primarySortField);
+            }
+            // Use batch iterator for bulk block evaluation via intoBitSet()
+            return ConstantScoreScorerSupplier.fromIterator(
+                new BatchDocValuesRangeIterator(singleton, skipper, lowerValue, upperValue),
+                score(),
+                scoreMode,
+                maxDoc);
           }
           return ConstantScoreScorerSupplier.fromIterator(
               TwoPhaseIterator.asDocIdSetIterator(

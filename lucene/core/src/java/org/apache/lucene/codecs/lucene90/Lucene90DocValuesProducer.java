@@ -391,6 +391,24 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   private record DocValuesSkipperEntry(
       long offset, long length, long minValue, long maxValue, int docCount, int maxDocId) {}
 
+  // Cached VectorizationProvider instance to avoid repeated stack walks in ensureCaller()
+  private static final org.apache.lucene.internal.vectorization.DocValuesRangeSupport
+      DOC_VALUES_RANGE_SUPPORT =
+          org.apache.lucene.internal.vectorization.VectorizationProvider.getInstance()
+              .getDocValuesRangeSupport();
+
+  static void rangeIntoBitSet(
+      org.apache.lucene.util.LongValues values,
+      int fromDoc,
+      int toDoc,
+      long minValue,
+      long maxValue,
+      FixedBitSet bitSet,
+      int offset) {
+    DOC_VALUES_RANGE_SUPPORT.rangeIntoBitSet(
+        values, fromDoc, toDoc, minValue, maxValue, bitSet, offset);
+  }
+
   private static class NumericEntry {
     long[] table;
     int blockShift;
@@ -610,6 +628,19 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               public long longValue() throws IOException {
                 return values.get(doc);
               }
+
+              @Override
+              public void rangeIntoBitSet(
+                  int fromDoc,
+                  int toDoc,
+                  long minValue,
+                  long maxValue,
+                  FixedBitSet bitSet,
+                  int offset) {
+                // Bulk range evaluation via DocValuesRangeSupport
+                Lucene90DocValuesProducer.rangeIntoBitSet(
+                    values, fromDoc, toDoc, minValue, maxValue, bitSet, offset);
+              }
             };
           } else {
             final long mul = entry.gcd;
@@ -618,6 +649,23 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               @Override
               public long longValue() throws IOException {
                 return mul * values.get(doc) + delta;
+              }
+
+              @Override
+              public void rangeIntoBitSet(
+                  int fromDoc,
+                  int toDoc,
+                  long minValue,
+                  long maxValue,
+                  FixedBitSet bitSet,
+                  int offset) {
+                // Per-doc evaluation for gcd/delta encoded fields
+                for (int d = fromDoc; d < toDoc; d++) {
+                  long v = mul * values.get(d) + delta;
+                  if (v >= minValue && v <= maxValue) {
+                    bitSet.set(d - offset);
+                  }
+                }
               }
             };
           }
