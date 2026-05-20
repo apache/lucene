@@ -563,9 +563,8 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
       String groupField, Sort sortWithinGroup) {
     if (random().nextBoolean()) {
       ValueSource vs = new BytesRefFieldSource(groupField);
-      Map<Object, Object> context = new HashMap<>();
       return new AllGroupHeadsCollectorManager<>(
-          () -> new ValueSourceGroupSelector(vs, context), sortWithinGroup);
+          () -> new ValueSourceGroupSelector(vs, new HashMap<>()), sortWithinGroup);
     } else {
       return new AllGroupHeadsCollectorManager<>(
           () -> new TermGroupSelector(groupField), sortWithinGroup);
