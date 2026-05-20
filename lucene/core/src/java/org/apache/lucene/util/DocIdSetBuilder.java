@@ -231,6 +231,20 @@ public final class DocIdSetBuilder {
     return adder;
   }
 
+  /**
+   * If the builder is still in buffer (sparse) mode and this hint indicates the total number of
+   * docs will exceed the threshold above which a FixedBitSet is preferred, eagerly upgrade to
+   * FixedBitSet.
+   */
+  public void growHint(long expectedDocs) {
+    if (bitSet != null || expectedDocs <= 0) {
+      return;
+    }
+    if ((long) totalAllocated + expectedDocs > threshold) {
+      upgradeToBitSet();
+    }
+  }
+
   private void ensureBufferCapacity(int numDocs) {
     if (buffers.isEmpty()) {
       addBuffer(additionalCapacity(numDocs));
