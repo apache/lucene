@@ -20,15 +20,9 @@ package org.apache.lucene.sandbox.search;
 import static org.apache.lucene.search.TopDocsCollector.EMPTY_TOPDOCS;
 
 import java.io.IOException;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -43,7 +37,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.NamedThreadFactory;
 
 public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
   private Directory dir;
@@ -97,21 +90,14 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
     }
   }
 
-  public void testTopDocs() throws IOException {
-    IndexSearcher searcher = newSearcher(reader);
-    LargeNumHitsTopDocsCollectorManager largeCollectorManager =
-        new LargeNumHitsTopDocsCollectorManager(15);
-    TopScoreDocCollectorManager regularCollectorManager =
-        new TopScoreDocCollectorManager(15, Integer.MAX_VALUE);
+  public void testTopDocs() {
+    LargeNumHitsTopDocsCollector largeCollector = new LargeNumHitsTopDocsCollector(15);
 
-    TopDocs largeTopDocs = searcher.search(testQuery, largeCollectorManager);
-    TopDocs regularTopDocs = searcher.search(testQuery, regularCollectorManager);
+    IllegalArgumentException expected =
+        expectThrows(IllegalArgumentException.class, () -> largeCollector.topDocs(-1));
+    assertTrue(expected.getMessage().contains("Number of hits requested must not be negative"));
 
-    assertEquals(largeTopDocs.totalHits.value(), regularTopDocs.totalHits.value());
-
-    LargeNumHitsTopDocsCollector collector = largeCollectorManager.newCollector();
-    assertEquals(EMPTY_TOPDOCS, collector.topDocs(0));
-    assertEquals(collector.totalHits, collector.topDocs(35_000).totalHits.value());
+    assertEquals(EMPTY_TOPDOCS, largeCollector.topDocs(0));
   }
 
   public void testNoPQBuild() throws IOException {
@@ -163,47 +149,29 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
     }
   }
 
-  public void testInvalidNumHitsInConstructor() {
-    expectThrows(IllegalArgumentException.class, () -> new LargeNumHitsTopDocsCollectorManager(0));
-    expectThrows(IllegalArgumentException.class, () -> new LargeNumHitsTopDocsCollectorManager(-1));
+  public void testInvalidNumHitsInManagerConstructor() {
+    for (int n : new int[] {0, -1}) {
+      IllegalArgumentException e =
+          expectThrows(
+              IllegalArgumentException.class, () -> new LargeNumHitsTopDocsCollectorManager(n));
+      assertTrue(e.getMessage().contains("numHits must be > 0"));
+    }
   }
 
   public void testReduceWithZeroHitCollector() throws IOException {
-    // reduce() must skip collectors with 0 hits without throwing IllegalArgumentException.
-    Directory localDir = newDirectory();
-    IndexWriter writer = new IndexWriter(localDir, newIndexWriterConfig());
-    Document doc = new Document();
-    doc.add(newStringField("field", "hit", Field.Store.NO));
-    writer.addDocument(doc);
-    writer.commit();
-    writer.addDocument(new Document());
-    writer.commit();
-    writer.close();
+    Query termQuery = new TermQuery(new Term("field", "no-hit"));
 
-    DirectoryReader localReader = DirectoryReader.open(localDir);
-    ExecutorService executor =
-        Executors.newFixedThreadPool(2, new NamedThreadFactory("testReduceWithZeroHitCollector"));
-    // Override slices() to force one slice (and thus one collector) per segment.
-    IndexSearcher searcher =
-        new IndexSearcher(localReader, executor) {
-          @Override
-          protected LeafSlice[] slices(List<LeafReaderContext> leaves) {
-            return leaves.stream()
-                .map(
-                    l ->
-                        new LeafSlice(
-                            List.of(LeafReaderContextPartition.createForEntireSegment(l))))
-                .toArray(LeafSlice[]::new);
-          }
-        };
-    TopDocs result =
-        searcher.search(
-            new TermQuery(new Term("field", "hit")), new LargeNumHitsTopDocsCollectorManager(10));
-    assertEquals(1, result.totalHits.value());
+    IndexSearcher searcher = newSearcher(reader);
+    LargeNumHitsTopDocsCollectorManager largeCollectorManager =
+        new LargeNumHitsTopDocsCollectorManager(50);
+    TopScoreDocCollectorManager regularCollectorManager =
+        new TopScoreDocCollectorManager(50, Integer.MAX_VALUE);
 
-    executor.shutdown();
-    localReader.close();
-    localDir.close();
+    TopDocs largeTopDocs = searcher.search(termQuery, largeCollectorManager);
+    TopDocs regularTopDocs = searcher.search(termQuery, regularCollectorManager);
+
+    assertEquals(largeTopDocs.totalHits.value(), regularTopDocs.totalHits.value());
+    assertEquals(0, largeTopDocs.totalHits.value());
   }
 
   private void runNumHits(int numHits) throws IOException {

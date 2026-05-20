@@ -58,10 +58,7 @@ public class LargeNumHitsTopDocsCollectorManager
   @Override
   public TopDocs reduce(Collection<LargeNumHitsTopDocsCollector> collectors) throws IOException {
     final TopDocs[] topDocs =
-        collectors.stream()
-            .filter(c -> c.totalHits > 0)
-            .map(LargeNumHitsTopDocsCollector::topDocs)
-            .toArray(TopDocs[]::new);
+        collectors.stream().map(LargeNumHitsTopDocsCollector::topDocs).toArray(TopDocs[]::new);
     return TopDocs.merge(0, numHits, topDocs);
   }
 }
