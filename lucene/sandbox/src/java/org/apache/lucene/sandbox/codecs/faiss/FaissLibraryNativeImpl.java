@@ -140,7 +140,9 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
   private static final Map<VectorSimilarityFunction, Integer> FUNCTION_TO_METRIC =
       Map.of(
           // Mapped from faiss/MetricType.h
-          // COSINE uses METRIC_INNER_PRODUCT with normalized vectors
+          // COSINE uses METRIC_INNER_PRODUCT with normalized vectors.
+          // See
+          // https://github.com/facebookresearch/faiss/wiki/FAQ#how-can-i-index-vectors-for-cosine-distance
           DOT_PRODUCT, 0,
           COSINE, 0,
           EUCLIDEAN, 1);
