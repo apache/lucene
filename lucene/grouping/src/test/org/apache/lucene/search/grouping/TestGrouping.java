@@ -315,7 +315,10 @@ public class TestGrouping extends LuceneTestCase {
     } else {
       ValueSource vs = new BytesRefFieldSource(groupField);
       return new FirstPassGroupingCollectorManager<>(
-          () -> new ValueSourceGroupSelector(vs, new HashMap<>()), groupSort, groupOffset, topNGroups);
+          () -> new ValueSourceGroupSelector(vs, new HashMap<>()),
+          groupSort,
+          groupOffset,
+          topNGroups);
     }
   }
 
