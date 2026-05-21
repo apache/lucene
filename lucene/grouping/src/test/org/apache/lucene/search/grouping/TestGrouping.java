@@ -269,6 +269,24 @@ public class TestGrouping extends LuceneTestCase {
     dir.close();
   }
 
+  public void testSearchGroupMergeEmptyResult() {
+    // Empty shard list must return an empty collection, not null
+    Collection<SearchGroup<BytesRef>> result =
+        SearchGroup.merge(Collections.emptyList(), 0, 5, Sort.RELEVANCE);
+    assertNotNull(result);
+    assertTrue(result.isEmpty());
+
+    // When offset skips past all groups the result must also be an empty collection, not null
+    SearchGroup<BytesRef> group = new SearchGroup<>();
+    group.groupValue = new BytesRef("a");
+    group.sortValues = new Object[] {1.0f}; // Float value for Sort.RELEVANCE
+    List<Collection<SearchGroup<BytesRef>>> shardGroups =
+        Collections.singletonList(Collections.singletonList(group));
+    result = SearchGroup.merge(shardGroups, 10, 5, Sort.RELEVANCE); // offset 10 > 1 group
+    assertNotNull(result);
+    assertTrue(result.isEmpty());
+  }
+
   private void addGroupField(Document doc, String groupField, String value) {
     doc.add(new SortedDocValuesField(groupField, new BytesRef(value)));
   }
@@ -1512,21 +1530,17 @@ public class TestGrouping extends LuceneTestCase {
         SearchGroup.merge(shardGroups, groupOffset, topNGroups, groupSort);
     if (VERBOSE) {
       System.out.println(" top groups merged:");
-      if (mergedTopGroups == null) {
-        System.out.println("    null");
-      } else {
-        System.out.println("    " + mergedTopGroups.size() + " top groups:");
-        for (SearchGroup<BytesRef> group : mergedTopGroups) {
-          System.out.println(
-              "    ["
-                  + groupToString(group.groupValue)
-                  + "] groupSort="
-                  + Arrays.toString(group.sortValues));
-        }
+      System.out.println("    " + mergedTopGroups.size() + " top groups:");
+      for (SearchGroup<BytesRef> group : mergedTopGroups) {
+        System.out.println(
+            "    ["
+                + groupToString(group.groupValue)
+                + "] groupSort="
+                + Arrays.toString(group.sortValues));
       }
     }
 
-    if (mergedTopGroups != null) {
+    if (!mergedTopGroups.isEmpty()) {
       // Now 2nd pass:
       final List<TopGroups<BytesRef>> shardTopGroups = new ArrayList<>(subSearchers.length);
       for (int shardIDX = 0; shardIDX < subSearchers.length; shardIDX++) {
