@@ -108,6 +108,10 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
 
         readFields(in, state.fieldInfos);
 
+        if (version < Lucene90DocValuesFormat.VERSION_SKIPPER_MAX_VALUE_COUNT) {
+          inferMaxValueCounts(state.fieldInfos);
+        }
+
       } catch (Throwable exception) {
         priorE = exception;
       } finally {
@@ -216,6 +220,55 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         true);
   }
 
+  private void inferMaxValueCounts(FieldInfos fieldInfos) {
+    for (var cursor : skippers) {
+      DocValuesSkipperEntry entry = cursor.value;
+      if (entry.maxValueCount == -1 && entry.docCount != 0) {
+        int fieldNumber = cursor.key;
+        FieldInfo info = fieldInfos.fieldInfo(fieldNumber);
+        int inferredMaxValueCount = -1;
+        if (info != null) {
+          switch (info.getDocValuesType()) {
+            case NUMERIC, SORTED -> inferredMaxValueCount = 1;
+            case SORTED_NUMERIC -> {
+              SortedNumericEntry sne = sortedNumerics.get(fieldNumber);
+              if (sne != null && sne.numValues == sne.numDocsWithField) {
+                inferredMaxValueCount = 1;
+              }
+            }
+            case SORTED_SET -> {
+              SortedSetEntry sse = sortedSets.get(fieldNumber);
+              if (sse != null) {
+                if (sse.singleValueEntry != null) {
+                  inferredMaxValueCount = 1;
+                } else if (sse.ordsEntry != null
+                    && sse.ordsEntry.numValues == sse.ordsEntry.numDocsWithField) {
+                  inferredMaxValueCount = 1;
+                }
+              }
+            }
+            // $CASES-OMITTED$
+            default -> {
+              // leave as -1
+            }
+          }
+        }
+        if (inferredMaxValueCount != -1) {
+          skippers.put(
+              fieldNumber,
+              new DocValuesSkipperEntry(
+                  entry.offset,
+                  entry.length,
+                  entry.minValue,
+                  entry.maxValue,
+                  entry.docCount,
+                  entry.maxDocId,
+                  inferredMaxValueCount));
+        }
+      }
+    }
+  }
+
   private void readFields(IndexInput meta, FieldInfos infos) throws IOException {
     for (int fieldNumber = meta.readInt(); fieldNumber != -1; fieldNumber = meta.readInt()) {
       FieldInfo info = infos.fieldInfo(fieldNumber);
@@ -255,8 +308,15 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     long minValue = meta.readLong();
     int docCount = meta.readInt();
     int maxDocID = meta.readInt();
+    final int maxValueCount;
+    if (version >= Lucene90DocValuesFormat.VERSION_SKIPPER_MAX_VALUE_COUNT) {
+      maxValueCount = meta.readInt();
+    } else {
+      maxValueCount = docCount == 0 ? 0 : -1;
+    }
 
-    return new DocValuesSkipperEntry(offset, length, minValue, maxValue, docCount, maxDocID);
+    return new DocValuesSkipperEntry(
+        offset, length, minValue, maxValue, docCount, maxDocID, maxValueCount);
   }
 
   private void readNumeric(IndexInput meta, NumericEntry entry) throws IOException {
@@ -389,7 +449,31 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   }
 
   private record DocValuesSkipperEntry(
-      long offset, long length, long minValue, long maxValue, int docCount, int maxDocId) {}
+      long offset,
+      long length,
+      long minValue,
+      long maxValue,
+      int docCount,
+      int maxDocId,
+      int maxValueCount) {}
+
+  // Cached VectorizationProvider instance to avoid repeated stack walks in ensureCaller()
+  private static final org.apache.lucene.internal.vectorization.DocValuesRangeSupport
+      DOC_VALUES_RANGE_SUPPORT =
+          org.apache.lucene.internal.vectorization.VectorizationProvider.getInstance()
+              .getDocValuesRangeSupport();
+
+  static void rangeIntoBitSet(
+      org.apache.lucene.util.LongValues values,
+      int fromDoc,
+      int toDoc,
+      long minValue,
+      long maxValue,
+      FixedBitSet bitSet,
+      int offset) {
+    DOC_VALUES_RANGE_SUPPORT.rangeIntoBitSet(
+        values, fromDoc, toDoc, minValue, maxValue, bitSet, offset);
+  }
 
   private static class NumericEntry {
     long[] table;
@@ -610,6 +694,19 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               public long longValue() throws IOException {
                 return values.get(doc);
               }
+
+              @Override
+              public void rangeIntoBitSet(
+                  int fromDoc,
+                  int toDoc,
+                  long minValue,
+                  long maxValue,
+                  FixedBitSet bitSet,
+                  int offset) {
+                // Bulk range evaluation via DocValuesRangeSupport
+                Lucene90DocValuesProducer.rangeIntoBitSet(
+                    values, fromDoc, toDoc, minValue, maxValue, bitSet, offset);
+              }
             };
           } else {
             final long mul = entry.gcd;
@@ -618,6 +715,23 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               @Override
               public long longValue() throws IOException {
                 return mul * values.get(doc) + delta;
+              }
+
+              @Override
+              public void rangeIntoBitSet(
+                  int fromDoc,
+                  int toDoc,
+                  long minValue,
+                  long maxValue,
+                  FixedBitSet bitSet,
+                  int offset) {
+                // Per-doc evaluation for gcd/delta encoded fields
+                for (int d = fromDoc; d < toDoc; d++) {
+                  long v = mul * values.get(d) + delta;
+                  if (v >= minValue && v <= maxValue) {
+                    bitSet.set(d - offset);
+                  }
+                }
               }
             };
           }
@@ -2003,6 +2117,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       @Override
       public int docCount() {
         return entry.docCount;
+      }
+
+      @Override
+      public int maxValueCount() {
+        return entry.maxValueCount;
       }
     };
   }
