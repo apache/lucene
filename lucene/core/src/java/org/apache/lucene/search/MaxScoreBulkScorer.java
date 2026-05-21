@@ -214,11 +214,39 @@ final class MaxScoreBulkScorer extends BulkScorer {
       acceptDocs.applyMask(filterMatches, innerWindowMin);
     }
 
-    while (top.doc < innerWindowMax) {
-      int doc = top.doc;
-      boolean match = filterMatches.get(doc - innerWindowMin);
-      collectScores(top, doc, match);
-    }
+    int innerWindowSize = innerWindowMax - innerWindowMin;
+    // Collect matches of essential clauses into a bitset, checking filter via bitset lookup
+    do {
+      for (top.scorer.nextDocsAndScores(innerWindowMax, null, docAndScoreBuffer);
+          docAndScoreBuffer.size > 0;
+          top.scorer.nextDocsAndScores(innerWindowMax, null, docAndScoreBuffer)) {
+        for (int index = 0; index < docAndScoreBuffer.size; ++index) {
+          final int doc = docAndScoreBuffer.docs[index];
+          if (filterMatches.get(doc - innerWindowMin)) {
+            final float score = docAndScoreBuffer.features[index];
+            final int i = doc - innerWindowMin;
+            windowMatches.set(i);
+            windowScores[i] += score;
+          }
+        }
+      }
+
+      top.doc = top.iterator.docID();
+      top = essentialQueue.updateTop();
+    } while (top.doc < innerWindowMax);
+
+    docAndScoreAccBuffer.size = 0;
+    windowMatches.forEach(
+        0,
+        innerWindowSize,
+        0,
+        index -> {
+          docAndScoreAccBuffer.docs[docAndScoreAccBuffer.size] = innerWindowMin + index;
+          docAndScoreAccBuffer.scores[docAndScoreAccBuffer.size] = windowScores[index];
+          docAndScoreAccBuffer.size++;
+          windowScores[index] = 0d;
+        });
+    windowMatches.clear(0, innerWindowSize);
   }
 
   private void fillScoreBufferViaLeapFrog(DisiWrapper top, Bits acceptDocs, int innerWindowMax)
