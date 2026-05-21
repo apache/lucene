@@ -19,7 +19,6 @@ package org.apache.lucene.search.grouping;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -320,11 +319,7 @@ public class SearchGroup<T> {
         }
       }
 
-      if (newTopGroups.isEmpty()) {
-        return null;
-      } else {
-        return newTopGroups;
-      }
+      return newTopGroups;
     }
   }
 
@@ -336,10 +331,6 @@ public class SearchGroup<T> {
    */
   public static <T> Collection<SearchGroup<T>> merge(
       List<Collection<SearchGroup<T>>> topGroups, int offset, int topN, Sort groupSort) {
-    if (topGroups.isEmpty()) {
-      return Collections.emptyList();
-    } else {
-      return new GroupMerger<T>(groupSort).merge(topGroups, offset, topN);
-    }
+    return new GroupMerger<T>(groupSort).merge(topGroups, offset, topN);
   }
 }
