@@ -76,4 +76,9 @@ final class NativeVectorizationProvider extends VectorizationProvider {
   public PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException {
     return delegateVectorUtilProvider.newPostingDecodingUtil(input);
   }
+
+  @Override
+  public DocValuesRangeSupport getDocValuesRangeSupport() {
+    return delegateVectorUtilProvider.getDocValuesRangeSupport();
+  }
 }

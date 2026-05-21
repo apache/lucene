@@ -115,6 +115,13 @@ public abstract class VectorizationProvider {
   /** Create a new {@link PostingDecodingUtil} for the given {@link IndexInput}. */
   public abstract PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException;
 
+  /**
+   * Returns a {@link DocValuesRangeSupport} instance for bulk numeric range evaluation. The
+   * returned instance uses SIMD when available (Panama Vector API), falling back to a scalar loop
+   * otherwise.
+   */
+  public abstract DocValuesRangeSupport getDocValuesRangeSupport();
+
   // *** Lookup mechanism: ***
 
   private static final Logger LOG = Logger.getLogger(VectorizationProvider.class.getName());
@@ -213,6 +220,7 @@ public abstract class VectorizationProvider {
           "org.apache.lucene.util.VectorUtil",
           "org.apache.lucene.codecs.lucene104.Lucene104PostingsReader",
           "org.apache.lucene.codecs.lucene104.PostingIndexInput",
+          "org.apache.lucene.codecs.lucene90.Lucene90DocValuesProducer",
           "org.apache.lucene.tests.util.TestSysoutsLimits");
 
   private static final StackWalker STACKWALKER =

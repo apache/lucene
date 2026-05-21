@@ -290,6 +290,9 @@ API Changes
 
 * GITHUB#15990: Add experimental api to IndexWriter for columnar indexing. (Tim Brooks)
 
+* GITHUB#16062: Add FlatFieldVectorsWriter.asKnnVectorValues to return directly a KnnVectorValues "view" over
+  vectors to be written. (Lorenzo Dematte)
+
 New Features
 ---------------------
 
@@ -307,6 +310,9 @@ New Features
   into probabilities. LogOddsFusionQuery combines multiple probability signals (text, vector,
   or mixed) via log-odds fusion with softplus gating and sqrt(n) confidence scaling.
   (Jaepil Jeong)
+
+* GITHUB#15794: Add DocValuesSkipper metadata for the maximum number of values
+  on any document in a field. (Prithvi S)
 
 Improvements
 ---------------------
@@ -363,6 +369,8 @@ Optimizations
 
 * GITHUB#15779: Improve BytesRefHash.add performance by optimize rehash operation (tyronecai)
 
+* GITHUB#15879: Optimize TopGroups.merge() maxScore computation for relevance sorting (Binlong Gao)
+
 * GITHUB#15896: Skip heavy TreeSet opts for the first group in SearchGroup#merge (Binlong Gao)
 
 * GITHUB#15886: Cache frozen FieldType to skip redundant schema validation. (Tim Brooks)
@@ -384,8 +392,12 @@ Optimizations
 
 * GITHUB#16001: IndexSearcher.count() was calling query.rewrite twice, a regression since v9.10 (David Smiley)
 
-* GITHUB#16061, GITHUB#16070: Improve cost estimation in SortedSetDocValuesRangeQuery when using DocValuesSkipper
-  and the field is dense and is the primary sort of the index to reduce the number of doc values visited. (Ignacio Vera)
+* GITHUB#16050: Add SIMD-accelerated bulk range evaluation for dense numeric doc values via
+  BatchDocValuesRangeIterator and DocValuesRangeSupport. (Sagar Upadhyaya)
+
+* GITHUB#16061, GITHUB#16070, GITHUB#16085: Improve cost estimation in SortedSetDocValuesRangeQuery  and
+  SortedNumericDocValuesRangeQuery when using DocValuesSkipper, the field is dense and is the primary sort of
+  the index to reduce the number of doc values visited. (Ignacio Vera)
 
 * GITHUB#16048: Defer Sorter.DocMap packing until after flush (Tim Brooks)
 
@@ -397,6 +409,8 @@ Optimizations
 * GITHUB#16080: Add a BulkScrer implementation spcialized for filters that match dense ranges. (Ignacio Vera)
 
 * GITHUB#16081: Implement LeafCollector#collectRange in the collectors used in LRUCache. (Ignacio Vera)
+
+* GITHUB#16084: Added range encoding to  RoaringDocIdSet. (Ignacio Vera)
 
 Bug Fixes
 ---------------------
@@ -475,6 +489,8 @@ Other
 * GITHUB#15951: Fix WindowsFS onClose race condition (Szymon Bialkowski)
 
 * GITHUB#15960: Move parent field from DWPT to IndexingChain. (Tim Brooks)
+
+* GITHUB#16090: Make CollectorMemoryTracker instance members final. (Luca Cavanna)
 
 ======================= Lucene 10.4.0 =======================
 
