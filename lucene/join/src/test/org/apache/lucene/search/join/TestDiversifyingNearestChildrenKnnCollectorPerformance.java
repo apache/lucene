@@ -19,7 +19,6 @@ package org.apache.lucene.search.join;
 
 import java.io.IOException;
 import org.apache.lucene.search.TopDocs;
-import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BitSet;
 
 /**
@@ -28,27 +27,13 @@ import org.apache.lucene.util.BitSet;
  * <p>Correctness tests verify behaviour of the collector in various scenarios, including edge
  * cases.
  */
-public class TestDiversifyingNearestChildrenKnnCollectorPerformance extends LuceneTestCase {
-
-  /** Builds a BitSet whose set bits are the parent doc ids in a contiguous block-join layout. */
-  private static BitSet parentBitSet(int numParents, int childrenPerParent) throws IOException {
-    int[] parentDocIds = new int[numParents];
-    for (int p = 1; p <= numParents; p++) {
-      // layout: [child_0 … child_{C-1}, parent_C], repeated
-      // e.g. with 3 children per parent: [0,1,2,3, 4,5,6,7, 8,9,10,11, ...] → parent doc ids are
-      // 3,7,11,...
-      parentDocIds[p - 1] = p * (childrenPerParent + 1) - 1;
-    }
-    int totalDocs = numParents * (childrenPerParent + 1); // children + 1 parent per block
-    return BitSet.of(
-        new TestToParentJoinKnnResults.IntArrayDocIdSetIterator(parentDocIds, numParents),
-        totalDocs + 1);
-  }
+public class TestDiversifyingNearestChildrenKnnCollectorPerformance
+    extends DiversifyingChildrenKnnCollectorTestCase {
 
   /** Collects all children in order and returns topDocs. */
   private static TopDocs collectAll(int k, BitSet parents, int[] childIds, float[] scores) {
     DiversifyingNearestChildrenKnnCollector collector =
-        new DiversifyingNearestChildrenKnnCollector(k, Integer.MAX_VALUE, parents);
+        new DiversifyingNearestChildrenKnnCollector(k, Integer.MAX_VALUE, null, parents, null);
     for (int i = 0; i < childIds.length; i++) {
       collector.collect(childIds[i], scores[i]);
     }

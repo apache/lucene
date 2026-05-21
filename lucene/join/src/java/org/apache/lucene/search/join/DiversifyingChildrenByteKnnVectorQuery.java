@@ -156,7 +156,7 @@ public class DiversifyingChildrenByteKnnVectorQuery extends KnnByteVectorQuery {
 
   @Override
   protected KnnCollectorManager getKnnCollectorManager(int k, IndexSearcher searcher) {
-    return new DiversifyingNearestChildrenKnnCollectorManager(k, parentsFilter, searcher);
+    return new DiversifyingNearestChildrenKnnCollectorManager(k, parentsFilter, searcher, field);
   }
 
   @Override

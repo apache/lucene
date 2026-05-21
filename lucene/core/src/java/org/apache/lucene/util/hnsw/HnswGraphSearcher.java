@@ -44,6 +44,8 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
 
   protected int[] bulkNodes = null;
   protected float[] bulkScores = null;
+  protected float[] siblingScores = null;
+  protected int[] siblingsOrd = new int[0];
 
   /**
    * HNSW search is roughly logarithmic. This doesn't take maxConn into account, but it is a pretty
@@ -347,12 +349,37 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
           if (score >= minAcceptedSimilarity) {
             candidates.add(node, score);
             if (acceptOrds == null || acceptOrds.get(node)) {
+              // Fetch siblingsOrd BEFORE collect() so the parent is not yet in the heap
+              // The instanceof check is needed: this method is also called with a
+              // GraphBuilderKnnCollector
+              if (results instanceof OrdinalTranslatedKnnCollector collector) {
+                if (collector.isSiblingExpansionCollector()) {
+                  siblingsOrd = collector.getSiblingOrdinals(node, visited, siblingsOrd);
+                  for (int ord : siblingsOrd) visited.set(ord);
+                }
+              }
               if (results.collect(node, score)) {
                 float oldMinAcceptedSimilarity = minAcceptedSimilarity;
                 minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
                 if (minAcceptedSimilarity > oldMinAcceptedSimilarity) {
                   // we adjusted our minAcceptedSimilarity, so we should explore the next equivalent
                   // if necessary
+                  shouldExploreMinSim = true;
+                }
+              }
+              // Score and collect all siblingsOrd of the newly-discovered parent
+              if (siblingsOrd.length > 0) {
+                float prevMinSim = results.minCompetitiveSimilarity();
+                siblingScores =
+                    scoreHnswNodes(
+                        results,
+                        scorer,
+                        candidates,
+                        acceptOrds,
+                        siblingsOrd,
+                        siblingScores);
+                if (results.minCompetitiveSimilarity() > prevMinSim) {
+                  minAcceptedSimilarity = Math.nextUp(results.minCompetitiveSimilarity());
                   shouldExploreMinSim = true;
                 }
               }
