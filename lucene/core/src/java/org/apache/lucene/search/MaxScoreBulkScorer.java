@@ -216,37 +216,8 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
     int innerWindowSize = innerWindowMax - innerWindowMin;
     // Collect matches of essential clauses into a bitset, checking filter via bitset lookup
-    do {
-      for (top.scorer.nextDocsAndScores(innerWindowMax, null, docAndScoreBuffer);
-          docAndScoreBuffer.size > 0;
-          top.scorer.nextDocsAndScores(innerWindowMax, null, docAndScoreBuffer)) {
-        for (int index = 0; index < docAndScoreBuffer.size; ++index) {
-          final int doc = docAndScoreBuffer.docs[index];
-          if (filterMatches.get(doc - innerWindowMin)) {
-            final float score = docAndScoreBuffer.features[index];
-            final int i = doc - innerWindowMin;
-            windowMatches.set(i);
-            windowScores[i] += score;
-          }
-        }
-      }
-
-      top.doc = top.iterator.docID();
-      top = essentialQueue.updateTop();
-    } while (top.doc < innerWindowMax);
-
-    docAndScoreAccBuffer.size = 0;
-    windowMatches.forEach(
-        0,
-        innerWindowSize,
-        0,
-        index -> {
-          docAndScoreAccBuffer.docs[docAndScoreAccBuffer.size] = innerWindowMin + index;
-          docAndScoreAccBuffer.scores[docAndScoreAccBuffer.size] = windowScores[index];
-          docAndScoreAccBuffer.size++;
-          windowScores[index] = 0d;
-        });
-    windowMatches.clear(0, innerWindowSize);
+    collectEssentialScoresIntoWindow(top, innerWindowMax, innerWindowMin, null, filterMatches);
+    flushWindowToDocAndScoreAccBuffer(innerWindowMin, innerWindowSize);
   }
 
   private void fillScoreBufferViaLeapFrog(DisiWrapper top, Bits acceptDocs, int innerWindowMax)
@@ -267,27 +238,76 @@ final class MaxScoreBulkScorer extends BulkScorer {
         boolean match =
             (acceptDocs == null || acceptDocs.get(doc))
                 && (filter.twoPhaseView == null || filter.twoPhaseView.matches());
-        collectScores(top, doc, match);
+        double score = 0;
+        do {
+          if (match) {
+            score += top.scorer.score();
+          }
+          top.doc = top.iterator.nextDoc();
+          top = essentialQueue.updateTop();
+        } while (top.doc == doc);
+
+        if (match) {
+          docAndScoreAccBuffer.grow(docAndScoreAccBuffer.size + 1);
+          docAndScoreAccBuffer.docs[docAndScoreAccBuffer.size] = doc;
+          docAndScoreAccBuffer.scores[docAndScoreAccBuffer.size] = score;
+          docAndScoreAccBuffer.size++;
+        }
       }
     }
   }
 
-  private void collectScores(DisiWrapper top, int doc, boolean match) throws IOException {
-    double score = 0;
+  /**
+   * Collect matches of essential clauses into {@link #windowMatches} and {@link #windowScores}. The
+   * caller is responsible for populating {@link #docAndScoreAccBuffer} from the window afterwards.
+   *
+   * @param acceptDocs docs to accept, passed to {@link Scorer#nextDocsAndScores}
+   * @param filterMatches if non-null, only docs whose corresponding bit is set in this bitset will
+   *     be collected; if null, all docs are collected
+   */
+  private void collectEssentialScoresIntoWindow(
+      DisiWrapper top,
+      int innerWindowMax,
+      int innerWindowMin,
+      Bits acceptDocs,
+      FixedBitSet filterMatches)
+      throws IOException {
     do {
-      if (match) {
-        score += top.scorer.score();
+      for (top.scorer.nextDocsAndScores(innerWindowMax, acceptDocs, docAndScoreBuffer);
+          docAndScoreBuffer.size > 0;
+          top.scorer.nextDocsAndScores(innerWindowMax, acceptDocs, docAndScoreBuffer)) {
+        for (int index = 0; index < docAndScoreBuffer.size; ++index) {
+          final int doc = docAndScoreBuffer.docs[index];
+          if (filterMatches != null && filterMatches.get(doc - innerWindowMin) == false) {
+            continue;
+          }
+          final float score = docAndScoreBuffer.features[index];
+          final int i = doc - innerWindowMin;
+          windowMatches.set(i);
+          windowScores[i] += score;
+        }
       }
-      top.doc = top.iterator.nextDoc();
-      top = essentialQueue.updateTop();
-    } while (top.doc == doc);
 
-    if (match) {
-      docAndScoreAccBuffer.grow(docAndScoreAccBuffer.size + 1);
-      docAndScoreAccBuffer.docs[docAndScoreAccBuffer.size] = doc;
-      docAndScoreAccBuffer.scores[docAndScoreAccBuffer.size] = score;
-      docAndScoreAccBuffer.size++;
-    }
+      top.doc = top.iterator.docID();
+      top = essentialQueue.updateTop();
+    } while (top.doc < innerWindowMax);
+  }
+
+  /** Flush {@link #windowMatches} and {@link #windowScores} into {@link #docAndScoreAccBuffer}. */
+  private void flushWindowToDocAndScoreAccBuffer(int innerWindowMin, int innerWindowSize)
+      throws IOException {
+    docAndScoreAccBuffer.size = 0;
+    windowMatches.forEach(
+        0,
+        innerWindowSize,
+        0,
+        index -> {
+          docAndScoreAccBuffer.docs[docAndScoreAccBuffer.size] = innerWindowMin + index;
+          docAndScoreAccBuffer.scores[docAndScoreAccBuffer.size] = windowScores[index];
+          docAndScoreAccBuffer.size++;
+          windowScores[index] = 0d;
+        });
+    windowMatches.clear(0, innerWindowSize);
   }
 
   private void scoreInnerWindowSingleEssentialClause(
@@ -317,35 +337,8 @@ final class MaxScoreBulkScorer extends BulkScorer {
     int innerWindowSize = innerWindowMax - innerWindowMin;
 
     // Collect matches of essential clauses into a bitset
-    do {
-      for (top.scorer.nextDocsAndScores(innerWindowMax, acceptDocs, docAndScoreBuffer);
-          docAndScoreBuffer.size > 0;
-          top.scorer.nextDocsAndScores(innerWindowMax, acceptDocs, docAndScoreBuffer)) {
-        for (int index = 0; index < docAndScoreBuffer.size; ++index) {
-          final int doc = docAndScoreBuffer.docs[index];
-          final float score = docAndScoreBuffer.features[index];
-          final int i = doc - innerWindowMin;
-          windowMatches.set(i);
-          windowScores[i] += score;
-        }
-      }
-
-      top.doc = top.iterator.docID();
-      top = essentialQueue.updateTop();
-    } while (top.doc < innerWindowMax);
-
-    docAndScoreAccBuffer.size = 0;
-    windowMatches.forEach(
-        0,
-        innerWindowSize,
-        0,
-        index -> {
-          docAndScoreAccBuffer.docs[docAndScoreAccBuffer.size] = innerWindowMin + index;
-          docAndScoreAccBuffer.scores[docAndScoreAccBuffer.size] = windowScores[index];
-          docAndScoreAccBuffer.size++;
-          windowScores[index] = 0d;
-        });
-    windowMatches.clear(0, innerWindowSize);
+    collectEssentialScoresIntoWindow(top, innerWindowMax, innerWindowMin, acceptDocs, null);
+    flushWindowToDocAndScoreAccBuffer(innerWindowMin, innerWindowSize);
 
     scoreNonEssentialClauses(collector, docAndScoreAccBuffer, firstEssentialScorer);
   }
