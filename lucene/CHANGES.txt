@@ -86,6 +86,9 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16050: Add SIMD-accelerated bulk range evaluation for dense numeric doc values via
+  BatchDocValuesRangeIterator and DocValuesRangeSupport. (Sagar Upadhyaya)
+
 * GITHUB#15861: Optimise PhraseScorer by short circuiting non competitive documents in TOP_SCORES mode. (Prithvi S)
 
 * GITHUB#15868: Optimize DisjunctionMaxBulkScorer by reusing the inner LeafCollector across
