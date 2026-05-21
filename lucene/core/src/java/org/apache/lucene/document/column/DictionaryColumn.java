@@ -114,9 +114,11 @@ public abstract class DictionaryColumn extends Column {
   }
 
   /**
-   * The stored-field type emitted for this column. The default is {@link StoredValue.Type#BINARY}.
-   * Only {@link StoredValue.Type#BINARY} and {@link StoredValue.Type#STRING} are supported;
-   * subclasses may override to emit string stored values.
+   * The stored-field type emitted for this column. The default is {@link
+   * org.apache.lucene.document.StoredValue.Type#BINARY}. Only {@link
+   * org.apache.lucene.document.StoredValue.Type#BINARY} and {@link
+   * org.apache.lucene.document.StoredValue.Type#STRING} are supported; subclasses may override to
+   * emit string stored values.
    */
   public StoredValue.Type storedType() {
     return StoredValue.Type.BINARY;

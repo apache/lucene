@@ -302,7 +302,6 @@ public class TestDictionaryColumn extends LuceneTestCase {
     assertNotNull(sdv);
 
     // After merge, all 4 docs present with correct values
-    String[] expected = {"blue", "green", "purple", "red"};
     for (int i = 0; i < 4; i++) {
       assertEquals(i, sdv.nextDoc());
     }
@@ -439,7 +438,7 @@ public class TestDictionaryColumn extends LuceneTestCase {
     } finally {
       try {
         dir.close();
-      } catch (IOException e) {
+      } catch (IOException _) {
         // ignore
       }
     }
