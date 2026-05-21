@@ -227,6 +227,8 @@ Other
 
 * GITHUB#15960: Move parent field from DWPT to IndexingChain. (Tim Brooks)
 
+* GITHUB#16090: Make CollectorMemoryTracker instance members final. (Luca Cavanna)
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes
