@@ -92,7 +92,7 @@ public class DocBaseBitSetIterator extends AbstractDocIdSetIterator {
     // The destination bit set may be shorter than this bit set. This is only legal if all bits
     // beyond offset + bitSet.length() are clear. If not, the below call to `super.intoBitSet` will
     // throw an exception.
-    actualUpto = (int) Math.min(actualUpto, offset + (long) bitSet.length());
+    actualUpto = MathUtil.unsignedMin(actualUpto, offset + bitSet.length());
     if (actualUpto > doc) {
       FixedBitSet.orRange(bits, doc - docBase, bitSet, doc - offset, actualUpto - doc);
       advance(actualUpto); // set the current doc

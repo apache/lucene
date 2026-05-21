@@ -520,7 +520,7 @@ final class SimpleTextBKDWriter implements Closeable {
       writeLeafBlockDocs(out, leafDocs, 0, leafCount);
 
       final IntFunction<BytesRef> packedValues =
-          new IntFunction<BytesRef>() {
+          new IntFunction<>() {
             final BytesRef scratch = new BytesRef();
 
             {
@@ -687,7 +687,6 @@ final class SimpleTextBKDWriter implements Closeable {
     BKDRadixSelector radixSelector =
         new BKDRadixSelector(config, maxPointsSortInHeap, tempDir, tempFileNamePrefix);
 
-    boolean success = false;
     try {
 
       build(
@@ -706,12 +705,9 @@ final class SimpleTextBKDWriter implements Closeable {
       assert tempDir.getCreatedFiles().isEmpty();
       // System.out.println("write time: " + ((System.nanoTime() - t1) / (double)
       // TimeUnit.MILLISECONDS.toNanos(1)) + " ms");
-
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.deleteFilesIgnoringExceptions(tempDir, tempDir.getCreatedFiles());
-      }
+    } catch (Throwable t) {
+      IOUtils.deleteFilesSuppressingExceptions(t, tempDir, tempDir.getCreatedFiles());
+      throw t;
     }
 
     // Write index:
@@ -840,9 +836,9 @@ final class SimpleTextBKDWriter implements Closeable {
     // right reader after recursing to children, and possibly within recursed children,
     // since all together they make a single pass through the file.  But this is a sizable re-org,
     // and would mean leaving readers (IndexInputs) open for longer:
-    if (writer instanceof OfflinePointWriter) {
+    if (writer instanceof OfflinePointWriter opw) {
       // We are reading from a temp file; go verify the checksum:
-      String tempFileName = ((OfflinePointWriter) writer).name;
+      String tempFileName = opw.name;
       try (ChecksumIndexInput in = tempDir.openChecksumInput(tempFileName)) {
         CodecUtil.checkFooter(in, priorException);
       }
@@ -1008,7 +1004,7 @@ final class SimpleTextBKDWriter implements Closeable {
 
       // Write the full values:
       IntFunction<BytesRef> packedValues =
-          new IntFunction<BytesRef>() {
+          new IntFunction<>() {
             @Override
             public BytesRef apply(int i) {
               reader.getValue(from + i, scratchBytesRef1);
@@ -1124,12 +1120,12 @@ final class SimpleTextBKDWriter implements Closeable {
       // least number of unique bytes at commonPrefixLengths[dim], which makes compression more
       // efficient
       HeapPointWriter heapSource;
-      if (points.writer() instanceof HeapPointWriter == false) {
+      if (points.writer() instanceof HeapPointWriter hpw) {
+        heapSource = hpw;
+      } else {
         // Adversarial cases can cause this, e.g. merging big segments with most of the points
         // deleted
         heapSource = switchToHeap(points.writer());
-      } else {
-        heapSource = (HeapPointWriter) points.writer();
       }
 
       int from = Math.toIntExact(points.start());
@@ -1189,7 +1185,7 @@ final class SimpleTextBKDWriter implements Closeable {
 
       // Write the full values:
       IntFunction<BytesRef> packedValues =
-          new IntFunction<BytesRef>() {
+          new IntFunction<>() {
             final BytesRef scratch = new BytesRef();
 
             {

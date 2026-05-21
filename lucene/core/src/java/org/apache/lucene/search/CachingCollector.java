@@ -50,7 +50,7 @@ public abstract class CachingCollector extends FilterCollector {
     float score;
 
     @Override
-    public final float score() {
+    public float score() {
       return score;
     }
   }

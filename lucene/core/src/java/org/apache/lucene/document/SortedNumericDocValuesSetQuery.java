@@ -86,7 +86,7 @@ final class SortedNumericDocValuesSetQuery extends Query implements Accountable 
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     if (numbers.size() == 0) {
-      return new MatchNoDocsQuery();
+      return MatchNoDocsQuery.INSTANCE;
     }
     return super.rewrite(indexSearcher);
   }

@@ -98,6 +98,15 @@ public final class ImpactsDISI extends FilterDocIdSetIterator {
     }
   }
 
+  /** If current doc is not competitive, move to a competitive one. */
+  void ensureCompetitive() throws IOException {
+    int doc = docID();
+    int advanceTarget = advanceTarget(doc);
+    if (advanceTarget != doc) {
+      in.advance(advanceTarget);
+    }
+  }
+
   @Override
   public int advance(int target) throws IOException {
     return in.advance(advanceTarget(target));

@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.analysis.lv;
 
-import static org.apache.lucene.analysis.util.StemmerUtil.*;
+import static org.apache.lucene.analysis.util.StemmerUtil.endsWith;
 
 /**
  * Light stemmer for Latvian.

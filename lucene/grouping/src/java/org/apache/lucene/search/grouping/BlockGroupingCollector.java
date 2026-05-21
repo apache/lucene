@@ -17,6 +17,7 @@
 package org.apache.lucene.search.grouping;
 
 import java.io.IOException;
+import java.util.Comparator;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -92,7 +93,7 @@ public class BlockGroupingCollector extends SimpleCollector {
   private int groupEndDocID;
   private DocIdSetIterator lastDocPerGroupBits;
   private Scorable scorer;
-  private final GroupQueue groupQueue;
+  private final PriorityQueue<OneGroup> groupQueue;
   private boolean groupCompetes;
 
   private static final class OneGroup {
@@ -105,34 +106,31 @@ public class BlockGroupingCollector extends SimpleCollector {
     int comparatorSlot;
   }
 
-  // Sorts by groupSort.  Not static -- uses comparators, reversed
-  private final class GroupQueue extends PriorityQueue<OneGroup> {
+  private PriorityQueue<OneGroup> createGroupQueue(int size) {
+    // Sorts by groupSort
+    return PriorityQueue.usingComparator(
+        size,
+        ((Comparator<OneGroup>)
+                (group1, group2) -> {
+                  assert group1 != group2;
+                  assert group1.comparatorSlot != group2.comparatorSlot;
 
-    public GroupQueue(int size) {
-      super(size);
-    }
-
-    @Override
-    protected boolean lessThan(final OneGroup group1, final OneGroup group2) {
-
-      // System.out.println("    ltcheck");
-      assert group1 != group2;
-      assert group1.comparatorSlot != group2.comparatorSlot;
-
-      final int numComparators = comparators.length;
-      for (int compIDX = 0; compIDX < numComparators; compIDX++) {
-        final int c =
-            reversed[compIDX]
-                * comparators[compIDX].compare(group1.comparatorSlot, group2.comparatorSlot);
-        if (c != 0) {
-          // Short circuit
-          return c > 0;
-        }
-      }
-
-      // Break ties by docID; lower docID is always sorted first
-      return group1.topGroupDoc > group2.topGroupDoc;
-    }
+                  final int numComparators = comparators.length;
+                  for (int compIDX = 0; compIDX < numComparators; compIDX++) {
+                    final int c =
+                        reversed[compIDX]
+                            * comparators[compIDX].compare(
+                                group1.comparatorSlot, group2.comparatorSlot);
+                    if (c != 0) {
+                      // Short circuit
+                      return c;
+                    }
+                  }
+                  return 0;
+                })
+            .thenComparingInt(
+                g -> g.topGroupDoc) // Break ties by docID; lower docID is always sorted first
+            .reversed());
   }
 
   // Called when we transition to another group; if the
@@ -221,7 +219,7 @@ public class BlockGroupingCollector extends SimpleCollector {
       throw new IllegalArgumentException("topNGroups must be >= 1 (got " + topNGroups + ")");
     }
 
-    groupQueue = new GroupQueue(topNGroups);
+    groupQueue = createGroupQueue(topNGroups);
     pendingSubDocs = new int[10];
     if (needsScores) {
       pendingSubScores = new float[10];
@@ -279,6 +277,7 @@ public class BlockGroupingCollector extends SimpleCollector {
     final Score fakeScorer = new Score();
 
     float maxScore = Float.MIN_VALUE;
+    final boolean groupSortByRelevance = groupSort.equals(Sort.RELEVANCE);
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     final GroupDocs<Object>[] groups = new GroupDocs[groupQueue.size() - groupOffset];
@@ -288,7 +287,8 @@ public class BlockGroupingCollector extends SimpleCollector {
       // At this point we hold all docs w/ in each group,
       // unsorted; we now sort them:
       final TopDocsCollector<?> collector;
-      if (withinGroupSort.equals(Sort.RELEVANCE)) {
+      final boolean withinGroupSortByRelevance = withinGroupSort.equals(Sort.RELEVANCE);
+      if (withinGroupSortByRelevance) {
         // Sort by score
         if (!needsScores) {
           throw new IllegalArgumentException(
@@ -311,7 +311,9 @@ public class BlockGroupingCollector extends SimpleCollector {
         final int doc = og.docs[docIDX];
         if (needsScores) {
           fakeScorer.score = og.scores[docIDX];
-          groupMaxScore = Math.max(groupMaxScore, fakeScorer.score);
+          if (!withinGroupSortByRelevance) {
+            groupMaxScore = Math.max(groupMaxScore, fakeScorer.score);
+          }
         }
         leafCollector.collect(doc);
       }
@@ -325,6 +327,9 @@ public class BlockGroupingCollector extends SimpleCollector {
       }
 
       final TopDocs topDocs = collector.topDocs(withinGroupOffset, maxDocsPerGroup);
+      if (withinGroupSortByRelevance && topDocs.scoreDocs.length > 0) {
+        groupMaxScore = topDocs.scoreDocs[0].score;
+      }
 
       // TODO: we could aggregate scores across children
       // by Sum/Avg instead of passing NaN:
@@ -336,7 +341,13 @@ public class BlockGroupingCollector extends SimpleCollector {
               topDocs.scoreDocs,
               null,
               groupSortValues);
-      maxScore = Math.max(maxScore, groupMaxScore);
+      if (!groupSortByRelevance) {
+        maxScore = Math.max(maxScore, groupMaxScore);
+      }
+    }
+
+    if (groupSortByRelevance) {
+      maxScore = groups[0].maxScore();
     }
 
     /*

@@ -58,7 +58,7 @@ public class ShuffleFS extends FilterFileSystemProvider {
               path1.getFileName().toString().compareTo(path2.getFileName().toString()));
       // sort based on current class seed
       Collections.shuffle(contents, new Random(seed));
-      return new DirectoryStream<Path>() {
+      return new DirectoryStream<>() {
         @Override
         public Iterator<Path> iterator() {
           return contents.iterator();

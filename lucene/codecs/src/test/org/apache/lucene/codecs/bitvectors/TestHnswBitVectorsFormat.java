@@ -33,6 +33,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.store.Directory;
@@ -84,7 +85,8 @@ public class TestHnswBitVectorsFormat extends BaseIndexFileFormatTestCase {
       try (IndexReader reader = DirectoryReader.open(w)) {
         LeafReader r = getOnlyLeafReader(reader);
         TopKnnCollector collector = new TopKnnCollector(3, Integer.MAX_VALUE);
-        r.searchNearestVectors("v1", vectors[0], collector, null);
+        r.searchNearestVectors(
+            "v1", vectors[0], collector, AcceptDocs.fromLiveDocs(null, r.maxDoc()));
         TopDocs topDocs = collector.topDocs();
         assertEquals(3, topDocs.scoreDocs.length);
 

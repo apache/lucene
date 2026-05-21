@@ -33,6 +33,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Sort;
@@ -467,7 +468,7 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public Terms terms(String field) throws IOException {
+      public Terms terms(String field) {
         Terms terms = postingsReader.terms(field);
         return terms == null
             ? null
@@ -543,12 +544,12 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public PointValues getValues(String field) throws IOException {
-        var values = delegate.getValues(field);
+      public PointValues getValues(String field) {
+        PointValues values = delegate.getValues(field);
         if (values == null) {
           return null;
         }
-        return new SortingPointValues(delegate.getValues(field), docMap);
+        return new SortingPointValues(values, docMap);
       }
 
       @Override
@@ -581,13 +582,20 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
+      public void search(
+          String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {
         throw new UnsupportedOperationException();
       }
 
       @Override
-      public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
+      public void search(
+          String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {
         throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+        return delegate.getOffHeapByteSize(fieldInfo);
       }
 
       @Override

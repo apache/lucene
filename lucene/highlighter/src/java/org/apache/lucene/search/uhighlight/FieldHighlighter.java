@@ -124,7 +124,7 @@ public class FieldHighlighter {
       pos = next;
     }
 
-    return passages.toArray(new Passage[passages.size()]);
+    return passages.toArray(Passage[]::new);
   }
 
   // algorithm: treat sentence snippets as miniature documents
@@ -193,7 +193,7 @@ public class FieldHighlighter {
     } while (off.nextPosition());
     maybeAddPassage(passageQueue, passageScorer, passage, contentLength);
 
-    Passage[] passages = passageQueue.toArray(new Passage[passageQueue.size()]);
+    Passage[] passages = passageQueue.toArray(Passage[]::new);
     Arrays.sort(passages, passageSortComparator);
     return passages;
   }

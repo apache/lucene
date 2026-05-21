@@ -21,11 +21,9 @@ import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 public class TestGeoPolygon extends LuceneTestCase {
 
-  @Test
   public void testH3CellsWrongIntersection() {
     final List<GeoPoint> points1 = new ArrayList<>();
     addToList(points1, PlanetModel.SPHERE, -64.2102198418716, -39.14233318389477);
@@ -52,7 +50,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     points.add(new GeoPoint(planetModel, Geo3DUtil.fromDegrees(lat), Geo3DUtil.fromDegrees(lon)));
   }
 
-  @Test
   public void testPolygonPointFiltering() {
     final GeoPoint point1 = new GeoPoint(PlanetModel.WGS84, 1.0, 2.0);
     final GeoPoint point2 = new GeoPoint(PlanetModel.WGS84, 0.5, 2.5);
@@ -119,7 +116,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testPolygonPointFiltering2() {
     // all coplanar
     GeoPoint point1 = new GeoPoint(PlanetModel.SPHERE, 1.1264101919629863, -0.9108307879480759);
@@ -134,7 +130,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertEquals(null, filteredPoints);
   }
 
-  @Test
   public void testPolygonClockwise() {
     GeoPolygon c;
     GeoPoint gp;
@@ -142,7 +137,7 @@ public class TestGeoPolygon extends LuceneTestCase {
     List<GeoPolygonFactory.PolygonDescription> shapes;
 
     // Points go counterclockwise, so
-    points = new ArrayList<GeoPoint>();
+    points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, -0.1, -0.5));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.0, -0.6));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.1, -0.5));
@@ -163,7 +158,7 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(!c.isWithin(gp));
 
     // Now, go clockwise
-    points = new ArrayList<GeoPoint>();
+    points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.0, -0.4));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.1, -0.5));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.0, -0.6));
@@ -184,7 +179,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(c.isWithin(gp));
   }
 
-  @Test
   public void testPolygonIntersects() {
     GeoPolygon c;
     List<GeoPoint> points;
@@ -192,7 +186,7 @@ public class TestGeoPolygon extends LuceneTestCase {
     XYZBounds xyzBounds;
     XYZSolid xyzSolid;
 
-    points = new ArrayList<GeoPoint>();
+    points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.0, -0.4));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.1, -0.5));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.0, -0.6));
@@ -277,14 +271,13 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertEquals(GeoArea.DISJOINT, xyzSolid.getRelationship(c));
   }
 
-  @Test
   public void testPolygonPointWithin() {
     GeoPolygon c;
     GeoPoint gp;
     List<GeoPoint> points;
     List<GeoPolygonFactory.PolygonDescription> shapes;
 
-    points = new ArrayList<GeoPoint>();
+    points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.0, -0.4));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.1, -0.5));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.0, -0.6));
@@ -356,7 +349,7 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertFalse(c.isWithin(gp));
 
     // Next bunch of small polygon points
-    points = new ArrayList<GeoPoint>();
+    points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.0, -0.4));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.1, -0.5));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.01, -0.6));
@@ -437,7 +430,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertFalse(c.isWithin(gp));
   }
 
-  @Test
   public void testPolygonBounds() {
     GeoMembershipShape c;
     LatLonBounds b;
@@ -447,7 +439,7 @@ public class TestGeoPolygon extends LuceneTestCase {
     GeoArea area;
 
     // BKD failure
-    points = new ArrayList<GeoPoint>();
+    points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.WGS84, -0.36716183577912814, 1.4836349969188696));
     points.add(new GeoPoint(PlanetModel.WGS84, 0.7846038240742979, -0.02743348424931823));
     points.add(new GeoPoint(PlanetModel.WGS84, -0.7376479402362607, -0.5072961758807019));
@@ -470,7 +462,7 @@ public class TestGeoPolygon extends LuceneTestCase {
             xyzb.getMaximumZ());
     assertTrue(area.isWithin(point));
 
-    points = new ArrayList<GeoPoint>();
+    points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.0, -0.4));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.1, -0.5));
     points.add(new GeoPoint(PlanetModel.SPHERE, 0.0, -0.6));
@@ -489,7 +481,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertEquals(0.1, b.getMaxLatitude(), 0.000001);
   }
 
-  @Test
   public void testPolygonBoundsCase1() {
     GeoPolygon c;
     List<GeoPoint> points;
@@ -536,7 +527,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(area.isWithin(point2));
   }
 
-  @Test
   public void testGeoPolygonBoundsCase2() {
     // [junit4]   1> TEST: iter=23 shape=GeoCompositeMembershipShape: {[GeoConvexPolygon:
     // {planetmodel=PlanetModel(xyScaling=0.7563871189161702 zScaling=1.2436128810838298), points=
@@ -593,29 +583,28 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(area.isWithin(pointQuantized));
   }
 
-  @Test
   public void testGeoConcaveRelationshipCase1() {
     /*
-       [junit4]   1> doc=906 matched but should not
-       [junit4]   1>   point=[lat=-0.9825762558001477, lon=2.4832136904725273]
-       [junit4]   1>   quantized=[X=-0.4505446160475436, Y=0.34850109186970535, Z=-0.8539966368663765]
-
-    doc=906 added here:
-
-       [junit4]   1>   cycle: cell=107836 parentCellID=107835 x: -1147288468 TO -742350917, y: -1609508490 TO 1609508490, z: -2147483647 TO 2147483647, splits: 3 queue.size()=1
-       [junit4]   1>     minx=-0.6107484000858642 maxx=-0.39518364125756916 miny=-0.8568069517709872 maxy=0.8568069517709872 minz=-1.1431930485939341 maxz=1.1431930485939341
-       [junit4]   1>     GeoArea.CONTAINS: now addAll
-
-    shape:
-       [junit4]   1> TEST: iter=18 shape=GeoCompositeMembershipShape: {[GeoConvexPolygon: {
-       planetmodel=PlanetModel(xyScaling=0.8568069516722363 zScaling=1.1431930483277637), points=
-       [[lat=1.1577814487635816, lon=1.6283601832010004],
-       [lat=0.6664570999069251, lon=2.0855825542851574],
-       [lat=-0.23953537010974632, lon=1.8498724094352876]]}, GeoConcavePolygon: {planetmodel=PlanetModel(xyScaling=0.8568069516722363 zScaling=1.1431930483277637), points=
-       [[lat=1.1577814487635816, lon=1.6283601832010004],
-       [lat=-0.23953537010974632, lon=1.8498724094352876],
-       [lat=-1.1766904875978805, lon=-2.1346828411344436]]}]}
-        */
+     *  [junit4]   1> doc=906 matched but should not
+     *  [junit4]   1>   point=[lat=-0.9825762558001477, lon=2.4832136904725273]
+     *  [junit4]   1>   quantized=[X=-0.4505446160475436, Y=0.34850109186970535, Z=-0.8539966368663765]
+     *
+     * doc=906 added here:
+     *
+     *  [junit4]   1>   cycle: cell=107836 parentCellID=107835 x: -1147288468 TO -742350917, y: -1609508490 TO 1609508490, z: -2147483647 TO 2147483647, splits: 3 queue.size()=1
+     *  [junit4]   1>     minx=-0.6107484000858642 maxx=-0.39518364125756916 miny=-0.8568069517709872 maxy=0.8568069517709872 minz=-1.1431930485939341 maxz=1.1431930485939341
+     *  [junit4]   1>     GeoArea.CONTAINS: now addAll
+     *
+     * shape:
+     *   [junit4]   1> TEST: iter=18 shape=GeoCompositeMembershipShape: {[GeoConvexPolygon: {
+     *  planetmodel=PlanetModel(xyScaling=0.8568069516722363 zScaling=1.1431930483277637), points=
+     *  [[lat=1.1577814487635816, lon=1.6283601832010004],
+     *  [lat=0.6664570999069251, lon=2.0855825542851574],
+     *  [lat=-0.23953537010974632, lon=1.8498724094352876]]}, GeoConcavePolygon: {planetmodel=PlanetModel(xyScaling=0.8568069516722363 zScaling=1.1431930483277637), points=
+     *  [[lat=1.1577814487635816, lon=1.6283601832010004],
+     *  [lat=-0.23953537010974632, lon=1.8498724094352876],
+     *  [lat=-1.1766904875978805, lon=-2.1346828411344436]]}]}
+     */
     PlanetModel pm = new PlanetModel(0.8568069516722363, 1.1431930483277637);
     // Build the polygon
     GeoCompositeMembershipShape c = new GeoCompositeMembershipShape(pm);
@@ -647,32 +636,31 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(xyzSolid.getRelationship(c) == GeoArea.OVERLAPS);
   }
 
-  @Test
   public void testPolygonFactoryCase1() {
     /*
-     [junit4]   1> Initial points:
-     [junit4]   1>  [X=-0.17279348371564082, Y=0.24422965662722748, Z=0.9521675605930696]
-     [junit4]   1>  [X=-0.6385022730019092, Y=-0.6294493901210775, Z=0.4438687423720006]
-     [junit4]   1>  [X=-0.9519561011293354, Y=-0.05324061687857965, Z=-0.30423702782227385]
-     [junit4]   1>  [X=-0.30329807815178533, Y=-0.9447434167936289, Z=0.13262941042055737]
-     [junit4]   1>  [X=-0.5367607140926697, Y=0.8179452639396644, Z=0.21163783898691005]
-     [junit4]   1>  [X=0.39285411191111597, Y=0.6369575362013932, Z=0.6627439307500357]
-     [junit4]   1>  [X=-0.44715655239362595, Y=0.8332957749253644, Z=0.3273923501593971]
-     [junit4]   1>  [X=0.33024322515264537, Y=0.6945246730529289, Z=0.6387986432043298]
-     [junit4]   1>  [X=-0.1699323603224724, Y=0.8516746480592872, Z=0.4963385521664198]
-     [junit4]   1>  [X=0.2654788898359613, Y=0.7380222309164597, Z=0.6200740473100581]
-     [junit4]   1> For start plane, the following points are in/out:
-     [junit4]   1>  [X=-0.17279348371564082, Y=0.24422965662722748, Z=0.9521675605930696] is: in
-     [junit4]   1>  [X=-0.6385022730019092, Y=-0.6294493901210775, Z=0.4438687423720006] is: in
-     [junit4]   1>  [X=-0.9519561011293354, Y=-0.05324061687857965, Z=-0.30423702782227385] is: out
-     [junit4]   1>  [X=-0.30329807815178533, Y=-0.9447434167936289, Z=0.13262941042055737] is: in
-     [junit4]   1>  [X=-0.5367607140926697, Y=0.8179452639396644, Z=0.21163783898691005] is: out
-     [junit4]   1>  [X=0.39285411191111597, Y=0.6369575362013932, Z=0.6627439307500357] is: in
-     [junit4]   1>  [X=-0.44715655239362595, Y=0.8332957749253644, Z=0.3273923501593971] is: out
-     [junit4]   1>  [X=0.33024322515264537, Y=0.6945246730529289, Z=0.6387986432043298] is: in
-     [junit4]   1>  [X=-0.1699323603224724, Y=0.8516746480592872, Z=0.4963385521664198] is: out
-     [junit4]   1>  [X=0.2654788898359613, Y=0.7380222309164597, Z=0.6200740473100581] is: out
-    */
+     * [junit4]   1> Initial points:
+     * [junit4]   1>  [X=-0.17279348371564082, Y=0.24422965662722748, Z=0.9521675605930696]
+     * [junit4]   1>  [X=-0.6385022730019092, Y=-0.6294493901210775, Z=0.4438687423720006]
+     * [junit4]   1>  [X=-0.9519561011293354, Y=-0.05324061687857965, Z=-0.30423702782227385]
+     * [junit4]   1>  [X=-0.30329807815178533, Y=-0.9447434167936289, Z=0.13262941042055737]
+     * [junit4]   1>  [X=-0.5367607140926697, Y=0.8179452639396644, Z=0.21163783898691005]
+     * [junit4]   1>  [X=0.39285411191111597, Y=0.6369575362013932, Z=0.6627439307500357]
+     * [junit4]   1>  [X=-0.44715655239362595, Y=0.8332957749253644, Z=0.3273923501593971]
+     * [junit4]   1>  [X=0.33024322515264537, Y=0.6945246730529289, Z=0.6387986432043298]
+     * [junit4]   1>  [X=-0.1699323603224724, Y=0.8516746480592872, Z=0.4963385521664198]
+     * [junit4]   1>  [X=0.2654788898359613, Y=0.7380222309164597, Z=0.6200740473100581]
+     * [junit4]   1> For start plane, the following points are in/out:
+     * [junit4]   1>  [X=-0.17279348371564082, Y=0.24422965662722748, Z=0.9521675605930696] is: in
+     * [junit4]   1>  [X=-0.6385022730019092, Y=-0.6294493901210775, Z=0.4438687423720006] is: in
+     * [junit4]   1>  [X=-0.9519561011293354, Y=-0.05324061687857965, Z=-0.30423702782227385] is: out
+     * [junit4]   1>  [X=-0.30329807815178533, Y=-0.9447434167936289, Z=0.13262941042055737] is: in
+     * [junit4]   1>  [X=-0.5367607140926697, Y=0.8179452639396644, Z=0.21163783898691005] is: out
+     * [junit4]   1>  [X=0.39285411191111597, Y=0.6369575362013932, Z=0.6627439307500357] is: in
+     * [junit4]   1>  [X=-0.44715655239362595, Y=0.8332957749253644, Z=0.3273923501593971] is: out
+     * [junit4]   1>  [X=0.33024322515264537, Y=0.6945246730529289, Z=0.6387986432043298] is: in
+     * [junit4]   1>  [X=-0.1699323603224724, Y=0.8516746480592872, Z=0.4963385521664198] is: out
+     * [junit4]   1>  [X=0.2654788898359613, Y=0.7380222309164597, Z=0.6200740473100581] is: out
+     */
 
     final List<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(0.17279348371564082, 0.24422965662722748, 0.9521675605930696));
@@ -693,7 +681,6 @@ public class TestGeoPolygon extends LuceneTestCase {
         });
   }
 
-  @Test
   public void testPolygonFactoryCase2() {
     /*
     [[lat=-0.48522750470337056, lon=-1.7370471071224087([X=-0.14644023172524287, Y=-0.8727091042681705, Z=-0.4665895520487907])],
@@ -724,15 +711,14 @@ public class TestGeoPolygon extends LuceneTestCase {
         });
   }
 
-  @Test
   public void testPolygonFactoryCase3() throws Exception {
     /*
-     This one failed to be detected as convex:
-
-    [junit4]   1> convex part = GeoConvexPolygon: {planetmodel=PlanetModel.WGS84, points=
-    [[lat=0.39346633764155237, lon=1.306697331415816([X=0.24124272064589647, Y=0.8921189226448045, Z=0.3836311592666308])],
-    [lat=-0.4252164254406539, lon=-1.0929282311747601([X=0.41916238097763436, Y=-0.8093435958043177, Z=-0.4127428785664968])],
-    [lat=0.4654236264787552, lon=1.3013260557429494([X=0.2380080413677112, Y=0.8617612419312584, Z=0.4489988990508502])]], internalEdges={0, 1, 2}}
+     * This one failed to be detected as convex:
+     *
+     * [junit4]   1> convex part = GeoConvexPolygon: {planetmodel=PlanetModel.WGS84, points=
+     * [[lat=0.39346633764155237, lon=1.306697331415816([X=0.24124272064589647, Y=0.8921189226448045, Z=0.3836311592666308])],
+     * [lat=-0.4252164254406539, lon=-1.0929282311747601([X=0.41916238097763436, Y=-0.8093435958043177, Z=-0.4127428785664968])],
+     * [lat=0.4654236264787552, lon=1.3013260557429494([X=0.2380080413677112, Y=0.8617612419312584, Z=0.4489988990508502])]], internalEdges={0, 1, 2}}
      */
     final GeoPoint p3 = new GeoPoint(PlanetModel.WGS84, 0.39346633764155237, 1.306697331415816);
     final GeoPoint p2 = new GeoPoint(PlanetModel.WGS84, -0.4252164254406539, -1.0929282311747601);
@@ -756,13 +742,12 @@ public class TestGeoPolygon extends LuceneTestCase {
         0,
         1,
         new SidedPlane(p1, p3, p2),
-        new ArrayList<GeoPolygon>(),
+        new ArrayList<>(),
         null);
 
     assertFalse(mutableBoolean.value);
   }
 
-  @Test
   public void testPolygonFactoryCase4() {
     // [[lat=0.897812132711355, lon=0.0025364171887532795([X=0.6227358672251874,
     // Y=0.0015795213449218714, Z=0.7812318690127594])],
@@ -782,32 +767,30 @@ public class TestGeoPolygon extends LuceneTestCase {
 
     final List<GeoPolygonFactory.PolygonDescription> shapeList = new ArrayList<>();
     final GeoPolygonFactory.PolygonDescription desc =
-        new GeoPolygonFactory.PolygonDescription(
-            points, new ArrayList<GeoPolygonFactory.PolygonDescription>());
+        new GeoPolygonFactory.PolygonDescription(points, new ArrayList<>());
 
     shapeList.add(desc);
 
     GeoPolygonFactory.makeLargeGeoPolygon(PlanetModel.WGS84, shapeList);
   }
 
-  @Test
   public void testPolygonFactoryCase5() {
     /*
-    [junit4]   1> points=[[lat=0.0425265613312593, lon=0.0([X=1.0002076326868337, Y=0.0, Z=0.042561051669501374])],
-     [lat=0.8894380320379947, lon=-2.8993466885897496([X=-0.6109015457368775, Y=-0.1509528453728308, Z=0.7760109675775679])],
-     [lat=-0.8298163536994994, lon=-0.1462586594666574([X=0.6673285226073522, Y=-0.09830454048435874, Z=-0.7372817203741138])],
-     [lat=0.0, lon=-1.7156310907312492E-12([X=1.0011188539924791, Y=-1.7175506314267352E-12, Z=0.0])],
-     [lat=-0.7766317703682181, lon=3.141592653589793([X=-0.7128972529667801, Y=8.730473389667082E-17, Z=-0.7005064828988063])]]
-
-    {[GeoConvexPolygon: {planetmodel=PlanetModel.WGS84, points=
-    [[lat=0.0425265613312593, lon=0.0([X=1.0002076326868337, Y=0.0, Z=0.042561051669501374])],
-    [lat=0.8894380320379947, lon=-2.8993466885897496([X=-0.6109015457368775, Y=-0.1509528453728308, Z=0.7760109675775679])],
-    [lat=-0.8298163536994994, lon=-0.1462586594666574([X=0.6673285226073522, Y=-0.09830454048435874, Z=-0.7372817203741138])],
-    [lat=0.0, lon=-1.7156310907312492E-12([X=1.0011188539924791, Y=-1.7175506314267352E-12, Z=0.0])]], internalEdges={3}},
-    GeoConvexPolygon: {planetmodel=PlanetModel.WGS84, points=
-    [[lat=0.0425265613312593, lon=0.0([X=1.0002076326868337, Y=0.0, Z=0.042561051669501374])],
-    [lat=0.0, lon=-1.7156310907312492E-12([X=1.0011188539924791, Y=-1.7175506314267352E-12, Z=0.0])],
-    [lat=-0.7766317703682181, lon=3.141592653589793([X=-0.7128972529667801, Y=8.730473389667082E-17, Z=-0.7005064828988063])]], internalEdges={0}}]}
+     * [junit4]   1> points=[[lat=0.0425265613312593, lon=0.0([X=1.0002076326868337, Y=0.0, Z=0.042561051669501374])],
+     * [lat=0.8894380320379947, lon=-2.8993466885897496([X=-0.6109015457368775, Y=-0.1509528453728308, Z=0.7760109675775679])],
+     * [lat=-0.8298163536994994, lon=-0.1462586594666574([X=0.6673285226073522, Y=-0.09830454048435874, Z=-0.7372817203741138])],
+     * [lat=0.0, lon=-1.7156310907312492E-12([X=1.0011188539924791, Y=-1.7175506314267352E-12, Z=0.0])],
+     * [lat=-0.7766317703682181, lon=3.141592653589793([X=-0.7128972529667801, Y=8.730473389667082E-17, Z=-0.7005064828988063])]]
+     *
+     * {[GeoConvexPolygon: {planetmodel=PlanetModel.WGS84, points=
+     * [[lat=0.0425265613312593, lon=0.0([X=1.0002076326868337, Y=0.0, Z=0.042561051669501374])],
+     * [lat=0.8894380320379947, lon=-2.8993466885897496([X=-0.6109015457368775, Y=-0.1509528453728308, Z=0.7760109675775679])],
+     * [lat=-0.8298163536994994, lon=-0.1462586594666574([X=0.6673285226073522, Y=-0.09830454048435874, Z=-0.7372817203741138])],
+     * [lat=0.0, lon=-1.7156310907312492E-12([X=1.0011188539924791, Y=-1.7175506314267352E-12, Z=0.0])]], internalEdges={3}},
+     * GeoConvexPolygon: {planetmodel=PlanetModel.WGS84, points=
+     * [[lat=0.0425265613312593, lon=0.0([X=1.0002076326868337, Y=0.0, Z=0.042561051669501374])],
+     * [lat=0.0, lon=-1.7156310907312492E-12([X=1.0011188539924791, Y=-1.7175506314267352E-12, Z=0.0])],
+     * [lat=-0.7766317703682181, lon=3.141592653589793([X=-0.7128972529667801, Y=8.730473389667082E-17, Z=-0.7005064828988063])]], internalEdges={0}}]}
      */
     final GeoPoint p1 = new GeoPoint(PlanetModel.WGS84, 0.0425265613312593, 0.0);
     final GeoPoint p2 = new GeoPoint(PlanetModel.WGS84, 0.8894380320379947, -2.8993466885897496);
@@ -847,13 +830,13 @@ public class TestGeoPolygon extends LuceneTestCase {
     // false);
 
     /*
-    final List<GeoPoint> p2List = new ArrayList<>();
-    p2List.add(p1);
-    p2List.add(p4);
-    p2List.add(p5);
-    final BitSet p2Internal = new BitSet();
-    final GeoConvexPolygon poly2 = new GeoConvexPolygon(PlanetModel.WGS84, p2List, p2Internal, false);
-    */
+     * final List<GeoPoint> p2List = new ArrayList<>();
+     * p2List.add(p1);
+     * p2List.add(p4);
+     * p2List.add(p5);
+     * final BitSet p2Internal = new BitSet();
+     * final GeoConvexPolygon poly2 = new GeoConvexPolygon(PlanetModel.WGS84, p2List, p2Internal, false);
+     */
 
     // XYZBounds bounds1 = new XYZBounds();
     // poly1.getBounds(bounds1);
@@ -863,40 +846,39 @@ public class TestGeoPolygon extends LuceneTestCase {
     //  bounds1.getMinimumZ(), bounds1.getMaximumZ());
 
     /*
-    XYZBounds bounds2 = new XYZBounds();
-    poly2.getBounds(bounds2);
-    XYZSolid solid2 = XYZSolidFactory.makeXYZSolid(PlanetModel.WGS84, bounds2.getMinimumX(), bounds2.getMaximumX(),
-      bounds2.getMinimumY(), bounds2.getMaximumY(),
-      bounds2.getMinimumZ(), bounds2.getMaximumZ());
-    */
+     * XYZBounds bounds2 = new XYZBounds();
+     * poly2.getBounds(bounds2);
+     * XYZSolid solid2 = XYZSolidFactory.makeXYZSolid(PlanetModel.WGS84, bounds2.getMinimumX(), bounds2.getMaximumX(),
+     *  bounds2.getMinimumY(), bounds2.getMaximumY(),
+     *  bounds2.getMinimumZ(), bounds2.getMaximumZ());
+     */
 
     final GeoPoint point = new GeoPoint(PlanetModel.WGS84, -0.41518838180529244, 3.141592653589793);
 
     assertTrue(p.isWithin(point) ? solid.isWithin(point) : true);
   }
 
-  @Test
   public void testLargePolygonFailureCase1() {
     /*
-    [junit4]    >   shape=GeoComplexPolygon: {planetmodel=PlanetModel.WGS84, number of shapes=1, address=65f193fc,
-     testPoint=[lat=1.3005550159098878, lon=-2.4043250791032897([X=-0.1972404544647752, Y=-0.17911237095124333, Z=0.9617794725902562])],
-     testPointInSet=false,
-     shapes={
-      {[lat=0.972005250702484, lon=-1.9776473855435277([X=-0.22278290030997686, Y=-0.5170266140533727, Z=0.8250470449472769])],
-     [lat=0.5530477484903267, lon=2.5300578442038137([X=-0.6968439858923609, Y=0.4886310878468911, Z=0.5253825248638686])],
-     [lat=1.5185372097372358, lon=-0.33848566616392867([X=0.04916162127975167, Y=-0.01730656055596007, Z=0.9964092501726799])]}}
-    [junit4]    >   bounds=XYZBounds: [xmin=-1.0011188544924792 xmax=0.04916162177975167 ymin=-1.0011188544924792 ymax=1.0011188544924792 zmin=-5.0E-10 zmax=0.99766957331525]
-    [junit4]    >   world bounds=( minX=-1.0011188539924791 maxX=1.0011188539924791 minY=-1.0011188539924791 maxY=1.0011188539924791 minZ=-0.9977622920221051 maxZ=0.9977622920221051
-    [junit4]    >   quantized point=[X=0.32866145093230836, Y=0.21519085912590594, Z=0.9177348472123349] within shape? true within bounds? false
-    [junit4]    >   unquantized point=[lat=1.166339260547107, lon=0.5797066870374205([X=0.3286614507856878, Y=0.21519085911319938, Z=0.9177348470779726])] within shape? true within bounds? false
-    [junit4]    >   docID=10 deleted?=false
-    [junit4]    >   query=PointInGeo3DShapeQuery: field=point: Shape: GeoComplexPolygon: {planetmodel=PlanetModel.WGS84, number of shapes=1, address=65f193fc, testPoint=[lat=1.3005550159098878, lon=-2.4043250791032897([X=-0.1972404544647752, Y=-0.17911237095124333, Z=0.9617794725902562])], testPointInSet=false, shapes={ {[lat=0.972005250702484, lon=-1.9776473855435277([X=-0.22278290030997686, Y=-0.5170266140533727, Z=0.8250470449472769])], [lat=0.5530477484903267, lon=2.5300578442038137([X=-0.6968439858923609, Y=0.4886310878468911, Z=0.5253825248638686])], [lat=1.5185372097372358, lon=-0.33848566616392867([X=0.04916162127975167, Y=-0.01730656055596007, Z=0.9964092501726799])]}}
-    [junit4]    >   explanation:
-    [junit4]    >     target is in leaf _0(7.0.0):c13 of full reader StandardDirectoryReader(segments:3:nrt _0(7.0.0):c13)
-    [junit4]    >     full BKD path to target doc:
-    [junit4]    >       Cell(x=-0.9060562472023252 TO 1.0010658113048514 y=-0.5681445384324596 TO 0.7613281936331098 z=-0.43144274682272304 TO 0.9977622920582089); Shape relationship = OVERLAPS; Quantized point within cell = true; Unquantized point within cell = true
-    [junit4]    >     on cell Cell(x=-0.9060562472023252 TO 1.0010658113048514 y=-0.5681445384324596 TO 0.7613281936331098 z=-0.43144274682272304 TO 0.9977622920582089); Shape relationship = OVERLAPS; Quantized point within cell = true; Unquantized point within cell = true, wrapped visitor returned CELL_CROSSES_QUERY
-    [junit4]    >   leaf visit docID=10 x=0.32866145093230836 y=0.21519085912590594 z=0.9177348472123349
+     * [junit4]    >   shape=GeoComplexPolygon: {planetmodel=PlanetModel.WGS84, number of shapes=1, address=65f193fc,
+     * testPoint=[lat=1.3005550159098878, lon=-2.4043250791032897([X=-0.1972404544647752, Y=-0.17911237095124333, Z=0.9617794725902562])],
+     * testPointInSet=false,
+     * shapes={
+     *  {[lat=0.972005250702484, lon=-1.9776473855435277([X=-0.22278290030997686, Y=-0.5170266140533727, Z=0.8250470449472769])],
+     * [lat=0.5530477484903267, lon=2.5300578442038137([X=-0.6968439858923609, Y=0.4886310878468911, Z=0.5253825248638686])],
+     * [lat=1.5185372097372358, lon=-0.33848566616392867([X=0.04916162127975167, Y=-0.01730656055596007, Z=0.9964092501726799])]}}
+     * [junit4]    >   bounds=XYZBounds: [xmin=-1.0011188544924792 xmax=0.04916162177975167 ymin=-1.0011188544924792 ymax=1.0011188544924792 zmin=-5.0E-10 zmax=0.99766957331525]
+     * [junit4]    >   world bounds=( minX=-1.0011188539924791 maxX=1.0011188539924791 minY=-1.0011188539924791 maxY=1.0011188539924791 minZ=-0.9977622920221051 maxZ=0.9977622920221051
+     * [junit4]    >   quantized point=[X=0.32866145093230836, Y=0.21519085912590594, Z=0.9177348472123349] within shape? true within bounds? false
+     * [junit4]    >   unquantized point=[lat=1.166339260547107, lon=0.5797066870374205([X=0.3286614507856878, Y=0.21519085911319938, Z=0.9177348470779726])] within shape? true within bounds? false
+     * [junit4]    >   docID=10 deleted?=false
+     * [junit4]    >   query=PointInGeo3DShapeQuery: field=point: Shape: GeoComplexPolygon: {planetmodel=PlanetModel.WGS84, number of shapes=1, address=65f193fc, testPoint=[lat=1.3005550159098878, lon=-2.4043250791032897([X=-0.1972404544647752, Y=-0.17911237095124333, Z=0.9617794725902562])], testPointInSet=false, shapes={ {[lat=0.972005250702484, lon=-1.9776473855435277([X=-0.22278290030997686, Y=-0.5170266140533727, Z=0.8250470449472769])], [lat=0.5530477484903267, lon=2.5300578442038137([X=-0.6968439858923609, Y=0.4886310878468911, Z=0.5253825248638686])], [lat=1.5185372097372358, lon=-0.33848566616392867([X=0.04916162127975167, Y=-0.01730656055596007, Z=0.9964092501726799])]}}
+     * [junit4]    >   explanation:
+     * [junit4]    >     target is in leaf _0(7.0.0):c13 of full reader StandardDirectoryReader(segments:3:nrt _0(7.0.0):c13)
+     * [junit4]    >     full BKD path to target doc:
+     * [junit4]    >       Cell(x=-0.9060562472023252 TO 1.0010658113048514 y=-0.5681445384324596 TO 0.7613281936331098 z=-0.43144274682272304 TO 0.9977622920582089); Shape relationship = OVERLAPS; Quantized point within cell = true; Unquantized point within cell = true
+     * [junit4]    >     on cell Cell(x=-0.9060562472023252 TO 1.0010658113048514 y=-0.5681445384324596 TO 0.7613281936331098 z=-0.43144274682272304 TO 0.9977622920582089); Shape relationship = OVERLAPS; Quantized point within cell = true; Unquantized point within cell = true, wrapped visitor returned CELL_CROSSES_QUERY
+     * [junit4]    >   leaf visit docID=10 x=0.32866145093230836 y=0.21519085912590594 z=0.9177348472123349
      */
     final GeoPoint testPoint =
         new GeoPoint(PlanetModel.WGS84, 1.3005550159098878, -2.4043250791032897);
@@ -943,35 +925,34 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertEquals(referenceBounds.getMaximumZ(), actualBounds.getMaximumZ(), 0.0000001);
   }
 
-  @Test
   public void testLargePolygonFailureCase2() {
     /*
-    [junit4]    > Throwable #1: java.lang.AssertionError: FAIL: id=2 should have matched but did not
-    [junit4]    >   shape=GeoComplexPolygon: {planetmodel=PlanetModel.WGS84, number of shapes=1, address=6eccd33b,
-    testPoint=[lat=0.03170690566178683, lon=1.0862414976732029([X=0.46609969117964495, Y=0.8854242006628827, Z=0.0317369552646047])],
-    testPointInSet=false,
-    shapes={ {
-    [lat=1.0774842300167298, lon=-0.11534121538553185([X=0.46969930266058374, Y=-0.054417217622152375, Z=0.8794587218580684])],
-    [lat=0.05101544777239065, lon=1.031558236908661([X=0.5133835679471972, Y=0.8579350866926241, Z=0.051049928818862174])],
-    [lat=-0.011222928649880962, lon=1.5851249038356199([X=-0.01434320835886277, Y=1.0009526216234983, Z=-0.011235244842183226])],
-    [lat=-0.02571365137215876, lon=0.5627875521419741([X=0.8464356149277266, Y=0.5339650936800929, Z=-0.025739527171261035])],
-    [lat=0.03833766792865358, lon=1.0082901344798614([X=0.5335096521470836, Y=0.8462411929752105, Z=0.03837097111317845])],
-    [lat=0.1719054969347345, lon=0.9024290407832926([X=0.6111941952395734, Y=0.7740553755547761, Z=0.17123457719021212])],
-    [lat=0.08180947807010808, lon=1.0107147265848113([X=0.5300590148023426, Y=0.8453039531721928, Z=0.08180784289673602])]}}
-    [junit4]    >   bounds=XYZBounds: [xmin=-1.0011188544924792 xmax=1.0011188544924792
-     ymin=-1.0011188544924792 ymax=1.0011188544924792
-     zmin=-0.025739527671261034 zmax=0.9977622925221051]
-    [junit4]    >   world bounds=( minX=-1.0011188539924791 maxX=1.0011188539924791 minY=-1.0011188539924791 maxY=1.0011188539924791 minZ=-0.9977622920221051 maxZ=0.9977622920221051
-    [junit4]    >   quantized point=[X=-0.477874179571219, Y=0.5908091335156603, Z=-0.6495967142221521] within shape? true within bounds? false
-    [junit4]    >   unquantized point=[lat=-0.7073124559987376, lon=2.2509085326629887([X=-0.47787417938801546, Y=0.5908091336704123, Z=-0.6495967140640758])] within shape? true within bounds? false
-    [junit4]    >   docID=2 deleted?=false
-    [junit4]    >   query=PointInGeo3DShapeQuery: field=point: Shape: GeoComplexPolygon: {planetmodel=PlanetModel.WGS84, number of shapes=1, address=6eccd33b, testPoint=[lat=0.03170690566178683, lon=1.0862414976732029([X=0.46609969117964495, Y=0.8854242006628827, Z=0.0317369552646047])], testPointInSet=false, shapes={ {[lat=1.0774842300167298, lon=-0.11534121538553185([X=0.46969930266058374, Y=-0.054417217622152375, Z=0.8794587218580684])], [lat=0.05101544777239065, lon=1.031558236908661([X=0.5133835679471972, Y=0.8579350866926241, Z=0.051049928818862174])], [lat=-0.011222928649880962, lon=1.5851249038356199([X=-0.01434320835886277, Y=1.0009526216234983, Z=-0.011235244842183226])], [lat=-0.02571365137215876, lon=0.5627875521419741([X=0.8464356149277266, Y=0.5339650936800929, Z=-0.025739527171261035])], [lat=0.03833766792865358, lon=1.0082901344798614([X=0.5335096521470836, Y=0.8462411929752105, Z=0.03837097111317845])], [lat=0.1719054969347345, lon=0.9024290407832926([X=0.6111941952395734, Y=0.7740553755547761, Z=0.17123457719021212])], [lat=0.08180947807010808, lon=1.0107147265848113([X=0.5300590148023426, Y=0.8453039531721928, Z=0.08180784289673602])]}}
-    [junit4]    >   explanation:
-    [junit4]    >     target is in leaf _0(7.0.0):C11 of full reader StandardDirectoryReader(segments:3:nrt _0(7.0.0):C11)
-    [junit4]    >     full BKD path to target doc:
-    [junit4]    >       Cell(x=-0.8906255176936849 TO 1.0005089994430834 y=-0.6808995306272861 TO 0.9675171153117977 z=-0.997762292058209 TO 0.9939318087373729); Shape relationship = OVERLAPS; Quantized point within cell = true; Unquantized point within cell = true
-    [junit4]    >     on cell Cell(x=-0.8906255176936849 TO 1.0005089994430834 y=-0.6808995306272861 TO 0.9675171153117977 z=-0.997762292058209 TO 0.9939318087373729); Shape relationship = OVERLAPS; Quantized point within cell = true; Unquantized point within cell = true, wrapped visitor returned CELL_CROSSES_QUERY
-    [junit4]    >   leaf visit docID=2 x=-0.477874179571219 y=0.5908091335156603 z=-0.6495967142221521
+     * [junit4]    > Throwable #1: java.lang.AssertionError: FAIL: id=2 should have matched but did not
+     * [junit4]    >   shape=GeoComplexPolygon: {planetmodel=PlanetModel.WGS84, number of shapes=1, address=6eccd33b,
+     * testPoint=[lat=0.03170690566178683, lon=1.0862414976732029([X=0.46609969117964495, Y=0.8854242006628827, Z=0.0317369552646047])],
+     * testPointInSet=false,
+     * shapes={ {
+     * [lat=1.0774842300167298, lon=-0.11534121538553185([X=0.46969930266058374, Y=-0.054417217622152375, Z=0.8794587218580684])],
+     * [lat=0.05101544777239065, lon=1.031558236908661([X=0.5133835679471972, Y=0.8579350866926241, Z=0.051049928818862174])],
+     * [lat=-0.011222928649880962, lon=1.5851249038356199([X=-0.01434320835886277, Y=1.0009526216234983, Z=-0.011235244842183226])],
+     * [lat=-0.02571365137215876, lon=0.5627875521419741([X=0.8464356149277266, Y=0.5339650936800929, Z=-0.025739527171261035])],
+     * [lat=0.03833766792865358, lon=1.0082901344798614([X=0.5335096521470836, Y=0.8462411929752105, Z=0.03837097111317845])],
+     * [lat=0.1719054969347345, lon=0.9024290407832926([X=0.6111941952395734, Y=0.7740553755547761, Z=0.17123457719021212])],
+     * [lat=0.08180947807010808, lon=1.0107147265848113([X=0.5300590148023426, Y=0.8453039531721928, Z=0.08180784289673602])]}}
+     * [junit4]    >   bounds=XYZBounds: [xmin=-1.0011188544924792 xmax=1.0011188544924792
+     *  ymin=-1.0011188544924792 ymax=1.0011188544924792
+     *  zmin=-0.025739527671261034 zmax=0.9977622925221051]
+     * [junit4]    >   world bounds=( minX=-1.0011188539924791 maxX=1.0011188539924791 minY=-1.0011188539924791 maxY=1.0011188539924791 minZ=-0.9977622920221051 maxZ=0.9977622920221051
+     * [junit4]    >   quantized point=[X=-0.477874179571219, Y=0.5908091335156603, Z=-0.6495967142221521] within shape? true within bounds? false
+     * [junit4]    >   unquantized point=[lat=-0.7073124559987376, lon=2.2509085326629887([X=-0.47787417938801546, Y=0.5908091336704123, Z=-0.6495967140640758])] within shape? true within bounds? false
+     * [junit4]    >   docID=2 deleted?=false
+     * [junit4]    >   query=PointInGeo3DShapeQuery: field=point: Shape: GeoComplexPolygon: {planetmodel=PlanetModel.WGS84, number of shapes=1, address=6eccd33b, testPoint=[lat=0.03170690566178683, lon=1.0862414976732029([X=0.46609969117964495, Y=0.8854242006628827, Z=0.0317369552646047])], testPointInSet=false, shapes={ {[lat=1.0774842300167298, lon=-0.11534121538553185([X=0.46969930266058374, Y=-0.054417217622152375, Z=0.8794587218580684])], [lat=0.05101544777239065, lon=1.031558236908661([X=0.5133835679471972, Y=0.8579350866926241, Z=0.051049928818862174])], [lat=-0.011222928649880962, lon=1.5851249038356199([X=-0.01434320835886277, Y=1.0009526216234983, Z=-0.011235244842183226])], [lat=-0.02571365137215876, lon=0.5627875521419741([X=0.8464356149277266, Y=0.5339650936800929, Z=-0.025739527171261035])], [lat=0.03833766792865358, lon=1.0082901344798614([X=0.5335096521470836, Y=0.8462411929752105, Z=0.03837097111317845])], [lat=0.1719054969347345, lon=0.9024290407832926([X=0.6111941952395734, Y=0.7740553755547761, Z=0.17123457719021212])], [lat=0.08180947807010808, lon=1.0107147265848113([X=0.5300590148023426, Y=0.8453039531721928, Z=0.08180784289673602])]}}
+     * [junit4]    >   explanation:
+     * [junit4]    >     target is in leaf _0(7.0.0):C11 of full reader StandardDirectoryReader(segments:3:nrt _0(7.0.0):C11)
+     * [junit4]    >     full BKD path to target doc:
+     * [junit4]    >       Cell(x=-0.8906255176936849 TO 1.0005089994430834 y=-0.6808995306272861 TO 0.9675171153117977 z=-0.997762292058209 TO 0.9939318087373729); Shape relationship = OVERLAPS; Quantized point within cell = true; Unquantized point within cell = true
+     * [junit4]    >     on cell Cell(x=-0.8906255176936849 TO 1.0005089994430834 y=-0.6808995306272861 TO 0.9675171153117977 z=-0.997762292058209 TO 0.9939318087373729); Shape relationship = OVERLAPS; Quantized point within cell = true; Unquantized point within cell = true, wrapped visitor returned CELL_CROSSES_QUERY
+     * [junit4]    >   leaf visit docID=2 x=-0.477874179571219 y=0.5908091335156603 z=-0.6495967142221521
      */
     final GeoPoint testPoint =
         new GeoPoint(PlanetModel.WGS84, 0.03170690566178683, 1.0862414976732029);
@@ -999,17 +980,17 @@ public class TestGeoPolygon extends LuceneTestCase {
 
     // System.err.println(p);
     /*
-    [junit4]   2> GeoComplexPolygon: {planetmodel=PlanetModel.WGS84, number of shapes=1, address=dcf3e99,
-    testPoint=[lat=0.03170690566178683, lon=1.0862414976732029([X=0.46609969117964506, Y=0.8854242006628825, Z=0.0317369552646047])],
-    testPointInSet=false,
-    shapes={ {
-    [lat=1.0774842300167298, lon=-0.11534121538553185([X=0.46969930266058374, Y=-0.054417217622152375, Z=0.8794587218580684])],
-    [lat=0.05101544777239065, lon=1.031558236908661([X=0.5133835679471972, Y=0.8579350866926241, Z=0.051049928818862174])],
-    [lat=-0.011222928649880962, lon=1.5851249038356199([X=-0.01434320835886277, Y=1.0009526216234983, Z=-0.011235244842183226])],
-    [lat=-0.02571365137215876, lon=0.5627875521419741([X=0.8464356149277266, Y=0.5339650936800929, Z=-0.025739527171261035])],
-    [lat=0.03833766792865358, lon=1.0082901344798614([X=0.5335096521470836, Y=0.8462411929752105, Z=0.03837097111317845])],
-    [lat=0.1719054969347345, lon=0.9024290407832926([X=0.6111941952395734, Y=0.7740553755547761, Z=0.17123457719021212])]}}
-    [lat=0.08180947807010808, lon=1.0107147265848113([X=0.5300590148023426, Y=0.8453039531721928, Z=0.08180784289673602])],
+     * [junit4]   2> GeoComplexPolygon: {planetmodel=PlanetModel.WGS84, number of shapes=1, address=dcf3e99,
+     * testPoint=[lat=0.03170690566178683, lon=1.0862414976732029([X=0.46609969117964506, Y=0.8854242006628825, Z=0.0317369552646047])],
+     * testPointInSet=false,
+     * shapes={ {
+     * [lat=1.0774842300167298, lon=-0.11534121538553185([X=0.46969930266058374, Y=-0.054417217622152375, Z=0.8794587218580684])],
+     * [lat=0.05101544777239065, lon=1.031558236908661([X=0.5133835679471972, Y=0.8579350866926241, Z=0.051049928818862174])],
+     * [lat=-0.011222928649880962, lon=1.5851249038356199([X=-0.01434320835886277, Y=1.0009526216234983, Z=-0.011235244842183226])],
+     * [lat=-0.02571365137215876, lon=0.5627875521419741([X=0.8464356149277266, Y=0.5339650936800929, Z=-0.025739527171261035])],
+     * [lat=0.03833766792865358, lon=1.0082901344798614([X=0.5335096521470836, Y=0.8462411929752105, Z=0.03837097111317845])],
+     * [lat=0.1719054969347345, lon=0.9024290407832926([X=0.6111941952395734, Y=0.7740553755547761, Z=0.17123457719021212])]}}
+     * [lat=0.08180947807010808, lon=1.0107147265848113([X=0.5300590148023426, Y=0.8453039531721928, Z=0.08180784289673602])],
      */
     final XYZBounds referenceBounds = new XYZBounds();
     pSanity.getBounds(referenceBounds);
@@ -1043,7 +1024,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(solid.isWithin(checkPoint));
   }
 
-  @Test
   public void testPolygonFailureCase1() {
     final List<GeoPoint> poly2List = new ArrayList<>();
     poly2List.add(new GeoPoint(PlanetModel.WGS84, -0.6370451769779303, 2.5318373679431616));
@@ -1060,7 +1040,6 @@ public class TestGeoPolygon extends LuceneTestCase {
         });
   }
 
-  @Test
   public void testPolygonFailureCase2() {
     /*
     [junit4]   1>   shape=GeoCompositeMembershipShape: {[GeoConvexPolygon: {planetmodel=PlanetModel.WGS84, points=[
@@ -1097,7 +1076,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(poly1.isWithin(point) ? solid.isWithin(point) : true);
   }
 
-  @Test
   public void testConcavePolygon() {
     ArrayList<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, -0.1, -0.5));
@@ -1111,7 +1089,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertEquals(polygon, polygonConcave);
   }
 
-  @Test
   public void testPolygonWithHole() {
     ArrayList<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, -1.1, -1.5));
@@ -1159,7 +1136,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertEquals(holeSimplePolygon.isWithin(gp), holeComplexPolygon.isWithin(gp));
   }
 
-  @Test
   public void testConvexPolygon() {
     ArrayList<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, 0, 0));
@@ -1173,7 +1149,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertEquals(polygon, polygon2);
   }
 
-  @Test
   public void testConvexPolygonWithHole() {
     ArrayList<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, -1, -1));
@@ -1198,7 +1173,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertEquals(polygon, polygon2);
   }
 
-  @Test
   public void testLUCENE8133() {
     GeoPoint point1 =
         new GeoPoint(
@@ -1245,7 +1219,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testLUCENE8140() throws Exception {
     // POINT(15.426026 68.35078) is coplanar
     // "POLYGON((15.426411 68.35069,15.4261 68.35078,15.426026 68.35078,15.425868 68.35078,15.425745
@@ -1271,7 +1244,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(GeoPolygonFactory.makeGeoPolygon(PlanetModel.SPHERE, points) != null);
   }
 
-  @Test
   public void testLUCENE8211() {
     // We need to handle the situation where the check point is parallel to
     // the test point.
@@ -1302,7 +1274,6 @@ public class TestGeoPolygon extends LuceneTestCase {
             PlanetModel.SPHERE.createSurfacePoint(-testPoint.x, -testPoint.y, testPoint.z)));
   }
 
-  @Test
   public void testCoplanarityTileConvex() throws Exception {
     // This test has been disabled because it is possible that the polygon specified actually
     // intersects itself.
@@ -1365,7 +1336,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon != null);
   }
 
-  @Test
   public void testCoplanarityConcave() throws Exception {
     // POLYGON((-52.18851 64.53777,-52.18853 64.53828,-52.18675 64.53829,-52.18676
     // 64.53855,-52.18736 64.53855,-52.18737 64.53881,-52.18677 64.53881,-52.18683
@@ -1413,7 +1383,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     GeoPolygonFactory.makeGeoPolygon(PlanetModel.SPHERE, points);
   }
 
-  @Test
   public void testCoplanarityConvex2() throws Exception {
     // POLYGON((-3.488658 50.45564,-3.4898987 50.455627,-3.489865 50.455585,-3.489833
     // 50.45551,-3.489808 50.455433,-3.489806 50.455406,-3.4898643 50.45525,-3.4892037
@@ -1512,16 +1481,15 @@ public class TestGeoPolygon extends LuceneTestCase {
   }
 
   /*
-   [lat=-0.63542308910253, lon=0.9853722928232957([X=0.4446759777403525, Y=0.6707549854468698, Z=-0.5934780737681111])],
-  [lat=0.0, lon=0.0([X=1.0011188539924791, Y=0.0, Z=0.0])],
-  [lat=0.45435018176633574, lon=3.141592653589793([X=-0.8989684544372841, Y=1.1009188402610632E-16, Z=0.4390846549572752])],
-  [lat=-0.375870856827283, lon=2.9129132647718414([X=-0.9065744420970767, Y=0.21100590938346708, Z=-0.36732668582405886])],
-  [lat=-1.2205765069413237, lon=3.141592653589793([X=-0.3424714964202101, Y=4.194066218902145E-17, Z=-0.9375649457139603])]}}
-
-   [junit4]   1>       unquantized=[lat=-3.1780051348770987E-74, lon=-3.032608859187692([X=-0.9951793580358298, Y=-0.1088898762907205, Z=-3.181560858610375E-74])]
-   [junit4]   1>       quantized=[X=-0.9951793580415914, Y=-0.10888987641797832, Z=-2.3309121299774915E-10]
-  */
-  @Test
+   * [lat=-0.63542308910253, lon=0.9853722928232957([X=0.4446759777403525, Y=0.6707549854468698, Z=-0.5934780737681111])],
+   * [lat=0.0, lon=0.0([X=1.0011188539924791, Y=0.0, Z=0.0])],
+   * [lat=0.45435018176633574, lon=3.141592653589793([X=-0.8989684544372841, Y=1.1009188402610632E-16, Z=0.4390846549572752])],
+   * [lat=-0.375870856827283, lon=2.9129132647718414([X=-0.9065744420970767, Y=0.21100590938346708, Z=-0.36732668582405886])],
+   * [lat=-1.2205765069413237, lon=3.141592653589793([X=-0.3424714964202101, Y=4.194066218902145E-17, Z=-0.9375649457139603])]}}
+   *
+   * [junit4]   1>       unquantized=[lat=-3.1780051348770987E-74, lon=-3.032608859187692([X=-0.9951793580358298, Y=-0.1088898762907205, Z=-3.181560858610375E-74])]
+   * [junit4]   1>       quantized=[X=-0.9951793580415914, Y=-0.10888987641797832, Z=-2.3309121299774915E-10]
+   */
   public void testLUCENE8227() throws Exception {
     List<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.WGS84, -0.63542308910253, 0.9853722928232957));
@@ -1532,10 +1500,10 @@ public class TestGeoPolygon extends LuceneTestCase {
     GeoPolygonFactory.PolygonDescription pd = new GeoPolygonFactory.PolygonDescription(points);
 
     /*
-    for (int i = 0; i < points.size(); i++) {
-      System.out.println("Point "+i+": "+points.get(i));
-    }
-    */
+     * for (int i = 0; i < points.size(); i++) {
+     *  System.out.println("Point "+i+": "+points.get(i));
+     * }
+     */
 
     final GeoPoint unquantized =
         new GeoPoint(PlanetModel.WGS84, -3.1780051348770987E-74, -3.032608859187692);
@@ -1559,23 +1527,22 @@ public class TestGeoPolygon extends LuceneTestCase {
   }
 
   /*
-   [junit4]   1>     doc=754 is contained by shape but is outside the returned XYZBounds
-   [junit4]   1>       unquantized=[lat=2.4043303687704734E-204, lon=3.1342447995980507([X=-1.0010918284309325, Y=0.007356008974104805, Z=2.4070204634028112E-204])]
-   [junit4]   1>       quantized=[X=-1.0010918285430614, Y=0.007356008812298254, Z=2.3309121299774915E-10]
-
-   [junit4]   1>     doc=3728 is contained by shape but is outside the returned XYZBounds
-   [junit4]   1>       unquantized=[lat=2.4457272005608357E-47, lon=-3.1404077424936307([X=-1.001118151199965, Y=-0.0011862365610909341, Z=2.448463612203698E-47])]
-   [junit4]   1>       quantized=[X=-1.0011181510675629, Y=-0.001186236379718708, Z=2.3309121299774915E-10]
-
-   [junit4]   1>   shape=GeoComplexPolygon: {planetmodel=PlanetModel.WGS84, number of shapes=1, address=7969cab3,
-   testPoint=[X=-0.07416172733314662, Y=0.5686488061136892, Z=0.8178445379402641], testPointInSet=true, shapes={ {
-   [lat=-1.5707963267948966, lon=-1.0755217966112058([X=2.903696886845155E-17, Y=-5.375400029710238E-17, Z=-0.997762292022105])],
-   [lat=-1.327365682666958, lon=-2.9674513704178316([X=-0.23690293696956322, Y=-0.04167672037374933, Z=-0.9685334156912658])],
-   [lat=0.32288591161895097, lon=3.141592653589793([X=-0.9490627533610154, Y=1.1622666630935417E-16, Z=0.3175519551883462])],
-   [lat=0.0, lon=0.0([X=1.0011188539924791, Y=0.0, Z=0.0])],
-   [lat=0.2839194570254642, lon=-1.2434404554202965([X=0.30893121415043073, Y=-0.9097632721627391, Z=0.2803596238536593])]}}
-  */
-  @Test
+   * [junit4]   1>     doc=754 is contained by shape but is outside the returned XYZBounds
+   * [junit4]   1>       unquantized=[lat=2.4043303687704734E-204, lon=3.1342447995980507([X=-1.0010918284309325, Y=0.007356008974104805, Z=2.4070204634028112E-204])]
+   * [junit4]   1>       quantized=[X=-1.0010918285430614, Y=0.007356008812298254, Z=2.3309121299774915E-10]
+   *
+   * [junit4]   1>     doc=3728 is contained by shape but is outside the returned XYZBounds
+   * [junit4]   1>       unquantized=[lat=2.4457272005608357E-47, lon=-3.1404077424936307([X=-1.001118151199965, Y=-0.0011862365610909341, Z=2.448463612203698E-47])]
+   * [junit4]   1>       quantized=[X=-1.0011181510675629, Y=-0.001186236379718708, Z=2.3309121299774915E-10]
+   *
+   * [junit4]   1>   shape=GeoComplexPolygon: {planetmodel=PlanetModel.WGS84, number of shapes=1, address=7969cab3,
+   * testPoint=[X=-0.07416172733314662, Y=0.5686488061136892, Z=0.8178445379402641], testPointInSet=true, shapes={ {
+   * [lat=-1.5707963267948966, lon=-1.0755217966112058([X=2.903696886845155E-17, Y=-5.375400029710238E-17, Z=-0.997762292022105])],
+   * [lat=-1.327365682666958, lon=-2.9674513704178316([X=-0.23690293696956322, Y=-0.04167672037374933, Z=-0.9685334156912658])],
+   * [lat=0.32288591161895097, lon=3.141592653589793([X=-0.9490627533610154, Y=1.1622666630935417E-16, Z=0.3175519551883462])],
+   * [lat=0.0, lon=0.0([X=1.0011188539924791, Y=0.0, Z=0.0])],
+   * [lat=0.2839194570254642, lon=-1.2434404554202965([X=0.30893121415043073, Y=-0.9097632721627391, Z=0.2803596238536593])]}}
+   */
   public void testLUCENE8227_case2() {
     List<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.WGS84, -1.5707963267948966, -1.0755217966112058));
@@ -1621,7 +1588,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(standard.isWithin(quantized) ? standardSolid.isWithin(quantized) : true);
   }
 
-  @Test
   public void testLUCENE7642() {
     // Construct XYZ solid
     final XYZSolid solid =
@@ -1635,28 +1601,28 @@ public class TestGeoPolygon extends LuceneTestCase {
             0.9977622932859774);
 
     /*
-    [junit4]   1> individual planes
-    [junit4]   1>  notableMinXPoints=[
-       [X=0.1845405855034623, Y=-1.398547277986495E-9, Z=0.9806642352600131],
-       [X=0.1845405855034623, Y=0.020766291030223535, Z=0.9804458120424796]]
-     notableMaxXPoints=[
-       [X=0.2730694323646922, Y=-1.398547277986495E-9, Z=0.959928047174481],
-       [X=0.2730694323646922, Y=0.020766291030223535, Z=0.9597049045335464]]
-     notableMinYPoints=[
-       [X=0.1845405855034623, Y=-1.398547277986495E-9, Z=0.9806642352600131],
-       [X=0.2730694323646922, Y=-1.398547277986495E-9, Z=0.959928047174481]]
-     notableMaxYPoints=[
-       [X=0.1845405855034623, Y=0.020766291030223535, Z=0.9804458120424796],
-       [X=0.2730694323646922, Y=0.020766291030223535, Z=0.9597049045335464]]
-     notableMinZPoints=[]
-     notableMaxZPoints=[]
-
-     [junit4]   1> All edge points=[
-       [X=0.1845405855034623, Y=-1.398547277986495E-9, Z=0.9806642352600131],
-       [X=0.1845405855034623, Y=0.020766291030223535, Z=0.9804458120424796],
-       [X=0.2730694323646922, Y=-1.398547277986495E-9, Z=0.959928047174481],
-       [X=0.2730694323646922, Y=0.020766291030223535, Z=0.9597049045335464]]
-
+     * [junit4]   1> individual planes
+     * [junit4]   1>  notableMinXPoints=[
+     *   [X=0.1845405855034623, Y=-1.398547277986495E-9, Z=0.9806642352600131],
+     *   [X=0.1845405855034623, Y=0.020766291030223535, Z=0.9804458120424796]]
+     * notableMaxXPoints=[
+     *   [X=0.2730694323646922, Y=-1.398547277986495E-9, Z=0.959928047174481],
+     *   [X=0.2730694323646922, Y=0.020766291030223535, Z=0.9597049045335464]]
+     * notableMinYPoints=[
+     *   [X=0.1845405855034623, Y=-1.398547277986495E-9, Z=0.9806642352600131],
+     *   [X=0.2730694323646922, Y=-1.398547277986495E-9, Z=0.959928047174481]]
+     * notableMaxYPoints=[
+     *   [X=0.1845405855034623, Y=0.020766291030223535, Z=0.9804458120424796],
+     *   [X=0.2730694323646922, Y=0.020766291030223535, Z=0.9597049045335464]]
+     * notableMinZPoints=[]
+     * notableMaxZPoints=[]
+     *
+     * [junit4]   1> All edge points=[
+     *  [X=0.1845405855034623, Y=-1.398547277986495E-9, Z=0.9806642352600131],
+     *  [X=0.1845405855034623, Y=0.020766291030223535, Z=0.9804458120424796],
+     *  [X=0.2730694323646922, Y=-1.398547277986495E-9, Z=0.959928047174481],
+     *  [X=0.2730694323646922, Y=0.020766291030223535, Z=0.9597049045335464]]
+     *
      */
 
     final GeoPoint edge1 =
@@ -1707,15 +1673,15 @@ public class TestGeoPolygon extends LuceneTestCase {
     final GeoPolygon largeShape = GeoPolygonFactory.makeLargeGeoPolygon(PlanetModel.WGS84, pdList);
 
     /* This is the output:
-    [junit4]   1> shape = GeoCompositePolygon: {[
-     GeoConvexPolygon: {planetmodel=PlanetModel.WGS84, points=[
-       [lat=-1.2267098126036888, lon=3.141592653589793([X=-0.33671029227864785, Y=4.123511816790159E-17, Z=-0.9396354281810864])],
-       [lat=0.2892272352400239, lon=0.017453291479645996([X=0.9591279281485559, Y=0.01674163926221766, Z=0.28545251693892165])],
-       [lat=-1.5707963267948966, lon=1.6247683074702402E-201([X=6.109531986173988E-17, Y=9.926573944611206E-218, Z=-0.997762292022105])]], internalEdges={2}},
-     GeoConvexPolygon: {planetmodel=PlanetModel.WGS84, points=[
-       [lat=-1.2267098126036888, lon=3.141592653589793([X=-0.33671029227864785, Y=4.123511816790159E-17, Z=-0.9396354281810864])],
-       [lat=-1.5707963267948966, lon=1.6247683074702402E-201([X=6.109531986173988E-17, Y=9.926573944611206E-218, Z=-0.997762292022105])],
-       [lat=0.6723906085905078, lon=-3.0261581679831E-12([X=0.7821883235431606, Y=-2.367025584191143E-12, Z=0.6227413298552851])]], internalEdges={0}}]}
+     * [junit4]   1> shape = GeoCompositePolygon: {[
+     * GeoConvexPolygon: {planetmodel=PlanetModel.WGS84, points=[
+     *   [lat=-1.2267098126036888, lon=3.141592653589793([X=-0.33671029227864785, Y=4.123511816790159E-17, Z=-0.9396354281810864])],
+     *   [lat=0.2892272352400239, lon=0.017453291479645996([X=0.9591279281485559, Y=0.01674163926221766, Z=0.28545251693892165])],
+     *   [lat=-1.5707963267948966, lon=1.6247683074702402E-201([X=6.109531986173988E-17, Y=9.926573944611206E-218, Z=-0.997762292022105])]], internalEdges={2}},
+     * GeoConvexPolygon: {planetmodel=PlanetModel.WGS84, points=[
+     *   [lat=-1.2267098126036888, lon=3.141592653589793([X=-0.33671029227864785, Y=4.123511816790159E-17, Z=-0.9396354281810864])],
+     *   [lat=-1.5707963267948966, lon=1.6247683074702402E-201([X=6.109531986173988E-17, Y=9.926573944611206E-218, Z=-0.997762292022105])],
+     *  [lat=0.6723906085905078, lon=-3.0261581679831E-12([X=0.7821883235431606, Y=-2.367025584191143E-12, Z=0.6227413298552851])]], internalEdges={0}}]}
      */
 
     final GeoPoint quantized =
@@ -1731,10 +1697,10 @@ public class TestGeoPolygon extends LuceneTestCase {
     // This fails because the point is within the shape but apparently shouldn't be.
     // Instrumenting isWithin finds that the point is on three edge planes somehow:
     /*
-    [junit4]   1> localIsWithin start for point [0.2416235655409041,5.90945326539883E-48,0.9682657046994557]
-    [junit4]   1>  For edge [A=-1.224646799147353E-16, B=-1.0, C=-7.498798913309287E-33, D=0.0, side=1.0] the point evaluation is -2.959035261382389E-17
-    [junit4]   1>  For edge [A=-3.0261581679831E-12, B=-0.9999999999999999, C=-1.8529874570670608E-28, D=0.0, side=1.0] the point evaluation is -7.31191126438807E-13
-    [junit4]   1>  For edge [A=4.234084035470679E-12, B=1.0, C=-1.5172037954732973E-12, D=0.0, side=1.0] the point evaluation is -4.460019207463956E-13
+     * [junit4]   1> localIsWithin start for point [0.2416235655409041,5.90945326539883E-48,0.9682657046994557]
+     * [junit4]   1>  For edge [A=-1.224646799147353E-16, B=-1.0, C=-7.498798913309287E-33, D=0.0, side=1.0] the point evaluation is -2.959035261382389E-17
+     * [junit4]   1>  For edge [A=-3.0261581679831E-12, B=-0.9999999999999999, C=-1.8529874570670608E-28, D=0.0, side=1.0] the point evaluation is -7.31191126438807E-13
+     * [junit4]   1>  For edge [A=4.234084035470679E-12, B=1.0, C=-1.5172037954732973E-12, D=0.0, side=1.0] the point evaluation is -4.460019207463956E-13
      */
     // These are too close to parallel.  The only solution is to prevent the poly from being
     // created.  Let's see if Geo3d thinks they are parallel.
@@ -1756,7 +1722,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(intersection == largeIntersection);
   }
 
-  @Test
   public void testComplexPolygonPlaneOutsideWorld() {
     List<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, -0.5, -0.5));
@@ -1782,7 +1747,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point1) == largePolygon.isWithin(point1));
   }
 
-  @Test
   public void testComplexPolygonDegeneratedVector() {
     List<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.SPHERE, -0.5, -0.5));
@@ -1808,7 +1772,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point3) == largePolygon.isWithin(point3));
   }
 
-  @Test
   public void testAboveBelowCrossingDifferentEdges() {
     // POLYGON((130.846821906638 -5.066128831305991,134.5635278421427
     // 21.75703481126756,156.31803093908155 44.5755831677161,0.0
@@ -1849,7 +1812,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point1) == largePolygon.isWithin(point1));
   }
 
-  @Test
   public void testBelowCrossingTwiceEdgePoint() {
     // POLYGON((162.9024012378976 -0.17652184258966092,162.56882659034474
     // -0.009075185910497524,162.52932263918404 1.6235907240799453E-189,162.17731099253956
@@ -1890,7 +1852,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8245() {
     // POLYGON((-70.19447784626787 -83.117346007187,0.0 2.8E-322,-139.99870438810106
     // 7.994601469571884,-143.14292702670522 -18.500141088122664,-158.7373186858464
@@ -1934,7 +1895,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8245_case2() {
     // POLYGON((5.512285089810178 -26.833721534785912,12.13983320542565
     // -16.085163683089583,4.868755337835201 -9.167423203860656,0.0
@@ -1981,7 +1941,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8245_case3() {
     // POLYGON((144.76249846857021 8.828705232593283,166.00162989841027 -8.5E-322,157.03429484830787
     // 64.92565566857392,108.64696979831984 39.10241638996957,102.54234512410089
@@ -2027,7 +1986,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8245_case4() {
     // POLYGON((-3.728795716978514 -10.354090605548162,-137.97868338527985
     // 0.05602723926521642,-113.87317441507611 -76.2471400450585,-162.64032677742279
@@ -2074,7 +2032,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8251() {
     // POLYGON((135.63207358036593 -51.43541696593334,113.00782694696038 -58.984559858566556,0.0
     // -3.68E-321,-66.33598777585381 -7.382056816201731,135.63207358036593 -51.43541696593334))
@@ -2118,7 +2075,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8257() {
     // POLYGON((12.9610296281349 -8.35317290232106,15.448601008878832
     // -3.990004427754539,22.375905319231205 0.2308875600810982,-13.473550791109867
@@ -2176,7 +2132,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8258() {
     // POLYGON((0.004541088101890366 2.457524007073783E-4,0.003771467014711204
     // 0.0011493732122651466,0.003975546116981415 0.002208372357731988,0.0010780690991920934
@@ -2233,7 +2188,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8266_case1() {
     // POLYGON((-6.35093158794635E-11 -4.965517818537545E-11,0.0 3.113E-321,-60.23538585411111
     // 18.46706692248612, 162.37100340450482 -25.988383239097754,-6.35093158794635E-11
@@ -2274,7 +2228,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertFalse(largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8266_case2() {
     // POLYGON((7.885596306952593 -42.25131029665893,1.5412637897085604
     // -6.829581354691802,34.03338913004999 27.583811665797796,0.0 5.7E-322,-8.854664233194431E-12
@@ -2326,7 +2279,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertFalse(largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8266_case3() {
     // POLYGON((-98.38897266664411 7.286530349760722,-169.07259176302364
     // -7.410435277740526,8E-123,-179.9999999999438 -1.298973436027626E-10,66.2759716901292
@@ -2374,7 +2326,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertFalse(largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8276_case1() {
     // POLYGON((1.0517792672527197E-4 -1.592702733911458E-5,1.0324192726355287E-4
     // 2.5741558803919037E-5,7.879018764391666E-5 7.192932029677136E-5,0.0
@@ -2422,7 +2373,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8276_case2() {
     // POLYGON((0.05925400271049228 -0.08922986460239596,0.07309863706879852
     // -0.07813330646578831,0.07411491387725304 -0.07715685640120272,0.0
@@ -2479,7 +2429,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8276_case3() {
     // POLYGON((2.693381024483753E-4 -0.001073608118084019,1.5848404608659423E-4
     // -2.6378130512803985E-4,8.981079660799132E-4 -6.4697719116416E-4,-7.934854852157693E-5
@@ -2532,21 +2481,20 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8281() {
     /*
-    [junit4]    > Standard polygon: GeoCompositePolygon: {[GeoConvexPolygon: {planetmodel=PlanetModel.WGS84, points=[[lat=-3.89514302068452E-6, lon=6.597839410815709E-6([X=1.0011188539630433, Y=6.605221429683868E-6, Z=-3.89950111699443E-6])], [lat=-2.8213942160840002E-6, lon=1.608008770581648E-5([X=1.0011188538590383, Y=1.60980789753873E-5, Z=-2.8245509442632E-6])], [lat=3.8977187534179774E-6, lon=1.9713406091526053E-5([X=1.0011188537902969, Y=1.973546251320774E-5, Z=3.902079731596721E-6])], [lat=1.980614928404974E-5, lon=4.069266235973146E-6([X=1.0011188537865057, Y=4.07381914993205E-6, Z=1.982830947192924E-5])], [lat=7.4E-323, lon=0.0([X=1.0011188539924791, Y=0.0, Z=7.4E-323])]], internalEdges={4}}, GeoConvexPolygon: {planetmodel=PlanetModel.WGS84, points=[[lat=-3.89514302068452E-6, lon=6.597839410815709E-6([X=1.0011188539630433, Y=6.605221429683868E-6, Z=-3.89950111699443E-6])], [lat=7.4E-323, lon=0.0([X=1.0011188539924791, Y=0.0, Z=7.4E-323])], [lat=-1.261719663233924E-5, lon=-1.5701544210600105E-5([X=1.001118853788849, Y=-1.5719111944122703E-5, Z=-1.2631313432823314E-5])]], internalEdges={0}}]}
-    [junit4]    > Large polygon: GeoComplexPolygon: {planetmodel=PlanetModel.WGS84, number of shapes=1, address=d8738cf, testPoint=[lat=7.28355694648262E-7, lon=5.126509206005681E-6([X=1.0011188539790565, Y=5.13224502127445E-6, Z=7.291706183250984E-7])], testPointInSet=true, shapes={ {[lat=-1.261719663233924E-5, lon=-1.5701544210600105E-5([X=1.001118853788849, Y=-1.5719111944122703E-5, Z=-1.2631313432823314E-5])], [lat=-3.89514302068452E-6, lon=6.597839410815709E-6([X=1.0011188539630433, Y=6.605221429683868E-6, Z=-3.89950111699443E-6])], [lat=-2.8213942160840002E-6, lon=1.608008770581648E-5([X=1.0011188538590383, Y=1.60980789753873E-5, Z=-2.8245509442632E-6])], [lat=3.8977187534179774E-6, lon=1.9713406091526053E-5([X=1.0011188537902969, Y=1.973546251320774E-5, Z=3.902079731596721E-6])], [lat=1.980614928404974E-5, lon=4.069266235973146E-6([X=1.0011188537865057, Y=4.07381914993205E-6, Z=1.982830947192924E-5])], [lat=7.4E-323, lon=0.0([X=1.0011188539924791, Y=0.0, Z=7.4E-323])]}}
-    [junit4]    > Point: [lat=4.983019447098944E-6, lon=-3.0E-323([X=1.0011188539799663, Y=-3.0E-323, Z=4.98859471828087E-6])]
-    [junit4]    > WKT: POLYGON((
-         3.7802835214482185E-4 -2.2317525568506174E-4,
-         9.213211597434869E-4 -1.6165398092423463E-4,
-         0.0011294949688719308 2.233228342998425E-4,
-         2.3315178103634778E-4 0.0011348087623821073,
-         0.0 4.244E-321,
-         -8.996322151054578E-4 -7.22912116319714E-4,
-         3.7802835214482185E-4 -2.2317525568506174E-4))
-    [junit4]    > WKT: POINT(-1.7E-321 2.855059835503825E-4)
+     * [junit4]    > Standard polygon: GeoCompositePolygon: {[GeoConvexPolygon: {planetmodel=PlanetModel.WGS84, points=[[lat=-3.89514302068452E-6, lon=6.597839410815709E-6([X=1.0011188539630433, Y=6.605221429683868E-6, Z=-3.89950111699443E-6])], [lat=-2.8213942160840002E-6, lon=1.608008770581648E-5([X=1.0011188538590383, Y=1.60980789753873E-5, Z=-2.8245509442632E-6])], [lat=3.8977187534179774E-6, lon=1.9713406091526053E-5([X=1.0011188537902969, Y=1.973546251320774E-5, Z=3.902079731596721E-6])], [lat=1.980614928404974E-5, lon=4.069266235973146E-6([X=1.0011188537865057, Y=4.07381914993205E-6, Z=1.982830947192924E-5])], [lat=7.4E-323, lon=0.0([X=1.0011188539924791, Y=0.0, Z=7.4E-323])]], internalEdges={4}}, GeoConvexPolygon: {planetmodel=PlanetModel.WGS84, points=[[lat=-3.89514302068452E-6, lon=6.597839410815709E-6([X=1.0011188539630433, Y=6.605221429683868E-6, Z=-3.89950111699443E-6])], [lat=7.4E-323, lon=0.0([X=1.0011188539924791, Y=0.0, Z=7.4E-323])], [lat=-1.261719663233924E-5, lon=-1.5701544210600105E-5([X=1.001118853788849, Y=-1.5719111944122703E-5, Z=-1.2631313432823314E-5])]], internalEdges={0}}]}
+     * [junit4]    > Large polygon: GeoComplexPolygon: {planetmodel=PlanetModel.WGS84, number of shapes=1, address=d8738cf, testPoint=[lat=7.28355694648262E-7, lon=5.126509206005681E-6([X=1.0011188539790565, Y=5.13224502127445E-6, Z=7.291706183250984E-7])], testPointInSet=true, shapes={ {[lat=-1.261719663233924E-5, lon=-1.5701544210600105E-5([X=1.001118853788849, Y=-1.5719111944122703E-5, Z=-1.2631313432823314E-5])], [lat=-3.89514302068452E-6, lon=6.597839410815709E-6([X=1.0011188539630433, Y=6.605221429683868E-6, Z=-3.89950111699443E-6])], [lat=-2.8213942160840002E-6, lon=1.608008770581648E-5([X=1.0011188538590383, Y=1.60980789753873E-5, Z=-2.8245509442632E-6])], [lat=3.8977187534179774E-6, lon=1.9713406091526053E-5([X=1.0011188537902969, Y=1.973546251320774E-5, Z=3.902079731596721E-6])], [lat=1.980614928404974E-5, lon=4.069266235973146E-6([X=1.0011188537865057, Y=4.07381914993205E-6, Z=1.982830947192924E-5])], [lat=7.4E-323, lon=0.0([X=1.0011188539924791, Y=0.0, Z=7.4E-323])]}}
+     * [junit4]    > Point: [lat=4.983019447098944E-6, lon=-3.0E-323([X=1.0011188539799663, Y=-3.0E-323, Z=4.98859471828087E-6])]
+     * [junit4]    > WKT: POLYGON((
+     *     3.7802835214482185E-4 -2.2317525568506174E-4,
+     *     9.213211597434869E-4 -1.6165398092423463E-4,
+     *     0.0011294949688719308 2.233228342998425E-4,
+     *     2.3315178103634778E-4 0.0011348087623821073,
+     *     0.0 4.244E-321,
+     *     -8.996322151054578E-4 -7.22912116319714E-4,
+     *     3.7802835214482185E-4 -2.2317525568506174E-4))
+     * [junit4]    > WKT: POINT(-1.7E-321 2.855059835503825E-4)
      */
     final List<GeoPoint> points = new ArrayList<>();
     points.add(
@@ -2598,20 +2546,19 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8280() {
     /*
-    [junit4]   1>       unquantized=[lat=0.16367268756896675, lon=-3.141592653589793([X=-0.9876510422569805, Y=-1.2095236875745584E-16, Z=0.16311061810965483])]
-    [junit4]   1>       quantized=[X=-0.9876510423773649, Y=-2.3309121299774915E-10, Z=0.16311061829120332]
-    [junit4]   1>   shape=GeoComplexPolygon: {planetmodel=PlanetModel.WGS84, number of shapes=1, address=7fb785c7,
-     testPoint=[lat=-1.3164421003439726, lon=-0.3852878798825553([X=0.23270178206383424, Y=-0.09437388649617809, Z=-0.9658649833483698])], testPointInSet=true,
-     shapes={ {
-     [lat=-0.914670478121684, lon=2.4457272005608357E-47([X=0.609446252447186, Y=1.4905392768899487E-47, Z=-0.7915752112532345])],
-     [lat=-0.737919215699403, lon=-1.0814374159521924([X=0.34764272191418555, Y=-0.6527705659008658, Z=-0.6724777381306498])],
-     [lat=-0.2581712131420987, lon=-3.141592653589793([X=-0.9677277372221494, Y=-1.1851246758352164E-16, Z=-0.2555423342455023])],
-     [lat=-0.40516490647074055, lon=2.4457272005608357E-47([X=0.919584346757591, Y=2.2490524500750083E-47, Z=-0.39440489992508504])],
-     [lat=2.4457272005608357E-47, lon=-0.6244585784444767([X=0.8121874885299789, Y=-0.5853122613567737, Z=2.448463612203698E-47])]}}
-    [junit4]   1>   bounds=XYZBounds: [xmin=-1.0011188549924792 xmax=1.0011188549924792 ymin=-0.6616249691360604 ymax=1.0E-9 zmin=-0.9977622930221051 zmax=1.0E-9]
+     * [junit4]   1>       unquantized=[lat=0.16367268756896675, lon=-3.141592653589793([X=-0.9876510422569805, Y=-1.2095236875745584E-16, Z=0.16311061810965483])]
+     * [junit4]   1>       quantized=[X=-0.9876510423773649, Y=-2.3309121299774915E-10, Z=0.16311061829120332]
+     * [junit4]   1>   shape=GeoComplexPolygon: {planetmodel=PlanetModel.WGS84, number of shapes=1, address=7fb785c7,
+     * testPoint=[lat=-1.3164421003439726, lon=-0.3852878798825553([X=0.23270178206383424, Y=-0.09437388649617809, Z=-0.9658649833483698])], testPointInSet=true,
+     * shapes={ {
+     * [lat=-0.914670478121684, lon=2.4457272005608357E-47([X=0.609446252447186, Y=1.4905392768899487E-47, Z=-0.7915752112532345])],
+     * [lat=-0.737919215699403, lon=-1.0814374159521924([X=0.34764272191418555, Y=-0.6527705659008658, Z=-0.6724777381306498])],
+     * [lat=-0.2581712131420987, lon=-3.141592653589793([X=-0.9677277372221494, Y=-1.1851246758352164E-16, Z=-0.2555423342455023])],
+     * [lat=-0.40516490647074055, lon=2.4457272005608357E-47([X=0.919584346757591, Y=2.2490524500750083E-47, Z=-0.39440489992508504])],
+     * [lat=2.4457272005608357E-47, lon=-0.6244585784444767([X=0.8121874885299789, Y=-0.5853122613567737, Z=2.448463612203698E-47])]}}
+     * [junit4]   1>   bounds=XYZBounds: [xmin=-1.0011188549924792 xmax=1.0011188549924792 ymin=-0.6616249691360604 ymax=1.0E-9 zmin=-0.9977622930221051 zmax=1.0E-9]
      */
     final List<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.WGS84, -0.914670478121684, 2.4457272005608357E-47));
@@ -2645,19 +2592,18 @@ public class TestGeoPolygon extends LuceneTestCase {
 
   }
 
-  @Test
   public void testLUCENE8337() {
     /*
-       {planetmodel=PlanetModel.WGS84, number of shapes=1, address=c865f21d,
-       testPoint=[lat=2.114284741800425E-5, lon=-3.141516973708951([X=-1.0011188509002849, Y=-7.57645554894811E-5, Z=2.1166503175641402E-5])], testPointInSet=true, shapes={
-    {[lat=1.4379241972924144E-5, lon=-3.141520309370815([X=-1.0011188512685139, Y=-7.24251615257059E-5, Z=1.4395330244708275E-5])],
-    [lat=-1.858900171939205E-5, lon=-3.1415059739464217([X=-1.001118850057461, Y=-8.677662511280753E-5, Z=-1.860980009708855E-5])],
-    [lat=2.7071641284581073E-5, lon=-3.141469177092562([X=-1.001118845991408, Y=-1.2361464904363391E-4, Z=2.7101930495137982E-5])],
-    [lat=8.285235549000288E-5, lon=-3.1414967545451287([X=-1.0011188459297669, Y=-9.600634121467467E-5, Z=8.29450550819143E-5])],
-    [lat=-8.956596846349593E-303, lon=-3.1415926535897922([X=-1.0011188539924791, Y=-1.0117738616818362E-15, Z=-8.966617970490158E-303])]}}
-
-       [junit4]    > Point: [lat=-6.499661194605612E-10, lon=-2.0286460544410216([X=-0.4425148814082194, Y=-0.8980086522698344, Z=-6.506933366482957E-10])]
-        */
+     *  {planetmodel=PlanetModel.WGS84, number of shapes=1, address=c865f21d,
+     *  testPoint=[lat=2.114284741800425E-5, lon=-3.141516973708951([X=-1.0011188509002849, Y=-7.57645554894811E-5, Z=2.1166503175641402E-5])], testPointInSet=true, shapes={
+     * {[lat=1.4379241972924144E-5, lon=-3.141520309370815([X=-1.0011188512685139, Y=-7.24251615257059E-5, Z=1.4395330244708275E-5])],
+     * [lat=-1.858900171939205E-5, lon=-3.1415059739464217([X=-1.001118850057461, Y=-8.677662511280753E-5, Z=-1.860980009708855E-5])],
+     * [lat=2.7071641284581073E-5, lon=-3.141469177092562([X=-1.001118845991408, Y=-1.2361464904363391E-4, Z=2.7101930495137982E-5])],
+     * [lat=8.285235549000288E-5, lon=-3.1414967545451287([X=-1.0011188459297669, Y=-9.600634121467467E-5, Z=8.29450550819143E-5])],
+     * [lat=-8.956596846349593E-303, lon=-3.1415926535897922([X=-1.0011188539924791, Y=-1.0117738616818362E-15, Z=-8.966617970490158E-303])]}}
+     *
+     *  [junit4]    > Point: [lat=-6.499661194605612E-10, lon=-2.0286460544410216([X=-0.4425148814082194, Y=-0.8980086522698344, Z=-6.506933366482957E-10])]
+     */
 
     final List<GeoPoint> points = new ArrayList<>();
     points.add(new GeoPoint(PlanetModel.WGS84, 1.4379241972924144E-5, -3.141520309370815));
@@ -2682,7 +2628,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(largePolygon.isWithin(thePoint) == smallPolygon.isWithin(thePoint));
   }
 
-  @Test
   public void testLUCENE8444() {
     // POLYGON((0.0 -67.68132244526963,-1.2477695347678826E-95 -88.11137674490907,
     // 1.7059188343238906E-9 7.009654350320916,0.0 -67.68132244526963))
@@ -2719,7 +2664,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(false == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8445() {
     // POLYGON((32.18017946378854 -17.397683785381247,49.51018758330871
     // -9.870219317504647,58.77903721991479 33.90553510354402,2.640604559432277
@@ -2776,7 +2720,6 @@ public class TestGeoPolygon extends LuceneTestCase {
     assertTrue(polygon.isWithin(point) == largePolygon.isWithin(point));
   }
 
-  @Test
   public void testLUCENE8451() {
     // POLYGON((-2.5185339401969213 -24.093993739745027,0.0
     // 8.828539494442529E-27,5.495998489568957E-11 -8.321407453133E-11,2.7174659198424288E-11

@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.util.Bits;
@@ -196,7 +197,6 @@ public class ParallelLeafReader extends LeafReader {
       if (!closeSubReaders) {
         reader.incRef();
       }
-      reader.registerParentReader(this);
     }
   }
 
@@ -255,7 +255,7 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     ensureOpen();
     LeafReader leafReader = termsFieldToReader.get(field);
     return leafReader == null ? null : leafReader.terms(field);
@@ -443,7 +443,7 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public PointValues getPointValues(String fieldName) throws IOException {
+  public PointValues getPointValues(String fieldName) {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
     return reader == null ? null : reader.getPointValues(fieldName);
@@ -465,7 +465,7 @@ public class ParallelLeafReader extends LeafReader {
 
   @Override
   public void searchNearestVectors(
-      String fieldName, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+      String fieldName, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);
@@ -476,7 +476,7 @@ public class ParallelLeafReader extends LeafReader {
 
   @Override
   public void searchNearestVectors(
-      String fieldName, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+      String fieldName, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(fieldName);

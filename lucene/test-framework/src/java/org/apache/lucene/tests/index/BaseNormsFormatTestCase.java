@@ -40,9 +40,9 @@ import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.FieldStats;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -588,6 +588,28 @@ public abstract class BaseNormsFormatTestCase extends BaseIndexFileFormatTestCas
           assertEquals("doc " + d, expected.longValue(), actual.longValue());
         }
         assertEquals(NO_MORE_DOCS, actual.nextDoc());
+
+        // Now check bulk fetching
+        expected = r.getNumericDocValues("dv");
+        actual = r.getNormValues("indexed");
+
+        int[] docs = new int[16];
+        long[] expectedValues = new long[16];
+        long[] actualValues = new long[16];
+        for (int doc = -1; doc < r.maxDoc(); ) {
+          int size = 0;
+          for (int j = 0; j < docs.length; ++j) {
+            doc += 1 + (j & 0x03);
+            if (doc >= r.maxDoc()) {
+              break;
+            }
+            docs[size++] = doc;
+          }
+
+          expected.longValues(size, docs, expectedValues, size);
+          actual.longValues(size, docs, actualValues, size);
+          assertArrayEquals(expectedValues, actualValues);
+        }
       }
     }
   }
@@ -612,8 +634,7 @@ public abstract class BaseNormsFormatTestCase extends BaseIndexFileFormatTestCas
     }
 
     @Override
-    public SimScorer scorer(
-        float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
+    public SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
       throw new UnsupportedOperationException();
     }
   }

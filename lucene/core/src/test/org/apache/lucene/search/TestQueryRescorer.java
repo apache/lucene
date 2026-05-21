@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
+
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.Arrays;
@@ -333,20 +336,20 @@ public class TestQueryRescorer extends LuceneTestCase {
     int docID = hits2.scoreDocs[0].doc;
     Explanation explain = rescorer.explain(searcher, searcher.explain(bq.build(), docID), docID);
     String s = explain.toString();
-    assertTrue(s.contains("TestQueryRescorer$"));
-    assertTrue(s.contains("combined first and second pass score"));
-    assertTrue(s.contains("first pass score"));
-    assertTrue(s.contains("= second pass score"));
+    assertThat(s, containsString("TestQueryRescorer$"));
+    assertThat(s, containsString("combined first and second pass score"));
+    assertThat(s, containsString("first pass score"));
+    assertThat(s, containsString("= second pass score"));
     assertEquals(hits2.scoreDocs[0].score, explain.getValue().doubleValue(), 0.0f);
 
     docID = hits2.scoreDocs[1].doc;
     explain = rescorer.explain(searcher, searcher.explain(bq.build(), docID), docID);
     s = explain.toString();
-    assertTrue(s.contains("TestQueryRescorer$"));
-    assertTrue(s.contains("combined first and second pass score"));
-    assertTrue(s.contains("first pass score"));
-    assertTrue(s.contains("no second pass score"));
-    assertFalse(s.contains("= second pass score"));
+    assertThat(s, containsString("TestQueryRescorer$"));
+    assertThat(s, containsString("combined first and second pass score"));
+    assertThat(s, containsString("first pass score"));
+    assertThat(s, containsString("no second pass score"));
+    assertThat(s, not(containsString("= second pass score")));
     assertEquals(hits2.scoreDocs[1].score, explain.getValue().doubleValue(), 0.0f);
 
     r.close();

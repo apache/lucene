@@ -20,7 +20,6 @@ package org.apache.lucene.codecs.lucene99;
 import static org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat.DIRECT_MONOTONIC_BLOCK_SHIFT;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -31,8 +30,6 @@ import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
-import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
-import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
@@ -44,16 +41,10 @@ import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
-import org.apache.lucene.store.IOContext;
-import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
-import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
-import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
-import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 
 /**
  * Writes vector values to index segments.
@@ -62,7 +53,7 @@ import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
  */
 public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
-  private static final long SHALLLOW_RAM_BYTES_USED =
+  private static final long SHALLOW_RAM_BYTES_USED =
       RamUsageEstimator.shallowSizeOfInstance(Lucene99FlatVectorsWriter.class);
 
   private final SegmentWriteState segmentWriteState;
@@ -85,7 +76,6 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
             state.segmentSuffix,
             Lucene99FlatVectorsFormat.VECTOR_DATA_EXTENSION);
 
-    boolean success = false;
     try {
       meta = state.directory.createOutput(metaFileName, state.context);
       vectorData = state.directory.createOutput(vectorDataFileName, state.context);
@@ -102,11 +92,9 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
           Lucene99FlatVectorsFormat.VERSION_CURRENT,
           state.segmentInfo.getId(),
           state.segmentSuffix);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -147,17 +135,26 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
   @Override
   public long ramBytesUsed() {
-    long total = SHALLLOW_RAM_BYTES_USED;
+    long total = SHALLOW_RAM_BYTES_USED;
     for (FieldWriter<?> field : fields) {
       total += field.ramBytesUsed();
     }
     return total;
   }
 
+  private static long alignOutput(IndexOutput output, VectorEncoding encoding) throws IOException {
+    return output.alignFilePointer(
+        switch (encoding) {
+          case BYTE -> Float.BYTES;
+          case FLOAT32 -> 64; // optimal alignment for Arm Neoverse machines.
+        });
+  }
+
   private void writeField(FieldWriter<?> fieldData, int maxDoc) throws IOException {
     // write vector values
-    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-    switch (fieldData.fieldInfo.getVectorEncoding()) {
+    VectorEncoding encoding = fieldData.fieldInfo.getVectorEncoding();
+    long vectorDataOffset = alignOutput(vectorData, encoding);
+    switch (encoding) {
       case BYTE -> writeByteVectors(fieldData);
       case FLOAT32 -> writeFloat32Vectors(fieldData);
     }
@@ -191,19 +188,19 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     mapOldOrdToNewOrd(fieldData.docsWithField, sortMap, null, ordMap, newDocsWithField);
 
     // write vector values
-    long vectorDataOffset =
-        switch (fieldData.fieldInfo.getVectorEncoding()) {
-          case BYTE -> writeSortedByteVectors(fieldData, ordMap);
-          case FLOAT32 -> writeSortedFloat32Vectors(fieldData, ordMap);
-        };
+    VectorEncoding encoding = fieldData.fieldInfo.getVectorEncoding();
+    long vectorDataOffset = alignOutput(vectorData, encoding);
+    switch (encoding) {
+      case BYTE -> writeSortedByteVectors(fieldData, ordMap);
+      case FLOAT32 -> writeSortedFloat32Vectors(fieldData, ordMap);
+    }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
     writeMeta(fieldData.fieldInfo, maxDoc, vectorDataOffset, vectorDataLength, newDocsWithField);
   }
 
-  private long writeSortedFloat32Vectors(FieldWriter<?> fieldData, int[] ordMap)
+  private void writeSortedFloat32Vectors(FieldWriter<?> fieldData, int[] ordMap)
       throws IOException {
-    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     final ByteBuffer buffer =
         ByteBuffer.allocate(fieldData.dim * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
     for (int ordinal : ordMap) {
@@ -211,26 +208,25 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       buffer.asFloatBuffer().put(vector);
       vectorData.writeBytes(buffer.array(), buffer.array().length);
     }
-    return vectorDataOffset;
   }
 
-  private long writeSortedByteVectors(FieldWriter<?> fieldData, int[] ordMap) throws IOException {
-    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
+  private void writeSortedByteVectors(FieldWriter<?> fieldData, int[] ordMap) throws IOException {
     for (int ordinal : ordMap) {
       byte[] vector = (byte[]) fieldData.vectors.get(ordinal);
       vectorData.writeBytes(vector, vector.length);
     }
-    return vectorDataOffset;
   }
 
   @Override
-  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+  public void mergeOneFlatVectorField(FieldInfo fieldInfo, MergeState mergeState)
+      throws IOException {
     // Since we know we will not be searching for additional indexing, we can just write the
     // the vectors directly to the new segment.
-    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
+    VectorEncoding encoding = fieldInfo.getVectorEncoding();
+    long vectorDataOffset = alignOutput(vectorData, encoding);
     // No need to use temporary file as we don't have to re-open for reading
     DocsWithFieldSet docsWithField =
-        switch (fieldInfo.getVectorEncoding()) {
+        switch (encoding) {
           case BYTE ->
               writeByteVectorData(
                   vectorData,
@@ -248,90 +244,6 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         vectorDataOffset,
         vectorDataLength,
         docsWithField);
-  }
-
-  @Override
-  public CloseableRandomVectorScorerSupplier mergeOneFieldToIndex(
-      FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
-    IndexOutput tempVectorData =
-        segmentWriteState.directory.createTempOutput(
-            vectorData.getName(), "temp", segmentWriteState.context);
-    IndexInput vectorDataInput = null;
-    boolean success = false;
-    try {
-      // write the vector data to a temporary file
-      DocsWithFieldSet docsWithField =
-          switch (fieldInfo.getVectorEncoding()) {
-            case BYTE ->
-                writeByteVectorData(
-                    tempVectorData,
-                    KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(
-                        fieldInfo, mergeState));
-            case FLOAT32 ->
-                writeVectorData(
-                    tempVectorData,
-                    KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(
-                        fieldInfo, mergeState));
-          };
-      CodecUtil.writeFooter(tempVectorData);
-      IOUtils.close(tempVectorData);
-
-      // This temp file will be accessed in a random-access fashion to construct the HNSW graph.
-      // Note: don't use the context from the state, which is a flush/merge context, not expecting
-      // to perform random reads.
-      vectorDataInput =
-          segmentWriteState.directory.openInput(
-              tempVectorData.getName(), IOContext.DEFAULT.withReadAdvice(ReadAdvice.RANDOM));
-      // copy the temporary file vectors to the actual data file
-      vectorData.copyBytes(vectorDataInput, vectorDataInput.length() - CodecUtil.footerLength());
-      CodecUtil.retrieveChecksum(vectorDataInput);
-      long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
-      writeMeta(
-          fieldInfo,
-          segmentWriteState.segmentInfo.maxDoc(),
-          vectorDataOffset,
-          vectorDataLength,
-          docsWithField);
-      success = true;
-      final IndexInput finalVectorDataInput = vectorDataInput;
-      final RandomVectorScorerSupplier randomVectorScorerSupplier =
-          switch (fieldInfo.getVectorEncoding()) {
-            case BYTE ->
-                vectorsScorer.getRandomVectorScorerSupplier(
-                    fieldInfo.getVectorSimilarityFunction(),
-                    new OffHeapByteVectorValues.DenseOffHeapVectorValues(
-                        fieldInfo.getVectorDimension(),
-                        docsWithField.cardinality(),
-                        finalVectorDataInput,
-                        fieldInfo.getVectorDimension() * Byte.BYTES,
-                        vectorsScorer,
-                        fieldInfo.getVectorSimilarityFunction()));
-            case FLOAT32 ->
-                vectorsScorer.getRandomVectorScorerSupplier(
-                    fieldInfo.getVectorSimilarityFunction(),
-                    new OffHeapFloatVectorValues.DenseOffHeapVectorValues(
-                        fieldInfo.getVectorDimension(),
-                        docsWithField.cardinality(),
-                        finalVectorDataInput,
-                        fieldInfo.getVectorDimension() * Float.BYTES,
-                        vectorsScorer,
-                        fieldInfo.getVectorSimilarityFunction()));
-          };
-      return new FlatCloseableRandomVectorScorerSupplier(
-          () -> {
-            IOUtils.close(finalVectorDataInput);
-            segmentWriteState.directory.deleteFile(tempVectorData.getName());
-          },
-          docsWithField.cardinality(),
-          randomVectorScorerSupplier);
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(vectorDataInput, tempVectorData);
-        IOUtils.deleteFilesIgnoringExceptions(
-            segmentWriteState.directory, tempVectorData.getName());
-      }
-    }
   }
 
   private void writeMeta(
@@ -489,41 +401,6 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     @Override
     public boolean isFinished() {
       return finished;
-    }
-  }
-
-  static final class FlatCloseableRandomVectorScorerSupplier
-      implements CloseableRandomVectorScorerSupplier {
-
-    private final RandomVectorScorerSupplier supplier;
-    private final Closeable onClose;
-    private final int numVectors;
-
-    FlatCloseableRandomVectorScorerSupplier(
-        Closeable onClose, int numVectors, RandomVectorScorerSupplier supplier) {
-      this.onClose = onClose;
-      this.supplier = supplier;
-      this.numVectors = numVectors;
-    }
-
-    @Override
-    public UpdateableRandomVectorScorer scorer() throws IOException {
-      return supplier.scorer();
-    }
-
-    @Override
-    public RandomVectorScorerSupplier copy() throws IOException {
-      return supplier.copy();
-    }
-
-    @Override
-    public void close() throws IOException {
-      onClose.close();
-    }
-
-    @Override
-    public int totalVectorCount() {
-      return numVectors;
     }
   }
 }

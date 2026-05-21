@@ -20,13 +20,14 @@ package org.apache.lucene.util.hnsw;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
-import java.util.HashSet;
-import java.util.Set;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.util.LongHeap;
 
 /**
  * Utility class for updating a big graph with smaller graphs. This is used during merging of
  * segments containing HNSW graphs.
+ *
+ * @lucene.internal
  */
 public class UpdateGraphsUtils {
 
@@ -37,11 +38,11 @@ public class UpdateGraphsUtils {
    *
    * @return a set of nodes that best cover the graph
    */
-  public static Set<Integer> computeJoinSet(HnswGraph graph) throws IOException {
+  public static IntHashSet computeJoinSet(HnswGraph graph) throws IOException {
     int k; // coverage for the current node
     int size = graph.size();
     LongHeap heap = new LongHeap(size);
-    Set<Integer> j = new HashSet<>();
+    IntHashSet j = new IntHashSet();
     boolean[] stale = new boolean[size];
     short[] counts = new short[size];
     long gExit = 0L;

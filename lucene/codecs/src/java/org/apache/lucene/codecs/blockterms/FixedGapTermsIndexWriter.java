@@ -70,18 +70,15 @@ public class FixedGapTermsIndexWriter extends TermsIndexWriterBase {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, TERMS_INDEX_EXTENSION);
     out = state.directory.createOutput(indexFileName, state.context);
-    boolean success = false;
     try {
       CodecUtil.writeIndexHeader(
           out, CODEC_NAME, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
       out.writeVInt(termIndexInterval);
       out.writeVInt(PackedInts.VERSION_CURRENT);
       out.writeVInt(BLOCKSIZE);
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(out);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, out);
+      throw t;
     }
   }
 
@@ -207,8 +204,7 @@ public class FixedGapTermsIndexWriter extends TermsIndexWriterBase {
   @Override
   public void close() throws IOException {
     if (out != null) {
-      boolean success = false;
-      try {
+      try (IndexOutput _ = out) {
         final long dirStart = out.getFilePointer();
         final int fieldCount = fields.size();
 
@@ -234,13 +230,7 @@ public class FixedGapTermsIndexWriter extends TermsIndexWriterBase {
         }
         writeTrailer(dirStart);
         CodecUtil.writeFooter(out);
-        success = true;
       } finally {
-        if (success) {
-          IOUtils.close(out);
-        } else {
-          IOUtils.closeWhileHandlingException(out);
-        }
         out = null;
       }
     }

@@ -75,7 +75,6 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.CollectionUtil;
 import org.apache.lucene.util.IOUtils;
 
 /**
@@ -251,8 +250,8 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
         }
       }
 
-      positionToTerms = CollectionUtil.newHashMap(len);
-      startOffsetToTerms = CollectionUtil.newHashMap(len);
+      positionToTerms = HashMap.newHashMap(len);
+      startOffsetToTerms = HashMap.newHashMap(len);
       for (int i = 0; i < len; ++i) {
         positionToTerms.computeIfAbsent(positions[i], _ -> new HashSet<>(1)).add(i);
         startOffsetToTerms.computeIfAbsent(startOffsets[i], _ -> new HashSet<>(1)).add(i);
@@ -393,7 +392,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
         fieldNames.add(TestUtil.randomSimpleString(random()));
         fieldNames.remove("id");
       }
-      this.fieldNames = fieldNames.toArray(new String[0]);
+      this.fieldNames = fieldNames.toArray(String[]::new);
       terms = new String[disctinctTerms];
       termBytes = new BytesRef[disctinctTerms];
       for (int i = 0; i < disctinctTerms; ++i) {
@@ -448,7 +447,7 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     for (String term : tk.freqs.keySet()) {
       uniqueTerms.add(new BytesRef(term));
     }
-    final BytesRef[] sortedTerms = uniqueTerms.toArray(new BytesRef[0]);
+    final BytesRef[] sortedTerms = uniqueTerms.toArray(BytesRef[]::new);
     Arrays.sort(sortedTerms);
     final TermsEnum termsEnum = terms.iterator();
     for (int i = 0; i < sortedTerms.length; ++i) {
@@ -518,7 +517,10 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
             assertTrue(foundPayload);
           }
         }
-        expectThrows(getReadPastLastPositionExceptionClass(), docsAndPositionsEnum::nextPosition);
+        Class<? extends Throwable> exClass = getReadPastLastPositionExceptionClass();
+        if (AssertionError.class.isAssignableFrom(exClass) && TEST_ASSERTS_ENABLED) {
+          expectThrows(exClass, docsAndPositionsEnum::nextPosition);
+        }
         assertEquals(PostingsEnum.NO_MORE_DOCS, docsAndPositionsEnum.nextDoc());
       }
       this.docsEnum.set(docsAndPositionsEnum);

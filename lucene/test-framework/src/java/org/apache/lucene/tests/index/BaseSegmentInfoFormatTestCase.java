@@ -30,7 +30,9 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
+import org.apache.lucene.search.SortedNumericSelector;
 import org.apache.lucene.search.SortedNumericSortField;
+import org.apache.lucene.search.SortedSetSelector;
 import org.apache.lucene.search.SortedSetSortField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
@@ -293,87 +295,76 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
 
   private SortField randomIndexSortField() {
     boolean reversed = random().nextBoolean();
-    SortField sortField;
-    switch (random().nextInt(10)) {
-      case 0:
-        sortField =
-            new SortField(TestUtil.randomSimpleString(random()), SortField.Type.INT, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextInt());
-        }
-        break;
-      case 1:
-        sortField =
-            new SortedNumericSortField(
-                TestUtil.randomSimpleString(random()), SortField.Type.INT, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextInt());
-        }
-        break;
-
-      case 2:
-        sortField =
-            new SortField(TestUtil.randomSimpleString(random()), SortField.Type.LONG, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextLong());
-        }
-        break;
-      case 3:
-        sortField =
-            new SortedNumericSortField(
-                TestUtil.randomSimpleString(random()), SortField.Type.LONG, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextLong());
-        }
-        break;
-      case 4:
-        sortField =
-            new SortField(TestUtil.randomSimpleString(random()), SortField.Type.FLOAT, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextFloat());
-        }
-        break;
-      case 5:
-        sortField =
-            new SortedNumericSortField(
-                TestUtil.randomSimpleString(random()), SortField.Type.FLOAT, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextFloat());
-        }
-        break;
-      case 6:
-        sortField =
-            new SortField(TestUtil.randomSimpleString(random()), SortField.Type.DOUBLE, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextDouble());
-        }
-        break;
-      case 7:
-        sortField =
-            new SortedNumericSortField(
-                TestUtil.randomSimpleString(random()), SortField.Type.DOUBLE, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(random().nextDouble());
-        }
-        break;
-      case 8:
-        sortField =
-            new SortField(TestUtil.randomSimpleString(random()), SortField.Type.STRING, reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(SortField.STRING_LAST);
-        }
-        break;
-      case 9:
-        sortField = new SortedSetSortField(TestUtil.randomSimpleString(random()), reversed);
-        if (random().nextBoolean()) {
-          sortField.setMissingValue(SortField.STRING_LAST);
-        }
-        break;
-      default:
-        sortField = null;
+    return switch (random().nextInt(10)) {
+      case 0 ->
+          new SortField(
+              TestUtil.randomSimpleString(random()),
+              SortField.Type.INT,
+              reversed,
+              random().nextBoolean() ? random().nextInt() : null);
+      case 1 ->
+          new SortedNumericSortField(
+              TestUtil.randomSimpleString(random()),
+              SortField.Type.INT,
+              reversed,
+              SortedNumericSelector.Type.MIN,
+              random().nextBoolean() ? random().nextInt() : null);
+      case 2 ->
+          new SortField(
+              TestUtil.randomSimpleString(random()),
+              SortField.Type.LONG,
+              reversed,
+              random().nextBoolean() ? random().nextLong() : null);
+      case 3 ->
+          new SortedNumericSortField(
+              TestUtil.randomSimpleString(random()),
+              SortField.Type.LONG,
+              reversed,
+              SortedNumericSelector.Type.MIN,
+              random().nextBoolean() ? random().nextLong() : null);
+      case 4 ->
+          new SortField(
+              TestUtil.randomSimpleString(random()),
+              SortField.Type.FLOAT,
+              reversed,
+              random().nextBoolean() ? random().nextFloat() : null);
+      case 5 ->
+          new SortedNumericSortField(
+              TestUtil.randomSimpleString(random()),
+              SortField.Type.FLOAT,
+              reversed,
+              SortedNumericSelector.Type.MIN,
+              random().nextBoolean() ? random().nextFloat() : null);
+      case 6 ->
+          new SortField(
+              TestUtil.randomSimpleString(random()),
+              SortField.Type.DOUBLE,
+              reversed,
+              random().nextBoolean() ? random().nextDouble() : null);
+      case 7 ->
+          new SortedNumericSortField(
+              TestUtil.randomSimpleString(random()),
+              SortField.Type.DOUBLE,
+              reversed,
+              SortedNumericSelector.Type.MIN,
+              random().nextBoolean() ? random().nextDouble() : null);
+      case 8 ->
+          new SortField(
+              TestUtil.randomSimpleString(random()),
+              SortField.Type.STRING,
+              reversed,
+              random().nextBoolean() ? SortField.STRING_LAST : null);
+      case 9 ->
+          new SortedSetSortField(
+              TestUtil.randomSimpleString(random()),
+              reversed,
+              SortedSetSelector.Type.MIN,
+              random().nextBoolean() ? SortField.STRING_LAST : null);
+      default -> {
         fail();
-    }
-    return sortField;
+        yield null;
+      }
+    };
   }
 
   /** Test sort */

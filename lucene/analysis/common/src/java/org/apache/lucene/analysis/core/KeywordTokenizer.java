@@ -62,7 +62,7 @@ public final class KeywordTokenizer extends Tokenizer {
   }
 
   @Override
-  public final boolean incrementToken() throws IOException {
+  public boolean incrementToken() throws IOException {
     if (!done) {
       clearAttributes();
       done = true;
@@ -83,7 +83,7 @@ public final class KeywordTokenizer extends Tokenizer {
   }
 
   @Override
-  public final void end() throws IOException {
+  public void end() throws IOException {
     super.end();
     // set final offset
     offsetAtt.setOffset(finalOffset, finalOffset);

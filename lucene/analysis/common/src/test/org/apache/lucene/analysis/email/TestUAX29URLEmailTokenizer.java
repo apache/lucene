@@ -526,7 +526,7 @@ public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
           urlList.add(line);
         }
       }
-      urls = urlList.toArray(new String[0]);
+      urls = urlList.toArray(String[]::new);
     } finally {
       if (null != bufferedReader) {
         bufferedReader.close();
@@ -575,7 +575,7 @@ public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
           emailList.add(line);
         }
       }
-      emails = emailList.toArray(new String[0]);
+      emails = emailList.toArray(String[]::new);
     } finally {
       if (null != bufferedReader) {
         bufferedReader.close();
@@ -601,9 +601,9 @@ public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
         new String[] {
           "mailto",
           "personA@example.com",
-          // TODO: recognize ',' address delimiter. Also, see examples of ';' delimiter use at:
+          // Also, see examples of ';' delimiter use at:
           // http://www.mailto.co.uk/
-          ",personB@example.com",
+          "personB@example.com",
           "?cc=personC@example.com", // TODO: split field keys/values
           "subject",
           "Subjectivity",
@@ -666,7 +666,7 @@ public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
           urlList.add(line);
         }
       }
-      urls = urlList.toArray(new String[0]);
+      urls = urlList.toArray(String[]::new);
     } finally {
       if (null != bufferedReader) {
         bufferedReader.close();
@@ -885,5 +885,13 @@ public class TestUAX29URLEmailTokenizer extends BaseTokenStreamTestCase {
       BaseTokenStreamTestCase.assertAnalyzesTo(
           analyzer, URL, new String[] {URL}, new String[] {"<URL>"});
     }
+  }
+
+  public void testEmailTokenization() throws Exception {
+    BaseTokenStreamTestCase.assertAnalyzesTo(
+        a,
+        "foo,bar@yahoo.com",
+        new String[] {"foo", "bar@yahoo.com"},
+        new String[] {"<ALPHANUM>", "<EMAIL>"});
   }
 }

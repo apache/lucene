@@ -253,7 +253,6 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
     payloadBytes = ByteBuffersDataOutput.newResettableInstance();
     lastTerm = new BytesRef(ArrayUtil.oversize(30, 1));
 
-    boolean success = false;
     try {
       metaStream =
           directory.createOutput(
@@ -295,12 +294,10 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
       startOffsetsBuf = new int[1024];
       lengthsBuf = new int[1024];
       payloadLengthsBuf = new int[1024];
-
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(metaStream, vectorsStream, indexWriter, indexWriter);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(
+          t, metaStream, vectorsStream, indexWriter, indexWriter);
+      throw t;
     }
   }
 
@@ -799,9 +796,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
     boolean v = true;
     try {
       v = Boolean.parseBoolean(System.getProperty(BULK_MERGE_ENABLED_SYSPROP, "true"));
-    } catch (
-        @SuppressWarnings("unused")
-        SecurityException ignored) {
+    } catch (SecurityException _) {
     }
     BULK_MERGE_ENABLED = v;
   }
@@ -955,9 +950,7 @@ public final class Lucene90CompressingTermVectorsWriter extends TermVectorsWrite
   private boolean canPerformBulkMerge(
       MergeState mergeState, MatchingReaders matchingReaders, int readerIndex) {
     if (mergeState.termVectorsReaders[readerIndex]
-        instanceof Lucene90CompressingTermVectorsReader) {
-      final Lucene90CompressingTermVectorsReader reader =
-          (Lucene90CompressingTermVectorsReader) mergeState.termVectorsReaders[readerIndex];
+        instanceof Lucene90CompressingTermVectorsReader reader) {
       return BULK_MERGE_ENABLED
           && matchingReaders.matchingReaders[readerIndex]
           && reader.getCompressionMode() == compressionMode

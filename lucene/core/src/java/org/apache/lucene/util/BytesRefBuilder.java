@@ -171,4 +171,9 @@ public class BytesRefBuilder {
   public int hashCode() {
     throw new UnsupportedOperationException();
   }
+
+  @Override
+  public String toString() {
+    return this.get().toString();
+  }
 }

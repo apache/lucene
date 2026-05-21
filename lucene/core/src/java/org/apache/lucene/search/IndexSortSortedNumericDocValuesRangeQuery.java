@@ -56,21 +56,18 @@ import org.apache.lucene.util.ArrayUtil.ByteArrayComparator;
  * give constant scores. As an example, an {@link IndexSortSortedNumericDocValuesRangeQuery} might
  * be constructed as follows:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   String field = "field";
  *   long lowerValue = 0, long upperValue = 10;
  *   Query fallbackQuery = LongPoint.newRangeQuery(field, lowerValue, upperValue);
  *   Query rangeQuery = new IndexSortSortedNumericDocValuesRangeQuery(
  *       field, lowerValue, upperValue, fallbackQuery);
- * </pre>
+ * </code></pre>
  *
  * @lucene.experimental
  */
-public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
+public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery {
 
-  private final String field;
-  private final long lowerValue;
-  private final long upperValue;
   private final Query fallbackQuery;
 
   /**
@@ -83,9 +80,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
    */
   public IndexSortSortedNumericDocValuesRangeQuery(
       String field, long lowerValue, long upperValue, Query fallbackQuery) {
-    this.field = Objects.requireNonNull(field);
-    this.lowerValue = lowerValue;
-    this.upperValue = upperValue;
+    super(field, lowerValue, upperValue);
     this.fallbackQuery = fallbackQuery;
   }
 
@@ -139,7 +134,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
     Query rewrittenFallback = fallbackQuery.rewrite(indexSearcher);
     if (rewrittenFallback.getClass() == MatchAllDocsQuery.class) {
-      return new MatchAllDocsQuery();
+      return MatchAllDocsQuery.INSTANCE;
     }
     if (rewrittenFallback == fallbackQuery) {
       return this;
@@ -213,7 +208,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
             // The index sort optimization is only supported for Type.INT and Type.LONG
             if (sortFieldType == Type.INT || sortFieldType == Type.LONG) {
               Object missingValue = sortField.getMissingValue();
-              final long missingLongValue = missingValue == null ? 0L : (long) missingValue;
+              final long missingLongValue =
+                  missingValue == null ? 0L : ((Number) missingValue).longValue();
               // all documents have docValues or missing value falls outside the range
               if ((pointValues != null && pointValues.getDocCount() == reader.maxDoc())
                   || (missingLongValue < lowerValue || missingLongValue > upperValue)) {
@@ -612,7 +608,7 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
     Object missingValue = sortField.getMissingValue();
     LeafReader reader = context.reader();
     PointValues pointValues = reader.getPointValues(field);
-    final long missingLongValue = missingValue == null ? 0L : (long) missingValue;
+    final long missingLongValue = missingValue == null ? 0L : ((Number) missingValue).longValue();
     // all documents have docValues or missing value falls outside the range
     if ((pointValues != null && pointValues.getDocCount() == reader.maxDoc())
         || (missingLongValue < lowerValue || missingLongValue > upperValue)) {
@@ -651,8 +647,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends Query {
 
   private static SortField.Type getSortFieldType(SortField sortField) {
     // We expect the sortField to be SortedNumericSortField
-    if (sortField instanceof SortedNumericSortField) {
-      return ((SortedNumericSortField) sortField).getNumericType();
+    if (sortField instanceof SortedNumericSortField snsf) {
+      return snsf.getNumericType();
     } else {
       return sortField.getType();
     }

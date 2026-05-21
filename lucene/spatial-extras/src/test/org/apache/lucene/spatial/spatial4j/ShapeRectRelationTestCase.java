@@ -18,9 +18,6 @@ package org.apache.lucene.spatial.spatial4j;
 
 import static org.locationtech.spatial4j.distance.DistanceUtils.DEGREES_TO_RADIANS;
 
-import org.junit.Rule;
-import org.junit.Test;
-import org.locationtech.spatial4j.TestLog;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.shape.Circle;
 import org.locationtech.spatial4j.shape.Point;
@@ -30,8 +27,6 @@ import org.locationtech.spatial4j.shape.ShapeFactory;
 
 public abstract class ShapeRectRelationTestCase extends RandomizedShapeTestCase {
   protected static final double RADIANS_PER_DEGREE = Math.PI / 180.0;
-
-  @Rule public final TestLog testLog = TestLog.instance;
 
   protected int maxRadius = 180;
 
@@ -76,7 +71,6 @@ public abstract class ShapeRectRelationTestCase extends RandomizedShapeTestCase 
     }
   }
 
-  @Test
   public void testGeoCircleRect() {
     new AbstractRectIntersectionTestHelper(ctx) {
 
@@ -93,7 +87,6 @@ public abstract class ShapeRectRelationTestCase extends RandomizedShapeTestCase 
     }.testRelateWithRectangle();
   }
 
-  @Test
   public void testGeoBBoxRect() {
     new AbstractRectIntersectionTestHelper(ctx) {
 
@@ -123,7 +116,6 @@ public abstract class ShapeRectRelationTestCase extends RandomizedShapeTestCase 
   }
 
   // very slow, and test sources are not here, so no clue how to fix
-  @Test
   public void testGeoPolygonRect() {
     new AbstractRectIntersectionTestHelper(ctx) {
 
@@ -141,9 +133,7 @@ public abstract class ShapeRectRelationTestCase extends RandomizedShapeTestCase 
           }
           try {
             return builder.build();
-          } catch (
-              @SuppressWarnings("unused")
-              IllegalArgumentException e) {
+          } catch (IllegalArgumentException _) {
             // This is what happens when we create a shape that is invalid.  Although it is
             // conceivable that there are cases where
             // the exception is thrown incorrectly, we aren't going to be able to do that in this
@@ -166,7 +156,6 @@ public abstract class ShapeRectRelationTestCase extends RandomizedShapeTestCase 
     }.testRelateWithRectangle();
   }
 
-  @Test
   public void testGeoPathRect() {
     new AbstractRectIntersectionTestHelper(ctx) {
 
@@ -186,9 +175,7 @@ public abstract class ShapeRectRelationTestCase extends RandomizedShapeTestCase 
           builder.buffer(width);
           try {
             return builder.build();
-          } catch (
-              @SuppressWarnings("unused")
-              IllegalArgumentException e) {
+          } catch (IllegalArgumentException _) {
             // This is what happens when we create a shape that is invalid.  Although it is
             // conceivable that there are cases where
             // the exception is thrown incorrectly, we aren't going to be able to do that in this

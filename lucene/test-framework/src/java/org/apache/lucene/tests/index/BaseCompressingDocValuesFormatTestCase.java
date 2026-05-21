@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.tests.index;
 
+import static org.hamcrest.Matchers.lessThan;
+
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -44,6 +46,7 @@ public abstract class BaseCompressingDocValuesFormatTestCase extends BaseDocValu
   public void testUniqueValuesCompression() throws IOException {
     try (final Directory dir = new ByteBuffersDirectory()) {
       final IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.getCodec().compoundFormat().setShouldUseCompoundFile(false);
       final IndexWriter iwriter = new IndexWriter(dir, iwc);
 
       final int uniqueValueCount = TestUtil.nextInt(random(), 1, 256);
@@ -72,13 +75,14 @@ public abstract class BaseCompressingDocValuesFormatTestCase extends BaseDocValu
       iwriter.forceMerge(1);
       final long size2 = dirSize(dir);
       // make sure the new longs did not cost 8 bytes each
-      assertTrue(size2 < size1 + 8 * 20);
+      assertThat(size2, lessThan(size1 + 8 * 20));
     }
   }
 
   public void testDateCompression() throws IOException {
     try (final Directory dir = new ByteBuffersDirectory()) {
       final IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.getCodec().compoundFormat().setShouldUseCompoundFile(false);
       final IndexWriter iwriter = new IndexWriter(dir, iwc);
 
       final long base = 13; // prime
@@ -100,13 +104,14 @@ public abstract class BaseCompressingDocValuesFormatTestCase extends BaseDocValu
       iwriter.forceMerge(1);
       final long size2 = dirSize(dir);
       // make sure the new longs costed less than if they had only been packed
-      assertTrue(size2 < size1 + (PackedInts.bitsRequired(day) * 50) / 8);
+      assertThat(size2, lessThan(size1 + (PackedInts.bitsRequired(day) * 50) / 8));
     }
   }
 
   public void testSingleBigValueCompression() throws IOException {
     try (final Directory dir = new ByteBuffersDirectory()) {
       final IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
+      iwc.getCodec().compoundFormat().setShouldUseCompoundFile(false);
       final IndexWriter iwriter = new IndexWriter(dir, iwc);
 
       final Document doc = new Document();
@@ -123,7 +128,7 @@ public abstract class BaseCompressingDocValuesFormatTestCase extends BaseDocValu
       iwriter.forceMerge(1);
       final long size2 = dirSize(dir);
       // make sure the new value did not grow the bpv for every other value
-      assertTrue(size2 < size1 + (20000 * (63 - 10)) / 8);
+      assertThat(size2, lessThan(size1 + (20000 * (63 - 10)) / 8));
     }
   }
 }

@@ -140,13 +140,9 @@ public class TestFactories extends BaseTokenStreamTestCase {
     if (factory instanceof ResourceLoaderAware) {
       try {
         ((ResourceLoaderAware) factory).inform(new StringMockResourceLoader(""));
-      } catch (
-          @SuppressWarnings("unused")
-          IOException ignored) {
+      } catch (IOException _) {
         // it's ok if the right files arent available or whatever to throw this
-      } catch (
-          @SuppressWarnings("unused")
-          IllegalArgumentException ignored) {
+      } catch (IllegalArgumentException _) {
         // is this ok? I guess so
       }
     }
@@ -155,7 +151,7 @@ public class TestFactories extends BaseTokenStreamTestCase {
 
   // some silly classes just so we can use checkRandomData
   private TokenizerFactory assertingTokenizer =
-      new TokenizerFactory(new HashMap<String, String>()) {
+      new TokenizerFactory(new HashMap<>()) {
         @Override
         public MockTokenizer create(AttributeFactory factory) {
           return new MockTokenizer(factory);

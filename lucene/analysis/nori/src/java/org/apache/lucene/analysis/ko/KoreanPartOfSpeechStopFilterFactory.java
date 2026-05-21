@@ -25,7 +25,7 @@ import org.apache.lucene.analysis.TokenStream;
 /**
  * Factory for {@link KoreanPartOfSpeechStopFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_ko" class="solr.TextField"&gt;
  *    &lt;analyzer&gt;
  *      &lt;tokenizer class="solr.KoreanTokenizerFactory"/&gt;
@@ -33,7 +33,7 @@ import org.apache.lucene.analysis.TokenStream;
  *              tags="E,J"/&gt;
  *    &lt;/analyzer&gt;
  * &lt;/fieldType&gt;
- * </pre>
+ * </code></pre>
  *
  * <p>Supports the following attributes:
  *

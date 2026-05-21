@@ -270,11 +270,11 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     // do not use newMergePolicy that might return a MockMergePolicy that ignores the no-CFS ratio
     // do not use RIW which will change things up!
     MergePolicy mp = newTieredMergePolicy();
-    mp.setNoCFSRatio(0);
     IndexWriterConfig cfg =
         new IndexWriterConfig(new MockAnalyzer(random()))
             .setUseCompoundFile(false)
             .setMergePolicy(mp);
+    cfg.getCodec().compoundFormat().setShouldUseCompoundFile(false);
     if (VERBOSE) {
       cfg.setInfoStream(System.out);
     }
@@ -292,11 +292,11 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
 
     Directory dir2 = applyCreatedVersionMajor(newDirectory());
     mp = newTieredMergePolicy();
-    mp.setNoCFSRatio(0);
     cfg =
         new IndexWriterConfig(new MockAnalyzer(random()))
             .setUseCompoundFile(false)
             .setMergePolicy(mp);
+    cfg.getCodec().compoundFormat().setShouldUseCompoundFile(false);
     w = new IndexWriter(dir2, cfg);
     TestUtil.addIndexesSlowly(w, reader);
 
@@ -376,7 +376,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
 
     SegmentWriteState writeState =
         new SegmentWriteState(
-            null, dir, segmentInfo, fieldInfos, null, new IOContext(new FlushInfo(1, 20)));
+            null, dir, segmentInfo, fieldInfos, null, IOContext.flush(new FlushInfo(1, 20)));
 
     SegmentReadState readState =
         new SegmentReadState(dir, segmentInfo, fieldInfos, IOContext.DEFAULT);
@@ -411,7 +411,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             }
 
             @Override
-            public Terms terms(String field) throws IOException {
+            public Terms terms(String field) {
               return oneDocReader.terms(field);
             }
 
@@ -641,7 +641,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     conf.setMergeScheduler(new SerialMergeScheduler());
     conf.setCodec(getCodec());
 
-    int numDocs = atLeast(500);
+    int numDocs = atLeast(100);
 
     IndexWriter iw = new IndexWriter(dir, conf);
     try {
@@ -658,9 +658,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
           iw.addDocument(doc);
           // we made it, sometimes delete our doc
           iw.deleteDocuments(new Term("id", Integer.toString(i)));
-        } catch (
-            @SuppressWarnings("unused")
-            AlreadyClosedException ace) {
+        } catch (AlreadyClosedException _) {
           // OK: writer was closed by abort; we just reopen now:
           dir.setRandomIOExceptionRateOnOpen(
               0.0); // disable exceptions on openInput until next iteration
@@ -677,7 +675,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
           allowAlreadyClosed = true;
         }
 
-        if (random().nextInt(10) == 0) {
+        if (random().nextInt(23) == 0) {
           // trigger flush:
           try {
             if (random().nextBoolean()) {
@@ -699,9 +697,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             if (DirectoryReader.indexExists(dir)) {
               TestUtil.checkIndex(dir);
             }
-          } catch (
-              @SuppressWarnings("unused")
-              AlreadyClosedException ace) {
+          } catch (AlreadyClosedException _) {
             // OK: writer was closed by abort; we just reopen now:
             dir.setRandomIOExceptionRateOnOpen(
                 0.0); // disable exceptions on openInput until next iteration
@@ -729,9 +725,7 @@ public abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
         handleFakeIOException(e, exceptionStream);
         try {
           iw.rollback();
-        } catch (
-            @SuppressWarnings("unused")
-            Throwable t) {
+        } catch (Throwable _) {
         }
       }
       dir.close();

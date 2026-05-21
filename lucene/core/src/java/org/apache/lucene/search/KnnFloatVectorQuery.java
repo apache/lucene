@@ -30,12 +30,11 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
 
 /**
- * Uses {@link KnnVectorsReader#search(String, float[], KnnCollector, Bits)} to perform nearest
- * neighbour search.
+ * Uses {@link KnnVectorsReader#search(String, float[], KnnCollector, AcceptDocs)} to perform
+ * nearest neighbour search.
  *
  * <p>This query also allows for performing a kNN search subject to a filter. In this case, it first
  * executes the filter for each leaf, then chooses a strategy dynamically:
@@ -101,7 +100,7 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
   @Override
   protected TopDocs approximateSearch(
       LeafReaderContext context,
-      Bits acceptDocs,
+      AcceptDocs acceptDocs,
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {

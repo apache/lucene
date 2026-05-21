@@ -19,9 +19,9 @@ package org.apache.lucene.codecs.hnsw;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Accountable;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 
 /**
@@ -40,29 +40,21 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
  */
 public abstract class FlatVectorsReader extends KnnVectorsReader implements Accountable {
 
-  /** Scorer for flat vectors */
-  protected final FlatVectorsScorer vectorScorer;
-
-  /** Sole constructor */
-  protected FlatVectorsReader(FlatVectorsScorer vectorsScorer) {
-    this.vectorScorer = vectorsScorer;
-  }
-
   /**
-   * @return the {@link FlatVectorsScorer} for this reader.
+   * Returns a {@link FlatVectorsScorer} for the given field.
+   *
+   * @param field the field to search
    */
-  public FlatVectorsScorer getFlatVectorScorer() {
-    return vectorScorer;
-  }
+  public abstract FlatVectorsScorer getFlatVectorScorer(String field) throws IOException;
 
   @Override
-  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     // don't scan stored field data. If we didn't index it, produce no search results
   }
 
   @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     // don't scan stored field data. If we didn't index it, produce no search results
   }
@@ -96,7 +88,7 @@ public abstract class FlatVectorsReader extends KnnVectorsReader implements Acco
    * <p>The default implementation returns {@code this}
    */
   @Override
-  public FlatVectorsReader getMergeInstance() {
+  public FlatVectorsReader getMergeInstance() throws IOException {
     return this;
   }
 }

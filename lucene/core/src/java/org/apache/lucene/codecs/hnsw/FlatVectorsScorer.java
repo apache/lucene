@@ -67,4 +67,11 @@ public interface FlatVectorsScorer {
   RandomVectorScorer getRandomVectorScorer(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, byte[] target)
       throws IOException;
+
+  static void checkDimensions(int queryLen, int fieldLen) {
+    if (queryLen != fieldLen) {
+      throw new IllegalArgumentException(
+          "vector query dimension: " + queryLen + " differs from field dimension: " + fieldLen);
+    }
+  }
 }

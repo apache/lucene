@@ -46,18 +46,6 @@ public class OrdinalMap implements Accountable {
   // need it
   // TODO: use more efficient packed ints structures?
 
-  private static class TermsEnumPriorityQueue extends PriorityQueue<TermsEnumIndex> {
-
-    TermsEnumPriorityQueue(int size) {
-      super(size);
-    }
-
-    @Override
-    protected boolean lessThan(TermsEnumIndex a, TermsEnumIndex b) {
-      return a.compareTermTo(b) < 0;
-    }
-  }
-
   private static class SegmentMap implements Accountable {
     private static final long BASE_RAM_BYTES_USED =
         RamUsageEstimator.shallowSizeOfInstance(SegmentMap.class);
@@ -265,7 +253,8 @@ public class OrdinalMap implements Accountable {
     long[] segmentOrds = new long[subs.length];
 
     // Just merge-sorts by term:
-    TermsEnumPriorityQueue queue = new TermsEnumPriorityQueue(subs.length);
+    PriorityQueue<TermsEnumIndex> queue =
+        PriorityQueue.usingComparator(subs.length, TermsEnumIndex::compareTermTo);
 
     for (int i = 0; i < subs.length; i++) {
       TermsEnumIndex sub = new TermsEnumIndex(subs[segmentMap.newToOld(i)], i);

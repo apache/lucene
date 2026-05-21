@@ -22,7 +22,7 @@
 #
 # To use this run:
 #
-#   gradlew :lucene:benchmark:run -Ptask.alg=conf/extractWikipedia.alg
+#   ./gradlew :lucene:benchmark:run -PtaskAlg=conf/extractWikipedia.alg
 #
 # Then, to index the documents in the line file, see
 # indexLineFile.alg.

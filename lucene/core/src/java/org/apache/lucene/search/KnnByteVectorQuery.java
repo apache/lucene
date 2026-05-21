@@ -30,10 +30,9 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.Bits;
 
 /**
- * Uses {@link KnnVectorsReader#search(String, byte[], KnnCollector, Bits)} to perform nearest
+ * Uses {@link KnnVectorsReader#search(String, byte[], KnnCollector, AcceptDocs)} to perform nearest
  * neighbour search.
  *
  * <p>This query also allows for performing a kNN search subject to a filter. In this case, it first
@@ -100,7 +99,7 @@ public class KnnByteVectorQuery extends AbstractKnnVectorQuery {
   @Override
   protected TopDocs approximateSearch(
       LeafReaderContext context,
-      Bits acceptDocs,
+      AcceptDocs acceptDocs,
       int visitedLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException {

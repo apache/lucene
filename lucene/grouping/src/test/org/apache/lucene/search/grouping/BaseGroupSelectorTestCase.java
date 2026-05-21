@@ -324,25 +324,40 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
     Collection<SearchGroup<T>> mergedGroups = SearchGroup.merge(shardGroups, 0, 5, sort);
     assertEquals(singletonGroups, mergedGroups);
 
-    TopGroupsCollector<T> singletonSecondPass =
-        new TopGroupsCollector<>(
-            getGroupSelector(), singletonGroups, sort, Sort.RELEVANCE, 5, true);
-    control.getIndexSearcher().search(topLevel, singletonSecondPass);
-    TopGroups<T> singletonTopGroups = singletonSecondPass.getTopGroups(0);
+    final int withinGroupOffset = random().nextInt(numDocs);
+    TopGroupsCollectorManager<T> topGroupsCollectorManager =
+        new TopGroupsCollectorManager<>(
+            this::getGroupSelector,
+            singletonGroups,
+            sort,
+            Sort.RELEVANCE,
+            withinGroupOffset,
+            5,
+            true);
+    TopGroups<T> singletonTopGroups =
+        control.getIndexSearcher().search(topLevel, topGroupsCollectorManager);
 
-    // TODO why does SearchGroup.merge() take a list but TopGroups.merge() take an array?
-    @SuppressWarnings("unchecked")
-    TopGroups<T>[] shardTopGroups = (TopGroups<T>[]) new TopGroups<?>[shards.length];
-    int j = 0;
+    List<TopGroups<T>> shardTopGroups = new ArrayList<>(shards.length);
     for (Shard shard : shards) {
-      TopGroupsCollector<T> sc =
-          new TopGroupsCollector<>(getGroupSelector(), mergedGroups, sort, Sort.RELEVANCE, 5, true);
-      shard.getIndexSearcher().search(topLevel, sc);
-      shardTopGroups[j] = sc.getTopGroups(0);
-      j++;
+      TopGroupsCollectorManager<T> scm =
+          new TopGroupsCollectorManager<>(
+              this::getGroupSelector,
+              mergedGroups,
+              sort,
+              Sort.RELEVANCE,
+              0,
+              withinGroupOffset + 5,
+              true);
+      shardTopGroups.add(shard.getIndexSearcher().search(topLevel, scm));
     }
     TopGroups<T> mergedTopGroups =
-        TopGroups.merge(shardTopGroups, sort, Sort.RELEVANCE, 0, 5, TopGroups.ScoreMergeMode.None);
+        TopGroups.merge(
+            shardTopGroups,
+            sort,
+            Sort.RELEVANCE,
+            withinGroupOffset,
+            5,
+            TopGroups.ScoreMergeMode.None);
     assertNotNull(mergedTopGroups);
 
     assertEquals(singletonTopGroups.totalGroupedHitCount, mergedTopGroups.totalGroupedHitCount);
@@ -377,6 +392,49 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
       addGroupField(doc, i);
       w.addDocument(doc);
     }
+  }
+
+  public void testIgnoreDocsWithoutGroupField() throws IOException {
+    Shard shard = new Shard();
+
+    // Add documents with group field
+    Document doc = new Document();
+    doc.add(new TextField("text", "foo", Field.Store.NO));
+    addGroupField(doc, 1);
+    shard.writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new TextField("text", "foo", Field.Store.NO));
+    addGroupField(doc, 2);
+    shard.writer.addDocument(doc);
+
+    // Add document without group field
+    doc = new Document();
+    doc.add(new TextField("text", "foo", Field.Store.NO));
+    shard.writer.addDocument(doc);
+
+    IndexSearcher searcher = shard.getIndexSearcher();
+    Query query = new TermQuery(new Term("text", "foo"));
+
+    // Test default behavior (include null group)
+    GroupingSearch grouping1 = new GroupingSearch(getGroupSelector());
+    TopGroups<T> groups1 = grouping1.search(searcher, query, 0, 10);
+    int defaultGroupCount = groups1.groups.length;
+
+    // Test ignoring docs without group field
+    GroupingSearch grouping2 = new GroupingSearch(getGroupSelector());
+    grouping2.setIgnoreDocsWithoutGroupField(true);
+    TopGroups<T> groups2 = grouping2.search(searcher, query, 0, 10);
+    int ignoreGroupCount = groups2.groups.length;
+
+    assertTrue(
+        "Expected ignoreGroupCount <= defaultGroupCount, got "
+            + ignoreGroupCount
+            + " vs "
+            + defaultGroupCount,
+        ignoreGroupCount <= defaultGroupCount);
+
+    shard.close();
   }
 
   private void assertSortsBefore(GroupDocs<T> first, GroupDocs<T> second) {

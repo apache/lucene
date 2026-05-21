@@ -45,6 +45,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -354,7 +355,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
         if (level == 0) {
           return graph.getNodesOnLevel(0);
         } else {
-          return new ArrayNodesIterator(nodesByLevel.get(level), nodesByLevel.get(level).length);
+          return new ArrayNodesIterator(nodesByLevel.get(level));
         }
       }
     };
@@ -385,7 +386,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+  public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(
@@ -484,6 +485,7 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
             segmentWriteState.directory, tempVectorData.getName());
       }
     }
+    return null;
   }
 
   private void writeGraph(OnHeapHnswGraph graph) throws IOException {
@@ -492,9 +494,9 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     int countOnLevel0 = graph.size();
     for (int level = 0; level < graph.numLevels(); level++) {
       int maxConnOnLevel = level == 0 ? (M * 2) : M;
-      int[] sortedNodes = HnswGraph.NodesIterator.getSortedNodes(graph.getNodesOnLevel(level));
-      for (int node : sortedNodes) {
-        NeighborArray neighbors = graph.getNeighbors(level, node);
+      HnswGraph.NodesIterator sortedNodes = graph.getSortedNodes(level);
+      while (sortedNodes.hasNext()) {
+        NeighborArray neighbors = graph.getNeighbors(level, sortedNodes.next());
         int size = neighbors.size();
         vectorIndex.writeInt(size);
         // Destructively modify; it's ok we are discarding it after this
@@ -578,11 +580,11 @@ public final class Lucene94HnswVectorsWriter extends KnnVectorsWriter {
     } else {
       meta.writeInt(graph.numLevels());
       for (int level = 0; level < graph.numLevels(); level++) {
-        int[] sortedNodes = HnswGraph.NodesIterator.getSortedNodes(graph.getNodesOnLevel(level));
-        meta.writeInt(sortedNodes.length); // number of nodes on a level
+        HnswGraph.NodesIterator sortedNodes = graph.getSortedNodes(level);
+        meta.writeInt(sortedNodes.size()); // number of nodes on a level
         if (level > 0) {
-          for (int node : sortedNodes) {
-            meta.writeInt(node); // list of nodes on a level
+          while (sortedNodes.hasNext()) {
+            meta.writeInt(sortedNodes.next()); // list of nodes on a level
           }
         }
       }

@@ -24,13 +24,11 @@ import org.apache.lucene.document.StoredField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.spatial.SpatialTestCase;
 import org.apache.lucene.spatial.prefix.tree.QuadPrefixTree;
-import org.junit.Test;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.shape.Shape;
 
 public class TestTermQueryPrefixGridStrategy extends SpatialTestCase {
 
-  @Test
   public void testNGramPrefixGridLosAngeles() throws IOException {
     SpatialContext ctx = SpatialContext.GEO;
     TermQueryPrefixTreeStrategy prefixGridStrategy =

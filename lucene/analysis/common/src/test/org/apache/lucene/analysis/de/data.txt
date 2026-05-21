@@ -15,7 +15,7 @@ Haus	hau
 Hauses	hau
 Häuser	hau
 Häusern	hau
-# here's a case where overstemming occurs, i.e. a word is 
+# here's a case where overstemming occurs, i.e. a word is
 # mapped to the same stem as unrelated words:
 hauen	hau
 

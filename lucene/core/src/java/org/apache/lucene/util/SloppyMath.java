@@ -178,6 +178,32 @@ public class SloppyMath {
     }
   }
 
+  // some sloppyish stuff, do we really need this to be done in a sloppy way?
+  // unless it is performance sensitive, we should try to remove.
+  // This is performance sensitive, check SloppySinBenchmark and RectangleBenchmark
+  private static final double PIO2 = Math.PI / 2D;
+
+  /**
+   * Returns the trigonometric sine of an angle converted as a cos operation.
+   *
+   * <p>Error is around 1E-12.
+   *
+   * <p>Note that this is not quite right... e.g. sin(0) != 0
+   *
+   * <p>Special cases:
+   *
+   * <ul>
+   *   <li>If the argument is {@code NaN} or an infinity, then the result is {@code NaN}.
+   * </ul>
+   *
+   * @param a an angle, in radians.
+   * @return the sine of the argument.
+   * @see Math#sin(double)
+   */
+  public static double sin(double a) {
+    return cos(a - PIO2);
+  }
+
   // Earth's mean radius, in meters and kilometers; see
   // http://earth-info.nga.mil/GandG/publications/tr8350.2/wgs84fin.pdf
   private static final double TO_METERS = 6_371_008.7714D; // equatorial radius

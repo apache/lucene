@@ -1,0 +1,9 @@
+{
+    "lucene/queryparser/src/java/org/apache/lucene/queryparser/classic/ParseException.java": "d4f22934f0f8eb7ae70f47339cf04cac297a044b",
+    "lucene/queryparser/src/java/org/apache/lucene/queryparser/classic/QueryParser.java": "b88944c9c1ac6a3e6e8508a0c5ae84aad3306694",
+    "lucene/queryparser/src/java/org/apache/lucene/queryparser/classic/QueryParser.jj": "82890f966a2456daf2b6100d3d79f77a861a2e03",
+    "lucene/queryparser/src/java/org/apache/lucene/queryparser/classic/QueryParserConstants.java": "80d2d516553d87539dce33f732e774a67fb800ea",
+    "lucene/queryparser/src/java/org/apache/lucene/queryparser/classic/QueryParserTokenManager.java": "1263b08f33f1b5e8642f4733ea830b3b03628942",
+    "lucene/queryparser/src/java/org/apache/lucene/queryparser/classic/Token.java": "5748b8acdf890eb94fa39c9d7ac86fc35e688438",
+    "lucene/queryparser/src/java/org/apache/lucene/queryparser/classic/TokenMgrError.java": "a0082ca9014c48ede4c5aa4b84aa3c114ed8000a"
+}

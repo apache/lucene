@@ -27,6 +27,7 @@ import java.util.Collections;
 import java.util.Map;
 import org.apache.lucene.expressions.Expression;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.junit.jupiter.api.Test;
 
 /** Tests customing the function map */
 public class TestCustomFunctions extends CompilerTestCase {
@@ -34,6 +35,7 @@ public class TestCustomFunctions extends CompilerTestCase {
   private static final Lookup LOOKUP = MethodHandles.lookup();
 
   /** empty list of methods */
+  @Test
   public void testEmpty() throws Exception {
     Map<String, MethodHandle> functions = Map.of();
     ParseException expected =
@@ -48,6 +50,7 @@ public class TestCustomFunctions extends CompilerTestCase {
   }
 
   /** using the default map explicitly */
+  @Test
   public void testDefaultList() throws Exception {
     Map<String, MethodHandle> functions = JavascriptCompiler.DEFAULT_FUNCTIONS;
     Expression expr = compile("sqrt(20)", functions);
@@ -70,6 +73,7 @@ public class TestCustomFunctions extends CompilerTestCase {
   }
 
   /** tests a method with no arguments */
+  @Test
   public void testNoArgMethod() throws Exception {
     Map<String, MethodHandle> functions = Map.of("foo", localMethod("zeroArgMethod", 0));
     Expression expr = compile("foo()", functions);
@@ -81,6 +85,7 @@ public class TestCustomFunctions extends CompilerTestCase {
   }
 
   /** tests a method with one arguments */
+  @Test
   public void testOneArgMethod() throws Exception {
     Map<String, MethodHandle> functions = Map.of("foo", localMethod("oneArgMethod", 1));
     Expression expr = compile("foo(3)", functions);
@@ -92,6 +97,7 @@ public class TestCustomFunctions extends CompilerTestCase {
   }
 
   /** tests a method with three arguments */
+  @Test
   public void testThreeArgMethod() throws Exception {
     Map<String, MethodHandle> functions = Map.of("foo", localMethod("threeArgMethod", 3));
     Expression expr = compile("foo(3, 4, 5)", functions);
@@ -99,6 +105,7 @@ public class TestCustomFunctions extends CompilerTestCase {
   }
 
   /** tests a map with 2 functions */
+  @Test
   public void testTwoMethods() throws Exception {
     Map<String, MethodHandle> functions =
         Map.of("foo", localMethod("zeroArgMethod", 0), "bar", localMethod("oneArgMethod", 1));
@@ -107,6 +114,7 @@ public class TestCustomFunctions extends CompilerTestCase {
   }
 
   /** tests invalid methods that are not allowed to become variables to be mapped */
+  @Test
   public void testInvalidVariableMethods() {
     ParseException expected =
         expectThrows(
@@ -147,6 +155,7 @@ public class TestCustomFunctions extends CompilerTestCase {
   }
 
   /** wrong return type: must be double */
+  @Test
   public void testWrongReturnType() throws Exception {
     Map<String, MethodHandle> functions =
         Map.of("foo", localMethod("bogusReturnType", MethodType.methodType(String.class)));
@@ -164,6 +173,7 @@ public class TestCustomFunctions extends CompilerTestCase {
   }
 
   /** wrong param type: must be doubles */
+  @Test
   public void testWrongParameterType() throws Exception {
     Map<String, MethodHandle> functions =
         Map.of(
@@ -183,6 +193,7 @@ public class TestCustomFunctions extends CompilerTestCase {
   }
 
   /** wrong modifiers: must be static */
+  @Test
   public void testWrongNotStatic() throws Exception {
     Map<String, MethodHandle> functions =
         Map.of(
@@ -198,24 +209,28 @@ public class TestCustomFunctions extends CompilerTestCase {
     assertTrue(expected.getMessage().contains("is not static"));
   }
 
-  static double nonPublicMethod() {
+  @SuppressWarnings("unused")
+  private static double nonPublicMethod() {
     return 7;
   }
 
   /** non public methods work as the lookup allows access */
+  @Test
   public void testNotPublic() throws Exception {
     Map<String, MethodHandle> functions = Map.of("foo", localMethod("nonPublicMethod", 0));
     Expression expr = compile("foo()", functions);
     assertEquals(7, expr.evaluate(null), DELTA);
   }
 
-  static class NestedNotPublic {
+  @SuppressWarnings("unused")
+  private static class NestedNotPublic {
     public static double method() {
       return 41;
     }
   }
 
   /** class containing method is not public */
+  @Test
   public void testNestedNotPublic() throws Exception {
     Map<String, MethodHandle> functions =
         Map.of(
@@ -227,6 +242,7 @@ public class TestCustomFunctions extends CompilerTestCase {
   }
 
   /** class containing method is not public */
+  @Test
   public void testNonDirectMethodHandle() throws Exception {
     Map<String, MethodHandle> functions =
         Map.of(
@@ -248,6 +264,7 @@ public class TestCustomFunctions extends CompilerTestCase {
    * the method throws an exception. We should check the stack trace that it contains the source
    * code of the expression as file name.
    */
+  @Test
   public void testThrowingException() throws Exception {
     Map<String, MethodHandle> functions = Map.of("foo", localMethod("staticThrowingException", 0));
     String source = "3 * foo() / 5";
@@ -272,6 +289,7 @@ public class TestCustomFunctions extends CompilerTestCase {
   }
 
   /** test that namespaces work with custom expressions as direct method handle. */
+  @Test
   public void testNamespacesWithDirectMH() throws Exception {
     Map<String, MethodHandle> functions = Map.of("foo.bar", localMethod("zeroArgMethod", 0));
     String source = "foo.bar()";
@@ -282,6 +300,7 @@ public class TestCustomFunctions extends CompilerTestCase {
   /**
    * test that namespaces work with general method handles (ensure field name of handle is correct).
    */
+  @Test
   public void testNamespacesWithoutDirectMH() throws Exception {
     Map<String, MethodHandle> functions =
         Map.of(
@@ -291,21 +310,5 @@ public class TestCustomFunctions extends CompilerTestCase {
             MethodHandles.identity(double.class));
     Expression expr = compile("foo.bar() + bar.foo(7)", functions);
     assertEquals(16, expr.evaluate(null), DELTA);
-  }
-
-  public void testLegacyFunctions() throws Exception {
-    var functions =
-        Map.of("foo", TestCustomFunctions.class.getMethod("oneArgMethod", double.class));
-    var newFunctions = JavascriptCompiler.convertLegacyFunctions(functions);
-    newFunctions.putAll(JavascriptCompiler.DEFAULT_FUNCTIONS);
-    Expression expr = compile("foo(3) + abs(-7)", newFunctions);
-    assertEquals(13, expr.evaluate(null), DELTA);
-  }
-
-  public void testInvalidLegacyFunctions() throws Exception {
-    var functions = Map.of("foo", TestCustomFunctions.class.getMethod("nonStaticMethod"));
-    var newFunctions = JavascriptCompiler.convertLegacyFunctions(functions);
-    newFunctions.putAll(JavascriptCompiler.DEFAULT_FUNCTIONS);
-    expectThrows(IllegalArgumentException.class, () -> compile("foo(3) + abs(-7)", newFunctions));
   }
 }

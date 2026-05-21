@@ -60,8 +60,8 @@ public final class DocIdSetBuilder {
 
     @Override
     public void add(IntsRef docs) {
-      for (int i = 0; i < docs.length; i++) {
-        bitSet.set(docs.ints[docs.offset + i]);
+      for (int i = docs.offset, to = docs.offset + docs.length; i < to; i++) {
+        bitSet.set(docs.ints[i]);
       }
     }
 

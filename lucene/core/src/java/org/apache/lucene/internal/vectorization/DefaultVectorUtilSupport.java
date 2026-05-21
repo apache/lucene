@@ -17,6 +17,8 @@
 
 package org.apache.lucene.internal.vectorization;
 
+import static org.apache.lucene.util.VectorUtil.isUnitVector;
+
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
@@ -153,22 +155,42 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
-  public int int4DotProduct(byte[] a, boolean apacked, byte[] b, boolean bpacked) {
-    assert (apacked && bpacked) == false;
-    if (apacked || bpacked) {
-      byte[] packed = apacked ? a : b;
-      byte[] unpacked = apacked ? b : a;
-      int total = 0;
-      for (int i = 0; i < packed.length; i++) {
-        byte packedByte = packed[i];
-        byte unpacked1 = unpacked[i];
-        byte unpacked2 = unpacked[i + packed.length];
-        total += (packedByte & 0x0F) * unpacked2;
-        total += ((packedByte & 0xFF) >> 4) * unpacked1;
-      }
-      return total;
+  public int uint8DotProduct(byte[] a, byte[] b) {
+    int total = 0;
+    for (int i = 0; i < a.length; i++) {
+      total += Byte.toUnsignedInt(a[i]) * Byte.toUnsignedInt(b[i]);
     }
+    return total;
+  }
+
+  @Override
+  public int int4DotProduct(byte[] a, byte[] b) {
     return dotProduct(a, b);
+  }
+
+  @Override
+  public int int4DotProductSinglePacked(byte[] unpacked, byte[] packed) {
+    int total = 0;
+    for (int i = 0; i < packed.length; i++) {
+      byte packedByte = packed[i];
+      byte unpacked1 = unpacked[i];
+      byte unpacked2 = unpacked[i + packed.length];
+      total += (packedByte & 0x0F) * unpacked2;
+      total += ((packedByte & 0xFF) >> 4) * unpacked1;
+    }
+    return total;
+  }
+
+  @Override
+  public int int4DotProductBothPacked(byte[] a, byte[] b) {
+    int total = 0;
+    for (int i = 0; i < a.length; i++) {
+      byte aByte = a[i];
+      byte bByte = b[i];
+      total += (aByte & 0x0F) * (bByte & 0x0F);
+      total += ((aByte & 0xFF) >> 4) * ((bByte & 0xFF) >> 4);
+    }
+    return total;
   }
 
   @Override
@@ -200,6 +222,53 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public int int4SquareDistance(byte[] a, byte[] b) {
+    return squareDistance(a, b);
+  }
+
+  @Override
+  public int int4SquareDistanceSinglePacked(byte[] unpacked, byte[] packed) {
+    int total = 0;
+    for (int i = 0; i < packed.length; i++) {
+      byte packedByte = packed[i];
+      byte unpacked1 = unpacked[i];
+      byte unpacked2 = unpacked[i + packed.length];
+
+      int diff1 = (packedByte & 0x0F) - unpacked2;
+      int diff2 = ((packedByte & 0xFF) >> 4) - unpacked1;
+
+      total += diff1 * diff1 + diff2 * diff2;
+    }
+    return total;
+  }
+
+  @Override
+  public int int4SquareDistanceBothPacked(byte[] a, byte[] b) {
+    int total = 0;
+    for (int i = 0; i < a.length; i++) {
+      byte aByte = a[i];
+      byte bByte = b[i];
+
+      int diff1 = (aByte & 0x0F) - (bByte & 0x0F);
+      int diff2 = ((aByte & 0xFF) >> 4) - ((bByte & 0xFF) >> 4);
+
+      total += diff1 * diff1 + diff2 * diff2;
+    }
+    return total;
+  }
+
+  @Override
+  public int uint8SquareDistance(byte[] a, byte[] b) {
+    // Note: this will not overflow if dim < 2^16, since max(ubyte * ubyte) = 2^16.
+    int squareSum = 0;
+    for (int i = 0; i < a.length; i++) {
+      int diff = Byte.toUnsignedInt(a[i]) - Byte.toUnsignedInt(b[i]);
+      squareSum += diff * diff;
+    }
+    return squareSum;
+  }
+
+  @Override
   public int findNextGEQ(int[] buffer, int target, int from, int to) {
     for (int i = from; i < to; ++i) {
       if (buffer[i] >= target) {
@@ -216,19 +285,54 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
 
   public static long int4BitDotProductImpl(byte[] q, byte[] d) {
     assert q.length == d.length * 4;
+    return int4BitDotProductImpl(q, d, 0, d.length);
+  }
+
+  @Override
+  public long int4DibitDotProduct(byte[] int4Quantized, byte[] dibitQuantized) {
+    return int4DibitDotProductImpl(int4Quantized, dibitQuantized);
+  }
+
+  /**
+   * Computes the dot product between a transposed 4-bit query vector and a transposed 2-bit
+   * document vector. The dibit vector has 2 stripes (lower bits first, then upper bits), so the
+   * scoring is two passes of int4-bit dot product with results shifted appropriately.
+   *
+   * @param q transposed 4-bit query vector (4 stripes, each of size q.length/4)
+   * @param d transposed 2-bit document vector (2 stripes, each of size d.length/2)
+   * @return the dot product
+   */
+  public static long int4DibitDotProductImpl(byte[] q, byte[] d) {
+    assert q.length == d.length * 2;
+    int stripeSize = d.length / 2;
+    long ret0 = int4BitDotProductImpl(q, d, 0, stripeSize);
+    long ret1 = int4BitDotProductImpl(q, d, stripeSize, stripeSize);
+
+    return ret0 + (ret1 << 1);
+  }
+
+  /**
+   * Helper method to compute int4-bit dot product with a specific stripe of the document vector.
+   *
+   * @param q transposed 4-bit query vector (4 stripes)
+   * @param d transposed document vector
+   * @param dOffset offset into d for the stripe to use
+   * @param stripeSize size of each stripe
+   * @return the dot product for this stripe
+   */
+  private static long int4BitDotProductImpl(byte[] q, byte[] d, int dOffset, int stripeSize) {
     long ret = 0;
-    int size = d.length;
     for (int i = 0; i < 4; i++) {
       int r = 0;
       long subRet = 0;
-      for (final int upperBound = d.length & -Integer.BYTES; r < upperBound; r += Integer.BYTES) {
+      for (final int upperBound = stripeSize & -Integer.BYTES; r < upperBound; r += Integer.BYTES) {
         subRet +=
             Integer.bitCount(
-                (int) BitUtil.VH_NATIVE_INT.get(q, i * size + r)
-                    & (int) BitUtil.VH_NATIVE_INT.get(d, r));
+                (int) BitUtil.VH_NATIVE_INT.get(q, i * stripeSize + r)
+                    & (int) BitUtil.VH_NATIVE_INT.get(d, dOffset + r));
       }
-      for (; r < d.length; r++) {
-        subRet += Integer.bitCount((q[i * size + r] & d[r]) & 0xFF);
+      for (; r < stripeSize; r++) {
+        subRet += Integer.bitCount((q[i * stripeSize + r] & d[dOffset + r]) & 0xFF);
       }
       ret += subRet << i;
     }
@@ -279,7 +383,7 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       float correction = 0;
       for (int i = start; i < vector.length; i++) {
         // undo the old quantization
-        float v = (oldAlpha * vector[i]) + oldMinQuantile;
+        float v = (oldAlpha * Byte.toUnsignedInt(vector[i])) + oldMinQuantile;
         correction += quantizeFloat(v, null, 0);
       }
       return correction;
@@ -307,6 +411,56 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
       // will be rounded to the nearest whole number and lose some accuracy
       // Additionally, we account for the global correction of `minQuantile^2` in the equation
       return minQuantile * (v - minQuantile / 2.0F) + (dx - dxq) * dxq;
+    }
+  }
+
+  @Override
+  public int filterByScore(
+      int[] docBuffer, double[] scoreBuffer, double minScoreInclusive, int upTo) {
+    int newSize = 0;
+    for (int i = 0; i < upTo; ++i) {
+      int doc = docBuffer[i];
+      double score = scoreBuffer[i];
+      docBuffer[newSize] = doc;
+      scoreBuffer[newSize] = score;
+      if (score >= minScoreInclusive) {
+        newSize++;
+      }
+    }
+    return newSize;
+  }
+
+  @Override
+  public float[] l2normalize(float[] v, boolean throwOnZero) {
+    double squaredNorm = this.dotProduct(v, v);
+    if (squaredNorm == 0) {
+      if (throwOnZero) {
+        throw new IllegalArgumentException("Cannot normalize a zero-length vector");
+      } else {
+        return v;
+      }
+    }
+    if (isUnitVector(squaredNorm)) {
+      return v;
+    }
+
+    int dim = v.length;
+    double l2norm = Math.sqrt(squaredNorm);
+    for (int i = 0; i < dim; i++) {
+      v[i] /= (float) l2norm;
+    }
+    return v;
+  }
+
+  @Override
+  public void expand8(int[] arr) {
+    // BLOCK_SIZE is 256
+    for (int i = 0; i < 64; ++i) {
+      int l = arr[i];
+      arr[i] = (l >>> 24) & 0xFF;
+      arr[64 + i] = (l >>> 16) & 0xFF;
+      arr[128 + i] = (l >>> 8) & 0xFF;
+      arr[192 + i] = l & 0xFF;
     }
   }
 }

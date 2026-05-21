@@ -16,7 +16,9 @@
  */
 package org.apache.lucene.tests.util;
 
-import static org.hamcrest.Matchers.*;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.emptyString;
+import static org.hamcrest.Matchers.is;
 
 import org.hamcrest.MatcherAssert;
 import org.junit.After;

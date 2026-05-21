@@ -18,7 +18,6 @@ package org.apache.lucene.index;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -40,10 +39,20 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.document.FieldType;
-import org.apache.lucene.document.InvertableType;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredValue;
+import org.apache.lucene.document.column.BinaryColumn;
+import org.apache.lucene.document.column.Column;
+import org.apache.lucene.document.column.ColumnBatch;
+import org.apache.lucene.document.column.ColumnFieldAdapter;
+import org.apache.lucene.document.column.ColumnValidation;
+import org.apache.lucene.document.column.LongColumn;
+import org.apache.lucene.document.column.LongTupleCursor;
+import org.apache.lucene.document.column.LongValuesCursor;
+import org.apache.lucene.document.column.ObjectTupleCursor;
+import org.apache.lucene.document.column.VectorColumn;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
@@ -60,6 +69,7 @@ import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.IntBlockPool;
+import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.Version;
 
@@ -95,6 +105,8 @@ final class IndexingChain implements Accountable {
   private final LiveIndexWriterConfig indexWriterConfig;
   private final int indexCreatedVersionMajor;
   private final Consumer<Throwable> abortingExceptionConsumer;
+  private final PerField parentPf;
+  private final NumericDocValuesField parentField;
   private boolean hasHitAbortingException;
 
   IndexingChain(
@@ -140,6 +152,14 @@ final class IndexingChain implements Accountable {
         new FreqProxTermsWriter(
             intBlockAllocator, byteBlockAllocator, bytesUsed, termVectorsWriter);
     docValuesBytePool = new ByteBlockPool(byteBlockAllocator);
+    if (indexWriterConfig.getParentField() != null) {
+      this.parentField = new NumericDocValuesField(indexWriterConfig.getParentField(), -1);
+      parentPf = getOrAddPerField(this.parentField.name());
+      updateDocFieldSchema(this.parentField.name(), parentPf.schema, this.parentField.fieldType());
+    } else {
+      this.parentField = null;
+      this.parentPf = null;
+    }
   }
 
   private void onAbortingException(Throwable th) {
@@ -153,7 +173,7 @@ final class IndexingChain implements Accountable {
       @Override
       public NumericDocValues getNumericDocValues(String field) {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.NUMERIC) {
@@ -165,7 +185,7 @@ final class IndexingChain implements Accountable {
       @Override
       public BinaryDocValues getBinaryDocValues(String field) {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.BINARY) {
@@ -177,7 +197,7 @@ final class IndexingChain implements Accountable {
       @Override
       public SortedDocValues getSortedDocValues(String field) throws IOException {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.SORTED) {
@@ -189,7 +209,7 @@ final class IndexingChain implements Accountable {
       @Override
       public SortedNumericDocValues getSortedNumericDocValues(String field) throws IOException {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.SORTED_NUMERIC) {
@@ -201,7 +221,7 @@ final class IndexingChain implements Accountable {
       @Override
       public SortedSetDocValues getSortedSetDocValues(String field) throws IOException {
         PerField pf = getPerField(field);
-        if (pf == null) {
+        if (pf == null || pf.fieldInfo == null) {
           return null;
         }
         if (pf.fieldInfo.getDocValuesType() == DocValuesType.SORTED_SET) {
@@ -217,7 +237,7 @@ final class IndexingChain implements Accountable {
     };
   }
 
-  private Sorter.DocMap maybeSortSegment(SegmentWriteState state) throws IOException {
+  private Sorter.PackableDocMap maybeSortSegment(SegmentWriteState state) throws IOException {
     Sort indexSort = state.segmentInfo.getIndexSort();
     if (indexSort == null) {
       return null;
@@ -263,15 +283,15 @@ final class IndexingChain implements Accountable {
     }
     Sorter sorter = new Sorter(indexSort);
     // returns null if the documents are already sorted
-    return sorter.sort(
+    return sorter.sortAndLeaveUnpacked(
         state.segmentInfo.maxDoc(), comparators.toArray(IndexSorter.DocComparator[]::new));
   }
 
-  Sorter.DocMap flush(SegmentWriteState state) throws IOException {
+  Sorter.PackableDocMap flush(SegmentWriteState state) throws IOException {
 
     // NOTE: caller (DocumentsWriterPerThread) handles
     // aborting on any exception from this method
-    Sorter.DocMap sortMap = maybeSortSegment(state);
+    Sorter.PackableDocMap sortMap = maybeSortSegment(state);
     int maxDoc = state.segmentInfo.maxDoc();
     long t0 = System.nanoTime();
     writeNorms(state, sortMap);
@@ -320,8 +340,7 @@ final class IndexingChain implements Accountable {
 
     t0 = System.nanoTime();
     Map<String, TermsHashPerField> fieldsToFlush = new HashMap<>();
-    for (int i = 0; i < fieldHash.length; i++) {
-      PerField perField = fieldHash[i];
+    for (PerField perField : fieldHash) {
       while (perField != null) {
         if (perField.invertState != null) {
           fieldsToFlush.put(perField.fieldInfo.name, perField.termsHashPerField);
@@ -368,7 +387,6 @@ final class IndexingChain implements Accountable {
   /** Writes all buffered points. */
   private void writePoints(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
     PointsWriter pointsWriter = null;
-    boolean success = false;
     try {
       for (int i = 0; i < fieldHash.length; i++) {
         PerField perField = fieldHash[i];
@@ -396,21 +414,17 @@ final class IndexingChain implements Accountable {
       }
       if (pointsWriter != null) {
         pointsWriter.finish();
+        pointsWriter.close();
       }
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(pointsWriter);
-      } else {
-        IOUtils.closeWhileHandlingException(pointsWriter);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, pointsWriter);
+      throw t;
     }
   }
 
   /** Writes all buffered doc values (called from {@link #flush}). */
   private void writeDocValues(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
     DocValuesConsumer dvConsumer = null;
-    boolean success = false;
     try {
       for (int i = 0; i < fieldHash.length; i++) {
         PerField perField = fieldHash[i];
@@ -450,13 +464,12 @@ final class IndexingChain implements Accountable {
       // null/"" depending on how docs landed in segments?
       // but we can't detect all cases, and we should leave
       // this behavior undefined. dv is not "schemaless": it's column-stride.
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(dvConsumer);
-      } else {
-        IOUtils.closeWhileHandlingException(dvConsumer);
+      if (dvConsumer != null) {
+        dvConsumer.close();
       }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, dvConsumer);
+      throw t;
     }
 
     if (state.fieldInfos.hasDocValues() == false) {
@@ -473,7 +486,6 @@ final class IndexingChain implements Accountable {
   }
 
   private void writeNorms(SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
-    boolean success = false;
     NormsConsumer normsConsumer = null;
     try {
       if (state.fieldInfos.hasNorms()) {
@@ -494,13 +506,12 @@ final class IndexingChain implements Accountable {
           }
         }
       }
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(normsConsumer);
-      } else {
-        IOUtils.closeWhileHandlingException(normsConsumer);
+      if (normsConsumer != null) {
+        normsConsumer.close();
       }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, normsConsumer);
+      throw t;
     }
   }
 
@@ -558,9 +569,11 @@ final class IndexingChain implements Accountable {
     }
   }
 
-  void processDocument(int docID, Iterable<? extends IndexableField> document) throws IOException {
-    // number of unique fields by names (collapses multiple field instances by the same name)
-    int fieldCount = 0;
+  void processDocument(
+      int docID, Iterable<? extends IndexableField> document, boolean lastDocInBlock)
+      throws IOException {
+    // number of unique fields by name which need to be init in segment or full validation
+    int fieldsNeedInitOrValidate = 0;
     int indexedFieldCount = 0; // number of unique fields indexed with postings
     long fieldGen = nextFieldGen++;
     int docFieldIdx = 0;
@@ -574,45 +587,59 @@ final class IndexingChain implements Accountable {
     termsHash.startDocument();
     startStoredFields(docID);
     try {
-      // 1st pass over doc fields – verify that doc schema matches the index schema
-      // build schema for each unique doc field
-      for (IndexableField field : document) {
-        IndexableFieldType fieldType = field.fieldType();
-        final boolean isReserved = field.getClass() == ReservedField.class;
-        PerField pf =
-            getOrAddPerField(
-                field.name(), false
-                /* we never add reserved fields during indexing should be done during DWPT setup*/ );
-        if (pf.reserved != isReserved) {
-          throw new IllegalArgumentException(
-              "\""
-                  + field.name()
-                  + "\" is a reserved field and should not be added to any document");
-        }
-        if (pf.fieldGen != fieldGen) { // first time we see this field in this document
-          fields[fieldCount++] = pf;
-          pf.fieldGen = fieldGen;
-          pf.reset(docID);
-        }
-        if (docFieldIdx >= docFields.length) oversizeDocFields();
-        docFields[docFieldIdx++] = pf;
-        updateDocFieldSchema(field.name(), pf.schema, fieldType);
-      }
-      // For each field, if it's the first time we see this field in this segment,
-      // initialize its FieldInfo.
-      // If we have already seen this field, verify that its schema
-      // within the current doc matches its schema in the index.
-      for (int i = 0; i < fieldCount; i++) {
-        PerField pf = fields[i];
-        if (pf.fieldInfo == null) {
-          initializeFieldInfo(pf);
-        } else {
-          pf.schema.assertSameSchema(pf.fieldInfo);
+      // Handle the parent field first (before document fields). Its schema was already
+      // set up in the constructor, so we only need to set the docID and trigger
+      // initializeFieldInfo on the first encounter in this segment.
+      if (parentPf != null && lastDocInBlock) {
+        parentPf.schema.resetJustDocId(docID);
+        if (parentPf.fieldInfo == null) {
+          fields[fieldsNeedInitOrValidate++] = parentPf;
         }
       }
 
-      // 2nd pass over doc fields – index each field
-      // also count the number of unique fields indexed with postings
+      // 1st pass over doc fields – verify that doc schema matches the index schema
+      // build schema for each unique doc field
+      for (IndexableField field : document) {
+        final String fieldName = field.name();
+        final IndexableFieldType fieldType = field.fieldType();
+        PerField pf = getOrAddPerField(fieldName);
+        if (pf == parentPf) {
+          throw new IllegalArgumentException(
+              "\"" + fieldName + "\" is a reserved field and should not be added to any document");
+        }
+        if (pf.fieldGen != fieldGen) { // first time we see this field in this document
+          pf.fieldGen = fieldGen;
+          pf.reset(docID, fieldType);
+          if (pf.validatedFrozenFieldType == null) {
+            fields[fieldsNeedInitOrValidate++] = pf;
+          }
+        } else if (pf.multiValueForcesDeoptimize(fieldType)) {
+          // Multi-valued field with a different field type than the cached frozen type.
+          // Drop the validated frozen field type to force the validation path.
+          pf.validatedFrozenFieldType = null;
+          fields[fieldsNeedInitOrValidate++] = pf;
+        }
+        if (docFieldIdx >= docFields.length) oversizeDocFields();
+        docFields[docFieldIdx++] = pf;
+        if (pf.validatedFrozenFieldType == null) {
+          updateDocFieldSchema(fieldName, pf.schema, fieldType);
+        }
+      }
+
+      if (fieldsNeedInitOrValidate > 0) {
+        initAndValidateFields(fieldsNeedInitOrValidate);
+      }
+
+      // 2nd pass – index parent field first, then document fields
+      if (parentPf != null && lastDocInBlock) {
+        // parentField is currently a NumericDocValuesField so processField always returns false
+        // here, but we check defensively in case the parent field representation changes.
+        if (processField(docID, parentField, parentPf)) {
+          fields[indexedFieldCount] = parentPf;
+          indexedFieldCount++;
+        }
+      }
+      // 2nd pass – document fields
       docFieldIdx = 0;
       for (IndexableField field : document) {
         if (processField(docID, field, docFields[docFieldIdx])) {
@@ -641,12 +668,495 @@ final class IndexingChain implements Accountable {
     }
   }
 
+  private void initAndValidateFields(int fieldCount) throws IOException {
+    // For each field, if it's the first time we see this field in this segment,
+    // initialize its FieldInfo.
+    // If we have already seen this field, verify that its schema
+    // within the current doc matches its schema in the index.
+    for (int i = 0; i < fieldCount; i++) {
+      PerField pf = fields[i];
+      if (pf.fieldInfo == null) {
+        initializeFieldInfo(pf);
+        pf.trySetValidatedFrozenFieldType();
+      } else {
+        pf.schema.assertSameSchema(pf.fieldInfo);
+      }
+    }
+  }
+
   private void oversizeDocFields() {
     PerField[] newDocFields =
         new PerField
             [ArrayUtil.oversize(docFields.length + 1, RamUsageEstimator.NUM_BYTES_OBJECT_REF)];
     System.arraycopy(docFields, 0, newDocFields, 0, docFields.length);
     docFields = newDocFields;
+  }
+
+  /**
+   * Process a column-oriented batch of documents. Iterates the batch's columns, validates each
+   * column's field type, and feeds values to the appropriate DocValuesWriter.
+   *
+   * @param baseDocID the segment-level doc ID for the first document in the batch (batch-local doc
+   *     0 maps to this value)
+   * @param columnBatch the column-oriented batch
+   */
+  void processBatch(int baseDocID, ColumnBatch columnBatch) throws IOException {
+    final int numDocs = columnBatch.numDocs();
+    boolean hasRowColumns = false;
+
+    // First pass: validate all column schemas and initialize field infos
+    for (Column column : columnBatch.columns()) {
+      final String fieldName = column.name();
+      final IndexableFieldType fieldType = column.fieldType();
+
+      ColumnValidation.validateColumnHasIndexingFeature(fieldName, fieldType);
+
+      if (column instanceof BinaryColumn bc) {
+        ColumnValidation.validateBinaryColumn(bc, fieldType);
+      } else if (column instanceof LongColumn lc) {
+        ColumnValidation.validateLongColumn(lc, fieldType);
+      } else if (column instanceof VectorColumn<?> vc) {
+        ColumnValidation.validateVectorColumn(vc, fieldType);
+      }
+
+      if (fieldType.stored() || fieldType.indexOptions() != IndexOptions.NONE) {
+        hasRowColumns = true;
+      }
+
+      PerField pf = getOrAddPerField(fieldName);
+      if (pf == parentPf) {
+        throw new IllegalArgumentException(
+            "\"" + fieldName + "\" is a reserved field and should not be added to any document");
+      }
+      validateColumnSchema(fieldName, pf, fieldType);
+    }
+
+    // Index the parent field for every document (each batch doc is an individual document,
+    // not part of a block, so every doc is its own parent).
+    if (parentPf != null) {
+      if (parentPf.fieldInfo == null) {
+        initializeFieldInfo(parentPf);
+        parentPf.trySetValidatedFrozenFieldType();
+      }
+      final NumericDocValuesWriter parentWriter = (NumericDocValuesWriter) parentPf.docValuesWriter;
+      final long value = parentField.numericValue().longValue();
+      for (int i = 0; i < numDocs; i++) {
+        parentWriter.addValue(baseDocID + i, value);
+      }
+    }
+
+    // Row-oriented pass: stored fields and term inversion only. Uses fresh tuple cursors.
+    if (hasRowColumns) {
+      processRowColumns(baseDocID, numDocs, columnBatch.columns());
+    }
+
+    // Column-oriented pass: doc values, points, and vectors. Each column is asked for a fresh
+    // cursor.
+    for (Column column : columnBatch.columns()) {
+      final IndexableFieldType fieldType = column.fieldType();
+      if (fieldType.docValuesType() == DocValuesType.NONE
+          && fieldType.pointDimensionCount() == 0
+          && fieldType.vectorDimension() == 0) {
+        continue; // no column-oriented features
+      }
+      PerField pf = getOrAddPerField(column.name());
+
+      switch (column) {
+        case LongColumn longCol -> processLongColumn(baseDocID, numDocs, longCol, pf, fieldType);
+        case BinaryColumn binaryCol ->
+            processBinaryColumn(baseDocID, numDocs, binaryCol, pf, fieldType);
+        case VectorColumn<?> vectorCol ->
+            processVectorColumn(baseDocID, numDocs, vectorCol, pf, fieldType);
+        default ->
+            throw new IllegalArgumentException(
+                "Unknown column type: " + column.getClass().getName());
+      }
+    }
+  }
+
+  /**
+   * Processes row-oriented features (stored fields and term inversion) for columns that have stored
+   * or indexed fields. The outer loop iterates every batch-local doc-id in {@code [0, numDocs)} for
+   * row-eligible columns. Per-doc framing for stored fields and term inversion is gated on whether
+   * the batch actually has any stored / indexed columns: {@code hasStored} gates {@code
+   * startStoredFields}/{@code finishStoredFields} (parallel to {@code hasInverted} gating {@code
+   * termsHash}), so an indexed-only batch never forces the segment's {@code StoredFieldsWriter}
+   * into existence. {@link StoredFieldsConsumer#startDocument(int)} retroactively fills empty
+   * frames for skipped doc-ids when a later doc actually writes a stored field, preserving doc
+   * alignment across the {@code addDocument}/{@code addBatch} boundary. Doc values and points are
+   * handled separately in the column-oriented pass.
+   */
+  private void processRowColumns(int baseDocID, int numDocs, Iterable<Column> columns)
+      throws IOException {
+    // Collect row-oriented columns. Per-field PerFields are cached in the shared docFields array
+    // (also used by processDocument) to avoid a per-batch allocation; adapters and cursor heads
+    // are local since they're column-specific.
+    int numRowCols = 0;
+    ColumnFieldAdapter[] adapters = new ColumnFieldAdapter[4];
+    int[] heads = new int[4];
+    boolean hasInverted = false;
+    boolean hasStored = false;
+
+    for (Column column : columns) {
+      IndexableFieldType fieldType = column.fieldType();
+      if (fieldType.stored() == false && fieldType.indexOptions() == IndexOptions.NONE) {
+        continue;
+      }
+      if (numRowCols >= adapters.length) {
+        adapters = ArrayUtil.grow(adapters, numRowCols + 1);
+        heads = ArrayUtil.grow(heads, numRowCols + 1);
+      }
+      if (numRowCols >= docFields.length) {
+        oversizeDocFields();
+      }
+      ColumnFieldAdapter adapter = ColumnFieldAdapter.create(column);
+      adapters[numRowCols] = adapter;
+      docFields[numRowCols] = getOrAddPerField(column.name());
+      heads[numRowCols] = adapter.nextDoc();
+      if (fieldType.indexOptions() != IndexOptions.NONE) {
+        hasInverted = true;
+      }
+      if (fieldType.stored()) {
+        hasStored = true;
+      }
+      numRowCols++;
+    }
+
+    // Row-dense outer loop: frame every doc in [0, numDocs). Column cursors stay sparse, but the
+    // per-doc framing is fixed so stored fields and termsHash stay aligned with the reserved doc
+    // ids even for docs that have no row-oriented values.
+    for (int batchDocID = 0; batchDocID < numDocs; batchDocID++) {
+      int segDocID = baseDocID + batchDocID;
+      long fieldGen = nextFieldGen++;
+      int indexedFieldCount = 0;
+
+      if (hasInverted) {
+        termsHash.startDocument();
+      }
+      if (hasStored) {
+        startStoredFields(segDocID);
+      }
+      try {
+        for (int i = 0; i < numRowCols; i++) {
+          int head = heads[i];
+          if (head != DocIdSetIterator.NO_MORE_DOCS && head < batchDocID) {
+            throw new IllegalArgumentException(
+                "Row column \""
+                    + adapters[i].name()
+                    + "\" returned out-of-order batch doc-id "
+                    + head);
+          }
+          while (head == batchDocID) {
+            PerField pf = docFields[i];
+            if (pf.fieldGen != fieldGen) {
+              pf.fieldGen = fieldGen;
+              pf.reset(segDocID, adapters[i].fieldType());
+            }
+            if (invertAndStore(segDocID, adapters[i], pf)) {
+              fields[indexedFieldCount] = pf;
+              indexedFieldCount++;
+            }
+            head = adapters[i].nextDoc();
+          }
+          heads[i] = head;
+        }
+      } finally {
+        if (hasHitAbortingException == false) {
+          for (int i = 0; i < indexedFieldCount; i++) {
+            fields[i].finish(segDocID);
+          }
+          if (hasStored) {
+            finishStoredFields();
+          }
+          if (hasInverted) {
+            try {
+              termsHash.finishDocument(segDocID);
+            } catch (Throwable th) {
+              abortingExceptionConsumer.accept(th);
+              throw th;
+            }
+          }
+        }
+      }
+    }
+
+    // Any remaining cursor head after the outer loop is a doc-id >= numDocs.
+    for (int i = 0; i < numRowCols; i++) {
+      if (heads[i] != DocIdSetIterator.NO_MORE_DOCS) {
+        throw new IllegalArgumentException(
+            "Row column \""
+                + adapters[i].name()
+                + "\" returned batch doc-id "
+                + heads[i]
+                + " which is out of range [0, "
+                + numDocs
+                + ")");
+      }
+    }
+  }
+
+  private void validateColumnSchema(String fieldName, PerField pf, IndexableFieldType fieldType)
+      throws IOException {
+    updateDocFieldSchema(fieldName, pf.schema, fieldType);
+    if (pf.fieldInfo == null) {
+      initializeFieldInfo(pf);
+      pf.trySetValidatedFrozenFieldType();
+    } else {
+      pf.schema.assertSameSchema(pf.fieldInfo);
+    }
+  }
+
+  private static void processLongColumn(
+      int baseDocID, int numDocs, LongColumn column, PerField pf, IndexableFieldType fieldType)
+      throws IOException {
+    final DocValuesType dvType = fieldType.docValuesType();
+    final boolean hasPoints = fieldType.pointDimensionCount() != 0;
+
+    // Dense fast path: bulk-feed DV and/or points from a values cursor.
+    if (column.density() == Column.Density.DENSE) {
+      processDenseLongColumn(baseDocID, numDocs, column, pf, dvType, hasPoints);
+      return;
+    }
+
+    // Sparse, DV-only: per-doc tuple-cursor path.
+    if (hasPoints == false) {
+      LongTupleCursor cursor = column.tuples();
+      switch (dvType) {
+        case NUMERIC -> {
+          NumericDocValuesWriter writer = (NumericDocValuesWriter) pf.docValuesWriter;
+          int batchDocID;
+          while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+            ColumnValidation.checkDocID(column, batchDocID, numDocs);
+            writer.addValue(baseDocID + batchDocID, cursor.longValue());
+          }
+        }
+        case SORTED_NUMERIC -> {
+          SortedNumericDocValuesWriter writer = (SortedNumericDocValuesWriter) pf.docValuesWriter;
+          int batchDocID;
+          while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+            ColumnValidation.checkDocID(column, batchDocID, numDocs);
+            writer.addValue(baseDocID + batchDocID, cursor.longValue());
+          }
+        }
+        // $CASES-OMITTED$
+        default ->
+            throw new IllegalArgumentException(
+                "LongColumn \"" + column.name() + "\" has incompatible docValuesType: " + dvType);
+      }
+      return;
+    }
+
+    // Sparse, with points (+ optional numeric DV). Per-doc tuple cursor.
+    final LongColumn.NumericKind kind = column.numericKind();
+    final int byteWidth =
+        (kind == LongColumn.NumericKind.INT || kind == LongColumn.NumericKind.FLOAT)
+            ? Integer.BYTES
+            : Long.BYTES;
+    final byte[] pointScratch = new byte[byteWidth];
+    final BytesRef pointBytesRef = new BytesRef(pointScratch);
+    final PointValuesWriter pointWriter = pf.pointValuesWriter;
+    final LongTupleCursor cursor = column.tuples();
+
+    switch (dvType) {
+      case NONE -> {
+        int batchDocID;
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
+          encodeSortablePointBytes(cursor.longValue(), kind, pointScratch);
+          pointWriter.addPackedValue(baseDocID + batchDocID, pointBytesRef);
+        }
+      }
+      case NUMERIC -> {
+        NumericDocValuesWriter dvWriter = (NumericDocValuesWriter) pf.docValuesWriter;
+        int batchDocID;
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
+          int segDocID = baseDocID + batchDocID;
+          long raw = cursor.longValue();
+          dvWriter.addValue(segDocID, raw);
+          encodeSortablePointBytes(raw, kind, pointScratch);
+          pointWriter.addPackedValue(segDocID, pointBytesRef);
+        }
+      }
+      case SORTED_NUMERIC -> {
+        SortedNumericDocValuesWriter dvWriter = (SortedNumericDocValuesWriter) pf.docValuesWriter;
+        int batchDocID;
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
+          int segDocID = baseDocID + batchDocID;
+          long raw = cursor.longValue();
+          dvWriter.addValue(segDocID, raw);
+          encodeSortablePointBytes(raw, kind, pointScratch);
+          pointWriter.addPackedValue(segDocID, pointBytesRef);
+        }
+      }
+      // $CASES-OMITTED$
+      default ->
+          throw new IllegalArgumentException(
+              "LongColumn \"" + column.name() + "\" has incompatible docValuesType: " + dvType);
+    }
+  }
+
+  private static void encodeSortablePointBytes(
+      long raw, LongColumn.NumericKind kind, byte[] scratch) {
+    switch (kind) {
+      case INT, FLOAT -> NumericUtils.intToSortableBytes((int) raw, scratch, 0);
+      case LONG, DOUBLE -> NumericUtils.longToSortableBytes(raw, scratch, 0);
+    }
+  }
+
+  /**
+   * Bulk-feeds DV and/or points from a {@link LongValuesCursor} for a DENSE {@link LongColumn}.
+   * Handles every {DV, points} combination; each consumer takes its own fresh cursor.
+   *
+   * <p>Process the DV pass first: it does minimal transformation on the backing values, so the
+   * cursor's source array stays warm in cache for the heavier points pass that follows.
+   */
+  private static void processDenseLongColumn(
+      int baseDocID,
+      int numDocs,
+      LongColumn column,
+      PerField pf,
+      DocValuesType dvType,
+      boolean hasPoints)
+      throws IOException {
+    if (dvType != DocValuesType.NONE) {
+      LongValuesCursor dvCursor = column.values();
+      ColumnValidation.checkDenseCount(column, dvCursor.size(), numDocs);
+      switch (dvType) {
+        case NUMERIC -> {
+          NumericDocValuesWriter writer = (NumericDocValuesWriter) pf.docValuesWriter;
+          writer.addDenseValues(baseDocID, dvCursor);
+        }
+        case SORTED_NUMERIC -> {
+          SortedNumericDocValuesWriter writer = (SortedNumericDocValuesWriter) pf.docValuesWriter;
+          writer.addDenseValues(baseDocID, dvCursor);
+        }
+        // $CASES-OMITTED$
+        default ->
+            throw new IllegalArgumentException(
+                "LongColumn \"" + column.name() + "\" has incompatible docValuesType: " + dvType);
+      }
+    }
+    if (hasPoints) {
+      LongValuesCursor pointsCursor = column.values();
+      ColumnValidation.checkDenseCount(column, pointsCursor.size(), numDocs);
+      final LongColumn.NumericKind kind = column.numericKind();
+      if (kind == LongColumn.NumericKind.INT || kind == LongColumn.NumericKind.FLOAT) {
+        pf.pointValuesWriter.addDense1DIntValues(baseDocID, pointsCursor);
+      } else {
+        pf.pointValuesWriter.addDense1DLongValues(baseDocID, pointsCursor);
+      }
+    }
+  }
+
+  private static void processBinaryColumn(
+      int baseDocID, int numDocs, BinaryColumn column, PerField pf, IndexableFieldType fieldType)
+      throws IOException {
+    final DocValuesType dvType = fieldType.docValuesType();
+    final boolean hasPoints = fieldType.pointDimensionCount() != 0;
+    final PointValuesWriter pointWriter = hasPoints ? pf.pointValuesWriter : null;
+    final ObjectTupleCursor<BytesRef> cursor = column.tuples();
+
+    if (dvType == DocValuesType.NONE) {
+      // Points only: bytes are passed through unchanged (caller is responsible for producing
+      // sort-encoded bytes of the correct total length).
+      int batchDocID;
+      while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        ColumnValidation.checkDocID(column, batchDocID, numDocs);
+        pointWriter.addPackedValue(baseDocID + batchDocID, cursor.value());
+      }
+      return;
+    }
+
+    switch (dvType) {
+      case BINARY -> {
+        BinaryDocValuesWriter writer = (BinaryDocValuesWriter) pf.docValuesWriter;
+        int batchDocID;
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
+          int segDocID = baseDocID + batchDocID;
+          BytesRef value = cursor.value();
+          writer.addValue(segDocID, value);
+          if (hasPoints) {
+            pointWriter.addPackedValue(segDocID, value);
+          }
+        }
+      }
+      case SORTED -> {
+        SortedDocValuesWriter writer = (SortedDocValuesWriter) pf.docValuesWriter;
+        int batchDocID;
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
+          int segDocID = baseDocID + batchDocID;
+          BytesRef value = cursor.value();
+          writer.addValue(segDocID, value);
+          if (hasPoints) {
+            pointWriter.addPackedValue(segDocID, value);
+          }
+        }
+      }
+      case SORTED_SET -> {
+        SortedSetDocValuesWriter writer = (SortedSetDocValuesWriter) pf.docValuesWriter;
+        int batchDocID;
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
+          int segDocID = baseDocID + batchDocID;
+          BytesRef value = cursor.value();
+          writer.addValue(segDocID, value);
+          if (hasPoints) {
+            pointWriter.addPackedValue(segDocID, value);
+          }
+        }
+      }
+      // $CASES-OMITTED$
+      default ->
+          throw new IllegalArgumentException(
+              "BinaryColumn \"" + column.name() + "\" has incompatible docValuesType: " + dvType);
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void processVectorColumn(
+      int baseDocID, int numDocs, VectorColumn<?> column, PerField pf, IndexableFieldType fieldType)
+      throws IOException {
+    final VectorEncoding encoding = fieldType.vectorEncoding();
+    final int dimension = fieldType.vectorDimension();
+    final ObjectTupleCursor<?> cursor = column.tuples();
+    int prevBatchDocID = -1;
+    int consumed = 0;
+    int batchDocID;
+    switch (encoding) {
+      case FLOAT32 -> {
+        KnnFieldVectorsWriter<float[]> writer =
+            (KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter;
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
+          ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
+          float[] vec = (float[]) cursor.value();
+          ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
+          writer.addValue(baseDocID + batchDocID, vec);
+          prevBatchDocID = batchDocID;
+          consumed++;
+        }
+      }
+      case BYTE -> {
+        KnnFieldVectorsWriter<byte[]> writer =
+            (KnnFieldVectorsWriter<byte[]>) pf.knnFieldVectorsWriter;
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
+          ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
+          byte[] vec = (byte[]) cursor.value();
+          ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
+          writer.addValue(baseDocID + batchDocID, vec);
+          prevBatchDocID = batchDocID;
+          consumed++;
+        }
+      }
+    }
+    if (column.density() == Column.Density.DENSE) {
+      ColumnValidation.checkDenseCount(column, consumed, numDocs);
+    }
   }
 
   private void initializeFieldInfo(PerField pf) throws IOException {
@@ -732,10 +1242,30 @@ final class IndexingChain implements Accountable {
 
   /** Index each field Returns {@code true}, if we are indexing a unique field with postings */
   private boolean processField(int docID, IndexableField field, PerField pf) throws IOException {
+    boolean indexedField = invertAndStore(docID, field, pf);
+    IndexableFieldType fieldType = field.fieldType();
+    DocValuesType dvType = fieldType.docValuesType();
+    if (dvType != DocValuesType.NONE) {
+      indexDocValue(docID, pf, dvType, field);
+    }
+    if (fieldType.pointDimensionCount() != 0) {
+      pf.pointValuesWriter.addPackedValue(docID, field.binaryValue());
+    }
+    if (fieldType.vectorDimension() != 0) {
+      indexVectorValue(docID, pf, fieldType.vectorEncoding(), field);
+    }
+    return indexedField;
+  }
+
+  /**
+   * Inverts indexed fields and writes stored fields. Shared by the single-doc row path ({@link
+   * #processField}) and the column-batch row pass ({@link #processRowColumns}). Returns {@code
+   * true} if this is a unique indexed field with postings.
+   */
+  private boolean invertAndStore(int docID, IndexableField field, PerField pf) throws IOException {
     IndexableFieldType fieldType = field.fieldType();
     boolean indexedField = false;
 
-    // Invert indexed fields
     if (fieldType.indexOptions() != IndexOptions.NONE) {
       if (pf.first) { // first time we see this field in this doc
         pf.invert(docID, field, true);
@@ -746,7 +1276,6 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    // Add stored fields
     if (fieldType.stored()) {
       StoredValue storedValue = field.storedValue();
       if (storedValue == null) {
@@ -768,16 +1297,6 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    DocValuesType dvType = fieldType.docValuesType();
-    if (dvType != DocValuesType.NONE) {
-      indexDocValue(docID, pf, dvType, field);
-    }
-    if (fieldType.pointDimensionCount() != 0) {
-      pf.pointValuesWriter.addPackedValue(docID, field.binaryValue());
-    }
-    if (fieldType.vectorDimension() != 0) {
-      indexVectorValue(docID, pf, fieldType.vectorEncoding(), field);
-    }
     return indexedField;
   }
 
@@ -785,7 +1304,7 @@ final class IndexingChain implements Accountable {
    * Returns a previously created {@link PerField}, absorbing the type information from {@link
    * FieldType}, and creates a new {@link PerField} if this field name wasn't seen yet.
    */
-  private PerField getOrAddPerField(String fieldName, boolean reserved) {
+  private PerField getOrAddPerField(String fieldName) {
     final int hashPos = fieldName.hashCode() & hashMask;
     PerField pf = fieldHash[hashPos];
     while (pf != null && pf.fieldName.equals(fieldName) == false) {
@@ -801,8 +1320,7 @@ final class IndexingChain implements Accountable {
               schema,
               indexWriterConfig.getSimilarity(),
               indexWriterConfig.getInfoStream(),
-              indexWriterConfig.getAnalyzer(),
-              reserved);
+              indexWriterConfig.getAnalyzer());
       pf.next = fieldHash[hashPos];
       fieldHash[hashPos] = pf;
       totalFieldCount++;
@@ -1076,7 +1594,6 @@ final class IndexingChain implements Accountable {
     final String fieldName;
     final int indexCreatedVersionMajor;
     final FieldSchema schema;
-    final boolean reserved;
     FieldInfo fieldInfo;
     final Similarity similarity;
 
@@ -1108,26 +1625,56 @@ final class IndexingChain implements Accountable {
     private final Analyzer analyzer;
     private boolean first; // first in a document
 
+    /**
+     * Allows IndexingChain to skip schema validation if fields keep using the same frozen field
+     * type
+     */
+    private FieldType validatedFrozenFieldType;
+
+    private IndexableFieldType candidateFieldType;
+
     PerField(
         String fieldName,
         int indexCreatedVersionMajor,
         FieldSchema schema,
         Similarity similarity,
         InfoStream infoStream,
-        Analyzer analyzer,
-        boolean reserved) {
+        Analyzer analyzer) {
       this.fieldName = fieldName;
       this.indexCreatedVersionMajor = indexCreatedVersionMajor;
       this.schema = schema;
       this.similarity = similarity;
       this.infoStream = infoStream;
       this.analyzer = analyzer;
-      this.reserved = reserved;
     }
 
-    void reset(int docId) {
+    void reset(int docId, IndexableFieldType fieldType) {
       first = true;
-      schema.reset(docId);
+      if (fieldInfo == null) {
+        // The first time we encounter this field in a segment propose a frozen field to optimize
+        // the validation step. This will be promoted in trySetValidatedFrozenFieldType if it is
+        // frozen and valid.
+        candidateFieldType = fieldType;
+      }
+      if (fieldType == validatedFrozenFieldType) {
+        schema.resetJustDocId(docId);
+      } else {
+        // Encountered new FieldType. Deoptimize the schema validation skip.
+        validatedFrozenFieldType = null;
+        schema.reset(docId);
+      }
+    }
+
+    boolean multiValueForcesDeoptimize(IndexableFieldType fieldType) {
+      return validatedFrozenFieldType != null && fieldType != validatedFrozenFieldType;
+    }
+
+    void trySetValidatedFrozenFieldType() {
+      assert fieldInfo != null;
+      if (candidateFieldType instanceof FieldType ft && ft.isFrozen()) {
+        validatedFrozenFieldType = ft;
+      }
+      candidateFieldType = null;
     }
 
     void setFieldInfo(FieldInfo fieldInfo) {
@@ -1181,7 +1728,7 @@ final class IndexingChain implements Accountable {
      * this field name in this document.
      */
     public void invert(int docID, IndexableField field, boolean first) throws IOException {
-      assert field.fieldType().indexOptions().compareTo(IndexOptions.DOCS) >= 0;
+      assert field.fieldType().indexOptions().subsumes(IndexOptions.DOCS);
 
       if (first) {
         // First time we're seeing this field (indexed) in this document
@@ -1204,8 +1751,10 @@ final class IndexingChain implements Accountable {
         throws IOException {
       final boolean analyzed = field.fieldType().tokenized() && analyzer != null;
       /*
-       * To assist people in tracking down problems in analysis components, we wish to write the field name to the infostream
-       * when we fail. We expect some caller to eventually deal with the real exception, so we don't want any 'catch' clauses,
+       * To assist people in tracking down problems in analysis components, we wish to write the field name to the
+       * infostream
+       * when we fail. We expect some caller to eventually deal with the real exception, so we don't want any 'catch'
+       *  clauses,
        * but rather a finally that takes note of the problem.
        */
       boolean succeededInProcessingField = false;
@@ -1267,7 +1816,8 @@ final class IndexingChain implements Accountable {
           int endOffset = invertState.offset + invertState.offsetAttribute.endOffset();
           if (startOffset < invertState.lastStartOffset || endOffset < startOffset) {
             throw new IllegalArgumentException(
-                "startOffset must be non-negative, and endOffset must be >= startOffset, and offsets must not go backwards "
+                "startOffset must be non-negative, and endOffset must be >= startOffset, and offsets must not go "
+                    + "backwards "
                     + "startOffset="
                     + startOffset
                     + ",endOffset="
@@ -1281,8 +1831,13 @@ final class IndexingChain implements Accountable {
           invertState.lastStartOffset = startOffset;
 
           try {
-            invertState.length =
-                Math.addExact(invertState.length, invertState.termFreqAttribute.getTermFrequency());
+            if (fieldInfo.isTermDocField()) {
+              invertState.length = Math.addExact(invertState.length, 1);
+            } else {
+              invertState.length =
+                  Math.addExact(
+                      invertState.length, invertState.termFreqAttribute.getTermFrequency());
+            }
           } catch (ArithmeticException ae) {
             throw new IllegalArgumentException(
                 "too many tokens for field \"" + field.name() + "\"", ae);
@@ -1299,15 +1854,16 @@ final class IndexingChain implements Accountable {
           try {
             termsHashPerField.add(invertState.termAttribute.getBytesRef(), docID);
           } catch (MaxBytesLengthExceededException e) {
-            byte[] prefix = new byte[30];
             BytesRef bigTerm = invertState.termAttribute.getBytesRef();
-            System.arraycopy(bigTerm.bytes, bigTerm.offset, prefix, 0, 30);
+            byte[] prefix =
+                ArrayUtil.copyOfSubArray(bigTerm.bytes, bigTerm.offset, bigTerm.offset + 30);
             String msg =
                 "Document contains at least one immense term in field=\""
                     + fieldInfo.name
                     + "\" (whose UTF8 encoding is longer than the max length "
                     + IndexWriter.MAX_TERM_LENGTH
-                    + "), all of which were skipped.  Please correct the analyzer to not produce such terms.  The prefix of the first immense term is: '"
+                    + "), all of which were skipped.  Please correct the analyzer to not produce such terms.  The "
+                    + "prefix of the first immense term is: '"
                     + Arrays.toString(prefix)
                     + "...', original message: "
                     + e.getMessage();
@@ -1316,6 +1872,9 @@ final class IndexingChain implements Accountable {
             }
             // Document will be deleted above:
             throw new IllegalArgumentException(msg, e);
+          } catch (TermsHashPerField.DuplicateTermException e) {
+            throw new IllegalArgumentException(
+                "Document update skipped due to duplicate termdoc term", e);
           } catch (Throwable th) {
             onAbortingException(th);
             throw th;
@@ -1355,7 +1914,7 @@ final class IndexingChain implements Accountable {
       }
       final IndexableFieldType fieldType = field.fieldType();
       if (fieldType.tokenized()
-          || fieldType.indexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) > 0
+          || fieldType.indexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)
           || fieldType.storeTermVectorPositions()
           || fieldType.storeTermVectorOffsets()
           || fieldType.storeTermVectorPayloads()) {
@@ -1372,8 +1931,9 @@ final class IndexingChain implements Accountable {
       try {
         termsHashPerField.add(binaryValue, docID);
       } catch (MaxBytesLengthExceededException e) {
-        byte[] prefix = new byte[30];
-        System.arraycopy(binaryValue.bytes, binaryValue.offset, prefix, 0, 30);
+        byte[] prefix =
+            ArrayUtil.copyOfSubArray(
+                binaryValue.bytes, binaryValue.offset, binaryValue.offset + 30);
         String msg =
             "Document contains at least one immense term in field=\""
                 + fieldInfo.name
@@ -1544,8 +2104,12 @@ final class IndexingChain implements Accountable {
       }
     }
 
-    void reset(int doc) {
+    void resetJustDocId(int doc) {
       docID = doc;
+    }
+
+    void reset(int doc) {
+      resetJustDocId(doc);
       omitNorms = false;
       storeTermVector = false;
       indexOptions = IndexOptions.NONE;
@@ -1572,79 +2136,6 @@ final class IndexingChain implements Accountable {
       assertSame(
           "point index dimension", fi.getPointIndexDimensionCount(), pointIndexDimensionCount);
       assertSame("point num bytes", fi.getPointNumBytes(), pointNumBytes);
-    }
-  }
-
-  /**
-   * Wraps the given field in a reserved field and registers it as reserved. Only DWPT should do
-   * this to mark fields as private / reserved to prevent this fieldname to be used from the outside
-   * of the IW / DWPT eco-system
-   */
-  <T extends IndexableField> ReservedField<T> markAsReserved(T field) {
-    getOrAddPerField(field.name(), true);
-    return new ReservedField<T>(field);
-  }
-
-  static final class ReservedField<T extends IndexableField> implements IndexableField {
-
-    private final T delegate;
-
-    private ReservedField(T delegate) {
-      this.delegate = delegate;
-    }
-
-    T getDelegate() {
-      return delegate;
-    }
-
-    @Override
-    public String name() {
-      return delegate.name();
-    }
-
-    @Override
-    public IndexableFieldType fieldType() {
-      return delegate.fieldType();
-    }
-
-    @Override
-    public TokenStream tokenStream(Analyzer analyzer, TokenStream reuse) {
-      return delegate.tokenStream(analyzer, reuse);
-    }
-
-    @Override
-    public BytesRef binaryValue() {
-      return delegate.binaryValue();
-    }
-
-    @Override
-    public String stringValue() {
-      return delegate.stringValue();
-    }
-
-    @Override
-    public CharSequence getCharSequenceValue() {
-      return delegate.getCharSequenceValue();
-    }
-
-    @Override
-    public Reader readerValue() {
-      return delegate.readerValue();
-    }
-
-    @Override
-    public Number numericValue() {
-      return delegate.numericValue();
-    }
-
-    @Override
-    public StoredValue storedValue() {
-      return delegate.storedValue();
-    }
-
-    @Override
-    public InvertableType invertableType() {
-      return delegate.invertableType();
     }
   }
 }

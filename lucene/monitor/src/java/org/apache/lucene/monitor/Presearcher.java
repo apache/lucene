@@ -37,7 +37,7 @@ public abstract class Presearcher {
       new Presearcher() {
         @Override
         public Query buildQuery(LeafReader reader, BiPredicate<String, BytesRef> termAcceptor) {
-          return new MatchAllDocsQuery();
+          return MatchAllDocsQuery.INSTANCE;
         }
 
         @Override

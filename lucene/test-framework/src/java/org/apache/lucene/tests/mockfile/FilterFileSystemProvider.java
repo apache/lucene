@@ -226,7 +226,7 @@ public abstract class FilterFileSystemProvider extends FileSystemProvider {
   public DirectoryStream<Path> newDirectoryStream(Path dir, final Filter<? super Path> filter)
       throws IOException {
     Filter<Path> wrappedFilter =
-        new Filter<Path>() {
+        new Filter<>() {
           @Override
           public boolean accept(Path entry) throws IOException {
             return filter.accept(wrapPath(entry));

@@ -33,7 +33,7 @@ import java.util.Map;
  */
 public class TestRuleRestoreSystemProperties extends TestRuleAdapter {
   private final String[] propertyNames;
-  private final Map<String, String> restore = new HashMap<String, String>();
+  private final Map<String, String> restore = new HashMap<>();
 
   public TestRuleRestoreSystemProperties(String... propertyNames) {
     this.propertyNames = propertyNames;

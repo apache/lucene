@@ -697,9 +697,7 @@ public class Dictionary {
     int numLines;
     try {
       numLines = Integer.parseInt(args[3]);
-    } catch (
-        @SuppressWarnings("unused")
-        NumberFormatException e) {
+    } catch (NumberFormatException _) {
       if (tolerateAffixRuleCountMismatches()) {
         return;
       }
@@ -1321,9 +1319,7 @@ public class Dictionary {
       try {
         int alias = Integer.parseInt(morphData.trim());
         morphData = morphAliases[alias - 1];
-      } catch (
-          @SuppressWarnings("unused")
-          NumberFormatException ignored) {
+      } catch (NumberFormatException _) {
       }
     }
     if (morphData.isBlank()) {
@@ -1626,9 +1622,9 @@ public class Dictionary {
     final String[] starting, ending, middle;
 
     Breaks(Collection<String> starting, Collection<String> ending, Collection<String> middle) {
-      this.starting = starting.toArray(new String[0]);
-      this.ending = ending.toArray(new String[0]);
-      this.middle = middle.toArray(new String[0]);
+      this.starting = starting.toArray(String[]::new);
+      this.ending = ending.toArray(String[]::new);
+      this.middle = middle.toArray(String[]::new);
     }
 
     boolean isNotEmpty() {

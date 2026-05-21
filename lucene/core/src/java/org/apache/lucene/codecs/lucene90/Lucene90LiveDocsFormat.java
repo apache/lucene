@@ -30,7 +30,10 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.DenseLiveDocs;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.SparseFixedBitSet;
+import org.apache.lucene.util.SparseLiveDocs;
 
 /**
  * Lucene 9.0 live docs format
@@ -59,6 +62,12 @@ public final class Lucene90LiveDocsFormat extends LiveDocsFormat {
 
   private static final int VERSION_CURRENT = VERSION_START;
 
+  /**
+   * Deletion rate threshold for choosing sparse vs dense representation. If deletion rate is at or
+   * below this threshold, use SparseFixedBitSet; otherwise use dense FixedBitSet.
+   */
+  private static final double SPARSE_DENSE_THRESHOLD = 0.01; // 1%
+
   /** Sole constructor. */
   public Lucene90LiveDocsFormat() {}
 
@@ -67,7 +76,10 @@ public final class Lucene90LiveDocsFormat extends LiveDocsFormat {
       throws IOException {
     long gen = info.getDelGen();
     String name = IndexFileNames.fileNameFromGeneration(info.info.name, EXTENSION, gen);
-    final int length = info.info.maxDoc();
+    final int maxDoc = info.info.maxDoc();
+    final int delCount = info.getDelCount();
+    final double deletionRate = (double) delCount / maxDoc;
+
     try (ChecksumIndexInput input = dir.openChecksumInput(name)) {
       Throwable priorE = null;
       try {
@@ -79,17 +91,7 @@ public final class Lucene90LiveDocsFormat extends LiveDocsFormat {
             info.info.getId(),
             Long.toString(gen, Character.MAX_RADIX));
 
-        FixedBitSet fbs = readFixedBitSet(input, length);
-
-        if (fbs.length() - fbs.cardinality() != info.getDelCount()) {
-          throw new CorruptIndexException(
-              "bits.deleted="
-                  + (fbs.length() - fbs.cardinality())
-                  + " info.delcount="
-                  + info.getDelCount(),
-              input);
-        }
-        return fbs.asReadOnlyBits();
+        return readLiveDocs(input, maxDoc, deletionRate, delCount);
       } catch (Throwable exception) {
         priorE = exception;
       } finally {
@@ -99,10 +101,64 @@ public final class Lucene90LiveDocsFormat extends LiveDocsFormat {
     throw new AssertionError();
   }
 
+  /**
+   * Reads live docs from input and chooses between sparse and dense representation based on
+   * deletion rate.
+   */
+  private Bits readLiveDocs(IndexInput input, int maxDoc, double deletionRate, int expectedDelCount)
+      throws IOException {
+    Bits liveDocs;
+    int actualDelCount;
+
+    if (deletionRate <= SPARSE_DENSE_THRESHOLD) {
+      SparseFixedBitSet sparse = readSparseFixedBitSet(input, maxDoc);
+      actualDelCount = sparse.cardinality();
+      liveDocs = SparseLiveDocs.builder(sparse, maxDoc).withDeletedCount(actualDelCount).build();
+    } else {
+      FixedBitSet dense = readFixedBitSet(input, maxDoc);
+      actualDelCount = maxDoc - dense.cardinality();
+      liveDocs = DenseLiveDocs.builder(dense, maxDoc).withDeletedCount(actualDelCount).build();
+    }
+
+    if (actualDelCount != expectedDelCount) {
+      throw new CorruptIndexException(
+          "bits.deleted=" + actualDelCount + " info.delcount=" + expectedDelCount, input);
+    }
+
+    return liveDocs;
+  }
+
   private FixedBitSet readFixedBitSet(IndexInput input, int length) throws IOException {
     long[] data = new long[FixedBitSet.bits2words(length)];
     input.readLongs(data, 0, data.length);
     return new FixedBitSet(data, length);
+  }
+
+  private SparseFixedBitSet readSparseFixedBitSet(IndexInput input, int length) throws IOException {
+    long[] data = new long[FixedBitSet.bits2words(length)];
+    input.readLongs(data, 0, data.length);
+
+    SparseFixedBitSet sparse = new SparseFixedBitSet(length);
+    for (int wordIndex = 0; wordIndex < data.length; wordIndex++) {
+      long word = data[wordIndex];
+      // Semantic inversion: disk format stores LIVE docs (bit=1 means live, bit=0 means deleted)
+      // but SparseLiveDocs stores DELETED docs (bit=1 means deleted).
+      // Skip words with all bits set (all docs live in disk format = no deletions to convert)
+      if (word == -1L) {
+        continue;
+      }
+      int baseDocId = wordIndex << 6;
+      int maxDocInWord = Math.min(baseDocId + 64, length);
+      for (int docId = baseDocId; docId < maxDocInWord; docId++) {
+        int bitIndex = docId & 63;
+        // If bit is 0 in disk format (deleted doc), set it in sparse representation (bit=1 means
+        // deleted)
+        if ((word & (1L << bitIndex)) == 0) {
+          sparse.set(docId);
+        }
+      }
+    }
+    return sparse;
   }
 
   @Override
@@ -138,18 +194,23 @@ public final class Lucene90LiveDocsFormat extends LiveDocsFormat {
   }
 
   private int writeBits(IndexOutput output, Bits bits) throws IOException {
-    int delCount = 0;
-    final int longCount = FixedBitSet.bits2words(bits.length());
-    for (int i = 0; i < longCount; ++i) {
-      long currentBits = 0;
-      for (int j = i << 6, end = Math.min(j + 63, bits.length() - 1); j <= end; ++j) {
-        if (bits.get(j)) {
-          currentBits |= 1L << j; // mod 64
-        } else {
-          delCount += 1;
-        }
+    int delCount = bits.length();
+    // Copy bits in batches of 1024 bits at once using Bits#applyMask, which is faster than checking
+    // bits one by one.
+    FixedBitSet copy = new FixedBitSet(1024);
+    for (int offset = 0; offset < bits.length(); offset += copy.length()) {
+      int numBitsToCopy = Math.min(bits.length() - offset, copy.length());
+      copy.set(0, copy.length());
+      if (numBitsToCopy < copy.length()) {
+        // Clear ghost bits
+        copy.clear(numBitsToCopy, copy.length());
       }
-      output.writeLong(currentBits);
+      bits.applyMask(copy, offset);
+      delCount -= copy.cardinality();
+      int longCount = FixedBitSet.bits2words(numBitsToCopy);
+      for (int i = 0; i < longCount; ++i) {
+        output.writeLong(copy.getBits()[i]);
+      }
     }
     return delCount;
   }

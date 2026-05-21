@@ -1,0 +1,10 @@
+---
+query-filters:
+  - exclude:
+      # Very noisy check which can also be accomplished with an ordinary linter.
+      # See: https://codeql.github.com/codeql-query-help/java/java-implicit-cast-in-compound-assignment/
+      id: java/implicit-cast-in-compound-assignment
+  - exclude:
+      # Very noisy check which can also be accomplished with an ordinary linter.
+      # See: https://codeql.github.com/codeql-query-help/java/java-comparison-with-wider-type/
+      id: java/comparison-with-wider-type

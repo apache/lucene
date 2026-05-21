@@ -17,14 +17,15 @@
 package org.apache.lucene.search.similarities;
 
 import java.util.Collections;
+import java.util.Objects;
 import org.apache.lucene.analysis.tokenattributes.PositionIncrementAttribute;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.index.FieldInvertState;
 import org.apache.lucene.index.IndexOptions;
-import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.util.SmallFloat;
 
 /**
@@ -51,8 +52,7 @@ import org.apache.lucene.util.SmallFloat;
  * single byte, this might not be suitable for all purposes.
  *
  * <p>Many formulas require the use of average document length, which can be computed via a
- * combination of {@link CollectionStatistics#sumTotalTermFreq()} and {@link
- * CollectionStatistics#docCount()}.
+ * combination of {@link FieldStats#sumTotalTermFreq()} and {@link FieldStats#docCount()}.
  *
  * <p>Additional scoring factors can be stored in named {@link NumericDocValuesField}s and accessed
  * at query-time with {@link org.apache.lucene.index.LeafReader#getNumericDocValues(String)}.
@@ -69,13 +69,12 @@ import org.apache.lucene.util.SmallFloat;
  * steps:
  *
  * <ol>
- *   <li>The {@link #scorer(float, CollectionStatistics, TermStatistics...)} method is called a
- *       single time, allowing the implementation to compute any statistics (such as IDF, average
- *       document length, etc) across <i>the entire collection</i>. The {@link TermStatistics} and
- *       {@link CollectionStatistics} passed in already contain all of the raw statistics involved,
- *       so a Similarity can freely use any combination of statistics without causing any additional
- *       I/O. Lucene makes no assumption about what is stored in the returned {@link
- *       Similarity.SimScorer} object.
+ *   <li>The {@link #scorer(float, FieldStats, TermStats...)} method is called a single time,
+ *       allowing the implementation to compute any statistics (such as IDF, average document
+ *       length, etc) across <i>the entire field</i>. The {@link TermStats} and {@link FieldStats}
+ *       passed in already contain all of the raw statistics involved, so a Similarity can freely
+ *       use any combination of statistics without causing any additional I/O. Lucene makes no
+ *       assumption about what is stored in the returned {@link Similarity.SimScorer} object.
  *   <li>Then {@link SimScorer#score(float, long)} is called for every matching document to compute
  *       its score.
  * </ol>
@@ -162,23 +161,37 @@ public abstract class Similarity {
   }
 
   /**
-   * Compute any collection-level weight (e.g. IDF, average document length, etc) needed for scoring
-   * a query.
+   * Computes the weight for a query term based on how many times it appears in the query. This is
+   * used during query rewriting to compute the boost for duplicate query terms.
    *
-   * @param boost a multiplicative factor to apply to the produces scores
-   * @param collectionStats collection-level statistics, such as the number of tokens in the
-   *     collection.
-   * @param termStats term-level statistics, such as the document frequency of a term across the
-   *     collection.
-   * @return SimWeight object with the information this Similarity needs to score a query.
+   * <p>The default implementation returns {@code queryTermFrequency} as a float, which preserves
+   * the existing linear boost behavior. Subclasses may override this to apply saturation (e.g.
+   * BM25's k3 parameter).
+   *
+   * @param queryTermFrequency the number of times a term appears in the query
+   * @return the computed weight for this query term frequency
+   * @lucene.experimental
    */
-  public abstract SimScorer scorer(
-      float boost, CollectionStatistics collectionStats, TermStatistics... termStats);
+  public float computeQueryTermWeight(int queryTermFrequency) {
+    return (float) queryTermFrequency;
+  }
 
   /**
-   * Stores the weight for a query across the indexed collection. This abstract implementation is
-   * empty; descendants of {@code Similarity} should subclass {@code SimWeight} and define the
-   * statistics they require in the subclass. Examples include idf, average field length, etc.
+   * Compute any field-level weight (e.g. IDF, average document length, etc) needed for scoring a
+   * query.
+   *
+   * @param boost a multiplicative factor to apply to the produces scores
+   * @param fieldStats field-level statistics, such as the number of tokens in the field.
+   * @param termStats term-level statistics, such as the document frequency of a term across the
+   *     field.
+   * @return SimWeight object with the information this Similarity needs to score a query.
+   */
+  public abstract SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats);
+
+  /**
+   * Stores the weight for a query across the indexed field. This abstract implementation is empty;
+   * descendants of {@code Similarity} should subclass {@code SimWeight} and define the statistics
+   * they require in the subclass. Examples include idf, average field length, etc.
    */
   public abstract static class SimScorer {
 
@@ -209,6 +222,16 @@ public abstract class Similarity {
     public abstract float score(float freq, long norm);
 
     /**
+     * Return a {@link BulkSimScorer} that produces the exact same scores as this {@link SimScorer}
+     * but is more efficient at bulk-computing scores.
+     *
+     * <p><b>NOTE</b>: The returned instance is not thread-safe.
+     */
+    public BulkSimScorer asBulkSimScorer() {
+      return new DefaultBulkSimScorer(this);
+    }
+
+    /**
      * Explain the score for a single document
      *
      * @param freq Explanation of how the sloppy term frequency was computed
@@ -221,6 +244,40 @@ public abstract class Similarity {
           score(freq.getValue().floatValue(), norm),
           "score(freq=" + freq.getValue() + "), with freq of:",
           Collections.singleton(freq));
+    }
+  }
+
+  /** Specialization of {@link SimScorer} for bulk-computation of scores. */
+  public interface BulkSimScorer {
+
+    /**
+     * Bulk computation of scores. For each index {@code i} in [0, size), scores[i] is computed as
+     * score(freqs[i], norms[i]). The default implementation does the following:
+     *
+     * <pre><code class="language-java">
+     * for (int i = 0; i &lt; size; ++i) {
+     *   scores[i] = score(freqs[i], norms[i]);
+     * }
+     * </code></pre>
+     *
+     * <p><b>NOTE</b>: It is legal to pass the same {@code freqs} and {@code scores} arrays.
+     */
+    void score(int size, float[] freqs, long[] norms, float[] scores);
+  }
+
+  private static class DefaultBulkSimScorer implements BulkSimScorer {
+
+    private final SimScorer scorer;
+
+    DefaultBulkSimScorer(SimScorer scorer) {
+      this.scorer = Objects.requireNonNull(scorer);
+    }
+
+    @Override
+    public void score(int size, float[] freqs, long[] norms, float[] scores) {
+      for (int i = 0; i < size; ++i) {
+        scores[i] = scorer.score(freqs[i], norms[i]);
+      }
     }
   }
 }

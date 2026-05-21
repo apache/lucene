@@ -124,18 +124,16 @@ public abstract class IndexInput extends DataInput implements Closeable {
       throws IOException;
 
   /**
-   * Create a slice with a specific {@link ReadAdvice}. This is typically used by {@link
-   * CompoundFormat} implementations to honor the {@link ReadAdvice} of each file within the
-   * compound file.
+   * Create a slice with a new {@link IOContext}. This is typically used by {@link CompoundFormat}
+   * implementations to modify the {@link IOContext} for specific files within the compound file.
    *
-   * <p><b>NOTE</b>: it is only legal to call this method if this {@link IndexInput} has been open
-   * with {@link ReadAdvice#NORMAL}. However, this method accepts any {@link ReadAdvice} value but
-   * {@code null} as a read advice for the slice.
+   * <p><b>NOTE</b>: only certain {@link IOContext} may be usable here, depending on how this
+   * instance was opened.
    *
    * <p>The default implementation delegates to {@link #slice(String, long, long)} and ignores the
-   * {@link ReadAdvice}.
+   * {@link IOContext}.
    */
-  public IndexInput slice(String sliceDescription, long offset, long length, ReadAdvice readAdvice)
+  public IndexInput slice(String sliceDescription, long offset, long length, IOContext context)
       throws IOException {
     return slice(sliceDescription, offset, length);
   }
@@ -161,9 +159,9 @@ public abstract class IndexInput extends DataInput implements Closeable {
    */
   public RandomAccessInput randomAccessSlice(long offset, long length) throws IOException {
     final IndexInput slice = slice("randomaccess", offset, length);
-    if (slice instanceof RandomAccessInput) {
+    if (slice instanceof RandomAccessInput rai) {
       // slice() already supports random access
-      return (RandomAccessInput) slice;
+      return rai;
     } else {
       // return default impl
       return new RandomAccessInput() {
@@ -204,8 +202,8 @@ public abstract class IndexInput extends DataInput implements Closeable {
         }
 
         @Override
-        public void prefetch(long offset, long length) throws IOException {
-          slice.prefetch(offset, length);
+        public boolean prefetch(long offset, long length) throws IOException {
+          return slice.prefetch(offset, length);
         }
 
         @Override
@@ -225,16 +223,20 @@ public abstract class IndexInput extends DataInput implements Closeable {
    *
    * @param offset start offset
    * @param length the number of bytes to prefetch
+   * @return true if prefetch actually prefetched something, hence user can benefit from deferring
+   *     reading the prefetched memory block.
    */
-  public void prefetch(long offset, long length) throws IOException {}
+  public boolean prefetch(long offset, long length) throws IOException {
+    return false;
+  }
 
   /**
-   * Optional method: Give a hint to this input about the change in read access pattern. IndexInput
+   * Optional method: Updates the {@code IOContext} to specify a new read access pattern. IndexInput
    * implementations may take advantage of this hint to optimize reads from storage.
    *
    * <p>The default implementation is a no-op.
    */
-  public void updateReadAdvice(ReadAdvice readAdvice) throws IOException {}
+  public void updateIOContext(IOContext context) throws IOException {}
 
   /**
    * Returns a hint whether all the contents of this input are resident in physical memory. It's a

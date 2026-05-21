@@ -18,6 +18,7 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
+import org.apache.lucene.internal.hppc.IntHashSet;
 import org.apache.lucene.util.InfoStream;
 
 /**
@@ -34,8 +35,13 @@ public interface HnswBuilder {
    */
   OnHeapHnswGraph build(int maxOrd) throws IOException;
 
-  /** Inserts a doc with vector value to the graph */
+  /** Inserts a doc with a vector value to the graph */
   void addGraphNode(int node) throws IOException;
+
+  /**
+   * Inserts a doc with a vector value to the graph, searching on level 0 with provided entry points
+   */
+  void addGraphNode(int node, IntHashSet eps) throws IOException;
 
   /** Set info-stream to output debugging information */
   void setInfoStream(InfoStream infoStream);
@@ -43,7 +49,7 @@ public interface HnswBuilder {
   OnHeapHnswGraph getGraph();
 
   /**
-   * Once this method is called no further updates to the graph are accepted (addGraphNode will
+   * Once this method is called, no further updates to the graph are accepted (addGraphNode will
    * throw IllegalStateException). Final modifications to the graph (eg patching up disconnected
    * components, re-ordering node ids for better delta compression) may be triggered, so callers
    * should expect this call to take some time.

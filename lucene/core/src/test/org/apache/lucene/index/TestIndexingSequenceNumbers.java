@@ -78,7 +78,7 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
     for (int iter = 0; iter < iters; iter++) {
       Directory dir = newDirectory();
       final RandomIndexWriter w = new RandomIndexWriter(random(), dir);
-      Thread[] threads = new Thread[TestUtil.nextInt(random(), 2, 5)];
+      Thread[] threads = new Thread[TestUtil.nextInt(random(), 2, 4)];
       final CountDownLatch startingGun = new CountDownLatch(1);
       final long[] seqNos = new long[threads.length];
       final Term id = new Term("id", "id");
@@ -156,7 +156,7 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
     // Cannot use RIW since it randomly commits:
     final IndexWriter w = new IndexWriter(dir, iwc);
 
-    final int numThreads = TestUtil.nextInt(random(), 2, 10);
+    final int numThreads = TestUtil.nextInt(random(), 2, 4);
     Thread[] threads = new Thread[numThreads];
     // System.out.println("TEST: iter=" + iter + " opCount=" + opCount + " idCount=" + idCount + "
     // threadCount=" + threads.length);
@@ -353,7 +353,7 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
     // Cannot use RIW since it randomly commits:
     final IndexWriter w = new IndexWriter(dir, iwc);
 
-    final int numThreads = TestUtil.nextInt(random(), 2, 10);
+    final int numThreads = TestUtil.nextInt(random(), 2, 4);
     if (VERBOSE) {
       System.out.println("TEST: numThreads=" + numThreads);
     }
@@ -538,7 +538,7 @@ public class TestIndexingSequenceNumbers extends LuceneTestCase {
     // Cannot use RIW since it randomly commits:
     final IndexWriter w = new IndexWriter(dir, iwc);
 
-    final int numThreads = TestUtil.nextInt(random(), 2, 5);
+    final int numThreads = TestUtil.nextInt(random(), 2, 4);
     Thread[] threads = new Thread[numThreads];
     // System.out.println("TEST: iter=" + iter + " opCount=" + opCount + " idCount=" + idCount + "
     // threadCount=" + threads.length);

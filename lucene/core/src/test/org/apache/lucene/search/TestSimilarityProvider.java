@@ -76,7 +76,7 @@ public class TestSimilarityProvider extends LuceneTestCase {
     for (int i = 0; i < reader.maxDoc(); i++) {
       assertEquals(i, fooNorms.nextDoc());
       assertEquals(i, barNorms.nextDoc());
-      assertFalse(fooNorms.longValue() == barNorms.longValue());
+      assertNotEquals(fooNorms.longValue(), barNorms.longValue());
     }
 
     // sanity check of searching
@@ -109,8 +109,7 @@ public class TestSimilarityProvider extends LuceneTestCase {
     }
 
     @Override
-    public SimScorer scorer(
-        float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
+    public SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
       return new SimScorer() {
 
         @Override
@@ -129,8 +128,7 @@ public class TestSimilarityProvider extends LuceneTestCase {
     }
 
     @Override
-    public SimScorer scorer(
-        float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
+    public SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
       return new SimScorer() {
         @Override
         public float score(float freq, long norm) {

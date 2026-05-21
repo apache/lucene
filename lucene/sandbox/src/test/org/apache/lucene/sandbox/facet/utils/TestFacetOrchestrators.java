@@ -22,7 +22,11 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.NumericDocValuesField;
-import org.apache.lucene.facet.*;
+import org.apache.lucene.facet.DrillDownQuery;
+import org.apache.lucene.facet.DrillSideways;
+import org.apache.lucene.facet.FacetField;
+import org.apache.lucene.facet.FacetsConfig;
+import org.apache.lucene.facet.LabelAndValue;
 import org.apache.lucene.facet.range.DoubleRange;
 import org.apache.lucene.facet.range.LongRange;
 import org.apache.lucene.facet.taxonomy.TaxonomyReader;
@@ -85,7 +89,7 @@ public class TestFacetOrchestrators extends SandboxFacetTestCase {
     // NRT open
     TaxonomyReader taxoReader = new DirectoryTaxonomyReader(taxoWriter);
 
-    Query query = new MatchAllDocsQuery();
+    Query query = MatchAllDocsQuery.INSTANCE;
 
     FacetBuilder authorTop0Builder =
         new TaxonomyFacetBuilder(config, taxoReader, "Author").withTopN(0);
@@ -272,7 +276,7 @@ public class TestFacetOrchestrators extends SandboxFacetTestCase {
         .addBuilder(taxonomyFacetBuilder)
         .addBuilder(longRangeFacetBuilder)
         .addBuilder(doubleRangeFacetBuilder)
-        .collect(new MatchAllDocsQuery(), s);
+        .collect(MatchAllDocsQuery.INSTANCE, s);
     assertEquals(
         "dim=dim path=[] value=100 childCount=2\n  b (75)\n  a (25)\n",
         taxonomyFacetBuilder.getResult().toString());
@@ -424,7 +428,7 @@ public class TestFacetOrchestrators extends SandboxFacetTestCase {
         .addBuilder(allChildrenSortByValue)
         .addBuilder(allChildrenSortByCount)
         .addBuilder(topChildrenSortByCount)
-        .collect(new MatchAllDocsQuery(), s);
+        .collect(MatchAllDocsQuery.INSTANCE, s);
 
     assertEquals(
         "dim=field path=[] value=-1 childCount=6\n"

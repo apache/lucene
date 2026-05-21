@@ -26,8 +26,7 @@ import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 public class TestStempelPolishStemFilterFactory extends BaseTokenStreamTestCase {
   public void testBasics() throws Exception {
     Reader reader = new StringReader("studenta studenci");
-    StempelPolishStemFilterFactory factory =
-        new StempelPolishStemFilterFactory(new HashMap<String, String>());
+    StempelPolishStemFilterFactory factory = new StempelPolishStemFilterFactory(new HashMap<>());
     TokenStream stream = whitespaceMockTokenizer(reader);
     stream = factory.create(stream);
     assertTokenStreamContents(stream, new String[] {"student", "student"});

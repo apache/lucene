@@ -146,7 +146,7 @@ public class TestConstantScoreQuery extends LuceneTestCase {
   public void testRewriteBubblesUpMatchNoDocsQuery() throws IOException {
     IndexSearcher searcher = newSearcher(new MultiReader());
 
-    Query query = new ConstantScoreQuery(new MatchNoDocsQuery());
-    assertEquals(new MatchNoDocsQuery(), searcher.rewrite(query));
+    Query query = new ConstantScoreQuery(MatchNoDocsQuery.INSTANCE);
+    assertEquals(MatchNoDocsQuery.INSTANCE, searcher.rewrite(query));
   }
 }

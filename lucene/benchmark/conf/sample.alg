@@ -15,7 +15,7 @@
 # * limitations under the License.
 # */
 # --------------------------------------------------------
-# 
+#
 # Sample: what is the effect of doc size on indexing time?
 #
 # There are two parts in this test:
@@ -67,7 +67,7 @@ log.queries=false
     >
 
     ResetSystemErase
-    
+
     { "PopulateLong"
         CreateIndex
         { AddDoc(8000) > : 10000

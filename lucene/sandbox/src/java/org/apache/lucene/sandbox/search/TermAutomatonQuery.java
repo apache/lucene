@@ -45,7 +45,7 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.util.Accountable;
@@ -376,14 +376,13 @@ public class TermAutomatonQuery extends Query implements Accountable {
       this.automaton = automaton;
       this.termStates = termStates;
       this.similarity = searcher.getSimilarity();
-      List<TermStatistics> allTermStats = new ArrayList<>();
+      List<TermStats> allTermStats = new ArrayList<>();
       for (IntObjectHashMap.IntObjectCursor<BytesRef> ent : idToTerm) {
         if (ent.value != null) {
           TermStates ts = termStates.get(ent.key);
           if (ts.docFreq() > 0) {
             allTermStats.add(
-                searcher.termStatistics(
-                    new Term(field, ent.value), ts.docFreq(), ts.totalTermFreq()));
+                searcher.termStats(new Term(field, ent.value), ts.docFreq(), ts.totalTermFreq()));
           }
         }
       }
@@ -393,9 +392,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
       } else {
         stats =
             similarity.scorer(
-                boost,
-                searcher.collectionStatistics(field),
-                allTermStats.toArray(new TermStatistics[allTermStats.size()]));
+                boost, searcher.fieldStats(field), allTermStats.toArray(TermStats[]::new));
       }
     }
 
@@ -493,7 +490,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     if (Operations.isEmpty(det)) {
-      return new MatchNoDocsQuery();
+      return MatchNoDocsQuery.INSTANCE;
     }
 
     IntsRef single = Operations.getSingleton(det);
@@ -548,7 +545,7 @@ public class TermAutomatonQuery extends Query implements Accountable {
         }
       }
       if (matchesAny == false) {
-        mpq.add(terms.toArray(new Term[terms.size()]), pos);
+        mpq.add(terms.toArray(Term[]::new), pos);
         if (pq != null) {
           if (terms.size() == 1) {
             pq.add(terms.get(0), pos);

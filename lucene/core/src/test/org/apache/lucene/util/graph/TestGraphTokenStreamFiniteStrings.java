@@ -665,7 +665,7 @@ public class TestGraphTokenStreamFiniteStrings extends LuceneTestCase {
   public void testLongTokenStreamStackOverflowError() throws Exception {
 
     ArrayList<Token> tokens =
-        new ArrayList<Token>() {
+        new ArrayList<>() {
           {
             add(token("fast", 1, 1));
             add(token("wi", 1, 1));
@@ -679,7 +679,7 @@ public class TestGraphTokenStreamFiniteStrings extends LuceneTestCase {
       tokens.add(token("network", 1, 1));
     }
 
-    TokenStream ts = new CannedTokenStream(tokens.toArray(new Token[0]));
+    TokenStream ts = new CannedTokenStream(tokens.toArray(Token[]::new));
     GraphTokenStreamFiniteStrings graph = new GraphTokenStreamFiniteStrings(ts);
 
     assertThrows(IllegalArgumentException.class, graph::articulationPoints);

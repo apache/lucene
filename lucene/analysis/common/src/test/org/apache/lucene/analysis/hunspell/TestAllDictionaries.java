@@ -176,9 +176,7 @@ public class TestAllDictionaries extends LuceneTestCase {
             Suggester suggester = new Suggester(dic).withSuggestibleEntryCache();
             try {
               suggester.suggestWithTimeout("aaaaaaaaaa", Hunspell.SUGGEST_TIME_LIMIT, () -> {});
-            } catch (
-                @SuppressWarnings("unused")
-                SuggestionTimeoutException e) {
+            } catch (SuggestionTimeoutException _) {
             }
             totalMemory.addAndGet(RamUsageTester.ramUsed(dic));
             memoryWithCache.addAndGet(RamUsageTester.ramUsed(suggester));

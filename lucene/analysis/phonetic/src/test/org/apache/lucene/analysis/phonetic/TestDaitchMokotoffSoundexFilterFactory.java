@@ -28,7 +28,7 @@ public class TestDaitchMokotoffSoundexFilterFactory extends BaseTokenStreamTestC
 
   public void testDefaults() throws Exception {
     DaitchMokotoffSoundexFilterFactory factory =
-        new DaitchMokotoffSoundexFilterFactory(new HashMap<String, String>());
+        new DaitchMokotoffSoundexFilterFactory(new HashMap<>());
     Tokenizer inputStream = new MockTokenizer(MockTokenizer.WHITESPACE, false);
     inputStream.setReader(new StringReader("international"));
 

@@ -85,6 +85,24 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
     return value;
   }
 
+  @Override
+  public void prefetch(final int[] ordsToPrefetch, int numOrds) throws IOException {
+    if (ordsToPrefetch == null) {
+      return;
+    }
+
+    int finalNumOrds = Math.min(numOrds, ordsToPrefetch.length);
+    if (finalNumOrds <= 1) {
+      return;
+    }
+
+    // 1. calculate offset and prefetch immediately
+    for (int i = 0; i < numOrds; i++) {
+      long offset = (long) ordsToPrefetch[i] * byteSize;
+      slice.prefetch(offset, byteSize);
+    }
+  }
+
   public static OffHeapFloatVectorValues load(
       VectorSimilarityFunction vectorSimilarityFunction,
       FlatVectorsScorer flatVectorsScorer,
@@ -172,6 +190,11 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
         @Override
         public DocIdSetIterator iterator() {
           return iterator;
+        }
+
+        @Override
+        public VectorScorer.Bulk bulk(DocIdSetIterator matchingDocs) {
+          return Bulk.fromRandomScorerDense(randomVectorScorer, iterator, matchingDocs);
         }
       };
     }
@@ -265,6 +288,11 @@ public abstract class OffHeapFloatVectorValues extends FloatVectorValues impleme
         @Override
         public DocIdSetIterator iterator() {
           return iterator;
+        }
+
+        @Override
+        public VectorScorer.Bulk bulk(DocIdSetIterator matchingDocs) {
+          return Bulk.fromRandomScorerSparse(randomVectorScorer, iterator, matchingDocs);
         }
       };
     }

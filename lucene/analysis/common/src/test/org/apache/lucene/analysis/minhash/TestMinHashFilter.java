@@ -33,12 +33,10 @@ import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
 import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
-import org.junit.Test;
 
 /** Tests for {@link MinHashFilter} */
 public class TestMinHashFilter extends BaseTokenStreamTestCase {
 
-  @Test
   public void testIntHash() {
     LongPair hash = new LongPair();
     MinHashFilter.murmurhash3_x64_128(MinHashFilter.getBytes(0), 0, 4, 0, hash);
@@ -46,7 +44,6 @@ public class TestMinHashFilter extends BaseTokenStreamTestCase {
     assertEquals(6383328099726337777L, hash.val2);
   }
 
-  @Test
   public void testStringHash() {
     LongPair hash = new LongPair();
     byte[] bytes = "woof woof woof woof woof".getBytes(StandardCharsets.UTF_16LE);
@@ -55,7 +52,6 @@ public class TestMinHashFilter extends BaseTokenStreamTestCase {
     assertEquals(4378804943379391304L, hash.val2);
   }
 
-  @Test
   public void testSimpleOrder() {
     LongPair hash1 = new LongPair();
     hash1.val1 = 1;
@@ -66,7 +62,6 @@ public class TestMinHashFilter extends BaseTokenStreamTestCase {
     assert (hash1.compareTo(hash2) > 0);
   }
 
-  @Test
   public void testHashOrder() {
     assertTrue(!MinHashFilter.isLessThanUnsigned(0L, 0L));
     assertTrue(MinHashFilter.isLessThanUnsigned(0L, -1L));
@@ -75,8 +70,8 @@ public class TestMinHashFilter extends BaseTokenStreamTestCase {
     assertTrue(MinHashFilter.isLessThanUnsigned(1L, 2L));
     assertTrue(MinHashFilter.isLessThanUnsigned(Long.MAX_VALUE, Long.MIN_VALUE));
 
-    FixedSizeTreeSet<LongPair> minSet = new FixedSizeTreeSet<LongPair>(500);
-    HashSet<LongPair> unadded = new HashSet<LongPair>();
+    FixedSizeTreeSet<LongPair> minSet = new FixedSizeTreeSet<>(500);
+    HashSet<LongPair> unadded = new HashSet<>();
     for (int i = 0; i < 100; i++) {
       LongPair hash = new LongPair();
       MinHashFilter.murmurhash3_x64_128(MinHashFilter.getBytes(i), 0, 4, 0, hash);
@@ -100,9 +95,9 @@ public class TestMinHashFilter extends BaseTokenStreamTestCase {
   }
 
   public void testCollisions() {
-    HashSet<LongPair> collisionDetection = new HashSet<LongPair>();
-    HashSet<LongPair> unadded = new HashSet<LongPair>();
-    FixedSizeTreeSet<LongPair> minSet = new FixedSizeTreeSet<LongPair>(500);
+    HashSet<LongPair> collisionDetection = new HashSet<>();
+    HashSet<LongPair> unadded = new HashSet<>();
+    FixedSizeTreeSet<LongPair> minSet = new FixedSizeTreeSet<>(500);
     int numElements = TEST_NIGHTLY ? 1000000 : 10000;
     for (int i = 0; i < numElements; i++) {
       LongPair hash = new LongPair();
@@ -137,10 +132,9 @@ public class TestMinHashFilter extends BaseTokenStreamTestCase {
     }
   }
 
-  @Test
   public void testHashNotRepeated() {
-    FixedSizeTreeSet<LongPair> minSet = new FixedSizeTreeSet<LongPair>(500);
-    HashSet<LongPair> unadded = new HashSet<LongPair>();
+    FixedSizeTreeSet<LongPair> minSet = new FixedSizeTreeSet<>(500);
+    HashSet<LongPair> unadded = new HashSet<>();
     for (int i = 0; i < 10000; i++) {
       LongPair hash = new LongPair();
       MinHashFilter.murmurhash3_x64_128(MinHashFilter.getBytes(i), 0, 4, 0, hash);
@@ -170,7 +164,6 @@ public class TestMinHashFilter extends BaseTokenStreamTestCase {
     }
   }
 
-  @Test
   public void testMockShingleTokenizer() throws IOException {
     Tokenizer mockShingleTokenizer =
         createMockShingleTokenizer(
@@ -180,7 +173,6 @@ public class TestMinHashFilter extends BaseTokenStreamTestCase {
         new String[] {"woof woof woof woof woof", "woof woof woof woof puff"});
   }
 
-  @Test
   public void testTokenStreamSingleInput() throws IOException {
     String[] hashes = new String[] {"℁팽徭聙↝ꇁ홱杯"};
     TokenStream ts = createTokenStream(5, "woof woof woof woof woof", 1, 1, 100, false);
@@ -217,7 +209,6 @@ public class TestMinHashFilter extends BaseTokenStreamTestCase {
         null);
   }
 
-  @Test
   public void testTokenStream1() throws IOException {
     String[] hashes =
         new String[] {
@@ -258,7 +249,6 @@ public class TestMinHashFilter extends BaseTokenStreamTestCase {
     return tokens;
   }
 
-  @Test
   public void testTokenStream2() throws IOException {
     TokenStream ts =
         createTokenStream(
@@ -269,7 +259,6 @@ public class TestMinHashFilter extends BaseTokenStreamTestCase {
     assertEquals(100, tokens.size());
   }
 
-  @Test
   public void testTokenStream3() throws IOException {
     TokenStream ts =
         createTokenStream(
@@ -280,7 +269,6 @@ public class TestMinHashFilter extends BaseTokenStreamTestCase {
     assertEquals(20, tokens.size());
   }
 
-  @Test
   public void testTokenStream4() throws IOException {
     TokenStream ts =
         createTokenStream(
@@ -299,7 +287,6 @@ public class TestMinHashFilter extends BaseTokenStreamTestCase {
     assertEquals(100, tokens.size());
   }
 
-  @Test
   public void testTokenStream5() throws IOException {
     TokenStream ts =
         createTokenStream(

@@ -167,7 +167,7 @@ public class SandboxFacetsExample {
         new FacetOrchestrator()
             .addBuilder(authorFacetBuilder)
             .addBuilder(priceFacetBuilder)
-            .collect(new MatchAllDocsQuery(), searcher, hitsCollectorManager);
+            .collect(MatchAllDocsQuery.INSTANCE, searcher, hitsCollectorManager);
     System.out.println(
         "Search results: totalHits: "
             + topDocs.totalHits
@@ -245,11 +245,11 @@ public class SandboxFacetsExample {
     // FacetFieldCollectorManager<>(publishDateCutter, publishDateRecorder);
     // MultiCollectorManager drillDownCollectorManager = new
     // MultiCollectorManager(authorCollectorManager, publishDateCollectorManager);
-    // Object[] results = searcher.search(new MatchAllDocsQuery(), drillDownCollectorManager);
+    // Object[] results = searcher.search(MatchAllDocsQuery.INSTANCE, drillDownCollectorManager);
 
     //// (3) search
     // Search returns the same Recorder we created - so we can ignore results
-    searcher.search(new MatchAllDocsQuery(), collectorManager);
+    searcher.search(MatchAllDocsQuery.INSTANCE, collectorManager);
 
     //// (4) Get top 10 results by count for Author and Publish Date
     // This object is used to get topN results by count
@@ -289,7 +289,7 @@ public class SandboxFacetsExample {
               dimension,
               new String[0],
               dimensionValue,
-              labelsAndValues.toArray(new LabelAndValue[0]),
+              labelsAndValues.toArray(LabelAndValue[]::new),
               labelsAndValues.size()));
     }
 
@@ -318,7 +318,7 @@ public class SandboxFacetsExample {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    searcher.search(new MatchAllDocsQuery(), collectorManager);
+    searcher.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     RangeOrdToLabel ordToLabels = new RangeOrdToLabel(inputRanges);
 
     ComparableSupplier<ComparableUtils.ByCountComparable> countComparable =
@@ -338,7 +338,7 @@ public class SandboxFacetsExample {
 
     results.add(
         new FacetResult(
-            "Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+            "Price", new String[0], 0, labelsAndValues.toArray(LabelAndValue[]::new), 0));
 
     System.out.println("Computed counts");
     IOUtils.close(indexReader);
@@ -362,7 +362,7 @@ public class SandboxFacetsExample {
 
     FacetFieldCollectorManager<CountFacetRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, countRecorder);
-    searcher.search(new MatchAllDocsQuery(), collectorManager);
+    searcher.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     RangeOrdToLabel ordToLabels = new RangeOrdToLabel(inputRanges);
 
     ComparableSupplier<ComparableUtils.ByCountComparable> countComparable =
@@ -382,7 +382,7 @@ public class SandboxFacetsExample {
 
     results.add(
         new FacetResult(
-            "Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+            "Price", new String[0], 0, labelsAndValues.toArray(LabelAndValue[]::new), 0));
 
     System.out.println("Computed counts");
     IOUtils.close(indexReader);
@@ -424,7 +424,7 @@ public class SandboxFacetsExample {
 
     FacetFieldCollectorManager<MultiFacetsRecorder> collectorManager =
         new FacetFieldCollectorManager<>(longRangeFacetCutter, multiFacetsRecorder);
-    searcher.search(new MatchAllDocsQuery(), collectorManager);
+    searcher.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     RangeOrdToLabel ordToLabels = new RangeOrdToLabel(inputRanges);
 
     // Get recorded ords - use either count/aggregations recorder
@@ -454,7 +454,7 @@ public class SandboxFacetsExample {
     }
     results.add(
         new FacetResult(
-            "Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+            "Price", new String[0], 0, labelsAndValues.toArray(LabelAndValue[]::new), 0));
 
     // note: previous ordinal iterator was exhausted
     recordedOrds = longAggregationsFacetRecorder.recordedOrds();
@@ -472,7 +472,7 @@ public class SandboxFacetsExample {
     }
     results.add(
         new FacetResult(
-            "Price", new String[0], 0, labelsAndValues.toArray(new LabelAndValue[0]), 0));
+            "Price", new String[0], 0, labelsAndValues.toArray(LabelAndValue[]::new), 0));
 
     return results;
   }
@@ -499,7 +499,7 @@ public class SandboxFacetsExample {
         new MultiCollectorManager(hitsCollectorManager, taxoFacetsCollectorManager);
 
     //// (3) search
-    Object[] results = searcher.search(new MatchAllDocsQuery(), collectorManager);
+    Object[] results = searcher.search(MatchAllDocsQuery.INSTANCE, collectorManager);
     TopDocs topDocs = (TopDocs) results[0];
     System.out.println(
         "Search results: totalHits: "
@@ -549,7 +549,7 @@ public class SandboxFacetsExample {
               dimension,
               new String[0],
               dimensionValue,
-              labelsAndValues.toArray(new LabelAndValue[0]),
+              labelsAndValues.toArray(LabelAndValue[]::new),
               labelsAndValues.size()));
     }
 
@@ -618,7 +618,7 @@ public class SandboxFacetsExample {
         dimension,
         new String[0],
         dimensionValue,
-        labelsAndValues.toArray(new LabelAndValue[0]),
+        labelsAndValues.toArray(LabelAndValue[]::new),
         labelsAndValues.size());
   }
 
@@ -692,7 +692,7 @@ public class SandboxFacetsExample {
             "Author",
             new String[0],
             dimensionValue,
-            labelsAndValues.toArray(new LabelAndValue[0]),
+            labelsAndValues.toArray(LabelAndValue[]::new),
             labelsAndValues.size()));
 
     //// (5) Same process, but for Publish Date drill sideways dimension
@@ -724,7 +724,7 @@ public class SandboxFacetsExample {
             "Publish Date",
             new String[0],
             dimensionValue,
-            labelsAndValues.toArray(new LabelAndValue[0]),
+            labelsAndValues.toArray(LabelAndValue[]::new),
             labelsAndValues.size()));
 
     IOUtils.close(indexReader, taxoReader);

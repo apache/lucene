@@ -44,6 +44,7 @@ import org.apache.lucene.index.NoMergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.Query;
@@ -54,6 +55,7 @@ import org.apache.lucene.tests.codecs.asserting.AssertingCodec;
 import org.apache.lucene.tests.index.BaseKnnVectorsFormatTestCase;
 import org.apache.lucene.tests.index.RandomCodec;
 import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.IORunnable;
 import org.hamcrest.MatcherAssert;
 
 /** Basic tests of PerFieldDocValuesFormat */
@@ -94,12 +96,16 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
                 "missing_field",
                 new float[] {1, 2, 3},
                 10,
-                reader.getLiveDocs(),
+                AcceptDocs.fromLiveDocs(reader.getLiveDocs(), reader.maxDoc()),
                 Integer.MAX_VALUE);
         assertEquals(0, hits.scoreDocs.length);
         hits =
             reader.searchNearestVectors(
-                "id", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
+                "id",
+                new float[] {1, 2, 3},
+                10,
+                AcceptDocs.fromLiveDocs(reader.getLiveDocs(), reader.maxDoc()),
+                Integer.MAX_VALUE);
         assertEquals(0, hits.scoreDocs.length);
       }
     }
@@ -146,12 +152,20 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         LeafReader reader = ireader.leaves().get(0).reader();
         TopDocs hits1 =
             reader.searchNearestVectors(
-                "field1", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
+                "field1",
+                new float[] {1, 2, 3},
+                10,
+                AcceptDocs.fromLiveDocs(reader.getLiveDocs(), reader.maxDoc()),
+                Integer.MAX_VALUE);
         assertEquals(1, hits1.scoreDocs.length);
 
         TopDocs hits2 =
             reader.searchNearestVectors(
-                "field2", new float[] {1, 2, 3}, 10, reader.getLiveDocs(), Integer.MAX_VALUE);
+                "field2",
+                new float[] {1, 2, 3},
+                10,
+                AcceptDocs.fromLiveDocs(reader.getLiveDocs(), reader.maxDoc()),
+                Integer.MAX_VALUE);
         assertEquals(1, hits2.scoreDocs.length);
       }
     }
@@ -271,9 +285,10 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
         }
 
         @Override
-        public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+        public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState)
+            throws IOException {
           fieldsWritten.add(fieldInfo.name);
-          writer.mergeOneField(fieldInfo, mergeState);
+          return writer.mergeOneField(fieldInfo, mergeState);
         }
 
         @Override
@@ -326,5 +341,10 @@ public class TestPerFieldKnnVectorsFormat extends BaseKnnVectorsFormatTestCase {
     public int getMaxDimensions(String fieldName) {
       return 32;
     }
+  }
+
+  @Override
+  protected boolean supportsFloatVectorFallback() {
+    return false;
   }
 }

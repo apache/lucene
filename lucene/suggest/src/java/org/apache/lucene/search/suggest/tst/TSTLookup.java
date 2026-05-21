@@ -30,6 +30,7 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRefBuilder;
+import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.RamUsageEstimator;
 
 /**
@@ -191,12 +192,13 @@ public class TSTLookup extends Lookup {
     }
     int maxCnt = Math.min(num, list.size());
     if (onlyMorePopular) {
-      LookupPriorityQueue queue = new LookupPriorityQueue(num);
+      PriorityQueue<LookupResult> queue =
+          PriorityQueue.usingComparator(num, Comparator.comparingLong(lr -> lr.value));
 
       for (TernaryTreeNode ttn : list) {
         queue.insertWithOverflow(new LookupResult(ttn.token, ((Number) ttn.val).longValue()));
       }
-      Collections.addAll(res, queue.getResults());
+      Collections.addAll(res, queue.drainToArrayHighestFirst(LookupResult[]::new));
     } else {
       for (int i = 0; i < maxCnt; i++) {
         TernaryTreeNode ttn = list.get(i);

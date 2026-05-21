@@ -39,6 +39,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.IOFunction;
+import org.apache.lucene.util.IORunnable;
 
 /** Writes vectors to an index. */
 public abstract class KnnVectorsWriter implements Accountable, Closeable {
@@ -52,9 +53,25 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
   /** Flush all buffered data on disk * */
   public abstract void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException;
 
-  /** Write field for merging */
+  /** Called once at the end before close */
+  public abstract void finish() throws IOException;
+
+  /**
+   * Merges vectors for a single field, returning a runnable for any deferred work (e.g., HNSW graph
+   * construction). The default implementation merges naively the vectors and returns {@code null}
+   * (no deferred work).
+   *
+   * <p>Subclasses should override this method may implement a two-phase merge strategy where flat
+   * vectors are written in the first phase and additional indexing structures (like HNSW graphs)
+   * are built in the second phase using the already-written flat vector data.
+   *
+   * @param fieldInfo the field to merge
+   * @param mergeState the merge state
+   * @return a runnable to execute in phase 2, or {@code null} if there is no deferred work
+   * @throws IOException if an I/O error occurs
+   */
   @SuppressWarnings("unchecked")
-  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+  public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     switch (fieldInfo.getVectorEncoding()) {
       case BYTE -> {
         KnnFieldVectorsWriter<byte[]> byteWriter =
@@ -77,15 +94,18 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
         }
       }
     }
+    return null;
   }
 
-  /** Called once at the end before close */
-  public abstract void finish() throws IOException;
-
   /**
-   * Merges the segment vectors for all fields. This default implementation delegates to {@link
-   * #mergeOneField}, passing a {@link KnnVectorsReader} that combines the vector values and ignores
-   * deleted documents.
+   * Merges the segment vectors for all fields using a two-phase strategy:
+   *
+   * <ol>
+   *   <li>Phase 1: Merge flat vectors for all fields by calling {@link #mergeOneField(FieldInfo,
+   *       MergeState)}, collecting deferred work (runnables) for each field.
+   *   <li>Phase 2: Execute the deferred runnables (e.g., HNSW graph construction) using the flat
+   *       vector data written in phase 1.
+   * </ol>
    */
   public final void merge(MergeState mergeState) throws IOException {
     for (int i = 0; i < mergeState.fieldInfos.length; i++) {
@@ -96,33 +116,47 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
     }
 
+    // Phase 1: merge flat vectors for all fields, collecting deferred work
+    List<IORunnable> deferredWork = new ArrayList<>();
     for (FieldInfo fieldInfo : mergeState.mergeFieldInfos) {
       if (fieldInfo.hasVectorValues()) {
         if (mergeState.infoStream.isEnabled("VV")) {
           mergeState.infoStream.message("VV", "merging " + mergeState.segmentInfo);
         }
 
-        mergeOneField(fieldInfo, mergeState);
+        IORunnable deferred = mergeOneField(fieldInfo, mergeState);
+        if (deferred != null) {
+          deferredWork.add(deferred);
+        }
 
         if (mergeState.infoStream.isEnabled("VV")) {
           mergeState.infoStream.message("VV", "merge done " + mergeState.segmentInfo);
         }
       }
     }
-    finishMerge(mergeState);
+
+    // Phase 2: execute deferred work (e.g., graph construction using the written flat vectors)
+    for (IORunnable runnable : deferredWork) {
+      if (mergeState.infoStream.isEnabled("VV")) {
+        mergeState.infoStream.message("VV", "merging deferred work" + mergeState.segmentInfo);
+      }
+
+      runnable.run();
+
+      if (mergeState.infoStream.isEnabled("VV")) {
+        mergeState.infoStream.message("VV", "merge deferred work done " + mergeState.segmentInfo);
+      }
+    }
+
     finish();
   }
 
-  private void finishMerge(MergeState mergeState) throws IOException {
-    for (KnnVectorsReader reader : mergeState.knnVectorsReaders) {
-      if (reader != null) {
-        reader.finishMerge();
-      }
-    }
-  }
-
-  /** Tracks state of one sub-reader that we are merging */
-  private static class FloatVectorValuesSub extends DocIDMerger.Sub {
+  /**
+   * Tracks state of one sub-reader of float vectors that we are merging.
+   *
+   * @lucene.internal
+   */
+  static class FloatVectorValuesSub extends DocIDMerger.Sub {
 
     final FloatVectorValues values;
     final KnnVectorValues.DocIndexIterator iterator;
@@ -144,7 +178,12 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
     }
   }
 
-  private static class ByteVectorValuesSub extends DocIDMerger.Sub {
+  /**
+   * Tracks state of one sub-reader of byte vectors that we are merging.
+   *
+   * @lucene.internal
+   */
+  static class ByteVectorValuesSub extends DocIDMerger.Sub {
 
     final ByteVectorValues values;
     final KnnVectorValues.DocIndexIterator iterator;
@@ -303,6 +342,11 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
           mergeState);
     }
 
+    /**
+     * Unified view over several segments containing float vector values.
+     *
+     * @lucene.internal
+     */
     static class MergedFloat32VectorValues extends FloatVectorValues {
       private final List<FloatVectorValuesSub> subs;
       private final DocIDMerger<FloatVectorValuesSub> docIdMerger;
@@ -311,7 +355,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       private int lastOrd = -1;
       FloatVectorValuesSub current;
 
-      private MergedFloat32VectorValues(List<FloatVectorValuesSub> subs, MergeState mergeState)
+      // package-private for testing
+      MergedFloat32VectorValues(List<FloatVectorValuesSub> subs, MergeState mergeState)
           throws IOException {
         this.subs = subs;
         docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
@@ -401,6 +446,11 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       }
     }
 
+    /**
+     * Unified view over several segments containing byte vector values.
+     *
+     * @lucene.internal
+     */
     static class MergedByteVectorValues extends ByteVectorValues {
       private final List<ByteVectorValuesSub> subs;
       private final DocIDMerger<ByteVectorValuesSub> docIdMerger;
@@ -410,7 +460,8 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       private int docId = -1;
       ByteVectorValuesSub current;
 
-      private MergedByteVectorValues(List<ByteVectorValuesSub> subs, MergeState mergeState)
+      // package-private for testing
+      MergedByteVectorValues(List<ByteVectorValuesSub> subs, MergeState mergeState)
           throws IOException {
         this.subs = subs;
         docIdMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
@@ -423,11 +474,9 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
 
       @Override
       public byte[] vectorValue(int ord) throws IOException {
-        if (ord != lastOrd + 1) {
+        if (ord != lastOrd) {
           throw new IllegalStateException(
               "only supports forward iteration: ord=" + ord + ", lastOrd=" + lastOrd);
-        } else {
-          lastOrd = ord;
         }
         return current.values.vectorValue(current.index());
       }
@@ -455,6 +504,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
               index = NO_MORE_DOCS;
             } else {
               docId = current.mappedDocID;
+              ++lastOrd;
               ++index;
             }
             return docId;

@@ -17,6 +17,7 @@
 package org.apache.lucene.sandbox.search;
 
 import java.io.IOException;
+import java.util.Comparator;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.sandbox.search.TermAutomatonQuery.EnumAndScorer;
 import org.apache.lucene.sandbox.search.TermAutomatonQuery.TermAutomatonWeight;
@@ -73,8 +74,11 @@ class TermAutomatonScorer extends Scorer {
     this.runAutomaton = new TermRunAutomaton(weight.automaton, subs.length);
     this.scorer = scorer;
     this.norms = norms;
-    this.docIDQueue = new DocIDQueue(subs.length);
-    this.posQueue = new PositionQueue(subs.length);
+    this.docIDQueue =
+        PriorityQueue.usingComparator(
+            subs.length, Comparator.comparingInt(es -> es.posEnum.docID()));
+    this.posQueue =
+        PriorityQueue.usingComparator(subs.length, Comparator.comparingInt(es -> es.pos));
     this.anyTermID = anyTermID;
     this.subsOnDoc = new EnumAndScorer[subs.length];
     this.positions = new PosState[4];
@@ -92,30 +96,6 @@ class TermAutomatonScorer extends Scorer {
       }
     }
     this.cost = cost;
-  }
-
-  /** Sorts by docID so we can quickly pull out all scorers that are on the same (lowest) docID. */
-  private static class DocIDQueue extends PriorityQueue<EnumAndScorer> {
-    public DocIDQueue(int maxSize) {
-      super(maxSize);
-    }
-
-    @Override
-    protected boolean lessThan(EnumAndScorer a, EnumAndScorer b) {
-      return a.posEnum.docID() < b.posEnum.docID();
-    }
-  }
-
-  /** Sorts by position so we can visit all scorers on one doc, by position. */
-  private static class PositionQueue extends PriorityQueue<EnumAndScorer> {
-    public PositionQueue(int maxSize) {
-      super(maxSize);
-    }
-
-    @Override
-    protected boolean lessThan(EnumAndScorer a, EnumAndScorer b) {
-      return a.pos < b.pos;
-    }
   }
 
   /** Pops all enums positioned on the current (minimum) doc */

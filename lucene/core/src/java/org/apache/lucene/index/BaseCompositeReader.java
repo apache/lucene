@@ -84,7 +84,6 @@ public abstract class BaseCompositeReader<R extends IndexReader> extends Composi
       starts[i] = (int) maxDoc;
       final IndexReader r = subReaders[i];
       maxDoc += r.maxDoc(); // compute maxDocs
-      r.registerParentReader(this);
     }
 
     if (maxDoc > IndexWriter.getActualMaxDocs()) {

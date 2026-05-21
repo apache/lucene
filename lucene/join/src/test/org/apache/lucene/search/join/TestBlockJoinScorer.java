@@ -55,7 +55,8 @@ public class TestBlockJoinScorer extends LuceneTestCase {
             newIndexWriterConfig()
                 .setMergePolicy(
                     // retain doc id order
-                    newLogMergePolicy(random().nextBoolean())));
+                    newLogMergePolicy()));
+    w.w.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(random().nextBoolean());
     List<Document> docs = new ArrayList<>();
     for (int i = 0; i < 10; i++) {
       docs.clear();
@@ -81,7 +82,7 @@ public class TestBlockJoinScorer extends LuceneTestCase {
         new QueryBitSetProducer(new TermQuery(new Term("docType", "parent")));
     CheckJoinIndex.check(reader, parentsFilter);
 
-    Query childQuery = new MatchAllDocsQuery();
+    Query childQuery = MatchAllDocsQuery.INSTANCE;
     ToParentBlockJoinQuery query =
         new ToParentBlockJoinQuery(childQuery, parentsFilter, ScoreMode.None);
 
@@ -134,8 +135,13 @@ public class TestBlockJoinScorer extends LuceneTestCase {
               newIndexWriterConfig()
                   .setMergePolicy(
                       // retain doc id order
-                      newLogMergePolicy(random().nextBoolean())))) {
+                      newLogMergePolicy()))) {
 
+        w.w
+            .getConfig()
+            .getCodec()
+            .compoundFormat()
+            .setShouldUseCompoundFile(random().nextBoolean());
         for (String[][] values :
             Arrays.asList(
                 new String[][] {{"A", "B"}, {"A", "B", "C"}},

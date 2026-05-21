@@ -373,7 +373,7 @@ public class DrillSideways {
     final String[] drillSidewaysDims;
     final FacetsCollector[] drillSidewaysCollectors;
     if (query.getDims().isEmpty() == false) {
-      drillSidewaysDims = query.getDims().keySet().toArray(new String[0]);
+      drillSidewaysDims = query.getDims().keySet().toArray(String[]::new);
       int numDims = query.getDims().size();
       assert drillSidewaysCollectorManagers != null;
       assert drillSidewaysCollectorManagers.size() == numDims;
@@ -456,7 +456,7 @@ public class DrillSideways {
     if (baseQuery == null) {
       // TODO: we could optimize this pure-browse case by
       // making a custom scorer instead:
-      baseQuery = new MatchAllDocsQuery();
+      baseQuery = MatchAllDocsQuery.INSTANCE;
     }
     Query[] drillDownQueries = query.getDrillDownQueries();
 

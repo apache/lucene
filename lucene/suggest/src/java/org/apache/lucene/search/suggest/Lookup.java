@@ -31,7 +31,6 @@ import org.apache.lucene.store.OutputStreamDataOutput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.PriorityQueue;
 
 /**
  * Simple Lookup interface for {@link CharSequence} suggestions.
@@ -132,34 +131,6 @@ public abstract class Lookup implements Accountable {
       }
       // One is a prefix of the other, or, they are equal:
       return l1 - l2;
-    }
-  }
-
-  /** A {@link PriorityQueue} collecting a fixed size of high priority {@link LookupResult} */
-  public static final class LookupPriorityQueue extends PriorityQueue<LookupResult> {
-    // TODO: should we move this out of the interface into a utility class?
-    /** Creates a new priority queue of the specified size. */
-    public LookupPriorityQueue(int size) {
-      super(size);
-    }
-
-    @Override
-    protected boolean lessThan(LookupResult a, LookupResult b) {
-      return a.value < b.value;
-    }
-
-    /**
-     * Returns the top N results in descending order.
-     *
-     * @return the top N results in descending order.
-     */
-    public LookupResult[] getResults() {
-      int size = size();
-      LookupResult[] res = new LookupResult[size];
-      for (int i = size - 1; i >= 0; i--) {
-        res[i] = pop();
-      }
-      return res;
     }
   }
 

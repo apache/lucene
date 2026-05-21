@@ -24,7 +24,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
-import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -32,8 +31,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.IntConsumer;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.column.ColumnBatch;
 import org.apache.lucene.index.DocumentsWriterDeleteQueue.DeleteSlice;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
@@ -59,7 +59,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
     abortingException = throwable;
   }
 
-  final boolean isAborted() {
+  boolean isAborted() {
     return aborted;
   }
 
@@ -140,7 +140,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
   private int[] deleteDocIDs = new int[0];
   private int numDeletedDocIds = 0;
   private final int indexMajorVersionCreated;
-  private final IndexingChain.ReservedField<NumericDocValuesField> parentField;
+  private final boolean hasParentField;
 
   DocumentsWriterPerThread(
       int indexMajorVersionCreated,
@@ -197,16 +197,10 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
             fieldInfos,
             indexWriterConfig,
             this::onAbortingException);
-    if (indexWriterConfig.getParentField() != null) {
-      this.parentField =
-          indexingChain.markAsReserved(
-              new NumericDocValuesField(indexWriterConfig.getParentField(), -1));
-    } else {
-      this.parentField = null;
-    }
+    this.hasParentField = indexWriterConfig.getParentField() != null;
   }
 
-  final void testPoint(String message) {
+  void testPoint(String message) {
     if (enableTestPoints) {
       assert infoStream.isEnabled("TP"); // don't enable unless you need them.
       infoStream.message("TP", message);
@@ -220,6 +214,31 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
       pendingNumDocs.decrementAndGet();
       throw new IllegalArgumentException(
           "number of documents in the index cannot exceed " + IndexWriter.getActualMaxDocs());
+    }
+  }
+
+  /**
+   * Atomically reserves capacity for {@code n} docs.
+   *
+   * @throws IllegalArgumentException if reserving {@code n} docs would exceed the maximum number of
+   *     documents allowed in the index
+   */
+  private void reserveDocs(int n) {
+    assert n >= 0;
+    if (n == 0) {
+      return;
+    }
+    final int maxDocs = IndexWriter.getActualMaxDocs();
+    while (true) {
+      long current = pendingNumDocs.get();
+      long next = current + n;
+      if (next > maxDocs) {
+        throw new IllegalArgumentException(
+            "number of documents in the index cannot exceed " + maxDocs);
+      }
+      if (pendingNumDocs.compareAndSet(current, next)) {
+        return;
+      }
     }
   }
 
@@ -249,12 +268,10 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
         final Iterator<? extends Iterable<? extends IndexableField>> iterator = docs.iterator();
         while (iterator.hasNext()) {
           Iterable<? extends IndexableField> doc = iterator.next();
-          if (parentField != null) {
-            if (iterator.hasNext() == false) {
-              doc = addParentField(doc, parentField);
-            }
-          } else if (segmentInfo.getIndexSort() != null
-              && iterator.hasNext()
+          final boolean isLastDoc = iterator.hasNext() == false;
+          if (hasParentField == false
+              && segmentInfo.getIndexSort() != null
+              && isLastDoc == false
               && indexMajorVersionCreated >= Version.LUCENE_10_0_0.major) {
             // sort is configured but parent field is missing, yet we have a doc-block
             // yet we must not fail if this index was created in an earlier version where this
@@ -271,7 +288,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
           // vs non-aborting exceptions):
           reserveOneDoc();
           try {
-            indexingChain.processDocument(numDocsInRAM++, doc);
+            indexingChain.processDocument(numDocsInRAM++, doc, isLastDoc);
           } finally {
             onNewDocOnRAM.run();
           }
@@ -294,32 +311,51 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
     }
   }
 
-  private Iterable<? extends IndexableField> addParentField(
-      Iterable<? extends IndexableField> doc, IndexableField parentField) {
-    return () -> {
-      final Iterator<? extends IndexableField> first = doc.iterator();
-      return new Iterator<>() {
-        IndexableField additionalField = parentField;
+  long updateBatch(
+      ColumnBatch columnBatch,
+      DocumentsWriterDeleteQueue.Node<?> deleteNode,
+      DocumentsWriter.FlushNotifications flushNotifications,
+      IntConsumer onNewDocsOnRAM)
+      throws IOException {
+    try {
+      testPoint("DocumentsWriterPerThread addBatch start");
+      assert abortingException == null : "DWPT has hit aborting exception but is still indexing";
+      if (INFO_VERBOSE && infoStream.isEnabled("DWPT")) {
+        infoStream.message(
+            "DWPT",
+            Thread.currentThread().getName()
+                + " update batch"
+                + " docID="
+                + numDocsInRAM
+                + " seg="
+                + segmentInfo.name);
+      }
+      final int docsInRamBefore = numDocsInRAM;
+      final int numDocs = columnBatch.numDocs();
+      boolean allDocsIndexed = false;
+      // Atomically reserve all doc IDs up front. On failure reserveDocs fully rolls back, so
+      // pendingNumDocs is never left holding orphaned reservations. Done before the try/finally
+      // because nothing has been accounted for yet — if this throws, there is no cleanup to do.
+      reserveDocs(numDocs);
+      numDocsInRAM += numDocs;
+      onNewDocsOnRAM.accept(numDocs);
+      try {
+        indexingChain.processBatch(docsInRamBefore, columnBatch);
 
-        @Override
-        public boolean hasNext() {
-          return additionalField != null || first.hasNext();
+        // A batch is N independent documents, not a parent-child block, so we deliberately
+        // do not call segmentInfo.setHasBlocks() here.
+        allDocsIndexed = true;
+        return finishDocuments(deleteNode, docsInRamBefore);
+      } finally {
+        if (!allDocsIndexed && !aborted) {
+          // the iterator threw an exception that is not aborting
+          // go and mark all docs from this block as deleted
+          deleteLastDocs(numDocsInRAM - docsInRamBefore);
         }
-
-        @Override
-        public IndexableField next() {
-          if (additionalField != null) {
-            IndexableField field = additionalField;
-            additionalField = null;
-            return field;
-          }
-          if (first.hasNext()) {
-            return first.next();
-          }
-          throw new NoSuchElementException();
-        }
-      };
-    };
+      }
+    } finally {
+      maybeAbort("updateBatch", flushNotifications);
+    }
   }
 
   private long finishDocuments(DocumentsWriterDeleteQueue.Node<?> deleteNode, int docIdUpTo) {
@@ -415,7 +451,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
             segmentInfo,
             fieldInfos.finish(),
             pendingUpdates,
-            new IOContext(new FlushInfo(numDocsInRAM, lastCommittedBytesUsed)));
+            IOContext.flush(new FlushInfo(numDocsInRAM, lastCommittedBytesUsed)));
     final double startMBUsed = lastCommittedBytesUsed / 1024. / 1024.;
 
     // Apply delete-by-docID now (delete-byDocID only
@@ -445,7 +481,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
           "DWPT",
           "flush postings as segment " + flushState.segmentInfo.name + " numDocs=" + numDocsInRAM);
     }
-    final Sorter.DocMap sortMap;
+    final Sorter.PackableDocMap packableSortMap;
     try {
       DocIdSetIterator softDeletedDocs;
       if (indexWriterConfig.getSoftDeletesField() != null) {
@@ -453,7 +489,7 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
       } else {
         softDeletedDocs = null;
       }
-      sortMap = indexingChain.flush(flushState);
+      packableSortMap = indexingChain.flush(flushState);
       if (softDeletedDocs == null) {
         flushState.softDelCountOnFlush = 0;
       } else {
@@ -534,8 +570,10 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
               segmentDeletes,
               flushState.liveDocs,
               flushState.delCountOnFlush,
-              sortMap);
-      sealFlushedSegment(fs, sortMap, flushNotifications);
+              packableSortMap != null
+                  ? packableSortMap.pack()
+                  : null); // Use a packed version as the lifetime of FlushedSegment is long.
+      sealFlushedSegment(fs, packableSortMap, flushNotifications);
       if (infoStream.isEnabled("DWPT")) {
         infoStream.message(
             "DWPT",
@@ -599,11 +637,9 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
     IndexWriter.setDiagnostics(newSegment.info, IndexWriter.SOURCE_FLUSH);
 
     IOContext context =
-        new IOContext(new FlushInfo(newSegment.info.maxDoc(), newSegment.sizeInBytes()));
+        IOContext.flush(new FlushInfo(newSegment.info.maxDoc(), newSegment.sizeInBytes()));
 
-    boolean success = false;
     try {
-
       if (indexWriterConfig.getUseCompoundFile()) {
         Set<String> originalFiles = newSegment.info.files();
         // TODO: like addIndexes, we are relying on createCompoundFile to successfully cleanup...
@@ -662,17 +698,14 @@ final class DocumentsWriterPerThread implements Accountable, Lock {
         newSegment.setDelCount(delCount);
         newSegment.advanceDelGen();
       }
-
-      success = true;
-    } finally {
-      if (!success) {
-        if (infoStream.isEnabled("DWPT")) {
-          infoStream.message(
-              "DWPT",
-              "hit exception creating compound file for newly flushed segment "
-                  + newSegment.info.name);
-        }
+    } catch (Throwable t) {
+      if (infoStream.isEnabled("DWPT")) {
+        infoStream.message(
+            "DWPT",
+            "hit exception creating compound file for newly flushed segment "
+                + newSegment.info.name);
       }
+      throw t;
     }
   }
 

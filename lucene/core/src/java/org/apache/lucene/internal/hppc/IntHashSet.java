@@ -17,7 +17,16 @@
 
 package org.apache.lucene.internal.hppc;
 
-import static org.apache.lucene.internal.hppc.HashContainers.*;
+import static org.apache.lucene.internal.hppc.HashContainers.DEFAULT_EXPECTED_ELEMENTS;
+import static org.apache.lucene.internal.hppc.HashContainers.DEFAULT_LOAD_FACTOR;
+import static org.apache.lucene.internal.hppc.HashContainers.ITERATION_SEED;
+import static org.apache.lucene.internal.hppc.HashContainers.MAX_LOAD_FACTOR;
+import static org.apache.lucene.internal.hppc.HashContainers.MIN_LOAD_FACTOR;
+import static org.apache.lucene.internal.hppc.HashContainers.checkLoadFactor;
+import static org.apache.lucene.internal.hppc.HashContainers.expandAtCount;
+import static org.apache.lucene.internal.hppc.HashContainers.iterationIncrement;
+import static org.apache.lucene.internal.hppc.HashContainers.minBufferSize;
+import static org.apache.lucene.internal.hppc.HashContainers.nextBufferSize;
 
 import java.util.Arrays;
 import java.util.Collection;

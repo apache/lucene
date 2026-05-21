@@ -28,7 +28,7 @@ public class TestICUFoldingFilterFactory extends BaseTokenStreamTestCase {
   /** basic tests to ensure the folding is working */
   public void test() throws Exception {
     Reader reader = new StringReader("Résumé");
-    ICUFoldingFilterFactory factory = new ICUFoldingFilterFactory(new HashMap<String, String>());
+    ICUFoldingFilterFactory factory = new ICUFoldingFilterFactory(new HashMap<>());
     TokenStream stream = whitespaceMockTokenizer(reader);
     stream = factory.create(stream);
     assertTokenStreamContents(stream, new String[] {"resume"});
@@ -36,7 +36,7 @@ public class TestICUFoldingFilterFactory extends BaseTokenStreamTestCase {
 
   /** test to ensure the filter parameter is working */
   public void testFilter() throws Exception {
-    HashMap<String, String> args = new HashMap<String, String>();
+    HashMap<String, String> args = new HashMap<>();
     args.put("filter", "[^ö]");
     ICUFoldingFilterFactory factory = new ICUFoldingFilterFactory(args);
 

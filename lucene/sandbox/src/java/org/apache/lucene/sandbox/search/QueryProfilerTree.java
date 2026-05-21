@@ -141,10 +141,15 @@ class QueryProfilerTree {
    * @return a hierarchical representation of the profiled query tree
    */
   public List<QueryProfilerResult> getTree() {
-    ArrayList<QueryProfilerResult> results = new ArrayList<>(roots.size());
+    // The profiler tree is shared at query level and we need
+    // to recursively collect all the children for single slice
+    // Another way could be to show the slice level breakdown at
+    // each query level for each child, which looks less intuitive
+    final List<QueryProfilerResult> results = new ArrayList<>(roots.size());
     for (IntCursor root : roots) {
       results.add(doGetTree(root.value));
     }
+
     return results;
   }
 
@@ -156,6 +161,7 @@ class QueryProfilerTree {
    */
   private QueryProfilerResult doGetTree(int token) {
     Query query = queries.get(token);
+    // Can query slice profiler breakdown be null??
     QueryProfilerBreakdown breakdown = breakdowns.get(token);
     IntArrayList children = tree.get(token);
     List<QueryProfilerResult> childrenProfileResults = Collections.emptyList();
@@ -170,27 +176,7 @@ class QueryProfilerTree {
 
     // TODO this would be better done bottom-up instead of top-down to avoid
     // calculating the same times over and over...but worth the effort?
-    String type = getTypeFromQuery(query);
-    String description = getDescriptionFromQuery(query);
-    return new QueryProfilerResult(
-        type,
-        description,
-        breakdown.toBreakdownMap(),
-        breakdown.toTotalTime(),
-        childrenProfileResults);
-  }
-
-  private String getTypeFromQuery(Query query) {
-    // Anonymous classes won't have a name,
-    // we need to get the super class
-    if (query.getClass().getSimpleName().isEmpty()) {
-      return query.getClass().getSuperclass().getSimpleName();
-    }
-    return query.getClass().getSimpleName();
-  }
-
-  private String getDescriptionFromQuery(Query query) {
-    return query.toString();
+    return breakdown.getQueryProfilerResult(query, childrenProfileResults);
   }
 
   /**

@@ -2,5 +2,43 @@
 versions.lock  text eol=lf
 versions.toml  text eol=lf
 
+# all generated files, for clear indication in PR reviews
+lucene/analysis/common/src/java/org/apache/lucene/analysis/charfilter/HTMLStripCharFilter.java linguist-generated
+lucene/analysis/common/src/java/org/apache/lucene/analysis/classic/ClassicTokenizerImpl.java  linguist-generated
+lucene/analysis/common/src/java/org/apache/lucene/analysis/email/ASCIITLD.jflex linguist-generated
+lucene/analysis/common/src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.java linguist-generated
+lucene/analysis/common/src/java/org/apache/lucene/analysis/util/UnicodeProps.java linguist-generated
+lucene/analysis/common/src/java/org/apache/lucene/analysis/wikipedia/WikipediaTokenizerImpl.java linguist-generated
+lucene/analysis/common/src/java/org/tartarus/snowball/Among.java linguist-generated
+lucene/analysis/common/src/java/org/tartarus/snowball/SnowballProgram.java linguist-generated
+lucene/analysis/common/src/java/org/tartarus/snowball/SnowballStemmer.java linguist-generated
+lucene/analysis/common/src/java/org/tartarus/snowball/ext/*Stemmer.java linguist-generated
+lucene/analysis/common/src/resources/org/apache/lucene/analysis/snowball/*_stop.txt linguist-generated
+lucene/analysis/common/src/test/org/apache/lucene/analysis/email/TLDs.txt linguist-generated
+lucene/analysis/icu/src/resources/org/apache/lucene/analysis/icu/*.nrm linguist-generated
+lucene/analysis/icu/src/resources/org/apache/lucene/analysis/icu/segmentation/*.brk linguist-generated
+lucene/analysis/kuromoji/src/resources/org/apache/lucene/analysis/ja/dict/*.dat linguist-generated
+lucene/analysis/nori/src/resources/org/apache/lucene/analysis/ko/dict/*.dat linguist-generated
+lucene/backward-codecs/src/java/org/apache/lucene/backward_codecs/lucene*/ForUtil.java linguist-generated
+lucene/backward-codecs/src/java/org/apache/lucene/backward_codecs/lucene*/ForDeltaUtil.java linguist-generated
+lucene/core/src/generated/jdk/*.jar linguist-generated
+lucene/core/src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.java linguist-generated
+lucene/core/src/java/org/apache/lucene/util/automaton/Lev*ParametricDescription.java linguist-generated
+lucene/core/src/java/org/apache/lucene/util/packed/BulkOperation*.java linguist-generated
+lucene/core/src/java/org/apache/lucene/util/packed/Packed64SingleBlock.java linguist-generated
+lucene/core/src/java/org/apache/lucene/codecs/lucene*/ForUtil.java linguist-generated
+lucene/expressions/src/java/org/apache/lucene/expressions/js/JavascriptBaseVisitor.java linguist-generated
+lucene/expressions/src/java/org/apache/lucene/expressions/js/JavascriptLexer.java linguist-generated
+lucene/expressions/src/java/org/apache/lucene/expressions/js/JavascriptParser.java linguist-generated
+lucene/expressions/src/java/org/apache/lucene/expressions/js/JavascriptVisitor.java linguist-generated
+lucene/queryparser/src/java/org/apache/lucene/queryparser/**/ParseException.java linguist-generated
+lucene/queryparser/src/java/org/apache/lucene/queryparser/**/*Parser.java linguist-generated
+lucene/queryparser/src/java/org/apache/lucene/queryparser/**/*ParserConstants.java linguist-generated
+lucene/queryparser/src/java/org/apache/lucene/queryparser/**/*ParserTokenManager.java linguist-generated
+lucene/queryparser/src/java/org/apache/lucene/queryparser/**/Token.java linguist-generated
+lucene/queryparser/src/java/org/apache/lucene/queryparser/**/TokenMgrError.java linguist-generated
+lucene/test-framework/src/java/org/apache/lucene/tests/analysis/standard/EmojiTokenizationTestUnicode_*.java  linguist-generated
+lucene/test-framework/src/java/org/apache/lucene/tests/analysis/standard/WordBreakTestUnicode_*.java  linguist-generated
+
 # Gradle files are always in LF.
 *.gradle          text eol=lf

@@ -82,7 +82,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
    * @return the disjuncts.
    */
   public Collection<Query> getDisjuncts() {
-    return Collections.unmodifiableCollection(disjuncts);
+    return Collections.unmodifiableCollection(orderedQueries);
   }
 
   /**

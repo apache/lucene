@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.internal.vectorization;
 
-import org.apache.lucene.codecs.lucene101.ForUtil;
+import org.apache.lucene.codecs.lucene104.ForUtil;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;

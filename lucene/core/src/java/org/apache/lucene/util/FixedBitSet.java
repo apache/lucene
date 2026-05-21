@@ -19,14 +19,12 @@ package org.apache.lucene.util;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
-import org.apache.lucene.search.CheckedIntConsumer;
-import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
 
 /**
  * BitSet of fixed length (numBits), backed by accessible ({@link #getBits}) long[], accessed with
- * an int index, implementing {@link Bits} and {@link DocIdSet}. If you need to manage more than
- * 2.1B bits, use {@link LongBitSet}.
+ * an int index, implementing {@link BitSet}. If you need to manage more than 2.1B bits, use {@link
+ * LongBitSet}.
  *
  * @lucene.internal
  */
@@ -43,24 +41,42 @@ public final class FixedBitSet extends BitSet {
   private final int numBits; // The number of bits in use
   private final int numWords; // The exact number of longs needed to hold numBits (<= bits.length)
 
-  /**
-   * If the given {@link FixedBitSet} is large enough to hold {@code numBits+1}, returns the given
-   * bits, otherwise returns a new {@link FixedBitSet} which can hold the requested number of bits.
-   *
-   * <p><b>NOTE:</b> the returned bitset reuses the underlying {@code long[]} of the given {@code
-   * bits} if possible. Also, calling {@link #length()} on the returned bits may return a value
-   * greater than {@code numBits}.
-   */
-  public static FixedBitSet ensureCapacity(FixedBitSet bits, int numBits) {
-    if (numBits < bits.numBits) {
+  /// Ensure the given `bits` can store a value at `desiredBit` index. If the current [#length()] is
+  /// sufficient, `bits` is simply returned. Otherwise, a new, larger bitset is allocated, with
+  /// contents of `bits` copied.
+  ///
+  /// @see #ensureCapacityAndClear(FixedBitSet, int)
+  public static FixedBitSet ensureCapacity(FixedBitSet bits, int desiredBit) {
+    return ensureCapacityInternal(bits, desiredBit, true);
+  }
+
+  /// Clear the given `bits` and ensure it can store a value at `desiredBit` index. If the current
+  /// [#length()] is sufficient, `bits` is simply cleared and returned. Otherwise, a new, larger
+  /// bitset is allocated.
+  ///
+  /// @see #ensureCapacity(FixedBitSet, int)
+  public static FixedBitSet ensureCapacityAndClear(FixedBitSet bits, int desiredBit) {
+    return ensureCapacityInternal(bits, desiredBit, false);
+  }
+
+  private static FixedBitSet ensureCapacityInternal(
+      FixedBitSet bits, int desiredBit, boolean preserveData) {
+    if (desiredBit < bits.numBits) {
+      if (!preserveData) {
+        bits.clear();
+      }
       return bits;
     } else {
       // Depends on the ghost bits being clear!
       // (Otherwise, they may become visible in the new instance)
-      int numWords = bits2words(numBits);
+      int numWords = bits2words(desiredBit);
       long[] arr = bits.getBits();
       if (numWords >= arr.length) {
-        arr = ArrayUtil.grow(arr, numWords + 1);
+        if (preserveData) {
+          arr = ArrayUtil.grow(arr, numWords + 1);
+        } else {
+          arr = new long[ArrayUtil.oversize(numWords + 1, Long.BYTES)];
+        }
       }
       return new FixedBitSet(arr, arr.length << 6);
     }
@@ -321,6 +337,48 @@ public final class FixedBitSet extends BitSet {
   public int nextSetBit(int start, int upperBound) {
     int res = nextSetBitInRange(start, upperBound);
     return res < upperBound ? res : DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  @Override
+  public int nextClearBit(int index) {
+    int res = nextClearBitInRange(index, numBits);
+    // Ghost bits past {@link #length()} read as clear; cap the result like {@link
+    // #nextUnsetBit(int, int)}.
+    return res < numBits ? res : DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  @Override
+  public int nextClearBit(int start, int upperBound) {
+    int res = nextClearBitInRange(start, upperBound);
+    return res < upperBound ? res : DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  /**
+   * Returns the next unset bit in the specified range, but treats `upperBound` as a best-effort
+   * hint rather than a hard requirement. Note that this may return a result that is >= upperBound
+   * in some cases, so callers must add their own check if `upperBound` is a hard requirement.
+   */
+  private int nextClearBitInRange(int start, int upperBound) {
+    // Depends on the ghost bits being clear!
+    assert start >= 0 && start < numBits : "index=" + start + ", numBits=" + numBits;
+    assert start < upperBound : "index=" + start + ", upperBound=" + upperBound;
+    assert upperBound <= numBits : "upperBound=" + upperBound + ", numBits=" + numBits;
+    int i = start >> 6;
+    long word = ~(bits[i] >> start);
+
+    if (word != 0) {
+      return start + Long.numberOfTrailingZeros(word);
+    }
+
+    int limit = upperBound == numBits ? numWords : bits2words(upperBound);
+    while (++i < limit) {
+      word = ~bits[i];
+      if (word != 0) {
+        return (i << 6) + Long.numberOfTrailingZeros(word);
+      }
+    }
+
+    return DocIdSetIterator.NO_MORE_DOCS;
   }
 
   /**
@@ -585,9 +643,8 @@ public final class FixedBitSet extends BitSet {
       final FixedBitSet bits = BitSetIterator.getFixedBitSetOrNull(iter);
       assert bits != null;
       andNot(bits);
-    } else if (iter instanceof DocBaseBitSetIterator) {
+    } else if (iter instanceof DocBaseBitSetIterator baseIter) {
       checkUnpositioned(iter);
-      DocBaseBitSetIterator baseIter = (DocBaseBitSetIterator) iter;
       andNot(baseIter.getDocBase() >> 6, baseIter.getBitSet());
     } else {
       checkUnpositioned(iter);
@@ -756,10 +813,9 @@ public final class FixedBitSet extends BitSet {
     if (this == o) {
       return true;
     }
-    if (!(o instanceof FixedBitSet)) {
+    if (!(o instanceof FixedBitSet other)) {
       return false;
     }
-    FixedBitSet other = (FixedBitSet) o;
     if (numBits != other.numBits) {
       return false;
     }
@@ -787,8 +843,8 @@ public final class FixedBitSet extends BitSet {
       bits = fixedBits.bitSet;
     }
 
-    if (bits instanceof FixedBitSet) {
-      return ((FixedBitSet) bits).clone();
+    if (bits instanceof FixedBitSet fbs) {
+      return fbs.clone();
     } else {
       int length = bits.length();
       FixedBitSet bitSet = new FixedBitSet(length);
@@ -831,8 +887,7 @@ public final class FixedBitSet extends BitSet {
    * bit index and call {@code consumer} on it. This is internally used by queries that use bit sets
    * as intermediate representations of their matches.
    */
-  public void forEach(int from, int to, int base, CheckedIntConsumer<IOException> consumer)
-      throws IOException {
+  public void forEach(int from, int to, int base, IOIntConsumer consumer) throws IOException {
     Objects.checkFromToIndex(from, to, length());
 
     // First, align `from` with a word start, ie. a multiple of Long.SIZE (64)
@@ -861,12 +916,89 @@ public final class FixedBitSet extends BitSet {
     }
   }
 
-  private static void forEach(long bits, int base, CheckedIntConsumer<IOException> consumer)
-      throws IOException {
+  private static void forEach(long bits, int base, IOIntConsumer consumer) throws IOException {
     while (bits != 0L) {
       int ntz = Long.numberOfTrailingZeros(bits);
       consumer.accept(base + ntz);
       bits ^= 1L << ntz;
     }
+  }
+
+  /**
+   * Converts set bits in this bitset to an array of document IDs. Only processes bits from index
+   * {@code from} (inclusive) to {@code to} (exclusive) and returns the number of bits copied.
+   *
+   * <p>Each set bit's position is converted to a document ID by adding the {@code base} value and
+   * stored in the provided {@code array}. This method stops when there are no more set bits before
+   * {@code to} or when there is no capacity left in the given {@code array}, whichever comes first.
+   */
+  public int intoArray(int from, int to, int base, int[] array) {
+    Objects.checkFromToIndex(from, to, length());
+
+    int offset = 0;
+    // First, align `from` with a word start, ie. a multiple of Long.SIZE (64)
+    if ((from & 0x3F) != 0) {
+      long word = bits[from >> 6] >>> from;
+      int numBitsTilNextWord = -from & 0x3F;
+      if (to - from < numBitsTilNextWord) {
+        // All bits are in a single word
+        word &= (1L << (to - from)) - 1L;
+        return word2Array(word, from + base, array, offset);
+      }
+      offset = word2Array(word, from + base, array, offset);
+      from += numBitsTilNextWord;
+      assert (from & 0x3F) == 0;
+    }
+
+    for (int i = from >> 6, end = to >> 6; i < end; ++i) {
+      long word = bits[i];
+      offset = word2Array(word, base + (i << 6), array, offset);
+    }
+
+    // Now handle remaining bits in the last partial word
+    if ((to & 0x3F) != 0) {
+      long word = bits[to >> 6] & ((1L << to) - 1);
+      offset = word2Array(word, base + (to & ~0x3F), array, offset);
+    }
+
+    return offset;
+  }
+
+  private static int word2Array(long word, int base, int[] docs, int offset) {
+    final int bitCount = Long.bitCount(word);
+
+    if (bitCount >= 32 && docs.length - offset > bitCount) {
+      return denseWord2Array(word, base, docs, offset);
+    }
+
+    int numBitsToCopy = Math.min(bitCount, docs.length - offset);
+
+    for (int i = 0; i < numBitsToCopy; i++) {
+      int ntz = Long.numberOfTrailingZeros(word);
+      docs[offset + i] = base + ntz;
+      word ^= 1L << ntz;
+    }
+
+    return offset + numBitsToCopy;
+  }
+
+  private static int denseWord2Array(long word, int base, int[] docs, int offset) {
+    assert docs.length - offset >= Long.bitCount(word) + 1;
+
+    final int lWord = (int) word;
+    final int hWord = (int) (word >>> 32);
+    final int offset32 = offset + Integer.bitCount(lWord);
+    int hOffset = offset32;
+
+    for (int i = 0; i < 32; i++) {
+      docs[offset] = base + i;
+      docs[hOffset] = base + i + 32;
+      offset += (lWord >>> i) & 1;
+      hOffset += (hWord >>> i) & 1;
+    }
+
+    docs[offset32] = base + 32 + Integer.numberOfTrailingZeros(hWord);
+
+    return hOffset;
   }
 }

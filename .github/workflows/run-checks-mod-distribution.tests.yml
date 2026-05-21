@@ -13,11 +13,14 @@ on:
       - 'main'
       - 'branch_10x'
 
+permissions: {}
+
 env:
   DEVELOCITY_ACCESS_KEY: ${{ secrets.DEVELOCITY_ACCESS_KEY }}
 
 jobs:
   test:
+    name: Run distribution.tests
     timeout-minutes: 15
 
     strategy:
@@ -29,8 +32,13 @@ jobs:
     runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: ./.github/actions/prepare-for-build
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Configure tools
+        uses: ./.github/actions/prepare-for-build
 
       - name: Run 'gradlew lucene/distribution.tests test' (on ${{ matrix.os }})
         run: ./gradlew -p lucene/distribution.tests test

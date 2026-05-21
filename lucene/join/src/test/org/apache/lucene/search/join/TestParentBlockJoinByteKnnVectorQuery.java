@@ -35,6 +35,8 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.BytesRef;
 
 public class TestParentBlockJoinByteKnnVectorQuery extends ParentBlockJoinKnnVectorQueryTestCase {
 
@@ -104,5 +106,24 @@ public class TestParentBlockJoinByteKnnVectorQuery extends ParentBlockJoinKnnVec
       query[i] = (byte) queryVector[i];
     }
     return query;
+  }
+
+  @Override
+  float[] randomVector(int dim) {
+    BytesRef v = TestUtil.randomBinaryTerm(random(), dim);
+    // clip at -127 to avoid overflow
+    for (int i = v.offset; i < v.offset + v.length; i++) {
+      if (v.bytes[i] == -128) {
+        v.bytes[i] = -127;
+      }
+    }
+    assert v.offset == 0;
+    byte[] b = v.bytes;
+    float[] v1 = new float[b.length];
+    int vi = 0;
+    for (int i = 0; i < v.length; i++) {
+      v1[vi++] = b[i];
+    }
+    return v1;
   }
 }

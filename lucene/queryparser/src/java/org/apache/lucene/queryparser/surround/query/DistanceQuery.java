@@ -86,7 +86,7 @@ public class DistanceQuery extends ComposedQuery implements DistanceSubQuery {
           ((DistanceSubQuery) sqi.next()).addSpanQueries(sncf);
           sncf.clear();
         }
-        return new MatchNoDocsQuery();
+        return MatchNoDocsQuery.INSTANCE;
       }
 
       spanClauses[qi] = sncf.makeSpanClause();

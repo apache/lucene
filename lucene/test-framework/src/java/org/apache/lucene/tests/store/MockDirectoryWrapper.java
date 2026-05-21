@@ -53,7 +53,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.Lock;
-import org.apache.lucene.store.ReadAdvice;
+import org.apache.lucene.store.ReadOnceHint;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.tests.util.ThrottledIndexOutput;
@@ -520,9 +520,7 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
     for (Closeable f : m.keySet()) {
       try {
         f.close();
-      } catch (
-          @SuppressWarnings("unused")
-          Exception ignored) {
+      } catch (Exception _) {
       }
     }
     corruptFiles(unSyncedFiles);
@@ -813,10 +811,8 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
           false);
     }
 
-    // record the read advice before randomizing the context
-    ReadAdvice readAdvice = context.readAdvice();
     context = LuceneTestCase.newIOContext(randomState, context);
-    final boolean confined = context == IOContext.READONCE;
+    final boolean confined = context.hints().contains(ReadOnceHint.INSTANCE);
     if (name.startsWith(IndexFileNames.SEGMENTS) && confined == false) {
       throw new RuntimeException(
           "MockDirectoryWrapper: opening segments file ["
@@ -834,15 +830,15 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
         System.out.println(
             "MockDirectoryWrapper: using SlowClosingMockIndexInputWrapper for file " + name);
       }
-      ii = new SlowClosingMockIndexInputWrapper(this, name, delegateInput, readAdvice, confined);
+      ii = new SlowClosingMockIndexInputWrapper(this, name, delegateInput, confined);
     } else if (useSlowOpenClosers && randomInt == 1) {
       if (LuceneTestCase.VERBOSE) {
         System.out.println(
             "MockDirectoryWrapper: using SlowOpeningMockIndexInputWrapper for file " + name);
       }
-      ii = new SlowOpeningMockIndexInputWrapper(this, name, delegateInput, readAdvice, confined);
+      ii = new SlowOpeningMockIndexInputWrapper(this, name, delegateInput, confined);
     } else {
-      ii = new MockIndexInputWrapper(this, name, delegateInput, null, readAdvice, confined);
+      ii = new MockIndexInputWrapper(this, name, delegateInput, null, confined);
     }
     addFileHandle(ii, name, Handle.Input);
     return ii;
@@ -928,7 +924,7 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
           }
           // now look for unreferenced files: discount ones that we tried to delete but could not
           Set<String> allFiles = new HashSet<>(Arrays.asList(listAll()));
-          String[] startFiles = allFiles.toArray(new String[0]);
+          String[] startFiles = allFiles.toArray(String[]::new);
           IndexWriterConfig iwc = new IndexWriterConfig(null);
           iwc.setIndexDeletionPolicy(NoDeletionPolicy.INSTANCE);
 
@@ -942,8 +938,8 @@ public class MockDirectoryWrapper extends BaseDirectoryWrapper {
           Set<String> startSet = new TreeSet<>(Arrays.asList(startFiles));
           Set<String> endSet = new TreeSet<>(Arrays.asList(endFiles));
 
-          startFiles = startSet.toArray(new String[0]);
-          endFiles = endSet.toArray(new String[0]);
+          startFiles = startSet.toArray(String[]::new);
+          endFiles = endSet.toArray(String[]::new);
 
           if (!Arrays.equals(startFiles, endFiles)) {
             List<String> removed = new ArrayList<>();

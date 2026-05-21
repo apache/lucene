@@ -52,7 +52,7 @@ ResetSystemErase
 
 { "Populate"
     CreateIndex
-    { "MAddDocs" AddDoc(2000) > : 20000     
+    { "MAddDocs" AddDoc(2000) > : 20000
     ForceMerge(1)
     CloseIndex
 }
@@ -60,15 +60,15 @@ ResetSystemErase
 
 { "Round"
 
-  OpenReader  
+  OpenReader
   { "SearchSameRdr" Search > : 6000
-  CloseReader 
+  CloseReader
 
   ResetInputs
   RepSumByName
   NewRound
 } : 4
-            
+
 RepSumByPrefRound MAddDocs
 
 RepSumByName

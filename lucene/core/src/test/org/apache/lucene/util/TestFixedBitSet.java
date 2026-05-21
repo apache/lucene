@@ -76,6 +76,24 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     } while (aa != DocIdSetIterator.NO_MORE_DOCS);
   }
 
+  void doNextClearBit(java.util.BitSet a, FixedBitSet b) {
+    assertEquals(a.cardinality(), b.cardinality());
+    final int len = b.length();
+    int aa = -1;
+    int bb = -1;
+    do {
+      final int from = aa + 1;
+      if (from >= len) {
+        aa = DocIdSetIterator.NO_MORE_DOCS;
+      } else {
+        int nc = a.nextClearBit(from);
+        aa = nc < len ? nc : DocIdSetIterator.NO_MORE_DOCS;
+      }
+      bb = bb < len - 1 ? b.nextClearBit(bb + 1) : DocIdSetIterator.NO_MORE_DOCS;
+      assertEquals(aa, bb);
+    } while (aa != DocIdSetIterator.NO_MORE_DOCS);
+  }
+
   void doPrevSetBit(java.util.BitSet a, FixedBitSet b) {
     assertEquals(a.cardinality(), b.cardinality());
     int aa = a.size() + random().nextInt(100);
@@ -175,6 +193,8 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
 
       doNextSetBit(aa, bb); // a problem here is from clear() or nextSetBit
 
+      doNextClearBit(aa, bb);
+
       doPrevSetBit(aa, bb);
 
       fromIndex = random().nextInt(sz / 2);
@@ -185,6 +205,8 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
       bb.set(fromIndex, toIndex);
 
       doNextSetBit(aa, bb); // a problem here is from set() or nextSetBit
+
+      doNextClearBit(aa, bb);
 
       doPrevSetBit(aa, bb);
 
@@ -774,5 +796,49 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     bitSet.forEach(from, to, base, actual::add);
 
     assertEquals(expected, actual);
+  }
+
+  public void testIntoArray() throws Exception {
+    for (int outerIter = 0; outerIter < 100; outerIter++) {
+      int numBits = TestUtil.nextInt(random(), 10, 1_000);
+      int numSetBits = TestUtil.nextInt(random(), 0, numBits);
+
+      FixedBitSet bitSet = new FixedBitSet(numBits);
+      while (bitSet.cardinality() < numSetBits) {
+        bitSet.set(random().nextInt(bitSet.length()));
+      }
+
+      for (int innerIter = 0; innerIter < 100; ++innerIter) {}
+
+      int[] array = new int[TestUtil.nextInt(random(), 0, numSetBits + 10)];
+      int from, to;
+      if (random().nextBoolean()) {
+        from = 0;
+        to = bitSet.length();
+      } else {
+        from = random().nextInt(bitSet.length());
+        to = from + random().nextInt(bitSet.length() - from);
+      }
+
+      int base = random().nextInt(1000);
+      int size = bitSet.intoArray(from, to, base, array);
+
+      if (size < array.length) {
+        // All set bits should have been copied
+        assertEquals(bitSet.cardinality(from, to), size);
+      }
+
+      int[] index = new int[] {0};
+      bitSet.forEach(
+          from,
+          to,
+          base,
+          bit -> {
+            if (index[0] < array.length) {
+              assertEquals(bit, array[index[0]++]);
+            }
+          });
+      assertEquals(size, index[0]);
+    }
   }
 }

@@ -55,7 +55,7 @@ public class FilterDirectoryStream implements DirectoryStream<Path> {
   @Override
   public Iterator<Path> iterator() {
     final Iterator<Path> delegateIterator = delegate.iterator();
-    return new Iterator<Path>() {
+    return new Iterator<>() {
       @Override
       public boolean hasNext() {
         return delegateIterator.hasNext();

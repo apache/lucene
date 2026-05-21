@@ -27,17 +27,13 @@ import static org.apache.lucene.backward_codecs.lucene912.Lucene912PostingsForma
 import static org.apache.lucene.backward_codecs.lucene912.Lucene912PostingsFormat.VERSION_START;
 
 import java.io.IOException;
-import java.util.AbstractList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.RandomAccess;
 import org.apache.lucene.backward_codecs.lucene912.Lucene912PostingsFormat.IntBlockTermState;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.Impact;
+import org.apache.lucene.index.FreqAndNormBuffer;
 import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
@@ -48,8 +44,9 @@ import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
@@ -61,13 +58,6 @@ import org.apache.lucene.util.IOUtils;
  * @lucene.experimental
  */
 public final class Lucene912PostingsReader extends PostingsReaderBase {
-
-  // Dummy impacts, composed of the maximum possible term frequency and the lowest possible
-  // (unsigned) norm value. This is typically used on tail blocks, which don't actually record
-  // impacts as the storage overhead would not be worth any query evaluation speedup, since there's
-  // less than 128 docs left to evaluate anyway.
-  private static final List<Impact> DUMMY_IMPACTS =
-      Collections.singletonList(new Impact(Integer.MAX_VALUE, 1L));
 
   private final IndexInput docIn;
   private final IndexInput posIn;
@@ -144,9 +134,9 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene912PostingsFormat.DOC_EXTENSION);
     try {
-      // Postings have a forward-only access pattern, so pass ReadAdvice.NORMAL to perform
-      // readahead.
-      docIn = state.directory.openInput(docName, state.context.withReadAdvice(ReadAdvice.NORMAL));
+      docIn =
+          state.directory.openInput(
+              docName, state.context.withHints(FileTypeHint.DATA, FileDataHint.POSTINGS));
       CodecUtil.checkIndexHeader(
           docIn, DOC_CODEC, version, version, state.segmentInfo.getId(), state.segmentSuffix);
       CodecUtil.retrieveChecksum(docIn, expectedDocFileLength);
@@ -247,12 +237,11 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       termState.singletonDocID += BitUtil.zigZagDecode(l >>> 1);
     }
 
-    if (fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0) {
+    if (fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)) {
       termState.posStartFP += in.readVLong();
       if (fieldInfo
-                  .getIndexOptions()
-                  .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-              >= 0
+              .getIndexOptions()
+              .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
           || fieldInfo.hasPayloads()) {
         termState.payStartFP += in.readVLong();
       }
@@ -268,7 +257,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
   public PostingsEnum postings(
       FieldInfo fieldInfo, BlockTermState termState, PostingsEnum reuse, int flags)
       throws IOException {
-    if (fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) < 0
+    if (!fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)
         || PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS) == false) {
       return (reuse instanceof BlockDocsEnum blockDocsEnum
                   && blockDocsEnum.canReuse(docIn, fieldInfo)
@@ -288,18 +277,17 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
   public ImpactsEnum impacts(FieldInfo fieldInfo, BlockTermState state, int flags)
       throws IOException {
     final IndexOptions options = fieldInfo.getIndexOptions();
-    final boolean indexHasPositions =
-        options.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+    final boolean indexHasPositions = options.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
 
     if (state.docFreq >= BLOCK_SIZE) {
-      if (options.compareTo(IndexOptions.DOCS_AND_FREQS) >= 0
+      if (options.subsumes(IndexOptions.DOCS_AND_FREQS)
           && (indexHasPositions == false
               || PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS) == false)) {
         return new BlockImpactsDocsEnum(indexHasPositions, (IntBlockTermState) state);
       }
 
       if (indexHasPositions
-          && (options.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) < 0
+          && (!options.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
               || PostingsEnum.featureRequested(flags, PostingsEnum.OFFSETS) == false)
           && (fieldInfo.hasPayloads() == false
               || PostingsEnum.featureRequested(flags, PostingsEnum.PAYLOADS) == false)) {
@@ -351,7 +339,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     protected IndexInput docIn;
 
     protected AbstractPostingsEnum(FieldInfo fieldInfo) {
-      indexHasFreq = fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
+      indexHasFreq = fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS);
       // We set the last element of docBuffer to NO_MORE_DOCS, it helps save conditionals in
       // advance()
       docBuffer[BLOCK_SIZE] = NO_MORE_DOCS;
@@ -409,7 +397,7 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     public boolean canReuse(IndexInput docIn, FieldInfo fieldInfo) {
       final IndexOptions options = fieldInfo.getIndexOptions();
       return docIn == Lucene912PostingsReader.this.docIn
-          && indexHasFreq == (options.compareTo(IndexOptions.DOCS_AND_FREQS) >= 0);
+          && indexHasFreq == (options.subsumes(IndexOptions.DOCS_AND_FREQS));
     }
 
     public PostingsEnum reset(IntBlockTermState termState, int flags) throws IOException {
@@ -661,9 +649,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       super(fieldInfo);
       indexHasOffsets =
           fieldInfo
-                  .getIndexOptions()
-                  .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-              >= 0;
+              .getIndexOptions()
+              .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
       indexHasPayloads = fieldInfo.hasPayloads();
       indexHasOffsetsOrPayloads = indexHasOffsets || indexHasPayloads;
 
@@ -698,9 +685,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       return docIn == Lucene912PostingsReader.this.docIn
           && indexHasOffsets
               == (fieldInfo
-                      .getIndexOptions()
-                      .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-                  >= 0)
+                  .getIndexOptions()
+                  .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS))
           && indexHasPayloads == fieldInfo.hasPayloads();
     }
 
@@ -1150,13 +1136,13 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     protected int level0LastDocID = -1;
     protected long level0DocEndFP;
     protected final BytesRef level0SerializedImpacts;
-    protected final MutableImpactList level0Impacts;
     // level 1 skip data
     protected int level1LastDocID;
     protected long level1DocEndFP;
     protected int level1DocCountUpto = 0;
     protected final BytesRef level1SerializedImpacts;
-    protected final MutableImpactList level1Impacts;
+
+    private final FreqAndNormBuffer impactBuffer;
 
     private BlockImpactsEnum(IntBlockTermState termState) throws IOException {
       this.docFreq = termState.docFreq;
@@ -1164,8 +1150,11 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
       prefetchPostings(docIn, termState);
       level0SerializedImpacts = new BytesRef(maxImpactNumBytesAtLevel0);
       level1SerializedImpacts = new BytesRef(maxImpactNumBytesAtLevel1);
-      level0Impacts = new MutableImpactList(maxNumImpactsAtLevel0);
-      level1Impacts = new MutableImpactList(maxNumImpactsAtLevel1);
+      impactBuffer = new FreqAndNormBuffer();
+      int capacity = 1;
+      capacity = Math.max(capacity, maxNumImpactsAtLevel0);
+      capacity = Math.max(capacity, maxNumImpactsAtLevel1);
+      impactBuffer.growNoCopy(capacity);
       if (docFreq < LEVEL1_NUM_DOCS) {
         level1LastDocID = NO_MORE_DOCS;
         if (docFreq > 1) {
@@ -1224,21 +1213,25 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
           }
 
           @Override
-          public List<Impact> getImpacts(int level) {
+          public FreqAndNormBuffer getImpacts(int level) {
             if (level == 0 && level0LastDocID != NO_MORE_DOCS) {
-              return readImpacts(level0SerializedImpacts, level0Impacts);
+              return readImpacts(level0SerializedImpacts, impactBuffer);
             }
             if (level == 1) {
-              return readImpacts(level1SerializedImpacts, level1Impacts);
+              return readImpacts(level1SerializedImpacts, impactBuffer);
             }
-            return DUMMY_IMPACTS;
+            impactBuffer.freqs[0] = Integer.MAX_VALUE;
+            impactBuffer.norms[0] = 1L;
+            impactBuffer.size = 1;
+            return impactBuffer;
           }
 
-          private List<Impact> readImpacts(BytesRef serialized, MutableImpactList impactsList) {
+          private FreqAndNormBuffer readImpacts(
+              BytesRef serialized, FreqAndNormBuffer impactsBuffer) {
             var scratch = this.scratch;
             scratch.reset(serialized.bytes, 0, serialized.length);
-            Lucene912PostingsReader.readImpacts(scratch, impactsList);
-            return impactsList;
+            Lucene912PostingsReader.readImpacts(scratch, impactsBuffer);
+            return impactsBuffer;
           }
         };
 
@@ -1468,9 +1461,8 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         throws IOException {
       super(termState);
       final IndexOptions options = fieldInfo.getIndexOptions();
-      indexHasFreq = options.compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
-      indexHasOffsets =
-          options.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
+      indexHasFreq = options.subsumes(IndexOptions.DOCS_AND_FREQS);
+      indexHasOffsets = options.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
       indexHasPayloads = fieldInfo.hasPayloads();
       indexHasOffsetsOrPayloads = indexHasOffsets || indexHasPayloads;
 
@@ -1777,32 +1769,10 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
     // Note: we don't prefetch positions or offsets, which are less likely to be needed.
   }
 
-  static class MutableImpactList extends AbstractList<Impact> implements RandomAccess {
-    int length;
-    final Impact[] impacts;
-
-    MutableImpactList(int capacity) {
-      impacts = new Impact[capacity];
-      for (int i = 0; i < capacity; ++i) {
-        impacts[i] = new Impact(Integer.MAX_VALUE, 1L);
-      }
-    }
-
-    @Override
-    public Impact get(int index) {
-      return impacts[index];
-    }
-
-    @Override
-    public int size() {
-      return length;
-    }
-  }
-
-  static MutableImpactList readImpacts(ByteArrayDataInput in, MutableImpactList reuse) {
+  static FreqAndNormBuffer readImpacts(ByteArrayDataInput in, FreqAndNormBuffer reuse) {
     int freq = 0;
     long norm = 0;
-    int length = 0;
+    int size = 0;
     while (in.getPosition() < in.length()) {
       int freqDelta = in.readVInt();
       if ((freqDelta & 0x01) != 0) {
@@ -1816,12 +1786,11 @@ public final class Lucene912PostingsReader extends PostingsReaderBase {
         freq += 1 + (freqDelta >>> 1);
         norm++;
       }
-      Impact impact = reuse.impacts[length];
-      impact.freq = freq;
-      impact.norm = norm;
-      length++;
+      reuse.freqs[size] = freq;
+      reuse.norms[size] = norm;
+      size++;
     }
-    reuse.length = length;
+    reuse.size = size;
     return reuse;
   }
 

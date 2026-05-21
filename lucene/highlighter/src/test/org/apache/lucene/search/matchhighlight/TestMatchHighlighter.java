@@ -63,7 +63,6 @@ import org.apache.lucene.util.CharsRef;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.Matchers;
 import org.junit.Before;
-import org.junit.Test;
 
 public class TestMatchHighlighter extends LuceneTestCase {
   private static final String FLD_ID = "id";
@@ -126,7 +125,6 @@ public class TestMatchHighlighter extends LuceneTestCase {
     return builder.build();
   }
 
-  @Test
   public void testBasicUsage() throws Exception {
     new IndexBuilder(this::toField)
         .doc(FLD_TEXT1, "foo bar baz")
@@ -236,7 +234,6 @@ public class TestMatchHighlighter extends LuceneTestCase {
             });
   }
 
-  @Test
   public void testSynonymHighlight() throws Exception {
     // There is nothing special needed to highlight or process complex queries, synonyms, etc.
     // Synonyms defined in the constructor of this class.
@@ -267,7 +264,6 @@ public class TestMatchHighlighter extends LuceneTestCase {
             });
   }
 
-  @Test
   public void testAnalyzedTextIntervals() throws Exception {
     SynonymMap synonymMap =
         buildSynonymMap(
@@ -318,7 +314,6 @@ public class TestMatchHighlighter extends LuceneTestCase {
             });
   }
 
-  @Test
   public void testStandardQueryParserIntervalFunctions() throws Exception {
     Analyzer analyzer =
         new Analyzer() {
@@ -534,7 +529,6 @@ public class TestMatchHighlighter extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testCustomFieldHighlightHandling() throws Exception {
     // Match highlighter is a showcase of individual components in this package, suitable
     // to create any kind of field-display designs.
@@ -582,7 +576,7 @@ public class TestMatchHighlighter extends LuceneTestCase {
                       .appendFieldHighlighter(FieldValueHighlighters.skipRemaining());
 
               assertHighlights(
-                  toDocList(highlighter.highlight(topDocs, new MatchAllDocsQuery())),
+                  toDocList(highlighter.highlight(topDocs, MatchAllDocsQuery.INSTANCE)),
                   "0. text1: foo bar, bar foo baz, bar baz foo, baz baz baz");
 
               // But this is not exactly what we'd like because we want to limit the display of
@@ -636,12 +630,11 @@ public class TestMatchHighlighter extends LuceneTestCase {
                   toDocList(highlighter.highlight(topDocs, query)),
                   "0. text1: >foo< bar, bar >foo< baz");
               assertHighlights(
-                  toDocList(highlighter.highlight(topDocs, new MatchAllDocsQuery())),
+                  toDocList(highlighter.highlight(topDocs, MatchAllDocsQuery.INSTANCE)),
                   "0. text1: foo bar, bar foo baz, [2 omitted]");
             });
   }
 
-  @Test
   public void testHighlightMoreQueriesAtOnceShowoff() throws Exception {
     // Match highlighter underlying components are powerful enough to build interesting,
     // if not always super-practical, things. In this case, we would like to highlight

@@ -13,27 +13,232 @@
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
- -->
+-->
 
 # Apache Lucene Migration Guide
 
 ## Migration from Lucene 10.x to Lucene 11.0
+
+### JUnit5/jupiter support in the test-framework
+
+Lucene 11 brings initial support for writing test cases
+using JUnit Jupiter.
+
+The test-framework module exports both junit4 and junit5/jupiter
+modules. `LuceneTestCase` remains the parent abstract class for JUnit4 tests.
+`LuceneTestCaseJupiter` is the parent class to extend from for JUnit5
+support.
+
+#### Key changes
+
+- All tests must be Jupiter tests, typically this means
+methods must be annotated with `@Test`. Method prefix
+`test*` is not sufficient. Methods that are named `test*` but are not tests
+will cause validation errors.
+- You can use parameterized tests, dynamic tests, etc. All these are supported.
+- You *must not* call the static `random()` method on the parent
+class, even though it is there. Add a `Random` parameter to your test methods
+or callbacks - it will
+be automatically injected by the test framework. See the `memory`
+module tests for examples.
+- Use `@BeforeEach`, `@AfterEach` and other junit5-specific callback
+annotations instead of `setUp` and `tearDown` methods.
+- Static utility methods have been pulled up to a parent class
+called `LuceneTestCaseParent` but you should reference them either
+without an explicit type or via the type of the parent class
+for your test framework. The parent class may be removed in the future.
+
+### Relaxed Index Upgrade Policy (GITHUB#13797)
+
+Starting with Lucene 11.0.0, the index upgrade policy has been relaxed to allow safe upgrades across multiple major version numbers without reindexing when no format breaks occur.
+
+#### Key Changes
+
+- `Version.MIN_SUPPORTED_MAJOR` is now manually maintained instead of auto-computed as `LATEST.major-1`
+- Set to 10 for Lucene 11.0.0, allowing indexes created with Lucene 10.x to be opened directly
+- Will only be bumped when actual incompatible format changes are introduced
+
+#### Two-Tier Version Policy
+
+1. **Index opening policy**: An index can be opened if its creation version >= `MIN_SUPPORTED_MAJOR`
+2. **Codec reader policy**: Segments can only be read directly if written by current or previous major version number
+
+#### Upgrade Scenarios
+
+##### Scenario 1: No format breaks (wider upgrade span)
+
+- Index created with Lucene 10.x can be opened directly in Lucene 11.x, 12.x, 13.x, 14.x (as long as MIN_SUPPORTED_MAJOR stays ≤ 10)
+- Simply open the index with the new version; segments will be upgraded gradually through normal merging
+- Optional: Call `forceMerge()` or use `UpgradeIndexMergePolicy` to upgrade segment formats immediately
+- **Important**: You still only get one upgrade per index lifetime. Once MIN_SUPPORTED_MAJOR is bumped above 10, the index becomes unopenable and must be reindexed.
+
+##### Scenario 2: Format breaks occur
+
+- If a major version introduces incompatible format changes, `MIN_SUPPORTED_MAJOR` will be bumped
+- Indexes created before the new minimum will throw `IndexFormatTooOldException`
+- Full reindexing is required for such indexes
+
+##### Scenario 3: After using your upgrade
+
+- Index created with Lucene 10.x, successfully opened with Lucene 14.x
+- The index's creation version is still 10 (this never changes)
+- When Lucene 15+ bumps MIN_SUPPORTED_MAJOR above 10, this index becomes unopenable
+- Must reindex to continue using newer Lucene versions
+
+#### Upgrade Example
+
+```java
+// Opening an index created with Lucene 10.x in Lucene 11.x+
+try (Directory dir = FSDirectory.open(indexPath)) {
+    // This will now succeed (if MIN_SUPPORTED_MAJOR <= 10)
+    try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        // Index can be read normally
+    }
+    // Optional: Upgrade segment formats
+    try (IndexWriter writer = new IndexWriter(dir, config)) {
+        writer.forceMerge(1); // Rewrites all segments to latest format
+    }
+}
+```
+
+#### Error Handling
+
+Enhanced error messages will clearly indicate:
+
+- Whether the index creation version is below `MIN_SUPPORTED_MAJOR` (reindex required)
+- Whether segments are too old to read directly (sequential upgrade required)
 
 ### TieredMergePolicy#setMaxMergeAtOnce removed
 
 This parameter has no replacement, TieredMergePolicy no longer bounds the
 number of segments that may be merged together.
 
+### Snowball dependency upgrade (Dutch stemmer)
+
+Snowball replaced the "Dutch" stemmer by the "Kraaij-Pohlmann" stemmer (previous called dutch-kp). As a result Lucene supports 2 Dutch stemmers:
+
+- DutchStemmer, which is now the "Kraaij-Pohlmann" stemmer.
+- Dutch_porterStemmer, which is the DutchStemmer from Lucene-10 and before.
+
+Opening an pre Lucene-11 index which is indexed using the DutchStemmer will succeed, but due to the different stemmer implementation a re-index is needed in order to make searching work correctly. Or replace DutchStemmer by Dutch_porterStemmer in your code.
+
 ### Query caching is now disabled by default
 
 Query caching is now disabled by default. To enable caching back, do something
 like below in a static initialization block:
 
-```
+```java
 int maxCachedQueries = 1_000;
 long maxRamBytesUsed = 50 * 1024 * 1024; // 50MB
 IndexSearcher.setDefaultQueryCache(new LRUQueryCache(maxCachedQueries, maxRamBytesUsed));
 ```
+
+### Possibility to optimize `readGroupVInt()` in `DataInput` subclasses removed (GITHUB#15116)
+
+Any subclass of `DataInput` that have implemented `readGroupVInt()` need to remove that implementation.
+
+Instead make sure that subclasses of `IndexInput` implement `RandomAccessInput`.
+Pure `DataInput` subclasses cannot be optimized anymore as they cannot offer random access and seeking.`
+
+### SortField.setMissingValue() has been removed
+
+Missing values should be configured in SortField constructor methods, as they are now final.
+
+### MatchAllDocs and MatchNoDocs are singletons
+
+MatchAllDocs and MatchNoDocs queries should use the INSTANCE final field instead of creating
+new objects. The constructors will be removed in the future.
+
+### APIs for configuring compound file creation thresholds have been updated and moved
+
+APIs for configuring compound file creation thresholds were part of merge policies before.
+They are now part of `CompoundFormat`. Previously, the compound file creation depended upon the size of the merged
+segment with respect to the total index size (determined by `CFSRatio` which was 10% by default). Lucene now uses fixed
+thresholds to decide whether a merged segment should be written as a compound file, the default thresholds are:
+
+- **64 MB** for size-based merge policies (e.g., `TieredMergePolicy`)
+- **65,536 documents** for document-count based merge policies (e.g., `LogDocMergePolicy`)
+
+These thresholds could be changed using `setCfsThresholdByteSize` and `setCfsThresholdDocSize` respectively.
+
+#### Migration
+
+If your code previously configured `getNoCFSRatio`, `getMaxCFSSegmentSizeMB`, `setMaxCFSSegmentSizeMB` and `setNoCFSRatio`
+on merge policies, you should change it as follows:
+
+##### Before
+
+```java
+TieredMergePolicy mp = new TieredMergePolicy();
+mp.setNoCFSRatio(0.0);
+mp.setMaxCFSSegmentSizeMB(512);
+IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+iwc.setMergePolicy(mp);
+mp.getNoCFSRatio();
+mp.getMaxCFSSegmentSizeMB();
+```
+
+##### After
+
+```java
+IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
+iwc.getConfig().getCodec().compoundFormat().setShouldUseCompoundFile(false);
+iwc.getConfig().getCodec().compoundFormat().setMaxCFSSegmentSizeMB(512);
+iwc.getConfig().getCodec().compoundFormat().getShouldUseCompoundFile();
+iwc.getConfig().getCodec().compoundFormat().getMaxCFSSegmentSizeMB();
+```
+
+### Implicit determinization removed from RegexpQuery and WildcardQuery
+
+Previously, RegexpQuery and WildcardQuery would use DFA execution by default, even if it might be inefficient.
+
+RegexpQuery will now only [determinize as-needed](https://swtch.com/~rsc/regexp/regexp1.html). This might be
+faster or slower depending upon your queries.
+
+If you'd like to force the previous behavior, use `determinize()` and `AutomatonQuery`:
+
+```java
+String re = "a(b+|c+)d";
+Automaton dfa = Operations.determinize(new RegExp(re).toAutomaton(), 10000);
+Query query = new AutomatonQuery(new Term("myfield", re), dfa);
+```
+
+Similarly for WildcardQuery, the `determinizeWorkLimit` parameter has been removed from `WildcardQuery` constructors and from
+`WildcardQuery.toAutomaton`. `QueryParserBase.setDeterminizeWorkLimit` and `getDeterminizeWorkLimit`
+have also been removed.
+
+To force the previous behavior, use:
+
+```java
+String pattern = "foo*bar";
+Automaton dfa = Operations.determinize(WildcardQuery.toAutomaton(new Term("myfield", pattern)), 10000);
+Query query = new AutomatonQuery(new Term("myfield", pattern), dfa);
+```
+
+### CollectionStatistics and TermStatistics have been renamed to FieldStats and TermStats (GITHUB#15929)
+
+Corresponding methods and parameters have been renamed accordingly.
+
+## Migration from Lucene 10.4 to Lucene 10.5
+
+### `[Byte|Float]VectorSimilarityQuery` now performs adaptive HNSW graph traversal
+
+GITHUB#12679 added `[Byte|Float]VectorSimilarityQuery` to perform similarity-based vector searches, which match all
+(approximate) vectors above a similarity score to the query vector (specified by `resultSimilarity`). For Euclidean
+distance, this can be visualized as matching all vectors within a radius of the query vector.
+
+This query traversed and collected results from existing HNSW graphs. In Lucene 10.4, graph traversal was controlled by
+an explicit parameter (specified by `traversalSimilarity`), where all nodes scoring above this value were traversed, and
+all traversed nodes scoring above `resultSimilarity` were collected as results. To protect against adversarial cases of
+the entry node being far away from the query vector, traversal continued as long as better scoring nodes were available.
+Picking the right value for traversal could be a challenge, and search was susceptible to being stuck in a local maxima,
+terminating before reaching the vicinity of the query vector.
+
+GITHUB#15784: With Lucene 10.5, graph traversal is now adaptive: starts with a high buffer, which decays towards scores
+of nodes traversed but not collected, with a provided factor. The decay factor should lie in `[0, 1]`; with higher
+values producing better recall using more graph exploration. This gives a better recall v/s latency tradeoff than before
+in most cases, while still providing a knob for advanced users to tune quality and performance if needed (using the
+`decay` factor).
 
 ## Migration from Lucene 9.x to Lucene 10.0
 
@@ -44,19 +249,30 @@ In particular, this feature is used by the `DataInput#readZLong()` method. A
 practical implication is that `DataInput#readVLong()` may now read up to 10
 bytes, while it would never read more than 9 bytes in Lucene 9.x.
 
-### Changes to DataInput.readGroupVInt and readGroupVInts methods 
+### Changes to DataInput.readGroupVInt and readGroupVInts methods
 
-As part of GITHUB#13820, GITHUB#13825, GITHUB#13830, this issue corrects DataInput.readGroupVInts 
+As part of GITHUB#13820, GITHUB#13825, GITHUB#13830, this issue corrects DataInput.readGroupVInts
 to be public and not-final, allowing subclasses to override it. This change also removes the protected
 DataInput.readGroupVInt method: subclasses should delegate or reimplement it entirely.
 
+### Scoring and ranking across major versions
+
+Lucene does not guarantee identical scoring or document ranking behavior across
+major version upgrades. Changes may occur due to improvements or modifications
+in Similarity implementations, query execution, or related internals.
+
+Applications that require stable ranking behavior across upgrades should
+explicitly configure the Similarity used for indexing and searching rather than
+relying on defaults. Reviewing `CHANGES.txt` for intervening major versions is
+recommended when upgrading.
+
 ### OpenNLP dependency upgrade
 
-[Apache OpenNLP](https://opennlp.apache.org) 2.x opens the door to accessing various models via the ONNX runtime.  To migrate you will need to update any deprecated OpenNLP methods that you may be using.
+[Apache OpenNLP](https://opennlp.apache.org) 2.x opens the door to accessing various models via the ONNX runtime. To migrate you will need to update any deprecated OpenNLP methods that you may be using.
 
 ### Snowball dependency upgrade
 
-Snowball has folded the "German2" stemmer into their "German" stemmer, so there's no "German2" anymore.  For Lucene APIs (TokenFilter, TokenFilterFactory) that accept String, "German2" will be mapped to "German" to avoid breaking users. If you were previously creating German2Stemmer instances, you'll need to change your code to create GermanStemmer instances instead.  For more information see https://snowballstem.org/algorithms/german2/stemmer.html
+Snowball has folded the "German2" stemmer into their "German" stemmer, so there's no "German2" anymore. For Lucene APIs (TokenFilter, TokenFilterFactory) that accept String, "German2" will be mapped to "German" to avoid breaking users. If you were previously creating German2Stemmer instances, you'll need to change your code to create GermanStemmer instances instead. For more information see <https://snowballstem.org/algorithms/german2/stemmer.html>
 
 ### Romanian analysis
 
@@ -66,9 +282,9 @@ RomanianAnalyzer now works with Romanian in its modern unicode form, and normali
 
 For indices newly created as of 10.0.0 onwards, IndexWriter preserves document blocks indexed via
 IndexWriter#addDocuments or IndexWriter#updateDocuments when index sorting is configured. Document blocks are maintained
-alongside their parent documents during sort and merge. The internally used parent field must be configured in 
+alongside their parent documents during sort and merge. The internally used parent field must be configured in
 IndexWriterConfig only if index sorting is used together with documents blocks. See `IndexWriterConfig#setParendField`
-for reference. 
+for reference.
 
 ### Minor API changes in MatchHighlighter and MatchRegionRetriever. (GITHUB#12881)
 
@@ -83,11 +299,12 @@ Instead, call storedFields()/termVectors() to return an instance which can fetch
 and will be garbage-collected as usual.
 
 For example:
+
 ```java
 TopDocs hits = searcher.search(query, 10);
 StoredFields storedFields = reader.storedFields();
 for (ScoreDoc hit : hits.scoreDocs) {
-  Document doc = storedFields.document(hit.doc);
+    Document doc = storedFields.document(hit.doc);
 }
 ```
 
@@ -106,7 +323,7 @@ tokenStream(Analyzer, TokenStream)` to return a custom TokenStream.
 ### PersianStemFilter is added to PersianAnalyzer (LUCENE-10312)
 
 PersianAnalyzer now includes PersianStemFilter, that would change analysis results. If you need the exactly same analysis
-behaviour as 9.x, clone `PersianAnalyzer` in 9.x or create custom analyzer by using `CustomAnalyzer` on your own. 
+behaviour as 9.x, clone `PersianAnalyzer` in 9.x or create custom analyzer by using `CustomAnalyzer` on your own.
 
 ### AutomatonQuery/CompiledAutomaton/RunAutomaton/RegExp no longer determinize (LUCENE-10010)
 
@@ -114,23 +331,19 @@ These classes no longer take a `determinizeWorkLimit` and no longer determinize
 behind the scenes. It is the responsibility of the caller to call
 `Operations.determinize()` for DFA execution.
 
-### RegExp optional complement syntax has been deprecated
+### RegExp optional complement syntax has been removed (LUCENE-11)
 
-Support for the optional complement syntax (`~`) has been deprecated.
-The `COMPLEMENT` syntax flag has been removed and replaced by the
-`DEPRECATED_COMPLEMENT` flag. Users wanting to enable the deprecated
-complement support can do so by explicitly passing a syntax flags that
-has `DEPRECATED_COMPLEMENT` when creating a `RegExp`. For example:
-`new RegExp("~(foo)", RegExp.DEPRECATED_COMPLEMENT)`.
+Support for the optional complement syntax (`~`) that was deprecated in Lucene 10
+has been removed. The `DEPRECATED_COMPLEMENT` flag and `REGEXP_DEPRECATED_COMPLEMENT`
+enum value are no longer available.
 
-Alternatively, and quite commonly, a more simple _complement bracket expression_,
-`[^...]`, may be a suitable replacement, For example, `[^fo]` matches any
-character that is not an `f` or `o`.
+Users should migrate to using *complement bracket expressions* (`[^...]`) instead.
+For example, `[^fo]` matches any character that is not an `f` or `o`.
 
 ### DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery removed in favor of FieldExistsQuery (LUCENE-10436)
 
 These classes have been removed and consolidated into `FieldExistsQuery`. To migrate, caller simply replace those classes
-with the new one during object instantiation. 
+with the new one during object instantiation.
 
 ### Normalizer and stemmer classes are now package private (LUCENE-10561)
 
@@ -141,7 +354,7 @@ constants defined in them, copy the constant values and re-define them in your c
 
 The behavior of `LongRangeFacetCounts`/`DoubleRangeFacetCounts` `#getTopChildren` actually returns
 the top-n ranges ordered by count from 10.0 onwards (as described in the `Facets` API) instead
-of returning all ranges ordered by constructor-specified range order. The pre-existing behavior in 
+of returning all ranges ordered by constructor-specified range order. The pre-existing behavior in
 9.x and earlier can be retained by migrating to the new `Facets#getAllChildren` API (LUCENE-10550).
 
 ### SortedSetDocValues#NO_MORE_ORDS removed (LUCENE-10603)
@@ -158,16 +371,15 @@ for the currently-positioned document (doing so will result in undefined behavio
 `IOContext.READONCE` for opening internally, as that's the only valid usage pattern for checksum input.
 Callers should remove the parameter when calling this method.
 
-
 ### DaciukMihovAutomatonBuilder is renamed to StringsToAutomaton and made package-private
 
 The former `DaciukMihovAutomatonBuilder#build` functionality is exposed through `Automata#makeStringUnion`.
 Users should be able to directly migrate to the `Automata` static method as a 1:1 replacement.
 
-### Remove deprecated IndexSearcher#getExecutor (GITHUB#12580) 
+### Remove deprecated IndexSearcher#getExecutor (GITHUB#12580)
 
-The deprecated getter for the `Executor` that was optionally provided to the `IndexSearcher` constructors 
-has been removed. Users that want to execute concurrent tasks should rely instead on the `TaskExecutor` 
+The deprecated getter for the `Executor` that was optionally provided to the `IndexSearcher` constructors
+has been removed. Users that want to execute concurrent tasks should rely instead on the `TaskExecutor`
 that the searcher holds, retrieved via `IndexSearcher#getTaskExecutor`.
 
 ### CheckIndex params -slow and -fast are deprecated, replaced by -level X (GITHUB#11023)
@@ -228,7 +440,7 @@ access the members using method calls instead of field accesses. Affected classe
 - `TermAndVector` (GITHUB#13772)
 - Many basic Lucene classes, including `CollectionStatistics`, `TermStatistics` and `LeafMetadata` (GITHUB#13328)
 
-### Boolean flags on IOContext replaced with a new ReadAdvice enum.
+### Boolean flags on IOContext replaced with a new ReadAdvice enum
 
 The `readOnce`, `load` and `random` flags on `IOContext` have been replaced with a new `ReadAdvice`
 enum.
@@ -236,7 +448,7 @@ enum.
 ### IOContext.LOAD and IOContext.READ removed
 
 `IOContext#LOAD` has been removed, it should be replaced with
-`ioContext.withReadAdvice(ReadAdvice.RANDOM_PRELOAD)`.
+`ioContext.withReadAdvice(ReadAdvice.NORMAL)`.
 
 `IOContext.READ` has been removed, it should be replaced with `IOContext.DEFAULT`.
 
@@ -252,21 +464,22 @@ To migrate, use a provided `CollectorManager` implementation that suits your use
 to follow the new API pattern. The straight forward approach would be to instantiate the single-threaded `Collector` in a wrapper `CollectorManager`.
 
 For example
+
 ```java
 public class CustomCollectorManager implements CollectorManager<CustomCollector, List<Object>> {
     @Override
     public CustomCollector newCollector() throws IOException {
-      return new CustomCollector();
+        return new CustomCollector();
     }
 
     @Override
     public List<Object> reduce(Collection<CustomCollector> collectors) throws IOException {
-      List<Object> all = new ArrayList<>();
-      for (CustomCollector c : collectors) {
-        all.addAll(c.getResult());
-      }
+        List<Object> all = new ArrayList<>();
+        for (CustomCollector c : collectors) {
+            all.addAll(c.getResult());
+        }
 
-      return all;
+        return all;
     }
 }
 
@@ -282,12 +495,12 @@ List<Object> results = searcher.search(query, new CustomCollectorManager());
 
 1. `IntField(String name, int value)`. Use `IntField(String, int, Field.Store)` with `Field.Store#NO` instead.
 2. `DoubleField(String name, double value)`. Use `DoubleField(String, double, Field.Store)` with `Field.Store#NO` instead.
-2. `FloatField(String name, float value)`. Use `FloatField(String, float, Field.Store)` with `Field.Store#NO` instead.
-3. `LongField(String name, long value)`. Use `LongField(String, long, Field.Store)` with `Field.Store#NO` instead.
-4. `LongPoint#newDistanceFeatureQuery(String field, float weight, long origin, long pivotDistance)`. Use `LongField#newDistanceFeatureQuery` instead
-5. `BooleanQuery#TooManyClauses`, `BooleanQuery#getMaxClauseCount()`, `BooleanQuery#setMaxClauseCount()`. Use `IndexSearcher#TooManyClauses`, `IndexSearcher#getMaxClauseCount()`, `IndexSearcher#setMaxClauseCount()` instead
-6. `ByteBuffersDataInput#size()`. Use `ByteBuffersDataInput#length()` instead
-7. `SortedSetDocValuesFacetField#label`. `FacetsConfig#pathToString(String[])` can be applied to path as a replacement if string path is desired.
+3. `FloatField(String name, float value)`. Use `FloatField(String, float, Field.Store)` with `Field.Store#NO` instead.
+4. `LongField(String name, long value)`. Use `LongField(String, long, Field.Store)` with `Field.Store#NO` instead.
+5. `LongPoint#newDistanceFeatureQuery(String field, float weight, long origin, long pivotDistance)`. Use `LongField#newDistanceFeatureQuery` instead
+6. `BooleanQuery#TooManyClauses`, `BooleanQuery#getMaxClauseCount()`, `BooleanQuery#setMaxClauseCount()`. Use `IndexSearcher#TooManyClauses`, `IndexSearcher#getMaxClauseCount()`, `IndexSearcher#setMaxClauseCount()` instead
+7. `ByteBuffersDataInput#size()`. Use `ByteBuffersDataInput#length()` instead
+8. `SortedSetDocValuesFacetField#label`. `FacetsConfig#pathToString(String[])` can be applied to path as a replacement if string path is desired.
 
 ### Auto I/O throttling disabled by default in ConcurrentMergeScheduler (GITHUB#13293)
 
@@ -367,7 +580,6 @@ to the new coordinates:
 |org.apache.lucene:lucene-analyzers-smartcn   |org.apache.lucene:lucene-analysis-smartcn   |
 |org.apache.lucene:lucene-analyzers-stempel   |org.apache.lucene:lucene-analysis-stempel   |
 
-
 ### LucenePackage class removed (LUCENE-10260)
 
 `LucenePackage` class has been removed. The implementation string can be
@@ -428,8 +640,8 @@ These packages in the `lucene-backwards-codecs` module are renamed:
 
 ### JapanesePartOfSpeechStopFilterFactory loads default stop tags if "tags" argument not specified (LUCENE-9567)
 
-Previously, `JapanesePartOfSpeechStopFilterFactory` added no filter if `args` didn't include "tags". Now, it will load 
-the default stop tags returned by `JapaneseAnalyzer.getDefaultStopTags()` (i.e. the tags from`stoptags.txt` in the 
+Previously, `JapanesePartOfSpeechStopFilterFactory` added no filter if `args` didn't include "tags". Now, it will load
+the default stop tags returned by `JapaneseAnalyzer.getDefaultStopTags()` (i.e. the tags from`stoptags.txt` in the
 `lucene-analyzers-kuromoji` jar.)
 
 ### ICUCollationKeyAnalyzer is renamed (LUCENE-9558)
@@ -463,12 +675,12 @@ is split into `org.apache.lucene.analysis.classic` and `org.apache.lucene.analys
 
 ### RegExpQuery now rejects invalid backslashes (LUCENE-9370)
 
-We now follow the [Java rules](https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html#bs) for accepting backslashes. 
-Alphabetic characters other than s, S, w, W, d or D that are preceded by a backslash are considered illegal syntax and will throw an exception.  
+We now follow the [Java rules](https://docs.oracle.com/javase/8/docs/api/java/util/regex/Pattern.html#bs) for accepting backslashes.
+Alphabetic characters other than s, S, w, W, d or D that are preceded by a backslash are considered illegal syntax and will throw an exception.
 
 ### RegExp certain regular expressions now match differently (LUCENE-9336)
 
-The commonly used regular expressions \w \W \d \D \s and \S now work the same way [Java Pattern](https://docs.oracle.com/javase/tutorial/essential/regex/pre_char_classes.html#CHART) matching works. Previously these expressions were (mis)interpreted as searches for the literal characters w, d, s etc. 
+The commonly used regular expressions \w \W \d \D \s and \S now work the same way [Java Pattern](https://docs.oracle.com/javase/tutorial/essential/regex/pre_char_classes.html#CHART) matching works. Previously these expressions were (mis)interpreted as searches for the literal characters w, d, s etc.
 
 ### NGramFilterFactory "keepShortTerm" option was fixed to "preserveOriginal" (LUCENE-9259)
 
@@ -491,7 +703,7 @@ User dictionary now strictly validates if the (concatenated) segment is the same
 unexpected runtime exceptions or behaviours.
 For example, these entries are not allowed at all and an exception is thrown when loading the dictionary file.
 
-```
+```text
 # concatenated "日本経済新聞" does not match the surface form "日経新聞"
 日経新聞,日本 経済 新聞,ニホン ケイザイ シンブン,カスタム名詞
 
@@ -537,7 +749,7 @@ factory classes should implement it in the following way:
 ```java
     /** Default ctor for compatibility with SPI */
     public StandardTokenizerFactory() {
-      throw defaultCtorException();
+        throw defaultCtorException();
     }
 ```
 
@@ -559,7 +771,7 @@ is discouraged in favor of the default `MMapDirectory`.
 ### Similarity.SimScorer.computeXXXFactor methods removed (LUCENE-8014)
 
 `SpanQuery` and `PhraseQuery` now always calculate their slops as
-`(1.0 / (1.0 + distance))`.  Payload factor calculation is performed by
+`(1.0 / (1.0 + distance))`. Payload factor calculation is performed by
 `PayloadDecoder` in the `lucene-queries` module.
 
 ### Scorer must produce positive scores (LUCENE-7996)
@@ -573,9 +785,9 @@ As a side-effect of this change, negative boosts are now rejected and
 
 ### CustomScoreQuery, BoostedQuery and BoostingQuery removed (LUCENE-8099)
 
-Instead use `FunctionScoreQuery` and a `DoubleValuesSource` implementation.  `BoostedQuery`
+Instead use `FunctionScoreQuery` and a `DoubleValuesSource` implementation. `BoostedQuery`
 and `BoostingQuery` may be replaced by calls to `FunctionScoreQuery.boostByValue()` and
-`FunctionScoreQuery.boostByQuery()`.  To replace more complex calculations in
+`FunctionScoreQuery.boostByQuery()`. To replace more complex calculations in
 `CustomScoreQuery`, use the `lucene-expressions` module:
 
 ```java
@@ -593,7 +805,6 @@ Changing `IndexOptions` for a field on the fly will now result into an
 `IllegalArgumentException`. If a field is indexed
 (`FieldType.indexOptions() != IndexOptions.NONE`) then all documents must have
 the same index options for that field.
-
 
 ### IndexSearcher.createNormalizedWeight() removed (LUCENE-8242)
 
@@ -631,8 +842,8 @@ know the maximum score for a query, the recommended approach is to run a
 separate query:
 
 ```java
-  TopDocs topHits = searcher.search(query, 1);
-  float maxScore = topHits.scoreDocs.length == 0 ? Float.NaN : topHits.scoreDocs[0].score;
+TopDocs topHits = searcher.search(query, 1);
+float maxScore = topHits.scoreDocs.length == 0 ? Float.NaN : topHits.scoreDocs[0].score;
 ```
 
 Thanks to other optimizations that were added to Lucene 8, this query will be
@@ -666,13 +877,13 @@ actual hit count.
 
 This RAM-based directory implementation is an old piece of code that uses inefficient
 thread synchronization primitives and can be confused as "faster" than the NIO-based
-`MMapDirectory`. It is deprecated and scheduled for removal in future versions of 
+`MMapDirectory`. It is deprecated and scheduled for removal in future versions of
 Lucene.
 
 ### LeafCollector.setScorer() now takes a Scorable rather than a Scorer (LUCENE-6228)
 
 `Scorer` has a number of methods that should never be called from `Collector`s, for example
-those that advance the underlying iterators.  To hide these, `LeafCollector.setScorer()`
+those that advance the underlying iterators. To hide these, `LeafCollector.setScorer()`
 now takes a `Scorable`, an abstract class that scorers can extend, with methods
 `docId()` and `score()`.
 
@@ -681,7 +892,7 @@ now takes a `Scorable`, an abstract class that scorers can extend, with methods
 If a custom `Scorer` implementation does not have an associated `Weight`, it can probably
 be replaced with a `Scorable` instead.
 
-### Suggesters now return Long instead of long for weight() during indexing, and double instead of long at suggest time 
+### Suggesters now return Long instead of long for weight() during indexing, and double instead of long at suggest time
 
 Most code should just require recompilation, though possibly requiring some added casts.
 
@@ -722,7 +933,7 @@ by the `LegacyBM25Similarity` class which can be found in the lucene-misc jar.
 
 ### IndexWriter.maxDoc()/numDocs() removed in favor of IndexWriter.getDocStats()
 
-`IndexWriter.getDocStats()` should be used instead of `maxDoc()` / `numDocs()` which offers a consistent 
+`IndexWriter.getDocStats()` should be used instead of `maxDoc()` / `numDocs()` which offers a consistent
 view on document stats. Previously calling two methods in order to get point in time stats was subject
 to concurrent changes.
 
@@ -754,21 +965,21 @@ that the same data is stored in these points and doc values.
 
 ### Require consistency between data-structures on a per-field basis
 
-The per field data-structures are implicitly defined by the first document 
-indexed that contains a certain field. Once defined, the per field 
-data-structures are not changeable for the whole index. For example, if you 
-first index a document where a certain field is indexed with doc values and 
+The per field data-structures are implicitly defined by the first document
+indexed that contains a certain field. Once defined, the per field
+data-structures are not changeable for the whole index. For example, if you
+first index a document where a certain field is indexed with doc values and
 points, all subsequent documents containing this field must also have this
 field indexed with only doc values and points.
 
-This also means that an index created in the previous version that doesn't 
-satisfy this requirement can not be updated. 
+This also means that an index created in the previous version that doesn't
+satisfy this requirement can not be updated.
 
 ### Doc values updates are allowed only for doc values only fields
 
-Previously IndexWriter could update doc values for a binary or numeric docValue 
-field that was also indexed with other data structures (e.g. postings, vectors 
-etc). This is not allowed anymore. A field must be indexed with only doc values 
+Previously IndexWriter could update doc values for a binary or numeric docValue
+field that was also indexed with other data structures (e.g. postings, vectors
+etc). This is not allowed anymore. A field must be indexed with only doc values
 to be allowed for doc values updates in `IndexWriter`.
 
 ### SortedDocValues no longer extends BinaryDocValues (LUCENE-9796)
@@ -826,93 +1037,93 @@ classes were `@Deprecated` starting with 9.0. Users are encouraged to rely on th
 taxonomy facet encodings where possible. If custom formats are needed, users will need
 to manage the indexed data on their own and create new `Facet` implementations to use it.
 
-### `Weight#scorerSupplier` is declared abstract, and `Weight#scorer` methd is marked final 
+### `Weight#scorerSupplier` is declared abstract, and `Weight#scorer` methd is marked final
 
-The `Weight#scorerSupplier` method is now declared abstract, compelling child classes to implement the ScorerSupplier 
-interface. Additionally, `Weight#scorer` is now declared final, with its implementation being delegated to 
+The `Weight#scorerSupplier` method is now declared abstract, compelling child classes to implement the ScorerSupplier
+interface. Additionally, `Weight#scorer` is now declared final, with its implementation being delegated to
 `Weight#scorerSupplier` for the scorer.
 
 ### Reference to `weight` is removed from Scorer (GITHUB#13410)
 
-The `weight` has been removed from the Scorer class. Consequently, the constructor, `Scorer(Weight)`,and a getter, 
-`Scorer#getWeight`, has also been eliminated. References to weight have also been removed from nearly all the subclasses 
+The `weight` has been removed from the Scorer class. Consequently, the constructor, `Scorer(Weight)`,and a getter,
+`Scorer#getWeight`, has also been eliminated. References to weight have also been removed from nearly all the subclasses
 of Scorer, including ConstantScoreScorer, TermScorer, and others.
 
-Additionally, several APIs have been modified to remove the weight reference, as it is no longer necessary. 
-Specifically, the method `FunctionValues#getScorer(Weight weight, LeafReaderContext readerContext)` has been updated to 
+Additionally, several APIs have been modified to remove the weight reference, as it is no longer necessary.
+Specifically, the method `FunctionValues#getScorer(Weight weight, LeafReaderContext readerContext)` has been updated to
 `FunctionValues#getScorer(LeafReaderContext readerContext)`.
 
-Callers must now keep track of the Weight instance that created the Scorer if they need it, instead of relying on 
+Callers must now keep track of the Weight instance that created the Scorer if they need it, instead of relying on
 Scorer.
 
 ### `FacetsCollector#search` utility methods moved and updated
 
-The static `search` methods exposed by `FacetsCollector` have been moved to `FacetsCollectorManager`. 
-Furthermore, they take a `FacetsCollectorManager` last argument in place of a `Collector` so that they support 
-intra query concurrency. The return type has also be updated to `FacetsCollectorManager.FacetsResult` which includes 
+The static `search` methods exposed by `FacetsCollector` have been moved to `FacetsCollectorManager`.
+Furthermore, they take a `FacetsCollectorManager` last argument in place of a `Collector` so that they support
+intra query concurrency. The return type has also be updated to `FacetsCollectorManager.FacetsResult` which includes
 both `TopDocs` as well as facets results included in a reduced `FacetsCollector` instance.
 
-### `SearchWithCollectorTask` no longer supports the `collector.class` config parameter 
+### `SearchWithCollectorTask` no longer supports the `collector.class` config parameter
 
 `collector.class` used to allow users to load a custom collector implementation. `collector.manager.class`
 replaces it by allowing users to load a custom collector manager instead.
 
 ### BulkScorer#score(LeafCollector collector, Bits acceptDocs) removed
 
-Use `BulkScorer#score(LeafCollector collector, Bits acceptDocs, int min, int max)` instead. In order to score the 
-entire leaf, provide `0` as min and `DocIdSetIterator.NO_MORE_DOCS` as max. `BulkScorer` subclasses that override 
+Use `BulkScorer#score(LeafCollector collector, Bits acceptDocs, int min, int max)` instead. In order to score the
+entire leaf, provide `0` as min and `DocIdSetIterator.NO_MORE_DOCS` as max. `BulkScorer` subclasses that override
 such method need to instead override the method variant that takes the range of doc ids as well as arguments.
 
 ### CollectorManager#newCollector and Collector#getLeafCollector contract
 
-With the introduction of intra-segment query concurrency support, multiple `LeafCollector`s may be requested for the 
-same `LeafReaderContext` via `Collector#getLeafCollector(LeafReaderContext)` across the different `Collector` instances 
+With the introduction of intra-segment query concurrency support, multiple `LeafCollector`s may be requested for the
+same `LeafReaderContext` via `Collector#getLeafCollector(LeafReaderContext)` across the different `Collector` instances
 returned by multiple `CollectorManager#newCollector` calls. Any logic or computation that needs to happen
-once per segment requires specific handling in the collector manager implementation. See `TotalHitCountCollectorManager` 
-as an example. Individual collectors don't need to be adapted as a specific `Collector` instance will still see a given 
-`LeafReaderContext` once, given that it is not possible to add more than one partition of the same segment to the same 
+once per segment requires specific handling in the collector manager implementation. See `TotalHitCountCollectorManager`
+as an example. Individual collectors don't need to be adapted as a specific `Collector` instance will still see a given
+`LeafReaderContext` once, given that it is not possible to add more than one partition of the same segment to the same
 leaf slice.
 
 ### Weight#scorer, Weight#bulkScorer and Weight#scorerSupplier contract
 
-With the introduction of intra-segment query concurrency support, multiple `Scorer`s, `ScorerSupplier`s or `BulkScorer`s 
-may be requested for the same `LeafReaderContext` instance as part of a single search call. That may happen concurrently 
-from separate threads each searching a specific doc id range of the segment. `Weight` implementations that rely on the 
-assumption that a scorer, bulk scorer or scorer supplier for a given `LeafReaderContext` is requested once per search 
+With the introduction of intra-segment query concurrency support, multiple `Scorer`s, `ScorerSupplier`s or `BulkScorer`s
+may be requested for the same `LeafReaderContext` instance as part of a single search call. That may happen concurrently
+from separate threads each searching a specific doc id range of the segment. `Weight` implementations that rely on the
+assumption that a scorer, bulk scorer or scorer supplier for a given `LeafReaderContext` is requested once per search
 need updating.
 
 ### Signature of IndexSearcher#searchLeaf changed
 
-With the introduction of intra-segment query concurrency support, the `IndexSearcher#searchLeaf(LeafReaderContext ctx, Weight weight, Collector collector)` 
-method now accepts two additional int arguments to identify the min/max range of doc ids that will be searched in this 
+With the introduction of intra-segment query concurrency support, the `IndexSearcher#searchLeaf(LeafReaderContext ctx, Weight weight, Collector collector)`
+method now accepts two additional int arguments to identify the min/max range of doc ids that will be searched in this
 leaf partition`: IndexSearcher#searchLeaf(LeafReaderContext ctx, int minDocId, int maxDocId, Weight weight, Collector collector)`.
 Subclasses of `IndexSearcher` that call or override the `searchLeaf` method need to be updated accordingly.
 
 ### Signature of static IndexSearch#slices method changed
 
-The static `IndexSearcher#slices(List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice)` 
+The static `IndexSearcher#slices(List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice)`
 method now supports an additional 4th and last argument to optionally enable creating segment partitions:
 `IndexSearcher#slices(List<LeafReaderContext> leaves, int maxDocsPerSlice, int maxSegmentsPerSlice, boolean allowSegmentPartitions)`
 
 ### TotalHitCountCollectorManager constructor
 
-`TotalHitCountCollectorManager` now requires that an array of `LeafSlice`s, retrieved via `IndexSearcher#getSlices`, 
-is provided to its constructor. Depending on whether segment partitions are present among slices, the manager can 
+`TotalHitCountCollectorManager` now requires that an array of `LeafSlice`s, retrieved via `IndexSearcher#getSlices`,
+is provided to its constructor. Depending on whether segment partitions are present among slices, the manager can
 optimize the type of collectors it creates and exposes via `newCollector`.
 
 ### `IndexSearcher#search(List<LeafReaderContext>, Weight, Collector)` removed
 
-The protected `IndexSearcher#search(List<LeafReaderContext> leaves, Weight weight, Collector collector)` method has been 
+The protected `IndexSearcher#search(List<LeafReaderContext> leaves, Weight weight, Collector collector)` method has been
 removed in favour of the newly introduced `search(LeafReaderContextPartition[] partitions, Weight weight, Collector collector)`.
 `IndexSearcher` subclasses that override this method need to instead override the new method.
 
 ### Indexing vectors with 8 bit scalar quantization is no longer supported but 7 and 4 bit quantization still work (GITHUB#13519)
 
 8 bit scalar vector quantization is no longer supported: it was buggy
-starting in 9.11 (GITHUB#13197).  4 and 7 bit quantization are still
-supported.  Existing (9.11) Lucene indices that previously used 8 bit
+starting in 9.11 (GITHUB#13197). 4 and 7 bit quantization are still
+supported. Existing (9.11) Lucene indices that previously used 8 bit
 quantization can still be read/searched but the results from
-`KNN*VectorQuery` are silently buggy.  Further 8 bit quantized vector
+`KNN*VectorQuery` are silently buggy. Further 8 bit quantized vector
 indexing into such (9.11) indices is not permitted, so your path
 forward if you wish to continue using the same 9.11 index is to index
 additional vectors into the same field with either 4 or 7 bit

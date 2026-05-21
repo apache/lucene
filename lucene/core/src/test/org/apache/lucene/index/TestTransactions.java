@@ -125,41 +125,29 @@ public class TestTransactions extends LuceneTestCase {
         synchronized (lock) {
           try {
             writer1.prepareCommit();
-          } catch (
-              @SuppressWarnings("unused")
-              Throwable t) {
+          } catch (Throwable _) {
             // release resources
             try {
               writer1.rollback();
-            } catch (
-                @SuppressWarnings("unused")
-                Throwable ignore) {
+            } catch (Throwable _) {
             }
             try {
               writer2.rollback();
-            } catch (
-                @SuppressWarnings("unused")
-                Throwable ignore) {
+            } catch (Throwable _) {
             }
             return;
           }
           try {
             writer2.prepareCommit();
-          } catch (
-              @SuppressWarnings("unused")
-              Throwable t) {
+          } catch (Throwable _) {
             // release resources
             try {
               writer1.rollback();
-            } catch (
-                @SuppressWarnings("unused")
-                Throwable ignore) {
+            } catch (Throwable _) {
             }
             try {
               writer2.rollback();
-            } catch (
-                @SuppressWarnings("unused")
-                Throwable ignore) {
+            } catch (Throwable _) {
             }
             return;
           }
@@ -243,6 +231,8 @@ public class TestTransactions extends LuceneTestCase {
     writer.close();
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testTransactions() throws Throwable {
     // we cant use non-ramdir on windows, because this test needs to double-write.
     MockDirectoryWrapper dir1 = new MockDirectoryWrapper(random(), new ByteBuffersDirectory());

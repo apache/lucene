@@ -18,6 +18,7 @@
 package org.apache.lucene.internal.vectorization;
 
 import java.io.IOException;
+import java.lang.StackWalker.Option;
 import java.lang.StackWalker.StackFrame;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
@@ -46,7 +47,6 @@ import org.apache.lucene.util.VectorUtil;
 public abstract class VectorizationProvider {
 
   static final OptionalInt TESTS_VECTOR_SIZE;
-  static final boolean TESTS_FORCE_INTEGER_VECTORS;
   static final int UPPER_JAVA_FEATURE_VERSION = getUpperJavaFeatureVersion();
 
   static {
@@ -57,27 +57,15 @@ public abstract class VectorizationProvider {
               .filter(Predicate.not(Set.of("", "default")::contains))
               .mapToInt(Integer::parseInt)
               .findAny();
-    } catch (
-        @SuppressWarnings("unused")
-        SecurityException se) {
+    } catch (SecurityException _) {
       // ignored
     }
     TESTS_VECTOR_SIZE = vs;
-
-    boolean enforce = false;
-    try {
-      enforce = Boolean.getBoolean("tests.forceintegervectors");
-    } catch (
-        @SuppressWarnings("unused")
-        SecurityException se) {
-      // ignored
-    }
-    TESTS_FORCE_INTEGER_VECTORS = enforce;
   }
 
   private static final String UPPER_JAVA_FEATURE_VERSION_SYSPROP =
       "org.apache.lucene.vectorization.upperJavaFeatureVersion";
-  private static final int DEFAULT_UPPER_JAVA_FEATURE_VERSION = 24;
+  private static final int DEFAULT_UPPER_JAVA_FEATURE_VERSION = 25;
 
   private static int getUpperJavaFeatureVersion() {
     int runtimeVersion = DEFAULT_UPPER_JAVA_FEATURE_VERSION;
@@ -86,7 +74,7 @@ public abstract class VectorizationProvider {
       if (str != null) {
         runtimeVersion = Math.max(Integer.parseInt(str), runtimeVersion);
       }
-    } catch (@SuppressWarnings("unused") NumberFormatException | SecurityException ignored) {
+    } catch (NumberFormatException | SecurityException _) {
       Logger.getLogger(VectorizationProvider.class.getName())
           .warning(
               "Cannot read sysprop "
@@ -100,8 +88,7 @@ public abstract class VectorizationProvider {
    * Returns the default instance of the provider matching vectorization possibilities of actual
    * runtime.
    *
-   * @throws UnsupportedOperationException if the singleton getter is not called from known Lucene
-   *     classes.
+   * @throws IllegalCallerException if the singleton getter is not called from known Lucene classes.
    */
   public static VectorizationProvider getInstance() {
     ensureCaller();
@@ -121,6 +108,9 @@ public abstract class VectorizationProvider {
 
   /** Returns a FlatVectorsScorer that supports the Lucene99 format. */
   public abstract FlatVectorsScorer getLucene99FlatVectorsScorer();
+
+  /** Returns a FlatVectorsScorer that supports the Lucene99 format. */
+  public abstract FlatVectorsScorer getLucene99ScalarQuantizedVectorsScorer();
 
   /** Create a new {@link PostingDecodingUtil} for the given {@link IndexInput}. */
   public abstract PostingDecodingUtil newPostingDecodingUtil(IndexInput input) throws IOException;
@@ -157,9 +147,9 @@ public abstract class VectorizationProvider {
       vectorMod.ifPresent(VectorizationProvider.class.getModule()::addReads);
       // check for testMode and otherwise fallback to default if slowness could happen
       if (!testMode) {
-        if (TESTS_VECTOR_SIZE.isPresent() || TESTS_FORCE_INTEGER_VECTORS) {
+        if (TESTS_VECTOR_SIZE.isPresent()) {
           LOG.warning(
-              "Vector bitsize and/or integer vectors enforcement; using default vectorization provider outside of testMode");
+              "Vector bitsize enforcement; using default vectorization provider outside of testMode");
           return new DefaultVectorizationProvider();
         }
         if (Constants.IS_CLIENT_VM) {
@@ -167,31 +157,11 @@ public abstract class VectorizationProvider {
           return new DefaultVectorizationProvider();
         }
       }
-      try {
-        // we use method handles with lookup, so we do not need to deal with setAccessible as we
-        // have private access through the lookup:
-        final var lookup = MethodHandles.lookup();
-        final var cls =
-            lookup.findClass(
-                "org.apache.lucene.internal.vectorization.PanamaVectorizationProvider");
-        final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
-        try {
-          return (VectorizationProvider) constr.invoke();
-        } catch (UnsupportedOperationException uoe) {
-          // not supported because preferred vector size too small or similar
-          LOG.warning("Java vector incubator API was not enabled. " + uoe.getMessage());
-          return new DefaultVectorizationProvider();
-        } catch (RuntimeException | Error e) {
-          throw e;
-        } catch (Throwable th) {
-          throw new AssertionError(th);
-        }
-      } catch (NoSuchMethodException | IllegalAccessException e) {
-        throw new LinkageError(
-            "PanamaVectorizationProvider is missing correctly typed constructor", e);
-      } catch (ClassNotFoundException cnfe) {
-        throw new LinkageError("PanamaVectorizationProvider is missing in Lucene JAR file", cnfe);
+      if (Constants.NATIVE_DOT_PRODUCT_ENABLED) {
+        return lookup("NativeVectorizationProvider");
       }
+
+      return lookup("PanamaVectorizationProvider");
     } else {
       LOG.warning(
           "You are running with unsupported Java "
@@ -199,6 +169,31 @@ public abstract class VectorizationProvider {
               + ". To make full use of the Vector API, please update Apache Lucene.");
     }
     return new DefaultVectorizationProvider();
+  }
+
+  private static VectorizationProvider lookup(String className) {
+    try {
+      // we use method handles with lookup, so we do not need to deal with setAccessible as we
+      // have private access through the lookup:
+      final var lookup = MethodHandles.lookup();
+      final var cls = lookup.findClass("org.apache.lucene.internal.vectorization." + className);
+      final var constr = lookup.findConstructor(cls, MethodType.methodType(void.class));
+      try {
+        return (VectorizationProvider) constr.invoke();
+      } catch (UnsupportedOperationException uoe) {
+        // not supported because preferred vector size too small or similar
+        LOG.warning("Java vector incubator API was not enabled. " + uoe.getMessage());
+        return new DefaultVectorizationProvider();
+      } catch (RuntimeException | Error e) {
+        throw e;
+      } catch (Throwable th) {
+        throw new AssertionError(th);
+      }
+    } catch (NoSuchMethodException | IllegalAccessException e) {
+      throw new LinkageError(className + " is missing correctly typed constructor", e);
+    } catch (ClassNotFoundException cnfe) {
+      throw new LinkageError(className + " is missing in Lucene JAR file", cnfe);
+    }
   }
 
   /**
@@ -213,23 +208,23 @@ public abstract class VectorizationProvider {
   // add all possible callers here as FQCN:
   private static final Set<String> VALID_CALLERS =
       Set.of(
+          "org.apache.lucene.benchmark.jmh.VectorUtilBenchmark",
           "org.apache.lucene.codecs.hnsw.FlatVectorScorerUtil",
           "org.apache.lucene.util.VectorUtil",
-          "org.apache.lucene.codecs.lucene101.Lucene101PostingsReader",
-          "org.apache.lucene.codecs.lucene101.PostingIndexInput",
+          "org.apache.lucene.codecs.lucene104.Lucene104PostingsReader",
+          "org.apache.lucene.codecs.lucene104.PostingIndexInput",
           "org.apache.lucene.tests.util.TestSysoutsLimits");
+
+  private static final StackWalker STACKWALKER =
+      StackWalker.getInstance(Set.of(Option.DROP_METHOD_INFO), 3);
 
   private static void ensureCaller() {
     final boolean validCaller =
-        StackWalker.getInstance()
-            .walk(
-                s ->
-                    s.skip(2)
-                        .limit(1)
-                        .map(StackFrame::getClassName)
-                        .allMatch(VALID_CALLERS::contains));
+        STACKWALKER.walk(
+            s ->
+                s.skip(2).limit(1).map(StackFrame::getClassName).anyMatch(VALID_CALLERS::contains));
     if (!validCaller) {
-      throw new UnsupportedOperationException(
+      throw new IllegalCallerException(
           "VectorizationProvider is internal and can only be used by known Lucene classes.");
     }
   }

@@ -16,9 +16,13 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.not;
+
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.index.AutomatonTermsEnum;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -29,7 +33,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.automaton.Operations;
 
 /** TestWildcardQuery tests the '*' and '?' wildcard characters. */
 public class TestWildcardQuery extends LuceneTestCase {
@@ -71,34 +74,26 @@ public class TestWildcardQuery extends LuceneTestCase {
     Query q =
         searcher.rewrite(
             new WildcardQuery(
-                new Term("field", "nowildcard"),
-                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
-                MultiTermQuery.SCORING_BOOLEAN_REWRITE));
-    assertTrue(q instanceof TermQuery);
+                new Term("field", "nowildcard"), MultiTermQuery.SCORING_BOOLEAN_REWRITE));
+    assertThat(q, instanceOf(TermQuery.class));
 
     q =
         searcher.rewrite(
             new WildcardQuery(
-                new Term("field", "nowildcard"),
-                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
-                MultiTermQuery.CONSTANT_SCORE_REWRITE));
-    assertTrue(q instanceof MultiTermQueryConstantScoreWrapper);
+                new Term("field", "nowildcard"), MultiTermQuery.CONSTANT_SCORE_REWRITE));
+    assertThat(q, instanceOf(MultiTermQueryConstantScoreWrapper.class));
 
     q =
         searcher.rewrite(
             new WildcardQuery(
-                new Term("field", "nowildcard"),
-                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
-                MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE));
-    assertTrue(q instanceof MultiTermQueryConstantScoreBlendedWrapper);
+                new Term("field", "nowildcard"), MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE));
+    assertThat(q, instanceOf(MultiTermQueryConstantScoreBlendedWrapper.class));
 
     q =
         searcher.rewrite(
             new WildcardQuery(
-                new Term("field", "nowildcard"),
-                Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
-                MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE));
-    assertTrue(q instanceof ConstantScoreQuery);
+                new Term("field", "nowildcard"), MultiTermQuery.CONSTANT_SCORE_BOOLEAN_REWRITE));
+    assertThat(q, instanceOf(ConstantScoreQuery.class));
     reader.close();
     indexStore.close();
   }
@@ -110,13 +105,10 @@ public class TestWildcardQuery extends LuceneTestCase {
     IndexSearcher searcher = newSearcher(reader);
 
     MultiTermQuery wq =
-        new WildcardQuery(
-            new Term("field", ""),
-            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
-            MultiTermQuery.SCORING_BOOLEAN_REWRITE);
+        new WildcardQuery(new Term("field", ""), MultiTermQuery.SCORING_BOOLEAN_REWRITE);
     assertMatches(searcher, wq, 0);
     Query q = searcher.rewrite(wq);
-    assertTrue(q instanceof MatchNoDocsQuery);
+    assertThat(q, instanceOf(MatchNoDocsQuery.class));
     reader.close();
     indexStore.close();
   }
@@ -136,7 +128,7 @@ public class TestWildcardQuery extends LuceneTestCase {
     wq = new WildcardQuery(new Term("field", "*"));
     assertMatches(searcher, wq, 2);
     Terms terms = MultiTerms.getTerms(searcher.getIndexReader(), "field");
-    assertFalse(wq.getTermsEnum(terms).getClass().getSimpleName().contains("AutomatonTermsEnum"));
+    assertThat(wq.getTermsEnum(terms), not(instanceOf(AutomatonTermsEnum.class)));
     reader.close();
     indexStore.close();
   }

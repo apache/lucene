@@ -104,9 +104,7 @@ public class TestTwoPhaseCommitTool extends LuceneTestCase {
     boolean anyFailure = false;
     try {
       TwoPhaseCommitTool.execute(objects);
-    } catch (
-        @SuppressWarnings("unused")
-        Throwable t) {
+    } catch (Throwable _) {
       anyFailure = true;
     }
 

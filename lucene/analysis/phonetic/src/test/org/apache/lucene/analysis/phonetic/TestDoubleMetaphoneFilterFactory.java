@@ -24,8 +24,7 @@ import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 public class TestDoubleMetaphoneFilterFactory extends BaseTokenStreamTestCase {
 
   public void testDefaults() throws Exception {
-    DoubleMetaphoneFilterFactory factory =
-        new DoubleMetaphoneFilterFactory(new HashMap<String, String>());
+    DoubleMetaphoneFilterFactory factory = new DoubleMetaphoneFilterFactory(new HashMap<>());
     TokenStream inputStream = whitespaceMockTokenizer("international");
 
     TokenStream filteredStream = factory.create(inputStream);
