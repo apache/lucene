@@ -88,6 +88,8 @@ Improvements
 
 * GITHUB#15660: Introduce LargeNumHitsTopDocsCollectorManager to parallelize search when using LargeNumHitsTopDocsCollector. (Binlong Gao)
 
+* GITHUB#16088: SearchGroup#merge now returns an empty collection instead of null when topGroups is empty. (Luca Cavanna)
+
 Optimizations
 ---------------------
 * GITHUB#16050: Add SIMD-accelerated bulk range evaluation for dense numeric doc values via
