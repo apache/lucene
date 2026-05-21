@@ -46,20 +46,23 @@ public abstract sealed class ColumnFieldAdapter extends Field
 
   /** Returns an adapter for the given column, dispatching on its concrete type. */
   public static ColumnFieldAdapter create(Column column) {
-    if (column instanceof LongColumn lc) {
-      return new LongColumnAdapter(lc);
-    } else if (column instanceof BinaryColumn bc) {
-      return new BinaryColumnAdapter(
-          bc.name(), bc.fieldType(), bc.fieldType().stored() ? bc.storedType() : null, bc.tuples());
-    } else if (column instanceof DictionaryColumn dc) {
-      return new BinaryColumnAdapter(
-          dc.name(),
-          dc.fieldType(),
-          dc.fieldType().stored() ? dc.storedType() : null,
-          dictionaryCursor(dc.tuples(), dc.dictionary()));
-    } else {
-      throw new IllegalArgumentException("Unknown column type: " + column.getClass().getName());
-    }
+    return switch (column) {
+      case LongColumn lc -> new LongColumnAdapter(lc);
+      case BinaryColumn bc ->
+          new BinaryColumnAdapter(
+              bc.name(),
+              bc.fieldType(),
+              bc.fieldType().stored() ? bc.storedType() : null,
+              bc.tuples());
+      case DictionaryColumn dc ->
+          new BinaryColumnAdapter(
+              dc.name(),
+              dc.fieldType(),
+              dc.fieldType().stored() ? dc.storedType() : null,
+              dictionaryCursor(dc.tuples(), dc.dictionary()));
+      default ->
+          throw new IllegalArgumentException("Unknown column type: " + column.getClass().getName());
+    };
   }
 
   private static ObjectTupleCursor<BytesRef> dictionaryCursor(

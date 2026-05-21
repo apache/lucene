@@ -320,7 +320,8 @@ public class TestDictionaryColumn extends LuceneTestCase {
 
   public void testMixedWithPlainDocument() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    IndexWriter w =
+        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(new TieredMergePolicy()));
 
     // Batch adds doc 0 (blue) and doc 1 (red)
     w.addBatch(
