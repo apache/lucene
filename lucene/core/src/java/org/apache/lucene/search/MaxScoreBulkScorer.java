@@ -49,21 +49,14 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
   private final FixedBitSet windowMatches = new FixedBitSet(INNER_WINDOW_SIZE);
   private final double[] windowScores = new double[INNER_WINDOW_SIZE];
+  private FixedBitSet filterMatches = null;
 
   private final DocAndFloatFeatureBuffer docAndScoreBuffer = new DocAndFloatFeatureBuffer();
   private final DocAndScoreAccBuffer docAndScoreAccBuffer;
 
-  private final boolean loadFilterIntoBitset;
-  private FixedBitSet filterWindowMatches;
-
   MaxScoreBulkScorer(int maxDoc, List<Scorer> scorers, Scorer filter) throws IOException {
     this.maxDoc = maxDoc;
     this.filter = filter == null ? null : new DisiWrapper(filter, false);
-    this.loadFilterIntoBitset =
-        this.filter != null
-            && this.filter.twoPhaseView == null
-            && maxDoc >= INNER_WINDOW_SIZE
-            && this.filter.cost >= maxDoc / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE;
     allScorers = new DisiWrapper[scorers.size()];
     scratch = new DisiWrapper[allScorers.length];
     int i = 0;
@@ -78,6 +71,13 @@ final class MaxScoreBulkScorer extends BulkScorer {
     maxScoreSums = new double[allScorers.length];
     docAndScoreAccBuffer = new DocAndScoreAccBuffer();
     docAndScoreAccBuffer.growNoCopy(INNER_WINDOW_SIZE);
+
+    if (this.filter != null
+        && this.filter.twoPhaseView == null
+        && maxDoc >= INNER_WINDOW_SIZE
+        && this.filter.cost >= maxDoc / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE) {
+      this.filterMatches = new FixedBitSet(INNER_WINDOW_SIZE);
+    }
   }
 
   // Number of outer windows that have been evaluated
@@ -155,9 +155,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
 
   private void scoreInnerWindow(
       LeafCollector collector, Bits acceptDocs, int max, DisiWrapper filter) throws IOException {
-    if (loadFilterIntoBitset) {
-      scoreInnerWindowWithBitsetFilter(collector, acceptDocs, max, filter);
-    } else if (filter != null) {
+    if (filter != null) {
       scoreInnerWindowWithFilter(collector, acceptDocs, max, filter);
     } else {
       DisiWrapper top = essentialQueue.top();
@@ -172,64 +170,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
         scoreInnerWindowMultipleEssentialClauses(collector, acceptDocs, max);
       }
     }
-  }
-
-  private void scoreInnerWindowWithBitsetFilter(
-      LeafCollector collector, Bits acceptDocs, int max, DisiWrapper filter) throws IOException {
-    DisiWrapper top = essentialQueue.top();
-    assert top.doc < max;
-    while (top.doc < filter.doc) {
-      // Must use the iterator as `top` might be a two-phase iterator
-      top.doc = top.iterator.advance(filter.doc);
-      top = essentialQueue.updateTop();
-    }
-
-    // Only score an inner window, after that we'll check if the min competitive score has
-    // increased enough for a more favorable partitioning to be used.
-    int innerWindowMin = top.doc;
-    int innerWindowMax = MathUtil.unsignedMin(max, innerWindowMin + INNER_WINDOW_SIZE);
-    if (top.doc >= max) {
-      return;
-    }
-
-    if (filterWindowMatches == null) {
-      filterWindowMatches = new FixedBitSet(INNER_WINDOW_SIZE);
-    } else {
-      filterWindowMatches.clear();
-    }
-    if (filter.doc < innerWindowMax) {
-      if (filter.doc < innerWindowMin) {
-        filter.doc = filter.approximation.advance(innerWindowMin);
-      }
-      if (filter.doc < innerWindowMax) {
-        filter.approximation.intoBitSet(innerWindowMax, filterWindowMatches, innerWindowMin);
-        filter.doc = filter.approximation.docID();
-      }
-    }
-
-    if (acceptDocs != null) {
-      acceptDocs.applyMask(filterWindowMatches, innerWindowMin);
-    }
-    final FixedBitSet fwm = filterWindowMatches;
-    final int offset = innerWindowMin;
-    Bits filterAcceptDocs =
-        new Bits() {
-          @Override
-          public boolean get(int index) {
-            return fwm.get(index - offset);
-          }
-
-          @Override
-          public int length() {
-            return offset + fwm.length();
-          }
-        };
-
-    // When there is a single essential clause in this window, we still collect into a bitset
-    // first and then call scoreNonEssentialClauses once, to make sure that minCompetitiveScore
-    // doesn't change in the middle of the window, which could cause different results compared
-    // to the non-bitset path.
-    scoreInnerWindowMultipleEssentialClauses(collector, filterAcceptDocs, innerWindowMax);
   }
 
   private void scoreInnerWindowWithFilter(
@@ -248,6 +188,41 @@ final class MaxScoreBulkScorer extends BulkScorer {
     int innerWindowMax = MathUtil.unsignedMin(max, innerWindowMin + INNER_WINDOW_SIZE);
 
     docAndScoreAccBuffer.size = 0;
+    if (filterMatches == null) {
+      fillScoreBufferViaLeapFrog(top, acceptDocs, innerWindowMax);
+    } else {
+      fillScoreBufferViaBitSet(top, acceptDocs, innerWindowMax);
+    }
+
+    scoreNonEssentialClauses(collector, docAndScoreAccBuffer, firstEssentialScorer);
+  }
+
+  private void fillScoreBufferViaBitSet(DisiWrapper top, Bits acceptDocs, int innerWindowMax)
+      throws IOException {
+    filterMatches.clear();
+    int innerWindowMin = top.doc;
+    if (filter.doc < innerWindowMax) {
+      if (filter.doc < innerWindowMin) {
+        filter.doc = filter.approximation.advance(innerWindowMin);
+      }
+      if (filter.doc < innerWindowMax) {
+        filter.approximation.intoBitSet(innerWindowMax, filterMatches, innerWindowMin);
+        filter.doc = filter.approximation.docID();
+      }
+    }
+    if (acceptDocs != null) {
+      acceptDocs.applyMask(filterMatches, innerWindowMin);
+    }
+
+    while (top.doc < innerWindowMax) {
+      int doc = top.doc;
+      boolean match = filterMatches.get(doc - innerWindowMin);
+      collectScores(top, doc, match);
+    }
+  }
+
+  private void fillScoreBufferViaLeapFrog(DisiWrapper top, Bits acceptDocs, int innerWindowMax)
+      throws IOException {
     while (top.doc < innerWindowMax) {
       assert filter.doc <= top.doc; // invariant
       if (filter.doc < top.doc) {
@@ -264,25 +239,27 @@ final class MaxScoreBulkScorer extends BulkScorer {
         boolean match =
             (acceptDocs == null || acceptDocs.get(doc))
                 && (filter.twoPhaseView == null || filter.twoPhaseView.matches());
-        double score = 0;
-        do {
-          if (match) {
-            score += top.scorer.score();
-          }
-          top.doc = top.iterator.nextDoc();
-          top = essentialQueue.updateTop();
-        } while (top.doc == doc);
-
-        if (match) {
-          docAndScoreAccBuffer.grow(docAndScoreAccBuffer.size + 1);
-          docAndScoreAccBuffer.docs[docAndScoreAccBuffer.size] = doc;
-          docAndScoreAccBuffer.scores[docAndScoreAccBuffer.size] = score;
-          docAndScoreAccBuffer.size++;
-        }
+        collectScores(top, doc, match);
       }
     }
+  }
 
-    scoreNonEssentialClauses(collector, docAndScoreAccBuffer, firstEssentialScorer);
+  private void collectScores(DisiWrapper top, int doc, boolean match) throws IOException {
+    double score = 0;
+    do {
+      if (match) {
+        score += top.scorer.score();
+      }
+      top.doc = top.iterator.nextDoc();
+      top = essentialQueue.updateTop();
+    } while (top.doc == doc);
+
+    if (match) {
+      docAndScoreAccBuffer.grow(docAndScoreAccBuffer.size + 1);
+      docAndScoreAccBuffer.docs[docAndScoreAccBuffer.size] = doc;
+      docAndScoreAccBuffer.scores[docAndScoreAccBuffer.size] = score;
+      docAndScoreAccBuffer.size++;
+    }
   }
 
   private void scoreInnerWindowSingleEssentialClause(
