@@ -790,8 +790,10 @@ public class TestDocValuesQueries extends LuceneTestCase {
     for (int i = 0; i < numBlocks; i++) {
       sizes[i] = random().nextInt(1, 250);
     }
+    int[] totalSizes = new int[numBlocks];
     RandomIndexWriter iw = new RandomIndexWriter(random(), dir, config);
     for (int i = 0; i < numBlocks; i++) {
+      totalSizes[i] = sizes[i];
       for (int j = 0; j < sizes[i]; j++) {
         Document doc = new Document();
         IndexableField dv = fields.apply(i);
@@ -802,6 +804,7 @@ public class TestDocValuesQueries extends LuceneTestCase {
           doc.add(dv);
           doc.add(new StringField("id", "to_delete", Field.Store.NO));
           iw.addDocument(doc);
+          totalSizes[i]++;
         }
       }
     }
@@ -827,7 +830,7 @@ public class TestDocValuesQueries extends LuceneTestCase {
       Weight weight = rewritten.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
       ScorerSupplier supplier = weight.scorerSupplier(ctx);
       assertThat(supplier.cost(), greaterThanOrEqualTo((long) sizes[i]));
-      assertThat(supplier.cost(), lessThanOrEqualTo(sizes[i] + 2L * skipIntervalSize));
+      assertThat(supplier.cost(), lessThanOrEqualTo(totalSizes[i] + 2L * skipIntervalSize));
     }
     reader.close();
     dir.close();
