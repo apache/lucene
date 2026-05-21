@@ -161,7 +161,7 @@ public class SpanMultiTermQueryWrapper<Q extends MultiTermQuery> extends SpanQue
 
               @Override
               protected Query build(List<SpanQuery> builder) {
-                return new SpanOrQuery(builder.toArray(new SpanQuery[builder.size()]));
+                return new SpanOrQuery(builder.toArray(SpanQuery[]::new));
               }
 
               @Override
@@ -216,7 +216,7 @@ public class SpanMultiTermQueryWrapper<Q extends MultiTermQuery> extends SpanQue
 
             @Override
             protected Query build(List<SpanQuery> builder) {
-              return new SpanOrQuery(builder.toArray(new SpanQuery[builder.size()]));
+              return new SpanOrQuery(builder.toArray(SpanQuery[]::new));
             }
 
             @Override

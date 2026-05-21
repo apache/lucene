@@ -301,7 +301,7 @@ public class Algorithm implements AutoCloseable {
     ArrayList<String> pkgs = new ArrayList<>();
     pkgs.add(dfltPkg);
     Collections.addAll(pkgs, alts.split(","));
-    return pkgs.toArray(new String[0]);
+    return pkgs.toArray(String[]::new);
   }
 
   private Class<?> taskClass(Config config, String taskName) throws ClassNotFoundException {

@@ -107,6 +107,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
     assertEquals(0, skipper.docCount());
+    assertEquals(0, skipper.maxValueCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -145,6 +146,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
     assertEquals(0, skipper.docCount());
+    assertEquals(0, skipper.maxValueCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -183,6 +185,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
     assertEquals(0, skipper.docCount());
+    assertEquals(0, skipper.maxValueCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -216,6 +219,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
     assertEquals(0, skipper.docCount());
+    assertEquals(0, skipper.maxValueCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -251,6 +255,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
     assertEquals(0, skipper.docCount());
+    assertEquals(0, skipper.maxValueCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -291,6 +296,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
     assertEquals(0, skipper.docCount());
+    assertEquals(0, skipper.maxValueCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -331,6 +337,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
     assertEquals(0, skipper.docCount());
+    assertEquals(0, skipper.maxValueCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
@@ -367,10 +374,46 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
     DocValuesSkipper skipper = getOnlyLeafReader(ireader).getDocValuesSkipper("field");
     assertEquals(0, skipper.docCount());
+    assertEquals(0, skipper.maxValueCount());
     skipper.advance(0);
     assertEquals(NO_MORE_DOCS, skipper.minDocID(0));
 
     ireader.close();
+    directory.close();
+  }
+
+  public void testMaxValueCountWithSkipper() throws IOException {
+    Directory directory = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), directory);
+
+    Document doc = new Document();
+    doc.add(NumericDocValuesField.indexedField("numeric", 1));
+    doc.add(SortedDocValuesField.indexedField("sorted", newBytesRef("a")));
+    doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric", 1));
+    doc.add(SortedSetDocValuesField.indexedField("sorted_set", newBytesRef("a")));
+    writer.addDocument(doc);
+
+    doc = new Document();
+    doc.add(NumericDocValuesField.indexedField("numeric", 2));
+    doc.add(SortedDocValuesField.indexedField("sorted", newBytesRef("b")));
+    doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric", 1));
+    doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric", 2));
+    doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric", 3));
+    doc.add(SortedSetDocValuesField.indexedField("sorted_set", newBytesRef("a")));
+    doc.add(SortedSetDocValuesField.indexedField("sorted_set", newBytesRef("b")));
+    writer.addDocument(doc);
+
+    writer.forceMerge(1);
+    DirectoryReader reader = writer.getReader();
+    writer.close();
+
+    LeafReader leafReader = getOnlyLeafReader(reader);
+    assertEquals(1, leafReader.getDocValuesSkipper("numeric").maxValueCount());
+    assertEquals(1, leafReader.getDocValuesSkipper("sorted").maxValueCount());
+    assertEquals(3, leafReader.getDocValuesSkipper("sorted_numeric").maxValueCount());
+    assertEquals(2, leafReader.getDocValuesSkipper("sorted_set").maxValueCount());
+
+    reader.close();
     directory.close();
   }
 
@@ -424,6 +467,11 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
               @Override
               public int docID() {
                 return numericDocValues.docID();
+              }
+
+              @Override
+              public int docValueCount() {
+                return 1;
               }
             };
           }
@@ -509,6 +557,11 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
               public int docID() {
                 return sortedNumericDocValues.docID();
               }
+
+              @Override
+              public int docValueCount() {
+                return sortedNumericDocValues.docValueCount();
+              }
             };
           }
 
@@ -569,6 +622,11 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
               @Override
               public int docID() {
                 return sortedDocValues.docID();
+              }
+
+              @Override
+              public int docValueCount() {
+                return 1;
               }
             };
           }
@@ -655,6 +713,11 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
               public int docID() {
                 return sortedSetDocValues.docID();
               }
+
+              @Override
+              public int docValueCount() {
+                return sortedSetDocValues.docValueCount();
+              }
             };
           }
 
@@ -731,6 +794,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
 
     iterator.advance(0);
     int docCount = 0;
+    int maxValueCount = 0;
     while (true) {
       int previousMaxDoc = skipper.maxDocID(0);
       skipper.advance(previousMaxDoc + 1);
@@ -757,6 +821,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
         maxDoc = Math.max(maxDoc, iterator.docID());
         minVal = Math.min(minVal, iterator.minValue());
         maxVal = Math.max(maxVal, iterator.maxValue());
+        maxValueCount = Math.max(maxValueCount, iterator.docValueCount());
         iterator.advance(iterator.docID() + 1);
       }
       if (skipperHasAccurateDocBounds()) {
@@ -788,6 +853,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
     }
 
     assertEquals(docCount, skipper.docCount());
+    assertEquals(maxValueCount, skipper.maxValueCount());
     return docCount;
   }
 
@@ -836,6 +902,8 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
     long minValue() throws IOException;
 
     int docID();
+
+    int docValueCount();
   }
 
   public void testMismatchedFields() throws Exception {

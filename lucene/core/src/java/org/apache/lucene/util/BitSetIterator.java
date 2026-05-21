@@ -94,6 +94,17 @@ public class BitSetIterator extends AbstractDocIdSetIterator {
   }
 
   @Override
+  public int docIDRunEnd() {
+    assert doc != NO_MORE_DOCS;
+    int next = doc + 1;
+    if (next >= length) {
+      return length;
+    }
+    int end = bits.nextClearBit(next);
+    return end == NO_MORE_DOCS ? length : end;
+  }
+
+  @Override
   public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
     if (upTo > doc && bits instanceof FixedBitSet fixedBits) {
       int actualUpto = Math.min(upTo, length);

@@ -249,13 +249,17 @@ public class SearchGroup<T> {
           // System.out.println("      competes=" + competes);
 
           if (competes) {
-            // Group's sort changed -- remove & re-insert
-            if (mergedGroup.inQueue) {
+            // Group's sort changed -- remove & re-insert, update first group in place for
+            // efficiency
+            boolean skipHeavyOps = queue.first() == mergedGroup;
+            if (mergedGroup.inQueue && !skipHeavyOps) {
               queue.remove(mergedGroup);
             }
             mergedGroup.topValues = group.sortValues;
             mergedGroup.minShardIndex = shard.shardIndex;
-            queue.add(mergedGroup);
+            if (!skipHeavyOps) {
+              queue.add(mergedGroup);
+            }
             mergedGroup.inQueue = true;
           }
         }
@@ -316,11 +320,7 @@ public class SearchGroup<T> {
         }
       }
 
-      if (newTopGroups.isEmpty()) {
-        return null;
-      } else {
-        return newTopGroups;
-      }
+      return newTopGroups;
     }
   }
 
@@ -329,15 +329,9 @@ public class SearchGroup<T> {
    * provided groupSort must match how the groups were sorted, and the provided SearchGroups must
    * have been computed with fillFields=true passed to {@link
    * FirstPassGroupingCollector#getTopGroups}.
-   *
-   * <p>NOTE: this returns null if the topGroups is empty.
    */
   public static <T> Collection<SearchGroup<T>> merge(
       List<Collection<SearchGroup<T>>> topGroups, int offset, int topN, Sort groupSort) {
-    if (topGroups.isEmpty()) {
-      return null;
-    } else {
-      return new GroupMerger<T>(groupSort).merge(topGroups, offset, topN);
-    }
+    return new GroupMerger<T>(groupSort).merge(topGroups, offset, topN);
   }
 }

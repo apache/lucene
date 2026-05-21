@@ -256,7 +256,7 @@ public class PhraseWildcardQuery extends Query {
             .scorer(
                 boost,
                 searcher.collectionStatistics(field),
-                termsData.termStatsList.toArray(new TermStatistics[0]));
+                termsData.termStatsList.toArray(TermStatistics[]::new));
       }
 
       @Override

@@ -34,7 +34,7 @@ class ConjunctionScorer extends Scorer {
   ConjunctionScorer(Collection<Scorer> required, Collection<Scorer> scorers) {
     assert required.containsAll(scorers);
     this.disi = ConjunctionUtils.intersectScorers(required);
-    this.scorers = scorers.toArray(new Scorer[scorers.size()]);
+    this.scorers = scorers.toArray(Scorer[]::new);
     this.required = required;
   }
 

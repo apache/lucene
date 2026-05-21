@@ -21,6 +21,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.io.IOException;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
+import org.apache.lucene.document.column.LongValuesCursor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Counter;
@@ -62,6 +63,21 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
     updateBytesUsed();
 
     lastDocID = docID;
+  }
+
+  void addDenseValues(int firstDocID, LongValuesCursor cursor) {
+    int numValues = cursor.size();
+    if (numValues == 0) {
+      return;
+    }
+    assert firstDocID > lastDocID;
+
+    pending.add(cursor);
+    docsWithField.addRange(firstDocID, firstDocID + numValues);
+
+    updateBytesUsed();
+
+    lastDocID = firstDocID + numValues - 1;
   }
 
   private void updateBytesUsed() {

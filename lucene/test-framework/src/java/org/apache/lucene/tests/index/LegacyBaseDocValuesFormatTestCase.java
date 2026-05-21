@@ -2448,7 +2448,7 @@ public abstract class LegacyBaseDocValuesFormatTestCase extends BaseIndexFileFor
       final int length = TestUtil.nextInt(random(), minLength, maxLength);
       valueSet.add(TestUtil.randomSimpleString(random(), length));
     }
-    String[] uniqueValues = valueSet.toArray(new String[0]);
+    String[] uniqueValues = valueSet.toArray(String[]::new);
 
     // index some docs
     if (VERBOSE) {

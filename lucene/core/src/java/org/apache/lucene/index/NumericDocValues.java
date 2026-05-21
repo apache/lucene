@@ -20,6 +20,7 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.FieldExistsQuery;
+import org.apache.lucene.util.FixedBitSet;
 
 /** A per-document numeric value. */
 public abstract class NumericDocValues extends DocValuesIterator {
@@ -89,6 +90,35 @@ public abstract class NumericDocValues extends DocValuesIterator {
         value = defaultValue;
       }
       values[i] = value;
+    }
+  }
+
+  /**
+   * Fills a {@link org.apache.lucene.util.FixedBitSet} with the doc IDs in {@code [fromDoc, toDoc)}
+   * whose values are in {@code [minValue, maxValue]}. This is a bulk operation that avoids per-doc
+   * virtual dispatch overhead.
+   *
+   * <p>The default implementation falls back to per-doc evaluation via {@link #advanceExact} and
+   * {@link #longValue}. Subclasses with random-access storage (e.g., dense fixed-bitsPerValue
+   * fields) can override this for significantly better performance.
+   *
+   * @param fromDoc first doc ID to evaluate (inclusive)
+   * @param toDoc last doc ID to evaluate (exclusive)
+   * @param minValue lower bound of the range (inclusive)
+   * @param maxValue upper bound of the range (inclusive)
+   * @param bitSet the bitset to fill
+   * @param offset subtracted from each doc ID before setting the bit
+   */
+  public void rangeIntoBitSet(
+      int fromDoc, int toDoc, long minValue, long maxValue, FixedBitSet bitSet, int offset)
+      throws IOException {
+    for (int d = fromDoc; d < toDoc; d++) {
+      if (advanceExact(d)) {
+        long v = longValue();
+        if (v >= minValue && v <= maxValue) {
+          bitSet.set(d - offset);
+        }
+      }
     }
   }
 }

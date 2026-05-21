@@ -171,7 +171,7 @@ public class TestStableMSBRadixSorter extends LuceneTestCase {
       // System.out.println("add substring count=" + substringsSet.size() + ": " + br);
     }
 
-    BytesRef[] substrings = substringsSet.toArray(new BytesRef[substringsSet.size()]);
+    BytesRef[] substrings = substringsSet.toArray(BytesRef[]::new);
     double[] chance = new double[substrings.length];
     double sum = 0.0;
     for (int i = 0; i < substrings.length; i++) {
@@ -208,6 +208,6 @@ public class TestStableMSBRadixSorter extends LuceneTestCase {
       iters++;
     }
 
-    test(stringsSet.toArray(new BytesRef[stringsSet.size()]), stringsSet.size());
+    test(stringsSet.toArray(BytesRef[]::new), stringsSet.size());
   }
 }

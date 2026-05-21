@@ -99,5 +99,11 @@ public abstract class QueryVisitor {
   }
 
   /** A QueryVisitor implementation that does nothing */
-  public static final QueryVisitor EMPTY_VISITOR = new QueryVisitor() {};
+  public static final QueryVisitor EMPTY_VISITOR =
+      new QueryVisitor() {
+        @Override
+        public boolean acceptField(String field) {
+          return false;
+        }
+      };
 }
