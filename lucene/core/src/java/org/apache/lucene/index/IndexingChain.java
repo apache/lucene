@@ -1124,10 +1124,14 @@ final class IndexingChain implements Accountable {
   }
 
   private static void processDictionaryColumn(
-      int baseDocID, int numDocs, DictionaryColumn column, PerField pf, IndexableFieldType fieldType)
+      int baseDocID,
+      int numDocs,
+      DictionaryColumn column,
+      PerField pf,
+      IndexableFieldType fieldType)
       throws IOException {
     final DocValuesType dvType = fieldType.docValuesType();
-    final BytesRef[] dict = column.dictionary();
+    final List<BytesRef> dict = column.dictionary();
 
     switch (dvType) {
       case SORTED -> {

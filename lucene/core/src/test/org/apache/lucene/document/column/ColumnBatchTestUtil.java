@@ -529,17 +529,34 @@ public class ColumnBatchTestUtil {
   public static class ArrayDictionaryColumn extends DictionaryColumn {
     private final int[] docIds;
     private final int[] ords;
+    private final StoredValue.Type storedType;
 
     public ArrayDictionaryColumn(
         String name,
         IndexableFieldType fieldType,
-        BytesRef[] dictionary,
+        List<BytesRef> dictionary,
         int[] docIds,
         int[] ords) {
+      this(name, fieldType, dictionary, docIds, ords, StoredValue.Type.BINARY);
+    }
+
+    public ArrayDictionaryColumn(
+        String name,
+        IndexableFieldType fieldType,
+        List<BytesRef> dictionary,
+        int[] docIds,
+        int[] ords,
+        StoredValue.Type storedType) {
       super(name, fieldType, Density.SPARSE, dictionary);
       assert docIds.length == ords.length;
       this.docIds = docIds;
       this.ords = ords;
+      this.storedType = storedType;
+    }
+
+    @Override
+    public StoredValue.Type storedType() {
+      return storedType;
     }
 
     @Override
@@ -566,7 +583,7 @@ public class ColumnBatchTestUtil {
     private final int[] ords;
 
     public ArrayDenseDictionaryColumn(
-        String name, IndexableFieldType fieldType, BytesRef[] dictionary, int[] ords) {
+        String name, IndexableFieldType fieldType, List<BytesRef> dictionary, int[] ords) {
       super(name, fieldType, Density.DENSE, dictionary);
       this.ords = ords;
     }

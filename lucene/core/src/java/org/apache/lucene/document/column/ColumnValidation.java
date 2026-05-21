@@ -135,20 +135,16 @@ public final class ColumnValidation {
   }
 
   /** Validates a {@link DictionaryColumn} against the field type it will feed. */
-  public static void validateDictionaryColumn(DictionaryColumn column, IndexableFieldType fieldType) {
+  public static void validateDictionaryColumn(
+      DictionaryColumn column, IndexableFieldType fieldType) {
     final DocValuesType dv = fieldType.docValuesType();
-    if (dv != DocValuesType.SORTED && dv != DocValuesType.SORTED_SET) {
+    if (dv == DocValuesType.NUMERIC || dv == DocValuesType.SORTED_NUMERIC) {
       throw new IllegalArgumentException(
           "DictionaryColumn \""
               + column.name()
-              + "\" requires SORTED or SORTED_SET doc values; got "
-              + dv);
-    }
-    if (fieldType.indexOptions() != IndexOptions.NONE) {
-      throw new IllegalArgumentException(
-          "DictionaryColumn \""
-              + column.name()
-              + "\" does not support inverted indexing (indexOptions must be NONE)");
+              + "\" cannot feed docValuesType="
+              + dv
+              + "; use a LongColumn");
     }
     if (fieldType.pointDimensionCount() != 0) {
       throw new IllegalArgumentException(
@@ -158,13 +154,22 @@ public final class ColumnValidation {
     }
     if (fieldType.stored()) {
       final StoredValue.Type storedType = column.storedType();
-      if (storedType != StoredValue.Type.BINARY) {
-        throw new IllegalArgumentException(
-            "DictionaryColumn \""
-                + column.name()
-                + "\" storedType="
-                + storedType
-                + " is not supported; only BINARY is allowed");
+      switch (storedType) {
+        case BINARY, STRING -> {
+          // OK.
+        }
+        case INTEGER, LONG, FLOAT, DOUBLE ->
+            throw new IllegalArgumentException(
+                "DictionaryColumn \""
+                    + column.name()
+                    + "\" storedType="
+                    + storedType
+                    + " is not supported; use a LongColumn for numeric stored data");
+        case DATA_INPUT ->
+            throw new IllegalArgumentException(
+                "DictionaryColumn \""
+                    + column.name()
+                    + "\" storedType DATA_INPUT is not supported for columns");
       }
     }
   }

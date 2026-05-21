@@ -21,8 +21,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 /**
  * A tuple cursor over a {@link DictionaryColumn}. Yields {@code (docID, ordinal)} pairs.
  * Batch-local doc-ids are returned in non-decreasing order; the same doc-id may repeat for
- * multi-valued fields (e.g. {@link org.apache.lucene.index.DocValuesType#SORTED_SET
- * SORTED_SET}).
+ * multi-valued fields (e.g. {@link org.apache.lucene.index.DocValuesType#SORTED_SET SORTED_SET}).
  *
  * <p>Each ordinal must be in {@code [0, column.dictionary().length)}.
  *
@@ -44,8 +43,8 @@ public abstract class OrdinalsTupleCursor {
    * Returns the ordinal at the current cursor position. Only valid after a successful {@link
    * #nextDoc()} call that returned a value other than {@link DocIdSetIterator#NO_MORE_DOCS}.
    *
-   * <p>The returned value must be in {@code [0, dictionary.length)} where {@code dictionary} is
-   * the enclosing column's dictionary.
+   * <p>The returned value must be in {@code [0, dictionary.length)} where {@code dictionary} is the
+   * enclosing column's dictionary.
    */
   public abstract int ordValue();
 }

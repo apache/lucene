@@ -32,8 +32,8 @@ public abstract class OrdinalsCursor {
   private final int size;
 
   /**
-   * Creates a cursor that will produce exactly {@code size} ordinals, one per batch-local doc-id
-   * in {@code [0, size)}.
+   * Creates a cursor that will produce exactly {@code size} ordinals, one per batch-local doc-id in
+   * {@code [0, size)}.
    */
   protected OrdinalsCursor(int size) {
     this.size = size;
@@ -47,8 +47,8 @@ public abstract class OrdinalsCursor {
   /**
    * Returns the next ordinal. Must not be called more than {@link #size()} times.
    *
-   * <p>The returned value must be in {@code [0, dictionary.length)} where {@code dictionary} is
-   * the enclosing column's dictionary. The indexing path validates this on first use per distinct
+   * <p>The returned value must be in {@code [0, dictionary.length)} where {@code dictionary} is the
+   * enclosing column's dictionary. The indexing path validates this on first use per distinct
    * ordinal and throws {@link IllegalArgumentException} on violation.
    */
   public abstract int nextOrd();

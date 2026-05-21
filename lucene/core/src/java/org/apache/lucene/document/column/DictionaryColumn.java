@@ -18,6 +18,7 @@ package org.apache.lucene.document.column;
 
 import static org.apache.lucene.util.ByteBlockPool.BYTE_BLOCK_SIZE;
 
+import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.index.IndexableFieldType;
@@ -27,16 +28,16 @@ import org.apache.lucene.util.BytesRef;
  * A {@link Column} that provides string or binary values via a pre-defined term dictionary plus
  * per-doc ordinals into that dictionary. Used for {@link
  * org.apache.lucene.index.DocValuesType#SORTED SORTED} and {@link
- * org.apache.lucene.index.DocValuesType#SORTED_SET SORTED_SET} doc values, and for stored binary
- * fields.
+ * org.apache.lucene.index.DocValuesType#SORTED_SET SORTED_SET} doc values, for stored binary or
+ * string fields, and for term inversion (tokenized or untokenized).
  *
  * <p>Iteration is performed via cursors. {@link #tuples()} is always available and yields {@code
  * (docID, ordinal)} pairs. {@link #values()} is a bulk cursor over consecutive doc-ids; it must be
- * overridden when {@link #density()} is {@link Column.Density#DENSE DENSE} and is only consulted
- * in that case.
+ * overridden when {@link #density()} is {@link Column.Density#DENSE DENSE} and is only consulted in
+ * that case.
  *
- * <p>The caller supplies a fixed {@code BytesRef[] dictionary} at construction. Per-doc ordinals
- * returned by cursors index into this dictionary.
+ * <p>The caller supplies a fixed {@code List<BytesRef> dictionary} at construction. Per-doc
+ * ordinals returned by cursors index into this dictionary.
  *
  * <p>Duplicate dictionary entries are permitted; two slots with the same bytes will both resolve to
  * the same Lucene-level ordinal. The dictionary may be in any order.
@@ -48,7 +49,7 @@ import org.apache.lucene.util.BytesRef;
  */
 public abstract class DictionaryColumn extends Column {
 
-  private final BytesRef[] dictionary;
+  private final List<BytesRef> dictionary;
 
   /**
    * Creates a DictionaryColumn.
@@ -61,15 +62,15 @@ public abstract class DictionaryColumn extends Column {
    *     allowed but incur a minor per-batch cost.
    */
   protected DictionaryColumn(
-      String name, IndexableFieldType fieldType, Density density, BytesRef[] dictionary) {
+      String name, IndexableFieldType fieldType, Density density, List<BytesRef> dictionary) {
     super(name, fieldType, density);
     Objects.requireNonNull(dictionary, "dictionary must not be null");
-    if (dictionary.length == 0) {
+    if (dictionary.isEmpty()) {
       throw new IllegalArgumentException(
           "DictionaryColumn \"" + name + "\": dictionary must not be empty");
     }
-    for (int i = 0; i < dictionary.length; i++) {
-      BytesRef entry = dictionary[i];
+    for (int i = 0; i < dictionary.size(); i++) {
+      BytesRef entry = dictionary.get(i);
       if (entry == null) {
         throw new IllegalArgumentException(
             "DictionaryColumn \"" + name + "\": dictionary entry at index " + i + " is null");
@@ -88,10 +89,10 @@ public abstract class DictionaryColumn extends Column {
   }
 
   /**
-   * Returns the term dictionary. The array is indexed by ordinal; cursors must produce values in
-   * {@code [0, dictionary().length)}.
+   * Returns the term dictionary. The list is indexed by ordinal; cursors must produce values in
+   * {@code [0, dictionary().size())}.
    */
-  public final BytesRef[] dictionary() {
+  public final List<BytesRef> dictionary() {
     return dictionary;
   }
 
@@ -103,9 +104,9 @@ public abstract class DictionaryColumn extends Column {
 
   /**
    * Returns a fresh dense cursor for doc-ids {@code [0, numDocs)}, producing exactly one ordinal
-   * per doc. Must be overridden when {@link #density()} is {@link Column.Density#DENSE DENSE};
-   * the default implementation throws {@link UnsupportedOperationException} and is never called
-   * for {@link Column.Density#SPARSE SPARSE} columns.
+   * per doc. Must be overridden when {@link #density()} is {@link Column.Density#DENSE DENSE}; the
+   * default implementation throws {@link UnsupportedOperationException} and is never called for
+   * {@link Column.Density#SPARSE SPARSE} columns.
    */
   public OrdinalsCursor values() {
     throw new UnsupportedOperationException(
@@ -113,8 +114,9 @@ public abstract class DictionaryColumn extends Column {
   }
 
   /**
-   * The stored-field type emitted for this column. Returns {@link StoredValue.Type#BINARY};
-   * callers that need UTF-8 string semantics are responsible for decoding the bytes.
+   * The stored-field type emitted for this column. The default is {@link StoredValue.Type#BINARY}.
+   * Only {@link StoredValue.Type#BINARY} and {@link StoredValue.Type#STRING} are supported;
+   * subclasses may override to emit string stored values.
    */
   public StoredValue.Type storedType() {
     return StoredValue.Type.BINARY;

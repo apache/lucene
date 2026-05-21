@@ -21,6 +21,7 @@ import static org.apache.lucene.util.ByteBlockPool.BYTE_BLOCK_SIZE;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.document.column.OrdinalsCursor;
@@ -93,24 +94,24 @@ class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
    * Adds a single dictionary-encoded value for the given doc. The ordinal must be in {@code [0,
    * dictionary.length)}. At most one call per docID in monotonically increasing order.
    */
-  void addOrdinalValue(int docID, BytesRef[] dictionary, int ord) {
+  void addOrdinalValue(int docID, List<BytesRef> dictionary, int ord) {
     if (docID <= lastDocID) {
       throw new IllegalArgumentException(
           "DocValuesField \""
               + fieldInfo.name
               + "\" appears more than once in this document (only one value is allowed per field)");
     }
-    if (ord < 0 || ord >= dictionary.length) {
+    if (ord < 0 || ord >= dictionary.size()) {
       throw new IllegalArgumentException(
           "DocValuesField \""
               + fieldInfo.name
               + "\": ordinal "
               + ord
               + " is out of range [0, "
-              + dictionary.length
+              + dictionary.size()
               + ")");
     }
-    addOneValue(dictionary[ord]);
+    addOneValue(dictionary.get(ord));
     docsWithField.add(docID);
     lastDocID = docID;
   }
@@ -120,33 +121,33 @@ class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
    * The cursor provides exactly one ordinal per doc; all ordinals must be in {@code [0,
    * dictionary.length)}.
    *
-   * <p>This path performs one {@code BytesRefHash} lookup per distinct used dictionary entry
-   * rather than one per document, which is a significant win when the dictionary is much smaller
-   * than the number of documents.
+   * <p>This path performs one {@code BytesRefHash} lookup per distinct used dictionary entry rather
+   * than one per document, which is a significant win when the dictionary is much smaller than the
+   * number of documents.
    */
-  void addDenseOrdinalValues(int firstDocID, BytesRef[] dictionary, OrdinalsCursor cursor) {
+  void addDenseOrdinalValues(int firstDocID, List<BytesRef> dictionary, OrdinalsCursor cursor) {
     int n = cursor.size();
     if (n == 0) {
       return;
     }
     assert firstDocID > lastDocID;
-    int[] ordToHash = new int[dictionary.length];
+    int[] ordToHash = new int[dictionary.size()];
     Arrays.fill(ordToHash, -1);
     for (int i = 0; i < n; i++) {
       int ord = cursor.nextOrd();
-      if (ord < 0 || ord >= dictionary.length) {
+      if (ord < 0 || ord >= dictionary.size()) {
         throw new IllegalArgumentException(
             "DocValuesField \""
                 + fieldInfo.name
                 + "\": ordinal "
                 + ord
                 + " is out of range [0, "
-                + dictionary.length
+                + dictionary.size()
                 + ")");
       }
       int id = ordToHash[ord];
       if (id < 0) {
-        id = hash.add(dictionary[ord]);
+        id = hash.add(dictionary.get(ord));
         if (id < 0) {
           id = -id - 1;
         } else {
