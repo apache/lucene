@@ -52,9 +52,11 @@ public class TestSortedSkipperScorerSupplier extends LuceneTestCase {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig config =
           new IndexWriterConfig()
-              .setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(skipIntervalSize)))
+              .setCodec(
+                  TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(skipIntervalSize)))
               .setIndexSort(new Sort(new SortField("dv", SortField.Type.LONG, reverse)));
-      try (IndexWriter iw = new IndexWriter(dir, config)) { // not RandomIndexWriter so we stay deterministic
+      try (IndexWriter iw =
+          new IndexWriter(dir, config)) { // not RandomIndexWriter so we stay deterministic
         for (int i = 0; i < blockSizes.length; i++) {
           for (int j = 0; j < blockSizes[i]; j++) {
             Document doc = new Document();
