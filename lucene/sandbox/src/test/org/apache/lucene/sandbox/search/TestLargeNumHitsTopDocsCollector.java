@@ -20,6 +20,7 @@ package org.apache.lucene.sandbox.search;
 import static org.apache.lucene.search.TopDocsCollector.EMPTY_TOPDOCS;
 
 import java.io.IOException;
+import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.IndexReader;
@@ -90,14 +91,22 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
     }
   }
 
-  public void testHowMany() {
-    LargeNumHitsTopDocsCollector largeCollector = new LargeNumHitsTopDocsCollector(15);
+  public void testHowMany() throws IOException {
+    IndexSearcher searcher = newSearcher(reader);
+    LargeNumHitsTopDocsCollectorManager largeCollectorManager =
+        new LargeNumHitsTopDocsCollectorManager(15);
+
+    searcher.search(testQuery, largeCollectorManager);
+    List<LargeNumHitsTopDocsCollector> collectorList = largeCollectorManager.getCollectors();
+    LargeNumHitsTopDocsCollector largeCollector =
+        collectorList.get(random().nextInt(0, collectorList.size()));
 
     IllegalArgumentException expected =
         expectThrows(IllegalArgumentException.class, () -> largeCollector.topDocs(-1));
     assertTrue(expected.getMessage().contains("Number of hits requested must not be negative"));
 
     assertEquals(EMPTY_TOPDOCS, largeCollector.topDocs(0));
+    assertEquals(largeCollector.totalHits, largeCollector.topDocs(35_000).totalHits.value());
   }
 
   public void testNoPQBuild() throws IOException {
@@ -119,17 +128,18 @@ public class TestLargeNumHitsTopDocsCollector extends LuceneTestCase {
 
   public void testPQBuild() throws IOException {
     IndexSearcher searcher = newSearcher(reader);
+    int requestedHitCount = random().nextInt(1, 1000);
     LargeNumHitsTopDocsCollectorManager largeCollectorManager =
-        new LargeNumHitsTopDocsCollectorManager(1);
+        new LargeNumHitsTopDocsCollectorManager(requestedHitCount);
     TopScoreDocCollectorManager regularCollectorManager =
-        new TopScoreDocCollectorManager(1, Integer.MAX_VALUE);
+        new TopScoreDocCollectorManager(requestedHitCount, Integer.MAX_VALUE);
 
     TopDocs largeTopDocs = searcher.search(testQuery, largeCollectorManager);
     TopDocs regularTopDocs = searcher.search(testQuery, regularCollectorManager);
     assertEquals(largeTopDocs.totalHits.value(), regularTopDocs.totalHits.value());
 
     for (LargeNumHitsTopDocsCollector largeCollector : largeCollectorManager.getCollectors()) {
-      if (largeCollector.totalHits > 0) {
+      if (largeCollector.totalHits > requestedHitCount) {
         assertNotNull(largeCollector.pq);
         assertNotNull(largeCollector.pqTop);
       }
