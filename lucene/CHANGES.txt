@@ -311,6 +311,9 @@ New Features
   or mixed) via log-odds fusion with softplus gating and sqrt(n) confidence scaling.
   (Jaepil Jeong)
 
+* GITHUB#15794: Add DocValuesSkipper metadata for the maximum number of values
+  on any document in a field. (Prithvi S)
+
 Improvements
 ---------------------
 * GITHUB#15823: Implement method to add all stream elements into a PriorityQueue.
@@ -366,6 +369,8 @@ Optimizations
 
 * GITHUB#15779: Improve BytesRefHash.add performance by optimize rehash operation (tyronecai)
 
+* GITHUB#15879: Optimize TopGroups.merge() maxScore computation for relevance sorting (Binlong Gao)
+
 * GITHUB#15896: Skip heavy TreeSet opts for the first group in SearchGroup#merge (Binlong Gao)
 
 * GITHUB#15886: Cache frozen FieldType to skip redundant schema validation. (Tim Brooks)
@@ -386,6 +391,9 @@ Optimizations
   merge for vectors is finshed. (Ignacio Vera)
 
 * GITHUB#16001: IndexSearcher.count() was calling query.rewrite twice, a regression since v9.10 (David Smiley)
+
+* GITHUB#16050: Add SIMD-accelerated bulk range evaluation for dense numeric doc values via
+  BatchDocValuesRangeIterator and DocValuesRangeSupport. (Sagar Upadhyaya)
 
 * GITHUB#16061, GITHUB#16070, GITHUB#16085: Improve cost estimation in SortedSetDocValuesRangeQuery  and
   SortedNumericDocValuesRangeQuery when using DocValuesSkipper, the field is dense and is the primary sort of
