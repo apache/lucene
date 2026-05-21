@@ -338,10 +338,14 @@ Improvements
 
 * GITHUB#15574, GITHUB#15995: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
 
+* GITHUB#15565: Introduce AllGroupHeadsCollectorManager to parallelize search when using AllGroupHeadsCollector. (Binlong Gao)
+
 * GITHUB#15989: DocValuesRangeIterator always tries to use skipper-based block iteration
   as its approximation. (Alan Woodward)
 
 * GITHUB#16000: Clarify that Accountable#ramBytesUsed() reports JVM heap memory only. (Luca Cavanna)
+
+* GITHUB#15660: Introduce LargeNumHitsTopDocsCollectorManager to parallelize search when using LargeNumHitsTopDocsCollector. (Binlong Gao)
 
 * GITHUB#16091: Replace deprecated IndexSearcher#search(Query, Collector) usage with CollectorManager
   in JoinUtil#createJoinQuery for the GlobalOrdinalsCollector case. (Luca Cavanna)
@@ -490,6 +494,8 @@ Other
 * GITHUB#15951: Fix WindowsFS onClose race condition (Szymon Bialkowski)
 
 * GITHUB#15960: Move parent field from DWPT to IndexingChain. (Tim Brooks)
+
+* GITHUB#16090: Make CollectorMemoryTracker instance members final. (Luca Cavanna)
 
 ======================= Lucene 10.4.0 =======================
 
