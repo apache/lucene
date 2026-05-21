@@ -279,7 +279,51 @@ public class TestGrouping extends LuceneTestCase {
     Collection<SearchGroup<BytesRef>> groups =
         searcher.search(MatchAllDocsQuery.INSTANCE, firstPassGroupingCollectorManager);
 
-    assertNull(groups); // Should return null when no groups found
+    assertNotNull(groups);
+    assertTrue(groups.isEmpty());
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testFirstPassGroupingCollectorManagerConstructor() {
+    IllegalArgumentException e1 =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                new FirstPassGroupingCollectorManager<>(
+                    () -> new TermGroupSelector("group"), Sort.RELEVANCE, -1, 10));
+    assertTrue(e1.getMessage().contains("groupOffset must be >= 0"));
+
+    IllegalArgumentException e2 =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                new FirstPassGroupingCollectorManager<>(
+                    () -> new TermGroupSelector("group"), Sort.RELEVANCE, 0, 0));
+    assertTrue(e2.getMessage().contains("topNGroups must be >= 1"));
+  }
+
+  public void testFirstPassGroupingCollectorManagerReduceEmptyResult() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w =
+        new RandomIndexWriter(random(), dir, newIndexWriterConfig(new MockAnalyzer(random())));
+    Document doc = new Document();
+    addGroupField(doc, "author", "author1");
+    doc.add(new TextField("content", "random text", Field.Store.NO));
+    w.addDocument(doc);
+
+    DirectoryReader reader = w.getReader();
+    w.close();
+    IndexSearcher searcher = newSearcher(reader);
+
+    // query matches nothing — reduce should return empty, not null
+    FirstPassGroupingCollectorManager<?> manager =
+        createFirstPassCollectorManager(random().nextBoolean(), "author", Sort.RELEVANCE, 0, 10);
+    Collection<?> result =
+        searcher.search(new TermQuery(new Term("content", "nonexistent")), manager);
+    assertNotNull(result);
+    assertTrue(result.isEmpty());
 
     reader.close();
     dir.close();

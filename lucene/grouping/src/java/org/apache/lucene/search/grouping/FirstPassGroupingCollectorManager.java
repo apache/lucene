@@ -42,9 +42,9 @@ import org.apache.lucene.search.Sort;
  *         0,
  *         topNGroups);
  *
- * Collection&lt;SearchGroup&lt;BytesRef&gt;&gt; topGroups = searcher.search(query, manager);
+ * Collection&lt;SearchGroup&lt;BytesRef&gt;&gt; searchGroups = searcher.search(query, manager);
  *
- * // topGroups can then be passed to SecondPassGroupingCollector for full group results
+ * // searchGroups can then be passed to a second pass collector manager like TopGroupsCollectorManager for full group results
  * </pre>
  *
  * @lucene.experimental
@@ -89,6 +89,12 @@ public class FirstPassGroupingCollectorManager<T>
       int groupOffset,
       int topNGroups,
       boolean ignoreDocsWithoutGroupField) {
+    if (groupOffset < 0) {
+      throw new IllegalArgumentException("groupOffset must be >= 0 (got " + groupOffset + ")");
+    }
+    if (topNGroups < 1) {
+      throw new IllegalArgumentException("topNGroups must be >= 1 (got " + topNGroups + ")");
+    }
     this.groupSelectorFactory = groupSelectorFactory;
     this.groupSort = groupSort;
     this.groupOffset = groupOffset;
