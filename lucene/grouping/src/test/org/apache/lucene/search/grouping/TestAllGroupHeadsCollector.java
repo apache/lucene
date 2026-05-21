@@ -185,6 +185,14 @@ public class TestAllGroupHeadsCollector extends LuceneTestCase {
         openBitSetContains(
             new int[] {0, 3, 4, 6}, groupHeadsResult.retrieveGroupHeads(maxDoc), maxDoc));
 
+    // query that matches no documents should return empty group heads
+    allGroupHeadsCollectorManager = createRandomCollectorManager(groupField, sortWithinGroup);
+    groupHeadsResult =
+        indexSearcher.search(
+            new TermQuery(new Term("content", "nonexistent")), allGroupHeadsCollectorManager);
+    assertEquals(0, groupHeadsResult.retrieveGroupHeads().length);
+    assertEquals(0, ((FixedBitSet) groupHeadsResult.retrieveGroupHeads(maxDoc)).cardinality());
+
     indexSearcher.getIndexReader().close();
     dir.close();
   }

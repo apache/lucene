@@ -143,8 +143,7 @@ public class AllGroupHeadsCollectorManager<T>
       SortField[] sortFields) {
     FieldComparator[] comparators = head.getComparators();
     int cmp;
-    // null comparators means sorting by relevance
-    if (comparators == null) {
+    if (sortWithinGroup.equals(Sort.RELEVANCE)) {
       cmp = Float.compare((float) sortValues[0], (float) existing.sortValues[0]);
       return cmp > 0 || (cmp == 0 && head.doc < existing.doc);
     } else {
