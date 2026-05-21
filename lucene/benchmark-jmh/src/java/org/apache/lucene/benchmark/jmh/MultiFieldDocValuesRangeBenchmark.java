@@ -87,7 +87,7 @@ public class MultiFieldDocValuesRangeBenchmark {
     @Param({"1000000", "10000000"})
     public int docCount;
 
-    @Param({"3", "5"})
+    @Param({"1", "3", "5"})
     public int fieldCount;
 
     @Param({CLUSTERED, MIXED, RANDOM, SORTED})
@@ -128,6 +128,17 @@ public class MultiFieldDocValuesRangeBenchmark {
       bqBuilder.add(
           SortedNumericDocValuesField.newSlowRangeQuery("field" + f, range[0], range[1]),
           Occur.FILTER);
+    }
+    // For fieldCount=1 on non-sorted patterns, add a MatchAllDocsQuery so
+    // DenseConjunctionBulkScorer is used and intoBitSet() is called on the range iterator
+    // (enabling the SIMD path). Without this, a single-clause BooleanQuery rewrites to the
+    // query itself and goes through DefaultBulkScorer which doesn't call intoBitSet().
+    // For the sorted pattern, field0 is the index sort key so
+    // getDocIdSetIteratorOrNullForPrimarySort
+    // fires and returns DocIdSetIterator.range() — adding MatchAllDocsQuery here would force it
+    // through DenseConjunctionBulkScorer and bypass that fast path, causing a regression.
+    if (params.fieldCount == 1 && !params.dataPattern.equals(SORTED)) {
+      bqBuilder.add(new org.apache.lucene.search.MatchAllDocsQuery(), Occur.FILTER);
     }
     query = bqBuilder.build();
   }
