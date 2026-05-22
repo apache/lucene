@@ -17,14 +17,21 @@
 package org.apache.lucene.index;
 
 import static org.apache.lucene.document.column.ColumnBatchTestUtil.ArrayDenseDictionaryColumn;
+import static org.apache.lucene.document.column.ColumnBatchTestUtil.ArrayDenseLongColumn;
 import static org.apache.lucene.document.column.ColumnBatchTestUtil.ArrayDictionaryColumn;
 import static org.apache.lucene.document.column.ColumnBatchTestUtil.simpleBatch;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
+import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StoredValue;
@@ -35,6 +42,7 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 
 /** Tests for {@link org.apache.lucene.document.column.DictionaryColumn} end-to-end indexing. */
@@ -81,9 +89,47 @@ public class TestDictionaryColumn extends LuceneTestCase {
     dir.close();
   }
 
-  // -------------------------------------------------------------------------
-  // SORTED doc values — dense path
-  // -------------------------------------------------------------------------
+  /**
+   * Many sparse docs reusing a small dictionary: exercises the sparse SORTED bulk path's ord→hash
+   * translation table. The dictionary contains an unused entry which must not be materialized in
+   * the segment's term universe.
+   */
+  public void testSortedSparseLargeBatchReusesDictionary() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    int n = 1000;
+    int[] docIds = new int[n];
+    int[] ords = new int[n];
+    for (int i = 0; i < n; i++) {
+      docIds[i] = i;
+      ords[i] = i % 2; // only ords 0 and 1 used; ord 2 ("red") is in the dictionary but unused
+    }
+
+    w.addBatch(
+        simpleBatch(
+            n,
+            new ArrayDictionaryColumn(
+                "color", SortedDocValuesField.TYPE, COLORS, docIds, ords)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    SortedDocValues sdv = leaf.getSortedDocValues("color");
+    assertNotNull(sdv);
+
+    // Only two distinct terms ("blue", "green") were used.
+    assertEquals(2, sdv.getValueCount());
+    for (int i = 0; i < n; i++) {
+      assertEquals(i, sdv.nextDoc());
+      BytesRef expected = i % 2 == 0 ? new BytesRef("blue") : new BytesRef("green");
+      assertEquals(expected, sdv.lookupOrd(sdv.ordValue()));
+    }
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, sdv.nextDoc());
+
+    r.close();
+    w.close();
+    dir.close();
+  }
 
   public void testSortedDense() throws IOException {
     Directory dir = newDirectory();
@@ -116,10 +162,6 @@ public class TestDictionaryColumn extends LuceneTestCase {
     w.close();
     dir.close();
   }
-
-  // -------------------------------------------------------------------------
-  // SORTED_SET doc values
-  // -------------------------------------------------------------------------
 
   public void testSortedSet() throws IOException {
     Directory dir = newDirectory();
@@ -165,10 +207,6 @@ public class TestDictionaryColumn extends LuceneTestCase {
     dir.close();
   }
 
-  // -------------------------------------------------------------------------
-  // SORTED_SET deduplicates repeated ords within a single doc
-  // -------------------------------------------------------------------------
-
   public void testSortedSetDeduplicatesWithinDoc() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
@@ -198,10 +236,6 @@ public class TestDictionaryColumn extends LuceneTestCase {
     dir.close();
   }
 
-  // -------------------------------------------------------------------------
-  // Stored fields
-  // -------------------------------------------------------------------------
-
   public void testStoredField() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
@@ -230,10 +264,6 @@ public class TestDictionaryColumn extends LuceneTestCase {
     w.close();
     dir.close();
   }
-
-  // -------------------------------------------------------------------------
-  // Dictionary duplicates: both dict slots resolve to the same ordinal
-  // -------------------------------------------------------------------------
 
   public void testDictionaryWithDuplicateEntries() throws IOException {
     Directory dir = newDirectory();
@@ -267,10 +297,6 @@ public class TestDictionaryColumn extends LuceneTestCase {
     w.close();
     dir.close();
   }
-
-  // -------------------------------------------------------------------------
-  // Multi-batch: two DictionaryColumn batches with different dictionaries
-  // -------------------------------------------------------------------------
 
   public void testMultipleBatchesDifferentDictionaries() throws IOException {
     Directory dir = newDirectory();
@@ -313,10 +339,6 @@ public class TestDictionaryColumn extends LuceneTestCase {
     dir.close();
   }
 
-  // -------------------------------------------------------------------------
-  // Mixing DictionaryColumn batch with plain addDocument on the same field
-  // -------------------------------------------------------------------------
-
   public void testMixedWithPlainDocument() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w =
@@ -354,10 +376,6 @@ public class TestDictionaryColumn extends LuceneTestCase {
     dir.close();
   }
 
-  // -------------------------------------------------------------------------
-  // Validation: out-of-range ordinal
-  // -------------------------------------------------------------------------
-
   public void testOutOfRangeOrdSparseThrows() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
@@ -393,10 +411,6 @@ public class TestDictionaryColumn extends LuceneTestCase {
     dir.close();
   }
 
-  // -------------------------------------------------------------------------
-  // Validation: constructor rejects empty dictionary, null entries, oversized entries
-  // -------------------------------------------------------------------------
-
   public void testEmptyDictionaryThrows() {
     expectThrows(
         IllegalArgumentException.class,
@@ -414,34 +428,35 @@ public class TestDictionaryColumn extends LuceneTestCase {
                 "f", SortedDocValuesField.TYPE, dict, new int[0], new int[0]));
   }
 
-  // -------------------------------------------------------------------------
-  // Validation: incompatible field types
-  // -------------------------------------------------------------------------
-
-  public void testIncompatibleDocValuesTypeThrows() {
+  public void testIncompatibleDocValuesTypeThrows() throws IOException {
     // NUMERIC is not allowed for DictionaryColumn
     FieldType numericType = new FieldType();
     numericType.setDocValuesType(DocValuesType.NUMERIC);
     numericType.freeze();
-    Directory dir;
-    try {
-      dir = newDirectory();
-    } catch (Exception e) {
-      throw new RuntimeException(e);
-    }
+    Directory dir = newDirectory();
     try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
       ArrayDictionaryColumn col =
           new ArrayDictionaryColumn("f", numericType, COLORS, new int[] {0}, new int[] {0});
       expectThrows(IllegalArgumentException.class, () -> w.addBatch(simpleBatch(1, col)));
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    } finally {
-      try {
-        dir.close();
-      } catch (IOException _) {
-        // ignore
-      }
     }
+    dir.close();
+  }
+
+  public void testRejectsBinaryDocValues() throws IOException {
+    // BINARY DV writer doesn't dedup terms, so DictionaryColumn buys nothing there;
+    // validation should redirect to BinaryColumn.
+    FieldType binaryType = new FieldType();
+    binaryType.setDocValuesType(DocValuesType.BINARY);
+    binaryType.freeze();
+    Directory dir = newDirectory();
+    try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      ArrayDictionaryColumn col =
+          new ArrayDictionaryColumn("f", binaryType, COLORS, new int[] {0}, new int[] {0});
+      IllegalArgumentException e =
+          expectThrows(IllegalArgumentException.class, () -> w.addBatch(simpleBatch(1, col)));
+      assertTrue(e.getMessage(), e.getMessage().contains("BinaryColumn"));
+    }
+    dir.close();
   }
 
   public void testRejectsPoints() throws IOException {
@@ -472,10 +487,6 @@ public class TestDictionaryColumn extends LuceneTestCase {
     w.close();
     dir.close();
   }
-
-  // -------------------------------------------------------------------------
-  // Text inversion — untokenized
-  // -------------------------------------------------------------------------
 
   public void testInvertedDictionaryColumn() throws IOException {
     Directory dir = newDirectory();
@@ -620,10 +631,6 @@ public class TestDictionaryColumn extends LuceneTestCase {
     dir.close();
   }
 
-  // -------------------------------------------------------------------------
-  // Text inversion — tokenized
-  // -------------------------------------------------------------------------
-
   public void testTokenizedDictionaryColumn() throws IOException {
     Directory dir = newDirectory();
     IndexWriterConfig config = newIndexWriterConfig(new MockAnalyzer(random()));
@@ -694,5 +701,260 @@ public class TestDictionaryColumn extends LuceneTestCase {
     r.close();
     w.close();
     dir.close();
+  }
+
+  public void testRandomSortedCrossCheck() throws IOException {
+    int iters = atLeast(20);
+    for (int iter = 0; iter < iters; iter++) {
+      int dictSize = TestUtil.nextInt(random(), 1, 32);
+      List<BytesRef> dict = randomDictionary(dictSize);
+      boolean dense = random().nextBoolean();
+      int numBatches = TestUtil.nextInt(random(), 1, 4);
+
+      try (Directory dictDir = newDirectory();
+          Directory plainDir = newDirectory();
+          IndexWriter dictW = new IndexWriter(dictDir, newIndexWriterConfig());
+          IndexWriter plainW = new IndexWriter(plainDir, newIndexWriterConfig())) {
+
+        // Per-insertion-id expected term, or null if the doc has no value.
+        List<BytesRef> expected = new ArrayList<>();
+        int nextId = 0;
+
+        for (int b = 0; b < numBatches; b++) {
+          int batchDocs = TestUtil.nextInt(random(), 1, 60);
+          long[] ids = new long[batchDocs];
+
+          if (dense) {
+            int[] ords = new int[batchDocs];
+            for (int i = 0; i < batchDocs; i++) {
+              int ord = random().nextInt(dictSize);
+              ords[i] = ord;
+              ids[i] = nextId;
+              BytesRef term = dict.get(ord);
+              expected.add(term);
+              Document plainDoc = new Document();
+              plainDoc.add(new SortedDocValuesField("f", term));
+              plainDoc.add(new NumericDocValuesField("id", nextId));
+              plainW.addDocument(plainDoc);
+              nextId++;
+            }
+            dictW.addBatch(
+                simpleBatch(
+                    batchDocs,
+                    new ArrayDenseDictionaryColumn("f", SortedDocValuesField.TYPE, dict, ords),
+                    new ArrayDenseLongColumn("id", NumericDocValuesField.TYPE, ids)));
+          } else {
+            List<Integer> ds = new ArrayList<>();
+            List<Integer> os = new ArrayList<>();
+            for (int i = 0; i < batchDocs; i++) {
+              ids[i] = nextId;
+              Document plainDoc = new Document();
+              plainDoc.add(new NumericDocValuesField("id", nextId));
+              if (random().nextInt(10) < 7) {
+                int ord = random().nextInt(dictSize);
+                ds.add(i);
+                os.add(ord);
+                plainDoc.add(new SortedDocValuesField("f", dict.get(ord)));
+                expected.add(dict.get(ord));
+              } else {
+                expected.add(null);
+              }
+              plainW.addDocument(plainDoc);
+              nextId++;
+            }
+            int[] docIds = ds.stream().mapToInt(Integer::intValue).toArray();
+            int[] ords = os.stream().mapToInt(Integer::intValue).toArray();
+            dictW.addBatch(
+                simpleBatch(
+                    batchDocs,
+                    new ArrayDictionaryColumn(
+                        "f", SortedDocValuesField.TYPE, dict, docIds, ords),
+                    new ArrayDenseLongColumn("id", NumericDocValuesField.TYPE, ids)));
+          }
+        }
+
+        if (random().nextBoolean()) {
+          dictW.forceMerge(1);
+          plainW.forceMerge(1);
+        }
+
+        try (DirectoryReader dictR = DirectoryReader.open(dictW);
+            DirectoryReader plainR = DirectoryReader.open(plainW)) {
+          assertSortedReadersEqual("f", "id", dictR, plainR, expected);
+        }
+      }
+    }
+  }
+
+  public void testRandomSortedSetCrossCheck() throws IOException {
+    int iters = atLeast(20);
+    for (int iter = 0; iter < iters; iter++) {
+      int dictSize = TestUtil.nextInt(random(), 1, 16);
+      List<BytesRef> dict = randomDictionary(dictSize);
+      int numBatches = TestUtil.nextInt(random(), 1, 4);
+
+      // Per-insertion-id expected term SETS (deduped across the doc).
+      List<Set<BytesRef>> expected = new ArrayList<>();
+      int nextId = 0;
+
+      try (Directory dictDir = newDirectory();
+          Directory plainDir = newDirectory();
+          IndexWriter dictW = new IndexWriter(dictDir, newIndexWriterConfig());
+          IndexWriter plainW = new IndexWriter(plainDir, newIndexWriterConfig())) {
+
+        for (int b = 0; b < numBatches; b++) {
+          int batchDocs = TestUtil.nextInt(random(), 1, 40);
+          List<Integer> ds = new ArrayList<>();
+          List<Integer> os = new ArrayList<>();
+          long[] ids = new long[batchDocs];
+          for (int i = 0; i < batchDocs; i++) {
+            int numValues = random().nextInt(5); // 0..4 values per doc
+            Set<BytesRef> docTerms = new HashSet<>();
+            Document plainDoc = new Document();
+            plainDoc.add(new NumericDocValuesField("id", nextId));
+            ids[i] = nextId;
+            for (int v = 0; v < numValues; v++) {
+              int ord = random().nextInt(dictSize);
+              ds.add(i);
+              os.add(ord);
+              BytesRef term = dict.get(ord);
+              if (docTerms.add(term)) {
+                plainDoc.add(new SortedSetDocValuesField("f", BytesRef.deepCopyOf(term)));
+              }
+            }
+            plainW.addDocument(plainDoc);
+            expected.add(docTerms);
+            nextId++;
+          }
+
+          int[] docIds = ds.stream().mapToInt(Integer::intValue).toArray();
+          int[] ords = os.stream().mapToInt(Integer::intValue).toArray();
+          dictW.addBatch(
+              simpleBatch(
+                  batchDocs,
+                  new ArrayDictionaryColumn(
+                      "f", SortedSetDocValuesField.TYPE, dict, docIds, ords),
+                  new ArrayDenseLongColumn("id", NumericDocValuesField.TYPE, ids)));
+        }
+
+        if (random().nextBoolean()) {
+          dictW.forceMerge(1);
+          plainW.forceMerge(1);
+        }
+
+        try (DirectoryReader dictR = DirectoryReader.open(dictW);
+            DirectoryReader plainR = DirectoryReader.open(plainW)) {
+          assertSortedSetReadersEqual("f", "id", dictR, plainR, expected);
+        }
+      }
+    }
+  }
+
+  private static List<BytesRef> randomDictionary(int size) {
+    Set<String> uniq = new HashSet<>();
+    while (uniq.size() < size) {
+      uniq.add(TestUtil.randomSimpleString(random(), 1, 12));
+    }
+    List<BytesRef> dict = new ArrayList<>(size);
+    for (String s : uniq) {
+      dict.add(new BytesRef(s));
+    }
+    return dict;
+  }
+
+  private static void assertSortedReadersEqual(
+      String field,
+      String idField,
+      DirectoryReader dictR,
+      DirectoryReader plainR,
+      List<BytesRef> expected)
+      throws IOException {
+    assertEquals(expected.size(), dictR.maxDoc());
+    assertEquals(expected.size(), plainR.maxDoc());
+
+    boolean anyValue = expected.stream().anyMatch(Objects::nonNull);
+    if (!anyValue) {
+      // No doc carries a value for "f"; nothing to compare.
+      return;
+    }
+    checkSortedByInsertionId(field, idField, dictR, expected, "dict");
+    checkSortedByInsertionId(field, idField, plainR, expected, "plain");
+  }
+
+  private static void checkSortedByInsertionId(
+      String field,
+      String idField,
+      DirectoryReader r,
+      List<BytesRef> expected,
+      String label)
+      throws IOException {
+    int seen = 0;
+    for (LeafReaderContext ctx : r.leaves()) {
+      LeafReader leaf = ctx.reader();
+      NumericDocValues ids = leaf.getNumericDocValues(idField);
+      SortedDocValues dv = leaf.getSortedDocValues(field);
+      assertNotNull(label + " reader missing id field", ids);
+      int docID;
+      while ((docID = ids.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        int insertionId = (int) ids.longValue();
+        BytesRef want = expected.get(insertionId);
+        BytesRef got = (dv != null && dv.advanceExact(docID)) ? dv.lookupOrd(dv.ordValue()) : null;
+        assertEquals(label + " at insertionId " + insertionId, want, got);
+        seen++;
+      }
+    }
+    assertEquals(label + " reader saw wrong number of docs", expected.size(), seen);
+  }
+
+  private static void assertSortedSetReadersEqual(
+      String field,
+      String idField,
+      DirectoryReader dictR,
+      DirectoryReader plainR,
+      List<Set<BytesRef>> expected)
+      throws IOException {
+    assertEquals(expected.size(), dictR.maxDoc());
+    assertEquals(expected.size(), plainR.maxDoc());
+
+    boolean anyValue = expected.stream().anyMatch(s -> !s.isEmpty());
+    if (!anyValue) {
+      return;
+    }
+    checkSortedSetByInsertionId(field, idField, dictR, expected, "dict");
+    checkSortedSetByInsertionId(field, idField, plainR, expected, "plain");
+  }
+
+  private static void checkSortedSetByInsertionId(
+      String field,
+      String idField,
+      DirectoryReader r,
+      List<Set<BytesRef>> expected,
+      String label)
+      throws IOException {
+    int seen = 0;
+    for (LeafReaderContext ctx : r.leaves()) {
+      LeafReader leaf = ctx.reader();
+      NumericDocValues ids = leaf.getNumericDocValues(idField);
+      SortedSetDocValues dv = leaf.getSortedSetDocValues(field);
+      assertNotNull(label + " reader missing id field", ids);
+      int docID;
+      while ((docID = ids.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        int insertionId = (int) ids.longValue();
+        Set<BytesRef> want = expected.get(insertionId);
+        Set<BytesRef> got =
+            (dv != null && dv.advanceExact(docID)) ? collect(dv) : Set.of();
+        assertEquals(label + " at insertionId " + insertionId, want, got);
+        seen++;
+      }
+    }
+    assertEquals(label + " reader saw wrong number of docs", expected.size(), seen);
+  }
+
+  private static Set<BytesRef> collect(SortedSetDocValues dv) throws IOException {
+    Set<BytesRef> out = new HashSet<>();
+    for (int i = 0; i < dv.docValueCount(); i++) {
+      out.add(BytesRef.deepCopyOf(dv.lookupOrd(dv.nextOrd())));
+    }
+    return out;
   }
 }

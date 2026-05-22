@@ -115,6 +115,10 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
     while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
       int docID = baseDocID + batchDocID;
       assert docID >= currentDoc;
+      if (docID != currentDoc) {
+        finishCurrentDoc();
+        currentDoc = docID;
+      }
       int ord = cursor.ordValue();
       if (ord < 0 || ord >= dictionary.size()) {
         throw new IllegalArgumentException(
@@ -125,10 +129,6 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
                 + " is out of range [0, "
                 + dictionary.size()
                 + ")");
-      }
-      if (docID != currentDoc) {
-        finishCurrentDoc();
-        currentDoc = docID;
       }
       int hashID = ordToHash[ord];
       if (hashID < 0) {

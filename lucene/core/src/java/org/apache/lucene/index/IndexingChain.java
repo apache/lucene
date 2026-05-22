@@ -1141,12 +1141,7 @@ final class IndexingChain implements Accountable {
           ColumnValidation.checkDenseCount(column, cursor.size(), numDocs);
           writer.addDenseOrdinalValues(baseDocID, dict, cursor);
         } else {
-          OrdinalsTupleCursor cursor = column.tuples();
-          int batchDocID;
-          while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-            ColumnValidation.checkDocID(column, batchDocID, numDocs);
-            writer.addOrdinalValue(baseDocID + batchDocID, dict, cursor.ordValue());
-          }
+          writer.addOrdinalTuples(baseDocID, dict, column.tuples());
         }
       }
       case SORTED_SET -> {

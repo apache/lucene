@@ -25,6 +25,7 @@ import java.util.List;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.document.column.OrdinalsCursor;
+import org.apache.lucene.document.column.OrdinalsTupleCursor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ByteBlockPool;
 import org.apache.lucene.util.BytesRef;
@@ -91,29 +92,33 @@ class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
   }
 
   /**
-   * Adds a single dictionary-encoded value for the given doc. The ordinal must be in {@code [0,
-   * dictionary.length)}. At most one call per docID in monotonically increasing order.
+   * Bulk-adds dictionary-encoded values from a tuple cursor. Each {@code (docID, ordinal)} pair is
+   * translated to the writer's internal hash term ID on first sight per distinct ordinal;
+   * subsequent docs that use the same ordinal pay only an array lookup. Doc-ids from the cursor
+   * are batch-local and are offset by {@code baseDocID} to produce segment-level ids; they must be
+   * strictly increasing (at most one value per doc).
+   *
+   * <p>All ordinals must be in {@code [0, dictionary.length)}.
    */
-  void addOrdinalValue(int docID, List<BytesRef> dictionary, int ord) {
-    if (docID <= lastDocID) {
-      throw new IllegalArgumentException(
-          "DocValuesField \""
-              + fieldInfo.name
-              + "\" appears more than once in this document (only one value is allowed per field)");
+  void addOrdinalTuples(int baseDocID, List<BytesRef> dictionary, OrdinalsTupleCursor cursor) {
+    int[] ordToHash = new int[dictionary.size()];
+    Arrays.fill(ordToHash, -1);
+    int batchDocID;
+    while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      int docID = baseDocID + batchDocID;
+      if (docID <= lastDocID) {
+        throw new IllegalArgumentException(
+            "DocValuesField \""
+                + fieldInfo.name
+                + "\" appears more than once in this document (only one value is allowed per field)");
+      }
+      int ord = cursor.ordValue();
+      int id = lookupOrTranslate(ord, dictionary, ordToHash);
+      pending.add(id);
+      docsWithField.add(docID);
+      lastDocID = docID;
     }
-    if (ord < 0 || ord >= dictionary.size()) {
-      throw new IllegalArgumentException(
-          "DocValuesField \""
-              + fieldInfo.name
-              + "\": ordinal "
-              + ord
-              + " is out of range [0, "
-              + dictionary.size()
-              + ")");
-    }
-    addOneValue(dictionary.get(ord));
-    docsWithField.add(docID);
-    lastDocID = docID;
+    updateBytesUsed();
   }
 
   /**
@@ -135,31 +140,36 @@ class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
     Arrays.fill(ordToHash, -1);
     for (int i = 0; i < n; i++) {
       int ord = cursor.nextOrd();
-      if (ord < 0 || ord >= dictionary.size()) {
-        throw new IllegalArgumentException(
-            "DocValuesField \""
-                + fieldInfo.name
-                + "\": ordinal "
-                + ord
-                + " is out of range [0, "
-                + dictionary.size()
-                + ")");
-      }
-      int id = ordToHash[ord];
-      if (id < 0) {
-        id = hash.add(dictionary.get(ord));
-        if (id < 0) {
-          id = -id - 1;
-        } else {
-          iwBytesUsed.addAndGet(2 * Integer.BYTES);
-        }
-        ordToHash[ord] = id;
-      }
+      int id = lookupOrTranslate(ord, dictionary, ordToHash);
       pending.add(id);
+      docsWithField.add(firstDocID + i);
+      lastDocID = firstDocID + i;
     }
-    docsWithField.addRange(firstDocID, firstDocID + n);
-    lastDocID = firstDocID + n - 1;
     updateBytesUsed();
+  }
+
+  private int lookupOrTranslate(int ord, List<BytesRef> dictionary, int[] ordToHash) {
+    if (ord < 0 || ord >= dictionary.size()) {
+      throw new IllegalArgumentException(
+          "DocValuesField \""
+              + fieldInfo.name
+              + "\": ordinal "
+              + ord
+              + " is out of range [0, "
+              + dictionary.size()
+              + ")");
+    }
+    int id = ordToHash[ord];
+    if (id < 0) {
+      id = hash.add(dictionary.get(ord));
+      if (id < 0) {
+        id = -id - 1;
+      } else {
+        iwBytesUsed.addAndGet(2 * Integer.BYTES);
+      }
+      ordToHash[ord] = id;
+    }
+    return id;
   }
 
   private void addOneValue(BytesRef value) {

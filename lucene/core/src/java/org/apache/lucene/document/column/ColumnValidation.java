@@ -146,6 +146,13 @@ public final class ColumnValidation {
               + dv
               + "; use a LongColumn");
     }
+    if (dv == DocValuesType.BINARY) {
+      throw new IllegalArgumentException(
+          "DictionaryColumn \""
+              + column.name()
+              + "\" cannot feed docValuesType=BINARY (the writer does not dedup terms, so the"
+              + " dictionary provides no benefit); use a BinaryColumn");
+    }
     if (fieldType.pointDimensionCount() != 0) {
       throw new IllegalArgumentException(
           "DictionaryColumn \""

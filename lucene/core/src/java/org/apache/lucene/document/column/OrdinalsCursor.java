@@ -48,8 +48,8 @@ public abstract class OrdinalsCursor {
    * Returns the next ordinal. Must not be called more than {@link #size()} times.
    *
    * <p>The returned value must be in {@code [0, dictionary.length)} where {@code dictionary} is the
-   * enclosing column's dictionary. The indexing path validates this on first use per distinct
-   * ordinal and throws {@link IllegalArgumentException} on violation.
+   * enclosing column's dictionary. The indexing path validates this on every call and throws
+   * {@link IllegalArgumentException} on violation.
    */
   public abstract int nextOrd();
 }
