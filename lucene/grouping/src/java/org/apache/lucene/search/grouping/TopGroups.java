@@ -349,18 +349,30 @@ public class TopGroups<T> {
    *     * must be non-null, ie, if you want to groupSort by relevance use Sort.RELEVANCE.
    * @param groupOffset Which group to start from.
    * @param topNGroups How many top groups to keep.
+   * @param docSort The sort to use within each group
    * @return TopGroups instance or null if there are no groups.
    */
-  public static TopGroups<?> mergeBlockGroups(
-      List<TopGroups<?>> shardGroups, Sort groupSort, int groupOffset, int topNGroups) {
+  @SuppressWarnings("unchecked")
+  public static <T> TopGroups<T> mergeBlockGroups(
+      List<TopGroups<T>> shardGroups,
+      Sort groupSort,
+      int groupOffset,
+      int topNGroups,
+      Sort docSort) {
     if (shardGroups.isEmpty()) {
-      return null;
+      return new TopGroups<>(
+          groupSort.getSort(),
+          docSort.getSort(),
+          0,
+          0,
+          (GroupDocs<T>[]) new GroupDocs<?>[0],
+          Float.NaN);
     }
 
     int totalGroupCount = 0;
     int totalHitCount = 0;
     int totalGroupedHitCount = 0;
-    for (TopGroups<?> sg : shardGroups) {
+    for (TopGroups<T> sg : shardGroups) {
       totalGroupCount += sg.totalGroupCount;
       totalHitCount += sg.totalHitCount;
     }
@@ -369,25 +381,33 @@ public class TopGroups<T> {
     GroupComparator groupComp = new GroupComparator(groupSort);
     NavigableSet<MergedBlockGroup> queue = new TreeSet<>(groupComp);
 
+    float totalMaxScore = Float.NaN;
+    final boolean groupSortByRelevance = groupSort.equals(Sort.RELEVANCE);
     // init queue
     for (int idx = 0; idx < shardGroups.size(); idx++) {
-      GroupDocs<?> firstGroupDocs = shardGroups.get(idx).groups[0];
+      TopGroups<T> topGroups = shardGroups.get(idx);
+      if (!groupSortByRelevance) {
+        totalMaxScore = nonNANmax(totalMaxScore, topGroups.maxScore);
+      }
+      GroupDocs<T> firstGroupDocs = topGroups.groups[0];
       queue.add(new MergedBlockGroup(firstGroupDocs.groupSortValues(), idx, 0));
     }
 
-    float maxScore = shardGroups.get(queue.first().shardIndex).groups[0].maxScore();
+    if (groupSortByRelevance) {
+      totalMaxScore = shardGroups.get(queue.first().shardIndex).maxScore;
+    }
 
-    final List<GroupDocs<?>> groupDocsList = new ArrayList<>();
+    final List<GroupDocs<T>> groupDocsList = new ArrayList<>();
     int count = 0;
     while (!queue.isEmpty()) {
       final MergedBlockGroup mergedBlockGroup = queue.pollFirst();
-      TopGroups<?> shardGroup = shardGroups.get(mergedBlockGroup.shardIndex);
+      TopGroups<T> shardGroup = shardGroups.get(mergedBlockGroup.shardIndex);
 
       int currentGroupIndex = mergedBlockGroup.groupIndex;
-      GroupDocs<?> currentGroupDocs = shardGroup.groups[currentGroupIndex];
+      GroupDocs<T> currentGroupDocs = shardGroup.groups[currentGroupIndex];
       if (count++ >= groupOffset) {
         groupDocsList.add(currentGroupDocs);
-        totalGroupedHitCount += currentGroupDocs.totalHits().value();
+        totalGroupedHitCount += (int) currentGroupDocs.totalHits().value();
         if (groupDocsList.size() == topNGroups) {
           break;
         }
@@ -395,7 +415,7 @@ public class TopGroups<T> {
 
       int nextGroupIndex = currentGroupIndex + 1;
       if (nextGroupIndex < shardGroup.groups.length) {
-        GroupDocs<?> nextGroupDocs = shardGroup.groups[nextGroupIndex];
+        GroupDocs<T> nextGroupDocs = shardGroup.groups[nextGroupIndex];
         queue.add(
             new MergedBlockGroup(
                 nextGroupDocs.groupSortValues(), mergedBlockGroup.shardIndex, nextGroupIndex));
@@ -403,16 +423,16 @@ public class TopGroups<T> {
     }
 
     @SuppressWarnings({"unchecked"})
-    GroupDocs<Object>[] groupDocs = (GroupDocs<Object>[]) groupDocsList.toArray(GroupDocs[]::new);
+    GroupDocs<T>[] groupDocs = (GroupDocs<T>[]) groupDocsList.toArray(GroupDocs[]::new);
 
     return new TopGroups<>(
         new TopGroups<>(
-            shardGroups.getFirst().groupSort,
-            shardGroups.getFirst().withinGroupSort,
+            groupSort.getSort(),
+            docSort.getSort(),
             totalHitCount,
             totalGroupedHitCount,
             groupDocs,
-            maxScore),
+            totalMaxScore),
         totalGroupCount);
   }
 }

@@ -35,78 +35,93 @@ import org.apache.lucene.search.Weight;
  *
  * <p>See {@link BlockGroupingCollector} for more details.
  *
+ * <p>Example usage:
+ *
+ * <pre class="prettyprint">
+ * IndexSearcher searcher = new IndexSearcher(reader);
+ * Query lastDocPerGroupQuery = new TermQuery(new Term("groupEnd", "true"));
+ * Weight lastDocPerGroup = searcher.createWeight(
+ *     searcher.rewrite(lastDocPerGroupQuery), ScoreMode.COMPLETE_NO_SCORES, 1);
+ *
+ * BlockGroupingCollectorManager&lt;BytesRef&gt; manager = new BlockGroupingCollectorManager&lt;&gt;(
+ *     Sort.RELEVANCE,   // groupSort
+ *     0,                // groupOffset
+ *     10,               // topNGroups
+ *     true,             // needsScores
+ *     lastDocPerGroup,
+ *     Sort.RELEVANCE,   // withinGroupSort
+ *     0,                // withinGroupOffset
+ *     5);               // maxDocsPerGroup
+ *
+ * TopGroups&lt;BytesRef&gt; result = searcher.search(query, manager);
+ * </pre>
+ *
  * @lucene.experimental
  */
-public class BlockGroupingCollectorManager
-    implements CollectorManager<BlockGroupingCollector, TopGroups<?>> {
+public class BlockGroupingCollectorManager<T>
+    implements CollectorManager<BlockGroupingCollector, TopGroups<T>> {
 
   private final Sort groupSort;
+  private final int groupOffset;
   private final int topNGroups;
   private final boolean needsScores;
   private final Weight lastDocPerGroup;
 
   private final Sort withinGroupSort;
-  private final int groupOffset;
   private final int withinGroupOffset;
   private final int maxDocsPerGroup;
 
-  private final List<BlockGroupingCollector> collectors;
-
+  /**
+   * Creates a new BlockGroupingCollectorManager.
+   *
+   * @param groupSort the sort used to rank groups
+   * @param groupOffset the offset into the groups to start returning from
+   * @param topNGroups the number of top groups to collect
+   * @param needsScores whether scores are needed (must be true if groupSort or withinGroupSort uses
+   *     scores)
+   * @param lastDocPerGroup a {@link Weight} that matches the last document in each group block
+   * @param withinGroupSort the sort used to rank documents within each group
+   * @param withinGroupOffset the offset into each group's documents to start returning from
+   * @param maxDocsPerGroup the maximum number of documents to return per group
+   */
   public BlockGroupingCollectorManager(
       Sort groupSort,
+      int groupOffset,
       int topNGroups,
       boolean needsScores,
       Weight lastDocPerGroup,
       Sort withinGroupSort,
-      int groupOffset,
       int withinGroupOffset,
       int maxDocsPerGroup) {
     this.groupSort = groupSort;
+    this.groupOffset = groupOffset;
     this.topNGroups = topNGroups;
     this.needsScores = needsScores;
     this.lastDocPerGroup = lastDocPerGroup;
-    this.collectors = new ArrayList<>();
     this.withinGroupSort = withinGroupSort;
-    this.groupOffset = groupOffset;
     this.withinGroupOffset = withinGroupOffset;
     this.maxDocsPerGroup = maxDocsPerGroup;
   }
 
   @Override
   public BlockGroupingCollector newCollector() throws IOException {
-    BlockGroupingCollector collector =
-        new BlockGroupingCollector(groupSort, topNGroups, needsScores, lastDocPerGroup);
-    collectors.add(collector);
-    return collector;
+    return new BlockGroupingCollector(groupSort, topNGroups, needsScores, lastDocPerGroup);
   }
 
+  @SuppressWarnings("unchecked")
   @Override
-  public TopGroups<?> reduce(Collection<BlockGroupingCollector> collectors) throws IOException {
-    if (collectors.isEmpty()) {
-      return null;
-    }
-
-    if (collectors.size() == 1) {
-      return collectors
-          .iterator()
-          .next()
-          .getTopGroups(withinGroupSort, groupOffset, withinGroupOffset, maxDocsPerGroup);
-    }
-
+  public TopGroups<T> reduce(Collection<BlockGroupingCollector> collectors) throws IOException {
     // Merge results from multiple collectors
-    List<TopGroups<?>> shardGroupsList = new ArrayList<>();
+    List<TopGroups<T>> shardGroupsList = new ArrayList<>();
     for (BlockGroupingCollector collector : collectors) {
       TopGroups<?> topGroups =
           collector.getTopGroups(withinGroupSort, 0, withinGroupOffset, maxDocsPerGroup);
       if (topGroups != null) {
-        shardGroupsList.add(topGroups);
+        shardGroupsList.add((TopGroups<T>) topGroups);
       }
     }
 
-    if (shardGroupsList.isEmpty()) {
-      return null;
-    }
-
-    return TopGroups.mergeBlockGroups(shardGroupsList, groupSort, groupOffset, topNGroups);
+    return TopGroups.mergeBlockGroups(
+        shardGroupsList, groupSort, groupOffset, topNGroups, withinGroupSort);
   }
 }

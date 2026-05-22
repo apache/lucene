@@ -115,14 +115,16 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
     grouper.setGroupDocsLimit(10);
 
     Query topLevel = new TermQuery(new Term("text", "grandmother"));
-    TopGroups<?> singleShardTopGroups = grouper.search(shardControlIndexSearcher, topLevel, 0, 5);
+    TopGroups<BytesRef> singleShardTopGroups =
+        grouper.search(shardControlIndexSearcher, topLevel, 0, 5);
 
-    List<TopGroups<?>> shardTopGroups = new ArrayList<>();
+    List<TopGroups<BytesRef>> shardTopGroups = new ArrayList<>();
     for (int shardIdx = 0; shardIdx < shardCount; shardIdx++) {
       shardTopGroups.add(grouper.search(shards[shardIdx].getIndexSearcher(), topLevel, 0, 5));
     }
 
-    TopGroups<?> mergedTopGroups = TopGroups.mergeBlockGroups(shardTopGroups, Sort.RELEVANCE, 0, 5);
+    TopGroups<BytesRef> mergedTopGroups =
+        TopGroups.mergeBlockGroups(shardTopGroups, Sort.RELEVANCE, 0, 5, Sort.RELEVANCE);
     assertNotNull(mergedTopGroups);
 
     assertEquals(singleShardTopGroups.totalHitCount, mergedTopGroups.totalHitCount);
