@@ -56,7 +56,6 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOFunction;
@@ -1080,14 +1079,14 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
       Supplier<Boolean> addDocument)
       throws IOException {
     int numDocs = atLeast(100);
-    FixedBitSet docsWithField = new FixedBitSet(numDocs);
+    int docsWithField = 0;
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
 
         for (int i = 0; i < numDocs; i++) {
           Document doc = new Document();
           if (addDocument.get()) {
-            docsWithField.set(i);
+            docsWithField++;
             consumer.accept(doc);
           }
           w.addDocument(doc);
@@ -1106,9 +1105,8 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
             FixedBitSet expectedBitSet = new FixedBitSet(numDocs - offset);
 
             DocIdSetIterator values = producer.apply(leaf);
-            DocIdSetIterator expected =
-                new BitSetIterator(docsWithField, docsWithField.cardinality());
-            if (docsWithField.cardinality() == 0) {
+            DocIdSetIterator expected = producer.apply(leaf);
+            if (docsWithField == 0) {
               assertNull(values);
               return; // no more to be tested
             }
@@ -1120,7 +1118,9 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
               continue;
             }
             values.intoBitSet(upTo, bitSet, offset);
-            expected.intoBitSet(upTo, expectedBitSet, offset);
+            for (int doc = expected.docID(); doc < upTo; doc = expected.nextDoc()) {
+              expectedBitSet.set(doc - offset);
+            }
             assertEquals(expected.docID(), values.docID());
             assertEquals(expectedBitSet, bitSet);
           }
