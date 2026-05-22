@@ -28,7 +28,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -109,8 +108,7 @@ public class TestDictionaryColumn extends LuceneTestCase {
     w.addBatch(
         simpleBatch(
             n,
-            new ArrayDictionaryColumn(
-                "color", SortedDocValuesField.TYPE, COLORS, docIds, ords)));
+            new ArrayDictionaryColumn("color", SortedDocValuesField.TYPE, COLORS, docIds, ords)));
 
     DirectoryReader r = DirectoryReader.open(w);
     LeafReader leaf = getOnlyLeafReader(r);
@@ -767,8 +765,7 @@ public class TestDictionaryColumn extends LuceneTestCase {
             dictW.addBatch(
                 simpleBatch(
                     batchDocs,
-                    new ArrayDictionaryColumn(
-                        "f", SortedDocValuesField.TYPE, dict, docIds, ords),
+                    new ArrayDictionaryColumn("f", SortedDocValuesField.TYPE, dict, docIds, ords),
                     new ArrayDenseLongColumn("id", NumericDocValuesField.TYPE, ids)));
           }
         }
@@ -832,8 +829,7 @@ public class TestDictionaryColumn extends LuceneTestCase {
           dictW.addBatch(
               simpleBatch(
                   batchDocs,
-                  new ArrayDictionaryColumn(
-                      "f", SortedSetDocValuesField.TYPE, dict, docIds, ords),
+                  new ArrayDictionaryColumn("f", SortedSetDocValuesField.TYPE, dict, docIds, ords),
                   new ArrayDenseLongColumn("id", NumericDocValuesField.TYPE, ids)));
         }
 
@@ -882,11 +878,7 @@ public class TestDictionaryColumn extends LuceneTestCase {
   }
 
   private static void checkSortedByInsertionId(
-      String field,
-      String idField,
-      DirectoryReader r,
-      List<BytesRef> expected,
-      String label)
+      String field, String idField, DirectoryReader r, List<BytesRef> expected, String label)
       throws IOException {
     int seen = 0;
     for (LeafReaderContext ctx : r.leaves()) {
@@ -925,11 +917,7 @@ public class TestDictionaryColumn extends LuceneTestCase {
   }
 
   private static void checkSortedSetByInsertionId(
-      String field,
-      String idField,
-      DirectoryReader r,
-      List<Set<BytesRef>> expected,
-      String label)
+      String field, String idField, DirectoryReader r, List<Set<BytesRef>> expected, String label)
       throws IOException {
     int seen = 0;
     for (LeafReaderContext ctx : r.leaves()) {
@@ -941,8 +929,7 @@ public class TestDictionaryColumn extends LuceneTestCase {
       while ((docID = ids.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
         int insertionId = (int) ids.longValue();
         Set<BytesRef> want = expected.get(insertionId);
-        Set<BytesRef> got =
-            (dv != null && dv.advanceExact(docID)) ? collect(dv) : Set.of();
+        Set<BytesRef> got = (dv != null && dv.advanceExact(docID)) ? collect(dv) : Set.of();
         assertEquals(label + " at insertionId " + insertionId, want, got);
         seen++;
       }

@@ -42,8 +42,8 @@ import org.apache.lucene.util.BytesRef;
  * <p>Duplicate dictionary entries are permitted; two slots with the same bytes will both resolve to
  * the same Lucene-level ordinal. The dictionary may be in any order.
  *
- * <p>The dictionary array and the backing byte arrays of its entries must not be mutated after the
- * column is constructed and until the enclosing segment has been flushed.
+ * <p>The dictionary list and the backing byte arrays of its entries must not be mutated after the
+ * column is constructed.
  *
  * @lucene.experimental
  */

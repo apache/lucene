@@ -91,11 +91,27 @@ class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
     lastDocID = docID;
   }
 
+  private void addOneValue(BytesRef value) {
+    int termID = hash.add(value);
+    if (termID < 0) {
+      termID = -termID - 1;
+    } else {
+      // reserve additional space for each unique value:
+      // 1. when indexing, when hash is 50% full, rehash() suddenly needs 2*size ints.
+      //    TODO: can this same OOM happen in THPF?
+      // 2. when flushing, we need 1 int per value (slot in the ordMap).
+      iwBytesUsed.addAndGet(2 * Integer.BYTES);
+    }
+
+    pending.add(termID);
+    updateBytesUsed();
+  }
+
   /**
    * Bulk-adds dictionary-encoded values from a tuple cursor. Each {@code (docID, ordinal)} pair is
    * translated to the writer's internal hash term ID on first sight per distinct ordinal;
-   * subsequent docs that use the same ordinal pay only an array lookup. Doc-ids from the cursor
-   * are batch-local and are offset by {@code baseDocID} to produce segment-level ids; they must be
+   * subsequent docs that use the same ordinal pay only an array lookup. Doc-ids from the cursor are
+   * batch-local and are offset by {@code baseDocID} to produce segment-level ids; they must be
    * strictly increasing (at most one value per doc).
    *
    * <p>All ordinals must be in {@code [0, dictionary.length)}.
@@ -127,8 +143,7 @@ class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
    * dictionary.length)}.
    *
    * <p>This path performs one {@code BytesRefHash} lookup per distinct used dictionary entry rather
-   * than one per document, which is a significant win when the dictionary is much smaller than the
-   * number of documents.
+   * than one per document.
    */
   void addDenseOrdinalValues(int firstDocID, List<BytesRef> dictionary, OrdinalsCursor cursor) {
     int n = cursor.size();
@@ -138,14 +153,21 @@ class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
     assert firstDocID > lastDocID;
     int[] ordToHash = new int[dictionary.size()];
     Arrays.fill(ordToHash, -1);
-    for (int i = 0; i < n; i++) {
-      int ord = cursor.nextOrd();
-      int id = lookupOrTranslate(ord, dictionary, ordToHash);
-      pending.add(id);
-      docsWithField.add(firstDocID + i);
-      lastDocID = firstDocID + i;
+    int processed = 0;
+    try {
+      while (processed < n) {
+        int ord = cursor.nextOrd();
+        int id = lookupOrTranslate(ord, dictionary, ordToHash);
+        pending.add(id);
+        processed++;
+      }
+    } finally {
+      if (processed > 0) {
+        docsWithField.addRange(firstDocID, firstDocID + processed);
+        lastDocID = firstDocID + processed - 1;
+      }
+      updateBytesUsed();
     }
-    updateBytesUsed();
   }
 
   private int lookupOrTranslate(int ord, List<BytesRef> dictionary, int[] ordToHash) {
@@ -170,22 +192,6 @@ class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
       ordToHash[ord] = id;
     }
     return id;
-  }
-
-  private void addOneValue(BytesRef value) {
-    int termID = hash.add(value);
-    if (termID < 0) {
-      termID = -termID - 1;
-    } else {
-      // reserve additional space for each unique value:
-      // 1. when indexing, when hash is 50% full, rehash() suddenly needs 2*size ints.
-      //    TODO: can this same OOM happen in THPF?
-      // 2. when flushing, we need 1 int per value (slot in the ordMap).
-      iwBytesUsed.addAndGet(2 * Integer.BYTES);
-    }
-
-    pending.add(termID);
-    updateBytesUsed();
   }
 
   private void updateBytesUsed() {
