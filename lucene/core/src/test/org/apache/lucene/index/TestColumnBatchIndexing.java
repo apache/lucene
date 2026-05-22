@@ -1660,4 +1660,250 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     }
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, bIt.nextDoc());
   }
+
+  // -----------------------------------------------------------------------
+  // Duplicate column name rejection
+  // -----------------------------------------------------------------------
+
+  public void testDuplicateColumnNameRejected() throws IOException {
+    Directory dir = newDirectory();
+    try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      int[] ids = {0, 1};
+      long[] vals = {1L, 2L};
+      IllegalArgumentException e =
+          expectThrows(
+              IllegalArgumentException.class,
+              () ->
+                  w.addBatch(
+                      simpleBatch(
+                          2,
+                          new ArrayLongColumn("field", NumericDocValuesField.TYPE, ids, vals),
+                          new ArrayLongColumn("field", NumericDocValuesField.TYPE, ids, vals))));
+      assertTrue(e.getMessage(), e.getMessage().contains("field"));
+
+      // Writer still usable after validation failure.
+      w.addBatch(
+          simpleBatch(
+              1, new ArrayLongColumn("v", NumericDocValuesField.TYPE, new int[] {0}, new long[] {7})));
+      w.forceMerge(1);
+      DirectoryReader r = DirectoryReader.open(w);
+      // After forceMerge, fully-deleted segments are pruned; only the recovery doc remains.
+      assertEquals(1, r.numDocs());
+      LeafReader leaf = getOnlyLeafReader(r);
+      NumericDocValues dv = leaf.getNumericDocValues("v");
+      assertNotNull(dv);
+      assertTrue(dv.nextDoc() != DocIdSetIterator.NO_MORE_DOCS);
+      assertEquals(7, dv.longValue());
+      r.close();
+    }
+    dir.close();
+  }
+
+  // -----------------------------------------------------------------------
+  // Column-pass inversion: mixed batches and row-mode fallback
+  // -----------------------------------------------------------------------
+
+  private static FieldType eligibleInvertType() {
+    FieldType t = new FieldType();
+    t.setIndexOptions(IndexOptions.DOCS);
+    t.setOmitNorms(true);
+    t.setTokenized(false);
+    t.freeze();
+    return t;
+  }
+
+  /** Eligible inverted column + stored column: eligible is demoted to row pass. */
+  public void testColumnInvertMixedWithStoredForcesRowMode() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType storedOnly = new FieldType();
+    storedOnly.setStored(true);
+    storedOnly.freeze();
+
+    int[] ids = {0, 1, 2};
+    BytesRef[] tags = {newBytesRef("a"), newBytesRef("b"), newBytesRef("a")};
+    BytesRef[] stored = {newBytesRef("v0"), newBytesRef("v1"), newBytesRef("v2")};
+    w.addBatch(
+        simpleBatch(
+            3,
+            new ArrayBinaryColumn("tag", eligibleInvertType(), ids, tags),
+            new ArrayBinaryColumn("stored", storedOnly, ids, stored)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    IndexSearcher s = new IndexSearcher(r);
+
+    assertEquals(2, s.count(new TermQuery(new Term("tag", "a"))));
+    assertEquals(1, s.count(new TermQuery(new Term("tag", "b"))));
+    StoredFields sf = leaf.storedFields();
+    for (int i = 0; i < 3; i++) {
+      IndexableField field = sf.document(i).getField("stored");
+      assertNotNull("doc " + i + " must have stored field", field);
+      assertEquals(stored[i], field.binaryValue());
+    }
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  /** Eligible column + norms-enabled column: both go through row pass. */
+  public void testColumnInvertWithNormsForcesRowMode() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType withNorms = new FieldType();
+    withNorms.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+    withNorms.setOmitNorms(false);
+    withNorms.setTokenized(false);
+    withNorms.freeze();
+
+    int[] ids = {0, 1};
+    w.addBatch(
+        simpleBatch(
+            2,
+            new ArrayBinaryColumn("eligible", eligibleInvertType(), ids, new BytesRef[]{newBytesRef("x"), newBytesRef("y")}),
+            new ArrayBinaryColumn("normed", withNorms, ids, new BytesRef[]{newBytesRef("p"), newBytesRef("q")})));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    IndexSearcher s = new IndexSearcher(r);
+
+    assertEquals(1, s.count(new TermQuery(new Term("eligible", "x"))));
+    assertEquals(1, s.count(new TermQuery(new Term("normed", "p"))));
+    assertNotNull("normed field must have norms", leaf.getNormValues("normed"));
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  /** Eligible column + term-vector column: both go through row pass. */
+  public void testColumnInvertWithTermVectorsForcesRowMode() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType tvType = new FieldType();
+    tvType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+    tvType.setOmitNorms(true);
+    tvType.setTokenized(false);
+    tvType.setStoreTermVectors(true);
+    tvType.freeze();
+
+    int[] ids = {0, 1};
+    w.addBatch(
+        simpleBatch(
+            2,
+            new ArrayBinaryColumn("eligible", eligibleInvertType(), ids, new BytesRef[]{newBytesRef("a"), newBytesRef("b")}),
+            new ArrayBinaryColumn("tv", tvType, ids, new BytesRef[]{newBytesRef("hello"), newBytesRef("world")})));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    IndexSearcher s = new IndexSearcher(r);
+
+    assertEquals(1, s.count(new TermQuery(new Term("eligible", "a"))));
+    assertEquals(1, s.count(new TermQuery(new Term("tv", "hello"))));
+    // The tv column must have term vectors written.
+    TermVectors tvReader = r.termVectors();
+    assertNotNull(tvReader.get(0));
+    assertNotNull(tvReader.get(0).terms("tv"));
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  /** DOCS_AND_FREQS_AND_POSITIONS falls back to row pass; positions must be present. */
+  public void testColumnInvertPositionsForcesRowMode() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = newIndexWriterConfig(new org.apache.lucene.tests.analysis.MockAnalyzer(random()));
+    IndexWriter w = new IndexWriter(dir, config);
+
+    FieldType posType = new FieldType();
+    posType.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+    posType.setOmitNorms(true);
+    posType.setTokenized(true);
+    posType.freeze();
+
+    int[] ids = {0, 1};
+    BytesRef[] vals = {newBytesRef("foo"), newBytesRef("bar")};
+    w.addBatch(simpleBatch(2, new ArrayBinaryColumn("pos", posType, ids, vals)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    Terms terms = leaf.terms("pos");
+    assertNotNull(terms);
+    TermsEnum te = terms.iterator();
+    assertTrue(te.seekExact(newBytesRef("foo")));
+    // Positions must be stored (seekExact + positions postings enum should succeed).
+    PostingsEnum pe = te.postings(null, PostingsEnum.POSITIONS);
+    assertEquals(0, pe.nextDoc());
+    assertEquals(0, pe.nextPosition());
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  /** Column-invert parity: batch index == addDocument index for eligible field types. */
+  public void testColumnInvertParityVsAddDocument() throws IOException {
+    int numDocs = 20;
+    String[] terms = {"alpha", "beta", "gamma", "delta", "epsilon"};
+
+    // Build batch index
+    Directory batchDir = newDirectory();
+    try (IndexWriter bw = new IndexWriter(batchDir, newIndexWriterConfig())) {
+      int[] ids = new int[numDocs];
+      BytesRef[] vals = new BytesRef[numDocs];
+      for (int i = 0; i < numDocs; i++) {
+        ids[i] = i;
+        vals[i] = newBytesRef(terms[i % terms.length]);
+      }
+      bw.addBatch(simpleBatch(numDocs, new ArrayBinaryColumn("f", eligibleInvertType(), ids, vals)));
+    }
+
+    // Build single-doc index
+    Directory docDir = newDirectory();
+    try (IndexWriter dw = new IndexWriter(docDir, new IndexWriterConfig())) {
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        // StringField uses DOCS, omitNorms, no TVs — matches eligibleInvertType()
+        doc.add(new StringField("f", terms[i % terms.length], Field.Store.NO));
+        dw.addDocument(doc);
+      }
+      dw.forceMerge(1);
+    }
+
+    try (DirectoryReader bR = DirectoryReader.open(batchDir);
+        DirectoryReader dR = DirectoryReader.open(docDir)) {
+      LeafReader bL = getOnlyLeafReader(bR);
+      LeafReader dL = getOnlyLeafReader(dR);
+      assertEquals(dL.maxDoc(), bL.maxDoc());
+
+      IndexSearcher bS = new IndexSearcher(bR);
+      IndexSearcher dS = new IndexSearcher(dR);
+      for (String t : terms) {
+        Term term = new Term("f", t);
+        assertEquals("count mismatch for term " + t,
+            dS.count(new TermQuery(term)), bS.count(new TermQuery(term)));
+      }
+
+      // Compare full term dictionaries
+      Terms bTerms = bL.terms("f");
+      Terms dTerms = dL.terms("f");
+      assertNotNull(bTerms);
+      assertNotNull(dTerms);
+      TermsEnum bTe = bTerms.iterator();
+      TermsEnum dTe = dTerms.iterator();
+      while (dTe.next() != null) {
+        assertNotNull("batch index missing term", bTe.next());
+        assertEquals(dTe.term(), bTe.term());
+        assertEquals(dTe.docFreq(), bTe.docFreq());
+      }
+      assertNull(bTe.next());
+    }
+
+    batchDir.close();
+    docDir.close();
+  }
 }

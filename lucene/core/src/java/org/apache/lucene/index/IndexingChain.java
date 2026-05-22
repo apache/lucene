@@ -703,6 +703,8 @@ final class IndexingChain implements Accountable {
   void processBatch(int baseDocID, ColumnBatch columnBatch) throws IOException {
     final int numDocs = columnBatch.numDocs();
     boolean hasRowColumns = false;
+    boolean hasColumnInvert = false;
+    long batchGen = nextFieldGen++;
 
     // First pass: validate all column schemas and initialize field infos
     for (Column column : columnBatch.columns()) {
@@ -719,7 +721,9 @@ final class IndexingChain implements Accountable {
         ColumnValidation.validateVectorColumn(vc, fieldType);
       }
 
-      if (fieldType.stored() || fieldType.indexOptions() != IndexOptions.NONE) {
+      if (column instanceof BinaryColumn bc && isColumnInvertEligible(bc)) {
+        hasColumnInvert = true;
+      } else if (fieldType.stored() || fieldType.indexOptions() != IndexOptions.NONE) {
         hasRowColumns = true;
       }
 
@@ -728,6 +732,13 @@ final class IndexingChain implements Accountable {
         throw new IllegalArgumentException(
             "\"" + fieldName + "\" is a reserved field and should not be added to any document");
       }
+      if (pf.fieldGen == batchGen) {
+        throw new IllegalArgumentException(
+            "ColumnBatch contains more than one column for field \""
+                + fieldName
+                + "\"; multi-valued fields must use a single column with a sparse cursor");
+      }
+      pf.fieldGen = batchGen;
       validateColumnSchema(fieldName, pf, fieldType);
     }
 
@@ -747,7 +758,15 @@ final class IndexingChain implements Accountable {
 
     // Row-oriented pass: stored fields and term inversion only. Uses fresh tuple cursors.
     if (hasRowColumns) {
+      // When a batch has any row-mode column, eligible column-invert columns are demoted to the
+      // row pass so all indexed fields share a single per-doc termsHash.startDocument() frame.
       processRowColumns(baseDocID, numDocs, columnBatch.columns());
+    } else if (hasColumnInvert) {
+      for (Column column : columnBatch.columns()) {
+        if (column instanceof BinaryColumn bc && isColumnInvertEligible(bc)) {
+          processBinaryColumnInvert(baseDocID, numDocs, bc, getOrAddPerField(column.name()));
+        }
+      }
     }
 
     // Column-oriented pass: doc values, points, and vectors. Each column is asked for a fresh
@@ -891,6 +910,83 @@ final class IndexingChain implements Accountable {
                 + " which is out of range [0, "
                 + numDocs
                 + ")");
+      }
+    }
+  }
+
+  /**
+   * Returns {@code true} if this {@link BinaryColumn} can be inverted entirely inside the
+   * column-oriented pass, without the row pass. Requirements: {@code DOCS} or {@code
+   * DOCS_AND_FREQS} index options, norms omitted, no term vectors, not stored.
+   */
+  private static boolean isColumnInvertEligible(BinaryColumn col) {
+    IndexableFieldType ft = col.fieldType();
+    if (ft.stored()) return false;
+    IndexOptions opts = ft.indexOptions();
+    if (opts != IndexOptions.DOCS && opts != IndexOptions.DOCS_AND_FREQS) return false;
+    if (!ft.omitNorms()) return false;
+    if (ft.storeTermVectors()) return false;
+    if (ft.storeTermVectorPositions()) return false;
+    if (ft.storeTermVectorOffsets()) return false;
+    return !ft.storeTermVectorPayloads();
+  }
+
+  /**
+   * Column-pass inversion for a single {@link BinaryColumn} that qualifies via {@link
+   * #isColumnInvertEligible}. Each eligible column is processed independently; the cursor is
+   * traversed sparsely — only docs with values get {@code termsHash.startDocument()}/{@code
+   * finishDocument()} framing. This is safe because eligibility excludes term vectors, so the TV
+   * consumer is always a no-op for each framing call. Only invoked when {@code hasRowColumns} is
+   * false; when any row-mode column is present the eligible columns are demoted to the row pass
+   * instead.
+   */
+  private void processBinaryColumnInvert(
+      int baseDocID, int numDocs, BinaryColumn column, PerField pf) throws IOException {
+    ColumnFieldAdapter adapter = ColumnFieldAdapter.create(column);
+    int head = adapter.nextDoc();
+    int prevBatchDocID = -1;
+
+    while (head != DocIdSetIterator.NO_MORE_DOCS) {
+      int batchDocID = head;
+      if (batchDocID < prevBatchDocID) {
+        throw new IllegalArgumentException(
+            "Column \""
+                + column.name()
+                + "\" returned out-of-order batch doc-id "
+                + batchDocID);
+      }
+      if (batchDocID >= numDocs) {
+        throw new IllegalArgumentException(
+            "Column \""
+                + column.name()
+                + "\" returned batch doc-id "
+                + batchDocID
+                + " which is out of range [0, "
+                + numDocs
+                + ")");
+      }
+      prevBatchDocID = batchDocID;
+
+      int segDocID = baseDocID + batchDocID;
+      pf.fieldGen = nextFieldGen++;
+      pf.reset(segDocID, adapter.fieldType());
+
+      termsHash.startDocument();
+      try {
+        do {
+          invertAndStore(segDocID, adapter, pf);
+          head = adapter.nextDoc();
+        } while (head == batchDocID);
+      } finally {
+        if (hasHitAbortingException == false) {
+          pf.finish(segDocID);
+          try {
+            termsHash.finishDocument(segDocID);
+          } catch (Throwable th) {
+            abortingExceptionConsumer.accept(th);
+            throw th;
+          }
+        }
       }
     }
   }
