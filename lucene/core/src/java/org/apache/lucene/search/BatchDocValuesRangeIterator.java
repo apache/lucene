@@ -164,7 +164,7 @@ public final class BatchDocValuesRangeIterator extends DocIdSetIterator {
 
       // Move past this block
       doc = blockEnd;
-      if (doc < upTo) {
+      if (doc <= upTo) {
         blockIterator.advance(doc);
         if (blockIterator.docID() == NO_MORE_DOCS) {
           doc = NO_MORE_DOCS;
