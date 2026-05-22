@@ -155,6 +155,9 @@ Optimizations
 
 * GITHUB#16084: Added range encoding to  RoaringDocIdSet. (Ignacio Vera)
 
+* GITHUB#16097: Implement DocIdSetIterator#intoBitSet in dense implememntatios of the
+  Lucene90DocValuesProducer. (Ignacio Vera)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
