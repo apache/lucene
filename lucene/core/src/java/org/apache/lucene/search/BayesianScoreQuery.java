@@ -190,6 +190,11 @@ public final class BayesianScoreQuery extends Query {
     }
 
     @Override
+    public int count(LeafReaderContext context) throws IOException {
+      return innerWeight.count(context);
+    }
+
+    @Override
     public boolean isCacheable(LeafReaderContext ctx) {
       return innerWeight.isCacheable(ctx);
     }

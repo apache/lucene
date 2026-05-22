@@ -235,6 +235,36 @@ public class TestBayesianScoreQuery extends LuceneTestCase {
     assertTrue("should contain alpha", s.contains("alpha"));
   }
 
+  public void testCountDelegatesToInner() throws Exception {
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    BayesianScoreQuery bsq = new BayesianScoreQuery(inner, 0.5f, 5.0f);
+
+    Weight w = searcher.createWeight(searcher.rewrite(bsq), ScoreMode.COMPLETE, 1);
+    LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
+
+    // BayesianScoreQuery only transforms scores; matching docs are unchanged.
+    // count() should delegate to the inner weight.
+    int count = w.count(context);
+    assertEquals(2, count);
+
+    // Verify it matches the inner query's count
+    Weight innerW = searcher.createWeight(inner, ScoreMode.COMPLETE, 1);
+    assertEquals(innerW.count(context), count);
+  }
+
+  public void testCountWithNoScoring() throws Exception {
+    // When scoreMode.needsScores() == false, createWeight returns innerWeight directly
+    Query inner = new TermQuery(new Term("body", "alpha"));
+    BayesianScoreQuery bsq = new BayesianScoreQuery(inner, 0.5f, 5.0f);
+
+    Weight w = searcher.createWeight(searcher.rewrite(bsq), ScoreMode.COMPLETE_NO_SCORES, 1);
+    LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
+
+    // Should delegate to inner weight's count
+    int count = w.count(context);
+    assertEquals(2, count);
+  }
+
   public void testDifferentAlphaBeta() throws Exception {
     Query inner = new TermQuery(new Term("body", "alpha"));
 
