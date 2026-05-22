@@ -51,6 +51,7 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
 
   static final BytesRef MINVALUE = new BytesRef("  minvalue ");
   static final BytesRef MAXVALUE = new BytesRef("  maxvalue ");
+  static final BytesRef MAXVALUECOUNT = new BytesRef("  maxvaluecount ");
 
   static final BytesRef PATTERN = new BytesRef("  pattern ");
   // used for bytes
@@ -113,6 +114,10 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
 
     SimpleTextUtil.write(data, DOCCOUNT);
     SimpleTextUtil.write(data, Integer.toString(numValues), scratch);
+    SimpleTextUtil.writeNewline(data);
+
+    SimpleTextUtil.write(data, MAXVALUECOUNT);
+    SimpleTextUtil.write(data, Integer.toString(numValues == 0 ? 0 : 1), scratch);
     SimpleTextUtil.writeNewline(data);
 
     if (numValues != numDocs) {
@@ -185,6 +190,11 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
 
   private void doAddBinaryField(FieldInfo field, DocValuesProducer valuesProducer)
       throws IOException {
+    doAddBinaryField(field, valuesProducer, -1);
+  }
+
+  private void doAddBinaryField(
+      FieldInfo field, DocValuesProducer valuesProducer, int maxValueCount) throws IOException {
     int maxLength = 0;
     BinaryDocValues values = valuesProducer.getBinary(field);
     int docCount = 0;
@@ -195,6 +205,13 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
 
     SimpleTextUtil.write(data, DOCCOUNT);
     SimpleTextUtil.write(data, Integer.toString(docCount), scratch);
+    SimpleTextUtil.writeNewline(data);
+
+    SimpleTextUtil.write(data, MAXVALUECOUNT);
+    SimpleTextUtil.write(
+        data,
+        Integer.toString(maxValueCount == -1 ? (docCount == 0 ? 0 : 1) : maxValueCount),
+        scratch);
     SimpleTextUtil.writeNewline(data);
 
     // write maxLength
@@ -263,6 +280,10 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
     }
     SimpleTextUtil.write(data, DOCCOUNT);
     SimpleTextUtil.write(data, Integer.toString(docCount), scratch);
+    SimpleTextUtil.writeNewline(data);
+
+    SimpleTextUtil.write(data, MAXVALUECOUNT);
+    SimpleTextUtil.write(data, Integer.toString(docCount == 0 ? 0 : 1), scratch);
     SimpleTextUtil.writeNewline(data);
 
     int valueCount = 0;
@@ -358,9 +379,12 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
 
     long minValue = Long.MAX_VALUE;
     long maxValue = Long.MIN_VALUE;
+    int maxValueCount = 0;
     SortedNumericDocValues values = valuesProducer.getSortedNumeric(field);
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
-      for (int i = 0; i < values.docValueCount(); ++i) {
+      int valueCount = values.docValueCount();
+      maxValueCount = Math.max(maxValueCount, valueCount);
+      for (int i = 0; i < valueCount; ++i) {
         long v = values.nextValue();
         minValue = Math.min(minValue, v);
         maxValue = Math.max(maxValue, v);
@@ -440,7 +464,8 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
               }
             };
           }
-        });
+        },
+        maxValueCount);
   }
 
   @Override
@@ -451,12 +476,18 @@ class SimpleTextDocValuesWriter extends DocValuesConsumer {
     writeFieldEntry(field, DocValuesType.SORTED_SET);
 
     int docCount = 0;
+    int maxValueCount = 0;
     SortedSetDocValues values = valuesProducer.getSortedSet(field);
     for (int doc = values.nextDoc(); doc != DocIdSetIterator.NO_MORE_DOCS; doc = values.nextDoc()) {
       ++docCount;
+      maxValueCount = Math.max(maxValueCount, values.docValueCount());
     }
     SimpleTextUtil.write(data, DOCCOUNT);
     SimpleTextUtil.write(data, Integer.toString(docCount), scratch);
+    SimpleTextUtil.writeNewline(data);
+
+    SimpleTextUtil.write(data, MAXVALUECOUNT);
+    SimpleTextUtil.write(data, Integer.toString(maxValueCount), scratch);
     SimpleTextUtil.writeNewline(data);
 
     long valueCount = 0;
