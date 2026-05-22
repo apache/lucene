@@ -496,6 +496,8 @@ Other
 
 * GITHUB#16090: Make CollectorMemoryTracker instance members final. (Luca Cavanna)
 
+* GITHUB#16073: Simplify SortedDocIDMerger.next(). (Tim Brooks)
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes
