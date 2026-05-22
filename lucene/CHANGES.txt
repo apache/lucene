@@ -229,6 +229,8 @@ Build
 Other
 ---------------------
 
+* GITHUB#16074: Ban presized collection#toArray. (Zhou Hui)
+
 * GITHUB#16063: Remove redundant final modifiers. (Zhou Hui)
 
 * GITHUB#14801: Removed all security manager and java.security-related code, which is effectively dead
@@ -288,6 +290,9 @@ API Changes
 
 * GITHUB#15990: Add experimental api to IndexWriter for columnar indexing. (Tim Brooks)
 
+* GITHUB#16062: Add FlatFieldVectorsWriter.asKnnVectorValues to return directly a KnnVectorValues "view" over
+  vectors to be written. (Lorenzo Dematte)
+
 New Features
 ---------------------
 
@@ -305,6 +310,9 @@ New Features
   into probabilities. LogOddsFusionQuery combines multiple probability signals (text, vector,
   or mixed) via log-odds fusion with softplus gating and sqrt(n) confidence scaling.
   (Jaepil Jeong)
+
+* GITHUB#15794: Add DocValuesSkipper metadata for the maximum number of values
+  on any document in a field. (Prithvi S)
 
 Improvements
 ---------------------
@@ -324,14 +332,22 @@ Improvements
   buffer was controlled by an explicit parameter (set as `resultSimilarity` - `traversalSimilarity`), which is now
   deprecated. (Kaival Parikh)
 
+* GITHUB#15653: Introduce DocValuesStatsCollectorManager to parallelize search when using DocValuesStatsCollector. (Binlong Gao)
+
 * GITHUB#15976: Store DocValuesSkipper data in their own file. (Alan Woodward)
 
 * GITHUB#15574, GITHUB#15995: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
+
+* GITHUB#15565: Introduce AllGroupHeadsCollectorManager to parallelize search when using AllGroupHeadsCollector. (Binlong Gao)
 
 * GITHUB#15989: DocValuesRangeIterator always tries to use skipper-based block iteration
   as its approximation. (Alan Woodward)
 
 * GITHUB#16000: Clarify that Accountable#ramBytesUsed() reports JVM heap memory only. (Luca Cavanna)
+
+* GITHUB#15660: Introduce LargeNumHitsTopDocsCollectorManager to parallelize search when using LargeNumHitsTopDocsCollector. (Binlong Gao)
+
+* GITHUB#16088: SearchGroup#merge now returns an empty collection instead of null when topGroups is empty. (Luca Cavanna)
 
 Optimizations
 ---------------------
@@ -357,6 +373,8 @@ Optimizations
 
 * GITHUB#15779: Improve BytesRefHash.add performance by optimize rehash operation (tyronecai)
 
+* GITHUB#15879: Optimize TopGroups.merge() maxScore computation for relevance sorting (Binlong Gao)
+
 * GITHUB#15896: Skip heavy TreeSet opts for the first group in SearchGroup#merge (Binlong Gao)
 
 * GITHUB#15886: Cache frozen FieldType to skip redundant schema validation. (Tim Brooks)
@@ -378,8 +396,12 @@ Optimizations
 
 * GITHUB#16001: IndexSearcher.count() was calling query.rewrite twice, a regression since v9.10 (David Smiley)
 
-* GITHUB#16061, GITHUB#16070: Improve cost estimation in SortedSetDocValuesRangeQuery when using DocValuesSkipper
-  and the field is dense and is the primary sort of the index to reduce the number of doc values visited. (Ignacio Vera)
+* GITHUB#16050: Add SIMD-accelerated bulk range evaluation for dense numeric doc values via
+  BatchDocValuesRangeIterator and DocValuesRangeSupport. (Sagar Upadhyaya)
+
+* GITHUB#16061, GITHUB#16070, GITHUB#16085: Improve cost estimation in SortedSetDocValuesRangeQuery  and
+  SortedNumericDocValuesRangeQuery when using DocValuesSkipper, the field is dense and is the primary sort of
+  the index to reduce the number of doc values visited. (Ignacio Vera)
 
 * GITHUB#16048: Defer Sorter.DocMap packing until after flush (Tim Brooks)
 
@@ -391,6 +413,8 @@ Optimizations
 * GITHUB#16080: Add a BulkScrer implementation spcialized for filters that match dense ranges. (Ignacio Vera)
 
 * GITHUB#16081: Implement LeafCollector#collectRange in the collectors used in LRUCache. (Ignacio Vera)
+
+* GITHUB#16084: Added range encoding to  RoaringDocIdSet. (Ignacio Vera)
 
 Bug Fixes
 ---------------------
@@ -440,6 +464,8 @@ Bug Fixes
   time since merge start instead of duplicate incremental/total times. Add per-chunk completion
   logging with sub-millisecond precision to aid merge concurrency debugging. (Prithvi S)
 
+* GITHUB#15878: Fix LargeNumHitsTopDocsCollector not handling requested hit count correctly (Binlong Gao)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
@@ -467,6 +493,8 @@ Other
 * GITHUB#15951: Fix WindowsFS onClose race condition (Szymon Bialkowski)
 
 * GITHUB#15960: Move parent field from DWPT to IndexingChain. (Tim Brooks)
+
+* GITHUB#16090: Make CollectorMemoryTracker instance members final. (Luca Cavanna)
 
 * GITHUB#16073: Simplify SortedDocIDMerger.next(). (Tim Brooks)
 

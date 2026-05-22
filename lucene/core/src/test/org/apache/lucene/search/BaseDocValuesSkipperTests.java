@@ -24,10 +24,10 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
 
   /**
-   * Fake numeric doc values so that: - docs 0-256 all match - docs in 256-512 are all greater than
-   * queryMax - docs in 512-768 are all less than queryMin - docs in 768-1024 have some docs that
-   * match the range, others not - docs in 1024-2048 follow a similar pattern as docs in 0-1024
-   * except that not all docs have a - value
+   * Fake numeric doc values so that: - docs 0-127 all match - docs in 128-255 are all greater than
+   * queryMax - docs in 256-511 are all less than queryMin - docs in 512-1023 have some docs that
+   * match the range, others not - docs in 1024-2047 follow a similar pattern as docs in 0-1023
+   * except that not all docs have a value (only even docs)
    */
   protected static NumericDocValues docValues(long queryMin, long queryMax) {
     return new NumericDocValues() {
@@ -36,7 +36,8 @@ public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
 
       @Override
       public boolean advanceExact(int target) throws IOException {
-        throw new UnsupportedOperationException();
+        int advanced = advance(target);
+        return advanced == target;
       }
 
       @Override
@@ -185,6 +186,11 @@ public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
       @Override
       public int docCount() {
         return 1024 + 1024 / 2;
+      }
+
+      @Override
+      public int maxValueCount() {
+        return 1;
       }
     };
   }

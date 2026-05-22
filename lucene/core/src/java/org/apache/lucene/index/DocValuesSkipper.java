@@ -100,6 +100,18 @@ public abstract class DocValuesSkipper {
   public abstract int docCount();
 
   /**
+   * Return the global maximum number of values that any single document has for the field. Returns
+   * {@code -1} if the exact value is unavailable (e.g., the segment was written by an older codec
+   * that did not persist this metadata and it could not be inferred from other metadata).
+   *
+   * <p>This returns {@code 0} if {@link #docCount()} is {@code 0}. A field is known to be
+   * single-valued if this method returns {@code 1}.
+   */
+  public int maxValueCount() {
+    return docCount() == 0 ? 0 : -1;
+  }
+
+  /**
    * Advance this skipper so that all levels intersects the range given by {@code minValue} and
    * {@code maxValue}. If there are no intersecting levels, the skipper is exhausted.
    */
