@@ -141,8 +141,6 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#15991: Load dense filters into bitset in MaxScoreBulkScorer. (Prithvi S)
-
 * GITHUB#15681, GITHUB#15833, GITHUB#16056: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
@@ -453,6 +451,8 @@ Optimizations
 * GITHUB#16126: Implement #intoBitSet and #docIDRunEnd in DocValuesWriter implementations. (Ignacio Vera)
 
 * GITHUB#16141: Optimize constant-score bulk scoring via intoBitSet batching. (Costin Leau)
+
+* GITHUB#15991: Load dense filters into bitset in MaxScoreBulkScorer. (Prithvi S)
 
 Bug Fixes
 ---------------------
