@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.search;
 
+import java.util.List;
+import java.util.Random;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.TextField;
@@ -30,6 +32,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.BytesRef;
 
 /** Tests for {@link BayesianScoreQuery}. */
 public class TestBayesianScoreQuery extends LuceneTestCase {
@@ -347,7 +350,42 @@ public class TestBayesianScoreQuery extends LuceneTestCase {
         "alpha should be positive and finite",
         params.alpha() > 0 && Float.isFinite(params.alpha()));
     assertTrue("beta should be finite", Float.isFinite(params.beta()));
+    assertTrue("beta should reflect matching indexed terms", params.beta() > 0f);
     assertTrue("baseRate in (0, 0.5]", params.baseRate() > 0 && params.baseRate() <= 0.5f);
+  }
+
+  public void testEstimatorSamplesIndexedVocabularyFromUnstoredField() throws Exception {
+    Directory prefixDir = newDirectory();
+    IndexWriter writer = new IndexWriter(prefixDir, new IndexWriterConfig());
+    for (int i = 0; i < 20; i++) {
+      Document doc = new Document();
+      doc.add(
+          new TextField(
+              "body", "license header boilerplate sharedprefix topic" + i, Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    writer.forceMerge(1);
+    IndexReader prefixReader = DirectoryReader.open(writer);
+    writer.close();
+
+    try {
+      List<BytesRef> sampledTerms =
+          BayesianScoreEstimator.sampleVocabularyTerms(prefixReader, "body", 100, new Random(7));
+      assertTrue(
+          "sample should include indexed suffix term topic0", containsTerm(sampledTerms, "topic0"));
+      assertTrue(
+          "sample should include indexed suffix term topic19",
+          containsTerm(sampledTerms, "topic19"));
+
+      IndexSearcher prefixSearcher = new IndexSearcher(prefixReader);
+      prefixSearcher.setSimilarity(new BM25Similarity());
+      BayesianScoreEstimator.Parameters params =
+          BayesianScoreEstimator.estimate(prefixSearcher, "body", 4, 3, 7);
+      assertTrue("estimation should use indexed terms from non-stored fields", params.beta() > 0f);
+    } finally {
+      prefixReader.close();
+      prefixDir.close();
+    }
   }
 
   public void testEstimatedParametersProduceValidScores() throws Exception {
@@ -382,5 +420,14 @@ public class TestBayesianScoreQuery extends LuceneTestCase {
     assertEquals("same seed should produce same alpha", p1.alpha(), p2.alpha(), 0f);
     assertEquals("same seed should produce same beta", p1.beta(), p2.beta(), 0f);
     assertEquals("same seed should produce same baseRate", p1.baseRate(), p2.baseRate(), 0f);
+  }
+
+  private static boolean containsTerm(List<BytesRef> terms, String expected) {
+    for (BytesRef term : terms) {
+      if (expected.equals(term.utf8ToString())) {
+        return true;
+      }
+    }
+    return false;
   }
 }

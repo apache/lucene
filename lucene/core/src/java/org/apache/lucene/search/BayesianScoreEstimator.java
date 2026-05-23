@@ -22,9 +22,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.index.StoredFields;
+import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.util.BytesRef;
 
 /**
  * Estimates {@link BayesianScoreQuery} parameters (alpha, beta, base rate) from corpus statistics
@@ -33,8 +35,8 @@ import org.apache.lucene.util.ArrayUtil;
  * <p>The estimation algorithm:
  *
  * <ol>
- *   <li>Sample N documents randomly from the index
- *   <li>For each document, create a pseudo-query from its first few tokens in the target field
+ *   <li>Reservoir-sample terms from the target field's indexed vocabulary
+ *   <li>Partition the sampled terms into pseudo-queries
  *   <li>Run each pseudo-query via BM25 and collect the score distribution
  *   <li>Estimate: beta = median(scores), alpha = 1 / std(scores)
  *   <li>Estimate base rate: mean fraction of documents scoring above the 95th percentile
@@ -59,9 +61,9 @@ public class BayesianScoreEstimator {
    * Estimates BayesianScoreQuery parameters from the given index.
    *
    * @param searcher the index searcher to sample from
-   * @param field the text field to create pseudo-queries for
-   * @param nSamples number of documents to sample (default 50)
-   * @param tokensPerQuery number of tokens per pseudo-query (default 5)
+   * @param field the indexed text field to create pseudo-queries for
+   * @param nSamples number of pseudo-queries to sample (default 50)
+   * @param tokensPerQuery number of indexed terms per pseudo-query (default 5)
    * @param seed random seed for reproducible sampling
    * @return estimated alpha, beta, and base rate
    * @throws IOException if an I/O error occurs reading the index
@@ -69,39 +71,36 @@ public class BayesianScoreEstimator {
   public static Parameters estimate(
       IndexSearcher searcher, String field, int nSamples, int tokensPerQuery, long seed)
       throws IOException {
+    if (nSamples <= 0) {
+      throw new IllegalArgumentException("nSamples must be positive, got " + nSamples);
+    }
+    if (tokensPerQuery <= 0) {
+      throw new IllegalArgumentException("tokensPerQuery must be positive, got " + tokensPerQuery);
+    }
+
     IndexReader reader = searcher.getIndexReader();
     int maxDoc = reader.maxDoc();
     if (maxDoc == 0) {
       return new Parameters(1.0f, 0.0f, 0.01f);
     }
 
-    nSamples = Math.min(nSamples, maxDoc);
     Random rng = new Random(seed);
+    List<BytesRef> sampledTerms =
+        sampleVocabularyTerms(reader, field, Math.multiplyExact(nSamples, tokensPerQuery), rng);
+    if (sampledTerms.isEmpty()) {
+      return new Parameters(1.0f, 0.0f, 0.01f);
+    }
 
-    // Sample document IDs
-    int[] sampledDocs = sampleDocIds(maxDoc, nSamples, rng);
-
-    // Create pseudo-queries and collect scores
+    // Create pseudo-queries from indexed vocabulary terms and collect scores.
     List<float[]> allScoreArrays = new ArrayList<>();
     List<Float> baseRateFractions = new ArrayList<>();
-    StoredFields storedFields = reader.storedFields();
 
-    for (int docId : sampledDocs) {
-      String fieldValue = storedFields.document(docId).get(field);
-      if (fieldValue == null || fieldValue.isEmpty()) {
-        continue;
-      }
-
-      // Extract first N tokens as pseudo-query terms
-      String[] tokens = tokenize(fieldValue, tokensPerQuery);
-      if (tokens.length == 0) {
-        continue;
-      }
-
-      // Build a BooleanQuery from the tokens
+    for (int offset = 0; offset < sampledTerms.size(); offset += tokensPerQuery) {
       BooleanQuery.Builder builder = new BooleanQuery.Builder();
-      for (String token : tokens) {
-        builder.add(new TermQuery(new Term(field, token)), BooleanClause.Occur.SHOULD);
+      int end = Math.min(offset + tokensPerQuery, sampledTerms.size());
+      for (int i = offset; i < end; i++) {
+        builder.add(
+            new TermQuery(new Term(field, sampledTerms.get(i))), BooleanClause.Occur.SHOULD);
       }
       Query pseudoQuery = builder.build();
 
@@ -185,34 +184,39 @@ public class BayesianScoreEstimator {
     return estimate(searcher, field, DEFAULT_N_SAMPLES, DEFAULT_TOKENS_PER_QUERY, 42);
   }
 
-  private static int[] sampleDocIds(int maxDoc, int nSamples, Random rng) {
-    // Fisher-Yates partial shuffle for sampling without replacement
-    int[] all = new int[maxDoc];
-    for (int i = 0; i < maxDoc; i++) {
-      all[i] = i;
+  static List<BytesRef> sampleVocabularyTerms(
+      IndexReader reader, String field, int sampleSize, Random rng) throws IOException {
+    Terms terms = MultiTerms.getTerms(reader, field);
+    if (terms == null) {
+      return new ArrayList<>();
     }
-    int n = Math.min(nSamples, maxDoc);
-    for (int i = 0; i < n; i++) {
-      int j = i + rng.nextInt(maxDoc - i);
-      int tmp = all[i];
-      all[i] = all[j];
-      all[j] = tmp;
-    }
-    return ArrayUtil.copyOfSubArray(all, 0, n);
-  }
 
-  private static String[] tokenize(String text, int maxTokens) {
-    // Simple whitespace tokenization with lowercasing
-    String[] parts = text.toLowerCase(java.util.Locale.ROOT).split("\\s+");
-    int n = Math.min(parts.length, maxTokens);
-    List<String> tokens = new ArrayList<>(n);
-    for (int i = 0; i < n; i++) {
-      String token = parts[i].replaceAll("[^a-z0-9]", "");
-      if (token.isEmpty() == false) {
-        tokens.add(token);
+    List<BytesRef> reservoir = new ArrayList<>(sampleSize);
+    TermsEnum termsEnum = terms.iterator();
+    BytesRef term;
+    long seen = 0;
+    while ((term = termsEnum.next()) != null) {
+      seen++;
+      if (reservoir.size() < sampleSize) {
+        reservoir.add(BytesRef.deepCopyOf(term));
+      } else {
+        long replacement = nextLong(rng, seen);
+        if (replacement < sampleSize) {
+          reservoir.set((int) replacement, BytesRef.deepCopyOf(term));
+        }
       }
     }
-    return tokens.toArray(new String[0]);
+    return reservoir;
+  }
+
+  private static long nextLong(Random rng, long bound) {
+    long bits;
+    long value;
+    do {
+      bits = rng.nextLong() >>> 1;
+      value = bits % bound;
+    } while (bits - value + (bound - 1) < 0L);
+    return value;
   }
 
   private static float[] collectScores(IndexSearcher searcher, Query query, int maxDoc)
