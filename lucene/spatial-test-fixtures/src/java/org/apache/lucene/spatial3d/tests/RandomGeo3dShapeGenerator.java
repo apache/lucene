@@ -42,6 +42,7 @@ import org.apache.lucene.spatial3d.geom.GeoPolygon;
 import org.apache.lucene.spatial3d.geom.GeoPolygonFactory;
 import org.apache.lucene.spatial3d.geom.GeoShape;
 import org.apache.lucene.spatial3d.geom.PlanetModel;
+import org.apache.lucene.tests.util.LuceneTestCase;
 
 /**
  * Class for generating random Geo3dShapes. They can be generated under given constraints which are
@@ -83,7 +84,7 @@ public final class RandomGeo3dShapeGenerator {
    * @return Returns a private-use random forked from the current {@link RandomizedContext}.
    */
   private static Random random() {
-    return new Random(RandomizedContext.current().getRandom().nextLong());
+    return LuceneTestCase.nonAssertingRandom(LuceneTestCase.random());
   }
 
   /**
@@ -490,8 +491,7 @@ public final class RandomGeo3dShapeGenerator {
       }
       try {
         GeoPath path =
-            GeoPathFactory.makeGeoPath(
-                planetModel, 0, geoPoints.toArray(new GeoPoint[geoPoints.size()]));
+            GeoPathFactory.makeGeoPath(planetModel, 0, geoPoints.toArray(GeoPoint[]::new));
         if (!constraints.valid(path)) {
           continue;
         }
@@ -523,8 +523,7 @@ public final class RandomGeo3dShapeGenerator {
       double width = randomCutoffAngle();
       try {
         GeoPath path =
-            GeoPathFactory.makeGeoPath(
-                planetModel, width, geoPoints.toArray(new GeoPoint[geoPoints.size()]));
+            GeoPathFactory.makeGeoPath(planetModel, width, geoPoints.toArray(GeoPoint[]::new));
         if (!constraints.valid(path)) {
           continue;
         }

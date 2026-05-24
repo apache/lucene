@@ -18,6 +18,7 @@ package org.apache.lucene.index.memory;
 
 import static org.hamcrest.core.StringContains.containsString;
 
+import com.carrotsearch.randomizedtesting.jupiter.generators.RandomBytes;
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.charset.StandardCharsets;
@@ -26,6 +27,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import java.util.Random;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.LongStream;
@@ -91,26 +93,24 @@ import org.apache.lucene.search.similarities.ClassicSimilarity;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockPayloadAnalyzer;
-import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCaseJupiter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.hamcrest.MatcherAssert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class TestMemoryIndex extends LuceneTestCase {
-
+public class TestMemoryIndex extends LuceneTestCaseJupiter {
   private MockAnalyzer analyzer;
 
-  @Before
-  public void setup() {
-    analyzer = new MockAnalyzer(random());
+  @BeforeEach
+  public void setup(Random random) {
+    analyzer = new MockAnalyzer(random);
     analyzer.setEnableChecks(false); // MemoryIndex can close a TokenStream on init error
   }
 
   @Test
   public void testFreezeAPI() {
-
     MemoryIndex mi = new MemoryIndex();
     mi.addField("f1", "some text", analyzer);
 
@@ -143,6 +143,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     mi.setSimilarity(new ClassicSimilarity());
   }
 
+  @Test
   public void testSeekByTermOrd() throws IOException {
     MemoryIndex mi = new MemoryIndex();
     mi.addField("field", "some terms be here", analyzer);
@@ -154,6 +155,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     TestUtil.checkReader(reader);
   }
 
+  @Test
   public void testFieldsOnlyReturnsIndexedFields() throws IOException {
     Document doc = new Document();
 
@@ -167,6 +169,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertEquals(reader.termVectors().get(0).size(), 1);
   }
 
+  @Test
   public void testReaderConsistency() throws IOException {
     Analyzer analyzer = new MockPayloadAnalyzer();
 
@@ -266,6 +269,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertEquals(0.0f, mi.search(new PhraseQuery("field1", "text", "some")), 0);
   }
 
+  @Test
   public void testDocValues() throws Exception {
     Document doc = new Document();
     doc.add(new NumericDocValuesField("numeric", 29L));
@@ -320,6 +324,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, sortedDocValues.nextDoc());
   }
 
+  @Test
   public void testDocValues_resetIterator() throws Exception {
     Document doc = new Document();
 
@@ -360,6 +365,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     }
   }
 
+  @Test
   public void testInvalidDocValuesUsage() throws Exception {
     Document doc = new Document();
     doc.add(new NumericDocValuesField("field", 29L));
@@ -406,6 +412,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     }
   }
 
+  @Test
   public void testDocValuesDoNotAffectBoostPositionsOrOffset() throws Exception {
     Document doc = new Document();
     doc.add(new BinaryDocValuesField("text", new BytesRef("quick brown fox")));
@@ -443,10 +450,10 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertEquals("quick brown fox", binaryDocValues.binaryValue().utf8ToString());
   }
 
-  public void testBigBinaryDocValues() throws Exception {
+  @Test
+  public void testBigBinaryDocValues(Random random) throws Exception {
     Document doc = new Document();
-    byte[] bytes = new byte[33 * 1024];
-    random().nextBytes(bytes);
+    byte[] bytes = RandomBytes.randomBytesOfLength(random, 33 * 1024);
     doc.add(new BinaryDocValuesField("binary", new BytesRef(bytes)));
     MemoryIndex mi = MemoryIndex.fromDocument(doc, analyzer, true, true);
     LeafReader leafReader = mi.createSearcher().getIndexReader().leaves().get(0).reader();
@@ -455,10 +462,10 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertArrayEquals(bytes, binaryDocValues.binaryValue().bytes);
   }
 
-  public void testBigSortedDocValues() throws Exception {
+  @Test
+  public void testBigSortedDocValues(Random random) throws Exception {
     Document doc = new Document();
-    byte[] bytes = new byte[33 * 1024];
-    random().nextBytes(bytes);
+    byte[] bytes = RandomBytes.randomBytesOfLength(random, 33 * 1024);
     doc.add(new SortedDocValuesField("binary", new BytesRef(bytes)));
     MemoryIndex mi = MemoryIndex.fromDocument(doc, analyzer, true, true);
     LeafReader leafReader = mi.createSearcher().getIndexReader().leaves().get(0).reader();
@@ -467,6 +474,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertArrayEquals(bytes, sortedDocValues.lookupOrd(0).bytes);
   }
 
+  @Test
   public void testPointValues() throws Exception {
     List<Function<Long, IndexableField>> fieldFunctions =
         Arrays.asList(
@@ -534,6 +542,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     }
   }
 
+  @Test
   public void testMissingPoints() throws IOException {
     Document doc = new Document();
     doc.add(new StoredField("field", 42));
@@ -551,6 +560,7 @@ public class TestMemoryIndex extends LuceneTestCase {
             .getPointValues("some_missing_field"));
   }
 
+  @Test
   public void testPointValuesDoNotAffectPositionsOrOffset() throws Exception {
     MemoryIndex mi = new MemoryIndex(true, true);
     mi.addField(new TextField("text", "quick brown fox", Field.Store.NO), analyzer);
@@ -598,6 +608,7 @@ public class TestMemoryIndex extends LuceneTestCase {
             BinaryPoint.newExactQuery("text", "jumps".getBytes(StandardCharsets.UTF_8))));
   }
 
+  @Test
   public void test2DPoints() throws Exception {
     Document doc = new Document();
     doc.add(new IntPoint("ints", 0, -100));
@@ -631,6 +642,7 @@ public class TestMemoryIndex extends LuceneTestCase {
                 "doubles", new double[] {10D, 10D}, new double[] {30D, 30D})));
   }
 
+  @Test
   public void testMultiValuedPointsSortedCorrectly() throws Exception {
     Document doc = new Document();
     doc.add(new IntPoint("ints", 3));
@@ -655,6 +667,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertEquals(1, s.count(DoublePoint.newSetQuery("doubles", 2)));
   }
 
+  @Test
   public void testIndexingPointsAndDocValues() throws Exception {
     FieldType type = new FieldType();
     type.setDimensions(1, 4);
@@ -675,6 +688,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertEquals("term", dvs.binaryValue().utf8ToString());
   }
 
+  @Test
   public void testToStringDebug() {
     MemoryIndex mi = new MemoryIndex(true, true);
     Analyzer analyzer = new MockPayloadAnalyzer();
@@ -701,7 +715,8 @@ public class TestMemoryIndex extends LuceneTestCase {
         mi.toStringDebug());
   }
 
-  public void testStoredFields() throws IOException {
+  @Test
+  public void testStoredFields(Random random) throws IOException {
     List<IndexableField> fields = new ArrayList<>();
     fields.add(new StoredField("float", 1.5f));
     fields.add(new StoredField("multifloat", 2.5f));
@@ -724,7 +739,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     fields.add(new StoredField("multibinary", "bbar".getBytes(StandardCharsets.UTF_8)));
     fields.add(new StoredField("multibinary", "bbaz".getBytes(StandardCharsets.UTF_8)));
 
-    Collections.shuffle(fields, random());
+    Collections.shuffle(fields, random);
     Document doc = new Document();
     for (IndexableField f : fields) {
       doc.add(f);
@@ -750,6 +765,7 @@ public class TestMemoryIndex extends LuceneTestCase {
         d, "multibinary", new BytesRef[] {new BytesRef("bbar"), new BytesRef("bbaz")});
   }
 
+  @Test
   public void testKnnFloatVectorOnlyOneVectorAllowed() throws IOException {
     Document doc = new Document();
     doc.add(new KnnFloatVectorField("knnFloatA", new float[] {1.0f, 2.0f}));
@@ -759,14 +775,15 @@ public class TestMemoryIndex extends LuceneTestCase {
         () -> MemoryIndex.fromDocument(doc, new StandardAnalyzer()));
   }
 
-  public void testKnnFloatVectors() throws IOException {
+  @Test
+  public void testKnnFloatVectors(Random random) throws IOException {
     List<IndexableField> fields = new ArrayList<>();
     fields.add(new KnnFloatVectorField("knnFloatA", new float[] {1.0f, 2.0f}));
     fields.add(new KnnFloatVectorField("knnFloatB", new float[] {3.0f, 4.0f, 5.0f, 6.0f}));
     fields.add(
         new KnnFloatVectorField(
             "knnFloatC", new float[] {7.0f, 8.0f, 9.0f}, VectorSimilarityFunction.DOT_PRODUCT));
-    Collections.shuffle(fields, random());
+    Collections.shuffle(fields, random);
     Document doc = new Document();
     for (IndexableField f : fields) {
       doc.add(f);
@@ -777,9 +794,10 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertFloatVectorValue(mi, "knnFloatB", new float[] {3.0f, 4.0f, 5.0f, 6.0f});
     assertFloatVectorValue(mi, "knnFloatC", new float[] {7.0f, 8.0f, 9.0f});
 
-    assertFloatVectorScore(mi, "knnFloatA", new float[] {1.0f, 1.0f}, 0.5f);
-    assertFloatVectorScore(mi, "knnFloatB", new float[] {3.0f, 3.0f, 3.0f, 3.0f}, 0.06666667f);
-    assertFloatVectorScore(mi, "knnFloatC", new float[] {7.0f, 7.0f, 7.0f}, 84.5f);
+    assertFloatVectorScore(random, mi, "knnFloatA", new float[] {1.0f, 1.0f}, 0.5f);
+    assertFloatVectorScore(
+        random, mi, "knnFloatB", new float[] {3.0f, 3.0f, 3.0f, 3.0f}, 0.06666667f);
+    assertFloatVectorScore(random, mi, "knnFloatC", new float[] {7.0f, 7.0f, 7.0f}, 84.5f);
 
     assertNull(
         mi.createSearcher()
@@ -802,6 +820,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertEquals(0, docs.totalHits.value());
   }
 
+  @Test
   public void testKnnByteVectorOnlyOneVectorAllowed() throws IOException {
     Document doc = new Document();
     doc.add(new KnnByteVectorField("knnByteA", new byte[] {1, 2}));
@@ -811,14 +830,15 @@ public class TestMemoryIndex extends LuceneTestCase {
         () -> MemoryIndex.fromDocument(doc, new StandardAnalyzer()));
   }
 
-  public void testKnnByteVectors() throws IOException {
+  @Test
+  public void testKnnByteVectors(Random random) throws IOException {
     List<IndexableField> fields = new ArrayList<>();
     fields.add(new KnnByteVectorField("knnByteA", new byte[] {1, 2}));
     fields.add(new KnnByteVectorField("knnByteB", new byte[] {3, 4, 5, 6}));
     fields.add(
         new KnnByteVectorField(
             "knnByteC", new byte[] {7, 8, 9}, VectorSimilarityFunction.DOT_PRODUCT));
-    Collections.shuffle(fields, random());
+    Collections.shuffle(fields, random);
     Document doc = new Document();
     for (IndexableField f : fields) {
       doc.add(f);
@@ -829,9 +849,9 @@ public class TestMemoryIndex extends LuceneTestCase {
     assertByteVectorValue(mi, "knnByteB", new byte[] {3, 4, 5, 6});
     assertByteVectorValue(mi, "knnByteC", new byte[] {7, 8, 9});
 
-    assertByteVectorScore(mi, "knnByteA", new byte[] {1, 1}, 0.5f);
-    assertByteVectorScore(mi, "knnByteB", new byte[] {3, 3, 3, 3}, 0.06666667f);
-    assertByteVectorScore(mi, "knnByteC", new byte[] {7, 7, 7}, 0.501709f);
+    assertByteVectorScore(random, mi, "knnByteA", new byte[] {1, 1}, 0.5f);
+    assertByteVectorScore(random, mi, "knnByteB", new byte[] {3, 3, 3, 3}, 0.06666667f);
+    assertByteVectorScore(random, mi, "knnByteC", new byte[] {7, 7, 7}, 0.501709f);
 
     assertNull(
         mi.createSearcher()
@@ -870,7 +890,7 @@ public class TestMemoryIndex extends LuceneTestCase {
   }
 
   private static void assertFloatVectorScore(
-      MemoryIndex mi, String fieldName, float[] queryVector, float expectedScore)
+      Random random, MemoryIndex mi, String fieldName, float[] queryVector, float expectedScore)
       throws IOException {
     FloatVectorValues fvv =
         mi.createSearcher()
@@ -880,7 +900,7 @@ public class TestMemoryIndex extends LuceneTestCase {
             .reader()
             .getFloatVectorValues(fieldName);
     assertNotNull(fvv);
-    if (random().nextBoolean()) {
+    if (random.nextBoolean()) {
       fvv.iterator().nextDoc();
     }
     VectorScorer scorer = fvv.scorer(queryVector);
@@ -906,7 +926,7 @@ public class TestMemoryIndex extends LuceneTestCase {
   }
 
   private static void assertByteVectorScore(
-      MemoryIndex mi, String fieldName, byte[] queryVector, float expectedScore)
+      Random random, MemoryIndex mi, String fieldName, byte[] queryVector, float expectedScore)
       throws IOException {
     ByteVectorValues bvv =
         mi.createSearcher()
@@ -916,7 +936,7 @@ public class TestMemoryIndex extends LuceneTestCase {
             .reader()
             .getByteVectorValues(fieldName);
     assertNotNull(bvv);
-    if (random().nextBoolean()) {
+    if (random.nextBoolean()) {
       bvv.iterator().nextDoc();
     }
     VectorScorer scorer = bvv.scorer(queryVector);
@@ -978,6 +998,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     return false;
   }
 
+  @Test
   public void testIntegerNumericDocValue() throws IOException {
     // MemoryIndex used to fail when doc values are enabled and numericValue() returns an Integer
     // such as with IntField.
@@ -1068,6 +1089,7 @@ public class TestMemoryIndex extends LuceneTestCase {
     }
   }
 
+  @Test
   public void testKeywordWithoutTokenStream() throws IOException {
     List<FieldType> legalFieldTypes = new ArrayList<>();
     {

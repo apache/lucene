@@ -773,7 +773,7 @@ final class DocumentsWriterFlushControl implements Accountable, Closeable {
   }
 
   /** Returns the largest non-pending flushable DWPT or <code>null</code> if there is none. */
-  final DocumentsWriterPerThread checkoutLargestNonPendingWriter() {
+  DocumentsWriterPerThread checkoutLargestNonPendingWriter() {
     DocumentsWriterPerThread largestNonPendingWriter = findLargestNonPendingWriter();
     if (largestNonPendingWriter != null) {
       // we only lock this very briefly to swap it's DWPT out - we don't go through the DWPTPool and

@@ -17,7 +17,9 @@
 package org.apache.lucene.search;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.instanceOf;
+import static org.hamcrest.Matchers.lessThanOrEqualTo;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -25,6 +27,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.IntFunction;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.document.Document;
@@ -38,6 +41,8 @@ import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -52,6 +57,11 @@ public class TestDocValuesQueries extends LuceneTestCase {
   private Codec getCodec() {
     // small interval size to test with many intervals
     return TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(random().nextInt(4, 16)));
+  }
+
+  private Codec getCodec(int skipIntervalSize) {
+    // small interval size to test with many intervals
+    return TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(skipIntervalSize));
   }
 
   public void testDuelPointRangeSortedNumericRangeQuery() throws IOException {
@@ -749,5 +759,80 @@ public class TestDocValuesQueries extends LuceneTestCase {
         }
       }
     }
+  }
+
+  public void testPrimarySortDenseSortedDocValuesExactMatch() throws IOException {
+    doTestPrimarySortDenseExactMatch(
+        SortField.Type.STRING,
+        i -> SortedDocValuesField.indexedField("dv", newBytesRef(i + "")),
+        i ->
+            SortedDocValuesField.newSlowRangeQuery(
+                "dv", newBytesRef(i + ""), newBytesRef(i + ""), true, true));
+  }
+
+  public void testPrimarySortDenseNumericDocValuesExactMatch() throws IOException {
+    doTestPrimarySortDenseExactMatch(
+        SortField.Type.LONG,
+        i -> NumericDocValuesField.indexedField("dv", i),
+        i -> NumericDocValuesField.newSlowRangeQuery("dv", i, i));
+  }
+
+  public void doTestPrimarySortDenseExactMatch(
+      SortField.Type type, IntFunction<IndexableField> fields, IntFunction<Query> queries)
+      throws IOException {
+    boolean deletes = random().nextBoolean();
+    Directory dir = newDirectory();
+    int skipIntervalSize = random().nextInt(4, 4096);
+    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(skipIntervalSize));
+    config.setIndexSort(new Sort(new SortField("dv", type, random().nextBoolean())));
+    int numBlocks = random().nextInt(4, 16);
+    int[] sizes = new int[numBlocks];
+    for (int i = 0; i < numBlocks; i++) {
+      sizes[i] = random().nextInt(1, 250);
+    }
+    int[] totalSizes = new int[numBlocks];
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, config);
+    for (int i = 0; i < numBlocks; i++) {
+      totalSizes[i] = sizes[i];
+      for (int j = 0; j < sizes[i]; j++) {
+        Document doc = new Document();
+        IndexableField dv = fields.apply(i);
+        doc.add(dv);
+        iw.addDocument(doc);
+        if (deletes && random().nextInt(10) == 0) {
+          doc = new Document();
+          doc.add(dv);
+          doc.add(new StringField("id", "to_delete", Field.Store.NO));
+          iw.addDocument(doc);
+          totalSizes[i]++;
+        }
+      }
+    }
+    iw.commit();
+    iw.forceMerge(1);
+
+    if (deletes) {
+      iw.deleteDocuments(new TermQuery(new Term("id", "to_delete")));
+    }
+
+    final IndexReader reader = iw.getReader();
+    final IndexSearcher searcher = newSearcher(reader, false);
+    iw.close();
+
+    for (int i = 0; i < numBlocks; i++) {
+      final Query q = queries.apply(i);
+      assertEquals(sizes[i], searcher.count(q));
+      assertEquals(sizes[i], searcher.search(q, 1000).totalHits.value());
+      // check cost
+      assertEquals(1, reader.leaves().size());
+      LeafReaderContext ctx = reader.leaves().get(0);
+      Query rewritten = searcher.rewrite(q);
+      Weight weight = rewritten.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
+      ScorerSupplier supplier = weight.scorerSupplier(ctx);
+      assertThat(supplier.cost(), greaterThanOrEqualTo((long) sizes[i]));
+      assertThat(supplier.cost(), lessThanOrEqualTo(totalSizes[i] + 2L * skipIntervalSize));
+    }
+    reader.close();
+    dir.close();
   }
 }

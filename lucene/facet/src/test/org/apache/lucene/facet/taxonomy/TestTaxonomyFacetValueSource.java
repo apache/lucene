@@ -683,7 +683,7 @@ public class TestTaxonomyFacetValueSource extends FacetTestCase {
                 "dim" + i,
                 new String[0],
                 aggregatedValue,
-                labelValues.toArray(new LabelAndValue[0]),
+                labelValues.toArray(LabelAndValue[]::new),
                 labelValues.size()));
       }
     }

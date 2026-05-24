@@ -28,6 +28,7 @@ import static org.apache.lucene.codecs.simpletext.SimpleTextFieldsWriter.TERM;
 import static org.apache.lucene.codecs.simpletext.SimpleTextSkipWriter.SKIP_LIST;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
@@ -773,7 +774,7 @@ class SimpleTextFieldsReader extends FieldsProducer {
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       return docCount;
     }
 
@@ -808,14 +809,19 @@ class SimpleTextFieldsReader extends FieldsProducer {
   private final Map<String, SimpleTextTerms> termsCache = new HashMap<>();
 
   @Override
-  public synchronized Terms terms(String field) throws IOException {
+  public synchronized Terms terms(String field) {
     SimpleTextTerms terms = termsCache.get(field);
     if (terms == null) {
       Long fp = fields.get(field);
       if (fp == null) {
         return null;
       } else {
-        terms = new SimpleTextTerms(field, fp, maxDoc);
+        try {
+          // TODO: rework SimpleTextTerms to avoid IO during construction
+          terms = new SimpleTextTerms(field, fp, maxDoc);
+        } catch (IOException e) {
+          throw new UncheckedIOException(e);
+        }
         termsCache.put(field, terms);
       }
     }

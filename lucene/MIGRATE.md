@@ -19,6 +19,35 @@
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### JUnit5/jupiter support in the test-framework
+
+Lucene 11 brings initial support for writing test cases
+using JUnit Jupiter.
+
+The test-framework module exports both junit4 and junit5/jupiter
+modules. `LuceneTestCase` remains the parent abstract class for JUnit4 tests.
+`LuceneTestCaseJupiter` is the parent class to extend from for JUnit5
+support.
+
+#### Key changes
+
+- All tests must be Jupiter tests, typically this means
+methods must be annotated with `@Test`. Method prefix
+`test*` is not sufficient. Methods that are named `test*` but are not tests
+will cause validation errors.
+- You can use parameterized tests, dynamic tests, etc. All these are supported.
+- You *must not* call the static `random()` method on the parent
+class, even though it is there. Add a `Random` parameter to your test methods
+or callbacks - it will
+be automatically injected by the test framework. See the `memory`
+module tests for examples.
+- Use `@BeforeEach`, `@AfterEach` and other junit5-specific callback
+annotations instead of `setUp` and `tearDown` methods.
+- Static utility methods have been pulled up to a parent class
+called `LuceneTestCaseParent` but you should reference them either
+without an explicit type or via the type of the parent class
+for your test framework. The parent class may be removed in the future.
+
 ### Relaxed Index Upgrade Policy (GITHUB#13797)
 
 Starting with Lucene 11.0.0, the index upgrade policy has been relaxed to allow safe upgrades across multiple major version numbers without reindexing when no format breaks occur.
@@ -308,7 +337,7 @@ Support for the optional complement syntax (`~`) that was deprecated in Lucene 1
 has been removed. The `DEPRECATED_COMPLEMENT` flag and `REGEXP_DEPRECATED_COMPLEMENT`
 enum value are no longer available.
 
-Users should migrate to using _complement bracket expressions_ (`[^...]`) instead.
+Users should migrate to using *complement bracket expressions* (`[^...]`) instead.
 For example, `[^fo]` matches any character that is not an `f` or `o`.
 
 ### DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery removed in favor of FieldExistsQuery (LUCENE-10436)

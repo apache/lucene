@@ -113,7 +113,7 @@ public abstract non-sealed class LeafReader extends IndexReader {
   }
 
   @Override
-  public final int getDocCount(String field) throws IOException {
+  public final int getDocCount(String field) {
     final Terms terms = terms(field);
     if (terms == null) {
       return 0;
@@ -131,7 +131,7 @@ public abstract non-sealed class LeafReader extends IndexReader {
   }
 
   /** Returns the {@link Terms} index for this field, or null if it has none. */
-  public abstract Terms terms(String field) throws IOException;
+  public abstract Terms terms(String field);
 
   /**
    * Returns {@link PostingsEnum} for the specified term. This will return null if either the field
@@ -415,7 +415,7 @@ public abstract non-sealed class LeafReader extends IndexReader {
    * Returns the {@link PointValues} used for numeric or spatial searches for the given field, or
    * null if there are no point fields.
    */
-  public abstract PointValues getPointValues(String field) throws IOException;
+  public abstract PointValues getPointValues(String field);
 
   /**
    * Checks consistency of this reader.

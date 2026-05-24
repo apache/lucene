@@ -1083,7 +1083,7 @@ public class TestTaxonomyCombined extends FacetTestCase {
       for (int i = k - roundSize + 1; i <= k && i < count; i++) {
         round.add(String.format(Locale.ROOT, "category %d of %d", i, k));
       }
-      result[k / roundSize - 1] = round.toArray(new String[0]);
+      result[k / roundSize - 1] = round.toArray(String[]::new);
     } while (k <= count);
     return result;
   }
