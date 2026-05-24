@@ -30,6 +30,7 @@ import static org.apache.lucene.document.column.ColumnBatchTestUtil.simpleBatch;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
@@ -1659,5 +1660,518 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
       assertArrayEquals(expected, bV.vectorValue(bIt.index()), 0f);
     }
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, bIt.nextDoc());
+  }
+
+  private static FieldType eligibleInvertType() {
+    FieldType t = new FieldType();
+    t.setIndexOptions(IndexOptions.DOCS);
+    t.setOmitNorms(true);
+    t.setTokenized(false);
+    t.freeze();
+    return t;
+  }
+
+  /** Eligible inverted column + stored column: eligible is demoted to row pass. */
+  public void testColumnInvertMixedWithStoredForcesRowMode() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType storedOnly = new FieldType();
+    storedOnly.setStored(true);
+    storedOnly.freeze();
+
+    int[] ids = {0, 1, 2};
+    BytesRef[] tags = {newBytesRef("a"), newBytesRef("b"), newBytesRef("a")};
+    BytesRef[] stored = {newBytesRef("v0"), newBytesRef("v1"), newBytesRef("v2")};
+    w.addBatch(
+        simpleBatch(
+            3,
+            new ArrayBinaryColumn("tag", eligibleInvertType(), ids, tags),
+            new ArrayBinaryColumn("stored", storedOnly, ids, stored)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    IndexSearcher s = new IndexSearcher(r);
+
+    assertEquals(2, s.count(new TermQuery(new Term("tag", "a"))));
+    assertEquals(1, s.count(new TermQuery(new Term("tag", "b"))));
+    StoredFields sf = leaf.storedFields();
+    for (int i = 0; i < 3; i++) {
+      IndexableField field = sf.document(i).getField("stored");
+      assertNotNull("doc " + i + " must have stored field", field);
+      assertEquals(stored[i], field.binaryValue());
+    }
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  /** Eligible column + norms-enabled column: both go through row pass. */
+  public void testColumnInvertWithNormsForcesRowMode() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType withNorms = new FieldType();
+    withNorms.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+    withNorms.setOmitNorms(false);
+    withNorms.setTokenized(false);
+    withNorms.freeze();
+
+    int[] ids = {0, 1};
+    w.addBatch(
+        simpleBatch(
+            2,
+            new ArrayBinaryColumn(
+                "eligible",
+                eligibleInvertType(),
+                ids,
+                new BytesRef[] {newBytesRef("x"), newBytesRef("y")}),
+            new ArrayBinaryColumn(
+                "normed", withNorms, ids, new BytesRef[] {newBytesRef("p"), newBytesRef("q")})));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    IndexSearcher s = new IndexSearcher(r);
+
+    assertEquals(1, s.count(new TermQuery(new Term("eligible", "x"))));
+    assertEquals(1, s.count(new TermQuery(new Term("normed", "p"))));
+    assertNotNull("normed field must have norms", leaf.getNormValues("normed"));
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  /** Eligible column + term-vector column: both go through row pass. */
+  public void testColumnInvertWithTermVectorsForcesRowMode() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType tvType = new FieldType();
+    tvType.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+    tvType.setOmitNorms(true);
+    tvType.setTokenized(false);
+    tvType.setStoreTermVectors(true);
+    tvType.freeze();
+
+    int[] ids = {0, 1};
+    w.addBatch(
+        simpleBatch(
+            2,
+            new ArrayBinaryColumn(
+                "eligible",
+                eligibleInvertType(),
+                ids,
+                new BytesRef[] {newBytesRef("a"), newBytesRef("b")}),
+            new ArrayBinaryColumn(
+                "tv", tvType, ids, new BytesRef[] {newBytesRef("hello"), newBytesRef("world")})));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    IndexSearcher s = new IndexSearcher(r);
+
+    assertEquals(1, s.count(new TermQuery(new Term("eligible", "a"))));
+    assertEquals(1, s.count(new TermQuery(new Term("tv", "hello"))));
+    // The tv column must have term vectors written.
+    TermVectors tvReader = r.termVectors();
+    assertNotNull(tvReader.get(0));
+    assertNotNull(tvReader.get(0).terms("tv"));
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  /** DOCS_AND_FREQS_AND_POSITIONS falls back to row pass; positions must be present. */
+  public void testColumnInvertPositionsForcesRowMode() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config =
+        newIndexWriterConfig(new org.apache.lucene.tests.analysis.MockAnalyzer(random()));
+    IndexWriter w = new IndexWriter(dir, config);
+
+    FieldType posType = new FieldType();
+    posType.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+    posType.setOmitNorms(true);
+    posType.setTokenized(true);
+    posType.freeze();
+
+    int[] ids = {0, 1};
+    BytesRef[] vals = {newBytesRef("foo"), newBytesRef("bar")};
+    w.addBatch(simpleBatch(2, new ArrayBinaryColumn("pos", posType, ids, vals)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    Terms terms = leaf.terms("pos");
+    assertNotNull(terms);
+    TermsEnum te = terms.iterator();
+    assertTrue(te.seekExact(newBytesRef("foo")));
+    // Positions must be stored (seekExact + positions postings enum should succeed).
+    PostingsEnum pe = te.postings(null, PostingsEnum.POSITIONS);
+    assertEquals(0, pe.nextDoc());
+    assertEquals(0, pe.nextPosition());
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  /** Column-invert parity: batch index == addDocument index for eligible field types. */
+  public void testColumnInvertParityVsAddDocument() throws IOException {
+    int numDocs = 20;
+    String[] terms = {"alpha", "beta", "gamma", "delta", "epsilon"};
+
+    // Build batch index
+    Directory batchDir = newDirectory();
+    try (IndexWriter bw = new IndexWriter(batchDir, newIndexWriterConfig())) {
+      int[] ids = new int[numDocs];
+      BytesRef[] vals = new BytesRef[numDocs];
+      for (int i = 0; i < numDocs; i++) {
+        ids[i] = i;
+        vals[i] = newBytesRef(terms[i % terms.length]);
+      }
+      bw.addBatch(
+          simpleBatch(numDocs, new ArrayBinaryColumn("f", eligibleInvertType(), ids, vals)));
+    }
+
+    // Build single-doc index
+    Directory docDir = newDirectory();
+    try (IndexWriter dw = new IndexWriter(docDir, new IndexWriterConfig())) {
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        // StringField uses DOCS, omitNorms, no TVs — matches eligibleInvertType()
+        doc.add(new StringField("f", terms[i % terms.length], Field.Store.NO));
+        dw.addDocument(doc);
+      }
+      dw.forceMerge(1);
+    }
+
+    try (DirectoryReader bR = DirectoryReader.open(batchDir);
+        DirectoryReader dR = DirectoryReader.open(docDir)) {
+      LeafReader bL = getOnlyLeafReader(bR);
+      LeafReader dL = getOnlyLeafReader(dR);
+      assertEquals(dL.maxDoc(), bL.maxDoc());
+
+      IndexSearcher bS = new IndexSearcher(bR);
+      IndexSearcher dS = new IndexSearcher(dR);
+      for (String t : terms) {
+        Term term = new Term("f", t);
+        assertEquals(
+            "count mismatch for term " + t,
+            dS.count(new TermQuery(term)),
+            bS.count(new TermQuery(term)));
+      }
+
+      // Compare full term dictionaries
+      Terms bTerms = bL.terms("f");
+      Terms dTerms = dL.terms("f");
+      assertNotNull(bTerms);
+      assertNotNull(dTerms);
+      TermsEnum bTe = bTerms.iterator();
+      TermsEnum dTe = dTerms.iterator();
+      while (dTe.next() != null) {
+        assertNotNull("batch index missing term", bTe.next());
+        assertEquals(dTe.term(), bTe.term());
+        assertEquals(dTe.docFreq(), bTe.docFreq());
+      }
+      assertNull(bTe.next());
+    }
+
+    batchDir.close();
+    docDir.close();
+  }
+
+  /** Multiple eligible-invert columns in a single batch, no prior TV docs. */
+  public void testColumnInvertMultipleEligibleColumns() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    int[] ids = {0, 1, 2};
+    w.addBatch(
+        simpleBatch(
+            3,
+            new ArrayBinaryColumn(
+                "a",
+                eligibleInvertType(),
+                ids,
+                new BytesRef[] {newBytesRef("x"), newBytesRef("y"), newBytesRef("x")}),
+            new ArrayBinaryColumn(
+                "b",
+                eligibleInvertType(),
+                ids,
+                new BytesRef[] {newBytesRef("p"), newBytesRef("p"), newBytesRef("q")})));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    IndexSearcher s = new IndexSearcher(r);
+
+    assertEquals(2, s.count(new TermQuery(new Term("a", "x"))));
+    assertEquals(1, s.count(new TermQuery(new Term("a", "y"))));
+    assertEquals(2, s.count(new TermQuery(new Term("b", "p"))));
+    assertEquals(1, s.count(new TermQuery(new Term("b", "q"))));
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  /**
+   * Prior addDocument with a TV-enabled field flips TermVectorsConsumer.hasVectors=true, then a
+   * batch with multiple eligible-invert columns runs the column-invert pass. Before the fix the
+   * second column's termsHash.finishDocument call tripped lastDocID==docID. After the fix the
+   * column-invert pass doesn't drive the TV consumer at all; fill() reconciles unframed docs at
+   * flush.
+   */
+  public void testColumnInvertMultipleColumnsAfterPriorTermVectors() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
+
+    // Doc 0: a regular doc with a term-vector-enabled field. This flips hasVectors=true on the
+    // segment's TermVectorsConsumer.
+    FieldType tvType = new FieldType();
+    tvType.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+    tvType.setTokenized(true);
+    tvType.setStoreTermVectors(true);
+    tvType.freeze();
+    Document tvDoc = new Document();
+    tvDoc.add(new Field("tv", "hello world", tvType));
+    w.addDocument(tvDoc);
+
+    // Subsequent batch (segDocIDs 1..3) with two eligible-invert columns.
+    int[] ids = {0, 1, 2};
+    w.addBatch(
+        simpleBatch(
+            3,
+            new ArrayBinaryColumn(
+                "a",
+                eligibleInvertType(),
+                ids,
+                new BytesRef[] {newBytesRef("x"), newBytesRef("y"), newBytesRef("x")}),
+            new ArrayBinaryColumn(
+                "b",
+                eligibleInvertType(),
+                ids,
+                new BytesRef[] {newBytesRef("p"), newBytesRef("q"), newBytesRef("p")})));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    IndexSearcher s = new IndexSearcher(r);
+
+    // Postings for both eligible columns are intact.
+    assertEquals(2, s.count(new TermQuery(new Term("a", "x"))));
+    assertEquals(1, s.count(new TermQuery(new Term("a", "y"))));
+    assertEquals(2, s.count(new TermQuery(new Term("b", "p"))));
+    assertEquals(1, s.count(new TermQuery(new Term("b", "q"))));
+
+    // Doc 0's term vector survives.
+    TermVectors tvReader = r.termVectors();
+    assertNotNull(tvReader.get(0));
+    assertNotNull(tvReader.get(0).terms("tv"));
+    // Batch docs (1, 2, 3) have no TV slots populated by us; reading them should not throw.
+    // They may be null (no fields) or empty depending on the codec — the contract we care about
+    // is that the TV file is not corrupt and reads cleanly.
+    for (int i = 1; i <= 3; i++) {
+      // Either null or an empty Fields object is acceptable.
+      org.apache.lucene.index.Fields tv = tvReader.get(i);
+      if (tv != null) {
+        assertNull("batch doc " + i + " must not have a TV for 'tv' field", tv.terms("tv"));
+      }
+    }
+
+    r.close();
+    w.close();
+    TestUtil.checkIndex(dir);
+    dir.close();
+  }
+
+  /**
+   * Same as above but the eligible columns are sparse (different doc subsets). Validates that
+   * skipping termsHash framing in the column-invert pass doesn't leave the TV writer in a state
+   * where fill() reconciliation produces a corrupt file. Verifies post-merge state by re-opening a
+   * fresh reader and running CheckIndex so silent merge corruption is caught.
+   */
+  public void testColumnInvertSparseMultipleColumnsAfterPriorTermVectors() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
+
+    FieldType tvType = new FieldType();
+    tvType.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+    tvType.setTokenized(true);
+    tvType.setStoreTermVectors(true);
+    tvType.freeze();
+    Document tvDoc = new Document();
+    tvDoc.add(new Field("tv", "alpha beta", tvType));
+    w.addDocument(tvDoc);
+
+    // Batch numDocs=6 (segDocIDs 1..6).
+    // Column a: values on docs 0, 3, 5. Column b: values on docs 1, 2, 5.
+    w.addBatch(
+        simpleBatch(
+            6,
+            new ArrayBinaryColumn(
+                "a",
+                eligibleInvertType(),
+                new int[] {0, 3, 5},
+                new BytesRef[] {newBytesRef("xa"), newBytesRef("ya"), newBytesRef("xa")}),
+            new ArrayBinaryColumn(
+                "b",
+                eligibleInvertType(),
+                new int[] {1, 2, 5},
+                new BytesRef[] {newBytesRef("pb"), newBytesRef("qb"), newBytesRef("pb")})));
+
+    // Pre-merge: verify the in-memory/flushed state via an NRT reader.
+    try (DirectoryReader r = DirectoryReader.open(w)) {
+      IndexSearcher s = new IndexSearcher(r);
+      assertEquals(2, s.count(new TermQuery(new Term("a", "xa"))));
+      assertEquals(1, s.count(new TermQuery(new Term("a", "ya"))));
+      assertEquals(2, s.count(new TermQuery(new Term("b", "pb"))));
+      assertEquals(1, s.count(new TermQuery(new Term("b", "qb"))));
+      assertNotNull(r.termVectors().get(0).terms("tv"));
+      assertEquals(7, r.maxDoc());
+    }
+
+    // ForceMerge collapses the segment(s) into one and re-writes the TV file. A corrupt TV state
+    // surfaces here either as an exception during merge or as wrong content in the merged segment.
+    w.forceMerge(1);
+    w.close();
+
+    // Post-merge: open a brand-new reader on the directory and re-verify everything against the
+    // merged segment.
+    try (DirectoryReader r2 = DirectoryReader.open(dir)) {
+      assertEquals(7, r2.maxDoc());
+      LeafReader merged = getOnlyLeafReader(r2);
+      IndexSearcher s2 = new IndexSearcher(r2);
+      assertEquals(2, s2.count(new TermQuery(new Term("a", "xa"))));
+      assertEquals(1, s2.count(new TermQuery(new Term("a", "ya"))));
+      assertEquals(2, s2.count(new TermQuery(new Term("b", "pb"))));
+      assertEquals(1, s2.count(new TermQuery(new Term("b", "qb"))));
+
+      TermVectors tvReader = r2.termVectors();
+      // Doc 0 keeps its TV.
+      Terms doc0Tv = tvReader.get(0).terms("tv");
+      assertNotNull(doc0Tv);
+      TermsEnum doc0TvTerms = doc0Tv.iterator();
+      assertNotNull(doc0TvTerms.next());
+      // Batch docs (1..6) must report no TV for 'tv'.
+      for (int i = 1; i <= 6; i++) {
+        org.apache.lucene.index.Fields tv = tvReader.get(i);
+        if (tv != null) {
+          assertNull("merged doc " + i + " must not have a TV for 'tv' field", tv.terms("tv"));
+        }
+      }
+      // Sanity: 'a' and 'b' fields exist on the merged segment and have no TVs (eligibility
+      // excludes TVs for them).
+      assertNotNull(merged.terms("a"));
+      assertNotNull(merged.terms("b"));
+    }
+
+    // Full CheckIndex pass — catches silent on-disk corruption that reader-level assertions miss.
+    TestUtil.checkIndex(dir);
+    dir.close();
+  }
+
+  /**
+   * Eligible-invert batch first, then a doc with term vectors. Validates that the TV writer's
+   * lastDocID is correctly advanced via fill() so the post-batch TV doc lands at the right
+   * position.
+   */
+  public void testColumnInvertThenAddDocumentWithTermVectors() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
+
+    // Batch of 3 eligible-invert docs (segDocIDs 0..2). hasVectors is still false here.
+    int[] ids = {0, 1, 2};
+    w.addBatch(
+        simpleBatch(
+            3,
+            new ArrayBinaryColumn(
+                "a",
+                eligibleInvertType(),
+                ids,
+                new BytesRef[] {newBytesRef("x"), newBytesRef("y"), newBytesRef("x")})));
+
+    // Now add a doc with TVs (segDocID 3). hasVectors flips true. fill(3) writes empty slots for
+    // docs 0..2 before slot 3 is written.
+    FieldType tvType = new FieldType();
+    tvType.setIndexOptions(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
+    tvType.setTokenized(true);
+    tvType.setStoreTermVectors(true);
+    tvType.freeze();
+    Document tvDoc = new Document();
+    tvDoc.add(new Field("tv", "hello world", tvType));
+    w.addDocument(tvDoc);
+
+    DirectoryReader r = DirectoryReader.open(w);
+    IndexSearcher s = new IndexSearcher(r);
+
+    assertEquals(2, s.count(new TermQuery(new Term("a", "x"))));
+    assertEquals(1, s.count(new TermQuery(new Term("a", "y"))));
+
+    TermVectors tvReader = r.termVectors();
+    // The post-batch TV doc is at segDocID 3.
+    assertNotNull(tvReader.get(3));
+    assertNotNull(tvReader.get(3).terms("tv"));
+    // Batch docs (0..2) should have no TV for the "tv" field.
+    for (int i = 0; i <= 2; i++) {
+      org.apache.lucene.index.Fields tv = tvReader.get(i);
+      if (tv != null) {
+        assertNull("batch doc " + i + " must not have a TV for 'tv' field", tv.terms("tv"));
+      }
+    }
+
+    r.close();
+    w.forceMerge(1);
+    w.close();
+    TestUtil.checkIndex(dir);
+    dir.close();
+  }
+
+  /**
+   * Feeds a term that exceeds {@link IndexWriter#MAX_TERM_LENGTH} into an eligible-invert column to
+   * trigger {@code MaxBytesLengthExceededException} → {@code IllegalArgumentException} inside
+   * {@code pf.invert}. Confirms the {@code invertSucceeded} gate in {@code
+   * processBinaryColumnInvert} skips {@code pf.finish} on the failed first invert (so partial
+   * FreqProx state isn't flushed), the writer remains usable for a subsequent batch, and CheckIndex
+   * passes on the recovered segment.
+   */
+  public void testColumnInvertImmenseTermNonAbortingIAE() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    // Build a term well over MAX_TERM_LENGTH bytes.
+    byte[] bigBytes = new byte[IndexWriter.MAX_TERM_LENGTH + 10];
+    Arrays.fill(bigBytes, (byte) 'x');
+    BytesRef immense = new BytesRef(bigBytes);
+
+    int[] ids = {0, 1};
+    BytesRef[] values = {newBytesRef("ok"), immense};
+
+    IllegalArgumentException e =
+        expectThrows(
+            IllegalArgumentException.class,
+            () ->
+                w.addBatch(
+                    simpleBatch(2, new ArrayBinaryColumn("f", eligibleInvertType(), ids, values))));
+    assertTrue(e.getMessage(), e.getMessage().contains("immense term"));
+
+    // Writer is still usable after the non-aborting IAE — add a recovery batch.
+    w.addBatch(
+        simpleBatch(
+            1,
+            new ArrayBinaryColumn(
+                "f",
+                eligibleInvertType(),
+                new int[] {0},
+                new BytesRef[] {newBytesRef("recovery")})));
+    w.forceMerge(1);
+    w.close();
+
+    // No on-disk corruption from the failed batch's partial state.
+    TestUtil.checkIndex(dir);
+
+    try (DirectoryReader r = DirectoryReader.open(dir)) {
+      IndexSearcher s = new IndexSearcher(r);
+      assertEquals(1, s.count(new TermQuery(new Term("f", "recovery"))));
+      // The "ok" term from the failed batch must not survive into the final segment.
+      assertEquals(0, s.count(new TermQuery(new Term("f", "ok"))));
+    }
+    dir.close();
   }
 }

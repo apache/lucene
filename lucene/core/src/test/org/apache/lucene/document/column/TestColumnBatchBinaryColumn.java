@@ -43,6 +43,8 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
@@ -640,6 +642,197 @@ public class TestColumnBatchBinaryColumn extends LuceneTestCase {
     IndexSearcher searcher = new IndexSearcher(r);
     assertEquals(1, searcher.count(IntPoint.newExactQuery("field", 10)));
     assertEquals(3, searcher.count(IntPoint.newRangeQuery("field", 10, 30)));
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  private static FieldType columnInvertType(IndexOptions opts) {
+    FieldType t = new FieldType();
+    t.setIndexOptions(opts);
+    t.setOmitNorms(true);
+    t.setTokenized(false);
+    t.freeze();
+    return t;
+  }
+
+  public void testColumnInvertDocsOnly() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType type = columnInvertType(IndexOptions.DOCS);
+    int[] docIds = {0, 1, 2};
+    BytesRef[] values = {newBytesRef("a"), newBytesRef("b"), newBytesRef("a")};
+    w.addBatch(simpleBatch(3, new ArrayBinaryColumn("tag", type, docIds, values)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    IndexSearcher s = new IndexSearcher(r);
+
+    assertEquals(2, s.count(new TermQuery(new Term("tag", "a"))));
+    assertEquals(1, s.count(new TermQuery(new Term("tag", "b"))));
+    assertNull("norms must be absent for omitNorms=true column", leaf.getNormValues("tag"));
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testColumnInvertDocsOnlySparse() throws IOException {
+    // Only docs 0 and 4 of a 6-doc batch have a value.
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType type = columnInvertType(IndexOptions.DOCS);
+    int[] docIds = {0, 4};
+    BytesRef[] values = {newBytesRef("x"), newBytesRef("x")};
+    w.addBatch(simpleBatch(6, new ArrayBinaryColumn("f", type, docIds, values)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    assertEquals(6, leaf.maxDoc());
+    assertEquals(2, new IndexSearcher(r).count(new TermQuery(new Term("f", "x"))));
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testColumnInvertDocsAndFreqs() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType type = columnInvertType(IndexOptions.DOCS_AND_FREQS);
+    // doc 0: "a" twice (multi-value), doc 1: "a" once, doc 2: "b" once
+    int[] docIds = {0, 0, 1, 2};
+    BytesRef[] values = {newBytesRef("a"), newBytesRef("a"), newBytesRef("a"), newBytesRef("b")};
+    w.addBatch(simpleBatch(3, new ArrayBinaryColumn("f", type, docIds, values)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+
+    Terms terms = leaf.terms("f");
+    assertNotNull(terms);
+    TermsEnum te = terms.iterator();
+    assertTrue(te.seekExact(newBytesRef("a")));
+    // "a" appears in doc 0 and doc 1 → docFreq=2
+    assertEquals(2, te.docFreq());
+    // total term freq: doc 0 contributes 2, doc 1 contributes 1 → 3
+    assertEquals(3, te.totalTermFreq());
+
+    assertTrue(te.seekExact(newBytesRef("b")));
+    assertEquals(1, te.docFreq());
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testColumnInvertTokenized() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriterConfig config = newIndexWriterConfig(new MockAnalyzer(random()));
+    IndexWriter w = new IndexWriter(dir, config);
+
+    FieldType type = new FieldType();
+    type.setIndexOptions(IndexOptions.DOCS_AND_FREQS);
+    type.setOmitNorms(true);
+    type.setTokenized(true);
+    type.freeze();
+
+    int[] docIds = {0, 1, 2};
+    BytesRef[] values = {
+      newBytesRef("quick brown fox"), newBytesRef("lazy brown dog"), newBytesRef("quick fox")
+    };
+    w.addBatch(simpleBatch(3, new ArrayBinaryColumn("text", type, docIds, values)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    IndexSearcher s = new IndexSearcher(r);
+    assertEquals(2, s.count(new TermQuery(new Term("text", "quick"))));
+    assertEquals(2, s.count(new TermQuery(new Term("text", "brown"))));
+    assertEquals(2, s.count(new TermQuery(new Term("text", "fox"))));
+    assertEquals(1, s.count(new TermQuery(new Term("text", "lazy"))));
+    assertEquals(0, s.count(new TermQuery(new Term("text", "missing"))));
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testColumnInvertWithDocValues() throws IOException {
+    // Eligible inverted column that ALSO has SORTED doc values — both passes run.
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType type = new FieldType();
+    type.setIndexOptions(IndexOptions.DOCS);
+    type.setOmitNorms(true);
+    type.setTokenized(false);
+    type.setDocValuesType(DocValuesType.SORTED);
+    type.freeze();
+
+    int[] docIds = {0, 1, 2};
+    BytesRef[] values = {newBytesRef("x"), newBytesRef("y"), newBytesRef("x")};
+    w.addBatch(simpleBatch(3, new ArrayBinaryColumn("f", type, docIds, values)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+
+    // Postings
+    assertEquals(2, new IndexSearcher(r).count(new TermQuery(new Term("f", "x"))));
+    assertEquals(1, new IndexSearcher(r).count(new TermQuery(new Term("f", "y"))));
+
+    // Doc values
+    SortedDocValues dv = leaf.getSortedDocValues("f");
+    for (int i = 0; i < 3; i++) {
+      assertEquals(i, dv.nextDoc());
+      assertEquals(values[i], dv.lookupOrd(dv.ordValue()));
+    }
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testColumnInvertWithDocValuesAndPoints() throws IOException {
+    // Eligible inverted column that ALSO has SORTED DV and a 1-D int point. All three passes
+    // run on the same column: column-invert (postings), column-oriented DV writer, and points
+    // writer. Eligibility doesn't gate pointDimensionCount, so this combination is valid.
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType type = new FieldType();
+    type.setIndexOptions(IndexOptions.DOCS);
+    type.setOmitNorms(true);
+    type.setTokenized(false);
+    type.setDocValuesType(DocValuesType.SORTED);
+    type.setDimensions(1, Integer.BYTES);
+    type.freeze();
+
+    int[] docIds = {0, 1, 2};
+    BytesRef[] values = {IntPoint.pack(10), IntPoint.pack(20), IntPoint.pack(30)};
+    w.addBatch(simpleBatch(3, new ArrayBinaryColumn("f", type, docIds, values)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    IndexSearcher searcher = new IndexSearcher(r);
+
+    // Postings (column-invert pass): each packed-int value is also a unique term.
+    assertEquals(1, searcher.count(new TermQuery(new Term("f", IntPoint.pack(10)))));
+    assertEquals(1, searcher.count(new TermQuery(new Term("f", IntPoint.pack(20)))));
+    assertEquals(0, searcher.count(new TermQuery(new Term("f", IntPoint.pack(99)))));
+
+    // DV (column-oriented pass).
+    SortedDocValues dv = leaf.getSortedDocValues("f");
+    for (int i = 0; i < 3; i++) {
+      assertEquals(i, dv.nextDoc());
+      assertEquals(values[i], dv.lookupOrd(dv.ordValue()));
+    }
+
+    // Points (column-oriented pass).
+    assertEquals(1, searcher.count(IntPoint.newExactQuery("f", 10)));
+    assertEquals(3, searcher.count(IntPoint.newRangeQuery("f", 10, 30)));
+    assertEquals(0, searcher.count(IntPoint.newRangeQuery("f", 31, 100)));
 
     r.close();
     w.close();
