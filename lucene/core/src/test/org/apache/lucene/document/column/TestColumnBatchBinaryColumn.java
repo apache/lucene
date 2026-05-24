@@ -38,7 +38,6 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReader;
-import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
@@ -793,6 +792,51 @@ public class TestColumnBatchBinaryColumn extends LuceneTestCase {
       assertEquals(i, dv.nextDoc());
       assertEquals(values[i], dv.lookupOrd(dv.ordValue()));
     }
+
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testColumnInvertWithDocValuesAndPoints() throws IOException {
+    // Eligible inverted column that ALSO has SORTED DV and a 1-D int point. All three passes
+    // run on the same column: column-invert (postings), column-oriented DV writer, and points
+    // writer. Eligibility doesn't gate pointDimensionCount, so this combination is valid.
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+
+    FieldType type = new FieldType();
+    type.setIndexOptions(IndexOptions.DOCS);
+    type.setOmitNorms(true);
+    type.setTokenized(false);
+    type.setDocValuesType(DocValuesType.SORTED);
+    type.setDimensions(1, Integer.BYTES);
+    type.freeze();
+
+    int[] docIds = {0, 1, 2};
+    BytesRef[] values = {IntPoint.pack(10), IntPoint.pack(20), IntPoint.pack(30)};
+    w.addBatch(simpleBatch(3, new ArrayBinaryColumn("f", type, docIds, values)));
+
+    DirectoryReader r = DirectoryReader.open(w);
+    LeafReader leaf = getOnlyLeafReader(r);
+    IndexSearcher searcher = new IndexSearcher(r);
+
+    // Postings (column-invert pass): each packed-int value is also a unique term.
+    assertEquals(1, searcher.count(new TermQuery(new Term("f", IntPoint.pack(10)))));
+    assertEquals(1, searcher.count(new TermQuery(new Term("f", IntPoint.pack(20)))));
+    assertEquals(0, searcher.count(new TermQuery(new Term("f", IntPoint.pack(99)))));
+
+    // DV (column-oriented pass).
+    SortedDocValues dv = leaf.getSortedDocValues("f");
+    for (int i = 0; i < 3; i++) {
+      assertEquals(i, dv.nextDoc());
+      assertEquals(values[i], dv.lookupOrd(dv.ordValue()));
+    }
+
+    // Points (column-oriented pass).
+    assertEquals(1, searcher.count(IntPoint.newExactQuery("f", 10)));
+    assertEquals(3, searcher.count(IntPoint.newRangeQuery("f", 10, 30)));
+    assertEquals(0, searcher.count(IntPoint.newRangeQuery("f", 31, 100)));
 
     r.close();
     w.close();
