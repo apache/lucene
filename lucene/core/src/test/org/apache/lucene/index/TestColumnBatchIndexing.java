@@ -1662,10 +1662,6 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, bIt.nextDoc());
   }
 
-  // -----------------------------------------------------------------------
-  // Column-pass inversion: mixed batches and row-mode fallback
-  // -----------------------------------------------------------------------
-
   private static FieldType eligibleInvertType() {
     FieldType t = new FieldType();
     t.setIndexOptions(IndexOptions.DOCS);

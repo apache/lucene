@@ -648,10 +648,6 @@ public class TestColumnBatchBinaryColumn extends LuceneTestCase {
     dir.close();
   }
 
-  // -------------------------------------------------------------------------
-  // Column-pass inversion tests (DOCS / DOCS_AND_FREQS, omitNorms, no TVs, not stored)
-  // -------------------------------------------------------------------------
-
   private static FieldType columnInvertType(IndexOptions opts) {
     FieldType t = new FieldType();
     t.setIndexOptions(opts);

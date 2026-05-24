@@ -705,13 +705,7 @@ final class IndexingChain implements Accountable {
     boolean hasRowColumns = false;
     boolean hasColumnInvert = false;
 
-    // First pass: validate all column schemas, initialize field infos, and cache each column's
-    // PerField in the shared docFields scratch (slot i == i-th column from
-    // columnBatch.columns()). Later passes that iterate the same column list in the same order
-    // — column-invert dispatch, and (when no row pass runs) the column-oriented pass — can
-    // index into docFields instead of repeating the hash lookup. The row pass overwrites
-    // docFields with its own compressed layout, so this cache is only useful when row pass
-    // doesn't run; that's mutually exclusive with column-invert dispatch.
+    // First pass: validate all column schemas and initialize field infos
     int columnIdx = 0;
     for (Column column : columnBatch.columns()) {
       final String fieldName = column.name();
@@ -775,8 +769,7 @@ final class IndexingChain implements Accountable {
     }
 
     // Column-oriented pass: doc values, points, and vectors. Each column is asked for a fresh
-    // cursor. PerFields are sourced from the validation-pass cache in docFields[]; the row pass
-    // no longer overwrites that array, so indexing by original column position is safe here too.
+    // cursor.
     int colOrientedIdx = 0;
     for (Column column : columnBatch.columns()) {
       final IndexableFieldType fieldType = column.fieldType();
@@ -816,13 +809,13 @@ final class IndexingChain implements Accountable {
   private void processRowColumns(int baseDocID, int numDocs, Iterable<Column> columns)
       throws IOException {
     // Collect row-oriented columns. PerFields are sourced from processBatch's validation-pass
-    // cache in docFields[] (indexed by original column position) and copied into the local
-    // rowPfs[] in compressed row-mode-only layout for the tight inner loop. docFields[] itself
-    // is not overwritten so the post-row-pass column-oriented pass can still index into it.
+    // cache in docFields[] (indexed by original column position); rowPfIndices[] stores the
+    // original index for each row-mode column so the inner loop can look up via
+    // docFields[rowPfIndices[i]].
     int numRowCols = 0;
     ColumnFieldAdapter[] adapters = new ColumnFieldAdapter[4];
     int[] heads = new int[4];
-    PerField[] rowPfs = new PerField[4];
+    int[] rowPfIndices = new int[4];
     boolean hasInverted = false;
     boolean hasStored = false;
 
@@ -836,11 +829,11 @@ final class IndexingChain implements Accountable {
       if (numRowCols >= adapters.length) {
         adapters = ArrayUtil.grow(adapters, numRowCols + 1);
         heads = ArrayUtil.grow(heads, numRowCols + 1);
-        rowPfs = ArrayUtil.grow(rowPfs, numRowCols + 1);
+        rowPfIndices = ArrayUtil.grow(rowPfIndices, numRowCols + 1);
       }
       ColumnFieldAdapter adapter = ColumnFieldAdapter.create(column);
       adapters[numRowCols] = adapter;
-      rowPfs[numRowCols] = docFields[originalIdx];
+      rowPfIndices[numRowCols] = originalIdx;
       heads[numRowCols] = adapter.nextDoc();
       if (fieldType.indexOptions() != IndexOptions.NONE) {
         hasInverted = true;
@@ -877,7 +870,7 @@ final class IndexingChain implements Accountable {
                     + head);
           }
           while (head == batchDocID) {
-            PerField pf = rowPfs[i];
+            PerField pf = docFields[rowPfIndices[i]];
             if (pf.fieldGen != fieldGen) {
               pf.fieldGen = fieldGen;
               pf.reset(segDocID, adapters[i].fieldType());
@@ -944,22 +937,12 @@ final class IndexingChain implements Accountable {
 
   /**
    * Column-pass inversion for a single {@link BinaryColumn} that qualifies via {@link
-   * #isColumnInvertEligible}. Each eligible column is processed independently; the cursor is
-   * traversed sparsely — only docs with values are visited.
-   *
-   * <p>Crucially, this method does <b>not</b> call {@code termsHash.startDocument()} or {@code
-   * termsHash.finishDocument(docID)}. Those calls exist solely to drive the {@link
-   * TermVectorsConsumer}, whose {@code lastDocID} is segment-scoped: calling {@code finishDocument}
-   * advances {@code lastDocID} (writing an empty TV slot when {@code hasVectors} is true). Driving
-   * that from here is unsafe — multiple eligible columns in a single batch would frame each batch
-   * doc more than once, breaking {@code TermVectorsConsumer.lastDocID}'s monotonicity invariant.
-   * Eligibility guarantees {@code doVectors=false} at the per-field level inside {@link
-   * TermVectorsConsumerPerField}, so {@code pf.invert} and {@code pf.finish} never touch TV state
-   * directly; any unframed docs (whether the column is sparse or absent) are reconciled by {@code
-   * TermVectorsConsumer.fill()} at the next row-pass framed doc or at segment flush.
-   *
-   * <p>Only invoked when {@code hasRowColumns} is false; when any row-mode column is present the
-   * eligible columns are demoted to the row pass so {@code termsHash} framing is shared.
+   * #isColumnInvertEligible}. Skips {@code termsHash.startDocument/finishDocument} — those calls
+   * advance {@link TermVectorsConsumer}'s segment-scoped {@code lastDocID}, and framing multiple
+   * columns per doc would break its monotonicity invariant. Eligibility guarantees {@code
+   * doVectors=false}, so TV state is never touched; unframed docs are reconciled by {@code
+   * TermVectorsConsumer.fill()} at the next row-pass doc or segment flush. Only invoked when no
+   * row-mode columns are present; otherwise eligible columns are demoted to the row pass.
    */
   private void processBinaryColumnInvert(
       int baseDocID, int numDocs, BinaryColumn column, PerField pf) throws IOException {
