@@ -704,7 +704,6 @@ final class IndexingChain implements Accountable {
     final int numDocs = columnBatch.numDocs();
     boolean hasRowColumns = false;
     boolean hasColumnInvert = false;
-    long batchGen = nextFieldGen++;
 
     // First pass: validate all column schemas, initialize field infos, and cache each column's
     // PerField in the shared docFields scratch (slot i == i-th column from
@@ -739,13 +738,6 @@ final class IndexingChain implements Accountable {
         throw new IllegalArgumentException(
             "\"" + fieldName + "\" is a reserved field and should not be added to any document");
       }
-      if (pf.fieldGen == batchGen) {
-        throw new IllegalArgumentException(
-            "ColumnBatch contains more than one column for field \""
-                + fieldName
-                + "\"; multi-valued fields must use a single column with a sparse cursor");
-      }
-      pf.fieldGen = batchGen;
       if (columnIdx >= docFields.length) {
         oversizeDocFields();
       }

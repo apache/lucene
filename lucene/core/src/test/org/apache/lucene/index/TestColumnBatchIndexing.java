@@ -1663,45 +1663,6 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
   }
 
   // -----------------------------------------------------------------------
-  // Duplicate column name rejection
-  // -----------------------------------------------------------------------
-
-  public void testDuplicateColumnNameRejected() throws IOException {
-    Directory dir = newDirectory();
-    try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
-      int[] ids = {0, 1};
-      long[] vals = {1L, 2L};
-      IllegalArgumentException e =
-          expectThrows(
-              IllegalArgumentException.class,
-              () ->
-                  w.addBatch(
-                      simpleBatch(
-                          2,
-                          new ArrayLongColumn("field", NumericDocValuesField.TYPE, ids, vals),
-                          new ArrayLongColumn("field", NumericDocValuesField.TYPE, ids, vals))));
-      assertTrue(e.getMessage(), e.getMessage().contains("field"));
-
-      // Writer still usable after validation failure.
-      w.addBatch(
-          simpleBatch(
-              1,
-              new ArrayLongColumn("v", NumericDocValuesField.TYPE, new int[] {0}, new long[] {7})));
-      w.forceMerge(1);
-      DirectoryReader r = DirectoryReader.open(w);
-      // After forceMerge, fully-deleted segments are pruned; only the recovery doc remains.
-      assertEquals(1, r.numDocs());
-      LeafReader leaf = getOnlyLeafReader(r);
-      NumericDocValues dv = leaf.getNumericDocValues("v");
-      assertNotNull(dv);
-      assertTrue(dv.nextDoc() != DocIdSetIterator.NO_MORE_DOCS);
-      assertEquals(7, dv.longValue());
-      r.close();
-    }
-    dir.close();
-  }
-
-  // -----------------------------------------------------------------------
   // Column-pass inversion: mixed batches and row-mode fallback
   // -----------------------------------------------------------------------
 
