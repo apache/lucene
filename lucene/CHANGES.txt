@@ -7,6 +7,10 @@ http://s.apache.org/luceneversions
 
 API Changes
 ---------------------
+* GITHUB#16053: Add an (optional) field-writer creation strategy to Lucene99FlatVectorsWriter.
+  This decouples the external interface and the internal representation of FlatFieldVectorsWriters created
+  by this FlatVectorsWriter, to allow different formats to change how vectors are stored in memory. (Lorenzo Dematte)
+
 * GITHUB#15663: Allow subclasses of NumericComparator to implement their own
   CompetitiveDISIBuilder subtypes. (Alan Woodward)
 
