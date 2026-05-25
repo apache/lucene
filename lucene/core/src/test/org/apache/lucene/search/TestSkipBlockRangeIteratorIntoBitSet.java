@@ -165,6 +165,40 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
     assertEquals("Should match only docs where score=0", expectedScore0, searcher.count(combined));
   }
 
+  public void testIntoBitSetAdvancesWhenUpToIsBlockBoundary() throws Exception {
+    long queryMin = 10;
+    long queryMax = 20;
+
+    NumericDocValues values = docValues(queryMin, queryMax);
+    DocValuesSkipper skipper = docValuesSkipper(queryMin, queryMax, true);
+    BatchDocValuesRangeIterator iter =
+        new BatchDocValuesRangeIterator(values, skipper, queryMin, queryMax);
+    assertEquals(0, iter.nextDoc());
+
+    FixedBitSet bitSet = new FixedBitSet(2048);
+    iter.intoBitSet(128, bitSet, 0);
+
+    assertEquals("All docs in the YES block must match", 128, bitSet.cardinality());
+    assertTrue(
+        "docID must skip the NO block that starts at the block boundary, but was " + iter.docID(),
+        iter.docID() >= 512);
+
+    // Continue filling the bitset in a second window, as DenseConjunctionBulkScorer does.
+    iter.intoBitSet(2048, bitSet, 0);
+    FixedBitSet expected = new FixedBitSet(2048);
+    values = docValues(queryMin, queryMax);
+    for (int d = values.nextDoc();
+        d != DocIdSetIterator.NO_MORE_DOCS && d < 2048;
+        d = values.nextDoc()) {
+      if (values.longValue() >= queryMin && values.longValue() <= queryMax) {
+        expected.set(d);
+      }
+    }
+    FixedBitSet diff = expected.clone();
+    diff.andNot(bitSet);
+    assertEquals("Second intoBitSet window must not miss matching docs", 0, diff.cardinality());
+  }
+
   /** Directly tests intoBitSet() against a linear scan reference. */
   public void testIntoBitSetMatchesLinearScan() throws Exception {
     doTestIntoBitSetMatchesLinearScan(reader);

@@ -265,6 +265,8 @@ Other
 
 * GITHUB#15893: Refactor to move common SHOULD/MUST dedup logic inside BooleanQuery into a common function. (Sagar Upadhyaya)
 
+* GITHUB#16082: Added a new JMH microbenchmark for DiversifyingChildrenFloatKnnVectorQuery. (Anna Ruggero via Alessandro Benedetti)
+
 ======================= Lucene 10.5.0 =======================
 
 API Changes
@@ -418,6 +420,9 @@ Optimizations
 
 * GITHUB#16084: Added range encoding to  RoaringDocIdSet. (Ignacio Vera)
 
+* GITHUB#16097: Implement DocIdSetIterator#intoBitSet in dense implememntatios of the
+  Lucene90DocValuesProducer. (Ignacio Vera)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
@@ -497,6 +502,8 @@ Other
 * GITHUB#15960: Move parent field from DWPT to IndexingChain. (Tim Brooks)
 
 * GITHUB#16090: Make CollectorMemoryTracker instance members final. (Luca Cavanna)
+
+* GITHUB#16073: Simplify SortedDocIDMerger.next(). (Tim Brooks)
 
 ======================= Lucene 10.4.0 =======================
 
