@@ -1274,7 +1274,6 @@ public class TestGrouping extends LuceneTestCase {
 
         final TopGroups<BytesRef> topGroupsShards =
             searchShards(
-                s,
                 shards.subSearchers,
                 query,
                 groupSort,
@@ -1483,7 +1482,6 @@ public class TestGrouping extends LuceneTestCase {
         // Get shard'd block grouping result:
         final TopGroups<BytesRef> topGroupsBlockShards =
             searchShards(
-                sBlocks,
                 shardsBlocks.subSearchers,
                 query,
                 groupSort,
@@ -1565,7 +1563,6 @@ public class TestGrouping extends LuceneTestCase {
   }
 
   private TopGroups<BytesRef> searchShards(
-      IndexSearcher topSearcher,
       ShardSearcher[] subSearchers,
       Query query,
       Sort groupSort,
@@ -1592,13 +1589,6 @@ public class TestGrouping extends LuceneTestCase {
               + canUseIDV);
     }
     // Run 1st pass collector to get top groups per shard
-    final Weight w =
-        topSearcher.createWeight(
-            topSearcher.rewrite(query),
-            groupSort.needsScores() || docSort.needsScores() || getMaxScores
-                ? ScoreMode.COMPLETE
-                : ScoreMode.COMPLETE_NO_SCORES,
-            1);
     final List<Collection<SearchGroup<BytesRef>>> shardGroups = new ArrayList<>();
     String groupField = "group";
 
