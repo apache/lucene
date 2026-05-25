@@ -58,10 +58,14 @@ final class PanamaDocValuesRangeSupport implements DocValuesRangeSupport {
       long maskBits = inRange.toLong();
       if (maskBits != 0) {
         int base = d - offset;
-        while (maskBits != 0) {
-          int bit = Long.numberOfTrailingZeros(maskBits);
-          bitSet.set(base + bit);
-          maskBits &= maskBits - 1;
+        int wordIndex = base >> 6;
+        int bitOffset = base & 63;
+        long[] bits = bitSet.getBits();
+        if (bitOffset + vectorLen <= 64) {
+          bits[wordIndex] |= maskBits << bitOffset;
+        } else {
+          bits[wordIndex] |= maskBits << bitOffset;
+          bits[wordIndex + 1] |= maskBits >>> (64 - bitOffset);
         }
       }
     }
