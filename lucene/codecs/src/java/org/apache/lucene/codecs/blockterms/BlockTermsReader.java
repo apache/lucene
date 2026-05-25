@@ -207,7 +207,7 @@ public class BlockTermsReader extends FieldsProducer {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     assert field != null;
     return fields.get(field);
   }
@@ -292,7 +292,7 @@ public class BlockTermsReader extends FieldsProducer {
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       return docCount;
     }
 

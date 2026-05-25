@@ -27,7 +27,7 @@ public final class DocValues {
   private DocValues() {}
 
   /** An empty {@link BinaryDocValues} which returns no documents */
-  public static final BinaryDocValues emptyBinary() {
+  public static BinaryDocValues emptyBinary() {
     return new BinaryDocValues() {
       private int doc = -1;
 
@@ -66,7 +66,7 @@ public final class DocValues {
   }
 
   /** An empty NumericDocValues which returns no documents */
-  public static final NumericDocValues emptyNumeric() {
+  public static NumericDocValues emptyNumeric() {
     return new NumericDocValues() {
       private int doc = -1;
 
@@ -105,7 +105,7 @@ public final class DocValues {
   }
 
   /** An empty SortedDocValues which returns {@link BytesRef#EMPTY_BYTES} for every document */
-  public static final SortedDocValues emptySorted() {
+  public static SortedDocValues emptySorted() {
     final BytesRef empty = new BytesRef();
     return new SortedDocValues() {
 
@@ -156,12 +156,12 @@ public final class DocValues {
   }
 
   /** An empty SortedNumericDocValues which returns zero values for every document */
-  public static final SortedNumericDocValues emptySortedNumeric() {
+  public static SortedNumericDocValues emptySortedNumeric() {
     return singleton(emptyNumeric());
   }
 
   /** An empty SortedDocValues which returns {@link BytesRef#EMPTY_BYTES} for every document */
-  public static final SortedSetDocValues emptySortedSet() {
+  public static SortedSetDocValues emptySortedSet() {
     return singleton(emptySorted());
   }
 

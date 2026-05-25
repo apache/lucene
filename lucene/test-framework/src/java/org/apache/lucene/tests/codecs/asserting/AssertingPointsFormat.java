@@ -83,7 +83,7 @@ public final class AssertingPointsFormat extends PointsFormat {
     }
 
     @Override
-    public PointValues getValues(String field) throws IOException {
+    public PointValues getValues(String field) {
       FieldInfo fi = fis.fieldInfo(field);
       assert fi != null && fi.getPointDimensionCount() > 0;
       if (merging) {

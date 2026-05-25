@@ -142,7 +142,7 @@ public class TestDocsAndPositions extends LuceneTestCase {
         positions.add(num);
       }
       doc.add(newField(fieldName, builder.toString(), customType));
-      positionsInDoc[i] = positions.toArray(new Integer[0]);
+      positionsInDoc[i] = positions.toArray(Integer[]::new);
       writer.addDocument(doc);
     }
 

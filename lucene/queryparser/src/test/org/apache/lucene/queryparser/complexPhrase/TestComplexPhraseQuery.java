@@ -37,9 +37,11 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.analysis.MockSynonymAnalyzer;
-import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCaseJupiter;
+import org.apache.lucene.util.IOUtils;
+import org.junit.jupiter.api.Test;
 
-public class TestComplexPhraseQuery extends LuceneTestCase {
+public class TestComplexPhraseQuery extends LuceneTestCaseJupiter {
   Directory rd;
   Analyzer analyzer;
   DocData[] docsContent = {
@@ -60,6 +62,7 @@ public class TestComplexPhraseQuery extends LuceneTestCase {
 
   boolean inOrder = true;
 
+  @Test
   public void testComplexPhrases() throws Exception {
     checkMatches("\"john smith\"", "1"); // Simple multi-term still works
     checkMatches("\"j*   smyth~\"", "1,2"); // wildcards and fuzzies are OK in
@@ -85,6 +88,7 @@ public class TestComplexPhraseQuery extends LuceneTestCase {
     checkBadQuery("\"jo* \"smith\" \""); // phrases inside phrases is bad
   }
 
+  @Test
   public void testSingleTermPhrase() throws Exception {
     checkMatches("\"joh*\"", "1,2,3,5");
     checkMatches("\"joh~\"", "1,3,5");
@@ -94,6 +98,7 @@ public class TestComplexPhraseQuery extends LuceneTestCase {
     checkMatches("+\"j*hn\" +\"sm*h\"", "1,3");
   }
 
+  @Test
   public void testSynonyms() throws Exception {
     checkMatches("\"dogs\"", "8");
     MockSynonymAnalyzer synonym = new MockSynonymAnalyzer();
@@ -109,6 +114,7 @@ public class TestComplexPhraseQuery extends LuceneTestCase {
     checkMatches("\"dog cigar*\"~2", "7", synonym);
   }
 
+  @Test
   public void testUnOrderedProximitySearches() throws Exception {
 
     inOrder = true;
@@ -159,6 +165,7 @@ public class TestComplexPhraseQuery extends LuceneTestCase {
     assertEquals(qString + " missing some matches ", 0, expecteds.size());
   }
 
+  @Test
   public void testFieldedQuery() throws Exception {
     checkMatches("name:\"john smith\"", "1");
     checkMatches("name:\"j*   smyth~\"", "1,2");
@@ -171,6 +178,7 @@ public class TestComplexPhraseQuery extends LuceneTestCase {
     checkMatches("name:\"john smith\"~2 AND role:designer AND id:3", "3");
   }
 
+  @Test
   public void testToStringContainsSlop() throws Exception {
     ComplexPhraseQueryParser qp = new ComplexPhraseQueryParser("", analyzer);
     int slop = random().nextInt(31) + 1;
@@ -186,6 +194,7 @@ public class TestComplexPhraseQuery extends LuceneTestCase {
     assertEquals("Don't show implicit slop of zero", q.toString(), string);
   }
 
+  @Test
   public void testHashcodeEquals() throws Exception {
     ComplexPhraseQueryParser qp = new ComplexPhraseQueryParser(defaultFieldName, analyzer);
     qp.setInOrder(true);
@@ -213,6 +222,7 @@ public class TestComplexPhraseQuery extends LuceneTestCase {
     assertTrue(!q2.equals(q));
   }
 
+  @Test
   public void testBoosts() throws Exception {
 
     // top-level boosts should be preserved, interior boosts are ignored as they don't apply to
@@ -255,9 +265,8 @@ public class TestComplexPhraseQuery extends LuceneTestCase {
 
   @Override
   public void tearDown() throws Exception {
-    reader.close();
-    rd.close();
     super.tearDown();
+    IOUtils.close(reader, rd);
   }
 
   static class DocData {
