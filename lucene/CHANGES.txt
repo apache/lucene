@@ -271,6 +271,10 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#16053: Add an (optional) field-writer creation strategy to Lucene99FlatVectorsWriter.
+  This decouples the external interface and the internal representation of FlatFieldVectorsWriters created
+  by this FlatVectorsWriter, to allow different formats to change how vectors are stored in memory. (Lorenzo Dematte)
+
 * GITHUB#15663: Allow subclasses of NumericComparator to implement their own
   CompetitiveDISIBuilder subtypes. (Alan Woodward)
 
@@ -504,6 +508,8 @@ Other
 * GITHUB#16073: Simplify SortedDocIDMerger.next(). (Tim Brooks)
 
 * GITHUB#16118: Remove getOrAddPerField calls in processBatch. (Tim Brooks)
+
+* GITHUB#16115: Reject duplicate column names in ColumnBatch. (Tim Brooks)
 
 ======================= Lucene 10.4.0 =======================
 
