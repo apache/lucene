@@ -706,6 +706,7 @@ final class IndexingChain implements Accountable {
   void processBatch(int baseDocID, ColumnBatch columnBatch) throws IOException {
     final int numDocs = columnBatch.numDocs();
     boolean hasRowColumns = false;
+    long batchGen = nextFieldGen++;
 
     // First pass: validate all column schemas and initialize field infos
     for (Column column : columnBatch.columns()) {
@@ -733,6 +734,13 @@ final class IndexingChain implements Accountable {
         throw new IllegalArgumentException(
             "\"" + fieldName + "\" is a reserved field and should not be added to any document");
       }
+      if (pf.fieldGen == batchGen) {
+        throw new IllegalArgumentException(
+            "ColumnBatch contains more than one column for field \""
+                + fieldName
+                + "\"; multi-valued fields must use a single column with a sparse cursor");
+      }
+      pf.fieldGen = batchGen;
       validateColumnSchema(fieldName, pf, fieldType);
     }
 
@@ -846,7 +854,7 @@ final class IndexingChain implements Accountable {
       try {
         for (int i = 0; i < numRowCols; i++) {
           int head = heads[i];
-          if (head != DocIdSetIterator.NO_MORE_DOCS && head < batchDocID) {
+          if (head < batchDocID) {
             throw new IllegalArgumentException(
                 "Row column \""
                     + adapters[i].name()
