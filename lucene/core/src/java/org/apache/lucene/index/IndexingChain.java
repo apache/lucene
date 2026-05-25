@@ -734,7 +734,7 @@ final class IndexingChain implements Accountable {
         oversizeDocFields();
       }
       docFields[columnIdx++] = pf;
-      
+
       if (pf.fieldGen == batchGen) {
         throw new IllegalArgumentException(
             "ColumnBatch contains more than one column for field \""
