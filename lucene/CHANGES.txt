@@ -450,6 +450,8 @@ Optimizations
 
 * GITHUB#16141: Optimize constant-score bulk scoring via intoBitSet batching. (Costin Leau)
 
+* GITHUB#16119: Optimize byte array writes in OutputStreamIndexOutput to remove unnecessary overhead. (neoremind)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
