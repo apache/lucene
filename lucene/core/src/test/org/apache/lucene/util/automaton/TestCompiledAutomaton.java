@@ -258,7 +258,8 @@ public class TestCompiledAutomaton extends LuceneTestCase {
   }
 
   public void testRamBytesUsed() {
-    Automaton a = Operations.determinize(new RegExp(".*foo.*bar.*baz.*").toAutomaton(), Integer.MAX_VALUE);
+    Automaton a =
+        Operations.determinize(new RegExp(".*foo.*bar.*baz.*").toAutomaton(), Integer.MAX_VALUE);
     CompiledAutomaton ca = new CompiledAutomaton(a, false, true, false);
     assertEquals(CompiledAutomaton.AUTOMATON_TYPE.NORMAL, ca.type);
     assertNotNull(ca.runAutomaton);
