@@ -503,6 +503,8 @@ Other
 
 * GITHUB#16073: Simplify SortedDocIDMerger.next(). (Tim Brooks)
 
+* GITHUB#16118: Remove getOrAddPerField calls in processBatch. (Tim Brooks)
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes
