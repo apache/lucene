@@ -425,6 +425,9 @@ Optimizations
 * GITHUB#16097: Implement DocIdSetIterator#intoBitSet in dense implememntatios of the
   Lucene90DocValuesProducer. (Ignacio Vera)
 
+* GITHUB#16123: PanamaDocValuesRangeSupport: OR mask directly into FixedBitSet instead of per-bit
+  loop. (Sagar Upadhyaya)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
