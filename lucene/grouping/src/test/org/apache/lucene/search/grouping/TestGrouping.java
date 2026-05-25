@@ -58,6 +58,8 @@ import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopFieldDocs;
 import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.BM25Similarity;
@@ -1667,7 +1669,7 @@ public class TestGrouping extends LuceneTestCase {
                 docOffset + topNDocs,
                 getMaxScores);
         final TopGroups<?> topGroupsRaw =
-            subSearchers[shardIDX].search(w, secondPassCollectorManager);
+            subSearchers[shardIDX].search(query, secondPassCollectorManager);
         shardTopGroups.add(toByteTopGroups(topGroupsRaw));
         if (VERBOSE) {
           System.out.println(
@@ -1792,11 +1794,54 @@ public class TestGrouping extends LuceneTestCase {
       this.ctx = ctx;
     }
 
-    public <C extends Collector, T> T search(Weight weight, CollectorManager<C, T> collectorManager)
+    @Override
+    public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
         throws IOException {
+      final Weight weight = createWeight(rewrite(query), ScoreMode.COMPLETE, 1);
+      return search(weight, collectorManager);
+    }
+
+    private <C extends Collector, T> T search(
+        Weight weight, CollectorManager<C, T> collectorManager) throws IOException {
       final C collector = collectorManager.newCollector();
       searchLeaf(ctx, 0, DocIdSetIterator.NO_MORE_DOCS, weight, collector);
       return collectorManager.reduce(Collections.singletonList(collector));
+    }
+
+    @Override
+    public void search(Query query, Collector collector) {
+      throw new UnsupportedOperationException("Use search(Weight, CollectorManager) instead");
+    }
+
+    @Override
+    public TopDocs search(Query query, int n) {
+      throw new UnsupportedOperationException("Use search(Weight, CollectorManager) instead");
+    }
+
+    @Override
+    public TopFieldDocs search(Query query, int n, Sort sort) {
+      throw new UnsupportedOperationException("Use search(Weight, CollectorManager) instead");
+    }
+
+    @Override
+    public TopFieldDocs search(Query query, int n, Sort sort, boolean doDocScores) {
+      throw new UnsupportedOperationException("Use search(Weight, CollectorManager) instead");
+    }
+
+    @Override
+    public TopDocs searchAfter(ScoreDoc after, Query query, int n) {
+      throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public TopDocs searchAfter(ScoreDoc after, Query query, int n, Sort sort) {
+      throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public TopFieldDocs searchAfter(
+        ScoreDoc after, Query query, int n, Sort sort, boolean doDocScores) {
+      throw new UnsupportedOperationException("Not implemented yet");
     }
 
     @Override
