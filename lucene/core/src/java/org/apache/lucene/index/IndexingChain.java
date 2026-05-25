@@ -705,6 +705,7 @@ final class IndexingChain implements Accountable {
     boolean hasRowColumns = false;
 
     // First pass: validate all column schemas and initialize field infos
+    int columnIdx = 0;
     for (Column column : columnBatch.columns()) {
       final String fieldName = column.name();
       final IndexableFieldType fieldType = column.fieldType();
@@ -728,6 +729,10 @@ final class IndexingChain implements Accountable {
         throw new IllegalArgumentException(
             "\"" + fieldName + "\" is a reserved field and should not be added to any document");
       }
+      if (columnIdx >= docFields.length) {
+        oversizeDocFields();
+      }
+      docFields[columnIdx++] = pf;
       validateColumnSchema(fieldName, pf, fieldType);
     }
 
@@ -752,14 +757,16 @@ final class IndexingChain implements Accountable {
 
     // Column-oriented pass: doc values, points, and vectors. Each column is asked for a fresh
     // cursor.
+    int colOrientedIdx = 0;
     for (Column column : columnBatch.columns()) {
       final IndexableFieldType fieldType = column.fieldType();
       if (fieldType.docValuesType() == DocValuesType.NONE
           && fieldType.pointDimensionCount() == 0
           && fieldType.vectorDimension() == 0) {
+        colOrientedIdx++;
         continue; // no column-oriented features
       }
-      PerField pf = getOrAddPerField(column.name());
+      PerField pf = docFields[colOrientedIdx++];
 
       switch (column) {
         case LongColumn longCol -> processLongColumn(baseDocID, numDocs, longCol, pf, fieldType);
@@ -788,30 +795,32 @@ final class IndexingChain implements Accountable {
    */
   private void processRowColumns(int baseDocID, int numDocs, Iterable<Column> columns)
       throws IOException {
-    // Collect row-oriented columns. Per-field PerFields are cached in the shared docFields array
-    // (also used by processDocument) to avoid a per-batch allocation; adapters and cursor heads
-    // are local since they're column-specific.
+    // Collect row-oriented columns. PerFields are sourced from processBatch's validation-pass
+    // cache in docFields[] (indexed by original column position); rowPfIndices[] stores the
+    // original index for each row-mode column so the inner loop can look up via
+    // docFields[rowPfIndices[i]].
     int numRowCols = 0;
     ColumnFieldAdapter[] adapters = new ColumnFieldAdapter[4];
     int[] heads = new int[4];
+    int[] rowPfIndices = new int[4];
     boolean hasInverted = false;
     boolean hasStored = false;
 
+    int originalIdx = 0;
     for (Column column : columns) {
       IndexableFieldType fieldType = column.fieldType();
       if (fieldType.stored() == false && fieldType.indexOptions() == IndexOptions.NONE) {
+        originalIdx++;
         continue;
       }
       if (numRowCols >= adapters.length) {
         adapters = ArrayUtil.grow(adapters, numRowCols + 1);
         heads = ArrayUtil.grow(heads, numRowCols + 1);
-      }
-      if (numRowCols >= docFields.length) {
-        oversizeDocFields();
+        rowPfIndices = ArrayUtil.grow(rowPfIndices, numRowCols + 1);
       }
       ColumnFieldAdapter adapter = ColumnFieldAdapter.create(column);
       adapters[numRowCols] = adapter;
-      docFields[numRowCols] = getOrAddPerField(column.name());
+      rowPfIndices[numRowCols] = originalIdx;
       heads[numRowCols] = adapter.nextDoc();
       if (fieldType.indexOptions() != IndexOptions.NONE) {
         hasInverted = true;
@@ -820,6 +829,7 @@ final class IndexingChain implements Accountable {
         hasStored = true;
       }
       numRowCols++;
+      originalIdx++;
     }
 
     // Row-dense outer loop: frame every doc in [0, numDocs). Column cursors stay sparse, but the
@@ -847,7 +857,7 @@ final class IndexingChain implements Accountable {
                     + head);
           }
           while (head == batchDocID) {
-            PerField pf = docFields[i];
+            PerField pf = docFields[rowPfIndices[i]];
             if (pf.fieldGen != fieldGen) {
               pf.fieldGen = fieldGen;
               pf.reset(segDocID, adapters[i].fieldType());
