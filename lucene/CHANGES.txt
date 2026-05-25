@@ -511,6 +511,8 @@ Other
 
 * GITHUB#16115: Reject duplicate column names in ColumnBatch. (Tim Brooks)
 
+* GITHUB#16118: Remove getOrAddPerField calls in processBatch. (Tim Brooks)
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes
