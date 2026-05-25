@@ -184,8 +184,6 @@ Bug Fixes
 
 * GITHUB#15939: Fix thread-safety issues with NFARunAutomaton. (Dimitris Rempapis)
 
-* GITHUB#16046: Fix double-counting of underlying Automaton in CompiledAutomaton#ramBytesUsed. (Eugene Rizhkov)
-
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -412,6 +410,8 @@ Bug Fixes
 * GITHUB#15899, GITHUB#15900: Improve TruncateTokenFilter to truncate on codepoints not
   chars and no longer produce half surrogates. There are new factory parameters available
   to configure legacy prefix chars and new codepoint behaviour.  (Uwe Schindler, Michael Sokolov)
+
+* GITHUB#16046: Fix double-counting of underlying Automaton in CompiledAutomaton#ramBytesUsed. (Eugene Rizhkov)
 
 Other
 ---------------------
