@@ -1660,4 +1660,67 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     }
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, bIt.nextDoc());
   }
+
+  public void testDuplicateColumnNameRejected() throws IOException {
+    Directory dir = newDirectory();
+    try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      int[] ids = {0, 1};
+      long[] vals = {1L, 2L};
+      IllegalArgumentException e =
+          expectThrows(
+              IllegalArgumentException.class,
+              () ->
+                  w.addBatch(
+                      simpleBatch(
+                          2,
+                          new ArrayLongColumn("field", NumericDocValuesField.TYPE, ids, vals),
+                          new ArrayLongColumn("field", NumericDocValuesField.TYPE, ids, vals))));
+      assertTrue(e.getMessage(), e.getMessage().contains("field"));
+
+      // Writer still usable after validation failure.
+      w.addBatch(
+          simpleBatch(
+              1,
+              new ArrayLongColumn("v", NumericDocValuesField.TYPE, new int[] {0}, new long[] {7})));
+      w.forceMerge(1);
+      DirectoryReader r = DirectoryReader.open(w);
+      // After forceMerge, fully-deleted segments are pruned; only the recovery doc remains.
+      assertEquals(1, r.numDocs());
+      LeafReader leaf = getOnlyLeafReader(r);
+      NumericDocValues dv = leaf.getNumericDocValues("v");
+      assertNotNull(dv);
+      assertTrue(dv.nextDoc() != DocIdSetIterator.NO_MORE_DOCS);
+      assertEquals(7, dv.longValue());
+      r.close();
+    }
+    dir.close();
+  }
+
+  public void testSameFieldNameAcrossBatchesAllowed() throws IOException {
+    Directory dir = newDirectory();
+    try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      w.addBatch(
+          simpleBatch(
+              1,
+              new ArrayLongColumn(
+                  "f", NumericDocValuesField.TYPE, new int[] {0}, new long[] {1L})));
+      w.addBatch(
+          simpleBatch(
+              1,
+              new ArrayLongColumn(
+                  "f", NumericDocValuesField.TYPE, new int[] {0}, new long[] {2L})));
+      w.forceMerge(1);
+      try (DirectoryReader r = DirectoryReader.open(w)) {
+        LeafReader leaf = getOnlyLeafReader(r);
+        NumericDocValues dv = leaf.getNumericDocValues("f");
+        assertNotNull(dv);
+        assertEquals(0, dv.nextDoc());
+        assertEquals(1L, dv.longValue());
+        assertEquals(1, dv.nextDoc());
+        assertEquals(2L, dv.longValue());
+        assertEquals(DocIdSetIterator.NO_MORE_DOCS, dv.nextDoc());
+      }
+    }
+    dir.close();
+  }
 }

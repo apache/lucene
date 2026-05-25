@@ -33,7 +33,8 @@ public abstract class ColumnBatch {
 
   /**
    * Returns the columns in this batch. Each column represents a single field across the documents
-   * in the batch.
+   * in the batch. Within a batch, column names must be unique: multi-valued fields should be
+   * expressed as a single column whose tuple cursor emits multiple values per batch doc-id.
    */
   public abstract Iterable<Column> columns();
 }
