@@ -116,7 +116,7 @@ public class BlockGroupingCollectorManager<T>
     for (BlockGroupingCollector collector : collectors) {
       TopGroups<?> topGroups =
           collector.getTopGroups(withinGroupSort, 0, withinGroupOffset, maxDocsPerGroup);
-      if (topGroups != null) {
+      if (topGroups != null && topGroups.groups.length > 0) {
         shardGroupsList.add((TopGroups<T>) topGroups);
       }
     }

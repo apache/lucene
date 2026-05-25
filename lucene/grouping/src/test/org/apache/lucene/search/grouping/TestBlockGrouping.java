@@ -36,6 +36,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TotalHits;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.BytesRef;
 
@@ -223,6 +224,37 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
     }
 
     shard.close();
+  }
+
+  @SuppressWarnings({"unchecked", "rawtypes"})
+  public void testMergeBlockGroupsWithEmptyGroups() {
+    SortField[] groupSort = Sort.RELEVANCE.getSort();
+    SortField[] withinGroupSort = Sort.RELEVANCE.getSort();
+
+    GroupDocs<BytesRef> group =
+        new GroupDocs<>(
+            1.0f,
+            1.0f,
+            new TotalHits(1, TotalHits.Relation.EQUAL_TO),
+            new ScoreDoc[] {new ScoreDoc(0, 1.0f)},
+            new BytesRef("group1"),
+            new Object[] {1.0f});
+    TopGroups<BytesRef> shardWithGroups =
+        new TopGroups<>(
+            new TopGroups<>(groupSort, withinGroupSort, 1, 1, new GroupDocs[] {group}, 1.0f), 1);
+
+    TopGroups<BytesRef> shardWithNoGroups =
+        new TopGroups<>(
+            new TopGroups<>(groupSort, withinGroupSort, 0, 0, new GroupDocs[0], Float.NaN), 0);
+
+    TopGroups<BytesRef> merged =
+        TopGroups.mergeBlockGroups(
+            List.of(shardWithGroups, shardWithNoGroups), Sort.RELEVANCE, 0, 5, Sort.RELEVANCE);
+
+    assertNotNull(merged);
+    assertEquals(1, merged.totalHitCount);
+    assertEquals(1, merged.groups.length);
+    assertEquals(new BytesRef("group1"), merged.groups[0].groupValue());
   }
 
   private static void indexRandomDocs(RandomIndexWriter writer) throws IOException {

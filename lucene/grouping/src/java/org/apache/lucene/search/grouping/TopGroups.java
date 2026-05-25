@@ -386,6 +386,9 @@ public class TopGroups<T> {
     // init queue
     for (int idx = 0; idx < shardGroups.size(); idx++) {
       TopGroups<T> topGroups = shardGroups.get(idx);
+      if (topGroups.groups.length == 0) {
+        continue;
+      }
       if (!groupSortByRelevance) {
         totalMaxScore = nonNANmax(totalMaxScore, topGroups.maxScore);
       }
