@@ -43,6 +43,7 @@ import org.apache.lucene.index.Sorter;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.IOFunction;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.RamUsageEstimator;
 
@@ -58,14 +59,48 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
   private final SegmentWriteState segmentWriteState;
   private final IndexOutput meta, vectorData;
+  private final IOFunction<FieldInfo, FlatFieldVectorsWriter<?>> fieldWriterFactory;
 
-  private final List<FieldWriter<?>> fields = new ArrayList<>();
+  private record FieldData(FlatFieldVectorsWriter<?> fieldWriter, FieldInfo fieldInfo) {}
+
+  private final List<FieldData> fields = new ArrayList<>();
   private boolean finished;
 
+  /**
+   * Constructs a writer that uses the default factory to build per-field vector storage. This
+   * default factory creates instances of {@link FlatFieldVectorsWriter} that store vector data as a
+   * List of on-heap arrays, one per-vector (see {@code DefaultFieldWriter}).
+   *
+   * @param state the segment write state
+   * @param scorer the flat vectors scorer used to score vectors at index-build time
+   */
   public Lucene99FlatVectorsWriter(SegmentWriteState state, FlatVectorsScorer scorer)
+      throws IOException {
+    this(state, scorer, DefaultFieldWriter::create);
+  }
+
+  /**
+   * Constructs a writer that uses the supplied {@code strategyFactory} to build per-field vector
+   * storage. The factory is consulted on every {@link #addField(FieldInfo)} call and returns a
+   * user-defined {@link FlatFieldVectorsWriter}.
+   *
+   * <p>Note: the strategy is only consulted during indexing (i.e. via {@link #addField(FieldInfo)}
+   * and the subsequent {@link #flush}). Merges write directly to the new segment via {@link
+   * #mergeOneFlatVectorField} and do not go through the strategy.
+   *
+   * @param state the segment write state
+   * @param scorer the flat vectors scorer used to score vectors at index-build time
+   * @param strategyFactory the per-field storage factory; receives the {@link FieldInfo} for the
+   *     field being added and returns the {@link FlatFieldVectorsWriter} that will back it
+   */
+  public Lucene99FlatVectorsWriter(
+      SegmentWriteState state,
+      FlatVectorsScorer scorer,
+      IOFunction<FieldInfo, FlatFieldVectorsWriter<?>> strategyFactory)
       throws IOException {
     super(scorer);
     segmentWriteState = state;
+    fieldWriterFactory = strategyFactory;
     String metaFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene99FlatVectorsFormat.META_EXTENSION);
@@ -100,20 +135,20 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
 
   @Override
   public FlatFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
-    FieldWriter<?> newField = FieldWriter.create(fieldInfo);
-    fields.add(newField);
-    return newField;
+    var newFieldWriter = fieldWriterFactory.apply(fieldInfo);
+    fields.add(new FieldData(newFieldWriter, fieldInfo));
+    return newFieldWriter;
   }
 
   @Override
   public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
-    for (FieldWriter<?> field : fields) {
+    for (var field : fields) {
       if (sortMap == null) {
-        writeField(field, maxDoc);
+        writeField(field.fieldWriter(), field.fieldInfo(), maxDoc);
       } else {
-        writeSortingField(field, maxDoc, sortMap);
+        writeSortingField(field.fieldWriter(), field.fieldInfo(), maxDoc, sortMap);
       }
-      field.finish();
+      field.fieldWriter().finish();
     }
   }
 
@@ -136,8 +171,8 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   @Override
   public long ramBytesUsed() {
     long total = SHALLOW_RAM_BYTES_USED;
-    for (FieldWriter<?> field : fields) {
-      total += field.ramBytesUsed();
+    for (var field : fields) {
+      total += field.fieldWriter().ramBytesUsed();
     }
     return total;
   }
@@ -150,69 +185,76 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
         });
   }
 
-  private void writeField(FieldWriter<?> fieldData, int maxDoc) throws IOException {
+  private void writeField(FlatFieldVectorsWriter<?> fieldWriter, FieldInfo fieldInfo, int maxDoc)
+      throws IOException {
     // write vector values
-    VectorEncoding encoding = fieldData.fieldInfo.getVectorEncoding();
+    VectorEncoding encoding = fieldInfo.getVectorEncoding();
     long vectorDataOffset = alignOutput(vectorData, encoding);
     switch (encoding) {
-      case BYTE -> writeByteVectors(fieldData);
-      case FLOAT32 -> writeFloat32Vectors(fieldData);
+      case BYTE -> writeByteVectors(fieldWriter);
+      case FLOAT32 -> writeFloat32Vectors(fieldWriter, fieldInfo);
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
     writeMeta(
-        fieldData.fieldInfo, maxDoc, vectorDataOffset, vectorDataLength, fieldData.docsWithField);
+        fieldInfo, maxDoc, vectorDataOffset, vectorDataLength, fieldWriter.getDocsWithFieldSet());
   }
 
-  private void writeFloat32Vectors(FieldWriter<?> fieldData) throws IOException {
+  private void writeFloat32Vectors(FlatFieldVectorsWriter<?> fieldWriter, FieldInfo fieldInfo)
+      throws IOException {
     final ByteBuffer buffer =
-        ByteBuffer.allocate(fieldData.dim * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
-    for (Object v : fieldData.vectors) {
+        ByteBuffer.allocate(fieldInfo.getVectorDimension() * Float.BYTES)
+            .order(ByteOrder.LITTLE_ENDIAN);
+    for (Object v : fieldWriter.getVectors()) {
       buffer.asFloatBuffer().put((float[]) v);
       vectorData.writeBytes(buffer.array(), buffer.array().length);
     }
   }
 
-  private void writeByteVectors(FieldWriter<?> fieldData) throws IOException {
-    for (Object v : fieldData.vectors) {
+  private void writeByteVectors(FlatFieldVectorsWriter<?> fieldWriter) throws IOException {
+    for (Object v : fieldWriter.getVectors()) {
       byte[] vector = (byte[]) v;
       vectorData.writeBytes(vector, vector.length);
     }
   }
 
-  private void writeSortingField(FieldWriter<?> fieldData, int maxDoc, Sorter.DocMap sortMap)
+  private void writeSortingField(
+      FlatFieldVectorsWriter<?> fieldWriter, FieldInfo fieldInfo, int maxDoc, Sorter.DocMap sortMap)
       throws IOException {
-    final int[] ordMap = new int[fieldData.docsWithField.cardinality()]; // new ord to old ord
+    var docsWithFieldSet = fieldWriter.getDocsWithFieldSet();
+    final int[] ordMap = new int[docsWithFieldSet.cardinality()]; // new ord to old ord
 
     DocsWithFieldSet newDocsWithField = new DocsWithFieldSet();
-    mapOldOrdToNewOrd(fieldData.docsWithField, sortMap, null, ordMap, newDocsWithField);
+    mapOldOrdToNewOrd(docsWithFieldSet, sortMap, null, ordMap, newDocsWithField);
 
     // write vector values
-    VectorEncoding encoding = fieldData.fieldInfo.getVectorEncoding();
+    VectorEncoding encoding = fieldInfo.getVectorEncoding();
     long vectorDataOffset = alignOutput(vectorData, encoding);
     switch (encoding) {
-      case BYTE -> writeSortedByteVectors(fieldData, ordMap);
-      case FLOAT32 -> writeSortedFloat32Vectors(fieldData, ordMap);
+      case BYTE -> writeSortedByteVectors(fieldWriter, ordMap);
+      case FLOAT32 -> writeSortedFloat32Vectors(fieldWriter, fieldInfo, ordMap);
     }
     long vectorDataLength = vectorData.getFilePointer() - vectorDataOffset;
 
-    writeMeta(fieldData.fieldInfo, maxDoc, vectorDataOffset, vectorDataLength, newDocsWithField);
+    writeMeta(fieldInfo, maxDoc, vectorDataOffset, vectorDataLength, newDocsWithField);
   }
 
-  private void writeSortedFloat32Vectors(FieldWriter<?> fieldData, int[] ordMap)
-      throws IOException {
+  private void writeSortedFloat32Vectors(
+      FlatFieldVectorsWriter<?> fieldWriter, FieldInfo fieldInfo, int[] ordMap) throws IOException {
     final ByteBuffer buffer =
-        ByteBuffer.allocate(fieldData.dim * Float.BYTES).order(ByteOrder.LITTLE_ENDIAN);
+        ByteBuffer.allocate(fieldInfo.getVectorDimension() * Float.BYTES)
+            .order(ByteOrder.LITTLE_ENDIAN);
     for (int ordinal : ordMap) {
-      float[] vector = (float[]) fieldData.vectors.get(ordinal);
+      float[] vector = (float[]) fieldWriter.getVectors().get(ordinal);
       buffer.asFloatBuffer().put(vector);
       vectorData.writeBytes(buffer.array(), buffer.array().length);
     }
   }
 
-  private void writeSortedByteVectors(FieldWriter<?> fieldData, int[] ordMap) throws IOException {
+  private void writeSortedByteVectors(FlatFieldVectorsWriter<?> fieldWriter, int[] ordMap)
+      throws IOException {
     for (int ordinal : ordMap) {
-      byte[] vector = (byte[]) fieldData.vectors.get(ordinal);
+      byte[] vector = (byte[]) fieldWriter.getVectors().get(ordinal);
       vectorData.writeBytes(vector, vector.length);
     }
   }
@@ -221,7 +263,7 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
   public void mergeOneFlatVectorField(FieldInfo fieldInfo, MergeState mergeState)
       throws IOException {
     // Since we know we will not be searching for additional indexing, we can just write the
-    // the vectors directly to the new segment.
+    // vectors directly to the new segment.
     VectorEncoding encoding = fieldInfo.getVectorEncoding();
     long vectorDataOffset = alignOutput(vectorData, encoding);
     // No need to use temporary file as we don't have to re-open for reading
@@ -310,29 +352,34 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
     IOUtils.close(meta, vectorData);
   }
 
-  private abstract static class FieldWriter<T> extends FlatFieldVectorsWriter<T> {
+  /**
+   * Default {@link FlatFieldVectorsWriter} implementation: stores vectors on-heap in an {@link
+   * ArrayList}, copying each value via {@link #copyValue} on {@link #addValue}. This is the
+   * implementation used when {@link Lucene99FlatVectorsWriter} is constructed without a strategy
+   * factory.
+   */
+  private abstract static class DefaultFieldWriter<T> extends FlatFieldVectorsWriter<T> {
     private static final long SHALLOW_RAM_BYTES_USED =
-        RamUsageEstimator.shallowSizeOfInstance(FieldWriter.class);
+        RamUsageEstimator.shallowSizeOfInstance(DefaultFieldWriter.class);
     private final FieldInfo fieldInfo;
-    private final int dim;
     private final DocsWithFieldSet docsWithField;
     private final List<T> vectors;
     private boolean finished;
 
     private int lastDocID = -1;
 
-    static FieldWriter<?> create(FieldInfo fieldInfo) {
+    private static FlatFieldVectorsWriter<?> create(FieldInfo fieldInfo) {
       int dim = fieldInfo.getVectorDimension();
       return switch (fieldInfo.getVectorEncoding()) {
         case BYTE ->
-            new Lucene99FlatVectorsWriter.FieldWriter<byte[]>(fieldInfo) {
+            new DefaultFieldWriter<byte[]>(fieldInfo) {
               @Override
               public byte[] copyValue(byte[] value) {
                 return ArrayUtil.copyOfSubArray(value, 0, dim);
               }
             };
         case FLOAT32 ->
-            new Lucene99FlatVectorsWriter.FieldWriter<float[]>(fieldInfo) {
+            new DefaultFieldWriter<float[]>(fieldInfo) {
               @Override
               public float[] copyValue(float[] value) {
                 return ArrayUtil.copyOfSubArray(value, 0, dim);
@@ -341,10 +388,9 @@ public final class Lucene99FlatVectorsWriter extends FlatVectorsWriter {
       };
     }
 
-    FieldWriter(FieldInfo fieldInfo) {
+    DefaultFieldWriter(FieldInfo fieldInfo) {
       super();
       this.fieldInfo = fieldInfo;
-      this.dim = fieldInfo.getVectorDimension();
       this.docsWithField = new DocsWithFieldSet();
       vectors = new ArrayList<>();
     }
