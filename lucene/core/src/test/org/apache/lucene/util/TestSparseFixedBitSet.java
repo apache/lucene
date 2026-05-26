@@ -116,6 +116,27 @@ public class TestSparseFixedBitSet extends BaseBitSetTestCase<SparseFixedBitSet>
     return DocIdSetIterator.NO_MORE_DOCS;
   }
 
+  public void testSetRange() throws IOException {
+    Random random = random();
+    final int numBits = 1 + random.nextInt(100000);
+    for (float percentSet : new float[] {0, 0.01f, 0.1f, 0.5f, 0.9f, 0.99f, 1f}) {
+      FixedBitSet expected = new FixedBitSet(numBits);
+      final int numInitial = (int) (percentSet * numBits);
+      for (int j = 0; j < numInitial; j++) {
+        expected.set(random.nextInt(numBits));
+      }
+      SparseFixedBitSet set = copyOf(expected, numBits);
+      final int iters = atLeast(random, 10);
+      for (int i = 0; i < iters; ++i) {
+        final int from = random.nextInt(numBits);
+        final int to = random.nextInt(numBits + 1);
+        expected.set(from, to);
+        set.set(from, to);
+        assertEquals(expected, set, numBits);
+      }
+    }
+  }
+
   public void testNextClearBit() {
     Random rand = random();
     final int outer = TEST_NIGHTLY ? 300 : 60;
