@@ -107,6 +107,8 @@ New Features
 
 * GITHUB#14178: Add a Faiss-based vector format in the sandbox module. (Kaival Parikh)
 
+* GITHUB#16065: Add COSINE similarity support to FaissKnnVectorsFormat. (Prithvi S)
+
 * GITHUB#15508: Use native vectorization in Lucene. (Ankur Goel, Shubham Chaudhary, Dawid Weiss)
 
 * GITHUB#15818: Add BM25 k3 query-term frequency saturation to BM25Similarity. (Sagar Upadhyaya)
@@ -299,6 +301,8 @@ API Changes
 * GITHUB#16062: Add FlatFieldVectorsWriter.asKnnVectorValues to return directly a KnnVectorValues "view" over
   vectors to be written. (Lorenzo Dematte)
 
+* GITHUB#16101 Add DictionaryColumn for SORTED / SORTED_SET docvalues using experimental column api (Tim Brooks)
+
 New Features
 ---------------------
 
@@ -405,8 +409,8 @@ Optimizations
 * GITHUB#16050: Add SIMD-accelerated bulk range evaluation for dense numeric doc values via
   BatchDocValuesRangeIterator and DocValuesRangeSupport. (Sagar Upadhyaya)
 
-* GITHUB#16061, GITHUB#16070, GITHUB#16085: Improve cost estimation in SortedSetDocValuesRangeQuery  and
-  SortedNumericDocValuesRangeQuery when using DocValuesSkipper, the field is dense and is the primary sort of
+* GITHUB#16061, GITHUB#16070, GITHUB#16085, GITHUB#16120: Improve cost estimation in SortedSetDocValuesRangeQuery
+  and SortedNumericDocValuesRangeQuery when using DocValuesSkipper, the field is dense and is the primary sort of
   the index to reduce the number of doc values visited. (Ignacio Vera)
 
 * GITHUB#16048: Defer Sorter.DocMap packing until after flush (Tim Brooks)
@@ -427,6 +431,10 @@ Optimizations
 
 * GITHUB#16123: PanamaDocValuesRangeSupport: OR mask directly into FixedBitSet instead of per-bit
   loop. (Sagar Upadhyaya)
+
+* GITHUB#16107: Add method SparseFixedBitSet#set(int startIndex, int endIndex). (Ignacio Vera)
+
+* GITHUB#16126: Implement #intoBitSet and #docIDRunEnd in DocValuesWriter implementations. (Ignacio Vera)
 
 Bug Fixes
 ---------------------
