@@ -21,7 +21,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.PrimaryKeyLookup;
 
 /**
- * @deprecated Use {@link PrimaryKeyLookup}  instead.
+ * @deprecated Use {@link PrimaryKeyLookup} instead.
  */
 @Deprecated
 public class PerThreadPKLookup extends PrimaryKeyLookup {

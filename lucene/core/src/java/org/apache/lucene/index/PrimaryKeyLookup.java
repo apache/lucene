@@ -27,10 +27,11 @@ import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
 /**
- * Class to do efficient primary-key lookups. Instances are not thread-safe. Each calling thread must own its own
- * instance, and an instance must only ever be used from the thread that constructed it. When assertions are
- * enabled this invariant is checked on every lookup and reopen call. Do not use this if a term may appear in more
- * than one document! It will only return the first one it finds.
+ * Class to do efficient primary-key lookups. Instances are not thread-safe. Each calling thread
+ * must own its own instance, and an instance must only ever be used from the thread that
+ * constructed it. When assertions are enabled this invariant is checked on every lookup and reopen
+ * call. Do not use this if a term may appear in more than one document! It will only return the
+ * first one it finds.
  *
  * @lucene.experimental
  */
@@ -52,9 +53,7 @@ public class PrimaryKeyLookup {
     this(reader, idFieldName, Collections.emptyMap(), null, null);
   }
 
-  /**
-   * Construct a {@code PrimaryKeyLookup} instance.
-   */
+  /** Construct a {@code PrimaryKeyLookup} instance. */
   protected PrimaryKeyLookup(
       IndexReader reader,
       String idFieldName,
@@ -133,7 +132,8 @@ public class PrimaryKeyLookup {
   }
 
   /**
-   * Returns a new PrimaryKeyLookup instance bound reusing this instance per-segment TermsEnum/PostingsEnum etc.
+   * Returns a new PrimaryKeyLookup instance bound reusing this instance per-segment
+   * TermsEnum/PostingsEnum etc.
    */
   public PrimaryKeyLookup reopen(IndexReader reader) throws IOException {
     assert assertOwnerThread();
