@@ -48,10 +48,13 @@ import org.apache.lucene.document.column.Column;
 import org.apache.lucene.document.column.ColumnBatch;
 import org.apache.lucene.document.column.ColumnFieldAdapter;
 import org.apache.lucene.document.column.ColumnValidation;
+import org.apache.lucene.document.column.DictionaryColumn;
 import org.apache.lucene.document.column.LongColumn;
 import org.apache.lucene.document.column.LongTupleCursor;
 import org.apache.lucene.document.column.LongValuesCursor;
 import org.apache.lucene.document.column.ObjectTupleCursor;
+import org.apache.lucene.document.column.OrdinalsCursor;
+import org.apache.lucene.document.column.OrdinalsTupleCursor;
 import org.apache.lucene.document.column.VectorColumn;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
@@ -717,6 +720,8 @@ final class IndexingChain implements Accountable {
         ColumnValidation.validateBinaryColumn(bc, fieldType);
       } else if (column instanceof LongColumn lc) {
         ColumnValidation.validateLongColumn(lc, fieldType);
+      } else if (column instanceof DictionaryColumn dc) {
+        ColumnValidation.validateDictionaryColumn(dc, fieldType);
       } else if (column instanceof VectorColumn<?> vc) {
         ColumnValidation.validateVectorColumn(vc, fieldType);
       }
@@ -781,6 +786,8 @@ final class IndexingChain implements Accountable {
         case LongColumn longCol -> processLongColumn(baseDocID, numDocs, longCol, pf, fieldType);
         case BinaryColumn binaryCol ->
             processBinaryColumn(baseDocID, numDocs, binaryCol, pf, fieldType);
+        case DictionaryColumn dictCol ->
+            processDictionaryColumn(baseDocID, numDocs, dictCol, pf, fieldType);
         case VectorColumn<?> vectorCol ->
             processVectorColumn(baseDocID, numDocs, vectorCol, pf, fieldType);
         default ->
@@ -1132,6 +1139,42 @@ final class IndexingChain implements Accountable {
       default ->
           throw new IllegalArgumentException(
               "BinaryColumn \"" + column.name() + "\" has incompatible docValuesType: " + dvType);
+    }
+  }
+
+  private static void processDictionaryColumn(
+      int baseDocID,
+      int numDocs,
+      DictionaryColumn column,
+      PerField pf,
+      IndexableFieldType fieldType)
+      throws IOException {
+    final DocValuesType dvType = fieldType.docValuesType();
+    final List<BytesRef> dict = column.dictionary();
+
+    switch (dvType) {
+      case SORTED -> {
+        SortedDocValuesWriter writer = (SortedDocValuesWriter) pf.docValuesWriter;
+        if (column.density() == Column.Density.DENSE) {
+          OrdinalsCursor cursor = column.values();
+          ColumnValidation.checkDenseCount(column, cursor.size(), numDocs);
+          writer.addDenseOrdinalValues(baseDocID, dict, cursor);
+        } else {
+          writer.addOrdinalTuples(baseDocID, dict, column.tuples());
+        }
+      }
+      case SORTED_SET -> {
+        SortedSetDocValuesWriter writer = (SortedSetDocValuesWriter) pf.docValuesWriter;
+        OrdinalsTupleCursor cursor = column.tuples();
+        writer.addOrdinalTuples(baseDocID, dict, cursor);
+      }
+      // $CASES-OMITTED$
+      default ->
+          throw new IllegalArgumentException(
+              "DictionaryColumn \""
+                  + column.name()
+                  + "\" has incompatible docValuesType: "
+                  + dvType);
     }
   }
 
