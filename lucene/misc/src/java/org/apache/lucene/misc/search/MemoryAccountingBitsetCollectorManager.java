@@ -28,10 +28,13 @@ import org.apache.lucene.util.FixedBitSet;
  * segments it processes, then merges with proper offset in reduce().
  */
 public class MemoryAccountingBitsetCollectorManager
-    implements CollectorManager<MemoryAccountingBitsetCollector, FixedBitSet> {
+    implements CollectorManager<
+        MemoryAccountingBitsetCollector, MemoryAccountingBitsetCollectorManager.Result> {
+
+  /** The result of a search, containing the matched document IDs and total memory used. */
+  public record Result(FixedBitSet bitSet, long totalBytesUsed) {}
 
   private final CollectorMemoryTracker tracker;
-  private long totalBytesUsed;
 
   public MemoryAccountingBitsetCollectorManager(CollectorMemoryTracker tracker) {
     this.tracker = tracker;
@@ -39,41 +42,21 @@ public class MemoryAccountingBitsetCollectorManager
 
   @Override
   public MemoryAccountingBitsetCollector newCollector() {
-    return new MemoryAccountingBitsetCollector(
-        new CollectorMemoryTracker(tracker.getName() + "-collector", tracker.getMemoryLimit()),
-        true);
+    return new MemoryAccountingBitsetCollector(tracker, true);
   }
 
   @Override
-  public FixedBitSet reduce(Collection<MemoryAccountingBitsetCollector> collectors) {
-    if (collectors.isEmpty()) {
-      return new FixedBitSet(0);
-    }
-
-    if (collectors.size() == 1) {
-      MemoryAccountingBitsetCollector collector = collectors.iterator().next();
-      this.totalBytesUsed = collector.tracker.getBytes();
-
-      if (collector.getMinDocBase() == 0) {
-        return collector.bitSet;
-      }
-
-      FixedBitSet result = new FixedBitSet(collector.getMaxDocEnd());
-      int length = collector.getMaxDocEnd() - collector.getMinDocBase();
-      FixedBitSet.orRange(collector.bitSet, 0, result, collector.getMinDocBase(), length);
-      return result;
-    }
-
-    // Find global doc range across all collectors
+  public Result reduce(Collection<MemoryAccountingBitsetCollector> collectors) {
     int globalMinDocBase = Integer.MAX_VALUE;
     int globalMaxDocEnd = 0;
     for (MemoryAccountingBitsetCollector collector : collectors) {
       globalMinDocBase = Math.min(globalMinDocBase, collector.getMinDocBase());
       globalMaxDocEnd = Math.max(globalMaxDocEnd, collector.getMaxDocEnd());
-      long collectorBytes = collector.tracker.getBytes();
-      this.totalBytesUsed += collectorBytes;
     }
 
+    // TODO: with intra-segment concurrency enabled, globalMaxDocEnd equals the full index maxDoc
+    // even when only a portion of the index was searched, causing over-allocation of the result
+    // bitset.
     FixedBitSet result = new FixedBitSet(globalMaxDocEnd);
 
     for (MemoryAccountingBitsetCollector collector : collectors) {
@@ -83,10 +66,6 @@ public class MemoryAccountingBitsetCollectorManager
       }
     }
 
-    return result;
-  }
-
-  public long getBytes() {
-    return this.totalBytesUsed;
+    return new Result(result, tracker.getBytes());
   }
 }
