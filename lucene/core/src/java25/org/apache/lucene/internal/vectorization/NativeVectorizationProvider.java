@@ -81,4 +81,9 @@ final class NativeVectorizationProvider extends VectorizationProvider {
   public DocValuesRangeSupport getDocValuesRangeSupport() {
     return delegateVectorUtilProvider.getDocValuesRangeSupport();
   }
+
+  @Override
+  public DocValuesBulkDecodeSupport getDocValuesBulkDecodeSupport() {
+    return delegateVectorUtilProvider.getDocValuesBulkDecodeSupport();
+  }
 }
