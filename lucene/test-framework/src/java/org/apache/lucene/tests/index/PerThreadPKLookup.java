@@ -21,11 +21,14 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.PrimaryKeyLookup;
 
 /**
+ * A {@link PerThreadPKLookup} that can be used for primary key lookups.
+ *
  * @deprecated Use {@link PrimaryKeyLookup} instead.
  */
 @Deprecated
 public class PerThreadPKLookup extends PrimaryKeyLookup {
 
+  /** Construct a {@code PerThreadPKLookup} bound to {@code reader}. */
   public PerThreadPKLookup(IndexReader reader, String idFieldName) throws IOException {
     super(reader, idFieldName);
   }

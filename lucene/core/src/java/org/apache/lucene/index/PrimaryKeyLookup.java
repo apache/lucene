@@ -37,18 +37,37 @@ import org.apache.lucene.util.BytesRef;
  */
 public class PrimaryKeyLookup {
 
+  /** Name of the primary-key field. */
   protected final String idFieldName;
+
+  /** Per-segment {@link TermsEnum}. */
   protected final TermsEnum[] termsEnums;
+
+  /** Per-segment {@link PostingsEnum}. */
   protected final PostingsEnum[] postingsEnums;
+
+  /** Per-segment live-docs bitset. */
   protected final Bits[] liveDocs;
+
+  /** Per-segment {@code docBase} used to translate leaf docIDs to absolute docIDs. */
   protected final int[] docBases;
+
+  /** Number of populated entries in termsEnums/postingsEnums. */
   protected final int numEnums;
+
+  /** True if any segment in this lookup has deletions. */
   protected final boolean hasDeletions;
+
+  /**
+   * Maps a segment core cache key to its index in termsEnums/postingsEnums, so that reopen can
+   * transfer per-segment enum state to the next generation.
+   */
   protected final Map<IndexReader.CacheKey, Integer> enumIndexes;
 
   // Thread-stickiness guard.
   private final long ownerThreadId;
 
+  /** Construct a {@code PrimaryKeyLookup} bound to {@code reader}. */
   public PrimaryKeyLookup(IndexReader reader, String idFieldName) throws IOException {
     this(reader, idFieldName, Collections.emptyMap(), null, null);
   }
