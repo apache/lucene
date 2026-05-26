@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.index;
+package org.apache.lucene.document.column;
 
 import static org.apache.lucene.document.column.ColumnBatchTestUtil.ArrayDenseDictionaryColumn;
 import static org.apache.lucene.document.column.ColumnBatchTestUtil.ArrayDenseLongColumn;
@@ -35,6 +35,7 @@ import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.*;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.TermQuery;
@@ -45,14 +46,10 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 
 /** Tests for {@link org.apache.lucene.document.column.DictionaryColumn} end-to-end indexing. */
-public class TestDictionaryColumn extends LuceneTestCase {
+public class TestColumnBatchDictionaryColumn extends LuceneTestCase {
 
   private static final List<BytesRef> COLORS =
       List.of(new BytesRef("blue"), new BytesRef("green"), new BytesRef("red"));
-
-  // -------------------------------------------------------------------------
-  // SORTED doc values — sparse path
-  // -------------------------------------------------------------------------
 
   public void testSortedSparse() throws IOException {
     Directory dir = newDirectory();
@@ -339,8 +336,13 @@ public class TestDictionaryColumn extends LuceneTestCase {
 
   public void testMixedWithPlainDocument() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter w =
-        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(new TieredMergePolicy()));
+    // Disable auto-flush so the addBatch and addDocument share one segment; otherwise a
+    // randomized tiny maxBufferedDocs can split them and TMP's size-sorted forceMerge
+    // may interleave them.
+    IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(new TieredMergePolicy());
+    iwc.setRAMBufferSizeMB(16);
+    iwc.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+    IndexWriter w = new IndexWriter(dir, iwc);
 
     // Batch adds doc 0 (blue) and doc 1 (red)
     w.addBatch(
