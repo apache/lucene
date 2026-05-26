@@ -81,15 +81,32 @@ public abstract class NumericDocValues extends DocValuesIterator {
    */
   public void longValues(int size, int[] docs, long[] values, long defaultValue)
       throws IOException {
-    for (int i = 0; i < size; ++i) {
-      int doc = docs[i];
+    longValues(size, docs, 0, values, 0, defaultValue);
+  }
+
+  /**
+   * Offset-aware variant of {@link #longValues(int, int[], long[], long)}. Reads {@code size} doc
+   * IDs starting at {@code docs[docsOffset]} and writes the corresponding values starting at {@code
+   * values[valuesOffset]}. This follows the same convention as {@link System#arraycopy}.
+   *
+   * @param size the number of values to retrieve
+   * @param docs the buffer of doc IDs whose values should be looked up
+   * @param docsOffset first position in {@code docs} to read
+   * @param values the buffer of values to fill
+   * @param valuesOffset first position in {@code values} to write
+   * @param defaultValue the value to put in the buffer when a document doesn't have a value
+   */
+  public void longValues(
+      int size, int[] docs, int docsOffset, long[] values, int valuesOffset, long defaultValue)
+      throws IOException {
+    for (int di = docsOffset, vi = valuesOffset, end = docsOffset + size; di < end; di++, vi++) {
       long value;
-      if (advanceExact(doc)) {
+      if (advanceExact(docs[di])) {
         value = longValue();
       } else {
         value = defaultValue;
       }
-      values[i] = value;
+      values[vi] = value;
     }
   }
 

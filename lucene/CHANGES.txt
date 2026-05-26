@@ -173,6 +173,8 @@ Optimizations
 
 * GITHUB#16126: Implement #intoBitSet and #docIDRunEnd in DocValuesWriter implementations. (Ignacio Vera)
 
+* GITHUB#16129: Add bulk decode for dense NumericDocValues via longValues(). (Costin Leau)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent

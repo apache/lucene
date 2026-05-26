@@ -66,7 +66,7 @@ public class NumericDocValuesBulkDecodeBenchmark {
   @Param({"1000000"})
   public int docCount;
 
-  @Param({"8", "16", "32", "64"})
+  @Param({"8", "16", "24", "32", "40", "48", "56", "64"})
   public int bitsPerValue;
 
   @Param({"128", "1024"})
