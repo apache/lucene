@@ -107,4 +107,9 @@ final class PanamaVectorizationProvider extends VectorizationProvider {
   public DocValuesRangeSupport getDocValuesRangeSupport() {
     return PanamaDocValuesRangeSupport.INSTANCE;
   }
+
+  @Override
+  public DocValuesBulkDecodeSupport getDocValuesBulkDecodeSupport() {
+    return PanamaDocValuesBulkDecodeSupport.INSTANCE;
+  }
 }
