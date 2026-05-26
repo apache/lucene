@@ -46,9 +46,11 @@ public final class TaxonomyFacetsCutter implements FacetCutter {
   // Null until first getSingleValuedDimOrds() call; empty when disableRollup=true.
   private IntHashSet singleValuedDimOrds;
 
-  // Reusable scratch buffer for the ancestor path (reduce is single-threaded, and the
-  // returned OrdinalIterator is always fully consumed before the next remapOrd call).
+  // Reusable scratch buffer and iterator for the ancestor path. Both are safe to reuse
+  // because reduce is single-threaded and the iterator is always fully consumed before
+  // the next remapOrd call.
   private int[] ancestorBuf = new int[8];
+  private final AncestorOrdinalIterator ancestorIterator = new AncestorOrdinalIterator();
 
   /** Create {@link FacetCutter} for taxonomy facets. */
   public TaxonomyFacetsCutter(
@@ -142,17 +144,24 @@ public final class TaxonomyFacetsCutter implements FacetCutter {
     }
 
     // Single-valued dim: emit the full path from the leaf ordinal up to and including the
-    // dim ordinal. The returned iterator reads directly from ancestorBuf and is always fully
-    // consumed before the next remapOrd call, so the shared buffer is safe to reuse.
-    final int capturedLen = len;
-    return new OrdinalIterator() {
-      int idx = 0;
+    // dim ordinal.
+    ancestorIterator.reset(len);
+    return ancestorIterator;
+  }
 
-      @Override
-      public int nextOrd() {
-        return idx < capturedLen ? ancestorBuf[idx++] : NO_MORE_ORDS;
-      }
-    };
+  private class AncestorOrdinalIterator implements OrdinalIterator {
+    private int len;
+    private int idx;
+
+    void reset(int len) {
+      this.len = len;
+      this.idx = 0;
+    }
+
+    @Override
+    public int nextOrd() {
+      return idx < len ? ancestorBuf[idx++] : NO_MORE_ORDS;
+    }
   }
 
   @Override
