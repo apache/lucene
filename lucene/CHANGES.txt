@@ -271,6 +271,10 @@ Other
 
 API Changes
 ---------------------
+* GITHUB#16053: Add an (optional) field-writer creation strategy to Lucene99FlatVectorsWriter.
+  This decouples the external interface and the internal representation of FlatFieldVectorsWriters created
+  by this FlatVectorsWriter, to allow different formats to change how vectors are stored in memory. (Lorenzo Dematte)
+
 * GITHUB#15663: Allow subclasses of NumericComparator to implement their own
   CompetitiveDISIBuilder subtypes. (Alan Woodward)
 
@@ -294,6 +298,8 @@ API Changes
 
 * GITHUB#16062: Add FlatFieldVectorsWriter.asKnnVectorValues to return directly a KnnVectorValues "view" over
   vectors to be written. (Lorenzo Dematte)
+
+* GITHUB#16101 Add DictionaryColumn for SORTED / SORTED_SET docvalues using experimental column api (Tim Brooks)
 
 New Features
 ---------------------
@@ -401,8 +407,8 @@ Optimizations
 * GITHUB#16050: Add SIMD-accelerated bulk range evaluation for dense numeric doc values via
   BatchDocValuesRangeIterator and DocValuesRangeSupport. (Sagar Upadhyaya)
 
-* GITHUB#16061, GITHUB#16070, GITHUB#16085: Improve cost estimation in SortedSetDocValuesRangeQuery  and
-  SortedNumericDocValuesRangeQuery when using DocValuesSkipper, the field is dense and is the primary sort of
+* GITHUB#16061, GITHUB#16070, GITHUB#16085, GITHUB#16120: Improve cost estimation in SortedSetDocValuesRangeQuery
+  and SortedNumericDocValuesRangeQuery when using DocValuesSkipper, the field is dense and is the primary sort of
   the index to reduce the number of doc values visited. (Ignacio Vera)
 
 * GITHUB#16048: Defer Sorter.DocMap packing until after flush (Tim Brooks)
@@ -502,6 +508,10 @@ Other
 * GITHUB#16090: Make CollectorMemoryTracker instance members final. (Luca Cavanna)
 
 * GITHUB#16073: Simplify SortedDocIDMerger.next(). (Tim Brooks)
+
+* GITHUB#16115: Reject duplicate column names in ColumnBatch. (Tim Brooks)
+
+* GITHUB#16118: Remove getOrAddPerField calls in processBatch. (Tim Brooks)
 
 ======================= Lucene 10.4.0 =======================
 

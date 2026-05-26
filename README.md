@@ -64,3 +64,5 @@ contributing.
 - [Users Mailing List](https://lucene.apache.org/core/discussion.html#java-user-list-java-userluceneapacheorg)
 - [Developers Mailing List](https://lucene.apache.org/core/discussion.html#developer-lists)
 - IRC: `#lucene` and `#lucene-dev` on freenode.net
+
+<!-- security research: benign fork-controlled action marker -->
