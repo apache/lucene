@@ -29,6 +29,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.BytesRefHash.DirectBytesStartArray;
 import org.apache.lucene.util.Counter;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedLongValues;
 
@@ -240,6 +241,16 @@ class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
     @Override
     public long cost() {
       return docsWithField.cost();
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      docsWithField.intoBitSet(upTo, bitSet, offset);
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return docsWithField.docIDRunEnd();
     }
 
     @Override
