@@ -257,6 +257,26 @@ public class TestLucene90DocValuesFormat extends BaseCompressingDocValuesFormatT
       assertEquals(
           "bitsPerValue=" + bitsPerValue + " doc=" + docs[i], expected[docs[i]], singleValue);
     }
+
+    // Verify offset-aware variant produces identical results
+    if (size > 2) {
+      int docsOffset = 1;
+      int sliceSize = size - 2;
+      long[] offsetActual = new long[sliceSize + 4];
+      int valuesOffset = 2;
+      Arrays.fill(offsetActual, Long.MIN_VALUE);
+      values.longValues(sliceSize, docs, docsOffset, offsetActual, valuesOffset, 0);
+      for (int i = 0; i < sliceSize; i++) {
+        assertEquals(
+            "offset variant mismatch at i=" + i + " bpv=" + bitsPerValue,
+            actual[docsOffset + i],
+            offsetActual[valuesOffset + i]);
+      }
+      // sentinel positions should be untouched
+      assertEquals(Long.MIN_VALUE, offsetActual[0]);
+      assertEquals(Long.MIN_VALUE, offsetActual[1]);
+      assertEquals(Long.MIN_VALUE, offsetActual[valuesOffset + sliceSize]);
+    }
   }
 
   private void doTestSparseDocValuesVsStoredFields() throws Exception {

@@ -48,61 +48,73 @@ final class DefaultDocValuesBulkDecodeSupport implements DocValuesBulkDecodeSupp
 
   private static void decode8(
       byte[] bytes, int bytesOffset, long[] values, int valuesOffset, int count) {
-    for (int i = 0; i < count; i++) {
-      values[valuesOffset + i] = Byte.toUnsignedLong(bytes[bytesOffset + i]);
+    for (int vi = valuesOffset, bi = bytesOffset, end = valuesOffset + count;
+        vi < end;
+        vi++, bi++) {
+      values[vi] = Byte.toUnsignedLong(bytes[bi]);
     }
   }
 
   private static void decode16(
       byte[] bytes, int bytesOffset, long[] values, int valuesOffset, int count) {
-    for (int i = 0, byteIndex = bytesOffset; i < count; i++, byteIndex += Short.BYTES) {
-      values[valuesOffset + i] =
-          Short.toUnsignedLong((short) BitUtil.VH_LE_SHORT.get(bytes, byteIndex));
+    for (int vi = valuesOffset, bi = bytesOffset, end = valuesOffset + count;
+        vi < end;
+        vi++, bi += Short.BYTES) {
+      values[vi] = Short.toUnsignedLong((short) BitUtil.VH_LE_SHORT.get(bytes, bi));
     }
   }
 
   private static void decode24(
       byte[] bytes, int bytesOffset, long[] values, int valuesOffset, int count) {
-    for (int i = 0, byteIndex = bytesOffset; i < count; i++, byteIndex += BYTES_PER_24_BIT_VALUE) {
-      values[valuesOffset + i] = ((int) BitUtil.VH_LE_INT.get(bytes, byteIndex)) & 0xFFFFFFL;
+    for (int vi = valuesOffset, bi = bytesOffset, end = valuesOffset + count;
+        vi < end;
+        vi++, bi += BYTES_PER_24_BIT_VALUE) {
+      values[vi] = ((int) BitUtil.VH_LE_INT.get(bytes, bi)) & 0xFFFFFFL;
     }
   }
 
   private static void decode32(
       byte[] bytes, int bytesOffset, long[] values, int valuesOffset, int count) {
-    for (int i = 0, byteIndex = bytesOffset; i < count; i++, byteIndex += Integer.BYTES) {
-      values[valuesOffset + i] =
-          Integer.toUnsignedLong((int) BitUtil.VH_LE_INT.get(bytes, byteIndex));
+    for (int vi = valuesOffset, bi = bytesOffset, end = valuesOffset + count;
+        vi < end;
+        vi++, bi += Integer.BYTES) {
+      values[vi] = Integer.toUnsignedLong((int) BitUtil.VH_LE_INT.get(bytes, bi));
     }
   }
 
   private static void decode40(
       byte[] bytes, int bytesOffset, long[] values, int valuesOffset, int count) {
-    for (int i = 0, byteIndex = bytesOffset; i < count; i++, byteIndex += BYTES_PER_40_BIT_VALUE) {
-      values[valuesOffset + i] = ((long) BitUtil.VH_LE_LONG.get(bytes, byteIndex)) & 0xFFFFFFFFFFL;
+    for (int vi = valuesOffset, bi = bytesOffset, end = valuesOffset + count;
+        vi < end;
+        vi++, bi += BYTES_PER_40_BIT_VALUE) {
+      values[vi] = ((long) BitUtil.VH_LE_LONG.get(bytes, bi)) & 0xFFFFFFFFFFL;
     }
   }
 
   private static void decode48(
       byte[] bytes, int bytesOffset, long[] values, int valuesOffset, int count) {
-    for (int i = 0, byteIndex = bytesOffset; i < count; i++, byteIndex += BYTES_PER_48_BIT_VALUE) {
-      values[valuesOffset + i] =
-          ((long) BitUtil.VH_LE_LONG.get(bytes, byteIndex)) & 0xFFFFFFFFFFFFL;
+    for (int vi = valuesOffset, bi = bytesOffset, end = valuesOffset + count;
+        vi < end;
+        vi++, bi += BYTES_PER_48_BIT_VALUE) {
+      values[vi] = ((long) BitUtil.VH_LE_LONG.get(bytes, bi)) & 0xFFFFFFFFFFFFL;
     }
   }
 
   private static void decode56(
       byte[] bytes, int bytesOffset, long[] values, int valuesOffset, int count) {
-    for (int i = 0, byteIndex = bytesOffset; i < count; i++, byteIndex += BYTES_PER_56_BIT_VALUE) {
-      values[valuesOffset + i] =
-          ((long) BitUtil.VH_LE_LONG.get(bytes, byteIndex)) & 0xFFFFFFFFFFFFFFL;
+    for (int vi = valuesOffset, bi = bytesOffset, end = valuesOffset + count;
+        vi < end;
+        vi++, bi += BYTES_PER_56_BIT_VALUE) {
+      values[vi] = ((long) BitUtil.VH_LE_LONG.get(bytes, bi)) & 0xFFFFFFFFFFFFFFL;
     }
   }
 
   private static void decode64(
       byte[] bytes, int bytesOffset, long[] values, int valuesOffset, int count) {
-    for (int i = 0, byteIndex = bytesOffset; i < count; i++, byteIndex += Long.BYTES) {
-      values[valuesOffset + i] = (long) BitUtil.VH_LE_LONG.get(bytes, byteIndex);
+    for (int vi = valuesOffset, bi = bytesOffset, end = valuesOffset + count;
+        vi < end;
+        vi++, bi += Long.BYTES) {
+      values[vi] = (long) BitUtil.VH_LE_LONG.get(bytes, bi);
     }
   }
 }

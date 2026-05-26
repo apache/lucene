@@ -21,6 +21,7 @@ import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_IND
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SHIFT;
 
 import java.io.IOException;
+import java.util.Arrays;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.BaseTermsEnum;
@@ -483,8 +484,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     return entry.blockShift < 0 && entry.bitsPerValue > 0 && (entry.bitsPerValue & 0x07) == 0;
   }
 
-  private static boolean isContiguous(int size, int[] docs) {
-    return size == 0 || docs[size - 1] - docs[0] == size - 1;
+  private static boolean isContiguous(int size, int[] docs, int docsOffset) {
+    return size == 0 || docs[docsOffset + size - 1] - docs[docsOffset] == size - 1;
   }
 
   private static int paddingBytesNeededForBulkDecode(int bitsPerValue) {
@@ -501,10 +502,12 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       NumericEntry entry,
       int size,
       int[] docs,
+      int docsOffset,
       long[] values,
+      int valuesOffset,
       byte[] bytes)
       throws IOException {
-    if (canBulkDecodeByteAligned(entry) == false || isContiguous(size, docs) == false) {
+    if (canBulkDecodeByteAligned(entry) == false || isContiguous(size, docs, docsOffset) == false) {
       return null;
     }
 
@@ -516,7 +519,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     final int byteCount = (int) byteCountLong;
     final int readByteCount =
         byteCount == 0 ? 0 : byteCount + paddingBytesNeededForBulkDecode(entry.bitsPerValue);
-    final long offset = byteCount == 0 ? 0 : (long) docs[0] * bytesPerValue;
+    final long offset = byteCount == 0 ? 0 : (long) docs[docsOffset] * bytesPerValue;
     if (offset + readByteCount > slice.length()) {
       return null;
     }
@@ -526,19 +529,20 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     if (byteCount != 0) {
       slice.readBytes(offset, bytes, 0, readByteCount);
       DOC_VALUES_BULK_DECODE_SUPPORT.decodeByteAligned(
-          bytes, 0, entry.bitsPerValue, values, 0, size);
+          bytes, 0, entry.bitsPerValue, values, valuesOffset, size);
     }
     return bytes;
   }
 
-  private static void applyTable(long[] values, long[] table, int size) {
-    for (int i = 0; i < size; i++) {
+  private static void applyTable(long[] values, int valuesOffset, long[] table, int size) {
+    for (int i = valuesOffset, end = valuesOffset + size; i < end; i++) {
       values[i] = table[(int) values[i]];
     }
   }
 
-  private static void applyGcdDelta(long[] values, long mul, long delta, int size) {
-    for (int i = 0; i < size; i++) {
+  private static void applyGcdDelta(
+      long[] values, int valuesOffset, long mul, long delta, int size) {
+    for (int i = valuesOffset, end = valuesOffset + size; i < end; i++) {
       values[i] = mul * values[i] + delta;
     }
   }
@@ -737,13 +741,17 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
 
           @Override
-          public void longValues(int size, int[] docs, long[] values, long defaultValue)
+          public void longValues(
+              int size,
+              int[] docs,
+              int docsOffset,
+              long[] values,
+              int valuesOffset,
+              long defaultValue)
               throws IOException {
-            for (int i = 0; i < size; i++) {
-              values[i] = entry.minValue;
-            }
+            Arrays.fill(values, valuesOffset, valuesOffset + size, entry.minValue);
             if (size != 0) {
-              doc = docs[size - 1];
+              doc = docs[docsOffset + size - 1];
             }
           }
         };
@@ -766,11 +774,17 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             }
 
             @Override
-            public void longValues(int size, int[] docs, long[] values, long defaultValue)
+            public void longValues(
+                int size,
+                int[] docs,
+                int docsOffset,
+                long[] values,
+                int valuesOffset,
+                long defaultValue)
                 throws IOException {
               // Delegate to help performance: when the super call inlines, calls to
               // #advanceExact/#longValue become monomorphic.
-              super.longValues(size, docs, values, defaultValue);
+              super.longValues(size, docs, docsOffset, values, valuesOffset, defaultValue);
             }
           };
         } else {
@@ -787,19 +801,24 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               }
 
               @Override
-              public void longValues(int size, int[] docs, long[] values, long defaultValue)
+              public void longValues(
+                  int size,
+                  int[] docs,
+                  int docsOffset,
+                  long[] values,
+                  int valuesOffset,
+                  long defaultValue)
                   throws IOException {
                 byte[] bytes =
-                    bulkDecodeByteAlignedValues(slice, entry, size, docs, values, bulkBytes);
+                    bulkDecodeByteAlignedValues(
+                        slice, entry, size, docs, docsOffset, values, valuesOffset, bulkBytes);
                 if (bytes == null) {
-                  // Delegate to help performance: when the super call inlines, calls to
-                  // #advanceExact/#longValue become monomorphic.
-                  super.longValues(size, docs, values, defaultValue);
+                  super.longValues(size, docs, docsOffset, values, valuesOffset, defaultValue);
                 } else {
-                  applyTable(values, table, size);
+                  applyTable(values, valuesOffset, table, size);
                   bulkBytes = bytes;
                   if (size != 0) {
-                    doc = docs[size - 1];
+                    doc = docs[docsOffset + size - 1];
                   }
                 }
               }
@@ -815,18 +834,23 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               }
 
               @Override
-              public void longValues(int size, int[] docs, long[] values, long defaultValue)
+              public void longValues(
+                  int size,
+                  int[] docs,
+                  int docsOffset,
+                  long[] values,
+                  int valuesOffset,
+                  long defaultValue)
                   throws IOException {
                 byte[] bytes =
-                    bulkDecodeByteAlignedValues(slice, entry, size, docs, values, bulkBytes);
+                    bulkDecodeByteAlignedValues(
+                        slice, entry, size, docs, docsOffset, values, valuesOffset, bulkBytes);
                 if (bytes == null) {
-                  // Delegate to help performance: when the super call inlines, calls to
-                  // #advanceExact/#longValue become monomorphic.
-                  super.longValues(size, docs, values, defaultValue);
+                  super.longValues(size, docs, docsOffset, values, valuesOffset, defaultValue);
                 } else {
                   bulkBytes = bytes;
                   if (size != 0) {
-                    doc = docs[size - 1];
+                    doc = docs[docsOffset + size - 1];
                   }
                 }
               }
@@ -856,19 +880,24 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               }
 
               @Override
-              public void longValues(int size, int[] docs, long[] values, long defaultValue)
+              public void longValues(
+                  int size,
+                  int[] docs,
+                  int docsOffset,
+                  long[] values,
+                  int valuesOffset,
+                  long defaultValue)
                   throws IOException {
                 byte[] bytes =
-                    bulkDecodeByteAlignedValues(slice, entry, size, docs, values, bulkBytes);
+                    bulkDecodeByteAlignedValues(
+                        slice, entry, size, docs, docsOffset, values, valuesOffset, bulkBytes);
                 if (bytes == null) {
-                  // Delegate to help performance: when the super call inlines, calls to
-                  // #advanceExact/#longValue become monomorphic.
-                  super.longValues(size, docs, values, defaultValue);
+                  super.longValues(size, docs, docsOffset, values, valuesOffset, defaultValue);
                 } else {
-                  applyGcdDelta(values, mul, delta, size);
+                  applyGcdDelta(values, valuesOffset, mul, delta, size);
                   bulkBytes = bytes;
                   if (size != 0) {
-                    doc = docs[size - 1];
+                    doc = docs[docsOffset + size - 1];
                   }
                 }
               }
