@@ -100,9 +100,6 @@ API Changes
 
 New Features
 ---------------------
-* GITHUB#15520: Promote PerThreadPKLookup from the test-framework to core as
-  PrimaryKeyLookup. The original PerThreadPKLookup is now a deprecated. (Shubham Sharma)
-
 * GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
   PolishSnowballAnalyzer in the stempel package) (Justas Sakalauskas, Dawid Weiss)
 
@@ -113,6 +110,9 @@ New Features
 * GITHUB#15508: Use native vectorization in Lucene. (Ankur Goel, Shubham Chaudhary, Dawid Weiss)
 
 * GITHUB#15818: Add BM25 k3 query-term frequency saturation to BM25Similarity. (Sagar Upadhyaya)
+
+* GITHUB#15520: Promote PerThreadPKLookup from the test-framework to core as
+  PrimaryKeyLookup. The original PerThreadPKLookup is now deprecated. (Shubham Sharma)
 
 Improvements
 ---------------------

@@ -21,7 +21,10 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.PrimaryKeyLookup;
 
 /**
- * A {@link PerThreadPKLookup} that can be used for primary key lookups.
+ * Utility class to do efficient primary-key (only 1 doc contains the given term) lookups by
+ * segment, re-using the enums. This class is not thread safe, so it is the caller's job to create
+ * and use one instance of this per thread. Do not use this if a term may appear in more than one
+ * document! It will only return the first one it finds.
  *
  * @deprecated Use {@link PrimaryKeyLookup} instead.
  */
