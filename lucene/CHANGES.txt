@@ -407,8 +407,8 @@ Optimizations
 * GITHUB#16050: Add SIMD-accelerated bulk range evaluation for dense numeric doc values via
   BatchDocValuesRangeIterator and DocValuesRangeSupport. (Sagar Upadhyaya)
 
-* GITHUB#16061, GITHUB#16070, GITHUB#16085: Improve cost estimation in SortedSetDocValuesRangeQuery  and
-  SortedNumericDocValuesRangeQuery when using DocValuesSkipper, the field is dense and is the primary sort of
+* GITHUB#16061, GITHUB#16070, GITHUB#16085, GITHUB#16120: Improve cost estimation in SortedSetDocValuesRangeQuery
+  and SortedNumericDocValuesRangeQuery when using DocValuesSkipper, the field is dense and is the primary sort of
   the index to reduce the number of doc values visited. (Ignacio Vera)
 
 * GITHUB#16048: Defer Sorter.DocMap packing until after flush (Tim Brooks)
