@@ -23,10 +23,8 @@ import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.document.column.LongValuesCursor;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.MathUtil;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedLongValues;
 
@@ -275,7 +273,7 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
           docID = upTo;
         } else {
           FixedBitSet.orRange(dvs.docsWithField, docID, bitSet, docID - offset, upTo - docID);
-          docID = upTo < dvs.maxDoc ? dvs.advance(upTo) : NO_MORE_DOCS;  // set the current doc
+          docID = upTo < dvs.maxDoc ? dvs.advance(upTo) : NO_MORE_DOCS; // set the current doc
         }
       }
     }

@@ -715,7 +715,8 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
                   }
 
                   @Override
-                  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+                  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset)
+                      throws IOException {
                     sorted.intoBitSet(upTo, bitSet, offset);
                   }
 
