@@ -38,6 +38,7 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 
 public class TestBooleanScorer extends LuceneTestCase {
   private static final String FIELD = "category";
@@ -209,6 +210,120 @@ public class TestBooleanScorer extends LuceneTestCase {
     w.close();
     reader.close();
     dir.close();
+  }
+
+  public void testDefaultBulkScorerUsesIntoBitSet() throws IOException {
+    int[] docs = {1, 2, 4097, 5000, 8195};
+    CountingDocIdSetIterator iterator = new CountingDocIdSetIterator(docs);
+    Scorer scorer = new ConstantScoreScorer(1f, ScoreMode.COMPLETE_NO_SCORES, iterator);
+
+    FixedBitSet liveDocs = new FixedBitSet(9000);
+    liveDocs.set(0, 9000);
+    liveDocs.clear(2);
+    liveDocs.clear(4097);
+    liveDocs.clear(5000);
+
+    int[] collected = new int[docs.length];
+    int[] count = new int[1];
+    LeafCollector collector =
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            fail("DefaultBulkScorer should collect the simple iterator path via DocIdStream");
+          }
+
+          @Override
+          public void collect(DocIdStream stream) throws IOException {
+            int[] buffer = new int[docs.length];
+            for (int size = stream.intoArray(buffer); size != 0; size = stream.intoArray(buffer)) {
+              System.arraycopy(buffer, 0, collected, count[0], size);
+              count[0] += size;
+            }
+          }
+        };
+
+    BulkScorer bulkScorer = new DefaultBulkScorer(scorer);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, liveDocs, 0, 9000));
+    assertArrayEquals(new int[] {1, 8195}, Arrays.copyOf(collected, count[0]));
+    assertEquals(3, iterator.intoBitSetCalls);
+  }
+
+  public void testDefaultBulkScorerDoesNotUseDocIdStreamForTopScores() throws IOException {
+    int[] docs = {1, 2, 4097};
+    CountingDocIdSetIterator iterator = new CountingDocIdSetIterator(docs);
+    Scorer scorer = new ConstantScoreScorer(1f, ScoreMode.TOP_SCORES, iterator);
+
+    int[] collected = new int[docs.length];
+    int[] count = new int[1];
+    LeafCollector collector =
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            collected[count[0]++] = doc;
+          }
+
+          @Override
+          public void collect(DocIdStream stream) {
+            fail("TOP_SCORES must preserve per-doc collection for early termination");
+          }
+        };
+
+    BulkScorer bulkScorer = new DefaultBulkScorer(scorer);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, null, 0, 9000));
+    assertArrayEquals(docs, Arrays.copyOf(collected, count[0]));
+    assertEquals(0, iterator.intoBitSetCalls);
+  }
+
+  private static class CountingDocIdSetIterator extends DocIdSetIterator {
+    private final int[] docs;
+    private int index = -1;
+    private int doc = -1;
+    private int intoBitSetCalls;
+
+    CountingDocIdSetIterator(int[] docs) {
+      this.docs = docs;
+    }
+
+    @Override
+    public int docID() {
+      return doc;
+    }
+
+    @Override
+    public int nextDoc() {
+      if (++index == docs.length) {
+        return doc = NO_MORE_DOCS;
+      }
+      return doc = docs[index];
+    }
+
+    @Override
+    public int advance(int target) {
+      do {
+        nextDoc();
+      } while (doc < target);
+      return doc;
+    }
+
+    @Override
+    public long cost() {
+      return docs.length;
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) {
+      intoBitSetCalls++;
+      while (doc < upTo) {
+        bitSet.set(doc - offset);
+        nextDoc();
+      }
+    }
   }
 
   public void testOptimizeProhibitedClauses() throws IOException {
