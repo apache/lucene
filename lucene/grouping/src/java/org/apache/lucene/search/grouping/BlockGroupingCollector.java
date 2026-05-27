@@ -277,6 +277,7 @@ public class BlockGroupingCollector extends SimpleCollector {
     final Score fakeScorer = new Score();
 
     float maxScore = Float.MIN_VALUE;
+    final boolean groupSortByRelevance = groupSort.equals(Sort.RELEVANCE);
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     final GroupDocs<Object>[] groups = new GroupDocs[groupQueue.size() - groupOffset];
@@ -286,7 +287,8 @@ public class BlockGroupingCollector extends SimpleCollector {
       // At this point we hold all docs w/ in each group,
       // unsorted; we now sort them:
       final TopDocsCollector<?> collector;
-      if (withinGroupSort.equals(Sort.RELEVANCE)) {
+      final boolean withinGroupSortByRelevance = withinGroupSort.equals(Sort.RELEVANCE);
+      if (withinGroupSortByRelevance) {
         // Sort by score
         if (!needsScores) {
           throw new IllegalArgumentException(
@@ -309,7 +311,9 @@ public class BlockGroupingCollector extends SimpleCollector {
         final int doc = og.docs[docIDX];
         if (needsScores) {
           fakeScorer.score = og.scores[docIDX];
-          groupMaxScore = Math.max(groupMaxScore, fakeScorer.score);
+          if (!withinGroupSortByRelevance) {
+            groupMaxScore = Math.max(groupMaxScore, fakeScorer.score);
+          }
         }
         leafCollector.collect(doc);
       }
@@ -323,6 +327,9 @@ public class BlockGroupingCollector extends SimpleCollector {
       }
 
       final TopDocs topDocs = collector.topDocs(withinGroupOffset, maxDocsPerGroup);
+      if (withinGroupSortByRelevance && topDocs.scoreDocs.length > 0) {
+        groupMaxScore = topDocs.scoreDocs[0].score;
+      }
 
       // TODO: we could aggregate scores across children
       // by Sum/Avg instead of passing NaN:
@@ -334,7 +341,13 @@ public class BlockGroupingCollector extends SimpleCollector {
               topDocs.scoreDocs,
               null,
               groupSortValues);
-      maxScore = Math.max(maxScore, groupMaxScore);
+      if (!groupSortByRelevance) {
+        maxScore = Math.max(maxScore, groupMaxScore);
+      }
+    }
+
+    if (groupSortByRelevance) {
+      maxScore = groups[0].maxScore();
     }
 
     /*

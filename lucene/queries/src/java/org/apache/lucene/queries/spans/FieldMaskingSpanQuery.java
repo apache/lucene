@@ -61,8 +61,8 @@ import org.apache.lucene.search.ScoreMode;
  * teacherid 2 (which has a 'james' in position 0 and 'jones' in position 1).
  *
  * <p>Note: as {@link #getField()} returns the masked field, scoring will be done using the
- * Similarity and collection statistics of the field name supplied, but with the term statistics of
- * the real field. This may lead to exceptions, poor performance, and unexpected scoring behaviour.
+ * Similarity and field statistics of the field name supplied, but with the term statistics of the
+ * real field. This may lead to exceptions, poor performance, and unexpected scoring behavior.
  */
 public final class FieldMaskingSpanQuery extends SpanQuery {
   private final SpanQuery maskedQuery;

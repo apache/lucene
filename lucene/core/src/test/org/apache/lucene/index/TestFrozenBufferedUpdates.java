@@ -45,7 +45,7 @@ public class TestFrozenBufferedUpdates extends LuceneTestCase {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return new FilterTerms(in.terms(field)) {
         @Override
         public TermsEnum iterator() throws IOException {

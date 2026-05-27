@@ -235,7 +235,7 @@ final class ConjunctionDISI extends FilterDocIdSetIterator {
       this.lead = lead;
       assert bitSetIterators.size() > 0;
 
-      this.bitSetIterators = bitSetIterators.toArray(new BitSetIterator[0]);
+      this.bitSetIterators = bitSetIterators.toArray(BitSetIterator[]::new);
       // Put the least costly iterators first so that we exit as soon as possible
       ArrayUtil.timSort(this.bitSetIterators, (a, b) -> Long.compare(a.cost(), b.cost()));
       this.bitSets = new BitSet[this.bitSetIterators.length];
@@ -308,8 +308,7 @@ final class ConjunctionDISI extends FilterDocIdSetIterator {
       CollectionUtil.timSort(
           twoPhaseIterators, (o1, o2) -> Float.compare(o1.matchCost(), o2.matchCost()));
 
-      this.twoPhaseIterators =
-          twoPhaseIterators.toArray(new TwoPhaseIterator[twoPhaseIterators.size()]);
+      this.twoPhaseIterators = twoPhaseIterators.toArray(TwoPhaseIterator[]::new);
 
       // Compute the matchCost as the total matchCost of the sub iterators.
       // TODO: This could be too high because the matching is done cheapest first: give the lower

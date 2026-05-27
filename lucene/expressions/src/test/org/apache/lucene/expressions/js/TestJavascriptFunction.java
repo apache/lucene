@@ -17,6 +17,7 @@
 package org.apache.lucene.expressions.js;
 
 import org.apache.lucene.expressions.Expression;
+import org.junit.jupiter.api.Test;
 
 public class TestJavascriptFunction extends CompilerTestCase {
   private static final double DELTA = 0.0000001;
@@ -27,6 +28,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEquals(expected, actual, DELTA);
   }
 
+  @Test
   public void testAbsMethod() throws Exception {
     assertEvaluatesTo("abs(0)", 0);
     assertEvaluatesTo("abs(119)", 119);
@@ -35,6 +37,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("abs(-1)", 1);
   }
 
+  @Test
   public void testAcosMethod() throws Exception {
     assertEvaluatesTo("acos(-1)", Math.PI);
     assertEvaluatesTo("acos(-0.8660254)", Math.PI * 5 / 6);
@@ -47,12 +50,14 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("acos(1)", 0);
   }
 
+  @Test
   public void testAcoshMethod() throws Exception {
     assertEvaluatesTo("acosh(1)", 0);
     assertEvaluatesTo("acosh(2.5)", 1.5667992369724109);
     assertEvaluatesTo("acosh(1234567.89)", 14.719378760739708);
   }
 
+  @Test
   public void testAsinMethod() throws Exception {
     assertEvaluatesTo("asin(-1)", -Math.PI / 2);
     assertEvaluatesTo("asin(-0.8660254)", -Math.PI / 3);
@@ -65,6 +70,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("asin(1)", Math.PI / 2);
   }
 
+  @Test
   public void testAsinhMethod() throws Exception {
     assertEvaluatesTo("asinh(-1234567.89)", -14.719378760740035);
     assertEvaluatesTo("asinh(-2.5)", -1.6472311463710958);
@@ -75,6 +81,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("asinh(1234567.89)", 14.719378760740035);
   }
 
+  @Test
   public void testAtanMethod() throws Exception {
     assertEvaluatesTo("atan(-1.732050808)", -Math.PI / 3);
     assertEvaluatesTo("atan(-1)", -Math.PI / 4);
@@ -85,6 +92,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("atan(1.732050808)", Math.PI / 3);
   }
 
+  @Test
   public void testAtan2Method() throws Exception {
     assertEvaluatesTo("atan2(+0,+0)", +0.0);
     assertEvaluatesTo("atan2(+0,-0)", +Math.PI);
@@ -96,6 +104,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("atan2(-2,-2)", -Math.PI * 3 / 4);
   }
 
+  @Test
   public void testAtanhMethod() throws Exception {
     assertEvaluatesTo("atanh(-1)", Double.NEGATIVE_INFINITY);
     assertEvaluatesTo("atanh(-0.5)", -0.5493061443340549);
@@ -104,6 +113,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("atanh(1)", Double.POSITIVE_INFINITY);
   }
 
+  @Test
   public void testCeilMethod() throws Exception {
     assertEvaluatesTo("ceil(0)", 0);
     assertEvaluatesTo("ceil(0.1)", 1);
@@ -114,6 +124,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("ceil(-1.1)", -1);
   }
 
+  @Test
   public void testCosMethod() throws Exception {
     assertEvaluatesTo("cos(0)", 1);
     assertEvaluatesTo("cos(" + Math.PI / 2 + ")", 0);
@@ -126,6 +137,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("cos(" + -Math.PI / 6 + ")", 0.8660254);
   }
 
+  @Test
   public void testCoshMethod() throws Exception {
     assertEvaluatesTo("cosh(0)", 1);
     assertEvaluatesTo("cosh(-1)", 1.5430806348152437);
@@ -136,6 +148,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("cosh(12.3456789)", 114982.09728671524);
   }
 
+  @Test
   public void testExpMethod() throws Exception {
     assertEvaluatesTo("exp(0)", 1);
     assertEvaluatesTo("exp(-1)", 0.36787944117);
@@ -146,6 +159,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("exp(12.3456789)", 229964.194569);
   }
 
+  @Test
   public void testFloorMethod() throws Exception {
     assertEvaluatesTo("floor(0)", 0);
     assertEvaluatesTo("floor(0.1)", 0);
@@ -156,10 +170,12 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("floor(-1.1)", -2);
   }
 
+  @Test
   public void testHaversinMethod() throws Exception {
     assertEvaluatesTo("haversin(40.7143528,-74.0059731,40.759011,-73.9844722)", 5.285885589128259);
   }
 
+  @Test
   public void testLnMethod() throws Exception {
     assertEvaluatesTo("ln(0)", Double.NEGATIVE_INFINITY);
     assertEvaluatesTo("ln(" + Math.E + ")", 1);
@@ -169,6 +185,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("ln(12.3456789)", 2.51330611521);
   }
 
+  @Test
   public void testLog10Method() throws Exception {
     assertEvaluatesTo("log10(0)", Double.NEGATIVE_INFINITY);
     assertEvaluatesTo("log10(1)", 0);
@@ -177,6 +194,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("log10(12.3456789)", 1.0915149771692705);
   }
 
+  @Test
   public void testLognMethod() throws Exception {
     assertEvaluatesTo("logn(2, 0)", Double.NEGATIVE_INFINITY);
     assertEvaluatesTo("logn(2, 1)", 0);
@@ -190,6 +208,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("logn(2.5, 12.3456789)", 2.7429133874016745);
   }
 
+  @Test
   public void testMaxMethod() throws Exception {
     assertEvaluatesTo("max(0, 0)", 0);
     assertEvaluatesTo("max(1, 0)", 1);
@@ -198,6 +217,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("max(25, 23)", 25);
   }
 
+  @Test
   public void testMinMethod() throws Exception {
     assertEvaluatesTo("min(0, 0)", 0);
     assertEvaluatesTo("min(1, 0)", 0);
@@ -206,6 +226,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("min(25, 23)", 23);
   }
 
+  @Test
   public void testPowMethod() throws Exception {
     assertEvaluatesTo("pow(0, 0)", 1);
     assertEvaluatesTo("pow(0.1, 2)", 0.01);
@@ -216,6 +237,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("pow(-1.1, 2)", 1.21);
   }
 
+  @Test
   public void testSinMethod() throws Exception {
     assertEvaluatesTo("sin(0)", 0);
     assertEvaluatesTo("sin(" + Math.PI / 2 + ")", 1);
@@ -228,6 +250,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("sin(" + -Math.PI / 6 + ")", -0.5);
   }
 
+  @Test
   public void testSinhMethod() throws Exception {
     assertEvaluatesTo("sinh(0)", 0);
     assertEvaluatesTo("sinh(-1)", -1.1752011936438014);
@@ -238,6 +261,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("sinh(12.3456789)", 114982.09728236674);
   }
 
+  @Test
   public void testSqrtMethod() throws Exception {
     assertEvaluatesTo("sqrt(0)", 0);
     assertEvaluatesTo("sqrt(-1)", Double.NaN);
@@ -245,6 +269,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("sqrt(49)", 7);
   }
 
+  @Test
   public void testTanMethod() throws Exception {
     assertEvaluatesTo("tan(0)", 0);
     assertEvaluatesTo("tan(-1)", -1.55740772465);
@@ -255,6 +280,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
     assertEvaluatesTo("tan(1.3)", 3.60210244797);
   }
 
+  @Test
   public void testTanhMethod() throws Exception {
     assertEvaluatesTo("tanh(0)", 0);
     assertEvaluatesTo("tanh(-1)", -0.76159415595);
@@ -266,6 +292,7 @@ public class TestJavascriptFunction extends CompilerTestCase {
   }
 
   /** checks that dynamic constants work and only produce one entry in constant pool */
+  @Test
   public void testSameFunction() throws Exception {
     assertEvaluatesTo("sqrt(49) * abs(-2) * sqrt(25)", 7 * 2 * 5);
   }

@@ -18,6 +18,7 @@ package org.apache.lucene.util.packed;
 
 import static org.apache.lucene.util.packed.PackedInts.checkBlockSize;
 
+import org.apache.lucene.document.column.LongValuesCursor;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.LongValues;
@@ -153,12 +154,12 @@ public class PackedLongValues extends LongValues implements Accountable {
     }
 
     /** Whether or not there are remaining values. */
-    public final boolean hasNext() {
+    public boolean hasNext() {
       return pOff < currentCount;
     }
 
     /** Return the next long in the buffer. */
-    public final long next() {
+    public long next() {
       assert hasNext();
       long result = currentValues[pOff++];
       if (pOff == currentCount) {
@@ -234,17 +235,40 @@ public class PackedLongValues extends LongValues implements Accountable {
       if (pending == null) {
         throw new IllegalStateException("Cannot be reused after build()");
       }
+      packIfFull();
+      pending[pendingOff++] = l;
+      size += 1;
+      return this;
+    }
+
+    /**
+     * Add all values produced by the given {@link LongValuesCursor} in bulk. The cursor's {@link
+     * LongValuesCursor#size()} is used as the bounds: exactly that many values are pulled.
+     */
+    public Builder add(LongValuesCursor cursor) {
+      if (pending == null) {
+        throw new IllegalStateException("Cannot be reused after build()");
+      }
+      int remaining = cursor.size();
+      while (remaining > 0) {
+        packIfFull();
+        int toFill = Math.min(remaining, pending.length - pendingOff);
+        cursor.fillDocValues(pending, pendingOff, toFill);
+        pendingOff += toFill;
+        remaining -= toFill;
+        size += toFill;
+      }
+      return this;
+    }
+
+    private void packIfFull() {
       if (pendingOff == pending.length) {
-        // check size
         if (values.length == valuesOff) {
           final int newLength = ArrayUtil.oversize(valuesOff + 1, 8);
           grow(newLength);
         }
         pack();
       }
-      pending[pendingOff++] = l;
-      size += 1;
-      return this;
     }
 
     final void finish() {

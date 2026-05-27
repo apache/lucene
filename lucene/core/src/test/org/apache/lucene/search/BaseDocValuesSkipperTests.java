@@ -24,10 +24,10 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
 
   /**
-   * Fake numeric doc values so that: - docs 0-256 all match - docs in 256-512 are all greater than
-   * queryMax - docs in 512-768 are all less than queryMin - docs in 768-1024 have some docs that
-   * match the range, others not - docs in 1024-2048 follow a similar pattern as docs in 0-1024
-   * except that not all docs have a - value
+   * Fake numeric doc values so that: - docs 0-127 all match - docs in 128-255 are all greater than
+   * queryMax - docs in 256-511 are all less than queryMin - docs in 512-1023 have some docs that
+   * match the range, others not - docs in 1024-2047 follow a similar pattern as docs in 0-1023
+   * except that not all docs have a value (only even docs)
    */
   protected static NumericDocValues docValues(long queryMin, long queryMax) {
     return new NumericDocValues() {
@@ -36,7 +36,8 @@ public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
 
       @Override
       public boolean advanceExact(int target) throws IOException {
-        throw new UnsupportedOperationException();
+        int advanced = advance(target);
+        return advanced == target;
       }
 
       @Override
@@ -137,32 +138,27 @@ public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
       }
 
       @Override
-      @SuppressWarnings("DuplicateBranches")
       public long minValue(int level) {
-        int d = doc % 1024;
-        if (d < 128) {
-          return queryMin;
-        } else if (d < 256) {
-          return queryMax + 1;
-        } else if (d < 768) {
-          return queryMin - 1;
-        } else {
-          return queryMin - 1;
-        }
+        int dStart = minDocID(level) % 1024;
+        int dEnd = maxDocID(level) % 1024;
+        long min = Long.MAX_VALUE;
+        if (dStart <= 127 && dEnd >= 0) min = Math.min(min, queryMin);
+        if (dStart <= 255 && dEnd >= 128) min = Math.min(min, queryMax + 1);
+        if (dStart <= 511 && dEnd >= 256) min = Math.min(min, queryMin - 1);
+        if (dEnd >= 512) min = Math.min(min, queryMin - 1);
+        return min;
       }
 
       @Override
       public long maxValue(int level) {
-        int d = doc % 1024;
-        if (d < 128) {
-          return queryMax;
-        } else if (d < 256) {
-          return queryMax + 1;
-        } else if (d < 768) {
-          return queryMin - 1;
-        } else {
-          return queryMax + 1;
-        }
+        int dStart = minDocID(level) % 1024;
+        int dEnd = maxDocID(level) % 1024;
+        long max = Long.MIN_VALUE;
+        if (dStart <= 127 && dEnd >= 0) max = Math.max(max, queryMax);
+        if (dStart <= 255 && dEnd >= 128) max = Math.max(max, queryMax + 1);
+        if (dStart <= 511 && dEnd >= 256) max = Math.max(max, queryMin - 1);
+        if (dEnd >= 512) max = Math.max(max, queryMax + 1);
+        return max;
       }
 
       @Override
@@ -190,6 +186,11 @@ public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
       @Override
       public int docCount() {
         return 1024 + 1024 / 2;
+      }
+
+      @Override
+      public int maxValueCount() {
+        return 1;
       }
     };
   }

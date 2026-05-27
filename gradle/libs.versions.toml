@@ -5,19 +5,19 @@ antlr = "4.13.2"
 # test assertions
 assertj = "3.27.7"
 # analysis/phonetic/ algorithms, gradle build checksums
-commons-codec = "1.21.0"
+commons-codec = "1.22.0"
 # benchmark/ bzip2 compression
 commons-compress = "1.28.0"
 # See ecj-lint.gradle (used for more linting).
 ecj = "3.44.0"
 # java linting
-errorprone = "2.48.0"
+errorprone = "2.49.0"
 # markdown documentation generation
 flexmark = "0.64.8"
 # @keep This is GJF version for java source code formatting
 googleJavaFormat = "1.33.0-markdown"
 # gradle build support
-groovy = "5.0.4"
+groovy = "5.0.6"
 # test assertions
 hamcrest = "3.0"
 # analysis/icu/, gradle regeneration unicode support
@@ -34,8 +34,9 @@ jmh = "1.37"
 jts = "1.20.0"
 # unit tests
 junit = "4.13.2"
+junit5 = "6.0.3"
 # @keep Minimum gradle version to run the build
-minGradle = "9.4.1"
+minGradle = "9.5.1"
 # @keep This is the minimum required Java version.
 minJava = "25"
 # analysis/morfologik polish support
@@ -45,11 +46,12 @@ morfologik-ukrainian = "4.9.1"
 # benchmark/ html parsing
 nekohtml = "1.9.22"
 # analysis/opennlp/ support
-opennlp = "2.5.7"
+opennlp = "2.5.9"
 # distribution.tests/ process management
 procfork = "1.0.6"
 # unit tests
 randomizedtesting = "2.8.4"
+randomizedtesting-jupiter = "0.3.0"
 # spatial-extras/ support
 s2-geometry = "1.0.0"
 # spatial-extras/ support
@@ -57,7 +59,7 @@ spatial4j = "0.8"
 # benchmark/ XML parsing
 xerces = "2.12.2"
 # external datasets decompression
-zstd = "1.5.7-7"
+zstd = "1.5.7-8"
 
 [libraries]
 antlr-core = { module = "org.antlr:antlr4", version.ref = "antlr" }
@@ -83,12 +85,17 @@ jmh-annprocess = { module = "org.openjdk.jmh:jmh-generator-annprocess", version.
 jmh-core = { module = "org.openjdk.jmh:jmh-core", version.ref = "jmh" }
 jts = { module = "org.locationtech.jts:jts-core", version.ref = "jts" }
 junit = { module = "junit:junit", version.ref = "junit" }
+junitplatform-jupiter = { module = "org.junit.jupiter:junit-jupiter-engine", version.ref = "junit5" }
+junitplatform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit5" }
+junitplatform-testkit = { module = "org.junit.platform:junit-platform-testkit", version.ref = "junit5" }
+junitplatform-vintage = { module = "org.junit.vintage:junit-vintage-engine", version.ref = "junit5" }
 morfologik-polish = { module = "org.carrot2:morfologik-polish", version.ref = "morfologik" }
 morfologik-stemming = { module = "org.carrot2:morfologik-stemming", version.ref = "morfologik" }
 morfologik-ukrainian = { module = "ua.net.nlp:morfologik-ukrainian-search", version.ref = "morfologik-ukrainian" }
 nekohtml = { module = "net.sourceforge.nekohtml:nekohtml", version.ref = "nekohtml" }
 opennlp-tools = { module = "org.apache.opennlp:opennlp-tools", version.ref = "opennlp" }
 procfork = { module = "com.carrotsearch:procfork", version.ref = "procfork" }
+randomizedtesting-jupiter = { module = "com.carrotsearch.randomizedtesting:randomizedtesting-jupiter", version.ref = "randomizedtesting-jupiter" }
 randomizedtesting-runner = { module = "com.carrotsearch.randomizedtesting:randomizedtesting-runner", version.ref = "randomizedtesting" }
 s2-geometry = { module = "io.sgr:s2-geometry-library-java", version.ref = "s2-geometry" }
 spatial4j = { module = "org.locationtech.spatial4j:spatial4j", version.ref = "spatial4j" }
@@ -96,12 +103,12 @@ xerces = { module = "xerces:xercesImpl", version.ref = "xerces" }
 zstd = { module = "com.github.luben:zstd-jni", version.ref = "zstd" }
 
 [plugins]
-benmanes-versions = "com.github.ben-manes.versions:0.53.0"
-carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.1"
+benmanes-versions = "com.github.ben-manes.versions:0.54.0"
+carrotsearch-buildopts = "com.carrotsearch.gradle.opts:0.2.2"
 carrotsearch-dependencychecks = "com.carrotsearch.gradle.dependencychecks:0.2.1"
 errorprone = "net.ltgt.errorprone:5.1.0"
 forbiddenapis = "de.thetaphi.forbiddenapis:3.10"
-jacocolog = "org.barfuin.gradle.jacocolog:4.0.1"
+jacocolog = "org.barfuin.gradle.jacocolog:4.0.2"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
 spotless = "com.diffplug.spotless:8.4.0"
 undercouch-download = "de.undercouch.download:5.7.0"

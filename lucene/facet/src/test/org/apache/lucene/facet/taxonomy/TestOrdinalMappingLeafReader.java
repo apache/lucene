@@ -42,7 +42,6 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.junit.Before;
-import org.junit.Test;
 
 public class TestOrdinalMappingLeafReader extends FacetTestCase {
 
@@ -57,7 +56,6 @@ public class TestOrdinalMappingLeafReader extends FacetTestCase {
     facetConfig.setIndexFieldName("tag", "$tags"); // add custom index field name
   }
 
-  @Test
   public void testTaxonomyMergeUtils() throws Exception {
     Directory srcIndexDir = newDirectory();
     Directory srcTaxoDir = newDirectory();

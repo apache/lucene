@@ -48,7 +48,7 @@ public final class SpanOrQuery extends SpanQuery {
   }
 
   /** Adds a clause to this query */
-  private final void addClause(SpanQuery clause) {
+  private void addClause(SpanQuery clause) {
     if (field == null) {
       field = clause.getField();
     } else if (clause.getField() != null && !clause.getField().equals(field)) {
@@ -59,7 +59,7 @@ public final class SpanOrQuery extends SpanQuery {
 
   /** Return the clauses whose spans are matched. */
   public SpanQuery[] getClauses() {
-    return clauses.toArray(new SpanQuery[clauses.size()]);
+    return clauses.toArray(SpanQuery[]::new);
   }
 
   @Override
