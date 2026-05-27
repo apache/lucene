@@ -154,9 +154,6 @@ Optimizations
 
 * GITHUB#15597, GITHUB#15777: Reduce memory usage of NeighborArray (Viliam Durina)
 
-* GITHUB#16110: Add count() to BayesianScoreQuery.BayesianScoreWeight, delegating to
-  the inner weight. (Prithvi S)
-
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
@@ -318,6 +315,9 @@ New Features
 
 * GITHUB#15794: Add DocValuesSkipper metadata for the maximum number of values
   on any document in a field. (Prithvi S)
+
+* GITHUB#16110: Add count() to BayesianScoreQuery.BayesianScoreWeight, delegating to
+  the inner weight. (Prithvi S)
 
 Improvements
 ---------------------
