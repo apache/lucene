@@ -139,8 +139,6 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#16129: Add bulk decode for dense NumericDocValues via longValues(). (Costin Leau)
-
 * GITHUB#15681, GITHUB#15833, GITHUB#16056: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
@@ -430,6 +428,8 @@ Optimizations
   Lucene90DocValuesProducer. (Ignacio Vera)
 
 * GITHUB#16107: Add method SparseFixedBitSet#set(int startIndex, int endIndex). (Ignacio Vera)
+
+* GITHUB#16129: Add bulk decode for dense NumericDocValues via longValues(). (Costin Leau)
 
 Bug Fixes
 ---------------------
