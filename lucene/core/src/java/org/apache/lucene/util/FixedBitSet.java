@@ -299,6 +299,28 @@ public final class FixedBitSet extends BitSet {
     bits[wordNum] |= bitmask;
   }
 
+  /**
+   * ORs a small mask of consecutive bits starting at {@code startBit}. The mask must have at most
+   * {@code maskLen} significant bits. This is useful for bulk-setting bits from a SIMD comparison
+   * result without per-bit extraction.
+   *
+   * @param startBit the first bit position to set (inclusive)
+   * @param mask the bitmask to OR in, where bit 0 corresponds to startBit
+   * @param maskLen the number of significant bits in the mask (e.g., 2, 4, or 8)
+   */
+  public void orMask(int startBit, long mask, int maskLen) {
+    assert startBit >= 0 && startBit + maskLen <= numBits
+        : "startBit=" + startBit + ", maskLen=" + maskLen + ", numBits=" + numBits;
+    int wordIndex = startBit >> 6;
+    int bitOffset = startBit & 63;
+    if (bitOffset + maskLen <= 64) {
+      bits[wordIndex] |= mask << bitOffset;
+    } else {
+      bits[wordIndex] |= mask << bitOffset;
+      bits[wordIndex + 1] |= mask >>> (64 - bitOffset);
+    }
+  }
+
   @Override
   public boolean getAndSet(int index) {
     assert index >= 0 && index < numBits : "index=" + index + ", numBits=" + numBits;
