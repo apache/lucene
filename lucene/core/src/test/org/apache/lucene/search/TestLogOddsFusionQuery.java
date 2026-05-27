@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -666,6 +667,210 @@ public class TestLogOddsFusionQuery extends LuceneTestCase {
     } finally {
       closeHybridIndex();
     }
+  }
+
+  // ---- Weighted fusion tests ----
+
+  public void testWeightedFusion() throws Exception {
+    Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
+
+    LogOddsFusionQuery loq =
+        new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f, new float[] {0.7f, 0.3f});
+    QueryUtils.check(random(), loq, searcher);
+
+    ScoreDoc[] hits = searcher.search(loq, 10).scoreDocs;
+    assertTrue("should have at least 1 hit", hits.length >= 1);
+    for (ScoreDoc hit : hits) {
+      assertTrue("score should be > 0", hit.score > 0);
+      assertTrue("score should be < 1", hit.score < 1);
+    }
+  }
+
+  public void testWeightedFusionAffectsRanking() throws Exception {
+    Query qAlpha = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query qBeta = bayesian(new TermQuery(new Term("body", "beta")));
+
+    // doc0: alpha beta gamma -> matches both
+    // doc1: alpha gamma delta -> matches alpha only
+    // doc2: beta gamma delta -> matches beta only
+
+    // Heavy weight on alpha: doc1 (alpha-only) should rank above doc2 (beta-only)
+    LogOddsFusionQuery alphaHeavy =
+        new LogOddsFusionQuery(Arrays.asList(qAlpha, qBeta), 0.5f, new float[] {0.9f, 0.1f});
+    ScoreDoc[] hitsAlpha = searcher.search(alphaHeavy, 10).scoreDocs;
+
+    // Heavy weight on beta: doc2 (beta-only) should rank above doc1 (alpha-only)
+    LogOddsFusionQuery betaHeavy =
+        new LogOddsFusionQuery(Arrays.asList(qAlpha, qBeta), 0.5f, new float[] {0.1f, 0.9f});
+    ScoreDoc[] hitsBeta = searcher.search(betaHeavy, 10).scoreDocs;
+
+    // Find scores of doc1 and doc2 in each case
+    float doc1AlphaHeavy = 0, doc2AlphaHeavy = 0;
+    float doc1BetaHeavy = 0, doc2BetaHeavy = 0;
+    for (ScoreDoc hit : hitsAlpha) {
+      if (hit.doc == 1) doc1AlphaHeavy = hit.score;
+      if (hit.doc == 2) doc2AlphaHeavy = hit.score;
+    }
+    for (ScoreDoc hit : hitsBeta) {
+      if (hit.doc == 1) doc1BetaHeavy = hit.score;
+      if (hit.doc == 2) doc2BetaHeavy = hit.score;
+    }
+
+    assertTrue("alpha-heavy: doc1 (alpha) > doc2 (beta)", doc1AlphaHeavy > doc2AlphaHeavy);
+    assertTrue("beta-heavy: doc2 (beta) > doc1 (alpha)", doc2BetaHeavy > doc1BetaHeavy);
+  }
+
+  public void testWeightedExplanation() throws Exception {
+    Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
+    LogOddsFusionQuery loq =
+        new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f, new float[] {0.6f, 0.4f});
+
+    Weight w = searcher.createWeight(searcher.rewrite(loq), ScoreMode.COMPLETE, 1);
+    LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
+
+    Explanation expl = w.explain(context, 0);
+    assertTrue("doc0 should match", expl.isMatch());
+    assertTrue("should mention weighted", expl.getDescription().contains("weighted"));
+  }
+
+  public void testWeightedEqualsAndHashCode() {
+    Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
+
+    LogOddsFusionQuery a =
+        new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f, new float[] {0.7f, 0.3f});
+    LogOddsFusionQuery b =
+        new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f, new float[] {0.7f, 0.3f});
+    LogOddsFusionQuery c =
+        new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f, new float[] {0.3f, 0.7f});
+    LogOddsFusionQuery d = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f);
+
+    assertEquals(a, b);
+    assertEquals(a.hashCode(), b.hashCode());
+    assertNotEquals(a, c);
+    assertNotEquals(a, d);
+  }
+
+  public void testWeightedMaxScoreCorrectness() throws Exception {
+    Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
+    LogOddsFusionQuery loq =
+        new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f, new float[] {0.7f, 0.3f});
+    CheckHits.checkTopScores(random(), loq, searcher);
+  }
+
+  public void testWeightedToString() {
+    Query q1 = new TermQuery(new Term("body", "alpha"));
+    Query q2 = new TermQuery(new Term("body", "beta"));
+    LogOddsFusionQuery loq =
+        new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f, new float[] {0.7f, 0.3f});
+    String str = loq.toString("body");
+    assertTrue("should contain LogOdds", str.contains("LogOdds"));
+    assertTrue("should contain w=", str.contains("w="));
+    assertTrue("should contain 0.7", str.contains("0.7"));
+  }
+
+  public void testWeightedRewrite() throws Exception {
+    Query sub1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query sub2 = bayesian(new TermQuery(new Term("body", "beta")));
+    LogOddsFusionQuery loq =
+        new LogOddsFusionQuery(Arrays.asList(sub1, sub2), 0.5f, new float[] {0.6f, 0.4f});
+
+    Query rewritten = searcher.rewrite(loq);
+    assertTrue(
+        "weighted rewrite should produce LogOddsFusionQuery",
+        rewritten instanceof LogOddsFusionQuery);
+    LogOddsFusionQuery rewrittenLoq = (LogOddsFusionQuery) rewritten;
+    assertNotNull("weights should be preserved", rewrittenLoq.getWeights());
+    assertEquals(0.6f, rewrittenLoq.getWeights()[0], 1e-6f);
+    assertEquals(0.4f, rewrittenLoq.getWeights()[1], 1e-6f);
+  }
+
+  public void testIllegalWeights() {
+    Query q1 = new TermQuery(new Term("body", "alpha"));
+    Query q2 = new TermQuery(new Term("body", "beta"));
+    List<Query> clauses = Arrays.asList(q1, q2);
+
+    // Wrong length
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new LogOddsFusionQuery(clauses, 0.5f, new float[] {1.0f}));
+
+    // Negative weight
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new LogOddsFusionQuery(clauses, 0.5f, new float[] {-0.1f, 1.1f}));
+
+    // NaN weight
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new LogOddsFusionQuery(clauses, 0.5f, new float[] {Float.NaN, 0.5f}));
+
+    // Sum != 1.0
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> new LogOddsFusionQuery(clauses, 0.5f, new float[] {0.3f, 0.3f}));
+  }
+
+  public void testWeightedQueryUtils() throws Exception {
+    Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
+    LogOddsFusionQuery loq =
+        new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f, new float[] {0.7f, 0.3f});
+    QueryUtils.check(random(), loq, searcher);
+  }
+
+  public void testWeightedThreeWayCombination() throws Exception {
+    Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
+    Query q3 = bayesian(new TermQuery(new Term("body", "gamma")));
+    LogOddsFusionQuery loq =
+        new LogOddsFusionQuery(Arrays.asList(q1, q2, q3), 0.5f, new float[] {0.5f, 0.3f, 0.2f});
+    QueryUtils.check(random(), loq, searcher);
+
+    ScoreDoc[] hits = searcher.search(loq, 10).scoreDocs;
+    assertTrue("should have hits", hits.length > 0);
+    for (ScoreDoc hit : hits) {
+      assertTrue("score in (0,1)", hit.score > 0 && hit.score < 1);
+    }
+  }
+
+  // ---- Logit normalization tests ----
+
+  public void testNormalizedFusionProducesValidScores() throws Exception {
+    Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
+
+    // logit bounds: signal 0 range [-3, 3], signal 1 range [-1, 1]
+    LogOddsFusionQuery loq =
+        new LogOddsFusionQuery(
+            Arrays.asList(q1, q2),
+            0.5f,
+            new float[] {0.6f, 0.4f},
+            new float[] {-3f, -1f},
+            new float[] {3f, 1f});
+
+    ScoreDoc[] hits = searcher.search(loq, 10).scoreDocs;
+    assertTrue("should have hits", hits.length > 0);
+    for (ScoreDoc hit : hits) {
+      assertTrue("score in (0,1): " + hit.score, hit.score > 0 && hit.score < 1);
+    }
+  }
+
+  public void testNormalizedMaxScoreCorrectness() throws Exception {
+    Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
+
+    LogOddsFusionQuery loq =
+        new LogOddsFusionQuery(
+            Arrays.asList(q1, q2),
+            0.5f,
+            new float[] {0.7f, 0.3f},
+            new float[] {-3f, -1f},
+            new float[] {3f, 1f});
+    CheckHits.checkTopScores(random(), loq, searcher);
   }
 
   /** L2-normalize a float vector. */

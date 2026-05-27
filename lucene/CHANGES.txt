@@ -326,6 +326,13 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#15948: Improve BayesianScoreQuery and LogOddsFusionQuery with base rate prior,
+  weighted Logarithmic Opinion Pooling, and auto parameter estimation. Add
+  BayesianScoreEstimator for estimating sigmoid calibration parameters from corpus
+  statistics. Add base rate prior to BayesianScoreQuery for log-odds space shifting.
+  Add per-signal weights and logit normalization to LogOddsFusionQuery.
+  (Jaepil Jeong)
+
 * GITHUB#15823: Implement method to add all stream elements into a PriorityQueue.
   Call PriorityQueue#addAll with mapped stream in DisjunctionMaxBulkScorer's constructor. (Zhou Hui)
 
