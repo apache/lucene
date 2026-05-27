@@ -18,7 +18,6 @@ package org.apache.lucene.search.join;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Iterator;
 import java.util.Locale;
 import org.apache.lucene.document.DoublePoint;
@@ -40,7 +39,6 @@ import org.apache.lucene.internal.hppc.LongFloatHashMap;
 import org.apache.lucene.internal.hppc.LongHashSet;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.search.Collector;
-import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.PointInSetQuery;
@@ -49,7 +47,6 @@ import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.join.DocValuesTermsCollector.Function;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.LongBitSet;
 
 /**
  * Utility for query time joining.
@@ -533,7 +530,6 @@ public final class JoinUtil {
 
     final Query rewrittenFromQuery = searcher.rewrite(fromQuery);
     final Query rewrittenToQuery = searcher.rewrite(toQuery);
-    final OrdinalMap finalOrdinalMap = ordinalMap;
     GlobalOrdinalsWithScoreCollector globalOrdinalsWithScoreCollector;
     switch (scoreMode) {
       case Total:
@@ -554,26 +550,10 @@ public final class JoinUtil {
         break;
       case None:
         if (min <= 1 && max == Integer.MAX_VALUE) {
-          LongBitSet collectedOrds =
+          return new GlobalOrdinalsQuery(
               searcher.search(
                   rewrittenFromQuery,
-                  new CollectorManager<GlobalOrdinalsCollector, LongBitSet>() {
-                    @Override
-                    public GlobalOrdinalsCollector newCollector() {
-                      return new GlobalOrdinalsCollector(joinField, finalOrdinalMap, valueCount);
-                    }
-
-                    @Override
-                    public LongBitSet reduce(Collection<GlobalOrdinalsCollector> collectors) {
-                      LongBitSet result = new LongBitSet(valueCount);
-                      for (GlobalOrdinalsCollector c : collectors) {
-                        result.or(c.getCollectorOrdinals());
-                      }
-                      return result;
-                    }
-                  });
-          return new GlobalOrdinalsQuery(
-              collectedOrds,
+                  new GlobalOrdinalsCollectorManager(joinField, ordinalMap, valueCount)),
               joinField,
               ordinalMap,
               rewrittenToQuery,
