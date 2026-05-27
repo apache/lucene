@@ -191,6 +191,8 @@ Bug Fixes
 
 * GITHUB#15939: Fix thread-safety issues with NFARunAutomaton. (Dimitris Rempapis)
 
+* GITHUB#16133: FilterLeafCollector now delegates competitiveIterator() to the wrapped collector. (Shintaro Murakami)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
