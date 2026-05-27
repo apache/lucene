@@ -216,7 +216,13 @@ public interface SerializableObject {
       return StandardObjects.CODE_REGISTRY.get(index);
     } else {
       String className = readString(inputStream);
-      return Class.forName(className);
+      // Load without initializing and confirm the named class is actually a SerializableObject
+      // before it can be instantiated, so a crafted stream cannot load arbitrary classes.
+      Class<?> clazz = Class.forName(className, false, SerializableObject.class.getClassLoader());
+      if (!SerializableObject.class.isAssignableFrom(clazz)) {
+        throw new IOException("Class is not a SerializableObject: " + className);
+      }
+      return clazz;
     }
   }
 
