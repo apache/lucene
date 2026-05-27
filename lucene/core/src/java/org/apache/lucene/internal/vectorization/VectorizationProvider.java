@@ -132,6 +132,13 @@ public abstract class VectorizationProvider {
     return DefaultDocValuesRangeSupport.INSTANCE;
   }
 
+  /**
+   * Returns a {@link DocValuesBulkDecodeSupport} instance for bulk numeric value decode. The
+   * returned instance uses SIMD when available (Panama Vector API), falling back to a scalar loop
+   * otherwise.
+   */
+  public abstract DocValuesBulkDecodeSupport getDocValuesBulkDecodeSupport();
+
   // *** Lookup mechanism: ***
 
   private static final Logger LOG = Logger.getLogger(VectorizationProvider.class.getName());

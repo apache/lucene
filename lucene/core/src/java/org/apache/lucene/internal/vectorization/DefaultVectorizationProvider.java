@@ -50,4 +50,9 @@ final class DefaultVectorizationProvider extends VectorizationProvider {
   public PostingDecodingUtil newPostingDecodingUtil(IndexInput input) {
     return new PostingDecodingUtil(input);
   }
+
+  @Override
+  public DocValuesBulkDecodeSupport getDocValuesBulkDecodeSupport() {
+    return DefaultDocValuesBulkDecodeSupport.INSTANCE;
+  }
 }

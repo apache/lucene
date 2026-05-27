@@ -169,6 +169,8 @@ Optimizations
 
 * GITHUB#16107: Add method SparseFixedBitSet#set(int startIndex, int endIndex). (Ignacio Vera)
 
+* GITHUB#16129: Add bulk decode for dense NumericDocValues via longValues(). (Costin Leau)
+
 * GITHUB#16126: Implement #intoBitSet and #docIDRunEnd in DocValuesWriter implementations. (Ignacio Vera)
 
 Bug Fixes
