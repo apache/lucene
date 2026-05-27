@@ -21,6 +21,7 @@ import com.carrotsearch.gradle.buildinfra.buildoptions.BuildOptionsPlugin;
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.File;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +39,7 @@ import org.gradle.api.artifacts.dsl.DependencyHandler;
 import org.gradle.api.file.Directory;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.internal.tasks.testing.filter.DefaultTestFilter;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Provider;
@@ -216,7 +218,8 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
     }
     optionsInheritedAsProperties.add("tests.seed");
 
-    buildOptions.addIntOption("tests.iters", "Duplicate (re-run) each test case N times.");
+    Provider<Integer> testsItersOption =
+        buildOptions.addIntOption("tests.iters", "Duplicate (re-run) each test case N times.");
     optionsInheritedAsProperties.add("tests.iters");
 
     buildOptions.addIntOption("tests.multiplier", "Value multiplier for randomized tests.");
@@ -516,6 +519,63 @@ public class TestsAndRandomizationPlugin extends LuceneGradlePlugin {
               // java.io.tmpdir is passed via the LoggingFileArgumentProvider (marked @Internal)
               // instead of systemProperty to avoid absolute paths affecting the build cache key.
               loggingFileProvider.getJavaTmpDir().set(workDirOption.get());
+
+              // GITHUB#16121: When tests.iters > 1, JUnit Vintage's MethodSelectorResolver
+              // cannot match RandomizedRunner's synthetic test names ({seed=...}).
+              // Transform method-level --tests filters to class-only filters + tests.method.
+              task.doFirst(
+                  _ -> {
+                    if (testsItersOption.isPresent() && testsItersOption.get() > 1) {
+                      var filter = (DefaultTestFilter) task.getFilter();
+                      var patterns = filter.getCommandLineIncludePatterns();
+                      if (!patterns.isEmpty()) {
+                        List<String> newPatterns = new ArrayList<>();
+                        List<String> methodFilters = new ArrayList<>();
+                        for (String pattern : patterns) {
+                          // Check if pattern contains a method name (has a dot where the last
+                          // segment starts with lowercase, typical for Java method names).
+                          int lastDot = pattern.lastIndexOf('.');
+                          if (lastDot > 0) {
+                            String afterDot = pattern.substring(lastDot + 1);
+                            if (!afterDot.isEmpty() && Character.isLowerCase(afterDot.charAt(0))) {
+                              // This looks like ClassName.methodName or ClassName.methodName*
+                              // Extract class and method pattern (may contain wildcards)
+                              String classPattern = pattern.substring(0, lastDot);
+                              newPatterns.add(classPattern);
+                              methodFilters.add(afterDot);
+                              continue;
+                            }
+                          }
+                          newPatterns.add(pattern);
+                        }
+                        if (!methodFilters.isEmpty()) {
+                          List<String> dedupedPatterns = newPatterns.stream().distinct().toList();
+                          filter.setCommandLineIncludePatterns(dedupedPatterns);
+                          // Use a single glob pattern. If there are multiple method filters,
+                          // use '*' to match all methods in the class (RandomizedRunner's
+                          // MethodGlobFilter doesn't support comma-separated patterns).
+                          String methodGlob;
+                          if (methodFilters.size() == 1) {
+                            methodGlob = methodFilters.get(0);
+                          } else {
+                            methodGlob = "*";
+                            task.getLogger()
+                                .warn(
+                                    "Multiple method filters with tests.iters are not supported"
+                                        + " for JUnit4 tests; running all methods in class {}.",
+                                    dedupedPatterns);
+                          }
+                          task.systemProperty("tests.method", methodGlob);
+                          task.getLogger()
+                              .lifecycle(
+                                  "Transformed --tests filter for tests.iters compatibility:"
+                                      + " class patterns={}, tests.method={}",
+                                  dedupedPatterns,
+                                  methodGlob);
+                        }
+                      }
+                    }
+                  });
 
               task.doFirst(
                   _ -> {

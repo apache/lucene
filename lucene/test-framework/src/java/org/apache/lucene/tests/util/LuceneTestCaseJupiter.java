@@ -111,7 +111,7 @@ ignoreAfterMaxFailures
 @Execution(
     value = ExecutionMode.SAME_THREAD,
     reason = "single-threaded for backward compatibility.")
-@ExtendWith(EnsureSequentialExecution.class)
+@ExtendWith({EnsureSequentialExecution.class, MethodFilterExtension.class})
 @TestMethodOrder(CustomMethodOrderer.class)
 public abstract non-sealed class LuceneTestCaseJupiter extends LuceneTestCaseParent {
 

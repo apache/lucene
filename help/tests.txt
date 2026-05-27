@@ -127,6 +127,25 @@ won't be the case (all tasks will use exactly the same starting seed):
 gradlew -p lucene/core beast -Ptests.dups=10 --tests TestPerFieldDocValuesFormat -Dtests.seed=deadbeef
 
 
+Method-level filtering with tests.iters
+---------------------------------------
+
+When using '--tests ClassName.methodName' together with '-Ptests.iters=N',
+the build automatically rewrites the filter to work with JUnit4 tests
+(which generate synthetic test names for each iteration). The method name
+is passed internally as 'tests.method=methodName*' and filtering is applied
+by the test runner. This works transparently for both JUnit4 and JUnit5 tests.
+
+If you need to filter methods manually (for example, when running tests in
+an IDE that doesn't support '--tests'), you can pass 'tests.method' directly:
+
+gradlew -p lucene/core test --tests TestDemo -Dtests.method=testFoo*
+
+The 'tests.method' value supports glob patterns with '*' (any sequence) and
+'?' (single character). Multiple comma-separated patterns are supported for
+JUnit5 tests; for JUnit4 tests only a single pattern is supported.
+
+
 Verbose mode and debugging
 --------------------------
 
