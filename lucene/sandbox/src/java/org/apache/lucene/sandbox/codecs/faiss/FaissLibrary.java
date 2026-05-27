@@ -18,6 +18,7 @@ package org.apache.lucene.sandbox.codecs.faiss;
 
 import java.io.Closeable;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
@@ -54,5 +55,5 @@ interface FaissLibrary {
       FloatVectorValues floatVectorValues,
       IntToIntFunction oldToNewDocId);
 
-  Index readIndex(IndexInput input, VectorSimilarityFunction function);
+  Index readIndex(IndexInput input, VectorSimilarityFunction function, VectorEncoding encoding);
 }

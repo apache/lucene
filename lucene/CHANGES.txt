@@ -109,6 +109,8 @@ New Features
 
 * GITHUB#16065: Add COSINE similarity support to FaissKnnVectorsFormat. (Prithvi S)
 
+* GITHUB#16067: Add byte vector support to FaissKnnVectorsFormat. (Prithvi S)
+
 * GITHUB#15508: Use native vectorization in Lucene. (Ankur Goel, Shubham Chaudhary, Dawid Weiss)
 
 * GITHUB#15818: Add BM25 k3 query-term frequency saturation to BM25Similarity. (Sagar Upadhyaya)

@@ -39,6 +39,7 @@ import java.nio.ByteOrder;
 import java.util.Map;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
@@ -46,6 +47,7 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.IntToIntFunction;
 
 /**
@@ -227,7 +229,7 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
       // Add docs to index
       handleException(wrapper.faiss_Index_add_with_ids(indexPointer, size, docs, ids));
 
-      return new Index(indexPointer, function);
+      return new Index(indexPointer, function, VectorEncoding.FLOAT32);
 
     } catch (IOException e) {
       throw new UncheckedIOException(e);
@@ -239,7 +241,8 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
   private static final int FAISS_IO_FLAG_READ_ONLY = 2;
 
   @Override
-  public FaissLibrary.Index readIndex(IndexInput input, VectorSimilarityFunction function) {
+  public FaissLibrary.Index readIndex(
+      IndexInput input, VectorSimilarityFunction function, VectorEncoding encoding) {
     try (Arena temp = Arena.ofConfined()) {
       MethodHandle readerHandle = READ_BYTES_HANDLE.bindTo(input);
       MemorySegment readerStub =
@@ -260,7 +263,7 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
               customIOReaderPointer, FAISS_IO_FLAG_MMAP | FAISS_IO_FLAG_READ_ONLY, pointer));
       MemorySegment indexPointer = pointer.get(ADDRESS, 0);
 
-      return new Index(indexPointer, function);
+      return new Index(indexPointer, function, encoding);
     }
   }
 
@@ -277,7 +280,8 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
     private final int dimension;
     private boolean closed;
 
-    private Index(MemorySegment indexPointer, VectorSimilarityFunction function) {
+    private Index(
+        MemorySegment indexPointer, VectorSimilarityFunction function, VectorEncoding encoding) {
       this.arena = Arena.ofShared();
       this.indexPointer =
           indexPointer
@@ -289,10 +293,19 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
       // Scale Faiss distances to Lucene scores, see VectorSimilarityFunction.java
       this.scaler =
           switch (function) {
-            case DOT_PRODUCT, COSINE ->
-                // distance in Faiss === dotProduct in Lucene
+            case DOT_PRODUCT -> {
+              if (encoding == VectorEncoding.BYTE) {
+                // Same scaling as VectorUtil.dotProductScore(byte[], byte[])
+                float denom = (float) (dimension * (1 << 15));
+                yield distance -> 0.5f + distance / denom;
+              } else {
+                yield VectorUtil::normalizeToUnitInterval;
+              }
+            }
+
+            case COSINE ->
                 // For COSINE, vectors are normalized so inner product == cosine similarity
-                distance -> Math.max((1 + distance) / 2, 0);
+                VectorUtil::normalizeToUnitInterval;
 
             case EUCLIDEAN ->
                 // distance in Faiss === squareDistance in Lucene
