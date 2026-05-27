@@ -324,6 +324,9 @@ New Features
 * GITHUB#15794: Add DocValuesSkipper metadata for the maximum number of values
   on any document in a field. (Prithvi S)
 
+* GITHUB#16110: Add count() to BayesianScoreQuery.BayesianScoreWeight, delegating to
+  the inner weight. (Prithvi S)
+
 Improvements
 ---------------------
 * GITHUB#15948: Improve BayesianScoreQuery and LogOddsFusionQuery with base rate prior,
