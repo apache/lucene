@@ -106,6 +106,11 @@ public class PatternParser extends DefaultHandler {
     try {
       SAXParserFactory factory = SAXParserFactory.newInstance();
       factory.setNamespaceAware(true);
+      // this parser is non-validating and only reads pattern data, so refuse to load
+      // any external DTD or entity to prevent XXE from an untrusted hyphenation file
+      factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+      factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+      factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
       return factory.newSAXParser().getXMLReader();
     } catch (Exception e) {
       throw new RuntimeException("Couldn't create XMLReader: " + e.getMessage());
