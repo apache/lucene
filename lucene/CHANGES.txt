@@ -164,6 +164,9 @@ Optimizations
 * GITHUB#16097: Implement DocIdSetIterator#intoBitSet in dense implememntatios of the
   Lucene90DocValuesProducer. (Ignacio Vera)
 
+* GITHUB#16123: PanamaDocValuesRangeSupport: OR mask directly into FixedBitSet instead of per-bit
+  loop. (Sagar Upadhyaya)
+
 * GITHUB#16107: Add method SparseFixedBitSet#set(int startIndex, int endIndex). (Ignacio Vera)
 
 * GITHUB#16126: Implement #intoBitSet and #docIDRunEnd in DocValuesWriter implementations. (Ignacio Vera)
