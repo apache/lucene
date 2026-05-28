@@ -292,7 +292,10 @@ public class NeighborArray {
     int[] uncheckedIndexes = sort(scorer);
     assert uncheckedIndexes != null : "We will always have something unchecked";
     int uncheckedCursor = uncheckedIndexes.length - 1;
-    int[] bulkScoreNodes = new int[size];
+    int[] uncheckedNodes = new int[uncheckedIndexes.length];
+    for (int i = uncheckedCursor; i >= 0; i--) {
+      uncheckedNodes[i] = nodes[uncheckedIndexes[i]];
+    }
     float[] bulkScores = new float[size];
     for (int i = size - 1; i > 0; i--) {
       if (uncheckedCursor < 0) {
@@ -301,7 +304,7 @@ public class NeighborArray {
       }
       scorer.setScoringOrdinal(nodes[i]);
       if (isWorstNonDiverse(
-          i, uncheckedIndexes, uncheckedCursor, scorer, bulkScoreNodes, bulkScores)) {
+          i, uncheckedIndexes, uncheckedCursor, scorer, uncheckedNodes, bulkScores)) {
         return i;
       }
       if (i == uncheckedIndexes[uncheckedCursor]) {
@@ -316,7 +319,7 @@ public class NeighborArray {
       int[] uncheckedIndexes,
       int uncheckedCursor,
       RandomVectorScorer scorer,
-      int[] bulkScoreNodes,
+      int[] uncheckedNodes,
       float[] bulkScores)
       throws IOException {
     float minAcceptedSimilarity = scores[candidateIndex];
@@ -327,10 +330,7 @@ public class NeighborArray {
     // else we just need to make sure candidate does not violate diversity with the (newly
     // inserted) unchecked nodes
     assert candidateIndex > uncheckedIndexes[uncheckedCursor];
-    for (int i = uncheckedCursor; i >= 0; i--) {
-      bulkScoreNodes[i] = nodes[uncheckedIndexes[i]];
-    }
-    return scorer.bulkScore(bulkScoreNodes, bulkScores, uncheckedCursor + 1)
+    return scorer.bulkScore(uncheckedNodes, bulkScores, uncheckedCursor + 1)
         >= minAcceptedSimilarity;
   }
 
