@@ -28,6 +28,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -254,6 +255,18 @@ public class TestCompiledAutomaton extends LuceneTestCase {
 
     ca.visit(visitor, parent, "f");
     assertTrue(matchingCalled[0]);
+  }
+
+  public void testRamBytesUsed() {
+    Automaton a =
+        Operations.determinize(new RegExp(".*foo.*bar.*baz.*").toAutomaton(), Integer.MAX_VALUE);
+    CompiledAutomaton ca = new CompiledAutomaton(a, false, true, false);
+    assertEquals(CompiledAutomaton.AUTOMATON_TYPE.NORMAL, ca.type);
+    assertNotNull(ca.runAutomaton);
+
+    long reported = ca.ramBytesUsed();
+    long actual = RamUsageTester.ramUsed(ca);
+    assertEquals((double) actual, (double) reported, (double) actual * 0.10);
   }
 
   private static Automaton makeSimpleNfa(char ch) {
