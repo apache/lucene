@@ -148,7 +148,7 @@ public final class ConstantScoreScorer extends Scorer {
   }
 
   boolean canBulkCollectDocIdStream() {
-    return scoreMode != ScoreMode.TOP_SCORES;
+    return scoreMode.needsScores() == false;
   }
 
   @Override

@@ -252,9 +252,18 @@ public class TestBooleanScorer extends LuceneTestCase {
   }
 
   public void testDefaultBulkScorerDoesNotUseDocIdStreamForTopScores() throws IOException {
+    assertDefaultBulkScorerDoesNotUseDocIdStreamForScores(ScoreMode.TOP_SCORES);
+  }
+
+  public void testDefaultBulkScorerDoesNotUseDocIdStreamWhenScoresAreNeeded() throws IOException {
+    assertDefaultBulkScorerDoesNotUseDocIdStreamForScores(ScoreMode.COMPLETE);
+  }
+
+  private static void assertDefaultBulkScorerDoesNotUseDocIdStreamForScores(ScoreMode scoreMode)
+      throws IOException {
     int[] docs = {1, 2, 4097};
     CountingDocIdSetIterator iterator = new CountingDocIdSetIterator(docs);
-    Scorer scorer = new ConstantScoreScorer(1f, ScoreMode.TOP_SCORES, iterator);
+    Scorer scorer = new ConstantScoreScorer(1f, scoreMode, iterator);
 
     int[] collected = new int[docs.length];
     int[] count = new int[1];
@@ -270,7 +279,7 @@ public class TestBooleanScorer extends LuceneTestCase {
 
           @Override
           public void collect(DocIdStream stream) {
-            fail("TOP_SCORES must preserve per-doc collection for early termination");
+            fail("ScoreMode " + scoreMode + " must preserve per-doc collection");
           }
         };
 
