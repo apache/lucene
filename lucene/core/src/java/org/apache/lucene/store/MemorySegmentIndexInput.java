@@ -60,6 +60,9 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   final MemorySegment[] segments;
   final Function<IOContext, ReadAdvice> toReadAdvice;
   final AtomicInteger sharedPrefetchCounter;
+  // True when ReadAdvice.RANDOM is active. Checked before the power-of-two throttle in prefetch()
+  // so that random-access patterns always fire madvise regardless of the page-cache hit counter.
+  volatile boolean isRandom;
 
   int curSegmentIndex = -1;
   MemorySegment
@@ -335,7 +338,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
 
     ensureOpen();
 
-    if (BitUtil.isZeroOrPowerOfTwo(sharedPrefetchCounter.getAndIncrement()) == false) {
+    if (isRandom == false
+        && BitUtil.isZeroOrPowerOfTwo(sharedPrefetchCounter.getAndIncrement()) == false) {
       // We've had enough consecutive hits on the page cache that this number is neither zero nor a
       // power of two. There is a good chance that a good chunk of this index input is cached in
       // physical memory. Let's skip the overhead of the madvise system call, we'll be trying again
@@ -380,6 +384,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           });
       offset += seg.byteSize();
     }
+
+    isRandom = (readAdvice == ReadAdvice.RANDOM);
   }
 
   boolean advise(long offset, long length, IOFunction<MemorySegment, Boolean> advice)
@@ -628,6 +634,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
             });
       }
     }
+    slice.isRandom = (advice == ReadAdvice.RANDOM);
     return slice;
   }
 
