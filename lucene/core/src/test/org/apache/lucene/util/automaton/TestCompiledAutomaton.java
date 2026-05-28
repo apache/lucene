@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -159,5 +160,17 @@ public class TestCompiledAutomaton extends LuceneTestCase {
     Automaton a = Automata.makeString(TestUtil.randomRealisticUnicodeString(random()));
     CompiledAutomaton ca = new CompiledAutomaton(a, true, true, false);
     assertEquals(CompiledAutomaton.AUTOMATON_TYPE.SINGLE, ca.type);
+  }
+
+  public void testRamBytesUsed() {
+    Automaton a =
+        Operations.determinize(new RegExp(".*foo.*bar.*baz.*").toAutomaton(), Integer.MAX_VALUE);
+    CompiledAutomaton ca = new CompiledAutomaton(a, false, true, false);
+    assertEquals(CompiledAutomaton.AUTOMATON_TYPE.NORMAL, ca.type);
+    assertNotNull(ca.runAutomaton);
+
+    long reported = ca.ramBytesUsed();
+    long actual = RamUsageTester.ramUsed(ca);
+    assertEquals((double) actual, (double) reported, (double) actual * 0.10);
   }
 }

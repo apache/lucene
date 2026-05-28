@@ -535,8 +535,8 @@ public class CompiledAutomaton implements Accountable {
 
   @Override
   public long ramBytesUsed() {
+    // this.automaton is accounted via runAutomaton.ramBytesUsed()
     return BASE_RAM_BYTES
-        + RamUsageEstimator.sizeOfObject(automaton)
         + RamUsageEstimator.sizeOfObject(commonSuffixRef)
         + RamUsageEstimator.sizeOfObject(runAutomaton)
         + RamUsageEstimator.sizeOfObject(nfaRunAutomaton)
