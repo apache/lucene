@@ -373,6 +373,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   }
 
   private void updateReadAdvice(ReadAdvice readAdvice) throws IOException {
+    isRandom = (readAdvice == ReadAdvice.RANDOM);
     if (NATIVE_ACCESS.isEmpty()) {
       return;
     }
@@ -389,8 +390,6 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           });
       offset += seg.byteSize();
     }
-
-    isRandom = (readAdvice == ReadAdvice.RANDOM);
   }
 
   boolean advise(long offset, long length, IOFunction<MemorySegment, Boolean> advice)
