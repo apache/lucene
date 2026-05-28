@@ -135,18 +135,28 @@ public class PrimaryKeyLookup {
   public int lookup(BytesRef id) throws IOException {
     assert assertOwnerThread();
     for (int seg = 0; seg < numEnums; seg++) {
-      if (termsEnums[seg].seekExact(id)) {
-        postingsEnums[seg] = termsEnums[seg].postings(postingsEnums[seg], 0);
-        int docID;
-        while ((docID = postingsEnums[seg].nextDoc()) != PostingsEnum.NO_MORE_DOCS) {
-          if (liveDocs[seg] == null || liveDocs[seg].get(docID)) {
-            return docBases[seg] + docID;
-          }
-        }
-        assert hasDeletions;
+      if (termsEnums[seg].seekExact(id) == false) {
+        continue;
       }
-    }
+      postingsEnums[seg] = termsEnums[seg].postings(postingsEnums[seg], 0);
 
+      if (liveDocs[seg] == null) {
+        // Fast path: segment has no deletions.
+        int docID = postingsEnums[seg].nextDoc();
+        assert docID != PostingsEnum.NO_MORE_DOCS;
+        return docBases[seg] + docID;
+      }
+
+      // Slow path: segment has deletions; scan until we find a live doc or exhaust.
+      int docID;
+      while ((docID = postingsEnums[seg].nextDoc()) != PostingsEnum.NO_MORE_DOCS) {
+        if (liveDocs[seg].get(docID)) {
+          return docBases[seg] + docID;
+        }
+      }
+
+      assert hasDeletions;
+    }
     return -1;
   }
 
