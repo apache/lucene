@@ -230,12 +230,11 @@ public abstract class Weight implements SegmentCacheable {
    * @lucene.internal
    */
   protected static class DefaultBulkScorer extends BulkScorer {
-    private static final int WINDOW_SIZE = 1 << 12;
-
     private final Scorer scorer;
     private final DocIdSetIterator iterator;
     private final TwoPhaseIterator twoPhase;
-    private final FixedBitSet windowMatches = new FixedBitSet(WINDOW_SIZE);
+    private final FixedBitSet windowMatches =
+        new FixedBitSet(DenseConjunctionBulkScorer.WINDOW_SIZE);
 
     /** Sole constructor. */
     public DefaultBulkScorer(Scorer scorer) {
@@ -315,16 +314,19 @@ public abstract class Weight implements SegmentCacheable {
         throws IOException {
       for (int doc = iterator.docID(); doc < max; ) {
         int windowBase = doc;
-        int windowMax = MathUtil.unsignedMin(max, windowBase + WINDOW_SIZE);
+        int windowMax =
+            MathUtil.unsignedMin(max, windowBase + DenseConjunctionBulkScorer.WINDOW_SIZE);
 
         assert windowMatches.scanIsEmpty();
         iterator.intoBitSet(windowMax, windowMatches, windowBase);
 
-        if (acceptDocs != null) {
+        if (windowMatches.scanIsEmpty() == false && acceptDocs != null) {
           acceptDocs.applyMask(windowMatches, windowBase);
         }
 
-        collector.collect(new BitSetDocIdStream(windowMatches, windowBase));
+        if (windowMatches.scanIsEmpty() == false) {
+          collector.collect(new BitSetDocIdStream(windowMatches, windowBase));
+        }
         windowMatches.clear();
 
         doc = iterator.docID();
