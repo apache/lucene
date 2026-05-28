@@ -20,6 +20,7 @@ import java.util.Arrays;
 import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.TestVectorUtil;
 import org.junit.Before;
 
@@ -60,6 +61,18 @@ public class TestByteVectorSimilarityQuery
   ByteVectorSimilarityQuery getVectorQuery(
       String field, byte[] vector, float resultSimilarity, float decay, Query filter) {
     return new ByteVectorSimilarityQuery(field, vector, resultSimilarity, decay, filter);
+  }
+
+  @Override
+  ByteVectorSimilarityQuery getVectorQuery(
+      String field,
+      byte[] vector,
+      float resultSimilarity,
+      float decay,
+      Query filter,
+      KnnSearchStrategy searchStrategy) {
+    return new ByteVectorSimilarityQuery(
+        field, vector, resultSimilarity, decay, filter, searchStrategy);
   }
 
   @Override
