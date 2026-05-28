@@ -398,6 +398,28 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     assertFalse(func.apply("_51a.si").isPresent());
   }
 
+  // Verifies that isRandom is set at construction when openInput is called with a RANDOM context.
+  // Fails without the fix that passes readAdvice == ReadAdvice.RANDOM into newInstance().
+  public void testIsRandomSetByOpenInput() throws IOException {
+    final int size = 8 * 1024;
+    try (MMapDirectory dir = new MMapDirectory(createTempDir("testIsRandomSetByOpenInput"))) {
+      dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT);
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(new byte[size], 0, size);
+      }
+      try (var in =
+          (MemorySegmentIndexInput)
+              dir.openInput("test", new DefaultIOContext(DataAccessHint.RANDOM))) {
+        assertTrue(in.isRandom);
+      }
+      try (var in =
+          (MemorySegmentIndexInput)
+              dir.openInput("test", new DefaultIOContext(DataAccessHint.SEQUENTIAL))) {
+        assertFalse(in.isRandom);
+      }
+    }
+  }
+
   // Verifies that isRandom is set/cleared correctly when the read advice changes via
   // updateIOContext.
   public void testIsRandomSetByUpdateIOContext() throws IOException {
@@ -443,6 +465,32 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     }
   }
 
+  // Verifies that slices created without an IOContext inherit isRandom from the parent.
+  // Fails without the fix that passes isRandom (rather than false) into buildSlice().
+  public void testSliceInheritsIsRandom() throws IOException {
+    final int size = 8 * 1024;
+    try (MMapDirectory dir = new MMapDirectory(createTempDir("testSliceInheritsIsRandom"))) {
+      dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT);
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(new byte[size], 0, size);
+      }
+      try (var in =
+          (MemorySegmentIndexInput)
+              dir.openInput("test", new DefaultIOContext(DataAccessHint.RANDOM))) {
+        assertTrue(in.isRandom);
+        var slice = in.slice("s", 0, in.length());
+        assertTrue("slice must inherit isRandom=true", slice.isRandom);
+      }
+      try (var in =
+          (MemorySegmentIndexInput)
+              dir.openInput("test", new DefaultIOContext(DataAccessHint.SEQUENTIAL))) {
+        assertFalse(in.isRandom);
+        var slice = in.slice("s", 0, in.length());
+        assertFalse("slice must inherit isRandom=false", slice.isRandom);
+      }
+    }
+  }
+
   // Verifies that the power-of-two throttle (sharedPrefetchCounter) is bypassed in RANDOM mode.
   // In NORMAL mode the counter increments on every prefetch() call; in RANDOM mode the isRandom
   // short-circuit prevents getAndIncrement() from running so the counter stays put.
@@ -477,6 +525,38 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
             "counter must not increment in RANDOM mode",
             counterSnapshot,
             in.sharedPrefetchCounter.get());
+      }
+    }
+  }
+
+  public void testCloneCopiesIsRandomSingleSegment() throws IOException {
+    testCloneCopiesIsRandom(64 * 1024);
+  }
+
+  public void testCloneCopiesIsRandomMultiSegment() throws IOException {
+    testCloneCopiesIsRandom(16);
+  }
+
+  void testCloneCopiesIsRandom(long maxChunkSize) throws IOException {
+    final int size = 64;
+    try (MMapDirectory dir =
+        new MMapDirectory(createTempDir("testCloneCopiesIsRandom"), maxChunkSize)) {
+      dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT);
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(new byte[size], 0, size);
+      }
+      // isRandom=true: clone must inherit it (fails without the clone fix)
+      try (var in = (MemorySegmentIndexInput) dir.openInput("test", IOContext.DEFAULT)) {
+        in.updateIOContext(new DefaultIOContext(DataAccessHint.RANDOM));
+        assertTrue(in.isRandom);
+        var clone = in.clone();
+        assertTrue("clone must inherit isRandom=true", clone.isRandom);
+      }
+      // isRandom=false: clone must also reflect false
+      try (var in = (MemorySegmentIndexInput) dir.openInput("test", IOContext.DEFAULT)) {
+        assertFalse(in.isRandom);
+        var clone = in.clone();
+        assertFalse("clone must inherit isRandom=false", clone.isRandom);
       }
     }
   }
