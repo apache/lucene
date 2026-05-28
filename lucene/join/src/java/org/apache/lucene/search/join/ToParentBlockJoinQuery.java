@@ -28,6 +28,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.FilterLeafCollector;
 import org.apache.lucene.search.FilterWeight;
@@ -504,6 +505,18 @@ public class ToParentBlockJoinQuery extends Query {
   private abstract static class BatchAwareLeafCollector extends FilterLeafCollector {
     public BatchAwareLeafCollector(LeafCollector in) {
       super(in);
+    }
+
+    @Override
+    public void collect(DocIdStream stream) throws IOException {
+      stream.forEach(this::collect);
+    }
+
+    @Override
+    public void collectRange(int min, int max) throws IOException {
+      for (int doc = min; doc < max; ++doc) {
+        collect(doc);
+      }
     }
 
     public void endBatch() throws IOException {}

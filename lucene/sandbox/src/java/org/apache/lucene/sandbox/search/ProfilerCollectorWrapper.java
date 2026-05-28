@@ -20,6 +20,7 @@ package org.apache.lucene.sandbox.search;
 import java.io.IOException;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.FilterCollector;
 import org.apache.lucene.search.FilterLeafCollector;
 import org.apache.lucene.search.LeafCollector;
@@ -64,6 +65,18 @@ class ProfilerCollectorWrapper extends FilterCollector {
           super.collect(doc);
         } finally {
           time += Math.max(1, System.nanoTime() - start);
+        }
+      }
+
+      @Override
+      public void collect(DocIdStream stream) throws IOException {
+        stream.forEach(this::collect);
+      }
+
+      @Override
+      public void collectRange(int min, int max) throws IOException {
+        for (int doc = min; doc < max; ++doc) {
+          collect(doc);
         }
       }
 

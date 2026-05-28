@@ -63,6 +63,16 @@ public class TestMultiCollector extends LuceneTestCase {
           super.collect(doc);
           count++;
         }
+
+        @Override
+        public void collect(DocIdStream stream) throws IOException {
+          stream.forEach(this::collect);
+        }
+
+        @Override
+        public void collectRange(int min, int max) throws IOException {
+          collect(new RangeDocIdStream(min, max));
+        }
       };
     }
   }

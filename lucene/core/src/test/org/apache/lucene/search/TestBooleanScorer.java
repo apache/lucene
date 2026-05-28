@@ -37,6 +37,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.BitDocIdSet;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 
@@ -252,6 +253,141 @@ public class TestBooleanScorer extends LuceneTestCase {
     assertEquals(3, iterator.intoBitSetCalls);
   }
 
+  public void testFilterLeafCollectorForwardsDocIdStream() throws IOException {
+    FixedBitSet docs = new FixedBitSet(8);
+    docs.set(1);
+    docs.set(3);
+
+    int[] collected = new int[2];
+    int[] count = new int[1];
+    LeafCollector in =
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            fail("FilterLeafCollector should forward DocIdStream to the wrapped collector");
+          }
+
+          @Override
+          public void collect(DocIdStream stream) throws IOException {
+            for (int size = stream.intoArray(collected);
+                size != 0;
+                size = stream.intoArray(collected)) {
+              count[0] += size;
+            }
+          }
+        };
+
+    new FilterLeafCollector(in) {}.collect(new BitSetDocIdStream(docs, 0));
+    assertEquals(2, count[0]);
+    assertArrayEquals(new int[] {1, 3}, collected);
+  }
+
+  public void testDefaultBulkScorerUsesIntoBitSetForNoScoreConjunction() throws IOException {
+    int[] docs = new int[20];
+    for (int i = 0; i < docs.length; ++i) {
+      docs[i] = 1 + i * 100;
+    }
+    CountingDocIdSetIterator lead = new CountingDocIdSetIterator(docs);
+    FixedBitSet filter = new FixedBitSet(9000);
+    filter.set(0, 9000);
+    Scorer leadScorer = new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, lead);
+    Scorer filterScorer =
+        new ConstantScoreScorer(
+            0f, ScoreMode.COMPLETE_NO_SCORES, new BitDocIdSet(filter).iterator());
+    Scorer scorer =
+        new ConjunctionScorer(
+            Arrays.asList(leadScorer, filterScorer), java.util.Collections.emptyList());
+
+    int[] collected = new int[docs.length];
+    int[] count = new int[1];
+    LeafCollector collector = docIdStreamCollector(collected, count);
+
+    BulkScorer bulkScorer = new DefaultBulkScorer(scorer);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, null, 0, 9000));
+    assertArrayEquals(docs, Arrays.copyOf(collected, count[0]));
+    assertEquals(1, lead.intoBitSetCalls);
+  }
+
+  public void testDefaultBulkScorerSkipsIntoBitSetForSparseNoScoreConjunction() throws IOException {
+    int[] docs = {1, 2, 4097, 8195};
+    CountingDocIdSetIterator lead = new CountingDocIdSetIterator(docs);
+    FixedBitSet filter = new FixedBitSet(9000);
+    filter.set(0, 9000);
+    filter.clear(1);
+    filter.clear(4097);
+    Scorer leadScorer = new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, lead);
+    Scorer filterScorer =
+        new ConstantScoreScorer(
+            0f, ScoreMode.COMPLETE_NO_SCORES, new BitDocIdSet(filter).iterator());
+    Scorer scorer =
+        new ConjunctionScorer(
+            Arrays.asList(leadScorer, filterScorer), java.util.Collections.emptyList());
+
+    int[] collected = new int[2];
+    int[] count = new int[1];
+    LeafCollector collector =
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            collected[count[0]++] = doc;
+          }
+
+          @Override
+          public void collect(DocIdStream stream) {
+            fail("Sparse conjunctions should stay on the per-doc path");
+          }
+        };
+
+    BulkScorer bulkScorer = new DefaultBulkScorer(scorer);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, null, 0, 9000));
+    assertArrayEquals(new int[] {2, 8195}, Arrays.copyOf(collected, count[0]));
+    assertEquals(0, lead.intoBitSetCalls);
+  }
+
+  public void testDefaultBulkScorerSkipsIntoBitSetForNonBitSetConjunction() throws IOException {
+    int[] docs = new int[20];
+    for (int i = 0; i < docs.length; ++i) {
+      docs[i] = 1 + i * 100;
+    }
+    CountingDocIdSetIterator lead = new CountingDocIdSetIterator(docs);
+    CountingDocIdSetIterator other = new CountingDocIdSetIterator(docs);
+    Scorer leadScorer = new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, lead);
+    Scorer otherScorer = new ConstantScoreScorer(0f, ScoreMode.COMPLETE_NO_SCORES, other);
+    Scorer scorer =
+        new ConjunctionScorer(
+            Arrays.asList(leadScorer, otherScorer), java.util.Collections.emptyList());
+
+    int[] collected = new int[docs.length];
+    int[] count = new int[1];
+    LeafCollector collector =
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            collected[count[0]++] = doc;
+          }
+
+          @Override
+          public void collect(DocIdStream stream) {
+            fail("Non-bitset conjunctions should stay on the per-doc path");
+          }
+        };
+
+    BulkScorer bulkScorer = new DefaultBulkScorer(scorer);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, null, 0, 9000));
+    assertArrayEquals(docs, Arrays.copyOf(collected, count[0]));
+    assertEquals(0, lead.intoBitSetCalls);
+    assertEquals(0, other.intoBitSetCalls);
+  }
+
   public void testConstantScoreBulkScorerRejectsScoreModeThatNeedsScores() {
     expectThrows(
         IllegalArgumentException.class,
@@ -346,6 +482,27 @@ public class TestBooleanScorer extends LuceneTestCase {
     assertEquals(0, iterator.intoBitSetCalls);
   }
 
+  private static LeafCollector docIdStreamCollector(int[] collected, int[] count) {
+    return new LeafCollector() {
+      @Override
+      public void setScorer(Scorable scorer) {}
+
+      @Override
+      public void collect(int doc) {
+        fail("DefaultBulkScorer should collect the no-score path via DocIdStream");
+      }
+
+      @Override
+      public void collect(DocIdStream stream) throws IOException {
+        int[] buffer = new int[collected.length];
+        for (int size = stream.intoArray(buffer); size != 0; size = stream.intoArray(buffer)) {
+          System.arraycopy(buffer, 0, collected, count[0], size);
+          count[0] += size;
+        }
+      }
+    };
+  }
+
   private static class CountingDocIdSetIterator extends DocIdSetIterator {
     private final int[] docs;
     private int index = -1;
@@ -371,9 +528,9 @@ public class TestBooleanScorer extends LuceneTestCase {
 
     @Override
     public int advance(int target) {
-      do {
+      while (doc < target) {
         nextDoc();
-      } while (doc < target);
+      }
       return doc;
     }
 
@@ -383,12 +540,9 @@ public class TestBooleanScorer extends LuceneTestCase {
     }
 
     @Override
-    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) {
-      intoBitSetCalls++;
-      while (doc < upTo) {
-        bitSet.set(doc - offset);
-        nextDoc();
-      }
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      ++intoBitSetCalls;
+      super.intoBitSet(upTo, bitSet, offset);
     }
   }
 
