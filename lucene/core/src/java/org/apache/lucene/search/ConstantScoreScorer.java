@@ -147,10 +147,6 @@ public final class ConstantScoreScorer extends Scorer {
     return score;
   }
 
-  boolean canBulkCollectDocIdStream() {
-    return scoreMode.needsScores() == false;
-  }
-
   @Override
   public void nextDocsAndScores(int upTo, Bits liveDocs, DocAndFloatFeatureBuffer buffer)
       throws IOException {

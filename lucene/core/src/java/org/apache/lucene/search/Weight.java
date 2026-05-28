@@ -22,8 +22,6 @@ import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.Bits;
-import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.MathUtil;
 
 /**
  * Expert: Calculate query weights and build query scorers.
@@ -233,8 +231,6 @@ public abstract class Weight implements SegmentCacheable {
     private final Scorer scorer;
     private final DocIdSetIterator iterator;
     private final TwoPhaseIterator twoPhase;
-    private final FixedBitSet windowMatches =
-        new FixedBitSet(DenseConjunctionBulkScorer.WINDOW_SIZE);
 
     /** Sole constructor. */
     public DefaultBulkScorer(Scorer scorer) {
@@ -281,12 +277,7 @@ public abstract class Weight implements SegmentCacheable {
       // iterator implementations.
       if (twoPhase == null && competitiveIterator == null) {
         // Optimize simple iterators with collectors that can't skip
-        if (scorer instanceof ConstantScoreScorer constantScoreScorer
-            && constantScoreScorer.canBulkCollectDocIdStream()) {
-          scoreIteratorIntoBitSet(collector, acceptDocs, iterator, max);
-        } else {
-          scoreIterator(collector, acceptDocs, iterator, max);
-        }
+        scoreIterator(collector, acceptDocs, iterator, max);
       } else if (competitiveIterator == null) {
         scoreTwoPhaseIterator(collector, acceptDocs, iterator, twoPhase, max);
       } else if (twoPhase == null) {
@@ -306,30 +297,6 @@ public abstract class Weight implements SegmentCacheable {
         if (acceptDocs == null || acceptDocs.get(doc)) {
           collector.collect(doc);
         }
-      }
-    }
-
-    private void scoreIteratorIntoBitSet(
-        LeafCollector collector, Bits acceptDocs, DocIdSetIterator iterator, int max)
-        throws IOException {
-      for (int doc = iterator.docID(); doc < max; ) {
-        int windowBase = doc;
-        int windowMax =
-            MathUtil.unsignedMin(max, windowBase + DenseConjunctionBulkScorer.WINDOW_SIZE);
-
-        assert windowMatches.scanIsEmpty();
-        iterator.intoBitSet(windowMax, windowMatches, windowBase);
-
-        if (windowMatches.scanIsEmpty() == false && acceptDocs != null) {
-          acceptDocs.applyMask(windowMatches, windowBase);
-        }
-
-        if (windowMatches.scanIsEmpty() == false) {
-          collector.collect(new BitSetDocIdStream(windowMatches, windowBase));
-        }
-        windowMatches.clear();
-
-        doc = iterator.docID();
       }
     }
 

@@ -190,11 +190,11 @@ public class TestBooleanScorer extends LuceneTestCase {
             .add(new TermQuery(new Term("missing_field", "baz")), Occur.SHOULD) // missing term
             .build();
 
-    // no scores -> term scorer
+    // no scores -> constant-score term scorer
     Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1);
     ScorerSupplier ss = weight.scorerSupplier(ctx);
     BulkScorer scorer = ((BooleanScorerSupplier) ss).booleanScorer();
-    assertThat(scorer, instanceOf(DefaultBulkScorer.class)); // term scorer
+    assertThat(scorer, instanceOf(ConstantScoreBulkScorer.class)); // term scorer
 
     // scores -> term scorer too
     query =
@@ -212,10 +212,9 @@ public class TestBooleanScorer extends LuceneTestCase {
     dir.close();
   }
 
-  public void testDefaultBulkScorerUsesIntoBitSet() throws IOException {
+  public void testConstantScoreScorerSupplierUsesIntoBitSet() throws IOException {
     int[] docs = {1, 2, 4097, 5000, 8195};
     CountingDocIdSetIterator iterator = new CountingDocIdSetIterator(docs);
-    Scorer scorer = new ConstantScoreScorer(1f, ScoreMode.COMPLETE_NO_SCORES, iterator);
 
     FixedBitSet liveDocs = new FixedBitSet(9000);
     liveDocs.set(0, 9000);
@@ -232,7 +231,7 @@ public class TestBooleanScorer extends LuceneTestCase {
 
           @Override
           public void collect(int doc) {
-            fail("DefaultBulkScorer should collect the simple iterator path via DocIdStream");
+            fail("ConstantScoreBulkScorer should collect via DocIdStream");
           }
 
           @Override
@@ -245,10 +244,20 @@ public class TestBooleanScorer extends LuceneTestCase {
           }
         };
 
-    BulkScorer bulkScorer = new DefaultBulkScorer(scorer);
+    BulkScorer bulkScorer =
+        ConstantScoreScorerSupplier.fromIterator(iterator, 1f, ScoreMode.COMPLETE_NO_SCORES, 9000)
+            .bulkScorer();
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, liveDocs, 0, 9000));
     assertArrayEquals(new int[] {1, 8195}, Arrays.copyOf(collected, count[0]));
     assertEquals(3, iterator.intoBitSetCalls);
+  }
+
+  public void testConstantScoreBulkScorerRejectsScoreModeThatNeedsScores() {
+    expectThrows(
+        IllegalArgumentException.class,
+        () ->
+            new ConstantScoreBulkScorer(
+                1f, ScoreMode.COMPLETE, new CountingDocIdSetIterator(new int[] {1})));
   }
 
   public void testDefaultBulkScorerDoesNotUseDocIdStreamForTopScores() throws IOException {

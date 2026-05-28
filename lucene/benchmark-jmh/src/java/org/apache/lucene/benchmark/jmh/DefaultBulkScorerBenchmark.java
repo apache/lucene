@@ -20,13 +20,13 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.ConstantScoreScorer;
+import org.apache.lucene.search.ConstantScoreScorerSupplier;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.util.BitSetIterator;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
@@ -44,7 +44,7 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
 
-/** Compares the default bulk scorer's old per-doc loop with batched DocIdStream collection. */
+/** Compares the old per-doc constant-score loop with batched DocIdStream collection. */
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
 @State(Scope.Benchmark)
@@ -111,7 +111,7 @@ public class DefaultBulkScorerBenchmark {
     baselineIterator = new BitSetIterator(matchingDocs, matchCount);
     intoBitSetIterator = new BitSetIterator(matchingDocs, matchCount);
     baselineScorer = newBaselineBulkScorer(baselineIterator);
-    intoBitSetScorer = newDefaultBulkScorer(intoBitSetIterator, matchCount);
+    intoBitSetScorer = newConstantScoreBulkScorer(intoBitSetIterator, maxDoc);
     baselineCollector = new CountingLeafCollector();
     intoBitSetCollector = new DocIdStreamCountingLeafCollector();
   }
@@ -150,19 +150,11 @@ public class DefaultBulkScorerBenchmark {
         new ConstantScoreScorer(1f, ScoreMode.COMPLETE_NO_SCORES, iterator));
   }
 
-  private static BulkScorer newDefaultBulkScorer(DocIdSetIterator iterator, int matchCount)
+  private static BulkScorer newConstantScoreBulkScorer(DocIdSetIterator iterator, int maxDoc)
       throws IOException {
-    return new ScorerSupplier() {
-      @Override
-      public Scorer get(long leadCost) {
-        return new ConstantScoreScorer(1f, ScoreMode.COMPLETE_NO_SCORES, iterator);
-      }
-
-      @Override
-      public long cost() {
-        return matchCount;
-      }
-    }.bulkScorer();
+    return ConstantScoreScorerSupplier.fromIterator(
+            iterator, 1f, ScoreMode.COMPLETE_NO_SCORES, maxDoc)
+        .bulkScorer();
   }
 
   private static final class PerDocBulkScorer extends BulkScorer {
@@ -219,7 +211,7 @@ public class DefaultBulkScorerBenchmark {
   private static final class DocIdStreamCountingLeafCollector extends CountingLeafCollector {
     @Override
     public void collect(int doc) {
-      throw new AssertionError("DefaultBulkScorerBenchmark must use DocIdStream collection");
+      throw new AssertionError("Constant score bulk scoring must use DocIdStream collection");
     }
 
     @Override
