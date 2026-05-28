@@ -338,7 +338,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
 
     ensureOpen();
 
-    if (isRandom == false
+    final boolean skipPrefetchBackoff = this.isRandom;
+    if (skipPrefetchBackoff == false
         && BitUtil.isZeroOrPowerOfTwo(sharedPrefetchCounter.getAndIncrement()) == false) {
       // We've had enough consecutive hits on the page cache that this number is neither zero nor a
       // power of two. There is a good chance that a good chunk of this index input is cached in
@@ -353,8 +354,12 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
         length,
         segment -> {
           if (segment.isLoaded() == false) {
-            // We have a cache miss on at least one page, let's reset the counter.
-            sharedPrefetchCounter.set(0);
+            // We have a cache miss on at least one page. Reset the counter so that the next
+            // NORMAL-mode prefetch fires immediately. Skipped in RANDOM mode since the counter
+            // is not used there.
+            if (skipPrefetchBackoff == false) {
+              sharedPrefetchCounter.set(0);
+            }
             nativeAccess.madviseWillNeed(segment);
             return true;
           }
