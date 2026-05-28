@@ -187,12 +187,13 @@ public final class DisjunctionDISIApproximation extends AbstractDocIdSetIterator
 
   @Override
   public int docIDRunEnd() throws IOException {
-    // We're only looking at the "top" clauses. In theory, we may be able to find longer runs if
-    // other clauses have overlapping runs with the runs of the top clauses, but does it actually
-    // happen in practice and would it buy much?
+    // We're only looking at the heap-led top clauses that are positioned on the current doc.
+    // Scanning otherIterators may find longer runs, but costs O(N) on every call.
     int maxDocIDRunEnd = super.docIDRunEnd();
-    for (DisiWrapper w = topList(); w != null; w = w.next) {
-      maxDocIDRunEnd = Math.max(maxDocIDRunEnd, w.approximation.docIDRunEnd());
+    if (leadTop.doc == doc) {
+      for (DisiWrapper w = leadIterators.topList(); w != null; w = w.next) {
+        maxDocIDRunEnd = Math.max(maxDocIDRunEnd, w.approximation.docIDRunEnd());
+      }
     }
     return maxDocIDRunEnd;
   }
