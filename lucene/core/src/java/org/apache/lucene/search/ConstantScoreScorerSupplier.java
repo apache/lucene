@@ -93,7 +93,11 @@ public abstract class ConstantScoreScorerSupplier extends ScorerSupplier {
     } else if (scoreMode.needsScores() == false && twoPhase == null) {
       return new ConstantScoreBulkScorer(score, scoreMode, iterator);
     } else {
-      return new Weight.DefaultBulkScorer(new ConstantScoreScorer(score, scoreMode, iterator));
+      Scorer scorer =
+          twoPhase == null
+              ? new ConstantScoreScorer(score, scoreMode, iterator)
+              : new ConstantScoreScorer(score, scoreMode, twoPhase);
+      return new Weight.DefaultBulkScorer(scorer);
     }
   }
 }

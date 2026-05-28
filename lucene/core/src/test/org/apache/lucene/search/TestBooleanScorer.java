@@ -260,6 +260,50 @@ public class TestBooleanScorer extends LuceneTestCase {
                 1f, ScoreMode.COMPLETE, new CountingDocIdSetIterator(new int[] {1})));
   }
 
+  public void testConstantScoreScorerSupplierPreservesTwoPhaseIterator() throws IOException {
+    int[] docs = {1, 2, 3};
+    CountingDocIdSetIterator approximation = new CountingDocIdSetIterator(docs);
+    DocIdSetIterator iterator =
+        TwoPhaseIterator.asDocIdSetIterator(
+            new TwoPhaseIterator(approximation) {
+              @Override
+              public boolean matches() {
+                return approximation.docID() != 2;
+              }
+
+              @Override
+              public float matchCost() {
+                return 1f;
+              }
+            });
+
+    int[] collected = new int[docs.length];
+    int[] count = new int[1];
+    LeafCollector collector =
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            collected[count[0]++] = doc;
+          }
+
+          @Override
+          public void collect(DocIdStream stream) {
+            fail("two-phase iterators must preserve per-doc confirmation");
+          }
+        };
+
+    BulkScorer bulkScorer =
+        ConstantScoreScorerSupplier.fromIterator(iterator, 1f, ScoreMode.COMPLETE_NO_SCORES, 9000)
+            .bulkScorer();
+    assertThat(bulkScorer, instanceOf(DefaultBulkScorer.class));
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, null, 0, 9000));
+    assertArrayEquals(new int[] {1, 3}, Arrays.copyOf(collected, count[0]));
+    assertEquals(0, approximation.intoBitSetCalls);
+  }
+
   public void testDefaultBulkScorerDoesNotUseDocIdStreamForTopScores() throws IOException {
     assertDefaultBulkScorerDoesNotUseDocIdStreamForScores(ScoreMode.TOP_SCORES);
   }
