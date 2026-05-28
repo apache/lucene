@@ -156,8 +156,6 @@ Optimizations
 
 * GITHUB#15597, GITHUB#15777: Reduce memory usage of NeighborArray (Viliam Durina)
 
-* GITHUB#16141: Optimize constant-score bulk scoring via intoBitSet batching. (Costin Leau)
-
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
@@ -449,6 +447,8 @@ Optimizations
 * GITHUB#16129: Add bulk decode for dense NumericDocValues via longValues(). (Costin Leau)
 
 * GITHUB#16126: Implement #intoBitSet and #docIDRunEnd in DocValuesWriter implementations. (Ignacio Vera)
+
+* GITHUB#16141: Optimize constant-score bulk scoring via intoBitSet batching. (Costin Leau)
 
 Bug Fixes
 ---------------------
