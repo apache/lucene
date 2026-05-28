@@ -141,7 +141,7 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#XXXXX: Always fire prefetch when ReadAdvice is RANDOM in MemorySegmentIndexInput. The power-of-two throttle in
+* GITHUB#16145: Always fire prefetch when ReadAdvice is RANDOM in MemorySegmentIndexInput. The power-of-two throttle in
   MemorySegmentIndexInput assumes "consecutive cache hits → file is warm", which does not hold for
   random-access patterns where each request visits unpredictable pages. A negative sentinel in the
   shared prefetch counter signals RANDOM mode with zero overhead on the non-RANDOM hot path.
