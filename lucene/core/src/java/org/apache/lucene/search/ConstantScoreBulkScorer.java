@@ -112,13 +112,11 @@ final class ConstantScoreBulkScorer extends BulkScorer {
       assert windowMatches.scanIsEmpty();
       iterator.intoBitSet(windowMax, windowMatches, windowBase);
 
-      if (windowMatches.scanIsEmpty() == false && acceptDocs != null) {
+      if (acceptDocs != null) {
         acceptDocs.applyMask(windowMatches, windowBase);
       }
 
-      if (windowMatches.scanIsEmpty() == false) {
-        collector.collect(new BitSetDocIdStream(windowMatches, windowBase));
-      }
+      collector.collect(new BitSetDocIdStream(windowMatches, windowBase));
       windowMatches.clear();
 
       doc = iterator.docID();
