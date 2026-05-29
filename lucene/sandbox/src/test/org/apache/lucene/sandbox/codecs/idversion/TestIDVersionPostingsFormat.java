@@ -39,6 +39,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.MergeScheduler;
 import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.PrimaryKeyLookup;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.sandbox.codecs.idversion.StringAndPayloadField.SingleTokenWithPayloadTokenStream;
@@ -334,7 +335,7 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
     dir.close();
   }
 
-  private static class PerThreadVersionPKLookup extends PerThreadPKLookup {
+  private static class PerThreadVersionPKLookup extends PrimaryKeyLookup {
     public PerThreadVersionPKLookup(IndexReader r, String field) throws IOException {
       super(r, field);
     }
