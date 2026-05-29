@@ -79,6 +79,8 @@ class AssertingLeafCollector extends FilterLeafCollector {
             }
           });
     } else {
+      // Some bulk scorers install synthetic Scorables that are deliberately safe to score during
+      // batching, so only iterator-backed Scorers get the batch-position assertion above.
       super.setScorer(wrappedScorer);
     }
   }
