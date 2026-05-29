@@ -189,7 +189,8 @@ public final class DisjunctionDISIApproximation extends AbstractDocIdSetIterator
   public int docIDRunEnd() throws IOException {
     // Trade off longer run detection for a cheaper per-doc call: only inspect heap-led clauses
     // that are already positioned on the current doc. Other iterators may be coincident with the
-    // current doc and have longer runs, or be the only clauses on the current doc, but scanning them
+    // current doc and have longer runs, or be the only clauses on the current doc, but scanning
+    // them
     // here would cost O(N) on every call.
     int maxDocIDRunEnd = super.docIDRunEnd();
     if (leadTop.doc == doc) {
