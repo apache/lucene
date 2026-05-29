@@ -452,6 +452,8 @@ Optimizations
 
 * GITHUB#16141: Optimize constant-score bulk scoring via intoBitSet batching. (Costin Leau)
 
+* GITHUB#16147: Optimize column batch parent field with bulk fill. (Tim Brooks)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
