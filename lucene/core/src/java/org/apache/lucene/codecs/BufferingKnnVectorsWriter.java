@@ -262,7 +262,7 @@ public abstract class BufferingKnnVectorsWriter extends KnnVectorsWriter {
               * (long)
                   (RamUsageEstimator.NUM_BYTES_OBJECT_REF
                       + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER)
-          + vectors.size() * (long) dim * Float.BYTES;
+          + vectors.size() * (long) dim * fieldInfo.getVectorEncoding().byteSize;
     }
   }
 
