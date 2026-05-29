@@ -822,5 +822,17 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     public int ordToDoc(int ord) {
       return delegate.ordToDoc(ord);
     }
+
+    @Override
+    public VectorScorer scorer(float[] target) throws IOException {
+      // Target arrives pre-rotated from KnnFloatVectorQuery.rewrite(), delegate holds rotated
+      // vectors — delegate directly for correct rotated-space comparison.
+      return delegate.scorer(target);
+    }
+
+    @Override
+    public VectorScorer rescorer(float[] target) throws IOException {
+      return delegate.rescorer(target);
+    }
   }
 }
