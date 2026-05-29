@@ -246,6 +246,13 @@ Bug Fixes
 
 * GITHUB#16046: Fix double-counting of underlying Automaton in CompiledAutomaton#ramBytesUsed. (Eugene Rizhkov)
 
+* GITHUB#15901: Fix undercounting of RAM used by vectors buffered in in-memory segments.
+  BufferingKnnVectorsWriter hardcoded Float.BYTES for all vector encodings, overcounting byte
+  vectors by 4x. Scalar quantized vector writers (Lucene104, Lucene99, Lucene102) did not
+  account for rawVectorDelegate RAM, making byte vector fields completely invisible in RAM
+  reporting. Also added missing dimensionSums array accounting in quantized writers.
+  (Prithvi S)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
