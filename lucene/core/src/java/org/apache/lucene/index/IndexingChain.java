@@ -725,14 +725,14 @@ final class IndexingChain implements Accountable {
 
       ColumnValidation.validateColumnHasIndexingFeature(fieldName, fieldType);
 
-      if (column instanceof BinaryColumn bc) {
-        ColumnValidation.validateBinaryColumn(bc, fieldType);
-      } else if (column instanceof LongColumn lc) {
-        ColumnValidation.validateLongColumn(lc, fieldType);
-      } else if (column instanceof DictionaryColumn dc) {
-        ColumnValidation.validateDictionaryColumn(dc, fieldType);
-      } else if (column instanceof VectorColumn<?> vc) {
-        ColumnValidation.validateVectorColumn(vc, fieldType);
+      switch (column) {
+        case BinaryColumn bc -> ColumnValidation.validateBinaryColumn(bc, fieldType);
+        case LongColumn lc -> ColumnValidation.validateLongColumn(lc, fieldType);
+        case DictionaryColumn dc -> ColumnValidation.validateDictionaryColumn(dc, fieldType);
+        case VectorColumn<?> vc -> ColumnValidation.validateVectorColumn(vc, fieldType);
+        default ->
+            throw new IllegalArgumentException(
+                "Unknown column type: " + column.getClass().getName());
       }
 
       if (fieldType.stored() || fieldType.indexOptions() != IndexOptions.NONE) {
@@ -759,18 +759,8 @@ final class IndexingChain implements Accountable {
       validateColumnSchema(fieldName, pf, fieldType);
     }
 
-    // Index the parent field for every document (each batch doc is an individual document,
-    // not part of a block, so every doc is its own parent).
     if (parentPf != null) {
-      if (parentPf.fieldInfo == null) {
-        initializeFieldInfo(parentPf);
-        parentPf.trySetValidatedFrozenFieldType();
-      }
-      final NumericDocValuesWriter parentWriter = (NumericDocValuesWriter) parentPf.docValuesWriter;
-      final long value = parentField.numericValue().longValue();
-      for (int i = 0; i < numDocs; i++) {
-        parentWriter.addValue(baseDocID + i, value);
-      }
+      processParentFieldForColumnBatch(baseDocID, numDocs);
     }
 
     // Row-oriented pass: stored fields and term inversion only. Uses fresh tuple cursors.
@@ -804,6 +794,17 @@ final class IndexingChain implements Accountable {
                 "Unknown column type: " + column.getClass().getName());
       }
     }
+  }
+
+  private void processParentFieldForColumnBatch(int baseDocID, int numDocs) throws IOException {
+    if (parentPf.fieldInfo == null) {
+      initializeFieldInfo(parentPf);
+      parentPf.trySetValidatedFrozenFieldType();
+    }
+    // Index the parent field for every document (each batch doc is an individual document,
+    // not part of a block, so every doc is its own parent).
+    final NumericDocValuesWriter parentWriter = (NumericDocValuesWriter) parentPf.docValuesWriter;
+    parentWriter.addRepeatValues(baseDocID, parentField.numericValue().longValue(), numDocs);
   }
 
   /**
