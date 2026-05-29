@@ -70,16 +70,6 @@ public final class ScoreCachingWrappingScorer extends Scorable {
     }
 
     @Override
-    public void collect(DocIdStream stream) throws IOException {
-      stream.forEach(this::collect);
-    }
-
-    @Override
-    public void collectRange(int min, int max) throws IOException {
-      collect(new RangeDocIdStream(min, max));
-    }
-
-    @Override
     public DocIdSetIterator competitiveIterator() throws IOException {
       return in.competitiveIterator();
     }

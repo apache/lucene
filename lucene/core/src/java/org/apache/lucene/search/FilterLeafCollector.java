@@ -21,9 +21,11 @@ import java.io.IOException;
 /**
  * {@link LeafCollector} delegator.
  *
- * <p>This collector forwards batch collection directly to the wrapped collector. Subclasses that
- * override {@link #collect(int)} to filter, buffer or update per-document state must also override
- * {@link #collect(DocIdStream)} and {@link #collectRange(int, int)} to preserve that behavior.
+ * <p>This collector inherits the default batch collection behavior from {@link LeafCollector},
+ * which decomposes batches through {@link #collect(int)}. This preserves per-document behavior for
+ * subclasses that override {@link #collect(int)}. Subclasses that only delegate and want to
+ * preserve bulk-collection optimizations may override {@link #collect(DocIdStream)} and {@link
+ * #collectRange(int, int)} to forward directly to the wrapped collector.
  *
  * @lucene.experimental
  */
@@ -44,16 +46,6 @@ public abstract class FilterLeafCollector implements LeafCollector {
   @Override
   public void collect(int doc) throws IOException {
     in.collect(doc);
-  }
-
-  @Override
-  public void collect(DocIdStream stream) throws IOException {
-    in.collect(stream);
-  }
-
-  @Override
-  public void collectRange(int min, int max) throws IOException {
-    in.collectRange(min, max);
   }
 
   @Override

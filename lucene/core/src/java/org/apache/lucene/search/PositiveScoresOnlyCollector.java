@@ -48,16 +48,6 @@ public class PositiveScoresOnlyCollector extends FilterCollector {
               in.collect(doc);
             }
           }
-
-          @Override
-          public void collect(DocIdStream stream) throws IOException {
-            stream.forEach(this::collect);
-          }
-
-          @Override
-          public void collectRange(int min, int max) throws IOException {
-            collect(new RangeDocIdStream(min, max));
-          }
         });
   }
 }

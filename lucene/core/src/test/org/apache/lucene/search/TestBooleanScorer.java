@@ -253,36 +253,64 @@ public class TestBooleanScorer extends LuceneTestCase {
     assertEquals(3, iterator.intoBitSetCalls);
   }
 
-  public void testFilterLeafCollectorForwardsDocIdStream() throws IOException {
+  public void testFilterLeafCollectorPreservesCollectIntForDocIdStream() throws IOException {
     FixedBitSet docs = new FixedBitSet(8);
     docs.set(1);
     docs.set(3);
 
     int[] collected = new int[2];
     int[] count = new int[1];
-    LeafCollector in =
-        new LeafCollector() {
+    LeafCollector collector =
+        new FilterLeafCollector(
+            new LeafCollector() {
+              @Override
+              public void setScorer(Scorable scorer) {}
+
+              @Override
+              public void collect(int doc) {
+                fail("Wrapped collector should not receive batch docs directly");
+              }
+            }) {
           @Override
           public void setScorer(Scorable scorer) {}
 
           @Override
           public void collect(int doc) {
-            fail("FilterLeafCollector should forward DocIdStream to the wrapped collector");
-          }
-
-          @Override
-          public void collect(DocIdStream stream) throws IOException {
-            for (int size = stream.intoArray(collected);
-                size != 0;
-                size = stream.intoArray(collected)) {
-              count[0] += size;
-            }
+            collected[count[0]++] = doc;
           }
         };
 
-    new FilterLeafCollector(in) {}.collect(new BitSetDocIdStream(docs, 0));
+    collector.collect(new BitSetDocIdStream(docs, 0));
     assertEquals(2, count[0]);
     assertArrayEquals(new int[] {1, 3}, collected);
+  }
+
+  public void testFilterLeafCollectorPreservesCollectIntForRange() throws IOException {
+    int[] collected = new int[3];
+    int[] count = new int[1];
+    LeafCollector collector =
+        new FilterLeafCollector(
+            new LeafCollector() {
+              @Override
+              public void setScorer(Scorable scorer) {}
+
+              @Override
+              public void collect(int doc) {
+                fail("Wrapped collector should not receive range docs directly");
+              }
+            }) {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            collected[count[0]++] = doc;
+          }
+        };
+
+    collector.collectRange(2, 5);
+    assertEquals(3, count[0]);
+    assertArrayEquals(new int[] {2, 3, 4}, collected);
   }
 
   public void testDefaultBulkScorerUsesIntoBitSetForNoScoreConjunction() throws IOException {
