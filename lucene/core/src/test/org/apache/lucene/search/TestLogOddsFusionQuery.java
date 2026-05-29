@@ -129,7 +129,75 @@ public class TestLogOddsFusionQuery extends LuceneTestCase {
   public void testEmptyClauseRewrite() throws Exception {
     LogOddsFusionQuery loq = new LogOddsFusionQuery(Collections.emptyList(), 0.5f);
     Query rewritten = searcher.rewrite(loq);
-    assertTrue("empty should rewrite to MatchNoDocsQuery", rewritten instanceof MatchNoDocsQuery);
+    assertEquals(MatchNoDocsQuery.INSTANCE, rewritten);
+  }
+
+  public void testRewriteAllMatchNoDocs() throws Exception {
+    Query q1 = new MatchNoDocsQuery("q1");
+    Query q2 = new MatchNoDocsQuery("q2");
+    LogOddsFusionQuery loq = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f);
+    Query rewritten = searcher.rewrite(loq);
+    assertEquals(MatchNoDocsQuery.INSTANCE, rewritten);
+  }
+
+  public void testRewriteSingleSurvivor() throws Exception {
+    Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query q2 = new MatchNoDocsQuery("q2");
+    LogOddsFusionQuery loq = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f);
+    Query rewritten = searcher.rewrite(loq);
+    assertEquals(q1, rewritten);
+  }
+
+  public void testRewriteFilterMatchNoDocs() throws Exception {
+    Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
+    Query q3 = new MatchNoDocsQuery("q3");
+    LogOddsFusionQuery loq = new LogOddsFusionQuery(Arrays.asList(q1, q2, q3), 0.5f);
+    Query rewritten = searcher.rewrite(loq);
+    LogOddsFusionQuery expected = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.5f);
+    assertEquals(expected, rewritten);
+  }
+
+  public void testRewriteFilterMatchNoDocsWithAlpha() throws Exception {
+    Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
+    Query q3 = new MatchNoDocsQuery("q3");
+    LogOddsFusionQuery loq = new LogOddsFusionQuery(Arrays.asList(q1, q2, q3), 0.3f);
+    Query rewritten = searcher.rewrite(loq);
+    LogOddsFusionQuery expected = new LogOddsFusionQuery(Arrays.asList(q1, q2), 0.3f);
+    assertEquals(expected, rewritten);
+  }
+
+  public void testRewriteFilterMatchNoDocsWithWeights() throws Exception {
+    Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
+    Query q3 = new MatchNoDocsQuery("q3");
+    float[] weights = {0.4f, 0.4f, 0.2f};
+    LogOddsFusionQuery loq = new LogOddsFusionQuery(Arrays.asList(q1, q2, q3), 0.5f, weights);
+    Query rewritten = searcher.rewrite(loq);
+    assertTrue("should rewrite to LogOddsFusionQuery", rewritten instanceof LogOddsFusionQuery);
+    LogOddsFusionQuery result = (LogOddsFusionQuery) rewritten;
+    assertEquals(2, result.getClauses().size());
+    float[] resultWeights = result.getWeights();
+    assertNotNull(resultWeights);
+    assertEquals(2, resultWeights.length);
+    assertEquals(0.5f, resultWeights[0], 1e-6f);
+    assertEquals(0.5f, resultWeights[1], 1e-6f);
+  }
+
+  public void testRewriteFilterMatchNoDocsWithLogitBounds() throws Exception {
+    Query q1 = bayesian(new TermQuery(new Term("body", "alpha")));
+    Query q2 = bayesian(new TermQuery(new Term("body", "beta")));
+    Query q3 = new MatchNoDocsQuery("q3");
+    float[] weights = {0.4f, 0.4f, 0.2f};
+    float[] logitMin = {-5f, -4f, -3f};
+    float[] logitMax = {5f, 4f, 3f};
+    LogOddsFusionQuery loq =
+        new LogOddsFusionQuery(Arrays.asList(q1, q2, q3), 0.5f, weights, logitMin, logitMax);
+    Query rewritten = searcher.rewrite(loq);
+    assertTrue("should rewrite to LogOddsFusionQuery", rewritten instanceof LogOddsFusionQuery);
+    LogOddsFusionQuery result = (LogOddsFusionQuery) rewritten;
+    assertEquals(2, result.getClauses().size());
   }
 
   public void testAlphaValues() throws Exception {

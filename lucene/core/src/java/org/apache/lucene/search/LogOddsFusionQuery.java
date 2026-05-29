@@ -362,17 +362,57 @@ public final class LogOddsFusionQuery extends Query implements Iterable<Query> {
 
     boolean actuallyRewritten = false;
     List<Query> rewrittenClauses = new ArrayList<>();
-    for (Query sub : orderedClauses) {
+    List<Float> newWeights = signalWeights != null ? new ArrayList<>() : null;
+    List<Float> newLogitMin = logitMin != null ? new ArrayList<>() : null;
+    List<Float> newLogitMax = logitMax != null ? new ArrayList<>() : null;
+
+    for (int i = 0; i < orderedClauses.size(); i++) {
+      Query sub = orderedClauses.get(i);
       Query rewrittenSub = sub.rewrite(indexSearcher);
-      actuallyRewritten |= rewrittenSub != sub;
-      rewrittenClauses.add(rewrittenSub);
+      if (rewrittenSub != sub || sub.getClass() == MatchNoDocsQuery.class) {
+        actuallyRewritten = true;
+      }
+      if (rewrittenSub.getClass() != MatchNoDocsQuery.class) {
+        rewrittenClauses.add(rewrittenSub);
+        if (newWeights != null) {
+          newWeights.add(signalWeights[i]);
+        }
+        if (newLogitMin != null) {
+          newLogitMin.add(logitMin[i]);
+          newLogitMax.add(logitMax[i]);
+        }
+      }
     }
 
-    if (actuallyRewritten) {
-      return new LogOddsFusionQuery(rewrittenClauses, alpha, signalWeights, logitMin, logitMax);
+    if (actuallyRewritten == false) {
+      return super.rewrite(indexSearcher);
+    }
+    if (rewrittenClauses.isEmpty()) {
+      return new MatchNoDocsQuery("empty LogOddsFusionQuery");
+    }
+    if (rewrittenClauses.size() == 1) {
+      return rewrittenClauses.get(0);
     }
 
-    return super.rewrite(indexSearcher);
+    float[] filteredWeights = toFloatArray(newWeights);
+    if (filteredWeights != null) {
+      float sum = 0;
+      for (float w : filteredWeights) {
+        sum += w;
+      }
+      if (sum > 0) {
+        for (int i = 0; i < filteredWeights.length; i++) {
+          filteredWeights[i] /= sum;
+        }
+      }
+    }
+
+    return new LogOddsFusionQuery(
+        rewrittenClauses,
+        alpha,
+        filteredWeights,
+        toFloatArray(newLogitMin),
+        toFloatArray(newLogitMax));
   }
 
   @Override
