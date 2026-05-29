@@ -50,7 +50,6 @@ import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.VectorUtil;
-import org.apache.lucene.util.quantization.HadamardRotation;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
@@ -69,20 +68,17 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private final IndexOutput meta, vectorData;
   private final ScalarEncoding encoding;
   private final FlatVectorsWriter rawVectorDelegate;
-  private final boolean rotationEnabled;
   private boolean finished;
 
   /** Sole constructor */
   public Lucene104ScalarQuantizedVectorsWriter(
       SegmentWriteState state,
       ScalarEncoding encoding,
-      boolean rotationEnabled,
       FlatVectorsWriter rawVectorDelegate,
       Lucene104ScalarQuantizedVectorScorer vectorsScorer)
       throws IOException {
     super(vectorsScorer);
     this.encoding = encoding;
-    this.rotationEnabled = rotationEnabled;
     this.segmentWriteState = state;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -124,8 +120,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     if (fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
       @SuppressWarnings("unchecked")
       FieldWriter fieldWriter =
-          new FieldWriter(
-              fieldInfo, rotationEnabled, (FlatFieldVectorsWriter<float[]>) rawVectorDelegate);
+          new FieldWriter(fieldInfo, (FlatFieldVectorsWriter<float[]>) rawVectorDelegate);
       fields.add(fieldWriter);
       return fieldWriter;
     }
@@ -529,25 +524,11 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     private final FlatFieldVectorsWriter<float[]> flatFieldVectorsWriter;
     private final float[] dimensionSums;
     private final FloatArrayList magnitudes = new FloatArrayList();
-    private final HadamardRotation rotation;
-    private final float[] rotationScratch;
 
-    FieldWriter(
-        FieldInfo fieldInfo,
-        boolean rotationEnabled,
-        FlatFieldVectorsWriter<float[]> flatFieldVectorsWriter) {
+    FieldWriter(FieldInfo fieldInfo, FlatFieldVectorsWriter<float[]> flatFieldVectorsWriter) {
       this.fieldInfo = fieldInfo;
       this.flatFieldVectorsWriter = flatFieldVectorsWriter;
       this.dimensionSums = new float[fieldInfo.getVectorDimension()];
-      if (rotationEnabled) {
-        int dim = fieldInfo.getVectorDimension();
-        this.rotation = HadamardRotation.forDimension(dim);
-        this.rotationScratch = new float[dim];
-        fieldInfo.putAttribute(Lucene104ScalarQuantizedVectorsFormat.ROTATION_ENABLED_KEY, "true");
-      } else {
-        this.rotation = null;
-        this.rotationScratch = null;
-      }
     }
 
     @Override
@@ -586,11 +567,6 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
 
     @Override
     public void addValue(int docID, float[] vectorValue) throws IOException {
-      if (rotation != null) {
-        float[] rotated = new float[vectorValue.length];
-        rotation.rotate(vectorValue, rotated, rotationScratch);
-        vectorValue = rotated;
-      }
       flatFieldVectorsWriter.addValue(docID, vectorValue);
       if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
         float dp = VectorUtil.dotProduct(vectorValue, vectorValue);

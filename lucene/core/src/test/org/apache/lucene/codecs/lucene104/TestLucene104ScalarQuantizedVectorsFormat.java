@@ -141,8 +141,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
   }
 
   public void testQuantizedVectorsWriteAndRead() throws IOException {
-    // This test verifies rotation behavior, so explicitly enable rotation.
-    format = new Lucene104ScalarQuantizedVectorsFormat(encoding, true);
+    format = new Lucene104ScalarQuantizedVectorsFormat(encoding);
     String fieldName = "field";
     int numVectors = random().nextInt(99, 500);
     int dims = random().nextInt(4, 65);
@@ -174,12 +173,6 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           float[] centroid = qvectorValues.getCentroid();
           assertEquals(centroid.length, dims);
 
-          // The stored quantized bytes are in rotated space. To verify them, we must
-          // rotate the read-back vectors (which are inverse-rotated) before re-quantizing.
-          var rotation =
-              org.apache.lucene.util.quantization.HadamardRotation.forDimension(dims);
-          float[] rotatedVec = new float[dims];
-          float[] rotScratch = new float[dims];
 
           OptimizedScalarQuantizer quantizer = new OptimizedScalarQuantizer(similarityFunction);
           byte[] scratch = new byte[encoding.getDiscreteDimensions(dims)];
@@ -191,11 +184,9 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           KnnVectorValues.DocIndexIterator docIndexIterator = vectorValues.iterator();
 
           while (docIndexIterator.nextDoc() != NO_MORE_DOCS) {
-            // Rotate the vector to match the rotated space used for quantization
             float[] vec = vectorValues.vectorValue(docIndexIterator.index());
-            rotation.rotate(vec, rotatedVec, rotScratch);
             OptimizedScalarQuantizer.QuantizationResult corrections =
-                quantizer.scalarQuantize(rotatedVec, scratch, encoding.getBits(), centroid);
+                quantizer.scalarQuantize(vec, scratch, encoding.getBits(), centroid);
             switch (encoding) {
               case UNSIGNED_BYTE, SEVEN_BIT ->
                   System.arraycopy(scratch, 0, expectedVector, 0, dims);

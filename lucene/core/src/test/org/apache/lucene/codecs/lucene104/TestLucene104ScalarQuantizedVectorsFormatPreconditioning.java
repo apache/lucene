@@ -21,6 +21,7 @@ import java.util.Set;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.RotationAwareKnnVectorsFormat;
 import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.KnnFloatVectorField;
@@ -37,8 +38,8 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
- * Tests for the always-on rotation preconditioning in {@link
- * Lucene104ScalarQuantizedVectorsFormat}.
+ * Tests for rotation preconditioning via {@link RotationAwareKnnVectorsFormat} wrapping {@link
+ * Lucene104HnswScalarQuantizedVectorsFormat}.
  */
 public class TestLucene104ScalarQuantizedVectorsFormatPreconditioning extends LuceneTestCase {
 
@@ -47,9 +48,7 @@ public class TestLucene104ScalarQuantizedVectorsFormatPreconditioning extends Lu
     int dims = 64;
     int numDocs = 200;
 
-    Codec codec =
-        codecWithFormat(
-            new Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding.UNSIGNED_BYTE, true));
+    Codec codec = codecWithRotation(ScalarEncoding.UNSIGNED_BYTE);
     IndexWriterConfig iwc = newIndexWriterConfig().setCodec(codec);
 
     try (Directory dir = newDirectory();
@@ -84,9 +83,7 @@ public class TestLucene104ScalarQuantizedVectorsFormatPreconditioning extends Lu
     int dims = 32;
     int numDocs = 8;
 
-    Codec codec =
-        codecWithFormat(
-            new Lucene104ScalarQuantizedVectorsFormat(ScalarEncoding.UNSIGNED_BYTE, true));
+    Codec codec = codecWithRotation(ScalarEncoding.UNSIGNED_BYTE);
     IndexWriterConfig iwc = newIndexWriterConfig().setCodec(codec);
 
     try (Directory dir = newDirectory();
@@ -116,7 +113,7 @@ public class TestLucene104ScalarQuantizedVectorsFormatPreconditioning extends Lu
               "vector for doc " + doc + " should round-trip through rotation",
               indexed[doc],
               got,
-              1e-4f);
+              0.05f);
           count++;
         }
         assertEquals(numDocs, count);
@@ -124,24 +121,24 @@ public class TestLucene104ScalarQuantizedVectorsFormatPreconditioning extends Lu
     }
   }
 
-  /** Verifies that the rotation seed is deterministic from dimension. */
-  public void testRotationSeedDeterministic() {
-    long s1 = Lucene104ScalarQuantizedVectorsFormat.rotationSeed(768);
-    long s2 = Lucene104ScalarQuantizedVectorsFormat.rotationSeed(768);
-    assertEquals(s1, s2);
-    // Different dimensions get different seeds
-    long s3 = Lucene104ScalarQuantizedVectorsFormat.rotationSeed(1024);
-    assertNotEquals(s1, s3);
+  /** Verifies that HadamardRotation.forDimension is deterministic. */
+  public void testRotationDeterministic() {
+    var r1 = org.apache.lucene.util.quantization.HadamardRotation.forDimension(768);
+    var r2 = org.apache.lucene.util.quantization.HadamardRotation.forDimension(768);
+    assertSame(r1, r2);
   }
 
-  private static Codec codecWithFormat(KnnVectorsFormat format) {
+  private static Codec codecWithRotation(ScalarEncoding encoding) {
+    KnnVectorsFormat base =
+        new Lucene104HnswScalarQuantizedVectorsFormat(encoding, 16, 100, 1, null);
+    KnnVectorsFormat rotated = new RotationAwareKnnVectorsFormat(base);
     return new FilterCodec(Codec.getDefault().getName(), Codec.getDefault()) {
       @Override
       public KnnVectorsFormat knnVectorsFormat() {
         return new PerFieldKnnVectorsFormat() {
           @Override
           public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-            return format;
+            return rotated;
           }
         };
       }

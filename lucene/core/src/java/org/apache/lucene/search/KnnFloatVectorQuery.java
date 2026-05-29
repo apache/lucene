@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.codecs.KnnVectorsReader;
+import org.apache.lucene.codecs.RotationAwareKnnVectorsFormat;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -100,12 +101,6 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
     this.targetPreRotated = false;
   }
 
-  /**
-   * FieldInfo attribute key used by the scalar quantized vectors format to signal that rotation
-   * preconditioning is enabled for a field. Duplicated here as a string constant to avoid a
-   * dependency from the search layer to the codec package.
-   */
-  private static final String ROTATION_ENABLED_KEY = "Lucene104SQVecRotation";
 
   private final boolean targetPreRotated;
 
@@ -124,7 +119,7 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
           FieldInfos.getMergedFieldInfos(indexSearcher.getIndexReader()).fieldInfo(field);
       if (fi != null
           && fi.getVectorDimension() == target.length
-          && "true".equals(fi.getAttribute(ROTATION_ENABLED_KEY))) {
+          && "true".equals(fi.getAttribute(RotationAwareKnnVectorsFormat.ROTATION_ENABLED_KEY))) {
         float[] rotated = new float[target.length];
         HadamardRotation.forDimension(fi.getVectorDimension()).rotate(target, rotated);
         return new KnnFloatVectorQuery(field, rotated, k, filter, searchStrategy, true)
