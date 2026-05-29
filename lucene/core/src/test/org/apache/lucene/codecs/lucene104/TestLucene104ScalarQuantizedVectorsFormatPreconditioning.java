@@ -124,13 +124,13 @@ public class TestLucene104ScalarQuantizedVectorsFormatPreconditioning extends Lu
     }
   }
 
-  /** Verifies that the rotation seed is deterministic from field name. */
+  /** Verifies that the rotation seed is deterministic from dimension. */
   public void testRotationSeedDeterministic() {
-    long s1 = Lucene104ScalarQuantizedVectorsFormat.rotationSeed("myfield");
-    long s2 = Lucene104ScalarQuantizedVectorsFormat.rotationSeed("myfield");
+    long s1 = Lucene104ScalarQuantizedVectorsFormat.rotationSeed(768);
+    long s2 = Lucene104ScalarQuantizedVectorsFormat.rotationSeed(768);
     assertEquals(s1, s2);
-    // Different fields get different seeds
-    long s3 = Lucene104ScalarQuantizedVectorsFormat.rotationSeed("otherfield");
+    // Different dimensions get different seeds
+    long s3 = Lucene104ScalarQuantizedVectorsFormat.rotationSeed(1024);
     assertNotEquals(s1, s3);
   }
 

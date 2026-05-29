@@ -24,6 +24,7 @@ import java.util.Objects;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -31,6 +32,7 @@ import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.quantization.HadamardRotation;
 
 /**
  * Uses {@link KnnVectorsReader#search(String, float[], KnnCollector, AcceptDocs)} to perform
@@ -95,6 +97,41 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
       String field, float[] target, int k, Query filter, KnnSearchStrategy searchStrategy) {
     super(field, k, filter, searchStrategy);
     this.target = VectorUtil.checkFinite(Objects.requireNonNull(target, "target"));
+    this.targetPreRotated = false;
+  }
+
+  /**
+   * FieldInfo attribute key used by the scalar quantized vectors format to signal that rotation
+   * preconditioning is enabled for a field. Duplicated here as a string constant to avoid a
+   * dependency from the search layer to the codec package.
+   */
+  private static final String ROTATION_ENABLED_KEY = "Lucene104SQVecRotation";
+
+  private final boolean targetPreRotated;
+
+  private KnnFloatVectorQuery(
+      String field, float[] target, int k, Query filter, KnnSearchStrategy searchStrategy,
+      boolean targetPreRotated) {
+    super(field, k, filter, searchStrategy);
+    this.target = VectorUtil.checkFinite(Objects.requireNonNull(target, "target"));
+    this.targetPreRotated = targetPreRotated;
+  }
+
+  @Override
+  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
+    if (targetPreRotated == false) {
+      FieldInfo fi =
+          FieldInfos.getMergedFieldInfos(indexSearcher.getIndexReader()).fieldInfo(field);
+      if (fi != null
+          && fi.getVectorDimension() == target.length
+          && "true".equals(fi.getAttribute(ROTATION_ENABLED_KEY))) {
+        float[] rotated = new float[target.length];
+        HadamardRotation.forDimension(fi.getVectorDimension()).rotate(target, rotated);
+        return new KnnFloatVectorQuery(field, rotated, k, filter, searchStrategy, true)
+            .rewrite(indexSearcher);
+      }
+    }
+    return super.rewrite(indexSearcher);
   }
 
   @Override

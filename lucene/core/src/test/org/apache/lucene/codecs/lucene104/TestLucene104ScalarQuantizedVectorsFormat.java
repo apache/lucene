@@ -177,8 +177,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           // The stored quantized bytes are in rotated space. To verify them, we must
           // rotate the read-back vectors (which are inverse-rotated) before re-quantizing.
           var rotation =
-              org.apache.lucene.util.quantization.HadamardRotation.create(
-                  dims, Lucene104ScalarQuantizedVectorsFormat.rotationSeed(fieldName));
+              org.apache.lucene.util.quantization.HadamardRotation.forDimension(dims);
           float[] rotatedVec = new float[dims];
           float[] rotScratch = new float[dims];
 

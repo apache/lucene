@@ -100,11 +100,12 @@ public class Lucene104ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   public static final String ROTATION_ENABLED_KEY = "Lucene104SQVecRotation";
 
   /**
-   * Derives a deterministic rotation seed from a field name. Uses a mixing function so that similar
-   * field names produce very different seeds.
+   * Derives a deterministic rotation seed from a vector dimension. All fields with the same
+   * dimension share the same rotation, which allows a single HadamardRotation instance to be reused
+   * across fields and segments.
    */
-  public static long rotationSeed(String fieldName) {
-    long h = fieldName.hashCode() * 0x9E3779B97F4A7C15L;
+  public static long rotationSeed(int dimension) {
+    long h = (long) dimension * 0x9E3779B97F4A7C15L;
     h ^= (h >>> 30);
     h *= 0xBF58476D1CE4E5B9L;
     h ^= (h >>> 27);

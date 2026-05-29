@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -85,8 +84,6 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
   private final FieldInfos fieldInfos;
 
-  /** Lazily built Hadamard rotations, keyed by field name. */
-  private final Map<String, HadamardRotation> rotations = new ConcurrentHashMap<>();
 
   public static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
 
@@ -213,14 +210,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     if (fi == null) {
       return null;
     }
-    // Rotate the query vector to match the rotated stored vectors.
-    float[] scoringTarget = target;
-    if (isRotationEnabled(field) && target != null) {
-      HadamardRotation rotation = rotationFor(field, fi.dimension);
-      float[] rotated = new float[target.length];
-      rotation.rotate(target, rotated);
-      scoringTarget = rotated;
-    }
+    // Query vector rotation is handled upstream in KnnFloatVectorQuery, not here.
     return vectorScorer.getRandomVectorScorer(
         fi.similarityFunction,
         OffHeapScalarQuantizedVectorValues.load(
@@ -236,15 +226,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
             fi.vectorDataOffset,
             fi.vectorDataLength,
             quantizedVectorData),
-        scoringTarget);
-  }
-
-  private HadamardRotation rotationFor(String field, int dimension) {
-    return rotations.computeIfAbsent(
-        field,
-        f ->
-            HadamardRotation.create(
-                dimension, Lucene104ScalarQuantizedVectorsFormat.rotationSeed(f)));
+        target);
   }
 
   private boolean isRotationEnabled(String field) {
@@ -286,7 +268,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     // The raw delegate holds rotated values. External callers expect original vectors,
     // so inverse-rotate on the fly. Merge callers go through getMergeInstance() which skips this.
     if (isRotationEnabled(field) && rawFloatVectorValues != null) {
-      HadamardRotation rotation = rotationFor(field, fi.dimension);
+      HadamardRotation rotation = HadamardRotation.forDimension(fi.dimension);
       rawFloatVectorValues = new InverseRotatedFloatVectorValues(rawFloatVectorValues, rotation);
     }
 

@@ -540,9 +540,9 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       this.flatFieldVectorsWriter = flatFieldVectorsWriter;
       this.dimensionSums = new float[fieldInfo.getVectorDimension()];
       if (rotationEnabled) {
-        long seed = Lucene104ScalarQuantizedVectorsFormat.rotationSeed(fieldInfo.name);
-        this.rotation = HadamardRotation.create(fieldInfo.getVectorDimension(), seed);
-        this.rotationScratch = new float[fieldInfo.getVectorDimension()];
+        int dim = fieldInfo.getVectorDimension();
+        this.rotation = HadamardRotation.forDimension(dim);
+        this.rotationScratch = new float[dim];
         fieldInfo.putAttribute(Lucene104ScalarQuantizedVectorsFormat.ROTATION_ENABLED_KEY, "true");
       } else {
         this.rotation = null;

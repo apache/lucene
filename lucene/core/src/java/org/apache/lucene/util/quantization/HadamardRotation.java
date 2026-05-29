@@ -17,6 +17,7 @@
 package org.apache.lucene.util.quantization;
 
 import java.util.Random;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * A randomized orthogonal rotation based on the Fast Walsh-Hadamard Transform (FWHT) combined with
@@ -90,6 +91,28 @@ public final class HadamardRotation {
     }
 
     return new HadamardRotation(dim, blocks, permutation, signs);
+  }
+
+  private static final ConcurrentHashMap<Integer, HadamardRotation> BY_DIMENSION =
+      new ConcurrentHashMap<>();
+
+  /**
+   * Returns a shared rotation instance for the given dimension. All fields with the same dimension
+   * share a single rotation, avoiding redundant heap usage across fields and segments. The seed is
+   * derived deterministically from the dimension.
+   */
+  public static HadamardRotation forDimension(int dimension) {
+    return BY_DIMENSION.computeIfAbsent(
+        dimension,
+        dim -> {
+          long seed = (long) dim * 0x9E3779B97F4A7C15L;
+          seed ^= (seed >>> 30);
+          seed *= 0xBF58476D1CE4E5B9L;
+          seed ^= (seed >>> 27);
+          seed *= 0x94D049BB133111EBL;
+          seed ^= (seed >>> 31);
+          return create(dim, seed);
+        });
   }
 
   /**
