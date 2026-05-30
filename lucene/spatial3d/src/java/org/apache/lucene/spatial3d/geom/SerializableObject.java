@@ -91,13 +91,9 @@ public interface SerializableObject {
    */
   static SerializableObject readObject(final PlanetModel planetModel, final InputStream inputStream)
       throws IOException {
-    try {
-      // Read the class
-      final Class<? extends SerializableObject> clazz = readClass(inputStream);
-      return readObject(planetModel, inputStream, clazz);
-    } catch (ClassNotFoundException | IllegalAccessException e) {
-      throw new IOException("Can't find or access class for deserialization: " + e.getMessage(), e);
-    }
+    // Read the class
+    final Class<? extends SerializableObject> clazz = readClass(inputStream);
+    return readObject(planetModel, inputStream, clazz);
   }
 
   /**
@@ -107,13 +103,9 @@ public interface SerializableObject {
    * @return the deserialized object.
    */
   static SerializableObject readObject(final InputStream inputStream) throws IOException {
-    try {
-      // read the class
-      final Class<? extends SerializableObject> clazz = readClass(inputStream);
-      return readObject(inputStream, clazz);
-    } catch (ClassNotFoundException | IllegalAccessException e) {
-      throw new IOException("Can't find or access class for deserialization: " + e.getMessage(), e);
-    }
+    // read the class
+    final Class<? extends SerializableObject> clazz = readClass(inputStream);
+    return readObject(inputStream, clazz);
   }
 
   /**
@@ -205,16 +197,25 @@ public interface SerializableObject {
    * @return is the class read
    */
   private static Class<? extends SerializableObject> readClass(final InputStream inputStream)
-      throws IOException, ClassNotFoundException, IllegalAccessException {
+      throws IOException {
     boolean standard = readBoolean(inputStream);
     if (standard) {
       int index = inputStream.read();
-      return StandardObjects.CODE_REGISTRY.get(index);
+      if (StandardObjects.CODE_REGISTRY.containsKey(index)) {
+        return StandardObjects.CODE_REGISTRY.get(index);
+      } else {
+        throw new IOException("No standard object found for index: " + index);
+      }
     } else {
       String className = readString(inputStream);
       // Load without initializing and confirm the named class is actually a SerializableObject
       // before it can be instantiated, so a crafted stream cannot load arbitrary classes.
-      return MethodHandles.lookup().findClass(className).asSubclass(SerializableObject.class);
+      try {
+        return MethodHandles.lookup().findClass(className).asSubclass(SerializableObject.class);
+      } catch (ClassNotFoundException | IllegalAccessException | ClassCastException e) {
+        throw new IOException(
+            "Can't find or access class of correct type for deserialization: " + e.getMessage(), e);
+      }
     }
   }
 

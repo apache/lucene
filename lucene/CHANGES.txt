@@ -517,7 +517,8 @@ Bug Fixes
   reporting. Also added missing dimensionSums array accounting in quantized writers. (Prithvi S)
 
 * GITHUB#16138: Reject non-SerializableObject classes in SerializableObject.readClass before they are
-  instantiated, so a crafted spatial3d shape stream cannot load arbitrary classes. (metsw24-max)
+  instantiated, so a crafted spatial3d shape stream cannot load arbitrary classes. Also adapt
+  experimental SerializedObject API to be more type safe. (metsw24-max, Uwe Schindler)
 
 Other
 ---------------------
