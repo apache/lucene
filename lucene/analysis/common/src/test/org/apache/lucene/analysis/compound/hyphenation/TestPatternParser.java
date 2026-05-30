@@ -18,9 +18,6 @@ package org.apache.lucene.analysis.compound.hyphenation;
 
 import java.io.IOException;
 import java.io.StringReader;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Locale;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -50,11 +47,6 @@ public class TestPatternParser extends LuceneTestCase {
   }
 
   public void testExternalEntityIsNotExpanded() throws Exception {
-    Path dir = createTempDir();
-    Path secret = dir.resolve("secret.txt");
-    String marker = "SUPERSECRETMARKER";
-    Files.write(secret, marker.getBytes(StandardCharsets.UTF_8));
-
     String externalRef = this.getClass().getResource("TestPatternParser.class").toString();
     String evil =
         String.format(
