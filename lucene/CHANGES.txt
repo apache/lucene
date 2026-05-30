@@ -488,6 +488,9 @@ Bug Fixes
 
 * GITHUB#15878: Fix LargeNumHitsTopDocsCollector not handling requested hit count correctly (Binlong Gao)
 
+* GITHUB#16138: Reject non-SerializableObject classes in SerializableObject.readClass before they are
+  instantiated, so a crafted spatial3d shape stream cannot load arbitrary classes. (metsw24-max)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)

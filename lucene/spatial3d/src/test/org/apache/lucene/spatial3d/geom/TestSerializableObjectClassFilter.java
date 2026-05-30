@@ -69,7 +69,8 @@ public class TestSerializableObjectClassFilter extends LuceneTestCase {
     SerializableObject.writeBoolean(out, false);
     SerializableObject.writeString(out, NotASerializableObject.class.getName());
     ByteArrayInputStream in = new ByteArrayInputStream(out.toByteArray());
-    expectThrows(IOException.class, () -> SerializableObject.readObject(in));
+    IOException e = expectThrows(IOException.class, () -> SerializableObject.readObject(in));
+    assertTrue(e.getMessage().contains(NotASerializableObject.class.getName()));
     assertFalse(nonSerializableConstructed);
   }
 }

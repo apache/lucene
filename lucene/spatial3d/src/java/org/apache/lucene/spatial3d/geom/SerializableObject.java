@@ -219,7 +219,7 @@ public interface SerializableObject {
       // Load without initializing and confirm the named class is actually a SerializableObject
       // before it can be instantiated, so a crafted stream cannot load arbitrary classes.
       Class<?> clazz = Class.forName(className, false, SerializableObject.class.getClassLoader());
-      if (!SerializableObject.class.isAssignableFrom(clazz)) {
+      if (SerializableObject.class.isAssignableFrom(clazz) == false) {
         throw new IOException("Class is not a SerializableObject: " + className);
       }
       return clazz;
