@@ -458,6 +458,9 @@ Optimizations
 
 * GITHUB#16147: Optimize column batch parent field with bulk fill. (Tim Brooks)
 
+* GITHUB#16103: DisjunctionMaxQuery now filters out MatchNoDocsQuery disjuncts during rewrite,
+  avoiding unnecessary scorer overhead. (Prithvi S)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
