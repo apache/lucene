@@ -144,7 +144,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
           clusterCenter[i] = field.dimensionSums[i] / vectorCount;
         }
         if (VectorSimilarityFunction.COSINE == field.fieldInfo.getVectorSimilarityFunction()) {
-          VectorUtil.l2normalize(clusterCenter);
+          VectorUtil.l2normalize(clusterCenter, false);
         }
       }
       if (segmentWriteState.infoStream.isEnabled(QUANTIZED_VECTOR_COMPONENT)) {
@@ -463,7 +463,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         mergedCentroid[j] = mergedCentroid[j] / totalVectorCount;
       }
       if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
-        VectorUtil.l2normalize(mergedCentroid);
+        VectorUtil.l2normalize(mergedCentroid, false);
       }
       return totalVectorCount;
     }
@@ -501,7 +501,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       centroid[i] /= count;
     }
     if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
-      VectorUtil.l2normalize(centroid);
+      VectorUtil.l2normalize(centroid, false);
     }
     return count;
   }
@@ -546,9 +546,12 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       for (int i = 0; i < flatFieldVectorsWriter.getVectors().size(); i++) {
         float[] vector = flatFieldVectorsWriter.getVectors().get(i);
         float magnitude = magnitudes.get(i);
-        for (int j = 0; j < vector.length; j++) {
-          vector[j] /= magnitude;
+        if (magnitude > 0) {
+          for (int j = 0; j < vector.length; j++) {
+            vector[j] /= magnitude;
+          }
         }
+        // Zero vectors (magnitude == 0) are left as-is
       }
     }
 
@@ -578,9 +581,12 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         float dp = VectorUtil.dotProduct(vectorValue, vectorValue);
         float divisor = (float) Math.sqrt(dp);
         magnitudes.add(divisor);
-        for (int i = 0; i < vectorValue.length; i++) {
-          dimensionSums[i] += (vectorValue[i] / divisor);
+        if (divisor > 0) {
+          for (int i = 0; i < vectorValue.length; i++) {
+            dimensionSums[i] += (vectorValue[i] / divisor);
+          }
         }
+        // If divisor == 0 (zero vector), skip adding NaN to dimensionSums
       } else {
         for (int i = 0; i < vectorValue.length; i++) {
           dimensionSums[i] += vectorValue[i];
@@ -755,7 +761,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     @Override
     public float[] vectorValue(int ord) throws IOException {
       System.arraycopy(values.vectorValue(ord), 0, normalizedVector, 0, normalizedVector.length);
-      VectorUtil.l2normalize(normalizedVector);
+      VectorUtil.l2normalize(normalizedVector, false);
       return normalizedVector;
     }
 

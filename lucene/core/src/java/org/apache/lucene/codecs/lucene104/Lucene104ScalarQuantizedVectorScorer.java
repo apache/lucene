@@ -75,7 +75,7 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       // We make a copy as the quantization process mutates the input
       float[] copy = ArrayUtil.copyOfSubArray(target, 0, target.length);
       if (similarityFunction == COSINE) {
-        VectorUtil.l2normalize(copy);
+        VectorUtil.l2normalize(copy, false);
       }
       target = copy;
       var targetCorrectiveTerms =

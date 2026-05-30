@@ -118,8 +118,12 @@ public class OptimizedScalarQuantizer {
    */
   public QuantizationResult[] multiScalarQuantize(
       float[] vector, byte[][] destinations, byte[] bits, float[] centroid) {
-    assert similarityFunction != COSINE || VectorUtil.isUnitVector(vector);
-    assert similarityFunction != COSINE || VectorUtil.isUnitVector(centroid);
+    assert similarityFunction != COSINE
+        || VectorUtil.isZeroVector(vector)
+        || VectorUtil.isUnitVector(vector);
+    assert similarityFunction != COSINE
+        || VectorUtil.isZeroVector(centroid)
+        || VectorUtil.isUnitVector(centroid);
     assert bits.length == destinations.length;
     float[] intervalScratch = new float[2];
     double vecMean = 0;
@@ -186,8 +190,12 @@ public class OptimizedScalarQuantizer {
    */
   public QuantizationResult scalarQuantize(
       float[] vector, byte[] destination, byte bits, float[] centroid) {
-    assert similarityFunction != COSINE || VectorUtil.isUnitVector(vector);
-    assert similarityFunction != COSINE || VectorUtil.isUnitVector(centroid);
+    assert similarityFunction != COSINE
+        || VectorUtil.isZeroVector(vector)
+        || VectorUtil.isUnitVector(vector);
+    assert similarityFunction != COSINE
+        || VectorUtil.isZeroVector(centroid)
+        || VectorUtil.isUnitVector(centroid);
     assert vector.length <= destination.length;
     assert bits > 0 && bits <= 8;
     float[] intervalScratch = new float[2];

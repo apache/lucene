@@ -30,6 +30,7 @@ import org.apache.lucene.codecs.FilterCodec;
 import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.FloatVectorValues;
@@ -38,6 +39,7 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnFloatVectorQuery;
@@ -138,6 +140,76 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
   @Override
   public void testSearchWithVisitedLimit() {
     // visited limit is not respected, as it is brute force search
+  }
+
+  /** Field subclass that bypasses zero-vector validation for testing. */
+  private static class UnvalidatedKnnFloatVectorField extends KnnFloatVectorField {
+    private final float[] vector;
+
+    UnvalidatedKnnFloatVectorField(String name, float[] vector, VectorSimilarityFunction sim) {
+      // Pass a non-zero vector and matching FieldType to pass validation,
+      // then override vectorValue() to return the actual (possibly zero) vector.
+      super(name, createDummyVector(vector.length), createType(vector.length, sim));
+      this.vector = vector;
+    }
+
+    private static float[] createDummyVector(int dims) {
+      float[] v = new float[dims];
+      v[0] = 1.0f; // non-zero to pass validation
+      return v;
+    }
+
+    private static FieldType createType(int dims, VectorSimilarityFunction sim) {
+      FieldType type = new FieldType();
+      type.setVectorAttributes(dims, VectorEncoding.FLOAT32, sim);
+      type.freeze();
+      return type;
+    }
+
+    @Override
+    public float[] vectorValue() {
+      return vector;
+    }
+  }
+
+  /**
+   * Test that quantized codecs handle zero vectors with cosine similarity without crashing during
+   * merge. Uses a custom Field subclass to bypass KnnFloatVectorField validation.
+   */
+  public void testQuantizedWithZeroVectorAndCosine() throws Exception {
+    String fieldName = "field";
+    int dims = 4;
+    VectorSimilarityFunction similarityFunction = VectorSimilarityFunction.COSINE;
+
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+        // Add a zero vector (bypassing KnnFloatVectorField validation)
+        Document doc = new Document();
+        doc.add(new UnvalidatedKnnFloatVectorField(fieldName, new float[dims], similarityFunction));
+        w.addDocument(doc);
+
+        // Add non-zero vectors
+        for (int i = 0; i < 10; i++) {
+          doc = new Document();
+          doc.add(
+              new KnnFloatVectorField(
+                  fieldName, new float[] {i + 1f, i + 2f, i + 3f, i + 4f}, similarityFunction));
+          w.addDocument(doc);
+        }
+
+        w.commit();
+        // Merge should not crash
+        w.forceMerge(1);
+      }
+
+      // Search should work
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        Query q = new KnnFloatVectorQuery(fieldName, new float[] {1, 2, 3, 4}, 5);
+        TopDocs topDocs = searcher.search(q, 5);
+        assertTrue("Search should find results", topDocs.totalHits.value() > 0);
+      }
+    }
   }
 
   public void testQuantizedVectorsWriteAndRead() throws IOException {

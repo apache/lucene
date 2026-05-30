@@ -46,7 +46,7 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
           case EUCLIDEAN, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT -> query;
           case COSINE -> {
             float[] queryCopy = ArrayUtil.copyArray(query);
-            VectorUtil.l2normalize(queryCopy);
+            VectorUtil.l2normalize(queryCopy, false);
             yield queryCopy;
           }
         };
