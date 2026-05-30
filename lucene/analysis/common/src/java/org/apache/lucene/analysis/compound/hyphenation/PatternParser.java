@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.compound.hyphenation;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Locale;
 import javax.xml.parsers.SAXParserFactory;
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
@@ -106,11 +107,6 @@ public class PatternParser extends DefaultHandler {
     try {
       SAXParserFactory factory = SAXParserFactory.newInstance();
       factory.setNamespaceAware(true);
-      // this parser is non-validating and only reads pattern data, so refuse to load
-      // any external DTD or entity to prevent XXE from an untrusted hyphenation file
-      factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
-      factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
-      factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
       return factory.newSAXParser().getXMLReader();
     } catch (Exception e) {
       throw new RuntimeException("Couldn't create XMLReader: " + e.getMessage());
@@ -238,14 +234,19 @@ public class PatternParser extends DefaultHandler {
   // EntityResolver methods
   //
   @Override
-  public InputSource resolveEntity(String publicId, String systemId) {
+  public InputSource resolveEntity(String publicId, String systemId) throws SAXException {
     // supply the internal hyphenation.dtd if possible
     if ((systemId != null && systemId.matches("(?i).*\\bhyphenation.dtd\\b.*"))
         || ("hyphenation-info".equals(publicId))) {
       // System.out.println(this.getClass().getResource("hyphenation.dtd").toExternalForm());
       return new InputSource(this.getClass().getResource("hyphenation.dtd").toExternalForm());
     }
-    return null;
+    throw new SAXException(
+        String.format(
+            Locale.ENGLISH,
+            "External Entity resolving unsupported:  publicId=\"%s\" systemId=\"%s\"",
+            publicId,
+            systemId));
   }
 
   //
