@@ -29,10 +29,11 @@ import org.apache.lucene.internal.hppc.IntObjectHashMap;
 class StandardObjects {
 
   /** Registry of standard classes to corresponding code */
-  static final Map<Class<?>, Integer> CLASS_REGISTRY = new HashMap<>();
+  static final Map<Class<? extends SerializableObject>, Integer> CLASS_REGISTRY = new HashMap<>();
 
   /** Registry of codes to corresponding classes */
-  static final IntObjectHashMap<Class<?>> CODE_REGISTRY = new IntObjectHashMap<>();
+  static final IntObjectHashMap<Class<? extends SerializableObject>> CODE_REGISTRY =
+      new IntObjectHashMap<>();
 
   static {
     CLASS_REGISTRY.put(GeoPoint.class, 0);
@@ -75,7 +76,8 @@ class StandardObjects {
     CLASS_REGISTRY.put(GeoExactCircle.class, 37);
     CLASS_REGISTRY.put(GeoS2Shape.class, 38);
 
-    for (Map.Entry<Class<?>, Integer> entry : CLASS_REGISTRY.entrySet()) {
+    for (Map.Entry<Class<? extends SerializableObject>, Integer> entry :
+        CLASS_REGISTRY.entrySet()) {
       CODE_REGISTRY.put(entry.getValue(), entry.getKey());
     }
   }
