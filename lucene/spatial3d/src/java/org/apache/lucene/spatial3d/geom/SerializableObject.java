@@ -20,6 +20,7 @@ package org.apache.lucene.spatial3d.geom;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
@@ -33,6 +34,8 @@ import java.util.List;
  * @lucene.experimental
  */
 public interface SerializableObject {
+
+  static final MethodHandles.Lookup LOOKUP = MethodHandles.lookup();
 
   /**
    * Serialize to output stream.
@@ -92,10 +95,10 @@ public interface SerializableObject {
       final PlanetModel planetModel, final InputStream inputStream) throws IOException {
     try {
       // Read the class
-      final Class<?> clazz = readClass(inputStream);
+      final Class<? extends SerializableObject> clazz = readClass(inputStream);
       return readObject(planetModel, inputStream, clazz);
-    } catch (ClassNotFoundException e) {
-      throw new IOException("Can't find class for deserialization: " + e.getMessage(), e);
+    } catch (ClassNotFoundException | IllegalAccessException e) {
+      throw new IOException("Can't find or access class for deserialization: " + e.getMessage(), e);
     }
   }
 
@@ -108,10 +111,10 @@ public interface SerializableObject {
   public static SerializableObject readObject(final InputStream inputStream) throws IOException {
     try {
       // read the class
-      final Class<?> clazz = readClass(inputStream);
+      final Class<? extends SerializableObject> clazz = readClass(inputStream);
       return readObject(inputStream, clazz);
-    } catch (ClassNotFoundException e) {
-      throw new IOException("Can't find class for deserialization: " + e.getMessage(), e);
+    } catch (ClassNotFoundException | IllegalAccessException e) {
+      throw new IOException("Can't find or access class for deserialization: " + e.getMessage(), e);
     }
   }
 
@@ -123,19 +126,16 @@ public interface SerializableObject {
    * @param clazz is the class to instantiate.
    */
   static SerializableObject readObject(
-      final PlanetModel planetModel, final InputStream inputStream, final Class<?> clazz)
+      final PlanetModel planetModel,
+      final InputStream inputStream,
+      final Class<? extends SerializableObject> clazz)
       throws IOException {
     try {
       // Look for the right constructor
-      final Constructor<?> c = clazz.getDeclaredConstructor(PlanetModel.class, InputStream.class);
+      final Constructor<? extends SerializableObject> c =
+          clazz.getDeclaredConstructor(PlanetModel.class, InputStream.class);
       // Invoke it
-      final Object object = c.newInstance(planetModel, inputStream);
-      // check whether caste will work
-      if (!(object instanceof SerializableObject so)) {
-        throw new IOException(
-            "Object " + clazz.getName() + " does not implement SerializableObject");
-      }
-      return so;
+      return c.newInstance(planetModel, inputStream);
     } catch (InstantiationException e) {
       throw new IOException(
           "Instantiation exception for class " + clazz.getName() + ": " + e.getMessage(), e);
@@ -157,19 +157,15 @@ public interface SerializableObject {
    * @param inputStream is the input stream.
    * @param clazz is the class to instantiate.
    */
-  static SerializableObject readObject(final InputStream inputStream, final Class<?> clazz)
+  static SerializableObject readObject(
+      final InputStream inputStream, final Class<? extends SerializableObject> clazz)
       throws IOException {
     try {
       // Look for the right constructor
-      final Constructor<?> c = clazz.getDeclaredConstructor(InputStream.class);
+      final Constructor<? extends SerializableObject> c =
+          clazz.getDeclaredConstructor(InputStream.class);
       // Invoke it
-      final Object object = c.newInstance(inputStream);
-      // check whether caste will work
-      if (!(object instanceof SerializableObject so)) {
-        throw new IOException(
-            "Object " + clazz.getName() + " does not implement SerializableObject");
-      }
-      return so;
+      return c.newInstance(inputStream);
     } catch (InstantiationException e) {
       throw new IOException(
           "Instantiation exception for class " + clazz.getName() + ": " + e.getMessage(), e);
@@ -191,7 +187,9 @@ public interface SerializableObject {
    * @param outputStream is the output stream.
    * @param clazz is the class to write.
    */
-  static void writeClass(final OutputStream outputStream, final Class<?> clazz) throws IOException {
+  static void writeClass(
+      final OutputStream outputStream, final Class<? extends SerializableObject> clazz)
+      throws IOException {
     Integer index = StandardObjects.CLASS_REGISTRY.get(clazz);
     if (index == null) {
       writeBoolean(outputStream, false);
@@ -208,8 +206,8 @@ public interface SerializableObject {
    * @param inputStream is the stream to read from.
    * @return is the class read
    */
-  static Class<?> readClass(final InputStream inputStream)
-      throws IOException, ClassNotFoundException {
+  static Class<? extends SerializableObject> readClass(final InputStream inputStream)
+      throws IOException, ClassNotFoundException, IllegalAccessException {
     boolean standard = readBoolean(inputStream);
     if (standard) {
       int index = inputStream.read();
@@ -218,11 +216,7 @@ public interface SerializableObject {
       String className = readString(inputStream);
       // Load without initializing and confirm the named class is actually a SerializableObject
       // before it can be instantiated, so a crafted stream cannot load arbitrary classes.
-      Class<?> clazz = Class.forName(className, false, SerializableObject.class.getClassLoader());
-      if (SerializableObject.class.isAssignableFrom(clazz) == false) {
-        throw new IOException("Class is not a SerializableObject: " + className);
-      }
-      return clazz;
+      return LOOKUP.findClass(className).asSubclass(SerializableObject.class);
     }
   }
 
