@@ -18,7 +18,6 @@ package org.apache.lucene.analysis.compound.hyphenation;
 
 import java.io.IOException;
 import java.io.StringReader;
-import java.util.ArrayList;
 import java.util.Locale;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.xml.sax.InputSource;
@@ -26,28 +25,8 @@ import org.xml.sax.SAXException;
 
 public class TestPatternParser extends LuceneTestCase {
 
-  /** Collects everything the parser hands to the consumer so we can inspect it. */
-  private static class CollectingConsumer implements PatternConsumer {
-    final StringBuilder collected = new StringBuilder();
-
-    @Override
-    public void addClass(String chargroup) {
-      collected.append(chargroup);
-    }
-
-    @Override
-    public void addException(String word, ArrayList<Object> hyphenatedword) {
-      collected.append(word);
-    }
-
-    @Override
-    public void addPattern(String pattern, String values) {
-      collected.append(pattern);
-    }
-  }
-
   public void testExternalEntityIsNotExpanded() throws Exception {
-    String externalRef = this.getClass().getResource("TestPatternParser.class").toString();
+    String externalRef = this.getClass().getResource("../compoundDictionary.txt").toExternalForm();
     String evil =
         String.format(
             Locale.ROOT,
@@ -63,8 +42,7 @@ public class TestPatternParser extends LuceneTestCase {
             """,
             externalRef);
 
-    CollectingConsumer consumer = new CollectingConsumer();
-    PatternParser parser = new PatternParser(consumer);
+    PatternParser parser = new PatternParser(new HyphenationTree());
     var e =
         expectThrows(
             IOException.class, () -> parser.parse(new InputSource(new StringReader(evil))));
