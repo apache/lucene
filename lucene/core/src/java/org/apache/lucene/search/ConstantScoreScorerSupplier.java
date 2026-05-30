@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
-import org.apache.lucene.search.Weight.DefaultBulkScorer;
 
 /**
  * Specialization of {@link ScorerSupplier} for queries that produce constant scores.
@@ -78,9 +77,9 @@ public abstract class ConstantScoreScorerSupplier extends ScorerSupplier {
   @Override
   public final BulkScorer bulkScorer() throws IOException {
     DocIdSetIterator iterator = iterator(Long.MAX_VALUE);
+    TwoPhaseIterator twoPhase = TwoPhaseIterator.unwrap(iterator);
     if (maxDoc >= DenseConjunctionBulkScorer.WINDOW_SIZE / 2
         && iterator.cost() >= maxDoc / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE) {
-      TwoPhaseIterator twoPhase = TwoPhaseIterator.unwrap(iterator);
       List<DocIdSetIterator> iterators;
       List<TwoPhaseIterator> twoPhases;
       if (twoPhase == null) {
@@ -91,8 +90,10 @@ public abstract class ConstantScoreScorerSupplier extends ScorerSupplier {
         twoPhases = Collections.singletonList(twoPhase);
       }
       return new DenseConjunctionBulkScorer(iterators, twoPhases, maxDoc, score);
+    } else if (scoreMode.needsScores() == false && twoPhase == null) {
+      return new ConstantScoreBulkScorer(score, scoreMode, iterator);
     } else {
-      return new DefaultBulkScorer(new ConstantScoreScorer(score, scoreMode, iterator));
+      return new Weight.DefaultBulkScorer(new ConstantScoreScorer(score, scoreMode, iterator));
     }
   }
 }

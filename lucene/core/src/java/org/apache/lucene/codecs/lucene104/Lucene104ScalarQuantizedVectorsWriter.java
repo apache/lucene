@@ -49,6 +49,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.VectorScorer;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
@@ -508,9 +509,16 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   @Override
   public long ramBytesUsed() {
     long total = SHALLOW_RAM_BYTES_USED;
+    // The rawVectorDelegate tracks all vector data for both byte and float32 fields.
+    // For byte vector fields (which bypass our FieldWriter), this is the only accounting.
+    // For float32 fields, this covers the flat vector data; our FieldWriter adds the
+    // quantization-specific overhead (magnitudes, dimensionSums) on top.
+    total += rawVectorDelegate.ramBytesUsed();
     for (FieldWriter field : fields) {
-      // the field tracks the delegate field usage
-      total += field.ramBytesUsed();
+      // quantizationOverheadBytesUsed() intentionally excludes flatFieldVectorsWriter
+      // because rawVectorDelegate.ramBytesUsed() already accounts for all flat vector
+      // data at the writer level. Calling field.ramBytesUsed() here would double-count.
+      total += field.quantizationOverheadBytesUsed();
     }
     return total;
   }
@@ -585,11 +593,22 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       throw new UnsupportedOperationException();
     }
 
+    /**
+     * Returns the RAM usage of quantization-specific state only (magnitudes, dimensionSums, shallow
+     * object overhead). The underlying flat vector data is tracked separately by the
+     * rawVectorDelegate at the writer level to avoid double-counting.
+     */
+    long quantizationOverheadBytesUsed() {
+      long size = SHALLOW_SIZE;
+      size += magnitudes.ramBytesUsed();
+      size += RamUsageEstimator.sizeOf(dimensionSums);
+      return size;
+    }
+
     @Override
     public long ramBytesUsed() {
-      long size = SHALLOW_SIZE;
+      long size = quantizationOverheadBytesUsed();
       size += flatFieldVectorsWriter.ramBytesUsed();
-      size += magnitudes.ramBytesUsed();
       return size;
     }
   }
