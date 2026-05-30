@@ -16,12 +16,14 @@
  */
 package org.apache.lucene.analysis.compound.hyphenation;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 
 public class TestPatternParser extends LuceneTestCase {
 
@@ -68,15 +70,11 @@ public class TestPatternParser extends LuceneTestCase {
 
     CollectingConsumer consumer = new CollectingConsumer();
     PatternParser parser = new PatternParser(consumer);
-    try {
-      parser.parse(new InputSource(evil.toUri().toString()));
-    } catch (
-        @SuppressWarnings("unused")
-        Exception ignored) {
-      // refusing the entity by throwing is also an acceptable outcome
-    }
-    assertFalse(
-        "external entity was expanded into the parsed content",
-        consumer.collected.toString().contains(marker));
+    var e =
+        expectThrows(
+            IOException.class, () -> parser.parse(new InputSource(evil.toUri().toString())));
+    assertTrue(e.getCause() instanceof SAXException);
+    assertTrue(e.getMessage().contains("External Entity resolving unsupported"));
+    assertTrue(e.getMessage().contains("secret.txt"));
   }
 }
