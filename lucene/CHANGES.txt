@@ -293,6 +293,8 @@ Other
 
 * GITHUB#16118: Remove getOrAddPerField calls in processBatch. (Tim Brooks)
 
+* GITHUB##16135: Disable external entities in hyphenation PatternParser. (metsw24-max, Uwe Schindler)
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes
