@@ -17,10 +17,12 @@
 package org.apache.lucene.analysis.compound.hyphenation;
 
 import java.io.IOException;
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Locale;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
@@ -53,28 +55,29 @@ public class TestPatternParser extends LuceneTestCase {
     String marker = "SUPERSECRETMARKER";
     Files.write(secret, marker.getBytes(StandardCharsets.UTF_8));
 
-    Path evil = dir.resolve("evil.xml");
-    Files.write(
-        evil,
-        ("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
-                + "<!DOCTYPE hyphenation-info [\n"
-                + "  <!ENTITY xxe SYSTEM \""
-                + secret.toUri()
-                + "\">\n"
-                + "]>\n"
-                + "<hyphenation-info>\n"
-                + "<classes>aA</classes>\n"
-                + "<patterns>&xxe;</patterns>\n"
-                + "</hyphenation-info>\n")
-            .getBytes(StandardCharsets.UTF_8));
+    String externalRef = this.getClass().getResource("TestPatternParser.class").toString();
+    String evil =
+        String.format(
+            Locale.ROOT,
+            """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE hyphenation-info [
+              <!ENTITY xxe SYSTEM "%s">
+            ]>
+            <hyphenation-info>
+              <classes>aA</classes>
+              <patterns>&xxe;</patterns>
+            </hyphenation-info>
+            """,
+            externalRef);
 
     CollectingConsumer consumer = new CollectingConsumer();
     PatternParser parser = new PatternParser(consumer);
     var e =
         expectThrows(
-            IOException.class, () -> parser.parse(new InputSource(evil.toUri().toString())));
+            IOException.class, () -> parser.parse(new InputSource(new StringReader(evil))));
     assertTrue(e.getCause() instanceof SAXException);
     assertTrue(e.getMessage().contains("External Entity resolving unsupported"));
-    assertTrue(e.getMessage().contains("secret.txt"));
+    assertTrue(e.getMessage().contains(externalRef));
   }
 }
