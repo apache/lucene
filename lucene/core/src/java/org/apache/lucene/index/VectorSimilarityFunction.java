@@ -24,6 +24,8 @@ import static org.apache.lucene.util.VectorUtil.normalizeToUnitInterval;
 import static org.apache.lucene.util.VectorUtil.scaleMaxInnerProductScore;
 import static org.apache.lucene.util.VectorUtil.squareDistance;
 
+import org.apache.lucene.util.VectorUtil;
+
 /**
  * Vector similarity function; used in search to return top K most similar vectors to a target
  * vector. This is a label describing the method used during indexing and searching of the vectors
@@ -72,11 +74,17 @@ public enum VectorSimilarityFunction {
   COSINE {
     @Override
     public float compare(float[] v1, float[] v2) {
+      if (VectorUtil.isZeroVector(v1) || VectorUtil.isZeroVector(v2)) {
+        return 0;
+      }
       return normalizeToUnitInterval(cosine(v1, v2));
     }
 
     @Override
     public float compare(byte[] v1, byte[] v2) {
+      if (VectorUtil.isZeroVector(v1) || VectorUtil.isZeroVector(v2)) {
+        return 0;
+      }
       return (1 + cosine(v1, v2)) / 2;
     }
   },

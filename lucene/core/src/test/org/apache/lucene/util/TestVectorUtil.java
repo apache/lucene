@@ -599,4 +599,27 @@ public class TestVectorUtil extends LuceneTestCase {
     }
     return res;
   }
+
+  public void testIsZeroVector() {
+    assertTrue(VectorUtil.isZeroVector(new float[] {0, 0, 0}));
+    assertFalse(VectorUtil.isZeroVector(new float[] {0, 1, 0}));
+    assertTrue(VectorUtil.isZeroVector(new byte[] {0, 0, 0}));
+    assertFalse(VectorUtil.isZeroVector(new byte[] {0, 1, 0}));
+  }
+
+  public void testCosineSimilarityWithZeroVector() {
+    // VectorSimilarityFunction.COSINE should return 0 for zero vectors instead of NaN,
+    // which breaks HNSW graph building and CheckIndex.
+    float[] zeroFloat = new float[] {0, 0, 0};
+    float[] nonZeroFloat = new float[] {1, 2, 3};
+    assertEquals(0f, VectorSimilarityFunction.COSINE.compare(zeroFloat, nonZeroFloat), 0f);
+    assertEquals(0f, VectorSimilarityFunction.COSINE.compare(nonZeroFloat, zeroFloat), 0f);
+    assertEquals(0f, VectorSimilarityFunction.COSINE.compare(zeroFloat, zeroFloat), 0f);
+
+    byte[] zeroByte = new byte[] {0, 0, 0};
+    byte[] nonZeroByte = new byte[] {1, 2, 3};
+    assertEquals(0f, VectorSimilarityFunction.COSINE.compare(zeroByte, nonZeroByte), 0f);
+    assertEquals(0f, VectorSimilarityFunction.COSINE.compare(nonZeroByte, zeroByte), 0f);
+    assertEquals(0f, VectorSimilarityFunction.COSINE.compare(zeroByte, zeroByte), 0f);
+  }
 }

@@ -145,4 +145,40 @@ public class TestHnswFloatVectorGraph extends HnswGraphTestCase<float[]> {
     // are closest to the query vector: sum(500,509) = 5045
     assertTrue("sum(result docs)=" + sum, sum < 5100);
   }
+
+  /**
+   * Test that HnswGraphBuilder handles zero vectors with cosine similarity gracefully. Zero vectors
+   * produce NaN cosine scores which previously caused assertions to fail during graph building.
+   */
+  public void testBuildGraphWithZeroVectorsAndCosine() throws IOException {
+    similarityFunction = VectorSimilarityFunction.COSINE;
+    int nDoc = 20;
+    int dim = 2;
+    float[][] vectors = new float[nDoc][];
+    for (int i = 0; i < nDoc; i++) {
+      if (i == 0) {
+        // First vector is zero — this should not crash graph building
+        vectors[i] = new float[dim];
+      } else {
+        // Use deterministic non-zero values to avoid random zero vectors
+        vectors[i] = new float[] {(i + 1) * 0.1f, (i + 1) * 0.2f};
+      }
+    }
+    MockVectorValues vectorValues = MockVectorValues.fromValues(vectors);
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectorValues);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
+    // Should complete without assertion errors
+    OnHeapHnswGraph hnsw = builder.build(vectorValues.size());
+    assertNotNull(hnsw);
+    assertEquals(nDoc, hnsw.size());
+
+    // Verify the graph is still navigable — search should find non-zero vectors
+    RandomVectorScorer scorer =
+        flatVectorScorer.getRandomVectorScorer(
+            similarityFunction, vectorValues, new float[] {1, 1});
+    KnnCollector results = HnswGraphSearcher.search(scorer, 5, hnsw, null, Integer.MAX_VALUE);
+    TopDocs topDocs = results.topDocs();
+    // Should find results (non-zero vectors)
+    assertTrue("Search should find results", topDocs.scoreDocs.length > 0);
+  }
 }

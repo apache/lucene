@@ -92,6 +92,7 @@ import org.apache.lucene.util.LongBitSet;
 import org.apache.lucene.util.NamedThreadFactory;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.SuppressForbidden;
+import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.Version;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
@@ -412,6 +413,9 @@ public final class CheckIndex implements Closeable {
 
       /** Total number of fields with vectors. */
       public int totalKnnVectorFields;
+
+      /** Number of zero vectors found with cosine similarity (these cannot be searched). */
+      public int zeroVectorWithCosineCount;
 
       /** Exception thrown during vector values test (null on success) */
       public Throwable error;
@@ -3106,8 +3110,14 @@ public final class CheckIndex implements Closeable {
                   AcceptDocs.fromLiveDocs(null, codecReader.maxDoc()));
           TopDocs docs = collector.topDocs();
           if (docs.scoreDocs.length == 0) {
-            throw new CheckIndexException(
-                "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
+            // Zero vectors with cosine similarity cannot be searched.
+            if (fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.COSINE
+                && VectorUtil.isZeroVector(values.vectorValue(count))) {
+              status.zeroVectorWithCosineCount++;
+            } else {
+              throw new CheckIndexException(
+                  "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
+            }
           }
         }
       }
@@ -3158,8 +3168,14 @@ public final class CheckIndex implements Closeable {
                 AcceptDocs.fromLiveDocs(null, codecReader.maxDoc()));
         TopDocs docs = collector.topDocs();
         if (docs.scoreDocs.length == 0) {
-          throw new CheckIndexException(
-              "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
+          // Zero vectors with cosine similarity cannot be searched.
+          if (fieldInfo.getVectorSimilarityFunction() == VectorSimilarityFunction.COSINE
+              && VectorUtil.isZeroVector(values.vectorValue(count))) {
+            status.zeroVectorWithCosineCount++;
+          } else {
+            throw new CheckIndexException(
+                "Field \"" + fieldInfo.name + "\" failed to search k nearest neighbors");
+          }
         }
       }
       int valueLength = values.vectorValue(count).length;

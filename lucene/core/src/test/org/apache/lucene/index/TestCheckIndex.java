@@ -242,6 +242,16 @@ public class TestCheckIndex extends BaseTestCheckIndex {
   // the index is OK, but older commit points are broken, CheckIndex fails to detect and
   // correct that, while opening an IndexWriter on the index will fail since IndexWriter
   // loads all commit points on init
+  /**
+   * Compile-time check that VectorValuesStatus has the zeroVectorWithCosineCount field. A full
+   * integration test would require injecting a pre-existing zero vector into an index (bypassing
+   * KnnFloatVectorField constructor validation), which is beyond the scope of this fix.
+   */
+  public void testVectorValuesStatusHasZeroVectorField() {
+    CheckIndex.Status.VectorValuesStatus status = new CheckIndex.Status.VectorValuesStatus();
+    assertEquals(0, status.zeroVectorWithCosineCount);
+  }
+
   public void testPriorBrokenCommitPoint() throws Exception {
 
     try (MockDirectoryWrapper dir = newMockDirectory()) {

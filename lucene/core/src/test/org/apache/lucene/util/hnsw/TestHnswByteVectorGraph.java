@@ -27,7 +27,9 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.KnnByteVectorQuery;
+import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.util.ArrayUtil;
 import org.junit.Before;
 
@@ -131,5 +133,40 @@ public class TestHnswByteVectorGraph extends HnswGraphTestCase<byte[]> {
   @Override
   byte[] getTargetVector() {
     return new byte[] {1, 0};
+  }
+
+  /**
+   * Test that HnswGraphBuilder handles zero vectors with cosine similarity gracefully. Zero vectors
+   * produce NaN cosine scores which previously caused assertions to fail during graph building.
+   */
+  public void testBuildGraphWithZeroVectorsAndCosine() throws IOException {
+    similarityFunction = VectorSimilarityFunction.COSINE;
+    int nDoc = 20;
+    int dim = 2;
+    byte[][] vectors = new byte[nDoc][];
+    for (int i = 0; i < nDoc; i++) {
+      if (i == 0) {
+        // First vector is zero — this should not crash graph building
+        vectors[i] = new byte[dim];
+      } else {
+        // Use deterministic non-zero values to avoid random zero vectors
+        vectors[i] = new byte[] {(byte) (i + 1), (byte) (i + 2)};
+      }
+    }
+    MockByteVectorValues vectorValues = MockByteVectorValues.fromValues(vectors);
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectorValues);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
+    // Should complete without assertion errors
+    OnHeapHnswGraph hnsw = builder.build(vectorValues.size());
+    assertNotNull(hnsw);
+    assertEquals(nDoc, hnsw.size());
+
+    // Verify the graph is still navigable — search should find non-zero vectors
+    RandomVectorScorer scorer =
+        flatVectorScorer.getRandomVectorScorer(similarityFunction, vectorValues, new byte[] {1, 1});
+    KnnCollector results = HnswGraphSearcher.search(scorer, 5, hnsw, null, Integer.MAX_VALUE);
+    TopDocs topDocs = results.topDocs();
+    // Should find results (non-zero vectors)
+    assertTrue("Search should find results", topDocs.scoreDocs.length > 0);
   }
 }
