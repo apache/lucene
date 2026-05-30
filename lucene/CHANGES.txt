@@ -338,6 +338,10 @@ Improvements
   Add per-signal weights and logit normalization to LogOddsFusionQuery.
   (Jaepil Jeong)
 
+* GITHUB#16106: Fix LogOddsFusionQuery.rewrite() to filter out MatchNoDocsQuery clauses and
+  correctly preserve per-signal weights and logit normalization bounds for the surviving clauses.
+  (Prithvi S)
+
 * GITHUB#15823: Implement method to add all stream elements into a PriorityQueue.
   Call PriorityQueue#addAll with mapped stream in DisjunctionMaxBulkScorer's constructor. (Zhou Hui)
 
@@ -452,6 +456,8 @@ Optimizations
 
 * GITHUB#16141: Optimize constant-score bulk scoring via intoBitSet batching. (Costin Leau)
 
+* GITHUB#16147: Optimize column batch parent field with bulk fill. (Tim Brooks)
+
 * GITHUB#15991: Load dense filters into bitset in MaxScoreBulkScorer. (Prithvi S)
 
 Bug Fixes
@@ -505,6 +511,12 @@ Bug Fixes
 * GITHUB#15878: Fix LargeNumHitsTopDocsCollector not handling requested hit count correctly (Binlong Gao)
 
 * GITHUB#16046: Fix double-counting of underlying Automaton in CompiledAutomaton#ramBytesUsed. (Eugene Rizhkov)
+
+* GITHUB#15901: Fix undercounting of RAM used by vectors buffered in in-memory segments.
+  BufferingKnnVectorsWriter hardcoded Float.BYTES for all vector encodings, overcounting byte
+  vectors by 4x. Scalar quantized vector writers (Lucene104, Lucene99, Lucene102) did not
+  account for rawVectorDelegate RAM, making byte vector fields completely invisible in RAM
+  reporting. Also added missing dimensionSums array accounting in quantized writers. (Prithvi S)
 
 Other
 ---------------------

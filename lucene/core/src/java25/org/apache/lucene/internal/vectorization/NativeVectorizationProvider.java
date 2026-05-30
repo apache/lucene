@@ -25,7 +25,11 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.SuppressForbidden;
 
-/** Native provider returning native implementations which delegates to Panama implementation. */
+/**
+ * Native provider returning native implementations which delegates to Panama implementation.
+ *
+ * @lucene.experimental
+ */
 final class NativeVectorizationProvider extends VectorizationProvider {
 
   private final VectorizationProvider delegateVectorUtilProvider =
