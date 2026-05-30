@@ -24,6 +24,8 @@ import org.apache.lucene.document.KnnByteVectorField;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.knn.KnnCollectorManager;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
+import org.apache.lucene.search.knn.KnnSearchStrategy.Hnsw;
 
 /**
  * Search for all (approximate) byte vectors above a similarity threshold.
@@ -35,8 +37,37 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
 
   /**
    * Search for all (approximate) byte vectors above a similarity threshold using {@link
-   * VectorSimilarityCollector}. If a filter is applied, it traverses as many nodes as the cost of
-   * the filter, and then falls back to exact search if results are incomplete.
+   * VectorSimilarityCollector}, with a caller-supplied {@link KnnSearchStrategy}. If a filter is
+   * applied, it traverses as many nodes as the cost of the filter, and then falls back to exact
+   * search if results are incomplete.
+   *
+   * @param field a field that has been indexed as a {@link KnnByteVectorField}.
+   * @param target the target of the search.
+   * @param resultSimilarity similarity score for result collection.
+   * @param decay decay factor for graph traversal buffer.
+   * @param filter a filter applied before the vector search.
+   * @param searchStrategy the {@link KnnSearchStrategy} to use during graph search. If {@code
+   *     null}, this query's own default is used: an {@link Hnsw} with {@code
+   *     filteredSearchThreshold == 0}, which preserves this query's filter handling. Note this
+   *     differs from {@link Hnsw#DEFAULT}, which uses a threshold of 60. The underlying format may
+   *     not support all strategies and is free to ignore the requested strategy.
+   */
+  public ByteVectorSimilarityQuery(
+      String field,
+      byte[] target,
+      float resultSimilarity,
+      float decay,
+      Query filter,
+      KnnSearchStrategy searchStrategy) {
+    super(field, resultSimilarity, decay, filter, searchStrategy);
+    this.target = Objects.requireNonNull(target, "target");
+  }
+
+  /**
+   * Search for all (approximate) byte vectors above a similarity threshold using {@link
+   * VectorSimilarityCollector}, with the default {@link KnnSearchStrategy}. If a filter is applied,
+   * it traverses as many nodes as the cost of the filter, and then falls back to exact search if
+   * results are incomplete.
    *
    * @param field a field that has been indexed as a {@link KnnByteVectorField}.
    * @param target the target of the search.
@@ -46,8 +77,7 @@ public class ByteVectorSimilarityQuery extends AbstractVectorSimilarityQuery {
    */
   public ByteVectorSimilarityQuery(
       String field, byte[] target, float resultSimilarity, float decay, Query filter) {
-    super(field, resultSimilarity, decay, filter);
-    this.target = Objects.requireNonNull(target, "target");
+    this(field, target, resultSimilarity, decay, filter, DEFAULT_STRATEGY);
   }
 
   /**
