@@ -113,6 +113,8 @@ Improvements
 
 * GITHUB#16088: SearchGroup#merge now returns an empty collection instead of null when topGroups is empty. (Luca Cavanna)
 
+* GITHUB#16144: Clarify LeafCollector batch collection scoring contract. (Costin Leau)
+
 Optimizations
 ---------------------
 * GITHUB#16050: Add SIMD-accelerated bulk range evaluation for dense numeric doc values via

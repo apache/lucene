@@ -97,8 +97,7 @@ abstract class SortedSkipperScorerSupplier extends ScorerSupplier {
       return emptyBulkScorer();
     }
     DocIdSetIterator iterator = DocIdSetIterator.range(range.minDocID(), range.maxDocID());
-    return new RangeBulkScorer(
-        new ConstantScoreScorer(score, scoreMode, iterator), range.minDocID(), range.maxDocID());
+    return new RangeBulkScorer(iterator, score, range.minDocID(), range.maxDocID());
   }
 
   @Override
