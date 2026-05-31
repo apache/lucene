@@ -375,6 +375,8 @@ Improvements
 
 * GITHUB#16088: SearchGroup#merge now returns an empty collection instead of null when topGroups is empty. (Luca Cavanna)
 
+* GITHUB#16144: Clarify LeafCollector batch collection scoring contract. (Costin Leau)
+
 Optimizations
 ---------------------
 * GITHUB#15861: Optimise PhraseScorer by short circuiting non competitive documents in TOP_SCORES mode. (Prithvi S)
