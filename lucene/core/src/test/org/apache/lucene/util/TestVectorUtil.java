@@ -600,7 +600,8 @@ public class TestVectorUtil extends LuceneTestCase {
   public void testBasicInt4DibitDotProduct() {
     testBasicInt4DibitDotProductImpl(VectorUtil::int4DibitDotProduct);
     testBasicInt4DibitDotProductImpl(defaultedProvider.getVectorUtilSupport()::int4DibitDotProduct);
-    testBasicInt4DibitDotProductImpl(defOrPanamaProvider.getVectorUtilSupport()::int4DibitDotProduct);
+    testBasicInt4DibitDotProductImpl(
+        defOrPanamaProvider.getVectorUtilSupport()::int4DibitDotProduct);
   }
 
   interface Int4DibitDotProduct {
@@ -612,7 +613,7 @@ public class TestVectorUtil extends LuceneTestCase {
     assertEquals(45L, int4DibitDotProductFunc.apply(new byte[] {1, 1, 1, 1}, new byte[] {1, 1}));
     assertEquals(90L, int4DibitDotProductFunc.apply(new byte[] {3, 3, 3, 3}, new byte[] {3, 3}));
     assertEquals(1L, int4DibitDotProductFunc.apply(new byte[] {1, 2, 4, 8}, new byte[] {1, 0}));
-    
+
     // Multi-stripe deterministic cases (stripe sizes 2 and 3)
     assertEquals(
         90L,
