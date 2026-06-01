@@ -379,7 +379,11 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16153: Use TernaryLongHeap in UpdateGraphsUtils for faster HNSW graph merging. (Prithvi S)
+
 * GITHUB#15861: Optimise PhraseScorer by short circuiting non competitive documents in TOP_SCORES mode. (Prithvi S)
+
+* GITHUB#16154: Use Lucene's PriorityQueue in NearestNeighbor to avoid poll/offer overhead on the hot path. (Prithvi S)
 
 * GITHUB#15868: Optimize DisjunctionMaxBulkScorer by reusing the inner LeafCollector across
   sub-scorers and resetting windowScores inline during replay instead of Arrays.fill. (Prithvi S)
@@ -456,11 +460,16 @@ Optimizations
 
 * GITHUB#16126: Implement #intoBitSet and #docIDRunEnd in DocValuesWriter implementations. (Ignacio Vera)
 
+* GITHUB#16141, GITHUB#16143: Optimize constant-score bulk scoring via intoBitSet
+  batching, route more constant-score iterators through ConstantScoreScorerSupplier,
+  and preserve two-phase iterator semantics when falling back to DefaultBulkScorer.
+  (Costin Leau)
+
 * GITHUB#16147: Optimize column batch parent field with bulk fill. (Tim Brooks)
 
 * GITHUB#15991: Load dense filters into bitset in MaxScoreBulkScorer. (Prithvi S)
 
-* GITHUB#16141: Optimize constant-score bulk scoring via intoBitSet batching. (Costin Leau)
+* GITHUB#16142: Optimize disjunction #docIDRunEnd to skip runs of excluded documents. (Costin Leau)
 
 Bug Fixes
 ---------------------
@@ -511,6 +520,8 @@ Bug Fixes
   logging with sub-millisecond precision to aid merge concurrency debugging. (Prithvi S)
 
 * GITHUB#15878: Fix LargeNumHitsTopDocsCollector not handling requested hit count correctly (Binlong Gao)
+
+* GITHUB#16098: Validate zero vectors in setVectorValue() for cosine similarity fields. (Prithvi S)
 
 * GITHUB#16046: Fix double-counting of underlying Automaton in CompiledAutomaton#ramBytesUsed. (Eugene Rizhkov)
 

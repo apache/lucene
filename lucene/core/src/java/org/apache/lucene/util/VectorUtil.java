@@ -453,7 +453,7 @@ public final class VectorUtil {
 
   /** Returns true if all dimensions of provided vector are zero, false otherwise. */
   public static boolean isZeroVector(byte[] v) {
-    for (float value : v) {
+    for (byte value : v) {
       if (value != 0) {
         return false;
       }
