@@ -107,6 +107,8 @@ New Features
 
 * GITHUB#14178: Add a Faiss-based vector format in the sandbox module. (Kaival Parikh)
 
+* GITHUB#16065: Add COSINE similarity support to FaissKnnVectorsFormat. (Prithvi S)
+
 * GITHUB#15508: Use native vectorization in Lucene. (Ankur Goel, Shubham Chaudhary, Dawid Weiss)
 
 * GITHUB#15818: Add BM25 k3 query-term frequency saturation to BM25Similarity. (Sagar Upadhyaya)
@@ -265,10 +267,16 @@ Other
 
 * GITHUB#15893: Refactor to move common SHOULD/MUST dedup logic inside BooleanQuery into a common function. (Sagar Upadhyaya)
 
+* GITHUB#16082: Added a new JMH microbenchmark for DiversifyingChildrenFloatKnnVectorQuery. (Anna Ruggero via Alessandro Benedetti)
+
 ======================= Lucene 10.5.0 =======================
 
 API Changes
 ---------------------
+* GITHUB#16053: Add an (optional) field-writer creation strategy to Lucene99FlatVectorsWriter.
+  This decouples the external interface and the internal representation of FlatFieldVectorsWriters created
+  by this FlatVectorsWriter, to allow different formats to change how vectors are stored in memory. (Lorenzo Dematte)
+
 * GITHUB#15663: Allow subclasses of NumericComparator to implement their own
   CompetitiveDISIBuilder subtypes. (Alan Woodward)
 
@@ -293,6 +301,10 @@ API Changes
 * GITHUB#16062: Add FlatFieldVectorsWriter.asKnnVectorValues to return directly a KnnVectorValues "view" over
   vectors to be written. (Lorenzo Dematte)
 
+* GITHUB#16101 Add DictionaryColumn for SORTED / SORTED_SET docvalues using experimental column api (Tim Brooks)
+
+* GITHUB#16104: Add public constructors and a public getSearchStrategy() to FloatVectorSimilarityQuery, ByteVectorSimilarityQuery and VectorSimilarityCollector that accept a KnnSearchStrategy. (Sasilekha R)
+
 New Features
 ---------------------
 
@@ -314,8 +326,22 @@ New Features
 * GITHUB#15794: Add DocValuesSkipper metadata for the maximum number of values
   on any document in a field. (Prithvi S)
 
+* GITHUB#16110: Add count() to BayesianScoreQuery.BayesianScoreWeight, delegating to
+  the inner weight. (Prithvi S)
+
 Improvements
 ---------------------
+* GITHUB#15948: Improve BayesianScoreQuery and LogOddsFusionQuery with base rate prior,
+  weighted Logarithmic Opinion Pooling, and auto parameter estimation. Add
+  BayesianScoreEstimator for estimating sigmoid calibration parameters from corpus
+  statistics. Add base rate prior to BayesianScoreQuery for log-odds space shifting.
+  Add per-signal weights and logit normalization to LogOddsFusionQuery.
+  (Jaepil Jeong)
+
+* GITHUB#16106: Fix LogOddsFusionQuery.rewrite() to filter out MatchNoDocsQuery clauses and
+  correctly preserve per-signal weights and logit normalization bounds for the surviving clauses.
+  (Prithvi S)
+
 * GITHUB#15823: Implement method to add all stream elements into a PriorityQueue.
   Call PriorityQueue#addAll with mapped stream in DisjunctionMaxBulkScorer's constructor. (Zhou Hui)
 
@@ -338,10 +364,18 @@ Improvements
 
 * GITHUB#15574, GITHUB#15995: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
 
+* GITHUB#15565: Introduce AllGroupHeadsCollectorManager to parallelize search when using AllGroupHeadsCollector. (Binlong Gao)
+
 * GITHUB#15989: DocValuesRangeIterator always tries to use skipper-based block iteration
   as its approximation. (Alan Woodward)
 
 * GITHUB#16000: Clarify that Accountable#ramBytesUsed() reports JVM heap memory only. (Luca Cavanna)
+
+* GITHUB#15660: Introduce LargeNumHitsTopDocsCollectorManager to parallelize search when using LargeNumHitsTopDocsCollector. (Binlong Gao)
+
+* GITHUB#16088: SearchGroup#merge now returns an empty collection instead of null when topGroups is empty. (Luca Cavanna)
+
+* GITHUB#16144: Clarify LeafCollector batch collection scoring contract. (Costin Leau)
 
 Optimizations
 ---------------------
@@ -393,8 +427,8 @@ Optimizations
 * GITHUB#16050: Add SIMD-accelerated bulk range evaluation for dense numeric doc values via
   BatchDocValuesRangeIterator and DocValuesRangeSupport. (Sagar Upadhyaya)
 
-* GITHUB#16061, GITHUB#16070, GITHUB#16085: Improve cost estimation in SortedSetDocValuesRangeQuery  and
-  SortedNumericDocValuesRangeQuery when using DocValuesSkipper, the field is dense and is the primary sort of
+* GITHUB#16061, GITHUB#16070, GITHUB#16085, GITHUB#16120: Improve cost estimation in SortedSetDocValuesRangeQuery
+  and SortedNumericDocValuesRangeQuery when using DocValuesSkipper, the field is dense and is the primary sort of
   the index to reduce the number of doc values visited. (Ignacio Vera)
 
 * GITHUB#16048: Defer Sorter.DocMap packing until after flush (Tim Brooks)
@@ -409,6 +443,22 @@ Optimizations
 * GITHUB#16081: Implement LeafCollector#collectRange in the collectors used in LRUCache. (Ignacio Vera)
 
 * GITHUB#16084: Added range encoding to  RoaringDocIdSet. (Ignacio Vera)
+
+* GITHUB#16097: Implement DocIdSetIterator#intoBitSet in dense implememntatios of the
+  Lucene90DocValuesProducer. (Ignacio Vera)
+
+* GITHUB#16123: PanamaDocValuesRangeSupport: OR mask directly into FixedBitSet instead of per-bit
+  loop. (Sagar Upadhyaya)
+
+* GITHUB#16107: Add method SparseFixedBitSet#set(int startIndex, int endIndex). (Ignacio Vera)
+
+* GITHUB#16129: Add bulk decode for dense NumericDocValues via longValues(). (Costin Leau)
+
+* GITHUB#16126: Implement #intoBitSet and #docIDRunEnd in DocValuesWriter implementations. (Ignacio Vera)
+
+* GITHUB#16141: Optimize constant-score bulk scoring via intoBitSet batching. (Costin Leau)
+
+* GITHUB#16147: Optimize column batch parent field with bulk fill. (Tim Brooks)
 
 Bug Fixes
 ---------------------
@@ -460,6 +510,18 @@ Bug Fixes
 
 * GITHUB#15878: Fix LargeNumHitsTopDocsCollector not handling requested hit count correctly (Binlong Gao)
 
+* GITHUB#16046: Fix double-counting of underlying Automaton in CompiledAutomaton#ramBytesUsed. (Eugene Rizhkov)
+
+* GITHUB#15901: Fix undercounting of RAM used by vectors buffered in in-memory segments.
+  BufferingKnnVectorsWriter hardcoded Float.BYTES for all vector encodings, overcounting byte
+  vectors by 4x. Scalar quantized vector writers (Lucene104, Lucene99, Lucene102) did not
+  account for rawVectorDelegate RAM, making byte vector fields completely invisible in RAM
+  reporting. Also added missing dimensionSums array accounting in quantized writers. (Prithvi S)
+
+* GITHUB#16138: Reject non-SerializableObject classes in SerializableObject.readClass before they are
+  instantiated, so a crafted spatial3d shape stream cannot load arbitrary classes. Also adapt
+  experimental SerializedObject API to be more type safe. (metsw24-max, Uwe Schindler)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
@@ -487,6 +549,16 @@ Other
 * GITHUB#15951: Fix WindowsFS onClose race condition (Szymon Bialkowski)
 
 * GITHUB#15960: Move parent field from DWPT to IndexingChain. (Tim Brooks)
+
+* GITHUB#16090: Make CollectorMemoryTracker instance members final. (Luca Cavanna)
+
+* GITHUB#16073: Simplify SortedDocIDMerger.next(). (Tim Brooks)
+
+* GITHUB#16115: Reject duplicate column names in ColumnBatch. (Tim Brooks)
+
+* GITHUB#16118: Remove getOrAddPerField calls in processBatch. (Tim Brooks)
+
+* GITHUB##16135: Disable external entities in hyphenation PatternParser. (metsw24-max, Uwe Schindler)
 
 ======================= Lucene 10.4.0 =======================
 

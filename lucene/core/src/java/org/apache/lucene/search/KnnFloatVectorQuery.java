@@ -101,11 +101,14 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
     this.targetPreRotated = false;
   }
 
-
   private final boolean targetPreRotated;
 
   private KnnFloatVectorQuery(
-      String field, float[] target, int k, Query filter, KnnSearchStrategy searchStrategy,
+      String field,
+      float[] target,
+      int k,
+      Query filter,
+      KnnSearchStrategy searchStrategy,
       boolean targetPreRotated) {
     super(field, k, filter, searchStrategy);
     this.target = VectorUtil.checkFinite(Objects.requireNonNull(target, "target"));

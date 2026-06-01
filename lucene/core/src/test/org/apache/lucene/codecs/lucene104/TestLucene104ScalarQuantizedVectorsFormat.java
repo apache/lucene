@@ -141,7 +141,6 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
   }
 
   public void testQuantizedVectorsWriteAndRead() throws IOException {
-    format = new Lucene104ScalarQuantizedVectorsFormat(encoding);
     String fieldName = "field";
     int numVectors = random().nextInt(99, 500);
     int dims = random().nextInt(4, 65);
@@ -150,7 +149,7 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
     VectorSimilarityFunction similarityFunction = randomSimilarity();
     KnnFloatVectorField knnField = new KnnFloatVectorField(fieldName, vector, similarityFunction);
     try (Directory dir = newDirectory()) {
-      try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig().setCodec(getCodec()))) {
+      try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
         for (int i = 0; i < numVectors; i++) {
           Document doc = new Document();
           knnField.setVectorValue(randomVector(dims));
@@ -173,7 +172,6 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           float[] centroid = qvectorValues.getCentroid();
           assertEquals(centroid.length, dims);
 
-
           OptimizedScalarQuantizer quantizer = new OptimizedScalarQuantizer(similarityFunction);
           byte[] scratch = new byte[encoding.getDiscreteDimensions(dims)];
           byte[] expectedVector = new byte[encoding.getDocPackedLength(scratch.length)];
@@ -184,9 +182,12 @@ public class TestLucene104ScalarQuantizedVectorsFormat extends BaseKnnVectorsFor
           KnnVectorValues.DocIndexIterator docIndexIterator = vectorValues.iterator();
 
           while (docIndexIterator.nextDoc() != NO_MORE_DOCS) {
-            float[] vec = vectorValues.vectorValue(docIndexIterator.index());
             OptimizedScalarQuantizer.QuantizationResult corrections =
-                quantizer.scalarQuantize(vec, scratch, encoding.getBits(), centroid);
+                quantizer.scalarQuantize(
+                    vectorValues.vectorValue(docIndexIterator.index()),
+                    scratch,
+                    encoding.getBits(),
+                    centroid);
             switch (encoding) {
               case UNSIGNED_BYTE, SEVEN_BIT ->
                   System.arraycopy(scratch, 0, expectedVector, 0, dims);

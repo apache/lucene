@@ -30,6 +30,7 @@ import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.RotationAwareKnnVectorsFormat;
+import org.apache.lucene.codecs.RotationAwareKnnVectorsFormat.InverseRotatedFloatVectorValues;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
@@ -84,7 +85,6 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   private final FlatVectorsReader rawVectorsReader;
   private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
   private final FieldInfos fieldInfos;
-
 
   public static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
 
@@ -219,7 +219,6 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
             quantizedVectorData),
         target);
   }
-
 
   @Override
   public RandomVectorScorer getRandomVectorScorer(String field, byte[] target) throws IOException {
@@ -688,9 +687,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     return new MergeReader();
   }
 
-  /**
-   * Merge-only view that skips inverse-rotation so merge operates in rotated space.
-   */
+  /** Merge-only view that skips inverse-rotation so merge operates in rotated space. */
   private final class MergeReader extends FlatVectorsReader {
 
     MergeReader() {}
@@ -704,77 +701,59 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       return rawVectorsReader.getFloatVectorValues(field);
     }
 
-    @Override public FlatVectorsScorer getFlatVectorScorer(String field) throws IOException { return Lucene104ScalarQuantizedVectorsReader.this.getFlatVectorScorer(field); }
-    @Override public RandomVectorScorer getRandomVectorScorer(String field, float[] target) throws IOException { return Lucene104ScalarQuantizedVectorsReader.this.getRandomVectorScorer(field, target); }
-    @Override public RandomVectorScorer getRandomVectorScorer(String field, byte[] target) throws IOException { return Lucene104ScalarQuantizedVectorsReader.this.getRandomVectorScorer(field, target); }
-    @Override public ByteVectorValues getByteVectorValues(String field) throws IOException { return Lucene104ScalarQuantizedVectorsReader.this.getByteVectorValues(field); }
-    @Override public void checkIntegrity() throws IOException { Lucene104ScalarQuantizedVectorsReader.this.checkIntegrity(); }
-    @Override public void close() throws IOException {}
-    @Override public long ramBytesUsed() { return Lucene104ScalarQuantizedVectorsReader.this.ramBytesUsed(); }
-    @Override public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) throws IOException { Lucene104ScalarQuantizedVectorsReader.this.search(field, target, knnCollector, acceptDocs); }
-    @Override public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) throws IOException { Lucene104ScalarQuantizedVectorsReader.this.search(field, target, knnCollector, acceptDocs); }
+    @Override
+    public FlatVectorsScorer getFlatVectorScorer(String field) throws IOException {
+      return Lucene104ScalarQuantizedVectorsReader.this.getFlatVectorScorer(field);
+    }
+
+    @Override
+    public RandomVectorScorer getRandomVectorScorer(String field, float[] target)
+        throws IOException {
+      return Lucene104ScalarQuantizedVectorsReader.this.getRandomVectorScorer(field, target);
+    }
+
+    @Override
+    public RandomVectorScorer getRandomVectorScorer(String field, byte[] target)
+        throws IOException {
+      return Lucene104ScalarQuantizedVectorsReader.this.getRandomVectorScorer(field, target);
+    }
+
+    @Override
+    public ByteVectorValues getByteVectorValues(String field) throws IOException {
+      return Lucene104ScalarQuantizedVectorsReader.this.getByteVectorValues(field);
+    }
+
+    @Override
+    public void checkIntegrity() throws IOException {
+      Lucene104ScalarQuantizedVectorsReader.this.checkIntegrity();
+    }
+
+    @Override
+    public void close() throws IOException {}
+
+    @Override
+    public long ramBytesUsed() {
+      return Lucene104ScalarQuantizedVectorsReader.this.ramBytesUsed();
+    }
+
+    @Override
+    public void search(
+        String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+        throws IOException {
+      Lucene104ScalarQuantizedVectorsReader.this.search(field, target, knnCollector, acceptDocs);
+    }
+
+    @Override
+    public void search(
+        String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+        throws IOException {
+      Lucene104ScalarQuantizedVectorsReader.this.search(field, target, knnCollector, acceptDocs);
+    }
   }
 
   private boolean isRotationEnabled(String field) {
     FieldInfo info = fieldInfos.fieldInfo(field);
     return info != null
         && "true".equals(info.getAttribute(RotationAwareKnnVectorsFormat.ROTATION_ENABLED_KEY));
-  }
-
-  private static final class InverseRotatedFloatVectorValues extends FloatVectorValues {
-
-    private final FloatVectorValues delegate;
-    private final HadamardRotation rotation;
-    private final float[] out;
-    private final float[] scratch;
-
-    InverseRotatedFloatVectorValues(FloatVectorValues delegate, HadamardRotation rotation) {
-      this.delegate = delegate;
-      this.rotation = rotation;
-      this.out = new float[rotation.dimension()];
-      this.scratch = new float[rotation.dimension()];
-    }
-
-    @Override
-    public float[] vectorValue(int ord) throws IOException {
-      float[] rotated = delegate.vectorValue(ord);
-      rotation.inverseRotate(rotated, out, scratch);
-      return out;
-    }
-
-    @Override
-    public int dimension() {
-      return delegate.dimension();
-    }
-
-    @Override
-    public int size() {
-      return delegate.size();
-    }
-
-    @Override
-    public FloatVectorValues copy() throws IOException {
-      return new InverseRotatedFloatVectorValues(delegate.copy(), rotation);
-    }
-
-    @Override
-    public KnnVectorValues.DocIndexIterator iterator() {
-      return delegate.iterator();
-    }
-
-    @Override
-    public int ordToDoc(int ord) {
-      return delegate.ordToDoc(ord);
-    }
-
-    @Override
-    public VectorScorer scorer(float[] target) throws IOException {
-      return delegate.scorer(target);
-    }
-
-    @Override
-    public VectorScorer rescorer(float[] target) throws IOException {
-      return delegate.rescorer(target);
-    }
   }
 }

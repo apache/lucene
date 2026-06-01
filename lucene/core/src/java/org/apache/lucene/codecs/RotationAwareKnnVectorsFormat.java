@@ -109,7 +109,8 @@ public class RotationAwareKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-      // During merge, getMergeInstance() returns the delegate reader directly (no inverse rotation),
+      // During merge, getMergeInstance() returns the delegate reader directly (no inverse
+      // rotation),
       // so vectors are already in rotated space. Delegate directly to avoid double-rotation.
       return delegateWriter.mergeOneField(fieldInfo, mergeState);
     }
@@ -197,13 +198,15 @@ public class RotationAwareKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+    public void search(
+        String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
       delegateReader.search(field, target, knnCollector, acceptDocs);
     }
 
     @Override
-    public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+    public void search(
+        String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
       delegateReader.search(field, target, knnCollector, acceptDocs);
     }
@@ -227,14 +230,15 @@ public class RotationAwareKnnVectorsFormat extends KnnVectorsFormat {
   }
 
   /** Wraps FloatVectorValues to inverse-rotate each vector on access. */
-  private static final class InverseRotatedFloatVectorValues extends FloatVectorValues {
+  public static final class InverseRotatedFloatVectorValues extends FloatVectorValues {
 
     private final FloatVectorValues delegate;
     private final HadamardRotation rotation;
     private final float[] out;
     private final float[] scratch;
 
-    InverseRotatedFloatVectorValues(FloatVectorValues delegate, HadamardRotation rotation) {
+    /** Wraps the given delegate values with inverse-rotation using the provided rotation. */
+    public InverseRotatedFloatVectorValues(FloatVectorValues delegate, HadamardRotation rotation) {
       this.delegate = delegate;
       this.rotation = rotation;
       this.out = new float[rotation.dimension()];

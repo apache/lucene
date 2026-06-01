@@ -34,9 +34,9 @@ jmh = "1.37"
 jts = "1.20.0"
 # unit tests
 junit = "4.13.2"
-junit5 = "6.0.3"
+junit5 = "6.1.0"
 # @keep Minimum gradle version to run the build
-minGradle = "9.5.0"
+minGradle = "9.5.1"
 # @keep This is the minimum required Java version.
 minJava = "25"
 # analysis/morfologik polish support
@@ -50,7 +50,7 @@ opennlp = "2.5.9"
 # distribution.tests/ process management
 procfork = "1.0.6"
 # unit tests
-randomizedtesting = "2.8.4"
+randomizedtesting = "2.9.1"
 randomizedtesting-jupiter = "0.3.0"
 # spatial-extras/ support
 s2-geometry = "1.0.0"
@@ -110,6 +110,6 @@ errorprone = "net.ltgt.errorprone:5.1.0"
 forbiddenapis = "de.thetaphi.forbiddenapis:3.10"
 jacocolog = "org.barfuin.gradle.jacocolog:4.0.2"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
-spotless = "com.diffplug.spotless:8.4.0"
+spotless = "com.diffplug.spotless:8.5.1"
 undercouch-download = "de.undercouch.download:5.7.0"
 versionCatalogUpdate = "nl.littlerobots.version-catalog-update:1.1.0"

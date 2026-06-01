@@ -444,6 +444,75 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     dir.close();
   }
 
+  @SuppressWarnings("unchecked")
+  public void testWriterByteVectorRamEstimate() throws Exception {
+    final FieldInfos fieldInfos = new FieldInfos(new FieldInfo[0]);
+    final Directory dir = newDirectory();
+    Codec codec = Codec.getDefault();
+    final SegmentInfo si =
+        new SegmentInfo(
+            dir,
+            Version.LATEST,
+            Version.LATEST,
+            "0",
+            10000,
+            false,
+            false,
+            codec,
+            Collections.emptyMap(),
+            StringHelper.randomId(),
+            new HashMap<>(),
+            null);
+    final SegmentWriteState state =
+        new SegmentWriteState(
+            InfoStream.getDefault(), dir, si, fieldInfos, null, newIOContext(random()));
+    final KnnVectorsFormat format = codec.knnVectorsFormat();
+    try (KnnVectorsWriter writer = format.fieldsWriter(state)) {
+      int dim = random().nextInt(64) + 1;
+      if (dim % 2 == 1) {
+        ++dim;
+      }
+      int numDocs = atLeast(100);
+      KnnFieldVectorsWriter<byte[]> fieldWriter =
+          (KnnFieldVectorsWriter<byte[]>)
+              writer.addField(
+                  new FieldInfo(
+                      "fieldA",
+                      0,
+                      false,
+                      false,
+                      false,
+                      IndexOptions.NONE,
+                      DocValuesType.NONE,
+                      DocValuesSkipIndexType.NONE,
+                      -1,
+                      Map.of(),
+                      0,
+                      0,
+                      0,
+                      dim,
+                      VectorEncoding.BYTE,
+                      VectorSimilarityFunction.DOT_PRODUCT,
+                      false,
+                      false));
+      for (int i = 0; i < numDocs; i++) {
+        fieldWriter.addValue(i, randomVector8(dim));
+      }
+      // Validate the field-level RAM accounting uses correct byte sizes.
+      // The reported RAM must be at least the raw byte vector data.
+      final long fieldRamBytesUsed = fieldWriter.ramBytesUsed();
+      final long rawByteVectorData = (long) dim * numDocs * Byte.BYTES;
+      assertTrue(
+          "Expected field ramBytesUsed ("
+              + fieldRamBytesUsed
+              + ") >= raw byte vector data size ("
+              + rawByteVectorData
+              + ")",
+          fieldRamBytesUsed >= rawByteVectorData);
+    }
+    dir.close();
+  }
+
   public void testIllegalSimilarityFunctionChangeTwoWriters() throws Exception {
     try (Directory dir = newDirectory()) {
       try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {

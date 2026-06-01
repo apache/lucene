@@ -35,6 +35,7 @@ import org.apache.lucene.search.KnnFloatVectorQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.quantization.HadamardRotation;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
 
 /**
@@ -123,8 +124,8 @@ public class TestLucene104ScalarQuantizedVectorsFormatPreconditioning extends Lu
 
   /** Verifies that HadamardRotation.forDimension is deterministic. */
   public void testRotationDeterministic() {
-    var r1 = org.apache.lucene.util.quantization.HadamardRotation.forDimension(768);
-    var r2 = org.apache.lucene.util.quantization.HadamardRotation.forDimension(768);
+    var r1 = HadamardRotation.forDimension(768);
+    var r2 = HadamardRotation.forDimension(768);
     assertSame(r1, r2);
   }
 

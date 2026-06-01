@@ -17,6 +17,7 @@
 package org.apache.lucene.document.column;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.Field;
@@ -45,13 +46,38 @@ public abstract sealed class ColumnFieldAdapter extends Field
 
   /** Returns an adapter for the given column, dispatching on its concrete type. */
   public static ColumnFieldAdapter create(Column column) {
-    if (column instanceof LongColumn lc) {
-      return new LongColumnAdapter(lc);
-    } else if (column instanceof BinaryColumn bc) {
-      return new BinaryColumnAdapter(bc);
-    } else {
-      throw new IllegalArgumentException("Unknown column type: " + column.getClass().getName());
-    }
+    return switch (column) {
+      case LongColumn lc -> new LongColumnAdapter(lc);
+      case BinaryColumn bc ->
+          new BinaryColumnAdapter(
+              bc.name(),
+              bc.fieldType(),
+              bc.fieldType().stored() ? bc.storedType() : null,
+              bc.tuples());
+      case DictionaryColumn dc ->
+          new BinaryColumnAdapter(
+              dc.name(),
+              dc.fieldType(),
+              dc.fieldType().stored() ? dc.storedType() : null,
+              dictionaryCursor(dc.tuples(), dc.dictionary()));
+      default ->
+          throw new IllegalArgumentException("Unknown column type: " + column.getClass().getName());
+    };
+  }
+
+  private static ObjectTupleCursor<BytesRef> dictionaryCursor(
+      OrdinalsTupleCursor ordinals, List<BytesRef> dictionary) {
+    return new ObjectTupleCursor<>() {
+      @Override
+      public int nextDoc() {
+        return ordinals.nextDoc();
+      }
+
+      @Override
+      public BytesRef value() {
+        return dictionary.get(ordinals.ordValue());
+      }
+    };
   }
 
   /** Advances to the next batch-local doc-id with a value. */
@@ -128,18 +154,17 @@ final class BinaryColumnAdapter extends ColumnFieldAdapter {
   // Cached UTF-8 decode of the cursor's current value. Invalidated on nextDoc()
   private String cachedString;
 
-  BinaryColumnAdapter(BinaryColumn column) {
-    super(column.name(), column.fieldType());
-    this.cursor = column.tuples();
-    this.tokenized = column.fieldType().tokenized();
-    this.indexed = column.fieldType().indexOptions() != IndexOptions.NONE;
-    if (column.fieldType().stored()) {
-      this.storedType = column.storedType();
-      this.reusableStoredValue = newReusableStoredValue(storedType);
-    } else {
-      this.storedType = null;
-      this.reusableStoredValue = null;
-    }
+  BinaryColumnAdapter(
+      String name,
+      IndexableFieldType fieldType,
+      StoredValue.Type storedType,
+      ObjectTupleCursor<BytesRef> cursor) {
+    super(name, fieldType);
+    this.cursor = cursor;
+    this.tokenized = fieldType.tokenized();
+    this.indexed = fieldType.indexOptions() != IndexOptions.NONE;
+    this.storedType = storedType;
+    this.reusableStoredValue = storedType != null ? newReusableStoredValue(storedType) : null;
   }
 
   private static StoredValue newReusableStoredValue(StoredValue.Type type) {
@@ -147,7 +172,7 @@ final class BinaryColumnAdapter extends ColumnFieldAdapter {
       case STRING -> new StoredValue("");
       case BINARY -> new StoredValue(new BytesRef());
       case INTEGER, LONG, FLOAT, DOUBLE, DATA_INPUT ->
-          throw new IllegalArgumentException("rejected by ColumnValidation.validateBinaryColumn");
+          throw new IllegalArgumentException("rejected by ColumnValidation");
     };
   }
 
@@ -184,7 +209,7 @@ final class BinaryColumnAdapter extends ColumnFieldAdapter {
       case STRING -> reusableStoredValue.setStringValue(decodedString());
       case BINARY -> reusableStoredValue.setBinaryValue(cursor.value());
       case INTEGER, LONG, FLOAT, DOUBLE, DATA_INPUT ->
-          throw new IllegalArgumentException("rejected by ColumnValidation.validateBinaryColumn");
+          throw new IllegalArgumentException("rejected by ColumnValidation");
     }
     return reusableStoredValue;
   }
