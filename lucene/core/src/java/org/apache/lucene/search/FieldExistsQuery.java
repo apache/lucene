@@ -234,22 +234,43 @@ public class FieldExistsQuery extends Query {
 
           return super.count(context);
         } else if (fieldInfo.hasVectorValues()) { // the field indexes vectors
+          int vectorCount = getVectorValuesSize(fieldInfo, reader);
+          if (vectorCount == reader.maxDoc()) {
+            // All docs have vectors, so the count is just the number of live docs.
+            return reader.numDocs();
+          }
           if (reader.hasDeletions() == false) {
-            return getVectorValuesSize(fieldInfo, reader);
+            return vectorCount;
           }
           return super.count(context);
         } else if (fieldInfo.getDocValuesType()
             != DocValuesType.NONE) { // the field indexes doc values
-          if (reader.hasDeletions() == false) {
+          if (fieldInfo.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
+            // DocValuesSkipper provides an exact doc count for doc values, so we can use it
+            // reliably even in the presence of deletions.
+            DocValuesSkipper docValuesSkipper = reader.getDocValuesSkipper(field);
+            if (docValuesSkipper != null) {
+              int docCount = docValuesSkipper.docCount();
+              if (docCount == reader.maxDoc()) {
+                // Every doc has a value for this field, the count is the number of live docs.
+                return reader.numDocs();
+              }
+              if (reader.hasDeletions() == false) {
+                return docCount;
+              }
+            }
+          } else if (reader.hasDeletions() == false) {
+            // No deletions: we can use points or terms doc count as a proxy for doc values.
             if (fieldInfo.getPointDimensionCount() > 0) {
               PointValues pointValues = reader.getPointValues(field);
-              return pointValues == null ? 0 : pointValues.getDocCount();
+              if (pointValues != null) {
+                return pointValues.getDocCount();
+              }
             } else if (fieldInfo.getIndexOptions() != IndexOptions.NONE) {
               Terms terms = reader.terms(field);
-              return terms == null ? 0 : terms.getDocCount();
-            } else if (fieldInfo.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
-              DocValuesSkipper docValuesSkipper = reader.getDocValuesSkipper(field);
-              return docValuesSkipper == null ? 0 : docValuesSkipper.docCount();
+              if (terms != null) {
+                return terms.getDocCount();
+              }
             }
           }
 
