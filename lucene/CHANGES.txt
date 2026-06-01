@@ -156,9 +156,6 @@ Optimizations
 
 * GITHUB#15597, GITHUB#15777: Reduce memory usage of NeighborArray (Viliam Durina)
 
-* GITHUB#16049: Avoid scanning linear-scanned clauses from
-  DisjunctionDISIApproximation.docIDRunEnd(). (Costin Leau)
-
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
@@ -459,11 +456,11 @@ Optimizations
 
 * GITHUB#16126: Implement #intoBitSet and #docIDRunEnd in DocValuesWriter implementations. (Ignacio Vera)
 
-* GITHUB#16141: Optimize constant-score bulk scoring via intoBitSet batching. (Costin Leau)
-
 * GITHUB#16147: Optimize column batch parent field with bulk fill. (Tim Brooks)
 
 * GITHUB#15991: Load dense filters into bitset in MaxScoreBulkScorer. (Prithvi S)
+
+* GITHUB#16141: Optimize constant-score bulk scoring via intoBitSet batching. (Costin Leau)
 
 Bug Fixes
 ---------------------
