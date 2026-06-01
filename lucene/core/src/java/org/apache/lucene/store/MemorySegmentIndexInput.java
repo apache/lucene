@@ -62,7 +62,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   final AtomicInteger sharedPrefetchCounter;
   // True when ReadAdvice.RANDOM is active. Checked before the power-of-two throttle in prefetch()
   // so that random-access patterns always fire madvise regardless of the page-cache hit counter.
-  volatile boolean isRandom;
+  boolean isRandom;
 
   int curSegmentIndex = -1;
   MemorySegment
