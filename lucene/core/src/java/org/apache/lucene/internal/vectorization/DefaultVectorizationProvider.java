@@ -55,4 +55,9 @@ final class DefaultVectorizationProvider extends VectorizationProvider {
   public DocValuesRangeSupport getDocValuesRangeSupport() {
     return DefaultDocValuesRangeSupport.INSTANCE;
   }
+
+  @Override
+  public DocValuesBulkDecodeSupport getDocValuesBulkDecodeSupport() {
+    return DefaultDocValuesBulkDecodeSupport.INSTANCE;
+  }
 }

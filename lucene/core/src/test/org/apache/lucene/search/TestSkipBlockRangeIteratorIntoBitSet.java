@@ -539,4 +539,63 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
       assertTrue("Doc " + d + " set in bitset but not in expected", expected.contains(d));
     }
   }
+
+  /**
+   * Tests that rangeIntoBitSet (SIMD/fast path) produces the exact same results as per-doc
+   * evaluation (slow path) across random data with various densities and range selectivities.
+   */
+  public void testRangeIntoBitSetMatchesPerDocEvaluation() throws Exception {
+    Random rng = random();
+    for (int iter = 0; iter < 10; iter++) {
+      int numDocs = rng.nextInt(4096, 4096 * 5);
+      long maxValue = rng.nextInt(100, 10000);
+      // Random range selectivity
+      long rangeMin = rng.nextLong(0, maxValue / 2);
+      long rangeMax = rangeMin + rng.nextLong(1, maxValue / 2);
+
+      try (Directory dir = newDirectory()) {
+        IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+        try (IndexWriter w = new IndexWriter(dir, iwc)) {
+          for (int i = 0; i < numDocs; i++) {
+            Document doc = new Document();
+            doc.add(NumericDocValuesField.indexedField("val", rng.nextLong(0, maxValue)));
+            w.addDocument(doc);
+          }
+          w.forceMerge(1);
+        }
+
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          LeafReaderContext ctx = reader.leaves().get(0);
+
+          // Slow path: per-doc evaluation
+          FixedBitSet expected = new FixedBitSet(numDocs);
+          NumericDocValues slowDv = ctx.reader().getNumericDocValues("val");
+          for (int d = 0; d < numDocs; d++) {
+            if (slowDv.advanceExact(d)) {
+              long v = slowDv.longValue();
+              if (v >= rangeMin && v <= rangeMax) {
+                expected.set(d);
+              }
+            }
+          }
+
+          // Fast path: rangeIntoBitSet
+          FixedBitSet actual = new FixedBitSet(numDocs);
+          NumericDocValues fastDv = ctx.reader().getNumericDocValues("val");
+          fastDv.rangeIntoBitSet(0, numDocs, rangeMin, rangeMax, actual, 0);
+
+          assertEquals(
+              "rangeIntoBitSet must match per-doc evaluation (numDocs="
+                  + numDocs
+                  + ", range=["
+                  + rangeMin
+                  + ","
+                  + rangeMax
+                  + "])",
+              expected,
+              actual);
+        }
+      }
+    }
+  }
 }

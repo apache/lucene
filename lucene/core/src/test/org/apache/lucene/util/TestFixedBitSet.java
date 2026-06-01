@@ -841,4 +841,68 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
       assertEquals(size, index[0]);
     }
   }
+
+  /** Tests that orMask produces the same result as setting bits individually. */
+  public void testOrMask() {
+    Random rng = random();
+    // Test with various mask lengths (simulating 2/4/8 SIMD lanes) and all alignments
+    for (int maskLen : new int[] {2, 4, 8}) {
+      // Test all possible bit offsets within a word (0-63) to cover alignment cases
+      for (int startBit = 0; startBit < 128; startBit++) {
+        long mask = rng.nextLong() & ((1L << maskLen) - 1);
+
+        FixedBitSet fast = new FixedBitSet(256);
+        FixedBitSet slow = new FixedBitSet(256);
+        // This is done to ensure some bits are already set and get don't wiped off.
+        for (int i = 0; i < 256; i += 7) {
+          fast.set(i);
+          slow.set(i);
+        }
+
+        // Fast path: orMask
+        fast.orMask(startBit, mask, maskLen);
+
+        // Slow path: per-bit set
+        long m = mask;
+        while (m != 0) {
+          int bit = Long.numberOfTrailingZeros(m);
+          slow.set(startBit + bit);
+          m &= m - 1;
+        }
+
+        // Verify fast and slow path bit matches
+        assertEquals(
+            "orMask mismatch: startBit="
+                + startBit
+                + ", mask=0b"
+                + Long.toBinaryString(mask)
+                + ", maskLen="
+                + maskLen,
+            slow,
+            fast);
+      }
+    }
+  }
+
+  /** Tests orMask at word boundaries (straddling two longs). */
+  public void testOrMaskStraddling() {
+    // Force straddling: startBit near end of a 64-bit word
+    for (int maskLen : new int[] {4, 8}) {
+      for (int bitOffset = 64 - maskLen + 1; bitOffset < 64; bitOffset++) {
+        // positions 61-63 for maskLen=4, 57-63 for maskLen=8
+        long mask = (1L << maskLen) - 1; // all bits set
+
+        FixedBitSet fast = new FixedBitSet(128);
+        fast.orMask(bitOffset, mask, maskLen);
+
+        FixedBitSet slow = new FixedBitSet(128);
+        for (int i = 0; i < maskLen; i++) {
+          slow.set(bitOffset + i);
+        }
+
+        assertEquals(
+            "Straddling mismatch: startBit=" + bitOffset + ", maskLen=" + maskLen, slow, fast);
+      }
+    }
+  }
 }

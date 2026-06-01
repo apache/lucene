@@ -57,12 +57,7 @@ final class PanamaDocValuesRangeSupport implements DocValuesRangeSupport {
           v.compare(VectorOperators.GE, minValue).and(v.compare(VectorOperators.LE, maxValue));
       long maskBits = inRange.toLong();
       if (maskBits != 0) {
-        int base = d - offset;
-        while (maskBits != 0) {
-          int bit = Long.numberOfTrailingZeros(maskBits);
-          bitSet.set(base + bit);
-          maskBits &= maskBits - 1;
-        }
+        bitSet.orMask(d - offset, maskBits, vectorLen);
       }
     }
 
