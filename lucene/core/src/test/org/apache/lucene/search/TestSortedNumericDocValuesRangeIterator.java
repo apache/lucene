@@ -75,7 +75,7 @@ public class TestSortedNumericDocValuesRangeIterator extends BaseDocValuesSkippe
   }
 
   private static boolean docHasValue(int doc) {
-    return doc < 1024 || (doc < 2048 && (doc & 1) == 0);
+    return doc < DENSE_END || (doc < 2048 && (doc & 1) == 0);
   }
 
   private static List<Integer> expectedMatches() {
@@ -111,13 +111,13 @@ public class TestSortedNumericDocValuesRangeIterator extends BaseDocValuesSkippe
       @Override
       public int advance(int target) throws IOException {
         valueIdx = 0;
-        if (target < 1024) {
-          return doc = target;
-        } else if (target < 2048) {
-          doc = target + (target & 1);
-          return doc < 2048 ? doc : (doc = DocIdSetIterator.NO_MORE_DOCS);
-        } else {
+        if (target >= 2048) {
           return doc = DocIdSetIterator.NO_MORE_DOCS;
+        } else if (target < DENSE_END) {
+          return doc = target;
+        } else {
+          int d = target + (target & 1);
+          return doc = (d >= 2048) ? DocIdSetIterator.NO_MORE_DOCS : d;
         }
       }
 
@@ -294,12 +294,12 @@ public class TestSortedNumericDocValuesRangeIterator extends BaseDocValuesSkippe
     DocValuesRangeIterator iter = createIterator(true);
     SkipBlockRangeIterator approx = (SkipBlockRangeIterator) iter.approximation();
 
-    approx.advance(1024);
+    approx.advance(1088);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
     // Even doc has a value → match
     assertTrue(iter.matches());
 
-    approx.advance(1025);
+    approx.advance(1089);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
     // Odd doc has no value → no match
     assertFalse(iter.matches());
@@ -359,8 +359,14 @@ public class TestSortedNumericDocValuesRangeIterator extends BaseDocValuesSkippe
     DocValuesRangeIterator iter = createIterator(true);
     SkipBlockRangeIterator approx = (SkipBlockRangeIterator) iter.approximation();
 
+    // YES block in second repetition (dense up to DENSE_END=1088)
     approx.advance(1024);
+    assertEquals(SkipBlockRangeIterator.Match.YES, approx.getMatch());
+    assertEquals(1088, iter.docIDRunEnd());
+
+    // YES_IF_PRESENT blocks have gaps, so docIdRunEnd = doc + 1
+    approx.advance(1088);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
-    assertEquals(1025, iter.docIDRunEnd());
+    assertEquals(1089, iter.docIDRunEnd());
   }
 }

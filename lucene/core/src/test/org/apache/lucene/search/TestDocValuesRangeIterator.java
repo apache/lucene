@@ -49,7 +49,7 @@ public class TestDocValuesRangeIterator extends BaseDocValuesSkipperTests {
   }
 
   private static boolean docHasValue(int doc) {
-    return doc < 1024 || (doc < 2048 && (doc & 1) == 0);
+    return doc < DENSE_END || (doc < 2048 && (doc & 1) == 0);
   }
 
   /**
@@ -209,12 +209,12 @@ public class TestDocValuesRangeIterator extends BaseDocValuesSkipperTests {
 
     // Sparse block with values in range: all values match but not all docs
     // have a value, so the block is classified YES_IF_PRESENT.
-    approx.advance(1024);
+    approx.advance(1088);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
     // Even doc has a value -> match
     assertTrue(iter.matches());
 
-    approx.advance(1025);
+    approx.advance(1089);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
     // Odd doc has no value -> no match
     assertFalse(iter.matches());
@@ -286,8 +286,8 @@ public class TestDocValuesRangeIterator extends BaseDocValuesSkipperTests {
     SkipBlockRangeIterator approx = (SkipBlockRangeIterator) iter.approximation();
 
     // YES_IF_PRESENT blocks have gaps, so docIdRunEnd = doc + 1
-    approx.advance(1024);
+    approx.advance(1088);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
-    assertEquals(1025, iter.docIDRunEnd());
+    assertEquals(1089, iter.docIDRunEnd());
   }
 }
