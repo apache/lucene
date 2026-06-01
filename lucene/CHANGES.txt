@@ -500,6 +500,8 @@ Optimizations
 * GITHUB#16172: Bulk-evaluate skip-indexed sorted and sorted-set doc-values range queries via a block-aware
   DocValuesRangeIterator#intoBitSet. (Costin Leau)
 
+* GITHUB#16166: Add bulk range evaluation for multi-valued sorted numeric doc values. (Costin Leau)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
