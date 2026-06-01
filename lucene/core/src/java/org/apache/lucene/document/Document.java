@@ -93,13 +93,7 @@ public final class Document implements Iterable<IndexableField> {
    * of that document has to be added.
    */
   public void removeFields(String name) {
-    Iterator<IndexableField> it = fields.iterator();
-    while (it.hasNext()) {
-      IndexableField field = it.next();
-      if (field.name().equals(name)) {
-        it.remove();
-      }
-    }
+    fields.removeIf(field -> field.name().equals(name));
   }
 
   /**
@@ -121,7 +115,7 @@ public final class Document implements Iterable<IndexableField> {
       }
     }
 
-    return result.toArray(new BytesRef[result.size()]);
+    return result.toArray(BytesRef[]::new);
   }
 
   /**
@@ -172,7 +166,7 @@ public final class Document implements Iterable<IndexableField> {
       }
     }
 
-    return result.toArray(new IndexableField[result.size()]);
+    return result.toArray(IndexableField[]::new);
   }
 
   /**
@@ -210,7 +204,7 @@ public final class Document implements Iterable<IndexableField> {
       return NO_STRINGS;
     }
 
-    return result.toArray(new String[result.size()]);
+    return result.toArray(String[]::new);
   }
 
   /**

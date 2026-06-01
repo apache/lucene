@@ -85,7 +85,7 @@ final class MultiNormsLeafSimScorer {
       if (normsList.isEmpty()) {
         norms = null;
       } else {
-        final NumericDocValues[] normsArr = normsList.toArray(new NumericDocValues[0]);
+        final NumericDocValues[] normsArr = normsList.toArray(NumericDocValues[]::new);
         final float[] weightArr = new float[normsList.size()];
         for (int i = 0; i < weightList.size(); i++) {
           weightArr[i] = weightList.get(i);

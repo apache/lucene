@@ -30,7 +30,6 @@ import org.apache.lucene.spatial.prefix.TermQueryPrefixTreeStrategy;
 import org.apache.lucene.spatial.query.SpatialArgs;
 import org.apache.lucene.spatial.query.SpatialOperation;
 import org.junit.Before;
-import org.junit.Test;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.shape.Point;
 import org.locationtech.spatial4j.shape.Rectangle;
@@ -49,7 +48,6 @@ public class TestSpatialPrefixTree extends SpatialTestCase {
     ctx = SpatialContext.GEO;
   }
 
-  @Test
   public void testCellTraverse() {
     trie = new GeohashPrefixTree(ctx, 4);
 
@@ -79,7 +77,6 @@ public class TestSpatialPrefixTree extends SpatialTestCase {
    * A PrefixTree pruning optimization gone bad, applicable when optimize=true. See <a
    * href="https://issues.apache.org/jira/browse/LUCENE-4770">LUCENE-4770</a>.
    */
-  @Test
   public void testBadPrefixTreePrune() throws Exception {
 
     trie = new QuadPrefixTree(ctx, 12);

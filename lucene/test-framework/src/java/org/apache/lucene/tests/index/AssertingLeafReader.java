@@ -113,7 +113,7 @@ public class AssertingLeafReader extends FilterLeafReader {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     Terms terms = super.terms(field);
     return terms == null ? null : new AssertingTerms(terms);
   }
@@ -190,7 +190,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       assertThread("Fields", creationThread);
       Terms terms = super.terms(field);
       return terms == null ? null : new AssertingTerms(terms);
@@ -231,7 +231,7 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       assertThread("Terms", creationThread);
       final int docCount = in.getDocCount();
       assert docCount > 0;
@@ -597,6 +597,17 @@ public class AssertingLeafReader extends FilterLeafReader {
         positionMax = super.freq();
       }
       positionCount = 0;
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      assertThread("Docs enums", creationThread);
+      assert state != DocsEnumState.START : "intoBitSet() called before nextDoc()/advance()";
+      int startDocID = in.docID();
+      int endDocID = in.docIDRunEnd();
+      assert in.docID() == startDocID : "iterator changed docID while running docIDRunEnd()";
+      assert endDocID > startDocID;
+      return endDocID;
     }
 
     @Override
@@ -1406,6 +1417,12 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
+    public int maxValueCount() {
+      assertThread("Doc values skipper", creationThread);
+      return in.maxValueCount();
+    }
+
+    @Override
     public int maxDocID(int level) {
       assertThread("Doc values skipper", creationThread);
       Objects.checkIndex(level, numLevels());
@@ -1817,7 +1834,7 @@ public class AssertingLeafReader extends FilterLeafReader {
   }
 
   @Override
-  public PointValues getPointValues(String field) throws IOException {
+  public PointValues getPointValues(String field) {
     PointValues values = in.getPointValues(field);
     if (values == null) {
       return null;

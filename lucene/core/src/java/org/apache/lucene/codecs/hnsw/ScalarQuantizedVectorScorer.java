@@ -25,7 +25,7 @@ import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.LegacyQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.ScalarQuantizedVectorSimilarity;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
@@ -80,7 +80,7 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
       throws IOException {
-    if (vectorValues instanceof QuantizedByteVectorValues quantizedByteVectorValues) {
+    if (vectorValues instanceof LegacyQuantizedByteVectorValues quantizedByteVectorValues) {
       return new ScalarQuantizedRandomVectorScorerSupplier(
           similarityFunction,
           quantizedByteVectorValues.getScalarQuantizer(),
@@ -94,7 +94,7 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
   public RandomVectorScorer getRandomVectorScorer(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, float[] target)
       throws IOException {
-    if (vectorValues instanceof QuantizedByteVectorValues quantizedByteVectorValues) {
+    if (vectorValues instanceof LegacyQuantizedByteVectorValues quantizedByteVectorValues) {
       ScalarQuantizer scalarQuantizer = quantizedByteVectorValues.getScalarQuantizer();
       byte[] targetBytes = new byte[target.length];
       float offsetCorrection =
@@ -129,7 +129,7 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
   public RandomVectorScorer getRandomVectorScorer(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, short[] target)
       throws IOException {
-    if (vectorValues instanceof QuantizedByteVectorValues quantizedByteVectorValues) {
+    if (vectorValues instanceof LegacyQuantizedByteVectorValues quantizedByteVectorValues) {
       ScalarQuantizer scalarQuantizer = quantizedByteVectorValues.getScalarQuantizer();
       byte[] targetBytes = new byte[target.length];
       float offsetCorrection =
@@ -166,14 +166,14 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
   public static class ScalarQuantizedRandomVectorScorerSupplier
       implements RandomVectorScorerSupplier {
 
-    private final QuantizedByteVectorValues values;
+    private final LegacyQuantizedByteVectorValues values;
     private final ScalarQuantizedVectorSimilarity similarity;
     private final VectorSimilarityFunction vectorSimilarityFunction;
 
     public ScalarQuantizedRandomVectorScorerSupplier(
         VectorSimilarityFunction similarityFunction,
         ScalarQuantizer scalarQuantizer,
-        QuantizedByteVectorValues values) {
+        LegacyQuantizedByteVectorValues values) {
       this.similarity =
           ScalarQuantizedVectorSimilarity.fromVectorSimilarity(
               similarityFunction,
@@ -186,7 +186,7 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     private ScalarQuantizedRandomVectorScorerSupplier(
         ScalarQuantizedVectorSimilarity similarity,
         VectorSimilarityFunction vectorSimilarityFunction,
-        QuantizedByteVectorValues values) {
+        LegacyQuantizedByteVectorValues values) {
       this.similarity = similarity;
       this.values = values;
       this.vectorSimilarityFunction = vectorSimilarityFunction;
@@ -194,7 +194,7 @@ public class ScalarQuantizedVectorScorer implements FlatVectorsScorer {
 
     @Override
     public UpdateableRandomVectorScorer scorer() throws IOException {
-      final QuantizedByteVectorValues vectorsCopy = values.copy();
+      final LegacyQuantizedByteVectorValues vectorsCopy = values.copy();
       byte[] queryVector = new byte[values.dimension()];
       return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(vectorsCopy) {
         float queryOffset = 0;

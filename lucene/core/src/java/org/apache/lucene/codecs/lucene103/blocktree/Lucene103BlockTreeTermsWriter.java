@@ -411,8 +411,7 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
 
     public PendingTerm(BytesRef term, BlockTermState state) {
       super(true);
-      this.termBytes = new byte[term.length];
-      System.arraycopy(term.bytes, term.offset, termBytes, 0, term.length);
+      this.termBytes = ArrayUtil.copyOfSubArray(term.bytes, term.offset, term.offset + term.length);
       this.state = state;
     }
 
@@ -422,7 +421,7 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
     }
   }
 
-  private final class PendingBlock extends PendingEntry {
+  private static final class PendingBlock extends PendingEntry {
     public final BytesRef prefix;
     public final long fp;
     public TrieBuilder index;

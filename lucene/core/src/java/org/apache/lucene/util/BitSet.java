@@ -102,6 +102,20 @@ public abstract class BitSet implements Bits, Accountable {
    */
   public abstract int nextSetBit(int start, int end);
 
+  /**
+   * Returns the index of the first unset (clear) bit at or after {@code index}, or {@link
+   * DocIdSetIterator#NO_MORE_DOCS} if every bit in {@code [index, length())} is set.
+   */
+  public int nextClearBit(int index) {
+    return nextClearBit(index, length());
+  }
+
+  /**
+   * Returns the first unset bit in {@code [start, upperBound)}, or {@link
+   * DocIdSetIterator#NO_MORE_DOCS} if none.
+   */
+  public abstract int nextClearBit(int start, int upperBound);
+
   /** Assert that the current doc is -1. */
   protected final void checkUnpositioned(DocIdSetIterator iter) {
     if (iter.docID() != -1) {

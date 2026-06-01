@@ -24,7 +24,6 @@ import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.deQua
 import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.packAsBinary;
 import static org.apache.lucene.util.quantization.OptimizedScalarQuantizer.unpackBinary;
 
-import org.apache.lucene.codecs.lucene104.Lucene104ScalarQuantizedVectorsFormat.ScalarEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.VectorUtil;
@@ -182,7 +181,8 @@ public class TestOptimizedScalarQuantizer extends LuceneTestCase {
 
   public void testUnpackBinary() {
     int dim = randomIntBetween(1, 4096);
-    ScalarEncoding encoding = ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE;
+    QuantizedByteVectorValues.ScalarEncoding encoding =
+        QuantizedByteVectorValues.ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE;
     byte[] scratch = new byte[encoding.getDiscreteDimensions(dim)];
     for (int i = 0; i < scratch.length; i++) {
       scratch[i] = randomBoolean() ? (byte) 1 : (byte) 0;
@@ -196,7 +196,8 @@ public class TestOptimizedScalarQuantizer extends LuceneTestCase {
 
   public void testPackTransposeDibit() {
     int dim = randomIntBetween(1, 4096);
-    ScalarEncoding encoding = ScalarEncoding.DIBIT_QUERY_NIBBLE;
+    QuantizedByteVectorValues.ScalarEncoding encoding =
+        QuantizedByteVectorValues.ScalarEncoding.DIBIT_QUERY_NIBBLE;
     byte[] scratch = new byte[encoding.getDiscreteDimensions(dim)];
     for (int i = 0; i < scratch.length; i++) {
       scratch[i] = (byte) randomIntBetween(0, 3);

@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.junit.Test;
 
 /**
  * Check relationship between polygon and GeoShapes of basic polygons. Normally we construct the
@@ -30,7 +29,6 @@ import org.junit.Test;
 public class TestSimpleGeoPolygonRelationships extends LuceneTestCase {
 
   /** Test with two shapes with no crossing edges and no points in common in convex case. */
-  @Test
   public void testGeoSimplePolygon1() {
 
     // POLYGON ((19.845091 -60.452631, 20.119948 -61.655652, 23.207901 -61.453298, 22.820804
@@ -109,7 +107,6 @@ public class TestSimpleGeoPolygonRelationships extends LuceneTestCase {
   }
 
   /** Test with two shapes with crossing edges and some points inside in convex case. */
-  @Test
   public void testGeoSimplePolygon2() {
 
     // POLYGON ((19.845091 -60.452631, 20.119948 -61.655652, 23.207901 -61.453298, 22.820804
@@ -189,7 +186,6 @@ public class TestSimpleGeoPolygonRelationships extends LuceneTestCase {
   }
 
   /** Test with two shapes with no crossing edges and all points inside in convex case. */
-  @Test
   public void testGeoSimplePolygon3() {
 
     // POLYGON ((19.845091 -60.452631, 20.119948 -61.655652, 23.207901 -61.453298, 22.820804
@@ -269,7 +265,6 @@ public class TestSimpleGeoPolygonRelationships extends LuceneTestCase {
   }
 
   /** Test with two shapes with crossing edges and no points inside in convex case. */
-  @Test
   public void testGeoSimplePolygon4() {
     // POLYGON ((19.845091 -60.452631, 20.119948 -61.655652, 23.207901 -61.453298, 22.820804
     // -60.257713, 19.845091 -60.452631)) disjoint
@@ -349,7 +344,6 @@ public class TestSimpleGeoPolygonRelationships extends LuceneTestCase {
   }
 
   /** Test with two shapes with no crossing edges and polygon in hole in convex case. */
-  @Test
   public void testGeoSimplePolygonWithHole1() {
     // POLYGON((-135 -31, -135 -30, -137 -30, -137 -31, -135 -31),(-135.5 -30.7, -135.5 -30.4,
     // -136.5 -30.4, -136.5 -30.7, -135.5 -30.7))
@@ -393,7 +387,6 @@ public class TestSimpleGeoPolygonRelationships extends LuceneTestCase {
   }
 
   /** Test with two shapes with crossing edges in hole and some points inside in convex case. */
-  @Test
   public void testGeoSimplePolygonWithHole2() {
     // POLYGON((-135 -31, -135 -30, -137 -30, -137 -31, -135 -31),(-135.5 -30.7, -135.5 -30.4,
     // -136.5 -30.4, -136.5 -30.7, -135.5 -30.7))
@@ -438,7 +431,6 @@ public class TestSimpleGeoPolygonRelationships extends LuceneTestCase {
   }
 
   /** Test with two shapes with crossing edges and some points inside in convex case. */
-  @Test
   public void testGeoSimplePolygonWithHole3() {
     // POLYGON((-135 -31, -135 -30, -137 -30, -137 -31, -135 -31),(-135.5 -30.7, -135.5 -30.4,
     // -136.5 -30.4, -136.5 -30.7, -135.5 -30.7))
@@ -483,7 +475,6 @@ public class TestSimpleGeoPolygonRelationships extends LuceneTestCase {
   }
 
   /** Test with two shapes with no crossing edges and all points inside in convex case. */
-  @Test
   public void testGeoSimplePolygonWithHole4() {
     // POLYGON((-135 -31, -135 -30, -137 -30, -137 -31, -135 -31),(-135.5 -30.7, -135.5 -30.4,
     // -136.5 -30.4, -136.5 -30.7, -135.5 -30.7))
@@ -526,7 +517,6 @@ public class TestSimpleGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(GeoArea.OVERLAPS, rel);
   }
 
-  @Test
   public void testGeoSimplePolygonWithCircle() {
     // POLYGON ((19.845091 -60.452631, 20.119948 -61.655652, 23.207901 -61.453298, 22.820804
     // -60.257713, 19.845091 -60.452631)) disjoint
@@ -616,7 +606,6 @@ public class TestSimpleGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(GeoArea.CONTAINS, rel);
   }
 
-  @Test
   public void testGeoSimplePolygonWithBBox() {
     // POLYGON ((19.845091 -60.452631, 20.119948 -61.655652, 23.207901 -61.453298, 22.820804
     // -60.257713, 19.845091 -60.452631)) disjoint
@@ -718,7 +707,6 @@ public class TestSimpleGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(GeoArea.CONTAINS, rel);
   }
 
-  @Test
   public void testGeoSimplePolygonWithComposite() {
     GeoShape shape = getCompositeShape();
 
@@ -773,7 +761,6 @@ public class TestSimpleGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(GeoArea.OVERLAPS, rel);
   }
 
-  @Test
   public void testDegeneratedPointIntersectShape() {
     GeoBBox bBox1 = GeoBBoxFactory.makeGeoBBox(PlanetModel.SPHERE, 1, 0, 0, 1);
     GeoBBox bBox2 = GeoBBoxFactory.makeGeoBBox(PlanetModel.SPHERE, 1, 1, 1, 1);
@@ -787,7 +774,6 @@ public class TestSimpleGeoPolygonRelationships extends LuceneTestCase {
     assertEquals(GeoArea.CONTAINS, rel);
   }
 
-  @Test
   public void testDegeneratedPointInPole() {
     GeoBBox bBox1 =
         GeoBBoxFactory.makeGeoBBox(PlanetModel.SPHERE, Math.PI * 0.5, Math.PI * 0.5, 0, 0);
@@ -796,7 +782,6 @@ public class TestSimpleGeoPolygonRelationships extends LuceneTestCase {
     assertTrue(bBox1.isWithin(point));
   }
 
-  @Test
   public void testDegeneratePathShape() {
     GeoPoint point1 = new GeoPoint(PlanetModel.SPHERE, 0, 0);
     GeoPoint point2 = new GeoPoint(PlanetModel.SPHERE, 0, 1);

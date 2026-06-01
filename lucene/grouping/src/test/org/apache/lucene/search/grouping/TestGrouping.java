@@ -69,11 +69,8 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.mutable.MutableValue;
 import org.apache.lucene.util.mutable.MutableValueStr;
 
-// TODO
-//   - should test relevance sort too
-//   - test null
-//   - test ties
-//   - test compound sort
+// Basic functionality is covered by testBasic() (relevance sort, null groups)
+// Random testing covers various scenarios in testRandom()
 
 public class TestGrouping extends LuceneTestCase {
 
@@ -272,6 +269,24 @@ public class TestGrouping extends LuceneTestCase {
     dir.close();
   }
 
+  public void testSearchGroupMergeEmptyResult() {
+    // Empty shard list must return an empty collection, not null
+    Collection<SearchGroup<BytesRef>> result =
+        SearchGroup.merge(Collections.emptyList(), 0, 5, Sort.RELEVANCE);
+    assertNotNull(result);
+    assertTrue(result.isEmpty());
+
+    // When offset skips past all groups the result must also be an empty collection, not null
+    SearchGroup<BytesRef> group = new SearchGroup<>();
+    group.groupValue = new BytesRef("a");
+    group.sortValues = new Object[] {1.0f}; // Float value for Sort.RELEVANCE
+    List<Collection<SearchGroup<BytesRef>>> shardGroups =
+        Collections.singletonList(Collections.singletonList(group));
+    result = SearchGroup.merge(shardGroups, 10, 5, Sort.RELEVANCE); // offset 10 > 1 group
+    assertNotNull(result);
+    assertTrue(result.isEmpty());
+  }
+
   private void addGroupField(Document doc, String groupField, String value) {
     doc.add(new SortedDocValuesField(groupField, new BytesRef(value)));
   }
@@ -456,7 +471,7 @@ public class TestGrouping extends LuceneTestCase {
           mvalTopGroups.withinGroupSort,
           mvalTopGroups.totalHitCount,
           mvalTopGroups.totalGroupedHitCount,
-          groups.toArray(new GroupDocs[groups.size()]),
+          groups.toArray(GroupDocs[]::new),
           Float.NaN);
     }
     fail();
@@ -500,7 +515,7 @@ public class TestGrouping extends LuceneTestCase {
     }
     // Break ties:
     sortFields.add(new SortField("id", SortField.Type.INT));
-    return new Sort(sortFields.toArray(new SortField[sortFields.size()]));
+    return new Sort(sortFields.toArray(SortField[]::new));
   }
 
   private Comparator<GroupDoc> getComparator(Sort sort) {
@@ -581,7 +596,15 @@ public class TestGrouping extends LuceneTestCase {
 
     final Comparator<GroupDoc> groupSortComp = getComparator(groupSort);
 
-    Arrays.sort(groupDocs, groupSortComp);
+    // Filter by searchTerm first to avoid sorting unnecessary documents
+    List<GroupDoc> filteredDocs = new ArrayList<>();
+    for (GroupDoc d : groupDocs) {
+      if (d.content.startsWith(searchTerm)) {
+        filteredDocs.add(d);
+      }
+    }
+    filteredDocs.sort(groupSortComp);
+
     final HashMap<BytesRef, List<GroupDoc>> groups = new HashMap<>();
     final List<BytesRef> sortedGroups = new ArrayList<>();
     final List<Comparable<?>[]> sortedGroupFields = new ArrayList<>();
@@ -590,11 +613,7 @@ public class TestGrouping extends LuceneTestCase {
     Set<BytesRef> knownGroups = new HashSet<>();
 
     // System.out.println("TEST: slowGrouping");
-    for (GroupDoc d : groupDocs) {
-      // TODO: would be better to filter by searchTerm before sorting!
-      if (!d.content.startsWith(searchTerm)) {
-        continue;
-      }
+    for (GroupDoc d : filteredDocs) {
       totalHitCount++;
       // System.out.println("  match id=" + d.id + " score=" + d.score);
 
@@ -1511,24 +1530,19 @@ public class TestGrouping extends LuceneTestCase {
         SearchGroup.merge(shardGroups, groupOffset, topNGroups, groupSort);
     if (VERBOSE) {
       System.out.println(" top groups merged:");
-      if (mergedTopGroups == null) {
-        System.out.println("    null");
-      } else {
-        System.out.println("    " + mergedTopGroups.size() + " top groups:");
-        for (SearchGroup<BytesRef> group : mergedTopGroups) {
-          System.out.println(
-              "    ["
-                  + groupToString(group.groupValue)
-                  + "] groupSort="
-                  + Arrays.toString(group.sortValues));
-        }
+      System.out.println("    " + mergedTopGroups.size() + " top groups:");
+      for (SearchGroup<BytesRef> group : mergedTopGroups) {
+        System.out.println(
+            "    ["
+                + groupToString(group.groupValue)
+                + "] groupSort="
+                + Arrays.toString(group.sortValues));
       }
     }
 
-    if (mergedTopGroups != null) {
+    if (!mergedTopGroups.isEmpty()) {
       // Now 2nd pass:
-      @SuppressWarnings({"unchecked", "rawtypes"})
-      final TopGroups<BytesRef>[] shardTopGroups = new TopGroups[subSearchers.length];
+      final List<TopGroups<BytesRef>> shardTopGroups = new ArrayList<>(subSearchers.length);
       for (int shardIDX = 0; shardIDX < subSearchers.length; shardIDX++) {
         final TopGroupsCollector<?> secondPassCollector =
             createSecondPassCollector(
@@ -1540,11 +1554,15 @@ public class TestGrouping extends LuceneTestCase {
                 docOffset + topNDocs,
                 getMaxScores);
         subSearchers[shardIDX].search(w, secondPassCollector);
-        shardTopGroups[shardIDX] = getTopGroups(secondPassCollector, 0);
+        shardTopGroups.add(getTopGroups(secondPassCollector, 0));
         if (VERBOSE) {
           System.out.println(
-              " " + shardTopGroups[shardIDX].groups.length + " shard[" + shardIDX + "] groups:");
-          for (GroupDocs<BytesRef> group : shardTopGroups[shardIDX].groups) {
+              " "
+                  + shardTopGroups.get(shardIDX).groups.length
+                  + " shard["
+                  + shardIDX
+                  + "] groups:");
+          for (GroupDocs<BytesRef> group : shardTopGroups.get(shardIDX).groups) {
             System.out.println(
                 "    ["
                     + groupToString(group.groupValue())

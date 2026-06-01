@@ -52,7 +52,7 @@ public class TestLatLonMultiPointShapeQueries extends BaseLatLonShapeTestCase {
       Field[] fields = LatLonShape.createIndexableFields(name, point.getLat(), point.getLon());
       Collections.addAll(allFields, fields);
     }
-    return allFields.toArray(new Field[0]);
+    return allFields.toArray(Field[]::new);
   }
 
   @Override

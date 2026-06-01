@@ -427,8 +427,8 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
           // uncached, or not a multi dv
           SortedDocValues dv =
               MultiDocValues.getSortedValues(new MultiReader(codecReaders), field.name);
-          if (dv instanceof MultiSortedDocValues) {
-            map = ((MultiSortedDocValues) dv).mapping;
+          if (dv instanceof MultiSortedDocValues msdv) {
+            map = msdv.mapping;
             cachedOrdMaps.put(field.name, map);
           }
           return dv;
@@ -463,8 +463,8 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
           // uncached, or not a multi dv
           SortedSetDocValues dv =
               MultiDocValues.getSortedSetValues(new MultiReader(codecReaders), field.name);
-          if (dv instanceof MultiSortedSetDocValues) {
-            map = ((MultiSortedSetDocValues) dv).mapping;
+          if (dv instanceof MultiSortedSetDocValues mssdv) {
+            map = mssdv.mapping;
             cachedOrdMaps.put(field.name, map);
           }
           return dv;
@@ -542,7 +542,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return fields.terms(field);
     }
 
@@ -594,7 +594,7 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public PointValues getValues(String field) throws IOException {
+    public PointValues getValues(String field) {
       List<PointValuesSub> values = new ArrayList<>();
       for (int i = 0; i < readers.length; ++i) {
         FieldInfo fi = codecReaders[i].getFieldInfos().fieldInfo(field);

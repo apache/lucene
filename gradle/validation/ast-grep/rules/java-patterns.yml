@@ -149,3 +149,17 @@ rule:
   regex: "^/\\*\\*([ \r\n*])*[{]@inheritDoc[ \r\n]*[}]([ \r\n*])*\\*/$"
 severity: error
 message: "{@inheritDoc} on its own is unnecessary"
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/ast-grep/ast-grep/refs/heads/main/schemas/java_rule.json
+id: CollectionToArrayPreSizedArray
+language: java
+rule:
+  kind: method_invocation
+  pattern: $COLL.toArray(new $TYPE[$SIZE])
+constraints:
+  SIZE:
+    not:
+      regex: "^0$"
+severity: error
+message: Avoid pre-sized arrays in Collection#toArray calls
+note: Prefer `toArray($TYPE[]::new)` or `toArray(new $TYPE[0])`

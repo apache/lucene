@@ -67,7 +67,7 @@ public class TermVectorLeafReader extends LeafReader {
           }
 
           @Override
-          public Terms terms(String fld) throws IOException {
+          public Terms terms(String fld) {
             if (!field.equals(fld)) {
               return null;
             }
@@ -117,7 +117,7 @@ public class TermVectorLeafReader extends LeafReader {
   protected void doClose() throws IOException {}
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     return fields.terms(field);
   }
 

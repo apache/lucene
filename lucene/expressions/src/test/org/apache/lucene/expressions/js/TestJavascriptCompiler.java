@@ -18,9 +18,11 @@ package org.apache.lucene.expressions.js;
 
 import java.text.ParseException;
 import org.apache.lucene.expressions.Expression;
+import org.junit.jupiter.api.Test;
 
 public class TestJavascriptCompiler extends CompilerTestCase {
 
+  @Test
   public void testNullExpression() throws Exception {
     expectThrows(
         NullPointerException.class,
@@ -29,6 +31,7 @@ public class TestJavascriptCompiler extends CompilerTestCase {
         });
   }
 
+  @Test
   public void testNullFunctions() throws Exception {
     expectThrows(
         NullPointerException.class,
@@ -37,11 +40,13 @@ public class TestJavascriptCompiler extends CompilerTestCase {
         });
   }
 
+  @Test
   public void testEnormousExpressionSource() throws Exception {
     String expr = " ".repeat(20000) + "100";
     assertNotNull(compile(expr));
   }
 
+  @Test
   public void testValidCompiles() throws Exception {
     assertNotNull(compile("100"));
     assertNotNull(compile("valid0+100"));
@@ -49,6 +54,7 @@ public class TestJavascriptCompiler extends CompilerTestCase {
     assertNotNull(compile("logn(2, 20+10-5.0)"));
   }
 
+  @Test
   public void testValidVariables() throws Exception {
     doTestValidVariable("object.valid0");
     doTestValidVariable("object0.object1.valid1");
@@ -92,6 +98,7 @@ public class TestJavascriptCompiler extends CompilerTestCase {
     assertEquals(output, e.variables[0]);
   }
 
+  @Test
   public void testInvalidVariables() throws Exception {
     doTestInvalidVariable("object.0invalid");
     doTestInvalidVariable("0.invalid");
@@ -117,6 +124,7 @@ public class TestJavascriptCompiler extends CompilerTestCase {
         });
   }
 
+  @Test
   public void testInvalidLexer() throws Exception {
     ParseException expected =
         expectThrows(
@@ -127,6 +135,7 @@ public class TestJavascriptCompiler extends CompilerTestCase {
     assertTrue(expected.getMessage().contains("unexpected character '.' on line (2) position (1)"));
   }
 
+  @Test
   public void testInvalidCompiles() throws Exception {
     expectThrows(
         ParseException.class,
@@ -159,6 +168,7 @@ public class TestJavascriptCompiler extends CompilerTestCase {
         });
   }
 
+  @Test
   public void testEmpty() {
     expectThrows(
         ParseException.class,
@@ -179,6 +189,7 @@ public class TestJavascriptCompiler extends CompilerTestCase {
         });
   }
 
+  @Test
   public void testNull() throws Exception {
     expectThrows(
         NullPointerException.class,
@@ -187,6 +198,7 @@ public class TestJavascriptCompiler extends CompilerTestCase {
         });
   }
 
+  @Test
   public void testWrongArity() throws Exception {
     ParseException expected =
         expectThrows(
@@ -231,6 +243,7 @@ public class TestJavascriptCompiler extends CompilerTestCase {
     assertEquals(expected.getErrorOffset(), 4);
   }
 
+  @Test
   public void testVariableNormalization() throws Exception {
     // multiple double quotes
     Expression x = compile("foo[\"a\"][\"b\"]");

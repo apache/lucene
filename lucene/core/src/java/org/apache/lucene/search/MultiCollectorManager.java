@@ -64,8 +64,8 @@ public class MultiCollectorManager implements CollectorManager<Collector, Object
       for (Collector collector : reducibleCollectors) {
         // MultiCollector will not actually wrap the collector if only one is provided, so we
         // check the instance type here:
-        if (collector instanceof MultiCollector) {
-          reducibleCollector.add(((MultiCollector) collector).getCollectors()[i]);
+        if (collector instanceof MultiCollector mc) {
+          reducibleCollector.add(mc.getCollectors()[i]);
         } else {
           reducibleCollector.add(collector);
         }

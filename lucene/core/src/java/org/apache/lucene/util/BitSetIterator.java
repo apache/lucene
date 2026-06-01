@@ -29,8 +29,8 @@ public class BitSetIterator extends AbstractDocIdSetIterator {
 
   private static <T extends BitSet> T getBitSet(
       DocIdSetIterator iterator, Class<? extends T> clazz) {
-    if (iterator instanceof BitSetIterator) {
-      BitSet bits = ((BitSetIterator) iterator).bits;
+    if (iterator instanceof BitSetIterator bsi) {
+      BitSet bits = bsi.bits;
       assert bits != null;
       if (clazz.isInstance(bits)) {
         return clazz.cast(bits);
@@ -91,6 +91,17 @@ public class BitSetIterator extends AbstractDocIdSetIterator {
   @Override
   public long cost() {
     return cost;
+  }
+
+  @Override
+  public int docIDRunEnd() {
+    assert doc != NO_MORE_DOCS;
+    int next = doc + 1;
+    if (next >= length) {
+      return length;
+    }
+    int end = bits.nextClearBit(next);
+    return end == NO_MORE_DOCS ? length : end;
   }
 
   @Override

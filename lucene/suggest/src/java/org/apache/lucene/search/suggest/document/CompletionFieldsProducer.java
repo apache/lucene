@@ -165,7 +165,7 @@ final class CompletionFieldsProducer extends FieldsProducer implements Accountab
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     Terms terms = delegateFieldsProducer.terms(field);
     if (terms == null) {
       return null;

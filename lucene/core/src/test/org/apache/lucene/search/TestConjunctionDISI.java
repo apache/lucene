@@ -19,9 +19,9 @@ package org.apache.lucene.search;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -343,7 +343,7 @@ public class TestConjunctionDISI extends LuceneTestCase {
       final int maxDoc = TestUtil.nextInt(random(), 100, 10000);
       final int numIterators = TestUtil.nextInt(random(), 5, 10);
       final FixedBitSet[] sets = new FixedBitSet[numIterators];
-      final List<Scorer> scorers = new LinkedList<>();
+      final List<Scorer> scorers = new ArrayList<>();
       for (int i = 0; i < numIterators; ++i) {
         final FixedBitSet set = randomSet(maxDoc);
         if (random().nextBoolean()) {

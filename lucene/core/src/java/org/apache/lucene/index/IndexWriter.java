@@ -55,6 +55,7 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.FieldInfosFormat;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.column.ColumnBatch;
 import org.apache.lucene.index.DocValuesUpdate.BinaryDocValuesUpdate;
 import org.apache.lucene.index.DocValuesUpdate.NumericDocValuesUpdate;
 import org.apache.lucene.index.FieldInfos.FieldNumbers;
@@ -1047,7 +1048,6 @@ public class IndexWriter
         // Must clone because we don't want the incoming NRT reader to "see" any changes this writer
         // now makes:
         segmentInfos = reader.segmentInfos.clone();
-
         SegmentInfos lastCommit;
         try {
           lastCommit = SegmentInfos.readCommit(directoryOrig, segmentInfos.getSegmentsFileName());
@@ -1111,7 +1111,9 @@ public class IndexWriter
 
         rollbackSegments = segmentInfos.createBackupSegmentInfos();
       }
-
+      if (infoStream.isEnabled("IW")) {
+        infoStream.message("IW", "init " + segmentInfos.toStringVerbose());
+      }
       commitUserData = new HashMap<>(segmentInfos.getUserData()).entrySet();
 
       pendingNumDocs.set(segmentInfos.totalMaxDoc());
@@ -1200,7 +1202,7 @@ public class IndexWriter
       if (infoStream.isEnabled("IW")) {
         infoStream.message("IW", "init: hit exception on init; releasing write lock: " + t);
       }
-      IOUtils.closeWhileSuppressingExceptions(t, writeLock);
+      IOUtils.closeWhileSuppressingExceptions(t, config.getMergeScheduler(), writeLock);
       writeLock = null;
       throw t;
     }
@@ -1523,6 +1525,41 @@ public class IndexWriter
   }
 
   /**
+   * Adds a batch of documents in column-oriented format. The batch's columns are processed
+   * field-by-field rather than document-by-document.
+   *
+   * @param columnBatch the column-oriented batch of documents to add
+   * @return The <a href="#sequence_number">sequence number</a> for this operation
+   * @throws IOException if there is a low-level IO error
+   * @lucene.experimental
+   */
+  public long addBatch(ColumnBatch columnBatch) throws IOException {
+    return updateBatch(null, columnBatch);
+  }
+
+  private long updateBatch(
+      final DocumentsWriterDeleteQueue.Node<?> delNode, ColumnBatch columnBatch)
+      throws IOException {
+    ensureOpen();
+    boolean success = false;
+    try {
+      final long seqNo = maybeProcessEvents(docWriter.updateBatch(columnBatch, delNode));
+      success = true;
+      return seqNo;
+    } catch (Error tragedy) {
+      tragicEvent(tragedy, "updateBatch");
+      throw tragedy;
+    } finally {
+      if (success == false) {
+        if (infoStream.isEnabled("IW")) {
+          infoStream.message("IW", "hit exception adding batch");
+        }
+        maybeCloseOnTragicEvent();
+      }
+    }
+  }
+
+  /**
    * Atomically deletes documents matching the provided delTerm and adds a block of documents with
    * sequentially assigned document IDs, such that an external reader will see all or none of the
    * documents.
@@ -1723,9 +1760,9 @@ public class IndexWriter
   private synchronized long tryModifyDocument(IndexReader readerIn, int docID, DocModifier toApply)
       throws IOException {
     final LeafReader reader;
-    if (readerIn instanceof LeafReader) {
+    if (readerIn instanceof LeafReader lr) {
       // Reader is already atomic: use the incoming docID:
-      reader = (LeafReader) readerIn;
+      reader = lr;
     } else {
       // Composite reader: lookup sub-reader and re-base docID:
       List<LeafReaderContext> leaves = readerIn.leaves();
@@ -2844,7 +2881,7 @@ public class IndexWriter
       ensureOpen(false);
 
       if (infoStream.isEnabled("IW")) {
-        infoStream.message("IW", "publishFlushedSegment " + newSegment);
+        infoStream.message("IW", "publishFlushedSegment " + newSegment.toStringVerbose());
       }
 
       if (globalPacket != null && globalPacket.any()) {
@@ -3343,6 +3380,13 @@ public class IndexWriter
       try {
         writer.addIndexesReaderMerge(merge);
         success = true;
+        if (infoStream != null && infoStream.isEnabled("IW")) {
+          if (merge.info == null) {
+            infoStream.message("IW", "dropped 100% deleted segment");
+          } else {
+            infoStream.message("IW", "merged new segment " + merge.info.toStringVerbose());
+          }
+        }
       } catch (Throwable t) {
         handleMergeException(t, merge);
       } finally {
@@ -4775,6 +4819,7 @@ public class IndexWriter
 
     if (merge.info != null && merge.isAborted() == false) {
       if (infoStream.isEnabled("IW")) {
+        infoStream.message("IW", "merged new segment " + merge.info.toStringVerbose());
         infoStream.message(
             "IW",
             "merge time "
@@ -6458,7 +6503,7 @@ public class IndexWriter
       throw t;
     }
 
-    return segStates.toArray(new BufferedUpdatesStream.SegmentState[0]);
+    return segStates.toArray(BufferedUpdatesStream.SegmentState[]::new);
   }
 
   /** Tests should override this to enable test points. Default is <code>false</code>. */
