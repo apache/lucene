@@ -47,10 +47,8 @@ public class MemoryAccountingBitsetCollectorManager
 
   @Override
   public Result reduce(Collection<MemoryAccountingBitsetCollector> collectors) {
-    int globalMinDocBase = Integer.MAX_VALUE;
     int globalMaxDocEnd = 0;
     for (MemoryAccountingBitsetCollector collector : collectors) {
-      globalMinDocBase = Math.min(globalMinDocBase, collector.getMinDocBase());
       globalMaxDocEnd = Math.max(globalMaxDocEnd, collector.getMaxDocEnd());
     }
 
