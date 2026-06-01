@@ -381,6 +381,8 @@ Optimizations
 ---------------------
 * GITHUB#15861: Optimise PhraseScorer by short circuiting non competitive documents in TOP_SCORES mode. (Prithvi S)
 
+* GITHUB#16154: Use Lucene's PriorityQueue in NearestNeighbor to avoid poll/offer overhead on the hot path. (Prithvi S)
+
 * GITHUB#15868: Optimize DisjunctionMaxBulkScorer by reusing the inner LeafCollector across
   sub-scorers and resetting windowScores inline during replay instead of Arrays.fill. (Prithvi S)
 
