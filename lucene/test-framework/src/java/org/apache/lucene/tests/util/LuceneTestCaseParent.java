@@ -2683,7 +2683,7 @@ public abstract sealed class LuceneTestCaseParent extends Assert
         ret = random.nextBoolean() ? new IndexSearcher(r) : new IndexSearcher(r.getContext());
       }
       if (random.nextBoolean()) {
-        ret.setQueryCache(new LRUQueryCache(100, 1024 * 1024, lrc -> true, 1f));
+        ret.setQueryCache(new LRUQueryCache(100, 1024 * 1024, _ -> true, 1f));
         ret.setQueryCachingPolicy(MAYBE_CACHE_POLICY);
       }
       ret.setSimilarity(getTestFrameworkInfra().getClassEnv().similarity);
@@ -2734,7 +2734,7 @@ public abstract sealed class LuceneTestCaseParent extends Assert
       ret.setSimilarity(getTestFrameworkInfra().getClassEnv().similarity);
 
       if (random.nextBoolean()) {
-        ret.setQueryCache(new LRUQueryCache(100, 1024 * 1024, lrc -> true, 1f));
+        ret.setQueryCache(new LRUQueryCache(100, 1024 * 1024,  _ -> true, 1f));
         ret.setQueryCachingPolicy(MAYBE_CACHE_POLICY);
       }
       if (random().nextBoolean()) {
