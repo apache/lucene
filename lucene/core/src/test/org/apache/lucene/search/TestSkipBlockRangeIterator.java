@@ -27,10 +27,14 @@ public class TestSkipBlockRangeIterator extends BaseDocValuesSkipperTests {
     SkipBlockRangeIterator it = new SkipBlockRangeIterator(skipper, 10, 20);
 
     assertEquals(0, it.nextDoc());
+    // Level-1 block [0,127] is dense and in range: docIDRunEnd expands
     assertEquals(128, it.docIDRunEnd());
     assertEquals(100, it.advance(100));
     assertEquals(512, it.advance(300));
     assertEquals(513, it.docIDRunEnd());
+    // Block [1024,1087] is dense YES, but level-1 [1024,1151] is sparse: can't expand
+    assertEquals(1024, it.advance(1024));
+    assertEquals(1088, it.docIDRunEnd());
     assertEquals(1100, it.advance(1100));
     assertEquals(1101, it.docIDRunEnd());
     assertEquals(1536, it.advance(1500));

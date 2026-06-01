@@ -326,10 +326,15 @@ public class TestDocValuesOrdinalSetIterator extends BaseDocValuesSkipperTests {
     assertEquals(SkipBlockRangeIterator.Match.MAYBE, approx.getMatch());
     assertEquals(513, iter.docIDRunEnd());
 
-    // YES_IF_PRESENT block: also doc+1
+    // YES block in second repetition (dense up to DENSE_END=1088): also doc+1
     approx.advance(1024);
-    assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
+    assertEquals(SkipBlockRangeIterator.Match.YES, approx.getMatch());
     assertEquals(1025, iter.docIDRunEnd());
+
+    // YES_IF_PRESENT block: also doc+1
+    approx.advance(1088);
+    assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
+    assertEquals(1089, iter.docIDRunEnd());
   }
 
   // ==========================================================================
@@ -546,9 +551,15 @@ public class TestDocValuesOrdinalSetIterator extends BaseDocValuesSkipperTests {
     assertEquals(SkipBlockRangeIterator.Match.MAYBE, approx.getMatch());
     assertEquals(513, iter.docIDRunEnd());
 
+    // YES block in second repetition (dense up to DENSE_END=1088)
     approx.advance(1024);
-    assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
+    assertEquals(SkipBlockRangeIterator.Match.YES, approx.getMatch());
     assertEquals(1025, iter.docIDRunEnd());
+
+    // YES_IF_PRESENT block
+    approx.advance(1088);
+    assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
+    assertEquals(1089, iter.docIDRunEnd());
   }
 
   // --- SortedSetDocValues: YES_IF_PRESENT ---
@@ -558,12 +569,12 @@ public class TestDocValuesOrdinalSetIterator extends BaseDocValuesSkipperTests {
     SkipBlockRangeIterator approx = (SkipBlockRangeIterator) iter.approximation();
 
     // Sparse region: even doc has value, odd doc does not
-    approx.advance(1024);
+    approx.advance(1088);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
     // Ords [10, 20], 10 in set → match
     assertTrue(iter.matches());
 
-    approx.advance(1025);
+    approx.advance(1089);
     // Odd doc has no value → no match
     assertFalse(iter.matches());
   }
