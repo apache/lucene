@@ -231,7 +231,7 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     void setScorer(Scorable scorer) throws IOException {}
 
     final void updateCompetitiveIterator() throws IOException {
-      if (hitsThresholdReached == false) {
+      if (hitsThresholdReached == false && leafTopSet == false) {
         return;
       }
       if (leafTopSet == false && queueFull == false) {
