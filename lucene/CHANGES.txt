@@ -462,6 +462,10 @@ Optimizations
 
 * GITHUB#15991: Load dense filters into bitset in MaxScoreBulkScorer. (Prithvi S)
 
+* GITHUB#16163: NumericComparator now builds the DVSkipper competitive iterator immediately when
+  top value is set, enabling block-level skipping from the first document instead of waiting
+  until hitsThresholdReached. (Martijn van Groningen)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
