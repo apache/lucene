@@ -282,10 +282,10 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
     List<Query> rewrittenDisjuncts = new ArrayList<>();
     for (Query sub : disjuncts) {
       Query rewrittenSub = sub.rewrite(indexSearcher);
-      if (rewrittenSub != sub || sub.getClass() == MatchNoDocsQuery.class) {
+      if (rewrittenSub != sub || rewrittenSub instanceof MatchNoDocsQuery) {
         actuallyRewritten = true;
       }
-      if (rewrittenSub.getClass() != MatchNoDocsQuery.class) {
+      if (rewrittenSub instanceof MatchNoDocsQuery == false) {
         rewrittenDisjuncts.add(rewrittenSub);
       }
     }

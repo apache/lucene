@@ -375,6 +375,8 @@ Improvements
 
 * GITHUB#16088: SearchGroup#merge now returns an empty collection instead of null when topGroups is empty. (Luca Cavanna)
 
+* GITHUB#16144: Clarify LeafCollector batch collection scoring contract. (Costin Leau)
+
 Optimizations
 ---------------------
 * GITHUB#15861: Optimise PhraseScorer by short circuiting non competitive documents in TOP_SCORES mode. (Prithvi S)
@@ -454,12 +456,17 @@ Optimizations
 
 * GITHUB#16126: Implement #intoBitSet and #docIDRunEnd in DocValuesWriter implementations. (Ignacio Vera)
 
-* GITHUB#16141: Optimize constant-score bulk scoring via intoBitSet batching. (Costin Leau)
+* GITHUB#16141, GITHUB#16143: Optimize constant-score bulk scoring via intoBitSet
+  batching, route more constant-score iterators through ConstantScoreScorerSupplier,
+  and preserve two-phase iterator semantics when falling back to DefaultBulkScorer.
+  (Costin Leau)
 
 * GITHUB#16147: Optimize column batch parent field with bulk fill. (Tim Brooks)
 
 * GITHUB#16103: DisjunctionMaxQuery now filters out MatchNoDocsQuery disjuncts during rewrite,
   avoiding unnecessary scorer overhead. (Prithvi S)
+
+* GITHUB#15991: Load dense filters into bitset in MaxScoreBulkScorer. (Prithvi S)
 
 Bug Fixes
 ---------------------
@@ -519,6 +526,10 @@ Bug Fixes
   account for rawVectorDelegate RAM, making byte vector fields completely invisible in RAM
   reporting. Also added missing dimensionSums array accounting in quantized writers. (Prithvi S)
 
+* GITHUB#16138: Reject non-SerializableObject classes in SerializableObject.readClass before they are
+  instantiated, so a crafted spatial3d shape stream cannot load arbitrary classes. Also adapt
+  experimental SerializedObject API to be more type safe. (metsw24-max, Uwe Schindler)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
@@ -554,6 +565,8 @@ Other
 * GITHUB#16115: Reject duplicate column names in ColumnBatch. (Tim Brooks)
 
 * GITHUB#16118: Remove getOrAddPerField calls in processBatch. (Tim Brooks)
+
+* GITHUB##16135: Disable external entities in hyphenation PatternParser. (metsw24-max, Uwe Schindler)
 
 ======================= Lucene 10.4.0 =======================
 
