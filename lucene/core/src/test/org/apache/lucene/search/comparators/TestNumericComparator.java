@@ -208,10 +208,14 @@ public class TestNumericComparator extends LuceneTestCase {
     // When search_after (topValue) is set, the DVSkipper competitive iterator must be built
     // immediately at setScorer time, without waiting for hitsThresholdReached. Otherwise,
     // the first segment scan cannot use block-level skipping even though the bound is known.
-    final int numDocs = 1000;
+    final int numDocs = atLeast(1000);
     try (var dir = newDirectory()) {
       try (var writer =
-          new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+          new IndexWriter(
+              dir,
+              new IndexWriterConfig()
+                  .setIndexSort(new Sort(new SortField("field", SortField.Type.LONG)))
+                  .setMergePolicy(newLogMergePolicy()))) {
         for (int i = 0; i < numDocs; i++) {
           var doc = new Document();
           doc.add(NumericDocValuesField.indexedField("field", i));
@@ -223,12 +227,12 @@ public class TestNumericComparator extends LuceneTestCase {
           var leafContext = reader.leaves().get(0);
           assertNotNull(leafContext.reader().getDocValuesSkipper("field"));
 
-          // Ascending sort with topValue=500: competitive docs have value >= 500 (docs 500-999).
+          // Ascending sort with topValue=numDocs: competitive docs have < numDocs.
           var comparator =
               (LongComparator)
                   new SortField("field", SortField.Type.LONG, false)
                       .getComparator(1, Pruning.GREATER_THAN_OR_EQUAL_TO);
-          comparator.setTopValue(500L);
+          comparator.setTopValue((long) numDocs);
           assertFalse(comparator.hitsThresholdReached);
 
           var leafComparator = comparator.getLeafComparator(leafContext);
@@ -236,12 +240,12 @@ public class TestNumericComparator extends LuceneTestCase {
 
           var iter = leafComparator.competitiveIterator();
           assertNotNull(iter);
-          // SkipBlockRangeIterator.cost() returns NO_MORE_DOCS; the initial all-docs iterator
+          // SkipBlockRangeIterator.nextDoc() returns NO_MORE_DOCS; the initial all-docs iterator
           // returns maxDoc. This distinguishes a built iterator from the unbuilt one.
           assertEquals(
-              "Expected DVSkipper competitive iterator to be built immediately with search_after",
-              (long) DocIdSetIterator.NO_MORE_DOCS,
-              iter.cost());
+              "Expected DVSkipper competitive iterator, which should be exhausted immediately",
+              DocIdSetIterator.NO_MORE_DOCS,
+              iter.nextDoc());
         }
       }
     }
@@ -251,10 +255,14 @@ public class TestNumericComparator extends LuceneTestCase {
       throws Exception {
     // Without search_after and without hitsThresholdReached, the guard should still fire
     // and leave the competitive iterator as all-docs.
-    final int numDocs = 1000;
+    final int numDocs = atLeast(1000);
     try (var dir = newDirectory()) {
       try (var writer =
-          new IndexWriter(dir, new IndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+          new IndexWriter(
+              dir,
+              new IndexWriterConfig()
+                  .setIndexSort(new Sort(new SortField("field", SortField.Type.LONG)))
+                  .setMergePolicy(newLogMergePolicy()))) {
         for (int i = 0; i < numDocs; i++) {
           var doc = new Document();
           doc.add(NumericDocValuesField.indexedField("field", i));
@@ -279,11 +287,11 @@ public class TestNumericComparator extends LuceneTestCase {
           var iter = leafComparator.competitiveIterator();
           assertNotNull(iter);
           // Without search_after and without threshold, the guard fires and the iterator stays
-          // as the initial all-docs iterator whose cost equals maxDoc.
+          // as the initial all-docs iterator whose first docId should be zero.
           assertEquals(
-              "Expected competitive iterator to remain as all-docs without search_after or threshold",
-              (long) numDocs,
-              iter.cost());
+              "Expected all docs iterator, which starts at zero because no pruning is done",
+              0,
+              iter.nextDoc());
         }
       }
     }
