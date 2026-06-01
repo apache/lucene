@@ -1607,27 +1607,25 @@ public class TestGrouping extends LuceneTestCase {
       final Collection<SearchGroup<BytesRef>> topGroups =
           toByteRefSearchGroups(
               subSearchers[shardIDX].search(query, firstPassGroupingCollectorManager));
-      if (topGroups != null) {
-        if (VERBOSE) {
+      if (VERBOSE) {
+        System.out.println(
+            "  shard "
+                + shardIDX
+                + " s="
+                + subSearchers[shardIDX]
+                + " totalGroupedHitCount=?"
+                + " "
+                + topGroups.size()
+                + " groups:");
+        for (SearchGroup<BytesRef> group : topGroups) {
           System.out.println(
-              "  shard "
-                  + shardIDX
-                  + " s="
-                  + subSearchers[shardIDX]
-                  + " totalGroupedHitCount=?"
-                  + " "
-                  + topGroups.size()
-                  + " groups:");
-          for (SearchGroup<BytesRef> group : topGroups) {
-            System.out.println(
-                "    "
-                    + groupToString(group.groupValue)
-                    + " groupSort="
-                    + Arrays.toString(group.sortValues));
-          }
+              "    "
+                  + groupToString(group.groupValue)
+                  + " groupSort="
+                  + Arrays.toString(group.sortValues));
         }
-        shardGroups.add(topGroups);
       }
+      shardGroups.add(topGroups);
     }
 
     final Collection<SearchGroup<BytesRef>> mergedTopGroups =
@@ -1787,13 +1785,8 @@ public class TestGrouping extends LuceneTestCase {
     @Override
     public <C extends Collector, T> T search(Query query, CollectorManager<C, T> collectorManager)
         throws IOException {
-      final Weight weight = createWeight(rewrite(query), ScoreMode.COMPLETE, 1);
-      return search(weight, collectorManager);
-    }
-
-    private <C extends Collector, T> T search(
-        Weight weight, CollectorManager<C, T> collectorManager) throws IOException {
       final C collector = collectorManager.newCollector();
+      final Weight weight = createWeight(rewrite(query), collector.scoreMode(), 1);
       searchLeaf(ctx, 0, DocIdSetIterator.NO_MORE_DOCS, weight, collector);
       return collectorManager.reduce(Collections.singletonList(collector));
     }
