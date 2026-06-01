@@ -156,8 +156,6 @@ Optimizations
 
 * GITHUB#15597, GITHUB#15777: Reduce memory usage of NeighborArray (Viliam Durina)
 
-* GITHUB#16109: Add count() to SortedSetDocValuesRangeQuery. (Prithvi S)
-
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
@@ -461,6 +459,8 @@ Optimizations
 * GITHUB#16141: Optimize constant-score bulk scoring via intoBitSet batching. (Costin Leau)
 
 * GITHUB#16147: Optimize column batch parent field with bulk fill. (Tim Brooks)
+
+* GITHUB#16109: Add count() to SortedSetDocValuesRangeQuery. (Prithvi S)
 
 * GITHUB#15991: Load dense filters into bitset in MaxScoreBulkScorer. (Prithvi S)
 

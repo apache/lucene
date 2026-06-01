@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 import java.util.Set;
 import java.util.function.IntFunction;
@@ -694,11 +695,12 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
     try (Directory dir = newDirectory();
         RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
       for (int i = 0; i < 100; i++) {
+        String val = String.format(Locale.ROOT, "%03d", i);
         Document doc = new Document();
-        doc.add(SortedSetDocValuesField.indexedField("with_index", newBytesRef(i + "")));
-        doc.add(new SortedSetDocValuesField("without_index", newBytesRef(i + "")));
+        doc.add(SortedSetDocValuesField.indexedField("with_index", newBytesRef(val)));
+        doc.add(new SortedSetDocValuesField("without_index", newBytesRef(val)));
         if (i != 55) {
-          doc.add(SortedSetDocValuesField.indexedField("sparse", newBytesRef(i + "")));
+          doc.add(SortedSetDocValuesField.indexedField("sparse", newBytesRef(val)));
         }
         iw.addDocument(doc);
       }
@@ -712,126 +714,162 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
         assertCount(
             searcher,
             SortedSetDocValuesField.newSlowRangeQuery(
-                "nonexistent", newBytesRef("0"), newBytesRef("99"), true, true),
+                "nonexistent", newBytesRef("000"), newBytesRef("099"), true, true),
             0);
 
-        // Below all values (lexicographically): "-50" < "-1" < "0"
+        // Below all values: range is entirely before "000"
         assertCount(
             searcher,
             SortedSetDocValuesField.newSlowRangeQuery(
-                "with_index", newBytesRef("-50"), newBytesRef("-1"), true, true),
+                "with_index", newBytesRef("!"), newBytesRef("/"), true, true),
             0);
         assertCount(
             searcher,
             SortedSetDocValuesField.newSlowRangeQuery(
-                "without_index", newBytesRef("-50"), newBytesRef("-1"), true, true),
+                "without_index", newBytesRef("!"), newBytesRef("/"), true, true),
             0);
         assertCount(
             searcher,
             SortedSetDocValuesField.newSlowRangeQuery(
-                "sparse", newBytesRef("-50"), newBytesRef("-1"), true, true),
+                "sparse", newBytesRef("!"), newBytesRef("/"), true, true),
             0);
 
-        // Match all values
+        // Match all values: "000" through "099"
         assertCount(
             searcher,
             SortedSetDocValuesField.newSlowRangeQuery(
-                "with_index", newBytesRef("0"), newBytesRef("99"), true, true),
+                "with_index", newBytesRef("000"), newBytesRef("099"), true, true),
             100);
         assertCount(
             searcher,
             SortedSetDocValuesField.newSlowRangeQuery(
-                "without_index", newBytesRef("0"), newBytesRef("99"), true, true),
+                "without_index", newBytesRef("000"), newBytesRef("099"), true, true),
             -1);
         assertCount(
             searcher,
             SortedSetDocValuesField.newSlowRangeQuery(
-                "sparse", newBytesRef("0"), newBytesRef("99"), true, true),
-            -1);
-
-        // Partial match
-        assertCount(
-            searcher,
-            SortedSetDocValuesField.newSlowRangeQuery(
-                "with_index", newBytesRef("50"), newBytesRef("60"), true, true),
-            -1);
-        assertCount(
-            searcher,
-            SortedSetDocValuesField.newSlowRangeQuery(
-                "without_index", newBytesRef("50"), newBytesRef("60"), true, true),
-            -1);
-        assertCount(
-            searcher,
-            SortedSetDocValuesField.newSlowRangeQuery(
-                "sparse", newBytesRef("50"), newBytesRef("60"), true, true),
+                "sparse", newBytesRef("000"), newBytesRef("099"), true, true),
             -1);
 
-        // Above all digit-prefixed values (lexicographically): "a" > "9" > "99"
+        // Partial match: "050" through "060" = 11 values
         assertCount(
             searcher,
             SortedSetDocValuesField.newSlowRangeQuery(
-                "with_index", newBytesRef("a"), newBytesRef("z"), true, true),
+                "with_index", newBytesRef("050"), newBytesRef("060"), true, true),
+            -1);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "without_index", newBytesRef("050"), newBytesRef("060"), true, true),
+            -1);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "sparse", newBytesRef("050"), newBytesRef("060"), true, true),
+            -1);
+
+        // Partial match with bounds not in the index: "0501" falls between "050" and "051"
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("0501"), newBytesRef("100"), true, true),
+            -1);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "without_index", newBytesRef("0501"), newBytesRef("100"), true, true),
+            -1);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "sparse", newBytesRef("0501"), newBytesRef("100"), true, true),
+            -1);
+
+        // Non-indexed bounds that cover all values: "//" < "000" and "1000" > "099"
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("//"), newBytesRef("1000"), true, true),
+            100);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "without_index", newBytesRef("//"), newBytesRef("1000"), true, true),
+            -1);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "sparse", newBytesRef("//"), newBytesRef("1000"), true, true),
+            -1);
+
+        // Non-indexed bounds that match nothing: "0991" through "0999" are above all values
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("0991"), newBytesRef("0999"), true, true),
             0);
         assertCount(
             searcher,
             SortedSetDocValuesField.newSlowRangeQuery(
-                "without_index", newBytesRef("a"), newBytesRef("z"), true, true),
+                "without_index", newBytesRef("0991"), newBytesRef("0999"), true, true),
             0);
         assertCount(
             searcher,
             SortedSetDocValuesField.newSlowRangeQuery(
-                "sparse", newBytesRef("a"), newBytesRef("z"), true, true),
+                "sparse", newBytesRef("0991"), newBytesRef("0999"), true, true),
             0);
 
-        // "200".."300" looks like it's above all values but lexicographically
-        // "200" is between "2" and "3", so this range partially matches.
+        // Above all values: range is entirely after "099"
         assertCount(
             searcher,
             SortedSetDocValuesField.newSlowRangeQuery(
-                "with_index", newBytesRef("200"), newBytesRef("300"), true, true),
-            -1);
+                "with_index", newBytesRef("100"), newBytesRef("199"), true, true),
+            0);
         assertCount(
             searcher,
             SortedSetDocValuesField.newSlowRangeQuery(
-                "without_index", newBytesRef("200"), newBytesRef("300"), true, true),
-            -1);
+                "without_index", newBytesRef("100"), newBytesRef("199"), true, true),
+            0);
         assertCount(
             searcher,
             SortedSetDocValuesField.newSlowRangeQuery(
-                "sparse", newBytesRef("200"), newBytesRef("300"), true, true),
-            -1);
+                "sparse", newBytesRef("100"), newBytesRef("199"), true, true),
+            0);
       }
 
+      // Delete docs with values "020" through "030" (11 docs)
       iw.deleteDocuments(
           SortedSetDocValuesField.newSlowRangeQuery(
-              "with_index", newBytesRef("2"), newBytesRef("3"), true, true));
+              "with_index", newBytesRef("020"), newBytesRef("030"), true, true));
       iw.commit();
 
       try (IndexReader reader = iw.getReader()) {
         IndexSearcher searcher = new IndexSearcher(reader);
 
-        // After deleting range ["2", "3"], 12 docs are removed:
-        // "2", "20", "21", ..., "29", "3" = 12 terms
+        // Below all values still matches nothing
         assertCount(
             searcher,
             SortedSetDocValuesField.newSlowRangeQuery(
-                "with_index", newBytesRef("-50"), newBytesRef("-1"), true, true),
+                "with_index", newBytesRef("!"), newBytesRef("/"), true, true),
             0);
+        // All values minus 11 deleted = 89
         assertCount(
             searcher,
             SortedSetDocValuesField.newSlowRangeQuery(
-                "with_index", newBytesRef("0"), newBytesRef("99"), true, true),
-            88);
+                "with_index", newBytesRef("000"), newBytesRef("099"), true, true),
+            89);
+        // Partial match still can't be counted cheaply
         assertCount(
             searcher,
             SortedSetDocValuesField.newSlowRangeQuery(
-                "with_index", newBytesRef("50"), newBytesRef("60"), true, true),
+                "with_index", newBytesRef("050"), newBytesRef("060"), true, true),
             -1);
+        // Above all values still matches nothing
         assertCount(
             searcher,
             SortedSetDocValuesField.newSlowRangeQuery(
-                "with_index", newBytesRef("200"), newBytesRef("300"), true, true),
-            -1);
+                "with_index", newBytesRef("100"), newBytesRef("199"), true, true),
+            0);
       }
     }
   }
