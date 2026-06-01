@@ -204,6 +204,99 @@ public class TestNumericComparator extends LuceneTestCase {
     }
   }
 
+  public void testDVSkipperCompetitiveIteratorBuiltImmediatelyWithSearchAfter() throws Exception {
+    // When search_after (topValue) is set, the DVSkipper competitive iterator must be built
+    // immediately at setScorer time, without waiting for hitsThresholdReached. Otherwise,
+    // the first segment scan cannot use block-level skipping even though the bound is known.
+    final int numDocs = atLeast(1000);
+    try (var dir = newDirectory()) {
+      try (var writer =
+          new IndexWriter(
+              dir,
+              new IndexWriterConfig()
+                  .setIndexSort(new Sort(new SortField("field", SortField.Type.LONG)))
+                  .setMergePolicy(newLogMergePolicy()))) {
+        for (int i = 0; i < numDocs; i++) {
+          var doc = new Document();
+          doc.add(NumericDocValuesField.indexedField("field", i));
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1);
+        try (var reader = DirectoryReader.open(writer)) {
+          assertEquals(1, reader.leaves().size());
+          var leafContext = reader.leaves().get(0);
+          assertNotNull(leafContext.reader().getDocValuesSkipper("field"));
+
+          // Ascending sort with topValue=numDocs: competitive docs have < numDocs.
+          var comparator =
+              (LongComparator)
+                  new SortField("field", SortField.Type.LONG, false)
+                      .getComparator(1, Pruning.GREATER_THAN_OR_EQUAL_TO);
+          comparator.setTopValue((long) numDocs);
+          assertFalse(comparator.hitsThresholdReached);
+
+          var leafComparator = comparator.getLeafComparator(leafContext);
+          leafComparator.setScorer(null);
+
+          var iter = leafComparator.competitiveIterator();
+          assertNotNull(iter);
+          // SkipBlockRangeIterator.nextDoc() returns NO_MORE_DOCS; the initial all-docs iterator
+          // returns maxDoc. This distinguishes a built iterator from the unbuilt one.
+          assertEquals(
+              "Expected DVSkipper competitive iterator, which should be exhausted immediately",
+              DocIdSetIterator.NO_MORE_DOCS,
+              iter.nextDoc());
+        }
+      }
+    }
+  }
+
+  public void testDVSkipperCompetitiveIteratorNotBuiltWithoutSearchAfterOrThreshold()
+      throws Exception {
+    // Without search_after and without hitsThresholdReached, the guard should still fire
+    // and leave the competitive iterator as all-docs.
+    final int numDocs = atLeast(1000);
+    try (var dir = newDirectory()) {
+      try (var writer =
+          new IndexWriter(
+              dir,
+              new IndexWriterConfig()
+                  .setIndexSort(new Sort(new SortField("field", SortField.Type.LONG)))
+                  .setMergePolicy(newLogMergePolicy()))) {
+        for (int i = 0; i < numDocs; i++) {
+          var doc = new Document();
+          doc.add(NumericDocValuesField.indexedField("field", i));
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1);
+        try (var reader = DirectoryReader.open(writer)) {
+          assertEquals(1, reader.leaves().size());
+          var leafContext = reader.leaves().get(0);
+          assertNotNull(leafContext.reader().getDocValuesSkipper("field"));
+
+          var comparator =
+              (LongComparator)
+                  new SortField("field", SortField.Type.LONG, false)
+                      .getComparator(1, Pruning.GREATER_THAN_OR_EQUAL_TO);
+          // No topValue, no hitsThresholdReached — guard should return early.
+          assertFalse(comparator.hitsThresholdReached);
+
+          var leafComparator = comparator.getLeafComparator(leafContext);
+          leafComparator.setScorer(null);
+
+          var iter = leafComparator.competitiveIterator();
+          assertNotNull(iter);
+          // Without search_after and without threshold, the guard fires and the iterator stays
+          // as the initial all-docs iterator whose first docId should be zero.
+          assertEquals(
+              "Expected all docs iterator, which starts at zero because no pruning is done",
+              0,
+              iter.nextDoc());
+        }
+      }
+    }
+  }
+
   private static void assertLongField(
       String fieldName, boolean reverse, int bottom, LeafReaderContext leafContext)
       throws IOException {
