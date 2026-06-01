@@ -512,6 +512,9 @@ Bug Fixes
 
 * GITHUB#15878: Fix LargeNumHitsTopDocsCollector not handling requested hit count correctly (Binlong Gao)
 
+* GITHUB#16139: Fix IBSimilarity with DistributionSPL producing negative scores due to
+  floating-point rounding errors. (Prithvi S)
+
 * GITHUB#16046: Fix double-counting of underlying Automaton in CompiledAutomaton#ramBytesUsed. (Eugene Rizhkov)
 
 * GITHUB#15901: Fix undercounting of RAM used by vectors buffered in in-memory segments.
