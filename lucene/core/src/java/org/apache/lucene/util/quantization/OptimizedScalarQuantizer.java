@@ -113,6 +113,11 @@ public class OptimizedScalarQuantizer {
     for (int i = 0; i < vector.length; i++) {
       floatVector[i] = Float.float16ToFloat(vector[i]);
     }
+    if (similarityFunction == COSINE) {
+      // fp16 rounding can leave a stored COSINE vector slightly off unit length; re-normalize the
+      // inflated fp32 vector so quantization operates on a true unit vector.
+      VectorUtil.l2normalize(floatVector);
+    }
     return multiScalarQuantize(floatVector, destinations, bits, centroid);
   }
 
@@ -189,6 +194,11 @@ public class OptimizedScalarQuantizer {
     float[] floatVector = new float[vector.length];
     for (int i = 0; i < vector.length; i++) {
       floatVector[i] = Float.float16ToFloat(vector[i]);
+    }
+    if (similarityFunction == COSINE) {
+      // fp16 rounding can leave a stored COSINE vector slightly off unit length; re-normalize the
+      // inflated fp32 vector so quantization operates on a true unit vector.
+      VectorUtil.l2normalize(floatVector);
     }
     return scalarQuantize(floatVector, destination, bits, centroid);
   }
