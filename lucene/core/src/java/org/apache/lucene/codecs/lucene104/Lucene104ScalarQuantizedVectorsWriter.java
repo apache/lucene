@@ -119,7 +119,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   public FlatFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
     FlatFieldVectorsWriter<?> rawVectorDelegate = this.rawVectorDelegate.addField(fieldInfo);
     VectorEncoding vectorEncoding = fieldInfo.getVectorEncoding();
-    if (vectorEncoding == VectorEncoding.FLOAT32 || vectorEncoding == VectorEncoding.FLOAT16) {
+    if (vectorEncoding.isFloatingPoint()) {
       FieldWriter<?> fieldWriter = FieldWriter.create(fieldInfo, rawVectorDelegate);
       fields.add(fieldWriter);
       return fieldWriter;
@@ -353,7 +353,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     // Don't need access to the random vectors, we can just use the merged
     rawVectorDelegate.mergeOneFlatVectorField(fieldInfo, mergeState);
     VectorEncoding vectorEncoding = fieldInfo.getVectorEncoding();
-    if (vectorEncoding != VectorEncoding.FLOAT32 && vectorEncoding != VectorEncoding.FLOAT16) {
+    if (!vectorEncoding.isFloatingPoint()) {
       return;
     }
     final float[] centroid;
@@ -535,7 +535,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       throws IOException {
 
     VectorEncoding vectorEncoding = fieldInfo.getVectorEncoding();
-    assert vectorEncoding == VectorEncoding.FLOAT32 || vectorEncoding == VectorEncoding.FLOAT16;
+    assert vectorEncoding.isFloatingPoint();
     // clear out the centroid
     Arrays.fill(centroid, 0);
     int count = 0;

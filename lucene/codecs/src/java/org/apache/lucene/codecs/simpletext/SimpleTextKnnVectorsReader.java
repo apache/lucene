@@ -182,8 +182,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
     FieldInfo info = readState.fieldInfos.fieldInfo(field);
     if (info == null) {
-      // mirror the handling in Lucene90VectorReader#getVectorValues
-      // needed to pass TestSimpleTextKnnVectorsFormat#testDeleteAllVectorDocs
       return null;
     }
     int dimension = info.getVectorDimension();
@@ -193,8 +191,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
     FieldEntry fieldEntry = fieldEntries.get(info.number);
     if (fieldEntry == null) {
-      // mirror the handling in Lucene90VectorReader#getVectorValues
-      // needed to pass TestSimpleTextKnnVectorsFormat#testDeleteAllVectorDocs
       return null;
     }
     if (dimension != fieldEntry.dimension) {

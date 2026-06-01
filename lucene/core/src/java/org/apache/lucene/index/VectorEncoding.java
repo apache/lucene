@@ -43,4 +43,9 @@ public enum VectorEncoding {
   VectorEncoding(int byteSize) {
     this.byteSize = byteSize;
   }
+
+  /** Returns true if this is a floating-point encoding ({@link #FLOAT32} or {@link #FLOAT16}). */
+  public boolean isFloatingPoint() {
+    return this == FLOAT32 || this == FLOAT16;
+  }
 }

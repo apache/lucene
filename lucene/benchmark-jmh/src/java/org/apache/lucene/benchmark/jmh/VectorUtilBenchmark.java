@@ -328,7 +328,7 @@ public class VectorUtilBenchmark {
   }
 
   @Benchmark
-  public float shortDotProductScalar() {
+  public float fp16DotProductScalar() {
     return VectorUtil.dotProduct(shortsA, shortsB);
   }
 
