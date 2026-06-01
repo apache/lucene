@@ -17,6 +17,7 @@
 package org.apache.lucene.tests.search;
 
 import java.io.IOException;
+import org.apache.lucene.search.CheckedIntConsumer;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocIdStream;
@@ -24,7 +25,6 @@ import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.util.IOIntConsumer;
 
 public class TestAssertingLeafCollector extends LuceneTestCase {
 
@@ -97,7 +97,7 @@ public class TestAssertingLeafCollector extends LuceneTestCase {
       private boolean consumed;
 
       @Override
-      public void forEach(int upTo, IOIntConsumer consumer) throws IOException {
+      public void forEach(int upTo, CheckedIntConsumer<IOException> consumer) throws IOException {
         if (consumed == false && doc < upTo) {
           consumed = true;
           consumer.accept(doc);
