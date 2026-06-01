@@ -358,13 +358,15 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
         offset,
         length,
         segment -> {
+          if (skipPrefetchBackoff) {
+            // RANDOM mode: always fire madvise, skip isLoaded() overhead (mincore on every
+            // segment).
+            nativeAccess.madviseWillNeed(segment);
+            return true;
+          }
           if (segment.isLoaded() == false) {
-            // We have a cache miss on at least one page. Reset the counter so that the next
-            // NORMAL-mode prefetch fires immediately. Skipped in RANDOM mode since the counter
-            // is not used there.
-            if (skipPrefetchBackoff == false) {
-              sharedPrefetchCounter.set(0);
-            }
+            // Cache miss: reset counter so the next prefetch fires immediately.
+            sharedPrefetchCounter.set(0);
             nativeAccess.madviseWillNeed(segment);
             return true;
           }
