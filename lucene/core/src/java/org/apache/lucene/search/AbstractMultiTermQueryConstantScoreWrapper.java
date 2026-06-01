@@ -291,8 +291,9 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
             bulkScorer = weightOrIterator.weight.bulkScorer(context);
           } else {
             bulkScorer =
-                new DefaultBulkScorer(
-                    new ConstantScoreScorer(score(), scoreMode, weightOrIterator.iterator));
+                ConstantScoreScorerSupplier.fromIterator(
+                        weightOrIterator.iterator, score(), scoreMode, context.reader().maxDoc())
+                    .bulkScorer();
           }
 
           // It's against the API contract to return a null scorer from a non-null ScoreSupplier.

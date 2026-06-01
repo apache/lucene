@@ -192,7 +192,10 @@ Optimizations
 
 * GITHUB#16126: Implement #intoBitSet and #docIDRunEnd in DocValuesWriter implementations. (Ignacio Vera)
 
-* GITHUB#16141: Optimize constant-score bulk scoring via intoBitSet batching. (Costin Leau)
+* GITHUB#16141, GITHUB#16143: Optimize constant-score bulk scoring via intoBitSet
+  batching, route more constant-score iterators through ConstantScoreScorerSupplier,
+  and preserve two-phase iterator semantics when falling back to DefaultBulkScorer.
+  (Costin Leau)
 
 * GITHUB#16147: Optimize column batch parent field with bulk fill. (Tim Brooks)
 
