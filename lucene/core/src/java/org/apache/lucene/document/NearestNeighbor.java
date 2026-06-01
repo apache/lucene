@@ -79,18 +79,19 @@ class NearestNeighbor {
 
   private static class NearestHitQueue extends PriorityQueue<NearestHit> {
     NearestHitQueue(int maxSize) {
-      super(
-          maxSize,
-          (a, b) -> {
-            // Keep the worst hit (highest distance) at the top so it can be evicted when a
-            // better hit arrives.
-            int cmp = Double.compare(a.distanceSortKey, b.distanceSortKey);
-            if (cmp != 0) {
-              return cmp > 0;
-            }
-            // tie-break by higher docID (higher docID = worse)
-            return a.docID > b.docID;
-          });
+      super(maxSize);
+    }
+
+    @Override
+    public boolean lessThan(NearestHit a, NearestHit b) {
+      // Keep the worst hit (highest distance) at the top so it can be evicted when a
+      // better hit arrives.
+      int cmp = Double.compare(a.distanceSortKey, b.distanceSortKey);
+      if (cmp != 0) {
+        return cmp > 0;
+      }
+      // tie-break by higher docID (higher docID = worse)
+      return a.docID > b.docID;
     }
   }
 
