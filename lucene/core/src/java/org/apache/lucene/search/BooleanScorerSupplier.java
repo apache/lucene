@@ -346,7 +346,12 @@ final class BooleanScorerSupplier extends ScorerSupplier {
         return DenseConjunctionBulkScorer.of(filters, maxDoc, 0f);
       }
 
-      return new DefaultBulkScorer(new ConjunctionScorer(filters, Collections.emptyList()));
+      Scorer scorer = new ConjunctionScorer(filters, Collections.emptyList());
+      DocIdSetIterator iterator = scorer.iterator();
+      if (TwoPhaseIterator.unwrap(iterator) == null) {
+        return new ConstantScoreBulkScorer(0f, scoreMode, iterator);
+      }
+      return new DefaultBulkScorer(scorer);
     }
   }
 

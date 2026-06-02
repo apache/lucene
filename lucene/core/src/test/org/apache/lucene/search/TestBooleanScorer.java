@@ -27,8 +27,11 @@ import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
@@ -253,12 +256,12 @@ public class TestBooleanScorer extends LuceneTestCase {
     assertEquals(3, iterator.intoBitSetCalls);
   }
 
-  public void testCachedFilterOptionalConjunctionUsesDefaultBulkScorerDocIdStream()
+  public void testCachedFilterOptionalConjunctionUsesConstantScoreBulkScorerDocIdStream()
       throws IOException {
     int maxDoc = 9000;
     int expectedHitCount = 90;
     Directory dir = newDirectory();
-    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
     for (int doc = 0; doc < maxDoc; ++doc) {
       Document document = new Document();
       document.add(new StringField("filter", "yes", Store.NO));
@@ -270,7 +273,7 @@ public class TestBooleanScorer extends LuceneTestCase {
       w.addDocument(document);
     }
     w.forceMerge(1);
-    IndexReader reader = w.getReader();
+    IndexReader reader = DirectoryReader.open(w);
     w.close();
 
     Query filterQuery = new TermQuery(new Term("filter", "yes"));
@@ -312,9 +315,10 @@ public class TestBooleanScorer extends LuceneTestCase {
     DocIdSetIterator iterator = scorer.iterator();
     assertTrue(ConjunctionDISI.canBulkIntoBitSet(iterator));
     assertTrue(iterator.cost() >= Math.ceilDiv(maxDoc, 512));
+    assertNull(TwoPhaseIterator.unwrap(iterator));
 
     BulkScorer bulkScorer = weight.bulkScorer(context);
-    assertThat(bulkScorer, instanceOf(DefaultBulkScorer.class));
+    assertThat(bulkScorer, instanceOf(ConstantScoreBulkScorer.class));
 
     int[] collected = new int[expectedHitCount];
     int[] count = new int[1];
@@ -326,7 +330,7 @@ public class TestBooleanScorer extends LuceneTestCase {
 
           @Override
           public void collect(int doc) {
-            fail("Cached filtered optional conjunction should collect via DocIdStream");
+            fail("Cached filtered optional conjunction should collect via ConstantScoreBulkScorer");
           }
 
           @Override
@@ -410,7 +414,7 @@ public class TestBooleanScorer extends LuceneTestCase {
     assertArrayEquals(new int[] {2, 3, 4}, collected);
   }
 
-  public void testDefaultBulkScorerUsesIntoBitSetForNoScoreConjunction() throws IOException {
+  public void testDefaultBulkScorerKeepsNoScoreConjunctionOnPerDocPath() throws IOException {
     int[] docs = new int[20];
     for (int i = 0; i < docs.length; ++i) {
       docs[i] = 1 + i * 100;
@@ -428,12 +432,26 @@ public class TestBooleanScorer extends LuceneTestCase {
 
     int[] collected = new int[docs.length];
     int[] count = new int[1];
-    LeafCollector collector = docIdStreamCollector(collected, count);
+    LeafCollector collector =
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            collected[count[0]++] = doc;
+          }
+
+          @Override
+          public void collect(DocIdStream stream) {
+            fail("DefaultBulkScorer should not special-case no-score conjunctions");
+          }
+        };
 
     BulkScorer bulkScorer = new DefaultBulkScorer(scorer);
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, null, 0, 9000));
     assertArrayEquals(docs, Arrays.copyOf(collected, count[0]));
-    assertEquals(1, lead.intoBitSetCalls);
+    assertEquals(0, lead.intoBitSetCalls);
   }
 
   public void testDefaultBulkScorerSkipsIntoBitSetForSparseNoScoreConjunction() throws IOException {
@@ -605,27 +623,6 @@ public class TestBooleanScorer extends LuceneTestCase {
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, null, 0, 9000));
     assertArrayEquals(docs, Arrays.copyOf(collected, count[0]));
     assertEquals(0, iterator.intoBitSetCalls);
-  }
-
-  private static LeafCollector docIdStreamCollector(int[] collected, int[] count) {
-    return new LeafCollector() {
-      @Override
-      public void setScorer(Scorable scorer) {}
-
-      @Override
-      public void collect(int doc) {
-        fail("DefaultBulkScorer should collect the no-score path via DocIdStream");
-      }
-
-      @Override
-      public void collect(DocIdStream stream) throws IOException {
-        int[] buffer = new int[collected.length];
-        for (int size = stream.intoArray(buffer); size != 0; size = stream.intoArray(buffer)) {
-          System.arraycopy(buffer, 0, collected, count[0], size);
-          count[0] += size;
-        }
-      }
-    };
   }
 
   private static class CountingDocIdSetIterator extends DocIdSetIterator {
