@@ -258,17 +258,15 @@ public class TestBooleanScorer extends LuceneTestCase {
 
   public void testCachedFilterOptionalConjunctionUsesConstantScoreBulkScorerDocIdStream()
       throws IOException {
-    int maxDoc = 9000;
-    int expectedHitCount = 90;
+    int maxDoc = 500_000;
+    int expectedHitCount = 10_000;
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
     for (int doc = 0; doc < maxDoc; ++doc) {
       Document document = new Document();
       document.add(new StringField("filter", "yes", Store.NO));
-      if (doc % 200 == 1) {
-        document.add(new StringField("optional", "a", Store.NO));
-      } else if (doc % 200 == 101) {
-        document.add(new StringField("optional", "b", Store.NO));
+      if (doc % 50 == 1) {
+        document.add(new StringField("optional", doc % 100 == 1 ? "a" : "b", Store.NO));
       }
       w.addDocument(document);
     }
@@ -287,7 +285,7 @@ public class TestBooleanScorer extends LuceneTestCase {
 
     IndexSearcher searcher = new IndexSearcher(reader);
     LRUQueryCache queryCache =
-        new LRUQueryCache(16, 1 << 20, context -> context.reader() != null, 1f);
+        new LRUQueryCache(16, 1 << 25, context -> context.reader() != null, 1f);
     searcher.setQueryCache(queryCache);
     searcher.setQueryCachingPolicy(
         new QueryCachingPolicy() {
@@ -347,7 +345,7 @@ public class TestBooleanScorer extends LuceneTestCase {
     assertTrue(streamCount[0] > 0);
     assertEquals(expectedHitCount, count[0]);
     for (int i = 0; i < count[0]; ++i) {
-      assertEquals(1 + i * 100, collected[i]);
+      assertEquals(1 + i * 50, collected[i]);
     }
 
     reader.close();

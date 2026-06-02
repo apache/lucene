@@ -297,12 +297,14 @@ public class CachedFilterConjunctionBenchmark {
     boolean isConstantScoreBulkScorer = bulkScorerClassName.endsWith(".ConstantScoreBulkScorer");
     boolean isDenseConjunctionBulkScorer =
         bulkScorerClassName.endsWith(".DenseConjunctionBulkScorer");
+    boolean isDefaultBulkScorer = bulkScorerClassName.endsWith("$DefaultBulkScorer");
     if (FILTERED_OPTIONAL.equals(params.queryShape)
         && isConstantScoreBulkScorer == false
-        && isDenseConjunctionBulkScorer == false) {
+        && isDenseConjunctionBulkScorer == false
+        && isDefaultBulkScorer == false) {
       throw new AssertionError(
-          "filtered_optional should route through ConstantScoreBulkScorer or "
-              + "DenseConjunctionBulkScorer but got "
+          "filtered_optional should route through ConstantScoreBulkScorer, "
+              + "DenseConjunctionBulkScorer, or DefaultBulkScorer but got "
               + bulkScorerClassName);
     }
     if (FILTERED_OPTIONAL.equals(params.queryShape)
