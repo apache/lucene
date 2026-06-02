@@ -57,6 +57,10 @@ public class VectorUtilBenchmark {
   private byte[] halfBytesAPacked;
   private byte[] halfBytesB;
   private byte[] halfBytesBPacked;
+  private byte[] int4QuantizedBit;
+  private byte[] binaryQuantized;
+  private byte[] int4QuantizedDibit;
+  private byte[] dibitQuantized;
   private float[] floatsA;
   private float[] floatsB;
   private int expectedHalfByteDotProduct;
@@ -104,6 +108,17 @@ public class VectorUtilBenchmark {
       floatsA[i] = random.nextFloat();
       floatsB[i] = random.nextFloat();
     }
+
+    // arrays for BBQ int4-bit and int4-dibit dot product benchmarks
+    int4QuantizedBit = new byte[size * 4];
+    random.nextBytes(int4QuantizedBit);
+    binaryQuantized = new byte[size];
+    random.nextBytes(binaryQuantized);
+
+    int4QuantizedDibit = new byte[size * 2];
+    random.nextBytes(int4QuantizedDibit);
+    dibitQuantized = new byte[size];
+    random.nextBytes(dibitQuantized);
   }
 
   @Benchmark
@@ -242,6 +257,28 @@ public class VectorUtilBenchmark {
   @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
   public int binarySquareUint8Vector() {
     return VectorUtil.uint8SquareDistance(bytesA, bytesB);
+  }
+
+  @Benchmark
+  public long int4BitDotProductScalar() {
+    return VectorUtil.int4BitDotProduct(int4QuantizedBit, binaryQuantized);
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public long int4BitDotProductVector() {
+    return VectorUtil.int4BitDotProduct(int4QuantizedBit, binaryQuantized);
+  }
+
+  @Benchmark
+  public long int4DibitDotProductScalar() {
+    return VectorUtil.int4DibitDotProduct(int4QuantizedDibit, dibitQuantized);
+  }
+
+  @Benchmark
+  @Fork(jvmArgsPrepend = {"--add-modules=jdk.incubator.vector"})
+  public long int4DibitDotProductVector() {
+    return VectorUtil.int4DibitDotProduct(int4QuantizedDibit, dibitQuantized);
   }
 
   @Benchmark

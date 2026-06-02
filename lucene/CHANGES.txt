@@ -269,6 +269,8 @@ Other
 
 * GITHUB#16082: Added a new JMH microbenchmark for DiversifyingChildrenFloatKnnVectorQuery. (Anna Ruggero via Alessandro Benedetti)
 
+* GITHUB#16170: Add JMH benchmarks for int4BitDotProduct and int4DibitDotProduct. (Vignesh)
+
 ======================= Lucene 10.5.0 =======================
 
 API Changes
@@ -362,7 +364,7 @@ Improvements
 
 * GITHUB#15976: Store DocValuesSkipper data in their own file. (Alan Woodward)
 
-* GITHUB#15574, GITHUB#15995: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
+* GITHUB#15603, GITHUB#15995: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
 
 * GITHUB#15565: Introduce AllGroupHeadsCollectorManager to parallelize search when using AllGroupHeadsCollector. (Binlong Gao)
 
@@ -370,6 +372,8 @@ Improvements
   as its approximation. (Alan Woodward)
 
 * GITHUB#16000: Clarify that Accountable#ramBytesUsed() reports JVM heap memory only. (Luca Cavanna)
+
+* GITHUB#15574: Introduce FirstPassGroupingCollectorManager to parallelize search when using FirstPassGroupingCollector. (Binlong Gao)
 
 * GITHUB#15660: Introduce LargeNumHitsTopDocsCollectorManager to parallelize search when using LargeNumHitsTopDocsCollector. (Binlong Gao)
 
@@ -379,7 +383,11 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16153: Use TernaryLongHeap in UpdateGraphsUtils for faster HNSW graph merging. (Prithvi S)
+
 * GITHUB#15861: Optimise PhraseScorer by short circuiting non competitive documents in TOP_SCORES mode. (Prithvi S)
+
+* GITHUB#16154: Use Lucene's PriorityQueue in NearestNeighbor to avoid poll/offer overhead on the hot path. (Prithvi S)
 
 * GITHUB#15868: Optimize DisjunctionMaxBulkScorer by reusing the inner LeafCollector across
   sub-scorers and resetting windowScores inline during replay instead of Arrays.fill. (Prithvi S)
@@ -463,7 +471,13 @@ Optimizations
 
 * GITHUB#16147: Optimize column batch parent field with bulk fill. (Tim Brooks)
 
+* GITHUB#16109: Add count() to SortedSetDocValuesRangeQuery. (Prithvi S)
+
 * GITHUB#15991: Load dense filters into bitset in MaxScoreBulkScorer. (Prithvi S)
+
+* GITHUB#16142: Optimize disjunction #docIDRunEnd to skip runs of excluded documents. (Costin Leau)
+
+* GITHUB#16119: Optimize byte array writes in OutputStreamIndexOutput to remove unnecessary overhead. (neoremind)
 
 * GITHUB#16155: Use BitSet#nextClearBit to iterate uninitialized nodes in MergingHnswGraphBuilder. (Sasilekha R)
 
@@ -517,6 +531,8 @@ Bug Fixes
 
 * GITHUB#15878: Fix LargeNumHitsTopDocsCollector not handling requested hit count correctly (Binlong Gao)
 
+* GITHUB#16098: Validate zero vectors in setVectorValue() for cosine similarity fields. (Prithvi S)
+
 * GITHUB#16046: Fix double-counting of underlying Automaton in CompiledAutomaton#ramBytesUsed. (Eugene Rizhkov)
 
 * GITHUB#15901: Fix undercounting of RAM used by vectors buffered in in-memory segments.
@@ -528,6 +544,9 @@ Bug Fixes
 * GITHUB#16138: Reject non-SerializableObject classes in SerializableObject.readClass before they are
   instantiated, so a crafted spatial3d shape stream cannot load arbitrary classes. Also adapt
   experimental SerializedObject API to be more type safe. (metsw24-max, Uwe Schindler)
+
+* GITHUB#16156: OffHeapFloatVectorValues#prefetch now bounds its loop by the requested
+  count instead of the full ordinal array, matching OffHeapByteVectorValues. (Vignesh)
 
 Other
 ---------------------

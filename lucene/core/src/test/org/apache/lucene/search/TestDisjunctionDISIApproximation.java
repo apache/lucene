@@ -19,7 +19,6 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import java.util.Arrays;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.TestUtil;
 
 public class TestDisjunctionDISIApproximation extends LuceneTestCase {
 
@@ -27,7 +26,6 @@ public class TestDisjunctionDISIApproximation extends LuceneTestCase {
     DocIdSetIterator clause1 = DocIdSetIterator.range(10_000, 30_000);
     DocIdSetIterator clause2 = DocIdSetIterator.range(20_000, 50_000);
     DocIdSetIterator clause3 = DocIdSetIterator.range(60_000, 60_001);
-    long leadCost = TestUtil.nextLong(random(), 1, 100_000);
     Scorer scorer1 = new ConstantScoreScorer(1f, ScoreMode.COMPLETE_NO_SCORES, clause1);
     Scorer scorer2 = new ConstantScoreScorer(1f, ScoreMode.COMPLETE_NO_SCORES, clause2);
     Scorer scorer3 = new ConstantScoreScorer(1f, ScoreMode.COMPLETE_NO_SCORES, clause3);
@@ -37,11 +35,53 @@ public class TestDisjunctionDISIApproximation extends LuceneTestCase {
                 new DisiWrapper(scorer1, false),
                 new DisiWrapper(scorer2, false),
                 new DisiWrapper(scorer3, false)),
-            leadCost);
+            // High enough to keep all clauses in the lead heap.
+            100_000);
     assertEquals(10_000, iterator.nextDoc());
     assertEquals(30_000, iterator.docIDRunEnd());
     assertEquals(25_000, iterator.advance(25_000));
     assertEquals(50_000, iterator.docIDRunEnd());
+    assertEquals(60_000, iterator.advance(50_000));
+    assertEquals(60_001, iterator.docIDRunEnd());
+  }
+
+  public void testDocIDRunEndOnlyUsesLeadIteratorsWhenBothClausesMatchAndOtherHasLongerRun()
+      throws IOException {
+    DocIdSetIterator heapClause = DocIdSetIterator.range(100, 110);
+    DocIdSetIterator otherIteratorClause = DocIdSetIterator.range(100, 200);
+    Scorer heapScorer = new ConstantScoreScorer(1f, ScoreMode.COMPLETE_NO_SCORES, heapClause);
+    Scorer otherIteratorScorer =
+        new ConstantScoreScorer(1f, ScoreMode.COMPLETE_NO_SCORES, otherIteratorClause);
+    DocIdSetIterator iterator =
+        new DisjunctionDISIApproximation(
+            Arrays.asList(
+                new DisiWrapper(heapScorer, false), new DisiWrapper(otherIteratorScorer, false)),
+            // Low enough to put the shorter, lower-cost clause in the lead heap and the longer,
+            // higher-cost clause in otherIterators.
+            10);
+    // Both clauses match doc 100, but the longer otherIterator run is ignored.
+    assertEquals(100, iterator.nextDoc());
+    assertEquals(110, iterator.docIDRunEnd());
+  }
+
+  public void testDocIDRunEndDoesNotScanOtherIterators() throws IOException {
+    DocIdSetIterator clause1 = DocIdSetIterator.range(10_000, 30_000);
+    DocIdSetIterator clause2 = DocIdSetIterator.range(20_000, 50_000);
+    DocIdSetIterator clause3 = DocIdSetIterator.range(60_000, 60_001);
+    Scorer scorer1 = new ConstantScoreScorer(1f, ScoreMode.COMPLETE_NO_SCORES, clause1);
+    Scorer scorer2 = new ConstantScoreScorer(1f, ScoreMode.COMPLETE_NO_SCORES, clause2);
+    Scorer scorer3 = new ConstantScoreScorer(1f, ScoreMode.COMPLETE_NO_SCORES, clause3);
+    DocIdSetIterator iterator =
+        new DisjunctionDISIApproximation(
+            Arrays.asList(
+                new DisiWrapper(scorer1, false),
+                new DisiWrapper(scorer2, false),
+                new DisiWrapper(scorer3, false)),
+            1);
+    assertEquals(10_000, iterator.nextDoc());
+    assertEquals(10_001, iterator.docIDRunEnd());
+    assertEquals(25_000, iterator.advance(25_000));
+    assertEquals(25_001, iterator.docIDRunEnd());
     assertEquals(60_000, iterator.advance(50_000));
     assertEquals(60_001, iterator.docIDRunEnd());
   }
