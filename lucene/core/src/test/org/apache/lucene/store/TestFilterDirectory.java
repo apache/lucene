@@ -34,13 +34,25 @@ public class TestFilterDirectory extends BaseDirectoryTestCase {
     // verify that all methods of Directory are overridden by FilterDirectory,
     // except those under the 'exclude' list
     Set<Method> exclude = new HashSet<>();
-    exclude.add(
-        Directory.class.getMethod(
-            "copyFrom", Directory.class, String.class, String.class, IOContext.class));
     exclude.add(Directory.class.getMethod("openChecksumInput", String.class));
     for (Method m : FilterDirectory.class.getMethods()) {
       if (m.getDeclaringClass() == Directory.class) {
         assertTrue("method " + m.getName() + " not overridden!", exclude.contains(m));
+      }
+    }
+  }
+
+  public void testCopyFromDelegates() throws IOException {
+    try (Directory srcDir = new ByteBuffersDirectory();
+        Directory destDir = new ByteBuffersDirectory()) {
+      try (IndexOutput out = srcDir.createOutput("test.txt", IOContext.DEFAULT)) {
+        out.writeString("hello");
+      }
+      FilterDirectory filterDestDir = new FilterDirectory(destDir) {};
+      filterDestDir.copyFrom(srcDir, "test.txt", "copied.txt", IOContext.DEFAULT);
+      assertTrue(slowFileExists(destDir, "copied.txt"));
+      try (IndexInput in = destDir.openInput("copied.txt", IOContext.DEFAULT)) {
+        assertEquals("hello", in.readString());
       }
     }
   }
