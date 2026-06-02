@@ -131,7 +131,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   public void flush(int maxDoc, Sorter.DocMap sortMap) throws IOException {
     rawVectorDelegate.flush(maxDoc, sortMap);
     for (FieldWriter<?> field : fields) {
-      // after raw vectors are written, normalize vectors for clustering and quantization
+      // Raw vectors are already written; normalize the stored fp32 vectors in place so quantization
+      // operates on unit vectors. No-op for fp16, which normalizes when inflating to fp32.
       if (COSINE == field.fieldInfo.getVectorSimilarityFunction()) {
         field.normalizeVectors();
       }
@@ -196,22 +197,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
               new byte[encoding.getDocPackedLength(scratch.length)];
         };
     for (int i = 0; i < fieldData.getVectors().size(); i++) {
-      OptimizedScalarQuantizer.QuantizationResult corrections = null;
-      if (fieldData.fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT32) {
-        corrections =
-            scalarQuantizer.scalarQuantize(
-                (float[]) fieldData.getVectors().get(i),
-                scratch,
-                encoding.getBits(),
-                clusterCenter);
-      } else if (fieldData.fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT16) {
-        corrections =
-            scalarQuantizer.scalarQuantize(
-                (short[]) fieldData.getVectors().get(i),
-                scratch,
-                encoding.getBits(),
-                clusterCenter);
-      }
+      OptimizedScalarQuantizer.QuantizationResult corrections =
+          quantizeVector(fieldData, i, scratch, clusterCenter, scalarQuantizer);
       switch (encoding) {
         case PACKED_NIBBLE -> OffHeapScalarQuantizedVectorValues.packNibbles(scratch, vector);
         case SINGLE_BIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.packAsBinary(scratch, vector);
@@ -270,22 +257,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
               new byte[encoding.getDocPackedLength(scratch.length)];
         };
     for (int ordinal : ordMap) {
-      OptimizedScalarQuantizer.QuantizationResult corrections = null;
-      if (fieldData.fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT32) {
-        corrections =
-            scalarQuantizer.scalarQuantize(
-                (float[]) fieldData.getVectors().get(ordinal),
-                scratch,
-                encoding.getBits(),
-                clusterCenter);
-      } else if (fieldData.fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT16) {
-        corrections =
-            scalarQuantizer.scalarQuantize(
-                (short[]) fieldData.getVectors().get(ordinal),
-                scratch,
-                encoding.getBits(),
-                clusterCenter);
-      }
+      OptimizedScalarQuantizer.QuantizationResult corrections =
+          quantizeVector(fieldData, ordinal, scratch, clusterCenter, scalarQuantizer);
       switch (encoding) {
         case PACKED_NIBBLE -> OffHeapScalarQuantizedVectorValues.packNibbles(scratch, vector);
         case SINGLE_BIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.packAsBinary(scratch, vector);
@@ -347,6 +320,32 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
   }
 
+  private OptimizedScalarQuantizer.QuantizationResult quantizeVector(
+      FieldWriter<?> fieldData,
+      int ord,
+      byte[] scratch,
+      float[] clusterCenter,
+      OptimizedScalarQuantizer scalarQuantizer) {
+    return scalarQuantizer.scalarQuantize(
+        fieldData.floatVectorValue(ord), scratch, encoding.getBits(), clusterCenter);
+  }
+
+  private QuantizedByteVectorValues mergedQuantizedVectorValues(
+      FieldInfo fieldInfo, MergeState mergeState, float[] centroid) throws IOException {
+    OptimizedScalarQuantizer quantizer =
+        new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
+    boolean cosine = fieldInfo.getVectorSimilarityFunction() == COSINE;
+    FloatVectorValues vectorValues =
+        fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT16
+            ? new Float16AsFloatVectorValues(
+                MergedVectorValues.mergeFloat16VectorValues(fieldInfo, mergeState))
+            : MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
+    if (cosine) {
+      vectorValues = new NormalizedFloatVectorValues(vectorValues);
+    }
+    return new QuantizedFloatVectorValues(vectorValues, quantizer, encoding, centroid);
+  }
+
   @Override
   public void mergeOneFlatVectorField(FieldInfo fieldInfo, MergeState mergeState)
       throws IOException {
@@ -364,32 +363,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       segmentWriteState.infoStream.message(
           QUANTIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
     }
-    QuantizedByteVectorValues quantizedVectorValues = null;
-    if (vectorEncoding == VectorEncoding.FLOAT32) {
-      FloatVectorValues vectorValues =
-          MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
-      if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
-        vectorValues = new NormalizedFloatVectorValues(vectorValues);
-      }
-      quantizedVectorValues =
-          new QuantizedFloatVectorValues(
-              vectorValues,
-              new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction()),
-              encoding,
-              centroid);
-    } else if (vectorEncoding == VectorEncoding.FLOAT16) {
-      Float16VectorValues vectorValues =
-          MergedVectorValues.mergeFloat16VectorValues(fieldInfo, mergeState);
-      if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
-        vectorValues = new NormalizedFloat16VectorValues(vectorValues);
-      }
-      quantizedVectorValues =
-          new QuantizedFloat16VectorValues(
-              vectorValues,
-              new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction()),
-              encoding,
-              centroid);
-    }
+    QuantizedByteVectorValues quantizedVectorValues =
+        mergedQuantizedVectorValues(fieldInfo, mergeState, centroid);
 
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     DocsWithFieldSet docsWithField = writeVectorData(vectorData, quantizedVectorValues);
@@ -473,6 +448,15 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     return null;
   }
 
+  private static KnnVectorValues floatingPointVectorValues(
+      KnnVectorsReader reader, FieldInfo fieldInfo) throws IOException {
+    return switch (fieldInfo.getVectorEncoding()) {
+      case FLOAT32 -> reader.getFloatVectorValues(fieldInfo.name);
+      case FLOAT16 -> reader.getFloat16VectorValues(fieldInfo.name);
+      case BYTE -> null;
+    };
+  }
+
   static int mergeAndRecalculateCentroids(
       MergeState mergeState, FieldInfo fieldInfo, float[] mergedCentroid) throws IOException {
     boolean recalculate = false;
@@ -483,23 +467,11 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         continue;
       }
 
-      int vectorCount;
-      VectorEncoding encoding = fieldInfo.getVectorEncoding();
-      if (encoding == VectorEncoding.FLOAT32) {
-        var values = knnVectorsReader.getFloatVectorValues(fieldInfo.name);
-        if (values == null) {
-          continue;
-        }
-        vectorCount = values.size();
-      } else if (encoding == VectorEncoding.FLOAT16) {
-        var values = knnVectorsReader.getFloat16VectorValues(fieldInfo.name);
-        if (values == null) {
-          continue;
-        }
-        vectorCount = values.size();
-      } else {
+      KnnVectorValues values = floatingPointVectorValues(knnVectorsReader, fieldInfo);
+      if (values == null) {
         continue;
       }
+      int vectorCount = values.size();
 
       float[] centroid = getCentroid(knnVectorsReader, fieldInfo.name);
       if (vectorCount == 0) {
@@ -564,34 +536,29 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
   private static int accumulateCentroid(
       KnnVectorsReader reader, FieldInfo fieldInfo, VectorEncoding encoding, float[] centroid)
       throws IOException {
-    int count = 0;
-
-    if (encoding == VectorEncoding.FLOAT32) {
-      FloatVectorValues vectorValues = reader.getFloatVectorValues(fieldInfo.name);
-      if (vectorValues == null) return 0;
-
-      KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
-      for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
-        count++;
-        float[] vector = vectorValues.vectorValue(iterator.index());
-        for (int j = 0; j < vector.length; j++) {
-          centroid[j] += vector[j];
-        }
+    FloatVectorValues vectorValues;
+    if (encoding == VectorEncoding.FLOAT16) {
+      Float16VectorValues f16 = reader.getFloat16VectorValues(fieldInfo.name);
+      if (f16 == null) {
+        vectorValues = null;
+      } else {
+        vectorValues = new Float16AsFloatVectorValues(f16);
       }
-    } else if (encoding == VectorEncoding.FLOAT16) {
-      Float16VectorValues vectorValues = reader.getFloat16VectorValues(fieldInfo.name);
-      if (vectorValues == null) return 0;
-
-      KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
-      for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
-        count++;
-        short[] vector = vectorValues.vectorValue(iterator.index());
-        for (int j = 0; j < vector.length; j++) {
-          centroid[j] += Float.float16ToFloat(vector[j]);
-        }
+    } else {
+      vectorValues = reader.getFloatVectorValues(fieldInfo.name);
+    }
+    if (vectorValues == null) {
+      return 0;
+    }
+    int count = 0;
+    KnnVectorValues.DocIndexIterator iterator = vectorValues.iterator();
+    for (int doc = iterator.nextDoc(); doc != NO_MORE_DOCS; doc = iterator.nextDoc()) {
+      count++;
+      float[] vector = vectorValues.vectorValue(iterator.index());
+      for (int j = 0; j < vector.length; j++) {
+        centroid[j] += vector[j];
       }
     }
-
     return count;
   }
 
@@ -685,7 +652,11 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       return size;
     }
 
-    public abstract void normalizeVectors();
+    /** Normalizes stored vectors in place for COSINE clustering/quantization; no-op by default. */
+    public void normalizeVectors() {}
+
+    /** The ordinal's stored vector as fp32, ready for quantization (unit-length for COSINE). */
+    abstract float[] floatVectorValue(int ord);
 
     private static class Float32FieldWriter extends FieldWriter<float[]> {
 
@@ -726,6 +697,11 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
           }
         }
       }
+
+      @Override
+      float[] floatVectorValue(int ord) {
+        return flatFieldVectorsWriter.getVectors().get(ord);
+      }
     }
 
     private static class Float16FieldWriter extends FieldWriter<short[]> {
@@ -746,7 +722,7 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
         if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
           float dp = VectorUtil.dotProduct(vectorValue, vectorValue);
           float divisor = (float) Math.sqrt(dp);
-          magnitudes.add(divisor);
+          // No magnitudes cache for fp16: normalization happens in fp32 (floatVectorValue).
           for (int i = 0; i < vectorValue.length; i++) {
             dimensionSums[i] += (Float.float16ToFloat(vectorValue[i]) / divisor);
           }
@@ -758,15 +734,16 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       }
 
       @Override
-      public void normalizeVectors() {
-        for (int i = 0; i < flatFieldVectorsWriter.getVectors().size(); i++) {
-          short[] vector = flatFieldVectorsWriter.getVectors().get(i);
-          float magnitude = magnitudes.get(i);
-          for (int j = 0; j < vector.length; j++) {
-            float normalized = Float.float16ToFloat(vector[j]) / magnitude;
-            vector[j] = Float.floatToFloat16(normalized);
-          }
+      float[] floatVectorValue(int ord) {
+        short[] v = flatFieldVectorsWriter.getVectors().get(ord);
+        float[] f = new float[v.length];
+        for (int i = 0; i < v.length; i++) {
+          f[i] = Float.float16ToFloat(v[i]);
         }
+        if (fieldInfo.getVectorSimilarityFunction() == COSINE) {
+          VectorUtil.l2normalize(f);
+        }
+        return f;
       }
     }
   }
@@ -891,56 +868,17 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
   }
 
-  static class QuantizedFloat16VectorValues extends QuantizedByteVectorValues {
-    private OptimizedScalarQuantizer.QuantizationResult corrections;
-    private final byte[] quantized;
-    private final byte[] packed;
-    private final float[] centroid;
-    private final float centroidDP;
+  /**
+   * Exposes a {@link Float16VectorValues} as {@link FloatVectorValues}, inflating fp16 to fp32 on
+   * read. Lets the fp16 merge path reuse the fp32 quantization classes instead of duplicating them.
+   */
+  static final class Float16AsFloatVectorValues extends FloatVectorValues {
     private final Float16VectorValues values;
-    private final OptimizedScalarQuantizer quantizer;
-    private final ScalarEncoding encoding;
+    private final float[] floatVector;
 
-    private int lastOrd = -1;
-
-    QuantizedFloat16VectorValues(
-        Float16VectorValues delegate,
-        OptimizedScalarQuantizer quantizer,
-        ScalarEncoding encoding,
-        float[] centroid) {
-      this.values = delegate;
-      this.quantizer = quantizer;
-      this.encoding = encoding;
-      this.quantized = new byte[encoding.getDiscreteDimensions(delegate.dimension())];
-      this.packed =
-          switch (encoding) {
-            case UNSIGNED_BYTE, SEVEN_BIT -> this.quantized;
-            case PACKED_NIBBLE, SINGLE_BIT_QUERY_NIBBLE, DIBIT_QUERY_NIBBLE ->
-                new byte[encoding.getDocPackedLength(quantized.length)];
-          };
-      this.centroid = centroid;
-      this.centroidDP = VectorUtil.dotProduct(centroid, centroid);
-    }
-
-    @Override
-    public OptimizedScalarQuantizer.QuantizationResult getCorrectiveTerms(int ord) {
-      if (ord != lastOrd) {
-        throw new IllegalStateException(
-            "attempt to retrieve corrective terms for different ord "
-                + ord
-                + " than the quantization was done for: "
-                + lastOrd);
-      }
-      return corrections;
-    }
-
-    @Override
-    public byte[] vectorValue(int ord) throws IOException {
-      if (ord != lastOrd) {
-        quantize(ord);
-        lastOrd = ord;
-      }
-      return packed;
+    Float16AsFloatVectorValues(Float16VectorValues values) {
+      this.values = values;
+      this.floatVector = new float[values.dimension()];
     }
 
     @Override
@@ -949,55 +887,22 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
-    public OptimizedScalarQuantizer getQuantizer() {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public ScalarEncoding getScalarEncoding() {
-      return encoding;
-    }
-
-    @Override
-    public float[] getCentroid() throws IOException {
-      return centroid;
-    }
-
-    @Override
-    public float getCentroidDP() {
-      return centroidDP;
-    }
-
-    @Override
     public int size() {
       return values.size();
     }
 
     @Override
-    public VectorScorer scorer(float[] target) throws IOException {
-      throw new UnsupportedOperationException();
+    public int ordToDoc(int ord) {
+      return values.ordToDoc(ord);
     }
 
     @Override
-    public VectorScorer scorer(short[] target) throws IOException {
-      throw new UnsupportedOperationException();
-    }
-
-    @Override
-    public QuantizedByteVectorValues copy() throws IOException {
-      return new QuantizedFloat16VectorValues(values.copy(), quantizer, encoding, centroid);
-    }
-
-    private void quantize(int ord) throws IOException {
-      corrections =
-          quantizer.scalarQuantize(
-              values.vectorValue(ord), quantized, encoding.getBits(), centroid);
-      switch (encoding) {
-        case PACKED_NIBBLE -> OffHeapScalarQuantizedVectorValues.packNibbles(quantized, packed);
-        case SINGLE_BIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.packAsBinary(quantized, packed);
-        case DIBIT_QUERY_NIBBLE -> OptimizedScalarQuantizer.transposeDibit(quantized, packed);
-        case UNSIGNED_BYTE, SEVEN_BIT -> {}
+    public float[] vectorValue(int ord) throws IOException {
+      short[] v = values.vectorValue(ord);
+      for (int i = 0; i < v.length; i++) {
+        floatVector[i] = Float.float16ToFloat(v[i]);
       }
+      return floatVector;
     }
 
     @Override
@@ -1006,8 +911,8 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     }
 
     @Override
-    public int ordToDoc(int ord) {
-      return values.ordToDoc(ord);
+    public Float16AsFloatVectorValues copy() throws IOException {
+      return new Float16AsFloatVectorValues(values.copy());
     }
   }
 
@@ -1050,48 +955,6 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
     @Override
     public NormalizedFloatVectorValues copy() throws IOException {
       return new NormalizedFloatVectorValues(values.copy());
-    }
-  }
-
-  static final class NormalizedFloat16VectorValues extends Float16VectorValues {
-    private final Float16VectorValues values;
-    private final short[] normalizedVector;
-
-    NormalizedFloat16VectorValues(Float16VectorValues values) {
-      this.values = values;
-      this.normalizedVector = new short[values.dimension()];
-    }
-
-    @Override
-    public int dimension() {
-      return values.dimension();
-    }
-
-    @Override
-    public int size() {
-      return values.size();
-    }
-
-    @Override
-    public int ordToDoc(int ord) {
-      return values.ordToDoc(ord);
-    }
-
-    @Override
-    public short[] vectorValue(int ord) throws IOException {
-      System.arraycopy(values.vectorValue(ord), 0, normalizedVector, 0, normalizedVector.length);
-      VectorUtil.l2normalize(normalizedVector);
-      return normalizedVector;
-    }
-
-    @Override
-    public DocIndexIterator iterator() {
-      return values.iterator();
-    }
-
-    @Override
-    public NormalizedFloat16VectorValues copy() throws IOException {
-      return new NormalizedFloat16VectorValues(values.copy());
     }
   }
 }

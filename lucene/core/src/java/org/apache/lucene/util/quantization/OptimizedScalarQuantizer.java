@@ -107,20 +107,6 @@ public class OptimizedScalarQuantizer {
       float additionalCorrection,
       int quantizedComponentSum) {}
 
-  public QuantizationResult[] multiScalarQuantize(
-      short[] vector, byte[][] destinations, byte[] bits, float[] centroid) {
-    float[] floatVector = new float[vector.length];
-    for (int i = 0; i < vector.length; i++) {
-      floatVector[i] = Float.float16ToFloat(vector[i]);
-    }
-    if (similarityFunction == COSINE) {
-      // fp16 rounding can leave a stored COSINE vector slightly off unit length; re-normalize the
-      // inflated fp32 vector so quantization operates on a true unit vector.
-      VectorUtil.l2normalize(floatVector);
-    }
-    return multiScalarQuantize(floatVector, destinations, bits, centroid);
-  }
-
   /**
    * Quantize the vector to the multiple bit levels.
    *
@@ -187,20 +173,6 @@ public class OptimizedScalarQuantizer {
               sumQuery);
     }
     return results;
-  }
-
-  public QuantizationResult scalarQuantize(
-      short[] vector, byte[] destination, byte bits, float[] centroid) {
-    float[] floatVector = new float[vector.length];
-    for (int i = 0; i < vector.length; i++) {
-      floatVector[i] = Float.float16ToFloat(vector[i]);
-    }
-    if (similarityFunction == COSINE) {
-      // fp16 rounding can leave a stored COSINE vector slightly off unit length; re-normalize the
-      // inflated fp32 vector so quantization operates on a true unit vector.
-      VectorUtil.l2normalize(floatVector);
-    }
-    return scalarQuantize(floatVector, destination, bits, centroid);
   }
 
   /**

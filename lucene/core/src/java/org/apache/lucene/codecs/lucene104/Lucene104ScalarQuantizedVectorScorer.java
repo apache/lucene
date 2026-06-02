@@ -123,15 +123,16 @@ public class Lucene104ScalarQuantizedVectorScorer implements FlatVectorsScorer {
         // This is asymmetric quantization, we will pack the vector
         targetQuantized = new byte[scalarEncoding.getQueryPackedLength(scratch.length)];
       }
-      // We make a copy as the quantization process mutates the input
-      short[] copy = ArrayUtil.copyOfSubArray(target, 0, target.length);
+      // Inflate the fp16 query to fp32 and normalize there; quantization operates on fp32.
+      float[] copy = new float[target.length];
+      for (int i = 0; i < target.length; i++) {
+        copy[i] = Float.float16ToFloat(target[i]);
+      }
       if (similarityFunction == COSINE) {
         VectorUtil.l2normalize(copy);
       }
-      target = copy;
       var targetCorrectiveTerms =
-          quantizer.scalarQuantize(
-              target, scratch, scalarEncoding.getQueryBits(), qv.getCentroid());
+          quantizer.scalarQuantize(copy, scratch, scalarEncoding.getQueryBits(), qv.getCentroid());
       // for asymmetric encodings with 4-bit query, we need to transpose the nibbles for fast
       // scoring comparisons
       if (scalarEncoding == ScalarEncoding.SINGLE_BIT_QUERY_NIBBLE
