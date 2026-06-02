@@ -618,7 +618,10 @@ public class TestBooleanScorer extends LuceneTestCase {
     dir.close();
   }
 
-  /** Make sure a SHOULD-only BooleanQuery with TOP_SCORES and minShouldMatch > 1 is dispatched to WandScorer */
+  /**
+   * Make sure a SHOULD-only BooleanQuery with TOP_SCORES and minShouldMatch > 1 is dispatched to
+   * WandScorer
+   */
   public void testTopScoresWithMinShouldMatchFallsBackToWand() throws IOException {
     Directory dir = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), dir);
