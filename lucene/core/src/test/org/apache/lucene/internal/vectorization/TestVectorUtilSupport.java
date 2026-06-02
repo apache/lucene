@@ -98,6 +98,40 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     assertFloatReturningProviders(p -> p.cosine(a, b));
   }
 
+  public void testUint8Vectors() {
+    var a = new byte[size];
+    var b = new byte[size];
+    random().nextBytes(a);
+    random().nextBytes(b);
+    assertIntReturningProviders(p -> p.uint8DotProduct(a, b));
+    assertIntReturningProviders(p -> p.uint8SquareDistance(a, b));
+  }
+
+  public void testUint8VectorsBoundaries() {
+    var a = new byte[size];
+    var b = new byte[size];
+
+    Arrays.fill(a, Byte.MIN_VALUE);
+    Arrays.fill(b, Byte.MIN_VALUE);
+    assertIntReturningProviders(p -> p.uint8DotProduct(a, b));
+    assertIntReturningProviders(p -> p.uint8SquareDistance(a, b));
+
+    Arrays.fill(a, Byte.MAX_VALUE);
+    Arrays.fill(b, Byte.MAX_VALUE);
+    assertIntReturningProviders(p -> p.uint8DotProduct(a, b));
+    assertIntReturningProviders(p -> p.uint8SquareDistance(a, b));
+
+    Arrays.fill(a, Byte.MIN_VALUE);
+    Arrays.fill(b, Byte.MAX_VALUE);
+    assertIntReturningProviders(p -> p.uint8DotProduct(a, b));
+    assertIntReturningProviders(p -> p.uint8SquareDistance(a, b));
+
+    Arrays.fill(a, Byte.MAX_VALUE);
+    Arrays.fill(b, Byte.MIN_VALUE);
+    assertIntReturningProviders(p -> p.uint8DotProduct(a, b));
+    assertIntReturningProviders(p -> p.uint8SquareDistance(a, b));
+  }
+
   public void testInt4DotProduct() {
     assumeTrue("even sizes only", size % 2 == 0);
     var a = new byte[size];
