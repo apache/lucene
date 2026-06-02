@@ -27,8 +27,8 @@
 #   3) Add a "<plugin>_filefilter" function to decide whether the plugin needs to be run based on changed files
 #   4) Add a "<plugin>_rebuild" function to call out to ant to perform the validation method.
 # See examples of the above-described function types ^^ below.
-   
-# Both compile+javac plugins are required, as well as unit+junit: in both cases, neither work individually 
+
+# Both compile+javac plugins are required, as well as unit+junit: in both cases, neither work individually
 PLUGIN_LIST="ant,jira,compile,javac,unit,junit,test4tests"
 PLUGIN_LIST+=",testoutput,checkluceneversion,ratsources,checkforbiddenapis,checklicenses"
 PLUGIN_LIST+=",validatesourcepatterns,validaterefguide"
@@ -105,7 +105,7 @@ function personality_modules
     junit|unit)
       moduleType="submodules"
       extra="test"
-      ;;  
+      ;;
     *)
       ;;
   esac
@@ -139,18 +139,18 @@ function personality_modules
       ;;
     both) # solr, lucene, or both
       # personality_enqueue_module KEEPS duplicates, so de-dupe first
-      local doSolr=0,doLucene=0 
+      local doSolr=0,doLucene=0
       for module in "${CHANGED_MODULES[@]}"; do
         if [[ "${module}" =~ ^solr/ ]]; then doSolr=1; fi
         if [[ "${module}" =~ ^lucene/ ]]; then doLucene=1; fi
       done
       if [[ ${doLucene} == 1 ]]; then
-        if [[ ${doSolr} == 1 ]]; then 
+        if [[ ${doSolr} == 1 ]]; then
           personality_enqueue_module . "${extra}"
         else
           personality_enqueue_module "lucene" "${extra}"
-        fi          
-      elif [[ ${doSolr} == 1 ]]; then 
+        fi
+      elif [[ ${doSolr} == 1 ]]; then
         personality_enqueue_module "solr" "${extra}"
       fi
       ;;
@@ -159,8 +159,8 @@ function personality_modules
         if [[ "${module}" =~ ^solr/solr-ref-guide ]]; then
           personality_enqueue_module "solr/solr-ref-guide" "${extra}"
         fi
-      done 
-      ;;     
+      done
+      ;;
     *)
       ;;
   esac
@@ -289,7 +289,7 @@ function checklicenses_filefilter
   if [[ ${filename} =~ (lucene|solr)/licenses/|lucene/ivy-versions.properties$ ]]; then
     yetus_debug "tests/checklicenses: ${filename}"
     add_test checklicenses
-  fi    
+  fi
 }
 
 ## @description  checklicenses test

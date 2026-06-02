@@ -41,23 +41,17 @@ public final class DocIdSetBuilder {
    *
    * @see DocIdSetBuilder#grow
    */
-  public abstract static class BulkAdder {
-    public abstract void add(int doc);
+  public sealed interface BulkAdder permits FixedBitSetAdder, BufferAdder {
+    void add(int doc);
 
-    public void add(DocIdSetIterator iterator) throws IOException {
-      int docID;
-      while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-        add(docID);
-      }
-    }
+    void add(IntsRef docs);
+
+    void add(DocIdSetIterator iterator) throws IOException;
+
+    void add(IntsRef docs, int docLowerBoundInclusive);
   }
 
-  private static class FixedBitSetAdder extends BulkAdder {
-    final FixedBitSet bitSet;
-
-    FixedBitSetAdder(FixedBitSet bitSet) {
-      this.bitSet = bitSet;
-    }
+  private record FixedBitSetAdder(FixedBitSet bitSet) implements BulkAdder {
 
     @Override
     public void add(int doc) {
@@ -65,8 +59,26 @@ public final class DocIdSetBuilder {
     }
 
     @Override
+    public void add(IntsRef docs) {
+      for (int i = docs.offset, to = docs.offset + docs.length; i < to; i++) {
+        bitSet.set(docs.ints[i]);
+      }
+    }
+
+    @Override
     public void add(DocIdSetIterator iterator) throws IOException {
-      bitSet.or(iterator);
+      iterator.nextDoc();
+      iterator.intoBitSet(DocIdSetIterator.NO_MORE_DOCS, bitSet, 0);
+    }
+
+    @Override
+    public void add(IntsRef docs, int docLowerBoundInclusive) {
+      for (int i = docs.offset, to = docs.offset + docs.length; i < to; i++) {
+        int doc = docs.ints[i];
+        if (doc >= docLowerBoundInclusive) {
+          bitSet.set(doc);
+        }
+      }
     }
   }
 
@@ -85,16 +97,37 @@ public final class DocIdSetBuilder {
     }
   }
 
-  private static class BufferAdder extends BulkAdder {
-    final Buffer buffer;
-
-    BufferAdder(Buffer buffer) {
-      this.buffer = buffer;
-    }
+  private record BufferAdder(Buffer buffer) implements BulkAdder {
 
     @Override
     public void add(int doc) {
       buffer.array[buffer.length++] = doc;
+    }
+
+    @Override
+    public void add(IntsRef docs) {
+      System.arraycopy(docs.ints, docs.offset, buffer.array, buffer.length, docs.length);
+      buffer.length += docs.length;
+    }
+
+    @Override
+    public void add(DocIdSetIterator iterator) throws IOException {
+      int docID;
+      while ((docID = iterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        add(docID);
+      }
+    }
+
+    @Override
+    public void add(IntsRef docs, int docLowerBoundInclusive) {
+      int index = buffer.length;
+      for (int i = docs.offset, to = docs.offset + docs.length; i < to; i++) {
+        int doc = docs.ints[i];
+        if (doc >= docLowerBoundInclusive) {
+          buffer.array[index++] = doc;
+        }
+      }
+      buffer.length = index;
     }
   }
 
@@ -129,7 +162,7 @@ public final class DocIdSetBuilder {
    * Create a {@link DocIdSetBuilder} instance that is optimized for accumulating docs that match
    * the given {@link PointValues}.
    */
-  public DocIdSetBuilder(int maxDoc, PointValues values, String field) throws IOException {
+  public DocIdSetBuilder(int maxDoc, PointValues values) throws IOException {
     this(maxDoc, values.getDocCount(), values.size());
   }
 

@@ -35,8 +35,7 @@ public class OpenRangeQueryNodeProcessor extends QueryNodeProcessorImpl {
   @Override
   protected QueryNode postProcessNode(QueryNode node) throws QueryNodeException {
 
-    if (node instanceof TermRangeQueryNode) {
-      TermRangeQueryNode rangeNode = (TermRangeQueryNode) node;
+    if (node instanceof TermRangeQueryNode rangeNode) {
       FieldQueryNode lowerNode = rangeNode.getLowerBound();
       FieldQueryNode upperNode = rangeNode.getUpperBound();
       CharSequence lowerText = lowerNode.getText();

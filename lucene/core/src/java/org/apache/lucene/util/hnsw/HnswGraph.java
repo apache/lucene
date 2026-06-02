@@ -51,6 +51,7 @@ import org.apache.lucene.internal.hppc.IntCursor;
  * exclude deleted documents.
  */
 public abstract class HnswGraph {
+  public static final int UNKNOWN_MAX_CONN = -1;
 
   /** Sole constructor */
   protected HnswGraph() {}
@@ -84,6 +85,9 @@ public abstract class HnswGraph {
   /** Returns the number of levels of the graph */
   public abstract int numLevels() throws IOException;
 
+  /** returns M, the maximum number of connections for a node. */
+  public abstract int maxConn();
+
   /** Returns graph's entry point on the top level * */
   public abstract int entryNode() throws IOException;
 
@@ -96,8 +100,10 @@ public abstract class HnswGraph {
    */
   public abstract NodesIterator getNodesOnLevel(int level) throws IOException;
 
+  public abstract int neighborCount();
+
   /** Empty graph value */
-  public static HnswGraph EMPTY =
+  public static final HnswGraph EMPTY =
       new HnswGraph() {
 
         @Override
@@ -124,10 +130,33 @@ public abstract class HnswGraph {
         }
 
         @Override
+        public int neighborCount() {
+          return 0;
+        }
+
+        @Override
+        public int maxConn() {
+          return UNKNOWN_MAX_CONN;
+        }
+
+        @Override
         public NodesIterator getNodesOnLevel(int level) {
-          return ArrayNodesIterator.EMPTY;
+          return DenseNodesIterator.EMPTY;
         }
       };
+
+  public NodesIterator getSortedNodes(int level) throws IOException {
+    if (level == 0) {
+      return new DenseNodesIterator(size());
+    }
+    NodesIterator nodesOnLevel = getNodesOnLevel(level);
+    int[] sortedNodes = new int[nodesOnLevel.size()];
+    for (int n = 0; nodesOnLevel.hasNext(); n++) {
+      sortedNodes[n] = nodesOnLevel.nextInt();
+    }
+    Arrays.sort(sortedNodes);
+    return new ArrayNodesIterator(sortedNodes);
+  }
 
   /**
    * Iterator over the graph nodes on a certain level. Iterator also provides the size – the total
@@ -154,36 +183,23 @@ public abstract class HnswGraph {
      * @return The number of integers written to `dest`
      */
     public abstract int consume(int[] dest);
-
-    public static int[] getSortedNodes(NodesIterator nodesOnLevel) {
-      int[] sortedNodes = new int[nodesOnLevel.size()];
-      for (int n = 0; nodesOnLevel.hasNext(); n++) {
-        sortedNodes[n] = nodesOnLevel.nextInt();
-      }
-      Arrays.sort(sortedNodes);
-      return sortedNodes;
-    }
   }
 
   /** NodesIterator that accepts nodes as an integer array. */
   public static class ArrayNodesIterator extends NodesIterator {
-    static NodesIterator EMPTY = new ArrayNodesIterator(0);
 
     private final int[] nodes;
     private int cur = 0;
 
-    /** Constructor for iterator based on integer array representing nodes */
-    public ArrayNodesIterator(int[] nodes, int size) {
-      super(size);
-      assert nodes != null;
-      assert size <= nodes.length;
-      this.nodes = nodes;
+    /** Normal constructor */
+    public ArrayNodesIterator(int[] nodes) {
+      this(nodes, nodes.length);
     }
 
-    /** Constructor for iterator based on the size */
-    public ArrayNodesIterator(int size) {
+    /** Constructor that allows overriding size, used only for back-compat */
+    public ArrayNodesIterator(int[] nodes, int size) {
       super(size);
-      this.nodes = null;
+      this.nodes = nodes;
     }
 
     @Override
@@ -192,12 +208,6 @@ public abstract class HnswGraph {
         throw new NoSuchElementException();
       }
       int numToCopy = Math.min(size - cur, dest.length);
-      if (nodes == null) {
-        for (int i = 0; i < numToCopy; i++) {
-          dest[i] = cur + i;
-        }
-        return numToCopy;
-      }
       System.arraycopy(nodes, cur, dest, 0, numToCopy);
       cur += numToCopy;
       return numToCopy;
@@ -208,11 +218,44 @@ public abstract class HnswGraph {
       if (hasNext() == false) {
         throw new NoSuchElementException();
       }
-      if (nodes == null) {
-        return cur++;
-      } else {
-        return nodes[cur++];
+      return nodes[cur++];
+    }
+
+    @Override
+    public boolean hasNext() {
+      return cur < size;
+    }
+  }
+
+  /** NodesIterator that enumerates [0, size) */
+  public static class DenseNodesIterator extends NodesIterator {
+    private static final NodesIterator EMPTY = new DenseNodesIterator(0);
+
+    private int cur = 0;
+
+    /** Sole constructor */
+    public DenseNodesIterator(int size) {
+      super(size);
+    }
+
+    @Override
+    public int consume(int[] dest) {
+      if (hasNext() == false) {
+        throw new NoSuchElementException();
       }
+      int numToCopy = Math.min(size - cur, dest.length);
+      for (int i = 0; i < numToCopy; i++) {
+        dest[i] = cur + i;
+      }
+      return numToCopy;
+    }
+
+    @Override
+    public int nextInt() {
+      if (hasNext() == false) {
+        throw new NoSuchElementException();
+      }
+      return cur++;
     }
 
     @Override

@@ -94,7 +94,11 @@ public abstract class SearchEquivalenceTestBase extends LuceneTestCase {
 
     reader = iw.getReader();
     s1 = newSearcher(reader);
+    // Disable the query cache, which converts two-phase iterators to normal iterators, while we
+    // want to make sure two-phase iterators are exercised.
+    s1.setQueryCache(null);
     s2 = newSearcher(reader);
+    s2.setQueryCache(null);
     iw.close();
   }
 
@@ -114,7 +118,6 @@ public abstract class SearchEquivalenceTestBase extends LuceneTestCase {
    * tokenization can be assumed to be on whitespace.
    */
   static String randomFieldContents() {
-    // TODO: zipf-like distribution
     StringBuilder sb = new StringBuilder();
     int numTerms = random().nextInt(15);
     for (int i = 0; i < numTerms; i++) {
@@ -128,7 +131,13 @@ public abstract class SearchEquivalenceTestBase extends LuceneTestCase {
 
   /** returns random character (a-z) */
   static char randomChar() {
-    return (char) TestUtil.nextInt(random(), 'a', 'z');
+    char c = (char) TestUtil.nextInt(random(), 'a', 'z');
+    if (random().nextBoolean()) {
+      // bias towards earlier chars, so that chars have a ~ zipfian distribution with earlier chars
+      // having a higher frequency
+      c = (char) TestUtil.nextInt(random(), 'a', c);
+    }
+    return c;
   }
 
   /** returns a term suitable for searching. terms are single characters in lowercase (a-z) */

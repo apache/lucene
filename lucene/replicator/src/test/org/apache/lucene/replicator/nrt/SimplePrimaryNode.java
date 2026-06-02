@@ -161,12 +161,9 @@ class SimplePrimaryNode extends PrimaryNode {
     // iwc.setInfoStream(new PrintStreamInfoStream(System.out));
 
     // Force more frequent merging so we stress merge warming:
-    if (mp instanceof TieredMergePolicy) {
-      TieredMergePolicy tmp = (TieredMergePolicy) mp;
+    if (mp instanceof TieredMergePolicy tmp) {
       tmp.setSegmentsPerTier(3);
-      tmp.setMaxMergeAtOnce(3);
-    } else if (mp instanceof LogMergePolicy) {
-      LogMergePolicy lmp = (LogMergePolicy) mp;
+    } else if (mp instanceof LogMergePolicy lmp) {
       lmp.setMergeFactor(3);
     }
 
@@ -536,9 +533,7 @@ class SimplePrimaryNode extends PrimaryNode {
       byte cmd;
       try {
         cmd = in.readByte();
-      } catch (
-          @SuppressWarnings("unused")
-          EOFException eofe) {
+      } catch (EOFException _) {
         // done
         return;
       }
@@ -685,9 +680,7 @@ class SimplePrimaryNode extends PrimaryNode {
 
       try {
         cmd = in.readByte();
-      } catch (
-          @SuppressWarnings("unused")
-          EOFException eofe) {
+      } catch (EOFException _) {
         break;
       }
 
@@ -733,7 +726,7 @@ class SimplePrimaryNode extends PrimaryNode {
             IndexSearcher searcher = mgr.acquire();
             try {
               long version = ((DirectoryReader) searcher.getIndexReader()).getVersion();
-              int hitCount = searcher.count(new MatchAllDocsQuery());
+              int hitCount = searcher.count(MatchAllDocsQuery.INSTANCE);
               // message("version=" + version + " searcher=" + searcher);
               out.writeVLong(version);
               out.writeVInt(hitCount);

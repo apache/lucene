@@ -46,30 +46,30 @@ import org.apache.lucene.util.VectorUtil;
  * normalization. Given a float vector `v` and a confidenceInterval `q` we can calculate the
  * quantiles of the vector values [minQuantile, maxQuantile].
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   byte = (float - minQuantile) * 127/(maxQuantile - minQuantile)
  *   float = (maxQuantile - minQuantile)/127 * byte + minQuantile
- * </pre>
+ * </code></pre>
  *
  * <p>This then means to multiply two float values together (e.g. dot_product) we can do the
  * following:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   float1 * float2 ~= (byte1 * (maxQuantile - minQuantile)/127 + minQuantile) * (byte2 * (maxQuantile - minQuantile)/127 + minQuantile)
  *   float1 * float2 ~= (byte1 * byte2 * (maxQuantile - minQuantile)^2)/(127^2) + (byte1 * minQuantile * (maxQuantile - minQuantile)/127) + (byte2 * minQuantile * (maxQuantile - minQuantile)/127) + minQuantile^2
  *   let alpha = (maxQuantile - minQuantile)/127
  *   float1 * float2 ~= (byte1 * byte2 * alpha^2) + (byte1 * minQuantile * alpha) + (byte2 * minQuantile * alpha) + minQuantile^2
- * </pre>
+ * </code></pre>
  *
  * <p>The expansion for square distance is much simpler:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *  square_distance = (float1 - float2)^2
  *  (float1 - float2)^2 ~= (byte1 * alpha + minQuantile - byte2 * alpha - minQuantile)^2
  *  = (alpha*byte1 + minQuantile)^2 + (alpha*byte2 + minQuantile)^2 - 2*(alpha*byte1 + minQuantile)(alpha*byte2 + minQuantile)
  *  this can be simplified to:
  *  = alpha^2 (byte1 - byte2)^2
- * </pre>
+ * </code></pre>
  */
 public class ScalarQuantizer {
 
@@ -97,12 +97,18 @@ public class ScalarQuantizer {
     }
     assert maxQuantile >= minQuantile;
     assert bits > 0 && bits <= 8;
-    this.minQuantile = minQuantile;
-    this.maxQuantile = maxQuantile;
     this.bits = bits;
     final float divisor = (float) ((1 << bits) - 1);
-    this.scale = divisor / (maxQuantile - minQuantile);
-    this.alpha = (maxQuantile - minQuantile) / divisor;
+    if (minQuantile == maxQuantile) {
+      // avoid divide-by-zero with an arbitrary but plausible choice (leads to alpha = scale = 1)
+      this.minQuantile = minQuantile - divisor;
+      this.maxQuantile = maxQuantile + divisor;
+    } else {
+      this.minQuantile = minQuantile;
+      this.maxQuantile = maxQuantile;
+    }
+    this.scale = divisor / (this.maxQuantile - this.minQuantile);
+    this.alpha = (this.maxQuantile - this.minQuantile) / divisor;
   }
 
   /**
@@ -116,38 +122,13 @@ public class ScalarQuantizer {
   public float quantize(float[] src, byte[] dest, VectorSimilarityFunction similarityFunction) {
     assert src.length == dest.length;
     assert similarityFunction != VectorSimilarityFunction.COSINE || VectorUtil.isUnitVector(src);
-    float correction = 0;
-    for (int i = 0; i < src.length; i++) {
-      correction += quantizeFloat(src[i], dest, i);
-    }
+
+    float correction =
+        VectorUtil.minMaxScalarQuantize(src, dest, scale, alpha, minQuantile, maxQuantile);
     if (similarityFunction.equals(VectorSimilarityFunction.EUCLIDEAN)) {
       return 0;
     }
     return correction;
-  }
-
-  private float quantizeFloat(float v, byte[] dest, int destIndex) {
-    assert dest == null || destIndex < dest.length;
-    // Make sure the value is within the quantile range, cutting off the tails
-    // see first parenthesis in equation: byte = (float - minQuantile) * 127/(maxQuantile -
-    // minQuantile)
-    float dx = v - minQuantile;
-    float dxc = Math.max(minQuantile, Math.min(maxQuantile, v)) - minQuantile;
-    // Scale the value to the range [0, 127], this is our quantized value
-    // scale = 127/(maxQuantile - minQuantile)
-    float dxs = scale * dxc;
-    // We multiply by `alpha` here to get the quantized value back into the original range
-    // to aid in calculating the corrective offset
-    float dxq = Math.round(dxs) * alpha;
-    if (dest != null) {
-      dest[destIndex] = (byte) Math.round(dxs);
-    }
-    // Calculate the corrective offset that needs to be applied to the score
-    // in addition to the `byte * minQuantile * alpha` term in the equation
-    // we add the `(dx - dxq) * dxq` term to account for the fact that the quantized value
-    // will be rounded to the nearest whole number and lose some accuracy
-    // Additionally, we account for the global correction of `minQuantile^2` in the equation
-    return minQuantile * (v - minQuantile / 2.0F) + (dx - dxq) * dxq;
   }
 
   /**
@@ -165,13 +146,14 @@ public class ScalarQuantizer {
     if (similarityFunction.equals(VectorSimilarityFunction.EUCLIDEAN)) {
       return 0f;
     }
-    float correctiveOffset = 0f;
-    for (int i = 0; i < quantizedVector.length; i++) {
-      // dequantize the old value in order to recalculate the corrective offset
-      float v = (oldQuantizer.alpha * quantizedVector[i]) + oldQuantizer.minQuantile;
-      correctiveOffset += quantizeFloat(v, null, 0);
-    }
-    return correctiveOffset;
+    return VectorUtil.recalculateOffset(
+        quantizedVector,
+        oldQuantizer.alpha,
+        oldQuantizer.minQuantile,
+        scale,
+        alpha,
+        minQuantile,
+        maxQuantile);
   }
 
   /**
@@ -180,10 +162,10 @@ public class ScalarQuantizer {
    * @param src the source vector
    * @param dest the destination vector
    */
-  void deQuantize(byte[] src, float[] dest) {
+  public void deQuantize(byte[] src, float[] dest) {
     assert src.length == dest.length;
     for (int i = 0; i < src.length; i++) {
-      dest[i] = (alpha * src[i]) + minQuantile;
+      dest[i] = (alpha * Byte.toUnsignedInt(src[i])) + minQuantile;
     }
   }
 

@@ -59,6 +59,6 @@ public class AndQueryNode extends BooleanQueryNode {
     // in case is root or the parent is a group node avoid parenthesis
     if ((getParent() != null && getParent() instanceof GroupQueryNode) || isRoot())
       return sb.toString();
-    else return "( " + sb.toString() + " )";
+    else return "( " + sb + " )";
   }
 }

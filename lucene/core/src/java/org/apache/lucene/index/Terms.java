@@ -118,7 +118,7 @@ public abstract class Terms {
    * Returns the number of documents that have at least one term for this field. Note that, just
    * like other term measures, this measure does not take deleted documents into account.
    */
-  public abstract int getDocCount() throws IOException;
+  public abstract int getDocCount();
 
   /**
    * Returns true if documents in this field store per-document term frequency ({@link
@@ -134,9 +134,6 @@ public abstract class Terms {
 
   /** Returns true if documents in this field store payloads. */
   public abstract boolean hasPayloads();
-
-  /** Zero-length array of {@link Terms}. */
-  public static final Terms[] EMPTY_ARRAY = new Terms[0];
 
   /**
    * Returns the smallest term (in lexicographic order) in the field. Note that, just like other
@@ -165,9 +162,7 @@ public abstract class Terms {
         TermsEnum iterator = iterator();
         iterator.seekExact(size - 1);
         return iterator.term();
-      } catch (
-          @SuppressWarnings("unused")
-          UnsupportedOperationException ignored) {
+      } catch (UnsupportedOperationException _) {
         // ok
       }
     }
@@ -252,7 +247,7 @@ public abstract class Terms {
         }
 
         @Override
-        public int getDocCount() throws IOException {
+        public int getDocCount() {
           return 0;
         }
 

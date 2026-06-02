@@ -17,11 +17,12 @@
 
 package org.apache.lucene.backward_codecs.lucene92;
 
+import static org.apache.lucene.backward_codecs.lucene92.Lucene92HnswVectorsFormat.VECTOR_DATA_EXTENSION;
+import static org.apache.lucene.backward_codecs.lucene92.Lucene92HnswVectorsFormat.VECTOR_INDEX_EXTENSION;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
@@ -34,11 +35,12 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.hnsw.HnswGraph;
 import org.apache.lucene.util.hnsw.HnswGraphSearcher;
@@ -53,13 +55,15 @@ import org.apache.lucene.util.packed.DirectMonotonicReader;
  */
 public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
 
-  private final Map<String, FieldEntry> fields = new HashMap<>();
+  private final IntObjectHashMap<FieldEntry> fields = new IntObjectHashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
   private final DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
+  private final FieldInfos fieldInfos;
 
   Lucene92HnswVectorsReader(SegmentReadState state) throws IOException {
     int versionMeta = readMetadata(state);
+    this.fieldInfos = state.fieldInfos;
     boolean success = false;
     try {
       vectorData =
@@ -152,7 +156,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
       }
       FieldEntry fieldEntry = readField(meta, info);
       validateFieldEntry(info, fieldEntry);
-      fields.put(info.name, fieldEntry);
+      fields.put(info.number, fieldEntry);
     }
   }
 
@@ -212,13 +216,18 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     CodecUtil.checksumEntireFile(vectorIndex);
   }
 
-  @Override
-  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null) {
+  private FieldEntry getFieldEntry(String field) {
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry fieldEntry;
+    if (info == null || (fieldEntry = fields.get(info.number)) == null) {
       throw new IllegalArgumentException("field=\"" + field + "\" not found");
     }
-    return OffHeapFloatVectorValues.load(fieldEntry, vectorData);
+    return fieldEntry;
+  }
+
+  @Override
+  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+    return OffHeapFloatVectorValues.load(getFieldEntry(field), vectorData);
   }
 
   @Override
@@ -227,10 +236,9 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-
+    final FieldEntry fieldEntry = getFieldEntry(field);
     if (fieldEntry.size() == 0) {
       return;
     }
@@ -243,11 +251,11 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
         getGraph(fieldEntry),
-        vectorValues.getAcceptOrds(acceptDocs));
+        vectorValues.getAcceptOrds(acceptDocs.bits()));
   }
 
   @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     throw new UnsupportedOperationException();
   }
@@ -256,6 +264,14 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     IndexInput bytesSlice =
         vectorIndex.slice("graph-data", entry.vectorIndexOffset, entry.vectorIndexLength);
     return new OffHeapHnswGraph(entry, bytesSlice);
+  }
+
+  @Override
+  public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+    FieldEntry entry = getFieldEntry(fieldInfo.name);
+    var raw = Map.entry(VECTOR_DATA_EXTENSION, entry.vectorDataLength);
+    var graph = Map.entry(VECTOR_INDEX_EXTENSION, entry.vectorIndexLength);
+    return Map.ofEntries(raw, graph);
   }
 
   @Override
@@ -396,6 +412,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     final int size;
     final long bytesForConns;
     final long bytesForConns0;
+    private final int maxConn;
 
     int arcCount;
     int arcUpTo;
@@ -411,6 +428,7 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
       this.bytesForConns = Math.multiplyExact(Math.addExact(entry.M, 1L), Integer.BYTES);
       this.bytesForConns0 =
           Math.multiplyExact(Math.addExact(Math.multiplyExact(entry.M, 2L), 1), Integer.BYTES);
+      this.maxConn = entry.M;
     }
 
     @Override
@@ -445,6 +463,16 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     }
 
     @Override
+    public int neighborCount() {
+      return arcCount;
+    }
+
+    @Override
+    public int maxConn() {
+      return maxConn;
+    }
+
+    @Override
     public int numLevels() {
       return numLevels;
     }
@@ -457,9 +485,9 @@ public final class Lucene92HnswVectorsReader extends KnnVectorsReader {
     @Override
     public NodesIterator getNodesOnLevel(int level) {
       if (level == 0) {
-        return new ArrayNodesIterator(size());
+        return new DenseNodesIterator(size());
       } else {
-        return new ArrayNodesIterator(nodesByLevel[level], nodesByLevel[level].length);
+        return new ArrayNodesIterator(nodesByLevel[level]);
       }
     }
   }

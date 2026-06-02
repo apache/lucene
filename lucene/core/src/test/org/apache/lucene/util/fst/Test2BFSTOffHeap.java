@@ -41,7 +41,7 @@ import org.junit.Ignore;
 @TimeoutSuite(millis = 100 * TimeUnits.HOUR)
 public class Test2BFSTOffHeap extends LuceneTestCase {
 
-  private static long LIMIT = 3L * 1024 * 1024 * 1024;
+  private static final long LIMIT = 3L * 1024 * 1024 * 1024;
 
   public void test() throws Exception {
     int[] ints = new int[7];

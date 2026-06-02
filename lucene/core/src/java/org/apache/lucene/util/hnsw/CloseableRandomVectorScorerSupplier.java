@@ -18,14 +18,41 @@
 package org.apache.lucene.util.hnsw;
 
 import java.io.Closeable;
+import java.io.IOException;
 
 /**
- * A supplier that creates {@link RandomVectorScorer} from an ordinal. Caller should be sure to
- * close after use
+ * A supplier that creates {@link UpdateableRandomVectorScorer} from an ordinal. Caller should be
+ * sure to close after use
  *
  * <p>NOTE: the {@link #copy()} returned {@link RandomVectorScorerSupplier} is not necessarily
  * closeable
  */
 public interface CloseableRandomVectorScorerSupplier extends Closeable, RandomVectorScorerSupplier {
+
   int totalVectorCount();
+
+  static CloseableRandomVectorScorerSupplier create(
+      RandomVectorScorerSupplier supplier, int totalVectorCount, Closeable onClose) {
+    return new CloseableRandomVectorScorerSupplier() {
+      @Override
+      public int totalVectorCount() {
+        return totalVectorCount;
+      }
+
+      @Override
+      public void close() throws IOException {
+        onClose.close();
+      }
+
+      @Override
+      public UpdateableRandomVectorScorer scorer() throws IOException {
+        return supplier.scorer();
+      }
+
+      @Override
+      public RandomVectorScorerSupplier copy() throws IOException {
+        return supplier.copy();
+      }
+    };
+  }
 }

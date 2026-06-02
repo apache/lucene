@@ -1,4 +1,5 @@
-# Generated from IANA TLD Database (gradlew generateTlds).aaa
+# Generated from IANA TLD Database (gradlew generateTlds).
+aaa
 aarp
 abb
 abbott
@@ -117,7 +118,6 @@ be
 beats
 beauty
 beer
-bentley
 berlin
 best
 bestbuy
@@ -296,7 +296,6 @@ cy
 cymru
 cyou
 cz
-dabur
 dad
 dance
 data
@@ -345,7 +344,6 @@ download
 drive
 dtv
 dubai
-dunlop
 dupont
 durban
 dvag
@@ -488,7 +486,6 @@ godaddy
 gold
 goldpoint
 golf
-goo
 goodyear
 goog
 google
@@ -627,7 +624,6 @@ kaufen
 kddi
 ke
 kerryhotels
-kerrylogistics
 kerryproperties
 kfh
 kg
@@ -659,7 +655,6 @@ la
 lacaixa
 lamborghini
 lamer
-lancaster
 land
 landrover
 lanxess
@@ -691,7 +686,6 @@ limited
 limo
 lincoln
 link
-lipsy
 live
 living
 lk
@@ -801,7 +795,6 @@ na
 nab
 nagoya
 name
-natura
 navy
 nba
 nc
@@ -917,7 +910,6 @@ politie
 porn
 post
 pr
-pramerica
 praxi
 press
 prime
@@ -951,7 +943,6 @@ realtor
 realty
 recipes
 red
-redstone
 redumbrella
 rehab
 reise
@@ -1038,7 +1029,6 @@ sg
 sh
 shangrila
 sharp
-shaw
 shell
 shia
 shiksha
@@ -1259,7 +1249,6 @@ windows
 wine
 winners
 wme
-wolterskluwer
 woodside
 work
 works

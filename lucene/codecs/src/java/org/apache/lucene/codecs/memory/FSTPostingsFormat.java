@@ -22,8 +22,8 @@ import org.apache.lucene.codecs.FieldsProducer;
 import org.apache.lucene.codecs.PostingsFormat;
 import org.apache.lucene.codecs.PostingsReaderBase;
 import org.apache.lucene.codecs.PostingsWriterBase;
-import org.apache.lucene.codecs.lucene912.Lucene912PostingsReader;
-import org.apache.lucene.codecs.lucene912.Lucene912PostingsWriter;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsReader;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.util.IOUtils;
@@ -41,32 +41,24 @@ public final class FSTPostingsFormat extends PostingsFormat {
 
   @Override
   public FieldsConsumer fieldsConsumer(SegmentWriteState state) throws IOException {
-    PostingsWriterBase postingsWriter = new Lucene912PostingsWriter(state);
+    PostingsWriterBase postingsWriter = new Lucene104PostingsWriter(state);
 
-    boolean success = false;
     try {
-      FieldsConsumer ret = new FSTTermsWriter(state, postingsWriter);
-      success = true;
-      return ret;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(postingsWriter);
-      }
+      return new FSTTermsWriter(state, postingsWriter);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, postingsWriter);
+      throw t;
     }
   }
 
   @Override
   public FieldsProducer fieldsProducer(SegmentReadState state) throws IOException {
-    PostingsReaderBase postingsReader = new Lucene912PostingsReader(state);
-    boolean success = false;
+    PostingsReaderBase postingsReader = new Lucene104PostingsReader(state);
     try {
-      FieldsProducer ret = new FSTTermsReader(state, postingsReader);
-      success = true;
-      return ret;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(postingsReader);
-      }
+      return new FSTTermsReader(state, postingsReader);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, postingsReader);
+      throw t;
     }
   }
 }

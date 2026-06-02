@@ -32,9 +32,9 @@ import org.apache.lucene.search.TopDocs;
  */
 public class SubmissionReport {
 
-  private NumberFormat nf;
-  private PrintWriter logger;
-  private String name;
+  private final NumberFormat nf;
+  private final PrintWriter logger;
+  private final String name;
 
   /**
    * Constructor for SubmissionReport.
@@ -91,7 +91,7 @@ public class SubmissionReport {
     }
   }
 
-  private static String padd = "                                    ";
+  private static final String padd = "                                    ";
 
   private String format(String s, int minLen) {
     s = (s == null ? "" : s);

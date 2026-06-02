@@ -19,11 +19,12 @@ package org.apache.lucene.tests.store;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import org.apache.lucene.internal.tests.TestSecrets;
 import org.apache.lucene.store.FilterIndexInput;
+import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.ReadAdvice;
 
 /**
  * Used by MockDirectoryWrapper to create an input stream that keeps track of when it's been closed.
@@ -40,7 +41,6 @@ public class MockIndexInputWrapper extends FilterIndexInput {
 
   // Which MockIndexInputWrapper we were cloned from, or null if we are not a clone:
   private final MockIndexInputWrapper parent;
-  private final ReadAdvice readAdvice;
   private final boolean confined;
   private final Thread thread;
 
@@ -50,7 +50,6 @@ public class MockIndexInputWrapper extends FilterIndexInput {
       String name,
       IndexInput delegate,
       MockIndexInputWrapper parent,
-      ReadAdvice readAdvice,
       boolean confined) {
     super("MockIndexInputWrapper(name=" + name + " delegate=" + delegate + ")", delegate);
 
@@ -60,7 +59,6 @@ public class MockIndexInputWrapper extends FilterIndexInput {
     this.parent = parent;
     this.name = name;
     this.dir = dir;
-    this.readAdvice = readAdvice;
     this.confined = confined;
     this.thread = Thread.currentThread();
   }
@@ -111,8 +109,7 @@ public class MockIndexInputWrapper extends FilterIndexInput {
     dir.inputCloneCount.incrementAndGet();
     IndexInput iiclone = in.clone();
     MockIndexInputWrapper clone =
-        new MockIndexInputWrapper(
-            dir, name, iiclone, parent != null ? parent : this, readAdvice, confined);
+        new MockIndexInputWrapper(dir, name, iiclone, parent != null ? parent : this, confined);
     // Pending resolution on LUCENE-686 we may want to
     // uncomment this code so that we also track that all
     // clones get closed:
@@ -140,17 +137,13 @@ public class MockIndexInputWrapper extends FilterIndexInput {
     IndexInput slice = in.slice(sliceDescription, offset, length);
     MockIndexInputWrapper clone =
         new MockIndexInputWrapper(
-            dir, sliceDescription, slice, parent != null ? parent : this, readAdvice, confined);
+            dir, sliceDescription, slice, parent != null ? parent : this, confined);
     return clone;
   }
 
   @Override
-  public IndexInput slice(String sliceDescription, long offset, long length, ReadAdvice readAdvice)
+  public IndexInput slice(String sliceDescription, long offset, long length, IOContext context)
       throws IOException {
-    if (this.readAdvice != ReadAdvice.NORMAL) {
-      throw new IllegalStateException(
-          "slice() may only be called with a custom read advice on inputs that have been open with ReadAdvice.NORMAL");
-    }
     ensureOpen();
     if (dir.verboseClone) {
       new Exception("slice: " + this).printStackTrace(System.out);
@@ -159,7 +152,7 @@ public class MockIndexInputWrapper extends FilterIndexInput {
     IndexInput slice = in.slice(sliceDescription, offset, length);
     MockIndexInputWrapper clone =
         new MockIndexInputWrapper(
-            dir, sliceDescription, slice, parent != null ? parent : this, readAdvice, confined);
+            dir, sliceDescription, slice, parent != null ? parent : this, confined);
     return clone;
   }
 
@@ -178,10 +171,24 @@ public class MockIndexInputWrapper extends FilterIndexInput {
   }
 
   @Override
-  public void prefetch(long offset, long length) throws IOException {
+  public boolean prefetch(long offset, long length) throws IOException {
     ensureOpen();
     ensureAccessible();
-    in.prefetch(offset, length);
+    return in.prefetch(offset, length);
+  }
+
+  @Override
+  public Optional<Boolean> isLoaded() {
+    ensureOpen();
+    ensureAccessible();
+    return in.isLoaded();
+  }
+
+  @Override
+  public void updateIOContext(IOContext context) throws IOException {
+    ensureOpen();
+    ensureAccessible();
+    in.updateIOContext(context);
   }
 
   @Override

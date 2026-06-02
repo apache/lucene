@@ -17,6 +17,7 @@
 package org.apache.lucene.search;
 
 import java.io.IOException;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.StoredFields;
 
 /**
@@ -31,7 +32,7 @@ import org.apache.lucene.index.StoredFields;
  * it by recording the docBase from the most recent setNextReader call. Here's a simple example
  * showing how to collect docIDs into a BitSet:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * IndexSearcher searcher = new IndexSearcher(indexReader);
  * final BitSet bits = new BitSet(indexReader.maxDoc());
  * searcher.search(query, new Collector() {
@@ -53,7 +54,7 @@ import org.apache.lucene.index.StoredFields;
  *   }
  *
  * });
- * </pre>
+ * </code></pre>
  *
  * <p>Not all collectors will need to rebase the docID. For example, a collector that simply counts
  * the total number of hits would skip it.
@@ -84,6 +85,27 @@ public interface LeafCollector {
   void collect(int doc) throws IOException;
 
   /**
+   * Collect a range of doc IDs, between {@code min} inclusive and {@code max} exclusive. {@code
+   * max} is guaranteed to be greater than {@code min}.
+   *
+   * <p>Extending this method is typically useful to take advantage of pre-aggregated data exposed
+   * in a {@link DocValuesSkipper}.
+   *
+   * <p>The default implementation calls {@link #collect(DocIdStream)} on a {@link DocIdStream} that
+   * matches the given range.
+   *
+   * <p>The position of the {@link Scorable} set via {@link #setScorer} is undefined within this
+   * method. Overrides must not call {@link Scorable#score()}, and if the {@link Scorable} is a
+   * {@link Scorer}, must not assume {@link Scorer#docID()} corresponds to any document being
+   * collected. Use {@link #collect(int)} if per-document scores are needed.
+   *
+   * @see #collect(int)
+   */
+  default void collectRange(int min, int max) throws IOException {
+    collect(new RangeDocIdStream(min, max));
+  }
+
+  /**
    * Bulk-collect doc IDs.
    *
    * <p>Note: The provided {@link DocIdStream} may be reused across calls and should be consumed
@@ -99,6 +121,11 @@ public interface LeafCollector {
    *
    * <p>It is legal for callers to mix calls to {@link #collect(DocIdStream)} and {@link
    * #collect(int)}.
+   *
+   * <p>The position of the {@link Scorable} set via {@link #setScorer} is undefined within this
+   * method. Overrides must not call {@link Scorable#score()}, and if the {@link Scorable} is a
+   * {@link Scorer}, must not assume {@link Scorer#docID()} corresponds to any document being
+   * collected. Use {@link #collect(int)} if per-document scores are needed.
    *
    * <p>The default implementation calls {@code stream.forEach(this::collect)}.
    */

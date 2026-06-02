@@ -23,10 +23,13 @@ import java.io.IOException;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.FloatToFloatFunction;
 import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
-import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
+import org.apache.lucene.util.quantization.BaseQuantizedByteVectorValues;
+import org.apache.lucene.util.quantization.LegacyQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
 /**
@@ -47,7 +50,7 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
       throws IOException {
-    if (vectorValues instanceof QuantizedByteVectorValues quantizedByteVectorValues) {
+    if (vectorValues instanceof LegacyQuantizedByteVectorValues quantizedByteVectorValues) {
       return new ScalarQuantizedRandomVectorScorerSupplier(
           quantizedByteVectorValues, similarityFunction);
     }
@@ -59,7 +62,7 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
   public RandomVectorScorer getRandomVectorScorer(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, float[] target)
       throws IOException {
-    if (vectorValues instanceof QuantizedByteVectorValues quantizedByteVectorValues) {
+    if (vectorValues instanceof LegacyQuantizedByteVectorValues quantizedByteVectorValues) {
       ScalarQuantizer scalarQuantizer = quantizedByteVectorValues.getScalarQuantizer();
       byte[] targetBytes = new byte[target.length];
       float offsetCorrection =
@@ -87,12 +90,13 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     return "ScalarQuantizedVectorScorer(" + "nonQuantizedDelegate=" + nonQuantizedDelegate + ')';
   }
 
-  static RandomVectorScorer fromVectorSimilarity(
+  static UpdateableRandomVectorScorer fromVectorSimilarity(
       byte[] targetBytes,
       float offsetCorrection,
       VectorSimilarityFunction sim,
       float constMultiplier,
-      QuantizedByteVectorValues values) {
+      LegacyQuantizedByteVectorValues values) {
+    FlatVectorsScorer.checkDimensions(values.dimension(), targetBytes.length);
     return switch (sim) {
       case EUCLIDEAN -> new Euclidean(values, constMultiplier, targetBytes);
       case COSINE, DOT_PRODUCT ->
@@ -112,12 +116,13 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     };
   }
 
-  private static RandomVectorScorer.AbstractRandomVectorScorer dotProductFactory(
-      byte[] targetBytes,
-      float offsetCorrection,
-      float constMultiplier,
-      QuantizedByteVectorValues values,
-      FloatToFloatFunction scoreAdjustmentFunction) {
+  private static UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer
+      dotProductFactory(
+          byte[] targetBytes,
+          float offsetCorrection,
+          float constMultiplier,
+          LegacyQuantizedByteVectorValues values,
+          FloatToFloatFunction scoreAdjustmentFunction) {
     if (values.getScalarQuantizer().getBits() <= 4) {
       if (values.getVectorByteLength() != values.dimension() && values.getSlice() != null) {
         return new CompressedInt4DotProduct(
@@ -130,12 +135,14 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
         values, constMultiplier, targetBytes, offsetCorrection, scoreAdjustmentFunction);
   }
 
-  private static class Euclidean extends RandomVectorScorer.AbstractRandomVectorScorer {
+  private static class Euclidean
+      extends UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer {
     private final float constMultiplier;
     private final byte[] targetBytes;
-    private final QuantizedByteVectorValues values;
+    private final BaseQuantizedByteVectorValues values;
 
-    private Euclidean(QuantizedByteVectorValues values, float constMultiplier, byte[] targetBytes) {
+    private Euclidean(
+        BaseQuantizedByteVectorValues values, float constMultiplier, byte[] targetBytes) {
       super(values);
       this.values = values;
       this.constMultiplier = constMultiplier;
@@ -145,22 +152,28 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     @Override
     public float score(int node) throws IOException {
       byte[] nodeVector = values.vectorValue(node);
-      int squareDistance = VectorUtil.squareDistance(nodeVector, targetBytes);
+      int squareDistance = VectorUtil.uint8SquareDistance(nodeVector, targetBytes);
       float adjustedDistance = squareDistance * constMultiplier;
       return 1 / (1f + adjustedDistance);
+    }
+
+    @Override
+    public void setScoringOrdinal(int node) throws IOException {
+      System.arraycopy(values.vectorValue(node), 0, targetBytes, 0, targetBytes.length);
     }
   }
 
   /** Calculates dot product on quantized vectors, applying the appropriate corrections */
-  private static class DotProduct extends RandomVectorScorer.AbstractRandomVectorScorer {
+  private static class DotProduct
+      extends UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer {
     private final float constMultiplier;
-    private final QuantizedByteVectorValues values;
+    private final LegacyQuantizedByteVectorValues values;
     private final byte[] targetBytes;
-    private final float offsetCorrection;
+    private float offsetCorrection;
     private final FloatToFloatFunction scoreAdjustmentFunction;
 
     public DotProduct(
-        QuantizedByteVectorValues values,
+        LegacyQuantizedByteVectorValues values,
         float constMultiplier,
         byte[] targetBytes,
         float offsetCorrection,
@@ -177,25 +190,36 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     public float score(int vectorOrdinal) throws IOException {
       byte[] storedVector = values.vectorValue(vectorOrdinal);
       float vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
-      int dotProduct = VectorUtil.dotProduct(storedVector, targetBytes);
-      // For the current implementation of scalar quantization, all dotproducts should be >= 0;
+      int dotProduct = VectorUtil.uint8DotProduct(storedVector, targetBytes);
+      // For the current implementation of scalar quantization, all dotproducts should
+      // be >= 0;
       assert dotProduct >= 0;
       float adjustedDistance = dotProduct * constMultiplier + offsetCorrection + vectorOffset;
       return scoreAdjustmentFunction.apply(adjustedDistance);
     }
+
+    @Override
+    public void setScoringOrdinal(int node) throws IOException {
+      System.arraycopy(values.vectorValue(node), 0, targetBytes, 0, targetBytes.length);
+      offsetCorrection = values.getScoreCorrectionConstant(node);
+    }
   }
 
+  // TODO consider splitting this into two classes. right now the "query" vector
+  // is always
+  // decompressed
+  // it could stay compressed if we had a compressed version of the target vector
   private static class CompressedInt4DotProduct
-      extends RandomVectorScorer.AbstractRandomVectorScorer {
+      extends UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer {
     private final float constMultiplier;
-    private final QuantizedByteVectorValues values;
+    private final LegacyQuantizedByteVectorValues values;
     private final byte[] compressedVector;
     private final byte[] targetBytes;
-    private final float offsetCorrection;
+    private float offsetCorrection;
     private final FloatToFloatFunction scoreAdjustmentFunction;
 
     private CompressedInt4DotProduct(
-        QuantizedByteVectorValues values,
+        LegacyQuantizedByteVectorValues values,
         float constMultiplier,
         byte[] targetBytes,
         float offsetCorrection,
@@ -211,28 +235,37 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
 
     @Override
     public float score(int vectorOrdinal) throws IOException {
-      // get compressed vector, in Lucene99, vector values are stored and have a single value for
+      // get compressed vector, in Lucene99, vector values are stored and have a
+      // single value for
       // offset correction
       values.getSlice().seek((long) vectorOrdinal * (values.getVectorByteLength() + Float.BYTES));
       values.getSlice().readBytes(compressedVector, 0, compressedVector.length);
       float vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
-      int dotProduct = VectorUtil.int4DotProductPacked(targetBytes, compressedVector);
-      // For the current implementation of scalar quantization, all dotproducts should be >= 0;
+      int dotProduct = VectorUtil.int4DotProductSinglePacked(targetBytes, compressedVector);
+      // For the current implementation of scalar quantization, all dotproducts should
+      // be >= 0;
       assert dotProduct >= 0;
       float adjustedDistance = dotProduct * constMultiplier + offsetCorrection + vectorOffset;
       return scoreAdjustmentFunction.apply(adjustedDistance);
     }
+
+    @Override
+    public void setScoringOrdinal(int node) throws IOException {
+      System.arraycopy(values.vectorValue(node), 0, targetBytes, 0, targetBytes.length);
+      offsetCorrection = values.getScoreCorrectionConstant(node);
+    }
   }
 
-  private static class Int4DotProduct extends RandomVectorScorer.AbstractRandomVectorScorer {
+  private static class Int4DotProduct
+      extends UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer {
     private final float constMultiplier;
-    private final QuantizedByteVectorValues values;
+    private final LegacyQuantizedByteVectorValues values;
     private final byte[] targetBytes;
-    private final float offsetCorrection;
+    private float offsetCorrection;
     private final FloatToFloatFunction scoreAdjustmentFunction;
 
     public Int4DotProduct(
-        QuantizedByteVectorValues values,
+        LegacyQuantizedByteVectorValues values,
         float constMultiplier,
         byte[] targetBytes,
         float offsetCorrection,
@@ -250,45 +283,45 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       byte[] storedVector = values.vectorValue(vectorOrdinal);
       float vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
       int dotProduct = VectorUtil.int4DotProduct(storedVector, targetBytes);
-      // For the current implementation of scalar quantization, all dotproducts should be >= 0;
+      // For the current implementation of scalar quantization, all dotproducts should
+      // be >= 0;
       assert dotProduct >= 0;
       float adjustedDistance = dotProduct * constMultiplier + offsetCorrection + vectorOffset;
       return scoreAdjustmentFunction.apply(adjustedDistance);
     }
-  }
 
-  @FunctionalInterface
-  private interface FloatToFloatFunction {
-    float apply(float f);
+    @Override
+    public void setScoringOrdinal(int node) throws IOException {
+      System.arraycopy(values.vectorValue(node), 0, targetBytes, 0, targetBytes.length);
+      offsetCorrection = values.getScoreCorrectionConstant(node);
+    }
   }
 
   private static final class ScalarQuantizedRandomVectorScorerSupplier
       implements RandomVectorScorerSupplier {
 
     private final VectorSimilarityFunction vectorSimilarityFunction;
-    private final QuantizedByteVectorValues values;
-    private final QuantizedByteVectorValues values1;
-    private final QuantizedByteVectorValues values2;
+    private final LegacyQuantizedByteVectorValues values;
+    private final LegacyQuantizedByteVectorValues targetVectors;
 
     public ScalarQuantizedRandomVectorScorerSupplier(
-        QuantizedByteVectorValues values, VectorSimilarityFunction vectorSimilarityFunction)
+        LegacyQuantizedByteVectorValues values, VectorSimilarityFunction vectorSimilarityFunction)
         throws IOException {
       this.values = values;
-      this.values1 = values.copy();
-      this.values2 = values.copy();
+      this.targetVectors = values.copy();
       this.vectorSimilarityFunction = vectorSimilarityFunction;
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) throws IOException {
-      byte[] vectorValue = values1.vectorValue(ord);
-      float offsetCorrection = values1.getScoreCorrectionConstant(ord);
+    public UpdateableRandomVectorScorer scorer() throws IOException {
+      byte[] vectorValue = new byte[values.dimension()];
+      float offsetCorrection = 0;
       return fromVectorSimilarity(
           vectorValue,
           offsetCorrection,
           vectorSimilarityFunction,
           values.getScalarQuantizer().getConstantMultiplier(),
-          values2);
+          targetVectors);
     }
 
     @Override

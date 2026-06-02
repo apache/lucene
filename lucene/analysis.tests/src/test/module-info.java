@@ -33,6 +33,7 @@ module org.apache.lucene.analysis.tests {
   requires org.apache.lucene.analysis.smartcn;
   requires org.apache.lucene.analysis.stempel;
   requires org.apache.lucene.test_framework;
+  requires org.apache.commons.codec;
 
   exports org.apache.lucene.analysis.tests;
 }

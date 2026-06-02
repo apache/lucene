@@ -40,13 +40,14 @@ import org.locationtech.spatial4j.shape.Shape;
  * @lucene.experimental
  */
 public class RecursivePrefixTreeStrategy extends PrefixTreeStrategy {
-  /* Future potential optimizations:
-
-   Each shape.relate(otherShape) result could be cached since much of the same relations will be invoked when
-   multiple segments are involved. Do this for "complex" shapes, not cheap ones, and don't cache when disjoint to
-   bbox because it's a cheap calc. This is one advantage TermQueryPrefixTreeStrategy has over RPT.
-
-  */
+  /*
+   * Future potential optimizations:
+   *
+   * Each shape.relate(otherShape) result could be cached since much of the same relations will be invoked when
+   * multiple segments are involved. Do this for "complex" shapes, not cheap ones, and don't cache when disjoint to
+   * bbox because it's a cheap calc. This is one advantage TermQueryPrefixTreeStrategy has over RPT.
+   *
+   */
 
   protected int prefixGridScanLevel;
 

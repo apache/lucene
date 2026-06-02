@@ -454,7 +454,7 @@ public class TestGraphTokenizers extends BaseTokenStreamTestCase {
             });
     final Automaton a1 = join(s2a("a"), SEP_A, HOLE_A, SEP_A, HOLE_A, SEP_A, s2a("b"));
     final Automaton a2 = join(s2a("x"), SEP_A, s2a("b"));
-    assertSameLanguage(Operations.union(a1, a2), ts);
+    assertSameLanguage(Operations.union(List.of(a1, a2)), ts);
   }
 
   // for debugging!
@@ -515,7 +515,7 @@ public class TestGraphTokenizers extends BaseTokenStreamTestCase {
         new CannedTokenStream(new Token[] {token("abc", 1, 1), token("xyz", 0, 1)});
     final Automaton a1 = s2a("abc");
     final Automaton a2 = s2a("xyz");
-    assertSameLanguage(Operations.union(a1, a2), ts);
+    assertSameLanguage(Operations.union(List.of(a1, a2)), ts);
   }
 
   public void testOverlappedTokensLattice() throws Exception {
@@ -527,7 +527,7 @@ public class TestGraphTokenizers extends BaseTokenStreamTestCase {
             });
     final Automaton a1 = s2a("xyz");
     final Automaton a2 = join("abc", "def");
-    assertSameLanguage(Operations.union(a1, a2), ts);
+    assertSameLanguage(Operations.union(List.of(a1, a2)), ts);
   }
 
   public void testSynOverHole() throws Exception {
@@ -537,8 +537,8 @@ public class TestGraphTokenizers extends BaseTokenStreamTestCase {
             new Token[] {
               token("a", 1, 1), token("X", 0, 2), token("b", 2, 1),
             });
-    final Automaton a1 = Operations.union(join(s2a("a"), SEP_A, HOLE_A), s2a("X"));
-    final Automaton expected = Operations.concatenate(a1, join(SEP_A, s2a("b")));
+    final Automaton a1 = Operations.union(List.of(join(s2a("a"), SEP_A, HOLE_A), s2a("X")));
+    final Automaton expected = Operations.concatenate(List.of(a1, join(SEP_A, s2a("b"))));
     assertSameLanguage(expected, ts);
   }
 
@@ -550,7 +550,7 @@ public class TestGraphTokenizers extends BaseTokenStreamTestCase {
               token("xyz", 1, 1), token("abc", 0, 3), token("def", 2, 1),
             });
     final Automaton expected =
-        Operations.union(join(s2a("xyz"), SEP_A, HOLE_A, SEP_A, s2a("def")), s2a("abc"));
+        Operations.union(List.of(join(s2a("xyz"), SEP_A, HOLE_A, SEP_A, s2a("def")), s2a("abc")));
     assertSameLanguage(expected, ts);
   }
 
@@ -563,7 +563,7 @@ public class TestGraphTokenizers extends BaseTokenStreamTestCase {
             });
     final Automaton a1 = s2a("xyz");
     final Automaton a2 = join("abc", "def", "ghi");
-    assertSameLanguage(Operations.union(a1, a2), ts);
+    assertSameLanguage(Operations.union(List.of(a1, a2)), ts);
   }
 
   public void testToDot() throws Exception {
@@ -599,7 +599,7 @@ public class TestGraphTokenizers extends BaseTokenStreamTestCase {
             new Token[] {
               token("a", 1, 1), token("X", 0, 10),
             });
-    assertSameLanguage(Operations.union(s2a("a"), s2a("X")), ts);
+    assertSameLanguage(Operations.union(List.of(s2a("a"), s2a("X"))), ts);
   }
 
   /** Returns all paths */
@@ -659,8 +659,9 @@ public class TestGraphTokenizers extends BaseTokenStreamTestCase {
             });
     assertSameLanguage(
         Operations.union(
-            join(s2a("abc"), SEP_A, s2a("xyz")),
-            join(s2a("abc"), SEP_A, HOLE_A, SEP_A, s2a("def"), SEP_A, s2a("ghi"))),
+            List.of(
+                join(s2a("abc"), SEP_A, s2a("xyz")),
+                join(s2a("abc"), SEP_A, HOLE_A, SEP_A, s2a("def"), SEP_A, s2a("ghi")))),
         ts);
   }
 }

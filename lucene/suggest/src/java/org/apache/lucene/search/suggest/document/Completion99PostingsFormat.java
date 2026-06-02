@@ -27,17 +27,9 @@ import org.apache.lucene.codecs.PostingsFormat;
  * @lucene.experimental
  */
 public class Completion99PostingsFormat extends CompletionPostingsFormat {
-  /** Creates a {@link Completion99PostingsFormat} that will load the completion FST on-heap. */
+  /** Creates a {@link Completion99PostingsFormat}. */
   public Completion99PostingsFormat() {
-    this(FSTLoadMode.ON_HEAP);
-  }
-
-  /**
-   * Creates a {@link Completion99PostingsFormat} that will use the provided <code>fstLoadMode
-   * </code> to determine if the completion FST should be loaded on or off heap.
-   */
-  public Completion99PostingsFormat(FSTLoadMode fstLoadMode) {
-    super("Completion99", fstLoadMode);
+    super("Completion99");
   }
 
   @Override

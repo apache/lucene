@@ -32,6 +32,8 @@ package org.apache.lucene.util.automaton;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Objects;
+import org.apache.lucene.internal.hppc.IntArrayList;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.StringHelper;
@@ -116,6 +118,14 @@ public final class Automata {
     return makeCharRange(c, c);
   }
 
+  /**
+   * Returns a new (deterministic and minimal) automaton that accepts potentially multiple
+   * codepoints of the given value that are case-insensitive equivalents.
+   */
+  public static Automaton makeCaseInsensitiveChar(int c) {
+    return makeCharSet(toCaseInsensitiveChar(c));
+  }
+
   /** Appends the specified character to the specified state, returning a new state. */
   public static int appendChar(Automaton a, int state, int c) {
     int newState = a.createState();
@@ -136,6 +146,32 @@ public final class Automata {
     int s2 = a.createState();
     a.setAccept(s2, true);
     a.addTransition(s1, s2, min, max);
+    a.finishState();
+    return a;
+  }
+
+  /** Returns a new minimal automaton that accepts any of the provided codepoints */
+  public static Automaton makeCharSet(int[] codepoints) {
+    return makeCharClass(codepoints, codepoints);
+  }
+
+  /** Returns a new minimal automaton that accepts any of the codepoint ranges */
+  public static Automaton makeCharClass(int[] starts, int[] ends) {
+    Objects.requireNonNull(starts);
+    Objects.requireNonNull(ends);
+    if (starts.length != ends.length) {
+      throw new IllegalArgumentException("starts must match ends");
+    }
+    if (starts.length == 0) {
+      return makeEmpty();
+    }
+    Automaton a = new Automaton();
+    int s1 = a.createState();
+    int s2 = a.createState();
+    a.setAccept(s2, true);
+    for (int i = 0; i < starts.length; i++) {
+      a.addTransition(s1, s2, starts[i], ends[i]);
+    }
     a.finishState();
     return a;
   }
@@ -464,6 +500,7 @@ public final class Automata {
    */
   public static Automaton makeDecimalInterval(int min, int max, int digits)
       throws IllegalArgumentException {
+    // TODO: can this be improved to always return a DFA?
     String x = Integer.toString(min);
     String y = Integer.toString(max);
     if (min > max || (digits > 0 && y.length() > digits)) {
@@ -506,7 +543,7 @@ public final class Automata {
       a1.finishState();
     }
 
-    return a1;
+    return Operations.removeDeadStates(a1);
   }
 
   /** Returns a new (deterministic) automaton that accepts the single given string. */
@@ -517,6 +554,31 @@ public final class Automata {
       int state = a.createState();
       cp = s.codePointAt(i);
       a.addTransition(lastState, state, cp);
+      lastState = state;
+    }
+
+    a.setAccept(lastState, true);
+    a.finishState();
+
+    assert a.isDeterministic();
+    assert Operations.hasDeadStates(a) == false;
+
+    return a;
+  }
+
+  /**
+   * Returns a new (deterministic and minimal) automaton that accepts the single given string and
+   * the case-insensitive equivalents.
+   */
+  public static Automaton makeCaseInsensitiveString(String s) {
+    Automaton a = new Automaton();
+    int lastState = a.createState();
+    for (int i = 0, cp = 0; i < s.length(); i += Character.charCount(cp)) {
+      int state = a.createState();
+      cp = s.codePointAt(i);
+      for (int alt : toCaseInsensitiveChar(cp)) {
+        a.addTransition(lastState, state, alt);
+      }
       lastState = state;
     }
 
@@ -624,5 +686,25 @@ public final class Automata {
    */
   public static Automaton makeBinaryStringUnion(BytesRefIterator utf8Strings) throws IOException {
     return StringsToAutomaton.build(utf8Strings, true);
+  }
+
+  /**
+   * This function handles uses the Unicode spec for generating case-insensitive alternates.
+   *
+   * <p>See the {@link RegExp#CASE_INSENSITIVE} flag for details on case folding within the Unicode
+   * spec.
+   *
+   * @param codepoint the Character code point to encode as an Automaton
+   * @return the original codepoint and the set of alternates
+   */
+  private static int[] toCaseInsensitiveChar(int codepoint) {
+    IntArrayList list = new IntArrayList();
+    CaseFolding.expand(
+        codepoint,
+        (int variant) -> {
+          list.add(variant);
+        });
+    list.sort();
+    return list.toArray();
   }
 }

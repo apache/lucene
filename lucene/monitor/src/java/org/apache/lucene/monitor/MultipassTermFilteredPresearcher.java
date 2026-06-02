@@ -111,7 +111,7 @@ public class MultipassTermFilteredPresearcher extends TermFilteredPresearcher {
 
     @Override
     public void addTerm(String field, BytesRef term) {
-      BytesRefHash t = terms.computeIfAbsent(field, f -> new BytesRefHash());
+      BytesRefHash t = terms.computeIfAbsent(field, _ -> new BytesRefHash());
       t.add(term);
     }
 

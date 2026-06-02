@@ -17,13 +17,13 @@
 
 package org.apache.lucene.codecs.uniformsplit;
 
-import static org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.BLOCK_SIZE;
+import static org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat.BLOCK_SIZE;
 
 import java.io.IOException;
 import org.apache.lucene.codecs.BlockTermState;
-import org.apache.lucene.codecs.lucene912.Lucene912PostingsFormat.IntBlockTermState;
-import org.apache.lucene.codecs.lucene912.Lucene912PostingsReader;
-import org.apache.lucene.codecs.lucene912.Lucene912PostingsWriter;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat.IntBlockTermState;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsReader;
+import org.apache.lucene.codecs.lucene104.Lucene104PostingsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.TermState;
@@ -34,7 +34,7 @@ import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * {@link TermState} serializer which encodes each file pointer as a delta relative to a base file
- * pointer. It differs from {@link Lucene912PostingsWriter#encodeTerm} which encodes each file
+ * pointer. It differs from {@link Lucene104PostingsWriter#encodeTerm} which encodes each file
  * pointer as a delta relative to the previous file pointer.
  *
  * <p>It automatically sets the base file pointer to the first valid file pointer for doc start FP,
@@ -95,7 +95,7 @@ public class DeltaBaseTermStateSerializer implements Accountable {
   /**
    * Writes a {@link BlockTermState} to the provided {@link DataOutput}.
    *
-   * <p>Simpler variant of {@link Lucene912PostingsWriter#encodeTerm(DataOutput, FieldInfo,
+   * <p>Simpler variant of {@link Lucene104PostingsWriter#encodeTerm(DataOutput, FieldInfo,
    * BlockTermState, boolean)}.
    */
   public void writeTermState(
@@ -103,9 +103,9 @@ public class DeltaBaseTermStateSerializer implements Accountable {
       throws IOException {
     IndexOptions indexOptions = fieldInfo.getIndexOptions();
     boolean hasFreqs = indexOptions != IndexOptions.DOCS;
-    boolean hasPositions = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+    boolean hasPositions = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
     boolean hasOffsets =
-        indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
+        indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
     boolean hasPayloads = fieldInfo.hasPayloads();
 
     IntBlockTermState intTermState = (IntBlockTermState) termState;
@@ -145,7 +145,7 @@ public class DeltaBaseTermStateSerializer implements Accountable {
   /**
    * Reads a {@link BlockTermState} from the provided {@link DataInput}.
    *
-   * <p>Simpler variant of {@link Lucene912PostingsReader#decodeTerm(DataInput, FieldInfo,
+   * <p>Simpler variant of {@link Lucene104PostingsReader#decodeTerm(DataInput, FieldInfo,
    * BlockTermState, boolean)}.
    *
    * @param reuse {@link BlockTermState} to reuse; or null to create a new one.
@@ -160,7 +160,7 @@ public class DeltaBaseTermStateSerializer implements Accountable {
       throws IOException {
     IndexOptions indexOptions = fieldInfo.getIndexOptions();
     boolean hasFreqs = indexOptions != IndexOptions.DOCS;
-    boolean hasPositions = indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+    boolean hasPositions = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
 
     IntBlockTermState intTermState =
         reuse != null ? reset((IntBlockTermState) reuse) : new IntBlockTermState();
@@ -179,7 +179,7 @@ public class DeltaBaseTermStateSerializer implements Accountable {
     if (hasPositions) {
       intTermState.posStartFP = basePosStartFP + termStatesInput.readVLong();
       boolean hasOffsets =
-          indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS) >= 0;
+          indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
       if (hasOffsets || fieldInfo.hasPayloads()) {
         intTermState.payStartFP = basePayStartFP + termStatesInput.readVLong();
       }

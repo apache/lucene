@@ -31,24 +31,24 @@ import org.apache.lucene.util.IOUtils;
  *
  * <p>Use it like this:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   SearcherLifetimeManager mgr = new SearcherLifetimeManager();
- * </pre>
+ * </code></pre>
  *
  * Per search-request, if it's a "new" search request, then obtain the latest searcher you have (for
  * example, by using {@link SearcherManager}), and then record this searcher:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   // Record the current searcher, and save the returend
  *   // token into user's search results (eg as a  hidden
  *   // HTML form field):
  *   long token = mgr.record(searcher);
- * </pre>
+ * </code></pre>
  *
  * When a follow-up search arrives, for example the user clicks next page, drills down/up, etc.,
  * take the token that you saved from the previous search and:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   // If possible, obtain the same searcher as the last
  *   // search:
  *   IndexSearcher searcher = mgr.acquire(token);
@@ -65,14 +65,14 @@ import org.apache.lucene.util.IOUtils;
  *     // Searcher was pruned -- notify user session timed
  *     // out, or, pull fresh searcher again
  *   }
- * </pre>
+ * </code></pre>
  *
  * Finally, in a separate thread, ideally the same thread that's periodically reopening your
  * searchers, you should periodically prune old searchers:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   mgr.prune(new PruneByAge(600.0));
- * </pre>
+ * </code></pre>
  *
  * <p><b>NOTE</b>: keeping many searchers around means you'll use more resources (open files, RAM)
  * than a single searcher. However, as long as you are using {@link

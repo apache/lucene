@@ -231,12 +231,7 @@ class DrillSidewaysScorer extends BulkScorer {
     // single-valued PQ ordered by docID to easily determine the "closest" runaway dim we'll use
     // for advancing in the case that multiple dim approximations miss.
     PriorityQueue<DocsAndCost> runawayDim =
-        new PriorityQueue<>(1) {
-          @Override
-          protected boolean lessThan(DocsAndCost a, DocsAndCost b) {
-            return a.approximation.docID() < b.approximation.docID();
-          }
-        };
+        PriorityQueue.usingComparator(1, Comparator.comparingInt(dc -> dc.approximation.docID()));
 
     int docID = baseApproximation.docID();
 

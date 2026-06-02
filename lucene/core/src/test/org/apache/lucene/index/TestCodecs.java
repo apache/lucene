@@ -61,7 +61,7 @@ import org.junit.BeforeClass;
 //   - skipTo(doc)
 
 public class TestCodecs extends LuceneTestCase {
-  private static String[] fieldNames = new String[] {"one", "two", "three", "four"};
+  private static final String[] fieldNames = new String[] {"one", "two", "three", "four"};
 
   private static int NUM_TEST_ITER;
   private static final int NUM_TEST_THREADS = 3;
@@ -459,9 +459,7 @@ public class TestCodecs extends LuceneTestCase {
         try {
           termsEnum.seekExact(idx);
           success = true;
-        } catch (
-            @SuppressWarnings("unused")
-            UnsupportedOperationException uoe) {
+        } catch (UnsupportedOperationException _) {
           // ok -- skip it
         }
         if (success) {
@@ -513,9 +511,7 @@ public class TestCodecs extends LuceneTestCase {
             termsEnum.seekExact(i);
             assertEquals(field.terms[i].docs.length, termsEnum.docFreq());
             assertTrue(termsEnum.term().bytesEquals(new BytesRef(field.terms[i].text2)));
-          } catch (
-              @SuppressWarnings("unused")
-              UnsupportedOperationException uoe) {
+          } catch (UnsupportedOperationException _) {
           }
         }
 
@@ -606,7 +602,7 @@ public class TestCodecs extends LuceneTestCase {
 
     @Override
     public Iterator<String> iterator() {
-      return new Iterator<String>() {
+      return new Iterator<>() {
         int upto = -1;
 
         @Override
@@ -678,25 +674,23 @@ public class TestCodecs extends LuceneTestCase {
 
     @Override
     public boolean hasFreqs() {
-      return fieldData.fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
+      return fieldData.fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS);
     }
 
     @Override
     public boolean hasOffsets() {
       return fieldData
-              .fieldInfo
-              .getIndexOptions()
-              .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-          >= 0;
+          .fieldInfo
+          .getIndexOptions()
+          .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
     }
 
     @Override
     public boolean hasPositions() {
       return fieldData
-              .fieldInfo
-              .getIndexOptions()
-              .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)
-          >= 0;
+          .fieldInfo
+          .getIndexOptions()
+          .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
     }
 
     @Override

@@ -58,7 +58,7 @@ package org.apache.lucene.analysis.en;
 import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.util.OpenStringBuilder;
 
-/**
+/*
  * Title: Kstemmer
  *
  * <p>Description: This is a java version of Bob Krovetz' kstem stemmer
@@ -642,33 +642,32 @@ class KStemmer {
     DictEntry entry;
 
     CharArrayMap<DictEntry> d = new CharArrayMap<>(1000, false);
-    for (int i = 0; i < exceptionWords.length; i++) {
-      if (!d.containsKey(exceptionWords[i])) {
-        entry = new DictEntry(exceptionWords[i], true);
-        d.put(exceptionWords[i], entry);
+    for (String exceptionWord : exceptionWords) {
+      if (!d.containsKey(exceptionWord)) {
+        entry = new DictEntry(exceptionWord, true);
+        d.put(exceptionWord, entry);
       } else {
         throw new RuntimeException(
-            "Warning: Entry [" + exceptionWords[i] + "] already in dictionary 1");
+            "Warning: Entry [" + exceptionWord + "] already in dictionary 1");
       }
     }
 
-    for (int i = 0; i < directConflations.length; i++) {
-      if (!d.containsKey(directConflations[i][0])) {
-        entry = new DictEntry(directConflations[i][1], false);
-        d.put(directConflations[i][0], entry);
+    for (String[] directConflation : directConflations) {
+      if (!d.containsKey(directConflation[0])) {
+        entry = new DictEntry(directConflation[1], false);
+        d.put(directConflation[0], entry);
       } else {
         throw new RuntimeException(
-            "Warning: Entry [" + directConflations[i][0] + "] already in dictionary 2");
+            "Warning: Entry [" + directConflation[0] + "] already in dictionary 2");
       }
     }
 
-    for (int i = 0; i < countryNationality.length; i++) {
-      if (!d.containsKey(countryNationality[i][0])) {
-        entry = new DictEntry(countryNationality[i][1], false);
-        d.put(countryNationality[i][0], entry);
+    for (String[] strings : countryNationality) {
+      if (!d.containsKey(strings[0])) {
+        entry = new DictEntry(strings[1], false);
+        d.put(strings[0], entry);
       } else {
-        throw new RuntimeException(
-            "Warning: Entry [" + countryNationality[i][0] + "] already in dictionary 3");
+        throw new RuntimeException("Warning: Entry [" + strings[0] + "] already in dictionary 3");
       }
     }
 
@@ -677,92 +676,90 @@ class KStemmer {
     String[] array;
     array = KStemData1.data;
 
-    for (int i = 0; i < array.length; i++) {
-      if (!d.containsKey(array[i])) {
-        d.put(array[i], defaultEntry);
+    for (String s : array) {
+      if (!d.containsKey(s)) {
+        d.put(s, defaultEntry);
       } else {
-        throw new RuntimeException("Warning: Entry [" + array[i] + "] already in dictionary 4");
+        throw new RuntimeException("Warning: Entry [" + s + "] already in dictionary 4");
       }
     }
 
     array = KStemData2.data;
-    for (int i = 0; i < array.length; i++) {
-      if (!d.containsKey(array[i])) {
-        d.put(array[i], defaultEntry);
+    for (String s : array) {
+      if (!d.containsKey(s)) {
+        d.put(s, defaultEntry);
       } else {
-        throw new RuntimeException("Warning: Entry [" + array[i] + "] already in dictionary 4");
+        throw new RuntimeException("Warning: Entry [" + s + "] already in dictionary 4");
       }
     }
 
     array = KStemData3.data;
-    for (int i = 0; i < array.length; i++) {
-      if (!d.containsKey(array[i])) {
-        d.put(array[i], defaultEntry);
+    for (String s : array) {
+      if (!d.containsKey(s)) {
+        d.put(s, defaultEntry);
       } else {
-        throw new RuntimeException("Warning: Entry [" + array[i] + "] already in dictionary 4");
+        throw new RuntimeException("Warning: Entry [" + s + "] already in dictionary 4");
       }
     }
 
     array = KStemData4.data;
-    for (int i = 0; i < array.length; i++) {
-      if (!d.containsKey(array[i])) {
-        d.put(array[i], defaultEntry);
+    for (String s : array) {
+      if (!d.containsKey(s)) {
+        d.put(s, defaultEntry);
       } else {
-        throw new RuntimeException("Warning: Entry [" + array[i] + "] already in dictionary 4");
+        throw new RuntimeException("Warning: Entry [" + s + "] already in dictionary 4");
       }
     }
 
     array = KStemData5.data;
-    for (int i = 0; i < array.length; i++) {
-      if (!d.containsKey(array[i])) {
-        d.put(array[i], defaultEntry);
+    for (String s : array) {
+      if (!d.containsKey(s)) {
+        d.put(s, defaultEntry);
       } else {
-        throw new RuntimeException("Warning: Entry [" + array[i] + "] already in dictionary 4");
+        throw new RuntimeException("Warning: Entry [" + s + "] already in dictionary 4");
       }
     }
 
     array = KStemData6.data;
-    for (int i = 0; i < array.length; i++) {
-      if (!d.containsKey(array[i])) {
-        d.put(array[i], defaultEntry);
+    for (String s : array) {
+      if (!d.containsKey(s)) {
+        d.put(s, defaultEntry);
       } else {
-        throw new RuntimeException("Warning: Entry [" + array[i] + "] already in dictionary 4");
+        throw new RuntimeException("Warning: Entry [" + s + "] already in dictionary 4");
       }
     }
 
     array = KStemData7.data;
-    for (int i = 0; i < array.length; i++) {
-      if (!d.containsKey(array[i])) {
-        d.put(array[i], defaultEntry);
+    for (String s : array) {
+      if (!d.containsKey(s)) {
+        d.put(s, defaultEntry);
       } else {
-        throw new RuntimeException("Warning: Entry [" + array[i] + "] already in dictionary 4");
+        throw new RuntimeException("Warning: Entry [" + s + "] already in dictionary 4");
       }
     }
 
-    for (int i = 0; i < KStemData8.data.length; i++) {
-      if (!d.containsKey(KStemData8.data[i])) {
-        d.put(KStemData8.data[i], defaultEntry);
+    array = KStemData8.data;
+    for (String s : array) {
+      if (!d.containsKey(s)) {
+        d.put(s, defaultEntry);
       } else {
-        throw new RuntimeException(
-            "Warning: Entry [" + KStemData8.data[i] + "] already in dictionary 4");
+        throw new RuntimeException("Warning: Entry [" + s + "] already in dictionary 4");
       }
     }
 
-    for (int i = 0; i < supplementDict.length; i++) {
-      if (!d.containsKey(supplementDict[i])) {
-        d.put(supplementDict[i], defaultEntry);
+    for (String s : supplementDict) {
+      if (!d.containsKey(s)) {
+        d.put(s, defaultEntry);
       } else {
-        throw new RuntimeException(
-            "Warning: Entry [" + supplementDict[i] + "] already in dictionary 5");
+        throw new RuntimeException("Warning: Entry [" + s + "] already in dictionary 5");
       }
     }
 
-    for (int i = 0; i < properNouns.length; i++) {
-      if (!d.containsKey(properNouns[i])) {
-        d.put(properNouns[i], defaultEntry);
+    for (String properNoun : properNouns) {
+      if (!d.containsKey(properNoun)) {
+        d.put(properNoun, defaultEntry);
       } else {
-        throw new RuntimeException(
-            "Warning: Entry [" + properNouns[i] + "] already in dictionary 6");
+        throw new RuntimeException("Warning: Entry [" + properNoun + "] already in dictionary 6");
       }
     }
 
@@ -822,12 +819,12 @@ class KStemmer {
   }
 
   private DictEntry wordInDict() {
-    /***
+    /*
      * if (matchedEntry != null) { if (dict_ht.get(word.getArray(), 0,
      * word.size()) != matchedEntry) {
      * System.out.println("Uh oh... cached entry doesn't match"); } return
      * matchedEntry; }
-     ***/
+     */
     if (matchedEntry != null) return matchedEntry;
     DictEntry e = dict_ht.get(word.getArray(), 0, word.length());
     if (e != null && !e.exception) {
@@ -861,11 +858,11 @@ class KStemmer {
          * common
          */
 
-        /****
+        /*
          * YCS: this was the one place where lookup was not followed by return.
          * So restructure it. if ((j>0)&&(lookup(word.toString())) &&
          * !((word.charAt(j) == 's') && (word.charAt(j-1) == 's'))) return;
-         *****/
+         */
         boolean tryE = j > 0 && !((word.charAt(j) == 's') && (word.charAt(j - 1) == 's'));
         if (tryE && lookup()) return;
 
@@ -913,7 +910,7 @@ class KStemmer {
   DictEntry matchedEntry = null;
 
   private boolean lookup() {
-    /******
+    /*
      * debugging code String thisLookup = word.toString(); boolean added =
      * lookups.add(thisLookup); if (!added) {
      * System.out.println("######extra lookup:" + thisLookup); // occaasional
@@ -921,7 +918,7 @@ class KStemmer {
      * manipulations // throw new RuntimeException("######extra lookup:" +
      * thisLookup); } else { // System.out.println("new lookup:" + thisLookup);
      * }
-     ******/
+     */
 
     matchedEntry = dict_ht.get(word.getArray(), 0, word.size());
     return matchedEntry != null;
@@ -1346,10 +1343,10 @@ class KStemmer {
     return;
   }
 
-  private static char[] ization = "ization".toCharArray();
-  private static char[] ition = "ition".toCharArray();
-  private static char[] ation = "ation".toCharArray();
-  private static char[] ication = "ication".toCharArray();
+  private static final char[] ization = "ization".toCharArray();
+  private static final char[] ition = "ition".toCharArray();
+  private static final char[] ation = "ation".toCharArray();
+  private static final char[] ication = "ication".toCharArray();
 
   /* handle some derivational endings */
   /*
@@ -1378,11 +1375,10 @@ class KStemmer {
       word.setLength(j + 1);
       word.unsafeWrite('e');
       k = j + 1;
-      if (lookup()) /*
-                     * remove -ition and add `e', and check against the
-                     * dictionary
-                     */
+      if (lookup()) {
+        // remove -ition and add `e', and check against the
         return; /* (e.g., definition->define, opposition->oppose) */
+      }
 
       /* restore original values */
       word.setLength(j + 1);
@@ -1393,21 +1389,19 @@ class KStemmer {
       word.setLength(j + 3);
       word.unsafeWrite('e');
       k = j + 3;
-      if (lookup()) /* remove -ion and add `e', and check against the dictionary */
-        return; /* (elmination -> eliminate) */
+      if (lookup()) {
+        /* remove -ion and add `e', and check against the dictionary */
+        return; /* (elimination -> eliminate) */
+      }
 
       word.setLength(j + 1);
-      word.unsafeWrite('e'); /*
-                              * remove -ation and add `e', and check against the
-                              * dictionary
-                              */
+      word.unsafeWrite('e');
+      // remove -ation and add `e', and check against the dictionary
       k = j + 1;
       if (lookup()) return;
 
-      word.setLength(j + 1); /*
-                             * just remove -ation (resignation->resign) and
-                             * check dictionary
-                             */
+      word.setLength(j + 1);
+      // just remove -ation (resignation->resign) and check dictionary
       k = j;
       if (lookup()) return;
 
@@ -1428,10 +1422,10 @@ class KStemmer {
       word.setLength(j + 1);
       word.unsafeWrite('y');
       k = j + 1;
-      if (lookup()) /*
-                     * remove -ication and add `y', and check against the
-                     * dictionary
-                     */ return; /* (e.g., amplification -> amplify) */
+      if (lookup()) {
+        // remove -ication and add `y', and check against the dictionary
+        return; /* (e.g., amplification -> amplify) */
+      }
 
       /* restore original values */
       word.setLength(j + 1);
@@ -1742,11 +1736,11 @@ class KStemmer {
   String result;
 
   private boolean matched() {
-    /***
+    /*
      * if (!lookups.contains(word.toString())) { throw new
      * RuntimeException("didn't look up "+word.toString()+" prev="+prevLookup);
      * }
-     ***/
+     */
     // lookup();
     return matchedEntry != null;
   }
@@ -1772,13 +1766,13 @@ class KStemmer {
       return false;
     }
 
-    /***
+    /*
      * caching off is normally faster if (cache == null) initializeStemHash();
      *
      * // now check the cache, before we copy chars to "word" if (cache != null)
      * { String val = cache.get(term, 0, len); if (val != null) { if (val !=
      * SAME) { result = val; return true; } return false; } }
-     ***/
+     */
 
     word.reset();
     // allocate enough space so that an expansion is never needed
@@ -1792,9 +1786,9 @@ class KStemmer {
     }
 
     matchedEntry = null;
-    /***
+    /*
      * lookups.clear(); lookups.add(word.toString());
-     ***/
+     */
 
     /*
      * This while loop will never be executed more than one time; it is here
@@ -1851,20 +1845,20 @@ class KStemmer {
       result = entry.root; // may be null, which means that "word" is the stem
     }
 
-    /***
+    /*
      * caching off is normally faster if (cache != null && cache.size() <
      * maxCacheSize) { char[] key = new char[len]; System.arraycopy(term, 0,
      * key, 0, len); if (result != null) { cache.put(key, result); } else {
      * cache.put(key, word.toString()); } }
-     ***/
+     */
 
-    /***
+    /*
      * if (entry == null) { if (!word.toString().equals(new String(term,0,len)))
      * { System.out.println("CASE:" + word.toString() + "," + new
      * String(term,0,len));
      *
      * } }
-     ***/
+     */
 
     // no entry matched means result is "word"
     return true;

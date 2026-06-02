@@ -17,49 +17,39 @@
 
 package org.apache.lucene.util.hnsw;
 
-import java.io.Closeable;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
- * Provide (read-and-write) locked access to rows of an OnHeapHnswGraph. For use by
- * HnswConcurrentMerger and its HnswGraphBuilders.
+ * Provide (read-and-write) striped locks for access to nodes of an {@link OnHeapHnswGraph}. For use
+ * by {@link HnswConcurrentMergeBuilder} and its HnswGraphBuilders.
  */
 final class HnswLock {
   private static final int NUM_LOCKS = 512;
   private final ReentrantReadWriteLock[] locks;
-  private final OnHeapHnswGraph graph;
 
-  HnswLock(OnHeapHnswGraph graph) {
-    this.graph = graph;
+  HnswLock() {
     locks = new ReentrantReadWriteLock[NUM_LOCKS];
     for (int i = 0; i < NUM_LOCKS; i++) {
       locks[i] = new ReentrantReadWriteLock();
     }
   }
 
-  LockedRow read(int level, int node) {
+  Lock read(int level, int node) {
     int lockid = hash(level, node) % NUM_LOCKS;
     Lock lock = locks[lockid].readLock();
     lock.lock();
-    return new LockedRow(graph.getNeighbors(level, node), lock);
+    return lock;
   }
 
-  LockedRow write(int level, int node) {
+  Lock write(int level, int node) {
     int lockid = hash(level, node) % NUM_LOCKS;
     Lock lock = locks[lockid].writeLock();
     lock.lock();
-    return new LockedRow(graph.getNeighbors(level, node), lock);
+    return lock;
   }
 
-  record LockedRow(NeighborArray row, Lock lock) implements Closeable {
-    @Override
-    public void close() {
-      lock.unlock();
-    }
-  }
-
-  static int hash(int v1, int v2) {
+  private static int hash(int v1, int v2) {
     return v1 * 31 + v2;
   }
 }

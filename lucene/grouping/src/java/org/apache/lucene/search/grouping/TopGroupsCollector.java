@@ -17,6 +17,8 @@
 
 package org.apache.lucene.search.grouping;
 
+import static org.apache.lucene.search.grouping.TopGroups.nonNANmax;
+
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Objects;
@@ -129,7 +131,7 @@ public class TopGroupsCollector<T> extends SecondPassGroupingCollector<T> {
             () ->
                 new TopDocsAndMaxScoreCollector(
                     true,
-                    new TopScoreDocCollectorManager(maxDocsPerGroup, null, Integer.MAX_VALUE, false)
+                    new TopScoreDocCollectorManager(maxDocsPerGroup, null, Integer.MAX_VALUE)
                         .newCollector(),
                     null);
       } else {
@@ -137,7 +139,7 @@ public class TopGroupsCollector<T> extends SecondPassGroupingCollector<T> {
             () -> {
               TopFieldCollector topDocsCollector =
                   new TopFieldCollectorManager(
-                          withinGroupSort, maxDocsPerGroup, null, Integer.MAX_VALUE, false)
+                          withinGroupSort, maxDocsPerGroup, null, Integer.MAX_VALUE)
                       .newCollector(); // TODO: disable exact counts?
               MaxScoreCollector maxScoreCollector = getMaxScores ? new MaxScoreCollector() : null;
               return new TopDocsAndMaxScoreCollector(false, topDocsCollector, maxScoreCollector);
@@ -204,7 +206,7 @@ public class TopGroupsCollector<T> extends SecondPassGroupingCollector<T> {
               topDocs.scoreDocs,
               group.groupValue,
               group.sortValues);
-      maxScore = Math.max(maxScore, groupMaxScore);
+      maxScore = nonNANmax(maxScore, groupMaxScore);
     }
 
     return new TopGroups<>(

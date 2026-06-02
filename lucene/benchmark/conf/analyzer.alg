@@ -51,7 +51,7 @@ log.queries=true
     ResetSystemErase
 #If the analyzer is in o.a.l.analysis, then just the classname can be used, otherwise the FQN must be used
 #Standard Analyzer can be shortened to standard.StandardAnalyzer
-    {"NewAnalyzer" NewAnalyzer(WhitespaceAnalyzer, SimpleAnalyzer, StopAnalyzer, standard.StandardAnalyzer) > 
+    {"NewAnalyzer" NewAnalyzer(WhitespaceAnalyzer, SimpleAnalyzer, StopAnalyzer, standard.StandardAnalyzer) >
     { "Populate"
         CreateIndex
         { "MAddDocs" AddDoc > : 2000
@@ -59,18 +59,18 @@ log.queries=true
         CloseIndex
     }
 
-    OpenReader  
+    OpenReader
     { "SearchSameRdr" Search > : 5000
-    CloseReader 
-                
+    CloseReader
+
     { "WarmNewRdr" Warm > : 50
-                
+
     { "SrchNewRdr" Search > : 500
-                
+
     { "SrchTrvNewRdr" SearchTrav(1000) > : 300
-                
+
     { "SrchTrvRetNewRdr" SearchTravRet(2000) > : 100
-                
+
     NewRound
 
 } : 4

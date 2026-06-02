@@ -62,7 +62,7 @@ backwardmode(
 
   define R1 as $p1 <= cursor
   define step1 as (
-	 setlimit tomark p1 for ([substring]) R1  among(
+   setlimit tomark p1 for ([substring]) R1  among(
       // Daiktavardžiai
       // I linksniuotė
       'as' 'ias' 'is' 'ys'        // vyras, kelias, brolis, gaidys

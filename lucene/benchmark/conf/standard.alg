@@ -57,28 +57,28 @@ log.queries=true
         CloseIndex
     }
 
-    OpenReader  
+    OpenReader
     { "SearchSameRdr" Search > : 5000
-    CloseReader 
-                
+    CloseReader
+
     { "WarmNewRdr" Warm > : 50
-                
+
     { "SrchNewRdr" Search > : 500
-                
+
     { "SrchTrvNewRdr" SearchTrav > : 300
-                
+
     { "SrchTrvRetNewRdr" SearchTravRet > : 100
-                
-    OpenReader  
+
+    OpenReader
     [ "SearchSameRdr" Search > : 5000 : 2500
-    CloseReader 
-                
+    CloseReader
+
     [ "WarmNewRdr" Warm > : 50 : 25
-                
+
     [ "SrchNewRdr" Search > : 50 : 25
-                
+
     [ "SrchTrvNewRdr" SearchTrav > : 300 : 150
-                
+
     [ "SrchTrvRetNewRdr" SearchTravRet > : 100 : 50
 
     RepSumByPref MAddDocs

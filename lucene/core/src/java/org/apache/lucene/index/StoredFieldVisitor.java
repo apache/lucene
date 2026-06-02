@@ -19,7 +19,6 @@ package org.apache.lucene.index;
 import java.io.IOException;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
-import org.apache.lucene.store.DataInput;
 
 /**
  * Expert: provides a low-level means of accessing the stored field values in an index. See {@link
@@ -41,15 +40,17 @@ public abstract class StoredFieldVisitor {
   protected StoredFieldVisitor() {}
 
   /**
-   * Expert: Process a binary field directly from the {@link DataInput}. Implementors of this method
-   * must read {@code length} bytes from the given {@link DataInput}. The default implementation
-   * reads all byes in a newly created byte array and calls {@link #binaryField(FieldInfo, byte[])}.
+   * Expert: Process a binary field directly from the {@link StoredFieldDataInput}. Implementors of
+   * this method must read {@code StoredFieldDataInput#length} bytes from the given {@link
+   * StoredFieldDataInput}. The default implementation reads all bytes in a newly created byte array
+   * and calls {@link #binaryField(FieldInfo, byte[])}.
    *
-   * @param value newly allocated byte array with the binary contents.
+   * @param value the stored field data input.
    */
-  public void binaryField(FieldInfo fieldInfo, DataInput value, int length) throws IOException {
+  public void binaryField(FieldInfo fieldInfo, StoredFieldDataInput value) throws IOException {
+    int length = value.length();
     final byte[] data = new byte[length];
-    value.readBytes(data, 0, length);
+    value.getDataInput().readBytes(data, 0, value.getLength());
     binaryField(fieldInfo, data);
   }
 
@@ -63,7 +64,7 @@ public abstract class StoredFieldVisitor {
   /** Process a string field. */
   public void stringField(FieldInfo fieldInfo, String value) throws IOException {}
 
-  /** Process a int numeric field. */
+  /** Process an int numeric field. */
   public void intField(FieldInfo fieldInfo, int value) throws IOException {}
 
   /** Process a long numeric field. */

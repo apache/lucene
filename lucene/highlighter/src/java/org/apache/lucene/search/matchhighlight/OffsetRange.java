@@ -48,8 +48,7 @@ public class OffsetRange implements Cloneable {
   @Override
   public boolean equals(Object other) {
     if (other == this) return true;
-    if (other instanceof OffsetRange) {
-      OffsetRange that = (OffsetRange) other;
+    if (other instanceof OffsetRange that) {
       return from == that.from && to == that.to;
     } else {
       return false;

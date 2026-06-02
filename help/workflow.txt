@@ -40,11 +40,3 @@ ls lucene/core/build/docs
 Assemble entire documentation (including javadocs):
 gradlew documentation
 ls lucene/documentation/build/site
-
-
-Other validation and checks
-===========================
-
-Generate a report of dependencies with known OWASP vulnerabilities:
-gradlew :dependencyCheckAnalyze
-open ./build/reports/dependency-check-report.html

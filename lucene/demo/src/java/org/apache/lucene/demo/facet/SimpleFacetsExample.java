@@ -105,7 +105,8 @@ public class SimpleFacetsExample {
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query:
     FacetsCollector fc =
-        FacetsCollectorManager.search(searcher, new MatchAllDocsQuery(), 10, fcm).facetsCollector();
+        FacetsCollectorManager.search(searcher, MatchAllDocsQuery.INSTANCE, 10, fcm)
+            .facetsCollector();
 
     // Retrieve results
     List<FacetResult> results = new ArrayList<>();
@@ -129,7 +130,7 @@ public class SimpleFacetsExample {
     // MatchAllDocsQuery is for "browsing" (counts facets
     // for all non-deleted docs in the index); normally
     // you'd use a "normal" query:
-    FacetsCollector fc = searcher.search(new MatchAllDocsQuery(), new FacetsCollectorManager());
+    FacetsCollector fc = searcher.search(MatchAllDocsQuery.INSTANCE, new FacetsCollectorManager());
 
     // Retrieve results
     List<FacetResult> results = new ArrayList<>();

@@ -18,7 +18,6 @@ package org.apache.lucene.spatial.prefix;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 
-import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -37,7 +36,6 @@ import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.junit.Before;
-import org.junit.Test;
 import org.locationtech.spatial4j.shape.Shape;
 
 public class TestNumberRangeFacets extends StrategyTestCase {
@@ -60,8 +58,6 @@ public class TestNumberRangeFacets extends StrategyTestCase {
     randomCalWindowMs = Math.max(2000L, tmpCal.getTimeInMillis());
   }
 
-  @Repeat(iterations = 20)
-  @Test
   public void test() throws IOException {
     // generate test data
     List<Shape> indexedShapes = new ArrayList<>();
@@ -221,8 +217,7 @@ public class TestNumberRangeFacets extends StrategyTestCase {
   }
 
   private void preQueryHavoc() {
-    if (strategy instanceof RecursivePrefixTreeStrategy) {
-      RecursivePrefixTreeStrategy rpts = (RecursivePrefixTreeStrategy) strategy;
+    if (strategy instanceof RecursivePrefixTreeStrategy rpts) {
       int scanLevel = randomIntBetween(0, rpts.getGrid().getMaxLevels());
       rpts.setPrefixGridScanLevel(scanLevel);
     }

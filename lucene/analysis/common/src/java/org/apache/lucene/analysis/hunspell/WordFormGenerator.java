@@ -402,7 +402,7 @@ public class WordFormGenerator {
 
       for (String word : words) {
         checkCanceled.run();
-        stemToPossibleFlags.computeIfAbsent(word, __ -> new LinkedHashSet<>());
+        stemToPossibleFlags.computeIfAbsent(word, _ -> new LinkedHashSet<>());
         var processor =
             new Stemmer.StemCandidateProcessor(WordContext.SIMPLE_WORD) {
               @Override
@@ -427,14 +427,14 @@ public class WordFormGenerator {
                     || allGenerated(swf).stream().noneMatch(forbidden::contains)) {
                   registerStem(candidate);
                   stemToPossibleFlags
-                      .computeIfAbsent(candidate, __ -> new LinkedHashSet<>())
+                      .computeIfAbsent(candidate, _ -> new LinkedHashSet<>())
                       .add(flagSet);
                 }
                 return true;
               }
 
               void registerStem(String stem) {
-                stemsToForms.computeIfAbsent(stem, __ -> new LinkedHashSet<>()).add(word);
+                stemsToForms.computeIfAbsent(stem, _ -> new LinkedHashSet<>()).add(word);
               }
             };
         processor.registerStem(word);

@@ -541,7 +541,7 @@ public class TestUnifiedHighlighterStrictPhrases extends UnifiedHighlighterTestB
             .withHighlightPhrasesStrictly(true)
             .build();
     String content = "whatever";
-    Object o = highlighter.highlightWithoutSearcher("body", new MatchNoDocsQuery(), content, 1);
+    Object o = highlighter.highlightWithoutSearcher("body", MatchNoDocsQuery.INSTANCE, content, 1);
     assertEquals(content, o);
   }
 

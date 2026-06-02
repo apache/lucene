@@ -150,6 +150,6 @@ public class LockVerifyServer {
       System.exit(1);
     }
 
-    run(args[0], Integer.parseInt(args[1]), addr -> {});
+    run(args[0], Integer.parseInt(args[1]), _ -> {});
   }
 }

@@ -39,8 +39,9 @@ import org.apache.lucene.index.TermState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.ByteArrayDataInput;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.ReadAdvice;
+import org.apache.lucene.store.PreloadHint;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
@@ -76,11 +77,10 @@ public class FSTTermsReader extends FieldsProducer {
     this.postingsReader = postingsReader;
     this.fstTermsInput =
         state.directory.openInput(
-            termsFileName, state.context.withReadAdvice(ReadAdvice.RANDOM_PRELOAD));
+            termsFileName, state.context.withHints(FileTypeHint.DATA, PreloadHint.INSTANCE));
 
     IndexInput in = this.fstTermsInput;
 
-    boolean success = false;
     try {
       CodecUtil.checkIndexHeader(
           in,
@@ -109,11 +109,9 @@ public class FSTTermsReader extends FieldsProducer {
         TermsReader previous = fields.put(fieldInfo.name, current);
         checkFieldSummary(state.segmentInfo, in, current, previous);
       }
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(in);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, in);
+      throw t;
     }
   }
 
@@ -154,7 +152,7 @@ public class FSTTermsReader extends FieldsProducer {
   }
 
   @Override
-  public Terms terms(String field) throws IOException {
+  public Terms terms(String field) {
     assert field != null;
     return fields.get(field);
   }
@@ -217,20 +215,19 @@ public class FSTTermsReader extends FieldsProducer {
 
     @Override
     public boolean hasFreqs() {
-      return fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
+      return fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS);
     }
 
     @Override
     public boolean hasOffsets() {
       return fieldInfo
-              .getIndexOptions()
-              .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-          >= 0;
+          .getIndexOptions()
+          .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
     }
 
     @Override
     public boolean hasPositions() {
-      return fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+      return fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
     }
 
     @Override
@@ -254,7 +251,7 @@ public class FSTTermsReader extends FieldsProducer {
     }
 
     @Override
-    public int getDocCount() throws IOException {
+    public int getDocCount() {
       return docCount;
     }
 
@@ -758,7 +755,7 @@ public class FSTTermsReader extends FieldsProducer {
     final ArrayList<FST.Arc<T>> queue = new ArrayList<>();
     final BitSet seen = new BitSet();
     final FST.BytesReader reader = fst.getBytesReader();
-    final FST.Arc<T> startArc = fst.getFirstArc(new FST.Arc<T>());
+    final FST.Arc<T> startArc = fst.getFirstArc(new FST.Arc<>());
     queue.add(startArc);
     while (!queue.isEmpty()) {
       final FST.Arc<T> arc = queue.remove(0);

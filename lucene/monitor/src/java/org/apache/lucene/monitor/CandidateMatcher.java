@@ -76,7 +76,7 @@ public abstract class CandidateMatcher<T extends QueryMatch> {
     MatchHolder<T> docMatches = matches.get(doc);
     docMatches.matches.compute(
         match.getQueryId(),
-        (key, oldValue) -> {
+        (_, oldValue) -> {
           if (oldValue != null) {
             return resolve(match, oldValue);
           }

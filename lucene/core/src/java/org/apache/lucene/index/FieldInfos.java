@@ -35,7 +35,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
-import org.apache.lucene.util.CollectionUtil;
 
 /**
  * Collection of {@link FieldInfo}s (accessible by number or by name).
@@ -86,7 +85,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     String softDeletesField = null;
     String parentField = null;
 
-    byName = CollectionUtil.newHashMap(infos.length);
+    byName = HashMap.newHashMap(infos.length);
     int maxFieldNumber = -1;
     boolean fieldNumberStrictlyAscending = true;
     for (FieldInfo info : infos) {
@@ -113,11 +112,10 @@ public class FieldInfos implements Iterable<FieldInfo> {
 
       hasTermVectors |= info.hasTermVectors();
       hasPostings |= info.getIndexOptions() != IndexOptions.NONE;
-      hasProx |= info.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+      hasProx |= info.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
       hasFreq |= info.getIndexOptions() != IndexOptions.DOCS;
       hasOffsets |=
-          info.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-              >= 0;
+          info.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
       hasNorms |= info.hasNorms();
       hasDocValues |= info.getDocValuesType() != DocValuesType.NONE;
       hasPayloads |= info.hasPayloads();
@@ -410,8 +408,8 @@ public class FieldInfos implements Iterable<FieldInfo> {
     }
 
     /**
-     * Returns the global field number for the given field name. If the name does not exist yet it
-     * tries to add it with the given preferred field number assigned if possible otherwise the
+     * Returns the global field number for the given field name. If the name does not exist yet, it
+     * tries to add it with the given preferred field number assigned, if possible, otherwise the
      * first unassigned field number is used as the field number.
      */
     synchronized int addOrGet(FieldInfo fi) {
@@ -550,9 +548,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
     }
 
     /**
-     * This function is called from {@code IndexWriter} to verify if doc values of the field can be
-     * updated. If the field with this name already exists, we verify that it is doc values only
-     * field. If the field doesn't exists and the parameter fieldMustExist is false, we create a new
+     * This function is called from {@link IndexWriter} to verify if doc values of the field can be
+     * updated. If the field with this name already exists, we verify that it is a doc values-only
+     * field. If the field doesn't exist and the parameter fieldMustExist is false, we create a new
      * field in the global field numbers.
      *
      * @param fieldName - name of the field
@@ -775,7 +773,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
       if (curFi != null) {
         curFi.verifySameSchema(fi);
         if (fi.attributes() != null) {
-          fi.attributes().forEach((k, v) -> curFi.putAttribute(k, v));
+          curFi.putAttributes(fi.attributes());
         }
         if (fi.hasPayloads()) {
           curFi.setStorePayloads();
@@ -828,7 +826,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
 
     FieldInfos finish() {
       finished = true;
-      return new FieldInfos(byName.values().toArray(new FieldInfo[byName.size()]));
+      return new FieldInfos(byName.values().toArray(FieldInfo[]::new));
     }
   }
 }

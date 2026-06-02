@@ -36,7 +36,7 @@ import org.apache.lucene.analysis.Analyzer;
  * http://www.unicode.org/Public/12.1.0/ucd/LineBreak.txt) \p{WordBreak = ALetter} (From
  * http://www.unicode.org/Public/12.1.0/ucd/auxiliary/WordBreakProperty.txt) \p{WordBreak =
  * Hebrew_Letter} \p{WordBreak = Katakana} \p{WordBreak = Numeric} \p{Extended_Pictographic} (From
- * http://www.unicode.org/Public/emoji/12.1/emoji-data.txt)
+ * https://www.unicode.org/Public/emoji/12.1/emoji-data.txt)
  */
 public final class WordBreakTestUnicode_12_1_0 {
 

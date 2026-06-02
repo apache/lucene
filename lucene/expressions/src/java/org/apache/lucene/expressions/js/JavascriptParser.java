@@ -1,4 +1,22 @@
-// ANTLR GENERATED CODE: DO NOT EDIT
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// ANTLR GENERATED CODE: DO NOT EDIT.
+
 package org.apache.lucene.expressions.js;
 
 import java.util.List;
@@ -8,10 +26,18 @@ import org.antlr.v4.runtime.dfa.DFA;
 import org.antlr.v4.runtime.misc.*;
 import org.antlr.v4.runtime.tree.*;
 
-@SuppressWarnings({"all", "warnings", "unchecked", "unused", "cast", "CheckReturnValue"})
+@SuppressWarnings({
+  "all",
+  "warnings",
+  "unchecked",
+  "unused",
+  "cast",
+  "CheckReturnValue",
+  "this-escape"
+})
 class JavascriptParser extends Parser {
   static {
-    RuntimeMetaData.checkVersion("4.11.1", RuntimeMetaData.VERSION);
+    RuntimeMetaData.checkVersion("4.13.2", RuntimeMetaData.VERSION);
   }
 
   protected static final DFA[] _decisionToDFA;
@@ -136,7 +162,7 @@ class JavascriptParser extends Parser {
 
   @Override
   public String getGrammarFileName() {
-    return "java-escape";
+    return "Javascript.g4";
   }
 
   @Override
@@ -721,7 +747,7 @@ class JavascriptParser extends Parser {
               _prevctx = _localctx;
               setState(12);
               _la = _input.LA(1);
-              if (!(((_la) & ~0x3f) == 0 && ((1L << _la) & 3758096384L) != 0)) {
+              if (!((((_la) & ~0x3f) == 0 && ((1L << _la) & 3758096384L) != 0))) {
                 _errHandler.recoverInline(this);
               } else {
                 if (_input.LA(1) == Token.EOF) matchedEOF = true;
@@ -747,7 +773,7 @@ class JavascriptParser extends Parser {
                     setState(23);
                     _errHandler.sync(this);
                     _la = _input.LA(1);
-                    if (((_la) & ~0x3f) == 0 && ((1L << _la) & 4026533426L) != 0) {
+                    if ((((_la) & ~0x3f) == 0 && ((1L << _la) & 4026533426L) != 0)) {
                       {
                         setState(15);
                         expression(0);
@@ -787,7 +813,7 @@ class JavascriptParser extends Parser {
               _prevctx = _localctx;
               setState(28);
               _la = _input.LA(1);
-              if (!(((_la) & ~0x3f) == 0 && ((1L << _la) & 1584L) != 0)) {
+              if (!((((_la) & ~0x3f) == 0 && ((1L << _la) & 1584L) != 0))) {
                 _errHandler.recoverInline(this);
               } else {
                 if (_input.LA(1) == Token.EOF) matchedEOF = true;
@@ -822,7 +848,7 @@ class JavascriptParser extends Parser {
                       throw new FailedPredicateException(this, "precpred(_ctx, 11)");
                     setState(33);
                     _la = _input.LA(1);
-                    if (!(((_la) & ~0x3f) == 0 && ((1L << _la) & 448L) != 0)) {
+                    if (!((((_la) & ~0x3f) == 0 && ((1L << _la) & 448L) != 0))) {
                       _errHandler.recoverInline(this);
                     } else {
                       if (_input.LA(1) == Token.EOF) matchedEOF = true;
@@ -862,7 +888,7 @@ class JavascriptParser extends Parser {
                       throw new FailedPredicateException(this, "precpred(_ctx, 9)");
                     setState(39);
                     _la = _input.LA(1);
-                    if (!(((_la) & ~0x3f) == 0 && ((1L << _la) & 14336L) != 0)) {
+                    if (!((((_la) & ~0x3f) == 0 && ((1L << _la) & 14336L) != 0))) {
                       _errHandler.recoverInline(this);
                     } else {
                       if (_input.LA(1) == Token.EOF) matchedEOF = true;
@@ -883,7 +909,7 @@ class JavascriptParser extends Parser {
                       throw new FailedPredicateException(this, "precpred(_ctx, 8)");
                     setState(42);
                     _la = _input.LA(1);
-                    if (!(((_la) & ~0x3f) == 0 && ((1L << _la) & 245760L) != 0)) {
+                    if (!((((_la) & ~0x3f) == 0 && ((1L << _la) & 245760L) != 0))) {
                       _errHandler.recoverInline(this);
                     } else {
                       if (_input.LA(1) == Token.EOF) matchedEOF = true;

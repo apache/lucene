@@ -265,6 +265,8 @@ public class TestFSTCompletion extends LuceneTestCase {
     tempDir.close();
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRandom() throws Exception {
     List<Input> freqs = new ArrayList<>();
     Random rnd = random();
@@ -275,7 +277,7 @@ public class TestFSTCompletion extends LuceneTestCase {
 
     Directory tempDir = getDirectory();
     FSTCompletionLookup lookup = new FSTCompletionLookup(tempDir, "fst");
-    lookup.build(new InputArrayIterator(freqs.toArray(new Input[0])));
+    lookup.build(new InputArrayIterator(freqs.toArray(Input[]::new)));
 
     for (Input tf : freqs) {
       final String term = tf.term.utf8ToString();

@@ -57,7 +57,7 @@ public abstract class AttributeFactory {
 
   private static final class DefaultAttributeFactory extends AttributeFactory {
     private final ClassValue<MethodHandle> constructors =
-        new ClassValue<MethodHandle>() {
+        new ClassValue<>() {
           @Override
           protected MethodHandle computeValue(Class<?> attClass) {
             return findAttributeImplCtor(findImplClass(attClass.asSubclass(Attribute.class)));
@@ -147,7 +147,7 @@ public abstract class AttributeFactory {
   public static <A extends AttributeImpl> AttributeFactory getStaticImplementation(
       AttributeFactory delegate, Class<A> clazz) {
     final MethodHandle constr = findAttributeImplCtor(clazz);
-    return new StaticImplementationAttributeFactory<A>(delegate, clazz) {
+    return new StaticImplementationAttributeFactory<>(delegate, clazz) {
       @Override
       @SuppressWarnings("unchecked")
       protected A createInstance() {

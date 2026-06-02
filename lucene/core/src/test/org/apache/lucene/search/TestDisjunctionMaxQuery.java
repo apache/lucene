@@ -22,9 +22,11 @@ import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.stream.Collectors;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -476,7 +478,7 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
   public void testRewriteEmpty() throws Exception {
     DisjunctionMaxQuery q = new DisjunctionMaxQuery(Collections.emptyList(), 0.0f);
     Query rewritten = s.rewrite(q);
-    Query expected = new MatchNoDocsQuery();
+    Query expected = MatchNoDocsQuery.INSTANCE;
     assertEquals(expected, rewritten);
   }
 
@@ -487,6 +489,34 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
     Query q1 = new DisjunctionMaxQuery(Arrays.asList(sub1, sub2), 1.0f);
     Query q2 = new DisjunctionMaxQuery(Arrays.asList(sub2, sub1), 1.0f);
     assertEquals(q1, q2);
+  }
+
+  /* Inspired from TestIntervals.testIntervalDisjunctionToStringStability */
+  public void testCasesWhenDisjunctOrderMatters() {
+    final int clauseNbr =
+        random().nextInt(22) + 4; // ensure a reasonably large minimum number of clauses
+    final String[] terms = new String[clauseNbr];
+    for (int i = 0; i < clauseNbr; i++) {
+      terms[i] = Character.toString((char) ('a' + i));
+    }
+
+    final String expected =
+        Arrays.stream(terms)
+            .map((term) -> "test:" + term)
+            .collect(Collectors.joining(" | ", "(", ")~1.0"));
+
+    DisjunctionMaxQuery source =
+        new DisjunctionMaxQuery(
+            Arrays.stream(terms).map((term) -> tq("test", term)).toList(), 1.0f);
+
+    assertEquals(expected, source.toString(""));
+    Collection<Query> disjuncts = source.getDisjuncts();
+    assertEquals(terms.length, disjuncts.size());
+    int i = 0;
+    for (Query query : disjuncts) {
+      assertEquals(terms[i], ((TermQuery) query).getTerm().text());
+      i++;
+    }
   }
 
   public void testRandomTopDocs() throws Exception {
@@ -615,13 +645,28 @@ public class TestDisjunctionMaxQuery extends LuceneTestCase {
     dir.close();
   }
 
+  // Ensure generics and type inference play nicely together
+  public void testGenerics() {
+    var query =
+        new DisjunctionMaxQuery(
+            Arrays.stream(new String[] {"term"}).map((term) -> tq("test", term)).toList(), 1.0f);
+    assertEquals(1, query.getDisjuncts().size());
+
+    var disjuncts =
+        List.of(
+            new RegexpQuery(new Term("field", "foobar")),
+            new WildcardQuery(new Term("field", "foobar")));
+    query = new DisjunctionMaxQuery(disjuncts, 1.0f);
+    assertEquals(2, query.getDisjuncts().size());
+  }
+
   /** macro */
-  protected Query tq(String f, String t) {
+  protected TermQuery tq(String f, String t) {
     return new TermQuery(new Term(f, t));
   }
 
   /** macro */
-  protected Query tq(String f, String t, float b) {
+  protected BoostQuery tq(String f, String t, float b) {
     Query q = tq(f, t);
     return new BoostQuery(q, b);
   }

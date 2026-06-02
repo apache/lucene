@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.FieldsConsumer;
+import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.NormsConsumer;
 import org.apache.lucene.codecs.NormsProducer;
@@ -225,7 +226,7 @@ final class SegmentMerger {
     }
   }
 
-  public void mergeFieldInfos() {
+  private void mergeFieldInfos() {
     for (FieldInfos readerFieldInfos : mergeState.fieldInfos) {
       for (FieldInfo fi : readerFieldInfos) {
         fieldInfosBuilder.add(fi);
@@ -322,6 +323,14 @@ final class SegmentMerger {
               + " ["
               + numMerged
               + " docs]");
+    }
+  }
+
+  void cleanupMerge() throws IOException {
+    for (KnnVectorsReader reader : mergeState.knnVectorsReaders) {
+      if (reader != null) {
+        reader.finishMerge();
+      }
     }
   }
 }

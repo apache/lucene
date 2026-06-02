@@ -33,7 +33,6 @@ import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.IOUtils;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Test;
 
 /** Testcase for {@link org.apache.lucene.classification.utils.DocToDoubleVectorUtils} */
 public class TestDocToDoubleVectorUtils extends LuceneTestCase {
@@ -79,12 +78,11 @@ public class TestDocToDoubleVectorUtils extends LuceneTestCase {
     super.tearDown();
   }
 
-  @Test
   public void testDenseFreqDoubleArrayConversion() throws Exception {
     IndexSearcher indexSearcher = new IndexSearcher(index);
     TermVectors termVectors = index.termVectors();
     for (ScoreDoc scoreDoc :
-        indexSearcher.search(new MatchAllDocsQuery(), Integer.MAX_VALUE).scoreDocs) {
+        indexSearcher.search(MatchAllDocsQuery.INSTANCE, Integer.MAX_VALUE).scoreDocs) {
       Terms docTerms = termVectors.get(scoreDoc.doc, "text");
       Double[] vector = DocToDoubleVectorUtils.toDenseLocalFreqDoubleArray(docTerms);
       assertNotNull(vector);
@@ -92,14 +90,13 @@ public class TestDocToDoubleVectorUtils extends LuceneTestCase {
     }
   }
 
-  @Test
   public void testSparseFreqDoubleArrayConversion() throws Exception {
     Terms fieldTerms = MultiTerms.getTerms(index, "text");
     if (fieldTerms != null && fieldTerms.size() != -1) {
       IndexSearcher indexSearcher = new IndexSearcher(index);
       TermVectors termVectors = index.termVectors();
       for (ScoreDoc scoreDoc :
-          indexSearcher.search(new MatchAllDocsQuery(), Integer.MAX_VALUE).scoreDocs) {
+          indexSearcher.search(MatchAllDocsQuery.INSTANCE, Integer.MAX_VALUE).scoreDocs) {
         Terms docTerms = termVectors.get(scoreDoc.doc, "text");
         Double[] vector = DocToDoubleVectorUtils.toSparseLocalFreqDoubleArray(docTerms, fieldTerms);
         assertNotNull(vector);

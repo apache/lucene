@@ -40,8 +40,9 @@ import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SlowImpactsEnum;
 import org.apache.lucene.store.DataInput;
+import org.apache.lucene.store.FileDataHint;
+import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.store.ReadAdvice;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BitUtil;
 import org.apache.lucene.util.BytesRef;
@@ -65,7 +66,6 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
   /** Sole constructor. */
   public Lucene99PostingsReader(SegmentReadState state) throws IOException {
-    boolean success = false;
     IndexInput docIn = null;
     IndexInput posIn = null;
     IndexInput payIn = null;
@@ -79,9 +79,9 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, Lucene99PostingsFormat.DOC_EXTENSION);
     try {
-      // Postings have a forward-only access pattern, so pass ReadAdvice.NORMAL to perform
-      // readahead.
-      docIn = state.directory.openInput(docName, state.context.withReadAdvice(ReadAdvice.NORMAL));
+      docIn =
+          state.directory.openInput(
+              docName, state.context.withHints(FileTypeHint.DATA, FileDataHint.POSTINGS));
       version =
           CodecUtil.checkIndexHeader(
               docIn,
@@ -117,11 +117,9 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       this.docIn = docIn;
       this.posIn = posIn;
       this.payIn = payIn;
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(docIn, posIn, payIn);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, docIn, posIn, payIn);
+      throw t;
     }
   }
 
@@ -178,10 +176,9 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       throws IOException {
     final IntBlockTermState termState = (IntBlockTermState) _termState;
     final boolean fieldHasPositions =
-        fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+        fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
     final boolean fieldHasOffsets =
-        fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-            >= 0;
+        fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
     final boolean fieldHasPayloads = fieldInfo.hasPayloads();
 
     if (absolute) {
@@ -229,13 +226,13 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       throws IOException {
 
     boolean indexHasPositions =
-        fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+        fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
 
     if (indexHasPositions == false
         || PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS) == false) {
       BlockDocsEnum docsEnum;
-      if (reuse instanceof BlockDocsEnum) {
-        docsEnum = (BlockDocsEnum) reuse;
+      if (reuse instanceof BlockDocsEnum blockDocsEnum) {
+        docsEnum = blockDocsEnum;
         if (!docsEnum.canReuse(docIn, fieldInfo)) {
           docsEnum = new BlockDocsEnum(fieldInfo);
         }
@@ -245,8 +242,8 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       return docsEnum.reset((IntBlockTermState) termState, flags);
     } else {
       EverythingEnum everythingEnum;
-      if (reuse instanceof EverythingEnum) {
-        everythingEnum = (EverythingEnum) reuse;
+      if (reuse instanceof EverythingEnum ee) {
+        everythingEnum = ee;
         if (!everythingEnum.canReuse(docIn, fieldInfo)) {
           everythingEnum = new EverythingEnum(fieldInfo);
         }
@@ -266,10 +263,9 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     }
 
     final boolean indexHasPositions =
-        fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+        fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
     final boolean indexHasOffsets =
-        fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-            >= 0;
+        fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
     final boolean indexHasPayloads = fieldInfo.hasPayloads();
 
     if (indexHasPositions == false
@@ -340,14 +336,12 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     public BlockDocsEnum(FieldInfo fieldInfo) throws IOException {
       this.startDocIn = Lucene99PostingsReader.this.docIn;
       this.docIn = null;
-      indexHasFreq = fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
-      indexHasPos =
-          fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+      indexHasFreq = fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS);
+      indexHasPos = fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
       indexHasOffsets =
           fieldInfo
-                  .getIndexOptions()
-                  .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-              >= 0;
+              .getIndexOptions()
+              .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
       indexHasPayloads = fieldInfo.hasPayloads();
       // We set the last element of docBuffer to NO_MORE_DOCS, it helps save conditionals in
       // advance()
@@ -356,11 +350,9 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     public boolean canReuse(IndexInput docIn, FieldInfo fieldInfo) {
       return docIn == startDocIn
-          && indexHasFreq
-              == (fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0)
+          && indexHasFreq == (fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS))
           && indexHasPos
-              == (fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)
-                  >= 0)
+              == (fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS))
           && indexHasPayloads == fieldInfo.hasPayloads();
     }
 
@@ -646,9 +638,8 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
     public EverythingEnum(FieldInfo fieldInfo) throws IOException {
       indexHasOffsets =
           fieldInfo
-                  .getIndexOptions()
-                  .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-              >= 0;
+              .getIndexOptions()
+              .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
       indexHasPayloads = fieldInfo.hasPayloads();
 
       this.startDocIn = Lucene99PostingsReader.this.docIn;
@@ -688,9 +679,8 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
       return docIn == startDocIn
           && indexHasOffsets
               == (fieldInfo
-                      .getIndexOptions()
-                      .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-                  >= 0)
+                  .getIndexOptions()
+                  .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS))
           && indexHasPayloads == fieldInfo.hasPayloads();
     }
 
@@ -1084,14 +1074,13 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     public BlockImpactsDocsEnum(FieldInfo fieldInfo, IntBlockTermState termState)
         throws IOException {
-      indexHasFreqs = fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
+      indexHasFreqs = fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS);
       final boolean indexHasPositions =
-          fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+          fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
       final boolean indexHasOffsets =
           fieldInfo
-                  .getIndexOptions()
-                  .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-              >= 0;
+              .getIndexOptions()
+              .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
       final boolean indexHasPayloads = fieldInfo.hasPayloads();
 
       this.docIn = Lucene99PostingsReader.this.docIn.clone();
@@ -1306,9 +1295,8 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
         throws IOException {
       indexHasOffsets =
           fieldInfo
-                  .getIndexOptions()
-                  .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-              >= 0;
+              .getIndexOptions()
+              .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
       indexHasPayloads = fieldInfo.hasPayloads();
 
       this.docIn = Lucene99PostingsReader.this.docIn.clone();
@@ -1622,14 +1610,12 @@ public final class Lucene99PostingsReader extends PostingsReaderBase {
 
     public BlockImpactsEverythingEnum(FieldInfo fieldInfo, IntBlockTermState termState, int flags)
         throws IOException {
-      indexHasFreq = fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS) >= 0;
-      indexHasPos =
-          fieldInfo.getIndexOptions().compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0;
+      indexHasFreq = fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS);
+      indexHasPos = fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
       indexHasOffsets =
           fieldInfo
-                  .getIndexOptions()
-                  .compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS)
-              >= 0;
+              .getIndexOptions()
+              .subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
       indexHasPayloads = fieldInfo.hasPayloads();
 
       needsPositions = PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS);

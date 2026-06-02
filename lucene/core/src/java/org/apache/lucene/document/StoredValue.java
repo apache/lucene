@@ -18,6 +18,7 @@ package org.apache.lucene.document;
 
 import java.util.Objects;
 import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.StoredFieldDataInput;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -39,6 +40,8 @@ public final class StoredValue {
     DOUBLE,
     /** Type of binary values. */
     BINARY,
+    /** Type of data input values. */
+    DATA_INPUT,
     /** Type of string values. */
     STRING;
   }
@@ -48,6 +51,7 @@ public final class StoredValue {
   private long longValue;
   private float floatValue;
   private double doubleValue;
+  private StoredFieldDataInput dataInput;
   private BytesRef binaryValue;
   private String stringValue;
 
@@ -81,7 +85,13 @@ public final class StoredValue {
     binaryValue = Objects.requireNonNull(value);
   }
 
-  /** Ctor for binary values. */
+  /** Ctor for data input values. */
+  public StoredValue(StoredFieldDataInput value) {
+    type = Type.DATA_INPUT;
+    dataInput = Objects.requireNonNull(value);
+  }
+
+  /** Ctor for string values. */
   public StoredValue(String value) {
     type = Type.STRING;
     stringValue = Objects.requireNonNull(value);
@@ -132,6 +142,14 @@ public final class StoredValue {
     binaryValue = Objects.requireNonNull(value);
   }
 
+  /** Set a data input value. */
+  public void setDataInputValue(StoredFieldDataInput value) {
+    if (type != Type.DATA_INPUT) {
+      throw new IllegalArgumentException("Cannot set a data input value on a " + type + " value");
+    }
+    dataInput = Objects.requireNonNull(value);
+  }
+
   /** Set a string value. */
   public void setStringValue(String value) {
     if (type != Type.STRING) {
@@ -178,6 +196,14 @@ public final class StoredValue {
       throw new IllegalArgumentException("Cannot get a binary value on a " + type + " value");
     }
     return binaryValue;
+  }
+
+  /** Retrieve a data input value. */
+  public StoredFieldDataInput getDataInputValue() {
+    if (type != Type.DATA_INPUT) {
+      throw new IllegalArgumentException("Cannot get a data input value on a " + type + " value");
+    }
+    return dataInput;
   }
 
   /** Retrieve a string value. */

@@ -24,7 +24,6 @@ import org.apache.lucene.analysis.cjk.CJKWidthCharFilter;
 import org.apache.lucene.analysis.core.KeywordTokenizer;
 import org.apache.lucene.tests.analysis.BaseTokenStreamTestCase;
 import org.apache.lucene.util.IOUtils;
-import org.junit.Test;
 
 public class TestJapaneseCompletionFilter extends BaseTokenStreamTestCase {
   private Analyzer indexAnalyzer;
@@ -82,7 +81,6 @@ public class TestJapaneseCompletionFilter extends BaseTokenStreamTestCase {
     super.tearDown();
   }
 
-  @Test
   public void testCompletionIndex() throws IOException {
     assertAnalyzesTo(
         indexAnalyzer,
@@ -144,7 +142,6 @@ public class TestJapaneseCompletionFilter extends BaseTokenStreamTestCase {
         new int[] {1, 0, 1, 1, 0});
   }
 
-  @Test
   public void testCompletionQuery() throws IOException {
     assertAnalyzesTo(
         queryAnalyzer,

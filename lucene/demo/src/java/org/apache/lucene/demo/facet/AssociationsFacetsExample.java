@@ -103,7 +103,7 @@ public class AssociationsFacetsExample {
     // you'd use a "normal" query:
     FacetsCollectorManager.FacetsResult facetsResult =
         FacetsCollectorManager.search(
-            searcher, new MatchAllDocsQuery(), 10, new FacetsCollectorManager());
+            searcher, MatchAllDocsQuery.INSTANCE, 10, new FacetsCollectorManager());
     FacetsCollector fc = facetsResult.facetsCollector();
 
     Facets tags =

@@ -35,7 +35,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
 /**
  * Factory for {@link WordDelimiterFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_wd" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
@@ -45,7 +45,7 @@ import org.apache.lucene.util.ResourceLoaderAware;
  *             generateWordParts="1" generateNumberParts="1" stemEnglishPossessive="1"
  *             types="wdfftypes.txt" /&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @deprecated Use {@link WordDelimiterGraphFilterFactory} instead: it produces a correct token
  *     graph so that e.g. {@link PhraseQuery} works correctly when it's used in the search time
@@ -154,13 +154,13 @@ public class WordDelimiterFilterFactory extends TokenFilterFactory implements Re
   }
 
   // source => type
-  private static Pattern typePattern = Pattern.compile("(.*)\\s*=>\\s*(.*)\\s*$");
+  private static final Pattern TYPE_PATTERN = Pattern.compile("(.*)\\s*=>\\s*(.*)\\s*$");
 
   // parses a list of MappingCharFilter style rules into a custom byte[] type table
   private byte[] parseTypes(List<String> rules) {
     SortedMap<Character, Byte> typeMap = new TreeMap<>();
     for (String rule : rules) {
-      Matcher m = typePattern.matcher(rule);
+      Matcher m = TYPE_PATTERN.matcher(rule);
       if (!m.find()) throw new IllegalArgumentException("Invalid Mapping Rule : [" + rule + "]");
       String lhs = parseString(m.group(1).trim());
       Byte rhs = parseType(m.group(2).trim());

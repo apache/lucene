@@ -22,6 +22,7 @@ import java.util.Objects;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.Term;
@@ -57,18 +58,18 @@ public class TermQuery extends Query {
       this.termStates = termStates;
       this.similarity = searcher.getSimilarity();
 
-      final CollectionStatistics collectionStats;
-      final TermStatistics termStats;
+      final FieldStats fieldStats;
+      final TermStats termStats;
       if (scoreMode.needsScores()) {
-        collectionStats = searcher.collectionStatistics(term.field());
+        fieldStats = searcher.fieldStats(term.field());
         termStats =
             termStates.docFreq() > 0
-                ? searcher.termStatistics(term, termStates.docFreq(), termStates.totalTermFreq())
+                ? searcher.termStats(term, termStates.docFreq(), termStates.totalTermFreq())
                 : null;
       } else {
         // we do not need the actual stats, use fake stats with docFreq=maxDoc=ttf=1
-        collectionStats = new CollectionStatistics(term.field(), 1, 1, 1, 1);
-        termStats = new TermStatistics(term.bytes(), 1, 1);
+        fieldStats = new FieldStats(term.field(), 1, 1, 1, 1);
+        termStats = new TermStats(term.bytes(), 1, 1);
       }
 
       if (termStats == null) {
@@ -78,7 +79,7 @@ public class TermQuery extends Query {
         // allocations in case default BM25Scorer is used.
         // See: https://github.com/apache/lucene/issues/12297
         if (scoreMode.needsScores()) {
-          this.simScorer = similarity.scorer(boost, collectionStats, termStats);
+          this.simScorer = similarity.scorer(boost, fieldStats, termStats);
         } else {
           // Assigning a dummy scorer as this is not expected to be called since scores are not
           // needed.
@@ -150,20 +151,29 @@ public class TermQuery extends Query {
             return new ConstantScoreScorer(0f, scoreMode, DocIdSetIterator.empty());
           }
 
-          LeafSimScorer scorer =
-              new LeafSimScorer(simScorer, context.reader(), term.field(), scoreMode.needsScores());
+          NumericDocValues norms = null;
+          if (scoreMode.needsScores()) {
+            norms = context.reader().getNormValues(term.field());
+          }
+
           if (scoreMode == ScoreMode.TOP_SCORES) {
             return new TermScorer(
-                TermWeight.this,
-                termsEnum.impacts(PostingsEnum.FREQS),
-                scorer,
-                topLevelScoringClause);
+                termsEnum.impacts(PostingsEnum.FREQS), simScorer, norms, topLevelScoringClause);
           } else {
-            return new TermScorer(
-                termsEnum.postings(
-                    null, scoreMode.needsScores() ? PostingsEnum.FREQS : PostingsEnum.NONE),
-                scorer);
+            int flags = scoreMode.needsScores() ? PostingsEnum.FREQS : PostingsEnum.NONE;
+            return new TermScorer(termsEnum.postings(null, flags), simScorer, norms);
           }
+        }
+
+        @Override
+        public BulkScorer bulkScorer() throws IOException {
+          if (scoreMode.needsScores() == false) {
+            DocIdSetIterator iterator = get(Long.MAX_VALUE).iterator();
+            int maxDoc = context.reader().maxDoc();
+            return ConstantScoreScorerSupplier.fromIterator(iterator, 0f, scoreMode, maxDoc)
+                .bulkScorer();
+          }
+          return new BatchScoreBulkScorer(get(Long.MAX_VALUE));
         }
 
         @Override
@@ -177,7 +187,7 @@ public class TermQuery extends Query {
         }
 
         @Override
-        public void setTopLevelScoringClause() throws IOException {
+        public void setTopLevelScoringClause() {
           topLevelScoringClause = true;
         }
       };
@@ -223,11 +233,14 @@ public class TermQuery extends Query {
         int newDoc = scorer.iterator().advance(doc);
         if (newDoc == doc) {
           float freq = ((TermScorer) scorer).freq();
-          LeafSimScorer docScorer =
-              new LeafSimScorer(simScorer, context.reader(), term.field(), true);
+          NumericDocValues norms = context.reader().getNormValues(term.field());
+          long norm = 1L;
+          if (norms != null && norms.advanceExact(doc)) {
+            norm = norms.longValue();
+          }
           Explanation freqExplanation =
               Explanation.match(freq, "freq, occurrences of term within document");
-          Explanation scoreExplanation = docScorer.explain(doc, freqExplanation);
+          Explanation scoreExplanation = simScorer.explain(freqExplanation, norm);
           return Explanation.match(
               scoreExplanation.getValue(),
               "weight("
@@ -327,11 +340,16 @@ public class TermQuery extends Query {
   /** Returns true iff <code>other</code> is equal to <code>this</code>. */
   @Override
   public boolean equals(Object other) {
-    return sameClassAs(other) && term.equals(((TermQuery) other).term);
+    return sameClassAs(other) && equalsTo((TermQuery) other);
+  }
+
+  private boolean equalsTo(TermQuery other) {
+    return Objects.equals(term, other.term)
+        && Objects.equals(perReaderTermState, other.perReaderTermState);
   }
 
   @Override
   public int hashCode() {
-    return classHash() ^ term.hashCode();
+    return classHash() ^ term.hashCode() ^ Objects.hashCode(perReaderTermState);
   }
 }

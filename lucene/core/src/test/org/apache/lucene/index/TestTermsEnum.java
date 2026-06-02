@@ -912,7 +912,7 @@ public class TestTermsEnum extends LuceneTestCase {
   public void testCommonPrefixTerms() throws Exception {
     Directory d = newDirectory();
     RandomIndexWriter w = new RandomIndexWriter(random(), d);
-    Set<String> terms = new HashSet<String>();
+    Set<String> terms = new HashSet<>();
     // String prefix = TestUtil.randomSimpleString(random(), 1, 20);
     String prefix = TestUtil.randomRealisticUnicodeString(random(), 1, 20);
     int numTerms = atLeast(100);
@@ -994,7 +994,7 @@ public class TestTermsEnum extends LuceneTestCase {
   @Nightly
   public void testVaryingTermsPerSegment() throws Exception {
     Directory dir = newDirectory();
-    Set<BytesRef> terms = new HashSet<BytesRef>();
+    Set<BytesRef> terms = new HashSet<>();
     int MAX_TERMS = atLeast(1000);
     while (terms.size() < MAX_TERMS) {
       terms.add(newBytesRef(TestUtil.randomSimpleString(random(), 1, 40)));

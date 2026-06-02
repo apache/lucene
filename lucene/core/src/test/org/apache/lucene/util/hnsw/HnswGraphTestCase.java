@@ -38,12 +38,9 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
-import org.apache.lucene.codecs.FilterCodec;
-import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.hnsw.DefaultFlatVectorScorer;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
-import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -63,6 +60,8 @@ import org.apache.lucene.index.StoredFields;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.hppc.IntHashSet;
+import org.apache.lucene.search.AbstractKnnCollector;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.KnnCollector;
@@ -74,6 +73,7 @@ import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopKnnCollector;
 import org.apache.lucene.search.VectorScorer;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
@@ -90,7 +90,7 @@ import org.apache.lucene.util.hnsw.HnswGraph.NodesIterator;
 abstract class HnswGraphTestCase<T> extends LuceneTestCase {
 
   VectorSimilarityFunction similarityFunction;
-  DefaultFlatVectorScorer flatVectorScorer = new DefaultFlatVectorScorer();
+  DefaultFlatVectorScorer flatVectorScorer = DefaultFlatVectorScorer.INSTANCE;
 
   abstract VectorEncoding getVectorEncoding();
 
@@ -152,19 +152,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       IndexWriterConfig iwc =
           new IndexWriterConfig()
               .setCodec(
-                  new FilterCodec(
-                      TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
-
-                    @Override
-                    public KnnVectorsFormat knnVectorsFormat() {
-                      return new PerFieldKnnVectorsFormat() {
-                        @Override
-                        public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                          return new Lucene99HnswVectorsFormat(M, beamWidth);
-                        }
-                      };
-                    }
-                  })
+                  TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(M, beamWidth)))
               // set a random merge policy
               .setMergePolicy(newMergePolicy(random()));
       try (IndexWriter iw = new IndexWriter(dir, iwc)) {
@@ -195,7 +183,6 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
                         similarityFunction));
               }
             }
-            ;
             doc.add(new StringField("id", Integer.toString(vectors.ordToDoc(ord)), Field.Store.NO));
             iw.addDocument(doc);
           }
@@ -214,6 +201,77 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         for (LeafReaderContext ctx : reader.leaves()) {
           KnnVectorValues values = vectorValues(ctx.reader(), "field");
           assertEquals(dim, values.dimension());
+        }
+      }
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  public void testGraphMergeWithDeletes() throws IOException {
+
+    int M = 4;
+    int beamWidth = 20;
+    String vectorFieldName = "vec1";
+    int numVectors = random().nextInt(1000) + 1;
+    int deletionProbaility = random().nextInt(100);
+    int dim = random().nextInt(64) + 1;
+    if (dim % 2 == 1) {
+      dim++;
+    }
+    KnnVectorValues vectors = vectorValues(numVectors, dim);
+    int deleteCount = 0;
+
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc =
+          new IndexWriterConfig()
+              .setCodec(
+                  TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(M, beamWidth, 0)))
+              // set a random merge policy
+              .setMergePolicy(newMergePolicy(random()));
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+
+        for (int i = 0; i < numVectors; i++) {
+          Document doc = new Document();
+          switch (vectors.getEncoding()) {
+            case BYTE -> {
+              doc.add(
+                  knnVectorField(
+                      vectorFieldName,
+                      (T) ((ByteVectorValues) vectors).vectorValue(i),
+                      similarityFunction));
+            }
+            case FLOAT32 -> {
+              doc.add(
+                  knnVectorField(
+                      vectorFieldName,
+                      (T) ((FloatVectorValues) vectors).vectorValue(i),
+                      similarityFunction));
+            }
+          }
+          doc.add(new StringField("id", Integer.toString(i), Field.Store.NO));
+          w.addDocument(doc);
+        }
+        w.commit();
+
+        for (int d = 0; d < numVectors; d++) {
+          if (random().nextInt(100) < deletionProbaility) {
+            deleteCount++;
+            w.deleteDocuments(new Term("id", Integer.toString(d)));
+          }
+        }
+        w.commit();
+        w.forceMerge(1);
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        for (LeafReaderContext ctx : reader.leaves()) {
+          HnswGraph graphValues =
+              ((Lucene99HnswVectorsReader)
+                      ((CodecReader) ctx.reader())
+                          .getVectorReader()
+                          .unwrapReaderForField(vectorFieldName))
+                  .getGraph(vectorFieldName);
+          assertEquals(numVectors - deleteCount, graphValues.size());
         }
       }
     }
@@ -255,18 +313,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
       IndexWriterConfig iwc =
           new IndexWriterConfig()
               .setCodec(
-                  new FilterCodec(
-                      TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
-                    @Override
-                    public KnnVectorsFormat knnVectorsFormat() {
-                      return new PerFieldKnnVectorsFormat() {
-                        @Override
-                        public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                          return new Lucene99HnswVectorsFormat(M, beamWidth);
-                        }
-                      };
-                    }
-                  });
+                  TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(M, beamWidth, 0)));
       try (IndexWriter iw = new IndexWriter(dir, iwc)) {
         KnnVectorValues.DocIndexIterator it2 = v2.iterator();
         while (it2.nextDoc() != NO_MORE_DOCS) {
@@ -293,9 +340,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
           assertVectorsEqual(v3, values);
           HnswGraph graphValues =
               ((Lucene99HnswVectorsReader)
-                      ((PerFieldKnnVectorsFormat.FieldsReader)
-                              ((CodecReader) ctx.reader()).getVectorReader())
-                          .getFieldReader("field"))
+                      ((CodecReader) ctx.reader()).getVectorReader().unwrapReaderForField("field"))
                   .getGraph("field");
           assertGraphEqual(hnsw, graphValues);
         }
@@ -317,32 +362,10 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     HnswGraphBuilder.randSeed = seed;
     IndexWriterConfig iwc =
         new IndexWriterConfig()
-            .setCodec(
-                new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
-                  @Override
-                  public KnnVectorsFormat knnVectorsFormat() {
-                    return new PerFieldKnnVectorsFormat() {
-                      @Override
-                      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                        return new Lucene99HnswVectorsFormat(M, beamWidth);
-                      }
-                    };
-                  }
-                });
+            .setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(M, beamWidth)));
     IndexWriterConfig iwc2 =
         new IndexWriterConfig()
-            .setCodec(
-                new FilterCodec(TestUtil.getDefaultCodec().getName(), TestUtil.getDefaultCodec()) {
-                  @Override
-                  public KnnVectorsFormat knnVectorsFormat() {
-                    return new PerFieldKnnVectorsFormat() {
-                      @Override
-                      public KnnVectorsFormat getKnnVectorsFormatForField(String field) {
-                        return new Lucene99HnswVectorsFormat(M, beamWidth);
-                      }
-                    };
-                  }
-                })
+            .setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(M, beamWidth)))
             .setIndexSort(new Sort(new SortField("sortkey", SortField.Type.LONG)));
 
     try (Directory dir = newDirectory();
@@ -572,17 +595,35 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     }
   }
 
+  public void testBuildingJoinSet() throws IOException {
+    int dim = random().nextInt(100) + 1;
+    int nDoc = random().nextInt(500) + 100;
+    int M = random().nextInt(16) + 16;
+    int beamWidth = random().nextInt(100) + 16;
+    long seed = random().nextLong();
+    KnnVectorValues vectors = vectorValues(nDoc, dim);
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectors);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, M, beamWidth, seed);
+    HnswGraph graph = builder.build(vectors.size());
+
+    IntHashSet j = UpdateGraphsUtils.computeJoinSet(graph);
+    assertTrue(
+        "Join set size [" + j.size() + "] is not less than graph size [" + graph.size() + "]",
+        j.size() < graph.size());
+  }
+
   public void testHnswGraphBuilderInitializationFromGraph_withOffsetZero() throws IOException {
     int totalSize = atLeast(100);
     int initializerSize = random().nextInt(5, totalSize);
     int docIdOffset = 0;
     int dim = atLeast(10);
+    int beamWidth = 30;
     long seed = random().nextLong();
 
     KnnVectorValues initializerVectors = vectorValues(initializerSize, dim);
     RandomVectorScorerSupplier initialscorerSupplier = buildScorerSupplier(initializerVectors);
     HnswGraphBuilder initializerBuilder =
-        HnswGraphBuilder.create(initialscorerSupplier, 10, 30, seed);
+        HnswGraphBuilder.create(initialscorerSupplier, 10, beamWidth, seed);
 
     OnHeapHnswGraph initializerGraph = initializerBuilder.build(initializerVectors.size());
     KnnVectorValues finalVectorValues =
@@ -597,12 +638,15 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     // another graph to do the assertion
     OnHeapHnswGraph graphAfterInit =
         InitializedHnswGraphBuilder.initGraph(
-            10, initializerGraph, initializerOrdMap, initializerGraph.size());
+            initializerGraph,
+            initializerOrdMap,
+            initializerGraph.size(),
+            beamWidth,
+            initialscorerSupplier);
 
     HnswGraphBuilder finalBuilder =
         InitializedHnswGraphBuilder.fromGraph(
             finalscorerSupplier,
-            10,
             30,
             seed,
             initializerGraph,
@@ -640,7 +684,6 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     HnswGraphBuilder finalBuilder =
         InitializedHnswGraphBuilder.fromGraph(
             finalscorerSupplier,
-            10,
             30,
             seed,
             initializerGraph,
@@ -755,6 +798,58 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     assertTrue(nn.visitedCount() <= visitedLimit);
   }
 
+  public void testFindAll() throws IOException {
+    int numVectors = 10;
+    KnnVectorValues vectorValues = circularVectorValues(numVectors);
+    T target = getTargetVector();
+    float minScore = Float.POSITIVE_INFINITY;
+    for (int i = 0; i < numVectors; i++) {
+      float score =
+          switch (getVectorEncoding()) {
+            case BYTE ->
+                similarityFunction.compare(
+                    ((ByteVectorValues) vectorValues).vectorValue(i), (byte[]) target);
+            case FLOAT32 ->
+                similarityFunction.compare(
+                    ((FloatVectorValues) vectorValues).vectorValue(i), (float[]) target);
+          };
+      minScore = Math.min(minScore, score);
+    }
+    RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectorValues);
+    HnswGraphBuilder builder = HnswGraphBuilder.create(scorerSupplier, 16, 100, random().nextInt());
+    OnHeapHnswGraph hnsw = builder.build(numVectors);
+    float finalMinScore = Math.nextDown(minScore);
+
+    AbstractKnnCollector collector =
+        new AbstractKnnCollector(numVectors, Long.MAX_VALUE, KnnSearchStrategy.Hnsw.DEFAULT) {
+          int collected;
+
+          @Override
+          public boolean collect(int docId, float similarity) {
+            collected++;
+            return true;
+          }
+
+          @Override
+          public int numCollected() {
+            return collected;
+          }
+
+          @Override
+          public float minCompetitiveSimilarity() {
+            return finalMinScore;
+          }
+
+          @Override
+          public TopDocs topDocs() {
+            return null;
+          }
+        };
+    HnswGraphSearcher.search(
+        buildScorer(vectorValues, target), collector, hnsw, new BitSet.MatchAllBits(numVectors));
+    assertEquals(numVectors, collector.numCollected());
+  }
+
   public void testHnswGraphBuilderInvalid() throws IOException {
     RandomVectorScorerSupplier scorerSupplier = buildScorerSupplier(vectorValues(1, 1));
     // M must be > 0
@@ -765,6 +860,8 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
         IllegalArgumentException.class, () -> HnswGraphBuilder.create(scorerSupplier, 10, 0, 0));
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testRamUsageEstimate() throws IOException {
     int size = atLeast(2000);
     int dim = randomIntBetween(100, 1024);
@@ -1034,7 +1131,7 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     HnswGraphBuilder.randSeed = random().nextLong();
     HnswConcurrentMergeBuilder builder =
         new HnswConcurrentMergeBuilder(
-            taskExecutor, 4, scorerSupplier, 10, 30, new OnHeapHnswGraph(10, size), null);
+            taskExecutor, 4, scorerSupplier, 30, new OnHeapHnswGraph(10, size), null);
     builder.setBatchSize(100);
     builder.build(size);
     exec.shutdownNow();
@@ -1382,6 +1479,16 @@ abstract class HnswGraphTestCase<T> extends LuceneTestCase {
     @Override
     public int entryNode() throws IOException {
       return delegate.entryNode();
+    }
+
+    @Override
+    public int neighborCount() {
+      return delegate.neighborCount();
+    }
+
+    @Override
+    public int maxConn() {
+      return delegate.maxConn();
     }
 
     @Override

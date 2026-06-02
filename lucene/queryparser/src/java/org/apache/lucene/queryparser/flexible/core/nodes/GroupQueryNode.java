@@ -61,9 +61,7 @@ public class GroupQueryNode extends QueryNodeImpl {
 
   @Override
   public QueryNode cloneTree() throws CloneNotSupportedException {
-    GroupQueryNode clone = (GroupQueryNode) super.cloneTree();
-
-    return clone;
+    return super.cloneTree();
   }
 
   public void setChild(QueryNode child) {

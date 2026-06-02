@@ -60,9 +60,7 @@ public class TestFilterCodecReader extends LuceneTestCase {
             "getReturnType() difference",
             superClassMethod.getReturnType(),
             subClassMethod.getReturnType());
-      } catch (
-          @SuppressWarnings("unused")
-          NoSuchMethodException e) {
+      } catch (NoSuchMethodException _) {
         fail(subClass + " needs to override '" + superClassMethod + "'");
       }
     }

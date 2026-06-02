@@ -1,0 +1,12 @@
+{
+    "lucene/analysis/kuromoji/src/resources/org/apache/lucene/analysis/ja/dict/CharacterDefinition.dat": "97e11ce1c59b0e41cb8d0e7e99557144d7cb6884",
+    "lucene/analysis/kuromoji/src/resources/org/apache/lucene/analysis/ja/dict/ConnectionCosts.dat": "c8225682b7db4437036c859653b3648af498603b",
+    "lucene/analysis/kuromoji/src/resources/org/apache/lucene/analysis/ja/dict/TokenInfoDictionary$buffer.dat": "b6b0e099e1926fd4a3942fa01326016ba18188e1",
+    "lucene/analysis/kuromoji/src/resources/org/apache/lucene/analysis/ja/dict/TokenInfoDictionary$fst.dat": "e2963129d016a8c072aa12bd21f6a29b0402a952",
+    "lucene/analysis/kuromoji/src/resources/org/apache/lucene/analysis/ja/dict/TokenInfoDictionary$posDict.dat": "5a46a19ca2607546738612c5c65aae3e70d8097d",
+    "lucene/analysis/kuromoji/src/resources/org/apache/lucene/analysis/ja/dict/TokenInfoDictionary$targetMap.dat": "9fd3e49e046fc7f7fd4433c232cebc8e685b2f4d",
+    "lucene/analysis/kuromoji/src/resources/org/apache/lucene/analysis/ja/dict/UnknownDictionary$buffer.dat": "55a6d1a2a5888a65ec9494d7f39bf9c0195d003e",
+    "lucene/analysis/kuromoji/src/resources/org/apache/lucene/analysis/ja/dict/UnknownDictionary$posDict.dat": "f40c190c4d887ae00e89c7540a6fb7f1cbb3b981",
+    "lucene/analysis/kuromoji/src/resources/org/apache/lucene/analysis/ja/dict/UnknownDictionary$targetMap.dat": "7fdbb0cb0cbb58513898a6821d942d22813d5e2e",
+    "property:dictionarySource": "https://s3.amazonaws.com/lucene-testdata/mecab/mecab-ipadic-2.7.0-20070801.tar.gz"
+}

@@ -24,7 +24,7 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FieldsConsumer;
 import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PostingsWriterBase;
-import org.apache.lucene.codecs.lucene90.blocktree.Lucene90BlockTreeTermsWriter;
+import org.apache.lucene.codecs.lucene103.blocktree.Lucene103BlockTreeTermsWriter;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
@@ -83,9 +83,9 @@ import org.apache.lucene.util.fst.Util;
 */
 
 /**
- * This is just like {@link Lucene90BlockTreeTermsWriter}, except it also stores a version per term,
- * and adds a method to its TermsEnum implementation to seekExact only if the version is &gt;= the
- * specified version. The version is added to the terms index to avoid seeking if no term in the
+ * This is just like {@link Lucene103BlockTreeTermsWriter}, except it also stores a version per
+ * term, and adds a method to its TermsEnum implementation to seekExact only if the version is &gt;=
+ * the specified version. The version is added to the terms index to avoid seeking if no term in the
  * block has a high enough version. The term blocks file is .tiv and the terms index extension is
  * .tipv.
  *
@@ -181,14 +181,13 @@ public final class VersionBlockTreeTermsWriter extends FieldsConsumer {
       int minItemsInBlock,
       int maxItemsInBlock)
       throws IOException {
-    Lucene90BlockTreeTermsWriter.validateSettings(minItemsInBlock, maxItemsInBlock);
+    Lucene103BlockTreeTermsWriter.validateSettings(minItemsInBlock, maxItemsInBlock);
     maxDoc = state.segmentInfo.maxDoc();
 
     final String termsFileName =
         IndexFileNames.segmentFileName(
             state.segmentInfo.name, state.segmentSuffix, TERMS_EXTENSION);
     out = state.directory.createOutput(termsFileName, state.context);
-    boolean success = false;
     IndexOutput indexOut = null;
     try {
       fieldInfos = state.fieldInfos;
@@ -216,11 +215,9 @@ public final class VersionBlockTreeTermsWriter extends FieldsConsumer {
       // System.out.println("BTW.init seg=" + state.segmentName);
 
       postingsWriter.init(out, state); // have consumer write its format/header
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.closeWhileHandlingException(out, indexOut);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, out, indexOut);
+      throw t;
     }
     this.indexOut = indexOut;
   }
@@ -888,9 +885,7 @@ public final class VersionBlockTreeTermsWriter extends FieldsConsumer {
     }
     closed = true;
 
-    boolean success = false;
     try {
-
       final long dirStart = out.getFilePointer();
       final long indexDirStart = indexOut.getFilePointer();
 
@@ -915,13 +910,10 @@ public final class VersionBlockTreeTermsWriter extends FieldsConsumer {
       CodecUtil.writeFooter(out);
       writeIndexTrailer(indexOut, indexDirStart);
       CodecUtil.writeFooter(indexOut);
-      success = true;
-    } finally {
-      if (success) {
-        IOUtils.close(out, indexOut, postingsWriter);
-      } else {
-        IOUtils.closeWhileHandlingException(out, indexOut, postingsWriter);
-      }
+      IOUtils.close(out, indexOut, postingsWriter);
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, out, indexOut, postingsWriter);
+      throw t;
     }
   }
 

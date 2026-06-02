@@ -18,8 +18,8 @@ package org.apache.lucene.queries.spans;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -29,7 +29,6 @@ import org.apache.lucene.index.TermStates;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
@@ -46,7 +45,7 @@ public class SpanNearQuery extends SpanQuery implements Cloneable {
   public static class Builder {
     private final boolean ordered;
     private final String field;
-    private final List<SpanQuery> clauses = new LinkedList<>();
+    private final Collection<SpanQuery> clauses = new ArrayList<>();
     private int slop;
 
     /**
@@ -62,7 +61,7 @@ public class SpanNearQuery extends SpanQuery implements Cloneable {
 
     /** Add a new clause */
     public Builder addClause(SpanQuery clause) {
-      if (Objects.equals(clause.getField(), field) == false)
+      if (!Objects.equals(clause.getField(), field))
         throw new IllegalArgumentException(
             "Cannot add clause " + clause + " to SpanNearQuery for field " + field);
       this.clauses.add(clause);
@@ -85,7 +84,7 @@ public class SpanNearQuery extends SpanQuery implements Cloneable {
 
     /** Build the query */
     public SpanNearQuery build() {
-      return new SpanNearQuery(clauses.toArray(new SpanQuery[clauses.size()]), slop, ordered);
+      return new SpanNearQuery(clauses.toArray(SpanQuery[]::new), slop, ordered);
     }
   }
 
@@ -133,7 +132,7 @@ public class SpanNearQuery extends SpanQuery implements Cloneable {
 
   /** Return the clauses whose spans are matched. */
   public SpanQuery[] getClauses() {
-    return clauses.toArray(new SpanQuery[clauses.size()]);
+    return clauses.toArray(SpanQuery[]::new);
   }
 
   /** Return the maximum number of intervening unmatched positions permitted. */
@@ -247,8 +246,8 @@ public class SpanNearQuery extends SpanQuery implements Cloneable {
       if (spans == null) {
         return null;
       }
-      final LeafSimScorer docScorer = getSimScorer(context);
-      final var scorer = new SpanScorer(spans, docScorer);
+      final var scorer =
+          new SpanScorer(spans, getSimScorer(), context.reader().getNormValues(field));
       return new DefaultScorerSupplier(scorer);
     }
   }

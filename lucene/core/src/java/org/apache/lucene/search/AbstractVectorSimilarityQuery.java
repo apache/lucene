@@ -25,51 +25,119 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.QueryTimeout;
 import org.apache.lucene.search.knn.KnnCollectorManager;
-import org.apache.lucene.util.BitSet;
-import org.apache.lucene.util.BitSetIterator;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.Bits;
 
 /**
- * Search for all (approximate) vectors above a similarity threshold.
+ * Search for all (approximate) vectors above a similarity threshold using {@link
+ * VectorSimilarityCollector}.
+ *
+ * <p>This class is package-private by design; callers construct one of the concrete public
+ * subclasses ({@link FloatVectorSimilarityQuery} or {@link ByteVectorSimilarityQuery}), which
+ * inherit shared public API such as {@link #getSearchStrategy()}. This mirrors the visibility
+ * pattern of {@link AbstractKnnVectorQuery}.
  *
  * @lucene.experimental
  */
 abstract class AbstractVectorSimilarityQuery extends Query {
+  /**
+   * Default search strategy used by similarity-threshold vector queries. Uses {@code
+   * filteredSearchThreshold == 0}, which preserves this query's own filter-handling logic by never
+   * delegating to HNSW's built-in filtered-search short-circuit.
+   */
+  static final KnnSearchStrategy.Hnsw DEFAULT_STRATEGY = new KnnSearchStrategy.Hnsw(0);
+
+  static final float DECAY_MAX_APPROXIMATION = 0f;
+  static final float DEFAULT_DECAY = 0.5f;
+  static final float DECAY_MAX_QUALITY = 1f;
+
   protected final String field;
-  protected final float traversalSimilarity, resultSimilarity;
+  protected final float resultSimilarity;
+  protected final float decay;
   protected final Query filter;
+  protected final KnnSearchStrategy searchStrategy;
 
   /**
    * Search for all (approximate) vectors above a similarity threshold using {@link
-   * VectorSimilarityCollector}. If a filter is applied, it traverses as many nodes as the cost of
-   * the filter, and then falls back to exact search if results are incomplete.
+   * VectorSimilarityCollector}, with the {@linkplain #DEFAULT_STRATEGY default search strategy}. If
+   * a filter is applied, it traverses as many nodes as the cost of the filter, and then falls back
+   * to exact search if results are incomplete.
    *
    * @param field a field that has been indexed as a vector field.
-   * @param traversalSimilarity (lower) similarity score for graph traversal.
-   * @param resultSimilarity (higher) similarity score for result collection.
+   * @param resultSimilarity similarity score for result collection.
+   * @param decay decay factor for graph traversal buffer.
    * @param filter a filter applied before the vector search.
    */
-  AbstractVectorSimilarityQuery(
-      String field, float traversalSimilarity, float resultSimilarity, Query filter) {
-    if (traversalSimilarity > resultSimilarity) {
-      throw new IllegalArgumentException("traversalSimilarity should be <= resultSimilarity");
-    }
-    this.field = Objects.requireNonNull(field, "field");
-    this.traversalSimilarity = traversalSimilarity;
-    this.resultSimilarity = resultSimilarity;
-    this.filter = filter;
+  AbstractVectorSimilarityQuery(String field, float resultSimilarity, float decay, Query filter) {
+    this(field, resultSimilarity, decay, filter, DEFAULT_STRATEGY);
   }
 
+  /**
+   * Search for all (approximate) vectors above a similarity threshold using {@link
+   * VectorSimilarityCollector}, with a caller-supplied {@link KnnSearchStrategy}. If a filter is
+   * applied, it traverses as many nodes as the cost of the filter, and then falls back to exact
+   * search if results are incomplete.
+   *
+   * @param field a field that has been indexed as a vector field.
+   * @param resultSimilarity similarity score for result collection.
+   * @param decay decay factor for graph traversal buffer.
+   * @param filter a filter applied before the vector search.
+   * @param searchStrategy the {@link KnnSearchStrategy} to use during graph search. If {@code
+   *     null}, the {@linkplain #DEFAULT_STRATEGY default strategy} is used. The underlying format
+   *     may not support all strategies and is free to ignore the requested strategy.
+   */
+  AbstractVectorSimilarityQuery(
+      String field,
+      float resultSimilarity,
+      float decay,
+      Query filter,
+      KnnSearchStrategy searchStrategy) {
+    if (Float.isNaN(resultSimilarity)) {
+      throw new IllegalArgumentException(
+          "resultSimilarity must have a valid value; got " + resultSimilarity);
+    }
+
+    if (Float.isNaN(decay)) {
+      throw new IllegalArgumentException("decay must have a valid value; got " + decay);
+    } else if (decay < DECAY_MAX_APPROXIMATION || decay > DECAY_MAX_QUALITY) {
+      throw new IllegalArgumentException(
+          "decay must lie in range [DECAY_MAX_APPROXIMATION = 0, DECAY_MAX_QUALITY = 1]; got "
+              + decay);
+    }
+
+    this.field = Objects.requireNonNull(field, "field");
+    this.resultSimilarity = resultSimilarity;
+    this.decay = decay;
+    this.filter = filter;
+    this.searchStrategy = searchStrategy == null ? DEFAULT_STRATEGY : searchStrategy;
+  }
+
+  /**
+   * Returns a {@link KnnCollectorManager} that always builds a {@link VectorSimilarityCollector}
+   * configured with this query's {@link #searchStrategy}.
+   *
+   * <p>The manager's {@code strategy} and {@code LeafReaderContext} parameters are intentionally
+   * ignored: top-k queries may override the strategy on a per-search basis, but similarity-
+   * threshold queries pin the strategy to the query's own value at construction time so that {@link
+   * #equals} / {@link #getSearchStrategy()} remain a faithful description of search behavior.
+   */
   protected KnnCollectorManager getKnnCollectorManager() {
-    return (visitedLimit, context) ->
-        new VectorSimilarityCollector(traversalSimilarity, resultSimilarity, visitedLimit);
+    return (visitLimit, _, _) ->
+        new VectorSimilarityCollector(resultSimilarity, decay, visitLimit, searchStrategy);
+  }
+
+  /**
+   * @return the {@link KnnSearchStrategy} used during graph search.
+   */
+  public KnnSearchStrategy getSearchStrategy() {
+    return searchStrategy;
   }
 
   abstract VectorScorer createVectorScorer(LeafReaderContext context) throws IOException;
 
   protected abstract TopDocs approximateSearch(
       LeafReaderContext context,
-      Bits acceptDocs,
+      AcceptDocs acceptDocs,
       int visitLimit,
       KnnCollectorManager knnCollectorManager)
       throws IOException;
@@ -121,38 +189,47 @@ abstract class AbstractVectorSimilarityQuery extends Query {
 
         // If there is no filter
         if (filterWeight == null) {
-          // Return exhaustive results
+          if (decay == DECAY_MAX_QUALITY) {
+            // With DECAY_MAX_QUALITY, the intent is to find all vectors above
+            // resultSimilarity. The approximate graph search may miss nodes,
+            // so use exact search to guarantee completeness.
+            AcceptDocs acceptDocs = AcceptDocs.fromLiveDocs(liveDocs, leafReader.maxDoc());
+            return VectorSimilarityScorerSupplier.fromAcceptDocs(
+                boost, createVectorScorer(context), acceptDocs.iterator(), resultSimilarity);
+          }
+          // Return results via approximate graph search
           TopDocs results =
               approximateSearch(
-                  context, liveDocs, Integer.MAX_VALUE, timeLimitingKnnCollectorManager);
+                  context,
+                  AcceptDocs.fromLiveDocs(liveDocs, leafReader.maxDoc()),
+                  Integer.MAX_VALUE,
+                  timeLimitingKnnCollectorManager);
           return VectorSimilarityScorerSupplier.fromScoreDocs(boost, results.scoreDocs);
         } else {
-          Scorer scorer = filterWeight.scorer(context);
-          if (scorer == null) {
-            // If the filter does not match any documents
-            return null;
-          }
+          AcceptDocs acceptDocs =
+              AcceptDocs.fromIteratorSupplier(
+                  () -> {
+                    Scorer scorer = filterWeight.scorer(context);
+                    if (scorer == null) {
+                      return DocIdSetIterator.empty();
+                    } else {
+                      return scorer.iterator();
+                    }
+                  },
+                  liveDocs,
+                  leafReader.maxDoc());
 
-          BitSet acceptDocs;
-          if (liveDocs == null && scorer.iterator() instanceof BitSetIterator bitSetIterator) {
-            // If there are no deletions, and matching docs are already cached
-            acceptDocs = bitSetIterator.getBitSet();
-          } else {
-            // Else collect all matching docs
-            FilteredDocIdSetIterator filtered =
-                new FilteredDocIdSetIterator(scorer.iterator()) {
-                  @Override
-                  protected boolean match(int doc) {
-                    return liveDocs == null || liveDocs.get(doc);
-                  }
-                };
-            acceptDocs = BitSet.of(filtered, leafReader.maxDoc());
-          }
-
-          int cardinality = acceptDocs.cardinality();
+          int cardinality = acceptDocs.cost();
           if (cardinality == 0) {
             // If there are no live matching docs
             return null;
+          }
+
+          if (decay == DECAY_MAX_QUALITY) {
+            // With DECAY_MAX_QUALITY, skip approximate search and go straight
+            // to exact search over the filtered docs.
+            return VectorSimilarityScorerSupplier.fromAcceptDocs(
+                boost, createVectorScorer(context), acceptDocs.iterator(), resultSimilarity);
           }
 
           // Perform an approximate search
@@ -167,10 +244,7 @@ abstract class AbstractVectorSimilarityQuery extends Query {
           } else {
             // Return a lazy-loading iterator
             return VectorSimilarityScorerSupplier.fromAcceptDocs(
-                boost,
-                createVectorScorer(context),
-                new BitSetIterator(acceptDocs, cardinality),
-                resultSimilarity);
+                boost, createVectorScorer(context), acceptDocs.iterator(), resultSimilarity);
           }
         }
       }
@@ -193,17 +267,16 @@ abstract class AbstractVectorSimilarityQuery extends Query {
   public boolean equals(Object o) {
     return sameClassAs(o)
         && Objects.equals(field, ((AbstractVectorSimilarityQuery) o).field)
-        && Float.compare(
-                ((AbstractVectorSimilarityQuery) o).traversalSimilarity, traversalSimilarity)
-            == 0
         && Float.compare(((AbstractVectorSimilarityQuery) o).resultSimilarity, resultSimilarity)
             == 0
-        && Objects.equals(filter, ((AbstractVectorSimilarityQuery) o).filter);
+        && Float.compare(((AbstractVectorSimilarityQuery) o).decay, decay) == 0
+        && Objects.equals(filter, ((AbstractVectorSimilarityQuery) o).filter)
+        && Objects.equals(searchStrategy, ((AbstractVectorSimilarityQuery) o).searchStrategy);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(field, traversalSimilarity, resultSimilarity, filter);
+    return Objects.hash(field, resultSimilarity, decay, filter, searchStrategy);
   }
 
   private static class VectorSimilarityScorerSupplier extends ScorerSupplier {

@@ -20,7 +20,11 @@ package org.apache.lucene.codecs.hnsw;
 import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
+import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
+import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.KnnVectorValues;
+import org.apache.lucene.index.VectorEncoding;
 
 /**
  * Vectors' writer for a field
@@ -33,6 +37,25 @@ public abstract class FlatFieldVectorsWriter<T> extends KnnFieldVectorsWriter<T>
    * @return a list of vectors to be written
    */
   public abstract List<T> getVectors();
+
+  /**
+   * Returns a {@link KnnVectorValues} view over the vectors to be written.
+   *
+   * <p>This default implementation uses {@link #getVectors()} and wraps them via {@link
+   * FloatVectorValues#fromFloats} / {@link ByteVectorValues#fromBytes}. Subclasses backed by
+   * alternative storage may override to return a richer view (e.g. one that exposes capability
+   * information to scorers, or avoids heap materialization).
+   *
+   * @param encoding the vector encoding/element type
+   * @param dim the field's declared vector dimension
+   */
+  @SuppressWarnings("unchecked")
+  public KnnVectorValues asKnnVectorValues(VectorEncoding encoding, int dim) throws IOException {
+    return switch (encoding) {
+      case FLOAT32 -> FloatVectorValues.fromFloats((List<float[]>) getVectors(), dim);
+      case BYTE -> ByteVectorValues.fromBytes((List<byte[]>) getVectors(), dim);
+    };
+  }
 
   /**
    * @return the docsWithFieldSet for the field writer

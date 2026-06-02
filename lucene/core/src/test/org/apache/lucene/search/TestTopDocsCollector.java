@@ -151,7 +151,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
   private IndexReader reader;
 
   private TopDocsCollector<ScoreDoc> doSearch(int numResults) throws IOException {
-    Query q = new MatchAllDocsQuery();
+    Query q = MatchAllDocsQuery.INSTANCE;
     IndexSearcher searcher = newSearcher(reader);
     return searcher.search(q, new MyTopDocsCollectorMananger(numResults));
   }
@@ -160,8 +160,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
       int numResults, int thresHold, Query q, IndexReader indexReader) throws IOException {
     IndexSearcher searcher = newSearcher(indexReader, true, true, false);
     TopScoreDocCollectorManager collectorManager =
-        new TopScoreDocCollectorManager(
-            numResults, null, thresHold, searcher.getSlices().length > 1);
+        new TopScoreDocCollectorManager(numResults, null, thresHold);
     return searcher.search(q, collectorManager);
   }
 
@@ -169,8 +168,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
       int numResults, int threshold, Query q, IndexReader indexReader) throws IOException {
     IndexSearcher searcher = newSearcher(indexReader, true, true, true);
     TopScoreDocCollectorManager collectorManager =
-        new TopScoreDocCollectorManager(
-            numResults, null, threshold, searcher.getSlices().length > 1);
+        new TopScoreDocCollectorManager(numResults, null, threshold);
     return searcher.search(q, collectorManager);
   }
 
@@ -323,7 +321,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
     IndexWriter w =
         new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE));
     Document doc = new Document();
-    w.addDocuments(Arrays.asList(doc, doc, doc, doc));
+    w.addDocuments(Arrays.asList(doc, doc, doc, doc, doc));
     w.flush();
     w.addDocuments(Arrays.asList(doc, doc));
     w.flush();
@@ -380,7 +378,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
   }
 
   public void testSharedCountCollectorManager() throws Exception {
-    Query q = new MatchAllDocsQuery();
+    Query q = MatchAllDocsQuery.INSTANCE;
     Directory dir = newDirectory();
     IndexWriter w =
         new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE));
@@ -434,7 +432,7 @@ public class TestTopDocsCollector extends LuceneTestCase {
       leafCollector.setScorer(scorer);
 
       scorer.score = 3;
-      leafCollector.collect(1);
+      leafCollector.collect(0);
 
       scorer.score = 4;
       leafCollector.collect(1);
@@ -529,37 +527,35 @@ public class TestTopDocsCollector extends LuceneTestCase {
 
     scorer.score = 2;
     leafCollector.collect(1);
-    assertEquals(2f, MaxScoreAccumulator.toScore(minValueChecker.getRaw()), 0f);
-    assertEquals(Math.nextUp(2f), scorer.minCompetitiveScore, 0f);
-    assertNull(scorer2.minCompetitiveScore);
+    assertEquals(Long.MIN_VALUE, minValueChecker.getRaw());
+    assertNull(scorer.minCompetitiveScore);
 
     scorer2.score = 9;
     leafCollector2.collect(1);
-    assertEquals(6f, MaxScoreAccumulator.toScore(minValueChecker.getRaw()), 0f);
-    assertEquals(Math.nextUp(2f), scorer.minCompetitiveScore, 0f);
-    assertEquals(Math.nextUp(6f), scorer2.minCompetitiveScore, 0f);
+    assertEquals(Long.MIN_VALUE, minValueChecker.getRaw());
+    assertNull(scorer2.minCompetitiveScore);
 
     scorer2.score = 7;
     leafCollector2.collect(2);
-    assertEquals(MaxScoreAccumulator.toScore(minValueChecker.getRaw()), 7f, 0f);
-    assertEquals(Math.nextUp(2f), scorer.minCompetitiveScore, 0f);
+    assertEquals(DocScoreEncoder.toScore(minValueChecker.getRaw()), 7f, 0f);
+    assertNull(scorer.minCompetitiveScore);
     assertEquals(Math.nextUp(7f), scorer2.minCompetitiveScore, 0f);
 
     scorer2.score = 1;
     leafCollector2.collect(3);
-    assertEquals(MaxScoreAccumulator.toScore(minValueChecker.getRaw()), 7f, 0f);
-    assertEquals(Math.nextUp(2f), scorer.minCompetitiveScore, 0f);
+    assertEquals(DocScoreEncoder.toScore(minValueChecker.getRaw()), 7f, 0f);
+    assertNull(scorer.minCompetitiveScore);
     assertEquals(Math.nextUp(7f), scorer2.minCompetitiveScore, 0f);
 
     scorer.score = 10;
     leafCollector.collect(2);
-    assertEquals(MaxScoreAccumulator.toScore(minValueChecker.getRaw()), 7f, 0f);
+    assertEquals(DocScoreEncoder.toScore(minValueChecker.getRaw()), 7f, 0f);
     assertEquals(7f, scorer.minCompetitiveScore, 0f);
     assertEquals(Math.nextUp(7f), scorer2.minCompetitiveScore, 0f);
 
     scorer.score = 11;
     leafCollector.collect(3);
-    assertEquals(MaxScoreAccumulator.toScore(minValueChecker.getRaw()), 10, 0f);
+    assertEquals(DocScoreEncoder.toScore(minValueChecker.getRaw()), 10, 0f);
     assertEquals(Math.nextUp(10f), scorer.minCompetitiveScore, 0f);
     assertEquals(Math.nextUp(7f), scorer2.minCompetitiveScore, 0f);
 
@@ -571,19 +567,19 @@ public class TestTopDocsCollector extends LuceneTestCase {
 
     scorer3.score = 1f;
     leafCollector3.collect(0);
-    assertEquals(10f, MaxScoreAccumulator.toScore(minValueChecker.getRaw()), 0f);
+    assertEquals(10f, DocScoreEncoder.toScore(minValueChecker.getRaw()), 0f);
     assertEquals(Math.nextUp(10f), scorer3.minCompetitiveScore, 0f);
 
     scorer.score = 11;
     leafCollector.collect(4);
-    assertEquals(11f, MaxScoreAccumulator.toScore(minValueChecker.getRaw()), 0f);
+    assertEquals(11f, DocScoreEncoder.toScore(minValueChecker.getRaw()), 0f);
     assertEquals(Math.nextUp(11f), scorer.minCompetitiveScore, 0f);
     assertEquals(Math.nextUp(7f), scorer2.minCompetitiveScore, 0f);
     assertEquals(Math.nextUp(10f), scorer3.minCompetitiveScore, 0f);
 
     scorer3.score = 2f;
     leafCollector3.collect(1);
-    assertEquals(MaxScoreAccumulator.toScore(minValueChecker.getRaw()), 11f, 0f);
+    assertEquals(DocScoreEncoder.toScore(minValueChecker.getRaw()), 11f, 0f);
     assertEquals(Math.nextUp(11f), scorer.minCompetitiveScore, 0f);
     assertEquals(Math.nextUp(7f), scorer2.minCompetitiveScore, 0f);
     assertEquals(Math.nextUp(11f), scorer3.minCompetitiveScore, 0f);

@@ -17,6 +17,9 @@
 package org.apache.lucene.codecs.lucene90;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.CompoundDirectory;
 import org.apache.lucene.codecs.CompoundFormat;
@@ -27,7 +30,6 @@ import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.PriorityQueue;
 
 /**
  * Lucene 9.0 compound file format
@@ -62,7 +64,7 @@ import org.apache.lucene.util.PriorityQueue;
  *       that follows has that many entries.
  *   <li>Each directory entry contains a long pointer to the start of this file's data section, the
  *       files length, and a String with that file's name. The start of file's data section is
- *       aligned to 8 bytes to not introduce additional unaligned accesses with mmap.
+ *       aligned to 64 bytes to not introduce additional unaligned accesses with mmap.
  * </ul>
  */
 public final class Lucene90CompoundFormat extends CompoundFormat {
@@ -77,6 +79,9 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
   static final String ENTRY_CODEC = "Lucene90CompoundEntries";
   static final int VERSION_START = 0;
   static final int VERSION_CURRENT = VERSION_START;
+
+  // Align to LCM of all file alignments in code, which guarantees that they hold individually.
+  private static final int ALIGNMENT_BYTES = 64;
 
   /** Sole constructor. */
   public Lucene90CompoundFormat() {}
@@ -105,32 +110,21 @@ public final class Lucene90CompoundFormat extends CompoundFormat {
 
   private record SizedFile(String name, long length) {}
 
-  private static class SizedFileQueue extends PriorityQueue<SizedFile> {
-    SizedFileQueue(int maxSize) {
-      super(maxSize);
-    }
-
-    @Override
-    protected boolean lessThan(SizedFile sf1, SizedFile sf2) {
-      return sf1.length < sf2.length;
-    }
-  }
-
   private void writeCompoundFile(
       IndexOutput entries, IndexOutput data, Directory dir, SegmentInfo si) throws IOException {
     // write number of files
     int numFiles = si.files().size();
     entries.writeVInt(numFiles);
     // first put files in ascending size order so small files fit more likely into one page
-    SizedFileQueue pq = new SizedFileQueue(numFiles);
+    List<SizedFile> files = new ArrayList<>(numFiles);
     for (String filename : si.files()) {
-      pq.add(new SizedFile(filename, dir.fileLength(filename)));
+      files.add(new SizedFile(filename, dir.fileLength(filename)));
     }
-    while (pq.size() > 0) {
-      SizedFile sizedFile = pq.pop();
+    files.sort(Comparator.comparingLong(SizedFile::length));
+    for (SizedFile sizedFile : files) {
       String file = sizedFile.name;
       // align file start offset
-      long startOffset = data.alignFilePointer(Long.BYTES);
+      long startOffset = data.alignFilePointer(ALIGNMENT_BYTES);
       // write bytes for file
       try (ChecksumIndexInput in = dir.openChecksumInput(file)) {
 

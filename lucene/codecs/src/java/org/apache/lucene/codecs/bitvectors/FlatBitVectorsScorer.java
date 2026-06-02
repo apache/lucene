@@ -24,8 +24,10 @@ import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.VectorUtil;
+import org.apache.lucene.util.hnsw.HasKnnVectorValues;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 
 /** A bit vector scorer for scoring byte vectors. */
 public class FlatBitVectorsScorer implements FlatVectorsScorer {
@@ -33,7 +35,6 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
   public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues)
       throws IOException {
-    assert vectorValues instanceof ByteVectorValues;
     if (vectorValues instanceof ByteVectorValues byteVectorValues) {
       return new BitRandomVectorScorerSupplier(byteVectorValues);
     }
@@ -51,14 +52,13 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
   public RandomVectorScorer getRandomVectorScorer(
       VectorSimilarityFunction similarityFunction, KnnVectorValues vectorValues, byte[] target)
       throws IOException {
-    assert vectorValues instanceof ByteVectorValues;
     if (vectorValues instanceof ByteVectorValues byteVectorValues) {
       return new BitRandomVectorScorer(byteVectorValues, target);
     }
     throw new IllegalArgumentException("vectorValues must be an instance of ByteVectorValues");
   }
 
-  static class BitRandomVectorScorer implements RandomVectorScorer {
+  static class BitRandomVectorScorer implements UpdateableRandomVectorScorer, HasKnnVectorValues {
     private final ByteVectorValues vectorValues;
     private final int bitDimensions;
     private final byte[] query;
@@ -81,6 +81,11 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
     }
 
     @Override
+    public void setScoringOrdinal(int node) throws IOException {
+      System.arraycopy(vectorValues.vectorValue(node), 0, query, 0, query.length);
+    }
+
+    @Override
     public int ordToDoc(int ord) {
       return vectorValues.ordToDoc(ord);
     }
@@ -89,28 +94,31 @@ public class FlatBitVectorsScorer implements FlatVectorsScorer {
     public Bits getAcceptOrds(Bits acceptDocs) {
       return vectorValues.getAcceptOrds(acceptDocs);
     }
+
+    @Override
+    public KnnVectorValues values() {
+      return vectorValues;
+    }
   }
 
   static class BitRandomVectorScorerSupplier implements RandomVectorScorerSupplier {
     protected final ByteVectorValues vectorValues;
-    protected final ByteVectorValues vectorValues1;
-    protected final ByteVectorValues vectorValues2;
+    protected final ByteVectorValues targetVectors;
 
     public BitRandomVectorScorerSupplier(ByteVectorValues vectorValues) throws IOException {
       this.vectorValues = vectorValues;
-      this.vectorValues1 = vectorValues.copy();
-      this.vectorValues2 = vectorValues.copy();
+      this.targetVectors = vectorValues.copy();
     }
 
     @Override
-    public RandomVectorScorer scorer(int ord) throws IOException {
-      byte[] query = vectorValues1.vectorValue(ord);
-      return new BitRandomVectorScorer(vectorValues2, query);
+    public UpdateableRandomVectorScorer scorer() throws IOException {
+      byte[] query = new byte[vectorValues.dimension()];
+      return new BitRandomVectorScorer(vectorValues, query);
     }
 
     @Override
     public RandomVectorScorerSupplier copy() throws IOException {
-      return new BitRandomVectorScorerSupplier(vectorValues.copy());
+      return new BitRandomVectorScorerSupplier(vectorValues);
     }
   }
 

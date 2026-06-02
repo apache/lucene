@@ -125,9 +125,9 @@ public class BooleanQuery2ModifierNodeProcessor implements QueryNodeProcessor {
     QueryNode parent = node.getParent();
     if (node instanceof BooleanQueryNode) {
       if (parent instanceof BooleanQueryNode) {
-        node.setTag(TAG_REMOVE, Boolean.TRUE); // no precedence
+        node.setTag(TAG_REMOVE, true); // no precedence
       } else {
-        node.setTag(TAG_BOOLEAN_ROOT, Boolean.TRUE);
+        node.setTag(TAG_BOOLEAN_ROOT, true);
       }
     } else if (parent instanceof BooleanQueryNode) {
       if ((parent instanceof AndQueryNode) || (usingAnd && isDefaultBooleanQueryNode(parent))) {
@@ -144,11 +144,10 @@ public class BooleanQuery2ModifierNodeProcessor implements QueryNodeProcessor {
   private QueryNode applyModifier(QueryNode node, Modifier mod) {
 
     // check if modifier is not already defined and is default
-    if (!(node instanceof ModifierQueryNode)) {
+    if (!(node instanceof ModifierQueryNode modNode)) {
       return new BooleanModifierNode(node, mod);
 
     } else {
-      ModifierQueryNode modNode = (ModifierQueryNode) node;
 
       if (modNode.getModifier() == Modifier.MOD_NONE) {
         return new ModifierQueryNode(modNode.getChild(), mod);
@@ -159,8 +158,7 @@ public class BooleanQuery2ModifierNodeProcessor implements QueryNodeProcessor {
   }
 
   protected void tagModifierButDoNotOverride(QueryNode node, Modifier mod) {
-    if (node instanceof ModifierQueryNode) {
-      ModifierQueryNode modNode = (ModifierQueryNode) node;
+    if (node instanceof ModifierQueryNode modNode) {
       if (modNode.getModifier() == Modifier.MOD_NONE) {
         node.setTag(TAG_MODIFIER, mod);
       }

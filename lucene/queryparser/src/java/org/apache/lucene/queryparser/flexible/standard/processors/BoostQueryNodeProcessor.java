@@ -41,10 +41,9 @@ public class BoostQueryNodeProcessor extends QueryNodeProcessorImpl {
   @Override
   protected QueryNode postProcessNode(QueryNode node) throws QueryNodeException {
 
-    if (node instanceof FieldableNode
+    if (node instanceof FieldableNode fieldNode
         && (node.getParent() == null || !(node.getParent() instanceof FieldableNode))) {
 
-      FieldableNode fieldNode = (FieldableNode) node;
       QueryConfigHandler config = getQueryConfigHandler();
 
       if (config != null) {

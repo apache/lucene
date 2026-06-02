@@ -112,20 +112,15 @@ public class PersistentSnapshotDeletionPolicy extends SnapshotDeletionPolicy {
   @Override
   public synchronized IndexCommit snapshot() throws IOException {
     IndexCommit ic = super.snapshot();
-    boolean success = false;
     try {
       persist();
-      success = true;
-    } finally {
-      if (!success) {
-        try {
-          super.release(ic);
-        } catch (
-            @SuppressWarnings("unused")
-            Exception e) {
-          // Suppress so we keep throwing original exception
-        }
+    } catch (Throwable t) {
+      try {
+        super.release(ic);
+      } catch (Exception e) {
+        t.addSuppressed(e);
       }
+      throw t;
     }
     return ic;
   }
@@ -139,20 +134,15 @@ public class PersistentSnapshotDeletionPolicy extends SnapshotDeletionPolicy {
   @Override
   public synchronized void release(IndexCommit commit) throws IOException {
     super.release(commit);
-    boolean success = false;
     try {
       persist();
-      success = true;
-    } finally {
-      if (!success) {
-        try {
-          incRef(commit);
-        } catch (
-            @SuppressWarnings("unused")
-            Exception e) {
-          // Suppress so we keep throwing original exception
-        }
+    } catch (Throwable t) {
+      try {
+        incRef(commit);
+      } catch (Exception e) {
+        t.addSuppressed(e);
       }
+      throw t;
     }
   }
 
@@ -170,7 +160,6 @@ public class PersistentSnapshotDeletionPolicy extends SnapshotDeletionPolicy {
 
   private synchronized void persist() throws IOException {
     String fileName = SNAPSHOTS_PREFIX + nextWriteGen;
-    boolean success = false;
     try (IndexOutput out = dir.createOutput(fileName, IOContext.DEFAULT)) {
       CodecUtil.writeHeader(out, CODEC_NAME, VERSION_CURRENT);
       out.writeVInt(refCounts.size());
@@ -178,11 +167,9 @@ public class PersistentSnapshotDeletionPolicy extends SnapshotDeletionPolicy {
         out.writeVLong(ent.getKey());
         out.writeVInt(ent.getValue());
       }
-      success = true;
-    } finally {
-      if (!success) {
-        IOUtils.deleteFilesIgnoringExceptions(dir, fileName);
-      }
+    } catch (Throwable t) {
+      IOUtils.deleteFilesSuppressingExceptions(t, dir, fileName);
+      throw t;
     }
 
     dir.sync(Collections.singletonList(fileName));

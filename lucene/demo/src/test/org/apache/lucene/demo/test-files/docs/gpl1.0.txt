@@ -1,13 +1,13 @@
-		    GNU GENERAL PUBLIC LICENSE
-		     Version 1, February 1989
+        GNU GENERAL PUBLIC LICENSE
+         Version 1, February 1989
 
  Copyright (C) 1989 Free Software Foundation, Inc.
-	            51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+              51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
  Everyone is permitted to copy and distribute verbatim copies
  of this license document, but changing it is not allowed.
 
-			    Preamble
+          Preamble
 
   The license agreements of most software companies try to keep users
 at the mercy of those companies.  By contrast, our General Public
@@ -47,8 +47,8 @@ authors' reputations.
 
   The precise terms and conditions for copying, distribution and
 modification follow.
-
-		    GNU GENERAL PUBLIC LICENSE
+
+        GNU GENERAL PUBLIC LICENSE
    TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
 
   0. This License Agreement applies to any program or other work which
@@ -98,7 +98,7 @@ it, and copy and distribute such modifications under the terms of Paragraph
 Mere aggregation of another independent work with the Program (or its
 derivative) on a volume of a storage or distribution medium does not bring
 the other work under the scope of these terms.
-
+
   3. You may copy and distribute the Program (or a portion or derivative of
 it, under Paragraph 2) in object code or executable form under the terms of
 Paragraphs 1 and 2 above provided that you also do one of the following:
@@ -144,7 +144,7 @@ Program), the recipient automatically receives a license from the original
 licensor to copy, distribute or modify the Program subject to these
 terms and conditions.  You may not impose any further restrictions on the
 recipients' exercise of the rights granted herein.
-
+
   7. The Free Software Foundation may publish revised and/or new versions
 of the General Public License from time to time.  Such new versions will
 be similar in spirit to the present version, but may differ in detail to
@@ -166,7 +166,7 @@ make exceptions for this.  Our decision will be guided by the two goals
 of preserving the free status of all derivatives of our free software and
 of promoting the sharing and reuse of software generally.
 
-			    NO WARRANTY
+          NO WARRANTY
 
   9. BECAUSE THE PROGRAM IS LICENSED FREE OF CHARGE, THERE IS NO WARRANTY
 FOR THE PROGRAM, TO THE EXTENT PERMITTED BY APPLICABLE LAW.  EXCEPT WHEN
@@ -188,9 +188,9 @@ YOU OR THIRD PARTIES OR A FAILURE OF THE PROGRAM TO OPERATE WITH ANY OTHER
 PROGRAMS), EVEN IF SUCH HOLDER OR OTHER PARTY HAS BEEN ADVISED OF THE
 POSSIBILITY OF SUCH DAMAGES.
 
-		     END OF TERMS AND CONDITIONS
-
-	Appendix: How to Apply These Terms to Your New Programs
+         END OF TERMS AND CONDITIONS
+
+  Appendix: How to Apply These Terms to Your New Programs
 
   If you develop a new program, and you want it to be of the greatest
 possible use to humanity, the best way to achieve this is to make it

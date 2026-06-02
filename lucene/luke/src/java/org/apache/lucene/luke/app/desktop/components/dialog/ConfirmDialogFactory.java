@@ -41,6 +41,7 @@ import org.apache.lucene.luke.app.desktop.util.lang.Callable;
 /** Factory of confirm dialog */
 public final class ConfirmDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static ConfirmDialogFactory instance;
 
   private final Preferences prefs;
@@ -103,13 +104,13 @@ public final class ConfirmDialogFactory implements DialogOpener.DialogFactory {
     footer.setOpaque(false);
     JButton okBtn = new JButton(MessageUtils.getLocalizedMessage("button.ok"));
     okBtn.addActionListener(
-        e -> {
+        _ -> {
           callback.call();
           dialog.dispose();
         });
     footer.add(okBtn);
     JButton closeBtn = new JButton(MessageUtils.getLocalizedMessage("button.close"));
-    closeBtn.addActionListener(e -> dialog.dispose());
+    closeBtn.addActionListener(_ -> dialog.dispose());
     footer.add(closeBtn);
     panel.add(footer, BorderLayout.PAGE_END);
 

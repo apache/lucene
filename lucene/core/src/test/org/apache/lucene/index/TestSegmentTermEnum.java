@@ -87,9 +87,7 @@ public class TestSegmentTermEnum extends LuceneTestCase {
     long ordB;
     try {
       ordB = terms.ord();
-    } catch (
-        @SuppressWarnings("unused")
-        UnsupportedOperationException uoe) {
+    } catch (UnsupportedOperationException _) {
       // ok -- codec is not required to support ord
       reader.close();
       return;

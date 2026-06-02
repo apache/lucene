@@ -16,7 +16,7 @@
  */
 package org.apache.lucene.analysis.pt;
 
-import static org.apache.lucene.analysis.util.StemmerUtil.*;
+import static org.apache.lucene.analysis.util.StemmerUtil.endsWith;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -321,7 +321,7 @@ public abstract class RSLPStemmerBase {
           }
         }
       }
-      if (line.endsWith(";")) return rules.toArray(new Rule[rules.size()]);
+      if (line.endsWith(";")) return rules.toArray(Rule[]::new);
     }
     return null;
   }

@@ -197,9 +197,8 @@ public class DrillSideways {
         limit = 1; // the collector does not alow numHits = 0
       }
       final int fTopN = Math.min(topN, limit);
-      final boolean supportsConcurrency = searcher.getSlices().length > 1;
       final TopFieldCollectorManager collectorManager =
-          new TopFieldCollectorManager(sort, fTopN, after, Integer.MAX_VALUE, supportsConcurrency);
+          new TopFieldCollectorManager(sort, fTopN, after, Integer.MAX_VALUE);
       final ConcurrentDrillSidewaysResult<TopFieldDocs> r = search(query, collectorManager);
       TopFieldDocs topDocs = r.collectorResult;
 
@@ -230,9 +229,8 @@ public class DrillSideways {
       limit = 1; // the collector does not alow numHits = 0
     }
     final int fTopN = Math.min(topN, limit);
-    final boolean supportsConcurrency = searcher.getSlices().length > 1;
     final TopScoreDocCollectorManager collectorManager =
-        new TopScoreDocCollectorManager(fTopN, after, Integer.MAX_VALUE, supportsConcurrency);
+        new TopScoreDocCollectorManager(fTopN, after, Integer.MAX_VALUE);
     final ConcurrentDrillSidewaysResult<TopDocs> r = search(query, collectorManager);
     return new DrillSidewaysResult(
         r.facets,
@@ -375,7 +373,7 @@ public class DrillSideways {
     final String[] drillSidewaysDims;
     final FacetsCollector[] drillSidewaysCollectors;
     if (query.getDims().isEmpty() == false) {
-      drillSidewaysDims = query.getDims().keySet().toArray(new String[0]);
+      drillSidewaysDims = query.getDims().keySet().toArray(String[]::new);
       int numDims = query.getDims().size();
       assert drillSidewaysCollectorManagers != null;
       assert drillSidewaysCollectorManagers.size() == numDims;
@@ -458,7 +456,7 @@ public class DrillSideways {
     if (baseQuery == null) {
       // TODO: we could optimize this pure-browse case by
       // making a custom scorer instead:
-      baseQuery = new MatchAllDocsQuery();
+      baseQuery = MatchAllDocsQuery.INSTANCE;
     }
     Query[] drillDownQueries = query.getDrillDownQueries();
 

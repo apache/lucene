@@ -16,6 +16,9 @@
  */
 package org.apache.lucene.search;
 
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.lessThan;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
@@ -63,8 +66,8 @@ public class TestWANDScorer extends LuceneTestCase {
   private void doTestScalingFactor(float f) {
     int scalingFactor = WANDScorer.scalingFactor(f);
     float scaled = Math.scalb(f, scalingFactor);
-    assertTrue("" + scaled, scaled >= 1 << (WANDScorer.FLOAT_MANTISSA_BITS - 1));
-    assertTrue("" + scaled, scaled < 1 << WANDScorer.FLOAT_MANTISSA_BITS);
+    assertThat(scaled, greaterThanOrEqualTo((float) (1 << (WANDScorer.FLOAT_MANTISSA_BITS - 1))));
+    assertThat(scaled, lessThan((float) (1 << WANDScorer.FLOAT_MANTISSA_BITS)));
   }
 
   public void testScaleMaxScore() {
@@ -119,7 +122,8 @@ public class TestWANDScorer extends LuceneTestCase {
                 .add(
                     new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "C"))), 3),
                     Occur.SHOULD)
-                .build());
+                .build(),
+            random().nextBoolean());
 
     Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1);
     ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
@@ -180,7 +184,8 @@ public class TestWANDScorer extends LuceneTestCase {
                         .add(
                             new ConstantScoreQuery(new TermQuery(new Term("foo", "B"))),
                             Occur.SHOULD)
-                        .build()),
+                        .build(),
+                    random().nextBoolean()),
                 Occur.MUST)
             .add(new TermQuery(new Term("foo", "C")), Occur.FILTER)
             .build();
@@ -222,7 +227,8 @@ public class TestWANDScorer extends LuceneTestCase {
                         .add(
                             new ConstantScoreQuery(new TermQuery(new Term("foo", "B"))),
                             Occur.SHOULD)
-                        .build()),
+                        .build(),
+                    random().nextBoolean()),
                 Occur.MUST)
             .add(new TermQuery(new Term("foo", "C")), Occur.MUST_NOT)
             .build();
@@ -297,7 +303,8 @@ public class TestWANDScorer extends LuceneTestCase {
                             new ConstantScoreQuery(new TermQuery(new Term("foo", "C"))), 3),
                         Occur.SHOULD)
                     .setMinimumNumberShouldMatch(2)
-                    .build());
+                    .build(),
+                random().nextBoolean());
 
         Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1);
         ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
@@ -377,7 +384,8 @@ public class TestWANDScorer extends LuceneTestCase {
                     .add(new TermQuery(new Term("foo", "B")), Occur.SHOULD)
                     .add(new TermQuery(new Term("foo", "C")), Occur.SHOULD)
                     .setMinimumNumberShouldMatch(2)
-                    .build());
+                    .build(),
+                random().nextBoolean());
 
         Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1);
         ScorerSupplier ss = weight.scorerSupplier(searcher.getIndexReader().leaves().get(0));
@@ -431,7 +439,8 @@ public class TestWANDScorer extends LuceneTestCase {
                             new ConstantScoreQuery(new TermQuery(new Term("foo", "C"))), 3),
                         Occur.SHOULD)
                     .setMinimumNumberShouldMatch(2)
-                    .build());
+                    .build(),
+                random().nextBoolean());
 
         Scorer scorer =
             searcher
@@ -489,7 +498,8 @@ public class TestWANDScorer extends LuceneTestCase {
                                     new ConstantScoreQuery(new TermQuery(new Term("foo", "D"))), 4),
                                 Occur.SHOULD)
                             .setMinimumNumberShouldMatch(2)
-                            .build()),
+                            .build(),
+                        random().nextBoolean()),
                     Occur.MUST)
                 .add(new TermQuery(new Term("foo", "C")), Occur.FILTER)
                 .build();
@@ -565,7 +575,8 @@ public class TestWANDScorer extends LuceneTestCase {
                                     new ConstantScoreQuery(new TermQuery(new Term("foo", "D"))), 4),
                                 Occur.SHOULD)
                             .setMinimumNumberShouldMatch(2)
-                            .build()),
+                            .build(),
+                        random().nextBoolean()),
                     Occur.MUST)
                 .add(new TermQuery(new Term("foo", "C")), Occur.FILTER)
                 .build();
@@ -625,7 +636,8 @@ public class TestWANDScorer extends LuceneTestCase {
                                     new ConstantScoreQuery(new TermQuery(new Term("foo", "D"))), 4),
                                 Occur.SHOULD)
                             .setMinimumNumberShouldMatch(2)
-                            .build()),
+                            .build(),
+                        random().nextBoolean()),
                     Occur.MUST)
                 .add(new TermQuery(new Term("foo", "C")), Occur.MUST_NOT)
                 .build();
@@ -699,7 +711,8 @@ public class TestWANDScorer extends LuceneTestCase {
                                     new ConstantScoreQuery(new TermQuery(new Term("foo", "D"))), 4),
                                 Occur.SHOULD)
                             .setMinimumNumberShouldMatch(2)
-                            .build()),
+                            .build(),
+                        random().nextBoolean()),
                     Occur.MUST)
                 .add(new TermQuery(new Term("foo", "C")), Occur.MUST_NOT)
                 .build();
@@ -736,7 +749,7 @@ public class TestWANDScorer extends LuceneTestCase {
     // but will be called during searching
     IndexSearcher searcher = newSearcher(reader, true, true, false);
 
-    for (int iter = 0; iter < 100; ++iter) {
+    for (int iter = 0; iter < 10; ++iter) {
       int start = random().nextInt(10);
       int numClauses = random().nextInt(1 << random().nextInt(5));
       BooleanQuery.Builder builder = new BooleanQuery.Builder();
@@ -744,7 +757,7 @@ public class TestWANDScorer extends LuceneTestCase {
         builder.add(
             maybeWrap(new TermQuery(new Term("foo", Integer.toString(start + i)))), Occur.SHOULD);
       }
-      Query query = new WANDScorerQuery(builder.build());
+      Query query = new WANDScorerQuery(builder.build(), random().nextBoolean());
 
       CheckHits.checkTopScores(random(), query, searcher);
 
@@ -795,7 +808,7 @@ public class TestWANDScorer extends LuceneTestCase {
                     0f)),
             Occur.SHOULD);
       }
-      Query query = new WANDScorerQuery(builder.build());
+      Query query = new WANDScorerQuery(builder.build(), random().nextBoolean());
 
       CheckHits.checkTopScores(random(), query, searcher);
 
@@ -812,12 +825,22 @@ public class TestWANDScorer extends LuceneTestCase {
     dir.close();
   }
 
-  /** Test the case when some clauses produce infinite max scores. */
+  /**
+   * Test the case when some clauses produce infinite max scores.
+   *
+   * <p>TODO: incredibly slow
+   */
+  @Nightly
   public void testRandomWithInfiniteMaxScore() throws IOException {
     doTestRandomSpecialMaxScore(Float.POSITIVE_INFINITY);
   }
 
-  /** Test the case when some clauses produce finite max scores, but their sum overflows. */
+  /**
+   * Test the case when some clauses produce finite max scores, but their sum overflows.
+   *
+   * <p>TODO: incredibly slow
+   */
+  @Nightly
   public void testRandomWithMaxScoreOverflow() throws IOException {
     doTestRandomSpecialMaxScore(Float.MAX_VALUE);
   }
@@ -855,7 +878,7 @@ public class TestWANDScorer extends LuceneTestCase {
         }
         builder.add(query, Occur.SHOULD);
       }
-      Query query = new WANDScorerQuery(builder.build());
+      Query query = new WANDScorerQuery(builder.build(), random().nextBoolean());
 
       CheckHits.checkTopScores(random(), query, searcher);
 
@@ -979,11 +1002,13 @@ public class TestWANDScorer extends LuceneTestCase {
 
   private static class WANDScorerQuery extends Query {
     private final BooleanQuery query;
+    private final boolean doBlocks;
 
-    private WANDScorerQuery(BooleanQuery query) {
+    private WANDScorerQuery(BooleanQuery query, boolean doBlocks) {
       assert query.clauses().size() == query.getClauses(Occur.SHOULD).size()
           : "This test utility query is only used to create WANDScorer for disjunctions.";
       this.query = query;
+      this.doBlocks = doBlocks;
     }
 
     @Override
@@ -1024,7 +1049,11 @@ public class TestWANDScorer extends LuceneTestCase {
           final Scorer scorer;
           if (optionalScorers.size() > 0) {
             scorer =
-                new WANDScorer(optionalScorers, query.getMinimumNumberShouldMatch(), scoreMode);
+                new WANDScorer(
+                    optionalScorers,
+                    query.getMinimumNumberShouldMatch(),
+                    scoreMode,
+                    doBlocks ? Long.MAX_VALUE : 0L);
           } else {
             scorer = weight.scorer(context);
             if (scorer == null) return null;

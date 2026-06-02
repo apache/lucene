@@ -102,7 +102,7 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
       for (FacetsCollector.MatchingDocs matchingDocs : facetsCollector.getMatchingDocs()) {
         matchingDocsMap.compute(
             matchingDocs.context(),
-            (leafReaderContext, existing) -> {
+            (_, existing) -> {
               if (existing == null) {
                 return matchingDocs;
               }
@@ -285,11 +285,11 @@ public class FacetsCollectorManager implements CollectorManager<FacetsCollector,
           throw new IllegalArgumentException("after must be a FieldDoc; got " + after);
         }
         TopFieldCollectorManager topFieldCollectorManager =
-            new TopFieldCollectorManager(sort, n, (FieldDoc) after, Integer.MAX_VALUE, true);
+            new TopFieldCollectorManager(sort, n, (FieldDoc) after, Integer.MAX_VALUE);
         multiCollectorManager = new MultiCollectorManager(topFieldCollectorManager, fcm);
       } else {
         TopScoreDocCollectorManager topScoreDocCollectorManager =
-            new TopScoreDocCollectorManager(n, after, Integer.MAX_VALUE, true);
+            new TopScoreDocCollectorManager(n, after, Integer.MAX_VALUE);
         multiCollectorManager = new MultiCollectorManager(topScoreDocCollectorManager, fcm);
       }
       Object[] result = searcher.search(q, multiCollectorManager);

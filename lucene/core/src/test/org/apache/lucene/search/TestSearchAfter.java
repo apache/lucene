@@ -75,12 +75,11 @@ public class TestSearchAfter extends LuceneTestCase {
     for (String field : new String[] {"bytes", "sortedbytesdocvalues"}) {
       for (int rev = 0; rev < 2; rev++) {
         boolean reversed = rev == 0;
-        SortField sf = new SortField(field, SortField.Type.STRING, reversed);
-        sf.setMissingValue(SortField.STRING_FIRST);
+        SortField sf =
+            new SortField(field, SortField.Type.STRING, reversed, SortField.STRING_FIRST);
         allSortFields.add(sf);
 
-        sf = new SortField(field, SortField.Type.STRING, reversed);
-        sf.setMissingValue(SortField.STRING_LAST);
+        sf = new SortField(field, SortField.Type.STRING, reversed, SortField.STRING_LAST);
         allSortFields.add(sf);
       }
     }
@@ -89,12 +88,11 @@ public class TestSearchAfter extends LuceneTestCase {
     for (String field : new String[] {"sortedbytesdocvaluesval", "straightbytesdocvalues"}) {
       for (int rev = 0; rev < 2; rev++) {
         boolean reversed = rev == 0;
-        SortField sf = new SortField(field, SortField.Type.STRING_VAL, reversed);
-        sf.setMissingValue(SortField.STRING_FIRST);
+        SortField sf =
+            new SortField(field, SortField.Type.STRING_VAL, reversed, SortField.STRING_FIRST);
         allSortFields.add(sf);
 
-        sf = new SortField(field, SortField.Type.STRING_VAL, reversed);
-        sf.setMissingValue(SortField.STRING_LAST);
+        sf = new SortField(field, SortField.Type.STRING_VAL, reversed, SortField.STRING_LAST);
         allSortFields.add(sf);
       }
     }
@@ -103,20 +101,22 @@ public class TestSearchAfter extends LuceneTestCase {
     for (int i = 0; i < limit; i++) {
       SortField sf = allSortFields.get(i);
       if (sf.getType() == SortField.Type.INT) {
-        SortField sf2 = new SortField(sf.getField(), SortField.Type.INT, sf.getReverse());
-        sf2.setMissingValue(random().nextInt());
+        SortField sf2 =
+            new SortField(sf.getField(), SortField.Type.INT, sf.getReverse(), random().nextInt());
         allSortFields.add(sf2);
       } else if (sf.getType() == SortField.Type.LONG) {
-        SortField sf2 = new SortField(sf.getField(), SortField.Type.LONG, sf.getReverse());
-        sf2.setMissingValue(random().nextLong());
+        SortField sf2 =
+            new SortField(sf.getField(), SortField.Type.LONG, sf.getReverse(), random().nextLong());
         allSortFields.add(sf2);
       } else if (sf.getType() == SortField.Type.FLOAT) {
-        SortField sf2 = new SortField(sf.getField(), SortField.Type.FLOAT, sf.getReverse());
-        sf2.setMissingValue(random().nextFloat());
+        SortField sf2 =
+            new SortField(
+                sf.getField(), SortField.Type.FLOAT, sf.getReverse(), random().nextFloat());
         allSortFields.add(sf2);
       } else if (sf.getType() == SortField.Type.DOUBLE) {
-        SortField sf2 = new SortField(sf.getField(), SortField.Type.DOUBLE, sf.getReverse());
-        sf2.setMissingValue(random().nextDouble());
+        SortField sf2 =
+            new SortField(
+                sf.getField(), SortField.Type.DOUBLE, sf.getReverse(), random().nextDouble());
         allSortFields.add(sf2);
       }
     }
@@ -184,7 +184,7 @@ public class TestSearchAfter extends LuceneTestCase {
     // pages.
     int n = atLeast(20);
     for (int i = 0; i < n; i++) {
-      assertQuery(new MatchAllDocsQuery(), null);
+      assertQuery(MatchAllDocsQuery.INSTANCE, null);
       assertQuery(new TermQuery(new Term("english", "one")), null);
       BooleanQuery.Builder bq = new BooleanQuery.Builder();
       bq.add(new TermQuery(new Term("english", "one")), BooleanClause.Occur.SHOULD);
@@ -234,10 +234,10 @@ public class TestSearchAfter extends LuceneTestCase {
       allManager = new TopScoreDocCollectorManager(maxDoc, null, Integer.MAX_VALUE);
       doScores = false;
     } else if (sort == Sort.RELEVANCE) {
-      allManager = new TopFieldCollectorManager(sort, maxDoc, null, Integer.MAX_VALUE, true);
+      allManager = new TopFieldCollectorManager(sort, maxDoc, null, Integer.MAX_VALUE);
       doScores = true;
     } else {
-      allManager = new TopFieldCollectorManager(sort, maxDoc, null, Integer.MAX_VALUE, true);
+      allManager = new TopFieldCollectorManager(sort, maxDoc, null, Integer.MAX_VALUE);
       doScores = random().nextBoolean();
     }
     all = searcher.search(query, allManager);
@@ -268,15 +268,13 @@ public class TestSearchAfter extends LuceneTestCase {
         if (VERBOSE) {
           System.out.println("  iter lastBottom=" + lastBottom);
         }
-        pagedManager =
-            new TopScoreDocCollectorManager(pageSize, lastBottom, Integer.MAX_VALUE, true);
+        pagedManager = new TopScoreDocCollectorManager(pageSize, lastBottom, Integer.MAX_VALUE);
       } else {
         if (VERBOSE) {
           System.out.println("  iter lastBottom=" + lastBottom);
         }
         pagedManager =
-            new TopFieldCollectorManager(
-                sort, pageSize, (FieldDoc) lastBottom, Integer.MAX_VALUE, true);
+            new TopFieldCollectorManager(sort, pageSize, (FieldDoc) lastBottom, Integer.MAX_VALUE);
       }
       paged = searcher.search(query, pagedManager);
       if (doScores) {

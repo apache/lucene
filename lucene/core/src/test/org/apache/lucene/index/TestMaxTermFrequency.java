@@ -22,8 +22,8 @@ import java.util.Collections;
 import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.search.CollectionStatistics;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.FieldStats;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.search.similarities.Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
@@ -90,7 +90,7 @@ public class TestMaxTermFrequency extends LuceneTestCase {
     }
     expected.add(max);
     Collections.shuffle(terms, random());
-    return Arrays.toString(terms.toArray(new String[terms.size()]));
+    return Arrays.toString(terms.toArray(String[]::new));
   }
 
   /** Simple similarity that encodes maxTermFrequency directly as a byte */
@@ -102,8 +102,7 @@ public class TestMaxTermFrequency extends LuceneTestCase {
     }
 
     @Override
-    public SimScorer scorer(
-        float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
+    public SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
       return new SimScorer() {
 
         @Override

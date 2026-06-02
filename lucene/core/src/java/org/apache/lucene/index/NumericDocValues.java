@@ -18,6 +18,9 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.FieldExistsQuery;
+import org.apache.lucene.util.FixedBitSet;
 
 /** A per-document numeric value. */
 public abstract class NumericDocValues extends DocValuesIterator {
@@ -32,4 +35,107 @@ public abstract class NumericDocValues extends DocValuesIterator {
    * @return numeric value
    */
   public abstract long longValue() throws IOException;
+
+  /**
+   * Bulk retrieval of numeric doc values. This API helps reduce the performance impact of virtual
+   * function calls.
+   *
+   * <p>This API behaves as if implemented as below, which is the default implementation:
+   *
+   * <pre><code class="language-java">
+   * public void longValues(int size, int[] docs, long[] values, long defaultValue) throws IOException {
+   *   for (int i = 0; i &lt; size; ++i) {
+   *     int doc = docs[i];
+   *     long value;
+   *     if (advanceExact(doc)) {
+   *       value = longValue();
+   *     } else {
+   *       value = defaultValue;
+   *     }
+   *     values[i] = value;
+   *   }
+   * }
+   * </code></pre>
+   *
+   * <p><b>NOTE</b>: The {@code docs} array is required to be sorted in ascending order with no
+   * duplicates.
+   *
+   * <p><b>NOTE</b>: This API doesn't allow callers to know which doc IDs have a value or not. If
+   * you need to exclude documents that don't have a value for this field, then you could apply a
+   * {@link FieldExistsQuery} as a {@link Occur#FILTER} clause. Another option is to fall back to
+   * using {@link #advanceExact} and {@link #longValue()} on ranges of doc IDs that may not be
+   * dense, e.g.
+   *
+   * <pre><code class="language-java">
+   * if (size > 0 &amp;&amp; values.advannceExact(docs[0]) &amp;&amp; values.docIDRunEnd() &gt; docs[size - 1]) {
+   *   // use values#longValues to retrieve values
+   * } else {
+   *   // some docs may not have a value, use #advanceExact and #longValue
+   * }
+   * </code></pre>
+   *
+   * @param size the number of values to retrieve
+   * @param docs the buffer of doc IDs whose values should be looked up
+   * @param values the buffer of values to fill
+   * @param defaultValue the value to put in the buffer when a document doesn't have a value
+   */
+  public void longValues(int size, int[] docs, long[] values, long defaultValue)
+      throws IOException {
+    longValues(size, docs, 0, values, 0, defaultValue);
+  }
+
+  /**
+   * Offset-aware variant of {@link #longValues(int, int[], long[], long)}. Reads {@code size} doc
+   * IDs starting at {@code docs[docsOffset]} and writes the corresponding values starting at {@code
+   * values[valuesOffset]}. This follows the same convention as {@link System#arraycopy}.
+   *
+   * @param size the number of values to retrieve
+   * @param docs the buffer of doc IDs whose values should be looked up
+   * @param docsOffset first position in {@code docs} to read
+   * @param values the buffer of values to fill
+   * @param valuesOffset first position in {@code values} to write
+   * @param defaultValue the value to put in the buffer when a document doesn't have a value
+   */
+  public void longValues(
+      int size, int[] docs, int docsOffset, long[] values, int valuesOffset, long defaultValue)
+      throws IOException {
+    for (int di = docsOffset, vi = valuesOffset, end = docsOffset + size; di < end; di++, vi++) {
+      long value;
+      if (advanceExact(docs[di])) {
+        value = longValue();
+      } else {
+        value = defaultValue;
+      }
+      values[vi] = value;
+    }
+  }
+
+  /**
+   * Fills a {@link org.apache.lucene.util.FixedBitSet} with the doc IDs in {@code [fromDoc, toDoc)}
+   * whose values are in {@code [minValue, maxValue]}. This is a bulk operation that avoids per-doc
+   * virtual dispatch overhead.
+   *
+   * <p>The default implementation falls back to per-doc evaluation via {@link #advanceExact} and
+   * {@link #longValue}. Subclasses with random-access storage (e.g., dense fixed-bitsPerValue
+   * fields) can override this for significantly better performance.
+   *
+   * @param fromDoc first doc ID to evaluate (inclusive)
+   * @param toDoc last doc ID to evaluate (exclusive)
+   * @param minValue lower bound of the range (inclusive)
+   * @param maxValue upper bound of the range (inclusive)
+   * @param bitSet the bitset to fill
+   * @param offset subtracted from each doc ID before setting the bit
+   */
+  public void rangeIntoBitSet(
+      int fromDoc, int toDoc, long minValue, long maxValue, FixedBitSet bitSet, int offset)
+      throws IOException {
+    for (int d = fromDoc; d < toDoc; d++) {
+      if (advanceExact(d)) {
+        long v = longValue();
+        if (v >= minValue && v <= maxValue) {
+          bitSet.set(d - offset);
+        }
+      }
+    }
+  }
 }

@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.util;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
@@ -26,7 +25,7 @@ import org.apache.lucene.tests.util.BaseDocIdSetTestCase;
 public class TestSparseFixedBitDocIdSet extends BaseDocIdSetTestCase<BitDocIdSet> {
 
   @Override
-  public BitDocIdSet copyOf(BitSet bs, int length) throws IOException {
+  public BitDocIdSet copyOf(BitSet bs, int length) {
     final SparseFixedBitSet set = new SparseFixedBitSet(length);
     // SparseFixedBitSet can be sensitive to the order of insertion so
     // randomize insertion a bit
@@ -46,14 +45,5 @@ public class TestSparseFixedBitDocIdSet extends BaseDocIdSetTestCase<BitDocIdSet
       set.set(i);
     }
     return new BitDocIdSet(set, set.approximateCardinality());
-  }
-
-  @Override
-  public void assertEquals(int numBits, BitSet ds1, BitDocIdSet ds2) throws IOException {
-    for (int i = 0; i < numBits; ++i) {
-      assertEquals(ds1.get(i), ds2.bits().get(i));
-    }
-    assertEquals(ds1.cardinality(), ds2.bits().cardinality());
-    super.assertEquals(numBits, ds1, ds2);
   }
 }

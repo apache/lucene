@@ -19,6 +19,7 @@ package org.apache.lucene.facet;
 
 import java.io.IOException;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.FilterDocIdSetIterator;
 import org.apache.lucene.util.Bits;
 
 /**
@@ -50,12 +51,7 @@ public final class FacetUtils {
    */
   public static DocIdSetIterator liveDocsDISI(DocIdSetIterator it, Bits liveDocs) {
 
-    return new DocIdSetIterator() {
-      @Override
-      public int docID() {
-        return it.docID();
-      }
-
+    return new FilterDocIdSetIterator(it) {
       private int doNext(int doc) throws IOException {
         assert doc == it.docID();
         // Find next document that is not deleted until we exhaust all documents
@@ -73,11 +69,6 @@ public final class FacetUtils {
       @Override
       public int advance(int target) throws IOException {
         return doNext(it.advance(target));
-      }
-
-      @Override
-      public long cost() {
-        return it.cost();
       }
     };
   }

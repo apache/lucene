@@ -129,8 +129,14 @@ public class Automaton implements Accountable, TransitionAccessor {
     return transitions;
   }
 
-  /** Returns accept states. If the bit is set then that state is an accept state. */
-  BitSet getAcceptStates() {
+  /**
+   * Returns accept states. If the bit is set then that state is an accept state.
+   *
+   * <p>expert: Use {@link #isAccept(int)} instead, unless you really need to scan bits.
+   *
+   * @lucene.internal This method signature may change in the future
+   */
+  public BitSet getAcceptStates() {
     return isAccept;
   }
 
@@ -720,6 +726,36 @@ public class Automaton implements Accountable, TransitionAccessor {
       transition.transitionUpto = low;
     }
     return destState;
+  }
+
+  @Override
+  public int hashCode() {
+    int result = 1;
+    result = 31 * result + nextState;
+    result = 31 * result + nextTransition;
+    result = 31 * result + (deterministic ? 1231 : 1237);
+    result = 31 * result + isAccept.hashCode();
+    for (int i = 0; i < nextState; i++) {
+      result = 31 * result + states[i];
+    }
+    for (int i = 0; i < nextTransition; i++) {
+      result = 31 * result + transitions[i];
+    }
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj) return true;
+    if (obj == null || getClass() != obj.getClass()) return false;
+    Automaton other = (Automaton) obj;
+    return nextState == other.nextState
+        && nextTransition == other.nextTransition
+        && deterministic == other.deterministic
+        && isAccept.equals(other.isAccept)
+        && Arrays.equals(states, 0, nextState, other.states, 0, other.nextState)
+        && Arrays.equals(
+            transitions, 0, nextTransition, other.transitions, 0, other.nextTransition);
   }
 
   /**

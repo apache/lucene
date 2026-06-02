@@ -20,7 +20,6 @@ import static org.apache.lucene.geo.GeoEncodingUtils.encodeLatitude;
 import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitude;
 import static org.apache.lucene.geo.GeoUtils.lineCrossesLine;
 import static org.apache.lucene.geo.GeoUtils.lineOverlapLine;
-import static org.apache.lucene.geo.GeoUtils.orient;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -44,6 +43,7 @@ import org.apache.lucene.util.BitUtil;
  *   <li>Requires valid polygons:
  *       <ul>
  *         <li>No self intersections
+ *         <li>Holes must be inside the polygon
  *         <li>Holes may only touch at one vertex
  *         <li>Polygon must have an area (e.g., no "line" boxes)
  *         <li>sensitive to overflow (e.g, subatomic values such as E-200 can cause unexpected
@@ -215,7 +215,7 @@ public final class Tessellator {
    * Creates a circular doubly linked list using polygon points. The order is governed by the
    * specified winding order
    */
-  private static final Node createDoublyLinkedList(
+  private static Node createDoublyLinkedList(
       final double[] x,
       final double[] y,
       final WindingOrder polyWindingOrder,
@@ -243,7 +243,7 @@ public final class Tessellator {
     return filterPoints(lastNode, null);
   }
 
-  private static final Node eliminateHoles(final XYPolygon polygon, Node outerNode) {
+  private static Node eliminateHoles(final XYPolygon polygon, Node outerNode) {
     // Define a list to hole a reference to each filtered hole list.
     final List<Node> holeList = new ArrayList<>();
     // keep a reference to the hole
@@ -273,8 +273,8 @@ public final class Tessellator {
     return eliminateHoles(holeList, holeListPolygons, outerNode);
   }
 
-  /** Links every hole into the outer loop, producing a single-ring polygon without holes. * */
-  private static final Node eliminateHoles(final Polygon polygon, Node outerNode) {
+  /** Links every hole into the outer loop, producing a single-ring polygon without holes. */
+  private static Node eliminateHoles(final Polygon polygon, Node outerNode) {
     // Define a list to hole a reference to each filtered hole list.
     final List<Node> holeList = new ArrayList<>();
     // keep a reference to the hole
@@ -304,7 +304,7 @@ public final class Tessellator {
     return eliminateHoles(holeList, holeListPolygons, outerNode);
   }
 
-  private static final Node eliminateHoles(
+  private static Node eliminateHoles(
       List<Node> holeList, final Map<Node, ?> holeListPolygons, Node outerNode) {
     // Sort the hole vertices by x coordinate
     holeList.sort(
@@ -328,8 +328,7 @@ public final class Tessellator {
       final Node holeNode = holeList.get(i);
       double holeMinX, holeMaxX, holeMinY, holeMaxY;
       Object h = holeListPolygons.get(holeNode);
-      if (h instanceof Polygon) {
-        Polygon holePoly = (Polygon) h;
+      if (h instanceof Polygon holePoly) {
         holeMinX = holePoly.minLon;
         holeMaxX = holePoly.maxLon;
         holeMinY = holePoly.minLat;
@@ -341,16 +340,75 @@ public final class Tessellator {
         holeMinY = holePoly.minY;
         holeMaxY = holePoly.maxY;
       }
-      eliminateHole(holeNode, outerNode, holeMinX, holeMaxX, holeMinY, holeMaxY);
-      // Filter the new polygon.
-      outerNode = filterPoints(outerNode, outerNode.next);
+      Node result = eliminateHole(holeNode, outerNode, holeMinX, holeMaxX, holeMinY, holeMaxY);
+      if (result != null) {
+        // Filter the new polygon. The result node determines outerNode's position:
+        // for leftmost shared vertex merges, it's at the bridge; otherwise at the original.
+        outerNode = filterPoints(result, result.next);
+      } else {
+        // we couldn't find a point to the left of the hole's leftmost point, the point
+        // is not inside the polygon.
+        String polygon;
+        if (h instanceof Polygon holePoly) {
+          polygon = Polygon.verticesToGeoJSON(holePoly.getPolyLats(), holePoly.getPolyLons());
+        } else {
+          XYPolygon holePoly = (XYPolygon) h;
+          polygon = XYPolygon.verticesToGeoJSON(holePoly.getPolyX(), holePoly.getPolyY());
+        }
+        if (polygon.length() > 100) {
+          polygon = polygon.substring(0, 100) + "...";
+        }
+        throw new IllegalArgumentException("Illegal hole detected: " + polygon);
+      }
     }
-    // Return a pointer to the list.
-    return outerNode;
+    // Filter co-planar nodes and return a pointer to the list.
+    return filterPoints(outerNode, null);
   }
 
-  /** Finds a bridge between vertices that connects a hole with an outer ring, and links it */
-  private static final void eliminateHole(
+  /**
+   * Finds a bridge between vertices that connects a hole with an outer ring, links it, and returns
+   * a node to use as the new outerNode position, or null if no bridge was found.
+   */
+  private static Node eliminateHole(
+      final Node holeNode,
+      Node outerNode,
+      double holeMinX,
+      double holeMaxX,
+      double holeMinY,
+      double holeMaxY) {
+
+    // Attempt to merge the hole using a common point between if it exists.
+    Node mergeResult =
+        maybeMergeHoleWithSharedVertices(
+            holeNode, outerNode, holeMinX, holeMaxX, holeMinY, holeMaxY);
+    if (mergeResult != null) {
+      return mergeResult;
+    }
+    // Attempt to find a logical bridge between the HoleNode and OuterNode.
+    Node bridge = fetchHoleBridge(holeNode, outerNode);
+
+    // Determine whether a hole bridge could be fetched.
+    if (bridge != null) {
+      // compute if the bridge overlaps with a polygon edge.
+      boolean fromPolygon =
+          isPointInLine(bridge, bridge.next, holeNode)
+              || isPointInLine(bridge, bridge.previous, holeNode)
+              || isPointInLine(holeNode, holeNode.next, bridge)
+              || isPointInLine(holeNode, holeNode.previous, bridge);
+      // Split the resulting polygon.
+      splitPolygon(bridge, holeNode, fromPolygon);
+      return outerNode;
+    } else {
+      return null;
+    }
+  }
+
+  /**
+   * Choose a common vertex between the polygon and the hole if it exists and merge them. Returns
+   * the bridge node for leftmost shared vertex merges (so the caller can update outerNode to the
+   * bridge position), outerNode for non-leftmost merges, or null if no shared vertex was found.
+   */
+  private static Node maybeMergeHoleWithSharedVertices(
       final Node holeNode,
       Node outerNode,
       double holeMinX,
@@ -358,36 +416,116 @@ public final class Tessellator {
       double holeMinY,
       double holeMaxY) {
     // Attempt to find a common point between the HoleNode and OuterNode.
+    Node sharedVertex = null;
+    Node sharedVertexConnection = null;
+    // Track the leftmost vertex match (holeNode is the leftmost vertex of the hole).
+    // Use first-match in ring order for the leftmost case (matching earcut.js). When previous
+    // bridge operations created multiple copies of a vertex, the first copy from outerNode
+    // is the correct connection point for chained shared-vertex holes.
+    Node leftmostSharedVertexConnection = null;
     Node next = outerNode;
     do {
       if (Rectangle.containsPoint(
           next.getY(), next.getX(), holeMinY, holeMaxY, holeMinX, holeMaxX)) {
-        Node sharedVertex = getSharedVertex(holeNode, next);
-        if (sharedVertex != null) {
-          // Split the resulting polygon.
-          Node node = splitPolygon(next, sharedVertex, true);
-          // Filter the split nodes.
-          filterPoints(node, node.next);
-          return;
+        Node newSharedVertex = getSharedVertex(holeNode, next);
+        if (newSharedVertex != null) {
+          // Check if this shared vertex is the leftmost point of the hole (holeNode)
+          if (isVertexEquals(newSharedVertex, holeNode)) {
+            if (leftmostSharedVertexConnection == null) {
+              leftmostSharedVertexConnection = next;
+            }
+            // For leftmost, take first match only — don't use getSharedInsideVertex.
+          }
+          if (sharedVertex == null) {
+            sharedVertex = newSharedVertex;
+            sharedVertexConnection = next;
+          } else if (newSharedVertex.equals(sharedVertex)) {
+            // Same vertex found again via different connection.
+            sharedVertexConnection =
+                getSharedInsideVertex(sharedVertex, sharedVertexConnection, next);
+          }
         }
       }
       next = next.next;
     } while (next != outerNode);
 
-    // Attempt to find a logical bridge between the HoleNode and OuterNode.
-    outerNode = fetchHoleBridge(holeNode, outerNode);
-
-    // Determine whether a hole bridge could be fetched.
-    if (outerNode != null) {
-      // compute if the bridge overlaps with a polygon edge.
-      boolean fromPolygon =
-          isPointInLine(outerNode, outerNode.next, holeNode)
-              || isPointInLine(holeNode, holeNode.next, outerNode);
-      // Split the resulting polygon.
-      Node node = splitPolygon(outerNode, holeNode, fromPolygon);
-      // Filter the split nodes.
-      filterPoints(node, node.next);
+    // The leftmost vertex of the hole is a shared vertex. Prefer this connection point if it is
+    // from a hole that was already merged (higher idx), as this maintains proper connectivity
+    // for chained holes.
+    if (leftmostSharedVertexConnection != null
+        && leftmostSharedVertexConnection.idx >= sharedVertexConnection.idx) {
+      splitPolygon(leftmostSharedVertexConnection, holeNode, true);
+      // When multiple copies of the shared vertex exist (from previous splitPolygon calls),
+      // return the bridge node so the caller updates outerNode to the bridge position.
+      // This ensures subsequent holes sharing the same vertex find the right copy.
+      if (leftmostSharedVertexConnection != sharedVertexConnection) {
+        return leftmostSharedVertexConnection;
+      }
+      return outerNode;
     }
+    if (sharedVertex != null) {
+      // Split the resulting polygon.
+      splitPolygon(sharedVertexConnection, sharedVertex, true);
+      return outerNode;
+    }
+    return null;
+  }
+
+  /** Check if the provided vertex is in the polygon and return it */
+  private static Node getSharedVertex(final Node polygon, final Node vertex) {
+    Node next = polygon;
+    do {
+      if (isVertexEquals(next, vertex)) {
+        return next;
+      }
+      next = next.next;
+    } while (next != polygon);
+    return null;
+  }
+
+  /** Choose the vertex that has a smaller angle with the hole vertex */
+  static Node getSharedInsideVertex(Node holeVertex, Node candidateA, Node candidateB) {
+    assert isVertexEquals(holeVertex, candidateA) && isVertexEquals(holeVertex, candidateB);
+    // we are joining candidate.prevNode -> holeVertex.node -> holeVertex.nextNode.
+    // A negative area means a convex angle. if both are convex/reflex choose the point of
+    // minimum angle
+    final double a1 =
+        area(
+            candidateA.previous.getX(),
+            candidateA.previous.getY(),
+            holeVertex.getX(),
+            holeVertex.getY(),
+            holeVertex.next.getX(),
+            holeVertex.next.getY());
+    final double a2 =
+        area(
+            candidateB.previous.getX(),
+            candidateB.previous.getY(),
+            holeVertex.getX(),
+            holeVertex.getY(),
+            holeVertex.next.getX(),
+            holeVertex.next.getY());
+
+    if (a1 < 0 != a2 < 0) {
+      // one is convex, the other reflex, get the convex one
+      return a1 < a2 ? candidateA : candidateB;
+    } else {
+      // both are convex / reflex, choose the smallest angle
+      final double angle1 = angle(candidateA.previous, candidateA, holeVertex.next);
+      final double angle2 = angle(candidateB.previous, candidateB, holeVertex.next);
+      return angle1 < angle2 ? candidateA : candidateB;
+    }
+  }
+
+  private static double angle(Node a, Node b, Node c) {
+    final double ax = a.getX() - b.getX();
+    final double ay = a.getY() - b.getY();
+    final double cx = c.getX() - b.getX();
+    final double cy = c.getY() - b.getY();
+    final double dotProduct = ax * cx + ay * cy;
+    final double aLength = Math.sqrt(ax * ax + ay * ay);
+    final double bLength = Math.sqrt(cx * cx + cy * cy);
+    return Math.acos(dotProduct / (aLength * bLength));
   }
 
   /**
@@ -395,7 +533,7 @@ public final class Tessellator {
    *
    * <p>see: http://www.geometrictools.com/Documentation/TriangulationByEarClipping.pdf
    */
-  private static final Node fetchHoleBridge(final Node holeNode, final Node outerNode) {
+  private static Node fetchHoleBridge(final Node holeNode, final Node outerNode) {
     Node p = outerNode;
     double qx = Double.NEGATIVE_INFINITY;
     final double hx = holeNode.getX();
@@ -453,34 +591,8 @@ public final class Tessellator {
     return connection;
   }
 
-  /** Check if the provided vertex is in the polygon and return it * */
-  private static Node getSharedVertex(final Node polygon, final Node vertex) {
-    Node next = polygon;
-    do {
-      if (isVertexEquals(next, vertex)) {
-        // make sure we are not crossing the polygon. This might happen when several holes share the
-        // same polygon vertex.
-        boolean crosses =
-            GeoUtils.lineCrossesLine(
-                next.previous.getX(),
-                next.previous.getY(),
-                vertex.next.getX(),
-                vertex.next.getY(),
-                next.next.getX(),
-                next.next.getY(),
-                vertex.previous.getX(),
-                vertex.previous.getY());
-        if (crosses == false) {
-          return next;
-        }
-      }
-      next = next.next;
-    } while (next != polygon);
-    return null;
-  }
-
   /** Finds the left-most hole of a polygon ring. * */
-  private static final Node fetchLeftmost(final Node start) {
+  private static Node fetchLeftmost(final Node start) {
     Node node = start;
     Node leftMost = start;
     do {
@@ -502,7 +614,7 @@ public final class Tessellator {
    * Main ear slicing loop which triangulates the vertices of a polygon, provided as a doubly-linked
    * list. *
    */
-  private static final List<Triangle> earcutLinkedList(
+  private static List<Triangle> earcutLinkedList(
       Object polygon,
       Node currEar,
       final List<Triangle> tessellation,
@@ -587,7 +699,7 @@ public final class Tessellator {
   }
 
   /** Determines whether a polygon node forms a valid ear with adjacent nodes. * */
-  private static final boolean isEar(final Node ear, final boolean mortonOptimized) {
+  private static boolean isEar(final Node ear, final boolean mortonOptimized) {
     if (mortonOptimized == true) {
       return mortonIsEar(ear);
     }
@@ -623,7 +735,7 @@ public final class Tessellator {
    * Uses morton code for speed to determine whether or a polygon node forms a valid ear w/ adjacent
    * nodes
    */
-  private static final boolean mortonIsEar(final Node ear) {
+  private static boolean mortonIsEar(final Node ear) {
     // triangle bbox (flip the bits so negative encoded values are < positive encoded values)
     int minTX = StrictMath.min(StrictMath.min(ear.previous.x, ear.x), ear.next.x) ^ 0x80000000;
     int minTY = StrictMath.min(StrictMath.min(ear.previous.y, ear.y), ear.next.y) ^ 0x80000000;
@@ -740,7 +852,7 @@ public final class Tessellator {
   }
 
   /** Iterate through all polygon nodes and remove small local self-intersections * */
-  private static final Node cureLocalIntersections(
+  private static Node cureLocalIntersections(
       Node startNode, final List<Triangle> tessellation, final boolean mortonOptimized) {
     Node node = startNode;
     Node nextNode;
@@ -794,7 +906,7 @@ public final class Tessellator {
    * Attempt to split a polygon and independently triangulate each side. Return true if the polygon
    * was splitted *
    */
-  private static final boolean splitEarcut(
+  private static boolean splitEarcut(
       final Object polygon,
       final Node start,
       final List<Triangle> tessellation,
@@ -858,7 +970,7 @@ public final class Tessellator {
    * Uses morton code for speed to determine whether or not and edge defined by a and b overlaps
    * with a polygon edge
    */
-  private static final void mortonCheckIntersection(final Node a, final Node b) {
+  private static void mortonCheckIntersection(final Node a, final Node b) {
     // edge bbox (flip the bits so negative encoded values are < positive encoded values)
     int minTX = StrictMath.min(a.x, a.next.x) ^ 0x80000000;
     int minTY = StrictMath.min(a.y, a.next.y) ^ 0x80000000;
@@ -974,7 +1086,7 @@ public final class Tessellator {
    * Uses morton code for speed to determine whether or not and edge defined by a and b overlaps
    * with a polygon edge
    */
-  private static final boolean isMortonEdgeFromPolygon(final Node a, final Node b) {
+  private static boolean isMortonEdgeFromPolygon(final Node a, final Node b) {
     // edge bbox (flip the bits so negative encoded values are < positive encoded values)
     final int minTX = StrictMath.min(a.x, b.x) ^ 0x80000000;
     final int minTY = StrictMath.min(a.y, b.y) ^ 0x80000000;
@@ -1060,7 +1172,7 @@ public final class Tessellator {
   }
 
   /** Links two polygon vertices using a bridge. * */
-  private static final Node splitPolygon(final Node a, final Node b, boolean edgeFromPolygon) {
+  private static Node splitPolygon(final Node a, final Node b, boolean edgeFromPolygon) {
     final Node a2 = new Node(a);
     final Node b2 = new Node(b);
     final Node an = a.next;
@@ -1136,7 +1248,7 @@ public final class Tessellator {
     return windingSum;
   }
 
-  private static final boolean isLocallyInside(final Node a, final Node b) {
+  private static boolean isLocallyInside(final Node a, final Node b) {
     double area =
         area(
             a.previous.getX(), a.previous.getY(), a.getX(), a.getY(), a.next.getX(), a.next.getY());
@@ -1150,13 +1262,13 @@ public final class Tessellator {
               >= 0;
     } else {
       // ccw
-      return area(a.getX(), a.getY(), b.getX(), b.getY(), a.previous.getX(), a.previous.getY()) < 0
-          || area(a.getX(), a.getY(), a.next.getX(), a.next.getY(), b.getX(), b.getY()) < 0;
+      return area(a.getX(), a.getY(), b.getX(), b.getY(), a.previous.getX(), a.previous.getY()) <= 0
+          || area(a.getX(), a.getY(), a.next.getX(), a.next.getY(), b.getX(), b.getY()) <= 0;
     }
   }
 
   /** Determine whether the middle point of a polygon diagonal is contained within the polygon */
-  private static final boolean middleInsert(
+  private static boolean middleInsert(
       final Node start, final double x0, final double y0, final double x1, final double y1) {
     Node node = start;
     Node nextNode;
@@ -1179,7 +1291,7 @@ public final class Tessellator {
   }
 
   /** Determines if the diagonal of a polygon is intersecting with any polygon elements. * */
-  private static final boolean isIntersectingPolygon(
+  private static boolean isIntersectingPolygon(
       final Node start, final double x0, final double y0, final double x1, final double y1) {
     Node node = start;
     Node nextNode;
@@ -1198,7 +1310,7 @@ public final class Tessellator {
   }
 
   /** Determines whether two line segments intersect. * */
-  public static final boolean linesIntersect(
+  public static boolean linesIntersect(
       final double aX0,
       final double aY0,
       final double aX1,
@@ -1212,7 +1324,7 @@ public final class Tessellator {
   }
 
   /** Interlinks polygon nodes in Z-Order. It reset the values on the z values* */
-  private static final void sortByMortonWithReset(Node start) {
+  private static void sortByMortonWithReset(Node start) {
     Node next = start;
     do {
       next.previousZ = next.previous;
@@ -1223,7 +1335,7 @@ public final class Tessellator {
   }
 
   /** Interlinks polygon nodes in Z-Order. * */
-  private static final void sortByMorton(Node start) {
+  private static void sortByMorton(Node start) {
     start.previousZ.nextZ = null;
     start.previousZ = null;
     // Sort the generated ring using Z ordering.
@@ -1234,7 +1346,7 @@ public final class Tessellator {
    * Simon Tatham's doubly-linked list O(n log n) mergesort see:
    * http://www.chiark.greenend.org.uk/~sgtatham/algorithms/listsort.html
    */
-  private static final void tathamSort(Node list) {
+  private static void tathamSort(Node list) {
     Node p, q, e, tail;
     int i, numMerges, pSize, qSize;
     int inSize = 1;
@@ -1290,7 +1402,7 @@ public final class Tessellator {
   }
 
   /** Eliminate colinear/duplicate points from the doubly linked list */
-  private static final Node filterPoints(final Node start, Node end) {
+  private static Node filterPoints(final Node start, Node end) {
     if (start == null) {
       return start;
     }
@@ -1343,7 +1455,7 @@ public final class Tessellator {
   /**
    * Creates a node and optionally links it with a previous node in a circular doubly-linked list
    */
-  private static final Node insertNode(
+  private static Node insertNode(
       final double[] x,
       final double[] y,
       int index,
@@ -1370,7 +1482,7 @@ public final class Tessellator {
   }
 
   /** Removes a node from the doubly linked list */
-  private static final void removeNode(Node node, boolean edgeFromPolygon) {
+  private static void removeNode(Node node, boolean edgeFromPolygon) {
     node.next.previous = node.previous;
     node.previous.next = node.next;
     node.previous.isNextEdgeFromPolygon = edgeFromPolygon;
@@ -1384,16 +1496,16 @@ public final class Tessellator {
   }
 
   /** Determines if two point vertices are equal. * */
-  private static final boolean isVertexEquals(final Node a, final Node b) {
+  private static boolean isVertexEquals(final Node a, final Node b) {
     return isVertexEquals(a, b.getX(), b.getY());
   }
 
   /** Determines if two point vertices are equal. * */
-  private static final boolean isVertexEquals(final Node a, final double x, final double y) {
+  private static boolean isVertexEquals(final Node a, final double x, final double y) {
     return a.getX() == x && a.getY() == y;
   }
 
-  /** Compute signed area of triangle */
+  /** Compute signed area of triangle, negative means convex angle and positive reflex angle. */
   private static double area(
       final double aX,
       final double aY,
@@ -1417,29 +1529,6 @@ public final class Tessellator {
     return (cx - x) * (ay - y) - (ax - x) * (cy - y) >= 0
         && (ax - x) * (by - y) - (bx - x) * (ay - y) >= 0
         && (bx - x) * (cy - y) - (cx - x) * (by - y) >= 0;
-  }
-
-  /** compute whether the given x, y point is in a triangle; uses the winding order method */
-  public static boolean pointInTriangle(
-      double x, double y, double ax, double ay, double bx, double by, double cx, double cy) {
-    double minX = StrictMath.min(ax, StrictMath.min(bx, cx));
-    double minY = StrictMath.min(ay, StrictMath.min(by, cy));
-    double maxX = StrictMath.max(ax, StrictMath.max(bx, cx));
-    double maxY = StrictMath.max(ay, StrictMath.max(by, cy));
-    // check the bounding box because if the triangle is degenerated, e.g points and lines, we need
-    // to filter out
-    // coplanar points that are not part of the triangle.
-    if (x >= minX && x <= maxX && y >= minY && y <= maxY) {
-      int a = orient(x, y, ax, ay, bx, by);
-      int b = orient(x, y, bx, by, cx, cy);
-      if (a == 0 || b == 0 || a < 0 == b < 0) {
-        int c = orient(x, y, cx, cy, ax, ay);
-        return c == 0 || (c < 0 == (b < 0 || a < 0));
-      }
-      return false;
-    } else {
-      return false;
-    }
   }
 
   /**
@@ -1508,7 +1597,7 @@ public final class Tessellator {
   }
 
   /** Circular Doubly-linked list used for polygon coordinates */
-  protected static class Node {
+  static class Node {
     // node index in the linked list
     private final int idx;
     // vertex index in the polygon
@@ -1524,9 +1613,9 @@ public final class Tessellator {
     private final long morton;
 
     // previous node
-    private Node previous;
+    Node previous;
     // next node
-    private Node next;
+    Node next;
     // previous z node
     private Node previousZ;
     // next z node
@@ -1534,7 +1623,7 @@ public final class Tessellator {
     // if the edge from this node to the next node is part of the polygon edges
     private boolean isNextEdgeFromPolygon;
 
-    protected Node(
+    Node(
         final double[] x,
         final double[] y,
         final int index,
@@ -1574,12 +1663,12 @@ public final class Tessellator {
     }
 
     /** get the x value */
-    public final double getX() {
+    public double getX() {
       return polyX[vrtxIdx];
     }
 
     /** get the y value */
-    public final double getY() {
+    public double getY() {
       return polyY[vrtxIdx];
     }
 
@@ -1600,7 +1689,7 @@ public final class Tessellator {
     Node[] vertex;
     boolean[] edgeFromPolygon;
 
-    protected Triangle(
+    private Triangle(
         Node a,
         boolean isABfromPolygon,
         Node b,
@@ -1634,19 +1723,6 @@ public final class Tessellator {
     /** get if edge is shared with the polygon for the given edge */
     public boolean isEdgefromPolygon(int startVertex) {
       return edgeFromPolygon[startVertex];
-    }
-
-    /** utility method to compute whether the point is in the triangle */
-    protected boolean containsPoint(double lat, double lon) {
-      return pointInTriangle(
-          lon,
-          lat,
-          vertex[0].getX(),
-          vertex[0].getY(),
-          vertex[1].getX(),
-          vertex[1].getY(),
-          vertex[2].getX(),
-          vertex[2].getY());
     }
 
     /** pretty print the triangle vertices */

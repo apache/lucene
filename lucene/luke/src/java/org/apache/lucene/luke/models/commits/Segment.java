@@ -49,9 +49,7 @@ public final class Segment {
     segment.codecName = segInfo.info.getCodec().getName();
     try {
       segment.displaySize = CommitsImpl.toDisplaySize(segInfo.sizeInBytes());
-    } catch (
-        @SuppressWarnings("unused")
-        IOException e) {
+    } catch (IOException _) {
     }
     segment.useCompoundFile = segInfo.info.getUseCompoundFile();
     return segment;

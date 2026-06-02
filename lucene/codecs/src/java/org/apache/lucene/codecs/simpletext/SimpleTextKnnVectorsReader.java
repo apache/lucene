@@ -26,8 +26,8 @@ import static org.apache.lucene.codecs.simpletext.SimpleTextKnnVectorsWriter.VEC
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
@@ -36,6 +36,8 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
@@ -43,7 +45,6 @@ import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
@@ -63,7 +64,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   private final SegmentReadState readState;
   private final IndexInput dataIn;
   private final BytesRefBuilder scratch = new BytesRefBuilder();
-  private final Map<String, FieldEntry> fieldEntries = new HashMap<>();
+  private final IntObjectHashMap<FieldEntry> fieldEntries = new IntObjectHashMap<>();
 
   SimpleTextKnnVectorsReader(SegmentReadState readState) throws IOException {
     this.readState = readState;
@@ -78,7 +79,6 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
             readState.segmentSuffix,
             SimpleTextKnnVectorsFormat.VECTOR_EXTENSION);
 
-    boolean success = false;
     try (ChecksumIndexInput in = readState.directory.openChecksumInput(metaFileName)) {
       int fieldNumber = readInt(in, FIELD_NUMBER);
       while (fieldNumber != -1) {
@@ -91,9 +91,9 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
         for (int i = 0; i < size; i++) {
           docIds[i] = readInt(in, EMPTY);
         }
-        assert fieldEntries.containsKey(fieldName) == false;
+        assert fieldEntries.containsKey(fieldNumber) == false;
         fieldEntries.put(
-            fieldName,
+            fieldNumber,
             new FieldEntry(
                 dimension,
                 vectorDataOffset,
@@ -105,11 +105,9 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       SimpleTextUtil.checkFooter(in);
 
       dataIn = readState.directory.openInput(vectorFileName, IOContext.DEFAULT);
-      success = true;
-    } finally {
-      if (success == false) {
-        IOUtils.closeWhileHandlingException(this);
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, this);
+      throw t;
     }
   }
 
@@ -126,7 +124,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       throw new IllegalStateException(
           "KNN vectors readers should not be called on fields that don't enable KNN vectors");
     }
-    FieldEntry fieldEntry = fieldEntries.get(field);
+    FieldEntry fieldEntry = fieldEntries.get(info.number);
     if (fieldEntry == null) {
       // mirror the handling in Lucene90VectorReader#getVectorValues
       // needed to pass TestSimpleTextKnnVectorsFormat#testDeleteAllVectorDocs
@@ -159,7 +157,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
       throw new IllegalStateException(
           "KNN vectors readers should not be called on fields that don't enable KNN vectors");
     }
-    FieldEntry fieldEntry = fieldEntries.get(field);
+    FieldEntry fieldEntry = fieldEntries.get(info.number);
     if (fieldEntry == null) {
       // mirror the handling in Lucene90VectorReader#getVectorValues
       // needed to pass TestSimpleTextKnnVectorsFormat#testDeleteAllVectorDocs
@@ -180,7 +178,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     FloatVectorValues values = getFloatVectorValues(field);
     if (target.length != values.dimension()) {
@@ -194,7 +192,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     VectorSimilarityFunction vectorSimilarity = info.getVectorSimilarityFunction();
     for (int ord = 0; ord < values.size(); ord++) {
       int doc = values.ordToDoc(ord);
-      if (acceptDocs != null && acceptDocs.get(doc) == false) {
+      if (acceptDocs.bits() != null && acceptDocs.bits().get(doc) == false) {
         continue;
       }
 
@@ -210,7 +208,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     ByteVectorValues values = getByteVectorValues(field);
     if (target.length != values.dimension()) {
@@ -225,7 +223,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
 
     for (int ord = 0; ord < values.size(); ord++) {
       int doc = values.ordToDoc(ord);
-      if (acceptDocs != null && acceptDocs.get(doc) == false) {
+      if (acceptDocs.bits() != null && acceptDocs.bits().get(doc) == false) {
         continue;
       }
 
@@ -274,6 +272,16 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
         break;
       }
     }
+  }
+
+  @Override
+  public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+    Objects.requireNonNull(fieldInfo);
+    FieldEntry fieldEntry = fieldEntries.get(fieldInfo.number);
+    if (fieldEntry == null) {
+      return null;
+    }
+    return Map.of(); // all in-heap
   }
 
   @Override

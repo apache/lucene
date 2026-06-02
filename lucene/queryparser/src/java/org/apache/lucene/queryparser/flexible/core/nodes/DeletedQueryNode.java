@@ -41,8 +41,6 @@ public class DeletedQueryNode extends QueryNodeImpl {
 
   @Override
   public QueryNode cloneTree() throws CloneNotSupportedException {
-    DeletedQueryNode clone = (DeletedQueryNode) super.cloneTree();
-
-    return clone;
+    return super.cloneTree();
   }
 }

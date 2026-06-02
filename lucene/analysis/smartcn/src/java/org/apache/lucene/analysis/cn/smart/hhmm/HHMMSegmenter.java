@@ -28,7 +28,7 @@ import org.apache.lucene.analysis.cn.smart.WordType;
  */
 public class HHMMSegmenter {
 
-  private static WordDictionary wordDict = WordDictionary.getInstance();
+  private static final WordDictionary wordDict = WordDictionary.getInstance();
 
   /**
    * Create the {@link SegGraph} for a sentence.

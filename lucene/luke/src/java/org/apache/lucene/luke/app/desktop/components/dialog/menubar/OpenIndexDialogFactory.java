@@ -66,6 +66,7 @@ public final class OpenIndexDialogFactory implements DialogOpener.DialogFactory 
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+  @SuppressWarnings("NonFinalStaticField")
   private static OpenIndexDialogFactory instance;
 
   private final Preferences prefs;
@@ -264,7 +265,7 @@ public final class OpenIndexDialogFactory implements DialogOpener.DialogFactory 
     panel.add(okBtn);
 
     JButton cancelBtn = new JButton(MessageUtils.getLocalizedMessage("button.cancel"));
-    cancelBtn.addActionListener(e -> dialog.dispose());
+    cancelBtn.addActionListener(_ -> dialog.dispose());
     panel.add(cancelBtn);
 
     return panel;
@@ -292,7 +293,11 @@ public final class OpenIndexDialogFactory implements DialogOpener.DialogFactory 
       if (!history.isEmpty()) {
         Path path = Paths.get(history.get(0));
         if (Files.exists(path)) {
-          return path.getParent().toAbsolutePath().toFile();
+          if (path.getParent() != null) {
+            return path.getParent().toAbsolutePath().toFile();
+          } else {
+            return path.toAbsolutePath().toFile();
+          }
         }
       }
       return null;

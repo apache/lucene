@@ -24,54 +24,24 @@ import org.apache.lucene.search.TotalHits;
 /**
  * Wraps a provided KnnCollector object, translating the provided vectorId ordinal to a documentId
  */
-public final class OrdinalTranslatedKnnCollector implements KnnCollector {
+public final class OrdinalTranslatedKnnCollector extends KnnCollector.Decorator {
 
-  private final KnnCollector in;
   private final IntToIntFunction vectorOrdinalToDocId;
 
-  public OrdinalTranslatedKnnCollector(KnnCollector in, IntToIntFunction vectorOrdinalToDocId) {
-    this.in = in;
+  public OrdinalTranslatedKnnCollector(
+      KnnCollector collector, IntToIntFunction vectorOrdinalToDocId) {
+    super(collector);
     this.vectorOrdinalToDocId = vectorOrdinalToDocId;
   }
 
   @Override
-  public boolean earlyTerminated() {
-    return in.earlyTerminated();
-  }
-
-  @Override
-  public void incVisitedCount(int count) {
-    in.incVisitedCount(count);
-  }
-
-  @Override
-  public long visitedCount() {
-    return in.visitedCount();
-  }
-
-  @Override
-  public long visitLimit() {
-    return in.visitLimit();
-  }
-
-  @Override
-  public int k() {
-    return in.k();
-  }
-
-  @Override
   public boolean collect(int vectorId, float similarity) {
-    return in.collect(vectorOrdinalToDocId.apply(vectorId), similarity);
-  }
-
-  @Override
-  public float minCompetitiveSimilarity() {
-    return in.minCompetitiveSimilarity();
+    return super.collect(vectorOrdinalToDocId.apply(vectorId), similarity);
   }
 
   @Override
   public TopDocs topDocs() {
-    TopDocs td = in.topDocs();
+    TopDocs td = super.topDocs();
     return new TopDocs(
         new TotalHits(
             visitedCount(),

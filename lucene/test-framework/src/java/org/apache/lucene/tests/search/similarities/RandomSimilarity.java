@@ -66,11 +66,10 @@ import org.apache.lucene.search.similarities.Similarity;
  * <p>The choices are 'sticky', so the selected algorithm is always used for the same field.
  */
 public class RandomSimilarity extends PerFieldSimilarityWrapper {
-  final BM25Similarity defaultSim = new BM25Similarity();
-  final List<Similarity> knownSims;
-  Map<String, Similarity> previousMappings = new HashMap<>();
-  final int perFieldSeed;
-  final boolean shouldQueryNorm;
+  private final List<Similarity> knownSims;
+  private final Map<String, Similarity> previousMappings = new HashMap<>();
+  private final int perFieldSeed;
+  private final boolean shouldQueryNorm;
 
   public RandomSimilarity(Random random) {
     perFieldSeed = random.nextInt();
@@ -82,26 +81,22 @@ public class RandomSimilarity extends PerFieldSimilarityWrapper {
   @Override
   public synchronized Similarity get(String field) {
     assert field != null;
-    Similarity sim = previousMappings.get(field);
-    if (sim == null) {
-      sim =
-          knownSims.get(Math.max(0, Math.abs(perFieldSeed ^ field.hashCode())) % knownSims.size());
-      previousMappings.put(field, sim);
-    }
-    return sim;
+    return previousMappings.computeIfAbsent(
+        field,
+        f -> knownSims.get(Math.max(0, Math.abs(perFieldSeed ^ f.hashCode())) % knownSims.size()));
   }
 
   // all the similarities that we rotate through
   /** The DFR basic models to test. */
-  static BasicModel[] BASIC_MODELS = {
+  private static final BasicModel[] BASIC_MODELS = {
     new BasicModelG(), new BasicModelIF(), new BasicModelIn(), new BasicModelIne(),
   };
 
   /** The DFR aftereffects to test. */
-  static AfterEffect[] AFTER_EFFECTS = {new AfterEffectB(), new AfterEffectL()};
+  private static final AfterEffect[] AFTER_EFFECTS = {new AfterEffectB(), new AfterEffectL()};
 
   /** The DFR normalizations to test. */
-  static Normalization[] NORMALIZATIONS = {
+  private static final Normalization[] NORMALIZATIONS = {
     new NormalizationH1(), new NormalizationH2(),
     new NormalizationH3(), new NormalizationZ()
     // TODO: if we enable NoNormalization, we have to deal with
@@ -110,17 +105,17 @@ public class RandomSimilarity extends PerFieldSimilarityWrapper {
   };
 
   /** The distributions for IB. */
-  static Distribution[] DISTRIBUTIONS = {new DistributionLL(), new DistributionSPL()};
+  private static final Distribution[] DISTRIBUTIONS = {new DistributionLL(), new DistributionSPL()};
 
   /** Lambdas for IB. */
-  static Lambda[] LAMBDAS = {new LambdaDF(), new LambdaTTF()};
+  private static final Lambda[] LAMBDAS = {new LambdaDF(), new LambdaTTF()};
 
   /** Independence measures for DFI */
-  static Independence[] INDEPENDENCE_MEASURES = {
+  private static final Independence[] INDEPENDENCE_MEASURES = {
     new IndependenceStandardized(), new IndependenceSaturated(), new IndependenceChiSquared()
   };
 
-  static List<Similarity> allSims;
+  private static final List<Similarity> allSims;
 
   static {
     allSims = new ArrayList<>();

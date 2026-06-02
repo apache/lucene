@@ -30,13 +30,13 @@ import org.apache.lucene.util.ResourceLoaderAware;
 /**
  * Factory for {@link MappingCharFilter}.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="text_map" class="solr.TextField" positionIncrementGap="100"&gt;
  *   &lt;analyzer&gt;
  *     &lt;charFilter class="solr.MappingCharFilterFactory" mapping="mapping.txt"/&gt;
  *     &lt;tokenizer class="solr.WhitespaceTokenizerFactory"/&gt;
  *   &lt;/analyzer&gt;
- * &lt;/fieldType&gt;</pre>
+ * &lt;/fieldType&gt;</code></pre>
  *
  * @since Solr 1.4
  * @lucene.spi {@value #NAME}
@@ -97,7 +97,7 @@ public class MappingCharFilterFactory extends CharFilterFactory implements Resou
   }
 
   // "source" => "target"
-  static Pattern p = Pattern.compile("\"(.*)\"\\s*=>\\s*\"(.*)\"\\s*$");
+  private static final Pattern p = Pattern.compile("\"(.*)\"\\s*=>\\s*\"(.*)\"\\s*$");
 
   protected void parseRules(List<String> rules, NormalizeCharMap.Builder builder) {
     for (String rule : rules) {

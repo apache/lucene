@@ -18,6 +18,7 @@ package org.apache.lucene.util.automaton;
 
 import static org.apache.lucene.util.automaton.Operations.DEFAULT_DETERMINIZE_WORK_LIMIT;
 
+import java.util.List;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.automaton.AutomatonTestUtil;
 
@@ -58,7 +59,8 @@ public class TestDeterminism extends LuceneTestCase {
     // a union a = a
     equivalent =
         Operations.determinize(
-            Operations.removeDeadStates(Operations.union(a, a)), DEFAULT_DETERMINIZE_WORK_LIMIT);
+            Operations.removeDeadStates(Operations.union(List.of(a, a))),
+            DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertTrue(AutomatonTestUtil.sameLanguage(a, equivalent));
 
     // a intersect a = a
@@ -69,7 +71,7 @@ public class TestDeterminism extends LuceneTestCase {
     assertTrue(AutomatonTestUtil.sameLanguage(a, equivalent));
 
     // a minus a = empty
-    Automaton empty = Operations.minus(a, a, DEFAULT_DETERMINIZE_WORK_LIMIT);
+    Automaton empty = AutomatonTestUtil.minus(a, a, DEFAULT_DETERMINIZE_WORK_LIMIT);
     assertTrue(Operations.isEmpty(empty));
 
     // as long as don't accept the empty string
@@ -79,7 +81,8 @@ public class TestDeterminism extends LuceneTestCase {
       Automaton optional = Operations.optional(a);
       // System.out.println("optional " + optional);
       equivalent =
-          Operations.minus(optional, Automata.makeEmptyString(), DEFAULT_DETERMINIZE_WORK_LIMIT);
+          AutomatonTestUtil.minus(
+              optional, Automata.makeEmptyString(), DEFAULT_DETERMINIZE_WORK_LIMIT);
       // System.out.println("equiv " + equivalent);
       assertTrue(AutomatonTestUtil.sameLanguage(a, equivalent));
     }

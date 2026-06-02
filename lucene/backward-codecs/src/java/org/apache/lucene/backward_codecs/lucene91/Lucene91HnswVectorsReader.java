@@ -17,11 +17,12 @@
 
 package org.apache.lucene.backward_codecs.lucene91;
 
+import static org.apache.lucene.backward_codecs.lucene91.Lucene91HnswVectorsFormat.VECTOR_DATA_EXTENSION;
+import static org.apache.lucene.backward_codecs.lucene91.Lucene91HnswVectorsFormat.VECTOR_INDEX_EXTENSION;
 import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.function.IntUnaryOperator;
 import org.apache.lucene.codecs.CodecUtil;
@@ -35,6 +36,8 @@ import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.VectorScorer;
@@ -55,13 +58,15 @@ import org.apache.lucene.util.hnsw.RandomVectorScorer;
  */
 public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
 
-  private final Map<String, FieldEntry> fields = new HashMap<>();
+  private final IntObjectHashMap<FieldEntry> fields = new IntObjectHashMap<>();
   private final IndexInput vectorData;
   private final IndexInput vectorIndex;
   private final DefaultFlatVectorScorer defaultFlatVectorScorer = new DefaultFlatVectorScorer();
+  private final FieldInfos fieldInfos;
 
   Lucene91HnswVectorsReader(SegmentReadState state) throws IOException {
     int versionMeta = readMetadata(state);
+    this.fieldInfos = state.fieldInfos;
     boolean success = false;
     try {
       vectorData =
@@ -154,7 +159,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       }
       FieldEntry fieldEntry = readField(meta, info);
       validateFieldEntry(info, fieldEntry);
-      fields.put(info.name, fieldEntry);
+      fields.put(info.number, fieldEntry);
     }
   }
 
@@ -214,13 +219,18 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     CodecUtil.checksumEntireFile(vectorIndex);
   }
 
-  @Override
-  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-    if (fieldEntry == null) {
+  private FieldEntry getFieldEntry(String field) {
+    final FieldInfo info = fieldInfos.fieldInfo(field);
+    final FieldEntry fieldEntry;
+    if (info == null || (fieldEntry = fields.get(info.number)) == null) {
       throw new IllegalArgumentException("field=\"" + field + "\" not found");
     }
-    return getOffHeapVectorValues(fieldEntry);
+    return fieldEntry;
+  }
+
+  @Override
+  public FloatVectorValues getFloatVectorValues(String field) throws IOException {
+    return getOffHeapVectorValues(getFieldEntry(field));
   }
 
   @Override
@@ -229,10 +239,9 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
-    FieldEntry fieldEntry = fields.get(field);
-
+    final FieldEntry fieldEntry = getFieldEntry(field);
     if (fieldEntry.size() == 0) {
       return;
     }
@@ -245,11 +254,11 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
         scorer,
         new OrdinalTranslatedKnnCollector(knnCollector, vectorValues::ordToDoc),
         getGraph(fieldEntry),
-        getAcceptOrds(acceptDocs, fieldEntry));
+        getAcceptOrds(acceptDocs.bits(), fieldEntry));
   }
 
   @Override
-  public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs)
+  public void search(String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
       throws IOException {
     throw new UnsupportedOperationException();
   }
@@ -290,6 +299,14 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     IndexInput bytesSlice =
         vectorIndex.slice("graph-data", entry.vectorIndexOffset, entry.vectorIndexLength);
     return new OffHeapHnswGraph(entry, bytesSlice);
+  }
+
+  @Override
+  public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+    FieldEntry entry = getFieldEntry(fieldInfo.name);
+    var raw = Map.entry(VECTOR_DATA_EXTENSION, entry.vectorDataLength);
+    var graph = Map.entry(VECTOR_INDEX_EXTENSION, entry.vectorIndexLength);
+    return Map.ofEntries(raw, graph);
   }
 
   @Override
@@ -488,6 +505,7 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     final int entryNode;
     final int size;
     final long bytesForConns;
+    final int maxConn;
 
     int arcCount;
     int arcUpTo;
@@ -501,6 +519,17 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
       this.size = entry.size();
       this.graphOffsetsByLevel = entry.graphOffsetsByLevel;
       this.bytesForConns = Math.multiplyExact(Math.addExact(entry.maxConn, 1L), Integer.BYTES);
+      this.maxConn = entry.maxConn;
+    }
+
+    @Override
+    public int maxConn() {
+      return maxConn;
+    }
+
+    @Override
+    public int neighborCount() {
+      return arcCount;
     }
 
     @Override
@@ -546,9 +575,9 @@ public final class Lucene91HnswVectorsReader extends KnnVectorsReader {
     @Override
     public NodesIterator getNodesOnLevel(int level) {
       if (level == 0) {
-        return new ArrayNodesIterator(size());
+        return new DenseNodesIterator(size());
       } else {
-        return new ArrayNodesIterator(nodesByLevel[level], nodesByLevel[level].length);
+        return new ArrayNodesIterator(nodesByLevel[level]);
       }
     }
   }

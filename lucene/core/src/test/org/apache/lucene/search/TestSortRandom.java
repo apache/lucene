@@ -130,12 +130,8 @@ public class TestSortRandom extends LuceneTestCase {
       final TopFieldDocs hits;
       final SortField sf;
       final boolean sortMissingLast;
-      sf = new SortField("stringdv", type, reverse);
       sortMissingLast = random().nextBoolean();
-
-      if (sortMissingLast) {
-        sf.setMissingValue(SortField.STRING_LAST);
-      }
+      sf = new SortField("stringdv", type, reverse, sortMissingLast ? SortField.STRING_LAST : null);
 
       final Sort sort;
       if (random.nextBoolean()) {
@@ -259,7 +255,7 @@ public class TestSortRandom extends LuceneTestCase {
           FixedBitSet bits =
               bitsets.computeIfAbsent(
                   context,
-                  ctx -> {
+                  _ -> {
                     Random random = new Random(context.docBase ^ seed);
                     final int maxDoc = context.reader().maxDoc();
                     try {

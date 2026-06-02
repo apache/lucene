@@ -54,7 +54,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.automaton.ByteRunAutomaton;
+import org.apache.lucene.util.automaton.ByteRunnable;
 
 public class TestTermInSetQuery extends LuceneTestCase {
 
@@ -109,6 +109,8 @@ public class TestTermInSetQuery extends LuceneTestCase {
     dir.close();
   }
 
+  // TODO: incredibly slow
+  @Nightly
   public void testDuel() throws IOException {
     final int iters = atLeast(2);
     final String field = "f";
@@ -317,12 +319,12 @@ public class TestTermInSetQuery extends LuceneTestCase {
 
     TermInSetQuery tq1 = new TermInSetQuery("thing", List.of(newBytesRef("apple")));
     TermInSetQuery tq2 = new TermInSetQuery("thing", List.of(newBytesRef("orange")));
-    assertFalse(tq1.hashCode() == tq2.hashCode());
+    assertNotEquals(tq1.hashCode(), tq2.hashCode());
 
     // different fields with the same term should have differing hashcodes
     tq1 = new TermInSetQuery("thing", List.of(newBytesRef("apple")));
     tq2 = new TermInSetQuery("thing2", List.of(newBytesRef("apple")));
-    assertFalse(tq1.hashCode() == tq2.hashCode());
+    assertNotEquals(tq1.hashCode(), tq2.hashCode());
   }
 
   public void testSimpleEquals() {
@@ -401,7 +403,7 @@ public class TestTermInSetQuery extends LuceneTestCase {
       }
 
       @Override
-      public Terms terms(String field) throws IOException {
+      public Terms terms(String field) {
         Terms terms = super.terms(field);
         if (terms == null) {
           return null;
@@ -498,7 +500,7 @@ public class TestTermInSetQuery extends LuceneTestCase {
 
           @Override
           public void consumeTermsMatching(
-              Query query, String field, Supplier<ByteRunAutomaton> automaton) {
+              Query query, String field, Supplier<ByteRunnable> automaton) {
             fail("Singleton TermInSetQuery should not try to build ByteRunAutomaton");
           }
         });
@@ -518,8 +520,8 @@ public class TestTermInSetQuery extends LuceneTestCase {
 
           @Override
           public void consumeTermsMatching(
-              Query query, String field, Supplier<ByteRunAutomaton> automaton) {
-            ByteRunAutomaton a = automaton.get();
+              Query query, String field, Supplier<ByteRunnable> automaton) {
+            ByteRunnable a = automaton.get();
             BytesRef test = newBytesRef("nonmatching");
             assertFalse(a.run(test.bytes, test.offset, test.length));
             for (BytesRef term : terms) {

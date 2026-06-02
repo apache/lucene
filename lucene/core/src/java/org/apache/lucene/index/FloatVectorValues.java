@@ -66,13 +66,31 @@ public abstract class FloatVectorValues extends KnnVectorValues {
 
   /**
    * Return a {@link VectorScorer} for the given query vector and the current {@link
-   * FloatVectorValues}.
+   * FloatVectorValues}. When the underlying format quantizes the vectors, this will return a {@link
+   * VectorScorer} that scores against the quantized vectors.
    *
    * @param target the query vector
    * @return a {@link VectorScorer} instance or null
    */
   public VectorScorer scorer(float[] target) throws IOException {
     throw new UnsupportedOperationException();
+  }
+
+  /**
+   * Rescore using the given query vector and the current {@link FloatVectorValues}. This is unique
+   * from scorer() in that it is explicitly for rescoring an existing set of hits and thus will
+   * often utilize the highest fidelity scoring algorithm available. This is useful when the initial
+   * search used a quantized index or an approximate search algorithm, and now we want to rescore
+   * the hits using the full fidelity vectors. The default implementation is to call {@link
+   * #scorer(float[])} assuming that the scorer is already the highest fidelity implementation
+   * available.
+   *
+   * @param target the query vector
+   * @return a {@link VectorScorer} instance or null
+   * @throws IOException if an I/O error occurs
+   */
+  public VectorScorer rescorer(float[] target) throws IOException {
+    return scorer(target);
   }
 
   @Override

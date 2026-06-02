@@ -47,9 +47,7 @@ public class BooleanSingleChildOptimizationQueryNodeProcessor extends QueryNodeP
       if (children != null && children.size() == 1) {
         QueryNode child = children.get(0);
 
-        if (child instanceof ModifierQueryNode) {
-          ModifierQueryNode modNode = (ModifierQueryNode) child;
-
+        if (child instanceof ModifierQueryNode modNode) {
           if (modNode instanceof BooleanModifierNode
               || modNode.getModifier() == Modifier.MOD_NONE) {
 

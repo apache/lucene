@@ -40,7 +40,7 @@ public class PassageFormatter {
   private final ArrayList<OffsetRange> markerStack = new ArrayList<>();
 
   public PassageFormatter(String ellipsis, String markerStart, String markerEnd) {
-    this(ellipsis, (m) -> markerStart, (m) -> markerEnd);
+    this(ellipsis, (_) -> markerStart, (_) -> markerEnd);
   }
 
   public PassageFormatter(

@@ -18,6 +18,7 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.util.Bits;
 
@@ -28,7 +29,7 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
-  public final Terms terms(String field) throws IOException {
+  public final Terms terms(String field) {
     throw new UnsupportedOperationException();
   }
 
@@ -43,7 +44,7 @@ abstract class DocValuesLeafReader extends LeafReader {
   }
 
   @Override
-  public final PointValues getPointValues(String field) throws IOException {
+  public final PointValues getPointValues(String field) {
     throw new UnsupportedOperationException();
   }
 
@@ -59,13 +60,15 @@ abstract class DocValuesLeafReader extends LeafReader {
 
   @Override
   public void searchNearestVectors(
-      String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+      String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
     throw new UnsupportedOperationException();
   }
 
   @Override
   public void searchNearestVectors(
-      String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) throws IOException {
+      String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
+      throws IOException {
     throw new UnsupportedOperationException();
   }
 

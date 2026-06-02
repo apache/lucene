@@ -73,7 +73,7 @@ final class SortedNumericDocValuesSetQuery extends Query implements Accountable 
 
   @Override
   public String toString(String defaultField) {
-    return new StringBuilder().append(field).append(": ").append(numbers.toString()).toString();
+    return field + ": " + numbers.toString();
   }
 
   @Override
@@ -86,7 +86,7 @@ final class SortedNumericDocValuesSetQuery extends Query implements Accountable 
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
     if (numbers.size() == 0) {
-      return new MatchNoDocsQuery();
+      return MatchNoDocsQuery.INSTANCE;
     }
     return super.rewrite(indexSearcher);
   }

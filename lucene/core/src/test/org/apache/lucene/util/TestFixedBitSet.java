@@ -17,7 +17,9 @@
 package org.apache.lucene.util;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Random;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.tests.util.BaseBitSetTestCase;
@@ -74,6 +76,24 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     } while (aa != DocIdSetIterator.NO_MORE_DOCS);
   }
 
+  void doNextClearBit(java.util.BitSet a, FixedBitSet b) {
+    assertEquals(a.cardinality(), b.cardinality());
+    final int len = b.length();
+    int aa = -1;
+    int bb = -1;
+    do {
+      final int from = aa + 1;
+      if (from >= len) {
+        aa = DocIdSetIterator.NO_MORE_DOCS;
+      } else {
+        int nc = a.nextClearBit(from);
+        aa = nc < len ? nc : DocIdSetIterator.NO_MORE_DOCS;
+      }
+      bb = bb < len - 1 ? b.nextClearBit(bb + 1) : DocIdSetIterator.NO_MORE_DOCS;
+      assertEquals(aa, bb);
+    } while (aa != DocIdSetIterator.NO_MORE_DOCS);
+  }
+
   void doPrevSetBit(java.util.BitSet a, FixedBitSet b) {
     assertEquals(a.cardinality(), b.cardinality());
     int aa = a.size() + random().nextInt(100);
@@ -98,26 +118,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
   }
 
   // test interleaving different FixedBitSetIterator.next()/skipTo()
-  void doIterate(java.util.BitSet a, FixedBitSet b, int mode) throws IOException {
-    if (mode == 1) doIterate1(a, b);
-    if (mode == 2) doIterate2(a, b);
-  }
-
-  void doIterate1(java.util.BitSet a, FixedBitSet b) throws IOException {
-    assertEquals(a.cardinality(), b.cardinality());
-    int aa = -1, bb = -1;
-    DocIdSetIterator iterator = new BitSetIterator(b, 0);
-    do {
-      aa = a.nextSetBit(aa + 1);
-      bb =
-          (bb < b.length() && random().nextBoolean())
-              ? iterator.nextDoc()
-              : iterator.advance(bb + 1);
-      assertEquals(aa == -1 ? DocIdSetIterator.NO_MORE_DOCS : aa, bb);
-    } while (aa >= 0);
-  }
-
-  void doIterate2(java.util.BitSet a, FixedBitSet b) throws IOException {
+  void doIterate(java.util.BitSet a, FixedBitSet b) throws IOException {
     assertEquals(a.cardinality(), b.cardinality());
     int aa = -1, bb = -1;
     DocIdSetIterator iterator = new BitSetIterator(b, 0);
@@ -128,7 +129,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     } while (aa >= 0);
   }
 
-  void doRandomSets(int maxSize, int iter, int mode) throws IOException {
+  void doRandomSets(int maxSize, int iter) throws IOException {
     java.util.BitSet a0 = null;
     FixedBitSet b0 = null;
 
@@ -181,7 +182,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
       FixedBitSet bb = b.clone();
       bb.flip(fromIndex, toIndex);
 
-      doIterate(aa, bb, mode); // a problem here is from flip or doIterate
+      doIterate(aa, bb); // a problem here is from flip or doIterate
 
       fromIndex = random().nextInt(sz / 2);
       toIndex = fromIndex + random().nextInt(sz - fromIndex);
@@ -191,6 +192,8 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
       bb.clear(fromIndex, toIndex);
 
       doNextSetBit(aa, bb); // a problem here is from clear() or nextSetBit
+
+      doNextClearBit(aa, bb);
 
       doPrevSetBit(aa, bb);
 
@@ -202,6 +205,8 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
       bb.set(fromIndex, toIndex);
 
       doNextSetBit(aa, bb); // a problem here is from set() or nextSetBit
+
+      doNextClearBit(aa, bb);
 
       doPrevSetBit(aa, bb);
 
@@ -230,10 +235,10 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
         assertEquals(a0.cardinality(), b0.cardinality());
         assertEquals(a_or.cardinality(), b_or.cardinality());
 
-        doIterate(a_and, b_and, mode);
-        doIterate(a_or, b_or, mode);
-        doIterate(a_andn, b_andn, mode);
-        doIterate(a_xor, b_xor, mode);
+        doIterate(a_and, b_and);
+        doIterate(a_or, b_or);
+        doIterate(a_andn, b_andn);
+        doIterate(a_xor, b_xor);
 
         assertEquals(a_and.cardinality(), b_and.cardinality());
         assertEquals(a_or.cardinality(), b_or.cardinality());
@@ -250,8 +255,7 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
   // larger testsuite.
   public void testSmall() throws IOException {
     final int iters = TEST_NIGHTLY ? atLeast(1000) : 100;
-    doRandomSets(atLeast(1200), iters, 1);
-    doRandomSets(atLeast(1200), iters, 2);
+    doRandomSets(atLeast(1200), iters);
   }
 
   // uncomment to run a bigger test (~2 minutes).
@@ -635,5 +639,270 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
     // Further changes are reflected
     set.set(5);
     assertTrue(bits.get(5));
+  }
+
+  public void testScanIsEmpty() {
+    FixedBitSet set = new FixedBitSet(0);
+    assertTrue(set.scanIsEmpty());
+
+    set = new FixedBitSet(13);
+    assertTrue(set.scanIsEmpty());
+    set.set(10);
+    assertFalse(set.scanIsEmpty());
+
+    set = new FixedBitSet(1024);
+    assertTrue(set.scanIsEmpty());
+    set.set(3);
+    assertFalse(set.scanIsEmpty());
+    set.clear(3);
+    set.set(1020);
+    assertFalse(set.scanIsEmpty());
+
+    set = new FixedBitSet(1030);
+    assertTrue(set.scanIsEmpty());
+    set.set(3);
+    assertFalse(set.scanIsEmpty());
+    set.clear(3);
+    set.set(1028);
+    assertFalse(set.scanIsEmpty());
+  }
+
+  public void testOrRange() {
+    FixedBitSet dest = new FixedBitSet(1_000);
+    FixedBitSet source = new FixedBitSet(10_000);
+    for (int i = 0; i < source.length(); i += 3) {
+      source.set(i);
+    }
+
+    // Test all possible alignments, and both a "short" (less than 64) and a long length.
+    for (int sourceFrom = 64; sourceFrom < 128; ++sourceFrom) {
+      for (int destFrom = 256; destFrom < 320; ++destFrom) {
+        for (int length :
+            new int[] {
+              0,
+              TestUtil.nextInt(random(), 1, Long.SIZE - 1),
+              TestUtil.nextInt(random(), Long.SIZE, 512)
+            }) {
+          dest.clear();
+          for (int i = 0; i < dest.length(); i += 10) {
+            dest.set(i);
+          }
+          FixedBitSet.orRange(source, sourceFrom, dest, destFrom, length);
+          for (int i = 0; i < dest.length(); ++i) {
+            boolean destSet = i % 10 == 0;
+            if (i < destFrom || i >= destFrom + length) {
+              // Outside of the range, unmodified
+              assertEquals("" + i, destSet, dest.get(i));
+            } else {
+              boolean sourceSet = source.get(sourceFrom + (i - destFrom));
+              assertEquals(sourceSet || destSet, dest.get(i));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  public void testAndRange() {
+    FixedBitSet dest = new FixedBitSet(1_000);
+    FixedBitSet source = new FixedBitSet(10_000);
+    for (int i = 0; i < source.length(); i += 3) {
+      source.set(i);
+    }
+
+    // Test all possible alignments, and both a "short" (less than 64) and a long length.
+    for (int sourceFrom = 64; sourceFrom < 128; ++sourceFrom) {
+      for (int destFrom = 256; destFrom < 320; ++destFrom) {
+        for (int length :
+            new int[] {
+              0,
+              TestUtil.nextInt(random(), 1, Long.SIZE - 1),
+              TestUtil.nextInt(random(), Long.SIZE, 512)
+            }) {
+          dest.clear();
+          for (int i = 0; i < dest.length(); i += 2) {
+            dest.set(i);
+          }
+          FixedBitSet.andRange(source, sourceFrom, dest, destFrom, length);
+          for (int i = 0; i < dest.length(); ++i) {
+            boolean destSet = i % 2 == 0;
+            if (i < destFrom || i >= destFrom + length) {
+              // Outside of the range, unmodified
+              assertEquals("" + i, destSet, dest.get(i));
+            } else {
+              boolean sourceSet = source.get(sourceFrom + (i - destFrom));
+              assertEquals("" + i, sourceSet && destSet, dest.get(i));
+            }
+          }
+        }
+      }
+    }
+  }
+
+  private static int slowCardinality(FixedBitSet bitSet, int from, int to) {
+    BitSetIterator iterator = new BitSetIterator(bitSet, bitSet.cardinality());
+    int cardinality = 0;
+    for (int i = iterator.advance(from); i < to; i = iterator.nextDoc()) {
+      cardinality += 1;
+    }
+    return cardinality;
+  }
+
+  public void testRangeCardinality() {
+    FixedBitSet bitSet = new FixedBitSet(0);
+    assertEquals(0, bitSet.cardinality(0, 0));
+
+    bitSet = new FixedBitSet(TestUtil.nextInt(random(), 64, 4096));
+    for (int i = 0; i < bitSet.length(); i += TestUtil.nextInt(random(), 1, 16)) {
+      bitSet.set(i);
+    }
+    assertEquals(0, bitSet.cardinality(0, 0));
+    assertEquals(0, bitSet.cardinality(bitSet.length(), bitSet.length()));
+    assertEquals(slowCardinality(bitSet, 0, 1), bitSet.cardinality(0, 1));
+    assertEquals(
+        slowCardinality(bitSet, bitSet.length() - 1, bitSet.length()),
+        bitSet.cardinality(bitSet.length() - 1, bitSet.length()));
+    assertEquals(slowCardinality(bitSet, 0, 63), bitSet.cardinality(0, 63));
+    assertEquals(
+        slowCardinality(bitSet, bitSet.length() - 63, bitSet.length()),
+        bitSet.cardinality(bitSet.length() - 63, bitSet.length()));
+    assertEquals(
+        slowCardinality(bitSet, 1, bitSet.length() - 1),
+        bitSet.cardinality(1, bitSet.length() - 1));
+  }
+
+  public void testForEach() throws IOException {
+    FixedBitSet bitSet = new FixedBitSet(TestUtil.nextInt(random(), 64, 4096));
+    for (int i = 0; i < bitSet.length(); i += TestUtil.nextInt(random(), 1, 16)) {
+      bitSet.set(i);
+    }
+    for (int iter = 0; iter < 100; ++iter) {
+      int from = TestUtil.nextInt(random(), 0, bitSet.length());
+      int to = TestUtil.nextInt(random(), from, bitSet.length());
+      doTestForEach(bitSet, from, to);
+    }
+  }
+
+  private void doTestForEach(FixedBitSet bitSet, int from, int to) throws IOException {
+    int base = TestUtil.nextInt(random(), 0, 100);
+
+    List<Integer> expected = new ArrayList<>();
+    BitSetIterator iterator = new BitSetIterator(bitSet, bitSet.approximateCardinality());
+    for (int doc = iterator.advance(from); doc < to; doc = iterator.nextDoc()) {
+      expected.add(base + doc);
+    }
+
+    List<Integer> actual = new ArrayList<>();
+    bitSet.forEach(from, to, base, actual::add);
+
+    assertEquals(expected, actual);
+  }
+
+  public void testIntoArray() throws Exception {
+    for (int outerIter = 0; outerIter < 100; outerIter++) {
+      int numBits = TestUtil.nextInt(random(), 10, 1_000);
+      int numSetBits = TestUtil.nextInt(random(), 0, numBits);
+
+      FixedBitSet bitSet = new FixedBitSet(numBits);
+      while (bitSet.cardinality() < numSetBits) {
+        bitSet.set(random().nextInt(bitSet.length()));
+      }
+
+      for (int innerIter = 0; innerIter < 100; ++innerIter) {}
+
+      int[] array = new int[TestUtil.nextInt(random(), 0, numSetBits + 10)];
+      int from, to;
+      if (random().nextBoolean()) {
+        from = 0;
+        to = bitSet.length();
+      } else {
+        from = random().nextInt(bitSet.length());
+        to = from + random().nextInt(bitSet.length() - from);
+      }
+
+      int base = random().nextInt(1000);
+      int size = bitSet.intoArray(from, to, base, array);
+
+      if (size < array.length) {
+        // All set bits should have been copied
+        assertEquals(bitSet.cardinality(from, to), size);
+      }
+
+      int[] index = new int[] {0};
+      bitSet.forEach(
+          from,
+          to,
+          base,
+          bit -> {
+            if (index[0] < array.length) {
+              assertEquals(bit, array[index[0]++]);
+            }
+          });
+      assertEquals(size, index[0]);
+    }
+  }
+
+  /** Tests that orMask produces the same result as setting bits individually. */
+  public void testOrMask() {
+    Random rng = random();
+    // Test with various mask lengths (simulating 2/4/8 SIMD lanes) and all alignments
+    for (int maskLen : new int[] {2, 4, 8}) {
+      // Test all possible bit offsets within a word (0-63) to cover alignment cases
+      for (int startBit = 0; startBit < 128; startBit++) {
+        long mask = rng.nextLong() & ((1L << maskLen) - 1);
+
+        FixedBitSet fast = new FixedBitSet(256);
+        FixedBitSet slow = new FixedBitSet(256);
+        // This is done to ensure some bits are already set and get don't wiped off.
+        for (int i = 0; i < 256; i += 7) {
+          fast.set(i);
+          slow.set(i);
+        }
+
+        // Fast path: orMask
+        fast.orMask(startBit, mask, maskLen);
+
+        // Slow path: per-bit set
+        long m = mask;
+        while (m != 0) {
+          int bit = Long.numberOfTrailingZeros(m);
+          slow.set(startBit + bit);
+          m &= m - 1;
+        }
+
+        // Verify fast and slow path bit matches
+        assertEquals(
+            "orMask mismatch: startBit="
+                + startBit
+                + ", mask=0b"
+                + Long.toBinaryString(mask)
+                + ", maskLen="
+                + maskLen,
+            slow,
+            fast);
+      }
+    }
+  }
+
+  /** Tests orMask at word boundaries (straddling two longs). */
+  public void testOrMaskStraddling() {
+    // Force straddling: startBit near end of a 64-bit word
+    for (int maskLen : new int[] {4, 8}) {
+      for (int bitOffset = 64 - maskLen + 1; bitOffset < 64; bitOffset++) {
+        // positions 61-63 for maskLen=4, 57-63 for maskLen=8
+        long mask = (1L << maskLen) - 1; // all bits set
+
+        FixedBitSet fast = new FixedBitSet(128);
+        fast.orMask(bitOffset, mask, maskLen);
+
+        FixedBitSet slow = new FixedBitSet(128);
+        for (int i = 0; i < maskLen; i++) {
+          slow.set(bitOffset + i);
+        }
+
+        assertEquals(
+            "Straddling mismatch: startBit=" + bitOffset + ", maskLen=" + maskLen, slow, fast);
+      }
+    }
   }
 }

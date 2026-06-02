@@ -58,11 +58,6 @@ public class BitDocIdSet extends DocIdSet {
   }
 
   @Override
-  public BitSet bits() {
-    return set;
-  }
-
-  @Override
   public long ramBytesUsed() {
     return BASE_RAM_BYTES_USED + set.ramBytesUsed();
   }

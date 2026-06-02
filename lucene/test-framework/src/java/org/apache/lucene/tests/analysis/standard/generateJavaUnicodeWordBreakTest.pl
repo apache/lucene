@@ -35,7 +35,7 @@ my $scripts_url = "${url_prefix}/Scripts.txt";
 my $line_break_url = "${url_prefix}/LineBreak.txt";
 my $word_break_url = "${url_prefix}/auxiliary/WordBreakProperty.txt";
 my $word_break_test_url = "${url_prefix}/auxiliary/WordBreakTest.txt";
-my $emoji_prefix = "http://www.unicode.org/Public/emoji/${version}";
+my $emoji_prefix = "https://www.unicode.org/Public/emoji/${version}";
 my $emoji_url = "${emoji_prefix}/emoji-data.txt";
 my $underscore_version = "${version}.0";
 $underscore_version =~ s/\./_/g;
@@ -95,7 +95,7 @@ my $regional_indicator_codepoints = [];
 # Using lowercase versions of property value names to allow for case-
 # insensitive comparison with the names in the Unicode data files.
 parse_Unicode_data_file($line_break_url, $codepoints, {'sa' => 1});
-parse_Unicode_data_file($scripts_url, $codepoints, 
+parse_Unicode_data_file($scripts_url, $codepoints,
                         {'han' => 1, 'hiragana' => 1});
 parse_Unicode_data_file($word_break_url, $codepoints,
                         {'aletter' => 1, 'hebrew_letter' => 1, 'katakana' => 1, 'numeric' => 1});
@@ -249,6 +249,7 @@ sub get_URL_content {
   my $url = shift;
   print STDERR "Retrieving '$url'...";
   my $user_agent = LWP::UserAgent->new;
+  $user_agent->agent("curl");
   my $request = HTTP::Request->new(GET => $url);
   my $response = $user_agent->request($request);
   unless ($response->is_success) {

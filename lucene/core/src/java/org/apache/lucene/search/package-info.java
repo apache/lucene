@@ -41,6 +41,12 @@
  * important Query classes. For details on implementing your own Query class, see <a
  * href="#customQueriesExpert">Custom Queries -- Expert Level</a> below.
  *
+ * <p>Make sure to look at {@link org.apache.lucene.search.Query} factory methods on {@link
+ * org.apache.lucene.index.IndexableField}s that you feed into the index writer, they are convenient
+ * to use and sometimes more efficient than a naively constructed {@link
+ * org.apache.lucene.search.Query}. See {@link
+ * org.apache.lucene.document.LongField#newRangeQuery(String, long, long)} for instance.
+ *
  * <p>To perform a search, applications usually call {@link
  * org.apache.lucene.search.IndexSearcher#search(Query,int)}.
  *
@@ -68,9 +74,9 @@
  * org.apache.lucene.document.Field Field} with the specified string in it. Constructing a {@link
  * org.apache.lucene.search.TermQuery TermQuery} is as simple as:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * TermQuery tq = new TermQuery(new Term("fieldName", "term"));
- * </pre>
+ * </code></pre>
  *
  * In this example, the {@link org.apache.lucene.search.Query Query} identifies all {@link
  * org.apache.lucene.document.Document Document}s that have the {@link
@@ -204,7 +210,8 @@
  * documents that need to be scored based on boolean logic in the Query specification, and then
  * ranks this subset of matching documents via the retrieval model. For some valuable references on
  * VSM and IR in general refer to <a
- * href="http://wiki.apache.org/lucene-java/InformationRetrieval">Lucene Wiki IR references</a>.
+ * href="https://cwiki.apache.org/confluence/display/LUCENEJAVA/InformationRetrieval">Lucene Wiki IR
+ * references</a>.
  *
  * <p>The rest of this document will cover <a href="#scoringBasics">Scoring basics</a> and explain
  * how to change your {@link org.apache.lucene.search.similarities.Similarity Similarity}. Next, it
@@ -253,8 +260,12 @@
  * org.apache.lucene.index.IndexWriterConfig#setSimilarity(org.apache.lucene.search.similarities.Similarity)
  * IndexWriterConfig.setSimilarity(Similarity)} and at query-time with {@link
  * org.apache.lucene.search.IndexSearcher#setSimilarity(org.apache.lucene.search.similarities.Similarity)
- * IndexSearcher.setSimilarity(Similarity)}. Be sure to use the same Similarity at query-time as at
- * index-time (so that norms are encoded/decoded correctly); Lucene makes no effort to verify this.
+ * IndexSearcher.setSimilarity(Similarity)}. Be sure to use search-time similarities that encode the
+ * length normalization factor the same way as the similarity that you used at index time. All
+ * Lucene built-in similarities use the default encoding so they are compatible, but if you use a
+ * custom similarity that changes the encoding of the length normalization factor, you are on your
+ * own: Lucene makes no effort to ensure that the index-time and the search-time similarities are
+ * compatible.
  *
  * <p>You can influence scoring by configuring a different built-in Similarity implementation, or by
  * tweaking its parameters, subclassing it to override behavior. Some implementations also offer a
@@ -267,6 +278,30 @@
  * <p>See the {@link org.apache.lucene.search.similarities} package documentation for information on
  * the built-in available scoring models and extending or changing Similarity.
  *
+ * <h3>Scoring multiple fields</h3>
+ *
+ * <p>In the real world, documents often have multiple fields with different degrees of relevance. A
+ * robust way of scoring across multiple fields is called BM25F, which is implemented via {@link
+ * org.apache.lucene.search.CombinedFieldQuery}. It scores documents with multiple fields as if
+ * their content had been indexed in a single combined field. It supports configuring per-field
+ * boosts where the value of the boost is interpreted as the number of times that the content of the
+ * field exists in the virtual combined field.
+ *
+ * <p>Here is an example that constructs a query on "apache OR lucene" on fields "title" with a
+ * boost of 10, and "body" with a boost of 1:
+ *
+ * <pre><code class="language-java">
+ * BooleanQuery.Builder builder = new BooleanQuery.Builder();
+ * for (String term : new String[] { "apache", "lucene" }) {
+ *   Query query = new CombinedFieldQuery(term)
+ *         .addField("title", 10f)
+ *         .addField("body", 1f)
+ *         .build();
+ *   builder.add(query, Occur.SHOULD);
+ * }
+ * Query query = builder.build();
+ * </code></pre>
+ *
  * <h3>Integrating field values into the score</h3>
  *
  * <p>While similarities help score a document relatively to a query, it is also common for
@@ -276,7 +311,7 @@
  * linear combination. For instance the below query matches the same documents as {@code
  * originalQuery} and computes scores as {@code similarityScore + 0.7 * featureScore}:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * Query originalQuery = new BooleanQuery.Builder()
  *     .add(new TermQuery(new Term("body", "apache")), Occur.SHOULD)
  *     .add(new TermQuery(new Term("body", "lucene")), Occur.SHOULD)
@@ -286,7 +321,7 @@
  *     .add(originalQuery, Occur.MUST)
  *     .add(new BoostQuery(featureQuery, 0.7f), Occur.SHOULD)
  *     .build();
- * </pre>
+ * </code></pre>
  *
  * <p>A less efficient yet more flexible way of modifying scores is to index scoring features into
  * doc-value fields and then combine them with the similarity score using a <a
@@ -297,7 +332,7 @@
  * assuming that values for the {@code popularity} field have been set in a {@link
  * org.apache.lucene.document.NumericDocValuesField NumericDocValuesField} at index time:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  *   // compile an expression:
  *   Expression expr = JavascriptCompiler.compile("_score * ln(popularity)");
  *
@@ -311,9 +346,44 @@
  *   Query query = new FunctionScoreQuery(
  *       originalQuery,
  *       expr.getDoubleValuesSource(bindings));
- * </pre>
+ * </code></pre>
  *
  * <a id="customQueriesExpert"></a>
+ *
+ * <h3>Multi-stage retrieval pipelines</h3>
+ *
+ * <p>The above explains how to influence the score when evaluating all matches of the query. This
+ * is expensive by design since it applies to all matches of the query, which could be millions. In
+ * order to apply more sophisticated ranking logic, a good approach consists of having a retrieval
+ * pipeline that runs a simple candidate retrieval stage that retrieves e.g. 1,000 hits, followed by
+ * a more sophisticated reranking stage that reranks these 1,000 hits to select the best 100 hits
+ * among them. Since the number of hits that this retrieval stage needs to operate on is bounded, it
+ * allows it to be more sophisticated.
+ *
+ * <p>Lucene exposes reranking via the {@link org.apache.lucene.search.Rescorer} abstract class,
+ * which has two main sub-classes:
+ *
+ * <ul>
+ *   <li>{@link org.apache.lucene.search.QueryRescorer}, to rescore using a query. For instance, the
+ *       query string could be parsed as phrase query using {@link
+ *       org.apache.lucene.util.QueryBuilder#createPhraseQuery} instead of a boolean query in order
+ *       to help boost hits which also match the query string as a phrase.
+ *   <li>{@link org.apache.lucene.search.SortRescorer}, to rescore using a {@link
+ *       org.apache.lucene.search.Sort}. For instance, the best 1,000 hits by BM25 score may be
+ *       sorted by descending popularity in order to compute the final top-100 hits.
+ * </ul>
+ *
+ * <h3>Top hits fusion</h3>
+ *
+ * <p>Sometimes, multiple retrieval pipelines may make sense, having their own pros and cons. A
+ * typical example would be a lexical retrieval pipeline, matching exactly what the user requested,
+ * and a semantic retrieval pipeline, matching documents that are closest to the user's query from a
+ * semantic perspective. Combining scores is hazardous as different retrieval pipelines often
+ * produce scores that not only have different ranges, but also different distributions within this
+ * range. A robust way of combining multiple retrieval pipelines consists of combining the top hits
+ * that they produce through their ranks rather than through their scores using reciprocal rank
+ * fusion. This is exposed via {@link org.apache.lucene.search.TopDocs#rrf(int topN, int k,
+ * TopDocs[] hits)}.
  *
  * <h2>Custom Queries &mdash; Expert Level</h2>
  *

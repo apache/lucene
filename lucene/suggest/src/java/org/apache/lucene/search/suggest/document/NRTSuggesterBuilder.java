@@ -99,10 +99,7 @@ final class NRTSuggesterBuilder {
     entries.clear();
   }
 
-  /**
-   * Builds and stores a FST that can be loaded with {@link NRTSuggester#load(IndexInput,
-   * CompletionPostingsFormat.FSTLoadMode)})}
-   */
+  /** Builds and stores a FST that can be loaded with {@link NRTSuggester#load(IndexInput)})} */
   public boolean store(DataOutput output) throws IOException {
     final FST<PairOutputs.Pair<Long, BytesRef>> fst =
         FST.fromFSTReader(fstCompiler.compile(), fstCompiler.getFSTReader());

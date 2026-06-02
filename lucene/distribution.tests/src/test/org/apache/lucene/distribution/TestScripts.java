@@ -33,11 +33,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.assertj.core.api.Assertions;
 import org.assertj.core.api.ThrowingConsumer;
-import org.junit.Test;
 
 /** Verify that scripts included in the distribution work. */
 public class TestScripts extends AbstractLuceneDistributionTest {
-  @Test
   @RequiresGUI
   public void testLukeCanBeLaunched() throws Exception {
     Path distributionPath;
@@ -103,7 +101,7 @@ public class TestScripts extends AbstractLuceneDistributionTest {
         .orElseThrow(() -> new AssertionError("No script found for the base path: " + scriptPath));
   }
 
-  private static Supplier<Charset> forkedProcessCharset =
+  private static final Supplier<Charset> forkedProcessCharset =
       () -> {
         // The default charset for a forked java process could be computed for the current
         // platform but it adds more complexity. For now, assume it's just parseable ascii.

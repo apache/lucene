@@ -32,7 +32,7 @@ import org.apache.lucene.util.AttributeFactory;
  * <code>Books/NonFic/Science/Physics</code>, etc. But it will not match documents indexed with
  * values like <code>Books</code>, or <code>Books/Fic</code>...
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="descendent_path" class="solr.TextField"&gt;
  *   &lt;analyzer type="index"&gt;
  *     &lt;tokenizer class="solr.PathHierarchyTokenizerFactory" delimiter="/" /&gt;
@@ -41,14 +41,14 @@ import org.apache.lucene.util.AttributeFactory;
  *     &lt;tokenizer class="solr.KeywordTokenizerFactory" /&gt;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;
- * </pre>
+ * </code></pre>
  *
  * <p>In this example however we see the oposite configuration, so that a query for <code>
  * Books/NonFic/Science/Physics</code> would match documents containing <code>Books/NonFic</code>,
  * <code>Books/NonFic/Science</code>, or <code>Books/NonFic/Science/Physics</code>, but not <code>
  * Books/NonFic/Science/Physics/Theory</code> or <code>Books/NonFic/Law</code>.
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-xml">
  * &lt;fieldType name="descendent_path" class="solr.TextField"&gt;
  *   &lt;analyzer type="index"&gt;
  *     &lt;tokenizer class="solr.KeywordTokenizerFactory" /&gt;
@@ -57,7 +57,7 @@ import org.apache.lucene.util.AttributeFactory;
  *     &lt;tokenizer class="solr.PathHierarchyTokenizerFactory" delimiter="/" /&gt;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;
- * </pre>
+ * </code></pre>
  *
  * @since 3.1
  * @lucene.spi {@value #NAME}

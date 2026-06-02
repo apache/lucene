@@ -24,7 +24,6 @@ import static org.locationtech.spatial4j.shape.SpatialRelation.DISJOINT;
 import static org.locationtech.spatial4j.shape.SpatialRelation.INTERSECTS;
 import static org.locationtech.spatial4j.shape.SpatialRelation.WITHIN;
 
-import com.carrotsearch.randomizedtesting.annotations.Repeat;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,7 +49,6 @@ import org.apache.lucene.spatial.prefix.tree.QuadPrefixTree;
 import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTree;
 import org.apache.lucene.spatial.query.SpatialArgs;
 import org.apache.lucene.spatial.query.SpatialOperation;
-import org.junit.Test;
 import org.locationtech.spatial4j.context.SpatialContext;
 import org.locationtech.spatial4j.context.SpatialContextFactory;
 import org.locationtech.spatial4j.shape.Point;
@@ -85,8 +83,6 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
     if (maxLevels == -1 && rarely()) {
       ((PrefixTreeStrategy) strategy).setPointsOnly(true);
     }
-
-    log.info("Strategy: " + strategy.toString()); // nowarn
   }
 
   private void setupCtx2D(SpatialContext ctx) {
@@ -129,28 +125,21 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
     return new RecursivePrefixTreeStrategy(this.grid, getClass().getSimpleName());
   }
 
-  @Test
-  @Repeat(iterations = ITERATIONS)
   public void testIntersects() throws IOException {
     setupGrid(-1);
     doTest(SpatialOperation.Intersects);
   }
 
-  @Test
-  @Repeat(iterations = ITERATIONS)
   public void testWithin() throws IOException {
     setupGrid(-1);
     doTest(SpatialOperation.IsWithin);
   }
 
-  @Test
-  @Repeat(iterations = ITERATIONS)
   public void testContains() throws IOException {
     setupGrid(-1);
     doTest(SpatialOperation.Contains);
   }
 
-  @Test
   public void testPackedQuadPointsOnlyBug() throws IOException {
     setupQuadGrid(1, true); // packed quad.  maxLevels doesn't matter.
     setupCtx2D(ctx);
@@ -162,7 +151,6 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
     assertEquals(1, executeQuery(query, 1).numFound);
   }
 
-  @Test
   public void testPointsOnlyOptBug() throws IOException {
     setupQuadGrid(8, false);
     setupCtx2D(ctx);
@@ -177,7 +165,6 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
   }
 
   /** See LUCENE-5062, {@link ContainsPrefixTreeQuery#multiOverlappingIndexedShapes}. */
-  @Test
   public void testContainsPairOverlap() throws IOException {
     setupQuadGrid(3, randomBoolean());
     adoc(
@@ -192,7 +179,6 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
     assertEquals(1, searchResults.numFound);
   }
 
-  @Test
   public void testWithinDisjointParts() throws IOException {
     setupQuadGrid(7, randomBoolean());
     // one shape comprised of two parts, quite separated apart
@@ -210,8 +196,7 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
     assertTrue(searchResults.numFound == 0);
   }
 
-  @Test
-  /** LUCENE-4916 */
+  /* LUCENE-4916 */
   public void testWithinLeafApproxRule() throws IOException {
     setupQuadGrid(2, randomBoolean()); // 4x4 grid
     // indexed shape will simplify to entire right half (2 top cells)
@@ -244,7 +229,6 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
             == 1); // match
   }
 
-  @Test
   public void testShapePair() {
     ctx = SpatialContext.GEO;
     setupCtx2D(ctx);
@@ -459,8 +443,7 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
 
   protected Shape gridSnap(Shape snapMe) {
     if (snapMe == null) return null;
-    if (snapMe instanceof ShapePair) {
-      ShapePair me = (ShapePair) snapMe;
+    if (snapMe instanceof ShapePair me) {
       return new ShapePair(gridSnap(me.shape1), gridSnap(me.shape2), me.biasContainsThenWithin);
     }
     if (snapMe instanceof Point) {
@@ -505,8 +488,7 @@ public class TestRandomSpatialOpFuzzyPrefixTree extends StrategyTestCase {
 
     private Shape toNonGeo(Shape shape) {
       if (!ctx.isGeo()) return shape; // already non-geo
-      if (shape instanceof Rectangle) {
-        Rectangle rect = (Rectangle) shape;
+      if (shape instanceof Rectangle rect) {
         if (rect.getCrossesDateLine()) {
           return new ShapePair(
               ctx2D.makeRectangle(rect.getMinX(), 180, rect.getMinY(), rect.getMaxY()),

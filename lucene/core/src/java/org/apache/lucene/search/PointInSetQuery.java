@@ -62,6 +62,8 @@ public abstract class PointInSetQuery extends Query implements Accountable {
   final int numDims;
   final int bytesPerDim;
   final long ramBytesUsed; // cache
+  byte[] lowerPoint = null;
+  byte[] upperPoint = null;
 
   /** Iterator of encoded point values. */
   // TODO: if we want to stream, maybe we should use jdk stream class?
@@ -108,6 +110,9 @@ public abstract class PointInSetQuery extends Query implements Accountable {
       }
       if (previous == null) {
         previous = new BytesRefBuilder();
+        lowerPoint = new byte[bytesPerDim * numDims];
+        assert lowerPoint.length == current.length;
+        System.arraycopy(current.bytes, current.offset, lowerPoint, 0, current.length);
       } else {
         int cmp = previous.get().compareTo(current);
         if (cmp == 0) {
@@ -122,6 +127,12 @@ public abstract class PointInSetQuery extends Query implements Accountable {
     }
     sortedPackedPoints = builder.finish();
     sortedPackedPointsHashCode = sortedPackedPoints.hashCode();
+    if (previous != null) {
+      BytesRef max = previous.get();
+      upperPoint = new byte[bytesPerDim * numDims];
+      assert upperPoint.length == max.length;
+      System.arraycopy(max.bytes, max.offset, upperPoint, 0, max.length);
+    }
     ramBytesUsed =
         BASE_RAM_BYTES
             + RamUsageEstimator.sizeOfObject(field)
@@ -172,6 +183,22 @@ public abstract class PointInSetQuery extends Query implements Accountable {
                   + bytesPerDim);
         }
 
+        if (values.getDocCount() == 0) {
+          return null;
+        } else if (lowerPoint != null) {
+          assert upperPoint != null;
+          ByteArrayComparator comparator = ArrayUtil.getUnsignedComparator(bytesPerDim);
+          final byte[] fieldPackedLower = values.getMinPackedValue();
+          final byte[] fieldPackedUpper = values.getMaxPackedValue();
+          for (int i = 0; i < numDims; ++i) {
+            int offset = i * bytesPerDim;
+            if (comparator.compare(lowerPoint, offset, fieldPackedUpper, offset) > 0
+                || comparator.compare(upperPoint, offset, fieldPackedLower, offset) < 0) {
+              return null;
+            }
+          }
+        }
+
         if (numDims == 1) {
           // We optimize this common case, effectively doing a merge sort of the indexed values vs
           // the queried set:
@@ -180,7 +207,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
 
             @Override
             public Scorer get(long leadCost) throws IOException {
-              DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+              DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
               values.intersect(new MergePointVisitor(sortedPackedPoints.iterator(), result));
               DocIdSetIterator iterator = result.build().iterator();
               return new ConstantScoreScorer(score(), scoreMode, iterator);
@@ -191,7 +218,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
               try {
                 if (cost == -1) {
                   // Computing the cost may be expensive, so only do it if necessary
-                  DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+                  DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
                   cost =
                       values.estimateDocCount(
                           new MergePointVisitor(sortedPackedPoints.iterator(), result));
@@ -215,7 +242,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
 
             @Override
             public Scorer get(long leadCost) throws IOException {
-              DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+              DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
               SinglePointVisitor visitor = new SinglePointVisitor(result);
               TermIterator iterator = sortedPackedPoints.iterator();
               for (BytesRef point = iterator.next(); point != null; point = iterator.next()) {
@@ -229,7 +256,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
             public long cost() {
               try {
                 if (cost == -1) {
-                  DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+                  DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
                   SinglePointVisitor visitor = new SinglePointVisitor(result);
                   TermIterator iterator = sortedPackedPoints.iterator();
                   cost = 0;
@@ -442,13 +469,13 @@ public abstract class PointInSetQuery extends Query implements Accountable {
   }
 
   public Collection<byte[]> getPackedPoints() {
-    return new AbstractCollection<byte[]>() {
+    return new AbstractCollection<>() {
 
       @Override
       public Iterator<byte[]> iterator() {
         int size = (int) sortedPackedPoints.size();
         PrefixCodedTerms.TermIterator iterator = sortedPackedPoints.iterator();
-        return new Iterator<byte[]>() {
+        return new Iterator<>() {
 
           int upto = 0;
 

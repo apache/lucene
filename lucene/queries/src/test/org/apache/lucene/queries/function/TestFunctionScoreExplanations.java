@@ -50,7 +50,7 @@ public class TestFunctionScoreExplanations extends BaseExplanationTestCase {
     Query q = new TermQuery(new Term(FIELD, "w1"));
     FunctionScoreQuery csq = new FunctionScoreQuery(q, DoubleValuesSource.constant(5));
     BooleanQuery.Builder bqB = new BooleanQuery.Builder();
-    bqB.add(new MatchAllDocsQuery(), BooleanClause.Occur.MUST);
+    bqB.add(MatchAllDocsQuery.INSTANCE, BooleanClause.Occur.MUST);
     bqB.add(csq, BooleanClause.Occur.MUST);
     BooleanQuery bq = bqB.build();
     qtest(new BoostQuery(bq, 6), new int[] {0, 1, 2, 3});
@@ -71,7 +71,8 @@ public class TestFunctionScoreExplanations extends BaseExplanationTestCase {
   }
 
   public void testSubExplanations() throws IOException {
-    Query query = new FunctionScoreQuery(new MatchAllDocsQuery(), DoubleValuesSource.constant(5));
+    Query query =
+        new FunctionScoreQuery(MatchAllDocsQuery.INSTANCE, DoubleValuesSource.constant(5));
     IndexSearcher searcher = newSearcher(BaseExplanationTestCase.searcher.getIndexReader());
     searcher.setSimilarity(new BM25Similarity());
 

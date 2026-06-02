@@ -18,7 +18,6 @@
 package org.apache.lucene.util;
 
 import java.util.Arrays;
-import java.util.Comparator;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 
@@ -32,15 +31,7 @@ public class TestFixedLengthBytesRefArray extends LuceneTestCase {
       a.append(new BytesRef(bytes));
     }
 
-    BytesRefIterator iterator =
-        a.iterator(
-            new Comparator<BytesRef>() {
-              @Override
-              public int compare(BytesRef a, BytesRef b) {
-                return a.compareTo(b);
-              }
-            });
-
+    BytesRefIterator iterator = a.iterator(BytesRef::compareTo);
     BytesRef last = null;
 
     int count = 0;
@@ -64,6 +55,8 @@ public class TestFixedLengthBytesRefArray extends LuceneTestCase {
     int length = TestUtil.nextInt(random(), 4, 10);
     int count = atLeast(10000);
     BytesRef[] values = new BytesRef[count];
+    BytesRef scratch = new BytesRef();
+    scratch.length = length;
 
     FixedLengthBytesRefArray a = new FixedLengthBytesRefArray(length);
     for (int i = 0; i < count; i++) {
@@ -73,15 +66,12 @@ public class TestFixedLengthBytesRefArray extends LuceneTestCase {
       a.append(value);
     }
 
+    for (int i = 0; i < count; i++) {
+      assertEquals(values[i], a.get(scratch, i));
+    }
+
     Arrays.sort(values);
-    BytesRefIterator iterator =
-        a.iterator(
-            new Comparator<BytesRef>() {
-              @Override
-              public int compare(BytesRef a, BytesRef b) {
-                return a.compareTo(b);
-              }
-            });
+    BytesRefIterator iterator = a.iterator(BytesRef::compareTo);
     for (int i = 0; i < count; i++) {
       BytesRef next = iterator.next();
       assertNotNull(next);

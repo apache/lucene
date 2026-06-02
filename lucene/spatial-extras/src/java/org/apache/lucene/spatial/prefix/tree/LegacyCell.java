@@ -133,8 +133,8 @@ public abstract class LegacyCell implements CellCanPrune {
   @Override
   public CellIterator getNextLevelCells(Shape shapeFilter) {
     assert getLevel() < getGrid().getMaxLevels();
-    if (shapeFilter instanceof Point) {
-      LegacyCell cell = getSubCell((Point) shapeFilter);
+    if (shapeFilter instanceof Point point) {
+      LegacyCell cell = getSubCell(point);
       cell.shapeRel = SpatialRelation.CONTAINS;
       return new SingletonCellIterator(cell);
     } else {
@@ -225,8 +225,7 @@ public abstract class LegacyCell implements CellCanPrune {
   @Override
   public boolean equals(Object obj) {
     // this method isn't "normally" called; just in asserts/tests
-    if (obj instanceof Cell) {
-      Cell cell = (Cell) obj;
+    if (obj instanceof Cell cell) {
       return getTokenBytesWithLeaf(null).equals(cell.getTokenBytesWithLeaf(null));
     } else {
       return false;

@@ -189,7 +189,7 @@ public final class AnalysisPanelProvider implements AnalysisTabOperator {
     clearBtn.setFont(StyleConstants.FONT_BUTTON_LARGE);
     clearBtn.setMargin(new Insets(5, 5, 5, 5));
     clearBtn.addActionListener(
-        e -> {
+        _ -> {
           inputArea.setText("");
           operatorRegistry
               .get(SimpleAnalyzeResultPanelOperator.class)
@@ -254,8 +254,7 @@ public final class AnalysisPanelProvider implements AnalysisTabOperator {
   }
 
   void showAnalysisChainDialog() {
-    if (getCurrentAnalyzer() instanceof CustomAnalyzer) {
-      CustomAnalyzer analyzer = (CustomAnalyzer) getCurrentAnalyzer();
+    if (getCurrentAnalyzer() instanceof CustomAnalyzer analyzer) {
       new DialogOpener<>(analysisChainDialogFactory)
           .open(
               "Analysis chain",

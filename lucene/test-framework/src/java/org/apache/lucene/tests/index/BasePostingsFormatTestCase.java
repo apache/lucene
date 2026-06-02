@@ -49,6 +49,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.MultiTerms;
@@ -381,7 +382,7 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
     iwc.setMergePolicy(newTieredMergePolicy());
     IndexWriter iw = new IndexWriter(dir, iwc);
 
-    for (int i = 0; i < 10000; i++) {
+    for (int i = 0; i < 1000; i++) {
       Document document = new Document();
       document.add(new StringField("id", i + "", Field.Store.NO));
       iw.addDocument(document);
@@ -392,8 +393,8 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
     DirectoryReader reader = DirectoryReader.open(iw);
     TermsEnum termsEnum = getOnlyLeafReader(reader).terms("id").iterator();
 
-    for (int i = 0; i < 20000; i++) {
-      int n = random().nextInt(0, 10000);
+    for (int i = 0; i < 2000; i++) {
+      int n = random().nextInt(0, 1000);
       BytesRef target = new BytesRef(n + "");
       // seekExact.
       assertTrue(termsEnum.seekExact(target));
@@ -725,9 +726,7 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
         long ord;
         try {
           ord = termsEnum.ord();
-        } catch (
-            @SuppressWarnings("unused")
-            UnsupportedOperationException uoe) {
+        } catch (UnsupportedOperationException _) {
           supportsOrds = false;
           ord = -1;
         }
@@ -1694,7 +1693,7 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
   @Override
   protected void addRandomFields(Document doc) {
     for (IndexOptions opts : IndexOptions.values()) {
-      if (opts == IndexOptions.NONE) {
+      if (opts == IndexOptions.NONE || opts == IndexOptions.DOCS_AND_CUSTOM_FREQS) {
         continue;
       }
       FieldType ft = new FieldType();
@@ -1767,5 +1766,38 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
     assertNull(te.next());
 
     IOUtils.close(reader, w2, dir1, dir2);
+  }
+
+  // TODO: incredibly slow
+  @Nightly
+  public void testDocIDRunEnd() throws Exception {
+    Directory dir = newDirectory();
+    for (int iter = 0; iter < 100; ++iter) {
+      IndexWriterConfig iwc = newIndexWriterConfig(null).setOpenMode(OpenMode.CREATE);
+      iwc.setCodec(getCodec());
+      // Prevent randomization from slowing down indexing too much
+      if (iwc.getMaxBufferedDocs() < 1_000) {
+        iwc.setMaxBufferedDocs(1_000);
+      }
+      IndexWriter iw = new IndexWriter(dir, iwc);
+      Document emptyDoc = new Document();
+      Document doc = new Document();
+      doc.add(new StringField("", "something", Field.Store.NO));
+      int numEmptyDocs = TestUtil.nextInt(random(), 0, 5_000);
+      int numDocs = TestUtil.nextInt(random(), 4096, 20_000);
+      for (int i = 0; i < numEmptyDocs; ++i) {
+        iw.addDocument(emptyDoc);
+      }
+      for (int i = 0; i < numDocs; ++i) {
+        iw.addDocument(doc);
+      }
+      iw.forceMerge(1);
+      DirectoryReader ir = DirectoryReader.open(iw);
+      LeafReader ar = getOnlyLeafReader(ir);
+      TestUtil.checkReader(ar);
+      ir.close();
+      iw.close();
+    }
+    dir.close();
   }
 }

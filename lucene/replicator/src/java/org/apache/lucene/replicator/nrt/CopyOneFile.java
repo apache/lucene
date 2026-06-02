@@ -55,7 +55,7 @@ public class CopyOneFile implements Closeable {
     // checksum:
     bytesToCopy = metaData.length() - Long.BYTES;
 
-    if (Node.VERBOSE_FILES) {
+    if (dest.isVerboseFiles()) {
       dest.message(
           "file "
               + name
@@ -128,7 +128,7 @@ public class CopyOneFile implements Closeable {
         bytesCopied += Long.BYTES;
         close();
 
-        if (Node.VERBOSE_FILES) {
+        if (dest.isVerboseFiles()) {
           dest.message(
               String.format(
                   Locale.ROOT,

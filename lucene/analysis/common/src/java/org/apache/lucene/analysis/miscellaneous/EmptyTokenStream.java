@@ -22,7 +22,7 @@ import org.apache.lucene.analysis.TokenStream;
 public final class EmptyTokenStream extends TokenStream {
 
   @Override
-  public final boolean incrementToken() {
+  public boolean incrementToken() {
     return false;
   }
 }

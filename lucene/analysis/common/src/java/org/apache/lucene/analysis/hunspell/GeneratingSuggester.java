@@ -28,7 +28,6 @@ import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Consumer;
-import java.util.function.IntPredicate;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.IntsRef;
 import org.apache.lucene.util.fst.FST;
@@ -63,10 +62,6 @@ class GeneratingSuggester {
       String word, WordCase originalCase) {
     PriorityQueue<Weighted<Root<String>>> roots = new PriorityQueue<>(Comparator.reverseOrder());
 
-    char[] excludeFlags = dictionary.allNonSuggestibleFlags();
-    FlagEnumerator.Lookup flagLookup = dictionary.flagLookup;
-    IntPredicate isSuggestible = formId -> !flagLookup.hasAnyFlag(formId, excludeFlags);
-
     boolean ignoreTitleCaseRoots = originalCase == WordCase.LOWER && !dictionary.hasLanguage("de");
     TrigramAutomaton automaton = new TrigramAutomaton(word);
 
@@ -94,16 +89,14 @@ class GeneratingSuggester {
 
           String root = rootChars.toString();
           IntsRef forms = entry.forms();
-          for (int i = 0; i < forms.length; i++) {
-            if (isSuggestible.test(forms.ints[forms.offset + i])) {
-              roots.add(new Weighted<>(new Root<>(root, forms.ints[forms.offset + i]), sc));
-              if (roots.size() == MAX_ROOTS) {
-                roots.poll();
-              }
+          for (int i = 0; i < forms.length; i += dictionary.formStep()) {
+            int form = forms.ints[forms.offset + i];
+            roots.add(new Weighted<>(new Root<>(root, form), sc));
+            if (roots.size() > MAX_ROOTS) {
+              roots.poll();
             }
           }
         });
-
     return roots.stream().sorted().toList();
   }
 

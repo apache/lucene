@@ -314,6 +314,7 @@ abstract class TaxonomyFacets extends Facets {
 
     LabelAndValue[] labelValues = new LabelAndValue[q.size()];
     int[] ordinals = new int[labelValues.length];
+    int[] counts = new int[labelValues.length];
     Number[] values = new Number[labelValues.length];
 
     for (int i = labelValues.length - 1; i >= 0; i--) {
@@ -321,6 +322,7 @@ abstract class TaxonomyFacets extends Facets {
       assert ordAndValue != null;
       ordinals[i] = ordAndValue.ord;
       values[i] = ordAndValue.getValue();
+      counts[i] = getCount(ordinals[i]);
     }
 
     FacetLabel[] bulkPath = taxoReader.getBulkPath(ordinals);
@@ -329,8 +331,7 @@ abstract class TaxonomyFacets extends Facets {
     int childComponentIdx = path.length + 1;
     for (int i = 0; i < labelValues.length; i++) {
       labelValues[i] =
-          new LabelAndValue(
-              bulkPath[i].components[childComponentIdx], values[i], getCount(ordinals[i]));
+          new LabelAndValue(bulkPath[i].components[childComponentIdx], values[i], counts[i]);
     }
 
     return new FacetResult(
@@ -607,19 +608,10 @@ abstract class TaxonomyFacets extends Facets {
     // Create priority queue to store top dimensions and sort by their aggregated values/hits and
     // string values.
     PriorityQueue<DimValue> pq =
-        new PriorityQueue<>(topNDims) {
-          @Override
-          protected boolean lessThan(DimValue a, DimValue b) {
-            int comparison = valueComparator.compare(a.value, b.value);
-            if (comparison < 0) {
-              return true;
-            }
-            if (comparison > 0) {
-              return false;
-            }
-            return a.dim.compareTo(b.dim) > 0;
-          }
-        };
+        PriorityQueue.usingComparator(
+            topNDims,
+            Comparator.<DimValue, Number>comparing(dv -> dv.value, valueComparator)
+                .thenComparing(dv -> dv.dim, Comparator.reverseOrder()));
 
     // Keep track of intermediate results, if we compute them, so we can reuse them later:
     Map<String, TopChildrenForPath> intermediateResults = null;

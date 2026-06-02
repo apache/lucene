@@ -22,6 +22,7 @@ import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.FIEL
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.LENGTH;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.MAXLENGTH;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.MAXVALUE;
+import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.MAXVALUECOUNT;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.MINVALUE;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.NUMVALUES;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.ORDPATTERN;
@@ -72,6 +73,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
     long origin;
     long minValue;
     long maxValue;
+    int maxValueCount;
     long numValues;
   }
 
@@ -123,8 +125,19 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
           : "got " + scratch.get().utf8ToString() + " field=" + fieldName + " ext=" + ext;
       field.docCount = Integer.parseInt(stripPrefix(DOCCOUNT));
 
-      if (dvType == DocValuesType.NUMERIC) {
+      readLine();
+      if (startsWith(MAXVALUECOUNT)) {
+        field.maxValueCount = Integer.parseInt(stripPrefix(MAXVALUECOUNT));
         readLine();
+      } else if (field.docCount == 0) {
+        field.maxValueCount = 0;
+      } else if (dvType == DocValuesType.NUMERIC || dvType == DocValuesType.SORTED) {
+        field.maxValueCount = 1;
+      } else {
+        field.maxValueCount = -1;
+      }
+
+      if (dvType == DocValuesType.NUMERIC) {
         assert startsWith(ORIGIN)
             : "got " + scratch.get().utf8ToString() + " field=" + fieldName + " ext=" + ext;
         field.origin = Long.parseLong(stripPrefix(ORIGIN));
@@ -134,7 +147,6 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         field.dataStartFilePointer = data.getFilePointer();
         data.seek(data.getFilePointer() + (1 + field.pattern.length() + 2) * (long) maxDoc);
       } else if (dvType == DocValuesType.BINARY || dvType == DocValuesType.SORTED_NUMERIC) {
-        readLine();
         assert startsWith(MAXLENGTH);
         field.maxLength = Integer.parseInt(stripPrefix(MAXLENGTH));
         readLine();
@@ -145,7 +157,6 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
             data.getFilePointer()
                 + (9 + field.pattern.length() + field.maxLength + 2) * (long) maxDoc);
       } else if (dvType == DocValuesType.SORTED || dvType == DocValuesType.SORTED_SET) {
-        readLine();
         assert startsWith(NUMVALUES);
         field.numValues = Long.parseLong(stripPrefix(NUMVALUES));
         readLine();
@@ -229,7 +240,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
 
     decoder.setParseBigDecimal(true);
 
-    return new IntFunction<Long>() {
+    return new IntFunction<>() {
       @Override
       public Long apply(int docID) {
         try {
@@ -324,7 +335,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
     DocValuesIterator docsWithField = getBinaryDocsWithField(fieldInfo);
 
     IntFunction<BytesRef> values =
-        new IntFunction<BytesRef>() {
+        new IntFunction<>() {
           final BytesRefBuilder term = new BytesRefBuilder();
           final BytesRefBuilder termByteArray = new BytesRefBuilder();
 
@@ -899,6 +910,11 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
       }
 
       @Override
+      public int maxValueCount() {
+        return field.maxValueCount;
+      }
+
+      @Override
       public int minDocID(int level) {
         if (doc == -1) {
           return -1;
@@ -916,7 +932,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         } else if (doc >= maxDoc || field.docCount == 0) {
           return DocIdSetIterator.NO_MORE_DOCS;
         } else {
-          return maxDoc;
+          return maxDoc - 1;
         }
       }
 

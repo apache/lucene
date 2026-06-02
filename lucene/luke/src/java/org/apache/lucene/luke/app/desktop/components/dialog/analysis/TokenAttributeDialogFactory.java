@@ -44,6 +44,7 @@ import org.apache.lucene.luke.models.analysis.Analysis;
 /** Factory of token attribute dialog */
 public final class TokenAttributeDialogFactory implements DialogOpener.DialogFactory {
 
+  @SuppressWarnings("NonFinalStaticField")
   private static TokenAttributeDialogFactory instance;
 
   private final Preferences prefs;
@@ -113,7 +114,7 @@ public final class TokenAttributeDialogFactory implements DialogOpener.DialogFac
     JPanel footer = new JPanel(new FlowLayout(FlowLayout.TRAILING));
     footer.setOpaque(false);
     JButton okBtn = new JButton(MessageUtils.getLocalizedMessage("button.ok"));
-    okBtn.addActionListener(e -> dialog.dispose());
+    okBtn.addActionListener(_ -> dialog.dispose());
     footer.add(okBtn);
     panel.add(footer, BorderLayout.PAGE_END);
 

@@ -33,6 +33,7 @@ import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.StoredFieldsReader;
 import org.apache.lucene.codecs.TermVectorsReader;
+import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.KnnCollector;
 import org.apache.lucene.search.Sort;
@@ -314,6 +315,7 @@ public final class SortingCodecReader extends FilterCodecReader {
 
     SortingFloatVectorValues(FloatVectorValues delegate, Sorter.DocMap sortMap) throws IOException {
       this.delegate = delegate;
+      assert delegate != null;
       // SortingValuesIterator consumes the iterator and records the docs and ord mapping
       iteratorSupplier = iteratorSupplier(delegate, sortMap);
     }
@@ -446,6 +448,9 @@ public final class SortingCodecReader extends FilterCodecReader {
   @Override
   public FieldsProducer getPostingsReader() {
     FieldsProducer postingsReader = in.getPostingsReader();
+    if (postingsReader == null) {
+      return null;
+    }
     return new FieldsProducer() {
       @Override
       public void close() throws IOException {
@@ -463,7 +468,7 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public Terms terms(String field) throws IOException {
+      public Terms terms(String field) {
         Terms terms = postingsReader.terms(field);
         return terms == null
             ? null
@@ -481,6 +486,9 @@ public final class SortingCodecReader extends FilterCodecReader {
   @Override
   public StoredFieldsReader getFieldsReader() {
     StoredFieldsReader delegate = in.getFieldsReader();
+    if (delegate == null) {
+      return null;
+    }
     return newStoredFieldsReader(delegate);
   }
 
@@ -526,6 +534,9 @@ public final class SortingCodecReader extends FilterCodecReader {
   @Override
   public PointsReader getPointsReader() {
     final PointsReader delegate = in.getPointsReader();
+    if (delegate == null) {
+      return null;
+    }
     return new PointsReader() {
       @Override
       public void checkIntegrity() throws IOException {
@@ -533,12 +544,12 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public PointValues getValues(String field) throws IOException {
-        var values = delegate.getValues(field);
+      public PointValues getValues(String field) {
+        PointValues values = delegate.getValues(field);
         if (values == null) {
           return null;
         }
-        return new SortingPointValues(delegate.getValues(field), docMap);
+        return new SortingPointValues(values, docMap);
       }
 
       @Override
@@ -551,6 +562,9 @@ public final class SortingCodecReader extends FilterCodecReader {
   @Override
   public KnnVectorsReader getVectorReader() {
     KnnVectorsReader delegate = in.getVectorReader();
+    if (delegate == null) {
+      return null;
+    }
     return new KnnVectorsReader() {
       @Override
       public void checkIntegrity() throws IOException {
@@ -568,13 +582,20 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public void search(String field, float[] target, KnnCollector knnCollector, Bits acceptDocs) {
+      public void search(
+          String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {
         throw new UnsupportedOperationException();
       }
 
       @Override
-      public void search(String field, byte[] target, KnnCollector knnCollector, Bits acceptDocs) {
+      public void search(
+          String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs) {
         throw new UnsupportedOperationException();
+      }
+
+      @Override
+      public Map<String, Long> getOffHeapByteSize(FieldInfo fieldInfo) {
+        return delegate.getOffHeapByteSize(fieldInfo);
       }
 
       @Override
@@ -587,6 +608,9 @@ public final class SortingCodecReader extends FilterCodecReader {
   @Override
   public NormsProducer getNormsReader() {
     final NormsProducer delegate = in.getNormsReader();
+    if (delegate == null) {
+      return null;
+    }
     return new NormsProducer() {
       @Override
       public NumericDocValues getNorms(FieldInfo field) throws IOException {
@@ -609,6 +633,9 @@ public final class SortingCodecReader extends FilterCodecReader {
   @Override
   public DocValuesProducer getDocValuesReader() {
     final DocValuesProducer delegate = in.getDocValuesReader();
+    if (delegate == null) {
+      return null;
+    }
     return new DocValuesProducer() {
       @Override
       public NumericDocValues getNumeric(FieldInfo field) throws IOException {
@@ -710,6 +737,9 @@ public final class SortingCodecReader extends FilterCodecReader {
   }
 
   private TermVectorsReader newTermVectorsReader(TermVectorsReader delegate) {
+    if (delegate == null) {
+      return null;
+    }
     return new TermVectorsReader() {
       @Override
       public void prefetch(int doc) throws IOException {
@@ -788,7 +818,7 @@ public final class SortingCodecReader extends FilterCodecReader {
   private boolean assertCreatedOnlyOnce(String field, boolean norms) {
     assert Thread.holdsLock(this);
     // this is mainly there to make sure we change anything in the way we merge we realize it early
-    int timesCached = cacheStats.compute(field + "N:" + norms, (s, i) -> i == null ? 1 : i + 1);
+    int timesCached = cacheStats.compute(field + "N:" + norms, (_, i) -> i == null ? 1 : i + 1);
     if (timesCached > 1) {
       assert norms == false : "[" + field + "] norms must not be cached twice";
       boolean isSortField = false;

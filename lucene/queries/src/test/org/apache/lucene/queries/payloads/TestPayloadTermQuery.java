@@ -51,12 +51,18 @@ import org.junit.BeforeClass;
 
 /** */
 public class TestPayloadTermQuery extends LuceneTestCase {
+  @SuppressWarnings("NonFinalStaticField")
   private static IndexSearcher searcher;
+
+  @SuppressWarnings("NonFinalStaticField")
   private static IndexReader reader;
-  private static Similarity similarity = new BoostingSimilarity();
+
+  private static final Similarity similarity = new BoostingSimilarity();
   private static final byte[] payloadField = new byte[] {1};
   private static final byte[] payloadMultiField1 = new byte[] {2};
   private static final byte[] payloadMultiField2 = new byte[] {4};
+
+  @SuppressWarnings("NonFinalStaticField")
   protected static Directory directory;
 
   private static class PayloadAnalyzer extends Analyzer {

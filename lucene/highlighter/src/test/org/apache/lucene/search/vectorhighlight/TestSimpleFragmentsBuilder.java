@@ -328,7 +328,7 @@ public class TestSimpleFragmentsBuilder extends AbstractTestCase {
       String[] randomValues, Map<String, Set<Integer>> valueToDocId, int docId) {
     String value = randomValues[random().nextInt(randomValues.length)];
     if (!valueToDocId.containsKey(value)) {
-      valueToDocId.put(value, new HashSet<Integer>());
+      valueToDocId.put(value, new HashSet<>());
     }
     valueToDocId.get(value).add(docId);
     return value;

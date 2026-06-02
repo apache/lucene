@@ -22,22 +22,23 @@ import java.util.Comparator;
 import java.util.Locale;
 import java.util.Map;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermStates;
-import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.LeafSimScorer;
 import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.MatchesIterator;
 import org.apache.lucene.search.MatchesUtils;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.TermStatistics;
+import org.apache.lucene.search.TermStats;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.search.similarities.Similarity;
+import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.util.ArrayUtil;
 
 /** Expert-only. Public for use by other weight implementations */
@@ -101,19 +102,18 @@ public abstract class SpanWeight extends Weight {
       SpanQuery query, IndexSearcher searcher, Map<Term, TermStates> termStates, float boost)
       throws IOException {
     if (termStates == null || termStates.size() == 0 || query.getField() == null) return null;
-    TermStatistics[] termStats = new TermStatistics[termStates.size()];
+    TermStats[] termStats = new TermStats[termStates.size()];
     int termUpTo = 0;
     for (Map.Entry<Term, TermStates> entry : termStates.entrySet()) {
       TermStates ts = entry.getValue();
       if (ts.docFreq() > 0) {
         termStats[termUpTo++] =
-            searcher.termStatistics(entry.getKey(), ts.docFreq(), ts.totalTermFreq());
+            searcher.termStats(entry.getKey(), ts.docFreq(), ts.totalTermFreq());
       }
     }
-    CollectionStatistics collectionStats = searcher.collectionStatistics(query.getField());
+    FieldStats fieldStats = searcher.fieldStats(query.getField());
     if (termUpTo > 0) {
-      return similarity.scorer(
-          boost, collectionStats, ArrayUtil.copyOfSubArray(termStats, 0, termUpTo));
+      return similarity.scorer(boost, fieldStats, ArrayUtil.copyOfSubArray(termStats, 0, termUpTo));
     } else {
       return null; // no terms at all exist, we won't use similarity
     }
@@ -142,8 +142,8 @@ public abstract class SpanWeight extends Weight {
     if (spans == null) {
       return null;
     }
-    final LeafSimScorer docScorer = getSimScorer(context);
-    final var scorer = new SpanScorer(spans, docScorer);
+    final NumericDocValues norms = context.reader().getNormValues(field);
+    final var scorer = new SpanScorer(spans, simScorer, norms);
     return new ScorerSupplier() {
       @Override
       public SpanScorer get(long leadCost) throws IOException {
@@ -157,15 +157,9 @@ public abstract class SpanWeight extends Weight {
     };
   }
 
-  /**
-   * Return a LeafSimScorer for this context
-   *
-   * @param context the LeafReaderContext
-   * @return a SimWeight
-   * @throws IOException on error
-   */
-  public LeafSimScorer getSimScorer(LeafReaderContext context) throws IOException {
-    return simScorer == null ? null : new LeafSimScorer(simScorer, context.reader(), field, true);
+  /** Return the SimScorer */
+  public SimScorer getSimScorer() {
+    return simScorer;
   }
 
   @Override
@@ -176,9 +170,13 @@ public abstract class SpanWeight extends Weight {
       if (newDoc == doc) {
         if (simScorer != null) {
           float freq = scorer.sloppyFreq();
-          LeafSimScorer docScorer = new LeafSimScorer(simScorer, context.reader(), field, true);
           Explanation freqExplanation = Explanation.match(freq, "phraseFreq=" + freq);
-          Explanation scoreExplanation = docScorer.explain(doc, freqExplanation);
+          NumericDocValues norms = context.reader().getNormValues(field);
+          long norm = 1L;
+          if (norms != null && norms.advanceExact(doc)) {
+            norm = norms.longValue();
+          }
+          Explanation scoreExplanation = simScorer.explain(freqExplanation, norm);
           return Explanation.match(
               scoreExplanation.getValue(),
               "weight("

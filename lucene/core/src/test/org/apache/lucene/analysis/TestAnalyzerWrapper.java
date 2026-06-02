@@ -33,7 +33,7 @@ public class TestAnalyzerWrapper extends LuceneTestCase {
           @Override
           protected TokenStreamComponents createComponents(String fieldName) {
             return new TokenStreamComponents(
-                r -> {
+                _ -> {
                   sourceCalled.set(true);
                 },
                 new CannedTokenStream());

@@ -27,7 +27,14 @@ import org.apache.lucene.index.PrefixCodedTerms.TermIterator;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.util.*;
+import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.AttributeSource;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefBuilder;
+import org.apache.lucene.util.BytesRefComparator;
+import org.apache.lucene.util.BytesRefIterator;
+import org.apache.lucene.util.RamUsageEstimator;
+import org.apache.lucene.util.StringSorter;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.ByteRunAutomaton;
@@ -40,14 +47,14 @@ import org.apache.lucene.util.automaton.ByteRunAutomaton;
  * <p>For instance in the following example, both {@code q1} and {@code q2} would yield the same
  * scores:
  *
- * <pre class="prettyprint">
+ * <pre><code class="language-java">
  * Query q1 = new TermInSetQuery("field", new BytesRef("foo"), new BytesRef("bar"));
  *
  * BooleanQuery bq = new BooleanQuery();
  * bq.add(new TermQuery(new Term("field", "foo")), Occur.SHOULD);
  * bq.add(new TermQuery(new Term("field", "bar")), Occur.SHOULD);
  * Query q2 = new ConstantScoreQuery(bq);
- * </pre>
+ * </code></pre>
  *
  * <p>Unless a custom {@link MultiTermQuery.RewriteMethod} is provided, this query executes like a
  * regular disjunction where there are few terms. However, when there are many terms, instead of
@@ -84,15 +91,37 @@ public class TermInSetQuery extends MultiTermQuery implements Accountable {
     termDataHashCode = termData.hashCode();
   }
 
+  /**
+   * Creates a new {@link IndexOrDocValuesQuery} combining two {@link TermInSetQuery} with the same
+   * terms allowing to pack them only once that's faster. Doc Values query always uses {@link
+   * MultiTermQuery#DOC_VALUES_REWRITE}.
+   *
+   * @param field field name for indexed and doc values queries.
+   * @param indexRewriteMethod rewrite method used for indexed query.
+   * @param terms collection of {@link BytesRef}. Note: passing {@link SortedSet} with default
+   *     comparator let to bypass terms sorting.
+   */
+  public static IndexOrDocValuesQuery newIndexOrDocValuesQuery(
+      RewriteMethod indexRewriteMethod, String field, Collection<BytesRef> terms) {
+    PrefixCodedTerms packed = packTerms(field, terms);
+    Query indexQuery = new TermInSetQuery(indexRewriteMethod, field, packed);
+    Query dvQuery = new TermInSetQuery(MultiTermQuery.DOC_VALUES_REWRITE, field, packed);
+    return new IndexOrDocValuesQuery(indexQuery, dvQuery);
+  }
+
   private TermInSetQuery(String field, PrefixCodedTerms termData) {
-    super(field, MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE);
+    this(MultiTermQuery.CONSTANT_SCORE_BLENDED_REWRITE, field, termData);
+  }
+
+  private TermInSetQuery(RewriteMethod rewrite, String field, PrefixCodedTerms termData) {
+    super(field, rewrite);
     this.field = field;
     this.termData = termData;
     termDataHashCode = termData.hashCode();
   }
 
   private static PrefixCodedTerms packTerms(String field, Collection<BytesRef> terms) {
-    BytesRef[] sortedTerms = terms.toArray(new BytesRef[0]);
+    BytesRef[] sortedTerms = terms.toArray(BytesRef[]::new);
     // already sorted if we are a SortedSet with natural order
     boolean sorted =
         terms instanceof SortedSet && ((SortedSet<BytesRef>) terms).comparator() == null;

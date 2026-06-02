@@ -14,14 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.util;
-
-import java.util.Arrays;
-import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.TestUtil;
-import org.apache.lucene.util.automaton.Automaton;
-import org.apache.lucene.util.automaton.CompiledAutomaton;
-import org.apache.lucene.util.automaton.FiniteStringsIterator;
 
 /*
  * Some of this code came from the excellent Unicode
@@ -89,6 +81,15 @@ import org.apache.lucene.util.automaton.FiniteStringsIterator;
  * dealings in this Software without prior written authorization of the
  * copyright holder.
  */
+
+package org.apache.lucene.util;
+
+import java.util.Arrays;
+import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.TestUtil;
+import org.apache.lucene.util.automaton.Automaton;
+import org.apache.lucene.util.automaton.CompiledAutomaton;
+import org.apache.lucene.util.automaton.FiniteStringsIterator;
 
 public class TestUnicodeUtil extends LuceneTestCase {
   public void testCodePointCount() {
@@ -260,9 +261,7 @@ public class TestUnicodeUtil extends LuceneTestCase {
         assertFalse(rc == -1);
         assertEquals(cpString.substring(rs, rs + rc), str);
         continue;
-      } catch (@SuppressWarnings("unused")
-          IndexOutOfBoundsException
-          | IllegalArgumentException e1) {
+      } catch (IndexOutOfBoundsException | IllegalArgumentException _) {
         // Ignored.
       }
       assertTrue(rc == -1);
