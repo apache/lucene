@@ -34,6 +34,7 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.DocIdStream;
 import org.apache.lucene.search.IndexSearcher;
@@ -49,9 +50,6 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
-import org.apache.lucene.util.FixedBitSet;
-import org.apache.lucene.util.IOIntConsumer;
-import org.apache.lucene.util.MathUtil;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -67,18 +65,19 @@ import org.openjdk.jmh.annotations.TearDown;
 import org.openjdk.jmh.annotations.Warmup;
 
 /**
- * Benchmarks DefaultBulkScorer over a sparse FILTER clause conjoined with a dense cached FILTER
- * clause.
+ * Benchmarks cached-filter conjunctions on no-score Boolean queries.
  *
  * <p>The filter is warmed into {@link LRUQueryCache} before measurement. Dense filter selectivities
  * are above the cache's FixedBitSet threshold, while very sparse selectivities exercise the
- * RoaringDocIdSet cache path. The lead selectivity is kept sparse so dense cached filters become
- * the random-access side of a BitSetConjunctionDISI when the BooleanQuery scorer is driven through
- * DefaultBulkScorer.
+ * RoaringDocIdSet cache path.
  *
- * <p>This benchmark deliberately obtains the BooleanQuery {@link Scorer} and wraps it with the
- * default scorer iteration shape. Normal {@link IndexSearcher} execution can pick more specialized
- * conjunction bulk scorers for this query shape.
+ * <p>The {@code filtered_optional} shape exercises the production path where a cached filter is
+ * combined with a sparse optional disjunction through {@code
+ * BooleanScorerSupplier.filteredOptionalBulkScorer()}, which can route to {@code
+ * ConstantScoreBulkScorer}. The {@code filter_only} shape is retained as a control for the older
+ * pure-filter conjunction shape. Very sparse filters below the query-cache bitset threshold and
+ * very dense optional leads are controls too: they exercise RoaringDocIdSet and
+ * DenseConjunctionBulkScorer paths rather than {@code BitSetConjunctionDISI.intoBitSet()}.
  */
 @State(Scope.Thread)
 @BenchmarkMode(Mode.Throughput)
@@ -93,11 +92,14 @@ public class CachedFilterConjunctionBenchmark {
 
   private static final String FILTER_FIELD = "filter";
   private static final String LEAD_FIELD = "lead";
+  private static final String OPTIONAL_FIELD = "optional";
+  private static final String OPTIONAL_A = "a";
+  private static final String OPTIONAL_B = "b";
   private static final String YES = "yes";
   private static final String BASELINE = "baseline";
-  private static final String UNGATED = "ungated";
-  private static final String GATED = "gated";
-  private static final int WINDOW_SIZE = 1 << 12;
+  private static final String BULKSCORER = "bulkscorer";
+  private static final String FILTER_ONLY = "filter_only";
+  private static final String FILTERED_OPTIONAL = "filtered_optional";
 
   private Directory dir;
   private IndexReader reader;
@@ -107,9 +109,12 @@ public class CachedFilterConjunctionBenchmark {
   private LRUQueryCache queryCache;
   private Query filterQuery;
   private Query conjunctionQuery;
+  private Query filterOnlyQuery;
+  private Query filteredOptionalQuery;
   private LeafReaderContext context;
   private Weight cachedWeight;
   private Weight uncachedWeight;
+  private boolean cachedFilterUsesBitSet;
   private int expectedHitCount;
 
   @State(Scope.Benchmark)
@@ -120,10 +125,13 @@ public class CachedFilterConjunctionBenchmark {
     @Param({"0.0001", "0.001", "0.002", "0.003", "0.005", "0.01", "0.03", "0.10", "0.50", "1.0"})
     public double filterSelectivity;
 
-    @Param({"0.001", "0.01"})
+    @Param({"0.001", "0.03", "0.10"})
     public double leadSelectivity;
 
-    @Param({BASELINE, UNGATED, GATED})
+    @Param({FILTERED_OPTIONAL, FILTER_ONLY})
+    public String queryShape;
+
+    @Param({BASELINE, BULKSCORER})
     public String variant;
   }
 
@@ -141,6 +149,11 @@ public class CachedFilterConjunctionBenchmark {
       }
       if (random.nextDouble() < params.leadSelectivity) {
         doc.add(new StringField(LEAD_FIELD, YES, Store.NO));
+        if (random.nextBoolean()) {
+          doc.add(new StringField(OPTIONAL_FIELD, OPTIONAL_A, Store.NO));
+        } else {
+          doc.add(new StringField(OPTIONAL_FIELD, OPTIONAL_B, Store.NO));
+        }
       }
       w.addDocument(doc);
     }
@@ -150,11 +163,24 @@ public class CachedFilterConjunctionBenchmark {
 
     filterQuery = new TermQuery(new Term(FILTER_FIELD, YES));
     Query leadQuery = new TermQuery(new Term(LEAD_FIELD, YES));
-    conjunctionQuery =
+    filterOnlyQuery =
         new BooleanQuery.Builder()
             .add(leadQuery, Occur.FILTER)
             .add(filterQuery, Occur.FILTER)
             .build();
+    filteredOptionalQuery =
+        new BooleanQuery.Builder()
+            .add(filterQuery, Occur.FILTER)
+            .add(new TermQuery(new Term(OPTIONAL_FIELD, OPTIONAL_A)), Occur.SHOULD)
+            .add(new TermQuery(new Term(OPTIONAL_FIELD, OPTIONAL_B)), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(1)
+            .build();
+    conjunctionQuery =
+        switch (params.queryShape) {
+          case FILTER_ONLY -> filterOnlyQuery;
+          case FILTERED_OPTIONAL -> filteredOptionalQuery;
+          default -> throw new AssertionError("Unknown query shape: " + params.queryShape);
+        };
 
     queryCache = new LRUQueryCache(256, 32L * 1024 * 1024, context -> context.reader() != null, 1f);
     cachedSearcher = new IndexSearcher(reader);
@@ -173,6 +199,7 @@ public class CachedFilterConjunctionBenchmark {
             cachedSearcher.rewrite(filterQuery), ScoreMode.COMPLETE_NO_SCORES, 1f);
     ScorerSupplier filterScorerSupplier = filterWeight.scorerSupplier(context);
     if (filterScorerSupplier != null) {
+      cachedFilterUsesBitSet = filterScorerSupplier.cost() * 100 >= context.reader().maxDoc();
       filterScorerSupplier.get(Long.MAX_VALUE).iterator().nextDoc();
     }
     if (queryCache.getCacheSize() == 0) {
@@ -186,6 +213,7 @@ public class CachedFilterConjunctionBenchmark {
         uncachedSearcher.createWeight(
             uncachedSearcher.rewrite(conjunctionQuery), ScoreMode.COMPLETE_NO_SCORES, 1f);
     expectedHitCount = uncachedSearcher.count(conjunctionQuery);
+    checkBulkScorerRoute(params, cachedWeight);
     checkHitCount(scoreVariant(cachedWeight, params.variant));
     checkHitCount(scoreVariant(uncachedWeight, params.variant));
   }
@@ -213,29 +241,18 @@ public class CachedFilterConjunctionBenchmark {
   }
 
   private int scoreVariant(Weight weight, String variant) throws IOException {
-    Scorer scorer = scorer(weight);
-    if (scorer == null) {
-      return 0;
-    }
     switch (variant) {
       case BASELINE:
+        Scorer scorer = scorer(weight);
+        if (scorer == null) {
+          return 0;
+        }
         return scorePerDoc(scorer);
-      case UNGATED:
-        return scoreIntoBitSet(scorer, false);
-      case GATED:
-        return scoreGated(scorer);
+      case BULKSCORER:
+        return scoreBulkScorer(weight);
       default:
         throw new AssertionError("Unknown variant: " + variant);
     }
-  }
-
-  private int scoreGated(Scorer scorer) throws IOException {
-    DocIdSetIterator iterator = scorer.iterator();
-    int maxDoc = context.reader().maxDoc();
-    if (isBitSetConjunction(iterator) == false || iterator.cost() < Math.ceilDiv(maxDoc, 512)) {
-      return scorePerDoc(iterator, maxDoc);
-    }
-    return scoreIntoBitSet(iterator, maxDoc);
   }
 
   private Scorer scorer(Weight weight) throws IOException {
@@ -260,33 +277,48 @@ public class CachedFilterConjunctionBenchmark {
     return collector.count;
   }
 
-  private int scoreIntoBitSet(Scorer scorer, boolean gated) throws IOException {
-    DocIdSetIterator iterator = scorer.iterator();
-    int maxDoc = context.reader().maxDoc();
-    if (gated && iterator.cost() < Math.ceilDiv(maxDoc, 512)) {
-      return scorePerDoc(scorer);
+  private int scoreBulkScorer(Weight weight) throws IOException {
+    BulkScorer bulkScorer = weight.bulkScorer(context);
+    if (bulkScorer == null) {
+      return 0;
     }
-    return scoreIntoBitSet(iterator, maxDoc);
-  }
-
-  private int scoreIntoBitSet(DocIdSetIterator iterator, int maxDoc) throws IOException {
-    FixedBitSet windowMatches = new FixedBitSet(WINDOW_SIZE);
     CountingLeafCollector collector = new CountingLeafCollector();
-    for (int doc = iterator.nextDoc(); doc < maxDoc; ) {
-      int windowBase = doc;
-      int windowMax = MathUtil.unsignedMin(maxDoc, windowBase + WINDOW_SIZE);
-      iterator.intoBitSet(windowMax, windowMatches, windowBase);
-      if (windowMatches.scanIsEmpty() == false) {
-        collector.collect(new BitSetDocIdStream(windowMatches, windowBase));
-      }
-      windowMatches.clear();
-      doc = iterator.docID();
-    }
+    bulkScorer.score(collector, context.reader().getLiveDocs(), 0, context.reader().maxDoc());
     return collector.count;
   }
 
-  private static boolean isBitSetConjunction(DocIdSetIterator iterator) {
-    return iterator.getClass().getName().endsWith("$BitSetConjunctionDISI");
+  private void checkBulkScorerRoute(Params params, Weight weight) throws IOException {
+    ScorerSupplier scorerSupplier = weight.scorerSupplier(context);
+    if (scorerSupplier == null) {
+      return;
+    }
+    BulkScorer bulkScorer = scorerSupplier.bulkScorer();
+    String bulkScorerClassName = bulkScorer.getClass().getName();
+    boolean isConstantScoreBulkScorer = bulkScorerClassName.endsWith(".ConstantScoreBulkScorer");
+    boolean isDenseConjunctionBulkScorer =
+        bulkScorerClassName.endsWith(".DenseConjunctionBulkScorer");
+    if (FILTERED_OPTIONAL.equals(params.queryShape)
+        && isConstantScoreBulkScorer == false
+        && isDenseConjunctionBulkScorer == false) {
+      throw new AssertionError(
+          "filtered_optional should route through ConstantScoreBulkScorer or "
+              + "DenseConjunctionBulkScorer but got "
+              + bulkScorerClassName);
+    }
+    if (FILTERED_OPTIONAL.equals(params.queryShape)
+        && isConstantScoreBulkScorer
+        && cachedFilterUsesBitSet
+        && params.filterSelectivity >= 0.02) {
+      Scorer scorer = scorerSupplier.get(Long.MAX_VALUE);
+      String iteratorClassName = scorer.iterator().getClass().getName();
+      if (iteratorClassName.endsWith("$BitSetConjunctionDISI") == false) {
+        throw new AssertionError(
+            "cached filter should produce BitSetConjunctionDISI but got " + iteratorClassName);
+      }
+    }
+    if (FILTER_ONLY.equals(params.queryShape) && isConstantScoreBulkScorer) {
+      throw new AssertionError("filter_only unexpectedly routed through ConstantScoreBulkScorer");
+    }
   }
 
   private void checkHitCount(int hitCount) {
@@ -312,60 +344,6 @@ public class CachedFilterConjunctionBenchmark {
       for (int streamCount = stream.count(); streamCount != 0; streamCount = stream.count()) {
         count += streamCount;
       }
-    }
-  }
-
-  private static class BitSetDocIdStream extends DocIdStream {
-
-    private final FixedBitSet bitSet;
-    private final int offset, max;
-    private int upTo;
-
-    BitSetDocIdStream(FixedBitSet bitSet, int offset) {
-      this.bitSet = bitSet;
-      this.offset = offset;
-      upTo = offset;
-      max = MathUtil.unsignedMin(Integer.MAX_VALUE, offset + bitSet.length());
-    }
-
-    @Override
-    public boolean mayHaveRemaining() {
-      return upTo < max;
-    }
-
-    @Override
-    public void forEach(int upTo, IOIntConsumer consumer) throws IOException {
-      if (upTo > this.upTo) {
-        upTo = Math.min(upTo, max);
-        bitSet.forEach(this.upTo - offset, upTo - offset, offset, consumer);
-        this.upTo = upTo;
-      }
-    }
-
-    @Override
-    public int count(int upTo) {
-      if (upTo > this.upTo) {
-        upTo = Math.min(upTo, max);
-        int count = bitSet.cardinality(this.upTo - offset, upTo - offset);
-        this.upTo = upTo;
-        return count;
-      } else {
-        return 0;
-      }
-    }
-
-    @Override
-    public int intoArray(int upTo, int[] array) {
-      if (upTo > this.upTo) {
-        upTo = Math.min(upTo, max);
-        int count = bitSet.intoArray(this.upTo - offset, upTo - offset, offset, array);
-        if (count == array.length) {
-          upTo = array[array.length - 1] + 1;
-        }
-        this.upTo = upTo;
-        return count;
-      }
-      return 0;
     }
   }
 

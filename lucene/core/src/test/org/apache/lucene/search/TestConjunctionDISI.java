@@ -530,4 +530,93 @@ public class TestConjunctionDISI extends LuceneTestCase {
     assertEquals(1, actual.cardinality());
     assertEquals(NO_MORE_DOCS, conjunction.docID());
   }
+
+  public void testBitSetConjunctionIntoBitSetUsesBulkPathWhenLeadCostIsHigh() throws IOException {
+    int maxDoc = 9000;
+    int[] docs = {2, 4, 4100, 8190};
+    CountingDocIdSetIterator lead = new CountingDocIdSetIterator(docs, 4096);
+    FixedBitSet filter = new FixedBitSet(maxDoc);
+    filter.set(0, maxDoc);
+
+    DocIdSetIterator conjunction =
+        ConjunctionUtils.intersectIterators(
+            Arrays.asList(lead, new BitDocIdSet(filter).iterator()));
+    assertTrue(ConjunctionDISI.canBulkIntoBitSet(conjunction));
+    assertEquals(2, conjunction.nextDoc());
+
+    FixedBitSet actual = new FixedBitSet(4096);
+    conjunction.intoBitSet(4096, actual, 0);
+    assertTrue(actual.get(2));
+    assertTrue(actual.get(4));
+    assertEquals(2, actual.cardinality());
+    assertEquals(1, lead.intoBitSetCalls);
+    assertEquals(4100, conjunction.docID());
+  }
+
+  public void testBitSetConjunctionIntoBitSetUsesPerDocPathWhenLeadCostIsLow() throws IOException {
+    int maxDoc = 9000;
+    int[] docs = {2, 4, 4100, 8190};
+    CountingDocIdSetIterator lead = new CountingDocIdSetIterator(docs, 4);
+    FixedBitSet filter = new FixedBitSet(maxDoc);
+    filter.set(0, maxDoc);
+
+    DocIdSetIterator conjunction =
+        ConjunctionUtils.intersectIterators(
+            Arrays.asList(lead, new BitDocIdSet(filter).iterator()));
+    assertTrue(ConjunctionDISI.canBulkIntoBitSet(conjunction));
+    assertEquals(2, conjunction.nextDoc());
+
+    FixedBitSet actual = new FixedBitSet(4096);
+    conjunction.intoBitSet(4096, actual, 0);
+    assertTrue(actual.get(2));
+    assertTrue(actual.get(4));
+    assertEquals(2, actual.cardinality());
+    assertEquals(0, lead.intoBitSetCalls);
+    assertEquals(4100, conjunction.docID());
+  }
+
+  private static class CountingDocIdSetIterator extends DocIdSetIterator {
+    private final int[] docs;
+    private final long cost;
+    private int index = -1;
+    private int doc = -1;
+    int intoBitSetCalls;
+
+    CountingDocIdSetIterator(int[] docs, long cost) {
+      this.docs = docs;
+      this.cost = cost;
+    }
+
+    @Override
+    public int docID() {
+      return doc;
+    }
+
+    @Override
+    public int nextDoc() {
+      if (++index == docs.length) {
+        return doc = NO_MORE_DOCS;
+      }
+      return doc = docs[index];
+    }
+
+    @Override
+    public int advance(int target) {
+      while (doc < target) {
+        nextDoc();
+      }
+      return doc;
+    }
+
+    @Override
+    public long cost() {
+      return cost;
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      ++intoBitSetCalls;
+      super.intoBitSet(upTo, bitSet, offset);
+    }
+  }
 }

@@ -276,6 +276,12 @@ final class ConjunctionDISI extends FilterDocIdSetIterator {
         return;
       }
 
+      // Bulk masking has fixed per-window cost; sparse leads are cheaper to advance per doc.
+      if (lead.cost() < bitSet.length()) {
+        super.intoBitSet(upTo, bitSet, offset);
+        return;
+      }
+
       int bulkUpTo = Math.min(upTo, minLength);
       long destinationEnd = (long) offset + bitSet.length();
       if (destinationEnd < bulkUpTo) {
