@@ -214,6 +214,10 @@ public class SparseFixedBitSet extends BitSet {
   }
 
   private void insertLong(int i4096, long i64bit, int i, long index) {
+    insertLongValue(i4096, i64bit, 1L << i, index);
+  }
+
+  private void insertLongValue(int i4096, long i64bit, long value, long index) {
     indices[i4096] |= i64bit;
     // we count the number of bits that are set on the right of i64
     // this gives us the index at which to perform the insertion
@@ -223,19 +227,45 @@ public class SparseFixedBitSet extends BitSet {
       // since we only store non-zero longs, if the last value is 0, it means
       // that we already have extra space, make use of it
       System.arraycopy(bitArray, o, bitArray, o + 1, bitArray.length - o - 1);
-      bitArray[o] = 1L << i;
+      bitArray[o] = value;
     } else {
       // we don't have extra space so we need to resize to insert the new long
       final int newSize = oversize(bitArray.length + 1);
       final long[] newBitArray = new long[newSize];
       System.arraycopy(bitArray, 0, newBitArray, 0, o);
-      newBitArray[o] = 1L << i;
+      newBitArray[o] = value;
       System.arraycopy(bitArray, o, newBitArray, o + 1, bitArray.length - o);
       bits[i4096] = newBitArray;
       // we may slightly overestimate size here, but keep it cheap
       ramBytesUsed += (newBitArray.length - bitArray.length) << 3;
     }
     ++nonZeroLongCount;
+  }
+
+  /**
+   * Sets a range of bits
+   *
+   * @param startIndex lower index
+   * @param endIndex one-past the last bit to set
+   */
+  public void set(int startIndex, int endIndex) {
+    assert startIndex >= 0 && startIndex < length
+        : "startIndex=" + startIndex + ", length=" + length;
+    assert endIndex >= 0 && endIndex <= length : "endIndex=" + endIndex + ", length=" + length;
+    if (endIndex <= startIndex) {
+      return;
+    }
+    final int firstBlock = startIndex >>> 12;
+    final int lastBlock = (endIndex - 1) >>> 12;
+    if (firstBlock == lastBlock) {
+      setWithinBlock(firstBlock, startIndex & MASK_4096, (endIndex - 1) & MASK_4096);
+    } else {
+      setWithinBlock(firstBlock, startIndex & MASK_4096, MASK_4096);
+      for (int i = firstBlock + 1; i < lastBlock; ++i) {
+        setWithinBlock(i, 0, MASK_4096);
+      }
+      setWithinBlock(lastBlock, 0, (endIndex - 1) & MASK_4096);
+    }
   }
 
   /** Clear the bit at index <code>i</code>. */
@@ -258,6 +288,26 @@ public class SparseFixedBitSet extends BitSet {
       } else {
         this.bits[i4096][o] = bits;
       }
+    }
+  }
+
+  private void orLong(int i4096, int i64, long newBits) {
+    if (newBits == 0) {
+      return;
+    }
+    final long index = indices[i4096];
+    final long i64bit = 1L << i64;
+    if ((index & i64bit) != 0) {
+      final int o = Long.bitCount(index & (i64bit - 1));
+      this.bits[i4096][o] |= newBits;
+    } else if (index == 0) {
+      indices[i4096] = i64bit;
+      assert bits[i4096] == null;
+      bits[i4096] = new long[] {newBits};
+      ++nonZeroLongCount;
+      ramBytesUsed += SINGLE_ELEMENT_ARRAY_BYTES_USED;
+    } else {
+      insertLongValue(i4096, i64bit, newBits, index);
     }
   }
 
@@ -316,6 +366,22 @@ public class SparseFixedBitSet extends BitSet {
         and(i4096, i, 0L);
       }
       and(i4096, firstLong, ~mask(from, 63));
+    }
+  }
+
+  private void setWithinBlock(int i4096, int from, int to) {
+    int firstLong = from >>> 6;
+    int lastLong = to >>> 6;
+
+    if (firstLong == lastLong) {
+      orLong(i4096, firstLong, mask(from, to));
+    } else {
+      assert firstLong < lastLong;
+      orLong(i4096, lastLong, mask(0, to));
+      for (int i = firstLong + 1; i <= lastLong - 1; ++i) {
+        orLong(i4096, i, -1L);
+      }
+      orLong(i4096, firstLong, mask(from, 63));
     }
   }
 

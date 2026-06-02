@@ -21,14 +21,18 @@ import static org.apache.lucene.util.ByteBlockPool.BYTE_BLOCK_SIZE;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
+import org.apache.lucene.document.column.OrdinalsCursor;
+import org.apache.lucene.document.column.OrdinalsTupleCursor;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ByteBlockPool;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.BytesRefHash.DirectBytesStartArray;
 import org.apache.lucene.util.Counter;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.packed.PackedInts;
 import org.apache.lucene.util.packed.PackedLongValues;
 
@@ -102,6 +106,93 @@ class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
 
     pending.add(termID);
     updateBytesUsed();
+  }
+
+  /**
+   * Bulk-adds dictionary-encoded values from a tuple cursor. Each {@code (docID, ordinal)} pair is
+   * translated to the writer's internal hash term ID on first sight per distinct ordinal;
+   * subsequent docs that use the same ordinal pay only an array lookup. Doc-ids from the cursor are
+   * batch-local and are offset by {@code baseDocID} to produce segment-level ids; they must be
+   * strictly increasing (at most one value per doc).
+   *
+   * <p>All ordinals must be in {@code [0, dictionary.length)}.
+   */
+  void addOrdinalTuples(int baseDocID, List<BytesRef> dictionary, OrdinalsTupleCursor cursor) {
+    int[] ordToHash = new int[dictionary.size()];
+    Arrays.fill(ordToHash, -1);
+    int batchDocID;
+    while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      int docID = baseDocID + batchDocID;
+      if (docID <= lastDocID) {
+        throw new IllegalArgumentException(
+            "DocValuesField \""
+                + fieldInfo.name
+                + "\" appears more than once in this document (only one value is allowed per field)");
+      }
+      int ord = cursor.ordValue();
+      int id = lookupOrTranslate(ord, dictionary, ordToHash);
+      pending.add(id);
+      docsWithField.add(docID);
+      lastDocID = docID;
+    }
+    updateBytesUsed();
+  }
+
+  /**
+   * Bulk-adds one dictionary-encoded value per consecutive doc-id starting at {@code firstDocID}.
+   * The cursor provides exactly one ordinal per doc; all ordinals must be in {@code [0,
+   * dictionary.length)}.
+   *
+   * <p>This path performs one {@code BytesRefHash} lookup per distinct used dictionary entry rather
+   * than one per document.
+   */
+  void addDenseOrdinalValues(int firstDocID, List<BytesRef> dictionary, OrdinalsCursor cursor) {
+    int n = cursor.size();
+    if (n == 0) {
+      return;
+    }
+    assert firstDocID > lastDocID;
+    int[] ordToHash = new int[dictionary.size()];
+    Arrays.fill(ordToHash, -1);
+    int processed = 0;
+    try {
+      while (processed < n) {
+        int ord = cursor.nextOrd();
+        int id = lookupOrTranslate(ord, dictionary, ordToHash);
+        pending.add(id);
+        processed++;
+      }
+    } finally {
+      if (processed > 0) {
+        docsWithField.addRange(firstDocID, firstDocID + processed);
+        lastDocID = firstDocID + processed - 1;
+      }
+      updateBytesUsed();
+    }
+  }
+
+  private int lookupOrTranslate(int ord, List<BytesRef> dictionary, int[] ordToHash) {
+    if (ord < 0 || ord >= dictionary.size()) {
+      throw new IllegalArgumentException(
+          "DocValuesField \""
+              + fieldInfo.name
+              + "\": ordinal "
+              + ord
+              + " is out of range [0, "
+              + dictionary.size()
+              + ")");
+    }
+    int id = ordToHash[ord];
+    if (id < 0) {
+      id = hash.add(dictionary.get(ord));
+      if (id < 0) {
+        id = -id - 1;
+      } else {
+        iwBytesUsed.addAndGet(2 * Integer.BYTES);
+      }
+      ordToHash[ord] = id;
+    }
+    return id;
   }
 
   private void updateBytesUsed() {
@@ -240,6 +331,16 @@ class SortedDocValuesWriter extends DocValuesWriter<SortedDocValues> {
     @Override
     public long cost() {
       return docsWithField.cost();
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      docsWithField.intoBitSet(upTo, bitSet, offset);
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return docsWithField.docIDRunEnd();
     }
 
     @Override
