@@ -305,6 +305,27 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     assertLongReturningProviders(p -> p.int4BitDotProduct(int4Quantized, binaryQuantized));
   }
 
+  public void testInt4DibitDotProduct() {
+    var dibitQuantized = new byte[size];
+    var int4Quantized = new byte[size * 2];
+    random().nextBytes(dibitQuantized);
+    random().nextBytes(int4Quantized);
+    assertLongReturningProviders(p -> p.int4DibitDotProduct(int4Quantized, dibitQuantized));
+  }
+
+  public void testInt4DibitDotProductBoundaries() {
+    var dibitQuantized = new byte[size];
+    var int4Quantized = new byte[size * 2];
+
+    Arrays.fill(dibitQuantized, Byte.MAX_VALUE);
+    Arrays.fill(int4Quantized, Byte.MAX_VALUE);
+    assertLongReturningProviders(p -> p.int4DibitDotProduct(int4Quantized, dibitQuantized));
+
+    Arrays.fill(dibitQuantized, Byte.MIN_VALUE);
+    Arrays.fill(int4Quantized, Byte.MIN_VALUE);
+    assertLongReturningProviders(p -> p.int4DibitDotProduct(int4Quantized, dibitQuantized));
+  }
+
   static byte[] pack(byte[] unpacked) {
     int len = (unpacked.length + 1) / 2;
     var packed = new byte[len];
