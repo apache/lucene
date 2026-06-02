@@ -203,6 +203,8 @@ Optimizations
 
 * GITHUB#16147: Optimize column batch parent field with bulk fill. (Tim Brooks)
 
+* GITHUB#16109: Add count() to SortedSetDocValuesRangeQuery. (Prithvi S)
+
 * GITHUB#15991: Load dense filters into bitset in MaxScoreBulkScorer. (Prithvi S)
 
 * GITHUB#16142: Optimize disjunction #docIDRunEnd to skip runs of excluded documents. (Costin Leau)
