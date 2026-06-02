@@ -338,9 +338,17 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     @Override
     public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
       if (numericValues == null) {
-        // Generic doc values: confirm each candidate one doc at a time (the TwoPhaseIterator
-        // default). Only single-valued numeric fields can be range-evaluated block at a time.
-        super.intoBitSet(upTo, bitSet, offset);
+        if (alwaysCheckPredicate) {
+          // Arbitrary ordinal set: every block (even YES) must run the per-doc predicate, so there
+          // is no block-level shortcut to exploit. Confirm each candidate one doc at a time (the
+          // TwoPhaseIterator default).
+          super.intoBitSet(upTo, bitSet, offset);
+          return;
+        }
+        // Ordinal range (sorted / sorted-set): there is no columnar range-decode like the numeric
+        // path, but the block classification still lets us bulk-set YES runs and bulk-mark present
+        // docs in YES_IF_PRESENT runs, confirming the ordinal predicate per doc only in MAYBE runs.
+        ordinalRangeIntoBitSet(upTo, bitSet, offset);
         return;
       }
       while (blockIterator.docID() < upTo) {
@@ -368,6 +376,53 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
           case MAYBE ->
               numericValues.rangeIntoBitSet(
                   blockStart, blockEnd, minValue, maxValue, bitSet, offset);
+        }
+        blockIterator.advance(blockEnd);
+      }
+    }
+
+    /**
+     * Bulk-evaluates an ordinal range over the block structure. Functionally identical to per-doc
+     * {@link #matches()} evaluation, but a whole YES run is set in one shot and a YES_IF_PRESENT
+     * run's present docs are marked via {@link DocIdSetIterator#intoBitSet}; only MAYBE runs
+     * confirm the ordinal predicate per doc. Like {@code matches()}, {@code disi} is the doc-values
+     * iterator and {@code predicate} the range check. Mirrors the numeric block loop in {@link
+     * #intoBitSet}: keep the two block walks in sync if the block-boundary handling changes.
+     */
+    private void ordinalRangeIntoBitSet(int upTo, FixedBitSet bitSet, int offset)
+        throws IOException {
+      while (blockIterator.docID() < upTo) {
+        int blockStart = blockIterator.docID();
+        SkipBlockRangeIterator.Match match = blockIterator.getMatch();
+        // For MAYBE blocks docIDRunEnd() is conservative (doc+1), so use the full block boundary to
+        // evaluate the whole block at once.
+        int blockEnd =
+            match == SkipBlockRangeIterator.Match.MAYBE
+                ? Math.min(upTo, blockIterator.blockEnd())
+                : Math.min(upTo, blockIterator.docIDRunEnd());
+        switch (match) {
+          case YES -> bitSet.set(blockStart - offset, blockEnd - offset);
+          case YES_IF_PRESENT -> {
+            // Every present value is in range, so mark each doc that has a value. Only advance
+            // forward: a preceding YES block leaves disi behind blockStart, MAYBE/YES_IF_PRESENT
+            // leave it at or past it.
+            if (disi.docID() < blockStart) {
+              disi.advance(blockStart);
+            }
+            disi.intoBitSet(blockEnd, bitSet, offset);
+          }
+          case MAYBE -> {
+            // Visit only docs that have a value (like matches() does) and confirm the ordinal
+            // predicate one doc at a time.
+            if (disi.docID() < blockStart) {
+              disi.advance(blockStart);
+            }
+            for (int doc = disi.docID(); doc < blockEnd; doc = disi.nextDoc()) {
+              if (predicate.get()) {
+                bitSet.set(doc - offset);
+              }
+            }
+          }
         }
         blockIterator.advance(blockEnd);
       }

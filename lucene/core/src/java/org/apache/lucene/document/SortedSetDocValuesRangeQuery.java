@@ -151,6 +151,10 @@ final class SortedSetDocValuesRangeQuery extends Query {
               return DocIdSetIterator.all(skipper.docCount());
             }
 
+            // A single two-phase iterator covers every density: its approximation rides the
+            // skipper (no over-scan) and its intoBitSet bulk-evaluates blocks (YES runs set at
+            // once, YES_IF_PRESENT runs marked by presence, MAYBE runs confirmed per doc). The bulk
+            // scorer unwraps it and picks the right strategy from there.
             if (singleton != null) {
               return TwoPhaseIterator.asDocIdSetIterator(
                   DocValuesRangeIterator.forOrdinalRange(singleton, skipper, minOrd, maxOrd));
