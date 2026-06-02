@@ -501,6 +501,8 @@ Bug Fixes
 * GITHUB#15836: Use exact search in VectorSimilarityQuery when traversalSimilarity is -infinity to
   guarantee completeness. (Sagar Upadhyaya)
 
+* GITHUB#16169: Fix flaky TestLRUQueryCache.testUnifiedCacheEntryCallbacks by using a non-randomized IndexWriterConfig. (Prithvi S)
+
 * GITHUB#12419, GITHUB#15119, GITHUB#15864: Fix circular dependency deadlock in
   TestSecrets initialization (Namgyu Kim, Uwe Schindler)
 
