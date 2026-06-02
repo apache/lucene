@@ -158,6 +158,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16176: Restore WANDScroer for TOP_SCORES + minShouldMatch > 1. (Tianxiao Wei)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
