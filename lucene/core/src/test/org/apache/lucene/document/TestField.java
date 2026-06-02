@@ -765,6 +765,51 @@ public class TestField extends LuceneTestCase {
     assertTrue(zeroError.getMessage().contains("zero vector not allowed"));
   }
 
+  public void testKnnFieldSetVectorValueZeroVectors() throws Exception {
+    // Float vector field: setVectorValue with zero vector on COSINE field should fail
+    KnnFloatVectorField floatField =
+        new KnnFloatVectorField(
+            "knnFloats", new float[] {1, 2, 3, 4, 5}, VectorSimilarityFunction.COSINE);
+    IllegalArgumentException zeroError =
+        expectThrows(IllegalArgumentException.class, () -> floatField.setVectorValue(new float[5]));
+    assertTrue(zeroError.getMessage().contains("zero vector not allowed"));
+
+    // Non-zero setVectorValue should succeed
+    floatField.setVectorValue(new float[] {5, 4, 3, 2, 1});
+
+    // Byte vector field: setVectorValue with zero vector on COSINE field should fail
+    KnnByteVectorField byteField =
+        new KnnByteVectorField(
+            "knnBytes", new byte[] {1, 2, 3, 4, 5}, VectorSimilarityFunction.COSINE);
+    zeroError =
+        expectThrows(IllegalArgumentException.class, () -> byteField.setVectorValue(new byte[5]));
+    assertTrue(zeroError.getMessage().contains("zero vector not allowed"));
+
+    // Non-zero setVectorValue should succeed
+    byteField.setVectorValue(new byte[] {5, 4, 3, 2, 1});
+
+    // EUCLIDEAN fields should allow zero vectors via setVectorValue
+    KnnFloatVectorField euclideanFloatField =
+        new KnnFloatVectorField(
+            "knnFloatsEuc", new float[] {1, 2, 3, 4, 5}, VectorSimilarityFunction.EUCLIDEAN);
+    euclideanFloatField.setVectorValue(new float[5]);
+
+    KnnByteVectorField euclideanByteField =
+        new KnnByteVectorField(
+            "knnBytesEuc", new byte[] {1, 2, 3, 4, 5}, VectorSimilarityFunction.EUCLIDEAN);
+    euclideanByteField.setVectorValue(new byte[5]);
+
+    // Float vector field: setVectorValue with NaN should fail
+    KnnFloatVectorField nanField =
+        new KnnFloatVectorField(
+            "knnFloatsNaN", new float[] {1, 2, 3, 4, 5}, VectorSimilarityFunction.EUCLIDEAN);
+    IllegalArgumentException nanError =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> nanField.setVectorValue(new float[] {1, 2, Float.NaN, 4, 5}));
+    assertTrue(nanError.getMessage().contains("non-finite"));
+  }
+
   private void trySetByteValue(Field f) {
     expectThrows(
         IllegalArgumentException.class,

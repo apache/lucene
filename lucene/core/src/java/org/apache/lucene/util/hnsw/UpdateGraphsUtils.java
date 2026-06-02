@@ -21,7 +21,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 import java.io.IOException;
 import org.apache.lucene.internal.hppc.IntHashSet;
-import org.apache.lucene.util.LongHeap;
+import org.apache.lucene.util.TernaryLongHeap;
 
 /**
  * Utility class for updating a big graph with smaller graphs. This is used during merging of
@@ -41,7 +41,7 @@ public class UpdateGraphsUtils {
   public static IntHashSet computeJoinSet(HnswGraph graph) throws IOException {
     int k; // coverage for the current node
     int size = graph.size();
-    LongHeap heap = new LongHeap(size);
+    TernaryLongHeap heap = new TernaryLongHeap(size);
     IntHashSet j = new IntHashSet();
     boolean[] stale = new boolean[size];
     short[] counts = new short[size];
