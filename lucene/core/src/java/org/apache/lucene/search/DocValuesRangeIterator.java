@@ -136,7 +136,13 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
             values, new SkipBlockRangeIterator(skipper, min, max), check, 5, false);
   }
 
-  private record OrdinalSet(long min, long max, LongBitSet ords) {
+  /**
+   * @param contiguous true iff every ordinal in [min, max] is set, in which case the set is
+   *     equivalent to the contiguous range [min, max] and a cheaper range check can be used in
+   *     place of the per-doc bit lookup. Computed at construction time so callers don't have to
+   *     trust an undocumented invariant about the bounds of set bits in {@code ords}.
+   */
+  private record OrdinalSet(long min, long max, LongBitSet ords, boolean contiguous) {
 
     boolean disjoint(DocValuesSkipper skipper) {
       if (skipper == null) {
@@ -155,11 +161,18 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     long min = termsEnum.ord();
     ords.set(min);
     long max = min;
+    // Count distinct ords via getAndSet so a TermsEnum that yields a duplicate ord doesn't fool
+    // the contiguity check below. The first set bit (min) is always new on a fresh bitset.
+    long distinctCount = 1;
     while (termsEnum.next() != null) {
       max = termsEnum.ord();
-      ords.set(max);
+      if (ords.getAndSet(max) == false) {
+        distinctCount++;
+      }
     }
-    return new OrdinalSet(min, max, ords);
+    // If every ord in [min, max] is set, the set is equivalent to forOrdinalRange and can use the
+    // cheaper range check + block-level YES short-circuit.
+    return new OrdinalSet(min, max, ords, distinctCount == max - min + 1);
   }
 
   /**
@@ -175,7 +188,9 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     if (ordinalSet == null || ordinalSet.disjoint(skipper)) {
       return new EmptyRangeIterator();
     }
-    // TODO add check to OrdinalSet to detect if it can be converted to a range instead
+    if (ordinalSet.contiguous) {
+      return forOrdinalRange(values, skipper, ordinalSet.min, ordinalSet.max);
+    }
     IOBooleanSupplier check = () -> ordinalSet.ords.get(values.ordValue());
     return skipper == null
         ? new DocValuesValueRangeIterator(values, check, 2)
@@ -215,13 +230,18 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
       long minOrd,
       long maxOrd,
       LongBitSet ords) {
-    return forOrdinalSet(values, skipper, new OrdinalSet(minOrd, maxOrd, ords));
+    // Pass contiguous=false: callers of this overload aren't required by the javadoc to keep all
+    // set bits within [minOrd, maxOrd], so we can't infer contiguity from cardinality alone.
+    return forOrdinalSet(values, skipper, new OrdinalSet(minOrd, maxOrd, ords, false));
   }
 
   private static DocValuesRangeIterator forOrdinalSet(
       SortedSetDocValues values, DocValuesSkipper skipper, OrdinalSet ordinalSet) {
     if (ordinalSet == null || ordinalSet.disjoint(skipper)) {
       return new EmptyRangeIterator();
+    }
+    if (ordinalSet.contiguous) {
+      return forOrdinalRange(values, skipper, ordinalSet.min, ordinalSet.max);
     }
     IOBooleanSupplier check =
         () -> {
