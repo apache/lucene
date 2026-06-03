@@ -141,11 +141,6 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#16177: Doc-values range queries are now always two-phase iterators. Bulk evaluation is
-  exposed through TwoPhaseIterator#intoBitSet (overridable for SIMD block evaluation) instead of a
-  separate plain DocIdSetIterator, removing BatchDocValuesRangeIterator and speeding up conjunctions
-  of range filters. (Jim Ferenczi)
-
 * GITHUB#15681, GITHUB#15833, GITHUB#16056: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
@@ -437,8 +432,10 @@ Optimizations
 
 * GITHUB#16001: IndexSearcher.count() was calling query.rewrite twice, a regression since v9.10 (David Smiley)
 
-* GITHUB#16050: Add SIMD-accelerated bulk range evaluation for dense numeric doc values via
-  BatchDocValuesRangeIterator and DocValuesRangeSupport. (Sagar Upadhyaya)
+* GITHUB#16050, GITHUB#16177: Doc-values range queries are now always two-phase iterators, with
+  SIMD-accelerated bulk range evaluation for dense numeric doc values exposed through
+  TwoPhaseIterator#intoBitSet (overridable for SIMD block evaluation) instead of a separate plain
+  DocIdSetIterator, speeding up conjunctions of range filters. (Sagar Upadhyaya, Jim Ferenczi)
 
 * GITHUB#16061, GITHUB#16070, GITHUB#16085, GITHUB#16120: Improve cost estimation in SortedSetDocValuesRangeQuery
   and SortedNumericDocValuesRangeQuery when using DocValuesSkipper, the field is dense and is the primary sort of

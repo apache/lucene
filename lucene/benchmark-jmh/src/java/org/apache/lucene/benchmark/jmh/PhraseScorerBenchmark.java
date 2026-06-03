@@ -23,6 +23,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
@@ -32,7 +33,6 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
@@ -99,6 +99,10 @@ public class PhraseScorerBenchmark {
           doc.add(new TextField("text", "unrelated words", Field.Store.NO));
         }
         doc.add(NumericDocValuesField.indexedField("num", i));
+        // A term present in every doc, used as a fully-dense lead clause in conjunctions. Unlike
+        // MatchAllDocsQuery (which BooleanQuery#rewrite strips from multi-clause FILTERs), a real
+        // TermQuery survives rewrite, so the conjunction path is actually exercised.
+        doc.add(new StringField("all", "1", Field.Store.NO));
         writer.addDocument(doc);
       }
     }
@@ -114,18 +118,18 @@ public class PhraseScorerBenchmark {
     dir.close();
   }
 
-  // A constant-score conjunction with a phrase FILTER clause routes through
-  // DenseConjunctionBulkScorer
-  // (the phrase is a two-phase clause whose approximation matches ~50% but whose phrase matches
-  // ~0.1%), so this exercises the unified two-phase bit-set/survivor path. MatchAllDocsQuery forces
-  // a
-  // 2-clause conjunction so it isn't rewritten to the bare phrase.
+  // A constant-score conjunction of a phrase FILTER clause with a fully-dense term clause routes
+  // through DenseConjunctionBulkScorer (the phrase is a two-phase clause whose approximation matches
+  // ~50% but whose phrase matches ~0.1%), so this exercises the unified two-phase bit-set/survivor
+  // path. The "all" term is present in every doc and forms the dense lead iterator; it is a real
+  // TermQuery rather than MatchAllDocsQuery, which BooleanQuery#rewrite would strip from a
+  // multi-clause FILTER, collapsing this back to the bare phrase.
   @Benchmark
   public int benchmarkPhraseFilterConjunction() throws IOException {
     Query q =
         new BooleanQuery.Builder()
             .add(exactQuery, Occur.FILTER)
-            .add(new MatchAllDocsQuery(), Occur.FILTER)
+            .add(new TermQuery(new Term("all", "1")), Occur.FILTER)
             .build();
     return searcher.count(q);
   }
