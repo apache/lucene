@@ -158,8 +158,6 @@ Optimizations
 
 Bug Fixes
 ---------------------
-* GITHUB#16176: Restore WANDScroer for TOP_SCORES + minShouldMatch > 1. (Tianxiao Wei)
-
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
@@ -385,6 +383,8 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16176: Restore WANDScorer for TOP_SCORES + minShouldMatch > 1. (Tianxiao Wei)
+
 * GITHUB#16153: Use TernaryLongHeap in UpdateGraphsUtils for faster HNSW graph merging. (Prithvi S)
 
 * GITHUB#15861: Optimise PhraseScorer by short circuiting non competitive documents in TOP_SCORES mode. (Prithvi S)
