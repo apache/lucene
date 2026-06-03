@@ -607,8 +607,6 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     scorer.score(
         new LeafCollector() {
 
-          private int[] buffer;
-
           @Override
           public void setScorer(Scorable scorer) {}
 
@@ -625,16 +623,9 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
           }
 
           @Override
-          public void collect(DocIdStream stream) {
-            if (buffer == null) {
-              buffer = new int[128];
-            }
-            for (int c = stream.intoArray(buffer); c != 0; c = stream.intoArray(buffer)) {
-              for (int i = 0; i < c; ++i) {
-                bitSet.set(buffer[i]);
-              }
-              count[0] += c;
-            }
+          public void collect(DocIdStream stream) throws IOException {
+              count[0] += stream.count();
+              stream.forEach(bitSet::set);
           }
         },
         null,
@@ -648,8 +639,6 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     RoaringDocIdSet.Builder builder = new RoaringDocIdSet.Builder(maxDoc);
     scorer.score(
         new LeafCollector() {
-
-          private int[] buffer = null;
 
           @Override
           public void setScorer(Scorable scorer) {}
@@ -665,15 +654,8 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
           }
 
           @Override
-          public void collect(DocIdStream stream) {
-            if (buffer == null) {
-              buffer = new int[128];
-            }
-            for (int c = stream.intoArray(buffer); c != 0; c = stream.intoArray(buffer)) {
-              for (int i = 0; i < c; ++i) {
-                builder.add(buffer[i]);
-              }
-            }
+          public void collect(DocIdStream stream) throws IOException {
+            stream.forEach(builder::add);
           }
         },
         null,
