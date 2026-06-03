@@ -48,6 +48,8 @@ import org.apache.lucene.util.Constants;
  *
  * <p>It Uses <code>Linker.Option.critical(true)</code> for optimal performance by eliminating the
  * overhead of ensuring MemorySegments are allocated off-heap before native calls.
+ *
+ * @lucene.experimental
  */
 @SuppressWarnings("restricted")
 final class NativeVectorUtilSupport implements VectorUtilSupport {
