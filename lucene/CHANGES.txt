@@ -486,6 +486,8 @@ Optimizations
 
 * GITHUB#16155: Use BitSet#nextClearBit to iterate uninitialized nodes in MergingHnswGraphBuilder. (Sasilekha R)
 
+* GITHUB#16174: Convert contiguous ordinal sets to ranges in DocValuesRangeIterator#forOrdinalSet. (Sasilekha R)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
