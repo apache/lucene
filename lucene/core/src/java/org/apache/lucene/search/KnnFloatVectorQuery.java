@@ -101,19 +101,7 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
     this.targetPreRotated = false;
   }
 
-  private final boolean targetPreRotated;
-
-  private KnnFloatVectorQuery(
-      String field,
-      float[] target,
-      int k,
-      Query filter,
-      KnnSearchStrategy searchStrategy,
-      boolean targetPreRotated) {
-    super(field, k, filter, searchStrategy);
-    this.target = VectorUtil.checkFinite(Objects.requireNonNull(target, "target"));
-    this.targetPreRotated = targetPreRotated;
-  }
+  private boolean targetPreRotated;
 
   @Override
   public Query rewrite(IndexSearcher indexSearcher) throws IOException {
@@ -125,8 +113,8 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
           && "true".equals(fi.getAttribute(RotationAwareKnnVectorsFormat.ROTATION_ENABLED_KEY))) {
         float[] rotated = new float[target.length];
         HadamardRotation.forDimension(fi.getVectorDimension()).rotate(target, rotated);
-        return new KnnFloatVectorQuery(field, rotated, k, filter, searchStrategy, true)
-            .rewrite(indexSearcher);
+        System.arraycopy(rotated, 0, target, 0, target.length);
+        targetPreRotated = true;
       }
     }
     return super.rewrite(indexSearcher);
