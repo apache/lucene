@@ -23,7 +23,6 @@ import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.document.column.LongValuesCursor;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.packed.PackedInts;
@@ -63,6 +62,20 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
     updateBytesUsed();
 
     lastDocID = docID;
+  }
+
+  void addRepeatValues(int firstDocID, long value, int count) {
+    if (count == 0) {
+      return;
+    }
+    assert firstDocID > lastDocID;
+
+    pending.add(value, count);
+    docsWithField.addRange(firstDocID, firstDocID + count);
+
+    updateBytesUsed();
+
+    lastDocID = firstDocID + count - 1;
   }
 
   void addDenseValues(int firstDocID, LongValuesCursor cursor) {
@@ -200,6 +213,16 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
     }
 
     @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      docsWithField.intoBitSet(upTo, bitSet, offset);
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return docsWithField.docIDRunEnd();
+    }
+
+    @Override
     public long longValue() {
       return value;
     }
@@ -254,14 +277,28 @@ class NumericDocValuesWriter extends DocValuesWriter<NumericDocValues> {
       }
       return cost;
     }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      upTo = Math.min(upTo, dvs.maxDoc);
+      if (upTo > docID) {
+        if (dvs.docsWithField == null) {
+          bitSet.set(docID - offset, upTo - offset);
+          docID = upTo;
+        } else {
+          FixedBitSet.orRange(dvs.docsWithField, docID, bitSet, docID - offset, upTo - docID);
+          docID = upTo < dvs.maxDoc ? dvs.advance(upTo) : NO_MORE_DOCS; // set the current doc
+        }
+      }
+    }
   }
 
   static class NumericDVs {
     private final long[] values;
-    private final BitSet docsWithField;
+    private final FixedBitSet docsWithField;
     private final int maxDoc;
 
-    NumericDVs(long[] values, BitSet docsWithField) {
+    NumericDVs(long[] values, FixedBitSet docsWithField) {
       this.values = values;
       this.docsWithField = docsWithField;
       this.maxDoc = values.length;

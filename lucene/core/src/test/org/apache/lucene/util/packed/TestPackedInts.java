@@ -1073,6 +1073,67 @@ public class TestPackedInts extends LuceneTestCase {
     }
   }
 
+  public void testPackedLongValuesAddRepeat() {
+    for (DataType dataType : DataType.values()) {
+      final int pageSize = 1 << TestUtil.nextInt(random(), 6, 12);
+      final float acceptableOverheadRatio = random().nextFloat();
+      final PackedLongValues.Builder buf;
+      switch (dataType) {
+        case PACKED:
+          buf = PackedLongValues.packedBuilder(pageSize, acceptableOverheadRatio);
+          break;
+        case DELTA_PACKED:
+          buf = PackedLongValues.deltaPackedBuilder(pageSize, acceptableOverheadRatio);
+          break;
+        case MONOTONIC:
+          buf = PackedLongValues.monotonicBuilder(pageSize, acceptableOverheadRatio);
+          break;
+        default:
+          throw new RuntimeException("added a type and forgot to add it here?");
+      }
+
+      final List<Long> expected = new ArrayList<>();
+      final int numOps = atLeast(20);
+      for (int op = 0; op < numOps; ++op) {
+        switch (random().nextInt(3)) {
+          case 0:
+            final long single = random().nextLong();
+            buf.add(single);
+            expected.add(single);
+            break;
+          case 1:
+            // count == 0 must be a no-op.
+            buf.add(random().nextLong(), 0);
+            break;
+          default:
+            final long value = random().nextLong();
+            final int count = TestUtil.nextInt(random(), 1, pageSize * 3);
+            buf.add(value, count);
+            for (int i = 0; i < count; ++i) {
+              expected.add(value);
+            }
+            break;
+        }
+        assertEquals(expected.size(), buf.size());
+      }
+
+      final PackedLongValues values = buf.build();
+      assertEquals(expected.size(), values.size());
+      for (int i = 0; i < expected.size(); ++i) {
+        assertEquals((long) expected.get(i), values.get(i));
+      }
+
+      final PackedLongValues.Iterator it = values.iterator();
+      for (int i = 0; i < expected.size(); ++i) {
+        assertTrue(it.hasNext());
+        assertEquals((long) expected.get(i), it.next());
+      }
+      assertFalse(it.hasNext());
+
+      expectThrows(IllegalStateException.class, () -> buf.add(random().nextLong(), 5));
+    }
+  }
+
   public void testPackedInputOutput() throws IOException {
     final long[] longs = new long[random().nextInt(8192)];
     final int[] bitsPerValues = new int[longs.length];

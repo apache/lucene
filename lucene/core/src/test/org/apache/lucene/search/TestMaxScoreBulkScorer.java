@@ -638,6 +638,209 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     dir.close();
   }
 
+  /**
+   * Test that the bitset-based filter path in MaxScoreBulkScorer is exercised when the filter is
+   * dense enough. This creates a filter whose cost exceeds maxDoc/32 (the density threshold) so
+   * that filterMatches is non-null and fillScoreBufferViaBitSet is used.
+   */
+  public void testFilteredDisjunctionWithDenseFilter() throws Exception {
+    try (Directory dir = newDirectory()) {
+      // We need maxDoc >= INNER_WINDOW_SIZE (4096) and filter.cost >= maxDoc/32.
+      // Create INNER_WINDOW_SIZE + 1 docs. Add the filter term "F" to all of them,
+      // and scoring terms "A" and "C" to specific docs.
+      int numDocs = MaxScoreBulkScorer.INNER_WINDOW_SIZE + 1;
+      try (IndexWriter w =
+          new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          // Dense filter: every doc matches
+          doc.add(new StringField("foo", "F", Field.Store.NO));
+          if (i == 0 || i == 1) {
+            doc.add(new StringField("foo", "A", Field.Store.NO));
+          }
+          if (i == 1 || i == 2) {
+            doc.add(new StringField("foo", "C", Field.Store.NO));
+          }
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = newSearcher(reader);
+
+        Query clause1 =
+            new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "A"))), 2);
+        Query clause2 = new ConstantScoreQuery(new TermQuery(new Term("foo", "C")));
+        Query filter = new TermQuery(new Term("foo", "F"));
+        LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
+
+        // Verify the filter is dense enough to trigger the bitset path
+        Scorer filterCheck =
+            searcher
+                .createWeight(searcher.rewrite(filter), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+        assertTrue(
+            "filter should be dense enough for bitset path",
+            filterCheck.iterator().cost()
+                >= context.reader().maxDoc()
+                    / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE);
+
+        Scorer scorer1 =
+            searcher
+                .createWeight(searcher.rewrite(clause1), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+        Scorer scorer2 =
+            searcher
+                .createWeight(searcher.rewrite(clause2), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+        Scorer filterScorer =
+            searcher
+                .createWeight(searcher.rewrite(filter), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+
+        BulkScorer scorer =
+            new MaxScoreBulkScorer(
+                context.reader().maxDoc(), Arrays.asList(scorer1, scorer2), filterScorer);
+
+        // Doc 0: has A (score=2), filter matches
+        // Doc 1: has A+C (score=2+1=3), filter matches
+        // Doc 2: has C (score=1), filter matches
+        scorer.score(
+            new LeafCollector() {
+
+              private int i;
+              private Scorable scorer;
+
+              @Override
+              public void setScorer(Scorable scorer) throws IOException {
+                this.scorer = scorer;
+              }
+
+              @Override
+              public void collect(int doc) throws IOException {
+                switch (i++) {
+                  case 0:
+                    assertEquals(0, doc);
+                    assertEquals(2, scorer.score(), 0);
+                    break;
+                  case 1:
+                    assertEquals(1, doc);
+                    assertEquals(2 + 1, scorer.score(), 0);
+                    break;
+                  case 2:
+                    assertEquals(2, doc);
+                    assertEquals(1, scorer.score(), 0);
+                    break;
+                  default:
+                    fail();
+                    break;
+                }
+              }
+            },
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
+      }
+    }
+  }
+
+  /**
+   * Test the bitset-based filter path with acceptDocs (live docs) to verify that deleted docs are
+   * correctly excluded when the filter is loaded into a bitset.
+   */
+  public void testFilteredDisjunctionWithDenseFilterAndAcceptDocs() throws Exception {
+    try (Directory dir = newDirectory()) {
+      int numDocs = MaxScoreBulkScorer.INNER_WINDOW_SIZE + 1;
+      try (IndexWriter w =
+          new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          doc.add(new StringField("foo", "F", Field.Store.NO));
+          if (i == 0 || i == 1 || i == 2) {
+            doc.add(new StringField("foo", "A", Field.Store.NO));
+          }
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = newSearcher(reader);
+
+        Query clause1 =
+            new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "A"))), 2);
+        Query filter = new TermQuery(new Term("foo", "F"));
+        LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
+        Scorer scorer1 =
+            searcher
+                .createWeight(searcher.rewrite(clause1), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+        // Need at least 2 scoring clauses for MaxScoreBulkScorer
+        Query clause2 = new ConstantScoreQuery(new TermQuery(new Term("foo", "A")));
+        Scorer scorer2 =
+            searcher
+                .createWeight(searcher.rewrite(clause2), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+        Scorer filterScorer =
+            searcher
+                .createWeight(searcher.rewrite(filter), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+
+        BulkScorer bulkScorer =
+            new MaxScoreBulkScorer(
+                context.reader().maxDoc(), Arrays.asList(scorer1, scorer2), filterScorer);
+
+        // acceptDocs that excludes doc 1
+        Bits acceptDocs =
+            new Bits() {
+              @Override
+              public boolean get(int index) {
+                return index != 1;
+              }
+
+              @Override
+              public int length() {
+                return numDocs;
+              }
+            };
+
+        bulkScorer.score(
+            new LeafCollector() {
+
+              private int i;
+              private Scorable scorer;
+
+              @Override
+              public void setScorer(Scorable scorer) throws IOException {
+                this.scorer = scorer;
+              }
+
+              @Override
+              public void collect(int doc) throws IOException {
+                switch (i++) {
+                  case 0:
+                    assertEquals(0, doc);
+                    assertEquals(2 + 1, scorer.score(), 0);
+                    break;
+                  case 1:
+                    // doc 1 skipped by acceptDocs
+                    assertEquals(2, doc);
+                    assertEquals(2 + 1, scorer.score(), 0);
+                    break;
+                  default:
+                    fail();
+                    break;
+                }
+              }
+            },
+            acceptDocs,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
+      }
+    }
+  }
+
   // This test simulates what happens over time for the query `the quick fox` as collection
   // progresses and the minimum competitive score increases.
   public void testPartition() throws IOException {

@@ -166,6 +166,31 @@ final class SortedSetDocValuesRangeQuery extends Query {
         };
       }
 
+      @Override
+      public int count(LeafReaderContext context) throws IOException {
+        if (context.reader().getFieldInfos().fieldInfo(field) == null) {
+          return 0;
+        }
+        SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
+        final long minOrd = minOrd(values);
+        final long maxOrd = maxOrd(values);
+        if (minOrd > maxOrd) {
+          return 0;
+        }
+        final DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
+        if (skipper != null) {
+          if (minOrd > skipper.maxValue() || maxOrd < skipper.minValue()) {
+            return 0;
+          }
+          if (skipper.docCount() == context.reader().maxDoc()
+              && skipper.minValue() >= minOrd
+              && skipper.maxValue() <= maxOrd) {
+            return context.reader().numDocs();
+          }
+        }
+        return -1;
+      }
+
       private ScorerSupplier getScorerSupplierFromDensePrimarySort(
           SortedDocValues singleton,
           SortedSetDocValues values,
