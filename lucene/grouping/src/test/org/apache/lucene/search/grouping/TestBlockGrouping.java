@@ -17,38 +17,67 @@
 
 package org.apache.lucene.search.grouping;
 
+import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexReaderContext;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TotalHits;
+import org.apache.lucene.search.Weight;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.NamedThreadFactory;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 
 public class TestBlockGrouping extends AbstractGroupingTestCase {
+
+  private static ExecutorService testExecutor;
+
+  @BeforeClass
+  public static void setUpExecutor() {
+    testExecutor = Executors.newFixedThreadPool(2, new NamedThreadFactory("TestBlockGrouping"));
+  }
+
+  @AfterClass
+  public static void tearDownExecutor() {
+    TestUtil.shutdownExecutorService(testExecutor);
+    testExecutor = null;
+  }
 
   public void testSimple() throws IOException {
 
     Shard shard = new Shard();
     indexRandomDocs(shard.writer);
-    IndexSearcher searcher = shard.getIndexSearcher();
+    IndexReader reader = shard.writer.getReader();
 
     Query blockEndQuery = new TermQuery(new Term("blockEnd", "true"));
+    IndexSearcher searcher = newIndexSearcher(reader, blockEndQuery);
     GroupingSearch grouper = new GroupingSearch(blockEndQuery);
     grouper.setGroupDocsLimit(10);
 
@@ -75,78 +104,20 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
       assertScoreDocsEquals(td.scoreDocs, tg.groups[i].scoreDocs());
     }
 
+    reader.close();
     shard.close();
-  }
-
-  public void testShardedBlockGrouping() throws IOException {
-    Shard shardControl = new Shard();
-    int shardCount = random().nextInt(3) + 2;
-    Shard[] shards = new Shard[shardCount];
-    for (int shardIdx = 0; shardIdx < shardCount; shardIdx++) {
-      shards[shardIdx] = new Shard();
-      // int bookCount = atLeast(20);
-      for (int bookIdx = 0; bookIdx < 5; bookIdx++) {
-        List<Document> block = new ArrayList<>();
-        String bookName = "book" + shardIdx + bookIdx;
-        // int chapterCount = atLeast(10);
-        int chapterCount = 2;
-        for (int j = 0; j < 2; j++) {
-          Document doc = new Document();
-          String chapterName = "chapter" + j;
-          String chapterText = randomText();
-          doc.add(new TextField("book", bookName, Field.Store.YES));
-          doc.add(new TextField("chapter", chapterName, Field.Store.YES));
-          doc.add(new TextField("text", chapterText, Field.Store.NO));
-          doc.add(new NumericDocValuesField("length", chapterText.length()));
-          doc.add(new SortedDocValuesField("book", new BytesRef(bookName)));
-          if (j == chapterCount - 1) {
-            doc.add(new TextField("blockEnd", "true", Field.Store.NO));
-          }
-          block.add(doc);
-        }
-        shards[shardIdx].writer.addDocuments(block);
-        shardControl.writer.addDocuments(block);
-      }
-    }
-
-    IndexSearcher shardControlIndexSearcher = shardControl.getIndexSearcher();
-
-    Query blockEndQuery = new TermQuery(new Term("blockEnd", "true"));
-    GroupingSearch grouper = new GroupingSearch(blockEndQuery);
-    grouper.setGroupDocsLimit(10);
-
-    Query topLevel = new TermQuery(new Term("text", "grandmother"));
-    TopGroups<BytesRef> singleShardTopGroups =
-        grouper.search(shardControlIndexSearcher, topLevel, 0, 5);
-
-    List<TopGroups<BytesRef>> shardTopGroups = new ArrayList<>();
-    for (int shardIdx = 0; shardIdx < shardCount; shardIdx++) {
-      shardTopGroups.add(grouper.search(shards[shardIdx].getIndexSearcher(), topLevel, 0, 5));
-    }
-
-    TopGroups<BytesRef> mergedTopGroups =
-        TopGroups.mergeBlockGroups(shardTopGroups, Sort.RELEVANCE, 0, 5, Sort.RELEVANCE);
-    assertNotNull(mergedTopGroups);
-
-    assertEquals(singleShardTopGroups.totalHitCount, mergedTopGroups.totalHitCount);
-    assertEquals(singleShardTopGroups.totalGroupCount, mergedTopGroups.totalGroupCount);
-    assertEquals(singleShardTopGroups.groups.length, mergedTopGroups.groups.length);
-
-    shardControl.close();
-    for (int shardIdx = 0; shardIdx < shardCount; shardIdx++) {
-      shards[shardIdx].close();
-    }
   }
 
   public void testTopLevelSort() throws IOException {
 
     Shard shard = new Shard();
     indexRandomDocs(shard.writer);
-    IndexSearcher searcher = shard.getIndexSearcher();
+    IndexReader reader = shard.writer.getReader();
 
     Sort sort = new Sort(new SortField("length", SortField.Type.LONG));
 
     Query blockEndQuery = new TermQuery(new Term("blockEnd", "true"));
+    IndexSearcher searcher = newIndexSearcher(reader, blockEndQuery);
     GroupingSearch grouper = new GroupingSearch(blockEndQuery);
     grouper.setGroupDocsLimit(10);
     // groups returned sorted by length, chapters within group sorted by relevancy
@@ -177,6 +148,7 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
       }
     }
 
+    reader.close();
     shard.close();
   }
 
@@ -184,11 +156,12 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
 
     Shard shard = new Shard();
     indexRandomDocs(shard.writer);
-    IndexSearcher searcher = shard.getIndexSearcher();
+    IndexReader reader = shard.writer.getReader();
 
     Sort sort = new Sort(new SortField("length", SortField.Type.LONG));
 
     Query blockEndQuery = new TermQuery(new Term("blockEnd", "true"));
+    IndexSearcher searcher = newIndexSearcher(reader, blockEndQuery);
     GroupingSearch grouper = new GroupingSearch(blockEndQuery);
     grouper.setGroupDocsLimit(10);
     // groups returned sorted by relevancy, chapters within group sorted by length
@@ -223,6 +196,7 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
       }
     }
 
+    reader.close();
     shard.close();
   }
 
@@ -317,6 +291,101 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
       FieldDoc e = (FieldDoc) expected[i];
       FieldDoc a = (FieldDoc) actual[i];
       assertArrayEquals(e.fields, a.fields);
+    }
+  }
+
+  /**
+   * Creates an IndexSearcher with random concurrency. For intra-segment concurrency, slices are
+   * aligned on block boundaries using the provided lastDocPerGroup query.
+   */
+  private IndexSearcher newIndexSearcher(IndexReader reader, Query lastDocPerGroupQuery)
+      throws IOException {
+    IndexSearcher tmp = new IndexSearcher(reader);
+    Weight lastDocPerGroup =
+        tmp.createWeight(tmp.rewrite(lastDocPerGroupQuery), ScoreMode.COMPLETE_NO_SCORES, 1);
+    Concurrency concurrency =
+        RandomPicks.randomFrom(
+            random(),
+            new Concurrency[] {
+              Concurrency.NONE, Concurrency.INTER_SEGMENT, Concurrency.INTRA_SEGMENT
+            });
+    if (concurrency == Concurrency.NONE) {
+      return new IndexSearcher(reader);
+    }
+    Executor ex = random().nextBoolean() ? null : testExecutor;
+    return new ShardSearcher(reader.getContext(), ex, lastDocPerGroup, concurrency);
+  }
+
+  private static class ShardSearcher extends IndexSearcher {
+    private final Weight lastDocPerGroup;
+    private final Concurrency concurrency;
+
+    public ShardSearcher(
+        IndexReaderContext parent,
+        Executor executor,
+        Weight lastDocPerGroup,
+        Concurrency concurrency) {
+      super(parent, executor);
+      this.lastDocPerGroup = lastDocPerGroup;
+      this.concurrency = concurrency;
+    }
+
+    /**
+     * For inter-segment concurrency, delegates to the default slice strategy (entire segments). For
+     * intra-segment concurrency, splits each segment at block boundaries so that no doc block is
+     * ever split across two slices, enabling safe concurrent search.
+     */
+    @Override
+    public LeafSlice[] slices(List<LeafReaderContext> leaves) {
+      if (concurrency == Concurrency.INTER_SEGMENT) {
+        return super.slices(leaves);
+      }
+      // INTRA_SEGMENT: one slice contains one or more doc blocks, boundaries derived from
+      // lastDocPerGroup
+      List<LeafSlice> slices = new ArrayList<>();
+      for (LeafReaderContext leaf : leaves) {
+        List<Integer> blockEnds = new ArrayList<>();
+        try {
+          Scorer scorer = lastDocPerGroup.scorer(leaf);
+          if (scorer != null) {
+            DocIdSetIterator it = scorer.iterator();
+            int doc;
+            while ((doc = it.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+              blockEnds.add(doc);
+            }
+          }
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+        if (blockEnds.isEmpty()) {
+          slices.add(
+              new LeafSlice(List.of(LeafReaderContextPartition.createForEntireSegment(leaf))));
+          continue;
+        }
+        int minDoc = 0;
+        int i = 0;
+        while (i < blockEnds.size()) {
+          // randomly pick how many blocks go into this slice
+          int blocksInSlice = 1 + random().nextInt(Math.max(1, blockEnds.size() - i));
+          int sliceEnd = blockEnds.get(Math.min(i + blocksInSlice, blockEnds.size()) - 1) + 1;
+          int maxDoc = Math.min(sliceEnd, leaf.reader().maxDoc());
+          if (minDoc < maxDoc) {
+            slices.add(
+                new LeafSlice(
+                    List.of(LeafReaderContextPartition.createFromAndTo(leaf, minDoc, maxDoc))));
+          }
+          minDoc = maxDoc;
+          i += blocksInSlice;
+        }
+        if (minDoc < leaf.reader().maxDoc()) {
+          slices.add(
+              new LeafSlice(
+                  List.of(
+                      LeafReaderContextPartition.createFromAndTo(
+                          leaf, minDoc, leaf.reader().maxDoc()))));
+        }
+      }
+      return slices.toArray(LeafSlice[]::new);
     }
   }
 }

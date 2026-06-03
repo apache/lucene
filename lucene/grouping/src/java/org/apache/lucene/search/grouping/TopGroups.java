@@ -369,12 +369,17 @@ public class TopGroups<T> {
           Float.NaN);
     }
 
-    int totalGroupCount = 0;
+    Integer totalGroupCount = null;
     int totalHitCount = 0;
     int totalGroupedHitCount = 0;
     for (TopGroups<T> sg : shardGroups) {
-      totalGroupCount += sg.totalGroupCount;
       totalHitCount += sg.totalHitCount;
+      if (sg.totalGroupCount != null) {
+        if (totalGroupCount == null) {
+          totalGroupCount = 0;
+        }
+        totalGroupCount += sg.totalGroupCount;
+      }
     }
 
     // k-way merge
@@ -396,7 +401,7 @@ public class TopGroups<T> {
       queue.add(new MergedBlockGroup(firstGroupDocs.groupSortValues(), idx, 0));
     }
 
-    if (groupSortByRelevance) {
+    if (groupSortByRelevance && !queue.isEmpty()) {
       totalMaxScore = shardGroups.get(queue.first().shardIndex).maxScore;
     }
 

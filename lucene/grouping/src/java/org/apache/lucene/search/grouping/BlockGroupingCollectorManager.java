@@ -27,18 +27,27 @@ import org.apache.lucene.search.Weight;
 /**
  * A {@link CollectorManager} for {@link BlockGroupingCollector} that merges results from multiple
  * collectors into a single {@link TopGroups}. This is intended for use with concurrent search,
- * where each segment is searched by a separate {@link BlockGroupingCollector}.
+ * where each slice is searched by a separate {@link BlockGroupingCollector}.
  *
  * <p>Documents must be indexed as blocks using {@link
  * org.apache.lucene.index.IndexWriter#addDocuments IndexWriter.addDocuments()} or {@link
  * org.apache.lucene.index.IndexWriter#updateDocuments IndexWriter.updateDocuments()}.
+ *
+ * <p><b>NOTE</b>: All documents in a group block must be processed by the same {@link
+ * BlockGroupingCollector} instance. This means that the {@link
+ * org.apache.lucene.search.IndexSearcher}'s slices must not split a segment in a way that places
+ * documents from the same block into different slices. The default {@link
+ * org.apache.lucene.search.IndexSearcher#slices} implementation (inter-segment only) satisfies this
+ * constraint. If intra-segment concurrency is desired, the caller must override {@link
+ * org.apache.lucene.search.IndexSearcher#slices} to ensure each doc block falls entirely within one
+ * slice.
  *
  * <p>See {@link BlockGroupingCollector} for more details.
  *
  * <p>Example usage:
  *
  * <pre class="prettyprint">
- * IndexSearcher searcher = new IndexSearcher(reader);
+ * IndexSearcher searcher = ...; // your IndexSearcher
  * Query lastDocPerGroupQuery = new TermQuery(new Term("groupEnd", "true"));
  * Weight lastDocPerGroup = searcher.createWeight(
  *     searcher.rewrite(lastDocPerGroupQuery), ScoreMode.COMPLETE_NO_SCORES, 1);
@@ -93,6 +102,28 @@ public class BlockGroupingCollectorManager<T>
       Sort withinGroupSort,
       int withinGroupOffset,
       int maxDocsPerGroup) {
+    if (groupOffset < 0) {
+      throw new IllegalArgumentException("groupOffset must be >= 0 (got " + groupOffset + ")");
+    }
+
+    if (topNGroups < 1) {
+      throw new IllegalArgumentException("topNGroups must be >= 1 (got " + topNGroups + ")");
+    }
+
+    if (withinGroupOffset < 0) {
+      throw new IllegalArgumentException(
+          "withinGroupOffset must be >= 0 (got " + withinGroupOffset + ")");
+    }
+
+    if (maxDocsPerGroup < 1) {
+      throw new IllegalArgumentException(
+          "maxDocsPerGroup must be >= 1 (got " + maxDocsPerGroup + ")");
+    }
+
+    if (withinGroupSort.getSort().length == 0) {
+      throw new IllegalArgumentException("Sort must contain at least one field");
+    }
+
     this.groupSort = groupSort;
     this.groupOffset = groupOffset;
     this.topNGroups = topNGroups;
@@ -111,7 +142,6 @@ public class BlockGroupingCollectorManager<T>
   @SuppressWarnings("unchecked")
   @Override
   public TopGroups<T> reduce(Collection<BlockGroupingCollector> collectors) throws IOException {
-    // Merge results from multiple collectors
     List<TopGroups<T>> shardGroupsList = new ArrayList<>();
     for (BlockGroupingCollector collector : collectors) {
       TopGroups<?> topGroups =
