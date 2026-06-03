@@ -141,7 +141,7 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#XXXXX: Doc-values range queries are now always two-phase iterators. Bulk evaluation is
+* GITHUB#16177: Doc-values range queries are now always two-phase iterators. Bulk evaluation is
   exposed through TwoPhaseIterator#intoBitSet (overridable for SIMD block evaluation) instead of a
   separate plain DocIdSetIterator, removing BatchDocValuesRangeIterator and speeding up conjunctions
   of range filters. (Jim Ferenczi)
