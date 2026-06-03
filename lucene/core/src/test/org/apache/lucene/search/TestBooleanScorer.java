@@ -27,6 +27,7 @@ import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.IndexReader;
@@ -311,7 +312,6 @@ public class TestBooleanScorer extends LuceneTestCase {
     Scorer scorer = weight.scorerSupplier(context).get(Long.MAX_VALUE);
     assertThat(scorer, instanceOf(ConjunctionScorer.class));
     DocIdSetIterator iterator = scorer.iterator();
-    assertTrue(ConjunctionDISI.canBulkIntoBitSet(iterator));
     assertTrue(iterator.cost() >= Math.ceilDiv(maxDoc, 512));
     assertNull(TwoPhaseIterator.unwrap(iterator));
 
@@ -343,6 +343,98 @@ public class TestBooleanScorer extends LuceneTestCase {
         };
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, null, 0, maxDoc));
     assertTrue(streamCount[0] > 0);
+    assertEquals(expectedHitCount, count[0]);
+    for (int i = 0; i < count[0]; ++i) {
+      assertEquals(1 + i * 50, collected[i]);
+    }
+
+    reader.close();
+    dir.close();
+  }
+
+  public void testCachedFilterTwoPhaseOptionalConjunctionUsesConstantScoreBulkScorer()
+      throws IOException {
+    int maxDoc = 500_000;
+    int expectedHitCount = 10_000;
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
+    for (int doc = 0; doc < maxDoc; ++doc) {
+      Document document = new Document();
+      document.add(new StringField("filter", "yes", Store.NO));
+      if (doc % 50 == 1) {
+        // Phrase queries expose a TwoPhaseIterator, so the optional disjunction below is two-phase.
+        document.add(
+            new TextField("optional", doc % 100 == 1 ? "quick brown" : "lazy dog", Store.NO));
+      }
+      w.addDocument(document);
+    }
+    w.forceMerge(1);
+    IndexReader reader = DirectoryReader.open(w);
+    w.close();
+
+    Query filterQuery = new TermQuery(new Term("filter", "yes"));
+    Query query =
+        new BooleanQuery.Builder()
+            .add(filterQuery, Occur.FILTER)
+            .add(new PhraseQuery("optional", "quick", "brown"), Occur.SHOULD)
+            .add(new PhraseQuery("optional", "lazy", "dog"), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(1)
+            .build();
+
+    IndexSearcher searcher = new IndexSearcher(reader);
+    LRUQueryCache queryCache =
+        new LRUQueryCache(16, 1 << 25, context -> context.reader() != null, 1f);
+    searcher.setQueryCache(queryCache);
+    searcher.setQueryCachingPolicy(
+        new QueryCachingPolicy() {
+          @Override
+          public void onUse(Query query) {}
+
+          @Override
+          public boolean shouldCache(Query query) {
+            return filterQuery.equals(query);
+          }
+        });
+
+    LeafReaderContext context = reader.leaves().get(0);
+    Weight filterWeight =
+        searcher.createWeight(searcher.rewrite(filterQuery), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    ScorerSupplier filterScorerSupplier = filterWeight.scorerSupplier(context);
+    assertNotNull(filterScorerSupplier);
+    filterScorerSupplier.get(Long.MAX_VALUE).iterator().nextDoc();
+    assertEquals(1, queryCache.getCacheSize());
+
+    Weight weight =
+        searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE_NO_SCORES, 1f);
+    Scorer scorer = weight.scorerSupplier(context).get(Long.MAX_VALUE);
+    // The optional phrase disjunction makes the conjunction two-phase.
+    assertNotNull(TwoPhaseIterator.unwrap(scorer.iterator()));
+
+    BulkScorer bulkScorer = weight.bulkScorer(context);
+    assertThat(bulkScorer, instanceOf(ConstantScoreBulkScorer.class));
+
+    int[] collected = new int[expectedHitCount];
+    int[] count = new int[1];
+    LeafCollector collector =
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            collected[count[0]++] = doc;
+          }
+
+          @Override
+          public void collect(DocIdStream stream) throws IOException {
+            int[] buffer = new int[32];
+            for (int size = stream.intoArray(buffer); size != 0; size = stream.intoArray(buffer)) {
+              System.arraycopy(buffer, 0, collected, count[0], size);
+              count[0] += size;
+            }
+          }
+        };
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, null, 0, maxDoc));
     assertEquals(expectedHitCount, count[0]);
     for (int i = 0; i < count[0]; ++i) {
       assertEquals(1 + i * 50, collected[i]);

@@ -348,9 +348,11 @@ final class BooleanScorerSupplier extends ScorerSupplier {
 
       Scorer scorer = new ConjunctionScorer(filters, Collections.emptyList());
       DocIdSetIterator iterator = scorer.iterator();
-      if (TwoPhaseIterator.unwrap(iterator) == null
-          && (cost >> 1) >= DenseConjunctionBulkScorer.WINDOW_SIZE) {
-        return new ConstantScoreBulkScorer(0f, scoreMode, iterator);
+      if ((cost >> 1) >= DenseConjunctionBulkScorer.WINDOW_SIZE) {
+        TwoPhaseIterator twoPhase = TwoPhaseIterator.unwrap(iterator);
+        return twoPhase == null
+            ? new ConstantScoreBulkScorer(0f, scoreMode, iterator)
+            : new ConstantScoreBulkScorer(0f, scoreMode, twoPhase);
       }
       return new DefaultBulkScorer(scorer);
     }

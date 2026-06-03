@@ -146,10 +146,6 @@ final class ConjunctionDISI extends FilterDocIdSetIterator {
     return disi;
   }
 
-  static boolean canBulkIntoBitSet(DocIdSetIterator iterator) {
-    return iterator.getClass() == BitSetConjunctionDISI.class;
-  }
-
   private static void throwSubIteratorsNotOnSameDocument() {
     throw new IllegalArgumentException(
         "Sub-iterators of ConjunctionDISI are not on the same document!");

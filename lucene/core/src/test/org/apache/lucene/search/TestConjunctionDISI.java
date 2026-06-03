@@ -541,7 +541,6 @@ public class TestConjunctionDISI extends LuceneTestCase {
     DocIdSetIterator conjunction =
         ConjunctionUtils.intersectIterators(
             Arrays.asList(lead, new BitDocIdSet(filter).iterator()));
-    assertTrue(ConjunctionDISI.canBulkIntoBitSet(conjunction));
     assertEquals(2, conjunction.nextDoc());
 
     FixedBitSet actual = new FixedBitSet(4096);
@@ -563,7 +562,6 @@ public class TestConjunctionDISI extends LuceneTestCase {
     DocIdSetIterator conjunction =
         ConjunctionUtils.intersectIterators(
             Arrays.asList(lead, new BitDocIdSet(filter).iterator()));
-    assertTrue(ConjunctionDISI.canBulkIntoBitSet(conjunction));
     assertEquals(2, conjunction.nextDoc());
 
     FixedBitSet actual = new FixedBitSet(4096);

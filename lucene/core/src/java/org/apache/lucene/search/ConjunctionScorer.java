@@ -62,10 +62,6 @@ class ConjunctionScorer extends Scorer {
     return (float) sum;
   }
 
-  boolean canBulkCollectDocIdStream() {
-    return scorers.length == 0;
-  }
-
   @Override
   public float getMaxScore(int upTo) throws IOException {
     double maxScore = 0;

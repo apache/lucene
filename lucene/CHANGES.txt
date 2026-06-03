@@ -141,8 +141,9 @@ Improvements
 
 Optimizations
 ---------------------
-* Speed up no-score DefaultBulkScorer collection by using DocIdStream batches, including
-  conjunctions with cached FixedBitSet filters. (Costin Leau)
+* GITHUB#16146: Speed up no-score filtered-optional Boolean queries by routing dense
+  conjunctions with cached FixedBitSet filters through ConstantScoreBulkScorer, which
+  batches matches in bulk via DocIdStream. (Costin Leau)
 
 * GITHUB#15681, GITHUB#15833, GITHUB#16056: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 
