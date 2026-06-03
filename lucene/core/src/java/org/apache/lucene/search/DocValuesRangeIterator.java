@@ -335,10 +335,11 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
         switch (match) {
           case YES -> bitSet.set(blockStart - offset, blockEnd - offset);
           case YES_IF_PRESENT -> {
-            // All present values are in range, but the field is sparse: set a bit for every doc
-            // that has a value. Delegate to intoBitSet so dense codecs can bulk-set the run rather
-            // than probing one doc at a time. Only advance forward; a preceding YES block leaves the
-            // iterator behind blockStart, while MAYBE/YES_IF_PRESENT blocks leave it at or past it.
+            // All present values are in range, but the field is sparse: set a bit for every
+            // doc that has a value. Delegate to intoBitSet so dense codecs can bulk-set the run
+            // rather than probing one doc at a time. Only advance forward; a preceding YES block
+            // leaves the iterator behind blockStart, while MAYBE/YES_IF_PRESENT blocks leave it
+            // at or past it.
             if (numericValues.docID() < blockStart) {
               numericValues.advance(blockStart);
             }
