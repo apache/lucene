@@ -23,6 +23,7 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.LongBitSet;
 
@@ -52,7 +53,14 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     return skipper == null
         ? new DocValuesValueRangeIterator(values, check, 2)
         : new DocValuesBlockRangeIterator(
-            values, new SkipBlockRangeIterator(skipper, min, max), check, 2, false);
+            values,
+            new SkipBlockRangeIterator(skipper, min, max),
+            check,
+            2,
+            false,
+            values,
+            min,
+            max);
   }
 
   /**
@@ -245,6 +253,11 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     private final IOBooleanSupplier predicate;
     private final float matchCost;
     private final boolean alwaysCheckPredicate;
+    // Non-null only for single-valued numeric doc values, in which case a whole block can be
+    // range-evaluated in one shot in intoBitSet rather than confirming matches() one doc at a time.
+    private final NumericDocValues numericValues;
+    private final long minValue;
+    private final long maxValue;
 
     private DocValuesBlockRangeIterator(
         DocIdSetIterator disi,
@@ -252,12 +265,27 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
         IOBooleanSupplier predicate,
         float matchCost,
         boolean alwaysCheckPredicate) {
+      this(disi, blockIterator, predicate, matchCost, alwaysCheckPredicate, null, 0, 0);
+    }
+
+    private DocValuesBlockRangeIterator(
+        DocIdSetIterator disi,
+        SkipBlockRangeIterator blockIterator,
+        IOBooleanSupplier predicate,
+        float matchCost,
+        boolean alwaysCheckPredicate,
+        NumericDocValues numericValues,
+        long minValue,
+        long maxValue) {
       super(blockIterator);
       this.disi = disi;
       this.blockIterator = blockIterator;
       this.predicate = predicate;
       this.matchCost = matchCost;
       this.alwaysCheckPredicate = alwaysCheckPredicate;
+      this.numericValues = numericValues;
+      this.minValue = minValue;
+      this.maxValue = maxValue;
     }
 
     private boolean advanceDisi(int target) throws IOException {
@@ -285,6 +313,44 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
         return blockIterator.docID() + 1;
       }
       return blockIterator.docIDRunEnd();
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      if (numericValues == null) {
+        // Generic doc values: confirm each candidate one doc at a time (the TwoPhaseIterator
+        // default). Only single-valued numeric fields can be range-evaluated block at a time.
+        super.intoBitSet(upTo, bitSet, offset);
+        return;
+      }
+      while (blockIterator.docID() < upTo) {
+        int blockStart = blockIterator.docID();
+        SkipBlockRangeIterator.Match match = blockIterator.getMatch();
+        // For MAYBE blocks docIDRunEnd() is conservative (doc+1), so use the full block boundary to
+        // evaluate the whole block at once.
+        int blockEnd =
+            match == SkipBlockRangeIterator.Match.MAYBE
+                ? Math.min(upTo, blockIterator.blockEnd())
+                : Math.min(upTo, blockIterator.docIDRunEnd());
+        switch (match) {
+          case YES -> bitSet.set(blockStart - offset, blockEnd - offset);
+          case YES_IF_PRESENT -> {
+            // All present values are in range, but the field is sparse: set a bit for every
+            // doc that has a value. Delegate to intoBitSet so dense codecs can bulk-set the run
+            // rather than probing one doc at a time. Only advance forward; a preceding YES block
+            // leaves the iterator behind blockStart, while MAYBE/YES_IF_PRESENT blocks leave it
+            // at or past it.
+            if (numericValues.docID() < blockStart) {
+              numericValues.advance(blockStart);
+            }
+            numericValues.intoBitSet(blockEnd, bitSet, offset);
+          }
+          case MAYBE ->
+              numericValues.rangeIntoBitSet(
+                  blockStart, blockEnd, minValue, maxValue, bitSet, offset);
+        }
+        blockIterator.advance(blockEnd);
+      }
     }
 
     @Override
