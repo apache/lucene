@@ -260,7 +260,7 @@ public class TestBooleanScorer extends LuceneTestCase {
                 1f, ScoreMode.COMPLETE, new CountingDocIdSetIterator(new int[] {1})));
   }
 
-  public void testConstantScoreScorerSupplierPreservesTwoPhaseIterator() throws IOException {
+  public void testConstantScoreScorerSupplierBulkCollectsTwoPhaseWithMatcher() throws IOException {
     int[] docs = {1, 2, 3};
     CountingDocIdSetIterator approximation = new CountingDocIdSetIterator(docs);
     DocIdSetIterator iterator =
@@ -290,17 +290,21 @@ public class TestBooleanScorer extends LuceneTestCase {
           }
 
           @Override
-          public void collect(DocIdStream stream) {
-            fail("two-phase iterators must preserve per-doc confirmation");
+          public void collect(DocIdStream stream) throws IOException {
+            stream.forEach(doc -> collected[count[0]++] = doc);
           }
         };
 
+    // A no-score two-phase iterator is bulk-collected through ConstantScoreBulkScorer; its matcher
+    // is preserved because TwoPhaseIterator#intoBitSet confirms matches() while loading the window.
     BulkScorer bulkScorer =
         ConstantScoreScorerSupplier.fromIterator(iterator, 1f, ScoreMode.COMPLETE_NO_SCORES, 9000)
             .bulkScorer();
-    assertThat(bulkScorer, instanceOf(DefaultBulkScorer.class));
+    assertThat(bulkScorer, instanceOf(ConstantScoreBulkScorer.class));
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, null, 0, 9000));
+    // doc 2 is excluded by matches(), so the matcher is honored even via the bulk path.
     assertArrayEquals(new int[] {1, 3}, Arrays.copyOf(collected, count[0]));
+    // Confirmation runs through matches(), not the approximation's own bulk intoBitSet.
     assertEquals(0, approximation.intoBitSetCalls);
   }
 

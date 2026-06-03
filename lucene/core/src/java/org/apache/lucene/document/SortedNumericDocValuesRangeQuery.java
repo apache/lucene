@@ -25,7 +25,6 @@ import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.search.BatchDocValuesRangeIterator;
 import org.apache.lucene.search.ConstantScoreScorerSupplier;
 import org.apache.lucene.search.ConstantScoreWeight;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -141,17 +140,13 @@ final class SortedNumericDocValuesRangeQuery extends NumericDocValuesRangeQuery 
 
         final SortField primarySortField;
         if (singleton != null) {
-          if (skipper != null) {
-            if ((primarySortField = densePrimarySort(context.reader(), skipper)) != null) {
-              return getScorerSupplierFromDensePrimarySort(singleton, skipper, primarySortField);
-            }
-            // Use batch iterator for bulk block evaluation via intoBitSet()
-            return ConstantScoreScorerSupplier.fromIterator(
-                new BatchDocValuesRangeIterator(singleton, skipper, lowerValue, upperValue),
-                score(),
-                scoreMode,
-                maxDoc);
+          if (skipper != null
+              && (primarySortField = densePrimarySort(context.reader(), skipper)) != null) {
+            return getScorerSupplierFromDensePrimarySort(singleton, skipper, primarySortField);
           }
+          // A single two-phase iterator covers every density: its approximation rides the skipper
+          // (no over-scan), its intoBitSet bulk-evaluates dense blocks, and YES runs collect as
+          // ranges. The bulk scorer unwraps it and picks the right strategy from there.
           return ConstantScoreScorerSupplier.fromIterator(
               TwoPhaseIterator.asDocIdSetIterator(
                   DocValuesRangeIterator.forRange(singleton, skipper, lowerValue, upperValue)),
