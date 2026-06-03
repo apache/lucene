@@ -119,8 +119,10 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#16050: Add SIMD-accelerated bulk range evaluation for dense numeric doc values via
-  BatchDocValuesRangeIterator and DocValuesRangeSupport. (Sagar Upadhyaya)
+* GITHUB#16050, GITHUB#16177: Doc-values range queries are now always two-phase iterators, with
+  SIMD-accelerated bulk range evaluation for dense numeric doc values exposed through
+  TwoPhaseIterator#intoBitSet (overridable for SIMD block evaluation) instead of a separate plain
+  DocIdSetIterator, speeding up conjunctions of range filters. (Sagar Upadhyaya, Jim Ferenczi)
 
 * GITHUB#16153: Use TernaryLongHeap in UpdateGraphsUtils for faster HNSW graph merging. (Prithvi S)
 
