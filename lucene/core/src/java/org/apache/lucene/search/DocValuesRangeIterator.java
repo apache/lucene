@@ -107,7 +107,7 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     return skipper == null
         ? new DocValuesValueRangeIterator(values, check, 2)
         : new DocValuesBlockRangeIterator(
-            values, new SkipBlockRangeIterator(skipper, min, max), check, 2, false);
+            values, new SkipBlockRangeIterator(skipper, min, max), check, 2, false, values, min, max);
   }
 
   /**
@@ -258,6 +258,11 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     private final NumericDocValues numericValues;
     private final long minValue;
     private final long maxValue;
+    // Non-null only for single-valued sorted doc values (ordinal ranges), in which case a whole
+    // block can be ordinal-range-evaluated in one shot in intoBitSet.
+    private final SortedDocValues sortedValues;
+    private final long minOrd;
+    private final long maxOrd;
 
     private DocValuesBlockRangeIterator(
         DocIdSetIterator disi,
@@ -265,7 +270,18 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
         IOBooleanSupplier predicate,
         float matchCost,
         boolean alwaysCheckPredicate) {
-      this(disi, blockIterator, predicate, matchCost, alwaysCheckPredicate, null, 0, 0);
+      super(blockIterator);
+      this.disi = disi;
+      this.blockIterator = blockIterator;
+      this.predicate = predicate;
+      this.matchCost = matchCost;
+      this.alwaysCheckPredicate = alwaysCheckPredicate;
+      this.numericValues = null;
+      this.minValue = 0;
+      this.maxValue = 0;
+      this.sortedValues = null;
+      this.minOrd = 0;
+      this.maxOrd = 0;
     }
 
     private DocValuesBlockRangeIterator(
@@ -286,6 +302,32 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
       this.numericValues = numericValues;
       this.minValue = minValue;
       this.maxValue = maxValue;
+      this.sortedValues = null;
+      this.minOrd = 0;
+      this.maxOrd = 0;
+    }
+
+    private DocValuesBlockRangeIterator(
+        DocIdSetIterator disi,
+        SkipBlockRangeIterator blockIterator,
+        IOBooleanSupplier predicate,
+        float matchCost,
+        boolean alwaysCheckPredicate,
+        SortedDocValues sortedValues,
+        long minOrd,
+        long maxOrd) {
+      super(blockIterator);
+      this.disi = disi;
+      this.blockIterator = blockIterator;
+      this.predicate = predicate;
+      this.matchCost = matchCost;
+      this.alwaysCheckPredicate = alwaysCheckPredicate;
+      this.numericValues = null;
+      this.minValue = 0;
+      this.maxValue = 0;
+      this.sortedValues = sortedValues;
+      this.minOrd = minOrd;
+      this.maxOrd = maxOrd;
     }
 
     private boolean advanceDisi(int target) throws IOException {
@@ -317,9 +359,10 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
 
     @Override
     public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
-      if (numericValues == null) {
+      if (numericValues == null && sortedValues == null) {
         // Generic doc values: confirm each candidate one doc at a time (the TwoPhaseIterator
-        // default). Only single-valued numeric fields can be range-evaluated block at a time.
+        // default). Only single-valued numeric or sorted fields can be range-evaluated block at a
+        // time.
         super.intoBitSet(upTo, bitSet, offset);
         return;
       }
@@ -340,14 +383,27 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
             // rather than probing one doc at a time. Only advance forward; a preceding YES block
             // leaves the iterator behind blockStart, while MAYBE/YES_IF_PRESENT blocks leave it
             // at or past it.
-            if (numericValues.docID() < blockStart) {
-              numericValues.advance(blockStart);
+            if (numericValues != null) {
+              if (numericValues.docID() < blockStart) {
+                numericValues.advance(blockStart);
+              }
+              numericValues.intoBitSet(blockEnd, bitSet, offset);
+            } else {
+              if (sortedValues.docID() < blockStart) {
+                sortedValues.advance(blockStart);
+              }
+              sortedValues.intoBitSet(blockEnd, bitSet, offset);
             }
-            numericValues.intoBitSet(blockEnd, bitSet, offset);
           }
-          case MAYBE ->
+          case MAYBE -> {
+            if (numericValues != null) {
               numericValues.rangeIntoBitSet(
                   blockStart, blockEnd, minValue, maxValue, bitSet, offset);
+            } else {
+              sortedValues.ordinalRangeIntoBitSet(
+                  blockStart, blockEnd, minOrd, maxOrd, bitSet, offset);
+            }
+          }
         }
         blockIterator.advance(blockEnd);
       }

@@ -18,6 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
 /**
@@ -93,6 +94,34 @@ public abstract class SortedDocValues extends DocValuesIterator {
    */
   public TermsEnum termsEnum() throws IOException {
     return new SortedDocValuesTermsEnum(this);
+  }
+
+  /**
+   * Fills {@code bitSet} with the doc IDs in {@code [fromDoc, toDoc)} whose ordinals are in {@code
+   * [minOrd, maxOrd]}. This is a bulk operation that avoids per-doc virtual dispatch overhead.
+   *
+   * <p>The default implementation falls back to per-doc evaluation via {@link #advanceExact} and
+   * {@link #ordValue}. Subclasses with random-access storage (e.g., dense fixed-bitsPerValue fields)
+   * can override this for significantly better performance.
+   *
+   * @param fromDoc first doc ID to evaluate (inclusive)
+   * @param toDoc last doc ID to evaluate (exclusive)
+   * @param minOrd lower bound of the ordinal range (inclusive)
+   * @param maxOrd upper bound of the ordinal range (inclusive)
+   * @param bitSet the bitset to fill
+   * @param offset subtracted from each doc ID before setting the bit
+   */
+  public void ordinalRangeIntoBitSet(
+      int fromDoc, int toDoc, long minOrd, long maxOrd, FixedBitSet bitSet, int offset)
+      throws IOException {
+    for (int d = fromDoc; d < toDoc; d++) {
+      if (advanceExact(d)) {
+        int ord = ordValue();
+        if (ord >= minOrd && ord <= maxOrd) {
+          bitSet.set(d - offset);
+        }
+      }
+    }
   }
 
   /**

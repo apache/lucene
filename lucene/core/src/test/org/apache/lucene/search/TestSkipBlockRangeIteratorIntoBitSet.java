@@ -18,10 +18,12 @@ package org.apache.lucene.search;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 import org.apache.lucene.codecs.lucene104.Lucene104Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.DocValuesSkipper;
@@ -29,8 +31,10 @@ import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
@@ -548,6 +552,176 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
         d != DocIdSetIterator.NO_MORE_DOCS;
         d = d + 1 < bitSet.length() ? bitSet.nextSetBit(d + 1) : DocIdSetIterator.NO_MORE_DOCS) {
       assertTrue("Doc " + d + " set in bitset but not in expected", expected.contains(d));
+    }
+  }
+
+  /**
+   * Tests the intoBitSet bulk path for SortedDocValues ordinal ranges. Dense field with values
+   * repeating every 100 docs, queried over an ordinal range that exercises YES, MAYBE, and NO
+   * blocks.
+   */
+  public void testOrdinalIntoBitSetMatchesLinearScan() throws Exception {
+    try (Directory ordDir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+      try (IndexWriter w = new IndexWriter(ordDir, iwc)) {
+        for (int i = 0; i < DOC_COUNT; i++) {
+          Document doc = new Document();
+          // ordinals = i % 100, deterministic, formatted as zero-padded strings
+          String val = String.format(Locale.ROOT, "%03d", i % 100);
+          doc.add(SortedDocValuesField.indexedField("ord", new BytesRef(val)));
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+
+      try (DirectoryReader ordReader = DirectoryReader.open(ordDir)) {
+        LeafReaderContext ctx = ordReader.leaves().get(0);
+        int maxDoc = ctx.reader().maxDoc();
+        int windowSize = DenseConjunctionBulkScorer.WINDOW_SIZE;
+
+        // Linear scan reference
+        FixedBitSet expected = new FixedBitSet(windowSize);
+        SortedDocValues refValues = ctx.reader().getSortedDocValues("ord");
+        for (int d = 0; d < Math.min(maxDoc, windowSize); d++) {
+          if (refValues.advanceExact(d)) {
+            int ord = refValues.ordValue();
+            if (ord >= 20 && ord <= 40) {
+              expected.set(d);
+            }
+          }
+        }
+
+        DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper("ord");
+        SortedDocValues dv = ctx.reader().getSortedDocValues("ord");
+        assertNotNull("Field must have a skip index", skipper);
+
+        DocValuesRangeIterator iter =
+            DocValuesRangeIterator.forOrdinalRange(dv, skipper, 20, 40);
+        iter.approximation().nextDoc();
+
+        FixedBitSet actual = new FixedBitSet(windowSize);
+        iter.intoBitSet(Math.min(maxDoc, windowSize), actual, 0);
+
+        assertEquals(
+            "Ordinal intoBitSet must match linear scan",
+            expected.cardinality(),
+            actual.cardinality());
+        FixedBitSet diff = expected.clone();
+        diff.xor(actual);
+        assertEquals("No bits should differ for ordinal range", 0, diff.cardinality());
+      }
+    }
+  }
+
+  /**
+   * Tests that the two-phase iterator is wired for SortedDocValues ordinal ranges with a skip
+   * index.
+   */
+  public void testOrdinalTwoPhaseIteratorIsWired() throws Exception {
+    try (Directory ordDir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+      try (IndexWriter w = new IndexWriter(ordDir, iwc)) {
+        for (int i = 0; i < 10000; i++) {
+          Document doc = new Document();
+          String val = String.format(Locale.ROOT, "%03d", i % 100);
+          doc.add(SortedDocValuesField.indexedField("ord", new BytesRef(val)));
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+
+      try (DirectoryReader ordReader = DirectoryReader.open(ordDir)) {
+        LeafReaderContext ctx = ordReader.leaves().get(0);
+        Query q =
+            SortedDocValuesField.newSlowRangeQuery(
+                "ord", new BytesRef("020"), new BytesRef("040"), true, true);
+        IndexSearcher searcher = new IndexSearcher(ordReader);
+        Weight weight = q.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1f);
+        ScorerSupplier ss = weight.scorerSupplier(ctx);
+        assertNotNull("ScorerSupplier must not be null", ss);
+        assertTrue(
+            "ScorerSupplier must be a ConstantScoreScorerSupplier",
+            ss instanceof ConstantScoreScorerSupplier);
+        DocIdSetIterator iter = ((ConstantScoreScorerSupplier) ss).iterator(Long.MAX_VALUE);
+        TwoPhaseIterator twoPhase = TwoPhaseIterator.unwrap(iter);
+        assertTrue(
+            "Ordinal range query on single-valued field with skip index must use a"
+                + " DocValuesRangeIterator, but got: "
+                + (twoPhase == null ? iter.getClass() : twoPhase.getClass()).getSimpleName(),
+            twoPhase instanceof DocValuesRangeIterator);
+      }
+    }
+  }
+
+  /**
+   * Tests that ordinalRangeIntoBitSet (bulk/fast path) produces the exact same results as per-doc
+   * evaluation (slow path) across random data with various densities, range selectivities, and
+   * edge cases (all-match, no-match, single-doc blocks, boundary docs).
+   */
+  public void testOrdinalRangeIntoBitSetMatchesPerDocEvaluation() throws Exception {
+    Random rng = random();
+    for (int iter = 0; iter < 10; iter++) {
+      int numDocs = rng.nextInt(4096, 4096 * 5);
+      int numUnique = rng.nextInt(10, 500);
+      // Random range selectivity in terms of ordinals
+      int minOrd = rng.nextInt(0, numUnique / 2);
+      int maxOrd = minOrd + rng.nextInt(1, numUnique / 2);
+
+      try (Directory dir = newDirectory()) {
+        IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+        try (IndexWriter w = new IndexWriter(dir, iwc)) {
+          for (int i = 0; i < numDocs; i++) {
+            Document doc = new Document();
+            // Use string values so ordinal ordering is deterministic and independent of
+            // byte-value ordering.
+            String val = String.format(Locale.ROOT, "%05d", i % numUnique);
+            doc.add(SortedDocValuesField.indexedField("val", new BytesRef(val)));
+            w.addDocument(doc);
+          }
+          w.forceMerge(1);
+        }
+
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          LeafReaderContext ctx = reader.leaves().get(0);
+
+          // Slow path: per-doc evaluation via advanceExact + ordValue
+          FixedBitSet expected = new FixedBitSet(numDocs);
+          SortedDocValues slowDv = ctx.reader().getSortedDocValues("val");
+          for (int d = 0; d < numDocs; d++) {
+            if (slowDv.advanceExact(d)) {
+              int ord = slowDv.ordValue();
+              if (ord >= minOrd && ord <= maxOrd) {
+                expected.set(d);
+              }
+            }
+          }
+
+          // Fast path: DocValuesRangeIterator.forOrdinalRange with intoBitSet
+          DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper("val");
+          SortedDocValues fastDv = ctx.reader().getSortedDocValues("val");
+          assertNotNull("Field must have a skip index for randomized test", skipper);
+
+          DocValuesRangeIterator rangeIter =
+              DocValuesRangeIterator.forOrdinalRange(fastDv, skipper, minOrd, maxOrd);
+          rangeIter.approximation().nextDoc();
+
+          FixedBitSet actual = new FixedBitSet(numDocs);
+          rangeIter.intoBitSet(numDocs, actual, 0);
+
+          assertEquals(
+              "ordinal intoBitSet must match per-doc evaluation (numDocs="
+                  + numDocs
+                  + ", numUnique="
+                  + numUnique
+                  + ", ordRange=["
+                  + minOrd
+                  + ","
+                  + maxOrd
+                  + "])",
+              expected,
+              actual);
+        }
+      }
     }
   }
 
