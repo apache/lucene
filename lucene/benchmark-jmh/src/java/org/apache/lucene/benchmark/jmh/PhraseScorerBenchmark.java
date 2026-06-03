@@ -119,11 +119,11 @@ public class PhraseScorerBenchmark {
   }
 
   // A constant-score conjunction of a phrase FILTER clause with a fully-dense term clause routes
-  // through DenseConjunctionBulkScorer (the phrase is a two-phase clause whose approximation matches
-  // ~50% but whose phrase matches ~0.1%), so this exercises the unified two-phase bit-set/survivor
-  // path. The "all" term is present in every doc and forms the dense lead iterator; it is a real
-  // TermQuery rather than MatchAllDocsQuery, which BooleanQuery#rewrite would strip from a
-  // multi-clause FILTER, collapsing this back to the bare phrase.
+  // through DenseConjunctionBulkScorer (the phrase is a two-phase clause whose approximation
+  // matches ~50% but whose phrase matches ~0.1%), so this exercises the unified two-phase
+  // bit-set/survivor path. The "all" term is present in every doc and forms the dense lead
+  // iterator; it is a real TermQuery rather than MatchAllDocsQuery, which BooleanQuery#rewrite
+  // would strip from a multi-clause FILTER, collapsing this back to the bare phrase.
   @Benchmark
   public int benchmarkPhraseFilterConjunction() throws IOException {
     Query q =
