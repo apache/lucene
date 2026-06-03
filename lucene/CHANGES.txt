@@ -141,6 +141,11 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#XXXXX: Doc-values range queries are now always two-phase iterators. Bulk evaluation is
+  exposed through TwoPhaseIterator#intoBitSet (overridable for SIMD block evaluation) instead of a
+  separate plain DocIdSetIterator, removing BatchDocValuesRangeIterator and speeding up conjunctions
+  of range filters. (Jim Ferenczi)
+
 * GITHUB#15681, GITHUB#15833, GITHUB#16056: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)

@@ -21,14 +21,22 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
+import org.apache.lucene.document.NumericDocValuesField;
+import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.PhraseQuery;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.TopFieldCollectorManager;
 import org.apache.lucene.search.TopScoreDocCollectorManager;
@@ -90,6 +98,7 @@ public class PhraseScorerBenchmark {
           // 50% of docs: no query terms at all
           doc.add(new TextField("text", "unrelated words", Field.Store.NO));
         }
+        doc.add(NumericDocValuesField.indexedField("num", i));
         writer.addDocument(doc);
       }
     }
@@ -103,6 +112,56 @@ public class PhraseScorerBenchmark {
   public void tearDown() throws IOException {
     reader.close();
     dir.close();
+  }
+
+  // A constant-score conjunction with a phrase FILTER clause routes through
+  // DenseConjunctionBulkScorer
+  // (the phrase is a two-phase clause whose approximation matches ~50% but whose phrase matches
+  // ~0.1%), so this exercises the unified two-phase bit-set/survivor path. MatchAllDocsQuery forces
+  // a
+  // 2-clause conjunction so it isn't rewritten to the bare phrase.
+  @Benchmark
+  public int benchmarkPhraseFilterConjunction() throws IOException {
+    Query q =
+        new BooleanQuery.Builder()
+            .add(exactQuery, Occur.FILTER)
+            .add(new MatchAllDocsQuery(), Occur.FILTER)
+            .build();
+    return searcher.count(q);
+  }
+
+  // Two phrase clauses (both two-phase) confirming each other.
+  @Benchmark
+  public int benchmarkPhraseConjunction() throws IOException {
+    Query q =
+        new BooleanQuery.Builder()
+            .add(exactQuery, Occur.FILTER)
+            .add(new PhraseQuery("text", "lazy", "dog"), Occur.FILTER)
+            .build();
+    return searcher.count(q);
+  }
+
+  // Phrase (two-phase) ∩ term (plain, dense): the term is the dense clause, the phrase confirms.
+  @Benchmark
+  public int benchmarkPhraseTermConjunction() throws IOException {
+    Query q =
+        new BooleanQuery.Builder()
+            .add(exactQuery, Occur.FILTER)
+            .add(new TermQuery(new Term("text", "quick")), Occur.FILTER)
+            .build();
+    return searcher.count(q);
+  }
+
+  // Cross-type: phrase (two-phase) ∩ doc-values range (two-phase) — both two-phase clauses of
+  // different kinds pruning each other through the unified path.
+  @Benchmark
+  public int benchmarkPhraseRangeConjunction() throws IOException {
+    Query q =
+        new BooleanQuery.Builder()
+            .add(exactQuery, Occur.FILTER)
+            .add(SortedNumericDocValuesField.newSlowRangeQuery("num", 0, 500_000), Occur.FILTER)
+            .build();
+    return searcher.count(q);
   }
 
   @Benchmark
