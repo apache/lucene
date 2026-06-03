@@ -595,8 +595,7 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
         SortedDocValues dv = ctx.reader().getSortedDocValues("ord");
         assertNotNull("Field must have a skip index", skipper);
 
-        DocValuesRangeIterator iter =
-            DocValuesRangeIterator.forOrdinalRange(dv, skipper, 20, 40);
+        DocValuesRangeIterator iter = DocValuesRangeIterator.forOrdinalRange(dv, skipper, 20, 40);
         iter.approximation().nextDoc();
 
         FixedBitSet actual = new FixedBitSet(windowSize);
@@ -655,8 +654,8 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
 
   /**
    * Tests that ordinalRangeIntoBitSet (bulk/fast path) produces the exact same results as per-doc
-   * evaluation (slow path) across random data with various densities, range selectivities, and
-   * edge cases (all-match, no-match, single-doc blocks, boundary docs).
+   * evaluation (slow path) across random data with various densities, range selectivities, and edge
+   * cases (all-match, no-match, single-doc blocks, boundary docs).
    */
   public void testOrdinalRangeIntoBitSetMatchesPerDocEvaluation() throws Exception {
     Random rng = random();

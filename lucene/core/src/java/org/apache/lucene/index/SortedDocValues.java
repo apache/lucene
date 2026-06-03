@@ -101,8 +101,8 @@ public abstract class SortedDocValues extends DocValuesIterator {
    * [minOrd, maxOrd]}. This is a bulk operation that avoids per-doc virtual dispatch overhead.
    *
    * <p>The default implementation falls back to per-doc evaluation via {@link #advanceExact} and
-   * {@link #ordValue}. Subclasses with random-access storage (e.g., dense fixed-bitsPerValue fields)
-   * can override this for significantly better performance.
+   * {@link #ordValue}. Subclasses with random-access storage (e.g., dense fixed-bitsPerValue
+   * fields) can override this for significantly better performance.
    *
    * @param fromDoc first doc ID to evaluate (inclusive)
    * @param toDoc last doc ID to evaluate (exclusive)
