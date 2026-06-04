@@ -312,8 +312,7 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
     if (concurrency == Concurrency.NONE) {
       return new IndexSearcher(reader);
     }
-    Executor ex = random().nextBoolean() ? null : testExecutor;
-    return new ShardSearcher(reader.getContext(), ex, lastDocPerGroup, concurrency);
+    return new ShardSearcher(reader.getContext(), testExecutor, lastDocPerGroup, concurrency);
   }
 
   private static class ShardSearcher extends IndexSearcher {
