@@ -67,10 +67,13 @@ final class GlobalOrdinalsCollectorManager
       for (int i = 0; i < collector.segmentBits.size(); i++) {
         int segOrd = collector.segmentOrds.get(i);
         LongBitSet bits = collector.segmentBits.get(i);
-        mergedBySegment.merge(segOrd, bits, (a, b) -> {
-          a.or(b);
-          return a;
-        });
+        mergedBySegment.merge(
+            segOrd,
+            bits,
+            (a, b) -> {
+              a.or(b);
+              return a;
+            });
       }
     }
     for (Map.Entry<Integer, LongBitSet> entry : mergedBySegment.entrySet()) {
