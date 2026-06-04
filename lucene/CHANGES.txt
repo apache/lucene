@@ -141,9 +141,8 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#16200: Optimize byte vector scoring: precompute cosine query norm to avoid redundant
-  computation on every score() call, and keep int4 query vectors in packed form to use
-  int4DotProductBothPacked instead of decompressing. (James Gentile)
+* GITHUB#16200: Optimize byte vector cosine scoring: precompute the query vector's squared
+  norm to avoid redundant computation on every score() call. (James Gentile)
 
 * GITHUB#15681, GITHUB#15833, GITHUB#16056: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 

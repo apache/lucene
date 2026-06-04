@@ -729,36 +729,4 @@ public class TestVectorUtil extends LuceneTestCase {
       assertEquals(expected, actual, 0f);
     }
   }
-
-  public void testInt4PackAndDotProduct() {
-    // Verify that packing then using int4DotProductBothPacked gives the same result
-    // as int4DotProductSinglePacked with unpacked data
-    int iterations = atLeast(50);
-    for (int iter = 0; iter < iterations; iter++) {
-      int halfDim = TestUtil.nextInt(random(), 1, 128);
-      int dim = halfDim * 2;
-      byte[] unpacked = new byte[dim];
-      byte[] docPacked = new byte[halfDim];
-      // Generate random int4 values [0, 15]
-      for (int i = 0; i < dim; i++) {
-        unpacked[i] = (byte) random().nextInt(16);
-      }
-      // Pack the document vector
-      for (int i = 0; i < halfDim; i++) {
-        docPacked[i] = (byte) ((unpacked[i] << 4) | (unpacked[i + halfDim] & 0x0F));
-      }
-      // Now pack the "query" too
-      byte[] queryUnpacked = new byte[dim];
-      for (int i = 0; i < dim; i++) {
-        queryUnpacked[i] = (byte) random().nextInt(16);
-      }
-      byte[] queryPacked = new byte[halfDim];
-      for (int i = 0; i < halfDim; i++) {
-        queryPacked[i] = (byte) ((queryUnpacked[i] << 4) | (queryUnpacked[i + halfDim] & 0x0F));
-      }
-      int expected = VectorUtil.int4DotProductSinglePacked(queryUnpacked, docPacked);
-      int actual = VectorUtil.int4DotProductBothPacked(queryPacked, docPacked);
-      assertEquals(expected, actual);
-    }
-  }
 }

@@ -205,13 +205,16 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     }
   }
 
+  // TODO consider splitting this into two classes. right now the "query" vector
+  // is always
+  // decompressed
+  // it could stay compressed if we had a compressed version of the target vector
   private static class CompressedInt4DotProduct
       extends UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer {
     private final float constMultiplier;
     private final LegacyQuantizedByteVectorValues values;
     private final byte[] compressedVector;
     private final byte[] targetBytes;
-    private final byte[] compressedTarget;
     private float offsetCorrection;
     private final FloatToFloatFunction scoreAdjustmentFunction;
 
@@ -226,8 +229,6 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       this.values = values;
       this.compressedVector = new byte[values.getVectorByteLength()];
       this.targetBytes = targetBytes;
-      this.compressedTarget = new byte[(targetBytes.length + 1) >> 1];
-      packInt4(targetBytes, compressedTarget);
       this.offsetCorrection = offsetCorrection;
       this.scoreAdjustmentFunction = scoreAdjustmentFunction;
     }
@@ -235,11 +236,12 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     @Override
     public float score(int vectorOrdinal) throws IOException {
       // get compressed vector, in Lucene99, vector values are stored and have a
-      // single value for offset correction
+      // single value for
+      // offset correction
       values.getSlice().seek((long) vectorOrdinal * (values.getVectorByteLength() + Float.BYTES));
       values.getSlice().readBytes(compressedVector, 0, compressedVector.length);
       float vectorOffset = values.getScoreCorrectionConstant(vectorOrdinal);
-      int dotProduct = VectorUtil.int4DotProductBothPacked(compressedTarget, compressedVector);
+      int dotProduct = VectorUtil.int4DotProductSinglePacked(targetBytes, compressedVector);
       // For the current implementation of scalar quantization, all dotproducts should
       // be >= 0;
       assert dotProduct >= 0;
@@ -250,18 +252,7 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
     @Override
     public void setScoringOrdinal(int node) throws IOException {
       System.arraycopy(values.vectorValue(node), 0, targetBytes, 0, targetBytes.length);
-      packInt4(targetBytes, compressedTarget);
       offsetCorrection = values.getScoreCorrectionConstant(node);
-    }
-
-    /**
-     * Packs unpacked int4 values into the compressed format: upper nibble from first half, lower
-     * nibble from second half.
-     */
-    private static void packInt4(byte[] unpacked, byte[] packed) {
-      for (int i = 0; i < packed.length; i++) {
-        packed[i] = (byte) ((unpacked[i] << 4) | (unpacked[i + packed.length] & 0x0F));
-      }
     }
   }
 
