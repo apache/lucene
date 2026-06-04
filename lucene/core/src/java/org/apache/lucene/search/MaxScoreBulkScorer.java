@@ -182,6 +182,10 @@ final class MaxScoreBulkScorer extends BulkScorer {
       top = essentialQueue.updateTop();
     }
 
+    if (top.doc >= max) {
+      return;
+    }
+
     // Only score an inner window, after that we'll check if the min competitive score has increased
     // enough for a more favorable partitioning to be used.
     int innerWindowMin = top.doc;
