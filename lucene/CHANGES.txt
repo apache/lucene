@@ -488,6 +488,8 @@ Optimizations
 
 * GITHUB#16155: Use BitSet#nextClearBit to iterate uninitialized nodes in MergingHnswGraphBuilder. (Sasilekha R)
 
+* GITHUB#16174: Convert contiguous ordinal sets to ranges in DocValuesRangeIterator#forOrdinalSet. (Sasilekha R)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
@@ -554,6 +556,8 @@ Bug Fixes
 
 * GITHUB#16156: OffHeapFloatVectorValues#prefetch now bounds its loop by the requested
   count instead of the full ordinal array, matching OffHeapByteVectorValues. (Vignesh)
+
+* GITHUB#16179: Fix minor lock/unlock acquisition order in DocumentsWriterDeleteQueue (Chris Hegarty)
 
 Other
 ---------------------
