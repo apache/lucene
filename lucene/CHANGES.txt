@@ -434,8 +434,10 @@ Optimizations
 
 * GITHUB#16001: IndexSearcher.count() was calling query.rewrite twice, a regression since v9.10 (David Smiley)
 
-* GITHUB#16050: Add SIMD-accelerated bulk range evaluation for dense numeric doc values via
-  BatchDocValuesRangeIterator and DocValuesRangeSupport. (Sagar Upadhyaya)
+* GITHUB#16050, GITHUB#16177: Doc-values range queries are now always two-phase iterators, with
+  SIMD-accelerated bulk range evaluation for dense numeric doc values exposed through
+  TwoPhaseIterator#intoBitSet (overridable for SIMD block evaluation) instead of a separate plain
+  DocIdSetIterator, speeding up conjunctions of range filters. (Sagar Upadhyaya, Jim Ferenczi)
 
 * GITHUB#16061, GITHUB#16070, GITHUB#16085, GITHUB#16120: Improve cost estimation in SortedSetDocValuesRangeQuery
   and SortedNumericDocValuesRangeQuery when using DocValuesSkipper, the field is dense and is the primary sort of
@@ -473,6 +475,9 @@ Optimizations
 
 * GITHUB#16147: Optimize column batch parent field with bulk fill. (Tim Brooks)
 
+* GITHUB#16103: DisjunctionMaxQuery now filters out MatchNoDocsQuery disjuncts during rewrite,
+  avoiding unnecessary scorer overhead. (Prithvi S)
+
 * GITHUB#16109: Add count() to SortedSetDocValuesRangeQuery. (Prithvi S)
 
 * GITHUB#15991: Load dense filters into bitset in MaxScoreBulkScorer. (Prithvi S)
@@ -480,6 +485,10 @@ Optimizations
 * GITHUB#16142: Optimize disjunction #docIDRunEnd to skip runs of excluded documents. (Costin Leau)
 
 * GITHUB#16119: Optimize byte array writes in OutputStreamIndexOutput to remove unnecessary overhead. (neoremind)
+
+* GITHUB#16155: Use BitSet#nextClearBit to iterate uninitialized nodes in MergingHnswGraphBuilder. (Sasilekha R)
+
+* GITHUB#16174: Convert contiguous ordinal sets to ranges in DocValuesRangeIterator#forOrdinalSet. (Sasilekha R)
 
 Bug Fixes
 ---------------------
@@ -548,6 +557,8 @@ Bug Fixes
 * GITHUB#16156: OffHeapFloatVectorValues#prefetch now bounds its loop by the requested
   count instead of the full ordinal array, matching OffHeapByteVectorValues. (Vignesh)
 
+* GITHUB#16179: Fix minor lock/unlock acquisition order in DocumentsWriterDeleteQueue (Chris Hegarty)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
@@ -585,6 +596,9 @@ Other
 * GITHUB#16118: Remove getOrAddPerField calls in processBatch. (Tim Brooks)
 
 * GITHUB##16135: Disable external entities in hyphenation PatternParser. (metsw24-max, Uwe Schindler)
+
+* GITHUB#16178: Simplify how we collect hits in the LRU cache from a DocIdStream into a RoaringDocIdSet.
+  (Ignacio Vera)
 
 ======================= Lucene 10.4.0 =======================
 

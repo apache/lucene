@@ -33,6 +33,10 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.TopFieldCollectorManager;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -76,11 +80,19 @@ public class MultiFieldDocValuesRangeBenchmark {
   private static final String MIXED = "mixed";
   private static final String SORTED = "sorted";
   private static final String RANDOM = "random";
+  // All fields random; every clause matches ~70% so the intersection stays dense (stresses the
+  // bit-set intersection path).
+  private static final String DENSE = "dense";
+  // field0 matches ~all docs (a dense clause), every other field matches ~0.1% (very sparse), so a
+  // tiny surviving set must be confirmed against a dense clause (stresses survivor pruning).
+  private static final String DENSE_SPARSE = "dense_sparse";
 
   private Directory dir;
   private IndexReader reader;
   private Path path;
   private BooleanQuery query;
+  private Query singleRange;
+  private Query sparseNoSkipRange;
 
   @State(Scope.Benchmark)
   public static class Params {
@@ -90,7 +102,7 @@ public class MultiFieldDocValuesRangeBenchmark {
     @Param({"1", "3", "5"})
     public int fieldCount;
 
-    @Param({CLUSTERED, MIXED, RANDOM, SORTED})
+    @Param({CLUSTERED, MIXED, RANDOM, SORTED, DENSE, DENSE_SPARSE})
     public String dataPattern;
   }
 
@@ -115,6 +127,13 @@ public class MultiFieldDocValuesRangeBenchmark {
       for (int f = 0; f < params.fieldCount; f++) {
         long value = generateValue(params.dataPattern, f, i, params.docCount, r);
         doc.add(NumericDocValuesField.indexedField("field" + f, value));
+      }
+      // A sparsely populated field WITHOUT a skip index (plain NumericDocValuesField). Its range
+      // iterator is a DocValuesValueRangeIterator whose approximation reports a real (sparse) cost,
+      // so a range on it routes to ConstantScoreBulkScorer's two-phase path rather than
+      // DenseConjunctionBulkScorer (which is what the skip-indexed fields above always hit).
+      if (i % 100 == 0) {
+        doc.add(new NumericDocValuesField("sparse", i));
       }
       w.addDocument(doc);
     }
@@ -141,6 +160,12 @@ public class MultiFieldDocValuesRangeBenchmark {
       bqBuilder.add(new org.apache.lucene.search.MatchAllDocsQuery(), Occur.FILTER);
     }
     query = bqBuilder.build();
+
+    long[] range0 = getQueryRange(params.dataPattern, 0, params.docCount);
+    singleRange = SortedNumericDocValuesField.newSlowRangeQuery("field0", range0[0], range0[1]);
+
+    sparseNoSkipRange =
+        SortedNumericDocValuesField.newSlowRangeQuery("sparse", 0, params.docCount / 2);
   }
 
   private static long generateValue(
@@ -167,6 +192,8 @@ public class MultiFieldDocValuesRangeBenchmark {
           return r.nextLong(0, docCount);
         }
       case RANDOM:
+      case DENSE:
+      case DENSE_SPARSE:
         return r.nextLong(0, docCount);
       default:
         throw new IllegalArgumentException("Unknown pattern: " + pattern);
@@ -205,6 +232,18 @@ public class MultiFieldDocValuesRangeBenchmark {
         long rangeSize4 = docCount / 5;
         long lower4 = (docCount - rangeSize4) / 2;
         return new long[] {lower4, lower4 + rangeSize4};
+      case DENSE:
+        // Each clause matches ~70% of docs, so the intersection stays dense.
+        return new long[] {0, (long) (docCount * 0.7)};
+      case DENSE_SPARSE:
+        if (fieldIdx == 0) {
+          // Dense clause: matches all docs.
+          return new long[] {0, docCount};
+        }
+        // Very sparse clause: matches ~0.1% of docs.
+        long rangeSize5 = Math.max(1, docCount / 1000);
+        long lower5 = (docCount - rangeSize5) / 2;
+        return new long[] {lower5, lower5 + rangeSize5};
       default:
         throw new IllegalArgumentException("Unknown pattern: " + pattern);
     }
@@ -235,5 +274,29 @@ public class MultiFieldDocValuesRangeBenchmark {
   public int searchMultiFieldRange() throws IOException {
     IndexSearcher searcher = new IndexSearcher(reader);
     return searcher.count(query);
+  }
+
+  // A bare single range, driven through the bulk scorer. We collect (index-order, no early
+  // termination) rather than count() because SortedNumericDocValuesRangeQuery#count()
+  // short-circuits
+  // via the skip index and never builds a scorer. Selectivity follows the data pattern:
+  // clustered ~ very sparse, random ~ 20%, dense ~ 70%.
+  @Benchmark
+  public TopDocs searchSingleRange() throws IOException {
+    IndexSearcher searcher = new IndexSearcher(reader);
+    return searcher.search(
+        singleRange, new TopFieldCollectorManager(Sort.INDEXORDER, 10, Integer.MAX_VALUE));
+  }
+
+  // A range on the sparse, non-skip-indexed field. Its DocValuesValueRangeIterator reports a real
+  // (sparse) cost, so this is the one shape that routes to ConstantScoreBulkScorer's two-phase path
+  // (ours) / DefaultBulkScorer (#16143's fallback) instead of DenseConjunctionBulkScorer. Forced
+  // through the bulk scorer via a collector (count() would fall back to scoring anyway with no skip
+  // index, but the collector makes the path unambiguous).
+  @Benchmark
+  public TopDocs searchSparseNoSkipRange() throws IOException {
+    IndexSearcher searcher = new IndexSearcher(reader);
+    return searcher.search(
+        sparseNoSkipRange, new TopFieldCollectorManager(Sort.INDEXORDER, 10, Integer.MAX_VALUE));
   }
 }

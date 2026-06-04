@@ -2669,9 +2669,11 @@ public class TestLRUQueryCache extends LuceneTestCase {
           }
         };
 
-    // Force exactly 1 segment so cache behavior is deterministic
+    // Force exactly 1 segment so cache behavior is deterministic.
+    // Use a non-randomized IndexWriterConfig to prevent randomized flush thresholds
+    // (e.g., tiny RAM buffer) from splitting 3 docs into multiple segments.
     Directory dir = newDirectory();
-    IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
+    IndexWriterConfig iwc = new IndexWriterConfig().setMergePolicy(NoMergePolicy.INSTANCE);
     IndexWriter iw = new IndexWriter(dir, iwc);
     Document doc = new Document();
     doc.add(new StringField("color", "red", Store.NO));
