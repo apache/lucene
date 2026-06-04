@@ -283,6 +283,11 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
         : PanamaVectorUtilSupport.cosine(a, b);
   }
 
+  public static float cosine(MemorySegment a, int aNormSquared, MemorySegment b) {
+    // No native precomputed-norm variant; delegate to Panama
+    return PanamaVectorUtilSupport.cosine(a, aNormSquared, b);
+  }
+
   public static int dotProduct(byte[] a, MemorySegment b) {
     return (dotProduct$MH != null)
         ? dotProduct(MemorySegment.ofArray(a), b)
@@ -444,6 +449,12 @@ final class NativeVectorUtilSupport implements VectorUtilSupport {
     return (cosine$MH != null)
         ? cosine(MemorySegment.ofArray(a), MemorySegment.ofArray(b))
         : delegateVectorUtilSupport.cosine(a, b);
+  }
+
+  @Override
+  public float cosine(byte[] a, int aNormSquared, byte[] b) {
+    // No native precomputed-norm variant; delegate to Panama
+    return delegateVectorUtilSupport.cosine(a, aNormSquared, b);
   }
 
   @Override

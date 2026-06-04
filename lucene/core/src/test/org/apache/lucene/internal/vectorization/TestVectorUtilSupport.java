@@ -67,6 +67,10 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     assertIntReturningProviders(p -> p.dotProduct(a, b));
     assertIntReturningProviders(p -> p.squareDistance(a, b));
     assertFloatReturningProviders(p -> p.cosine(a, b));
+    // ensure non-zero for cosine with precomputed norm
+    a[0] = (byte) (random().nextInt(126) + 1);
+    int aNormSquared = LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, a);
+    assertFloatReturningProviders(p -> p.cosine(a, aNormSquared, b));
   }
 
   public void testBinaryVectorsBoundaries() {
@@ -96,6 +100,15 @@ public class TestVectorUtilSupport extends BaseVectorizationTestCase {
     assertIntReturningProviders(p -> p.dotProduct(a, b));
     assertIntReturningProviders(p -> p.squareDistance(a, b));
     assertFloatReturningProviders(p -> p.cosine(a, b));
+
+    // Also test cosine with precomputed norm at boundaries
+    Arrays.fill(a, Byte.MAX_VALUE);
+    Arrays.fill(b, Byte.MAX_VALUE);
+    int aNorm1 = LUCENE_PROVIDER.getVectorUtilSupport().dotProduct(a, a);
+    assertFloatReturningProviders(p -> p.cosine(a, aNorm1, b));
+
+    Arrays.fill(b, Byte.MIN_VALUE);
+    assertFloatReturningProviders(p -> p.cosine(a, aNorm1, b));
   }
 
   public void testUint8Vectors() {
