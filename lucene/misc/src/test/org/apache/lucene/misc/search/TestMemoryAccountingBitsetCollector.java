@@ -57,31 +57,33 @@ public class TestMemoryAccountingBitsetCollector extends LuceneTestCase {
     dir.close();
   }
 
-  public void testMemoryAccountingBitsetCollectorMemoryLimit() {
-    long perCollectorMemoryLimit = 150;
+  public void testMemoryAccountingBitsetCollectorMemoryLimit() throws Exception {
+    long collectorMemoryLimit = 150;
     CollectorMemoryTracker tracker =
-        new CollectorMemoryTracker("testMemoryTracker", perCollectorMemoryLimit);
-    MemoryAccountingBitsetCollector bitSetCollector = new MemoryAccountingBitsetCollector(tracker);
-
-    IndexSearcher searcher = new IndexSearcher(reader);
+        new CollectorMemoryTracker("testMemoryTracker", collectorMemoryLimit);
+    MemoryAccountingBitsetCollectorManager bitsetCollectorManager =
+        new MemoryAccountingBitsetCollectorManager(tracker);
+    IndexSearcher searcher = newSearcher(reader);
     expectThrows(
         IllegalStateException.class,
-        () -> {
-          searcher.search(MatchAllDocsQuery.INSTANCE, bitSetCollector);
-        });
+        () -> searcher.search(MatchAllDocsQuery.INSTANCE, bitsetCollectorManager));
   }
 
   public void testCollectedResult() throws Exception {
     CollectorMemoryTracker tracker =
         new CollectorMemoryTracker("testMemoryTracker", Long.MAX_VALUE);
-    MemoryAccountingBitsetCollector collector = new MemoryAccountingBitsetCollector(tracker);
+    MemoryAccountingBitsetCollectorManager bitsetCollectorManager =
+        new MemoryAccountingBitsetCollectorManager(tracker);
 
-    IndexSearcher searcher = new IndexSearcher(reader);
-    searcher.search(MatchAllDocsQuery.INSTANCE, collector);
+    IndexSearcher searcher = newSearcher(reader);
+    MemoryAccountingBitsetCollectorManager.Result result =
+        searcher.search(MatchAllDocsQuery.INSTANCE, bitsetCollectorManager);
 
-    assertEquals(1000, collector.bitSet.cardinality());
+    assertEquals(1000, result.bitSet().cardinality());
     for (int i = 0; i < 1000; i++) {
-      assertTrue(collector.bitSet.get(i));
+      assertTrue(result.bitSet().get(i));
     }
+    // For collector with collecting only 1 doc, 80 bytes are required.
+    assertTrue(result.totalBytesUsed() >= 80);
   }
 }
