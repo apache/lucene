@@ -33,6 +33,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.internal.hppc.ReadOnlyDenseIntObjectMap;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
@@ -231,7 +232,7 @@ public final class Lucene103BlockTreeTermsReader extends FieldsProducer {
       CodecUtil.retrieveChecksum(indexIn, indexLength);
       CodecUtil.retrieveChecksum(termsIn, termsLength);
       fieldInfos = state.fieldInfos;
-      this.fieldMap = fieldMap;
+      this.fieldMap = ReadOnlyDenseIntObjectMap.maybeWrap(fieldMap);
       this.fieldList = sortFieldNames(fieldMap, state.fieldInfos);
     } catch (Throwable t) {
       IOUtils.closeWhileSuppressingExceptions(t, this);

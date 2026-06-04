@@ -43,6 +43,7 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.index.TermsEnum.SeekStatus;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.internal.hppc.ReadOnlyDenseIntObjectMap;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.ChecksumIndexInput;
@@ -60,11 +61,11 @@ import org.apache.lucene.util.packed.DirectReader;
 
 /** reader for {@link Lucene90DocValuesFormat} */
 final class Lucene90DocValuesProducer extends DocValuesProducer {
-  private final IntObjectHashMap<NumericEntry> numerics;
-  private final IntObjectHashMap<BinaryEntry> binaries;
-  private final IntObjectHashMap<SortedEntry> sorted;
-  private final IntObjectHashMap<SortedSetEntry> sortedSets;
-  private final IntObjectHashMap<SortedNumericEntry> sortedNumerics;
+  private IntObjectHashMap<NumericEntry> numerics;
+  private IntObjectHashMap<BinaryEntry> binaries;
+  private IntObjectHashMap<SortedEntry> sorted;
+  private IntObjectHashMap<SortedSetEntry> sortedSets;
+  private IntObjectHashMap<SortedNumericEntry> sortedNumerics;
   private final IntObjectHashMap<DocValuesSkipperEntry> skippers;
   private final IndexInput data;
   private final IndexInput skipIndexData;
@@ -112,6 +113,11 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         if (version < Lucene90DocValuesFormat.VERSION_SKIPPER_MAX_VALUE_COUNT) {
           inferMaxValueCounts(state.fieldInfos);
         }
+        numerics = ReadOnlyDenseIntObjectMap.maybeWrap(numerics);
+        binaries = ReadOnlyDenseIntObjectMap.maybeWrap(binaries);
+        sorted = ReadOnlyDenseIntObjectMap.maybeWrap(sorted);
+        sortedSets = ReadOnlyDenseIntObjectMap.maybeWrap(sortedSets);
+        sortedNumerics = ReadOnlyDenseIntObjectMap.maybeWrap(sortedNumerics);
 
       } catch (Throwable exception) {
         priorE = exception;
