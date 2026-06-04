@@ -22,9 +22,9 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
-import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 
 /**
@@ -119,7 +119,8 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
         @Override
         public float score(int node) throws IOException {
           if (isCosine) {
-            return (1 + VectorUtil.cosine(vector, queryNormSquared, targetVectors.vectorValue(node)))
+            return (1
+                    + VectorUtil.cosine(vector, queryNormSquared, targetVectors.vectorValue(node)))
                 / 2;
           }
           return similarityFunction.compare(vector, targetVectors.vectorValue(node));

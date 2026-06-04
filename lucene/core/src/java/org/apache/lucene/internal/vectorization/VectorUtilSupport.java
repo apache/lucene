@@ -52,9 +52,9 @@ public interface VectorUtilSupport {
   float cosine(byte[] a, byte[] b);
 
   /**
-   * Returns the cosine similarity between the two byte vectors, given a precomputed squared norm for
-   * the first vector. This avoids recomputing the norm of vector {@code a} on every call when the
-   * query vector is fixed.
+   * Returns the cosine similarity between the two byte vectors, given a precomputed squared norm
+   * for the first vector. This avoids recomputing the norm of vector {@code a} on every call when
+   * the query vector is fixed.
    */
   float cosine(byte[] a, int aNormSquared, byte[] b);
 

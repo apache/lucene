@@ -254,8 +254,10 @@ public class Lucene99ScalarQuantizedVectorScorer implements FlatVectorsScorer {
       offsetCorrection = values.getScoreCorrectionConstant(node);
     }
 
-    /** Packs unpacked int4 values into the compressed format: upper nibble from first half, lower
-     *  nibble from second half. */
+    /**
+     * Packs unpacked int4 values into the compressed format: upper nibble from first half, lower
+     * nibble from second half.
+     */
     private static void packInt4(byte[] unpacked, byte[] packed) {
       for (int i = 0; i < packed.length; i++) {
         packed[i] = (byte) ((unpacked[i] << 4) | (unpacked[i + packed.length] & 0x0F));

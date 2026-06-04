@@ -99,9 +99,9 @@ public final class VectorUtil {
   }
 
   /**
-   * Returns the cosine similarity between the two byte vectors, given a precomputed squared norm for
-   * the first vector. This avoids recomputing the norm of {@code a} on every call when the query
-   * vector is fixed.
+   * Returns the cosine similarity between the two byte vectors, given a precomputed squared norm
+   * for the first vector. This avoids recomputing the norm of {@code a} on every call when the
+   * query vector is fixed.
    *
    * @param a the first vector (typically the query)
    * @param aNormSquared the precomputed value of {@code dotProduct(a, a)}

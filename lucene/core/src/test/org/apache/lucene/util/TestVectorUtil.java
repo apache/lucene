@@ -754,8 +754,7 @@ public class TestVectorUtil extends LuceneTestCase {
       }
       byte[] queryPacked = new byte[halfDim];
       for (int i = 0; i < halfDim; i++) {
-        queryPacked[i] =
-            (byte) ((queryUnpacked[i] << 4) | (queryUnpacked[i + halfDim] & 0x0F));
+        queryPacked[i] = (byte) ((queryUnpacked[i] << 4) | (queryUnpacked[i + halfDim] & 0x0F));
       }
       int expected = VectorUtil.int4DotProductSinglePacked(queryUnpacked, docPacked);
       int actual = VectorUtil.int4DotProductBothPacked(queryPacked, docPacked);
