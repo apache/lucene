@@ -19,6 +19,8 @@ package org.apache.lucene.search.join;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.OrdinalMap;
@@ -57,19 +59,31 @@ final class GlobalOrdinalsCollectorManager
   @Override
   public LongBitSet reduce(Collection<SegmentLocalCollector> collectors) throws IOException {
     LongBitSet result = new LongBitSet(valueCount);
+    // Group bitsets by segment ord. When allowSegmentPartitions=true splits a segment across
+    // multiple slices, each slice produces a separate collector for the same segment. Merging
+    // them here ensures we call getGlobalOrds() exactly once per segment.
+    Map<Integer, LongBitSet> mergedBySegment = new HashMap<>();
     for (SegmentLocalCollector collector : collectors) {
       for (int i = 0; i < collector.segmentBits.size(); i++) {
-        LongBitSet segmentBits = collector.segmentBits.get(i);
-        if (ordinalMap != null) {
-          LongValues segToGlobal = ordinalMap.getGlobalOrds(collector.segmentOrds.get(i));
-          for (long ord = segmentBits.nextSetBit(0); ord != -1; ) {
-            result.set(segToGlobal.get(ord));
-            long next = ord + 1;
-            ord = next < segmentBits.length() ? segmentBits.nextSetBit(next) : -1;
-          }
-        } else {
-          result.or(segmentBits);
+        int segOrd = collector.segmentOrds.get(i);
+        LongBitSet bits = collector.segmentBits.get(i);
+        mergedBySegment.merge(segOrd, bits, (a, b) -> {
+          a.or(b);
+          return a;
+        });
+      }
+    }
+    for (Map.Entry<Integer, LongBitSet> entry : mergedBySegment.entrySet()) {
+      LongBitSet segmentBits = entry.getValue();
+      if (ordinalMap != null) {
+        LongValues segToGlobal = ordinalMap.getGlobalOrds(entry.getKey());
+        for (long ord = segmentBits.nextSetBit(0); ord != -1; ) {
+          result.set(segToGlobal.get(ord));
+          long next = ord + 1;
+          ord = next < segmentBits.length() ? segmentBits.nextSetBit(next) : -1;
         }
+      } else {
+        result.or(segmentBits);
       }
     }
     return result;
