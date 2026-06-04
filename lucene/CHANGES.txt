@@ -119,6 +119,8 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16176: Restore WANDScorer for TOP_SCORES + minShouldMatch > 1. (Tianxiao Wei)
+
 * GITHUB#16050, GITHUB#16177: Doc-values range queries are now always two-phase iterators, with
   SIMD-accelerated bulk range evaluation for dense numeric doc values exposed through
   TwoPhaseIterator#intoBitSet (overridable for SIMD block evaluation) instead of a separate plain
