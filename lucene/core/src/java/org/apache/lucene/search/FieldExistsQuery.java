@@ -231,53 +231,44 @@ public class FieldExistsQuery extends Query {
           if (reader.getDocCount(field) == reader.maxDoc()) {
             return reader.numDocs();
           }
+          return super.count(context);
+        }
 
-          return super.count(context);
-        } else if (fieldInfo.hasVectorValues()) { // the field indexes vectors
-          int vectorCount = getVectorValuesSize(fieldInfo, reader);
-          if (vectorCount == reader.maxDoc()) {
-            // All docs have vectors, so the count is just the number of live docs.
-            return reader.numDocs();
-          }
-          if (reader.hasDeletions() == false) {
-            return vectorCount;
-          }
-          return super.count(context);
+        int count = -1;
+        if (fieldInfo.hasVectorValues()) { // the field indexes vectors
+          count = getVectorValuesSize(fieldInfo, reader);
         } else if (fieldInfo.getDocValuesType()
             != DocValuesType.NONE) { // the field indexes doc values
           if (fieldInfo.docValuesSkipIndexType() != DocValuesSkipIndexType.NONE) {
-            // DocValuesSkipper provides an exact doc count for doc values, so we can use it
-            // reliably even in the presence of deletions.
             DocValuesSkipper docValuesSkipper = reader.getDocValuesSkipper(field);
-            if (docValuesSkipper != null) {
-              int docCount = docValuesSkipper.docCount();
-              if (docCount == reader.maxDoc()) {
-                // Every doc has a value for this field, the count is the number of live docs.
-                return reader.numDocs();
-              }
-              if (reader.hasDeletions() == false) {
-                return docCount;
-              }
-            }
+            count = (docValuesSkipper == null ? 0 : docValuesSkipper.docCount());
           } else if (reader.hasDeletions() == false) {
             // No deletions: we can use points or terms doc count as a proxy for doc values.
             if (fieldInfo.getPointDimensionCount() > 0) {
               PointValues pointValues = reader.getPointValues(field);
-              if (pointValues != null) {
-                return pointValues.getDocCount();
-              }
+              count = (pointValues == null ? 0 : pointValues.getDocCount());
             } else if (fieldInfo.getIndexOptions() != IndexOptions.NONE) {
               Terms terms = reader.terms(field);
-              if (terms != null) {
-                return terms.getDocCount();
-              }
+              count = (terms == null ? 0 : terms.getDocCount());
             }
           }
-
-          return super.count(context);
         } else {
           throw new IllegalStateException(buildErrorMsg(fieldInfo));
         }
+
+        if (count == 0) {
+          // One of the above cases shows the field is not present on this leaf
+          return 0;
+        } else if (count == reader.maxDoc()) {
+          // All docs in the leaf (live or deleted) have the field. Return the count of live docs.
+          return reader.numDocs();
+        } else if (count >= 0 && reader.hasDeletions() == false) {
+          // No deleted docs. The computed count can be trusted.
+          return count;
+        }
+        // Some docs don't have the field and some docs are deleted.
+        // Need to scan to get the correct intersection between field exists docs and live docs.
+        return super.count(context);
       }
 
       @Override
