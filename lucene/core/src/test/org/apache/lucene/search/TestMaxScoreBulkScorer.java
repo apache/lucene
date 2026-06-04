@@ -986,4 +986,95 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
     scorer.updateMaxWindowScores(4, 100);
     assertFalse(scorer.partitionScorers()); // no possible match in this window
   }
+
+  /**
+   * Test that fillScoreBufferViaBitSet doesn't produce a negative innerWindowSize when the filter
+   * iterator gets advanced past the outer window max, causing essentials to advance past max on the
+   * next inner window iteration.
+   */
+  public void testFilteredDisjunctionWithFilterGapCausingNegativeWindowSize() throws Exception {
+    try (Directory dir = newDirectory()) {
+      // Need 2 * INNER_WINDOW_SIZE docs so there's room for a second inner window.
+      // Filter only matches first INNER_WINDOW_SIZE docs, creating a gap.
+      int numDocs = 2 * MaxScoreBulkScorer.INNER_WINDOW_SIZE;
+      try (IndexWriter w =
+          new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(newLogMergePolicy()))) {
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          if (i < MaxScoreBulkScorer.INNER_WINDOW_SIZE) {
+            // Dense filter: matches only in the first window
+            doc.add(new StringField("filter", "F", Field.Store.NO));
+          }
+          if (i == 0) {
+            doc.add(new StringField("foo", "A", Field.Store.NO));
+            doc.add(new StringField("foo", "B", Field.Store.NO));
+          }
+          // Place a scoring match beyond the filter range but within outerWindowMax
+          if (i == MaxScoreBulkScorer.INNER_WINDOW_SIZE + 4) {
+            doc.add(new StringField("foo", "A", Field.Store.NO));
+          }
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+
+      try (IndexReader reader = DirectoryReader.open(dir)) {
+        IndexSearcher searcher = newSearcher(reader);
+
+        Query clause1 =
+            new BoostQuery(new ConstantScoreQuery(new TermQuery(new Term("foo", "A"))), 2);
+        Query clause2 = new ConstantScoreQuery(new TermQuery(new Term("foo", "B")));
+        Query filter = new TermQuery(new Term("filter", "F"));
+        LeafReaderContext context = searcher.getIndexReader().leaves().get(0);
+
+        // Verify filter is dense enough for bitset path
+        Scorer filterCheck =
+            searcher
+                .createWeight(searcher.rewrite(filter), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+        assertTrue(
+            "filter should be dense enough for bitset path",
+            filterCheck.iterator().cost()
+                >= context.reader().maxDoc()
+                    / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE);
+
+        Scorer scorer1 =
+            searcher
+                .createWeight(searcher.rewrite(clause1), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+        Scorer scorer2 =
+            searcher
+                .createWeight(searcher.rewrite(clause2), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+        Scorer filterScorer =
+            searcher
+                .createWeight(searcher.rewrite(filter), ScoreMode.TOP_SCORES, 1f)
+                .scorer(context);
+
+        BulkScorer bulkScorer =
+            new MaxScoreBulkScorer(
+                context.reader().maxDoc(), Arrays.asList(scorer1, scorer2), filterScorer);
+
+        // Score with a max that allows a second inner window.
+        // After the first window, filter.doc = NO_MORE_DOCS (no filter matches >= 4096).
+        // Essential queue top is at INNER_WINDOW_SIZE + 4 (< max), triggering the bug
+        // in scoreInnerWindowWithFilter where the while loop advances essentials past max.
+        bulkScorer.score(
+            new LeafCollector() {
+
+              @Override
+              public void setScorer(Scorable scorer) throws IOException {}
+
+              @Override
+              public void collect(int doc) throws IOException {
+                // Doc 0 is the only doc matching both filter and scoring clauses
+                assertEquals(0, doc);
+              }
+            },
+            null,
+            0,
+            numDocs);
+      }
+    }
+  }
 }
