@@ -269,6 +269,8 @@ Other
 
 * GITHUB#16082: Added a new JMH microbenchmark for DiversifyingChildrenFloatKnnVectorQuery. (Anna Ruggero via Alessandro Benedetti)
 
+* GITHUB#16170: Add JMH benchmarks for int4BitDotProduct and int4DibitDotProduct. (Vignesh)
+
 ======================= Lucene 10.5.0 =======================
 
 API Changes
@@ -362,7 +364,7 @@ Improvements
 
 * GITHUB#15976: Store DocValuesSkipper data in their own file. (Alan Woodward)
 
-* GITHUB#15574, GITHUB#15995: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
+* GITHUB#15603, GITHUB#15995: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
 
 * GITHUB#15565: Introduce AllGroupHeadsCollectorManager to parallelize search when using AllGroupHeadsCollector. (Binlong Gao)
 
@@ -370,6 +372,10 @@ Improvements
   as its approximation. (Alan Woodward)
 
 * GITHUB#16000: Clarify that Accountable#ramBytesUsed() reports JVM heap memory only. (Luca Cavanna)
+
+* GITHUB#15795: Introduce MemoryAccountingBitsetCollectorManager to parallelize search when using MemoryAccountingBitsetCollector. (Binlong Gao)
+
+* GITHUB#15574: Introduce FirstPassGroupingCollectorManager to parallelize search when using FirstPassGroupingCollector. (Binlong Gao)
 
 * GITHUB#15660: Introduce LargeNumHitsTopDocsCollectorManager to parallelize search when using LargeNumHitsTopDocsCollector. (Binlong Gao)
 
@@ -380,6 +386,8 @@ Improvements
 Optimizations
 ---------------------
 * GITHUB#16111: Optimize FieldExistsQuery.count() when all docs have the field. (Prithvi S)
+
+* GITHUB#16176: Restore WANDScorer for TOP_SCORES + minShouldMatch > 1. (Tianxiao Wei)
 
 * GITHUB#16153: Use TernaryLongHeap in UpdateGraphsUtils for faster HNSW graph merging. (Prithvi S)
 
@@ -430,8 +438,10 @@ Optimizations
 
 * GITHUB#16001: IndexSearcher.count() was calling query.rewrite twice, a regression since v9.10 (David Smiley)
 
-* GITHUB#16050: Add SIMD-accelerated bulk range evaluation for dense numeric doc values via
-  BatchDocValuesRangeIterator and DocValuesRangeSupport. (Sagar Upadhyaya)
+* GITHUB#16050, GITHUB#16177: Doc-values range queries are now always two-phase iterators, with
+  SIMD-accelerated bulk range evaluation for dense numeric doc values exposed through
+  TwoPhaseIterator#intoBitSet (overridable for SIMD block evaluation) instead of a separate plain
+  DocIdSetIterator, speeding up conjunctions of range filters. (Sagar Upadhyaya, Jim Ferenczi)
 
 * GITHUB#16061, GITHUB#16070, GITHUB#16085, GITHUB#16120: Improve cost estimation in SortedSetDocValuesRangeQuery
   and SortedNumericDocValuesRangeQuery when using DocValuesSkipper, the field is dense and is the primary sort of
@@ -469,7 +479,20 @@ Optimizations
 
 * GITHUB#16147: Optimize column batch parent field with bulk fill. (Tim Brooks)
 
+* GITHUB#16103: DisjunctionMaxQuery now filters out MatchNoDocsQuery disjuncts during rewrite,
+  avoiding unnecessary scorer overhead. (Prithvi S)
+
+* GITHUB#16109: Add count() to SortedSetDocValuesRangeQuery. (Prithvi S)
+
 * GITHUB#15991: Load dense filters into bitset in MaxScoreBulkScorer. (Prithvi S)
+
+* GITHUB#16142: Optimize disjunction #docIDRunEnd to skip runs of excluded documents. (Costin Leau)
+
+* GITHUB#16119: Optimize byte array writes in OutputStreamIndexOutput to remove unnecessary overhead. (neoremind)
+
+* GITHUB#16155: Use BitSet#nextClearBit to iterate uninitialized nodes in MergingHnswGraphBuilder. (Sasilekha R)
+
+* GITHUB#16174: Convert contiguous ordinal sets to ranges in DocValuesRangeIterator#forOrdinalSet. (Sasilekha R)
 
 Bug Fixes
 ---------------------
@@ -535,6 +558,11 @@ Bug Fixes
   instantiated, so a crafted spatial3d shape stream cannot load arbitrary classes. Also adapt
   experimental SerializedObject API to be more type safe. (metsw24-max, Uwe Schindler)
 
+* GITHUB#16156: OffHeapFloatVectorValues#prefetch now bounds its loop by the requested
+  count instead of the full ordinal array, matching OffHeapByteVectorValues. (Vignesh)
+
+* GITHUB#16179: Fix minor lock/unlock acquisition order in DocumentsWriterDeleteQueue (Chris Hegarty)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
@@ -572,6 +600,9 @@ Other
 * GITHUB#16118: Remove getOrAddPerField calls in processBatch. (Tim Brooks)
 
 * GITHUB##16135: Disable external entities in hyphenation PatternParser. (metsw24-max, Uwe Schindler)
+
+* GITHUB#16178: Simplify how we collect hits in the LRU cache from a DocIdStream into a RoaringDocIdSet.
+  (Ignacio Vera)
 
 ======================= Lucene 10.4.0 =======================
 
