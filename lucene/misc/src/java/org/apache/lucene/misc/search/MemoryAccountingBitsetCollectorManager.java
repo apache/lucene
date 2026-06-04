@@ -25,7 +25,7 @@ import org.apache.lucene.util.FixedBitSet;
  * CollectorManager for MemoryAccountingBitsetCollector that supports concurrent search.
  *
  * <p>Creates multiple collectors for concurrent execution, each collector only allocates bitset for
- * segments it processes, then merges with proper offset in reduce().
+ * slices it processes, then merges with proper offset in reduce().
  */
 public class MemoryAccountingBitsetCollectorManager
     implements CollectorManager<
@@ -42,7 +42,7 @@ public class MemoryAccountingBitsetCollectorManager
 
   @Override
   public MemoryAccountingBitsetCollector newCollector() {
-    return new MemoryAccountingBitsetCollector(tracker, true);
+    return new MemoryAccountingBitsetCollector(tracker);
   }
 
   @Override
@@ -56,6 +56,7 @@ public class MemoryAccountingBitsetCollectorManager
     // even when only a portion of the index was searched, causing over-allocation of the result
     // bitset.
     FixedBitSet result = new FixedBitSet(globalMaxDocEnd);
+    tracker.updateBytes(result.ramBytesUsed());
 
     for (MemoryAccountingBitsetCollector collector : collectors) {
       if (collector.bitSet != null && collector.bitSet.length() > 0) {
