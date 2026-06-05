@@ -156,7 +156,7 @@ Optimizations
 
 * GITHUB#15597, GITHUB#15777: Reduce memory usage of NeighborArray (Viliam Durina)
 
-* GITHUB#16172: Bulk-evaluate skip-indexed sorted and sorted-set doc-values range queries via a block-aware 
+* GITHUB#16172: Bulk-evaluate skip-indexed sorted and sorted-set doc-values range queries via a block-aware
   DocValuesRangeIterator#intoBitSet. (Costin Leau)
 
 Bug Fixes
