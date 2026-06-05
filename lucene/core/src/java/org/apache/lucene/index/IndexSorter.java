@@ -183,6 +183,7 @@ public interface IndexSorter {
   }
 
   /** Provide a BinaryDocValues instance for a LeafReader */
+  @FunctionalInterface
   interface BinaryDocValuesProvider {
     /** Returns the BinaryDocValues instance for this LeafReader */
     BinaryDocValues get(LeafReader reader) throws IOException;
