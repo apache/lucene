@@ -41,7 +41,10 @@ import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReaderContext;
@@ -306,6 +309,70 @@ public class TestDocValuesQueries extends LuceneTestCaseJupiter {
   public void testDuelPointRangeMultivaluedSortedSetRangeSkipperQuery(Random random)
       throws IOException {
     doTestDuelPointRangeSortedRangeQuery(random, true, 3, true);
+  }
+
+  @Test
+  public void testSortedSetRangeQueryUsesTwoPhaseRangeIteratorWithSkipper() throws IOException {
+    assertSortedSetRangeQueryUsesTwoPhaseRangeIteratorWithSkipper(false);
+    assertSortedSetRangeQueryUsesTwoPhaseRangeIteratorWithSkipper(true);
+  }
+
+  private void assertSortedSetRangeQueryUsesTwoPhaseRangeIteratorWithSkipper(boolean multiValued)
+      throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(8));
+      try (IndexWriter iw = new IndexWriter(dir, config)) {
+        for (int i = 0; i < 512; i++) {
+          Document doc = new Document();
+          addSortedSetValue(doc, i % 100);
+          if (multiValued) {
+            addSortedSetValue(doc, 100 + (i % 100));
+          }
+          iw.addDocument(doc);
+        }
+        iw.forceMerge(1);
+
+        try (IndexReader reader = DirectoryReader.open(iw)) {
+          IndexSearcher searcher = newSearcher(reader, false);
+          byte[] encodedMin = new byte[Long.BYTES];
+          byte[] encodedMax = new byte[Long.BYTES];
+          LongPoint.encodeDimension(20, encodedMin, 0);
+          LongPoint.encodeDimension(40, encodedMax, 0);
+          Query query =
+              SortedSetDocValuesField.newSlowRangeQuery(
+                  "dv", newBytesRef(encodedMin), newBytesRef(encodedMax), true, true);
+
+          LeafReaderContext leaf = reader.leaves().get(0);
+          assertSame(query, searcher.rewrite(query));
+          assertNull(leaf.reader().getMetaData().sort());
+          assertNotNull(leaf.reader().getDocValuesSkipper("dv"));
+          assertEquals(
+              multiValued == false,
+              DocValues.unwrapSingleton(DocValues.getSortedSet(leaf.reader(), "dv")) != null);
+
+          Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1f);
+          ScorerSupplier scorerSupplier = weight.scorerSupplier(leaf);
+
+          assertNotNull(scorerSupplier);
+          assertTrue(
+              scorerSupplier.getClass().getName(),
+              scorerSupplier instanceof ConstantScoreScorerSupplier);
+          DocIdSetIterator iterator =
+              ((ConstantScoreScorerSupplier) scorerSupplier).iterator(Long.MAX_VALUE);
+          // The skipper route exposes a two-phase DocValuesRangeIterator whose intoBitSet
+          // bulk-evaluates skip blocks, rather than a per-doc plain iterator.
+          TwoPhaseIterator twoPhase = TwoPhaseIterator.unwrap(iterator);
+          assertNotNull(iterator.getClass().getName(), twoPhase);
+          assertTrue(twoPhase.getClass().getName(), twoPhase instanceof DocValuesRangeIterator);
+        }
+      }
+    }
+  }
+
+  private void addSortedSetValue(Document doc, long value) {
+    byte[] encoded = new byte[Long.BYTES];
+    LongPoint.encodeDimension(value, encoded, 0);
+    doc.add(SortedSetDocValuesField.indexedField("dv", newBytesRef(encoded)));
   }
 
   @Test
