@@ -28,6 +28,7 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.HnswGraphProvider;
+import org.apache.lucene.codecs.hnsw.PrefetchableFlatVectorScorer;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
@@ -41,6 +42,7 @@ import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
 import org.apache.lucene.search.AcceptDocs;
 import org.apache.lucene.search.KnnCollector;
+import org.apache.lucene.search.QueryAccessHint;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.DataAccessHint;
 import org.apache.lucene.store.DataInput;
@@ -331,7 +333,15 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     if (fieldEntry.size() == 0 || knnCollector.k() == 0) {
       return;
     }
-    final RandomVectorScorer scorer = scorerSupplier.get();
+    final RandomVectorScorer rawScorer = scorerSupplier.get();
+    // QueryAccessHint.POINT consumer: when the collector advertises POINT, wrap the scorer so each
+    // batch of neighbor vectors is prefetched before bulkScore() reads them (wrapWithPrefetch is a
+    // no-op when prefetch is unsupported or the pages are resident). Absent the hint nothing wraps,
+    // so default behaviour is unchanged.
+    final RandomVectorScorer scorer =
+        knnCollector.readHints().contains(QueryAccessHint.POINT)
+            ? PrefetchableFlatVectorScorer.wrapWithPrefetch(rawScorer)
+            : rawScorer;
     final KnnCollector collector =
         new OrdinalTranslatedKnnCollector(knnCollector, scorer::ordToDoc);
     // Take into account if quantized? E.g. some scorer cost?
