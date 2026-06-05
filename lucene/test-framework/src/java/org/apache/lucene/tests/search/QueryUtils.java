@@ -320,8 +320,6 @@ public class QueryUtils {
    */
   public static void checkSkipTo(final Query q, final IndexSearcher s) throws IOException {
     // System.out.println("Checking "+q);
-    final List<LeafReaderContext> readerContextArray = s.getTopReaderContext().leaves();
-
     final int skip_op = 0;
     final int next_op = 1;
     final int[][] orders = {
@@ -339,7 +337,6 @@ public class QueryUtils {
       // System.out.print("Order:");for (int i = 0; i < order.length; i++)
       // System.out.print(order[i]==skip_op ? " skip()":" next()");
       // System.out.println();
-      final int[] opidx = {0};
       final int[] lastDoc = {-1};
 
       // FUTURE: ensure scorer.doc()==-1
@@ -347,33 +344,34 @@ public class QueryUtils {
       final float maxDiff = 1e-5f;
       final LeafReader[] lastReader = {null};
 
+      Query rewritten = s.rewrite(q);
+      Weight shadowWeight = s.createWeight(rewritten, ScoreMode.COMPLETE, 1);
+
       s.search(
           q,
           new SimpleCollector() {
-            private Scorable sc;
+            private Scorable outerScorer;
             private Scorer scorer;
             private DocIdSetIterator iterator;
-            private int leafPtr;
+            private LeafReaderContext currentLeafContext;
+            private int opidx;
 
             @Override
             public void setScorer(Scorable scorer) {
-              this.sc = scorer;
+              this.outerScorer = scorer;
             }
 
             @Override
             public void collect(int doc) throws IOException {
-              float score = sc.score();
+              float score = outerScorer.score();
               lastDoc[0] = doc;
               try {
                 if (scorer == null) {
-                  Query rewritten = s.rewrite(q);
-                  Weight w = s.createWeight(rewritten, ScoreMode.COMPLETE, 1);
-                  LeafReaderContext context = readerContextArray.get(leafPtr);
-                  scorer = w.scorer(context);
+                  scorer = shadowWeight.scorer(currentLeafContext);
                   iterator = scorer.iterator();
                 }
 
-                int op = order[(opidx[0]++) % order.length];
+                int op = order[(opidx++) % order.length];
                 // System.out.println(op==skip_op ?
                 // "skip("+(sdoc[0]+1)+")":"next()");
                 boolean more =
@@ -398,10 +396,10 @@ public class QueryUtils {
               if (lastReader[0] != null) {
                 assertNoPastSegmentEnd(
                     q, s, lastReader[0], lastDoc[0], context.reader().getLiveDocs());
-                leafPtr++;
               }
+              currentLeafContext = context;
               lastReader[0] = context.reader();
-              assert readerContextArray.get(leafPtr).reader() == context.reader();
+              assert currentLeafContext.reader() == context.reader();
               this.scorer = null;
               lastDoc[0] = -1;
             }
@@ -419,29 +417,29 @@ public class QueryUtils {
     final float maxDiff = 1e-3f;
     final int[] lastDoc = {-1};
     final LeafReader[] lastReader = {null};
-    final List<LeafReaderContext> context = s.getTopReaderContext().leaves();
     Query rewritten = s.rewrite(q);
+    Weight w = s.createWeight(rewritten, ScoreMode.COMPLETE, 1);
+
     s.search(
         q,
         new SimpleCollector() {
-          private final Weight w = s.createWeight(rewritten, ScoreMode.COMPLETE, 1);
-          private Scorable scorer;
-          private int leafPtr;
+          private Scorable outerScorer;
+          private LeafReaderContext currentLeafContext;
           private long intervalTimes32 = 1 * 32;
 
           @Override
           public void setScorer(Scorable scorer) {
-            this.scorer = scorer;
+            this.outerScorer = scorer;
           }
 
           @Override
           public void collect(int doc) throws IOException {
-            float score = scorer.score();
+            float score = outerScorer.score();
             try {
               // The intervalTimes32 trick helps contain the runtime of this check: first we check
               // every single doc in the interval, then after 32 docs we check every 2 docs, etc.
               for (int i = lastDoc[0] + 1; i <= doc; i += intervalTimes32++ / 1024) {
-                assertAdvanceTo(doc, i, score, w, context.get(leafPtr), maxDiff);
+                assertAdvanceTo(doc, i, score, w, currentLeafContext, maxDiff);
               }
               lastDoc[0] = doc;
             } catch (IOException e) {
@@ -461,9 +459,8 @@ public class QueryUtils {
             if (lastReader[0] != null) {
               assertNoPastSegmentEnd(
                   q, s, lastReader[0], lastDoc[0], context.reader().getLiveDocs());
-              leafPtr++;
             }
-
+            currentLeafContext = context;
             lastReader[0] = context.reader();
             lastDoc[0] = -1;
           }
