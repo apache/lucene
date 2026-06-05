@@ -16,3 +16,4 @@
 #
 
 org.apache.lucene.search.TestBinarySortField$FirstValueSortField$Provider
+org.apache.lucene.search.TestBinarySortField$MinValueSortField$Provider

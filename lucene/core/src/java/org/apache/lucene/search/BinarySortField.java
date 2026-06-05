@@ -22,6 +22,7 @@ import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexSorter;
 import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortFieldProvider;
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.store.DataOutput;
@@ -30,35 +31,26 @@ import org.apache.lucene.util.BytesRef;
 /**
  * SortField for {@link BinaryDocValues}, usable as an <b>index sort</b>.
  *
- * <p>Unlike {@link SortField.Type#STRING} (backed by {@link org.apache.lucene.index.SortedDocValues
- * SortedDocValues}) or {@link SortedSetSortField}, which deduplicate values into a term dictionary
- * and are best suited to low-cardinality fields, this sort compares the raw bytes of a {@link
- * BinaryDocValues} field directly. It is therefore a good fit for high-cardinality fields where a
- * term dictionary would be pure overhead.
+ * <p>Unlike a {@link SortField.Type#STRING} sort (backed by {@link
+ * org.apache.lucene.index.SortedDocValues SortedDocValues}), values are compared directly rather
+ * than through a term dictionary, making this a good fit for high-cardinality fields where a
+ * dictionary would be pure overhead. Documents are ordered by the unsigned byte order of their sort
+ * key ({@link BytesRef#compareTo}), optionally reversed, with missing values sorted first or last
+ * via {@link SortField#STRING_FIRST} / {@link SortField#STRING_LAST} (first by default).
  *
- * <p>By default documents are ordered by the unsigned byte order of their value ({@link
- * BytesRef#compareTo}). When the stored bytes are not directly comparable — for example when the
- * value is encoded and only part of it is the sort key — a custom {@link Comparator} that decodes
- * the value can be supplied by subclassing and passing it to {@link #BinarySortField(String,
- * boolean, Object, Comparator, String)}. The subclass must register a companion {@link
- * SortFieldProvider} under {@code META-INF/services} so the comparator is reconstructed when the
- * index sort is read back, and therefore used on merge.
+ * <p>By default the sort key is the stored value. A subclass may override {@link
+ * #getSortKeyDocValues(LeafReader)} to derive an order-preserving key from the stored bytes and/or
+ * other doc-values fields of the segment (for example to select the minimum of a multi-valued
+ * field). Such a subclass must register a {@link SortFieldProvider} via SPI so the sort can be read
+ * back and used on merge.
  *
- * <p>Missing values are sorted first or last via {@link SortField#STRING_FIRST} or {@link
- * SortField#STRING_LAST} (the default, when unset, is to sort missing values first).
- *
- * <p>This {@link SortField} can also be used to sort search results, in which case it compares
- * values with a linear scan of the binary doc values (it does not benefit from the skipping
- * optimizations available to numeric or {@code SORTED} fields).
+ * <p>This field can also sort search results, comparing values with a linear scan of the binary doc
+ * values (without the skipping optimizations available to numeric or {@code SORTED} fields).
  *
  * @lucene.experimental
  */
 public class BinarySortField extends SortField {
 
-  /** The default unsigned byte order comparator. */
-  static final Comparator<BytesRef> DEFAULT_COMPARATOR = Comparator.naturalOrder();
-
-  private final Comparator<BytesRef> bytesComparator;
   private final String providerName;
 
   /**
@@ -81,42 +73,32 @@ public class BinarySortField extends SortField {
    *     null} (missing first).
    */
   public BinarySortField(String field, boolean reverse, Object missingValue) {
-    this(field, reverse, missingValue, DEFAULT_COMPARATOR, Provider.NAME);
+    this(field, reverse, missingValue, Provider.NAME);
   }
 
   /**
-   * Expert: creates a sort with a custom value comparator.
+   * Creates a sort for a subclass that overrides {@link #getSortKeyDocValues(LeafReader)}.
    *
-   * <p>Because the comparator cannot be serialized, subclasses using this constructor must supply
-   * the name of a dedicated {@link SortFieldProvider} (registered via SPI) whose {@link
-   * SortFieldProvider#readSortField} reconstructs a {@code BinarySortField} configured with the
-   * same comparator. The comparator is thus identified by the provider name rather than serialized.
+   * <p>The subclass must supply the name of a dedicated {@link SortFieldProvider} (registered via
+   * SPI) whose {@link SortFieldProvider#readSortField} reconstructs the subclass, so that the same
+   * sort-key derivation is used when the index sort is read back and on merge.
    *
    * @param field Name of field to sort by. Must not be null.
    * @param reverse True if natural order should be reversed.
    * @param missingValue {@link SortField#STRING_FIRST}, {@link SortField#STRING_LAST}, or {@code
    *     null}.
-   * @param bytesComparator comparator applied to present (non-missing) values.
    * @param providerName the SPI name of the companion {@link SortFieldProvider}.
    */
   protected BinarySortField(
-      String field,
-      boolean reverse,
-      Object missingValue,
-      Comparator<BytesRef> bytesComparator,
-      String providerName) {
+      String field, boolean reverse, Object missingValue, String providerName) {
     super(field, SortField.Type.CUSTOM, reverse, missingValue);
     if (missingValue != null && missingValue != STRING_FIRST && missingValue != STRING_LAST) {
       throw new IllegalArgumentException(
           "missing value for BinarySortField must be null, STRING_FIRST or STRING_LAST");
     }
-    if (bytesComparator == null) {
-      throw new NullPointerException("bytesComparator must not be null");
-    }
     if (providerName == null) {
       throw new NullPointerException("providerName must not be null");
     }
-    this.bytesComparator = bytesComparator;
     this.providerName = providerName;
   }
 
@@ -163,19 +145,24 @@ public class BinarySortField extends SortField {
     }
   }
 
-  private BinaryDocValues getValues(LeafReader reader) throws IOException {
+  /**
+   * Returns the per-document sort key, as a {@link BinaryDocValues} whose {@link
+   * BinaryDocValues#binaryValue()} is the bytes to sort on. The default returns the field's values
+   * unchanged; override to derive a key from the stored bytes and/or other doc-values fields of the
+   * segment.
+   *
+   * <p>Values are read in increasing docID order; advance any underlying doc values with {@link
+   * DocIdSetIterator#nextDoc()} only, since at flush time the in-memory doc values do not support
+   * {@code advanceExact}. The returned key has the same lifetime as {@link
+   * BinaryDocValues#binaryValue()} (valid until the next call) and need not be a copy.
+   */
+  protected BinaryDocValues getSortKeyDocValues(LeafReader reader) throws IOException {
     return DocValues.getBinary(reader, getField());
   }
 
-  /**
-   * The value comparator extended to treat a {@code null} argument as a missing value, ordered
-   * first or last according to {@link #missingValue}. The {@code reverse} flag is applied by the
-   * caller (so that, like {@link SortField.Type#STRING}, missing values follow {@code reverse}),
-   * never here.
-   */
+  /** Unsigned byte order comparator that treats a {@code null} argument as a missing value. */
   private Comparator<BytesRef> comparator() {
     final boolean missingLast = missingValue == SortField.STRING_LAST;
-    final Comparator<BytesRef> valueComparator = bytesComparator;
     return (a, b) -> {
       if (a == null || b == null) {
         if (a == b) {
@@ -184,25 +171,24 @@ public class BinarySortField extends SortField {
         int c = (a == null) ? -1 : 1;
         return missingLast ? -c : c;
       }
-      return valueComparator.compare(a, b);
+      return a.compareTo(b);
     };
   }
 
   @Override
   public IndexSorter getIndexSorter() {
-    return new IndexSorter.BinarySorter(providerName, reverse, comparator(), this::getValues);
+    return new IndexSorter.BinarySorter(
+        providerName, reverse, comparator(), this::getSortKeyDocValues);
   }
 
   @Override
   public FieldComparator<?> getComparator(int numHits, Pruning pruning) {
-    final Comparator<BytesRef> comparator = comparator();
-    // Reuse the generic binary-doc-values comparator, plugging in the same comparison used by the
-    // index sorter so the two orderings stay consistent.
     return new FieldComparator.TermValComparator(
         numHits, getField(), missingValue == SortField.STRING_LAST) {
       @Override
-      public int compareValues(BytesRef val1, BytesRef val2) {
-        return comparator.compare(val1, val2);
+      protected BinaryDocValues getBinaryDocValues(LeafReaderContext context, String field)
+          throws IOException {
+        return getSortKeyDocValues(context.reader());
       }
     };
   }

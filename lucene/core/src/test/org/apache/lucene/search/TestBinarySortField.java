@@ -415,6 +415,128 @@ public class TestBinarySortField extends LuceneTestCase {
     }
   }
 
+  /** Two binary doc-values fields in the same segment, used together as a two-level index sort. */
+  public void testMultipleBinaryFields() throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = newIndexWriterConfig();
+      iwc.setIndexSort(new Sort(new BinarySortField("a", false), new BinarySortField("b", false)));
+      iwc.setMaxBufferedDocs(25);
+      iwc.setMergePolicy(NoMergePolicy.INSTANCE); // keep the flush-sorted segments separate
+      int numDocs = 300;
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          byte[] a = {(byte) random().nextInt(3)}; // low cardinality so ties on 'a' exercise 'b'
+          byte[] b = new byte[TestUtil.nextInt(random(), 1, 6)];
+          random().nextBytes(b);
+          doc.add(new BinaryDocValuesField("a", new BytesRef(a)));
+          doc.add(new BinaryDocValuesField("b", new BytesRef(b)));
+          w.addDocument(doc);
+        }
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        assertTrue("expected multiple flush-sorted segments", reader.leaves().size() > 1);
+        for (LeafReaderContext ctx : reader.leaves()) {
+          BinaryDocValues da = ctx.reader().getBinaryDocValues("a");
+          BinaryDocValues db = ctx.reader().getBinaryDocValues("b");
+          BytesRef prevA = null;
+          BytesRef prevB = null;
+          for (int doc = 0; doc < ctx.reader().maxDoc(); doc++) {
+            assertTrue(da.advanceExact(doc));
+            assertTrue(db.advanceExact(doc));
+            BytesRef a = BytesRef.deepCopyOf(da.binaryValue());
+            BytesRef b = BytesRef.deepCopyOf(db.binaryValue());
+            if (prevA != null) {
+              int c = prevA.compareTo(a);
+              assertTrue("primary binary field out of order", c <= 0);
+              if (c == 0) {
+                assertTrue("secondary binary field out of order", prevB.compareTo(b) <= 0);
+              }
+            }
+            prevA = a;
+            prevB = b;
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Mixes a custom {@link BinarySortField} subclass ({@link FirstValueSortField}, which decodes its
+   * value) with a default binary sort field and a numeric sort field in a single index sort. Also
+   * exercises two binary doc-values fields in the same segment, through flush, merge and reopen.
+   */
+  public void testMixCustomAndDefaultSortFields() throws Exception {
+    try (Directory dir = newDirectory()) {
+      Sort sort =
+          new Sort(
+              new FirstValueSortField("a", false), // custom binary (decoding comparator)
+              new BinarySortField("b", false), // default binary
+              new SortField("n", SortField.Type.LONG, false)); // numeric
+      IndexWriterConfig iwc = newIndexWriterConfig();
+      iwc.setIndexSort(sort);
+      iwc.setMaxBufferedDocs(25);
+      iwc.setMergePolicy(random().nextBoolean() ? NoMergePolicy.INSTANCE : newLogMergePolicy());
+      int numDocs = atLeast(300);
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          List<byte[]> aValues = new ArrayList<>();
+          aValues.add(new byte[] {(byte) random().nextInt(3)}); // low-card first value -> ties
+          if (random().nextBoolean()) {
+            byte[] extra = new byte[TestUtil.nextInt(random(), 1, 4)];
+            random().nextBytes(extra);
+            aValues.add(extra);
+          }
+          doc.add(new BinaryDocValuesField("a", encodeValues(aValues)));
+          doc.add(
+              new BinaryDocValuesField("b", new BytesRef(new byte[] {(byte) random().nextInt(3)})));
+          doc.add(new NumericDocValuesField("n", random().nextInt(5)));
+          w.addDocument(doc);
+        }
+        if (random().nextBoolean()) {
+          w.forceMerge(1);
+        }
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        // the persisted sort deserializes through three different providers
+        for (LeafReaderContext ctx : reader.leaves()) {
+          assertEquals(sort, ctx.reader().getMetaData().sort());
+          BinaryDocValues da = ctx.reader().getBinaryDocValues("a");
+          BinaryDocValues db = ctx.reader().getBinaryDocValues("b");
+          NumericDocValues dn = ctx.reader().getNumericDocValues("n");
+          BytesRef prevA = null;
+          BytesRef prevB = null;
+          long prevN = 0;
+          for (int doc = 0; doc < ctx.reader().maxDoc(); doc++) {
+            assertTrue(da.advanceExact(doc));
+            assertTrue(db.advanceExact(doc));
+            assertTrue(dn.advanceExact(doc));
+            BytesRef a = BytesRef.deepCopyOf(da.binaryValue());
+            BytesRef b = BytesRef.deepCopyOf(db.binaryValue());
+            long n = dn.longValue();
+            if (prevA != null) {
+              int ca =
+                  FirstValueSortField.firstValue(prevA)
+                      .compareTo(FirstValueSortField.firstValue(a)); // decodes the first value
+              assertTrue("custom primary out of order", ca <= 0);
+              if (ca == 0) {
+                int cb = prevB.compareTo(b);
+                assertTrue("default binary secondary out of order", cb <= 0);
+                if (cb == 0) {
+                  assertTrue("numeric tertiary out of order", prevN <= n);
+                }
+              }
+            }
+            prevA = a;
+            prevB = b;
+            prevN = n;
+          }
+        }
+      }
+    }
+  }
+
   /** addIndexes(CodecReader...) merges already-sorted segments into a sorted index. */
   public void testAddIndexes() throws Exception {
     final boolean reverse = random().nextBoolean();
@@ -518,15 +640,14 @@ public class TestBinarySortField extends LuceneTestCase {
   }
 
   /**
-   * End-to-end test of the custom-comparator extension point with a comparator that must
-   * <em>decode</em> the binary value before comparing (the raw bytes are not sortable as-is).
-   * {@link FirstValueSortField} sorts on the first of several length-prefixed values, mirroring how
-   * a multi-valued field is encoded. The sort is persisted, reopened (which deserializes it through
-   * the custom {@link SortFieldProvider} and runs {@code CheckIndex}) and merged, then the stored
-   * order is verified against the decoding comparator — proving the custom comparator survives
-   * serialization and is used on merge.
+   * End-to-end test of the value-source extension point with a key that must be <em>decoded</em>
+   * from the binary value (the raw bytes are not sortable as-is). {@link FirstValueSortField} sorts
+   * on the first of several length-prefixed values, mirroring how a multi-valued field is encoded.
+   * The sort is persisted, reopened (which deserializes it through the custom {@link
+   * SortFieldProvider} and runs {@code CheckIndex}) and merged, then the stored order is verified
+   * against the decoded key — proving the derived key survives serialization and is used on merge.
    */
-  public void testCustomComparatorIndexSort() throws Exception {
+  public void testFirstValueSortKeyIndexSort() throws Exception {
     final boolean reverse = random().nextBoolean();
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwc = newIndexWriterConfig();
@@ -558,7 +679,9 @@ public class TestBinarySortField extends LuceneTestCase {
             assertTrue(dv.advanceExact(doc));
             BytesRef current = BytesRef.deepCopyOf(dv.binaryValue());
             if (previous != null) {
-              int cmp = FirstValueSortField.COMPARATOR.compare(previous, current);
+              int cmp =
+                  FirstValueSortField.firstValue(previous)
+                      .compareTo(FirstValueSortField.firstValue(current));
               if (reverse) {
                 cmp = -cmp;
               }
@@ -594,6 +717,64 @@ public class TestBinarySortField extends LuceneTestCase {
       throw new AssertionError(e);
     }
     return new BytesRef(out.toArrayCopy());
+  }
+
+  /**
+   * Selecting the MIN value of a multi-valued, self-describing binary field ({@link
+   * MinValueSortField}). Forces many small flushed segments (no force-merge) so each is sorted at
+   * flush using the value source, and also covers the merge case; the order is verified against the
+   * per-document minimum value.
+   */
+  public void testMinValueSortKey() throws Exception {
+    final boolean reverse = random().nextBoolean();
+    final boolean merge = random().nextBoolean();
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = newIndexWriterConfig();
+      iwc.setIndexSort(new Sort(new MinValueSortField("dv", reverse)));
+      iwc.setMaxBufferedDocs(25); // force frequent flushes
+      iwc.setMergePolicy(merge ? newLogMergePolicy() : NoMergePolicy.INSTANCE);
+      int numDocs = 400;
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          int count = TestUtil.nextInt(random(), 1, 4);
+          List<byte[]> values = new ArrayList<>();
+          for (int v = 0; v < count; v++) {
+            byte[] b = new byte[TestUtil.nextInt(random(), 1, 6)];
+            random().nextBytes(b);
+            values.add(b);
+          }
+          doc.add(new BinaryDocValuesField("dv", encodeValues(values)));
+          w.addDocument(doc);
+        }
+        if (merge && random().nextBoolean()) {
+          w.forceMerge(1);
+        }
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        if (merge == false) {
+          assertTrue("expected multiple flush-sorted segments", reader.leaves().size() > 1);
+        }
+        for (LeafReaderContext ctx : reader.leaves()) {
+          assertEquals(
+              new Sort(new MinValueSortField("dv", reverse)), ctx.reader().getMetaData().sort());
+          BinaryDocValues dv = ctx.reader().getBinaryDocValues("dv");
+          BytesRef previous = null;
+          for (int doc = 0; doc < ctx.reader().maxDoc(); doc++) {
+            assertTrue(dv.advanceExact(doc));
+            BytesRef key = BytesRef.deepCopyOf(MinValueSortField.min(dv.binaryValue()));
+            if (previous != null) {
+              int cmp = previous.compareTo(key);
+              if (reverse) {
+                cmp = -cmp;
+              }
+              assertTrue("min-value order violated", cmp <= 0);
+            }
+            previous = key;
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -870,28 +1051,63 @@ public class TestBinarySortField extends LuceneTestCase {
   }
 
   /**
-   * Example custom-comparator extension: the binary value holds one or more {@code [vInt
-   * length][bytes]} values, and the sort key is the <em>first</em> value (so the raw bytes are not
-   * sortable as-is, they must be decoded). The companion {@link Provider} reconstructs the field —
-   * and hence its comparator — when the index sort is deserialized, so the same decoding is used on
-   * merge. It is registered via {@code META-INF/services/org.apache.lucene.index.SortFieldProvider}
-   * under the test resources.
+   * Example value-source extension: the binary value holds one or more {@code [vInt length][bytes]}
+   * values (so the raw bytes are not sortable as-is); the sort key is the <em>first</em> value,
+   * extracted once per document in {@link #getSortKeyDocValues}. The {@link Provider} reconstructs
+   * the field when the index sort is read back, so the same key is produced on merge. It is
+   * registered via {@code META-INF/services/org.apache.lucene.index.SortFieldProvider} under the
+   * test resources.
    */
   public static final class FirstValueSortField extends BinarySortField {
     static final String NAME = "FirstValueSortField";
-    static final Comparator<BytesRef> COMPARATOR = (a, b) -> firstValue(a).compareTo(firstValue(b));
 
     public FirstValueSortField(String field, boolean reverse) {
-      super(field, reverse, null, COMPARATOR, NAME);
+      super(field, reverse, null, NAME);
     }
 
-    private static BytesRef firstValue(BytesRef raw) {
+    @Override
+    protected BinaryDocValues getSortKeyDocValues(LeafReader reader) throws IOException {
+      BinaryDocValues binary = DocValues.getBinary(reader, getField());
+      return new BinaryDocValues() {
+        @Override
+        public BytesRef binaryValue() throws IOException {
+          return firstValue(binary.binaryValue());
+        }
+
+        @Override
+        public int docID() {
+          return binary.docID();
+        }
+
+        @Override
+        public int nextDoc() throws IOException {
+          return binary.nextDoc();
+        }
+
+        @Override
+        public int advance(int t) throws IOException {
+          return binary.advance(t);
+        }
+
+        @Override
+        public boolean advanceExact(int t) throws IOException {
+          return binary.advanceExact(t);
+        }
+
+        @Override
+        public long cost() {
+          return binary.cost();
+        }
+      };
+    }
+
+    static BytesRef firstValue(BytesRef raw) {
       ByteArrayDataInput in = new ByteArrayDataInput(raw.bytes, raw.offset, raw.length);
       int length = in.readVInt();
       return new BytesRef(raw.bytes, in.getPosition(), length);
     }
 
-    /** Serializes/deserializes a {@link FirstValueSortField} (and thus its decoding comparator). */
+    /** Serializes/deserializes a {@link FirstValueSortField}. */
     public static final class Provider extends SortFieldProvider {
       public Provider() {
         super(NAME);
@@ -900,6 +1116,93 @@ public class TestBinarySortField extends LuceneTestCase {
       @Override
       public SortField readSortField(DataInput in) throws IOException {
         return new FirstValueSortField(in.readString(), in.readInt() == 1);
+      }
+
+      @Override
+      public void writeSortField(SortField sf, DataOutput out) throws IOException {
+        out.writeString(sf.getField());
+        out.writeInt(sf.getReverse() ? 1 : 0);
+      }
+    }
+  }
+
+  /**
+   * Example value source that selects the <em>minimum</em> value of a multi-valued binary field.
+   * The value is self-describing — a sequence of {@code [vInt length][bytes]} pairs — so the values
+   * are scanned to the end of the {@link BytesRef} and the smallest is returned as the sort key; no
+   * companion field is needed. The {@link Provider} reconstructs the field when the index sort is
+   * read back, so the same key is produced on merge.
+   */
+  public static final class MinValueSortField extends BinarySortField {
+    static final String NAME = "MinValueSortField";
+
+    public MinValueSortField(String field, boolean reverse) {
+      super(field, reverse, null, NAME);
+    }
+
+    @Override
+    protected BinaryDocValues getSortKeyDocValues(LeafReader reader) throws IOException {
+      BinaryDocValues binary = DocValues.getBinary(reader, getField());
+      return new BinaryDocValues() {
+        @Override
+        public BytesRef binaryValue() throws IOException {
+          return min(binary.binaryValue());
+        }
+
+        @Override
+        public int docID() {
+          return binary.docID();
+        }
+
+        @Override
+        public int nextDoc() throws IOException {
+          return binary.nextDoc();
+        }
+
+        @Override
+        public int advance(int t) throws IOException {
+          return binary.advance(t);
+        }
+
+        @Override
+        public boolean advanceExact(int t) throws IOException {
+          return binary.advanceExact(t);
+        }
+
+        @Override
+        public long cost() {
+          return binary.cost();
+        }
+      };
+    }
+
+    /**
+     * Returns the minimum of the {@code [vInt length][bytes]} values packed in {@code raw}, as a
+     * view into {@code raw} (no copy — the value is only used for comparison, per the contract).
+     */
+    static BytesRef min(BytesRef raw) {
+      ByteArrayDataInput in = new ByteArrayDataInput(raw.bytes, raw.offset, raw.length);
+      BytesRef best = null;
+      while (in.eof() == false) {
+        int length = in.readVInt();
+        BytesRef value = new BytesRef(raw.bytes, in.getPosition(), length);
+        in.setPosition(in.getPosition() + length);
+        if (best == null || value.compareTo(best) < 0) {
+          best = value;
+        }
+      }
+      return best;
+    }
+
+    /** Serializes/deserializes a {@link MinValueSortField}. */
+    public static final class Provider extends SortFieldProvider {
+      public Provider() {
+        super(NAME);
+      }
+
+      @Override
+      public SortField readSortField(DataInput in) throws IOException {
+        return new MinValueSortField(in.readString(), in.readInt() == 1);
       }
 
       @Override

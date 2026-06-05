@@ -27,7 +27,6 @@ import org.apache.lucene.search.FieldComparator;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.LongValues;
 import org.apache.lucene.util.NumericUtils;
@@ -41,7 +40,7 @@ import org.apache.lucene.util.packed.PackedInts;
  * <ul>
  *   <li>{@link #getDocComparator(LeafReader,int)} - an object that determines how documents within
  *       a segment are to be sorted
- *   <li>{@link #getComparableValues(List)} - an object that caches and compares the sort value of
+ *   <li>{@link #getComparableValues(List)} - an object that reads and compares the sort value of
  *       documents across segments, used for merge sorting. The default implementation adapts {@link
  *       #getComparableProviders(List)}, so sorts whose value can be expressed as a {@code long}
  *       only need to implement the latter.
@@ -74,20 +73,20 @@ public interface IndexSorter {
    */
   interface ComparableValues {
     /**
-     * Caches the value of the current document of the given segment so that it can later be
-     * compared by {@link #compare(int, int)}.
+     * Reads the value of the current document of the given segment so that it can later be compared
+     * by {@link #compare(int, int)}.
      *
      * <p>The merge sort visits the documents of each segment in increasing docID order, so {@code
      * docID} is non-decreasing for a given {@code readerIndex} between consecutive calls.
      *
      * @param readerIndex the index of the segment in the list passed to {@link
      *     #getComparableValues(List)}
-     * @param docID the document whose value should be cached
+     * @param docID the document whose value should be read
      */
     void setTopValue(int readerIndex, int docID) throws IOException;
 
     /**
-     * Compares the values previously cached by {@link #setTopValue(int, int)} for the two segments.
+     * Compares the values previously read by {@link #setTopValue(int, int)} for the two segments.
      * The returned value follows the same contract as {@link Comparator#compare(Object, Object)},
      * without applying the {@code reverse} flag (the caller is responsible for that).
      */
@@ -536,17 +535,11 @@ public interface IndexSorter {
   }
 
   /**
-   * Sorts documents based on the encoded bytes of a {@link BinaryDocValues} instance.
+   * Sorts documents by the bytes of a {@link BinaryDocValues} instance, using the given comparator.
    *
-   * <p>Unlike {@link StringSorter}, binary values are compared directly, so no global ordinal map
-   * is built when merging: each segment is already sorted, and the merge only needs to compare the
-   * bytes of the current document of each segment. As a result the merge reads every segment
-   * strictly sequentially (via {@link BinaryDocValues#nextDoc()}), which keeps the cost linear and
-   * remains efficient even when the {@link BinaryDocValues} format stores values in compressed
-   * blocks.
-   *
-   * <p>This sorter is naive by default (it orders documents by the unsigned byte order of their
-   * value), but a custom {@link Comparator} can be supplied to implement domain-specific ordering.
+   * <p>Unlike {@link StringSorter} there is no global ordinal map: values are compared directly, so
+   * the merge reads each (already sorted) segment strictly sequentially via {@link
+   * BinaryDocValues#nextDoc()}, which stays linear and efficient even for block-compressed formats.
    */
   final class BinarySorter implements IndexSorter {
 
@@ -577,11 +570,13 @@ public interface IndexSorter {
     public ComparableValues getComparableValues(List<? extends LeafReader> readers)
         throws IOException {
       final BinaryDocValues[] values = new BinaryDocValues[readers.size()];
-      final BytesRefBuilder[] cache = new BytesRefBuilder[readers.size()];
-      final boolean[] present = new boolean[readers.size()];
+      // The current sort key of each segment's head, or null if the head document has no value. We
+      // keep the BytesRef without copying: it stays valid until this segment's cursor advances
+      // again
+      // (its next setTopValue), which is exactly the window during which the head is compared.
+      final BytesRef[] heads = new BytesRef[readers.size()];
       for (int i = 0; i < readers.size(); i++) {
         values[i] = valuesProvider.get(readers.get(i));
-        cache[i] = new BytesRefBuilder();
       }
       final int[] lastDoc = new int[readers.size()];
       Arrays.fill(lastDoc, -1);
@@ -599,19 +594,12 @@ public interface IndexSorter {
           while (doc < docID) {
             doc = v.nextDoc();
           }
-          if (doc == docID) {
-            present[readerIndex] = true;
-            cache[readerIndex].copyBytes(v.binaryValue());
-          } else {
-            present[readerIndex] = false;
-          }
+          heads[readerIndex] = doc == docID ? v.binaryValue() : null;
         }
 
         @Override
         public int compare(int readerIndexA, int readerIndexB) {
-          BytesRef a = present[readerIndexA] ? cache[readerIndexA].get() : null;
-          BytesRef b = present[readerIndexB] ? cache[readerIndexB].get() : null;
-          return comparator.compare(a, b);
+          return comparator.compare(heads[readerIndexA], heads[readerIndexB]);
         }
       };
     }
@@ -619,13 +607,9 @@ public interface IndexSorter {
     @Override
     public DocComparator getDocComparator(LeafReader reader, int maxDoc) throws IOException {
       final BinaryDocValues values = valuesProvider.get(reader);
-      // Materialize the values once for random access during the in-memory sort of a single (newly
-      // flushed) segment. Values are concatenated into a single byte[] (read from the in-RAM
-      // segment
-      // buffer) with a monotonic per-document offset array; presence is tracked in a bitset so
-      // missing values can be distinguished from empty ones. Comparisons then view slices of that
-      // buffer in place (no per-comparison copy), keeping the sort cheap and the footprint to one
-      // maxDoc-sized array plus the bytes, on par with the numeric and string sorters.
+      // Materialize the values once for random access during the in-memory sort: concatenate them
+      // into a single byte[] with a per-document offset array, tracking presence in a bitset.
+      // Comparisons then view slices of that buffer in place, with no per-comparison copy.
       byte[] blob = new byte[Math.max(16, maxDoc)];
       final int[] offsets = new int[maxDoc + 1];
       final FixedBitSet present = new FixedBitSet(maxDoc);
