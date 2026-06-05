@@ -103,6 +103,11 @@ New Features
 * GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
   PolishSnowballAnalyzer in the stempel package) (Justas Sakalauskas, Dawid Weiss)
 
+* GITHUB#16202: Add BinarySortField, allowing BinaryDocValues fields to be used as an index sort. Unlike
+  sorting on SortedDocValues (best for low-cardinality fields), it compares the raw bytes directly and is
+  a good fit for high-cardinality fields. The default ordering is unsigned byte order; a custom comparator
+  can be supplied by subclassing. (Jim Ferenczi)
+
 * GITHUB#14097: Binary partitioning merge policy over float-valued vector field. (Mike Sokolov)
 
 * GITHUB#14178: Add a Faiss-based vector format in the sandbox module. (Kaival Parikh)
