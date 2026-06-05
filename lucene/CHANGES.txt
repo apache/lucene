@@ -441,6 +441,8 @@ Optimizations
   TwoPhaseIterator#intoBitSet (overridable for SIMD block evaluation) instead of a separate plain
   DocIdSetIterator, speeding up conjunctions of range filters. (Sagar Upadhyaya, Jim Ferenczi)
 
+* GITHUB#16180: Add bulk intoBitSet for SortedDocValues ordinal ranges. (Prithvi S)
+
 * GITHUB#16061, GITHUB#16070, GITHUB#16085, GITHUB#16120: Improve cost estimation in SortedSetDocValuesRangeQuery
   and SortedNumericDocValuesRangeQuery when using DocValuesSkipper, the field is dense and is the primary sort of
   the index to reduce the number of doc values visited. (Ignacio Vera)
