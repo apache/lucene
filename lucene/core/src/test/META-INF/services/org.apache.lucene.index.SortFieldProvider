@@ -15,7 +15,5 @@
 # limitations under the License.
 #
 
-org.apache.lucene.search.SortField$Provider
-org.apache.lucene.search.SortedNumericSortField$Provider
-org.apache.lucene.search.SortedSetSortField$Provider
-org.apache.lucene.search.BinarySortField$Provider
+org.apache.lucene.search.TestBinarySortField$FirstValueSortField$Provider
+org.apache.lucene.search.TestBinarySortField$MinValueSortField$Provider

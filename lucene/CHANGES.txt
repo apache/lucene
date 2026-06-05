@@ -45,6 +45,11 @@ API Changes
 New Features
 ---------------------
 
+* GITHUB#16202: Add BinarySortField, allowing BinaryDocValues fields to be used as an index sort. It
+  compares the raw bytes directly in unsigned byte order, a good fit for high-cardinality fields where a
+  SortedDocValues dictionary is pure overhead. A subclass may override getSortKeyDocValues to supply a
+  custom order-preserving sort key. (Jim Ferenczi)
+
 * GITHUB#15740, GITHUB#15817: Add NumericFieldStats utility for retrieving global numeric field
   statistics (min, max, doc count) from index metadata structures. Migrate
   SortedNumericDocValuesRangeQuery to use this API, fixing the rewrite optimization for fields
