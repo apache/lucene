@@ -38,6 +38,17 @@ import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
 import org.apache.lucene.util.quantization.LegacyQuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.ScalarQuantizer;
 
+/**
+ * MemorySegment-based optimized scorer for Lucene99 scalar quantized vectors. Uses the Panama
+ * Vector API for bulk off-heap scoring when the underlying index input supports direct
+ * MemorySegment access.
+ *
+ * <p>Bulk scoring activation: The bulk path requires the vector data to be accessible as a
+ * contiguous MemorySegment via {@link MemorySegmentAccessInput#segmentSliceOrNull(long, long)}. If
+ * the index spans multiple segments (e.g., files larger than the platform's mmap limit), the slice
+ * may be unavailable and bulk scoring falls back to the default single-vector loop. This fallback
+ * is silent and correct.
+ */
 class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsScorer {
   static final Lucene99MemorySegmentScalarQuantizedVectorScorer INSTANCE =
       new Lucene99MemorySegmentScalarQuantizedVectorScorer();
@@ -90,11 +101,15 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
     private final ScalarQuantizer quantizer;
     private final float constMultiplier;
     private final MemorySegmentAccessInput input;
-    private final int vectorByteSize;
-    private final int nodeSize;
+    final int vectorByteSize;
+    final int nodeSize;
     private final Scorer scorer;
     private final FloatToFloatFunction scaler;
+    private final boolean isUint8;
+    final boolean isEuclidean;
+    final MemorySegment dataSeg;
     private byte[] scratch;
+    private final int[] scratchIntScores = new int[4];
 
     RandomVectorScorerBase(
         VectorSimilarityFunction similarityFunction,
@@ -108,10 +123,14 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
       this.vectorByteSize = values.getVectorByteLength();
       this.nodeSize = this.vectorByteSize + Float.BYTES;
 
+      boolean bitsLe4 = this.quantizer.getBits() <= 4;
+      this.isUint8 = !bitsLe4;
+      this.isEuclidean = similarityFunction == VectorSimilarityFunction.EUCLIDEAN;
+
       this.scorer =
           switch (similarityFunction) {
             case EUCLIDEAN -> {
-              if (this.quantizer.getBits() <= 4) {
+              if (bitsLe4) {
                 if (this.vectorByteSize != values.dimension()) {
                   yield this::compressedInt4Euclidean;
                 }
@@ -120,7 +139,7 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
               yield this::euclidean;
             }
             case DOT_PRODUCT, COSINE, MAXIMUM_INNER_PRODUCT -> {
-              if (this.quantizer.getBits() <= 4) {
+              if (bitsLe4) {
                 if (this.vectorByteSize != values.dimension()) {
                   yield this::compressedInt4DotProduct;
                 }
@@ -136,6 +155,15 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
             case DOT_PRODUCT, COSINE -> VectorUtil::normalizeToUnitInterval;
             case MAXIMUM_INNER_PRODUCT -> VectorUtil::scaleMaxInnerProductScore;
           };
+
+      // Cache the MemorySegment for bulk operations; fall back to null if unavailable
+      MemorySegment seg = null;
+      try {
+        seg = input.segmentSliceOrNull(0L, input.length());
+      } catch (IOException e) {
+        // ignore, bulkScore will fall back to default loop
+      }
+      this.dataSeg = seg;
 
       checkInvariants();
     }
@@ -182,6 +210,103 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
       return scaler.apply(scorer.score(node.vector) * constMultiplier + node.offset + queryOffset);
     }
 
+    float bulkScoreBody(int[] nodes, float[] scores, int numNodes, float queryOffset)
+        throws IOException {
+      if (dataSeg == null || !isUint8) {
+        // Fallback to default single-vector scoring loop for non-uint8 formats
+        // (int4 bulk scoring is not implemented) or when MemorySegment is unavailable
+        return super.bulkScore(nodes, scores, numNodes);
+      }
+      if (numNodes > nodes.length || numNodes > scores.length) {
+        throw new IllegalArgumentException(
+            "numNodes ("
+                + numNodes
+                + ") exceeds nodes.length ("
+                + nodes.length
+                + ") or scores.length ("
+                + scores.length
+                + ")");
+      }
+      int i = 0;
+      float maxScore = Float.NEGATIVE_INFINITY;
+      final int limit = numNodes & ~3;
+      for (; i < limit; i += 4) {
+        checkOrdinal(nodes[i]);
+        checkOrdinal(nodes[i + 1]);
+        checkOrdinal(nodes[i + 2]);
+        checkOrdinal(nodes[i + 3]);
+        long addr1 = (long) nodes[i] * nodeSize;
+        long addr2 = (long) nodes[i + 1] * nodeSize;
+        long addr3 = (long) nodes[i + 2] * nodeSize;
+        long addr4 = (long) nodes[i + 3] * nodeSize;
+        // Read offsets directly from dataSeg (avoids input.readInt overhead)
+        float off1 = Float.intBitsToFloat(dataSeg.get(INT_UNALIGNED_LE, addr1 + vectorByteSize));
+        float off2 = Float.intBitsToFloat(dataSeg.get(INT_UNALIGNED_LE, addr2 + vectorByteSize));
+        float off3 = Float.intBitsToFloat(dataSeg.get(INT_UNALIGNED_LE, addr3 + vectorByteSize));
+        float off4 = Float.intBitsToFloat(dataSeg.get(INT_UNALIGNED_LE, addr4 + vectorByteSize));
+        bulkVectorOp(addr1, addr2, addr3, addr4, scratchIntScores);
+        scores[i] = scaler.apply(scratchIntScores[0] * constMultiplier + off1 + queryOffset);
+        maxScore = Math.max(maxScore, scores[i]);
+        scores[i + 1] = scaler.apply(scratchIntScores[1] * constMultiplier + off2 + queryOffset);
+        maxScore = Math.max(maxScore, scores[i + 1]);
+        scores[i + 2] = scaler.apply(scratchIntScores[2] * constMultiplier + off3 + queryOffset);
+        maxScore = Math.max(maxScore, scores[i + 2]);
+        scores[i + 3] = scaler.apply(scratchIntScores[3] * constMultiplier + off4 + queryOffset);
+        maxScore = Math.max(maxScore, scores[i + 3]);
+      }
+      int remaining = numNodes - i;
+      if (remaining > 0) {
+        // Tail handling: process 1-3 remaining nodes. Unused slots are padded by
+        // aliasing to addr1, so bulkVectorOp computes a dummy score that is ignored.
+        checkOrdinal(nodes[i]);
+        long addr1 = (long) nodes[i] * nodeSize;
+        long addr2 = addr1;
+        long addr3 = addr1;
+        if (remaining > 1) {
+          checkOrdinal(nodes[i + 1]);
+          addr2 = (long) nodes[i + 1] * nodeSize;
+        }
+        if (remaining > 2) {
+          checkOrdinal(nodes[i + 2]);
+          addr3 = (long) nodes[i + 2] * nodeSize;
+        }
+        // Read offsets directly from dataSeg
+        float off1 = Float.intBitsToFloat(dataSeg.get(INT_UNALIGNED_LE, addr1 + vectorByteSize));
+        float off2 = Float.intBitsToFloat(dataSeg.get(INT_UNALIGNED_LE, addr2 + vectorByteSize));
+        float off3 = Float.intBitsToFloat(dataSeg.get(INT_UNALIGNED_LE, addr3 + vectorByteSize));
+        bulkVectorOp(addr1, addr2, addr3, addr1, scratchIntScores);
+        scores[i] = scaler.apply(scratchIntScores[0] * constMultiplier + off1 + queryOffset);
+        maxScore = Math.max(maxScore, scores[i]);
+        if (remaining > 1) {
+          scores[i + 1] = scaler.apply(scratchIntScores[1] * constMultiplier + off2 + queryOffset);
+          maxScore = Math.max(maxScore, scores[i + 1]);
+        }
+        if (remaining > 2) {
+          scores[i + 2] = scaler.apply(scratchIntScores[2] * constMultiplier + off3 + queryOffset);
+          maxScore = Math.max(maxScore, scores[i + 2]);
+        }
+      }
+      return maxScore;
+    }
+
+    void bulkVectorOp(long d1, long d2, long d3, long d4, int[] scores) {
+      MemorySegment s1 = dataSeg.asSlice(d1, vectorByteSize);
+      MemorySegment s2 = dataSeg.asSlice(d2, vectorByteSize);
+      MemorySegment s3 = dataSeg.asSlice(d3, vectorByteSize);
+      MemorySegment s4 = dataSeg.asSlice(d4, vectorByteSize);
+      if (isEuclidean) {
+        scores[0] = euclidean(s1);
+        scores[1] = euclidean(s2);
+        scores[2] = euclidean(s3);
+        scores[3] = euclidean(s4);
+      } else {
+        scores[0] = dotProduct(s1);
+        scores[1] = dotProduct(s2);
+        scores[2] = dotProduct(s3);
+        scores[3] = dotProduct(s4);
+      }
+    }
+
     abstract int euclidean(MemorySegment doc);
 
     abstract int int4Euclidean(MemorySegment doc);
@@ -222,6 +347,11 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
     }
 
     @Override
+    public float bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
+      return bulkScoreBody(nodes, scores, numNodes, queryOffset);
+    }
+
+    @Override
     int euclidean(MemorySegment doc) {
       return PanamaVectorUtilSupport.uint8SquareDistance(targetBytes, doc);
     }
@@ -252,6 +382,11 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
     }
   }
 
+  /**
+   * Native implementation of RandomVectorScorer. Uses JNI for single-vector ops but inherits bulk
+   * scoring from the parent (which uses Panama Vector API). Native bulk kernels are not yet
+   * implemented.
+   */
   private static class NativeRandomVectorScorerImpl extends RandomVectorScorerImpl {
     NativeRandomVectorScorerImpl(
         VectorSimilarityFunction similarityFunction,
@@ -338,6 +473,11 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
     }
 
     @Override
+    public float bulkScore(int[] nodes, float[] scores, int numNodes) throws IOException {
+      return bulkScoreBody(nodes, scores, numNodes, queryOffset);
+    }
+
+    @Override
     int euclidean(MemorySegment doc) {
       return PanamaVectorUtilSupport.uint8SquareDistance(query, doc);
     }
@@ -368,6 +508,11 @@ class Lucene99MemorySegmentScalarQuantizedVectorScorer implements FlatVectorsSco
     }
   }
 
+  /**
+   * Native implementation of UpdateableRandomVectorScorer. Uses JNI for single-vector ops but
+   * inherits bulk scoring from the parent (which uses Panama Vector API). Native bulk kernels are
+   * not yet implemented.
+   */
   private static class NativeUpdateableRandomVectorScorerImpl
       extends UpdateableRandomVectorScorerImpl {
 

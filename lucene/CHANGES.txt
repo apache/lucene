@@ -296,6 +296,8 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16203: Add bulk off-heap scoring for uint8 quantized vectors using Panama Vector API. (Prithvi S)
+
 * GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
 
 Bug Fixes
