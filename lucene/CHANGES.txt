@@ -224,6 +224,9 @@ Optimizations
 
 * GITHUB#16174: Convert contiguous ordinal sets to ranges in DocValuesRangeIterator#forOrdinalSet. (Sasilekha R)
 
+* GITHUB#16172: Bulk-evaluate skip-indexed sorted and sorted-set doc-values range queries via a block-aware
+  DocValuesRangeIterator#intoBitSet. (Costin Leau)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
