@@ -235,11 +235,6 @@ abstract class OffHeapScalarQuantizedFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public Bits getAcceptOrds(Bits acceptDocs) {
-      return acceptDocs;
-    }
-
-    @Override
     public VectorScorer scorer(float[] target) throws IOException {
       OffHeapScalarQuantizedFloatVectorValues.DenseOffHeapVectorValues copy = copy();
       DocIndexIterator iterator = copy.iterator();

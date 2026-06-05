@@ -225,11 +225,6 @@ public abstract class OffHeapBinarizedVectorValues extends BinarizedByteVectorVa
     }
 
     @Override
-    public Bits getAcceptOrds(Bits acceptDocs) {
-      return acceptDocs;
-    }
-
-    @Override
     public VectorScorer scorer(float[] target) throws IOException {
       DenseOffHeapVectorValues copy = copy();
       DocIndexIterator iterator = copy.iterator();

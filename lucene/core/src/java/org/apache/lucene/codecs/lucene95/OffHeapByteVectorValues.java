@@ -169,11 +169,6 @@ public abstract class OffHeapByteVectorValues extends ByteVectorValues implement
     }
 
     @Override
-    public Bits getAcceptOrds(Bits acceptDocs) {
-      return acceptDocs;
-    }
-
-    @Override
     public VectorScorer scorer(byte[] query) throws IOException {
       DenseOffHeapVectorValues copy = copy();
       DocIndexIterator iterator = copy.iterator();

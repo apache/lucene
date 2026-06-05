@@ -241,11 +241,6 @@ public abstract class OffHeapQuantizedByteVectorValues extends LegacyQuantizedBy
     }
 
     @Override
-    public Bits getAcceptOrds(Bits acceptDocs) {
-      return acceptDocs;
-    }
-
-    @Override
     public VectorScorer scorer(float[] target) throws IOException {
       DenseOffHeapVectorValues copy = copy();
       DocIndexIterator iterator = copy.iterator();

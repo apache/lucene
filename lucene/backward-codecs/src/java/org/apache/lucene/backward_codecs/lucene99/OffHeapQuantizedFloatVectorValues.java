@@ -201,11 +201,6 @@ abstract class OffHeapQuantizedFloatVectorValues extends FloatVectorValues
     }
 
     @Override
-    public Bits getAcceptOrds(Bits acceptDocs) {
-      return acceptDocs;
-    }
-
-    @Override
     public DocIndexIterator iterator() {
       return createDenseIterator();
     }

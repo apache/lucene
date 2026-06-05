@@ -45,6 +45,7 @@ import org.apache.lucene.store.BufferedChecksumIndexInput;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.IOUtils;
@@ -345,6 +346,24 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     }
 
     @Override
+    public Bits getAcceptOrds(Bits acceptDocs) {
+      if (acceptDocs == null) {
+        return null;
+      }
+      return new Bits() {
+        @Override
+        public boolean get(int index) {
+          return acceptDocs.get(ordToDoc(index));
+        }
+
+        @Override
+        public int length() {
+          return size();
+        }
+      };
+    }
+
+    @Override
     public DocIndexIterator iterator() {
       return createSparseIterator();
     }
@@ -445,6 +464,24 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
     @Override
     public int ordToDoc(int ord) {
       return entry.ordToDoc[ord];
+    }
+
+    @Override
+    public Bits getAcceptOrds(Bits acceptDocs) {
+      if (acceptDocs == null) {
+        return null;
+      }
+      return new Bits() {
+        @Override
+        public boolean get(int index) {
+          return acceptDocs.get(ordToDoc(index));
+        }
+
+        @Override
+        public int length() {
+          return size();
+        }
+      };
     }
 
     @Override

@@ -491,6 +491,11 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       }
 
       @Override
+      public Bits getAcceptOrds(Bits acceptDocs) {
+        return vectorValues.getAcceptOrds(acceptDocs);
+      }
+
+      @Override
       public int size() {
         return vectorValues.size();
       }
@@ -536,6 +541,11 @@ public class ExitableDirectoryReader extends FilterDirectoryReader {
       @Override
       public int ordToDoc(int ord) {
         return vectorValues.ordToDoc(ord);
+      }
+
+      @Override
+      public Bits getAcceptOrds(Bits acceptDocs) {
+        return vectorValues.getAcceptOrds(acceptDocs);
       }
 
       @Override

@@ -305,11 +305,6 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
     }
 
     @Override
-    public Bits getAcceptOrds(Bits acceptDocs) {
-      return acceptDocs;
-    }
-
-    @Override
     public VectorScorer scorer(float[] target) throws IOException {
       assert isQuerySide == false;
       OffHeapScalarQuantizedVectorValues.DenseOffHeapVectorValues copy = copy();

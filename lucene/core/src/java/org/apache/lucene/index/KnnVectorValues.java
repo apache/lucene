@@ -71,24 +71,14 @@ public abstract class KnnVectorValues {
   /** The vector encoding of these values. */
   public abstract VectorEncoding getEncoding();
 
-  /** Returns a Bits accepting docs accepted by the argument and having a vector value */
+  /**
+   * Returns a Bits accepting docs accepted by the argument and having a vector value. This default
+   * implementation returns the argument directly and is appropriate for dense values
+   * implementations where every doc has a single value (and ordinals equal docids). Non-dense
+   * implementations must override this method to translate from ordinal-space to doc-space.
+   */
   public Bits getAcceptOrds(Bits acceptDocs) {
-    // FIXME: change default to return acceptDocs and provide this impl
-    // somewhere more specialized (in every non-dense impl).
-    if (acceptDocs == null) {
-      return null;
-    }
-    return new Bits() {
-      @Override
-      public boolean get(int index) {
-        return acceptDocs.get(ordToDoc(index));
-      }
-
-      @Override
-      public int length() {
-        return size();
-      }
-    };
+    return acceptDocs;
   }
 
   /** Create an iterator for this instance. */

@@ -123,11 +123,6 @@ abstract class OffHeapFloatVectorValues extends FloatVectorValues {
     }
 
     @Override
-    public Bits getAcceptOrds(Bits acceptDocs) {
-      return acceptDocs;
-    }
-
-    @Override
     public VectorScorer scorer(float[] query) throws IOException {
       DenseOffHeapVectorValues values = this.copy();
       DocIndexIterator iterator = values.iterator();
