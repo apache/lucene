@@ -1030,6 +1030,63 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
+  public void testGetAcceptOrdsWithSparseVectors() throws Exception {
+    // Verify that getAcceptOrds correctly translates doc-space acceptDocs to ordinal-space
+    // for sparse vectors (where not every doc has a vector, so ord != docId).
+    String fieldName = "field";
+    int dimension = 4;
+    try (Directory dir = newDirectory();
+        IndexWriter iw = new IndexWriter(dir, newIndexWriterConfig())) {
+      // Index 10 docs, but only docs 2, 4, 6, 8 get vectors (sparse)
+      for (int i = 0; i < 10; i++) {
+        Document doc = new Document();
+        doc.add(new StoredField("id", i));
+        if (i != 0 && i % 2 == 0) {
+          doc.add(
+              new KnnFloatVectorField(
+                  fieldName, new float[] {i, i, i, i}, VectorSimilarityFunction.EUCLIDEAN));
+        }
+        iw.addDocument(doc);
+      }
+      iw.forceMerge(1);
+      try (IndexReader r = DirectoryReader.open(iw)) {
+        LeafReader leaf = r.leaves().get(0).reader();
+        FloatVectorValues vectorValues = leaf.getFloatVectorValues(fieldName);
+        assertNotNull(vectorValues);
+        assertEquals(4, vectorValues.size());
+
+        // Create an acceptDocs that rejects doc 4
+        Bits acceptDocs =
+            new Bits() {
+              @Override
+              public boolean get(int index) {
+                return index != 4;
+              }
+
+              @Override
+              public int length() {
+                return 10;
+              }
+            };
+
+        Bits acceptOrds = vectorValues.getAcceptOrds(acceptDocs);
+
+        // Verify ordinal-to-doc translation:
+        // ord 0 -> doc 2 (accepted), ord 1 -> doc 4 (rejected),
+        // ord 2 -> doc 6 (accepted), ord 3 -> doc 8 (accepted)
+        assertNotNull(acceptOrds);
+        for (int ord = 0; ord < vectorValues.size(); ord++) {
+          int docId = vectorValues.ordToDoc(ord);
+          assertEquals(
+              "ord " + ord + " -> doc " + docId, acceptDocs.get(docId), acceptOrds.get(ord));
+        }
+
+        // null acceptDocs should return null acceptOrds
+        assertNull(vectorValues.getAcceptOrds(null));
+      }
+    }
+  }
+
   public void testFloatVectorScorerIteration() throws Exception {
     IndexWriterConfig iwc = newIndexWriterConfig();
     if (random().nextBoolean()) {
