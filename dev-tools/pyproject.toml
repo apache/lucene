@@ -8,7 +8,7 @@ dependencies = []
 [dependency-groups]
 dev = [
   # git hooks and repository checks
-  "prek==0.3.10",
+  "prek==0.4.3",
   # validates github actions
   "zizmor==1.25.2",
   # validates github actions
