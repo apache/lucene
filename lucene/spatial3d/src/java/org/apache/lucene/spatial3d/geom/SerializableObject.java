@@ -91,10 +91,10 @@ public interface SerializableObject {
    */
   static SerializableObject readObject(final PlanetModel planetModel, final InputStream inputStream)
       throws IOException {
-      // Read the class
+    // Read the class
     final Class<? extends SerializableObject> clazz = readClass(inputStream);
-      return readObject(planetModel, inputStream, clazz);
-    }
+    return readObject(planetModel, inputStream, clazz);
+  }
 
   /**
    * Read an object from a stream (for objects that do not need a PlanetModel).
@@ -103,10 +103,10 @@ public interface SerializableObject {
    * @return the deserialized object.
    */
   static SerializableObject readObject(final InputStream inputStream) throws IOException {
-      // read the class
+    // read the class
     final Class<? extends SerializableObject> clazz = readClass(inputStream);
-      return readObject(inputStream, clazz);
-    }
+    return readObject(inputStream, clazz);
+  }
 
   /**
    * Instantiate a serializable object from a stream.
@@ -202,8 +202,8 @@ public interface SerializableObject {
     if (standard) {
       int index = inputStream.read();
       if (StandardObjects.CODE_REGISTRY.containsKey(index)) {
-      return StandardObjects.CODE_REGISTRY.get(index);
-    } else {
+        return StandardObjects.CODE_REGISTRY.get(index);
+      } else {
         throw new IOException("No standard object found for index: " + index);
       }
     } else {
@@ -215,8 +215,8 @@ public interface SerializableObject {
       } catch (ClassNotFoundException | IllegalAccessException | ClassCastException e) {
         throw new IOException(
             "Can't find or access class of correct type for deserialization: " + e.getMessage(), e);
+      }
     }
-  }
   }
 
   /**

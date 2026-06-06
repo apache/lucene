@@ -23,6 +23,7 @@ import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOBooleanSupplier;
 import org.apache.lucene.util.LongBitSet;
 
@@ -52,7 +53,14 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     return skipper == null
         ? new DocValuesValueRangeIterator(values, check, 2)
         : new DocValuesBlockRangeIterator(
-            values, new SkipBlockRangeIterator(skipper, min, max), check, 2, false);
+            values,
+            new SkipBlockRangeIterator(skipper, min, max),
+            check,
+            2,
+            false,
+            values,
+            min,
+            max);
   }
 
   /**
@@ -128,7 +136,13 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
             values, new SkipBlockRangeIterator(skipper, min, max), check, 5, false);
   }
 
-  private record OrdinalSet(long min, long max, LongBitSet ords) {
+  /**
+   * @param contiguous true iff every ordinal in [min, max] is set, in which case the set is
+   *     equivalent to the contiguous range [min, max] and a cheaper range check can be used in
+   *     place of the per-doc bit lookup. Computed at construction time so callers don't have to
+   *     trust an undocumented invariant about the bounds of set bits in {@code ords}.
+   */
+  private record OrdinalSet(long min, long max, LongBitSet ords, boolean contiguous) {
 
     boolean disjoint(DocValuesSkipper skipper) {
       if (skipper == null) {
@@ -147,11 +161,18 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     long min = termsEnum.ord();
     ords.set(min);
     long max = min;
+    // Count distinct ords via getAndSet so a TermsEnum that yields a duplicate ord doesn't fool
+    // the contiguity check below. The first set bit (min) is always new on a fresh bitset.
+    long distinctCount = 1;
     while (termsEnum.next() != null) {
       max = termsEnum.ord();
-      ords.set(max);
+      if (ords.getAndSet(max) == false) {
+        distinctCount++;
+      }
     }
-    return new OrdinalSet(min, max, ords);
+    // If every ord in [min, max] is set, the set is equivalent to forOrdinalRange and can use the
+    // cheaper range check + block-level YES short-circuit.
+    return new OrdinalSet(min, max, ords, distinctCount == max - min + 1);
   }
 
   /**
@@ -167,7 +188,9 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     if (ordinalSet == null || ordinalSet.disjoint(skipper)) {
       return new EmptyRangeIterator();
     }
-    // TODO add check to OrdinalSet to detect if it can be converted to a range instead
+    if (ordinalSet.contiguous) {
+      return forOrdinalRange(values, skipper, ordinalSet.min, ordinalSet.max);
+    }
     IOBooleanSupplier check = () -> ordinalSet.ords.get(values.ordValue());
     return skipper == null
         ? new DocValuesValueRangeIterator(values, check, 2)
@@ -207,13 +230,18 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
       long minOrd,
       long maxOrd,
       LongBitSet ords) {
-    return forOrdinalSet(values, skipper, new OrdinalSet(minOrd, maxOrd, ords));
+    // Pass contiguous=false: callers of this overload aren't required by the javadoc to keep all
+    // set bits within [minOrd, maxOrd], so we can't infer contiguity from cardinality alone.
+    return forOrdinalSet(values, skipper, new OrdinalSet(minOrd, maxOrd, ords, false));
   }
 
   private static DocValuesRangeIterator forOrdinalSet(
       SortedSetDocValues values, DocValuesSkipper skipper, OrdinalSet ordinalSet) {
     if (ordinalSet == null || ordinalSet.disjoint(skipper)) {
       return new EmptyRangeIterator();
+    }
+    if (ordinalSet.contiguous) {
+      return forOrdinalRange(values, skipper, ordinalSet.min, ordinalSet.max);
     }
     IOBooleanSupplier check =
         () -> {
@@ -245,6 +273,11 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     private final IOBooleanSupplier predicate;
     private final float matchCost;
     private final boolean alwaysCheckPredicate;
+    // Non-null only for single-valued numeric doc values, in which case a whole block can be
+    // range-evaluated in one shot in intoBitSet rather than confirming matches() one doc at a time.
+    private final NumericDocValues numericValues;
+    private final long minValue;
+    private final long maxValue;
 
     private DocValuesBlockRangeIterator(
         DocIdSetIterator disi,
@@ -252,12 +285,27 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
         IOBooleanSupplier predicate,
         float matchCost,
         boolean alwaysCheckPredicate) {
+      this(disi, blockIterator, predicate, matchCost, alwaysCheckPredicate, null, 0, 0);
+    }
+
+    private DocValuesBlockRangeIterator(
+        DocIdSetIterator disi,
+        SkipBlockRangeIterator blockIterator,
+        IOBooleanSupplier predicate,
+        float matchCost,
+        boolean alwaysCheckPredicate,
+        NumericDocValues numericValues,
+        long minValue,
+        long maxValue) {
       super(blockIterator);
       this.disi = disi;
       this.blockIterator = blockIterator;
       this.predicate = predicate;
       this.matchCost = matchCost;
       this.alwaysCheckPredicate = alwaysCheckPredicate;
+      this.numericValues = numericValues;
+      this.minValue = minValue;
+      this.maxValue = maxValue;
     }
 
     private boolean advanceDisi(int target) throws IOException {
@@ -285,6 +333,99 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
         return blockIterator.docID() + 1;
       }
       return blockIterator.docIDRunEnd();
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      if (numericValues == null) {
+        if (alwaysCheckPredicate) {
+          // Arbitrary ordinal set: every block (even YES) must run the per-doc predicate, so there
+          // is no block-level shortcut to exploit. Confirm each candidate one doc at a time (the
+          // TwoPhaseIterator default).
+          super.intoBitSet(upTo, bitSet, offset);
+          return;
+        }
+        // Ordinal range (sorted / sorted-set): there is no columnar range-decode like the numeric
+        // path, but the block classification still lets us bulk-set YES runs and bulk-mark present
+        // docs in YES_IF_PRESENT runs, confirming the ordinal predicate per doc only in MAYBE runs.
+        ordinalRangeIntoBitSet(upTo, bitSet, offset);
+        return;
+      }
+      while (blockIterator.docID() < upTo) {
+        int blockStart = blockIterator.docID();
+        SkipBlockRangeIterator.Match match = blockIterator.getMatch();
+        // For MAYBE blocks docIDRunEnd() is conservative (doc+1), so use the full block boundary to
+        // evaluate the whole block at once.
+        int blockEnd =
+            match == SkipBlockRangeIterator.Match.MAYBE
+                ? Math.min(upTo, blockIterator.blockEnd())
+                : Math.min(upTo, blockIterator.docIDRunEnd());
+        switch (match) {
+          case YES -> bitSet.set(blockStart - offset, blockEnd - offset);
+          case YES_IF_PRESENT -> {
+            // All present values are in range, but the field is sparse: set a bit for every
+            // doc that has a value. Delegate to intoBitSet so dense codecs can bulk-set the run
+            // rather than probing one doc at a time. Only advance forward; a preceding YES block
+            // leaves the iterator behind blockStart, while MAYBE/YES_IF_PRESENT blocks leave it
+            // at or past it.
+            if (numericValues.docID() < blockStart) {
+              numericValues.advance(blockStart);
+            }
+            numericValues.intoBitSet(blockEnd, bitSet, offset);
+          }
+          case MAYBE ->
+              numericValues.rangeIntoBitSet(
+                  blockStart, blockEnd, minValue, maxValue, bitSet, offset);
+        }
+        blockIterator.advance(blockEnd);
+      }
+    }
+
+    /**
+     * Bulk-evaluates an ordinal range over the block structure. Functionally identical to per-doc
+     * {@link #matches()} evaluation, but a whole YES run is set in one shot and a YES_IF_PRESENT
+     * run's present docs are marked via {@link DocIdSetIterator#intoBitSet}; only MAYBE runs
+     * confirm the ordinal predicate per doc. Like {@code matches()}, {@code disi} is the doc-values
+     * iterator and {@code predicate} the range check. Mirrors the numeric block loop in {@link
+     * #intoBitSet}: keep the two block walks in sync if the block-boundary handling changes.
+     */
+    private void ordinalRangeIntoBitSet(int upTo, FixedBitSet bitSet, int offset)
+        throws IOException {
+      while (blockIterator.docID() < upTo) {
+        int blockStart = blockIterator.docID();
+        SkipBlockRangeIterator.Match match = blockIterator.getMatch();
+        // For MAYBE blocks docIDRunEnd() is conservative (doc+1), so use the full block boundary to
+        // evaluate the whole block at once.
+        int blockEnd =
+            match == SkipBlockRangeIterator.Match.MAYBE
+                ? Math.min(upTo, blockIterator.blockEnd())
+                : Math.min(upTo, blockIterator.docIDRunEnd());
+        switch (match) {
+          case YES -> bitSet.set(blockStart - offset, blockEnd - offset);
+          case YES_IF_PRESENT -> {
+            // Every present value is in range, so mark each doc that has a value. Only advance
+            // forward: a preceding YES block leaves disi behind blockStart, MAYBE/YES_IF_PRESENT
+            // leave it at or past it.
+            if (disi.docID() < blockStart) {
+              disi.advance(blockStart);
+            }
+            disi.intoBitSet(blockEnd, bitSet, offset);
+          }
+          case MAYBE -> {
+            // Visit only docs that have a value (like matches() does) and confirm the ordinal
+            // predicate one doc at a time.
+            if (disi.docID() < blockStart) {
+              disi.advance(blockStart);
+            }
+            for (int doc = disi.docID(); doc < blockEnd; doc = disi.nextDoc()) {
+              if (predicate.get()) {
+                bitSet.set(doc - offset);
+              }
+            }
+          }
+        }
+        blockIterator.advance(blockEnd);
+      }
     }
 
     @Override

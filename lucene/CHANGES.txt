@@ -45,6 +45,11 @@ API Changes
 New Features
 ---------------------
 
+* GITHUB#16202: Add BinarySortField, allowing BinaryDocValues fields to be used as an index sort. It
+  compares the raw bytes directly in unsigned byte order, a good fit for high-cardinality fields where a
+  SortedDocValues dictionary is pure overhead. A subclass may override getSortKeyDocValues to supply a
+  custom order-preserving sort key. (Jim Ferenczi)
+
 * GITHUB#15740, GITHUB#15817: Add NumericFieldStats utility for retrieving global numeric field
   statistics (min, max, doc count) from index metadata structures. Migrate
   SortedNumericDocValuesRangeQuery to use this API, fixing the rewrite optimization for fields
@@ -100,7 +105,7 @@ Improvements
 
 * GITHUB#15976: Store DocValuesSkipper data in their own file. (Alan Woodward)
 
-* GITHUB#15574, GITHUB#15995: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
+* GITHUB#15603, GITHUB#15995: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
 
 * GITHUB#15565: Introduce AllGroupHeadsCollectorManager to parallelize search when using AllGroupHeadsCollector. (Binlong Gao)
 
@@ -109,16 +114,30 @@ Improvements
 
 * GITHUB#16000: Clarify that Accountable#ramBytesUsed() reports JVM heap memory only. (Luca Cavanna)
 
+* GITHUB#15795: Introduce MemoryAccountingBitsetCollectorManager to parallelize search when using MemoryAccountingBitsetCollector. (Binlong Gao)
+
+* GITHUB#15574: Introduce FirstPassGroupingCollectorManager to parallelize search when using FirstPassGroupingCollector. (Binlong Gao)
+
 * GITHUB#15660: Introduce LargeNumHitsTopDocsCollectorManager to parallelize search when using LargeNumHitsTopDocsCollector. (Binlong Gao)
 
 * GITHUB#16088: SearchGroup#merge now returns an empty collection instead of null when topGroups is empty. (Luca Cavanna)
 
+* GITHUB#16144: Clarify LeafCollector batch collection scoring contract. (Costin Leau)
+
 Optimizations
 ---------------------
-* GITHUB#16050: Add SIMD-accelerated bulk range evaluation for dense numeric doc values via
-  BatchDocValuesRangeIterator and DocValuesRangeSupport. (Sagar Upadhyaya)
+* GITHUB#16176: Restore WANDScorer for TOP_SCORES + minShouldMatch > 1. (Tianxiao Wei)
+
+* GITHUB#16050, GITHUB#16177: Doc-values range queries are now always two-phase iterators, with
+  SIMD-accelerated bulk range evaluation for dense numeric doc values exposed through
+  TwoPhaseIterator#intoBitSet (overridable for SIMD block evaluation) instead of a separate plain
+  DocIdSetIterator, speeding up conjunctions of range filters. (Sagar Upadhyaya, Jim Ferenczi)
+
+* GITHUB#16153: Use TernaryLongHeap in UpdateGraphsUtils for faster HNSW graph merging. (Prithvi S)
 
 * GITHUB#15861: Optimise PhraseScorer by short circuiting non competitive documents in TOP_SCORES mode. (Prithvi S)
+
+* GITHUB#16154: Use Lucene's PriorityQueue in NearestNeighbor to avoid poll/offer overhead on the hot path. (Prithvi S)
 
 * GITHUB#15868: Optimize DisjunctionMaxBulkScorer by reusing the inner LeafCollector across
   sub-scorers and resetting windowScores inline during replay instead of Arrays.fill. (Prithvi S)
@@ -190,9 +209,28 @@ Optimizations
 
 * GITHUB#16126: Implement #intoBitSet and #docIDRunEnd in DocValuesWriter implementations. (Ignacio Vera)
 
-* GITHUB#16141: Optimize constant-score bulk scoring via intoBitSet batching. (Costin Leau)
+* GITHUB#16141, GITHUB#16143: Optimize constant-score bulk scoring via intoBitSet
+  batching, route more constant-score iterators through ConstantScoreScorerSupplier,
+  and preserve two-phase iterator semantics when falling back to DefaultBulkScorer.
+  (Costin Leau)
 
 * GITHUB#16147: Optimize column batch parent field with bulk fill. (Tim Brooks)
+
+* GITHUB#16103: DisjunctionMaxQuery now filters out MatchNoDocsQuery disjuncts during rewrite,
+  avoiding unnecessary scorer overhead. (Prithvi S)
+
+* GITHUB#16109: Add count() to SortedSetDocValuesRangeQuery. (Prithvi S)
+
+* GITHUB#15991: Load dense filters into bitset in MaxScoreBulkScorer. (Prithvi S)
+
+* GITHUB#16142: Optimize disjunction #docIDRunEnd to skip runs of excluded documents. (Costin Leau)
+
+* GITHUB#16155: Use BitSet#nextClearBit to iterate uninitialized nodes in MergingHnswGraphBuilder. (Sasilekha R)
+
+* GITHUB#16174: Convert contiguous ordinal sets to ranges in DocValuesRangeIterator#forOrdinalSet. (Sasilekha R)
+
+* GITHUB#16172: Bulk-evaluate skip-indexed sorted and sorted-set doc-values range queries via a block-aware
+  DocValuesRangeIterator#intoBitSet. (Costin Leau)
 
 Bug Fixes
 ---------------------
@@ -244,6 +282,8 @@ Bug Fixes
 
 * GITHUB#15878: Fix LargeNumHitsTopDocsCollector not handling requested hit count correctly (Binlong Gao)
 
+* GITHUB#16098: Validate zero vectors in setVectorValue() for cosine similarity fields. (Prithvi S)
+
 * GITHUB#16046: Fix double-counting of underlying Automaton in CompiledAutomaton#ramBytesUsed. (Eugene Rizhkov)
 
 * GITHUB#15901: Fix undercounting of RAM used by vectors buffered in in-memory segments.
@@ -258,6 +298,11 @@ Bug Fixes
   experimental SerializedObject API to be more type safe. (metsw24-max, Uwe Schindler)
 
 * GITHUB#15831: Fixed a race condition in ReferenceManager.maybeRefresh() where refreshes could be missed if a new generation was flushed just before the refresh lock was released. (Vijay)
+
+* GITHUB#16156: OffHeapFloatVectorValues#prefetch now bounds its loop by the requested
+  count instead of the full ordinal array, matching OffHeapByteVectorValues. (Vignesh)
+
+* GITHUB#16179: Fix minor lock/unlock acquisition order in DocumentsWriterDeleteQueue (Chris Hegarty)
 
 Other
 ---------------------
@@ -296,6 +341,9 @@ Other
 * GITHUB#16118: Remove getOrAddPerField calls in processBatch. (Tim Brooks)
 
 * GITHUB##16135: Disable external entities in hyphenation PatternParser. (metsw24-max, Uwe Schindler)
+
+* GITHUB#16178: Simplify how we collect hits in the LRU cache from a DocIdStream into a RoaringDocIdSet.
+  (Ignacio Vera)
 
 ======================= Lucene 10.4.0 =======================
 

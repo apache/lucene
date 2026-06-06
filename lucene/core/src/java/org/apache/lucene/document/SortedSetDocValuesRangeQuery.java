@@ -151,6 +151,10 @@ final class SortedSetDocValuesRangeQuery extends Query {
               return DocIdSetIterator.all(skipper.docCount());
             }
 
+            // A single two-phase iterator covers every density: its approximation rides the
+            // skipper (no over-scan) and its intoBitSet bulk-evaluates blocks (YES runs set at
+            // once, YES_IF_PRESENT runs marked by presence, MAYBE runs confirmed per doc). The bulk
+            // scorer unwraps it and picks the right strategy from there.
             if (singleton != null) {
               return TwoPhaseIterator.asDocIdSetIterator(
                   DocValuesRangeIterator.forOrdinalRange(singleton, skipper, minOrd, maxOrd));
@@ -164,6 +168,31 @@ final class SortedSetDocValuesRangeQuery extends Query {
             return values.cost();
           }
         };
+      }
+
+      @Override
+      public int count(LeafReaderContext context) throws IOException {
+        if (context.reader().getFieldInfos().fieldInfo(field) == null) {
+          return 0;
+        }
+        SortedSetDocValues values = DocValues.getSortedSet(context.reader(), field);
+        final long minOrd = minOrd(values);
+        final long maxOrd = maxOrd(values);
+        if (minOrd > maxOrd) {
+          return 0;
+        }
+        final DocValuesSkipper skipper = context.reader().getDocValuesSkipper(field);
+        if (skipper != null) {
+          if (minOrd > skipper.maxValue() || maxOrd < skipper.minValue()) {
+            return 0;
+          }
+          if (skipper.docCount() == context.reader().maxDoc()
+              && skipper.minValue() >= minOrd
+              && skipper.maxValue() <= maxOrd) {
+            return context.reader().numDocs();
+          }
+        }
+        return -1;
       }
 
       private ScorerSupplier getScorerSupplierFromDensePrimarySort(

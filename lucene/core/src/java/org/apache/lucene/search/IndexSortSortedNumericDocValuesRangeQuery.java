@@ -156,17 +156,8 @@ public class IndexSortSortedNumericDocValuesRangeQuery extends NumericDocValuesR
         IteratorAndCount itAndCount = getDocIdSetIteratorOrNull(context);
         if (itAndCount != null) {
           DocIdSetIterator disi = itAndCount.it;
-          return new ScorerSupplier() {
-            @Override
-            public Scorer get(long leadCost) throws IOException {
-              return new ConstantScoreScorer(score(), scoreMode, disi);
-            }
-
-            @Override
-            public long cost() {
-              return disi.cost();
-            }
-          };
+          return ConstantScoreScorerSupplier.fromIterator(
+              disi, score(), scoreMode, context.reader().maxDoc());
         }
         return fallbackWeight.scorerSupplier(context);
       }

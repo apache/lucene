@@ -261,6 +261,54 @@ public class TestBooleanScorer extends LuceneTestCase {
                 1f, ScoreMode.COMPLETE, new CountingDocIdSetIterator(new int[] {1})));
   }
 
+  public void testConstantScoreScorerSupplierBulkCollectsTwoPhaseWithMatcher() throws IOException {
+    int[] docs = {1, 2, 3};
+    CountingDocIdSetIterator approximation = new CountingDocIdSetIterator(docs);
+    DocIdSetIterator iterator =
+        TwoPhaseIterator.asDocIdSetIterator(
+            new TwoPhaseIterator(approximation) {
+              @Override
+              public boolean matches() {
+                return approximation.docID() != 2;
+              }
+
+              @Override
+              public float matchCost() {
+                return 1f;
+              }
+            });
+
+    int[] collected = new int[docs.length];
+    int[] count = new int[1];
+    LeafCollector collector =
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) {}
+
+          @Override
+          public void collect(int doc) {
+            collected[count[0]++] = doc;
+          }
+
+          @Override
+          public void collect(DocIdStream stream) throws IOException {
+            stream.forEach(doc -> collected[count[0]++] = doc);
+          }
+        };
+
+    // A no-score two-phase iterator is bulk-collected through ConstantScoreBulkScorer; its matcher
+    // is preserved because TwoPhaseIterator#intoBitSet confirms matches() while loading the window.
+    BulkScorer bulkScorer =
+        ConstantScoreScorerSupplier.fromIterator(iterator, 1f, ScoreMode.COMPLETE_NO_SCORES, 9000)
+            .bulkScorer();
+    assertThat(bulkScorer, instanceOf(ConstantScoreBulkScorer.class));
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, bulkScorer.score(collector, null, 0, 9000));
+    // doc 2 is excluded by matches(), so the matcher is honored even via the bulk path.
+    assertArrayEquals(new int[] {1, 3}, ArrayUtil.copyOfSubArray(collected, 0, count[0]));
+    // Confirmation runs through matches(), not the approximation's own bulk intoBitSet.
+    assertEquals(0, approximation.intoBitSetCalls);
+  }
+
   public void testDefaultBulkScorerDoesNotUseDocIdStreamForTopScores() throws IOException {
     assertDefaultBulkScorerDoesNotUseDocIdStreamForScores(ScoreMode.TOP_SCORES);
   }
@@ -570,6 +618,56 @@ public class TestBooleanScorer extends LuceneTestCase {
     TopScoreDocCollector collector = topScoreDocCollectorManager.newCollector();
     searcher.search(builder.build(), collector);
     assertEquals(totalHitsThreshold + 1, collector.totalHits);
+
+    reader.close();
+    w.close();
+    dir.close();
+  }
+
+  /**
+   * Make sure a SHOULD-only BooleanQuery with TOP_SCORES and minShouldMatch > 1 is dispatched to
+   * WandScorer
+   */
+  public void testTopScoresWithMinShouldMatchFallsBackToWand() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    for (int i = 0; i < 100; i++) {
+      Document doc = new Document();
+      doc.add(new StringField("foo", "bar", Store.NO));
+      doc.add(new StringField("foo", "baz", Store.NO));
+      doc.add(new StringField("foo", "qux", Store.NO));
+      w.addDocument(doc);
+    }
+    IndexReader reader = w.getReader();
+    IndexSearcher searcher = new IndexSearcher(reader);
+    searcher.setQueryCache(null); // so that weights are not wrapped
+    final LeafReaderContext ctx = reader.leaves().get(0);
+
+    Query query =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("foo", "bar")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "baz")), Occur.SHOULD)
+            .add(new TermQuery(new Term("foo", "qux")), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(2)
+            .build();
+
+    Weight weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.TOP_SCORES, 1);
+    ScorerSupplier ss = weight.scorerSupplier(ctx);
+    assertNull(
+        "TOP_SCORES + minShouldMatch > 1 must skip BooleanScorer and fall back to BS2/WAND",
+        ((BooleanScorerSupplier) ss).booleanScorer());
+
+    // Sanity: bulkScorer() itself returns a non-null BS2 (DefaultBulkScorer
+    // wrapping WANDScorer).
+    assertTrue(ss.bulkScorer() instanceof DefaultBulkScorer);
+
+    // Non-TOP_SCORES with minShouldMatch > 1 still uses BooleanScorer when
+    // matches are dense.
+    weight = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
+    ss = weight.scorerSupplier(ctx);
+    assertTrue(
+        "COMPLETE + minShouldMatch > 1 (dense) should still use BooleanScorer",
+        ((BooleanScorerSupplier) ss).booleanScorer() instanceof BooleanScorer);
 
     reader.close();
     w.close();

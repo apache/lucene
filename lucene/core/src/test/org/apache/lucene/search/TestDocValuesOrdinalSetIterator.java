@@ -306,6 +306,90 @@ public class TestDocValuesOrdinalSetIterator extends BaseDocValuesSkipperTests {
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, approx.advance(2048));
   }
 
+  // --- SortedDocValues: contiguous ordinal set is converted to a range ---
+
+  /**
+   * When the ordinal set happens to be a contiguous range [min, max] (no gaps), {@code
+   * forOrdinalSet} should behave as if {@code forOrdinalRange(min, max)} had been called: cheaper
+   * per-doc predicate, YES blocks short-circuit without consulting the doc values, and {@code
+   * docIDRunEnd} extends across the block instead of returning {@code doc + 1}.
+   */
+  public void testSortedDocValuesContiguousOrdinalSetUsesRangeFastPath() throws IOException {
+    // Contiguous: every ordinal in [10, 20] is present.
+    long[] contiguousOrds = {10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
+
+    SortedDocValues values = sortedDocValues();
+    DocValuesSkipper skipper = docValuesSkipper(QUERY_MIN, QUERY_MAX, true);
+    DocValuesRangeIterator iter =
+        DocValuesRangeIterator.forOrdinalSet(values, skipper, fakeTermsEnum(contiguousOrds));
+    SkipBlockRangeIterator approx = (SkipBlockRangeIterator) iter.approximation();
+
+    // YES block: predicate must not be consulted, so the doc values iterator is not advanced.
+    approx.advance(0);
+    assertEquals(SkipBlockRangeIterator.Match.YES, approx.getMatch());
+    assertTrue(iter.matches());
+    assertTrue(
+        "predicate should not have advanced doc values in a YES block when the ordinal set is"
+            + " a contiguous range",
+        values.docID() < approx.docID());
+
+    // docIDRunEnd should extend across the YES run rather than collapsing to doc + 1, matching
+    // forOrdinalRange semantics. With three skipper levels, the YES run extends to 128.
+    assertEquals(128, iter.docIDRunEnd());
+
+    // The gap-ordinal that a non-contiguous set would reject (doc 514 → ordinal 15) must now
+    // match, confirming the predicate has been widened to the [min, max] range check.
+    approx.advance(514);
+    assertEquals(SkipBlockRangeIterator.Match.MAYBE, approx.getMatch());
+    assertTrue(iter.matches());
+
+    // End-to-end correctness: the contiguous-set iterator must produce the exact same docs as
+    // a forOrdinalRange iterator over [10, 20].
+    List<Integer> rangeMatches =
+        collectMatches(
+            DocValuesRangeIterator.forOrdinalRange(
+                sortedDocValues(),
+                docValuesSkipper(QUERY_MIN, QUERY_MAX, true),
+                QUERY_MIN,
+                QUERY_MAX));
+    List<Integer> setMatches =
+        collectMatches(
+            DocValuesRangeIterator.forOrdinalSet(
+                sortedDocValues(),
+                docValuesSkipper(QUERY_MIN, QUERY_MAX, true),
+                fakeTermsEnum(contiguousOrds)));
+    assertEquals(rangeMatches, setMatches);
+  }
+
+  // --- SortedDocValues: duplicate ords from TermsEnum must not fool contiguity detection ---
+
+  /**
+   * A misbehaving (or simply unusual) {@link TermsEnum} could yield the same ord twice. The
+   * contiguity check must rely on the number of <em>distinct</em> ords, not on the call count,
+   * otherwise a set like {10, 10, 12} would be misclassified as the contiguous range [10, 12] and
+   * ordinal 11 would start matching incorrectly.
+   */
+  public void testSortedDocValuesDuplicateOrdsNotMisclassifiedAsContiguous() throws IOException {
+    // {10, 10, 12}: three next() calls, but only two distinct ords with ord 11 missing.
+    long[] ordsWithDuplicate = {10, 10, 12};
+
+    SortedDocValues values = sortedDocValues();
+    DocValuesSkipper skipper = docValuesSkipper(QUERY_MIN, QUERY_MAX, true);
+    DocValuesRangeIterator iter =
+        DocValuesRangeIterator.forOrdinalSet(values, skipper, fakeTermsEnum(ordsWithDuplicate));
+    SkipBlockRangeIterator approx = (SkipBlockRangeIterator) iter.approximation();
+
+    // Doc 0 → ord 14: outside the {10, 12} set, must not match. With a buggy contiguity check
+    // it would be treated as the range [10, 12] and still reject 14 — so we also probe an ord
+    // inside the false range (11) to make sure it is rejected.
+    approx.advance(0);
+    assertFalse(iter.matches());
+
+    // The key signal: docIDRunEnd must collapse to doc+1 because the set is not contiguous and
+    // alwaysCheckPredicate is still true.
+    assertEquals(1, iter.docIDRunEnd());
+  }
+
   // --- SortedDocValues: docIdRunEnd is conservative with ordinal sets ---
 
   public void testSortedDocValuesDocIdRunEndAlwaysDocPlusOne() throws IOException {
@@ -326,10 +410,15 @@ public class TestDocValuesOrdinalSetIterator extends BaseDocValuesSkipperTests {
     assertEquals(SkipBlockRangeIterator.Match.MAYBE, approx.getMatch());
     assertEquals(513, iter.docIDRunEnd());
 
-    // YES_IF_PRESENT block: also doc+1
+    // YES block in second repetition (dense up to DENSE_END=1088): also doc+1
     approx.advance(1024);
-    assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
+    assertEquals(SkipBlockRangeIterator.Match.YES, approx.getMatch());
     assertEquals(1025, iter.docIDRunEnd());
+
+    // YES_IF_PRESENT block: also doc+1
+    approx.advance(1088);
+    assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
+    assertEquals(1089, iter.docIDRunEnd());
   }
 
   // ==========================================================================
@@ -546,9 +635,68 @@ public class TestDocValuesOrdinalSetIterator extends BaseDocValuesSkipperTests {
     assertEquals(SkipBlockRangeIterator.Match.MAYBE, approx.getMatch());
     assertEquals(513, iter.docIDRunEnd());
 
+    // YES block in second repetition (dense up to DENSE_END=1088)
     approx.advance(1024);
-    assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
+    assertEquals(SkipBlockRangeIterator.Match.YES, approx.getMatch());
     assertEquals(1025, iter.docIDRunEnd());
+
+    // YES_IF_PRESENT block
+    approx.advance(1088);
+    assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
+    assertEquals(1089, iter.docIDRunEnd());
+  }
+
+  // --- SortedSetDocValues: contiguous ordinal set is converted to a range ---
+
+  /**
+   * Multi-valued counterpart of {@link #testSortedDocValuesContiguousOrdinalSetUsesRangeFastPath}.
+   * When the TermsEnum yields a contiguous run of ordinals, {@code forOrdinalSet} must behave like
+   * {@code forOrdinalRange}: YES blocks short-circuit, {@code docIDRunEnd} extends across the
+   * block, and the previously-gap ordinal is accepted.
+   */
+  public void testSortedSetContiguousOrdinalSetUsesRangeFastPath() throws IOException {
+    long[] contiguousOrds = {10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
+
+    SortedSetDocValues values = sortedSetDocValues();
+    DocValuesSkipper skipper = docValuesSkipper(QUERY_MIN, QUERY_MAX, true);
+    DocValuesRangeIterator iter =
+        DocValuesRangeIterator.forOrdinalSet(values, skipper, fakeTermsEnum(contiguousOrds));
+    SkipBlockRangeIterator approx = (SkipBlockRangeIterator) iter.approximation();
+
+    // YES block: predicate must not be consulted, so the doc values iterator is not advanced.
+    approx.advance(0);
+    assertEquals(SkipBlockRangeIterator.Match.YES, approx.getMatch());
+    assertTrue(iter.matches());
+    assertTrue(
+        "predicate should not have advanced doc values in a YES block when the ordinal set is"
+            + " a contiguous range",
+        values.docID() < approx.docID());
+
+    // docIDRunEnd should extend across the YES run rather than collapsing to doc + 1.
+    assertEquals(128, iter.docIDRunEnd());
+
+    // The gap-ordinal that a non-contiguous set would reject (doc 514 → ords [9, 15]) must now
+    // match, confirming the predicate has been widened to the [min, max] range check.
+    approx.advance(514);
+    assertEquals(SkipBlockRangeIterator.Match.MAYBE, approx.getMatch());
+    assertTrue(iter.matches());
+
+    // End-to-end correctness: the contiguous-set iterator must produce the exact same docs as
+    // a forOrdinalRange iterator over [10, 20].
+    List<Integer> rangeMatches =
+        collectMatches(
+            DocValuesRangeIterator.forOrdinalRange(
+                sortedSetDocValues(),
+                docValuesSkipper(QUERY_MIN, QUERY_MAX, true),
+                QUERY_MIN,
+                QUERY_MAX));
+    List<Integer> setMatches =
+        collectMatches(
+            DocValuesRangeIterator.forOrdinalSet(
+                sortedSetDocValues(),
+                docValuesSkipper(QUERY_MIN, QUERY_MAX, true),
+                fakeTermsEnum(contiguousOrds)));
+    assertEquals(rangeMatches, setMatches);
   }
 
   // --- SortedSetDocValues: YES_IF_PRESENT ---
@@ -558,12 +706,12 @@ public class TestDocValuesOrdinalSetIterator extends BaseDocValuesSkipperTests {
     SkipBlockRangeIterator approx = (SkipBlockRangeIterator) iter.approximation();
 
     // Sparse region: even doc has value, odd doc does not
-    approx.advance(1024);
+    approx.advance(1088);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
     // Ords [10, 20], 10 in set → match
     assertTrue(iter.matches());
 
-    approx.advance(1025);
+    approx.advance(1089);
     // Odd doc has no value → no match
     assertFalse(iter.matches());
   }

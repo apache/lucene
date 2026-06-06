@@ -601,8 +601,6 @@ public class LRUQueryCache implements QueryCache, Accountable {
     scorer.score(
         new LeafCollector() {
 
-          private int[] buffer = null;
-
           @Override
           public void setScorer(Scorable scorer) {}
 
@@ -617,15 +615,8 @@ public class LRUQueryCache implements QueryCache, Accountable {
           }
 
           @Override
-          public void collect(DocIdStream stream) {
-            if (buffer == null) {
-              buffer = new int[128];
-            }
-            for (int c = stream.intoArray(buffer); c != 0; c = stream.intoArray(buffer)) {
-              for (int i = 0; i < c; ++i) {
-                builder.add(buffer[i]);
-              }
-            }
+          public void collect(DocIdStream stream) throws IOException {
+            stream.forEach(builder::add);
           }
         },
         null,

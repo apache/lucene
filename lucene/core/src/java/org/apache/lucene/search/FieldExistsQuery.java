@@ -212,8 +212,8 @@ public class FieldExistsQuery extends Query {
         if (iterator == null) {
           return null;
         }
-        final var scorer = new ConstantScoreScorer(score(), scoreMode, iterator);
-        return new DefaultScorerSupplier(scorer);
+        return ConstantScoreScorerSupplier.fromIterator(
+            iterator, score(), scoreMode, context.reader().maxDoc());
       }
 
       @Override
