@@ -23,6 +23,7 @@ import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Tests {@link DocValuesRangeIterator#forOrdinalRange} for both single-valued ({@link
@@ -49,6 +50,30 @@ public class TestDocValuesOrdinalRangeIterator extends BaseDocValuesSkipperTests
       }
     }
     return matches;
+  }
+
+  /**
+   * Drives {@link DocValuesRangeIterator#intoBitSet} over the whole doc space and asserts the bulk
+   * result matches the documents a per-doc {@link TwoPhaseIterator#matches()} linear scan would
+   * produce (the {@code expected} list, computed independently from the mock's ordinals).
+   */
+  private static void assertIntoBitSetMatchesLinearScan(
+      DocValuesRangeIterator iter, List<Integer> expectedMatches) throws IOException {
+    DocIdSetIterator approx = iter.approximation();
+    assertEquals(0, approx.nextDoc());
+
+    FixedBitSet actual = new FixedBitSet(2048);
+    iter.intoBitSet(2048, actual, 0);
+    // intoBitSet must leave the approximation on the first doc >= upTo (exhausted here).
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, approx.docID());
+
+    FixedBitSet expected = new FixedBitSet(2048);
+    for (int doc : expectedMatches) {
+      expected.set(doc);
+    }
+    assertEquals(expected.cardinality(), actual.cardinality());
+    expected.xor(actual);
+    assertEquals(0, expected.cardinality());
   }
 
   // ==========================================================================
@@ -234,6 +259,13 @@ public class TestDocValuesOrdinalRangeIterator extends BaseDocValuesSkipperTests
     approx.advance(1088);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
     assertEquals(1089, iter.docIDRunEnd());
+  }
+
+  // --- SortedDocValues: intoBitSet bulk evaluation ---
+
+  public void testSortedDocValuesIntoBitSetMatchesLinearScan() throws IOException {
+    assertIntoBitSetMatchesLinearScan(
+        createSortedDocValuesIterator(true), expectedSingleOrdMatches());
   }
 
   // ==========================================================================
@@ -502,5 +534,12 @@ public class TestDocValuesOrdinalRangeIterator extends BaseDocValuesSkipperTests
     approx.advance(1088);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
     assertEquals(1089, iter.docIDRunEnd());
+  }
+
+  // --- SortedSetDocValues: intoBitSet bulk evaluation ---
+
+  public void testSortedSetDocValuesIntoBitSetMatchesLinearScan() throws IOException {
+    assertIntoBitSetMatchesLinearScan(
+        createSortedSetDocValuesIterator(true), expectedMultiOrdMatches());
   }
 }
