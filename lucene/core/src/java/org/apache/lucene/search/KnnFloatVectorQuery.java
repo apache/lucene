@@ -22,10 +22,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.RotationAwareKnnVectorsFormat;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -33,7 +31,6 @@ import org.apache.lucene.search.knn.KnnCollectorManager;
 import org.apache.lucene.search.knn.KnnSearchStrategy;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.VectorUtil;
-import org.apache.lucene.util.quantization.HadamardRotation;
 
 /**
  * Uses {@link KnnVectorsReader#search(String, float[], KnnCollector, AcceptDocs)} to perform
@@ -98,26 +95,6 @@ public class KnnFloatVectorQuery extends AbstractKnnVectorQuery {
       String field, float[] target, int k, Query filter, KnnSearchStrategy searchStrategy) {
     super(field, k, filter, searchStrategy);
     this.target = VectorUtil.checkFinite(Objects.requireNonNull(target, "target"));
-    this.targetPreRotated = false;
-  }
-
-  private boolean targetPreRotated;
-
-  @Override
-  public Query rewrite(IndexSearcher indexSearcher) throws IOException {
-    if (targetPreRotated == false) {
-      FieldInfo fi =
-          FieldInfos.getMergedFieldInfos(indexSearcher.getIndexReader()).fieldInfo(field);
-      if (fi != null
-          && fi.getVectorDimension() == target.length
-          && "true".equals(fi.getAttribute(RotationAwareKnnVectorsFormat.ROTATION_ENABLED_KEY))) {
-        float[] rotated = new float[target.length];
-        HadamardRotation.forDimension(fi.getVectorDimension()).rotate(target, rotated);
-        System.arraycopy(rotated, 0, target, 0, target.length);
-        targetPreRotated = true;
-      }
-    }
-    return super.rewrite(indexSearcher);
   }
 
   @Override

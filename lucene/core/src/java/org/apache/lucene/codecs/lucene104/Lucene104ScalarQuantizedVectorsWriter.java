@@ -335,8 +335,6 @@ public class Lucene104ScalarQuantizedVectorsWriter extends FlatVectorsWriter {
       segmentWriteState.infoStream.message(
           QUANTIZED_VECTOR_COMPONENT, "Vectors' count:" + vectorCount);
     }
-    // mergeState.knnVectorsReaders are merge instances that return rotated vectors
-    // (via MergeReader.getFloatVectorValues), so no additional rotation needed here.
     FloatVectorValues floatVectorValues =
         MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
     if (fieldInfo.getVectorSimilarityFunction() == COSINE) {

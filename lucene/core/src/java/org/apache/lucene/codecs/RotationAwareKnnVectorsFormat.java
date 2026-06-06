@@ -18,8 +18,10 @@ package org.apache.lucene.codecs;
 
 import java.io.IOException;
 import java.util.Map;
+import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.MergeState;
@@ -51,14 +53,22 @@ import org.apache.lucene.util.quantization.HadamardRotation;
  */
 public class RotationAwareKnnVectorsFormat extends KnnVectorsFormat {
 
-  /** FieldInfo attribute key signaling rotation is enabled. Checked by KnnFloatVectorQuery. */
+  /** FieldInfo attribute key signaling rotation is enabled. */
   public static final String ROTATION_ENABLED_KEY = "Lucene104SQVecRotation";
 
   private final KnnVectorsFormat delegate;
 
+  /**
+   * No-arg constructor for SPI registration. Creates a default delegate using {@link
+   * Lucene104HnswScalarQuantizedVectorsFormat} with default parameters.
+   */
+  public RotationAwareKnnVectorsFormat() {
+    this(new Lucene104HnswScalarQuantizedVectorsFormat());
+  }
+
   /** Wraps the given delegate format with rotation preconditioning. */
   public RotationAwareKnnVectorsFormat(KnnVectorsFormat delegate) {
-    super(delegate.getName());
+    super("RotationAwareKnnVectorsFormat");
     this.delegate = delegate;
   }
 
@@ -69,7 +79,7 @@ public class RotationAwareKnnVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new RotatingReader(delegate.fieldsReader(state));
+    return new RotatingReader(delegate.fieldsReader(state), state.fieldInfos);
   }
 
   @Override
@@ -166,15 +176,23 @@ public class RotationAwareKnnVectorsFormat extends KnnVectorsFormat {
   }
 
   /**
-   * Reader that inverse-rotates stored float vectors for external callers, but exposes rotated
-   * vectors during merge so the delegate's merge runs entirely in rotated space.
+   * Reader that inverse-rotates stored float vectors for external callers, rotates query vectors
+   * before search/scoring, and exposes raw rotated vectors during merge so the delegate's merge
+   * runs entirely in rotated space.
    */
   private static final class RotatingReader extends KnnVectorsReader {
 
     private final KnnVectorsReader delegateReader;
+    private final FieldInfos fieldInfos;
 
-    RotatingReader(KnnVectorsReader delegateReader) {
+    RotatingReader(KnnVectorsReader delegateReader, FieldInfos fieldInfos) {
       this.delegateReader = delegateReader;
+      this.fieldInfos = fieldInfos;
+    }
+
+    @Override
+    public KnnVectorsReader unwrapReaderForField(String field) {
+      return delegateReader.unwrapReaderForField(field);
     }
 
     @Override
@@ -188,8 +206,11 @@ public class RotationAwareKnnVectorsFormat extends KnnVectorsFormat {
       if (values == null) {
         return null;
       }
-      HadamardRotation rotation = HadamardRotation.forDimension(values.dimension());
-      return new InverseRotatedFloatVectorValues(values, rotation);
+      if (isRotationEnabled(field)) {
+        HadamardRotation rotation = HadamardRotation.forDimension(values.dimension());
+        return new InverseRotatedFloatVectorValues(values, rotation);
+      }
+      return values;
     }
 
     @Override
@@ -201,7 +222,8 @@ public class RotationAwareKnnVectorsFormat extends KnnVectorsFormat {
     public void search(
         String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
         throws IOException {
-      delegateReader.search(field, target, knnCollector, acceptDocs);
+      float[] searchTarget = maybeRotateTarget(field, target);
+      delegateReader.search(field, searchTarget, knnCollector, acceptDocs);
     }
 
     @Override
@@ -226,6 +248,20 @@ public class RotationAwareKnnVectorsFormat extends KnnVectorsFormat {
       // Merge operates in rotated space — return the delegate directly so vectors are not
       // inverse-rotated. The merge writer will see already-rotated vectors and write them as-is.
       return delegateReader.getMergeInstance();
+    }
+
+    private boolean isRotationEnabled(String field) {
+      FieldInfo info = fieldInfos.fieldInfo(field);
+      return info != null && "true".equals(info.getAttribute(ROTATION_ENABLED_KEY));
+    }
+
+    private float[] maybeRotateTarget(String field, float[] target) {
+      if (target != null && isRotationEnabled(field)) {
+        float[] rotated = new float[target.length];
+        HadamardRotation.forDimension(target.length).rotate(target, rotated);
+        return rotated;
+      }
+      return target;
     }
   }
 
@@ -279,14 +315,20 @@ public class RotationAwareKnnVectorsFormat extends KnnVectorsFormat {
 
     @Override
     public VectorScorer scorer(float[] target) throws IOException {
-      // The target arrives already rotated (from KnnFloatVectorQuery.rewrite()), and the delegate
-      // stores rotated vectors — delegate directly for correct rotated-space comparison.
-      return delegate.scorer(target);
+      // Target arrives in original (unrotated) space; rotate before delegating to scorer
+      // that operates in rotated space.
+      float[] rotated = new float[target.length];
+      rotation.rotate(target, rotated);
+      return delegate.scorer(rotated);
     }
 
     @Override
     public VectorScorer rescorer(float[] target) throws IOException {
-      return delegate.rescorer(target);
+      // Target arrives in original (unrotated) space; rotate before delegating to rescorer
+      // that operates in rotated space.
+      float[] rotated = new float[target.length];
+      rotation.rotate(target, rotated);
+      return delegate.rescorer(rotated);
     }
   }
 }

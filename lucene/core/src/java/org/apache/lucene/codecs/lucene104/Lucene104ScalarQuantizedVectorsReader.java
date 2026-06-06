@@ -29,8 +29,6 @@ import java.util.Objects;
 import java.util.stream.Stream;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnVectorsReader;
-import org.apache.lucene.codecs.RotationAwareKnnVectorsFormat;
-import org.apache.lucene.codecs.RotationAwareKnnVectorsFormat.InverseRotatedFloatVectorValues;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
@@ -62,7 +60,6 @@ import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.hnsw.CloseableRandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
-import org.apache.lucene.util.quantization.HadamardRotation;
 import org.apache.lucene.util.quantization.OptimizedScalarQuantizer;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
 import org.apache.lucene.util.quantization.QuantizedByteVectorValues.ScalarEncoding;
@@ -84,8 +81,6 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   private final IndexInput quantizedVectorData;
   private final FlatVectorsReader rawVectorsReader;
   private final Lucene104ScalarQuantizedVectorScorer vectorScorer;
-  private final FieldInfos fieldInfos;
-
   public static final int EXHAUSTIVE_BULK_SCORE_ORDS = 64;
 
   public Lucene104ScalarQuantizedVectorsReader(
@@ -93,6 +88,8 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       FlatVectorsReader rawVectorsReader,
       Lucene104ScalarQuantizedVectorScorer vectorsScorer)
       throws IOException {
+    // Quantized vectors are accessed randomly from their node ID stored in the HNSW
+    // graph.
     this(state, rawVectorsReader, vectorsScorer, DataAccessHint.RANDOM);
   }
 
@@ -104,7 +101,6 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
       throws IOException {
     this.vectorScorer = vectorsScorer;
     this.rawVectorsReader = rawVectorsReader;
-    this.fieldInfos = state.fieldInfos;
     int versionMeta = -1;
     String metaFileName =
         IndexFileNames.segmentFileName(
@@ -201,7 +197,6 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     if (fi == null) {
       return null;
     }
-    // Query vector rotation is handled upstream in KnnFloatVectorQuery, not here.
     return vectorScorer.getRandomVectorScorer(
         fi.similarityFunction,
         OffHeapScalarQuantizedVectorValues.load(
@@ -249,12 +244,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
 
     FloatVectorValues rawFloatVectorValues = rawVectorsReader.getFloatVectorValues(field);
 
-    if (isRotationEnabled(field) && rawFloatVectorValues != null) {
-      HadamardRotation rotation = HadamardRotation.forDimension(fi.dimension);
-      rawFloatVectorValues = new InverseRotatedFloatVectorValues(rawFloatVectorValues, rotation);
-    }
-
-    if (rawFloatVectorValues == null || rawFloatVectorValues.size() == 0) {
+    if (rawFloatVectorValues.size() == 0) {
       return OffHeapScalarQuantizedFloatVectorValues.load(
           fi.ordToDocDISIReaderConfiguration,
           fi.dimension,
@@ -474,7 +464,7 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
               fieldInfo.getVectorSimilarityFunction(), vectorValues);
       return CloseableRandomVectorScorerSupplier.create(supplier, vectorValues.size(), () -> {});
     }
-    FloatVectorValues floatVectorValues = rawVectorsReader.getFloatVectorValues(fieldInfo.name);
+    FloatVectorValues floatVectorValues = getFloatVectorValues(fieldInfo.name);
     OptimizedScalarQuantizer quantizer =
         new OptimizedScalarQuantizer(fieldInfo.getVectorSimilarityFunction());
     String tempScoreQuantizedVectorName = null;
@@ -680,80 +670,5 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
     QuantizedByteVectorValues getQuantizedVectorValues() throws IOException {
       return quantizedVectorValues;
     }
-  }
-
-  @Override
-  public FlatVectorsReader getMergeInstance() throws IOException {
-    return new MergeReader();
-  }
-
-  /** Merge-only view that skips inverse-rotation so merge operates in rotated space. */
-  private final class MergeReader extends FlatVectorsReader {
-
-    MergeReader() {}
-
-    @Override
-    public FloatVectorValues getFloatVectorValues(String field) throws IOException {
-      FieldEntry fi = fields.get(field);
-      if (fi == null) {
-        return null;
-      }
-      return rawVectorsReader.getFloatVectorValues(field);
-    }
-
-    @Override
-    public FlatVectorsScorer getFlatVectorScorer(String field) throws IOException {
-      return Lucene104ScalarQuantizedVectorsReader.this.getFlatVectorScorer(field);
-    }
-
-    @Override
-    public RandomVectorScorer getRandomVectorScorer(String field, float[] target)
-        throws IOException {
-      return Lucene104ScalarQuantizedVectorsReader.this.getRandomVectorScorer(field, target);
-    }
-
-    @Override
-    public RandomVectorScorer getRandomVectorScorer(String field, byte[] target)
-        throws IOException {
-      return Lucene104ScalarQuantizedVectorsReader.this.getRandomVectorScorer(field, target);
-    }
-
-    @Override
-    public ByteVectorValues getByteVectorValues(String field) throws IOException {
-      return Lucene104ScalarQuantizedVectorsReader.this.getByteVectorValues(field);
-    }
-
-    @Override
-    public void checkIntegrity() throws IOException {
-      Lucene104ScalarQuantizedVectorsReader.this.checkIntegrity();
-    }
-
-    @Override
-    public void close() throws IOException {}
-
-    @Override
-    public long ramBytesUsed() {
-      return Lucene104ScalarQuantizedVectorsReader.this.ramBytesUsed();
-    }
-
-    @Override
-    public void search(
-        String field, float[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
-        throws IOException {
-      Lucene104ScalarQuantizedVectorsReader.this.search(field, target, knnCollector, acceptDocs);
-    }
-
-    @Override
-    public void search(
-        String field, byte[] target, KnnCollector knnCollector, AcceptDocs acceptDocs)
-        throws IOException {
-      Lucene104ScalarQuantizedVectorsReader.this.search(field, target, knnCollector, acceptDocs);
-    }
-  }
-
-  private boolean isRotationEnabled(String field) {
-    FieldInfo info = fieldInfos.fieldInfo(field);
-    return info != null
-        && "true".equals(info.getAttribute(RotationAwareKnnVectorsFormat.ROTATION_ENABLED_KEY));
   }
 }
