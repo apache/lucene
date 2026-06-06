@@ -102,6 +102,13 @@ public class BlockGroupingCollectorManager<T>
       Sort withinGroupSort,
       int withinGroupOffset,
       int maxDocsPerGroup) {
+    if (groupSort == null) {
+      throw new IllegalArgumentException("groupSort must not be null");
+    }
+    if (withinGroupSort == null) {
+      throw new IllegalArgumentException("withinGroupSort must not be null");
+    }
+
     if (groupOffset < 0) {
       throw new IllegalArgumentException("groupOffset must be >= 0 (got " + groupOffset + ")");
     }
@@ -120,6 +127,9 @@ public class BlockGroupingCollectorManager<T>
           "maxDocsPerGroup must be >= 1 (got " + maxDocsPerGroup + ")");
     }
 
+    if (groupSort.getSort().length == 0) {
+      throw new IllegalArgumentException("Sort must contain at least one field");
+    }
     if (withinGroupSort.getSort().length == 0) {
       throw new IllegalArgumentException("Sort must contain at least one field");
     }
@@ -136,7 +146,8 @@ public class BlockGroupingCollectorManager<T>
 
   @Override
   public BlockGroupingCollector newCollector() throws IOException {
-    return new BlockGroupingCollector(groupSort, topNGroups, needsScores, lastDocPerGroup);
+    return new BlockGroupingCollector(
+        groupSort, groupOffset + topNGroups, needsScores, lastDocPerGroup);
   }
 
   @SuppressWarnings("unchecked")

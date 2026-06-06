@@ -36,11 +36,10 @@ import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.mutable.MutableValueStr;
 
-public class TestGroupingSearch extends LuceneTestCase {
+public class TestGroupingSearch extends AbstractGroupingTestCase {
 
   // Tests some very basic usages...
   public void testBasic() throws Exception {
@@ -115,7 +114,8 @@ public class TestGroupingSearch extends LuceneTestCase {
 
     w.addDocument(doc);
 
-    IndexSearcher indexSearcher = newSearcher(w.getReader());
+    IndexSearcher indexSearcher =
+        newIndexSearcher(w.getReader(), new TermQuery(new Term("groupend", "x")));
     indexSearcher.setSimilarity(new BM25Similarity());
     w.close();
 
