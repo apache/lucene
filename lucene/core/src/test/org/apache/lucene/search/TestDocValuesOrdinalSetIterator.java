@@ -36,7 +36,7 @@ import org.apache.lucene.util.IOBooleanSupplier;
  *
  * <p>Unlike the ordinal range tests, the ordinal set has a gap: ordinal 15 (the midpoint of [10,
  * 20]) is excluded. This means docs with ordinal 15 are within the bounding range but NOT in the
- * matching set, exercising the predicate-always-checked behavior of {@code alwaysCheckPredicate}.
+ * matching set, exercising the per-doc predicate confirmation that arbitrary ordinal sets require.
  */
 public class TestDocValuesOrdinalSetIterator extends BaseDocValuesSkipperTests {
 
@@ -386,7 +386,7 @@ public class TestDocValuesOrdinalSetIterator extends BaseDocValuesSkipperTests {
     assertFalse(iter.matches());
 
     // The key signal: docIDRunEnd must collapse to doc+1 because the set is not contiguous and
-    // alwaysCheckPredicate is still true.
+    // every doc still needs per-doc predicate confirmation.
     assertEquals(1, iter.docIDRunEnd());
   }
 
