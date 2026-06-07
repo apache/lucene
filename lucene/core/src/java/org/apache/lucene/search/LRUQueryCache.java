@@ -1060,6 +1060,35 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     }
 
     /**
+     * Remove all cache entries whose segment cache key is in {@code keysToRemove} or whose query is
+     * in {@code queriesToRemove}. Runs under the partition write lock so that iteration of the
+     * underlying {@code HashMap} does not race with concurrent mutation.
+     *
+     * <p>Note: {@link #remove(QueryCacheKey, long)} re-acquires the write lock, which is safe
+     * because {@link java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock} is reentrant.
+     * This matches the pattern used by {@link #evictIfNecessary()}.
+     */
+    void removeMatching(Set<IndexReader.CacheKey> keysToRemove, Set<Query> queriesToRemove) {
+      writeLock.lock();
+      try {
+        List<QueryCacheKey> toRemove = new ArrayList<>();
+        for (QueryCacheKey queryCacheKey : cache.keySet()) {
+          boolean shouldEvict =
+              (queryCacheKey.cacheKey != null && keysToRemove.contains(queryCacheKey.cacheKey))
+                  || (queryCacheKey.query != null && queriesToRemove.contains(queryCacheKey.query));
+          if (shouldEvict) {
+            toRemove.add(queryCacheKey);
+          }
+        }
+        for (QueryCacheKey queryCacheKey : toRemove) {
+          remove(queryCacheKey, -1);
+        }
+      } finally {
+        writeLock.unlock();
+      }
+    }
+
+    /**
      * Remove a cache entry. If {@code knownQueryBytes} is non-negative, it is used as the query RAM
      * cost (for cases where the uniqueCacheKeys entry was already removed externally, e.g. during
      * eviction). Otherwise the query bytes are looked up from uniqueCacheKeys.
@@ -1290,14 +1319,8 @@ public class LRUQueryCache implements QueryCache, Accountable, Closeable {
     keysToClean.removeAll(keysToCleanCopy);
     queriesToClean.removeAll(queriesToCleanCopy);
 
-    for (QueryCacheKey queryCacheKey : keys()) {
-      boolean shouldEvict =
-          (queryCacheKey.cacheKey != null && keysToCleanCopy.contains(queryCacheKey.cacheKey))
-              || (queryCacheKey.query != null && queriesToCleanCopy.contains(queryCacheKey.query));
-      if (shouldEvict) {
-        int partitionNumber = getPartitionNumber(queryCacheKey);
-        lruQueryCachePartition[partitionNumber].remove(queryCacheKey);
-      }
+    for (int i = 0; i < numberOfPartitions; i++) {
+      lruQueryCachePartition[i].removeMatching(keysToCleanCopy, queriesToCleanCopy);
     }
   }
 }
