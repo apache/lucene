@@ -300,7 +300,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#16210: Fix `ControlledRealTimeReopenThread.close()` to wake waiters on interrupt. (Prithvi S)
 
 Other
 ---------------------

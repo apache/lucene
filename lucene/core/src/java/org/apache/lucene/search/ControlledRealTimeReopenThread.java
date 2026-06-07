@@ -118,14 +118,6 @@ public class ControlledRealTimeReopenThread<T> extends Thread implements Closeab
     } catch (InterruptedException ie) {
       throw new ThreadInterruptedException(ie);
     }
-
-    // Max it out so any waiting search threads will return:
-    searchingGen = Long.MAX_VALUE;
-
-    // Wake up waiters.
-    synchronized (waitingRoom) {
-      waitingRoom.notifyAll();
-    }
   }
 
   /**
@@ -188,32 +180,39 @@ public class ControlledRealTimeReopenThread<T> extends Thread implements Closeab
 
   @Override
   public void run() {
-    long lastReopenStartNS = System.nanoTime();
+    try {
+      long lastReopenStartNS = System.nanoTime();
 
-    while (!finish) {
+      while (!finish) {
 
-      // TODO: try to guesstimate how long reopen might take based on past data?
+        // TODO: try to guesstimate how long reopen might take based on past data?
 
-      // True if we have someone waiting for reopened searcher:
-      boolean hasWaiting = waitingGen.get() > searchingGen;
-      final long nextReopenStartNS =
-          lastReopenStartNS + (hasWaiting ? targetMinStaleNS : targetMaxStaleNS);
+        // True if we have someone waiting for reopened searcher:
+        boolean hasWaiting = waitingGen.get() > searchingGen;
+        final long nextReopenStartNS =
+            lastReopenStartNS + (hasWaiting ? targetMinStaleNS : targetMaxStaleNS);
 
-      final long sleepNS = nextReopenStartNS - System.nanoTime();
-      if (sleepNS > 0) {
-        try {
-          reloadRequests.tryAcquire(sleepNS, NANOSECONDS);
-          reloadRequests.drainPermits();
-        } catch (InterruptedException e) {
-          throw new ThreadInterruptedException(e);
+        final long sleepNS = nextReopenStartNS - System.nanoTime();
+        if (sleepNS > 0) {
+          try {
+            reloadRequests.tryAcquire(sleepNS, NANOSECONDS);
+            reloadRequests.drainPermits();
+          } catch (InterruptedException e) {
+            throw new ThreadInterruptedException(e);
+          }
+        } else {
+          lastReopenStartNS = System.nanoTime();
+          try {
+            manager.maybeRefreshBlocking();
+          } catch (IOException ioe) {
+            throw new RuntimeException(ioe);
+          }
         }
-      } else {
-        lastReopenStartNS = System.nanoTime();
-        try {
-          manager.maybeRefreshBlocking();
-        } catch (IOException ioe) {
-          throw new RuntimeException(ioe);
-        }
+      }
+    } finally {
+      synchronized (waitingRoom) {
+        searchingGen = Long.MAX_VALUE;
+        waitingRoom.notifyAll();
       }
     }
   }
