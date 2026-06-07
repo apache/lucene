@@ -347,6 +347,8 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16210: Fix `ControlledRealTimeReopenThread.close()` to wake waiters on interrupt. (Prithvi S)
+
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
 
 * GITHUB#16295: SingletonSortedNumericDocValues now delegates rangeIntoBitSet
