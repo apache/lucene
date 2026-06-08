@@ -174,8 +174,9 @@ public class VectorUpdateBenchmark {
       for (int i = 0; i < numDocs; i++) {
         w.addDocument(makeDoc(i, vectorFor(i)));
       }
-      w.commit();
-      w.forceMerge(1); // one clean base segment so each shot starts from a single base generation
+      // NOTE: intentionally NOT forceMerge(1). At high numDocs a single forced HNSW graph build
+      // dominates setup and exceeds JMH's iteration timeout. The natural multi-segment layout is
+      // cheaper to build and more representative; both benchmark methods see the same base.
       w.commit();
     }
     TEMPLATES.put(key, path);
