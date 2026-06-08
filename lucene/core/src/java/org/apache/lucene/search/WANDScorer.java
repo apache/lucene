@@ -566,17 +566,20 @@ final class WANDScorer extends Scorer {
 
   @Override
   public int advanceShallow(int target) throws IOException {
-    // Propagate to improve score bounds
+    // Propagate to sub-scorers. Scorers past target constrain the boundary to docID - 1.
+    int newUpTo = DocIdSetIterator.NO_MORE_DOCS;
     for (Scorer scorer : allScorers) {
-      if (scorer.docID() < target) {
-        scorer.advanceShallow(target);
+      if (scorer.docID() <= target) {
+        newUpTo = Math.min(newUpTo, scorer.advanceShallow(target));
+      } else if (scorer.docID() != DocIdSetIterator.NO_MORE_DOCS) {
+        newUpTo = Math.min(newUpTo, scorer.docID() - 1);
       }
     }
     if (target <= upTo) {
+      // Within current block, return existing boundary. Sub-scorers already propagated.
       return upTo;
     }
-    // TODO: implement
-    return DocIdSetIterator.NO_MORE_DOCS;
+    return newUpTo;
   }
 
   @Override
