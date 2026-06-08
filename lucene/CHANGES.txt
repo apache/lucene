@@ -573,6 +573,8 @@ Optimizations
 
 * GITHUB#16228: Reuse scratch int[] for ordinal translation. (Tim Brooks)
 
+* GITHUB#16220: Implement WANDScorer.advanceShallow() to enable block-max optimizations when nested in conjunctions. (Prithvi S)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
