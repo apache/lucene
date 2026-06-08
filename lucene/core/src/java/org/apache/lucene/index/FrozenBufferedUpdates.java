@@ -64,6 +64,7 @@ final class FrozenBufferedUpdates {
 
   private final ReentrantLock applyLock = new ReentrantLock();
   private final Map<String, FieldUpdatesBuffer> fieldUpdates;
+  private final Map<String, FieldUpdatesBuffer> vectorUpdates;
 
   /** How many total documents were deleted/updated. */
   public long totalDelCount;
@@ -104,6 +105,8 @@ final class FrozenBufferedUpdates {
     // updated.
     updates.fieldUpdates.values().forEach(FieldUpdatesBuffer::finish);
     this.fieldUpdates = Map.copyOf(updates.fieldUpdates);
+    updates.vectorUpdates.values().forEach(FieldUpdatesBuffer::finish);
+    this.vectorUpdates = Map.copyOf(updates.vectorUpdates);
     this.fieldUpdatesCount = updates.numFieldUpdates.get();
 
     bytesUsed =
@@ -171,6 +174,7 @@ final class FrozenBufferedUpdates {
     totalDelCount += applyTermDeletes(segStates);
     totalDelCount += applyQueryDeletes(segStates);
     totalDelCount += applyDocValuesUpdates(segStates);
+    totalDelCount += applyVectorUpdates(segStates);
 
     return totalDelCount;
   }
@@ -347,6 +351,151 @@ final class FrozenBufferedUpdates {
       if (update.any()) {
         update.finish();
         segState.rld.addDVUpdate(update);
+      }
+    }
+
+    return updateCount;
+  }
+
+  private long applyVectorUpdates(BufferedUpdatesStream.SegmentState[] segStates)
+      throws IOException {
+
+    if (vectorUpdates.isEmpty()) {
+      return 0;
+    }
+
+    long startNS = System.nanoTime();
+    long updateCount = 0;
+
+    for (BufferedUpdatesStream.SegmentState segState : segStates) {
+      if (delGen < segState.delGen) {
+        // segment is newer than this deletes packet
+        continue;
+      }
+      if (segState.rld.refCount() == 1) {
+        // This means we are the only remaining reference to this segment, meaning
+        // it was merged away while we were running, so we can safely skip running
+        // because we will run on the newly merged segment next:
+        continue;
+      }
+      final boolean isSegmentPrivateDeletes = privateSegment != null;
+      updateCount += applyVectorUpdates(segState, vectorUpdates, delGen, isSegmentPrivateDeletes);
+    }
+
+    if (infoStream.isEnabled("BD")) {
+      infoStream.message(
+          "BD",
+          String.format(
+              Locale.ROOT,
+              "applyVectorUpdates %.1f msec for %d segments; %d new updates",
+              (System.nanoTime() - startNS) / (double) TimeUnit.MILLISECONDS.toNanos(1),
+              segStates.length,
+              updateCount));
+    }
+
+    return updateCount;
+  }
+
+  private static long applyVectorUpdates(
+      BufferedUpdatesStream.SegmentState segState,
+      Map<String, FieldUpdatesBuffer> updates,
+      long delGen,
+      boolean segmentPrivateDeletes)
+      throws IOException {
+
+    long updateCount = 0;
+    final List<KnnVectorFieldUpdates> resolvedUpdates = new ArrayList<>();
+    for (Map.Entry<String, FieldUpdatesBuffer> fieldUpdate : updates.entrySet()) {
+      String updateField = fieldUpdate.getKey();
+      FieldInfo fieldInfo = segState.reader.getFieldInfos().fieldInfo(updateField);
+      if (fieldInfo == null || fieldInfo.hasVectorValues() == false) {
+        // field doesn't exist (with vectors) in this segment
+        continue;
+      }
+      final int dimension = fieldInfo.getVectorDimension();
+      final VectorEncoding encoding = fieldInfo.getVectorEncoding();
+      KnnVectorFieldUpdates vectorUpdates = null;
+      FieldUpdatesBuffer value = fieldUpdate.getValue();
+      FieldUpdatesBuffer.BufferedUpdateIterator iterator = value.iterator();
+      FieldUpdatesBuffer.BufferedUpdate bufferedUpdate;
+      TermDocsIterator termDocsIterator =
+          new TermDocsIterator(segState.reader, iterator.isSortedTerms());
+      while ((bufferedUpdate = iterator.next()) != null) {
+        final DocIdSetIterator docIdSetIterator =
+            termDocsIterator.nextTerm(bufferedUpdate.termField, bufferedUpdate.termValue);
+        if (docIdSetIterator == null) {
+          continue;
+        }
+        final int limit;
+        if (delGen == segState.delGen) {
+          assert segmentPrivateDeletes;
+          limit = bufferedUpdate.docUpTo;
+        } else {
+          limit = Integer.MAX_VALUE;
+        }
+        // decode the buffered vector bytes into a typed vector value
+        final float[] floatValue;
+        final byte[] byteValue;
+        if (encoding == VectorEncoding.FLOAT32) {
+          floatValue = KnnVectorUpdate.decodeFloatValue(bufferedUpdate.binaryValue, dimension);
+          byteValue = null;
+        } else {
+          floatValue = null;
+          byteValue = KnnVectorUpdate.decodeByteValue(bufferedUpdate.binaryValue, dimension);
+        }
+        if (vectorUpdates == null) {
+          if (encoding == VectorEncoding.FLOAT32) {
+            vectorUpdates =
+                new KnnVectorFieldUpdates.FloatKnnVectorFieldUpdates(
+                    segState.reader.maxDoc(), delGen, updateField, dimension);
+          } else {
+            vectorUpdates =
+                new KnnVectorFieldUpdates.ByteKnnVectorFieldUpdates(
+                    segState.reader.maxDoc(), delGen, updateField, dimension);
+          }
+          resolvedUpdates.add(vectorUpdates);
+        }
+        final KnnVectorFieldUpdates update = vectorUpdates;
+        final IntConsumer docIdConsumer;
+        if (encoding == VectorEncoding.FLOAT32) {
+          docIdConsumer =
+              doc ->
+                  ((KnnVectorFieldUpdates.FloatKnnVectorFieldUpdates) update).add(doc, floatValue);
+        } else {
+          docIdConsumer =
+              doc -> ((KnnVectorFieldUpdates.ByteKnnVectorFieldUpdates) update).add(doc, byteValue);
+        }
+        final Bits acceptDocs = segState.rld.getLiveDocs();
+        if (segState.rld.sortMap != null && segmentPrivateDeletes) {
+          int doc;
+          while ((doc = docIdSetIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+            if (acceptDocs == null || acceptDocs.get(doc)) {
+              if (segState.rld.sortMap.newToOld(doc) < limit) {
+                docIdConsumer.accept(doc);
+                updateCount++;
+              }
+            }
+          }
+        } else {
+          int doc;
+          while ((doc = docIdSetIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+            if (doc >= limit) {
+              break;
+            }
+            if (acceptDocs == null || acceptDocs.get(doc)) {
+              docIdConsumer.accept(doc);
+              updateCount++;
+            }
+          }
+        }
+      }
+    }
+
+    // now freeze & publish:
+    for (KnnVectorFieldUpdates update : resolvedUpdates) {
+      if (update.any()) {
+        update.finish();
+        segState.rld.addVectorUpdate(update);
       }
     }
 

@@ -647,6 +647,63 @@ public class FieldInfos implements Iterable<FieldInfo> {
     }
 
     /**
+     * Verifies that the given field exists and is a vector-only field matching the provided vector
+     * options (dimension and encoding; the field's similarity is intrinsic and is not changed by an
+     * update). Unlike {@link #verifyOrCreateDvOnlyField}, a new field is never created: a vector
+     * cannot be added in place to documents that don't already have one.
+     *
+     * @throws IllegalArgumentException if the field doesn't exist, is not a vector field, its
+     *     vector options don't match, or it is also indexed with postings/points/doc-values.
+     */
+    synchronized void verifyVectorOnlyField(
+        String fieldName, int dimension, VectorEncoding encoding) {
+      if (fieldProperties.containsKey(fieldName) == false) {
+        throw new IllegalArgumentException(
+            "Can't update vectors; the field [" + fieldName + "] doesn't exist.");
+      }
+      FieldProperties fieldProperties = this.fieldProperties.get(fieldName);
+      FieldVectorProperties fvp = fieldProperties.fieldVectorProperties;
+      if (fvp == null || fvp.numDimensions == 0) {
+        throw new IllegalArgumentException(
+            "Can't update vectors; the field [" + fieldName + "] is not a vector field.");
+      }
+      if (fvp.numDimensions != dimension || fvp.vectorEncoding != encoding) {
+        throw new IllegalArgumentException(
+            "Can't update vectors; the field ["
+                + fieldName
+                + "] has inconsistent vector options: existing dimension="
+                + fvp.numDimensions
+                + ", encoding="
+                + fvp.vectorEncoding
+                + "; got dimension="
+                + dimension
+                + ", encoding="
+                + encoding
+                + ".");
+      }
+      IndexOptions ioptions = fieldProperties.indexOptions;
+      if (ioptions != null && ioptions != IndexOptions.NONE) {
+        throw new IllegalArgumentException(
+            "Can't update vectors; the field ["
+                + fieldName
+                + "] must be a vector-only field, but is also indexed with postings.");
+      }
+      if (fieldProperties.docValuesType != DocValuesType.NONE) {
+        throw new IllegalArgumentException(
+            "Can't update vectors; the field ["
+                + fieldName
+                + "] must be a vector-only field, but also has doc values.");
+      }
+      FieldDimensions fdimensions = fieldProperties.fieldDimensions;
+      if (fdimensions != null && fdimensions.dimensionCount != 0) {
+        throw new IllegalArgumentException(
+            "Can't update vectors; the field ["
+                + fieldName
+                + "] must be a vector-only field, but is also indexed with points.");
+      }
+    }
+
+    /**
      * Construct a new FieldInfo based on the options in global field numbers. This method is not
      * synchronized as all the options it uses are not modifiable.
      *

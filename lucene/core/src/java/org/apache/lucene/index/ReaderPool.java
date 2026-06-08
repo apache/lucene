@@ -67,6 +67,9 @@ final class ReaderPool implements Closeable {
   private volatile boolean poolReaders;
   private final AtomicBoolean closed = new AtomicBoolean(false);
 
+  // When true, in-place KNN vector updates defer the per-segment HNSW graph rebuild to merge time.
+  private final boolean deferVectorGraphRebuild;
+
   ReaderPool(
       Directory directory,
       Directory originalDirectory,
@@ -75,7 +78,8 @@ final class ReaderPool implements Closeable {
       LongSupplier completedDelGenSupplier,
       InfoStream infoStream,
       String softDeletesField,
-      StandardDirectoryReader reader)
+      StandardDirectoryReader reader,
+      boolean deferVectorGraphRebuild)
       throws IOException {
     this.directory = directory;
     this.originalDirectory = originalDirectory;
@@ -84,6 +88,7 @@ final class ReaderPool implements Closeable {
     this.completedDelGenSupplier = completedDelGenSupplier;
     this.infoStream = infoStream;
     this.softDeletesField = softDeletesField;
+    this.deferVectorGraphRebuild = deferVectorGraphRebuild;
     if (reader != null) {
       // Pre-enroll all segment readers into the reader pool; this is necessary so
       // any in-memory NRT live docs are correctly carried over, and so NRT readers
@@ -211,10 +216,14 @@ final class ReaderPool implements Closeable {
           changed = true;
         }
         if (rld.writeFieldUpdates(
-            directory, fieldNumbers, completedDelGenSupplier.getAsLong(), infoStream)) {
+            directory,
+            fieldNumbers,
+            completedDelGenSupplier.getAsLong(),
+            infoStream,
+            deferVectorGraphRebuild)) {
           changed = true;
         }
-        if (rld.getNumDVUpdates() == 0) {
+        if (rld.getNumDVUpdates() == 0 && rld.getNumVectorUpdates() == 0) {
           rld.dropReaders();
           readerMap.remove(rld.info);
         } else {
@@ -248,7 +257,11 @@ final class ReaderPool implements Closeable {
     for (ReadersAndUpdates rld : copy) {
       any |=
           rld.writeFieldUpdates(
-              directory, fieldNumbers, completedDelGenSupplier.getAsLong(), infoStream);
+              directory,
+              fieldNumbers,
+              completedDelGenSupplier.getAsLong(),
+              infoStream,
+              deferVectorGraphRebuild);
     }
     return any;
   }
@@ -265,7 +278,11 @@ final class ReaderPool implements Closeable {
       if (rld != null) {
         any |=
             rld.writeFieldUpdates(
-                directory, fieldNumbers, completedDelGenSupplier.getAsLong(), infoStream);
+                directory,
+                fieldNumbers,
+                completedDelGenSupplier.getAsLong(),
+                infoStream,
+                deferVectorGraphRebuild);
         rld.setIsMerging();
       }
     }
@@ -351,7 +368,11 @@ final class ReaderPool implements Closeable {
         boolean changed = rld.writeLiveDocs(directory);
         changed |=
             rld.writeFieldUpdates(
-                directory, fieldNumbers, completedDelGenSupplier.getAsLong(), infoStream);
+                directory,
+                fieldNumbers,
+                completedDelGenSupplier.getAsLong(),
+                infoStream,
+                deferVectorGraphRebuild);
 
         if (changed) {
           // Make sure we only write del docs for a live segment:
@@ -378,7 +399,7 @@ final class ReaderPool implements Closeable {
   synchronized boolean anyDocValuesChanges() {
     for (ReadersAndUpdates rld : readerMap.values()) {
       // NOTE: we don't check for pending deletes because deletes carry over in RAM to NRT readers
-      if (rld.getNumDVUpdates() != 0) {
+      if (rld.getNumDVUpdates() != 0 || rld.getNumVectorUpdates() != 0) {
         return true;
       }
     }

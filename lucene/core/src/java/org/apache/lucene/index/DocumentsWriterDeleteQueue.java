@@ -138,6 +138,12 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
     return seqNo;
   }
 
+  long addVectorUpdates(KnnVectorUpdate... updates) {
+    long seqNo = add(new KnnVectorUpdatesNode(updates));
+    tryApplyGlobalSlice();
+    return seqNo;
+  }
+
   static Node<Term> newNode(Term term) {
     return new TermNode(term);
   }
@@ -529,6 +535,39 @@ final class DocumentsWriterDeleteQueue implements Accountable, Closeable {
       if (item.length > 0) {
         sb.append("term=").append(item[0].term).append("; updates: [");
         for (DocValuesUpdate update : item) {
+          sb.append(update.field).append(':').append(update.valueToString()).append(',');
+        }
+        sb.setCharAt(sb.length() - 1, ']');
+      }
+      return sb.toString();
+    }
+  }
+
+  private static final class KnnVectorUpdatesNode extends Node<KnnVectorUpdate[]> {
+
+    KnnVectorUpdatesNode(KnnVectorUpdate... updates) {
+      super(updates);
+    }
+
+    @Override
+    void apply(BufferedUpdates bufferedUpdates, int docIDUpto) {
+      for (KnnVectorUpdate update : item) {
+        bufferedUpdates.addVectorUpdate(update, docIDUpto);
+      }
+    }
+
+    @Override
+    boolean isDelete() {
+      return false;
+    }
+
+    @Override
+    public String toString() {
+      StringBuilder sb = new StringBuilder();
+      sb.append("knnVectorUpdates: ");
+      if (item.length > 0) {
+        sb.append("term=").append(item[0].term).append("; updates: [");
+        for (KnnVectorUpdate update : item) {
           sb.append(update.field).append(':').append(update.valueToString()).append(',');
         }
         sb.setCharAt(sb.length() - 1, ']');

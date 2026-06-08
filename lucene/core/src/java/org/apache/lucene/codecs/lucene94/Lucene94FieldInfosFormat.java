@@ -211,6 +211,7 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
           final int vectorDimension = input.readVInt();
           final VectorEncoding vectorEncoding = getVectorEncoding(input, input.readByte());
           final VectorSimilarityFunction vectorDistFunc = getDistFunc(input, input.readByte());
+          final long vectorGen = format >= FORMAT_VECTOR_GEN ? input.readLong() : -1;
 
           try {
             infos[i] =
@@ -233,6 +234,9 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
                     vectorDistFunc,
                     isSoftDeletesField,
                     isParentField);
+            if (vectorGen != -1) {
+              infos[i].setVectorGen(vectorGen);
+            }
             infos[i].checkConsistency();
           } catch (IllegalStateException e) {
             throw new CorruptIndexException(
@@ -454,6 +458,8 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
         output.writeVInt(fi.getVectorDimension());
         output.writeByte((byte) fi.getVectorEncoding().ordinal());
         output.writeByte(distFuncToOrd(fi.getVectorSimilarityFunction()));
+        // per-field KNN vector update generation (FORMAT_VECTOR_GEN+)
+        output.writeLong(fi.getVectorGen());
       }
       CodecUtil.writeFooter(output);
     }
@@ -468,7 +474,9 @@ public final class Lucene94FieldInfosFormat extends FieldInfosFormat {
   // this doesn't actually change the file format but uses up one more bit an existing bit pattern
   static final int FORMAT_PARENT_FIELD = 1;
   static final int FORMAT_DOCVALUE_SKIPPER = 2;
-  static final int FORMAT_CURRENT = FORMAT_DOCVALUE_SKIPPER;
+  // adds a per-field KNN vector update generation (long), enabling in-place vector updates
+  static final int FORMAT_VECTOR_GEN = 3;
+  static final int FORMAT_CURRENT = FORMAT_VECTOR_GEN;
 
   // Field flags
   static final byte STORE_TERMVECTOR = 0x1;

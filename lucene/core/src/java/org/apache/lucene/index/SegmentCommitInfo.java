@@ -68,8 +68,19 @@ public class SegmentCommitInfo {
   // write
   private long nextWriteDocValuesGen;
 
+  // Generation number of the KNN vector updates (-1 if there are no updates).
+  // NOTE: this is initialized to -1 for new segments and set from disk via initVectorGen() when a
+  // commit is read back; it intentionally avoids changing the public constructor signature.
+  private long vectorGen = -1;
+
+  // Normally 1+vectorGen, unless an exception was hit on last attempt to write
+  private long nextWriteVectorGen = 1;
+
   // Track the per-field DocValues update files
   private final Map<Integer, Set<String>> dvUpdatesFiles = new HashMap<>();
+
+  // Track the per-field KNN vector update files
+  private final Map<Integer, Set<String>> vectorUpdatesFiles = new HashMap<>();
 
   // TODO should we add .files() to FieldInfosFormat, like we have on
   // LiveDocsFormat?
@@ -131,6 +142,24 @@ public class SegmentCommitInfo {
         set.add(info.namedForThisSegment(file));
       }
       this.dvUpdatesFiles.put(kv.getKey(), set);
+    }
+  }
+
+  /** Returns the per-field KNN vector updates files. */
+  public Map<Integer, Set<String>> getVectorUpdatesFiles() {
+    return Collections.unmodifiableMap(vectorUpdatesFiles);
+  }
+
+  /** Sets the KNN vector updates file names, per field number. Does not deep clone the map. */
+  public void setVectorUpdatesFiles(Map<Integer, Set<String>> vectorUpdatesFiles) {
+    this.vectorUpdatesFiles.clear();
+    for (Map.Entry<Integer, Set<String>> kv : vectorUpdatesFiles.entrySet()) {
+      // rename the set
+      Set<String> set = new HashSet<>();
+      for (String file : kv.getValue()) {
+        set.add(info.namedForThisSegment(file));
+      }
+      this.vectorUpdatesFiles.put(kv.getKey(), set);
     }
   }
 
@@ -222,6 +251,41 @@ public class SegmentCommitInfo {
     nextWriteDocValuesGen = v;
   }
 
+  /**
+   * Initializes the KNN vector update generation when reading a commit from disk. Mirrors the way
+   * {@code docValuesGen} is passed through the constructor, but without changing the public
+   * constructor signature.
+   */
+  void initVectorGen(long vectorGen) {
+    this.vectorGen = vectorGen;
+    this.nextWriteVectorGen = vectorGen == -1 ? 1 : vectorGen + 1;
+  }
+
+  /** Called when we succeed in writing a new KNN vector generation. */
+  void advanceVectorGen() {
+    vectorGen = nextWriteVectorGen;
+    nextWriteVectorGen = vectorGen + 1;
+    generationAdvanced();
+  }
+
+  /**
+   * Called if there was an exception while writing a new generation of KNN vectors, so that we
+   * don't try to write to the same file more than once.
+   */
+  void advanceNextWriteVectorGen() {
+    nextWriteVectorGen++;
+  }
+
+  /** Gets the nextWriteVectorGen. */
+  long getNextWriteVectorGen() {
+    return nextWriteVectorGen;
+  }
+
+  /** Sets the nextWriteVectorGen. */
+  void setNextWriteVectorGen(long v) {
+    nextWriteVectorGen = v;
+  }
+
   /** Returns total size in bytes of all files for this segment. */
   public long sizeInBytes() throws IOException {
     if (sizeInBytes == -1) {
@@ -250,6 +314,11 @@ public class SegmentCommitInfo {
 
     // must separately add any field updates files
     for (Set<String> updatefiles : dvUpdatesFiles.values()) {
+      files.addAll(updatefiles);
+    }
+
+    // must separately add any KNN vector updates files
+    for (Set<String> updatefiles : vectorUpdatesFiles.values()) {
       files.addAll(updatefiles);
     }
 
@@ -282,6 +351,11 @@ public class SegmentCommitInfo {
     return fieldInfosGen != -1;
   }
 
+  /** Returns true if there are any KNN vector updates for the segment in this commit. */
+  public boolean hasVectorUpdates() {
+    return vectorGen != -1;
+  }
+
   /** Returns the next available generation number of the FieldInfos files. */
   public long getNextFieldInfosGen() {
     return nextWriteFieldInfosGen;
@@ -305,6 +379,18 @@ public class SegmentCommitInfo {
    */
   public long getDocValuesGen() {
     return docValuesGen;
+  }
+
+  /** Returns the next available generation number of the KNN vector files. */
+  public long getNextVectorGen() {
+    return nextWriteVectorGen;
+  }
+
+  /**
+   * Returns the generation number of the KNN vector files or -1 if there are no vector updates yet.
+   */
+  public long getVectorGen() {
+    return vectorGen;
   }
 
   /** Returns the next available generation number of the live docs file. */
@@ -373,6 +459,9 @@ public class SegmentCommitInfo {
     if (docValuesGen != -1) {
       s += ":dvGen=" + docValuesGen;
     }
+    if (vectorGen != -1) {
+      s += ":vectorGen=" + vectorGen;
+    }
     if (softDelCount > 0) {
       s += " :softDel=" + softDelCount;
     }
@@ -391,10 +480,16 @@ public class SegmentCommitInfo {
     other.nextWriteDelGen = nextWriteDelGen;
     other.nextWriteFieldInfosGen = nextWriteFieldInfosGen;
     other.nextWriteDocValuesGen = nextWriteDocValuesGen;
+    other.vectorGen = vectorGen;
+    other.nextWriteVectorGen = nextWriteVectorGen;
 
     // deep clone
     for (Entry<Integer, Set<String>> e : dvUpdatesFiles.entrySet()) {
       other.dvUpdatesFiles.put(e.getKey(), new HashSet<>(e.getValue()));
+    }
+
+    for (Entry<Integer, Set<String>> e : vectorUpdatesFiles.entrySet()) {
+      other.vectorUpdatesFiles.put(e.getKey(), new HashSet<>(e.getValue()));
     }
 
     other.fieldInfosFiles.addAll(fieldInfosFiles);

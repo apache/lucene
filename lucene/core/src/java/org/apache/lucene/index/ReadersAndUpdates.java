@@ -16,6 +16,8 @@
  */
 package org.apache.lucene.index;
 
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,6 +35,11 @@ import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesFormat;
 import org.apache.lucene.codecs.FieldInfosFormat;
+import org.apache.lucene.codecs.KnnFieldVectorsWriter;
+import org.apache.lucene.codecs.KnnVectorsFormat;
+import org.apache.lucene.codecs.KnnVectorsWriter;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
+import org.apache.lucene.codecs.perfield.PerFieldKnnVectorsFormat;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FlushInfo;
 import org.apache.lucene.store.IOContext;
@@ -81,6 +88,12 @@ final class ReadersAndUpdates {
   // this segment was being merged; at the end of the merge we carry over
   // these updates (remapping their docIDs) to the newly merged segment
   private final Map<String, List<DocValuesFieldUpdates>> mergingDVUpdates = new HashMap<>();
+
+  // Holds resolved (to docIDs) KNN vector updates that have not yet been written to the index
+  private final Map<String, List<KnnVectorFieldUpdates>> pendingVectorUpdates = new HashMap<>();
+
+  // Holds resolved KNN vector updates that were resolved while this segment was being merged
+  private final Map<String, List<KnnVectorFieldUpdates>> mergingVectorUpdates = new HashMap<>();
 
   // Only set if there are doc values updates against this segment, and the index is sorted:
   Sorter.DocMap sortMap;
@@ -165,9 +178,37 @@ final class ReadersAndUpdates {
     }
   }
 
+  /** Adds a new resolved KNN vector updates packet. Vector analogue of {@link #addDVUpdate}. */
+  public synchronized void addVectorUpdate(KnnVectorFieldUpdates update) throws IOException {
+    if (update.getFinished() == false) {
+      throw new IllegalArgumentException("call finish first");
+    }
+    List<KnnVectorFieldUpdates> fieldUpdates =
+        pendingVectorUpdates.computeIfAbsent(update.field, _ -> new ArrayList<>());
+    fieldUpdates.add(update);
+
+    if (isMerging) {
+      fieldUpdates = mergingVectorUpdates.get(update.field);
+      if (fieldUpdates == null) {
+        fieldUpdates = new ArrayList<>();
+        mergingVectorUpdates.put(update.field, fieldUpdates);
+      }
+      fieldUpdates.add(update);
+    }
+  }
+
   public synchronized long getNumDVUpdates() {
     long count = 0;
     for (List<DocValuesFieldUpdates> updates : pendingDVUpdates.values()) {
+      count += updates.size();
+    }
+    return count;
+  }
+
+  /** Number of pending (not-yet-written) KNN vector update packets. */
+  public synchronized long getNumVectorUpdates() {
+    long count = 0;
+    for (List<KnnVectorFieldUpdates> updates : pendingVectorUpdates.values()) {
       count += updates.size();
     }
     return count;
@@ -461,6 +502,187 @@ final class ReadersAndUpdates {
   }
 
   /**
+   * Writes a new generation of KNN vector files for each field that has pending vector updates. For
+   * each such field we bump a new {@code vectorGen}, write {@code .vec/.vemf/.vex/.vem} files at
+   * that gen suffix where the vectors are the existing field vectors overlaid with the updates, and
+   * the HNSW graph is rebuilt eagerly (via the standard {@link KnnVectorsWriter} flush path). The
+   * base reader (gen == -1) plus other untouched fields are left in place. Vector analogue of
+   * {@link #handleDVUpdates}.
+   */
+  @SuppressWarnings("unchecked")
+  private synchronized void handleVectorUpdates(
+      FieldInfos infos,
+      Directory dir,
+      KnnVectorsFormat vectorsFormat,
+      final SegmentReader reader,
+      Map<Integer, Set<String>> fieldFiles,
+      long maxDelGen,
+      InfoStream infoStream,
+      boolean deferVectorGraphRebuild)
+      throws IOException {
+    for (Entry<String, List<KnnVectorFieldUpdates>> ent : pendingVectorUpdates.entrySet()) {
+      final String field = ent.getKey();
+      final List<KnnVectorFieldUpdates> updates = ent.getValue();
+      final List<KnnVectorFieldUpdates> updatesToApply = new ArrayList<>();
+      for (KnnVectorFieldUpdates update : updates) {
+        if (update.delGen <= maxDelGen) {
+          updatesToApply.add(update);
+        }
+      }
+      if (updatesToApply.isEmpty()) {
+        continue;
+      }
+
+      // Reject quantized formats: only the unquantized Lucene99 HNSW format is supported for
+      // in-place vector updates.
+      KnnVectorsFormat perFieldFormat = vectorsFormat;
+      if (vectorsFormat instanceof PerFieldKnnVectorsFormat perField) {
+        perFieldFormat = perField.getKnnVectorsFormatForField(field);
+      }
+      if (perFieldFormat instanceof Lucene99HnswVectorsFormat == false) {
+        throw new UnsupportedOperationException(
+            "in-place vector update is only supported for "
+                + Lucene99HnswVectorsFormat.class.getSimpleName()
+                + " but field ["
+                + field
+                + "] uses "
+                + perFieldFormat.getClass().getSimpleName());
+      }
+
+      final long nextVectorGen = info.getNextVectorGen();
+      final String segmentSuffix = Long.toString(nextVectorGen, Character.MAX_RADIX);
+      final IOContext updatesContext = IOContext.flush(new FlushInfo(info.info.maxDoc(), 0));
+
+      // Stamp the new vectorGen onto the (shared, cloned) FieldInfo so it is persisted by
+      // writeFieldInfosGen and picked up at read time. A single-field FieldInfos is handed to the
+      // vectors writer for this gen.
+      final FieldInfo fieldInfo = infos.fieldInfo(field);
+      assert fieldInfo != null && fieldInfo.hasVectorValues();
+      fieldInfo.setVectorGen(nextVectorGen);
+      final FieldInfos fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});
+
+      // Choose the writer format for this generation. When deferring the graph rebuild we write
+      // only
+      // the flat vectors and skip building the HNSW graph: the gen's ".vex/.vem" carry an empty
+      // graph
+      // (vectorIndexLength == 0), so the reader falls back to an exact scan on this segment until
+      // the
+      // next merge rebuilds the graph using the codec's normal format. The graph build is
+      // suppressed
+      // by raising the "tiny segment" threshold above the segment size (so shouldCreateGraph() is
+      // always false for this write). We wrap it in a PerFieldKnnVectorsFormat so file naming and
+      // the
+      // per-field suffix attributes match what the (always per-field) reader reconstructs.
+      final KnnVectorsFormat writeFormat;
+      if (deferVectorGraphRebuild) {
+        final KnnVectorsFormat noGraphFormat =
+            new Lucene99HnswVectorsFormat(
+                Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
+                Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
+                info.info.maxDoc() + 1);
+        writeFormat =
+            new PerFieldKnnVectorsFormat() {
+              @Override
+              public KnnVectorsFormat getKnnVectorsFormatForField(String f) {
+                return noGraphFormat;
+              }
+            };
+      } else {
+        writeFormat = vectorsFormat;
+      }
+
+      final TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(dir);
+      final SegmentWriteState state =
+          new SegmentWriteState(
+              null, trackingDir, info.info, fieldInfos, null, updatesContext, segmentSuffix);
+
+      try (KnnVectorsWriter writer = writeFormat.fieldsWriter(state)) {
+        final KnnVectorFieldUpdates.Iterator mergedIterator =
+            KnnVectorFieldUpdates.mergedIterator(toIteratorArray(updatesToApply));
+        if (fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT32) {
+          KnnFieldVectorsWriter<float[]> fieldWriter =
+              (KnnFieldVectorsWriter<float[]>) writer.addField(fieldInfo);
+          writeOverlayFloatVectors(reader, field, mergedIterator, fieldWriter);
+        } else {
+          KnnFieldVectorsWriter<byte[]> fieldWriter =
+              (KnnFieldVectorsWriter<byte[]>) writer.addField(fieldInfo);
+          writeOverlayByteVectors(reader, field, mergedIterator, fieldWriter);
+        }
+        writer.flush(info.info.maxDoc(), null);
+        writer.finish();
+      }
+
+      info.advanceVectorGen();
+      assert !fieldFiles.containsKey(fieldInfo.number);
+      fieldFiles.put(fieldInfo.number, trackingDir.getCreatedFiles());
+    }
+  }
+
+  private static KnnVectorFieldUpdates.Iterator[] toIteratorArray(
+      List<KnnVectorFieldUpdates> updatesToApply) {
+    KnnVectorFieldUpdates.Iterator[] subs =
+        new KnnVectorFieldUpdates.Iterator[updatesToApply.size()];
+    for (int i = 0; i < subs.length; i++) {
+      subs[i] = updatesToApply.get(i).iterator();
+    }
+    return subs;
+  }
+
+  /**
+   * Feeds the field writer, in docID order, every doc that currently has a float vector for {@code
+   * field}, substituting the updated vector when the merged update iterator has one for that doc.
+   */
+  private static void writeOverlayFloatVectors(
+      SegmentReader reader,
+      String field,
+      KnnVectorFieldUpdates.Iterator updateIterator,
+      KnnFieldVectorsWriter<float[]> fieldWriter)
+      throws IOException {
+    FloatVectorValues base = reader.getFloatVectorValues(field);
+    KnnVectorValues.DocIndexIterator baseIterator = base.iterator();
+    int updateDoc = updateIterator == null ? NO_MORE_DOCS : updateIterator.nextDoc();
+    for (int doc = baseIterator.nextDoc(); doc != NO_MORE_DOCS; doc = baseIterator.nextDoc()) {
+      while (updateDoc != NO_MORE_DOCS && updateDoc < doc) {
+        // updates only target docs that already have a value, so this shouldn't normally happen
+        updateDoc = updateIterator.nextDoc();
+      }
+      final float[] value;
+      if (updateDoc == doc) {
+        value = updateIterator.floatValue().clone();
+        updateDoc = updateIterator.nextDoc();
+      } else {
+        // copy: the flat writer retains a reference and base may share the array across calls
+        value = base.vectorValue(baseIterator.index()).clone();
+      }
+      fieldWriter.addValue(doc, value);
+    }
+  }
+
+  private static void writeOverlayByteVectors(
+      SegmentReader reader,
+      String field,
+      KnnVectorFieldUpdates.Iterator updateIterator,
+      KnnFieldVectorsWriter<byte[]> fieldWriter)
+      throws IOException {
+    ByteVectorValues base = reader.getByteVectorValues(field);
+    KnnVectorValues.DocIndexIterator baseIterator = base.iterator();
+    int updateDoc = updateIterator == null ? NO_MORE_DOCS : updateIterator.nextDoc();
+    for (int doc = baseIterator.nextDoc(); doc != NO_MORE_DOCS; doc = baseIterator.nextDoc()) {
+      while (updateDoc != NO_MORE_DOCS && updateDoc < doc) {
+        updateDoc = updateIterator.nextDoc();
+      }
+      final byte[] value;
+      if (updateDoc == doc) {
+        value = updateIterator.byteValue().clone();
+        updateDoc = updateIterator.nextDoc();
+      } else {
+        value = base.vectorValue(baseIterator.index()).clone();
+      }
+      fieldWriter.addValue(doc, value);
+    }
+  }
+
+  /**
    * This class merges the current on-disk DV with an incoming update DV instance and merges the two
    * instances giving the incoming update precedence in terms of values, in other words the values
    * of the update always wins over the on-disk version.
@@ -613,10 +835,15 @@ final class ReadersAndUpdates {
   }
 
   public synchronized boolean writeFieldUpdates(
-      Directory dir, FieldInfos.FieldNumbers fieldNumbers, long maxDelGen, InfoStream infoStream)
+      Directory dir,
+      FieldInfos.FieldNumbers fieldNumbers,
+      long maxDelGen,
+      InfoStream infoStream,
+      boolean deferVectorGraphRebuild)
       throws IOException {
     long startTimeNS = System.nanoTime();
     final Map<Integer, Set<String>> newDVFiles = new HashMap<>();
+    final Map<Integer, Set<String>> newVectorFiles = new HashMap<>();
     Set<String> fieldInfosFiles = null;
     FieldInfos fieldInfos = null;
     boolean any = false;
@@ -628,8 +855,17 @@ final class ReadersAndUpdates {
         }
       }
     }
+    boolean anyVectorUpdates = false;
+    for (List<KnnVectorFieldUpdates> updates : pendingVectorUpdates.values()) {
+      for (KnnVectorFieldUpdates update : updates) {
+        if (update.delGen <= maxDelGen && update.any()) {
+          anyVectorUpdates = true;
+          break;
+        }
+      }
+    }
 
-    if (any == false) {
+    if (any == false && anyVectorUpdates == false) {
       // no updates
       return false;
     }
@@ -687,6 +923,16 @@ final class ReadersAndUpdates {
         handleDVUpdates(
             fieldInfos, trackingDir, docValuesFormat, reader, newDVFiles, maxDelGen, infoStream);
 
+        handleVectorUpdates(
+            fieldInfos,
+            trackingDir,
+            codec.knnVectorsFormat(),
+            reader,
+            newVectorFiles,
+            maxDelGen,
+            infoStream,
+            deferVectorGraphRebuild);
+
         fieldInfosFiles = writeFieldInfosGen(fieldInfos, trackingDir, codec.fieldInfosFormat());
       } finally {
         if (reader != this.reader) {
@@ -694,10 +940,11 @@ final class ReadersAndUpdates {
         }
       }
     } catch (Throwable t) {
-      // Advance only the nextWriteFieldInfosGen and nextWriteDocValuesGen, so
+      // Advance only the nextWriteFieldInfosGen, nextWriteDocValuesGen and nextWriteVectorGen, so
       // that a 2nd attempt to write will write to a new file
       info.advanceNextWriteFieldInfosGen();
       info.advanceNextWriteDocValuesGen();
+      info.advanceNextWriteVectorGen();
 
       // Delete any partially created file(s):
       for (String fileName : trackingDir.getCreatedFiles()) {
@@ -730,6 +977,27 @@ final class ReadersAndUpdates {
       }
     }
 
+    // Prune the now-written vector updates:
+    Iterator<Map.Entry<String, List<KnnVectorFieldUpdates>>> vit =
+        pendingVectorUpdates.entrySet().iterator();
+    while (vit.hasNext()) {
+      Map.Entry<String, List<KnnVectorFieldUpdates>> ent = vit.next();
+      int upto = 0;
+      List<KnnVectorFieldUpdates> updates = ent.getValue();
+      for (KnnVectorFieldUpdates update : updates) {
+        if (update.delGen > maxDelGen) {
+          // not yet applied
+          updates.set(upto, update);
+          upto++;
+        }
+      }
+      if (upto == 0) {
+        vit.remove();
+      } else {
+        updates.subList(upto, updates.size()).clear();
+      }
+    }
+
     long bytes = ramBytesUsed.addAndGet(-bytesFreed);
     assert bytes >= 0;
 
@@ -741,13 +1009,21 @@ final class ReadersAndUpdates {
     // of files, hence we copy from the existing map all fields w/ updates that
     // were not updated in this session, and add new mappings for fields that
     // were updated now.
-    assert newDVFiles.isEmpty() == false;
+    assert newDVFiles.isEmpty() == false || newVectorFiles.isEmpty() == false;
     for (Entry<Integer, Set<String>> e : info.getDocValuesUpdatesFiles().entrySet()) {
       if (newDVFiles.containsKey(e.getKey()) == false) {
         newDVFiles.put(e.getKey(), e.getValue());
       }
     }
     info.setDocValuesUpdatesFiles(newDVFiles);
+
+    // update the KNN vector updates files (same merge-with-existing logic as DV updates).
+    for (Entry<Integer, Set<String>> e : info.getVectorUpdatesFiles().entrySet()) {
+      if (newVectorFiles.containsKey(e.getKey()) == false) {
+        newVectorFiles.put(e.getKey(), e.getValue());
+      }
+    }
+    info.setVectorUpdatesFiles(newVectorFiles);
 
     // if there is a reader open, reopen it to reflect the updates
     if (reader != null) {
@@ -768,25 +1044,31 @@ final class ReadersAndUpdates {
   }
 
   private FieldInfo cloneFieldInfo(FieldInfo fi, int fieldNumber) {
-    return new FieldInfo(
-        fi.name,
-        fieldNumber,
-        fi.hasTermVectors(),
-        fi.omitsNorms(),
-        fi.hasPayloads(),
-        fi.getIndexOptions(),
-        fi.getDocValuesType(),
-        fi.docValuesSkipIndexType(),
-        fi.getDocValuesGen(),
-        new HashMap<>(fi.attributes()),
-        fi.getPointDimensionCount(),
-        fi.getPointIndexDimensionCount(),
-        fi.getPointNumBytes(),
-        fi.getVectorDimension(),
-        fi.getVectorEncoding(),
-        fi.getVectorSimilarityFunction(),
-        fi.isSoftDeletesField(),
-        fi.isParentField());
+    FieldInfo clone =
+        new FieldInfo(
+            fi.name,
+            fieldNumber,
+            fi.hasTermVectors(),
+            fi.omitsNorms(),
+            fi.hasPayloads(),
+            fi.getIndexOptions(),
+            fi.getDocValuesType(),
+            fi.docValuesSkipIndexType(),
+            fi.getDocValuesGen(),
+            new HashMap<>(fi.attributes()),
+            fi.getPointDimensionCount(),
+            fi.getPointIndexDimensionCount(),
+            fi.getPointNumBytes(),
+            fi.getVectorDimension(),
+            fi.getVectorEncoding(),
+            fi.getVectorSimilarityFunction(),
+            fi.isSoftDeletesField(),
+            fi.isParentField());
+    // carry over any existing vector update generation so fields not updated this session keep it
+    if (fi.getVectorGen() != -1) {
+      clone.setVectorGen(fi.getVectorGen());
+    }
+    return clone;
   }
 
   private SegmentReader createNewReaderWithLatestLiveDocs(SegmentReader reader) throws IOException {
@@ -843,6 +1125,15 @@ final class ReadersAndUpdates {
       }
       mergingUpdates.addAll(ent.getValue());
     }
+    // Same for still-pending KNN vector updates:
+    for (Map.Entry<String, List<KnnVectorFieldUpdates>> ent : pendingVectorUpdates.entrySet()) {
+      List<KnnVectorFieldUpdates> mergingUpdates = mergingVectorUpdates.get(ent.getKey());
+      if (mergingUpdates == null) {
+        mergingUpdates = new ArrayList<>();
+        mergingVectorUpdates.put(ent.getKey(), mergingUpdates);
+      }
+      mergingUpdates.addAll(ent.getValue());
+    }
 
     SegmentReader reader = getReader(context);
     if (pendingDeletes.needsRefresh(reader)
@@ -864,6 +1155,7 @@ final class ReadersAndUpdates {
    */
   public synchronized void dropMergingUpdates() {
     mergingDVUpdates.clear();
+    mergingVectorUpdates.clear();
     isMerging = false;
   }
 
@@ -872,6 +1164,12 @@ final class ReadersAndUpdates {
     // otherwise we can lose updates:
     isMerging = false;
     return mergingDVUpdates;
+  }
+
+  /** Vector analogue of {@link #getMergingDVUpdates()}. */
+  public synchronized Map<String, List<KnnVectorFieldUpdates>> getMergingVectorUpdates() {
+    isMerging = false;
+    return mergingVectorUpdates;
   }
 
   @Override

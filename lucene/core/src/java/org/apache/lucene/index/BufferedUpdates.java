@@ -65,6 +65,10 @@ class BufferedUpdates implements Accountable {
 
   final Map<String, FieldUpdatesBuffer> fieldUpdates = new HashMap<>();
 
+  // KNN vector updates are kept in a separate map (keyed by field) so they never collide with a
+  // same-named doc-values field and so the apply routing stays trivial.
+  final Map<String, FieldUpdatesBuffer> vectorUpdates = new HashMap<>();
+
   public static final Integer MAX_INT = Integer.valueOf(Integer.MAX_VALUE);
 
   private final Counter bytesUsed = Counter.newCounter(true);
@@ -155,6 +159,15 @@ class BufferedUpdates implements Accountable {
     numFieldUpdates.incrementAndGet();
   }
 
+  void addVectorUpdate(KnnVectorUpdate update, int docIDUpto) {
+    FieldUpdatesBuffer buffer =
+        vectorUpdates.computeIfAbsent(
+            update.field, _ -> new FieldUpdatesBuffer(fieldUpdatesBytesUsed, update, docIDUpto));
+    // POC: vector updates always carry a value (the raw encoded vector bytes).
+    buffer.addUpdate(update.term, update.getValueAsBytes(), docIDUpto);
+    numFieldUpdates.incrementAndGet();
+  }
+
   void clearDeleteTerms() {
     deleteTerms.clear();
   }
@@ -164,6 +177,7 @@ class BufferedUpdates implements Accountable {
     deleteQueries.clear();
     numFieldUpdates.set(0);
     fieldUpdates.clear();
+    vectorUpdates.clear();
     bytesUsed.addAndGet(-bytesUsed.get());
     fieldUpdatesBytesUsed.addAndGet(-fieldUpdatesBytesUsed.get());
   }

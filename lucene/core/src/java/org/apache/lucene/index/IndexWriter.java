@@ -60,6 +60,8 @@ import org.apache.lucene.index.DocValuesUpdate.BinaryDocValuesUpdate;
 import org.apache.lucene.index.DocValuesUpdate.NumericDocValuesUpdate;
 import org.apache.lucene.index.FieldInfos.FieldNumbers;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.index.KnnVectorUpdate.ByteKnnVectorUpdate;
+import org.apache.lucene.index.KnnVectorUpdate.FloatKnnVectorUpdate;
 import org.apache.lucene.index.MergePolicy.MergeReader;
 import org.apache.lucene.index.Sorter.DocMap;
 import org.apache.lucene.internal.hppc.LongObjectHashMap;
@@ -855,7 +857,8 @@ public class IndexWriter
                     directory,
                     globalFieldNumberMap,
                     bufferedUpdatesStream.getCompletedDelGen(),
-                    infoStream)) {
+                    infoStream,
+                    config.getDeferVectorGraphRebuild())) {
                   checkpointNoSIS();
                 }
               }
@@ -1154,7 +1157,8 @@ public class IndexWriter
               bufferedUpdatesStream::getCompletedDelGen,
               infoStream,
               conf.getSoftDeletesField(),
-              reader);
+              reader,
+              conf.getDeferVectorGraphRebuild());
       if (config.getReaderPooling()) {
         readerPool.enableReaderPooling();
       }
@@ -1973,6 +1977,84 @@ public class IndexWriter
           docWriter.updateDocValues(new BinaryDocValuesUpdate(term, field, value)));
     } catch (Error tragedy) {
       tragicEvent(tragedy, "updateBinaryDocValue");
+      throw tragedy;
+    }
+  }
+
+  /**
+   * Updates a document's KNN {@code float[]} vector value for {@code field} to the given {@code
+   * value}, in place, without reindexing the rest of the document. You can only update fields that
+   * already exist in the index as float vector fields with the same dimension; you cannot add a
+   * vector to documents that don't already have one.
+   *
+   * <p>This is the vector analogue of {@link #updateNumericDocValue}: the matching documents'
+   * vector column is rewritten and the field's HNSW graph is rebuilt for the affected segments at a
+   * new generation, while the rest of each document (postings, stored fields, other fields) is left
+   * untouched.
+   *
+   * <p><b>NOTE:</b> only the unquantized {@link
+   * org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat} is supported; quantized vector
+   * formats throw {@link UnsupportedOperationException}.
+   *
+   * @param term the term to identify the document(s) to be updated
+   * @param field field name of the float vector field
+   * @param value new vector value for the field
+   * @return The <a href="#sequence_number">sequence number</a> for this operation
+   * @throws CorruptIndexException if the index is corrupt
+   * @throws IOException if there is a low-level IO error
+   */
+  public long updateFloatVectorValue(Term term, String field, float[] value) throws IOException {
+    ensureOpen();
+    if (value == null) {
+      throw new IllegalArgumentException("cannot update a vector field to a null value: " + field);
+    }
+    globalFieldNumberMap.verifyVectorOnlyField(field, value.length, VectorEncoding.FLOAT32);
+    if (config.getIndexSortFields().contains(field)) {
+      throw new IllegalArgumentException(
+          "cannot update vector field involved in the index sort, field="
+              + field
+              + ", sort="
+              + config.getIndexSort());
+    }
+    try {
+      return maybeProcessEvents(
+          docWriter.updateVectorValues(new FloatKnnVectorUpdate(term, field, value)));
+    } catch (Error tragedy) {
+      tragicEvent(tragedy, "updateFloatVectorValue");
+      throw tragedy;
+    }
+  }
+
+  /**
+   * Updates a document's KNN {@code byte[]} vector value for {@code field} to the given {@code
+   * value}, in place, without reindexing the rest of the document. See {@link
+   * #updateFloatVectorValue} for details and constraints.
+   *
+   * @param term the term to identify the document(s) to be updated
+   * @param field field name of the byte vector field
+   * @param value new vector value for the field
+   * @return The <a href="#sequence_number">sequence number</a> for this operation
+   * @throws CorruptIndexException if the index is corrupt
+   * @throws IOException if there is a low-level IO error
+   */
+  public long updateByteVectorValue(Term term, String field, byte[] value) throws IOException {
+    ensureOpen();
+    if (value == null) {
+      throw new IllegalArgumentException("cannot update a vector field to a null value: " + field);
+    }
+    globalFieldNumberMap.verifyVectorOnlyField(field, value.length, VectorEncoding.BYTE);
+    if (config.getIndexSortFields().contains(field)) {
+      throw new IllegalArgumentException(
+          "cannot update vector field involved in the index sort, field="
+              + field
+              + ", sort="
+              + config.getIndexSort());
+    }
+    try {
+      return maybeProcessEvents(
+          docWriter.updateVectorValues(new ByteKnnVectorUpdate(term, field, value)));
+    } catch (Error tragedy) {
+      tragicEvent(tragedy, "updateByteVectorValue");
       throw tragedy;
     }
   }
@@ -4418,8 +4500,11 @@ public class IndexWriter
     int numDeletesBefore = mergedDeletesAndUpdates.getDelCount();
     // field -> delGen -> dv field updates
     Map<String, LongObjectHashMap<DocValuesFieldUpdates>> mappedDVUpdates = new HashMap<>();
+    // field -> delGen -> KNN vector field updates (carried over while merging)
+    Map<String, LongObjectHashMap<KnnVectorFieldUpdates>> mappedVectorUpdates = new HashMap<>();
 
     boolean anyDVUpdates = false;
+    boolean anyVectorUpdates = false;
 
     assert sourceSegments.size() == docMaps.length;
     for (int i = 0; i < sourceSegments.size(); i++) {
@@ -4504,6 +4589,51 @@ public class IndexWriter
           }
         }
       }
+
+      // Now the same for KNN vector updates resolved while merging, remapping docIDs:
+      Map<String, List<KnnVectorFieldUpdates>> mergingVectorUpdates = rld.getMergingVectorUpdates();
+      for (Map.Entry<String, List<KnnVectorFieldUpdates>> ent : mergingVectorUpdates.entrySet()) {
+        String field = ent.getKey();
+        LongObjectHashMap<KnnVectorFieldUpdates> mappedField = mappedVectorUpdates.get(field);
+        if (mappedField == null) {
+          mappedField = new LongObjectHashMap<>();
+          mappedVectorUpdates.put(field, mappedField);
+        }
+        for (KnnVectorFieldUpdates updates : ent.getValue()) {
+          if (bufferedUpdatesStream.stillRunning(updates.delGen)) {
+            continue;
+          }
+          assert field.equals(updates.field);
+          KnnVectorFieldUpdates mappedUpdates = mappedField.get(updates.delGen);
+          if (mappedUpdates == null) {
+            if (updates.encoding == VectorEncoding.FLOAT32) {
+              mappedUpdates =
+                  new KnnVectorFieldUpdates.FloatKnnVectorFieldUpdates(
+                      merge.info.info.maxDoc(), updates.delGen, field, updates.dimension);
+            } else {
+              mappedUpdates =
+                  new KnnVectorFieldUpdates.ByteKnnVectorFieldUpdates(
+                      merge.info.info.maxDoc(), updates.delGen, field, updates.dimension);
+            }
+            mappedField.put(updates.delGen, mappedUpdates);
+          }
+          KnnVectorFieldUpdates.Iterator it = updates.iterator();
+          int doc;
+          while ((doc = it.nextDoc()) != NO_MORE_DOCS) {
+            int mappedDoc = segDocMap.get(doc);
+            if (mappedDoc != -1) {
+              if (updates.encoding == VectorEncoding.FLOAT32) {
+                ((KnnVectorFieldUpdates.FloatKnnVectorFieldUpdates) mappedUpdates)
+                    .add(mappedDoc, it.floatValue());
+              } else {
+                ((KnnVectorFieldUpdates.ByteKnnVectorFieldUpdates) mappedUpdates)
+                    .add(mappedDoc, it.byteValue());
+              }
+              anyVectorUpdates = true;
+            }
+          }
+        }
+      }
     }
 
     if (anyDVUpdates) {
@@ -4512,6 +4642,16 @@ public class IndexWriter
         for (ObjectCursor<DocValuesFieldUpdates> updates : d.values()) {
           updates.value.finish();
           mergedDeletesAndUpdates.addDVUpdate(updates.value);
+        }
+      }
+    }
+
+    if (anyVectorUpdates) {
+      // Persist the merged KNN vector updates onto the RAU for the merged segment:
+      for (LongObjectHashMap<KnnVectorFieldUpdates> d : mappedVectorUpdates.values()) {
+        for (ObjectCursor<KnnVectorFieldUpdates> updates : d.values()) {
+          updates.value.finish();
+          mergedDeletesAndUpdates.addVectorUpdate(updates.value);
         }
       }
     }

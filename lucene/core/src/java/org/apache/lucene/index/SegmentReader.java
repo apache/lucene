@@ -62,6 +62,7 @@ public final class SegmentReader extends CodecReader {
 
   final SegmentCoreReaders core;
   final SegmentDocValues segDocValues;
+  final SegmentKnnVectors segKnnVectors;
 
   /**
    * True if we are holding RAM only liveDocs or DV updates, i.e. the SegmentCommitInfo delGen
@@ -70,6 +71,9 @@ public final class SegmentReader extends CodecReader {
   final boolean isNRT;
 
   final DocValuesProducer docValuesProducer;
+  // Gen-aware vectors reader for the current commit: a SegmentVectorsProducer when there are vector
+  // updates, else the shared core.knnVectorsReader (or null when the segment has no vectors).
+  final KnnVectorsReader vectorsReader;
   final FieldInfos fieldInfos;
 
   /**
@@ -94,6 +98,7 @@ public final class SegmentReader extends CodecReader {
 
     core = new SegmentCoreReaders(si.info.dir, si, context);
     segDocValues = new SegmentDocValues();
+    segKnnVectors = new SegmentKnnVectors();
 
     final Codec codec = si.info.getCodec();
     try {
@@ -109,6 +114,7 @@ public final class SegmentReader extends CodecReader {
 
       fieldInfos = initFieldInfos();
       docValuesProducer = initDocValuesProducer();
+      vectorsReader = initVectorsProducer();
       assert assertLiveDocs(isNRT, hardLiveDocs, liveDocs);
     } catch (Throwable t) {
       // With lock-less commits, it's entirely possible (and
@@ -151,10 +157,12 @@ public final class SegmentReader extends CodecReader {
     this.core = sr.core;
     core.incRef();
     this.segDocValues = sr.segDocValues;
+    this.segKnnVectors = sr.segKnnVectors;
 
     try {
       fieldInfos = initFieldInfos();
       docValuesProducer = initDocValuesProducer();
+      vectorsReader = initVectorsProducer();
     } catch (Throwable t) {
       doClose();
       throw t;
@@ -192,6 +200,25 @@ public final class SegmentReader extends CodecReader {
     }
   }
 
+  /** init most recent KNN vectors reader for the current commit */
+  private KnnVectorsReader initVectorsProducer() throws IOException {
+    if (fieldInfos.hasVectorValues() == false) {
+      return null;
+    }
+    if (si.hasVectorUpdates()) {
+      Directory dir;
+      if (core.cfsReader != null) {
+        dir = core.cfsReader;
+      } else {
+        dir = si.info.dir;
+      }
+      return new SegmentVectorsProducer(si, dir, core.knnVectorsReader, fieldInfos, segKnnVectors);
+    } else {
+      // simple case, no vector updates: use the shared, immutable core reader
+      return core.knnVectorsReader;
+    }
+  }
+
   /** init most recent FieldInfos for the current commit */
   private FieldInfos initFieldInfos() throws IOException {
     if (!si.hasFieldUpdates()) {
@@ -216,10 +243,18 @@ public final class SegmentReader extends CodecReader {
     try {
       core.decRef();
     } finally {
-      if (docValuesProducer instanceof SegmentDocValuesProducer sdvp) {
-        segDocValues.decRef(sdvp.dvGens);
-      } else if (docValuesProducer != null) {
-        segDocValues.decRef(LongArrayList.from(-1L));
+      try {
+        if (docValuesProducer instanceof SegmentDocValuesProducer sdvp) {
+          segDocValues.decRef(sdvp.dvGens);
+        } else if (docValuesProducer != null) {
+          segDocValues.decRef(LongArrayList.from(-1L));
+        }
+      } finally {
+        // Only the per-gen vector readers are tracked by segKnnVectors; the base (gen == -1)
+        // reader's lifecycle is owned by core (decRef'd above), so we don't decRef it here.
+        if (vectorsReader instanceof SegmentVectorsProducer svp) {
+          segKnnVectors.decRef(svp.vectorGens);
+        }
       }
     }
   }
@@ -278,7 +313,7 @@ public final class SegmentReader extends CodecReader {
 
   @Override
   public KnnVectorsReader getVectorReader() {
-    return core.knnVectorsReader;
+    return vectorsReader;
   }
 
   @Override

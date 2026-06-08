@@ -108,6 +108,16 @@ public class LiveIndexWriterConfig {
    */
   protected volatile boolean checkPendingFlushOnUpdate = true;
 
+  /**
+   * If {@code true}, in-place KNN vector updates ({@link IndexWriter#updateFloatVectorValue} /
+   * {@link IndexWriter#updateByteVectorValue}) write only the new flat vectors at a new generation
+   * and skip rebuilding the field's HNSW graph for the affected segment(s). Until the next merge
+   * rebuilds the graph, ANN search on those segments falls back to an exact (brute-force) scan over
+   * the vectors. Defaults to {@code false} (eager rebuild), which keeps approximate-search latency
+   * unchanged at the cost of a graph rebuild per update commit.
+   */
+  protected volatile boolean deferVectorGraphRebuild = false;
+
   /** soft deletes field */
   protected String softDeletesField = null;
 
@@ -435,6 +445,32 @@ public class LiveIndexWriterConfig {
    */
   public LiveIndexWriterConfig setCheckPendingFlushUpdate(boolean checkPendingFlushOnUpdate) {
     this.checkPendingFlushOnUpdate = checkPendingFlushOnUpdate;
+    return this;
+  }
+
+  /**
+   * Returns {@code true} if in-place KNN vector updates defer the per-segment HNSW graph rebuild to
+   * the next merge (exact-scan search until then). See {@link
+   * #setDeferVectorGraphRebuild(boolean)}.
+   *
+   * @lucene.experimental
+   */
+  public boolean getDeferVectorGraphRebuild() {
+    return deferVectorGraphRebuild;
+  }
+
+  /**
+   * Expert: when {@code true}, {@link IndexWriter#updateFloatVectorValue} / {@link
+   * IndexWriter#updateByteVectorValue} write only the new flat vectors at a new generation and skip
+   * rebuilding the field's HNSW graph for the affected segment(s). ANN search on those segments
+   * then falls back to an exact (brute-force) scan until the next merge rebuilds the graph. This
+   * makes vector-update commits much cheaper at the cost of temporarily slower / exact ANN search
+   * on the updated segments. Defaults to {@code false} (eager rebuild).
+   *
+   * @lucene.experimental
+   */
+  public LiveIndexWriterConfig setDeferVectorGraphRebuild(boolean deferVectorGraphRebuild) {
+    this.deferVectorGraphRebuild = deferVectorGraphRebuild;
     return this;
   }
 

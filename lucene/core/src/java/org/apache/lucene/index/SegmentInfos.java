@@ -118,7 +118,10 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
   /** The version that recorded SegmentCommitInfo IDs */
   public static final int VERSION_86 = 10;
 
-  static final int VERSION_CURRENT = VERSION_86;
+  /** The version that records per-segment KNN vector update generations + files. */
+  public static final int VERSION_VECTOR_UPDATES = 11;
+
+  static final int VERSION_CURRENT = VERSION_VECTOR_UPDATES;
 
   /** Name of the generation reference file name */
   static final String OLD_SEGMENTS_GEN = "segments.gen";
@@ -449,6 +452,18 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
         dvUpdateFiles = Collections.unmodifiableMap(map);
       }
       siPerCommit.setDocValuesUpdatesFiles(dvUpdateFiles);
+      if (format >= VERSION_VECTOR_UPDATES) {
+        long vectorGen = CodecUtil.readBELong(input);
+        siPerCommit.initVectorGen(vectorGen);
+        final int numVectorFields = CodecUtil.readBEInt(input);
+        if (numVectorFields != 0) {
+          Map<Integer, Set<String>> map = HashMap.newHashMap(numVectorFields);
+          for (int i = 0; i < numVectorFields; i++) {
+            map.put(CodecUtil.readBEInt(input), input.readSetOfStrings());
+          }
+          siPerCommit.setVectorUpdatesFiles(Collections.unmodifiableMap(map));
+        }
+      }
       infos.add(siPerCommit);
 
       Version segmentVersion = info.getVersion();
@@ -691,6 +706,14 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
       final Map<Integer, Set<String>> dvUpdatesFiles = siPerCommit.getDocValuesUpdatesFiles();
       CodecUtil.writeBEInt(out, dvUpdatesFiles.size());
       for (Entry<Integer, Set<String>> e : dvUpdatesFiles.entrySet()) {
+        CodecUtil.writeBEInt(out, e.getKey());
+        out.writeSetOfStrings(e.getValue());
+      }
+      // VERSION_VECTOR_UPDATES: per-segment KNN vector update generation + per-field update files
+      CodecUtil.writeBELong(out, siPerCommit.getVectorGen());
+      final Map<Integer, Set<String>> vectorUpdatesFiles = siPerCommit.getVectorUpdatesFiles();
+      CodecUtil.writeBEInt(out, vectorUpdatesFiles.size());
+      for (Entry<Integer, Set<String>> e : vectorUpdatesFiles.entrySet()) {
         CodecUtil.writeBEInt(out, e.getKey());
         out.writeSetOfStrings(e.getValue());
       }

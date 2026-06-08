@@ -150,6 +150,10 @@ final class DocumentsWriter implements Closeable, Accountable {
     return applyDeleteOrUpdate(q -> q.addDocValuesUpdates(updates));
   }
 
+  long updateVectorValues(KnnVectorUpdate... updates) throws IOException {
+    return applyDeleteOrUpdate(q -> q.addVectorUpdates(updates));
+  }
+
   private synchronized long applyDeleteOrUpdate(ToLongFunction<DocumentsWriterDeleteQueue> function)
       throws IOException {
     // This method is synchronized to make sure we don't replace the deleteQueue while applying this

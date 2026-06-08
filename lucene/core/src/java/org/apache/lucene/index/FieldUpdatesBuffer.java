@@ -65,15 +65,19 @@ final class FieldUpdatesBuffer {
   private boolean finished = false;
 
   private FieldUpdatesBuffer(
-      Counter bytesUsed, DocValuesUpdate initialValue, int docUpTo, boolean isNumeric) {
+      Counter bytesUsed,
+      Term initialTerm,
+      boolean initialHasValue,
+      int docUpTo,
+      boolean isNumeric) {
     this.bytesUsed = bytesUsed;
     this.bytesUsed.addAndGet(SELF_SHALLOW_SIZE);
     termValues = new BytesRefArray(bytesUsed);
-    termValues.append(initialValue.term.bytes);
-    fields = new String[] {initialValue.term.field};
-    bytesUsed.addAndGet(sizeOfString(initialValue.term.field));
+    termValues.append(initialTerm.bytes);
+    fields = new String[] {initialTerm.field};
+    bytesUsed.addAndGet(sizeOfString(initialTerm.field));
     docsUpTo = new int[] {docUpTo};
-    if (initialValue.hasValue == false) {
+    if (initialHasValue == false) {
       hasValues = new FixedBitSet(1);
       bytesUsed.addAndGet(hasValues.ramBytesUsed());
     }
@@ -87,7 +91,7 @@ final class FieldUpdatesBuffer {
 
   FieldUpdatesBuffer(
       Counter bytesUsed, DocValuesUpdate.NumericDocValuesUpdate initialValue, int docUpTo) {
-    this(bytesUsed, initialValue, docUpTo, true);
+    this(bytesUsed, initialValue.term, initialValue.hasValue, docUpTo, true);
     if (initialValue.hasValue()) {
       numericValues = new long[] {initialValue.getValue()};
       maxNumeric = minNumeric = initialValue.getValue();
@@ -99,10 +103,20 @@ final class FieldUpdatesBuffer {
 
   FieldUpdatesBuffer(
       Counter bytesUsed, DocValuesUpdate.BinaryDocValuesUpdate initialValue, int docUpTo) {
-    this(bytesUsed, initialValue, docUpTo, false);
+    this(bytesUsed, initialValue.term, initialValue.hasValue, docUpTo, false);
     if (initialValue.hasValue()) {
       byteValues.append(initialValue.getValue());
     }
+  }
+
+  /**
+   * Constructor for buffering KNN vector updates. The vector value is stored as raw bytes in the
+   * binary ({@code byteValues}) store, decoded back to a vector at apply time using the field's
+   * dimension and encoding.
+   */
+  FieldUpdatesBuffer(Counter bytesUsed, KnnVectorUpdate initialValue, int docUpTo) {
+    this(bytesUsed, initialValue.term, initialValue.hasValue, docUpTo, false);
+    byteValues.append(initialValue.getValueAsBytes());
   }
 
   long getMaxNumeric() {
