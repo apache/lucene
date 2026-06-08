@@ -33,8 +33,14 @@ public abstract class ColumnBatch {
 
   /**
    * Returns the columns in this batch. Each column represents a single field across the documents
-   * in the batch. Within a batch, column names must be unique: multi-valued fields should be
-   * expressed as a single column whose tuple cursor emits multiple values per batch doc-id.
+   * in the batch.
+   *
+   * <p>Multi-valued fields must be expressed as a single column whose tuple cursor emits multiple
+   * values per batch doc-id; the same value (e.g. a doc value) must not be split across columns.
+   * Several columns <em>may</em> share a field name to combine distinct indexing aspects — for
+   * example a stored {@link BinaryColumn} alongside a separate inverted column for the same field —
+   * but each aspect (inversion, stored, doc values, points, vectors) must be carried by a single
+   * column.
    */
   public abstract Iterable<Column> columns();
 }
