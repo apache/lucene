@@ -139,7 +139,7 @@ Improvements
 
 * GITHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
 
-* GITHUB#XXXXX: Add DiversifiedTopDocsCollectorManager to enable concurrent search with
+* GITHUB#16216: Add DiversifiedTopDocsCollectorManager to enable concurrent search with
   DiversifiedTopDocsCollector, removing usages of the deprecated IndexSearcher#search(Query, Collector).
   (Luca Cavanna)
 
