@@ -252,8 +252,10 @@ public class TestQueryUtils extends LuceneTestCase {
   }
 
   /**
-   * score() multiplies the real score by 2 on every even call, producing different values on
-   * successive calls to score() for the same document.
+   * score() adds 1.0 on every even call per document, producing different values on successive
+   * calls to score() for the same document. The per-doc call counter ensures the outer scorer
+   * (called once per doc) and the shadow scorer's first call always agree, so the spurious
+   * scoreDiff check does not fire — only the scorerDiff (stability) check does.
    */
   private static final class UnstableScoreQuery extends BrokenQuery {
     UnstableScoreQuery(Query delegate) {
@@ -287,16 +289,22 @@ public class TestQueryUtils extends LuceneTestCase {
             }
           };
       return new Scorer() {
+        private int lastScoredDoc = -2;
         private int scoreCallCount = 0;
 
         @Override
         public float score() throws IOException {
-          return inner.score() * (++scoreCallCount % 2 == 0 ? 2f : 1f);
+          int doc = docID();
+          if (doc != lastScoredDoc) {
+            lastScoredDoc = doc;
+            scoreCallCount = 0;
+          }
+          return inner.score() + (++scoreCallCount % 2 == 0 ? 1f : 0f);
         }
 
         @Override
         public float getMaxScore(int upTo) throws IOException {
-          return inner.getMaxScore(upTo) * 2f;
+          return inner.getMaxScore(upTo) + 1f;
         }
 
         @Override
