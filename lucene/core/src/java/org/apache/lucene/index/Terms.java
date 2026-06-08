@@ -118,7 +118,7 @@ public abstract class Terms {
    * Returns the number of documents that have at least one term for this field. Note that, just
    * like other term measures, this measure does not take deleted documents into account.
    */
-  public abstract int getDocCount() throws IOException;
+  public abstract int getDocCount();
 
   /**
    * Returns true if documents in this field store per-document term frequency ({@link
@@ -247,7 +247,7 @@ public abstract class Terms {
         }
 
         @Override
-        public int getDocCount() throws IOException {
+        public int getDocCount() {
           return 0;
         }
 

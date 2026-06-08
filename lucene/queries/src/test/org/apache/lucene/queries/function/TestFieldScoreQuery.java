@@ -24,7 +24,6 @@ import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.junit.BeforeClass;
-import org.junit.Test;
 
 /**
  * Test FieldScoreQuery search.
@@ -44,25 +43,21 @@ public class TestFieldScoreQuery extends FunctionTestSetup {
   }
 
   /** Test that FieldScoreQuery of Type.INT returns docs in expected order. */
-  @Test
   public void testRankInt() throws Exception {
     doTestRank(INT_VALUESOURCE);
   }
 
-  @Test
   public void testRankIntMultiValued() throws Exception {
     doTestRank(INT_MV_MAX_VALUESOURCE);
     doTestRank(INT_MV_MIN_VALUESOURCE);
   }
 
   /** Test that FieldScoreQuery of Type.FLOAT returns docs in expected order. */
-  @Test
   public void testRankFloat() throws Exception {
     // same values, but in flot format
     doTestRank(FLOAT_VALUESOURCE);
   }
 
-  @Test
   public void testRankFloatMultiValued() throws Exception {
     // same values, but in flot format
     doTestRank(FLOAT_MV_MAX_VALUESOURCE);
@@ -91,25 +86,21 @@ public class TestFieldScoreQuery extends FunctionTestSetup {
   }
 
   /** Test that FieldScoreQuery of Type.INT returns the expected scores. */
-  @Test
   public void testExactScoreInt() throws Exception {
     doTestExactScore(INT_VALUESOURCE);
   }
 
-  @Test
   public void testExactScoreIntMultiValued() throws Exception {
     doTestExactScore(INT_MV_MAX_VALUESOURCE);
     doTestExactScore(INT_MV_MIN_VALUESOURCE);
   }
 
   /** Test that FieldScoreQuery of Type.FLOAT returns the expected scores. */
-  @Test
   public void testExactScoreFloat() throws Exception {
     // same values, but in flot format
     doTestExactScore(FLOAT_VALUESOURCE);
   }
 
-  @Test
   public void testExactScoreFloatMultiValued() throws Exception {
     // same values, but in flot format
     doTestExactScore(FLOAT_MV_MAX_VALUESOURCE);

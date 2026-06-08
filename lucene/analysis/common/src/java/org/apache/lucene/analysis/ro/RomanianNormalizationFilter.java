@@ -31,7 +31,7 @@ public final class RomanianNormalizationFilter extends TokenFilter {
   }
 
   @Override
-  public final boolean incrementToken() throws IOException {
+  public boolean incrementToken() throws IOException {
     if (input.incrementToken()) {
       int newlen = normalizer.normalize(termAtt.buffer(), termAtt.length());
       termAtt.setLength(newlen);

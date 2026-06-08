@@ -20,6 +20,7 @@ import static java.lang.foreign.ValueLayout.ADDRESS;
 import static java.lang.foreign.ValueLayout.JAVA_BYTE;
 import static java.lang.foreign.ValueLayout.JAVA_FLOAT;
 import static java.lang.foreign.ValueLayout.JAVA_LONG;
+import static org.apache.lucene.index.VectorSimilarityFunction.COSINE;
 import static org.apache.lucene.index.VectorSimilarityFunction.DOT_PRODUCT;
 import static org.apache.lucene.index.VectorSimilarityFunction.EUCLIDEAN;
 import static org.apache.lucene.sandbox.codecs.faiss.FaissNativeWrapper.Exception.handleException;
@@ -36,7 +37,6 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.MethodType;
 import java.nio.ByteOrder;
 import java.util.Map;
-import java.util.stream.Collectors;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
@@ -140,7 +140,11 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
   private static final Map<VectorSimilarityFunction, Integer> FUNCTION_TO_METRIC =
       Map.of(
           // Mapped from faiss/MetricType.h
+          // COSINE uses METRIC_INNER_PRODUCT with normalized vectors.
+          // See
+          // https://github.com/facebookresearch/faiss/wiki/FAQ#how-can-i-index-vectors-for-cosine-distance
           DOT_PRODUCT, 0,
+          COSINE, 0,
           EUCLIDEAN, 1);
 
   private static int functionToMetric(VectorSimilarityFunction function) {
@@ -149,19 +153,6 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
       throw new UnsupportedOperationException("Similarity function not supported: " + function);
     }
     return metric;
-  }
-
-  // Invert FUNCTION_TO_METRIC
-  private static final Map<Integer, VectorSimilarityFunction> METRIC_TO_FUNCTION =
-      FUNCTION_TO_METRIC.entrySet().stream()
-          .collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
-
-  private static VectorSimilarityFunction metricToFunction(int metric) {
-    VectorSimilarityFunction function = METRIC_TO_FUNCTION.get(metric);
-    if (function == null) {
-      throw new UnsupportedOperationException("Metric not supported: " + metric);
-    }
-    return function;
   }
 
   @Override
@@ -220,6 +211,13 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
         docsOffset += perDocByteSize;
       }
 
+      // NOTE: Faiss does not have a native cosine metric, so we L2-normalize vectors and use
+      // METRIC_INNER_PRODUCT. This adds overhead at indexing and query time. If vectors are
+      // already normalized and raw vector retrieval is not needed, DOT_PRODUCT is preferred.
+      if (function == COSINE) {
+        wrapper.faiss_fvec_renorm_L2(dimension, size, docs);
+      }
+
       // Train index
       int isTrained = wrapper.faiss_Index_is_trained(indexPointer);
       if (isTrained == 0) {
@@ -229,7 +227,7 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
       // Add docs to index
       handleException(wrapper.faiss_Index_add_with_ids(indexPointer, size, docs, ids));
 
-      return new Index(indexPointer);
+      return new Index(indexPointer, function);
 
     } catch (IOException e) {
       throw new UncheckedIOException(e);
@@ -241,7 +239,7 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
   private static final int FAISS_IO_FLAG_READ_ONLY = 2;
 
   @Override
-  public FaissLibrary.Index readIndex(IndexInput input) {
+  public FaissLibrary.Index readIndex(IndexInput input, VectorSimilarityFunction function) {
     try (Arena temp = Arena.ofConfined()) {
       MethodHandle readerHandle = READ_BYTES_HANDLE.bindTo(input);
       MemorySegment readerStub =
@@ -262,7 +260,7 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
               customIOReaderPointer, FAISS_IO_FLAG_MMAP | FAISS_IO_FLAG_READ_ONLY, pointer));
       MemorySegment indexPointer = pointer.get(ADDRESS, 0);
 
-      return new Index(indexPointer);
+      return new Index(indexPointer, function);
     }
   }
 
@@ -275,31 +273,34 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
     private final Arena arena;
     private final MemorySegment indexPointer;
     private final FloatToFloatFunction scaler;
+    private final VectorSimilarityFunction function;
+    private final int dimension;
     private boolean closed;
 
-    private Index(MemorySegment indexPointer) {
+    private Index(MemorySegment indexPointer, VectorSimilarityFunction function) {
       this.arena = Arena.ofShared();
       this.indexPointer =
           indexPointer
               // Ensure timely cleanup
               .reinterpret(arena, wrapper::faiss_Index_free);
-
-      // Get underlying function
-      int metricType = wrapper.faiss_Index_metric_type(indexPointer);
-      VectorSimilarityFunction function = metricToFunction(metricType);
+      this.function = function;
+      this.dimension = wrapper.faiss_Index_d(indexPointer);
 
       // Scale Faiss distances to Lucene scores, see VectorSimilarityFunction.java
       this.scaler =
           switch (function) {
-            case DOT_PRODUCT ->
+            case DOT_PRODUCT, COSINE ->
                 // distance in Faiss === dotProduct in Lucene
+                // For COSINE, vectors are normalized so inner product == cosine similarity
                 distance -> Math.max((1 + distance) / 2, 0);
 
             case EUCLIDEAN ->
                 // distance in Faiss === squareDistance in Lucene
                 distance -> 1 / (1 + distance);
 
-            case COSINE, MAXIMUM_INNER_PRODUCT -> throw new AssertionError("Should not reach here");
+            case MAXIMUM_INNER_PRODUCT ->
+                throw new UnsupportedOperationException(
+                    "Similarity function not supported: " + function);
           };
 
       this.closed = false;
@@ -326,6 +327,10 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
 
         // Allocate queries in native memory
         MemorySegment queries = temp.allocateFrom(JAVA_FLOAT, query);
+        // See indexing-time comment about COSINE overhead.
+        if (function == COSINE) {
+          wrapper.faiss_fvec_renorm_L2(dimension, 1, queries);
+        }
 
         // Faiss knn search
         int k = knnCollector.k();
@@ -373,6 +378,7 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
         }
 
         // Record hits
+        int resultCount = 0;
         for (int i = 0; i < k; i++) {
           int id = (int) idsPointer.getAtIndex(JAVA_LONG, i);
 
@@ -382,8 +388,12 @@ final class FaissLibraryNativeImpl implements FaissLibrary {
           }
 
           // Collect result
+          resultCount++;
           float distance = distancesPointer.getAtIndex(JAVA_FLOAT, i);
           knnCollector.collect(id, scaler.scale(distance));
+        }
+        if (resultCount > 0) {
+          knnCollector.incVisitedCount(resultCount);
         }
       } catch (IOException e) {
         throw new RuntimeException(e);

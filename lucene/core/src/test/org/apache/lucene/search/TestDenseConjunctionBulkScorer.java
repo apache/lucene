@@ -528,6 +528,68 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
         DocIdSetIterator.NO_MORE_DOCS);
   }
 
+  /**
+   * A two-phase clause that reports a real {@link TwoPhaseIterator#docIDRunEnd() run} — as {@link
+   * DocValuesRangeIterator}'s block iterator does for fully-matching YES blocks — must be collected
+   * via {@link LeafCollector#collectRange}, never materialized into a bit set or visited per-doc.
+   * This guards the collectRange fast path for doc-values ranges: the two-phase unification routes
+   * ranges through this scorer as two-phase clauses, so the run has to survive {@code
+   * DisiWrapper#docIDRunEnd()} delegating to the two-phase. The existing two-phase tests use {@code
+   * RandomTwoPhaseView}, whose approximation reports no run, so they exercise only the bit-set
+   * path.
+   */
+  public void testTwoPhaseRunCollectedAsRange() throws IOException {
+    int maxDoc = 100_000;
+    TwoPhaseIterator twoPhase =
+        new TwoPhaseIterator(DocIdSetIterator.range(10_000, 60_000)) {
+          @Override
+          public boolean matches() {
+            return true; // every doc in the run matches, like a YES block
+          }
+
+          @Override
+          public float matchCost() {
+            return 1f;
+          }
+
+          @Override
+          public int docIDRunEnd() throws IOException {
+            return approximation().docIDRunEnd();
+          }
+        };
+    BulkScorer scorer =
+        new DenseConjunctionBulkScorer(
+            Collections.emptyList(), Collections.singletonList(twoPhase), maxDoc, 0f);
+    int[] collectedViaRange = {0};
+    scorer.score(
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) throws IOException {}
+
+          @Override
+          public void collect(int doc) throws IOException {
+            fail("a fully-matching run must be collected via collectRange, not per-doc");
+          }
+
+          @Override
+          public void collect(DocIdStream stream) throws IOException {
+            fail(
+                "a fully-matching run must be collected via collectRange, not as a bit-set stream");
+          }
+
+          @Override
+          public void collectRange(int min, int max) throws IOException {
+            assertTrue(min >= 10_000);
+            assertTrue(max <= 60_000);
+            collectedViaRange[0] += max - min;
+          }
+        },
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
+    assertEquals(50_000, collectedViaRange[0]);
+  }
+
   private static class CountingLeafCollector implements LeafCollector {
 
     int count;
@@ -958,11 +1020,10 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
 
     BulkScorer scorer =
         new DenseConjunctionBulkScorer(Collections.emptyList(), clauses, maxDoc, 0f);
-    // Matches are collected as a single DocIdStream
+    // Matches arrive in order, as ranges and/or bit-set windows.
     scorer.score(
         new LeafCollector() {
 
-          private boolean called = false;
           private int expected = 30_000;
 
           @Override
@@ -975,8 +1036,6 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
 
           @Override
           public void collect(DocIdStream stream) throws IOException {
-            assertFalse(called);
-            called = true;
             stream.forEach(
                 doc -> {
                   assertEquals(expected++, doc);
@@ -985,7 +1044,6 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
 
           @Override
           public void finish() throws IOException {
-            assertTrue(called);
             assertEquals(60_001, expected);
           }
         },
@@ -1023,11 +1081,10 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
                 new RandomTwoPhaseView(random(), clause3)),
             maxDoc,
             0f);
-    // Matches are collected as a single DocIdStream
+    // Matches arrive in order, as ranges and/or bit-set windows.
     scorer.score(
         new LeafCollector() {
 
-          private boolean called = false;
           private int expected = 30_000;
 
           @Override
@@ -1040,8 +1097,6 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
 
           @Override
           public void collect(DocIdStream stream) throws IOException {
-            assertFalse(called);
-            called = true;
             stream.forEach(
                 doc -> {
                   assertEquals(expected++, doc);
@@ -1050,7 +1105,6 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
 
           @Override
           public void finish() throws IOException {
-            assertTrue(called);
             assertEquals(60_001, expected);
           }
         },

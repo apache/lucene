@@ -66,7 +66,6 @@ import org.apache.lucene.tests.analysis.MockTokenizer;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.automaton.Automata;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
-import org.apache.lucene.util.automaton.Operations;
 import org.apache.lucene.util.automaton.RegExp;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -1102,7 +1101,6 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
             RegExp.ALL,
             0,
             _ -> null,
-            Operations.DEFAULT_DETERMINIZE_WORK_LIMIT,
             MultiTermQuery.SCORING_BOOLEAN_REWRITE);
     assertTrue(getQuery("/[A-Z][123]/^0.5", qp) instanceof BoostQuery);
     assertTrue(((BoostQuery) getQuery("/[A-Z][123]/^0.5", qp)).getQuery() instanceof RegexpQuery);

@@ -53,6 +53,20 @@ public class TestOffHeapVectorValues extends LuceneTestCase {
     assertEquals(0, floatIndexInput.getPrefetchCount());
   }
 
+  public void testPrefetchBoundedByArrayLength() throws IOException {
+    // numOrds may exceed the length of the (reused) scratch array. Prefetch must be bounded by the
+    // array length so it only prefetches the available ords instead of running past the array end.
+    CountingIndexInput byteIndexInput = new CountingIndexInput();
+    OffHeapByteVectorValues values = createTestByteVectorValues(byteIndexInput);
+    values.prefetch(new int[] {1, 2}, 5);
+    assertEquals(2, byteIndexInput.getPrefetchCount());
+
+    CountingIndexInput floatIndexInput = new CountingIndexInput();
+    OffHeapFloatVectorValues floatValues = createTestFloatVectorValues(floatIndexInput);
+    floatValues.prefetch(new int[] {1, 2}, 5);
+    assertEquals(2, floatIndexInput.getPrefetchCount());
+  }
+
   private OffHeapByteVectorValues createTestByteVectorValues(IndexInput indexInput)
       throws IOException {
     return new OffHeapByteVectorValues.DenseOffHeapVectorValues(
@@ -75,8 +89,9 @@ public class TestOffHeapVectorValues extends LuceneTestCase {
     }
 
     @Override
-    public void prefetch(long offset, long length) throws IOException {
+    public boolean prefetch(long offset, long length) throws IOException {
       counter.incrementAndGet();
+      return true;
     }
 
     public int getPrefetchCount() {

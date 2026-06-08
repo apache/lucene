@@ -18,201 +18,463 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.TermsEnum;
+import org.apache.lucene.util.FixedBitSet;
+import org.apache.lucene.util.IOBooleanSupplier;
+import org.apache.lucene.util.LongBitSet;
 
 /**
- * Wrapper around a {@link TwoPhaseIterator} for a doc-values range query that speeds things up by
- * taking advantage of a {@link DocValuesSkipper}.
+ * A {@link TwoPhaseIterator} over doc values that skips documents with values that lie outside a
+ * specific range, using a {@link SkipBlockRangeIterator} as an approximation
  *
  * @lucene.experimental
  */
-public final class DocValuesRangeIterator extends TwoPhaseIterator {
+public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
 
-  enum Match {
-    /** None of the documents in the range match */
-    NO,
-    /** Document values need to be checked to verify matches */
-    MAYBE,
-    /** All documents in the range that have a value match */
-    IF_DOC_HAS_VALUE,
-    /** All docs in the range match */
-    YES;
+  /**
+   * Creates a DocValuesRangeIterator over a NumericDocValues instance
+   *
+   * @param values the doc values
+   * @param skipper an optional skipper to exclude non-matching blocks
+   * @param min skip documents with values lower than this
+   * @param max skip documents with values higher than this
+   */
+  public static DocValuesRangeIterator forRange(
+      NumericDocValues values, DocValuesSkipper skipper, long min, long max) {
+    IOBooleanSupplier check =
+        () -> {
+          long v = values.longValue();
+          return v >= min && v <= max;
+        };
+    return skipper == null
+        ? new DocValuesValueRangeIterator(values, check, 2)
+        : new DocValuesBlockRangeIterator(
+            values,
+            new SkipBlockRangeIterator(skipper, min, max),
+            check,
+            2,
+            false,
+            values,
+            min,
+            max);
   }
 
-  private final Approximation approximation;
-  private final TwoPhaseIterator innerTwoPhase;
+  /**
+   * Creates a DocValuesRangeIterator over a SortedNumericDocValues instance
+   *
+   * @param values the doc values
+   * @param skipper an optional skipper to exclude non-matching blocks
+   * @param min skip documents with all values lower than this
+   * @param max skip documents with all values higher than this
+   */
+  public static DocValuesRangeIterator forRange(
+      SortedNumericDocValues values, DocValuesSkipper skipper, long min, long max) {
+    IOBooleanSupplier check =
+        () -> {
+          for (int i = 0; i < values.docValueCount(); i++) {
+            long v = values.nextValue();
+            if (v >= min) {
+              return v <= max;
+            }
+          }
+          return false;
+        };
+    return skipper == null
+        ? new DocValuesValueRangeIterator(values, check, 5)
+        : new DocValuesBlockRangeIterator(
+            values, new SkipBlockRangeIterator(skipper, min, max), check, 2, false);
+  }
 
-  public DocValuesRangeIterator(
-      TwoPhaseIterator twoPhase,
+  /**
+   * Creates a DocValuesRangeIterator over a SortedDocValues instance
+   *
+   * @param values the doc values
+   * @param skipper an optional skipper to exclude non-matching blocks
+   * @param min skip documents with ordinal values lower than this
+   * @param max skip documents with ordinal values higher than this
+   */
+  public static DocValuesRangeIterator forOrdinalRange(
+      SortedDocValues values, DocValuesSkipper skipper, long min, long max) {
+    IOBooleanSupplier check =
+        () -> {
+          long ord = values.ordValue();
+          return ord >= min && ord <= max;
+        };
+    return skipper == null
+        ? new DocValuesValueRangeIterator(values, check, 2)
+        : new DocValuesBlockRangeIterator(
+            values, new SkipBlockRangeIterator(skipper, min, max), check, 2, false);
+  }
+
+  /**
+   * Creates a DocValuesRangeIterator over a SortedSetDocValues instance
+   *
+   * @param values the doc values
+   * @param skipper an optional skipper to exclude non-matching blocks
+   * @param min skip documents with all ordinal values lower than this
+   * @param max skip documents with all ordinal values higher than this
+   */
+  public static DocValuesRangeIterator forOrdinalRange(
+      SortedSetDocValues values, DocValuesSkipper skipper, long min, long max) {
+    IOBooleanSupplier check =
+        () -> {
+          for (int i = 0; i < values.docValueCount(); i++) {
+            long v = values.nextOrd();
+            if (v >= min) {
+              return v <= max;
+            }
+          }
+          return false;
+        };
+    return skipper == null
+        ? new DocValuesValueRangeIterator(values, check, 5)
+        : new DocValuesBlockRangeIterator(
+            values, new SkipBlockRangeIterator(skipper, min, max), check, 5, false);
+  }
+
+  /**
+   * @param contiguous true iff every ordinal in [min, max] is set, in which case the set is
+   *     equivalent to the contiguous range [min, max] and a cheaper range check can be used in
+   *     place of the per-doc bit lookup. Computed at construction time so callers don't have to
+   *     trust an undocumented invariant about the bounds of set bits in {@code ords}.
+   */
+  private record OrdinalSet(long min, long max, LongBitSet ords, boolean contiguous) {
+
+    boolean disjoint(DocValuesSkipper skipper) {
+      if (skipper == null) {
+        return false;
+      }
+      return min > skipper.maxValue() || max < skipper.minValue();
+    }
+  }
+
+  private static OrdinalSet buildOrdinalSet(TermsEnum termsEnum, long ordCount) throws IOException {
+    if (termsEnum.next() == null) {
+      return null;
+    }
+    // TODO can we be more memory efficient here? eg LongHashSet
+    LongBitSet ords = new LongBitSet(ordCount);
+    long min = termsEnum.ord();
+    ords.set(min);
+    long max = min;
+    // Count distinct ords via getAndSet so a TermsEnum that yields a duplicate ord doesn't fool
+    // the contiguity check below. The first set bit (min) is always new on a fresh bitset.
+    long distinctCount = 1;
+    while (termsEnum.next() != null) {
+      max = termsEnum.ord();
+      if (ords.getAndSet(max) == false) {
+        distinctCount++;
+      }
+    }
+    // If every ord in [min, max] is set, the set is equivalent to forOrdinalRange and can use the
+    // cheaper range check + block-level YES short-circuit.
+    return new OrdinalSet(min, max, ords, distinctCount == max - min + 1);
+  }
+
+  /**
+   * Creates a DocValuesRangeIterator over a SortedDocValues instance
+   *
+   * @param values the doc values
+   * @param skipper an optional skipper to exclude non-matching blocks
+   * @param terms a TermsEnum containing the ordinal values to match
+   */
+  public static DocValuesRangeIterator forOrdinalSet(
+      SortedDocValues values, DocValuesSkipper skipper, TermsEnum terms) throws IOException {
+    OrdinalSet ordinalSet = buildOrdinalSet(terms, values.getValueCount());
+    if (ordinalSet == null || ordinalSet.disjoint(skipper)) {
+      return new EmptyRangeIterator();
+    }
+    if (ordinalSet.contiguous) {
+      return forOrdinalRange(values, skipper, ordinalSet.min, ordinalSet.max);
+    }
+    IOBooleanSupplier check = () -> ordinalSet.ords.get(values.ordValue());
+    return skipper == null
+        ? new DocValuesValueRangeIterator(values, check, 2)
+        : new DocValuesBlockRangeIterator(
+            values,
+            new SkipBlockRangeIterator(skipper, ordinalSet.min, ordinalSet.max),
+            check,
+            2,
+            true);
+  }
+
+  /**
+   * Creates a DocValuesRangeIterator over a SortedSetDocValues instance
+   *
+   * @param values the doc values
+   * @param skipper an optional skipper to exclude non-matching blocks
+   * @param terms a TermsEnum containing the ordinal values to match
+   */
+  public static DocValuesRangeIterator forOrdinalSet(
+      SortedSetDocValues values, DocValuesSkipper skipper, TermsEnum terms) throws IOException {
+    OrdinalSet ordinalSet = buildOrdinalSet(terms, values.getValueCount());
+    return forOrdinalSet(values, skipper, ordinalSet);
+  }
+
+  /**
+   * Creates a DocValuesRangeIterator over a SortedSetDocValues instance
+   *
+   * @param values the doc values
+   * @param skipper an optional skipper to exclude non-matching blocks
+   * @param minOrd skip documents with all ordinal values lower than this
+   * @param maxOrd skip documents with all ordinal values higher than this
+   * @param ords skip documents with all values not in this set
+   */
+  public static DocValuesRangeIterator forOrdinalSet(
+      SortedSetDocValues values,
       DocValuesSkipper skipper,
-      long lowerValue,
-      long upperValue,
-      boolean queryRangeHasGaps) {
-    super(
-        queryRangeHasGaps
-            ? new RangeWithGapsApproximation(
-                twoPhase.approximation(), skipper, lowerValue, upperValue)
-            : new RangeNoGapsApproximation(
-                twoPhase.approximation(), skipper, lowerValue, upperValue));
-    this.approximation = (Approximation) approximation();
-    this.innerTwoPhase = twoPhase;
+      long minOrd,
+      long maxOrd,
+      LongBitSet ords) {
+    // Pass contiguous=false: callers of this overload aren't required by the javadoc to keep all
+    // set bits within [minOrd, maxOrd], so we can't infer contiguity from cardinality alone.
+    return forOrdinalSet(values, skipper, new OrdinalSet(minOrd, maxOrd, ords, false));
   }
 
-  abstract static class Approximation extends AbstractDocIdSetIterator {
+  private static DocValuesRangeIterator forOrdinalSet(
+      SortedSetDocValues values, DocValuesSkipper skipper, OrdinalSet ordinalSet) {
+    if (ordinalSet == null || ordinalSet.disjoint(skipper)) {
+      return new EmptyRangeIterator();
+    }
+    if (ordinalSet.contiguous) {
+      return forOrdinalRange(values, skipper, ordinalSet.min, ordinalSet.max);
+    }
+    IOBooleanSupplier check =
+        () -> {
+          for (int i = 0; i < values.docValueCount(); i++) {
+            long v = values.nextOrd();
+            if (v > ordinalSet.max) {
+              return false;
+            }
+            if (v >= ordinalSet.min && ordinalSet.ords.get(v)) {
+              return true;
+            }
+          }
+          return false;
+        };
+    return skipper == null
+        ? new DocValuesValueRangeIterator(values, check, 5)
+        : new DocValuesBlockRangeIterator(
+            values,
+            new SkipBlockRangeIterator(skipper, ordinalSet.min, ordinalSet.max),
+            check,
+            5,
+            true);
+  }
 
-    private final DocIdSetIterator innerApproximation;
+  private static final class DocValuesBlockRangeIterator extends DocValuesRangeIterator {
 
-    protected final DocValuesSkipper skipper;
-    protected final long lowerValue;
-    protected final long upperValue;
+    private final SkipBlockRangeIterator blockIterator;
+    private final DocIdSetIterator disi;
+    private final IOBooleanSupplier predicate;
+    private final float matchCost;
+    private final boolean alwaysCheckPredicate;
+    // Non-null only for single-valued numeric doc values, in which case a whole block can be
+    // range-evaluated in one shot in intoBitSet rather than confirming matches() one doc at a time.
+    private final NumericDocValues numericValues;
+    private final long minValue;
+    private final long maxValue;
 
-    // Track a decision for all doc IDs between the current doc ID and upTo inclusive.
-    Match match = Match.MAYBE;
-    int upTo;
+    private DocValuesBlockRangeIterator(
+        DocIdSetIterator disi,
+        SkipBlockRangeIterator blockIterator,
+        IOBooleanSupplier predicate,
+        float matchCost,
+        boolean alwaysCheckPredicate) {
+      this(disi, blockIterator, predicate, matchCost, alwaysCheckPredicate, null, 0, 0);
+    }
 
-    Approximation(
-        DocIdSetIterator innerApproximation,
-        DocValuesSkipper skipper,
-        long lowerValue,
-        long upperValue) {
-      this.innerApproximation = innerApproximation;
-      this.skipper = skipper;
-      this.lowerValue = lowerValue;
-      this.upperValue = upperValue;
-      this.upTo = skipper.maxDocID(0);
+    private DocValuesBlockRangeIterator(
+        DocIdSetIterator disi,
+        SkipBlockRangeIterator blockIterator,
+        IOBooleanSupplier predicate,
+        float matchCost,
+        boolean alwaysCheckPredicate,
+        NumericDocValues numericValues,
+        long minValue,
+        long maxValue) {
+      super(blockIterator);
+      this.disi = disi;
+      this.blockIterator = blockIterator;
+      this.predicate = predicate;
+      this.matchCost = matchCost;
+      this.alwaysCheckPredicate = alwaysCheckPredicate;
+      this.numericValues = numericValues;
+      this.minValue = minValue;
+      this.maxValue = maxValue;
+    }
+
+    private boolean advanceDisi(int target) throws IOException {
+      if (disi.docID() >= target) {
+        return disi.docID() == target;
+      }
+      return disi.advance(target) == target;
     }
 
     @Override
-    public int nextDoc() throws IOException {
-      return advance(docID() + 1);
+    public boolean matches() throws IOException {
+      if (alwaysCheckPredicate) {
+        return advanceDisi(blockIterator.docID()) && predicate.get();
+      }
+      return switch (blockIterator.getMatch()) {
+        case YES -> true;
+        case YES_IF_PRESENT -> advanceDisi(blockIterator.docID());
+        case MAYBE -> advanceDisi(blockIterator.docID()) && predicate.get();
+      };
     }
 
     @Override
-    public int advance(int target) throws IOException {
-      while (true) {
-        if (target > upTo) {
-          skipper.advance(target);
-          // If target doesn't have a value and is between two blocks, it is possible that advance()
-          // moved to a block that doesn't contain `target`.
-          target = Math.max(target, skipper.minDocID(0));
-          if (target == NO_MORE_DOCS) {
-            return doc = NO_MORE_DOCS;
-          }
-          upTo = skipper.maxDocID(0);
-          match = match(0);
+    public int docIDRunEnd() throws IOException {
+      if (alwaysCheckPredicate) {
+        return blockIterator.docID() + 1;
+      }
+      return blockIterator.docIDRunEnd();
+    }
 
-          // If we have a YES or NO decision, see if we still have the same decision on a higher
-          // level (= on a wider range of doc IDs)
-          int nextLevel = 1;
-          while (match != Match.MAYBE
-              && nextLevel < skipper.numLevels()
-              && match == match(nextLevel)) {
-            upTo = skipper.maxDocID(nextLevel);
-            nextLevel++;
-          }
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      if (numericValues == null) {
+        if (alwaysCheckPredicate) {
+          // Arbitrary ordinal set: every block (even YES) must run the per-doc predicate, so there
+          // is no block-level shortcut to exploit. Confirm each candidate one doc at a time (the
+          // TwoPhaseIterator default).
+          super.intoBitSet(upTo, bitSet, offset);
+          return;
         }
+        // Ordinal range (sorted / sorted-set): there is no columnar range-decode like the numeric
+        // path, but the block classification still lets us bulk-set YES runs and bulk-mark present
+        // docs in YES_IF_PRESENT runs, confirming the ordinal predicate per doc only in MAYBE runs.
+        ordinalRangeIntoBitSet(upTo, bitSet, offset);
+        return;
+      }
+      while (blockIterator.docID() < upTo) {
+        int blockStart = blockIterator.docID();
+        SkipBlockRangeIterator.Match match = blockIterator.getMatch();
+        // For MAYBE blocks docIDRunEnd() is conservative (doc+1), so use the full block boundary to
+        // evaluate the whole block at once.
+        int blockEnd =
+            match == SkipBlockRangeIterator.Match.MAYBE
+                ? Math.min(upTo, blockIterator.blockEnd())
+                : Math.min(upTo, blockIterator.docIDRunEnd());
         switch (match) {
-          case YES:
-            return doc = target;
-          case MAYBE:
-          case IF_DOC_HAS_VALUE:
-            if (target > innerApproximation.docID()) {
-              target = innerApproximation.advance(target);
+          case YES -> bitSet.set(blockStart - offset, blockEnd - offset);
+          case YES_IF_PRESENT -> {
+            // All present values are in range, but the field is sparse: set a bit for every
+            // doc that has a value. Delegate to intoBitSet so dense codecs can bulk-set the run
+            // rather than probing one doc at a time. Only advance forward; a preceding YES block
+            // leaves the iterator behind blockStart, while MAYBE/YES_IF_PRESENT blocks leave it
+            // at or past it.
+            if (numericValues.docID() < blockStart) {
+              numericValues.advance(blockStart);
             }
-            if (target <= upTo) {
-              return doc = target;
-            }
-            // Otherwise we are breaking the invariant that `doc` must always be <= upTo, so let
-            // the loop run one more iteration to advance the skipper.
-            break;
-          case NO:
-            if (upTo == DocIdSetIterator.NO_MORE_DOCS) {
-              return doc = NO_MORE_DOCS;
-            }
-            target = upTo + 1;
-            break;
-          default:
-            throw new AssertionError("Unknown enum constant: " + match);
+            numericValues.intoBitSet(blockEnd, bitSet, offset);
+          }
+          case MAYBE ->
+              numericValues.rangeIntoBitSet(
+                  blockStart, blockEnd, minValue, maxValue, bitSet, offset);
         }
+        blockIterator.advance(blockEnd);
       }
     }
 
-    @Override
-    public long cost() {
-      return innerApproximation.cost();
-    }
-
-    protected abstract Match match(int level);
-  }
-
-  private static final class RangeNoGapsApproximation extends Approximation {
-
-    RangeNoGapsApproximation(
-        DocIdSetIterator innerApproximation,
-        DocValuesSkipper skipper,
-        long lowerValue,
-        long upperValue) {
-      super(innerApproximation, skipper, lowerValue, upperValue);
-    }
-
-    @Override
-    protected Match match(int level) {
-      long minValue = skipper.minValue(level);
-      long maxValue = skipper.maxValue(level);
-      if (minValue > upperValue || maxValue < lowerValue) {
-        return Match.NO;
-      } else if (minValue >= lowerValue && maxValue <= upperValue) {
-        if (skipper.docCount(level) == skipper.maxDocID(level) - skipper.minDocID(level) + 1) {
-          return Match.YES;
-        } else {
-          return Match.IF_DOC_HAS_VALUE;
+    /**
+     * Bulk-evaluates an ordinal range over the block structure. Functionally identical to per-doc
+     * {@link #matches()} evaluation, but a whole YES run is set in one shot and a YES_IF_PRESENT
+     * run's present docs are marked via {@link DocIdSetIterator#intoBitSet}; only MAYBE runs
+     * confirm the ordinal predicate per doc. Like {@code matches()}, {@code disi} is the doc-values
+     * iterator and {@code predicate} the range check. Mirrors the numeric block loop in {@link
+     * #intoBitSet}: keep the two block walks in sync if the block-boundary handling changes.
+     */
+    private void ordinalRangeIntoBitSet(int upTo, FixedBitSet bitSet, int offset)
+        throws IOException {
+      while (blockIterator.docID() < upTo) {
+        int blockStart = blockIterator.docID();
+        SkipBlockRangeIterator.Match match = blockIterator.getMatch();
+        // For MAYBE blocks docIDRunEnd() is conservative (doc+1), so use the full block boundary to
+        // evaluate the whole block at once.
+        int blockEnd =
+            match == SkipBlockRangeIterator.Match.MAYBE
+                ? Math.min(upTo, blockIterator.blockEnd())
+                : Math.min(upTo, blockIterator.docIDRunEnd());
+        switch (match) {
+          case YES -> bitSet.set(blockStart - offset, blockEnd - offset);
+          case YES_IF_PRESENT -> {
+            // Every present value is in range, so mark each doc that has a value. Only advance
+            // forward: a preceding YES block leaves disi behind blockStart, MAYBE/YES_IF_PRESENT
+            // leave it at or past it.
+            if (disi.docID() < blockStart) {
+              disi.advance(blockStart);
+            }
+            disi.intoBitSet(blockEnd, bitSet, offset);
+          }
+          case MAYBE -> {
+            // Visit only docs that have a value (like matches() does) and confirm the ordinal
+            // predicate one doc at a time.
+            if (disi.docID() < blockStart) {
+              disi.advance(blockStart);
+            }
+            for (int doc = disi.docID(); doc < blockEnd; doc = disi.nextDoc()) {
+              if (predicate.get()) {
+                bitSet.set(doc - offset);
+              }
+            }
+          }
         }
-      } else {
-        return Match.MAYBE;
+        blockIterator.advance(blockEnd);
       }
-    }
-  }
-
-  private static final class RangeWithGapsApproximation extends Approximation {
-
-    RangeWithGapsApproximation(
-        DocIdSetIterator innerApproximation,
-        DocValuesSkipper skipper,
-        long lowerValue,
-        long upperValue) {
-      super(innerApproximation, skipper, lowerValue, upperValue);
     }
 
     @Override
-    protected Match match(int level) {
-      long minValue = skipper.minValue(level);
-      long maxValue = skipper.maxValue(level);
-      if (minValue > upperValue || maxValue < lowerValue) {
-        return Match.NO;
-      } else {
-        return Match.MAYBE;
-      }
+    public float matchCost() {
+      return matchCost;
     }
   }
 
-  @Override
-  public final boolean matches() throws IOException {
-    return switch (approximation.match) {
-      case YES, IF_DOC_HAS_VALUE -> true;
-      case MAYBE -> innerTwoPhase.matches();
-      case NO -> throw new IllegalStateException("Unpositioned approximation");
-    };
-  }
+  private static final class DocValuesValueRangeIterator extends DocValuesRangeIterator {
 
-  @Override
-  public int docIDRunEnd() throws IOException {
-    if (approximation.match == Match.YES) {
-      return approximation.upTo + 1;
+    private final IOBooleanSupplier predicate;
+    private final float matchCost;
+
+    private DocValuesValueRangeIterator(
+        DocIdSetIterator disi, IOBooleanSupplier predicate, float matchCost) {
+      super(disi);
+      this.predicate = predicate;
+      this.matchCost = matchCost;
     }
-    return super.docIDRunEnd();
+
+    @Override
+    public boolean matches() throws IOException {
+      return predicate.get();
+    }
+
+    @Override
+    public float matchCost() {
+      return matchCost;
+    }
   }
 
-  @Override
-  public float matchCost() {
-    return innerTwoPhase.matchCost();
+  private static final class EmptyRangeIterator extends DocValuesRangeIterator {
+
+    private EmptyRangeIterator() {
+      super(DocIdSetIterator.empty());
+    }
+
+    @Override
+    public boolean matches() throws IOException {
+      return false;
+    }
+
+    @Override
+    public float matchCost() {
+      return 0;
+    }
+  }
+
+  private DocValuesRangeIterator(DocIdSetIterator approximation) {
+    super(approximation);
   }
 }

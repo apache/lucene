@@ -48,7 +48,7 @@ public class QualityQuery implements Comparable<QualityQuery> {
 
   /** Return all the names of name-value-pairs in this QualityQuery. */
   public String[] getNames() {
-    return nameValPairs.keySet().toArray(new String[0]);
+    return nameValPairs.keySet().toArray(String[]::new);
   }
 
   /**

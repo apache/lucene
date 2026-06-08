@@ -81,7 +81,7 @@ public class TestLookupBenchmark extends LuceneTestCase {
     assert false : "disable assertions before running benchmarks!";
     List<Input> input = readTop50KWiki();
     Collections.shuffle(input, random);
-    TestLookupBenchmark.dictionaryInput = input.toArray(new Input[0]);
+    TestLookupBenchmark.dictionaryInput = input.toArray(Input[]::new);
     Collections.shuffle(input, random);
     TestLookupBenchmark.benchmarkInput = input;
   }

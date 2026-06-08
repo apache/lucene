@@ -207,7 +207,7 @@ public final class SynonymQuery extends Query {
       super(query);
       assert scoreMode.needsScores();
       this.scoreMode = scoreMode;
-      CollectionStatistics collectionStats = searcher.collectionStatistics(field);
+      FieldStats fieldStats = searcher.fieldStats(field);
       long docFreq = 0;
       long totalTermFreq = 0;
       termStates = new TermStates[terms.length];
@@ -216,17 +216,16 @@ public final class SynonymQuery extends Query {
         TermStates ts = TermStates.build(searcher, term, true);
         termStates[i] = ts;
         if (ts.docFreq() > 0) {
-          TermStatistics termStats =
-              searcher.termStatistics(term, ts.docFreq(), ts.totalTermFreq());
+          TermStats termStats = searcher.termStats(term, ts.docFreq(), ts.totalTermFreq());
           docFreq = Math.max(termStats.docFreq(), docFreq);
           totalTermFreq += termStats.totalTermFreq();
         }
       }
       this.similarity = searcher.getSimilarity();
       if (docFreq > 0) {
-        TermStatistics pseudoStats =
-            new TermStatistics(new BytesRef("synonym pseudo-term"), docFreq, totalTermFreq);
-        this.simWeight = similarity.scorer(boost, collectionStats, pseudoStats);
+        TermStats pseudoStats =
+            new TermStats(new BytesRef("synonym pseudo-term"), docFreq, totalTermFreq);
+        this.simWeight = similarity.scorer(boost, fieldStats, pseudoStats);
       } else {
         this.simWeight = null; // no terms exist at all, we won't use similarity
       }
@@ -251,10 +250,10 @@ public final class SynonymQuery extends Query {
         int newDoc = scorer.iterator().advance(doc);
         if (newDoc == doc) {
           final float freq;
-          if (scorer instanceof SynonymScorer) {
-            freq = ((SynonymScorer) scorer).freq();
-          } else if (scorer instanceof FreqBoostTermScorer) {
-            freq = ((FreqBoostTermScorer) scorer).freq();
+          if (scorer instanceof SynonymScorer ss) {
+            freq = ss.freq();
+          } else if (scorer instanceof FreqBoostTermScorer fbts) {
+            freq = fbts.freq();
           } else {
             assert scorer instanceof TermScorer;
             freq = ((TermScorer) scorer).freq();
@@ -373,7 +372,7 @@ public final class SynonymQuery extends Query {
             for (int i = 0; i < boosts.length; i++) {
               boosts[i] = termBoosts.get(i);
             }
-            ImpactsSource impactsSource = mergeImpacts(impacts.toArray(new ImpactsEnum[0]), boosts);
+            ImpactsSource impactsSource = mergeImpacts(impacts.toArray(ImpactsEnum[]::new), boosts);
             MaxScoreCache maxScoreCache = new MaxScoreCache(impactsSource, simWeight);
             ImpactsDISI impactsDisi = new ImpactsDISI(iterator, maxScoreCache);
 

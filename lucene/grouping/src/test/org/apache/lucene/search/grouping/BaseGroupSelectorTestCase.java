@@ -309,40 +309,55 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
     // A grouped query run in two phases against the control should give us the same
     // result as the query run against shards and merged back together after each phase.
 
-    FirstPassGroupingCollector<T> singletonFirstPass =
-        new FirstPassGroupingCollector<>(getGroupSelector(), sort, 5);
-    control.getIndexSearcher().search(topLevel, singletonFirstPass);
-    Collection<SearchGroup<T>> singletonGroups = singletonFirstPass.getTopGroups(0);
+    FirstPassGroupingCollectorManager<T> firstPassGroupingCollectorManager =
+        new FirstPassGroupingCollectorManager<>(this::getGroupSelector, sort, 0, 5);
+    Collection<SearchGroup<T>> singletonGroups =
+        control.getIndexSearcher().search(topLevel, firstPassGroupingCollectorManager);
 
     List<Collection<SearchGroup<T>>> shardGroups = new ArrayList<>();
     for (Shard shard : shards) {
-      FirstPassGroupingCollector<T> fc =
-          new FirstPassGroupingCollector<>(getGroupSelector(), sort, 5);
-      shard.getIndexSearcher().search(topLevel, fc);
-      shardGroups.add(fc.getTopGroups(0));
+      FirstPassGroupingCollectorManager<T> fcm =
+          new FirstPassGroupingCollectorManager<>(this::getGroupSelector, sort, 0, 5);
+      Collection<SearchGroup<T>> topGroups = shard.getIndexSearcher().search(topLevel, fcm);
+      shardGroups.add(topGroups);
     }
     Collection<SearchGroup<T>> mergedGroups = SearchGroup.merge(shardGroups, 0, 5, sort);
     assertEquals(singletonGroups, mergedGroups);
 
-    TopGroupsCollector<T> singletonSecondPass =
-        new TopGroupsCollector<>(
-            getGroupSelector(), singletonGroups, sort, Sort.RELEVANCE, 5, true);
-    control.getIndexSearcher().search(topLevel, singletonSecondPass);
-    TopGroups<T> singletonTopGroups = singletonSecondPass.getTopGroups(0);
+    final int withinGroupOffset = random().nextInt(numDocs);
+    TopGroupsCollectorManager<T> topGroupsCollectorManager =
+        new TopGroupsCollectorManager<>(
+            this::getGroupSelector,
+            singletonGroups,
+            sort,
+            Sort.RELEVANCE,
+            withinGroupOffset,
+            5,
+            true);
+    TopGroups<T> singletonTopGroups =
+        control.getIndexSearcher().search(topLevel, topGroupsCollectorManager);
 
-    // TODO why does SearchGroup.merge() take a list but TopGroups.merge() take an array?
-    @SuppressWarnings("unchecked")
-    TopGroups<T>[] shardTopGroups = (TopGroups<T>[]) new TopGroups<?>[shards.length];
-    int j = 0;
+    List<TopGroups<T>> shardTopGroups = new ArrayList<>(shards.length);
     for (Shard shard : shards) {
-      TopGroupsCollector<T> sc =
-          new TopGroupsCollector<>(getGroupSelector(), mergedGroups, sort, Sort.RELEVANCE, 5, true);
-      shard.getIndexSearcher().search(topLevel, sc);
-      shardTopGroups[j] = sc.getTopGroups(0);
-      j++;
+      TopGroupsCollectorManager<T> scm =
+          new TopGroupsCollectorManager<>(
+              this::getGroupSelector,
+              mergedGroups,
+              sort,
+              Sort.RELEVANCE,
+              0,
+              withinGroupOffset + 5,
+              true);
+      shardTopGroups.add(shard.getIndexSearcher().search(topLevel, scm));
     }
     TopGroups<T> mergedTopGroups =
-        TopGroups.merge(shardTopGroups, sort, Sort.RELEVANCE, 0, 5, TopGroups.ScoreMergeMode.None);
+        TopGroups.merge(
+            shardTopGroups,
+            sort,
+            Sort.RELEVANCE,
+            withinGroupOffset,
+            5,
+            TopGroups.ScoreMergeMode.None);
     assertNotNull(mergedTopGroups);
 
     assertEquals(singletonTopGroups.totalGroupedHitCount, mergedTopGroups.totalGroupedHitCount);

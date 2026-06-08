@@ -197,12 +197,25 @@ final class FaissNativeWrapper {
     }
   }
 
-  private final MethodHandle faiss_Index_metric_type$MH =
-      getHandle("faiss_Index_metric_type", FunctionDescriptor.of(JAVA_INT, ADDRESS));
+  private final MethodHandle faiss_Index_d$MH =
+      getHandle("faiss_Index_d", FunctionDescriptor.of(JAVA_INT, ADDRESS));
 
-  int faiss_Index_metric_type(MemorySegment indexPointer) {
+  int faiss_Index_d(MemorySegment indexPointer) {
     try {
-      return (int) faiss_Index_metric_type$MH.invokeExact(indexPointer);
+      return (int) faiss_Index_d$MH.invokeExact(indexPointer);
+    } catch (RuntimeException | Error e) {
+      throw e;
+    } catch (Throwable t) {
+      throw new AssertionError(t);
+    }
+  }
+
+  private final MethodHandle faiss_fvec_renorm_L2$MH =
+      getHandle("faiss_fvec_renorm_L2", FunctionDescriptor.ofVoid(JAVA_LONG, JAVA_LONG, ADDRESS));
+
+  void faiss_fvec_renorm_L2(long dimension, long numVectors, MemorySegment vectors) {
+    try {
+      faiss_fvec_renorm_L2$MH.invokeExact(dimension, numVectors, vectors);
     } catch (RuntimeException | Error e) {
       throw e;
     } catch (Throwable t) {

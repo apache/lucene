@@ -299,6 +299,28 @@ public final class FixedBitSet extends BitSet {
     bits[wordNum] |= bitmask;
   }
 
+  /**
+   * ORs a small mask of consecutive bits starting at {@code startBit}. The mask must have at most
+   * {@code maskLen} significant bits. This is useful for bulk-setting bits from a SIMD comparison
+   * result without per-bit extraction.
+   *
+   * @param startBit the first bit position to set (inclusive)
+   * @param mask the bitmask to OR in, where bit 0 corresponds to startBit
+   * @param maskLen the number of significant bits in the mask (e.g., 2, 4, or 8)
+   */
+  public void orMask(int startBit, long mask, int maskLen) {
+    assert startBit >= 0 && startBit + maskLen <= numBits
+        : "startBit=" + startBit + ", maskLen=" + maskLen + ", numBits=" + numBits;
+    int wordIndex = startBit >> 6;
+    int bitOffset = startBit & 63;
+    if (bitOffset + maskLen <= 64) {
+      bits[wordIndex] |= mask << bitOffset;
+    } else {
+      bits[wordIndex] |= mask << bitOffset;
+      bits[wordIndex + 1] |= mask >>> (64 - bitOffset);
+    }
+  }
+
   @Override
   public boolean getAndSet(int index) {
     assert index >= 0 && index < numBits : "index=" + index + ", numBits=" + numBits;
@@ -337,6 +359,48 @@ public final class FixedBitSet extends BitSet {
   public int nextSetBit(int start, int upperBound) {
     int res = nextSetBitInRange(start, upperBound);
     return res < upperBound ? res : DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  @Override
+  public int nextClearBit(int index) {
+    int res = nextClearBitInRange(index, numBits);
+    // Ghost bits past {@link #length()} read as clear; cap the result like {@link
+    // #nextUnsetBit(int, int)}.
+    return res < numBits ? res : DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  @Override
+  public int nextClearBit(int start, int upperBound) {
+    int res = nextClearBitInRange(start, upperBound);
+    return res < upperBound ? res : DocIdSetIterator.NO_MORE_DOCS;
+  }
+
+  /**
+   * Returns the next unset bit in the specified range, but treats `upperBound` as a best-effort
+   * hint rather than a hard requirement. Note that this may return a result that is >= upperBound
+   * in some cases, so callers must add their own check if `upperBound` is a hard requirement.
+   */
+  private int nextClearBitInRange(int start, int upperBound) {
+    // Depends on the ghost bits being clear!
+    assert start >= 0 && start < numBits : "index=" + start + ", numBits=" + numBits;
+    assert start < upperBound : "index=" + start + ", upperBound=" + upperBound;
+    assert upperBound <= numBits : "upperBound=" + upperBound + ", numBits=" + numBits;
+    int i = start >> 6;
+    long word = ~(bits[i] >> start);
+
+    if (word != 0) {
+      return start + Long.numberOfTrailingZeros(word);
+    }
+
+    int limit = upperBound == numBits ? numWords : bits2words(upperBound);
+    while (++i < limit) {
+      word = ~bits[i];
+      if (word != 0) {
+        return (i << 6) + Long.numberOfTrailingZeros(word);
+      }
+    }
+
+    return DocIdSetIterator.NO_MORE_DOCS;
   }
 
   /**
@@ -601,9 +665,8 @@ public final class FixedBitSet extends BitSet {
       final FixedBitSet bits = BitSetIterator.getFixedBitSetOrNull(iter);
       assert bits != null;
       andNot(bits);
-    } else if (iter instanceof DocBaseBitSetIterator) {
+    } else if (iter instanceof DocBaseBitSetIterator baseIter) {
       checkUnpositioned(iter);
-      DocBaseBitSetIterator baseIter = (DocBaseBitSetIterator) iter;
       andNot(baseIter.getDocBase() >> 6, baseIter.getBitSet());
     } else {
       checkUnpositioned(iter);
@@ -772,10 +835,9 @@ public final class FixedBitSet extends BitSet {
     if (this == o) {
       return true;
     }
-    if (!(o instanceof FixedBitSet)) {
+    if (!(o instanceof FixedBitSet other)) {
       return false;
     }
-    FixedBitSet other = (FixedBitSet) o;
     if (numBits != other.numBits) {
       return false;
     }
@@ -803,8 +865,8 @@ public final class FixedBitSet extends BitSet {
       bits = fixedBits.bitSet;
     }
 
-    if (bits instanceof FixedBitSet) {
-      return ((FixedBitSet) bits).clone();
+    if (bits instanceof FixedBitSet fbs) {
+      return fbs.clone();
     } else {
       int length = bits.length();
       FixedBitSet bitSet = new FixedBitSet(length);

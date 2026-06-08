@@ -127,7 +127,7 @@ def expand_jinja(text: str, vars: dict[str, Any] | None = None):
     env = Environment(lstrip_blocks=True, keep_trailing_newline=False, trim_blocks=True)
     env.filters["path_join"] = lambda paths: os.path.join(*(cast("list[str]", paths)))
     env.filters["expanduser"] = lambda path: os.path.expanduser(str(path))
-    env.filters["formatdate"] = lambda date: (datetime.strftime(date, "%-d %B %Y") if date and isinstance(date, datetime) else "<date>")
+    env.filters["formatdate"] = lambda date: datetime.strftime(date, "%-d %B %Y") if date and isinstance(date, datetime) else "<date>"
     template = env.from_string(str(filled), globals=global_vars)
     filled = template.render()
   except Exception as e:
@@ -1543,7 +1543,7 @@ class Commands(SecretYamlObject):
     self.logs_prefix = logs_prefix
     self.enable_execute = enable_execute
     self.confirm_each_command = confirm_each_command
-    self.commands: list[Command] = commands if commands else []
+    self.commands: list[Command] = commands or []
     for c in self.commands:
       c.todo_id = todo_id
 
@@ -1599,7 +1599,7 @@ class Commands(SecretYamlObject):
           if len(commands) > 1:
             log_prefix = "%02d_" % index
           else:
-            log_prefix = self.logs_prefix if self.logs_prefix else ""
+            log_prefix = self.logs_prefix or ""
           if not log_prefix[-1:] == "_":
             log_prefix += "_"
           cwd = root

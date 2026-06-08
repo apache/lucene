@@ -116,8 +116,8 @@ public class QueryTreeBuilder implements QueryBuilder {
   private QueryBuilder getBuilder(QueryNode node) {
     QueryBuilder builder = null;
 
-    if (this.fieldNameBuilders != null && node instanceof FieldableNode) {
-      CharSequence field = ((FieldableNode) node).getField();
+    if (this.fieldNameBuilders != null && node instanceof FieldableNode fieldableNode) {
+      CharSequence field = fieldableNode.getField();
 
       if (field != null) {
         field = field.toString();

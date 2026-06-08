@@ -372,9 +372,8 @@ public abstract class NumericComparator<T extends Number> extends FieldComparato
     @Override
     void setScorer(Scorable scorer) throws IOException {
       if (iteratorCost == -1) {
-        if (scorer instanceof Scorer) {
-          iteratorCost =
-              ((Scorer) scorer).iterator().cost(); // starting iterator cost is the scorer's cost
+        if (scorer instanceof Scorer s) {
+          iteratorCost = s.iterator().cost(); // starting iterator cost is the scorer's cost
         } else {
           iteratorCost = maxDoc;
         }

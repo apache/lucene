@@ -19,6 +19,35 @@
 
 ## Migration from Lucene 10.x to Lucene 11.0
 
+### JUnit5/jupiter support in the test-framework
+
+Lucene 11 brings initial support for writing test cases
+using JUnit Jupiter.
+
+The test-framework module exports both junit4 and junit5/jupiter
+modules. `LuceneTestCase` remains the parent abstract class for JUnit4 tests.
+`LuceneTestCaseJupiter` is the parent class to extend from for JUnit5
+support.
+
+#### Key changes
+
+- All tests must be Jupiter tests, typically this means
+methods must be annotated with `@Test`. Method prefix
+`test*` is not sufficient. Methods that are named `test*` but are not tests
+will cause validation errors.
+- You can use parameterized tests, dynamic tests, etc. All these are supported.
+- You *must not* call the static `random()` method on the parent
+class, even though it is there. Add a `Random` parameter to your test methods
+or callbacks - it will
+be automatically injected by the test framework. See the `memory`
+module tests for examples.
+- Use `@BeforeEach`, `@AfterEach` and other junit5-specific callback
+annotations instead of `setUp` and `tearDown` methods.
+- Static utility methods have been pulled up to a parent class
+called `LuceneTestCaseParent` but you should reference them either
+without an explicit type or via the type of the parent class
+for your test framework. The parent class may be removed in the future.
+
 ### Relaxed Index Upgrade Policy (GITHUB#13797)
 
 Starting with Lucene 11.0.0, the index upgrade policy has been relaxed to allow safe upgrades across multiple major version numbers without reindexing when no format breaks occur.
@@ -159,6 +188,58 @@ iwc.getConfig().getCodec().compoundFormat().getShouldUseCompoundFile();
 iwc.getConfig().getCodec().compoundFormat().getMaxCFSSegmentSizeMB();
 ```
 
+### Implicit determinization removed from RegexpQuery and WildcardQuery
+
+Previously, RegexpQuery and WildcardQuery would use DFA execution by default, even if it might be inefficient.
+
+RegexpQuery will now only [determinize as-needed](https://swtch.com/~rsc/regexp/regexp1.html). This might be
+faster or slower depending upon your queries.
+
+If you'd like to force the previous behavior, use `determinize()` and `AutomatonQuery`:
+
+```java
+String re = "a(b+|c+)d";
+Automaton dfa = Operations.determinize(new RegExp(re).toAutomaton(), 10000);
+Query query = new AutomatonQuery(new Term("myfield", re), dfa);
+```
+
+Similarly for WildcardQuery, the `determinizeWorkLimit` parameter has been removed from `WildcardQuery` constructors and from
+`WildcardQuery.toAutomaton`. `QueryParserBase.setDeterminizeWorkLimit` and `getDeterminizeWorkLimit`
+have also been removed.
+
+To force the previous behavior, use:
+
+```java
+String pattern = "foo*bar";
+Automaton dfa = Operations.determinize(WildcardQuery.toAutomaton(new Term("myfield", pattern)), 10000);
+Query query = new AutomatonQuery(new Term("myfield", pattern), dfa);
+```
+
+### CollectionStatistics and TermStatistics have been renamed to FieldStats and TermStats (GITHUB#15929)
+
+Corresponding methods and parameters have been renamed accordingly.
+
+## Migration from Lucene 10.4 to Lucene 10.5
+
+### `[Byte|Float]VectorSimilarityQuery` now performs adaptive HNSW graph traversal
+
+GITHUB#12679 added `[Byte|Float]VectorSimilarityQuery` to perform similarity-based vector searches, which match all
+(approximate) vectors above a similarity score to the query vector (specified by `resultSimilarity`). For Euclidean
+distance, this can be visualized as matching all vectors within a radius of the query vector.
+
+This query traversed and collected results from existing HNSW graphs. In Lucene 10.4, graph traversal was controlled by
+an explicit parameter (specified by `traversalSimilarity`), where all nodes scoring above this value were traversed, and
+all traversed nodes scoring above `resultSimilarity` were collected as results. To protect against adversarial cases of
+the entry node being far away from the query vector, traversal continued as long as better scoring nodes were available.
+Picking the right value for traversal could be a challenge, and search was susceptible to being stuck in a local maxima,
+terminating before reaching the vicinity of the query vector.
+
+GITHUB#15784: With Lucene 10.5, graph traversal is now adaptive: starts with a high buffer, which decays towards scores
+of nodes traversed but not collected, with a provided factor. The decay factor should lie in `[0, 1]`; with higher
+values producing better recall using more graph exploration. This gives a better recall v/s latency tradeoff than before
+in most cases, while still providing a knob for advanced users to tune quality and performance if needed (using the
+`decay` factor).
+
 ## Migration from Lucene 9.x to Lucene 10.0
 
 ### DataInput#readVLong() may now read negative vlongs
@@ -256,7 +337,7 @@ Support for the optional complement syntax (`~`) that was deprecated in Lucene 1
 has been removed. The `DEPRECATED_COMPLEMENT` flag and `REGEXP_DEPRECATED_COMPLEMENT`
 enum value are no longer available.
 
-Users should migrate to using _complement bracket expressions_ (`[^...]`) instead.
+Users should migrate to using *complement bracket expressions* (`[^...]`) instead.
 For example, `[^fo]` matches any character that is not an `f` or `o`.
 
 ### DocValuesFieldExistsQuery, NormsFieldExistsQuery and KnnVectorFieldExistsQuery removed in favor of FieldExistsQuery (LUCENE-10436)

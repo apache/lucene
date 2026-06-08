@@ -50,10 +50,10 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
 
   @Override
   public long ramBytesUsed() {
-    if (query instanceof Accountable) {
+    if (query instanceof Accountable accountable) {
       return RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
           + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-          + ((Accountable) query).ramBytesUsed();
+          + accountable.ramBytesUsed();
     }
     return RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
         + RamUsageEstimator.NUM_BYTES_OBJECT_REF
@@ -291,8 +291,9 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
             bulkScorer = weightOrIterator.weight.bulkScorer(context);
           } else {
             bulkScorer =
-                new DefaultBulkScorer(
-                    new ConstantScoreScorer(score(), scoreMode, weightOrIterator.iterator));
+                ConstantScoreScorerSupplier.fromIterator(
+                        weightOrIterator.iterator, score(), scoreMode, context.reader().maxDoc())
+                    .bulkScorer();
           }
 
           // It's against the API contract to return a null scorer from a non-null ScoreSupplier.
