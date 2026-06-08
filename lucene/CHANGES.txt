@@ -610,6 +610,8 @@ Other
 * GITHUB#16178: Simplify how we collect hits in the LRU cache from a DocIdStream into a RoaringDocIdSet.
   (Ignacio Vera)
 
+* GITHUB#16215: Extract segment-boundary check into helper in QueryUtils (Luca Cavanna)
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes
