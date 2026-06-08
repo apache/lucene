@@ -249,6 +249,10 @@ abstract class AbstractMultiTermQueryConstantScoreWrapper<Q extends MultiTermQue
             return null;
           }
 
+          // TODO: Instead of replicating the cost logic of a BooleanQuery we could consider
+          // rewriting to a BQ eagerly at this point and delegating to its cost method (instead of
+          // lazily rewriting on #get). Not sure what the performance hit would be of doing this
+          // though.
           long sumTermCost = 0;
           for (TermAndState collectedTerm : collectedTerms) {
             sumTermCost += collectedTerm.docFreq;

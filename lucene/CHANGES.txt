@@ -141,13 +141,6 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#16222: MultiTermQuery constant-score wrapper now defers term collection to ScorerSupplier#get()
-  for queries with an unknown term count (automaton queries such as wildcard/regexp/prefix/range),
-  instead of scanning the term dictionary while building the ScorerSupplier. This keeps the
-  ScorerSupplier "planning" phase cheap so a parent conjunction can short-circuit (e.g. a sibling
-  clause matching no documents) before a non-seekable scan, such as a leading wildcard, runs.
-  (Tianxiao Wei)
-
 * GITHUB#15681, GITHUB#15833, GITHUB#16056: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
