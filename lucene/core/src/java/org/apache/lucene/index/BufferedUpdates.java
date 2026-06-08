@@ -163,7 +163,7 @@ class BufferedUpdates implements Accountable {
     FieldUpdatesBuffer buffer =
         vectorUpdates.computeIfAbsent(
             update.field, _ -> new FieldUpdatesBuffer(fieldUpdatesBytesUsed, update, docIDUpto));
-    // POC: vector updates always carry a value (the raw encoded vector bytes).
+    // Vector updates always carry a value (the raw encoded vector bytes); no no-value case exists.
     buffer.addUpdate(update.term, update.getValueAsBytes(), docIDUpto);
     numFieldUpdates.incrementAndGet();
   }

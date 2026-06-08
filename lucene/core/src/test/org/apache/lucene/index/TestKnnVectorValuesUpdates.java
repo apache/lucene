@@ -369,7 +369,7 @@ public class TestKnnVectorValuesUpdates extends LuceneTestCase {
         }
         w.commit();
         // The validation passes (it's a float vector field of the right dim), but writing the gen
-        // files rejects the quantized format. For the POC this surfaces at commit time.
+        // files rejects the quantized format, so the failure surfaces at commit time.
         w.updateFloatVectorValue(new Term(ID, "doc-0"), VEC, floatVec(9, dim));
         expectThrows(UnsupportedOperationException.class, w::commit);
       } finally {

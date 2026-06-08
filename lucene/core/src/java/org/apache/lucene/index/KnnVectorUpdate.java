@@ -50,7 +50,7 @@ abstract class KnnVectorUpdate {
   // used in BufferedDeletes to apply this update only to a slice of docs. It's initialized to
   // BufferedUpdates.MAX_INT since it's safe and most often used this way.
   final int docIDUpTo;
-  // POC: vector updates always carry a value (no in-place removal of a vector).
+  // Vector updates always carry a value; removing a vector in place is not supported.
   final boolean hasValue = true;
 
   protected KnnVectorUpdate(VectorEncoding encoding, Term term, String field, int docIDUpTo) {
