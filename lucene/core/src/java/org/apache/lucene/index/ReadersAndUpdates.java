@@ -205,13 +205,22 @@ final class ReadersAndUpdates {
     return count;
   }
 
-  /** Number of pending (not-yet-written) KNN vector update packets. */
-  public synchronized long getNumVectorUpdates() {
-    long count = 0;
-    for (List<KnnVectorFieldUpdates> updates : pendingVectorUpdates.values()) {
-      count += updates.size();
+  /**
+   * Returns true if there are any pending (not-yet-written) doc-values or KNN vector update
+   * packets. Both maps are checked under a single lock so the combined answer is consistent.
+   */
+  public synchronized boolean hasPendingFieldUpdates() {
+    for (List<DocValuesFieldUpdates> updates : pendingDVUpdates.values()) {
+      if (updates.isEmpty() == false) {
+        return true;
+      }
     }
-    return count;
+    for (List<KnnVectorFieldUpdates> updates : pendingVectorUpdates.values()) {
+      if (updates.isEmpty() == false) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /** Returns a {@link SegmentReader}. */

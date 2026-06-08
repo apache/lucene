@@ -223,7 +223,7 @@ final class ReaderPool implements Closeable {
             deferVectorGraphRebuild)) {
           changed = true;
         }
-        if (rld.getNumDVUpdates() == 0 && rld.getNumVectorUpdates() == 0) {
+        if (rld.hasPendingFieldUpdates() == false) {
           rld.dropReaders();
           readerMap.remove(rld.info);
         } else {
@@ -399,7 +399,7 @@ final class ReaderPool implements Closeable {
   synchronized boolean anyDocValuesChanges() {
     for (ReadersAndUpdates rld : readerMap.values()) {
       // NOTE: we don't check for pending deletes because deletes carry over in RAM to NRT readers
-      if (rld.getNumDVUpdates() != 0 || rld.getNumVectorUpdates() != 0) {
+      if (rld.hasPendingFieldUpdates()) {
         return true;
       }
     }
