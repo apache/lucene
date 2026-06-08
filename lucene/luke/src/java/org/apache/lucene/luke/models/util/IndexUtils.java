@@ -350,7 +350,9 @@ public final class IndexUtils {
               format = "Lucene 7.4 or later";
             } else if (actualVersion == SegmentInfos.VERSION_86) {
               format = "Lucene 8.6 or later";
-            } else if (actualVersion > SegmentInfos.VERSION_86) {
+            } else if (actualVersion == SegmentInfos.VERSION_VECTOR_UPDATES) {
+              format = "Lucene 8.6 or later";
+            } else if (actualVersion > SegmentInfos.VERSION_VECTOR_UPDATES) {
               format = "Lucene 8.6 or later (UNSUPPORTED)";
             }
           } else {
