@@ -181,6 +181,30 @@ public final class ColumnValidation {
     }
   }
 
+  /** Validates a {@link TokenStreamColumn} against the field type it will feed. */
+  public static void validateTokenStreamColumn(
+      TokenStreamColumn column, IndexableFieldType fieldType) {
+    if (fieldType.indexOptions() == IndexOptions.NONE || fieldType.tokenized() == false) {
+      throw new IllegalArgumentException(
+          "TokenStreamColumn \""
+              + column.name()
+              + "\" requires indexOptions != NONE and tokenized == true; got indexOptions="
+              + fieldType.indexOptions()
+              + ", tokenized="
+              + fieldType.tokenized());
+    }
+    if (fieldType.stored()
+        || fieldType.docValuesType() != DocValuesType.NONE
+        || fieldType.pointDimensionCount() != 0
+        || fieldType.vectorDimension() != 0) {
+      throw new IllegalArgumentException(
+          "TokenStreamColumn \""
+              + column.name()
+              + "\" must be inverted-only: stored=false, docValuesType=NONE,"
+              + " pointDimensionCount=0, vectorDimension=0");
+    }
+  }
+
   /** Validates a {@link VectorColumn} against the field type it will feed. */
   public static void validateVectorColumn(VectorColumn<?> column, IndexableFieldType fieldType) {
     if (fieldType.vectorDimension() <= 0) {

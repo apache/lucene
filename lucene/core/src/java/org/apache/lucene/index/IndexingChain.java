@@ -55,6 +55,7 @@ import org.apache.lucene.document.column.LongValuesCursor;
 import org.apache.lucene.document.column.ObjectTupleCursor;
 import org.apache.lucene.document.column.OrdinalsCursor;
 import org.apache.lucene.document.column.OrdinalsTupleCursor;
+import org.apache.lucene.document.column.TokenStreamColumn;
 import org.apache.lucene.document.column.VectorColumn;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Sort;
@@ -721,6 +722,7 @@ final class IndexingChain implements Accountable {
         case LongColumn lc -> ColumnValidation.validateLongColumn(lc, fieldType);
         case DictionaryColumn dc -> ColumnValidation.validateDictionaryColumn(dc, fieldType);
         case VectorColumn<?> vc -> ColumnValidation.validateVectorColumn(vc, fieldType);
+        case TokenStreamColumn tsc -> ColumnValidation.validateTokenStreamColumn(tsc, fieldType);
         default ->
             throw new IllegalArgumentException(
                 "Unknown column type: " + column.getClass().getName());
