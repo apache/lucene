@@ -185,6 +185,9 @@ final class ReadersAndUpdates {
     }
     List<KnnVectorFieldUpdates> fieldUpdates =
         pendingVectorUpdates.computeIfAbsent(update.field, _ -> new ArrayList<>());
+
+    ramBytesUsed.addAndGet(update.ramBytesUsed());
+
     fieldUpdates.add(update);
 
     if (isMerging) {
@@ -1021,6 +1024,8 @@ final class ReadersAndUpdates {
           // not yet applied
           updates.set(upto, update);
           upto++;
+        } else {
+          bytesFreed += update.ramBytesUsed();
         }
       }
       if (upto == 0) {

@@ -464,6 +464,31 @@ public class TestKnnVectorValuesUpdates extends LuceneTestCase {
     }
   }
 
+  /**
+   * Buffered, resolved vector updates must count toward the reader-pool RAM so that they get
+   * flushed under RAM pressure (and not accumulate unbounded until commit). With a tiny RAM buffer,
+   * each update should trigger a flush; if vector updates were invisible to RAM accounting, the
+   * flush count would not advance.
+   */
+  public void testVectorUpdatesAreFlushedUnderRamPressure() throws Exception {
+    int dim = 4;
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, noMergeConfig().setRAMBufferSizeMB(0.00000001))) {
+      for (int i = 0; i < 4; i++) {
+        w.addDocument(floatDoc(i, floatVec(i, dim)));
+      }
+      w.commit();
+      long before = w.getFlushDeletesCount();
+      w.updateFloatVectorValue(new Term(ID, "doc-0"), VEC, floatVec(10, dim));
+      long afterOne = w.getFlushDeletesCount();
+      assertTrue("buffered vector update should trigger a RAM-pressure flush", afterOne > before);
+      // Raising the buffer should stop forcing a flush on the next update.
+      w.getConfig().setRAMBufferSizeMB(1000d);
+      w.updateFloatVectorValue(new Term(ID, "doc-1"), VEC, floatVec(20, dim));
+      assertEquals(afterOne, w.getFlushDeletesCount());
+    }
+  }
+
   // ---- deferred graph rebuild (setDeferVectorGraphRebuild(true)) ----
 
   public void testDeferredUpdateValuesAndSearchCorrect() throws Exception {

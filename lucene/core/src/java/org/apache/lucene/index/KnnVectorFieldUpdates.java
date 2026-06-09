@@ -23,6 +23,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.PriorityQueue;
+import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * Holds in-place KNN vector updates of a single field, for a set of documents within one segment.
@@ -73,6 +74,20 @@ abstract class KnnVectorFieldUpdates {
   boolean any() {
     return size > 0;
   }
+
+  /** Approximate RAM used by this buffered, resolved update packet. */
+  long ramBytesUsed() {
+    return RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
+        + RamUsageEstimator.sizeOf(field)
+        + 3L * Integer.BYTES // maxDoc, dimension, size
+        + Long.BYTES // delGen
+        + 1 // finished
+        + RamUsageEstimator.sizeOf(docs)
+        + valuesRamBytesUsed();
+  }
+
+  /** RAM used by the subclass's value storage (the float[][] / byte[][] vectors). */
+  protected abstract long valuesRamBytesUsed();
 
   /** Freezes structures and stably sorts updates by docID (last write to a docID wins). */
   final void finish() {
@@ -245,6 +260,14 @@ abstract class KnnVectorFieldUpdates {
     }
 
     @Override
+    protected long valuesRamBytesUsed() {
+      // backing float[][] references + the size populated float[dimension] vectors
+      return RamUsageEstimator.shallowSizeOf(values)
+          + (long) size
+              * (RamUsageEstimator.NUM_BYTES_ARRAY_HEADER + (long) dimension * Float.BYTES);
+    }
+
+    @Override
     Iterator iterator() {
       if (getFinished() == false) {
         throw new IllegalStateException("call finish first");
@@ -310,6 +333,13 @@ abstract class KnnVectorFieldUpdates {
       byte[] tmp = values[i];
       values[i] = values[j];
       values[j] = tmp;
+    }
+
+    @Override
+    protected long valuesRamBytesUsed() {
+      // backing byte[][] references + the size populated byte[dimension] vectors
+      return RamUsageEstimator.shallowSizeOf(values)
+          + (long) size * (RamUsageEstimator.NUM_BYTES_ARRAY_HEADER + dimension);
     }
 
     @Override
