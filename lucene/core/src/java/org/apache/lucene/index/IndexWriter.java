@@ -2000,6 +2000,28 @@ public class IndexWriter
    * field}, an {@link IllegalArgumentException} is thrown when the update is applied (on flush /
    * commit / refresh): an update can only replace an existing vector, never add one.
    *
+   * <p><b>Performance characteristics.</b> This is designed for <i>batch</i> re-embedding (e.g.
+   * bumping an embedding model version), not high-frequency single-document edits. When the
+   * buffered updates are applied, for each affected segment the field's <i>entire</i> flat vector
+   * column is rewritten at a new generation, and (unless {@link
+   * LiveIndexWriterConfig#setDeferVectorGraphRebuild deferred}) the field's HNSW graph is rebuilt
+   * from scratch. The cost of applying a batch is therefore roughly {@code O(numDocs-in-segment)}
+   * for the column rewrite plus the graph build, and is largely independent of how many documents
+   * the batch actually changed. Consequences:
+   *
+   * <ul>
+   *   <li>Re-embedding many documents and committing once is efficient: the per-commit cost is
+   *       amortized across the whole batch, and (unlike {@code updateDocument}) the rest of each
+   *       document is not re-indexed.
+   *   <li>Updating a single vector on a large segment and committing is comparatively expensive,
+   *       since it still rewrites the whole column (and rebuilds the graph). For that access
+   *       pattern a delete-and-add ({@link #updateDocument}) may be cheaper.
+   *   <li>{@link LiveIndexWriterConfig#setDeferVectorGraphRebuild(boolean)} removes the
+   *       graph-rebuild cost from the update path (the graph is rebuilt at the next merge; search
+   *       falls back to an exact scan on the updated segment until then), but the flat-column
+   *       rewrite cost remains.
+   * </ul>
+   *
    * @param term the term to identify the document(s) to be updated
    * @param field field name of the float vector field
    * @param value new vector value for the field
