@@ -32,8 +32,12 @@ final class SharedIndexingScratch {
   /** Size in bytes of the shared byte scratch buffer. */
   static final int BYTES_SCRATCH_SIZE = 4 * 1024;
 
+  /** Number of ints in the shared int scratch buffer (4 KB). */
+  static final int INTS_SCRATCH_SIZE = 1024;
+
   private final Counter bytesUsed;
   private byte[] bytesScratchBuffer;
+  private int[] intsScratchBuffer;
 
   SharedIndexingScratch(Counter bytesUsed) {
     this.bytesUsed = bytesUsed;
@@ -51,5 +55,13 @@ final class SharedIndexingScratch {
       bytesUsed.addAndGet(BYTES_SCRATCH_SIZE);
     }
     return bytesScratchBuffer;
+  }
+
+  int[] intsScratch() {
+    if (intsScratchBuffer == null) {
+      intsScratchBuffer = new int[INTS_SCRATCH_SIZE];
+      bytesUsed.addAndGet((long) INTS_SCRATCH_SIZE * Integer.BYTES);
+    }
+    return intsScratchBuffer;
   }
 }
