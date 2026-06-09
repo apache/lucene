@@ -1996,6 +1996,10 @@ public class IndexWriter
    * org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat} is supported; quantized vector
    * formats throw {@link UnsupportedOperationException}.
    *
+   * <p><b>NOTE:</b> if the {@code term} matches a document that has no existing vector for {@code
+   * field}, an {@link IllegalArgumentException} is thrown when the update is applied (on flush /
+   * commit / refresh): an update can only replace an existing vector, never add one.
+   *
    * @param term the term to identify the document(s) to be updated
    * @param field field name of the float vector field
    * @param value new vector value for the field

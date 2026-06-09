@@ -640,6 +640,12 @@ final class ReadersAndUpdates {
   /**
    * Feeds the field writer, in docID order, every doc that currently has a float vector for {@code
    * field}, substituting the updated vector when the merged update iterator has one for that doc.
+   *
+   * <p>In-place vector updates can only <em>replace</em> an existing vector. If an update targets a
+   * document that has no vector for this field, the update can never be matched by the overlay (the
+   * base iterator only visits docs that already have a vector); rather than silently dropping it,
+   * we fail. Both iterators are in docID order and {@code updateDoc} only advances on a match, so
+   * at the start of each iteration {@code updateDoc < doc} means an unmatched (orphan) update.
    */
   private static void writeOverlayFloatVectors(
       SegmentReader reader,
@@ -651,9 +657,8 @@ final class ReadersAndUpdates {
     KnnVectorValues.DocIndexIterator baseIterator = base.iterator();
     int updateDoc = updateIterator == null ? NO_MORE_DOCS : updateIterator.nextDoc();
     for (int doc = baseIterator.nextDoc(); doc != NO_MORE_DOCS; doc = baseIterator.nextDoc()) {
-      while (updateDoc != NO_MORE_DOCS && updateDoc < doc) {
-        // updates only target docs that already have a value, so this shouldn't normally happen
-        updateDoc = updateIterator.nextDoc();
+      if (updateDoc != NO_MORE_DOCS && updateDoc < doc) {
+        throw missingVectorUpdate(field, updateDoc);
       }
       final float[] value;
       if (updateDoc == doc) {
@@ -664,6 +669,9 @@ final class ReadersAndUpdates {
         value = base.vectorValue(baseIterator.index()).clone();
       }
       fieldWriter.addValue(doc, value);
+    }
+    if (updateDoc != NO_MORE_DOCS) {
+      throw missingVectorUpdate(field, updateDoc);
     }
   }
 
@@ -677,8 +685,8 @@ final class ReadersAndUpdates {
     KnnVectorValues.DocIndexIterator baseIterator = base.iterator();
     int updateDoc = updateIterator == null ? NO_MORE_DOCS : updateIterator.nextDoc();
     for (int doc = baseIterator.nextDoc(); doc != NO_MORE_DOCS; doc = baseIterator.nextDoc()) {
-      while (updateDoc != NO_MORE_DOCS && updateDoc < doc) {
-        updateDoc = updateIterator.nextDoc();
+      if (updateDoc != NO_MORE_DOCS && updateDoc < doc) {
+        throw missingVectorUpdate(field, updateDoc);
       }
       final byte[] value;
       if (updateDoc == doc) {
@@ -689,6 +697,19 @@ final class ReadersAndUpdates {
       }
       fieldWriter.addValue(doc, value);
     }
+    if (updateDoc != NO_MORE_DOCS) {
+      throw missingVectorUpdate(field, updateDoc);
+    }
+  }
+
+  private static IllegalArgumentException missingVectorUpdate(String field, int docID) {
+    return new IllegalArgumentException(
+        "cannot update vector field \""
+            + field
+            + "\" for document "
+            + docID
+            + " which has no existing vector value; in-place vector updates can only replace an "
+            + "existing vector, not add one");
   }
 
   /**

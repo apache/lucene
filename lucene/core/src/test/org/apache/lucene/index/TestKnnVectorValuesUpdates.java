@@ -352,6 +352,32 @@ public class TestKnnVectorValuesUpdates extends LuceneTestCase {
     }
   }
 
+  /**
+   * An update can only replace an existing vector, not add one. Targeting a doc that has no vector
+   * for the field must fail (loudly) when the update is applied, rather than silently disappearing.
+   */
+  public void testUpdateDocWithoutVectorThrows() throws Exception {
+    int dim = 4;
+    try (Directory dir = newDirectory()) {
+      IndexWriter w = new IndexWriter(dir, noMergeConfig());
+      try {
+        // doc-0 has a vector; doc-1 has the field "vec" absent (only the id field).
+        w.addDocument(floatDoc(0, floatVec(0, dim)));
+        Document noVec = new Document();
+        noVec.add(new StringField(ID, "doc-1", Store.YES));
+        w.addDocument(noVec);
+        w.commit();
+
+        // Updating doc-1 (no existing vector) must fail when applied at commit time.
+        w.updateFloatVectorValue(new Term(ID, "doc-1"), VEC, floatVec(9, dim));
+        expectThrows(IllegalArgumentException.class, w::commit);
+      } finally {
+        // the pending (orphan) update would re-throw on close(); discard it
+        w.rollback();
+      }
+    }
+  }
+
   public void testUpdateQuantizedFieldThrows() throws Exception {
     int dim = 4;
     IndexWriterConfig conf =
