@@ -29,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BooleanSupplier;
 import java.util.function.LongSupplier;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
@@ -68,10 +67,6 @@ final class ReaderPool implements Closeable {
   private volatile boolean poolReaders;
   private final AtomicBoolean closed = new AtomicBoolean(false);
 
-  // Whether in-place KNN vector updates defer the per-segment HNSW graph rebuild to merge time.
-  // Read live (via a supplier over the live config) so changes take effect on subsequent writes.
-  private final BooleanSupplier deferVectorGraphRebuild;
-
   ReaderPool(
       Directory directory,
       Directory originalDirectory,
@@ -80,8 +75,7 @@ final class ReaderPool implements Closeable {
       LongSupplier completedDelGenSupplier,
       InfoStream infoStream,
       String softDeletesField,
-      StandardDirectoryReader reader,
-      BooleanSupplier deferVectorGraphRebuild)
+      StandardDirectoryReader reader)
       throws IOException {
     this.directory = directory;
     this.originalDirectory = originalDirectory;
@@ -90,7 +84,6 @@ final class ReaderPool implements Closeable {
     this.completedDelGenSupplier = completedDelGenSupplier;
     this.infoStream = infoStream;
     this.softDeletesField = softDeletesField;
-    this.deferVectorGraphRebuild = deferVectorGraphRebuild;
     if (reader != null) {
       // Pre-enroll all segment readers into the reader pool; this is necessary so
       // any in-memory NRT live docs are correctly carried over, and so NRT readers
@@ -218,11 +211,7 @@ final class ReaderPool implements Closeable {
           changed = true;
         }
         if (rld.writeFieldUpdates(
-            directory,
-            fieldNumbers,
-            completedDelGenSupplier.getAsLong(),
-            infoStream,
-            deferVectorGraphRebuild.getAsBoolean())) {
+            directory, fieldNumbers, completedDelGenSupplier.getAsLong(), infoStream)) {
           changed = true;
         }
         if (rld.hasPendingFieldUpdates() == false) {
@@ -259,11 +248,7 @@ final class ReaderPool implements Closeable {
     for (ReadersAndUpdates rld : copy) {
       any |=
           rld.writeFieldUpdates(
-              directory,
-              fieldNumbers,
-              completedDelGenSupplier.getAsLong(),
-              infoStream,
-              deferVectorGraphRebuild.getAsBoolean());
+              directory, fieldNumbers, completedDelGenSupplier.getAsLong(), infoStream);
     }
     return any;
   }
@@ -280,11 +265,7 @@ final class ReaderPool implements Closeable {
       if (rld != null) {
         any |=
             rld.writeFieldUpdates(
-                directory,
-                fieldNumbers,
-                completedDelGenSupplier.getAsLong(),
-                infoStream,
-                deferVectorGraphRebuild.getAsBoolean());
+                directory, fieldNumbers, completedDelGenSupplier.getAsLong(), infoStream);
         rld.setIsMerging();
       }
     }
@@ -370,11 +351,7 @@ final class ReaderPool implements Closeable {
         boolean changed = rld.writeLiveDocs(directory);
         changed |=
             rld.writeFieldUpdates(
-                directory,
-                fieldNumbers,
-                completedDelGenSupplier.getAsLong(),
-                infoStream,
-                deferVectorGraphRebuild.getAsBoolean());
+                directory, fieldNumbers, completedDelGenSupplier.getAsLong(), infoStream);
 
         if (changed) {
           // Make sure we only write del docs for a live segment:

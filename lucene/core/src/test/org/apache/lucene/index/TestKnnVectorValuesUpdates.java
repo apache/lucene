@@ -55,13 +55,6 @@ public class TestKnnVectorValuesUpdates extends LuceneTestCase {
     return new IndexWriterConfig().setCodec(unquantizedCodec());
   }
 
-  private static IndexWriterConfig deferredNoMergeConfig() {
-    return new IndexWriterConfig()
-        .setCodec(unquantizedCodec())
-        .setMergePolicy(NoMergePolicy.INSTANCE)
-        .setDeferVectorGraphRebuild(true);
-  }
-
   /** Returns the HNSW graph size for {@code VEC} in the (single) leaf containing the given doc. */
   private static int graphSizeForDoc(DirectoryReader reader, String idValue) throws Exception {
     for (LeafReaderContext ctx : reader.leaves()) {
@@ -489,7 +482,7 @@ public class TestKnnVectorValuesUpdates extends LuceneTestCase {
     }
   }
 
-  // ---- deferred graph rebuild (setDeferVectorGraphRebuild(true)) ----
+  // ---- deferred graph rebuild (the only mode: graph work is deferred to merge) ----
 
   public void testDeferredUpdateValuesAndSearchCorrect() throws Exception {
     int dim = 4;
@@ -498,10 +491,7 @@ public class TestKnnVectorValuesUpdates extends LuceneTestCase {
     // gen segment does NOT.
     Codec alwaysGraph = TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(16, 100, 0));
     try (Directory dir = newDirectory()) {
-      try (IndexWriter w =
-          new IndexWriter(
-              dir,
-              new IndexWriterConfig().setCodec(alwaysGraph).setDeferVectorGraphRebuild(true))) {
+      try (IndexWriter w = new IndexWriter(dir, new IndexWriterConfig().setCodec(alwaysGraph))) {
         for (int i = 0; i < n; i++) {
           w.addDocument(floatDoc(i, floatVec(i * 10, dim)));
         }
@@ -536,10 +526,7 @@ public class TestKnnVectorValuesUpdates extends LuceneTestCase {
     // reflects the deferred/merge behavior under test rather than the segment-size heuristic.
     Codec alwaysGraph = TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(16, 100, 0));
     try (Directory dir = newDirectory()) {
-      try (IndexWriter w =
-          new IndexWriter(
-              dir,
-              new IndexWriterConfig().setCodec(alwaysGraph).setDeferVectorGraphRebuild(true))) {
+      try (IndexWriter w = new IndexWriter(dir, new IndexWriterConfig().setCodec(alwaysGraph))) {
         for (int i = 0; i < n; i++) {
           w.addDocument(floatDoc(i, floatVec(i, dim)));
         }
@@ -578,7 +565,7 @@ public class TestKnnVectorValuesUpdates extends LuceneTestCase {
   public void testDeferredMultipleUpdatesLastWins() throws Exception {
     int dim = 4;
     try (Directory dir = newDirectory()) {
-      try (IndexWriter w = new IndexWriter(dir, deferredNoMergeConfig())) {
+      try (IndexWriter w = new IndexWriter(dir, noMergeConfig())) {
         for (int i = 0; i < 10; i++) {
           w.addDocument(floatDoc(i, floatVec(i, dim)));
         }

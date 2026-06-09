@@ -530,8 +530,7 @@ final class ReadersAndUpdates {
       Map<Integer, Set<String>> fieldFiles,
       Map<Integer, Long> fieldGens,
       long maxDelGen,
-      InfoStream infoStream,
-      boolean deferVectorGraphRebuild)
+      InfoStream infoStream)
       throws IOException {
     for (Entry<String, List<KnnVectorFieldUpdates>> ent : pendingVectorUpdates.entrySet()) {
       final String field = ent.getKey();
@@ -572,35 +571,27 @@ final class ReadersAndUpdates {
       assert fieldInfo != null && fieldInfo.hasVectorValues();
       final FieldInfos fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});
 
-      // Choose the writer format for this generation. When deferring the graph rebuild we write
-      // only
-      // the flat vectors and skip building the HNSW graph: the gen's ".vex/.vem" carry an empty
-      // graph
-      // (vectorIndexLength == 0), so the reader falls back to an exact scan on this segment until
-      // the
-      // next merge rebuilds the graph using the codec's normal format. The graph build is
+      // Write only the new flat vectors and skip building the HNSW graph: the gen's ".vex/.vem"
+      // carry an empty graph (vectorIndexLength == 0), so the reader falls back to an exact scan on
+      // this segment until the next merge rebuilds the graph using the codec's normal format (the
+      // same way updateDocument defers graph reconstruction to merge). The graph build is
       // suppressed
       // by raising the "tiny segment" threshold above the segment size (so shouldCreateGraph() is
       // always false for this write). We wrap it in a PerFieldKnnVectorsFormat so file naming and
       // the
       // per-field suffix attributes match what the (always per-field) reader reconstructs.
-      final KnnVectorsFormat writeFormat;
-      if (deferVectorGraphRebuild) {
-        final KnnVectorsFormat noGraphFormat =
-            new Lucene99HnswVectorsFormat(
-                Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
-                Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
-                info.info.maxDoc() + 1);
-        writeFormat =
-            new PerFieldKnnVectorsFormat() {
-              @Override
-              public KnnVectorsFormat getKnnVectorsFormatForField(String f) {
-                return noGraphFormat;
-              }
-            };
-      } else {
-        writeFormat = vectorsFormat;
-      }
+      final KnnVectorsFormat noGraphFormat =
+          new Lucene99HnswVectorsFormat(
+              Lucene99HnswVectorsFormat.DEFAULT_MAX_CONN,
+              Lucene99HnswVectorsFormat.DEFAULT_BEAM_WIDTH,
+              info.info.maxDoc() + 1);
+      final KnnVectorsFormat writeFormat =
+          new PerFieldKnnVectorsFormat() {
+            @Override
+            public KnnVectorsFormat getKnnVectorsFormatForField(String f) {
+              return noGraphFormat;
+            }
+          };
 
       final TrackingDirectoryWrapper trackingDir = new TrackingDirectoryWrapper(dir);
       final SegmentWriteState state =
@@ -868,11 +859,7 @@ final class ReadersAndUpdates {
   }
 
   public synchronized boolean writeFieldUpdates(
-      Directory dir,
-      FieldInfos.FieldNumbers fieldNumbers,
-      long maxDelGen,
-      InfoStream infoStream,
-      boolean deferVectorGraphRebuild)
+      Directory dir, FieldInfos.FieldNumbers fieldNumbers, long maxDelGen, InfoStream infoStream)
       throws IOException {
     long startTimeNS = System.nanoTime();
     final Map<Integer, Set<String>> newDVFiles = new HashMap<>();
@@ -965,8 +952,7 @@ final class ReadersAndUpdates {
             newVectorFiles,
             newVectorGens,
             maxDelGen,
-            infoStream,
-            deferVectorGraphRebuild);
+            infoStream);
 
         fieldInfosFiles = writeFieldInfosGen(fieldInfos, trackingDir, codec.fieldInfosFormat());
       } finally {

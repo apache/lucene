@@ -72,18 +72,15 @@ import org.openjdk.jmh.annotations.Warmup;
  *
  * <ul>
  *   <li>{@code batchSize} — how many docs are re-embedded per commit. <b>Key:</b> the in-place path
- *       rewrites the field's entire flat vector column (and, when eager, rebuilds the whole graph)
- *       once per commit, so its cost scales with {@code numDocs} and is nearly <em>flat</em> in
- *       {@code batchSize}; the whole-document path re-indexes every field of every updated doc, so
- *       its cost scales <em>linearly</em> with {@code batchSize}. At small batches the
- *       whole-document path is cheaper; as the batch grows the in-place (deferred) path overtakes
- *       it.
+ *       rewrites the field's entire flat vector column once per commit, so its cost scales with
+ *       {@code numDocs} and is nearly <em>flat</em> in {@code batchSize}; the whole-document path
+ *       re-indexes every field of every updated doc, so its cost scales <em>linearly</em> with
+ *       {@code batchSize}. At small batches the whole-document path is cheaper; as the batch grows
+ *       the in-place path overtakes it.
  *   <li>{@code numDocs} — segment size. Raises the in-place path's flat per-commit cost
- *       (full-column rewrite / graph build), shifting the crossover point.
+ *       (full-column rewrite), shifting the crossover point.
  *   <li>{@code otherFields} — document "richness" (extra indexed text + stored fields). The
  *       whole-document path pays to re-index all of it; the in-place path does not.
- *   <li>{@code deferGraphRebuild} — eager (rebuild graph each commit) vs deferred (skip graph,
- *       exact scan until next merge) for the in-place path.
  * </ul>
  *
  * <p><b>Note on semantics being compared:</b> this measures raw write cost. It does <em>not</em>
@@ -109,8 +106,8 @@ public class VectorUpdateBenchmark {
   private static final long SEED = 0xCAFED00DL;
 
   // Base index templates are built ONCE per (numDocs, dim, otherFields) and cached for the whole
-  // fork, so the expensive 100k/500k * 768-dim eager-graph build happens once and is reused by all
-  // batchSize / deferGraphRebuild trials (which just byte-copy it). Keyed string -> template dir.
+  // fork, so the expensive 100k/500k * 768-dim graph build happens once and is reused by all
+  // batchSize trials (which just byte-copy it). Keyed string -> template dir.
   private static final java.util.Map<String, Path> TEMPLATES = new java.util.HashMap<>();
 
   // Per-segment vector count. The default is modest so a bare run finishes quickly; pass larger
@@ -129,14 +126,6 @@ public class VectorUpdateBenchmark {
   /** How many distinct documents are re-embedded per commit (the realistic "re-embed" batch). */
   @Param({"1", "1000", "10000"})
   public int batchSize;
-
-  /**
-   * Whether the in-place path defers the HNSW graph rebuild to merge time (exact-scan until then).
-   * Only affects {@link #updateFloatVector}; the whole-document path always defers graph work to a
-   * later merge anyway.
-   */
-  @Param({"false", "true"})
-  public boolean deferGraphRebuild;
 
   private Codec codec;
   private Random random;
@@ -199,10 +188,7 @@ public class VectorUpdateBenchmark {
         dir.copyFrom(templateDir, file, file, org.apache.lucene.store.IOContext.DEFAULT);
       }
     }
-    writer =
-        new IndexWriter(
-            dir,
-            new IndexWriterConfig().setCodec(codec).setDeferVectorGraphRebuild(deferGraphRebuild));
+    writer = new IndexWriter(dir, new IndexWriterConfig().setCodec(codec));
   }
 
   @TearDown(Level.Iteration)

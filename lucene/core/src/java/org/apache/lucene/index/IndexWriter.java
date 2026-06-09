@@ -858,8 +858,7 @@ public class IndexWriter
                     directory,
                     globalFieldNumberMap,
                     bufferedUpdatesStream.getCompletedDelGen(),
-                    infoStream,
-                    config.getDeferVectorGraphRebuild())) {
+                    infoStream)) {
                   checkpointNoSIS();
                 }
               }
@@ -1158,8 +1157,7 @@ public class IndexWriter
               bufferedUpdatesStream::getCompletedDelGen,
               infoStream,
               conf.getSoftDeletesField(),
-              reader,
-              config::getDeferVectorGraphRebuild);
+              reader);
       if (config.getReaderPooling()) {
         readerPool.enableReaderPooling();
       }
@@ -1989,9 +1987,11 @@ public class IndexWriter
    * vector to documents that don't already have one.
    *
    * <p>This is the vector analogue of {@link #updateNumericDocValue}: the matching documents'
-   * vector column is rewritten and the field's HNSW graph is rebuilt for the affected segments at a
-   * new generation, while the rest of each document (postings, stored fields, other fields) is left
-   * untouched.
+   * vector column is rewritten for the affected segments at a new generation, while the rest of
+   * each document (postings, stored fields, other fields) is left untouched. The field's HNSW graph
+   * is <i>not</i> rebuilt at update time — like {@link #updateDocument}, which also defers graph
+   * reconstruction to merge, it is rebuilt at the next merge, and ANN search falls back to an exact
+   * scan on the updated segment until then.
    *
    * <p><b>NOTE:</b> only the unquantized {@link
    * org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat} is supported; quantized vector
@@ -2004,23 +2004,20 @@ public class IndexWriter
    * <p><b>Performance characteristics.</b> This is designed for <i>batch</i> re-embedding (e.g.
    * bumping an embedding model version), not high-frequency single-document edits. When the
    * buffered updates are applied, for each affected segment the field's <i>entire</i> flat vector
-   * column is rewritten at a new generation, and (unless {@link
-   * LiveIndexWriterConfig#setDeferVectorGraphRebuild deferred}) the field's HNSW graph is rebuilt
-   * from scratch. The cost of applying a batch is therefore roughly {@code O(numDocs-in-segment)}
-   * for the column rewrite plus the graph build, and is largely independent of how many documents
-   * the batch actually changed. Consequences:
+   * column is rewritten at a new generation. The cost of applying a batch is therefore roughly
+   * {@code O(numDocs-in-segment)} for the column rewrite, and is largely independent of how many
+   * documents the batch actually changed. Consequences:
    *
    * <ul>
    *   <li>Re-embedding many documents and committing once is efficient: the per-commit cost is
    *       amortized across the whole batch, and (unlike {@code updateDocument}) the rest of each
    *       document is not re-indexed.
    *   <li>Updating a single vector on a large segment and committing is comparatively expensive,
-   *       since it still rewrites the whole column (and rebuilds the graph). For that access
-   *       pattern a delete-and-add ({@link #updateDocument}) may be cheaper.
-   *   <li>{@link LiveIndexWriterConfig#setDeferVectorGraphRebuild(boolean)} removes the
-   *       graph-rebuild cost from the update path (the graph is rebuilt at the next merge; search
-   *       falls back to an exact scan on the updated segment until then), but the flat-column
-   *       rewrite cost remains.
+   *       since it still rewrites the whole column. For that access pattern a delete-and-add
+   *       ({@link #updateDocument}) may be cheaper.
+   *   <li>The HNSW graph is rebuilt lazily at the next merge (like {@code updateDocument}, which
+   *       also defers graph reconstruction to merge), and ANN search falls back to an exact scan on
+   *       the updated segment until then.
    * </ul>
    *
    * @param term the term to identify the document(s) to be updated

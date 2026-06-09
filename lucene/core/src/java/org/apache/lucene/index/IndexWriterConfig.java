@@ -440,11 +440,6 @@ public final class IndexWriterConfig extends LiveIndexWriterConfig {
     return (IndexWriterConfig) super.setUseCompoundFile(useCompoundFile);
   }
 
-  @Override
-  public IndexWriterConfig setDeferVectorGraphRebuild(boolean deferVectorGraphRebuild) {
-    return (IndexWriterConfig) super.setDeferVectorGraphRebuild(deferVectorGraphRebuild);
-  }
-
   /**
    * Sets if calls {@link IndexWriter#close()} should first commit before closing. Use <code>true
    * </code> to match behavior of Lucene 4.x.
