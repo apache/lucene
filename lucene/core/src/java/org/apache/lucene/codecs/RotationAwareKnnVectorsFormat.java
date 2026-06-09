@@ -18,7 +18,6 @@ package org.apache.lucene.codecs;
 
 import java.io.IOException;
 import java.util.Map;
-import org.apache.lucene.codecs.lucene104.Lucene104HnswScalarQuantizedVectorsFormat;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
@@ -56,14 +55,26 @@ public class RotationAwareKnnVectorsFormat extends KnnVectorsFormat {
   /** FieldInfo attribute key signaling rotation is enabled. */
   public static final String ROTATION_ENABLED_KEY = "Lucene104SQVecRotation";
 
-  private final KnnVectorsFormat delegate;
+  /**
+   * FieldInfo attribute key recording the delegate format name (resolvable via {@link
+   * KnnVectorsFormat#forName(String)}) used at write time. The reader uses it to recreate the same
+   * delegate at read time, so an index written with a non-default delegate is still readable when
+   * the SPI no-arg constructor is used.
+   */
+  public static final String DELEGATE_FORMAT_KEY = "RotationAwareDelegateFormat";
 
   /**
-   * No-arg constructor for SPI registration. Creates a default delegate using {@link
-   * Lucene104HnswScalarQuantizedVectorsFormat} with default parameters.
+   * Delegate used at write time and as the default for fields whose persisted delegate name is
+   * unknown at read time. Null when this format was instantiated via the no-arg SPI constructor —
+   * in that case writes are not supported, and reads resolve the delegate per FieldInfo attribute
+   * via {@link KnnVectorsFormat#forName(String)}.
    */
+  private final KnnVectorsFormat delegate;
+
+  /** No-arg constructor for SPI registration. Read-only — writing requires an explicit delegate. */
   public RotationAwareKnnVectorsFormat() {
-    this(new Lucene104HnswScalarQuantizedVectorsFormat());
+    super("RotationAwareKnnVectorsFormat");
+    this.delegate = null;
   }
 
   /** Wraps the given delegate format with rotation preconditioning. */
@@ -74,16 +85,53 @@ public class RotationAwareKnnVectorsFormat extends KnnVectorsFormat {
 
   @Override
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    return new RotatingWriter(delegate.fieldsWriter(state));
+    if (delegate == null) {
+      throw new UnsupportedOperationException(
+          "RotationAwareKnnVectorsFormat was constructed via the no-arg SPI constructor and "
+              + "cannot write; use the (KnnVectorsFormat delegate) constructor for indexing.");
+    }
+    return new RotatingWriter(delegate.fieldsWriter(state), delegate.getName());
   }
 
   @Override
   public KnnVectorsReader fieldsReader(SegmentReadState state) throws IOException {
-    return new RotatingReader(delegate.fieldsReader(state), state.fieldInfos);
+    // Resolve the actual delegate per the FieldInfo attribute persisted at write time. If a
+    // user-supplied delegate matches that name, prefer it (so user-tuned constructor args
+    // are honoured); otherwise resolve via SPI. Falls back to the user-supplied delegate
+    // when no rotation-enabled field is present (e.g. byte-only segment).
+    KnnVectorsFormat actualDelegate = null;
+    for (FieldInfo fi : state.fieldInfos) {
+      String name = fi.getAttribute(DELEGATE_FORMAT_KEY);
+      if (name != null) {
+        actualDelegate =
+            (delegate != null && name.equals(delegate.getName()))
+                ? delegate
+                : KnnVectorsFormat.forName(name);
+        break;
+      }
+    }
+    if (actualDelegate == null) {
+      actualDelegate = delegate;
+    }
+    if (actualDelegate == null) {
+      throw new IllegalStateException(
+          "RotationAwareKnnVectorsFormat: no delegate format could be resolved for segment "
+              + state.segmentInfo.name
+              + " (no field carries the "
+              + DELEGATE_FORMAT_KEY
+              + " attribute and the no-arg "
+              + "SPI constructor was used).");
+    }
+    return new RotatingReader(actualDelegate.fieldsReader(state), state.fieldInfos);
   }
 
   @Override
   public int getMaxDimensions(String fieldName) {
+    if (delegate == null) {
+      // No-arg/SPI path is read-only; getMaxDimensions is consulted at write time, so this
+      // shouldn't be called. Be permissive rather than crash if it is.
+      return KnnVectorsFormat.DEFAULT_MAX_DIMENSIONS;
+    }
     return delegate.getMaxDimensions(fieldName);
   }
 
@@ -99,14 +147,21 @@ public class RotationAwareKnnVectorsFormat extends KnnVectorsFormat {
   private static final class RotatingWriter extends KnnVectorsWriter {
 
     private final KnnVectorsWriter delegateWriter;
+    private final String delegateName;
 
-    RotatingWriter(KnnVectorsWriter delegateWriter) {
+    RotatingWriter(KnnVectorsWriter delegateWriter, String delegateName) {
       this.delegateWriter = delegateWriter;
+      this.delegateName = delegateName;
     }
 
     @Override
     public KnnFieldVectorsWriter<?> addField(FieldInfo fieldInfo) throws IOException {
       KnnFieldVectorsWriter<?> delegateFieldWriter = delegateWriter.addField(fieldInfo);
+      // Persist the delegate format name so RotatingReader can recreate the same delegate at
+      // read time even if the SPI no-arg constructor would create a different default. We do
+      // this for every field (both float and byte) so the reader can resolve the delegate
+      // even on byte-only segments.
+      fieldInfo.putAttribute(DELEGATE_FORMAT_KEY, delegateName);
       if (fieldInfo.getVectorEncoding() == VectorEncoding.FLOAT32) {
         fieldInfo.putAttribute(ROTATION_ENABLED_KEY, "true");
         @SuppressWarnings("unchecked")
