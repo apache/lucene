@@ -87,8 +87,8 @@ final class IndexingChain implements Accountable {
   final TermsHash termsHash;
   // Shared pool for doc-value terms
   final ByteBlockPool docValuesBytePool;
-  // Shared scratch buffer for dense points encoding
-  final SharedIndexingBuffer sharedIndexingBuffer;
+  // Shared scratch buffers for dense points encoding
+  final SharedIndexingScratch sharedIndexingScratch;
   // Writes stored fields
   final StoredFieldsConsumer storedFieldsConsumer;
   final VectorValuesConsumer vectorValuesConsumer;
@@ -158,7 +158,7 @@ final class IndexingChain implements Accountable {
         new FreqProxTermsWriter(
             intBlockAllocator, byteBlockAllocator, bytesUsed, termVectorsWriter);
     docValuesBytePool = new ByteBlockPool(byteBlockAllocator);
-    sharedIndexingBuffer = new SharedIndexingBuffer(bytesUsed);
+    sharedIndexingScratch = new SharedIndexingScratch(bytesUsed);
     if (indexWriterConfig.getParentField() != null) {
       this.parentField = new NumericDocValuesField(indexWriterConfig.getParentField(), -1);
       parentPf = getOrAddPerField(this.parentField.name());
@@ -1346,7 +1346,7 @@ final class IndexingChain implements Accountable {
         throw new AssertionError("unrecognized DocValues.Type: " + dvType);
     }
     if (fi.getPointDimensionCount() != 0) {
-      pf.pointValuesWriter = new PointValuesWriter(bytesUsed, fi, sharedIndexingBuffer);
+      pf.pointValuesWriter = new PointValuesWriter(bytesUsed, fi, sharedIndexingScratch);
     }
     if (fi.getVectorDimension() != 0) {
       try {

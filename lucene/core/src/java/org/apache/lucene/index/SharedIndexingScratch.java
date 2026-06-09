@@ -19,40 +19,36 @@ package org.apache.lucene.index;
 import org.apache.lucene.util.Counter;
 
 /**
- * A lazily-allocated shared scratch buffer owned by {@link IndexingChain} and provided to per-field
- * writers that need transient buffers during indexing.
+ * A holder of lazily-allocated, shared scratch buffers owned by {@link IndexingChain} and provided
+ * to per-field writers that need transient buffers during indexing.
  *
  * <p>Because {@link IndexingChain} (and the {@link DocumentsWriterPerThread} it belongs to) indexes
- * documents single-threadedly, a single shared buffer is safe to reuse across all writers within
- * the same chain. Callers must treat the buffer as transient scratch: fill it, drain it within the
- * same call, and not retain a reference across calls.
+ * documents single-threadedly, these buffers are safe to reuse across all writers within the same
+ * chain. Callers must treat each buffer as transient scratch: fill it, drain it within the same
+ * call, and not retain a reference across calls.
  */
-final class SharedIndexingBuffer {
+final class SharedIndexingScratch {
 
-  /**
-   * Size in bytes of the shared points staging buffer. Sized to match {@link
-   * org.apache.lucene.util.PagedBytes} block size (blockBits=12 → 4 KB) so that each chunk drains
-   * into at most two PagedBytes blocks.
-   */
-  static final int POINTS_BUFFER_BYTES = 4 * 1024;
+  /** Size in bytes of the shared byte scratch buffer. */
+  static final int BYTES_SCRATCH_SIZE = 4 * 1024;
 
   private final Counter bytesUsed;
   private byte[] bytesScratchBuffer;
 
-  SharedIndexingBuffer(Counter bytesUsed) {
+  SharedIndexingScratch(Counter bytesUsed) {
     this.bytesUsed = bytesUsed;
   }
 
   /**
-   * Returns the shared points staging buffer, allocating it on the first call and tracking its RAM
+   * Returns the shared byte scratch buffer, allocating it on the first call and tracking its RAM
    * via the {@link Counter} supplied at construction.
    *
    * <p>Callers must treat the returned array as transient scratch.
    */
   byte[] bytesScratch() {
     if (bytesScratchBuffer == null) {
-      bytesScratchBuffer = new byte[POINTS_BUFFER_BYTES];
-      bytesUsed.addAndGet(POINTS_BUFFER_BYTES);
+      bytesScratchBuffer = new byte[BYTES_SCRATCH_SIZE];
+      bytesUsed.addAndGet(BYTES_SCRATCH_SIZE);
     }
     return bytesScratchBuffer;
   }

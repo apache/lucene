@@ -41,16 +41,16 @@ class PointValuesWriter {
   private final int packedBytesLength;
 
   private static final int POINTS_BUFFER_INT_VALUES =
-      SharedIndexingBuffer.POINTS_BUFFER_BYTES / Integer.BYTES;
+      SharedIndexingScratch.BYTES_SCRATCH_SIZE / Integer.BYTES;
   private static final int POINTS_BUFFER_LONG_VALUES =
-      SharedIndexingBuffer.POINTS_BUFFER_BYTES / Long.BYTES;
+      SharedIndexingScratch.BYTES_SCRATCH_SIZE / Long.BYTES;
 
-  private final SharedIndexingBuffer sharedBuffer;
+  private final SharedIndexingScratch sharedScratch;
 
-  PointValuesWriter(Counter bytesUsed, FieldInfo fieldInfo, SharedIndexingBuffer sharedBuffer) {
+  PointValuesWriter(Counter bytesUsed, FieldInfo fieldInfo, SharedIndexingScratch sharedScratch) {
     this.fieldInfo = fieldInfo;
     this.iwBytesUsed = bytesUsed;
-    this.sharedBuffer = sharedBuffer;
+    this.sharedScratch = sharedScratch;
     this.bytes = new PagedBytes(12);
     bytesOut = bytes.getDataOutput();
     docIDs = new int[16];
@@ -97,7 +97,7 @@ class PointValuesWriter {
       return;
     }
     final long ramBefore = reserveDenseRange(firstDocID, size);
-    final byte[] buffer = sharedBuffer.bytesScratch();
+    final byte[] buffer = sharedScratch.bytesScratch();
     int remaining = size;
     while (remaining > 0) {
       int chunk = Math.min(POINTS_BUFFER_INT_VALUES, remaining);
@@ -115,7 +115,7 @@ class PointValuesWriter {
       return;
     }
     final long ramBefore = reserveDenseRange(firstDocID, size);
-    final byte[] buffer = sharedBuffer.bytesScratch();
+    final byte[] buffer = sharedScratch.bytesScratch();
     int remaining = size;
     while (remaining > 0) {
       int chunk = Math.min(POINTS_BUFFER_LONG_VALUES, remaining);
@@ -133,8 +133,8 @@ class PointValuesWriter {
     }
     final long ramBefore = reserveDenseRange(firstDocID, size);
     final int width = packedBytesLength;
-    final int perChunk = SharedIndexingBuffer.POINTS_BUFFER_BYTES / width;
-    final byte[] buffer = sharedBuffer.bytesScratch();
+    final int perChunk = SharedIndexingScratch.BYTES_SCRATCH_SIZE / width;
+    final byte[] buffer = sharedScratch.bytesScratch();
     int remaining = size;
     while (remaining > 0) {
       int chunk = Math.min(perChunk, remaining);
