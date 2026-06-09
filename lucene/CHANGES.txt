@@ -307,6 +307,8 @@ API Changes
 
 * GITHUB#16104: Add public constructors and a public getSearchStrategy() to FloatVectorSimilarityQuery, ByteVectorSimilarityQuery and VectorSimilarityCollector that accept a KnnSearchStrategy. (Sasilekha R)
 
+* GITHUB#16224 Add TokenStreamColumn for experimental columnar batch indexing. (Tim Brooks)
+
 New Features
 ---------------------
 
