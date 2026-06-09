@@ -531,6 +531,7 @@ public class LiveIndexWriterConfig {
     sb.append("leafSorter=").append(getLeafSorter()).append("\n");
     sb.append("eventListener=").append(getIndexWriterEventListener()).append("\n");
     sb.append("parentField=").append(getParentField()).append("\n");
+    sb.append("deferVectorGraphRebuild=").append(getDeferVectorGraphRebuild()).append("\n");
     return sb.toString();
   }
 }

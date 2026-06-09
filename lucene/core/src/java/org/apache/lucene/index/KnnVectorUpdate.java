@@ -117,7 +117,9 @@ abstract class KnnVectorUpdate {
     private final float[] value;
 
     FloatKnnVectorUpdate(Term term, String field, float[] value) {
-      this(term, field, value, BufferedUpdates.MAX_INT);
+      // Defensive copy: the update is buffered and the value is read later (on the flush thread),
+      // so we must not alias the caller's array, which they are free to mutate after the call.
+      this(term, field, value.clone(), BufferedUpdates.MAX_INT);
     }
 
     private FloatKnnVectorUpdate(Term term, String field, float[] value, int docIDUpTo) {
@@ -159,7 +161,8 @@ abstract class KnnVectorUpdate {
     private final byte[] value;
 
     ByteKnnVectorUpdate(Term term, String field, byte[] value) {
-      this(term, field, value, BufferedUpdates.MAX_INT);
+      // Defensive copy: see FloatKnnVectorUpdate.
+      this(term, field, value.clone(), BufferedUpdates.MAX_INT);
     }
 
     private ByteKnnVectorUpdate(Term term, String field, byte[] value, int docIDUpTo) {

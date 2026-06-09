@@ -655,7 +655,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
      * @throws IllegalArgumentException if the field doesn't exist, is not a vector field, its
      *     vector options don't match, or it is also indexed with postings/points/doc-values.
      */
-    synchronized void verifyVectorOnlyField(
+    synchronized VectorSimilarityFunction verifyVectorOnlyField(
         String fieldName, int dimension, VectorEncoding encoding) {
       if (fieldProperties.containsKey(fieldName) == false) {
         throw new IllegalArgumentException(
@@ -701,6 +701,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
                 + fieldName
                 + "] must be a vector-only field, but is also indexed with points.");
       }
+      return fvp.similarityFunction;
     }
 
     /**

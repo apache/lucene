@@ -97,6 +97,7 @@ import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.ThreadInterruptedException;
 import org.apache.lucene.util.UnicodeUtil;
+import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.Version;
 
 /**
@@ -1158,7 +1159,7 @@ public class IndexWriter
               infoStream,
               conf.getSoftDeletesField(),
               reader,
-              conf.getDeferVectorGraphRebuild());
+              config::getDeferVectorGraphRebuild);
       if (config.getReaderPooling()) {
         readerPool.enableReaderPooling();
       }
@@ -2034,7 +2035,13 @@ public class IndexWriter
     if (value == null) {
       throw new IllegalArgumentException("cannot update a vector field to a null value: " + field);
     }
-    globalFieldNumberMap.verifyVectorOnlyField(field, value.length, VectorEncoding.FLOAT32);
+    VectorSimilarityFunction similarity =
+        globalFieldNumberMap.verifyVectorOnlyField(field, value.length, VectorEncoding.FLOAT32);
+    // Apply the same value constraints as KnnFloatVectorField indexing.
+    VectorUtil.checkFinite(value);
+    if (similarity == VectorSimilarityFunction.COSINE && VectorUtil.isZeroVector(value)) {
+      throw new IllegalArgumentException("zero vector not allowed with cosine similarity function");
+    }
     if (config.getIndexSortFields().contains(field)) {
       throw new IllegalArgumentException(
           "cannot update vector field involved in the index sort, field="
@@ -2068,7 +2075,11 @@ public class IndexWriter
     if (value == null) {
       throw new IllegalArgumentException("cannot update a vector field to a null value: " + field);
     }
-    globalFieldNumberMap.verifyVectorOnlyField(field, value.length, VectorEncoding.BYTE);
+    VectorSimilarityFunction similarity =
+        globalFieldNumberMap.verifyVectorOnlyField(field, value.length, VectorEncoding.BYTE);
+    if (similarity == VectorSimilarityFunction.COSINE && VectorUtil.isZeroVector(value)) {
+      throw new IllegalArgumentException("zero vector not allowed with cosine similarity function");
+    }
     if (config.getIndexSortFields().contains(field)) {
       throw new IllegalArgumentException(
           "cannot update vector field involved in the index sort, field="

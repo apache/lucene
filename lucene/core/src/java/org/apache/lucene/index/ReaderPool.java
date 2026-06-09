@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 import java.util.function.LongSupplier;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
@@ -67,8 +68,9 @@ final class ReaderPool implements Closeable {
   private volatile boolean poolReaders;
   private final AtomicBoolean closed = new AtomicBoolean(false);
 
-  // When true, in-place KNN vector updates defer the per-segment HNSW graph rebuild to merge time.
-  private final boolean deferVectorGraphRebuild;
+  // Whether in-place KNN vector updates defer the per-segment HNSW graph rebuild to merge time.
+  // Read live (via a supplier over the live config) so changes take effect on subsequent writes.
+  private final BooleanSupplier deferVectorGraphRebuild;
 
   ReaderPool(
       Directory directory,
@@ -79,7 +81,7 @@ final class ReaderPool implements Closeable {
       InfoStream infoStream,
       String softDeletesField,
       StandardDirectoryReader reader,
-      boolean deferVectorGraphRebuild)
+      BooleanSupplier deferVectorGraphRebuild)
       throws IOException {
     this.directory = directory;
     this.originalDirectory = originalDirectory;
@@ -220,7 +222,7 @@ final class ReaderPool implements Closeable {
             fieldNumbers,
             completedDelGenSupplier.getAsLong(),
             infoStream,
-            deferVectorGraphRebuild)) {
+            deferVectorGraphRebuild.getAsBoolean())) {
           changed = true;
         }
         if (rld.hasPendingFieldUpdates() == false) {
@@ -261,7 +263,7 @@ final class ReaderPool implements Closeable {
               fieldNumbers,
               completedDelGenSupplier.getAsLong(),
               infoStream,
-              deferVectorGraphRebuild);
+              deferVectorGraphRebuild.getAsBoolean());
     }
     return any;
   }
@@ -282,7 +284,7 @@ final class ReaderPool implements Closeable {
                 fieldNumbers,
                 completedDelGenSupplier.getAsLong(),
                 infoStream,
-                deferVectorGraphRebuild);
+                deferVectorGraphRebuild.getAsBoolean());
         rld.setIsMerging();
       }
     }
@@ -372,7 +374,7 @@ final class ReaderPool implements Closeable {
                 fieldNumbers,
                 completedDelGenSupplier.getAsLong(),
                 infoStream,
-                deferVectorGraphRebuild);
+                deferVectorGraphRebuild.getAsBoolean());
 
         if (changed) {
           // Make sure we only write del docs for a live segment:

@@ -405,6 +405,65 @@ public class TestKnnVectorValuesUpdates extends LuceneTestCase {
     }
   }
 
+  public void testUpdateNonFiniteValueThrows() throws Exception {
+    int dim = 4;
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, noMergeConfig())) {
+      w.addDocument(floatDoc(0, floatVec(0, dim)));
+      w.commit();
+      float[] withNaN = floatVec(1, dim);
+      withNaN[2] = Float.NaN;
+      expectThrows(
+          IllegalArgumentException.class,
+          () -> w.updateFloatVectorValue(new Term(ID, "doc-0"), VEC, withNaN));
+      float[] withInf = floatVec(1, dim);
+      withInf[0] = Float.POSITIVE_INFINITY;
+      expectThrows(
+          IllegalArgumentException.class,
+          () -> w.updateFloatVectorValue(new Term(ID, "doc-0"), VEC, withInf));
+    }
+  }
+
+  public void testUpdateCosineZeroVectorThrows() throws Exception {
+    int dim = 4;
+    try (Directory dir = newDirectory();
+        IndexWriter w = new IndexWriter(dir, noMergeConfig())) {
+      Document doc = new Document();
+      doc.add(new StringField(ID, "doc-0", Store.YES));
+      doc.add(new KnnFloatVectorField(VEC, floatVec(1, dim), VectorSimilarityFunction.COSINE));
+      w.addDocument(doc);
+      w.commit();
+      expectThrows(
+          IllegalArgumentException.class,
+          () -> w.updateFloatVectorValue(new Term(ID, "doc-0"), VEC, new float[dim]));
+    }
+  }
+
+  /**
+   * The update must snapshot the caller's array; mutating it afterwards must not change the index.
+   */
+  public void testUpdateValueIsDefensivelyCopied() throws Exception {
+    int dim = 4;
+    try (Directory dir = newDirectory()) {
+      try (IndexWriter w = new IndexWriter(dir, noMergeConfig())) {
+        for (int i = 0; i < 4; i++) {
+          w.addDocument(floatDoc(i, floatVec(i, dim)));
+        }
+        w.commit();
+        float[] newVec = floatVec(50, dim);
+        w.updateFloatVectorValue(new Term(ID, "doc-1"), VEC, newVec);
+        // Mutate the caller's array before the update is applied (flush happens on commit below).
+        java.util.Arrays.fill(newVec, 999f);
+        w.commit();
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        // The indexed value must be the snapshot taken at call time, not the mutated array.
+        assertArrayEquals(floatVec(50, dim), readFloatVector(reader, "doc-1", dim), 0f);
+        TestUtil.checkIndex(dir);
+      }
+    }
+  }
+
   // ---- deferred graph rebuild (setDeferVectorGraphRebuild(true)) ----
 
   public void testDeferredUpdateValuesAndSearchCorrect() throws Exception {
