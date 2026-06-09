@@ -301,9 +301,9 @@ public class TopGroups<T> {
 
   private static class GroupComparator implements Comparator<MergedBlockGroup> {
     @SuppressWarnings("rawtypes")
-    public final FieldComparator[] comparators;
+    private final FieldComparator[] comparators;
 
-    public final int[] reversed;
+    private final int[] reversed;
 
     @SuppressWarnings({"rawtypes"})
     public GroupComparator(Sort groupSort) {
@@ -345,8 +345,8 @@ public class TopGroups<T> {
    *
    * @param shardGroups list of TopGroups, one per shard.
    * @param groupSort The {@link Sort} used to sort the groups. The top sorted document within each
-   *     * group according to groupSort, determines how that group sorts against other groups. This
-   *     * must be non-null, ie, if you want to groupSort by relevance use Sort.RELEVANCE.
+   *     group according to groupSort, determines how that group sorts against other groups. This
+   *     must be non-null, ie, if you want to groupSort by relevance use Sort.RELEVANCE.
    * @param groupOffset Which group to start from.
    * @param topNGroups How many top groups to keep.
    * @param docSort The sort to use within each group

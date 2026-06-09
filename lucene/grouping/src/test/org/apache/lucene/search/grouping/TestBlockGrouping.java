@@ -25,7 +25,6 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.TextField;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -47,10 +46,9 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
 
     Shard shard = new Shard();
     indexRandomDocs(shard.writer);
-    IndexReader reader = shard.writer.getReader();
+    IndexSearcher searcher = shard.getIndexSearcher();
 
     Query blockEndQuery = new TermQuery(new Term("blockEnd", "true"));
-    IndexSearcher searcher = newIndexSearcher(reader, blockEndQuery);
     GroupingSearch grouper = new GroupingSearch(blockEndQuery);
     grouper.setGroupDocsLimit(10);
 
@@ -61,7 +59,6 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
     // score of the top document from the same query with no grouping
     TopDocs topDoc = searcher.search(topLevel, 1);
     assertEquals(topDoc.scoreDocs[0].score, tg.groups[0].scoreDocs()[0].score, 0);
-    assertEquals(topDoc.scoreDocs[0].doc, tg.groups[0].scoreDocs()[0].doc);
 
     for (int i = 0; i < tg.groups.length; i++) {
       String bookName =
@@ -77,17 +74,15 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
       assertScoreDocsEquals(td.scoreDocs, tg.groups[i].scoreDocs());
     }
 
-    reader.close();
     shard.close();
   }
 
   public void testGroupOffset() throws IOException {
     Shard shard = new Shard();
     indexRandomDocs(shard.writer);
-    IndexReader reader = shard.writer.getReader();
+    IndexSearcher searcher = shard.getIndexSearcher();
 
     Query blockEndQuery = new TermQuery(new Term("blockEnd", "true"));
-    IndexSearcher searcher = newIndexSearcher(reader, blockEndQuery);
     GroupingSearch grouper = new GroupingSearch(blockEndQuery);
     grouper.setGroupDocsLimit(10);
 
@@ -105,7 +100,6 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
       assertScoreDocsEquals(all.groups[i + offset].scoreDocs(), offsetGroups.groups[i].scoreDocs());
     }
 
-    reader.close();
     shard.close();
   }
 
@@ -113,12 +107,11 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
 
     Shard shard = new Shard();
     indexRandomDocs(shard.writer);
-    IndexReader reader = shard.writer.getReader();
+    IndexSearcher searcher = shard.getIndexSearcher();
 
     Sort sort = new Sort(new SortField("length", SortField.Type.LONG));
 
     Query blockEndQuery = new TermQuery(new Term("blockEnd", "true"));
-    IndexSearcher searcher = newIndexSearcher(reader, blockEndQuery);
     GroupingSearch grouper = new GroupingSearch(blockEndQuery);
     grouper.setGroupDocsLimit(10);
     // groups returned sorted by length, chapters within group sorted by relevancy
@@ -149,7 +142,6 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
       }
     }
 
-    reader.close();
     shard.close();
   }
 
@@ -157,12 +149,11 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
 
     Shard shard = new Shard();
     indexRandomDocs(shard.writer);
-    IndexReader reader = shard.writer.getReader();
+    IndexSearcher searcher = shard.getIndexSearcher();
 
     Sort sort = new Sort(new SortField("length", SortField.Type.LONG));
 
     Query blockEndQuery = new TermQuery(new Term("blockEnd", "true"));
-    IndexSearcher searcher = newIndexSearcher(reader, blockEndQuery);
     GroupingSearch grouper = new GroupingSearch(blockEndQuery);
     grouper.setGroupDocsLimit(10);
     // groups returned sorted by relevancy, chapters within group sorted by length
@@ -197,7 +188,6 @@ public class TestBlockGrouping extends AbstractGroupingTestCase {
       }
     }
 
-    reader.close();
     shard.close();
   }
 

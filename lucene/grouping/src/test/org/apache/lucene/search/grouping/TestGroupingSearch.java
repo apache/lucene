@@ -49,12 +49,9 @@ public class TestGroupingSearch extends AbstractGroupingTestCase {
     FieldType customType = new FieldType();
     customType.setStored(true);
 
-    Directory dir = newDirectory();
-    RandomIndexWriter w =
-        new RandomIndexWriter(
-            random(),
-            dir,
-            newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(newLogMergePolicy()));
+    Shard shard = new Shard();
+    RandomIndexWriter w = shard.writer;
+
     boolean canUseIDV = true;
     List<Document> documents = new ArrayList<>();
     // 0
@@ -114,8 +111,7 @@ public class TestGroupingSearch extends AbstractGroupingTestCase {
 
     w.addDocument(doc);
 
-    IndexSearcher indexSearcher =
-        newIndexSearcher(w.getReader(), new TermQuery(new Term("groupend", "x")));
+    IndexSearcher indexSearcher = shard.getIndexSearcher();
     indexSearcher.setSimilarity(new BM25Similarity());
     w.close();
 
@@ -169,8 +165,7 @@ public class TestGroupingSearch extends AbstractGroupingTestCase {
     assertEquals(4, groups.totalGroupCount.longValue());
     assertEquals(4, groups.groups.length);
 
-    indexSearcher.getIndexReader().close();
-    dir.close();
+    shard.close();
   }
 
   private void addGroupField(Document doc, String groupField, String value, boolean canUseIDV) {

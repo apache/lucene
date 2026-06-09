@@ -127,13 +127,6 @@ public class BlockGroupingCollectorManager<T>
           "maxDocsPerGroup must be >= 1 (got " + maxDocsPerGroup + ")");
     }
 
-    if (groupSort.getSort().length == 0) {
-      throw new IllegalArgumentException("Sort must contain at least one field");
-    }
-    if (withinGroupSort.getSort().length == 0) {
-      throw new IllegalArgumentException("Sort must contain at least one field");
-    }
-
     this.groupSort = groupSort;
     this.groupOffset = groupOffset;
     this.topNGroups = topNGroups;
