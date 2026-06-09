@@ -21,6 +21,7 @@ import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 import java.util.Comparator;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.PriorityQueue;
 
 /**
@@ -82,25 +83,50 @@ abstract class KnnVectorFieldUpdates {
     if (size <= 1) {
       return;
     }
-    // Stable sort by docID: build an index permutation, sort by (docID asc, original ord asc),
-    // then materialize. Vectors are large so we accept the extra allocation for clarity.
-    Integer[] order = new Integer[size];
+    // In-place stable sort by docID, matching DocValuesFieldUpdates#finish: quicksort with an
+    // explicit ords array to break ties in original insertion order (so the last update to a docID
+    // wins), avoiding any per-element boxing/allocation.
+    final int[] ords = new int[size];
     for (int i = 0; i < size; i++) {
-      order[i] = i;
+      ords[i] = i;
     }
-    final int[] docsSnapshot = docs;
-    java.util.Arrays.sort(
-        order, Comparator.comparingInt((Integer i) -> docsSnapshot[i]).thenComparingInt(i -> i));
-    int[] newDocs = new int[size];
-    for (int i = 0; i < size; i++) {
-      newDocs[i] = docs[order[i]];
-    }
-    reorderValues(order);
-    docs = newDocs;
+    new IntroSorter() {
+      @Override
+      protected void swap(int i, int j) {
+        int tmpOrd = ords[i];
+        ords[i] = ords[j];
+        ords[j] = tmpOrd;
+        int tmpDoc = docs[i];
+        docs[i] = docs[j];
+        docs[j] = tmpDoc;
+        KnnVectorFieldUpdates.this.swapValues(i, j);
+      }
+
+      @Override
+      protected int compare(int i, int j) {
+        int cmp = Integer.compare(docs[i], docs[j]);
+        return cmp != 0 ? cmp : Integer.compare(ords[i], ords[j]);
+      }
+
+      private int pivotDoc;
+      private int pivotOrd;
+
+      @Override
+      protected void setPivot(int i) {
+        pivotDoc = docs[i];
+        pivotOrd = ords[i];
+      }
+
+      @Override
+      protected int comparePivot(int j) {
+        int cmp = Integer.compare(pivotDoc, docs[j]);
+        return cmp != 0 ? cmp : Integer.compare(pivotOrd, ords[j]);
+      }
+    }.sort(0, size);
   }
 
-  /** Reorders the subclass's value storage according to the given permutation of ordinals. */
-  protected abstract void reorderValues(Integer[] order);
+  /** Swaps the subclass's value storage at the two ordinals (used by the in-place sort). */
+  protected abstract void swapValues(int i, int j);
 
   /** Returns an {@link Iterator} over the updated documents and their vector values. */
   abstract Iterator iterator();
@@ -212,12 +238,10 @@ abstract class KnnVectorFieldUpdates {
     }
 
     @Override
-    protected void reorderValues(Integer[] order) {
-      float[][] newValues = new float[size][];
-      for (int i = 0; i < size; i++) {
-        newValues[i] = values[order[i]];
-      }
-      values = newValues;
+    protected void swapValues(int i, int j) {
+      float[] tmp = values[i];
+      values[i] = values[j];
+      values[j] = tmp;
     }
 
     @Override
@@ -282,12 +306,10 @@ abstract class KnnVectorFieldUpdates {
     }
 
     @Override
-    protected void reorderValues(Integer[] order) {
-      byte[][] newValues = new byte[size][];
-      for (int i = 0; i < size; i++) {
-        newValues[i] = values[order[i]];
-      }
-      values = newValues;
+    protected void swapValues(int i, int j) {
+      byte[] tmp = values[i];
+      values[i] = values[j];
+      values[j] = tmp;
     }
 
     @Override

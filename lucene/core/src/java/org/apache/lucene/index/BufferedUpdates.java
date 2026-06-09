@@ -160,11 +160,17 @@ class BufferedUpdates implements Accountable {
   }
 
   void addVectorUpdate(KnnVectorUpdate update, int docIDUpto) {
-    FieldUpdatesBuffer buffer =
-        vectorUpdates.computeIfAbsent(
-            update.field, _ -> new FieldUpdatesBuffer(fieldUpdatesBytesUsed, update, docIDUpto));
-    // Vector updates always carry a value (the raw encoded vector bytes); no no-value case exists.
-    buffer.addUpdate(update.term, update.getValueAsBytes(), docIDUpto);
+    // The FieldUpdatesBuffer constructor already stores its initial (term, value, docUpTo), so only
+    // call addUpdate() for *subsequent* updates to the same field; otherwise the first update would
+    // be buffered twice. Vector updates always carry a value (the raw encoded vector bytes), so
+    // there is no no-value case.
+    FieldUpdatesBuffer buffer = vectorUpdates.get(update.field);
+    if (buffer == null) {
+      vectorUpdates.put(
+          update.field, new FieldUpdatesBuffer(fieldUpdatesBytesUsed, update, docIDUpto));
+    } else {
+      buffer.addUpdate(update.term, update.getValueAsBytes(), docIDUpto);
+    }
     numFieldUpdates.incrementAndGet();
   }
 
