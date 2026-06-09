@@ -463,6 +463,14 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
           }
           siPerCommit.setVectorUpdatesFiles(Collections.unmodifiableMap(map));
         }
+        final int numVectorGens = CodecUtil.readBEInt(input);
+        if (numVectorGens != 0) {
+          Map<Integer, Long> gens = HashMap.newHashMap(numVectorGens);
+          for (int i = 0; i < numVectorGens; i++) {
+            gens.put(CodecUtil.readBEInt(input), CodecUtil.readBELong(input));
+          }
+          siPerCommit.setFieldVectorGens(gens);
+        }
       }
       infos.add(siPerCommit);
 
@@ -709,13 +717,21 @@ public final class SegmentInfos implements Cloneable, Iterable<SegmentCommitInfo
         CodecUtil.writeBEInt(out, e.getKey());
         out.writeSetOfStrings(e.getValue());
       }
-      // VERSION_VECTOR_UPDATES: per-segment KNN vector update generation + per-field update files
+      // VERSION_VECTOR_UPDATES: per-segment KNN vector update generation, plus per-field update
+      // files and the per-field current generation (the latter lives here, not in the .fnm, so the
+      // FieldInfos format is unchanged and non-vector indices pay nothing).
       CodecUtil.writeBELong(out, siPerCommit.getVectorGen());
       final Map<Integer, Set<String>> vectorUpdatesFiles = siPerCommit.getVectorUpdatesFiles();
+      final Map<Integer, Long> fieldVectorGens = siPerCommit.getFieldVectorGens();
       CodecUtil.writeBEInt(out, vectorUpdatesFiles.size());
       for (Entry<Integer, Set<String>> e : vectorUpdatesFiles.entrySet()) {
         CodecUtil.writeBEInt(out, e.getKey());
         out.writeSetOfStrings(e.getValue());
+      }
+      CodecUtil.writeBEInt(out, fieldVectorGens.size());
+      for (Entry<Integer, Long> e : fieldVectorGens.entrySet()) {
+        CodecUtil.writeBEInt(out, e.getKey());
+        CodecUtil.writeBELong(out, e.getValue());
       }
     }
     out.writeMapOfStrings(userData);

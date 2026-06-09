@@ -525,6 +525,7 @@ final class ReadersAndUpdates {
       KnnVectorsFormat vectorsFormat,
       final SegmentReader reader,
       Map<Integer, Set<String>> fieldFiles,
+      Map<Integer, Long> fieldGens,
       long maxDelGen,
       InfoStream infoStream,
       boolean deferVectorGraphRebuild)
@@ -562,12 +563,10 @@ final class ReadersAndUpdates {
       final String segmentSuffix = Long.toString(nextVectorGen, Character.MAX_RADIX);
       final IOContext updatesContext = IOContext.flush(new FlushInfo(info.info.maxDoc(), 0));
 
-      // Stamp the new vectorGen onto the (shared, cloned) FieldInfo so it is persisted by
-      // writeFieldInfosGen and picked up at read time. A single-field FieldInfos is handed to the
-      // vectors writer for this gen.
+      // The per-field current generation is recorded in SegmentCommitInfo (see below), not in the
+      // FieldInfo / .fnm. A single-field FieldInfos is handed to the vectors writer for this gen.
       final FieldInfo fieldInfo = infos.fieldInfo(field);
       assert fieldInfo != null && fieldInfo.hasVectorValues();
-      fieldInfo.setVectorGen(nextVectorGen);
       final FieldInfos fieldInfos = new FieldInfos(new FieldInfo[] {fieldInfo});
 
       // Choose the writer format for this generation. When deferring the graph rebuild we write
@@ -624,6 +623,7 @@ final class ReadersAndUpdates {
       info.advanceVectorGen();
       assert !fieldFiles.containsKey(fieldInfo.number);
       fieldFiles.put(fieldInfo.number, trackingDir.getCreatedFiles());
+      fieldGens.put(fieldInfo.number, nextVectorGen);
     }
   }
 
@@ -874,6 +874,7 @@ final class ReadersAndUpdates {
     long startTimeNS = System.nanoTime();
     final Map<Integer, Set<String>> newDVFiles = new HashMap<>();
     final Map<Integer, Set<String>> newVectorFiles = new HashMap<>();
+    final Map<Integer, Long> newVectorGens = new HashMap<>();
     Set<String> fieldInfosFiles = null;
     FieldInfos fieldInfos = null;
     boolean any = false;
@@ -959,6 +960,7 @@ final class ReadersAndUpdates {
             codec.knnVectorsFormat(),
             reader,
             newVectorFiles,
+            newVectorGens,
             maxDelGen,
             infoStream,
             deferVectorGraphRebuild);
@@ -1055,6 +1057,12 @@ final class ReadersAndUpdates {
     }
     info.setVectorUpdatesFiles(newVectorFiles);
 
+    // update the per-field current vector generation (carry over fields not touched this session).
+    for (Entry<Integer, Long> e : info.getFieldVectorGens().entrySet()) {
+      newVectorGens.putIfAbsent(e.getKey(), e.getValue());
+    }
+    info.setFieldVectorGens(newVectorGens);
+
     // if there is a reader open, reopen it to reflect the updates
     if (reader != null) {
       swapNewReaderWithLatestLiveDocs();
@@ -1074,31 +1082,25 @@ final class ReadersAndUpdates {
   }
 
   private FieldInfo cloneFieldInfo(FieldInfo fi, int fieldNumber) {
-    FieldInfo clone =
-        new FieldInfo(
-            fi.name,
-            fieldNumber,
-            fi.hasTermVectors(),
-            fi.omitsNorms(),
-            fi.hasPayloads(),
-            fi.getIndexOptions(),
-            fi.getDocValuesType(),
-            fi.docValuesSkipIndexType(),
-            fi.getDocValuesGen(),
-            new HashMap<>(fi.attributes()),
-            fi.getPointDimensionCount(),
-            fi.getPointIndexDimensionCount(),
-            fi.getPointNumBytes(),
-            fi.getVectorDimension(),
-            fi.getVectorEncoding(),
-            fi.getVectorSimilarityFunction(),
-            fi.isSoftDeletesField(),
-            fi.isParentField());
-    // carry over any existing vector update generation so fields not updated this session keep it
-    if (fi.getVectorGen() != -1) {
-      clone.setVectorGen(fi.getVectorGen());
-    }
-    return clone;
+    return new FieldInfo(
+        fi.name,
+        fieldNumber,
+        fi.hasTermVectors(),
+        fi.omitsNorms(),
+        fi.hasPayloads(),
+        fi.getIndexOptions(),
+        fi.getDocValuesType(),
+        fi.docValuesSkipIndexType(),
+        fi.getDocValuesGen(),
+        new HashMap<>(fi.attributes()),
+        fi.getPointDimensionCount(),
+        fi.getPointIndexDimensionCount(),
+        fi.getPointNumBytes(),
+        fi.getVectorDimension(),
+        fi.getVectorEncoding(),
+        fi.getVectorSimilarityFunction(),
+        fi.isSoftDeletesField(),
+        fi.isParentField());
   }
 
   private SegmentReader createNewReaderWithLatestLiveDocs(SegmentReader reader) throws IOException {

@@ -51,10 +51,6 @@ public final class FieldInfo {
 
   private long dvGen;
 
-  // Generation of the KNN vector values for this field (-1 if there are no in-place vector
-  // updates). Mutable, mirroring dvGen; vectorDimension/Encoding/SimilarityFunction stay final.
-  private long vectorGen = -1;
-
   /**
    * If both of these are positive it means this field indexed points (see {@link
    * org.apache.lucene.codecs.PointsFormat}).
@@ -175,12 +171,6 @@ public final class FieldInfo {
           "field '"
               + name
               + "' cannot have a docvalues update generation without having docvalues");
-    }
-    if (vectorGen != -1 && vectorDimension == 0) {
-      throw new IllegalArgumentException(
-          "field '"
-              + name
-              + "' cannot have a vector update generation without having vector values");
     }
 
     if (pointDimensionCount < 0) {
@@ -616,17 +606,6 @@ public final class FieldInfo {
   /** Returns the docValues generation of this field, or -1 if no docValues updates exist for it. */
   public long getDocValuesGen() {
     return dvGen;
-  }
-
-  /** Sets the KNN vector generation of this field. */
-  public void setVectorGen(long vectorGen) {
-    this.vectorGen = vectorGen;
-    this.checkConsistency();
-  }
-
-  /** Returns the KNN vector generation of this field, or -1 if no vector updates exist for it. */
-  public long getVectorGen() {
-    return vectorGen;
   }
 
   void setStoreTermVectors() {

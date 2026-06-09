@@ -82,6 +82,12 @@ public class SegmentCommitInfo {
   // Track the per-field KNN vector update files
   private final Map<Integer, Set<String>> vectorUpdatesFiles = new HashMap<>();
 
+  // The latest KNN vector update generation per field number (the field's current vectors live in
+  // the gen-suffixed files; absence means the field has no vector updates and reads from the base
+  // segment). Kept here, rather than in FieldInfo, so the .fnm format is unchanged and non-vector
+  // indices pay nothing.
+  private final Map<Integer, Long> fieldVectorGens = new HashMap<>();
+
   // TODO should we add .files() to FieldInfosFormat, like we have on
   // LiveDocsFormat?
   // track the fieldInfos update files
@@ -161,6 +167,22 @@ public class SegmentCommitInfo {
       }
       this.vectorUpdatesFiles.put(kv.getKey(), set);
     }
+  }
+
+  /** Returns the latest KNN vector update generation per field number. */
+  public Map<Integer, Long> getFieldVectorGens() {
+    return Collections.unmodifiableMap(fieldVectorGens);
+  }
+
+  /** Sets the latest KNN vector update generation per field number. */
+  public void setFieldVectorGens(Map<Integer, Long> fieldVectorGens) {
+    this.fieldVectorGens.clear();
+    this.fieldVectorGens.putAll(fieldVectorGens);
+  }
+
+  /** Returns the latest KNN vector update generation for the given field, or -1 if none. */
+  public long getFieldVectorGen(int fieldNumber) {
+    return fieldVectorGens.getOrDefault(fieldNumber, -1L);
   }
 
   /** Returns the FieldInfos file names. */
@@ -491,6 +513,8 @@ public class SegmentCommitInfo {
     for (Entry<Integer, Set<String>> e : vectorUpdatesFiles.entrySet()) {
       other.vectorUpdatesFiles.put(e.getKey(), new HashSet<>(e.getValue()));
     }
+
+    other.fieldVectorGens.putAll(fieldVectorGens);
 
     other.fieldInfosFiles.addAll(fieldInfosFiles);
 

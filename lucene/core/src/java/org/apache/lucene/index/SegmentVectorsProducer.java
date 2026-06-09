@@ -68,13 +68,14 @@ class SegmentVectorsProducer extends KnnVectorsReader {
         if (fi.hasVectorValues() == false) {
           continue;
         }
-        long vectorGen = fi.getVectorGen();
+        // The per-field current generation lives in SegmentCommitInfo, not in FieldInfo/.fnm.
+        long vectorGen = si.getFieldVectorGen(fi.number);
         if (vectorGen == -1) {
           // served from the shared base core reader; not tracked here
           readersByField.put(fi.number, baseCoreReader);
         } else {
-          assert !vectorGens.contains(vectorGen);
-          // otherwise, reader sees only the one fieldinfo it wrote
+          // Each open gen reader is tracked once for decRef; getKnnVectorsReader incRef()s a shared
+          // gen, so even if two fields ever shared a generation the ref counting stays balanced.
           final KnnVectorsReader vecReader =
               segKnnVectors.getKnnVectorsReader(
                   vectorGen, si, dir, new FieldInfos(new FieldInfo[] {fi}));
