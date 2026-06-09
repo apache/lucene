@@ -332,7 +332,7 @@ public class TestIndexOptions extends LuceneTestCase {
     dir.close();
   }
 
-  public void testMultiValuedFieldDeoptimizes() throws IOException {
+  public void testMultiValueForcesDeoptimization() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
     FieldType ftA = new FieldType(TextField.TYPE_STORED);
