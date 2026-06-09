@@ -19,8 +19,8 @@ package org.apache.lucene.misc.search;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
+import org.apache.lucene.internal.hppc.LongIntHashMap;
 import org.apache.lucene.misc.search.DiversifiedTopDocsCollector.ScoreDocKey;
 import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.ScoreDoc;
@@ -74,9 +74,10 @@ public abstract class DiversifiedTopDocsCollectorManager<C extends DiversifiedTo
           return cmp != 0 ? cmp : Integer.compare(a.doc, b.doc);
         });
     // Greedy pick: take up to numHits while honouring maxHitsPerKey per key
-    HashMap<Long, Integer> keyCounts = new HashMap<>();
+    LongIntHashMap keyCounts = new LongIntHashMap();
     List<ScoreDoc> result = new ArrayList<>();
     for (ScoreDocKey sdk : allDocs) {
+      assert sdk.key != null;
       int count = keyCounts.getOrDefault(sdk.key, 0);
       if (count < maxHitsPerKey) {
         result.add(sdk);
