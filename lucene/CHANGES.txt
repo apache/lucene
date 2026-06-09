@@ -388,6 +388,8 @@ Improvements
 
 * GITHUB#16144: Clarify LeafCollector batch collection scoring contract. (Costin Leau)
 
+* GITHUB#16229: BooleanWeight.explain prints failing optional clauses when query fails due to insufficient SHOULD matches. (Jakub Slowinski)
+
 Optimizations
 ---------------------
 * GITHUB#16176: Restore WANDScorer for TOP_SCORES + minShouldMatch > 1. (Tianxiao Wei)

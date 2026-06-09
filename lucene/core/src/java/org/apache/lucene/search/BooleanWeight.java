@@ -65,6 +65,7 @@ final class BooleanWeight extends Weight {
   public Explanation explain(LeafReaderContext context, int doc) throws IOException {
     final int minShouldMatch = query.getMinimumNumberShouldMatch();
     List<Explanation> subs = new ArrayList<>();
+    List<Explanation> failingOptionals = new ArrayList<>();
     boolean fail = false;
     int matchCount = 0;
     int shouldMatchCount = 0;
@@ -97,14 +98,19 @@ final class BooleanWeight extends Weight {
         subs.add(
             Explanation.noMatch("no match on required clause (" + c.query().toString() + ")", e));
         fail = true;
+      } else if (c.occur() == Occur.SHOULD) {
+        failingOptionals.add(
+            Explanation.noMatch("no match on optional clause (" + c.query().toString() + ")", e));
       }
     }
     if (fail) {
       return Explanation.noMatch(
           "Failure to meet condition(s) of required/prohibited clause(s)", subs);
     } else if (matchCount == 0) {
+      subs.addAll(failingOptionals);
       return Explanation.noMatch("No matching clauses", subs);
     } else if (shouldMatchCount < minShouldMatch) {
+      subs.addAll(failingOptionals);
       return Explanation.noMatch(
           "Failure to match minimum number of optional clauses: " + minShouldMatch, subs);
     } else {
