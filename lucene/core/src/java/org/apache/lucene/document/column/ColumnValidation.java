@@ -33,64 +33,64 @@ public final class ColumnValidation {
   private ColumnValidation() {}
 
   /** Inverted-index aspect ({@code indexOptions() != NONE}). */
-  static final int FEATURE_INVERSION = 1 << 0;
+  static final int ASPECT_INVERSION = 1 << 0;
 
   /** Stored-fields aspect ({@code stored()}). */
-  static final int FEATURE_STORED = 1 << 1;
+  static final int ASPECT_STORED = 1 << 1;
 
   /** Doc-values aspect ({@code docValuesType() != NONE}). */
-  static final int FEATURE_DOCVALUES = 1 << 2;
+  static final int ASPECT_DOCVALUES = 1 << 2;
 
   /** Points aspect ({@code pointDimensionCount() != 0}). */
-  static final int FEATURE_POINTS = 1 << 3;
+  static final int ASPECT_POINTS = 1 << 3;
 
   /** KNN-vector aspect ({@code vectorDimension() != 0}). */
-  static final int FEATURE_VECTOR = 1 << 4;
+  static final int ASPECT_VECTOR = 1 << 4;
 
   /**
-   * Returns a bitmask of the indexing aspects ({@code FEATURE_*}) declared by {@code fieldType}.
+   * Returns a bitmask of the indexing aspects ({@code ASPECT_*}) declared by {@code fieldType}.
    * Used by the column-batch path to enforce that, when several columns share a field name, each
    * aspect is carried by at most one column.
    */
-  public static int featureMask(IndexableFieldType fieldType) {
+  public static int aspectMask(IndexableFieldType fieldType) {
     int mask = 0;
     if (fieldType.indexOptions() != IndexOptions.NONE) {
-      mask |= FEATURE_INVERSION;
+      mask |= ASPECT_INVERSION;
     }
     if (fieldType.stored()) {
-      mask |= FEATURE_STORED;
+      mask |= ASPECT_STORED;
     }
     if (fieldType.docValuesType() != DocValuesType.NONE) {
-      mask |= FEATURE_DOCVALUES;
+      mask |= ASPECT_DOCVALUES;
     }
     if (fieldType.pointDimensionCount() != 0) {
-      mask |= FEATURE_POINTS;
+      mask |= ASPECT_POINTS;
     }
     if (fieldType.vectorDimension() != 0) {
-      mask |= FEATURE_VECTOR;
+      mask |= ASPECT_VECTOR;
     }
     return mask;
   }
 
   /** Returns a human-readable comma-separated list of the aspect names set in {@code mask}. */
-  public static String featureNames(int mask) {
+  public static String aspectNames(int mask) {
     StringBuilder sb = new StringBuilder();
-    if ((mask & FEATURE_INVERSION) != 0) {
+    if ((mask & ASPECT_INVERSION) != 0) {
       sb.append("inversion");
     }
-    if ((mask & FEATURE_STORED) != 0) {
+    if ((mask & ASPECT_STORED) != 0) {
       if (!sb.isEmpty()) sb.append(", ");
       sb.append("stored");
     }
-    if ((mask & FEATURE_DOCVALUES) != 0) {
+    if ((mask & ASPECT_DOCVALUES) != 0) {
       if (!sb.isEmpty()) sb.append(", ");
       sb.append("doc values");
     }
-    if ((mask & FEATURE_POINTS) != 0) {
+    if ((mask & ASPECT_POINTS) != 0) {
       if (!sb.isEmpty()) sb.append(", ");
       sb.append("points");
     }
-    if ((mask & FEATURE_VECTOR) != 0) {
+    if ((mask & ASPECT_VECTOR) != 0) {
       if (!sb.isEmpty()) sb.append(", ");
       sb.append("vectors");
     }
@@ -98,10 +98,10 @@ public final class ColumnValidation {
   }
 
   /**
-   * Throws {@link IllegalArgumentException} if {@code fieldType} declares no indexing feature (no
+   * Throws {@link IllegalArgumentException} if {@code fieldType} declares no indexing aspect (no
    * doc values, no points, not stored, no index options, no vectors).
    */
-  public static void validateColumnHasIndexingFeature(
+  public static void validateColumnHasIndexingAspect(
       String fieldName, IndexableFieldType fieldType) {
     if (fieldType.docValuesType() == DocValuesType.NONE
         && fieldType.pointDimensionCount() == 0
