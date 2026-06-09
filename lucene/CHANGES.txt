@@ -612,6 +612,8 @@ Other
 * GITHUB#16178: Simplify how we collect hits in the LRU cache from a DocIdStream into a RoaringDocIdSet.
   (Ignacio Vera)
 
+* GITHUB#16197: Remove deprecated usages of search(Query, Collector) from monitor module. (Luca Cavanna)
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes
