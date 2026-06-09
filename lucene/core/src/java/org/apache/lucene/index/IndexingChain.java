@@ -44,6 +44,7 @@ import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.document.column.BinaryColumn;
+import org.apache.lucene.document.column.BytesRefValuesCursor;
 import org.apache.lucene.document.column.Column;
 import org.apache.lucene.document.column.ColumnBatch;
 import org.apache.lucene.document.column.ColumnFieldAdapter;
@@ -86,6 +87,8 @@ final class IndexingChain implements Accountable {
   final TermsHash termsHash;
   // Shared pool for doc-value terms
   final ByteBlockPool docValuesBytePool;
+  // Shared scratch buffer for dense points encoding
+  final SharedIndexingBuffer sharedIndexingBuffer;
   // Writes stored fields
   final StoredFieldsConsumer storedFieldsConsumer;
   final VectorValuesConsumer vectorValuesConsumer;
@@ -155,6 +158,7 @@ final class IndexingChain implements Accountable {
         new FreqProxTermsWriter(
             intBlockAllocator, byteBlockAllocator, bytesUsed, termVectorsWriter);
     docValuesBytePool = new ByteBlockPool(byteBlockAllocator);
+    sharedIndexingBuffer = new SharedIndexingBuffer(bytesUsed);
     if (indexWriterConfig.getParentField() != null) {
       this.parentField = new NumericDocValuesField(indexWriterConfig.getParentField(), -1);
       parentPf = getOrAddPerField(this.parentField.name());
@@ -1082,6 +1086,12 @@ final class IndexingChain implements Accountable {
       throws IOException {
     final DocValuesType dvType = fieldType.docValuesType();
     final boolean hasPoints = fieldType.pointDimensionCount() != 0;
+
+    if (column.density() == Column.Density.DENSE && hasPoints) {
+      processDenseBinaryColumn(baseDocID, numDocs, column, pf, dvType);
+      return;
+    }
+
     final PointValuesWriter pointWriter = hasPoints ? pf.pointValuesWriter : null;
     final ObjectTupleCursor<BytesRef> cursor = column.tuples();
 
@@ -1141,6 +1151,51 @@ final class IndexingChain implements Accountable {
           throw new IllegalArgumentException(
               "BinaryColumn \"" + column.name() + "\" has incompatible docValuesType: " + dvType);
     }
+  }
+
+  /**
+   * Bulk-feeds points from a {@link BytesRefValuesCursor} for a DENSE {@link BinaryColumn} that has
+   * points. Doc values (if any) are handled first via the per-doc tuple cursor so the underlying
+   * source data stays cache-warm for the points pass that follows.
+   */
+  private static void processDenseBinaryColumn(
+      int baseDocID, int numDocs, BinaryColumn column, PerField pf, DocValuesType dvType)
+      throws IOException {
+    // DV pass first: per-doc tuple cursor
+    if (dvType != DocValuesType.NONE) {
+      final ObjectTupleCursor<BytesRef> dvCursor = column.tuples();
+      switch (dvType) {
+        case BINARY -> {
+          BinaryDocValuesWriter writer = (BinaryDocValuesWriter) pf.docValuesWriter;
+          int batchDocID;
+          while ((batchDocID = dvCursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+            writer.addValue(baseDocID + batchDocID, dvCursor.value());
+          }
+        }
+        case SORTED -> {
+          SortedDocValuesWriter writer = (SortedDocValuesWriter) pf.docValuesWriter;
+          int batchDocID;
+          while ((batchDocID = dvCursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+            writer.addValue(baseDocID + batchDocID, dvCursor.value());
+          }
+        }
+        case SORTED_SET -> {
+          SortedSetDocValuesWriter writer = (SortedSetDocValuesWriter) pf.docValuesWriter;
+          int batchDocID;
+          while ((batchDocID = dvCursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+            writer.addValue(baseDocID + batchDocID, dvCursor.value());
+          }
+        }
+        // $CASES-OMITTED$
+        default ->
+            throw new IllegalArgumentException(
+                "BinaryColumn \"" + column.name() + "\" has incompatible docValuesType: " + dvType);
+      }
+    }
+    // Points pass: fresh dense values cursor → bulk ND points add.
+    BytesRefValuesCursor pc = column.values();
+    ColumnValidation.checkDenseCount(column, pc.size(), numDocs);
+    pf.pointValuesWriter.addDenseNDValues(baseDocID, pc);
   }
 
   private static void processDictionaryColumn(
@@ -1291,7 +1346,7 @@ final class IndexingChain implements Accountable {
         throw new AssertionError("unrecognized DocValues.Type: " + dvType);
     }
     if (fi.getPointDimensionCount() != 0) {
-      pf.pointValuesWriter = new PointValuesWriter(bytesUsed, fi);
+      pf.pointValuesWriter = new PointValuesWriter(bytesUsed, fi, sharedIndexingBuffer);
     }
     if (fi.getVectorDimension() != 0) {
       try {

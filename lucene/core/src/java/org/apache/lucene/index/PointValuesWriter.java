@@ -20,6 +20,7 @@ import java.io.IOException;
 import org.apache.lucene.codecs.MutablePointTree;
 import org.apache.lucene.codecs.PointsReader;
 import org.apache.lucene.codecs.PointsWriter;
+import org.apache.lucene.document.column.BytesRefValuesCursor;
 import org.apache.lucene.document.column.LongValuesCursor;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.util.ArrayUtil;
@@ -39,20 +40,17 @@ class PointValuesWriter {
   private int lastDocID = -1;
   private final int packedBytesLength;
 
-  /**
-   * Lazily-allocated 1 KB scratch used by the dense bulk paths to stage encoded points before
-   * pushing to {@link #bytesOut} via a single {@code writeBytes}.
-   */
-  private static final int POINTS_BUFFER_BYTES = 1024;
+  private static final int POINTS_BUFFER_INT_VALUES =
+      SharedIndexingBuffer.POINTS_BUFFER_BYTES / Integer.BYTES;
+  private static final int POINTS_BUFFER_LONG_VALUES =
+      SharedIndexingBuffer.POINTS_BUFFER_BYTES / Long.BYTES;
 
-  private static final int POINTS_BUFFER_INT_VALUES = POINTS_BUFFER_BYTES / Integer.BYTES;
-  private static final int POINTS_BUFFER_LONG_VALUES = POINTS_BUFFER_BYTES / Long.BYTES;
+  private final SharedIndexingBuffer sharedBuffer;
 
-  private byte[] densePointsBuffer;
-
-  PointValuesWriter(Counter bytesUsed, FieldInfo fieldInfo) {
+  PointValuesWriter(Counter bytesUsed, FieldInfo fieldInfo, SharedIndexingBuffer sharedBuffer) {
     this.fieldInfo = fieldInfo;
     this.iwBytesUsed = bytesUsed;
+    this.sharedBuffer = sharedBuffer;
     this.bytes = new PagedBytes(12);
     bytesOut = bytes.getDataOutput();
     docIDs = new int[16];
@@ -98,8 +96,8 @@ class PointValuesWriter {
     if (size == 0) {
       return;
     }
-    final long ramBefore = reserveDense1D(firstDocID, size);
-    final byte[] buffer = pointsDenseBuffer();
+    final long ramBefore = reserveDenseRange(firstDocID, size);
+    final byte[] buffer = sharedBuffer.pointsScratch();
     int remaining = size;
     while (remaining > 0) {
       int chunk = Math.min(POINTS_BUFFER_INT_VALUES, remaining);
@@ -107,7 +105,7 @@ class PointValuesWriter {
       bytesOut.writeBytes(buffer, 0, chunk * Integer.BYTES);
       remaining -= chunk;
     }
-    commitDense1D(firstDocID, size, ramBefore);
+    commitDenseRange(firstDocID, size, ramBefore);
   }
 
   void addDense1DLongValues(int firstDocID, LongValuesCursor cursor) throws IOException {
@@ -116,23 +114,35 @@ class PointValuesWriter {
     if (size == 0) {
       return;
     }
-    final long ramBefore = reserveDense1D(firstDocID, size);
-    final byte[] dense = pointsDenseBuffer();
+    final long ramBefore = reserveDenseRange(firstDocID, size);
+    final byte[] buffer = sharedBuffer.pointsScratch();
     int remaining = size;
     while (remaining > 0) {
       int chunk = Math.min(POINTS_BUFFER_LONG_VALUES, remaining);
-      cursor.fillLongPoints(dense, 0, chunk);
-      bytesOut.writeBytes(dense, 0, chunk * Long.BYTES);
+      cursor.fillLongPoints(buffer, 0, chunk);
+      bytesOut.writeBytes(buffer, 0, chunk * Long.BYTES);
       remaining -= chunk;
     }
-    commitDense1D(firstDocID, size, ramBefore);
+    commitDenseRange(firstDocID, size, ramBefore);
   }
 
-  private byte[] pointsDenseBuffer() {
-    if (densePointsBuffer == null) {
-      densePointsBuffer = new byte[POINTS_BUFFER_BYTES];
+  void addDenseNDValues(int firstDocID, BytesRefValuesCursor cursor) throws IOException {
+    final int size = cursor.size();
+    if (size == 0) {
+      return;
     }
-    return densePointsBuffer;
+    final long ramBefore = reserveDenseRange(firstDocID, size);
+    final int width = packedBytesLength;
+    final int perChunk = SharedIndexingBuffer.POINTS_BUFFER_BYTES / width;
+    final byte[] buffer = sharedBuffer.pointsScratch();
+    int remaining = size;
+    while (remaining > 0) {
+      int chunk = Math.min(perChunk, remaining);
+      cursor.fillPackedPoints(buffer, 0, chunk, width);
+      bytesOut.writeBytes(buffer, 0, chunk * width);
+      remaining -= chunk;
+    }
+    commitDenseRange(firstDocID, size, ramBefore);
   }
 
   private void validate1DPacked(int byteWidth) {
@@ -149,7 +159,7 @@ class PointValuesWriter {
     }
   }
 
-  private long reserveDense1D(int firstDocID, int size) {
+  private long reserveDenseRange(int firstDocID, int size) {
     assert firstDocID > lastDocID
         : "firstDocID=" + firstDocID + " must be > lastDocID=" + lastDocID;
     final int oldLength = docIDs.length;
@@ -163,7 +173,7 @@ class PointValuesWriter {
     return bytes.ramBytesUsed();
   }
 
-  private void commitDense1D(int firstDocID, int size, long ramBefore) {
+  private void commitDenseRange(int firstDocID, int size, long ramBefore) {
     iwBytesUsed.addAndGet(bytes.ramBytesUsed() - ramBefore);
     numDocs += size;
     lastDocID = firstDocID + size - 1;
