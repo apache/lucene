@@ -97,7 +97,7 @@ class PointValuesWriter {
       return;
     }
     final long ramBefore = reserveDenseRange(firstDocID, size);
-    final byte[] buffer = sharedBuffer.pointsScratch();
+    final byte[] buffer = sharedBuffer.bytesScratch();
     int remaining = size;
     while (remaining > 0) {
       int chunk = Math.min(POINTS_BUFFER_INT_VALUES, remaining);
@@ -115,7 +115,7 @@ class PointValuesWriter {
       return;
     }
     final long ramBefore = reserveDenseRange(firstDocID, size);
-    final byte[] buffer = sharedBuffer.pointsScratch();
+    final byte[] buffer = sharedBuffer.bytesScratch();
     int remaining = size;
     while (remaining > 0) {
       int chunk = Math.min(POINTS_BUFFER_LONG_VALUES, remaining);
@@ -134,7 +134,7 @@ class PointValuesWriter {
     final long ramBefore = reserveDenseRange(firstDocID, size);
     final int width = packedBytesLength;
     final int perChunk = SharedIndexingBuffer.POINTS_BUFFER_BYTES / width;
-    final byte[] buffer = sharedBuffer.pointsScratch();
+    final byte[] buffer = sharedBuffer.bytesScratch();
     int remaining = size;
     while (remaining > 0) {
       int chunk = Math.min(perChunk, remaining);

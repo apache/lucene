@@ -49,7 +49,7 @@ final class SharedIndexingBuffer {
    *
    * <p>Callers must treat the returned array as transient scratch.
    */
-  byte[] pointsScratch() {
+  byte[] bytesScratch() {
     if (bytesScratch == null) {
       bytesScratch = new byte[POINTS_BUFFER_BYTES];
       bytesUsed.addAndGet(POINTS_BUFFER_BYTES);
