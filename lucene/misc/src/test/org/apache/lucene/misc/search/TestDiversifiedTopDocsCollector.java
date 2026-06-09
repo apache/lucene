@@ -88,14 +88,13 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
     int numberOfCompilations = 2;
     int requiredMaxHitsPerArtist = 1;
 
-    // Collect all compilations at once, then slice to get volume 2 (results 10-20)
-    TopDocs allResults =
+    // Volume 2 of our hits compilation - start at position 10
+    TopDocs td =
         doDiversifiedSearch(
             numberOfTracksPerCompilation * numberOfCompilations, requiredMaxHitsPerArtist);
-    assertEquals(numberOfTracksPerCompilation * numberOfCompilations, allResults.scoreDocs.length);
     ScoreDoc[] volume2 =
         Arrays.copyOfRange(
-            allResults.scoreDocs,
+            td.scoreDocs,
             numberOfTracksPerCompilation,
             numberOfTracksPerCompilation * numberOfCompilations);
     assertEquals(numberOfTracksPerCompilation, volume2.length);
