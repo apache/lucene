@@ -113,11 +113,6 @@ New Features
 
 * GITHUB#15818: Add BM25 k3 query-term frequency saturation to BM25Similarity. (Sagar Upadhyaya)
 
-* GITHUB#16214: Add IndexWriter#updateFloatVectorValue and IndexWriter#updateByteVectorValue to update
-  a document's KNN vector in place, without reindexing the rest of the document (unquantized
-  Lucene99HnswVectorsFormat only). The per-segment HNSW graph rebuild is eager by default and can be
-  deferred to merge time via IndexWriterConfig#setDeferVectorGraphRebuild. (Lantao Jin)
-
 Improvements
 ---------------------
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
@@ -314,6 +309,11 @@ API Changes
 
 New Features
 ---------------------
+
+* GITHUB#16214: Add IndexWriter#updateFloatVectorValue and IndexWriter#updateByteVectorValue to update
+  a document's KNN vector in place, without reindexing the rest of the document (unquantized
+  Lucene99HnswVectorsFormat only). The per-segment HNSW graph rebuild is eager by default and can be
+  deferred to merge time via IndexWriterConfig#setDeferVectorGraphRebuild. (Lantao Jin)
 
 * GITHUB#16202: Add BinarySortField, allowing BinaryDocValues fields to be used as an index sort. It
   compares the raw bytes directly in unsigned byte order, a good fit for high-cardinality fields where a
