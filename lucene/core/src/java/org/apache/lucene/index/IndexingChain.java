@@ -1087,8 +1087,8 @@ final class IndexingChain implements Accountable {
     final DocValuesType dvType = fieldType.docValuesType();
     final boolean hasPoints = fieldType.pointDimensionCount() != 0;
 
-    if (column.density() == Column.Density.DENSE && hasPoints) {
-      processDenseBinaryColumn(baseDocID, numDocs, column, pf, dvType);
+    if (column.density() == Column.Density.DENSE) {
+      processDenseBinaryColumn(baseDocID, numDocs, column, pf, dvType, hasPoints);
       return;
     }
 
@@ -1153,37 +1153,35 @@ final class IndexingChain implements Accountable {
     }
   }
 
-  /**
-   * Bulk-feeds points from a {@link BytesRefValuesCursor} for a DENSE {@link BinaryColumn} that has
-   * points. Doc values (if any) are handled first via the per-doc tuple cursor so the underlying
-   * source data stays cache-warm for the points pass that follows.
-   */
   private static void processDenseBinaryColumn(
-      int baseDocID, int numDocs, BinaryColumn column, PerField pf, DocValuesType dvType)
+      int baseDocID,
+      int numDocs,
+      BinaryColumn column,
+      PerField pf,
+      DocValuesType dvType,
+      boolean hasPoints)
       throws IOException {
-    // DV pass first: per-doc tuple cursor
+    // DV pass first: dense values cursor
     if (dvType != DocValuesType.NONE) {
-      final ObjectTupleCursor<BytesRef> dvCursor = column.tuples();
+      BytesRefValuesCursor dvCursor = column.values();
+      ColumnValidation.checkDenseCount(column, dvCursor.size(), numDocs);
       switch (dvType) {
         case BINARY -> {
           BinaryDocValuesWriter writer = (BinaryDocValuesWriter) pf.docValuesWriter;
-          int batchDocID;
-          while ((batchDocID = dvCursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-            writer.addValue(baseDocID + batchDocID, dvCursor.value());
+          for (int i = 0; i < dvCursor.size(); i++) {
+            writer.addValue(baseDocID + i, dvCursor.nextValue());
           }
         }
         case SORTED -> {
           SortedDocValuesWriter writer = (SortedDocValuesWriter) pf.docValuesWriter;
-          int batchDocID;
-          while ((batchDocID = dvCursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-            writer.addValue(baseDocID + batchDocID, dvCursor.value());
+          for (int i = 0; i < dvCursor.size(); i++) {
+            writer.addValue(baseDocID + i, dvCursor.nextValue());
           }
         }
         case SORTED_SET -> {
           SortedSetDocValuesWriter writer = (SortedSetDocValuesWriter) pf.docValuesWriter;
-          int batchDocID;
-          while ((batchDocID = dvCursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-            writer.addValue(baseDocID + batchDocID, dvCursor.value());
+          for (int i = 0; i < dvCursor.size(); i++) {
+            writer.addValue(baseDocID + i, dvCursor.nextValue());
           }
         }
         // $CASES-OMITTED$
@@ -1192,10 +1190,12 @@ final class IndexingChain implements Accountable {
                 "BinaryColumn \"" + column.name() + "\" has incompatible docValuesType: " + dvType);
       }
     }
-    // Points pass: fresh dense values cursor → bulk ND points add.
-    BytesRefValuesCursor pc = column.values();
-    ColumnValidation.checkDenseCount(column, pc.size(), numDocs);
-    pf.pointValuesWriter.addDenseNDValues(baseDocID, pc);
+    if (hasPoints) {
+      // Points pass: fresh dense values cursor → bulk ND points add.
+      BytesRefValuesCursor pc = column.values();
+      ColumnValidation.checkDenseCount(column, pc.size(), numDocs);
+      pf.pointValuesWriter.addDenseNDValues(baseDocID, pc);
+    }
   }
 
   private static void processDictionaryColumn(

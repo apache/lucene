@@ -37,7 +37,7 @@ final class SharedIndexingBuffer {
   static final int POINTS_BUFFER_BYTES = 4 * 1024;
 
   private final Counter bytesUsed;
-  private byte[] bytesScratch;
+  private byte[] bytesScratchBuffer;
 
   SharedIndexingBuffer(Counter bytesUsed) {
     this.bytesUsed = bytesUsed;
@@ -50,10 +50,10 @@ final class SharedIndexingBuffer {
    * <p>Callers must treat the returned array as transient scratch.
    */
   byte[] bytesScratch() {
-    if (bytesScratch == null) {
-      bytesScratch = new byte[POINTS_BUFFER_BYTES];
+    if (bytesScratchBuffer == null) {
+      bytesScratchBuffer = new byte[POINTS_BUFFER_BYTES];
       bytesUsed.addAndGet(POINTS_BUFFER_BYTES);
     }
-    return bytesScratch;
+    return bytesScratchBuffer;
   }
 }

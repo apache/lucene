@@ -195,8 +195,7 @@ public class ColumnBatchTestUtil {
    * Dense {@link BinaryColumn} backed by a single contiguous packed {@code byte[]} of {@code n *
    * width} bytes, where all values have the same {@code width}. Its {@link
    * BytesRefValuesCursor#fillPackedPoints} override does a single {@link System#arraycopy} per
-   * chunk rather than looping per value, proving the override path in {@code
-   * PointValuesWriter.addDenseNDValues}.
+   * chunk rather than looping per value.
    */
   public static class ContiguousDenseBinaryColumn extends BinaryColumn {
     private final byte[] packed;

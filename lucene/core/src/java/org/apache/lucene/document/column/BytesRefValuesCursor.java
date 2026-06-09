@@ -27,8 +27,7 @@ import org.apache.lucene.util.BytesRef;
  * #nextValue()}.
  *
  * <p>Combined consumption across {@link #nextValue()} and {@link #fillPackedPoints} must not exceed
- * {@link #size()}. Defensive throws on overrun are still encouraged to catch misuse from external
- * callers.
+ * {@link #size()}.
  *
  * @lucene.experimental
  */
@@ -55,8 +54,7 @@ public abstract class BytesRefValuesCursor {
   }
 
   /**
-   * Returns the next value. Must not be called more than {@link #size()} times. The returned {@link
-   * BytesRef} is only valid until the next call to this method.
+   * Returns the next {@link BytesRef} value. Must not be called more than {@link #size()} times.
    */
   public abstract BytesRef nextValue();
 
@@ -67,7 +65,7 @@ public abstract class BytesRefValuesCursor {
    * across {@link #nextValue()} and this method must not exceed {@link #size()}.
    *
    * <p>The default implementation calls {@link #nextValue()} per value and validates each length.
-   * Override when the backing data is favorable (e.g. a contiguous packed array); such overrides
+   * Override when the backing data is optimizable (e.g. a contiguous packed array); such overrides
    * take responsibility for the width contract.
    */
   public void fillPackedPoints(byte[] dst, int offset, int length, int width) {
