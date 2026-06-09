@@ -61,7 +61,7 @@ public abstract class BytesRefValuesCursor {
   public abstract BytesRef nextValue();
 
   /**
-   * Bulk-copy {@code length} fixed-width packed point records into {@code dst} starting at byte
+   * Bulk-fill {@code length} fixed-width packed point records into {@code dst} starting at byte
    * {@code offset}, advancing the cursor by {@code length}. Each value must be exactly {@code
    * width} bytes and is passed through unchanged (no sortable encoding). Combined consumption
    * across {@link #nextValue()} and this method must not exceed {@link #size()}.

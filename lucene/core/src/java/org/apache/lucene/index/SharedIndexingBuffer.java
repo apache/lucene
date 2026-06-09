@@ -19,17 +19,13 @@ package org.apache.lucene.index;
 import org.apache.lucene.util.Counter;
 
 /**
- * A lazily-allocated shared scratch buffer owned by {@link IndexingChain} and injected into
- * per-field writers that need transient staging space during indexing.
+ * A lazily-allocated shared scratch buffer owned by {@link IndexingChain} and provided to per-field
+ * writers that need transient buffers during indexing.
  *
  * <p>Because {@link IndexingChain} (and the {@link DocumentsWriterPerThread} it belongs to) indexes
  * documents single-threadedly, a single shared buffer is safe to reuse across all writers within
  * the same chain. Callers must treat the buffer as transient scratch: fill it, drain it within the
  * same call, and not retain a reference across calls.
- *
- * <p>RAM is accounted for via the {@link Counter} passed at construction: the counter is
- * incremented by {@link #POINTS_BUFFER_BYTES} exactly once, on the first call to {@link
- * #pointsScratch()}.
  */
 final class SharedIndexingBuffer {
 
@@ -41,7 +37,7 @@ final class SharedIndexingBuffer {
   static final int POINTS_BUFFER_BYTES = 4 * 1024;
 
   private final Counter bytesUsed;
-  private byte[] pointsScratch;
+  private byte[] bytesScratch;
 
   SharedIndexingBuffer(Counter bytesUsed) {
     this.bytesUsed = bytesUsed;
@@ -51,14 +47,13 @@ final class SharedIndexingBuffer {
    * Returns the shared points staging buffer, allocating it on the first call and tracking its RAM
    * via the {@link Counter} supplied at construction.
    *
-   * <p>Callers must treat the returned array as transient scratch: fill it from offset 0, drain it
-   * (e.g. via {@code DataOutput.writeBytes}), and not retain a reference across calls.
+   * <p>Callers must treat the returned array as transient scratch.
    */
   byte[] pointsScratch() {
-    if (pointsScratch == null) {
-      pointsScratch = new byte[POINTS_BUFFER_BYTES];
+    if (bytesScratch == null) {
+      bytesScratch = new byte[POINTS_BUFFER_BYTES];
       bytesUsed.addAndGet(POINTS_BUFFER_BYTES);
     }
-    return pointsScratch;
+    return bytesScratch;
   }
 }
