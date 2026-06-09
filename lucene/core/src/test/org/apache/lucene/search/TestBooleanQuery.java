@@ -1411,4 +1411,49 @@ public class TestBooleanQuery extends LuceneTestCase {
         UnsupportedOperationException.class,
         () -> bq.clauses().add(new BooleanClause(MatchNoDocsQuery.INSTANCE, Occur.SHOULD)));
   }
+
+  public void testExplainFailingOptionalClauses() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    Document doc = new Document();
+    doc.add(new TextField("field", "foo", Store.NO));
+    w.addDocument(doc);
+    IndexReader reader = w.getReader();
+    w.close();
+    IndexSearcher searcher = newSearcher(reader);
+
+    // minShouldMatch not satisfied, show failing SHOULDs.
+    BooleanQuery msm =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("field", "foo")), Occur.SHOULD)
+            .add(new TermQuery(new Term("field", "bar")), Occur.SHOULD)
+            .add(new TermQuery(new Term("field", "baz")), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(2)
+            .build();
+    String msmExpl = searcher.explain(msm, 0).toString();
+    assertTrue(msmExpl.contains("no match on optional clause (field:bar)"));
+    assertTrue(msmExpl.contains("no match on optional clause (field:baz)"));
+    assertFalse(msmExpl.contains("no match on optional clause (field:foo)"));
+
+    // nothing matches in disjunction, show failing SHOULDs.
+    BooleanQuery disj =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("field", "bar")), Occur.SHOULD)
+            .add(new TermQuery(new Term("field", "baz")), Occur.SHOULD)
+            .build();
+    String disjExpl = searcher.explain(disj, 0).toString();
+    assertTrue(disjExpl.contains("no match on optional clause (field:bar)"));
+    assertTrue(disjExpl.contains("no match on optional clause (field:baz)"));
+
+    // MUST clause fails, failing SHOULDs are not shown.
+    BooleanQuery mustFail =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("field", "missing")), Occur.MUST)
+            .add(new TermQuery(new Term("field", "bar")), Occur.SHOULD)
+            .build();
+    assertFalse(searcher.explain(mustFail, 0).toString().contains("no match on optional clause"));
+
+    reader.close();
+    dir.close();
+  }
 }
