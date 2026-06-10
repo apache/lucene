@@ -612,6 +612,8 @@ Other
 
 * GITHUB#16218: Add non-degenerate DocValuesSkipper implementation to SimpleTextCodec. (Alan Woodward)
 
+* GITHUB#16197: Remove deprecated usages of search(Query, Collector) from monitor module. (Luca Cavanna)
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes
