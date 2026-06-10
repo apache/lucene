@@ -28,6 +28,14 @@ import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.NUMV
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.ORDPATTERN;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.ORIGIN;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.PATTERN;
+import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.SKIP_DATA;
+import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.SKIP_DOC_COUNT;
+import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.SKIP_END;
+import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.SKIP_INTERVAL;
+import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.SKIP_MAX_DOC_ID;
+import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.SKIP_MAX_VALUE;
+import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.SKIP_MIN_DOC_ID;
+import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.SKIP_MIN_VALUE;
 import static org.apache.lucene.codecs.simpletext.SimpleTextDocValuesWriter.TYPE;
 
 import java.io.IOException;
@@ -37,7 +45,9 @@ import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.ParseException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.IntFunction;
@@ -75,6 +85,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
     long maxValue;
     int maxValueCount;
     long numValues;
+    List<SimpleTextDocValuesWriter.SkipInterval> skipIntervals = List.of();
   }
 
   final int maxDoc;
@@ -146,6 +157,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         field.pattern = stripPrefix(PATTERN);
         field.dataStartFilePointer = data.getFilePointer();
         data.seek(data.getFilePointer() + (1 + field.pattern.length() + 2) * (long) maxDoc);
+        field.skipIntervals = readSkipData();
       } else if (dvType == DocValuesType.BINARY || dvType == DocValuesType.SORTED_NUMERIC) {
         assert startsWith(MAXLENGTH);
         field.maxLength = Integer.parseInt(stripPrefix(MAXLENGTH));
@@ -156,6 +168,9 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
         data.seek(
             data.getFilePointer()
                 + (9 + field.pattern.length() + field.maxLength + 2) * (long) maxDoc);
+        if (dvType == DocValuesType.SORTED_NUMERIC) {
+          field.skipIntervals = readSkipData();
+        }
       } else if (dvType == DocValuesType.SORTED || dvType == DocValuesType.SORTED_SET) {
         assert startsWith(NUMVALUES);
         field.numValues = Long.parseLong(stripPrefix(NUMVALUES));
@@ -173,6 +188,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
             data.getFilePointer()
                 + (9 + field.pattern.length() + field.maxLength) * field.numValues
                 + (1 + field.ordPattern.length()) * (long) maxDoc);
+        field.skipIntervals = readSkipData();
       } else {
         throw new AssertionError();
       }
@@ -181,6 +197,38 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
     // We should only be called from above if at least one
     // field has DVs:
     assert !fields.isEmpty();
+  }
+
+  private List<SimpleTextDocValuesWriter.SkipInterval> readSkipData() throws IOException {
+    readLine();
+    assert startsWith(SKIP_DATA) : "got " + scratch.get().utf8ToString();
+    List<SimpleTextDocValuesWriter.SkipInterval> intervals = new ArrayList<>();
+    while (true) {
+      readLine();
+      if (startsWith(SKIP_END)) {
+        break;
+      }
+      assert startsWith(SKIP_INTERVAL) : "got " + scratch.get().utf8ToString();
+      readLine();
+      assert startsWith(SKIP_MIN_DOC_ID);
+      int minDocID = Integer.parseInt(stripPrefix(SKIP_MIN_DOC_ID));
+      readLine();
+      assert startsWith(SKIP_MAX_DOC_ID);
+      int maxDocID = Integer.parseInt(stripPrefix(SKIP_MAX_DOC_ID));
+      readLine();
+      assert startsWith(SKIP_MIN_VALUE);
+      long minValue = Long.parseLong(stripPrefix(SKIP_MIN_VALUE));
+      readLine();
+      assert startsWith(SKIP_MAX_VALUE);
+      long maxValue = Long.parseLong(stripPrefix(SKIP_MAX_VALUE));
+      readLine();
+      assert startsWith(SKIP_DOC_COUNT);
+      int docCount = Integer.parseInt(stripPrefix(SKIP_DOC_COUNT));
+      intervals.add(
+          new SimpleTextDocValuesWriter.SkipInterval(
+              minDocID, maxDocID, minValue, maxValue, docCount));
+    }
+    return intervals;
   }
 
   @Override
@@ -871,8 +919,10 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
     // valid:
     assert field != null;
 
+    final List<SimpleTextDocValuesWriter.SkipInterval> intervals = field.skipIntervals;
+
     return new DocValuesSkipper() {
-      int doc = -1;
+      int cursor = -1;
 
       @Override
       public int numLevels() {
@@ -881,17 +931,26 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
 
       @Override
       public long minValue(int level) {
-        return minValue();
+        if (cursor < 0 || cursor >= intervals.size()) {
+          return minValue();
+        }
+        return intervals.get(cursor).minValue();
       }
 
       @Override
       public long maxValue(int level) {
-        return maxValue();
+        if (cursor < 0 || cursor >= intervals.size()) {
+          return maxValue();
+        }
+        return intervals.get(cursor).maxValue();
       }
 
       @Override
       public int docCount(int level) {
-        return docCount();
+        if (cursor < 0 || cursor >= intervals.size()) {
+          return docCount();
+        }
+        return intervals.get(cursor).docCount();
       }
 
       @Override
@@ -916,29 +975,36 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
 
       @Override
       public int minDocID(int level) {
-        if (doc == -1) {
+        if (cursor == -1) {
           return -1;
-        } else if (doc >= maxDoc || field.docCount == 0) {
+        } else if (cursor >= intervals.size()) {
           return DocIdSetIterator.NO_MORE_DOCS;
-        } else {
-          return 0;
         }
+        return intervals.get(cursor).minDocID();
       }
 
       @Override
       public int maxDocID(int level) {
-        if (doc == -1) {
+        if (cursor == -1) {
           return -1;
-        } else if (doc >= maxDoc || field.docCount == 0) {
+        } else if (cursor >= intervals.size()) {
           return DocIdSetIterator.NO_MORE_DOCS;
-        } else {
-          return maxDoc - 1;
         }
+        return intervals.get(cursor).maxDocID();
       }
 
       @Override
       public void advance(int target) {
-        doc = target;
+        if (intervals.isEmpty()) {
+          cursor = 0;
+          return;
+        }
+        if (cursor == -1) {
+          cursor = 0;
+        }
+        while (cursor < intervals.size() && intervals.get(cursor).maxDocID() < target) {
+          cursor++;
+        }
       }
     };
   }
