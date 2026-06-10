@@ -110,10 +110,17 @@ public class TestGroupingSearch extends LuceneTestCase {
     // 6 -- no author field
     doc = new Document();
     doc.add(new TextField("content", "random word stuck in alot of other text", Field.Store.YES));
-    doc.add(new Field("id", "6", customType));
-    doc.add(new StringField("groupend", "x", Field.Store.NO));
+    doc.add(new Field("id", "7", customType));
+    documents.add(doc);
 
-    w.addDocument(doc);
+    // 7 -- no match document
+    doc = new Document();
+    doc.add(new TextField("content", "no-match", Field.Store.YES));
+    doc.add(new Field("id", "8", customType));
+    doc.add(new StringField("groupend", "x", Field.Store.NO));
+    documents.add(doc);
+    w.addDocuments(documents);
+    documents.clear();
 
     IndexSearcher indexSearcher = newSearcher(w.getReader());
     indexSearcher.setSimilarity(new BM25Similarity());
