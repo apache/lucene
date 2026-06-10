@@ -113,7 +113,7 @@ class TermVectorsConsumer extends TermsHash {
     hasVectors = true;
   }
 
-  @Override
+  /** Writes this document's term vectors. Called per document by {@link IndexingChain}. */
   void finishDocument(int docID) throws IOException {
 
     if (!hasVectors) {
@@ -173,7 +173,7 @@ class TermVectorsConsumer extends TermsHash {
     perFields[numVectorFields++] = fieldToFlush;
   }
 
-  @Override
+  /** Resets per-document state. Called per document by {@link IndexingChain}. */
   void startDocument() {
     resetFields();
     numVectorFields = 0;

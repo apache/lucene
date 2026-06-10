@@ -169,24 +169,11 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
         }
 
       } else {
-        if (field.fieldType().storeTermVectorOffsets()) {
-          throw new IllegalArgumentException(
-              "cannot index term vector offsets when term vectors are not indexed (field=\""
-                  + field.name()
-                  + "\")");
-        }
-        if (field.fieldType().storeTermVectorPositions()) {
-          throw new IllegalArgumentException(
-              "cannot index term vector positions when term vectors are not indexed (field=\""
-                  + field.name()
-                  + "\")");
-        }
-        if (field.fieldType().storeTermVectorPayloads()) {
-          throw new IllegalArgumentException(
-              "cannot index term vector payloads when term vectors are not indexed (field=\""
-                  + field.name()
-                  + "\")");
-        }
+        // Unreachable: this per-field is only built for fields that store term vectors (see
+        // FreqProxTermsWriter#addField), and the schema layer enforces every instance agrees. The
+        // "term-vector sub-option without term vectors" validation lives in
+        // IndexingChain#verifyNoTermVectorOptionsWithoutVectors.
+        assert false : "term-vectors per-field created for a field without term vectors";
       }
     } else {
       if (doVectors != field.fieldType().storeTermVectors()) {

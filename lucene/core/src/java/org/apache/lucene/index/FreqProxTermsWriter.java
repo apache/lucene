@@ -136,8 +136,13 @@ final class FreqProxTermsWriter extends TermsHash {
 
   @Override
   public TermsHashPerField addField(FieldInvertState invertState, FieldInfo fieldInfo) {
+    // Only build the downstream term-vectors per-field when the field actually stores term vectors.
+    // hasTermVectors() is fixed at field-init time (baked into the FieldInfo before this runs) and
+    // is immutable for the segment, so a null link is the structural signal "no row dependency".
+    TermsHashPerField termVectorsPerField =
+        fieldInfo.hasTermVectors() ? nextTermsHash.addField(invertState, fieldInfo) : null;
     return new FreqProxTermsWriterPerField(
-        invertState, this, fieldInfo, nextTermsHash.addField(invertState, fieldInfo));
+        invertState, this, fieldInfo, termVectorsPerField);
   }
 
   static class SortingTerms extends FilterLeafReader.FilterTerms {

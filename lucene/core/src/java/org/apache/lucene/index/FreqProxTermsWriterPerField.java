@@ -46,14 +46,14 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
       FieldInvertState invertState,
       TermsHash termsHash,
       FieldInfo fieldInfo,
-      TermsHashPerField nextPerField) {
+      TermsHashPerField termVectorsPerField) {
     super(
         fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) ? 2 : 1,
         termsHash.intPool,
         termsHash.bytePool,
         termsHash.termBytePool,
         termsHash.bytesUsed,
-        nextPerField,
+        termVectorsPerField,
         fieldInfo.name,
         fieldInfo.getIndexOptions());
     this.fieldState = invertState;
@@ -62,6 +62,9 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
     hasProx = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
     hasOffsets = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
     isTermDoc = fieldInfo.isTermDocField();
+    // The downstream term-vectors per-field exists iff the field stores term vectors. This makes
+    // "has a per-document row dependency" a structural fact (getTermVectorsPerField() != null).
+    assert (getTermVectorsPerField() != null) == fieldInfo.hasTermVectors();
   }
 
   @Override

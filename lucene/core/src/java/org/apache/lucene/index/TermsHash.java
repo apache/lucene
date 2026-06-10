@@ -82,23 +82,16 @@ abstract class TermsHash {
     if (nextTermsHash != null) {
       Map<String, TermsHashPerField> nextChildFields = new HashMap<>();
       for (final Map.Entry<String, TermsHashPerField> entry : fieldsToFlush.entrySet()) {
-        nextChildFields.put(entry.getKey(), entry.getValue().getNextPerField());
+        // A field only has a next per-field when it feeds a downstream consumer (term vectors).
+        // Fields without one are simply absent from the downstream flush map.
+        TermsHashPerField next = entry.getValue().getTermVectorsPerField();
+        if (next != null) {
+          nextChildFields.put(entry.getKey(), next);
+        }
       }
       nextTermsHash.flush(nextChildFields, state, sortMap, norms);
     }
   }
 
   abstract TermsHashPerField addField(FieldInvertState fieldInvertState, FieldInfo fieldInfo);
-
-  void finishDocument(int docID) throws IOException {
-    if (nextTermsHash != null) {
-      nextTermsHash.finishDocument(docID);
-    }
-  }
-
-  void startDocument() throws IOException {
-    if (nextTermsHash != null) {
-      nextTermsHash.startDocument();
-    }
-  }
 }

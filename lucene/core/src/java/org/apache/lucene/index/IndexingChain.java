@@ -587,7 +587,7 @@ final class IndexingChain implements Accountable {
     // analyzer is free to reuse TokenStream across fields
     // (i.e., we cannot have more than one TokenStream
     // running "at once"):
-    termsHash.startDocument();
+    termVectorsWriter.startDocument();
     startStoredFields(docID);
     try {
       // Handle the parent field first (before document fields). Its schema was already
@@ -658,9 +658,9 @@ final class IndexingChain implements Accountable {
           fields[i].finish(docID);
         }
         finishStoredFields();
-        // TODO: for broken docs, optimize termsHash.finishDocument
+        // TODO: for broken docs, optimize termVectorsWriter.finishDocument
         try {
-          termsHash.finishDocument(docID);
+          termVectorsWriter.finishDocument(docID);
         } catch (Throwable th) {
           // Must abort, on the possibility that on-disk term
           // vectors are now corrupt:
@@ -726,7 +726,7 @@ final class IndexingChain implements Accountable {
                 "Unknown column type: " + column.getClass().getName());
       }
 
-      if (fieldType.stored() || fieldType.indexOptions() != IndexOptions.NONE) {
+      if (IndexingFeatures.rowEligible(fieldType)) {
         hasRowColumns = true;
       }
 
@@ -826,7 +826,7 @@ final class IndexingChain implements Accountable {
     int originalIdx = 0;
     for (Column column : columns) {
       IndexableFieldType fieldType = column.fieldType();
-      if (fieldType.stored() == false && fieldType.indexOptions() == IndexOptions.NONE) {
+      if (IndexingFeatures.rowEligible(fieldType) == false) {
         originalIdx++;
         continue;
       }
@@ -839,7 +839,12 @@ final class IndexingChain implements Accountable {
       adapters[numRowCols] = adapter;
       rowPfIndices[numRowCols] = originalIdx;
       heads[numRowCols] = adapter.nextDoc();
-      if (fieldType.indexOptions() != IndexOptions.NONE) {
+      // Defined as the seam for moving column-eligible inversion out of the row pass later; the
+      // partition assert documents that an indexed field is exactly one of the two inversion kinds.
+      assert (IndexingFeatures.rowBoundInversion(fieldType)
+              || IndexingFeatures.columnEligibleInversion(fieldType))
+          == IndexingFeatures.indexed(fieldType);
+      if (IndexingFeatures.indexed(fieldType)) {
         hasInverted = true;
       }
       if (fieldType.stored()) {
@@ -858,7 +863,7 @@ final class IndexingChain implements Accountable {
       int indexedFieldCount = 0;
 
       if (hasInverted) {
-        termsHash.startDocument();
+        termVectorsWriter.startDocument();
       }
       if (hasStored) {
         startStoredFields(segDocID);
@@ -897,7 +902,7 @@ final class IndexingChain implements Accountable {
           }
           if (hasInverted) {
             try {
-              termsHash.finishDocument(segDocID);
+              termVectorsWriter.finishDocument(segDocID);
             } catch (Throwable th) {
               abortingExceptionConsumer.accept(th);
               throw th;
@@ -1408,6 +1413,9 @@ final class IndexingChain implements Accountable {
     if (fieldType.indexOptions() != IndexOptions.NONE) {
       schema.setIndexOptions(
           fieldType.indexOptions(), fieldType.omitNorms(), fieldType.storeTermVectors());
+      if (fieldType.storeTermVectors() == false) {
+        verifyNoTermVectorOptionsWithoutVectors(fieldName, fieldType);
+      }
     } else {
       // TODO: should this be checked when a fieldType is created?
       verifyUnIndexedFieldType(fieldName, fieldType);
@@ -1465,6 +1473,33 @@ final class IndexingChain implements Accountable {
       throw new IllegalArgumentException(
           "cannot store term vector payloads "
               + "for a field that is not indexed (field=\""
+              + name
+              + "\")");
+    }
+  }
+
+  /**
+   * Verifies that an indexed field which does not store term vectors does not request any
+   * term-vector sub-options. Previously enforced lazily in {@code
+   * TermVectorsConsumerPerField#start}; now that the term-vectors per-field is only built for fields
+   * that store term vectors, this runs in the schema layer for every indexed field.
+   */
+  private static void verifyNoTermVectorOptionsWithoutVectors(String name, IndexableFieldType ft) {
+    if (ft.storeTermVectorOffsets()) {
+      throw new IllegalArgumentException(
+          "cannot index term vector offsets when term vectors are not indexed (field=\""
+              + name
+              + "\")");
+    }
+    if (ft.storeTermVectorPositions()) {
+      throw new IllegalArgumentException(
+          "cannot index term vector positions when term vectors are not indexed (field=\""
+              + name
+              + "\")");
+    }
+    if (ft.storeTermVectorPayloads()) {
+      throw new IllegalArgumentException(
+          "cannot index term vector payloads when term vectors are not indexed (field=\""
               + name
               + "\")");
     }
