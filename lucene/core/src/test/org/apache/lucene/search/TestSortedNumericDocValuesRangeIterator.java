@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Tests {@link DocValuesRangeIterator#forRange(SortedNumericDocValues, DocValuesSkipper, long,
@@ -95,7 +96,9 @@ public class TestSortedNumericDocValuesRangeIterator extends BaseDocValuesSkippe
 
       @Override
       public boolean advanceExact(int target) throws IOException {
-        throw new UnsupportedOperationException();
+        doc = target;
+        valueIdx = 0;
+        return docHasValue(target);
       }
 
       @Override
@@ -156,6 +159,14 @@ public class TestSortedNumericDocValuesRangeIterator extends BaseDocValuesSkippe
     return DocValuesRangeIterator.forRange(values, skipper, QUERY_MIN, QUERY_MAX);
   }
 
+  private static FixedBitSet expectedBitSet() {
+    FixedBitSet bitSet = new FixedBitSet(2048);
+    for (int doc : expectedMatches()) {
+      bitSet.set(doc);
+    }
+    return bitSet;
+  }
+
   // --- Correctness: all matching docs are found and no false positives ---
 
   public void testCorrectResultsSingleLevel() throws IOException {
@@ -164,6 +175,24 @@ public class TestSortedNumericDocValuesRangeIterator extends BaseDocValuesSkippe
 
   public void testCorrectResultsMultipleLevels() throws IOException {
     assertEquals(expectedMatches(), collectMatches(createIterator(true)));
+  }
+
+  public void testTwoPhaseIntoBitSetMatchesExpected() throws IOException {
+    DocValuesRangeIterator iterator = createIterator(true);
+    assertEquals(0, iterator.approximation().nextDoc());
+
+    FixedBitSet actual = new FixedBitSet(2048);
+    iterator.intoBitSet(2048, actual, 0);
+
+    assertEquals(expectedBitSet(), actual);
+  }
+
+  public void testDefaultRangeIntoBitSetMatchesExpected() throws IOException {
+    SortedNumericDocValues values = sortedNumericDocValues(QUERY_MIN, QUERY_MAX);
+    FixedBitSet actual = new FixedBitSet(2048);
+    values.rangeIntoBitSet(0, 2048, QUERY_MIN, QUERY_MAX, actual, 0);
+
+    assertEquals(expectedBitSet(), actual);
   }
 
   // --- Multi-value specific behavior ---
