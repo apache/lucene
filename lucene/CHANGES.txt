@@ -287,7 +287,8 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+* GITHUB#16239: GraphTokenStreamFiniteStrings#articulationPoints now uses an iterative
+  approach instead of recursion, removing the previous MAX_RECURSION_LEVEL of 1000. (Jakub Slowinski)
 
 Optimizations
 ---------------------

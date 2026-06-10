@@ -662,7 +662,7 @@ public class TestGraphTokenStreamFiniteStrings extends LuceneTestCase {
     assertFalse(it.hasNext());
   }
 
-  public void testLongTokenStreamStackOverflowError() throws Exception {
+  public void testLongTokenStreamDoesNotOverflow() throws Exception {
 
     ArrayList<Token> tokens =
         new ArrayList<>() {
@@ -674,14 +674,15 @@ public class TestGraphTokenStreamFiniteStrings extends LuceneTestCase {
           }
         };
 
-    // Add in too many tokens to get a high depth graph
-    for (int i = 0; i < 1024 + 1; i++) {
+    // Add in many tokens to get a very deep graph.
+    for (int i = 0; i < 50_000; i++) {
       tokens.add(token("network", 1, 1));
     }
 
     TokenStream ts = new CannedTokenStream(tokens.toArray(Token[]::new));
     GraphTokenStreamFiniteStrings graph = new GraphTokenStreamFiniteStrings(ts);
 
-    assertThrows(IllegalArgumentException.class, graph::articulationPoints);
+    int[] points = graph.articulationPoints();
+    assertEquals(50_001, points.length);
   }
 }
