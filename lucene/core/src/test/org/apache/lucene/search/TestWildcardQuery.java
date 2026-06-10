@@ -445,10 +445,9 @@ public class TestWildcardQuery extends LuceneTestCase {
     Query rewritten = searcher.rewrite(query);
     Weight weight = rewritten.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
     ScorerSupplier supplier = weight.scorerSupplier(lrc);
-    // Automaton queries have an unknown term count, so term collection is deferred to get() and the
-    // cost is the worst-case estimate (sum of doc freqs across all terms) rather than the sum over
-    // the matching terms only.
-    assertEquals(3000, supplier.cost());
+    // "foo*" matches only 2 terms ("foo bar" and "foo wuzzle"), which can be found cheaply
+    // within the visit budget. So the cost is the accurate sum of their docFreqs (2 * 1000).
+    assertEquals(2000, supplier.cost());
 
     query = new WildcardQuery(new Term("body", "bar*"));
     rewritten = searcher.rewrite(query);
@@ -491,14 +490,47 @@ public class TestWildcardQuery extends LuceneTestCase {
     termsEnumNextCalls.set(0);
     ScorerSupplier supplier = weight.scorerSupplier(lrc);
     assertNotNull(supplier);
-    assertEquals(
-        "scorerSupplier() must not scan the term dictionary for an automaton MultiTermQuery",
-        0,
-        termsEnumNextCalls.get());
+    // The cheap probe runs during scorerSupplier() but is bounded by the visit budget.
+    // For a leading wildcard, the budget is exhausted quickly and term collection is deferred.
+    assertTrue(
+        "scorerSupplier() should use at most the visit budget for a leading wildcard",
+        termsEnumNextCalls.get()
+            <= AbstractMultiTermQueryConstantScoreWrapper.AUTOMATON_TERM_COLLECT_VISIT_BUDGET);
 
-    // The scan is deferred to get(): building the scorer is where the terms are actually walked.
+    // The full scan is deferred to get():
     assertNotNull(supplier.get(Long.MAX_VALUE));
     assertTrue("get() should scan the term dictionary", termsEnumNextCalls.get() > 0);
+
+    reader.close();
+    dir.close();
+  }
+
+  // Verifies that a prefix-like wildcard with few (or zero) matches is resolved eagerly
+  // during scorerSupplier(), enabling null-supplier short-circuiting.
+  public void testScorerSupplierResolvesSparsePrefixEagerly() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    for (int i = 0; i < 1000; i++) {
+      Document doc = new Document();
+      doc.add(newStringField("body", "term" + i, Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    writer.flush();
+    writer.forceMerge(1);
+    writer.close();
+
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+    LeafReaderContext lrc = reader.leaves().get(0);
+
+    // No terms match "zzznomatch*", so the probe should find zero terms cheaply
+    // and scorerSupplier() should return null.
+    WildcardQuery query = new WildcardQuery(new Term("body", "zzznomatch*"));
+    Query rewritten = searcher.rewrite(query);
+    Weight weight = rewritten.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
+    assertNull(
+        "scorerSupplier() should return null when no terms match a prefix-like wildcard",
+        weight.scorerSupplier(lrc));
 
     reader.close();
     dir.close();

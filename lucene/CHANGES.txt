@@ -397,6 +397,8 @@ Optimizations
   clause matching no documents) before a non-seekable scan, such as a leading wildcard, runs.
   (Tianxiao Wei)
 
+* GITHUB#16240: Build on 16222 by letting automaton queries do "some" term dictionary traversal during planning, but with a bounded budget. (Michael Froh)
+
 * GITHUB#16176: Restore WANDScorer for TOP_SCORES + minShouldMatch > 1. (Tianxiao Wei)
 
 * GITHUB#16153: Use TernaryLongHeap in UpdateGraphsUtils for faster HNSW graph merging. (Prithvi S)
