@@ -67,7 +67,7 @@ editor = None
 
 
 # Edit this to add other global jinja2 variables or filters
-def expand_jinja(text: str, vars: dict[str, Any] | None = None):
+def expand_jinja(text: str, vars: dict[str, Any] | None = None) -> str:
   global_vars: dict[str, Any] = OrderedDict(
     {
       "script_version": state.script_version,
@@ -135,7 +135,7 @@ def expand_jinja(text: str, vars: dict[str, Any] | None = None):
   return filled
 
 
-def replace_templates(text: str):
+def replace_templates(text: str) -> str:
   tpl_lines: list[str] = []
   for line in text.splitlines():
     if match := re.search(r"^\(\( template=(.+?) \)\)", line):
@@ -146,11 +146,11 @@ def replace_templates(text: str):
   return "\n".join(tpl_lines)
 
 
-def getScriptVersion():
+def getScriptVersion() -> str:
   return scriptutil.find_current_version()
 
 
-def get_editor():
+def get_editor() -> str:
   global editor
   if editor is None:
     if "EDITOR" in os.environ:
@@ -166,7 +166,7 @@ def get_editor():
   return editor
 
 
-def check_prerequisites(todo: Any = None):
+def check_prerequisites(todo: "Todo | None" = None) -> bool:
   if sys.version_info < (3, 4):
     sys.exit("Script requires Python v3.4 or later")
   try:
@@ -201,11 +201,11 @@ def check_prerequisites(todo: Any = None):
 epoch = datetime.fromtimestamp(timestamp=0, tz=UTC)
 
 
-def unix_time_millis(dt: datetime):
+def unix_time_millis(dt: datetime) -> int:
   return int((dt - epoch).total_seconds() * 1000.0)
 
 
-def bootstrap_todos(todo_list: list[Any]):
+def bootstrap_todos(todo_list: list[Any]) -> list[Any]:
   # Establish links from commands to to_do for finding todo vars
   for tg in todo_list:
     if dry_run:
@@ -227,7 +227,7 @@ def bootstrap_todos(todo_list: list[Any]):
   return todo_list
 
 
-def maybe_remove_rc_from_svn():
+def maybe_remove_rc_from_svn() -> None:
   todo = state.get_todo_by_id("import_svn")
   if todo and todo.is_done():
     print("import_svn done")
@@ -253,7 +253,7 @@ class SecretYamlObject(yaml.YAMLObject):
 
   @classmethod
   @override
-  def to_yaml(cls: type[Self], dumper: yaml.Dumper, data: Any):
+  def to_yaml(cls: type[Self], dumper: yaml.Dumper, data: Any) -> yaml.MappingNode:
     print("Dumping object %s" % type(data))
 
     new_data = copy.deepcopy(data)
@@ -263,17 +263,17 @@ class SecretYamlObject(yaml.YAMLObject):
     for item in data.__dict__:
       if item in new_data.__dict__ and new_data.__dict__[item] is None:
         del new_data.__dict__[item]
-    return dumper.represent_yaml_object(cls.yaml_tag, new_data, cls, flow_style=cls.yaml_flow_style)  # TODO: fix me # pyright: ignore[reportUnknownMemberType]
+    return dumper.represent_yaml_object(cls.yaml_tag, new_data, cls, flow_style=cls.yaml_flow_style)
 
 
-def str_presenter(dumper: yaml.Dumper, data: str):
+def str_presenter(dumper: yaml.Dumper, data: str) -> yaml.ScalarNode:
   if len(data.split("\n")) > 1:  # check for multiline string
-    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")  # TODO: fix me # pyright: ignore[reportUnknownMemberType]
-  return dumper.represent_scalar("tag:yaml.org,2002:str", data)  # TODO: fix me # pyright: ignore[reportUnknownMemberType]
+    return dumper.represent_scalar("tag:yaml.org,2002:str", data, style="|")
+  return dumper.represent_scalar("tag:yaml.org,2002:str", data)
 
 
 class ReleaseState:
-  def __init__(self, config_path: str, release_version: str, script_version: str):
+  def __init__(self, config_path: str, release_version: str, script_version: str) -> None:
     self.script_version = script_version
     self.config_path = config_path
     self.todo_groups: list[TodoGroup] = []
@@ -291,7 +291,7 @@ class ReleaseState:
       self.script_branch_type = "feature"
     self.set_release_version(release_version)
 
-  def set_release_version(self, version: str):
+  def set_release_version(self, version: str) -> None:
     self.validate_release_version(self.script_branch_type, self.script_branch, version)
     self.release_version = version
     v = Version.parse(version)
@@ -306,32 +306,32 @@ class ReleaseState:
     else:
       self.release_type = "bugfix"
 
-  def is_released(self):
+  def is_released(self) -> bool:
     todo = self.get_todo_by_id("announce_lucene")
     assert todo
     return todo.is_done()
 
-  def get_gpg_key(self):
+  def get_gpg_key(self) -> str | None:
     gpg_task = self.get_todo_by_id("gpg")
     assert gpg_task
     if gpg_task.is_done():
       return gpg_task.get_state()["gpg_key"]
     return None
 
-  def get_release_date(self):
+  def get_release_date(self) -> datetime | None:
     publish_task = self.get_todo_by_id("publish_maven")
     assert publish_task
     if publish_task.is_done():
       return unix_to_datetime(publish_task.get_state()["done_date"])
     return None
 
-  def get_release_date_iso(self):
+  def get_release_date_iso(self) -> str:
     release_date = self.get_release_date()
     if release_date is None:
       return "yyyy-mm-dd"
     return release_date.isoformat()[:10]
 
-  def get_latest_version(self):
+  def get_latest_version(self) -> str:
     if self.latest_version is None:
       versions = self.get_mirrored_versions()
       latest = versions[0]
@@ -343,14 +343,14 @@ class ReleaseState:
     assert state.latest_version
     return state.latest_version
 
-  def get_mirrored_versions(self):
+  def get_mirrored_versions(self) -> list[str]:
     if state.mirrored_versions is None:
       releases_str = load("https://projects.apache.org/json/foundation/releases.json", "utf-8")
       releases: dict[str, str] = json.loads(releases_str)["lucene"]
       state.mirrored_versions = [r for r in list(map(lambda y: y[7:], filter(lambda x: x.startswith("lucene-"), list(releases.keys()))))]
     return state.mirrored_versions
 
-  def get_mirrored_versions_to_delete(self):
+  def get_mirrored_versions_to_delete(self) -> list[str]:
     versions = self.get_mirrored_versions()
     to_keep = versions
     if state.release_type == "major":
@@ -366,11 +366,11 @@ class ReleaseState:
         raise Exception("Release version %s must have same major version as current minor or lts release")
     return [ver for ver in versions if ver not in to_keep]
 
-  def get_main_version(self):
+  def get_main_version(self) -> str:
     v = Version.parse(self.get_latest_version())
     return "%s.%s.%s" % (v.major + 1, 0, 0)
 
-  def get_latest_lts_version(self):
+  def get_latest_lts_version(self) -> str:
     versions = self.get_mirrored_versions()
     latest = self.get_latest_version()
     lts_prefix = "%s." % (Version.parse(latest).major - 1)
@@ -381,7 +381,7 @@ class ReleaseState:
         latest_lts = ver
     return latest_lts
 
-  def validate_release_version(self, branch_type: BranchType | str, branch: str, release_version: str):
+  def validate_release_version(self, branch_type: BranchType | str, branch: str, release_version: str) -> None:
     ver = Version.parse(release_version)
     # print("release_version=%s, ver=%s" % (release_version, ver))
     if branch_type == BranchType.release:
@@ -402,7 +402,7 @@ class ReleaseState:
     if not getScriptVersion() == release_version:
       print("WARNING: Expected release version %s when on branch %s, but got %s" % (getScriptVersion(), branch, release_version))
 
-  def get_base_branch_name(self):
+  def get_base_branch_name(self) -> str:
     v = Version.parse(self.release_version)
     if v.is_major_release():
       return "main"
@@ -412,7 +412,7 @@ class ReleaseState:
       return self.get_minor_branch_name()
     return self.release_branch
 
-  def clear_rc(self):
+  def clear_rc(self) -> None:
     if ask_yes_no("Are you sure? This will clear and restart RC%s" % self.rc_number):
       maybe_remove_rc_from_svn()
       for g in list(filter(lambda x: x.in_rc_loop(), self.todo_groups)):
@@ -426,7 +426,7 @@ class ReleaseState:
         print("WARN: Failed to clear %s, please do it manually with higher privileges" % self.get_rc_folder())
       self.save()
 
-  def new_rc(self):
+  def new_rc(self) -> None:
     if ask_yes_no("Are you sure? This will abort current RC"):
       maybe_remove_rc_from_svn()
       dict = {}
@@ -439,7 +439,7 @@ class ReleaseState:
       self.rc_number += 1
       self.save()
 
-  def to_dict(self):
+  def to_dict(self) -> dict[str, Any]:
     tmp_todos = {}
     for todo_id in self.todos:
       t = self.todos[todo_id]
@@ -457,7 +457,7 @@ class ReleaseState:
       dictionary["latest_version"] = self.latest_version
     return dictionary
 
-  def restore_from_dict(self, dictionary: dict[str, Any]):
+  def restore_from_dict(self, dictionary: dict[str, Any]) -> None:
     self.script_version = dictionary["script_version"]
     assert dictionary["release_version"] == self.release_version
     if "start_date" in dictionary:
@@ -474,7 +474,7 @@ class ReleaseState:
       else:
         print("Warning: Could not restore state for %s, Todo definition not found" % todo_id)
 
-  def load(self):
+  def load(self) -> None:
     if os.path.exists(os.path.join(self.config_path, self.release_version, "state.yaml")):
       state_file = os.path.join(self.config_path, self.release_version, "state.yaml")
       with open(state_file) as fp:
@@ -485,7 +485,7 @@ class ReleaseState:
         except Exception as e:
           print("Failed to load state from %s: %s" % (state_file, e))
 
-  def save(self):
+  def save(self) -> None:
     print("Saving")
     if not os.path.exists(os.path.join(self.config_path, self.release_version)):
       print("Creating folder %s" % os.path.join(self.config_path, self.release_version))
@@ -494,7 +494,7 @@ class ReleaseState:
     with open(os.path.join(self.config_path, self.release_version, "state.yaml"), "w") as fp:
       yaml.dump(self.to_dict(), fp, sort_keys=False, default_flow_style=False)
 
-  def clear(self):
+  def clear(self) -> None:
     self.previous_rcs = {}
     self.rc_number = 1
     for t_id in self.todos:
@@ -502,72 +502,72 @@ class ReleaseState:
       t.state = {}
     self.save()
 
-  def get_rc_number(self):
+  def get_rc_number(self) -> int:
     return self.rc_number
 
-  def get_current_git_rev(self):
+  def get_current_git_rev(self) -> str:
     try:
       return run("git rev-parse HEAD", cwd=self.get_git_checkout_folder()).strip()
     except Exception:
       return "<git-rev>"
 
-  def get_group_by_id(self, id: str):
+  def get_group_by_id(self, id: str) -> "TodoGroup | None":
     lst: list[TodoGroup] = list(filter(lambda x: x.id == id, self.todo_groups))
     if len(lst) == 1:
       return lst[0]
     return None
 
-  def get_todo_by_id(self, id: str):
+  def get_todo_by_id(self, id: str) -> "Todo | None":
     lst: list[Todo] = list(filter(lambda x: x.id == id, self.todos.values()))
     if len(lst) == 1:
       return lst[0]
     return None
 
-  def get_todo_state_by_id(self, id: str):
+  def get_todo_state_by_id(self, id: str) -> dict[Any, Any]:
     lst: list[Todo] = list(filter(lambda x: x.id == id, self.todos.values()))
     if len(lst) == 1:
       return lst[0].state
-    return cast("dict[Any, Any]", {})
+    return {}
 
-  def get_release_folder(self):
+  def get_release_folder(self) -> str:
     folder = os.path.join(self.config_path, self.release_version)
     if not os.path.exists(folder):
       print("Creating folder %s" % folder)
       Path(folder).mkdir(parents=True)
     return folder
 
-  def get_rc_folder(self):
+  def get_rc_folder(self) -> str:
     folder = os.path.join(self.get_release_folder(), "RC%d" % self.rc_number)
     if not os.path.exists(folder):
       print("Creating folder %s" % folder)
       Path(folder).mkdir(parents=True)
     return folder
 
-  def get_dist_folder(self):
+  def get_dist_folder(self) -> str:
     folder = os.path.join(self.get_rc_folder(), "dist")
     return folder
 
-  def get_git_checkout_folder(self):
+  def get_git_checkout_folder(self) -> str:
     folder = os.path.join(self.get_release_folder(), "lucene")
     return folder
 
-  def get_website_git_folder(self):
+  def get_website_git_folder(self) -> str:
     folder = os.path.join(self.get_release_folder(), "lucene-site")
     return folder
 
-  def get_minor_branch_name(self):
+  def get_minor_branch_name(self) -> str:
     latest = state.get_latest_version()
     v = Version.parse(latest)
     return "branch_%s_%s" % (v.major, v.minor)
 
-  def get_stable_branch_name(self):
+  def get_stable_branch_name(self) -> str:
     if self.release_type == "major":
       v = Version.parse(self.get_main_version())
     else:
       v = Version.parse(self.get_latest_version())
     return "branch_%sx" % v.major
 
-  def get_next_version(self):
+  def get_next_version(self) -> str | None:
     if self.release_type == "major":
       return "%s.0.0" % (self.release_version_major + 1)
     if self.release_type == "minor":
@@ -576,10 +576,10 @@ class ReleaseState:
       return "%s.%s.%s" % (self.release_version_major, self.release_version_minor, self.release_version_bugfix + 1)
     return None
 
-  def get_java_home(self):
+  def get_java_home(self) -> str:
     return self.get_java_home_for_version(self.release_version)
 
-  def get_java_home_for_version(self, version: str):
+  def get_java_home_for_version(self, version: str) -> str:
     v = Version.parse(version)
     java_ver = java_versions[v.major]
     java_home_var = "JAVA%s_HOME" % java_ver
@@ -587,21 +587,21 @@ class ReleaseState:
       return os.environ[java_home_var]
     raise Exception("Script needs environment variable %s" % java_home_var)
 
-  def get_java_cmd_for_version(self, version: str):
+  def get_java_cmd_for_version(self, version: str) -> str:
     return os.path.join(self.get_java_home_for_version(version), "bin", "java")
 
-  def get_java_cmd(self):
+  def get_java_cmd(self) -> str:
     return os.path.join(self.get_java_home(), "bin", "java")
 
-  def get_todo_states(self):
-    states: dict[str, dict[Any, Any]] = {}
+  def get_todo_states(self) -> dict[str, dict[Any, Any]]:
+    states = {}
     if self.todos:
       for todo_id in self.todos:
         t = self.todos[todo_id]
         states[todo_id] = copy.deepcopy(t.state)
     return states
 
-  def init_todos(self, groups: list[Any]):
+  def init_todos(self, groups: list[Any]) -> None:
     self.todo_groups = groups
     self.todos = {}
     for g in self.todo_groups:
@@ -613,7 +613,7 @@ class TodoGroup(SecretYamlObject):
   yaml_tag = "!TodoGroup"
   hidden_fields = []
 
-  def __init__(self, id: str, title: str, description: str, todos: list[Any], is_in_rc_loop: bool | None = None, depends: str | list[str] | None = None):
+  def __init__(self, id: str, title: str, description: str, todos: "list[Todo]", is_in_rc_loop: bool | None = None, depends: str | list[str] | None = None) -> None:
     self.id = id
     self.title = title
     self.description = description
@@ -623,30 +623,30 @@ class TodoGroup(SecretYamlObject):
 
   @classmethod
   @override
-  def from_yaml(cls, loader: yaml.Loader, node: yaml.MappingNode):
+  def from_yaml(cls, loader: yaml.Loader, node: yaml.MappingNode) -> "TodoGroup":
     fields = loader.construct_mapping(node, deep=True)
     return TodoGroup(**cast("dict[str, Any]", fields))
 
-  def num_done(self):
+  def num_done(self) -> int:
     return sum(1 for x in self.todos if x.is_done() > 0)
 
-  def num_applies(self):
+  def num_applies(self) -> int:
     count = sum(1 for x in self.todos if x.applies(state.release_type))
     # print("num_applies=%s" % count)
     return count
 
-  def is_done(self):
+  def is_done(self) -> bool:
     # print("Done=%s, applies=%s" % (self.num_done(), self.num_applies()))
     return self.num_done() >= self.num_applies()
 
-  def get_title(self):
+  def get_title(self) -> str:
     # print("get_title: %s" % self.is_done())
     prefix = ""
     if self.is_done():
       prefix = "✓ "
     return "%s%s (%d/%d)" % (prefix, self.title, self.num_done(), self.num_applies())
 
-  def get_submenu(self):
+  def get_submenu(self) -> ConsoleMenu:
     menu = ConsoleMenu(title=self.title, subtitle=self.get_subtitle, prologue_text=self.get_description(), clear_screen=False)
     menu.exit_item = CustomExitItem("Return")
     for todo in self.get_todos():
@@ -654,17 +654,17 @@ class TodoGroup(SecretYamlObject):
         menu.append_item(todo.get_menu_item())
     return menu
 
-  def get_menu_item(self):
+  def get_menu_item(self) -> SubmenuItem:
     item = SubmenuItem(self.get_title, self.get_submenu())
     return item
 
-  def get_todos(self):
+  def get_todos(self) -> "list[Todo]":
     return self.todos
 
-  def in_rc_loop(self):
+  def in_rc_loop(self) -> bool:
     return self.is_in_rc_loop is True
 
-  def get_description(self):
+  def get_description(self) -> str | None:
     desc = self.description
     if desc:
       return expand_jinja(desc)
@@ -696,14 +696,14 @@ class Todo(SecretYamlObject):
     done: bool | None = None,
     types: list[str] | str | None = None,
     links: list[str] | None = None,
-    commands: Any = None,
-    user_input: Any = None,
+    commands: "Commands | None" = None,
+    user_input: "UserInput | None" = None,
     depends: str | list[str] | None = None,
     vars: dict[str, Any] | None = None,
     asciidoc: str | None = None,
     persist_vars: dict[str, str] | None = None,
     function: str | None = None,
-  ):
+  ) -> None:
     self.id = id
     self.title = title
     self.description = description
@@ -732,11 +732,11 @@ class Todo(SecretYamlObject):
 
   @classmethod
   @override
-  def from_yaml(cls, loader: yaml.Loader, node: yaml.MappingNode):
+  def from_yaml(cls, loader: yaml.Loader, node: yaml.MappingNode) -> "Todo":
     fields = loader.construct_mapping(node, deep=True)
     return Todo(**cast("dict[str, Any]", fields))
 
-  def get_vars(self):
+  def get_vars(self) -> dict[str, str]:
     myvars: dict[str, str] = {}
     if self.vars:
       for k in self.vars:
@@ -747,7 +747,7 @@ class Todo(SecretYamlObject):
           myvars[k] = expand_jinja(val, vars=myvars)
     return myvars
 
-  def set_done(self, is_done: bool | None):
+  def set_done(self, is_done: bool | None) -> None:
     if is_done:
       self.state["done_date"] = unix_time_millis(datetime.now(tz=UTC))
       if self.persist_vars:
@@ -757,21 +757,21 @@ class Todo(SecretYamlObject):
       self.state.clear()
     self.state["done"] = is_done
 
-  def applies(self, type: str):
+  def applies(self, type: str) -> bool:
     if self.types:
       return type in self.types
     return True
 
-  def is_done(self):
+  def is_done(self) -> bool:
     return "done" in self.state and self.state["done"] is True
 
-  def get_title(self):
+  def get_title(self) -> str:
     prefix = ""
     if self.is_done():
       prefix = "✓ "
     return expand_jinja("%s%s" % (prefix, self.title), self.get_vars_and_state())
 
-  def display_and_confirm(self):
+  def display_and_confirm(self) -> None:
     try:
       if self.depends:
         for dep in ensure_list(self.depends):
@@ -827,48 +827,48 @@ class Todo(SecretYamlObject):
     except Exception as e:
       print("ERROR while executing todo %s (%s)" % (self.get_title(), e))
 
-  def get_menu_item(self):
+  def get_menu_item(self) -> FunctionItem:
     return FunctionItem(self.get_title(), self.display_and_confirm)
 
-  def clone(self):
+  def clone(self) -> "Todo":
     clone = Todo(self.id, self.title, description=self.description)
     clone.state = copy.deepcopy(self.state)
     return clone
 
-  def clear(self):
+  def clear(self) -> None:
     self.state.clear()
     self.set_done(False)
 
-  def get_state(self):
+  def get_state(self) -> dict[Any, Any]:
     return self.state
 
-  def get_description(self):
+  def get_description(self) -> str | None:
     desc = self.description
     if desc:
       return expand_jinja(desc, vars=self.get_vars_and_state())
     return None
 
-  def get_post_description(self):
+  def get_post_description(self) -> str | None:
     if self.post_description:
       return expand_jinja(self.post_description, vars=self.get_vars_and_state())
     return None
 
-  def get_commands(self):
+  def get_commands(self) -> "Commands | None":
     cmds = self.commands
     return cmds
 
-  def get_asciidoc(self):
+  def get_asciidoc(self) -> str | None:
     if self.asciidoc:
       return expand_jinja(self.asciidoc, vars=self.get_vars_and_state())
     return None
 
-  def get_vars_and_state(self):
+  def get_vars_and_state(self) -> dict[str, str]:
     d = self.get_vars().copy()
     d.update(self.get_state())
     return d
 
 
-def get_release_version():
+def get_release_version() -> str:
   v = str(input("Which version are you releasing? (x.y.z) "))
   try:
     version = Version.parse(v)
@@ -879,30 +879,33 @@ def get_release_version():
   return str(version)
 
 
-def get_subtitle():
+def get_subtitle() -> str:
   applying_groups = list(filter(lambda x: x.num_applies() > 0, state.todo_groups))
   done_groups = sum(1 for x in applying_groups if x.is_done())
   return "Please complete the below checklist (Complete: %s/%s)" % (done_groups, len(applying_groups))
 
 
-def get_todo_menuitem_title():
+def get_todo_menuitem_title() -> str:
   return "Go to checklist (RC%d)" % (state.rc_number)
 
 
-def get_releasing_text():
+def get_releasing_text() -> str:
   return "Releasing Lucene %s RC%d" % (state.release_version, state.rc_number)
 
 
-def get_start_new_rc_menu_title():
+def get_start_new_rc_menu_title() -> str:
   return "Abort RC%d and start a new RC%d" % (state.rc_number, state.rc_number + 1)
 
 
-def start_new_rc():
+def start_new_rc() -> None:
   state.new_rc()
   print("Started RC%d" % state.rc_number)
 
 
-def reset_state():
+state: ReleaseState
+
+
+def reset_state() -> None:
   global state
   if ask_yes_no("Are you sure? This will erase all current progress"):
     maybe_remove_rc_from_svn()
@@ -910,16 +913,16 @@ def reset_state():
     state.clear()
 
 
-def template(name: str, vars: dict[str, Any] | None = None):
+def template(name: str, vars: dict[str, Any] | None = None) -> str:
   return expand_jinja(templates[name], vars=vars)
 
 
-def help():
+def help() -> None:
   print(template("help"))
   pause()
 
 
-def ensure_list(o: Any):
+def ensure_list(o: Any) -> list[Any]:
   if o is None:
     return cast("list[Any]", [])
   if not isinstance(o, list):
@@ -927,7 +930,7 @@ def ensure_list(o: Any):
   return cast("list[Any]", o)
 
 
-def open_file(filename: str):
+def open_file(filename: str) -> None:
   print("Opening file %s" % filename)
   if platform.system().startswith("Win"):
     run("start %s" % filename)
@@ -935,15 +938,15 @@ def open_file(filename: str):
     run("open %s" % filename)
 
 
-def expand_multiline(cmd_txt: str, indent: int = 0):
+def expand_multiline(cmd_txt: str, indent: int = 0) -> str:
   return re.sub(r"  +", " %s\n    %s" % (Commands.cmd_continuation_char, " " * indent), cmd_txt)
 
 
-def unix_to_datetime(unix_stamp: int):
+def unix_to_datetime(unix_stamp: int) -> datetime:
   return datetime.fromtimestamp(timestamp=unix_stamp / 1000, tz=UTC)
 
 
-def generate_asciidoc():
+def generate_asciidoc() -> None:
   base_filename = os.path.join(state.get_release_folder(), "lucene_release_%s" % (state.release_version.replace(r"\.", "_")))
 
   filename_adoc = "%s.adoc" % base_filename
@@ -1025,7 +1028,7 @@ def generate_asciidoc():
   pause()
 
 
-def load_rc():
+def load_rc() -> dict[str, Any]:
   lucenerc = os.path.expanduser("~/.lucenerc")
   try:
     with open(lucenerc) as fp:
@@ -1034,7 +1037,7 @@ def load_rc():
     return cast("dict[str, Any]", {})
 
 
-def store_rc(release_root: str, release_version: str | None = None):
+def store_rc(release_root: str, release_version: str | None = None) -> None:
   lucenerc = os.path.expanduser("~/.lucenerc")
   dict = {}
   dict["root"] = release_root
@@ -1044,7 +1047,7 @@ def store_rc(release_root: str, release_version: str | None = None):
     json.dump(dict, fp, indent=2)
 
 
-def release_other_version():
+def release_other_version() -> None:
   if not state.is_released():
     maybe_remove_rc_from_svn()
   store_rc(state.config_path, None)
@@ -1052,28 +1055,28 @@ def release_other_version():
   sys.exit(0)
 
 
-def file_to_string(filename: str):
+def file_to_string(filename: str) -> str:
   with open(filename, encoding="utf8") as f:
     return f.read().strip()
 
 
-def download_keys():
+def download_keys() -> None:
   download("KEYS", "https://archive.apache.org/dist/lucene/KEYS", state.config_path)
 
 
-def keys_downloaded():
+def keys_downloaded() -> bool:
   return os.path.exists(os.path.join(state.config_path, "KEYS"))
 
 
-def dump_yaml():
+def dump_yaml() -> None:
   file = open(os.path.join(script_path, "releaseWizard.yaml"), "w")
   yaml.add_representer(str, str_presenter)
-  yaml.Dumper.ignore_aliases = lambda self, data: True  # TODO: fix me # pyright: ignore[reportUnknownLambdaType]
+  yaml.Dumper.ignore_aliases = lambda self, data: True  # ty:ignore[invalid-assignment]
   dump_obj: dict[str, Any] = {"templates": templates, "groups": state.todo_groups}
   yaml.dump(dump_obj, width=180, stream=file, sort_keys=False, default_flow_style=False)
 
 
-def parse_config():
+def parse_config() -> argparse.Namespace:
   description = "Script to guide a RM through the whole release process"
   parser = argparse.ArgumentParser(description=description, epilog="Go push that release!", formatter_class=argparse.RawDescriptionHelpFormatter)
   parser.add_argument("--dry-run", dest="dry", action="store_true", default=False, help="Do not execute any commands, but echo them instead. Display extra debug info")
@@ -1083,7 +1086,7 @@ def parse_config():
   return config
 
 
-def load(urlString: str, encoding: str = "utf-8"):
+def load(urlString: str, encoding: str = "utf-8") -> str:
   try:
     content = urllib.request.urlopen(urlString).read().decode(encoding)
   except Exception as e:
@@ -1092,7 +1095,7 @@ def load(urlString: str, encoding: str = "utf-8"):
   return content
 
 
-def configure_pgp(gpg_todo: Todo):
+def configure_pgp(gpg_todo: Todo) -> bool:
   print("Based on your Apache ID we'll lookup your key online\nand through this complete the 'gpg' prerequisite task.\n")
   gpg_state = gpg_todo.get_state()
   id = str(input("Please enter your Apache id: (ENTER=skip) "))
@@ -1237,7 +1240,7 @@ def configure_pgp(gpg_todo: Todo):
   return True
 
 
-def pause(fun: Callable[[], None] | None = None):
+def pause(fun: Callable[[], None] | None = None) -> None:
   if fun:
     fun()
   input("\nPress ENTER to continue...")
@@ -1245,15 +1248,19 @@ def pause(fun: Callable[[], None] | None = None):
 
 class CustomExitItem(ExitItem):
   @override
-  def show(self, index: int, available_width: int | None = None):
+  def show(self, index: int, available_width: int | None = None) -> Any:
     return super(CustomExitItem, self).show(index)
 
   @override
-  def get_return(self):
+  def get_return(self) -> str:
     return ""
 
 
-def main():
+templates: Any
+lucene_news_file: str
+
+
+def main() -> None:
   global state
   global dry_run
   global templates
@@ -1359,11 +1366,11 @@ script_path = os.path.dirname(os.path.realpath(__file__))
 os.chdir(script_path)
 
 
-def git_checkout_folder():
+def git_checkout_folder() -> str:
   return state.get_git_checkout_folder()
 
 
-def tail_file(file: str, lines: int):
+def tail_file(file: str, lines: int) -> None:
   bufsize = 8192
   fsize = os.stat(file).st_size
   with open(file) as f:
@@ -1383,7 +1390,9 @@ def tail_file(file: str, lines: int):
         break
 
 
-def run_with_log_tail(command: str | list[str], cwd: str | None, logfile: str | None = None, tail_lines: int = 10, tee: bool | None = False, live: bool | None = False, shell: bool | None = None):
+def run_with_log_tail(
+  command: str | list[str], cwd: str | None, logfile: str | None = None, tail_lines: int = 10, tee: bool | None = False, live: bool | None = False, shell: bool | None = None
+) -> int | None:
   fh = sys.stdout
   if logfile:
     logdir = os.path.dirname(logfile)
@@ -1398,7 +1407,7 @@ def run_with_log_tail(command: str | list[str], cwd: str | None, logfile: str | 
   return rc
 
 
-def ask_yes_no(text: str):
+def ask_yes_no(text: str) -> bool:
   answer = None
   while answer not in ["y", "n"]:
     answer = str(input("\nQ: %s (y/n): " % text))
@@ -1406,16 +1415,16 @@ def ask_yes_no(text: str):
   return answer == "y"
 
 
-def abbreviate_line(line: str, width: int):
+def abbreviate_line(line: str, width: int) -> str:
   line = line.rstrip()
   if len(line) > width:
-    line = "%s.....%s" % (line[: (width / 2 - 5)], line[-(width / 2) :])
+    line = "%s.....%s" % (line[: (width / 2 - 5)], line[-(width / 2) :])  # ty:ignore[invalid-argument-type]
   else:
     line = "%s%s" % (line, " " * (width - len(line) + 2))
   return line
 
 
-def print_line_cr(line: str, linenum: int, stdout: bool = True, tee: bool | None = False):
+def print_line_cr(line: str, linenum: int, stdout: bool = True, tee: bool | None = False) -> None:
   if not tee:
     if not stdout:
       print("[line %s] %s" % (linenum, abbreviate_line(line, 80)), end="\r")
@@ -1425,7 +1434,7 @@ def print_line_cr(line: str, linenum: int, stdout: bool = True, tee: bool | None
     print(line.rstrip())
 
 
-def run_follow(command: str | list[str], cwd: str | None = None, fh: TextIO = sys.stdout, tee: bool | None = False, live: bool | None = False, shell: bool | None = None):
+def run_follow(command: str | list[str], cwd: str | None = None, fh: TextIO = sys.stdout, tee: bool | None = False, live: bool | None = False, shell: bool | None = None) -> int | None:
   doShell = "&&" in command or "&" in command or shell is not None
   if not doShell and not isinstance(command, list):
     command = shlex.split(command)
@@ -1502,15 +1511,15 @@ def run_follow(command: str | list[str], cwd: str | None = None, fh: TextIO = sy
   return rc
 
 
-def is_windows():
+def is_windows() -> bool:
   return platform.system().startswith("Win")
 
 
-def is_mac():
+def is_mac() -> bool:
   return platform.system().startswith("Darwin")
 
 
-def is_linux():
+def is_linux() -> bool:
   return platform.system().startswith("Linux")
 
 
@@ -1532,7 +1541,7 @@ class Commands(SecretYamlObject):
     vars: dict[str, Any] | None = None,
     todo_id: str | None = None,
     remove_files: list[str] | None = None,
-  ):
+  ) -> None:
     self.root_folder = root_folder
     self.commands_text = commands_text
     self.vars = vars
@@ -1549,11 +1558,11 @@ class Commands(SecretYamlObject):
 
   @classmethod
   @override
-  def from_yaml(cls, loader: yaml.Loader, node: yaml.MappingNode):
+  def from_yaml(cls, loader: yaml.Loader, node: yaml.MappingNode) -> "Commands":
     fields = loader.construct_mapping(node, deep=True)
     return Commands(**cast("dict[str, Any]", fields))
 
-  def run(self):  # pylint: disable=inconsistent-return-statements # TODO
+  def run(self) -> bool | None:
     root = self.get_root_folder()
 
     if self.commands_text:
@@ -1667,19 +1676,19 @@ class Commands(SecretYamlObject):
         print("WARNING: One or more commands failed, you may want to check the logs")
       return success
 
-  def get_root_folder(self):
+  def get_root_folder(self) -> str:
     return cast("str", self.jinjaify(self.root_folder))
 
-  def get_commands_text(self):
+  def get_commands_text(self) -> str | list[str] | None:
     return self.jinjaify(self.commands_text)
 
-  def get_run_text(self):
+  def get_run_text(self) -> str | list[str] | None:
     return self.jinjaify(self.run_text)
 
-  def get_remove_files(self):
+  def get_remove_files(self) -> str | list[str] | None:
     return self.jinjaify(self.remove_files)
 
-  def get_vars(self):
+  def get_vars(self) -> dict[str, str]:
     myvars: dict[str, str] = {}
     if self.vars:
       for k in self.vars:
@@ -1690,7 +1699,7 @@ class Commands(SecretYamlObject):
           myvars[k] = expand_jinja(val, vars=myvars)
     return myvars
 
-  def jinjaify(self, data: str | list[str] | None, join: bool = False):
+  def jinjaify(self, data: str | list[str] | None, join: bool = False) -> str | list[str] | None:
     if not data:
       return None
     v = self.get_vars()
@@ -1708,7 +1717,7 @@ class Commands(SecretYamlObject):
     return expand_jinja(data, v)
 
 
-def abbreviate_homedir(line: str):
+def abbreviate_homedir(line: str) -> str:
   if is_windows():
     if "HOME" in os.environ:
       return re.sub(r"([^/]|\b)%s" % os.path.expanduser("~"), "\\1%HOME%", line)
@@ -1737,7 +1746,7 @@ class Command(SecretYamlObject):
     redirect: str | None = None,
     redirect_append: bool | None = None,
     shell: bool | None = None,
-  ):
+  ) -> None:
     self.cmd = cmd
     self.cwd = cwd
     self.comment = comment
@@ -1766,21 +1775,21 @@ class Command(SecretYamlObject):
 
   @classmethod
   @override
-  def from_yaml(cls, loader: yaml.Loader, node: yaml.MappingNode):
+  def from_yaml(cls, loader: yaml.Loader, node: yaml.MappingNode) -> "Command":
     fields = loader.construct_mapping(node, deep=True)
     return Command(**cast("dict[str, Any]", fields))
 
-  def get_comment(self):
+  def get_comment(self) -> str:
     return str(self.jinjaify(self.comment))
 
-  def get_redirect(self):
+  def get_redirect(self) -> str:
     return str(self.jinjaify(self.redirect))
 
-  def get_cmd(self):
+  def get_cmd(self) -> str:
     return str(self.jinjaify(self.cmd, join=True))
 
-  def get_vars(self):
-    myvars: dict[str, str] = {}
+  def get_vars(self) -> dict[str, str]:
+    myvars = {}
     if self.vars:
       for k in self.vars:
         val = self.vars[k]
@@ -1791,10 +1800,10 @@ class Command(SecretYamlObject):
     return myvars
 
   @override
-  def __str__(self):
+  def __str__(self) -> str:
     return self.get_cmd()
 
-  def jinjaify(self, data: str | list[str] | None, join: bool = False):
+  def jinjaify(self, data: str | list[str] | None, join: bool = False) -> str | list[str] | None:
     if data is None:
       return None
     v = self.get_vars()
@@ -1811,7 +1820,7 @@ class Command(SecretYamlObject):
       return res
     return expand_jinja(data, v)
 
-  def display_cmd(self):
+  def display_cmd(self) -> list[str]:
     lines: list[str] = []
     if self.comment:
       if is_windows():
@@ -1833,18 +1842,18 @@ class Command(SecretYamlObject):
 class UserInput(SecretYamlObject):
   yaml_tag = "!UserInput"
 
-  def __init__(self, name: str, prompt: str, type: str | None = None):
+  def __init__(self, name: str, prompt: str, type: str | None = None) -> None:
     self.type = type
     self.prompt = prompt
     self.name = name
 
   @classmethod
   @override
-  def from_yaml(cls, loader: yaml.Loader, node: yaml.MappingNode):
+  def from_yaml(cls, loader: yaml.Loader, node: yaml.MappingNode) -> "UserInput":
     fields = loader.construct_mapping(node, deep=True)
     return UserInput(**cast("dict[str, Any]", fields))
 
-  def run(self, dict: dict[str, Any] | None = None):
+  def run(self, dict: dict[str, Any] | None = None) -> str | int | None:
     correct = False
     while not correct:
       try:
@@ -1860,7 +1869,7 @@ class UserInput(SecretYamlObject):
       return result
 
 
-def create_ical(_todo: Todo):  # pylint: disable=unused-argument
+def create_ical(_todo: Todo) -> bool:
   if ask_yes_no("Do you want to add a Calendar reminder for the close vote time?"):
     c = Calendar()
     e = Event()
@@ -1870,7 +1879,7 @@ def create_ical(_todo: Todo):  # pylint: disable=unused-argument
     c.events.add(e)
     ics_file = os.path.join(state.get_rc_folder(), "vote_end.ics")
     with open(ics_file, "w") as my_file:
-      my_file.writelines(c)  # pyright: ignore[reportArgumentType]
+      my_file.writelines(iter(c))
     open_file(ics_file)
   return True
 
@@ -1890,12 +1899,12 @@ non_working = (
 )
 
 
-def vote_close_72h_date():
+def vote_close_72h_date() -> datetime:
   # Voting open at least 72 hours according to ASF policy
   return datetime.now(tz=UTC) + timedelta(hours=73)
 
 
-def vote_close_72h_holidays():
+def vote_close_72h_holidays() -> list[str] | None:
   days = 0
   day_offset = -1
   holidays: list[str] = []
@@ -1913,7 +1922,7 @@ def vote_close_72h_holidays():
   return holidays if len(holidays) > 0 else None
 
 
-def prepare_announce_lucene(_todo: Todo):  # pylint: disable=unused-argument
+def prepare_announce_lucene(_todo: Todo) -> bool:
   if not os.path.exists(lucene_news_file):
     lucene_text = expand_jinja("(( template=announce_lucene ))")
     with open(lucene_news_file, "w") as fp:
@@ -1924,7 +1933,7 @@ def prepare_announce_lucene(_todo: Todo):  # pylint: disable=unused-argument
   return True
 
 
-def check_artifacts_available(_todo: Todo):  # pylint: disable=unused-argument
+def check_artifacts_available(_todo: Todo) -> bool:
   cdnUrl = expand_jinja("https://dlcdn.apache.org/lucene/java/{{ release_version }}/lucene-{{ release_version }}-src.tgz.asc")
   try:
     load(cdnUrl)
@@ -1944,12 +1953,12 @@ def check_artifacts_available(_todo: Todo):  # pylint: disable=unused-argument
   return True
 
 
-def set_java_home(version: str):
+def set_java_home(version: str) -> None:
   os.environ["JAVA_HOME"] = state.get_java_home_for_version(version)
   os.environ["JAVACMD"] = state.get_java_cmd_for_version(version)
 
 
-def load_lines(file: str, from_line: int = 0):
+def load_lines(file: str, from_line: int = 0) -> list[str]:
   if os.path.exists(file):
     with open(file) as fp:
       return fp.readlines()[from_line:]
