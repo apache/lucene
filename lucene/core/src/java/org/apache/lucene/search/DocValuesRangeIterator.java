@@ -86,7 +86,7 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     return skipper == null
         ? new DocValuesValueRangeIterator(values, check, 5)
         : new DocValuesBlockRangeIterator(
-            values, new SkipBlockRangeIterator(skipper, min, max), check, 2, false);
+            values, new SkipBlockRangeIterator(skipper, min, max), check, 5, false);
   }
 
   /**
