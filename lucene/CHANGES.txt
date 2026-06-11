@@ -115,6 +115,8 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#16244: Improve allEqual suffix length detection in Lucene103BlockTreeTermsWriter. (Zhou Hui)
+
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
 
 * GITHUB#15682: Use ArrayDeque instead of LinkedList in CompoundWordTokenFilterBase.java. (Renato Haeberli)
