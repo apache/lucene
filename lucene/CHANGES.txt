@@ -100,6 +100,10 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16243: Add StableTflSimilarity, a similarity that estimates term rarity from term length
+  and document length instead of corpus statistics such as document frequency. It also supports k3
+  query-term frequency saturation. (Tianxiao Wei)
+
 * GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
   PolishSnowballAnalyzer in the stempel package) (Justas Sakalauskas, Dawid Weiss)
 
@@ -112,10 +116,6 @@ New Features
 * GITHUB#15508: Use native vectorization in Lucene. (Ankur Goel, Shubham Chaudhary, Dawid Weiss)
 
 * GITHUB#15818: Add BM25 k3 query-term frequency saturation to BM25Similarity. (Sagar Upadhyaya)
-
-* GITHUB#: Add StableTflSimilarity, a similarity that estimates term rarity from term length and
-  document length instead of corpus statistics such as document frequency. It also supports k3
-  query-term frequency saturation. (Tianxiao Wei)
 
 Improvements
 ---------------------
