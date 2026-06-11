@@ -18,8 +18,6 @@ package org.apache.lucene.search.similarities;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.lucene.index.FieldInvertState;
-import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.FieldStats;
 import org.apache.lucene.search.TermStats;
@@ -28,7 +26,7 @@ import org.apache.lucene.util.SmallFloat;
 import org.apache.lucene.util.UnicodeUtil;
 
 /**
- * A Lucene {@link Similarity} implementation that estimates term rarity based on term length and
+ * StableTfl Similarity. A similarity algorithm that estimates term rarity based on term length and
  * document length, rather than relying on corpus-level statistics like document frequency.
  *
  * <p>Inspired by BM25, this similarity model replaces IDF with a synthetic function that increases
@@ -88,10 +86,12 @@ public class StableTflSimilarity extends Similarity {
   }
 
   /**
-   * STABLE_TFL with the supplied parameter values.
+   * StableTFL with the supplied parameter values.
    *
-   * @throws IllegalArgumentException if {@code k1} is infinite or negative, or if {@code b} is
-   *     infinite or negative.
+   * @param k1 Controls non-linear term frequency normalization (saturation).
+   * @param c Controls how much term length affects term rarity (decay constant).
+   * @throws IllegalArgumentException if {@code k1} is infinite or negative
+   * @throws IllegalArgumentException if {@code c} is infinite or negative
    */
   public StableTflSimilarity(float k1, float c) {
     if (!Float.isFinite(k1) || k1 < 0) {
@@ -106,6 +106,14 @@ public class StableTflSimilarity extends Similarity {
     this.c = c;
   }
 
+  /**
+   * StableTFL with these default values:
+   *
+   * <ul>
+   *   <li>{@code k1 = 1.2}
+   *   <li>{@code c = 0.917}
+   * </ul>
+   */
   public StableTflSimilarity() {
     this(DEFAULT_K1, DEFAULT_C);
   }
@@ -147,6 +155,12 @@ public class StableTflSimilarity extends Similarity {
       }
     }
 
+    // Fold the constant boost into the per-doc-length cache so score() doesn't repeat this
+    // multiply for every scored document.
+    for (int j = 0; j < cache.length; j++) {
+      cache[j] *= boost;
+    }
+
     return new TflScorer(boost, this.k1, this.c, termLengths, cache);
   }
 
@@ -161,8 +175,8 @@ public class StableTflSimilarity extends Similarity {
     private final float[] termLengths;
 
     /**
-     * cache[i] stores the precomputed sum of term rarity (tr) for all query terms, for a specific
-     * document length (LENGTH_TABLE[i]).
+     * cache[i] stores the precomputed weight (boost times the summed term rarity (tr) of all query
+     * terms) for a specific document length (LENGTH_TABLE[i]).
      */
     private final float[] cache;
 
@@ -182,8 +196,7 @@ public class StableTflSimilarity extends Similarity {
       // composition via x -> 1 + x and x -> 1 - 1 / x.
       // Finally, we expand weight * (1 - 1 / (1 + freq / k1)) to
       // weight - weight / (1 + freq / k1), which runs slightly faster.
-      float tr = this.cache[((byte) encodedNorm) & 0xFF];
-      float weight = this.boost * tr;
+      float weight = this.cache[((byte) encodedNorm) & 0xFF];
       return weight - weight / (1 + freq / this.k1);
     }
 
@@ -194,8 +207,7 @@ public class StableTflSimilarity extends Similarity {
       subs.add(explainTF(freq));
       subs.add(explainTR(this.termLengths, norm));
 
-      float tr = this.cache[((byte) norm) & 0xFF];
-      float weight = this.boost * tr;
+      float weight = this.cache[((byte) norm) & 0xFF];
       return Explanation.match(
           weight - weight / (1f + freq.getValue().floatValue() / this.k1),
           "score(freq=" + freq.getValue() + "), computed as boost * tr * tf from:",
