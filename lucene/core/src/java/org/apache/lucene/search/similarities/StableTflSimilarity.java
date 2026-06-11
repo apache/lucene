@@ -47,6 +47,7 @@ import org.apache.lucene.util.UnicodeUtil;
  * <ul>
  *   <li>{@code k1} - saturation parameter for term frequency
  *   <li>{@code c} - decay constant controlling how term length impacts rarity
+ *   <li>{@code k3} - query-side saturation for repeated query terms (disabled by default)
  * </ul>
  *
  * <p>The constant {@code m} is fixed internally and controls the base term-match probability.
