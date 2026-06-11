@@ -27,8 +27,6 @@ import org.apache.lucene.util.SmallFloat;
 
 public class TestStableTflSimilarity extends BaseSimilarityTestCase {
 
-  private static final float SCORE_EPSILON = 1e-7f;
-
   public void testIllegalK1() {
     IllegalArgumentException expected =
         expectThrows(
@@ -190,10 +188,10 @@ public class TestStableTflSimilarity extends BaseSimilarityTestCase {
     int numTerms = 1000;
     long norm = SmallFloat.intToByte4(numTerms);
     float score = scorer.score(1, norm);
-    assertEquals(1.3955811f, score, SCORE_EPSILON);
+    assertEquals(1.3955811f, score, 0f);
 
     Explanation explain = scorer.explain(Explanation.match(1, "freq"), norm);
-    assertEquals(score, explain.getValue().floatValue(), SCORE_EPSILON);
+    assertEquals(score, explain.getValue().floatValue(), 0f);
 
     String explainString =
         """
@@ -228,7 +226,7 @@ public class TestStableTflSimilarity extends BaseSimilarityTestCase {
     Explanation explain = scorer.explain(Explanation.match(1, "freq"), norm);
     // the combined term rarity must be the sum of the individual per-term rarities
     assertTrue(explain.toString().contains("tr, term rarity, computed as the sum of:"));
-    assertEquals(scorer.score(1, norm), explain.getValue().floatValue(), SCORE_EPSILON);
+    assertEquals(scorer.score(1, norm), explain.getValue().floatValue(), 0f);
   }
 
   /**
