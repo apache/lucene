@@ -158,6 +158,11 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#XXXXX: Fix FastVectorHighlighter StringIndexOutOfBoundsException when term offsets overlap.
+  Analyzers like CJK bigram or ik_max_word produce overlapping tokens; the highlighter now clips
+  overlapping portions instead of throwing an exception, ensuring the full matched region is
+  highlighted. (Baojun Han)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
