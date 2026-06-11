@@ -145,4 +145,39 @@ public class TestComplexExplanations extends BaseExplanationTestCase {
 
     bqtest(new BoostQuery(query, 0), new int[] {0, 1, 2, 3});
   }
+
+  public void testExplainFailingOptionalClauses() throws Exception {
+    // minShouldMatch not satisfied, show failing SHOULDs.
+    BooleanQuery msm =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term(FIELD, "w1")), Occur.SHOULD)
+            .add(new TermQuery(new Term(FIELD, "xx")), Occur.SHOULD)
+            .add(new TermQuery(new Term(FIELD, "zz")), Occur.SHOULD)
+            .setMinimumNumberShouldMatch(2)
+            .build();
+    String msmExpl = searcher.explain(msm, 0).toString();
+    assertTrue(
+        msmExpl.contains("Failure to match minimum number of optional clauses: 2, matched: 1"));
+    assertTrue(msmExpl.contains("no match on optional clause (field:xx)"));
+    assertTrue(msmExpl.contains("no match on optional clause (field:zz)"));
+    assertFalse(msmExpl.contains("no match on optional clause (field:w1)"));
+
+    // nothing matches in disjunction, show failing SHOULDs.
+    BooleanQuery disj =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term(FIELD, "xx")), Occur.SHOULD)
+            .add(new TermQuery(new Term(FIELD, "zz")), Occur.SHOULD)
+            .build();
+    String disjExpl = searcher.explain(disj, 0).toString();
+    assertTrue(disjExpl.contains("no match on optional clause (field:xx)"));
+    assertTrue(disjExpl.contains("no match on optional clause (field:zz)"));
+
+    // MUST clause fails, failing SHOULDs are not shown.
+    BooleanQuery mustFail =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term(FIELD, "missing")), Occur.MUST)
+            .add(new TermQuery(new Term(FIELD, "xx")), Occur.SHOULD)
+            .build();
+    assertFalse(searcher.explain(mustFail, 0).toString().contains("no match on optional clause"));
+  }
 }
