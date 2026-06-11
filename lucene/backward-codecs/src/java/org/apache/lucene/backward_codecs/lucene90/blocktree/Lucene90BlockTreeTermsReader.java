@@ -33,6 +33,7 @@ import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
+import org.apache.lucene.internal.hppc.ReadOnlyIntObjectMap;
 import org.apache.lucene.store.ChecksumIndexInput;
 import org.apache.lucene.store.FileTypeHint;
 import org.apache.lucene.store.IndexInput;
@@ -118,7 +119,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
   final PostingsReaderBase postingsReader;
 
   private final FieldInfos fieldInfos;
-  private final IntObjectHashMap<FieldReader> fieldMap;
+  private final ReadOnlyIntObjectMap<FieldReader> fieldMap;
   private final List<String> fieldList;
 
   final String segment;
@@ -259,7 +260,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
       CodecUtil.retrieveChecksum(indexIn, indexLength);
       CodecUtil.retrieveChecksum(termsIn, termsLength);
       fieldInfos = state.fieldInfos;
-      this.fieldMap = fieldMap;
+      this.fieldMap = ReadOnlyIntObjectMap.wrap(fieldMap);
       this.fieldList = sortFieldNames(fieldMap, state.fieldInfos);
       success = true;
     } finally {
@@ -305,7 +306,7 @@ public final class Lucene90BlockTreeTermsReader extends FieldsProducer {
     } finally {
       // Clear so refs to terms index is GCable even if
       // app hangs onto us:
-      fieldMap.clear();
+      fieldMap.release();
     }
   }
 

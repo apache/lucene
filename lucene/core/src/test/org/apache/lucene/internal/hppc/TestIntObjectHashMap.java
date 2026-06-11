@@ -184,65 +184,71 @@ public class TestIntObjectHashMap extends LuceneTestCase {
     assertTrue(map.indexOf(key2) < 0);
   }
 
-  public void testReadOnlyDenseMap() {
+  public void testReadOnlyIntObjectMapUsesDenseStorage() {
     map.put(keyE, value1);
     map.put(key2, value2);
     map.put(key4, value3);
 
-    IntObjectHashMap<Object> dense = ReadOnlyDenseIntObjectMap.maybeWrap(map);
-    assertTrue(dense instanceof ReadOnlyDenseIntObjectMap);
-    assertEquals(3, dense.size());
-    assertFalse(dense.isEmpty());
+    ReadOnlyIntObjectMap<Object> readOnlyMap = ReadOnlyIntObjectMap.wrap(map);
+    assertTrue(readOnlyMap.usesDenseStorage());
+    assertEquals(3, readOnlyMap.size());
+    assertFalse(readOnlyMap.isEmpty());
 
-    assertEquals(value1, dense.get(keyE));
-    assertEquals(value2, dense.get(key2));
-    assertEquals(value3, dense.get(key4));
-    assertNull(dense.get(key1));
-    assertEquals(value4, dense.getOrDefault(key1, value4));
-    assertTrue(dense.containsKey(keyE));
-    assertFalse(dense.containsKey(key1));
+    assertEquals(value1, readOnlyMap.get(keyE));
+    assertEquals(value2, readOnlyMap.get(key2));
+    assertEquals(value3, readOnlyMap.get(key4));
+    assertNull(readOnlyMap.get(key1));
+    assertEquals(value4, readOnlyMap.getOrDefault(key1, value4));
+    assertTrue(readOnlyMap.containsKey(keyE));
+    assertFalse(readOnlyMap.containsKey(key1));
 
-    assertTrue(dense.indexExists(dense.indexOf(keyE)));
-    assertTrue(dense.indexExists(dense.indexOf(key2)));
-    assertFalse(dense.indexExists(dense.indexOf(key1)));
-    assertEquals(value1, dense.indexGet(dense.indexOf(keyE)));
+    assertTrue(readOnlyMap.indexExists(readOnlyMap.indexOf(keyE)));
+    assertTrue(readOnlyMap.indexExists(readOnlyMap.indexOf(key2)));
+    assertFalse(readOnlyMap.indexExists(readOnlyMap.indexOf(key1)));
+    assertEquals(value1, readOnlyMap.indexGet(readOnlyMap.indexOf(keyE)));
 
-    assertSortedListEquals(dense.keys().toArray(), keyE, key2, key4);
-    assertSortedListEquals(toList(dense.values()), value1, value2, value3);
+    assertSortedListEquals(readOnlyMap.keys().toArray(), keyE, key2, key4);
+    assertSortedListEquals(toList(readOnlyMap.values()), value1, value2, value3);
 
     int count = 0;
-    for (IntObjectHashMap.IntObjectCursor<Object> cursor : dense) {
-      assertEquals(cursor.value, dense.get(cursor.key));
+    for (IntObjectHashMap.IntObjectCursor<Object> cursor : readOnlyMap) {
+      assertEquals(cursor.value, readOnlyMap.get(cursor.key));
       count++;
     }
-    assertEquals(dense.size(), count);
+    assertEquals(readOnlyMap.size(), count);
 
-    expectThrows(UnsupportedOperationException.class, () -> dense.put(key1, value4));
-    expectThrows(UnsupportedOperationException.class, () -> dense.remove(keyE));
-
-    dense.clear();
-    assertEquals(0, dense.size());
-    assertFalse(dense.containsKey(keyE));
+    readOnlyMap.release();
+    assertEquals(0, readOnlyMap.size());
+    assertFalse(readOnlyMap.containsKey(keyE));
   }
 
-  public void testReadOnlyDenseMapKeepsSparseMap() {
+  public void testReadOnlyIntObjectMapKeepsSparseStorage() {
     map.put(cast(100), value1);
 
-    assertSame(map, ReadOnlyDenseIntObjectMap.maybeWrap(map));
+    ReadOnlyIntObjectMap<Object> readOnlyMap = ReadOnlyIntObjectMap.wrap(map);
+    assertFalse(readOnlyMap.usesDenseStorage());
+    assertEquals(value1, readOnlyMap.get(cast(100)));
   }
 
-  public void testReadOnlyDenseMapRequiresMinimumSlotSavings() {
+  public void testReadOnlyIntObjectMapKeepsNullValueStorage() {
+    map.put(key2, null);
+
+    ReadOnlyIntObjectMap<Object> readOnlyMap = ReadOnlyIntObjectMap.wrap(map);
+    assertFalse(readOnlyMap.usesDenseStorage());
+    assertTrue(readOnlyMap.containsKey(key2));
+    assertNull(readOnlyMap.getOrDefault(key2, value1));
+  }
+
+  public void testReadOnlyIntObjectMapRequiresMinimumSlotSavings() {
     map.put(cast(6), value1);
 
-    assertSame(map, ReadOnlyDenseIntObjectMap.maybeWrap(map));
-    assertTrue(ReadOnlyDenseIntObjectMap.maybeWrap(map, 20) instanceof ReadOnlyDenseIntObjectMap);
+    assertFalse(ReadOnlyIntObjectMap.wrap(map).usesDenseStorage());
+    assertTrue(ReadOnlyIntObjectMap.wrap(map, 20).usesDenseStorage());
   }
 
-  public void testReadOnlyDenseMapRejectsInvalidSlotSavings() {
-    expectThrows(
-        IllegalArgumentException.class, () -> ReadOnlyDenseIntObjectMap.maybeWrap(map, -1));
-    expectThrows(
-        IllegalArgumentException.class, () -> ReadOnlyDenseIntObjectMap.maybeWrap(map, 101));
+  public void testReadOnlyIntObjectMapRejectsInvalidSlotSavings() {
+    expectThrows(IllegalArgumentException.class, () -> ReadOnlyIntObjectMap.wrap(map, -1));
+    expectThrows(IllegalArgumentException.class, () -> ReadOnlyIntObjectMap.wrap(map, 101));
   }
 
   /* */

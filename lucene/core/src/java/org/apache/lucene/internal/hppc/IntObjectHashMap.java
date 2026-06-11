@@ -495,7 +495,7 @@ public class IntObjectHashMap<VType>
   }
 
   /** A view of the keys inside this hash map. */
-  public class KeysContainer implements Iterable<IntCursor> {
+  public final class KeysContainer implements Iterable<IntCursor> {
 
     @Override
     public Iterator<IntCursor> iterator() {
@@ -562,7 +562,7 @@ public class IntObjectHashMap<VType>
   }
 
   /** A view over the set of values of this map. */
-  public class ValuesContainer implements Iterable<ObjectCursor<VType>> {
+  public final class ValuesContainer implements Iterable<ObjectCursor<VType>> {
 
     @Override
     public Iterator<ObjectCursor<VType>> iterator() {
