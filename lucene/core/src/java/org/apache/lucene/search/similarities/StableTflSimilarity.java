@@ -68,18 +68,6 @@ public class StableTflSimilarity extends Similarity {
   /** Multiplicative constant to term matching probability. Non-adjustable by users. */
   private static final float M = 0.00781f;
 
-  /** Controls non-linear term frequency normalization (saturation). */
-  private final float k1;
-
-  /** Controls how much term length affects term rarity. */
-  private final float c;
-
-  /**
-   * Controls query-side term frequency saturation. A negative value disables saturation (linear
-   * behavior).
-   */
-  private final float k3;
-
   /**
    * Default term length if term BytesRef can't be decoded with UTF_8. This is close to the average
    * word length in English.
@@ -95,6 +83,18 @@ public class StableTflSimilarity extends Similarity {
     }
   }
 
+  /** Controls non-linear term frequency normalization (saturation). */
+  private final float k1;
+
+  /** Controls how much term length affects term rarity. */
+  private final float c;
+
+  /**
+   * Controls query-side term frequency saturation. A negative value disables saturation (linear
+   * behavior).
+   */
+  private final float k3;
+
   /**
    * StableTFL with the supplied parameter values.
    *
@@ -108,11 +108,11 @@ public class StableTflSimilarity extends Similarity {
    * @throws IllegalArgumentException if {@code k3} is NaN or infinite
    */
   public StableTflSimilarity(float k1, float c, float k3) {
-    if (!Float.isFinite(k1) || k1 < 0) {
+    if (Float.isFinite(k1) == false || k1 < 0) {
       throw new IllegalArgumentException(
           "illegal k1 value: " + k1 + ", must be a non-negative finite value");
     }
-    if (!Float.isFinite(c) || c < 0) {
+    if (Float.isFinite(c) == false || c < 0) {
       throw new IllegalArgumentException(
           "illegal c value: " + c + ", must be a non-negative finite value");
     }
@@ -143,6 +143,7 @@ public class StableTflSimilarity extends Similarity {
    * <ul>
    *   <li>{@code k1 = 1.2}
    *   <li>{@code c = 0.917}
+   *   <li>{@code k3 = -1} (query-term frequency saturation disabled)
    * </ul>
    */
   public StableTflSimilarity() {
@@ -168,7 +169,7 @@ public class StableTflSimilarity extends Similarity {
    */
   private float tr(float termLength, float docLength) {
     // The probability that a term is present in a document with length docLength.
-    double p = (1 - Math.pow(1 - M * Math.pow(2, -this.c * termLength), docLength));
+    double p = (1 - Math.pow(1 - M * Math.pow(2, -c * termLength), docLength));
 
     return (float) Math.log(1 + (1 - p + 0.05D) / (p + 0.05D));
   }
@@ -205,7 +206,7 @@ public class StableTflSimilarity extends Similarity {
       cache[j] *= boost;
     }
 
-    return new TflScorer(boost, this.k1, this.c, termLengths, cache);
+    return new TflScorer(boost, k1, c, termLengths, cache);
   }
 
   private static class TflScorer extends SimScorer {
@@ -240,8 +241,8 @@ public class StableTflSimilarity extends Similarity {
       // composition via x -> 1 + x and x -> 1 - 1 / x.
       // Finally, we expand weight * (1 - 1 / (1 + freq / k1)) to
       // weight - weight / (1 + freq / k1), which runs slightly faster.
-      float weight = this.cache[((byte) encodedNorm) & 0xFF];
-      return weight - weight / (1 + freq / this.k1);
+      float weight = cache[((byte) encodedNorm) & 0xFF];
+      return weight - weight / (1 + freq / k1);
     }
 
     @Override
@@ -271,13 +272,13 @@ public class StableTflSimilarity extends Similarity {
     @Override
     public Explanation explain(Explanation freq, long norm) {
       List<Explanation> subs = new ArrayList<>();
-      subs.add(Explanation.match(this.boost, "boost"));
+      subs.add(Explanation.match(boost, "boost"));
       subs.add(explainTF(freq));
-      subs.add(explainTR(this.termLengths, norm));
+      subs.add(explainTR(termLengths, norm));
 
-      float weight = this.cache[((byte) norm) & 0xFF];
+      float weight = cache[((byte) norm) & 0xFF];
       return Explanation.match(
-          weight - weight / (1f + freq.getValue().floatValue() / this.k1),
+          weight - weight / (1f + freq.getValue().floatValue() / k1),
           "score(freq=" + freq.getValue() + "), computed as boost * tr * tf from:",
           subs);
     }
@@ -289,7 +290,7 @@ public class StableTflSimilarity extends Similarity {
       subs.add(Explanation.match(docLength, "dl, document length"));
 
       // The probability that a term is present in a document with length docLength.
-      double p = (1 - Math.pow(1 - M * Math.pow(2, -this.c * termLength), docLength));
+      double p = (1 - Math.pow(1 - M * Math.pow(2, -c * termLength), docLength));
       Explanation probExplanation =
           Explanation.match(
               p,
@@ -322,15 +323,15 @@ public class StableTflSimilarity extends Similarity {
     private List<Explanation> explainTrConstantFactors() {
       return List.of(
           Explanation.match(M, "m, multiplicative constant to term mismatch probability"),
-          Explanation.match(this.c, "c, decaying constant for term length"));
+          Explanation.match(c, "c, decaying constant for term length"));
     }
 
     private Explanation explainTF(Explanation freq) {
       List<Explanation> subs =
-          List.of(freq, Explanation.match(this.k1, "k1, term saturation parameter"));
+          List.of(freq, Explanation.match(k1, "k1, term saturation parameter"));
 
       return Explanation.match(
-          1f - 1f / (1 + freq.getValue().floatValue() / this.k1),
+          1f - 1f / (1 + freq.getValue().floatValue() / k1),
           "tf, computed as freq / (freq + k1) from:",
           subs);
     }
@@ -364,13 +365,6 @@ public class StableTflSimilarity extends Similarity {
 
   @Override
   public String toString() {
-    return "StableTFLSimilarity(k1="
-        + this.k1
-        + ", c="
-        + this.c
-        + ", m="
-        + M
-        + (this.k3 >= 0 ? ", k3=" + this.k3 : "")
-        + ")";
+    return "StableTflSimilarity(k1=" + k1 + ", c=" + c + (k3 >= 0 ? ", k3=" + k3 : "") + ")";
   }
 }

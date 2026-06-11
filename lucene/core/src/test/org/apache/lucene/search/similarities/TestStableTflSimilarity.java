@@ -169,11 +169,11 @@ public class TestStableTflSimilarity extends BaseSimilarityTestCase {
 
   public void testToString() {
     StableTflSimilarity sim = new StableTflSimilarity();
-    assertEquals("StableTFLSimilarity(k1=1.2, c=0.917, m=0.00781)", sim.toString());
+    assertEquals("StableTflSimilarity(k1=1.2, c=0.917)", sim.toString());
 
     // k3 is only rendered when saturation is enabled (non-negative)
     StableTflSimilarity withK3 = new StableTflSimilarity(1.2f, 0.917f, 8.0f);
-    assertEquals("StableTFLSimilarity(k1=1.2, c=0.917, m=0.00781, k3=8.0)", withK3.toString());
+    assertEquals("StableTflSimilarity(k1=1.2, c=0.917, k3=8.0)", withK3.toString());
   }
 
   /**
@@ -229,6 +229,63 @@ public class TestStableTflSimilarity extends BaseSimilarityTestCase {
     // the combined term rarity must be the sum of the individual per-term rarities
     assertTrue(explain.toString().contains("tr, term rarity, computed as the sum of:"));
     assertEquals(scorer.score(1, norm), explain.getValue().floatValue(), SCORE_EPSILON);
+  }
+
+  /**
+   * A term that is not valid UTF-8 falls back to the default term length of 5 code points instead
+   * of throwing.
+   */
+  public void testNonUtf8TermFallsBackToDefaultLength() {
+    StableTflSimilarity similarity = new StableTflSimilarity();
+    FieldStats fieldStats = new FieldStats("field", 4, 4, 3003, 2000);
+    long norm = SmallFloat.intToByte4(1000);
+
+    // 0xFF is never a valid UTF-8 leading byte
+    BytesRef invalidUtf8 = new BytesRef(new byte[] {(byte) 0xFF, (byte) 0xFF});
+    SimScorer invalidScorer = similarity.scorer(1, fieldStats, new TermStats(invalidUtf8, 3, 3));
+
+    // "hello" has exactly 5 code points, the default term length for undecodable terms
+    SimScorer fiveCharScorer =
+        similarity.scorer(1, fieldStats, new TermStats(new BytesRef("hello"), 3, 3));
+
+    assertEquals(fiveCharScorer.score(1, norm), invalidScorer.score(1, norm), 0f);
+  }
+
+  /** Scores depend only on term length and document length, never on corpus statistics. */
+  public void testScoreIndependentOfCorpusStats() {
+    StableTflSimilarity similarity = new StableTflSimilarity();
+    BytesRef term = new BytesRef("photosynthesis");
+    long norm = SmallFloat.intToByte4(1000);
+
+    SimScorer sparse =
+        similarity.scorer(1, new FieldStats("field", 4, 4, 3003, 2000), new TermStats(term, 1, 1));
+    SimScorer dense =
+        similarity.scorer(
+            1,
+            new FieldStats("field", 1_000_000, 999_999, 123_456_789, 99_999_999),
+            new TermStats(term, 999_999, 12_345_678));
+
+    assertEquals(sparse.score(1, norm), dense.score(1, norm), 0f);
+  }
+
+  /**
+   * A multi-term scorer's score equals the sum of the corresponding single-term scores (modulo
+   * float summation order).
+   */
+  public void testMultiTermScoreIsSumOfSingleTermScores() {
+    StableTflSimilarity similarity = new StableTflSimilarity();
+    FieldStats fieldStats = new FieldStats("field", 4, 4, 3003, 2000);
+    TermStats term1 = new TermStats(new BytesRef("photosynthesis"), 3, 3);
+    TermStats term2 = new TermStats(new BytesRef("chlorophyll"), 3, 3);
+    long norm = SmallFloat.intToByte4(1000);
+    float freq = 2;
+
+    float combined = similarity.scorer(1, fieldStats, term1, term2).score(freq, norm);
+    float sum =
+        similarity.scorer(1, fieldStats, term1).score(freq, norm)
+            + similarity.scorer(1, fieldStats, term2).score(freq, norm);
+
+    assertEquals(sum, combined, 1e-6f);
   }
 
   @Override
