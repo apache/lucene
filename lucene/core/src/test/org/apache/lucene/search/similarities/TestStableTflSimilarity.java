@@ -205,7 +205,7 @@ public class TestStableTflSimilarity extends BaseSimilarityTestCase {
           3.0702786 = tr, term rarity, computed as log(1 + (1 - p + 0.05) / (p + 0.05)) from:
             0.001049047818598714 = p, probability that the term appears in the doc, \
         computed as 1 - (1 - m * 2 ^ (-c * tl)) ^ dl from:
-              0.00781 = m, multiplicative constant to term mismatch probability
+              0.00781 = m, multiplicative constant to term match probability
               0.917 = c, decaying constant for term length
               14.0 = tl, term length
               984.0 = dl, document length

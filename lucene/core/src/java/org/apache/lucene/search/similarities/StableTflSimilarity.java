@@ -181,7 +181,7 @@ public class StableTflSimilarity extends Similarity {
   private static float getTermLength(BytesRef termText) {
     try {
       return UnicodeUtil.codePointCount(termText);
-    } catch (IllegalArgumentException e) {
+    } catch (IllegalArgumentException _) {
       return NON_UTF_8_DEFAULT_TERM_LENGTH;
     }
   }
@@ -322,7 +322,7 @@ public class StableTflSimilarity extends Similarity {
 
     private List<Explanation> explainTrConstantFactors() {
       return List.of(
-          Explanation.match(M, "m, multiplicative constant to term mismatch probability"),
+          Explanation.match(M, "m, multiplicative constant to term match probability"),
           Explanation.match(c, "c, decaying constant for term length"));
     }
 
