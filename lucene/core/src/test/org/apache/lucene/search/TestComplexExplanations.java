@@ -156,6 +156,8 @@ public class TestComplexExplanations extends BaseExplanationTestCase {
             .setMinimumNumberShouldMatch(2)
             .build();
     String msmExpl = searcher.explain(msm, 0).toString();
+    assertTrue(
+        msmExpl.contains("Failure to match minimum number of optional clauses: 2, matched: 1"));
     assertTrue(msmExpl.contains("no match on optional clause (field:xx)"));
     assertTrue(msmExpl.contains("no match on optional clause (field:zz)"));
     assertFalse(msmExpl.contains("no match on optional clause (field:w1)"));

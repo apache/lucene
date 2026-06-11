@@ -112,7 +112,11 @@ final class BooleanWeight extends Weight {
     } else if (shouldMatchCount < minShouldMatch) {
       subs.addAll(failingOptionals);
       return Explanation.noMatch(
-          "Failure to match minimum number of optional clauses: " + minShouldMatch, subs);
+          "Failure to match minimum number of optional clauses: "
+              + minShouldMatch
+              + ", matched: "
+              + shouldMatchCount,
+          subs);
     } else {
       // Replicating the same floating-point errors as the scorer does is quite
       // complex (essentially because of how ReqOptSumScorer casts intermediate
