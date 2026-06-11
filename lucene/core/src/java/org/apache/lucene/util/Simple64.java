@@ -1,10 +1,27 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.lucene.util;
 
 /**
  * Simple64: pack multiple small non-negative integers into a single long.
  *
- * <p>The high 4 bits of each long are a selector that encodes the bit-width and count of the
- * packed integers. The remaining 60 bits hold the actual values, packed from LSB to MSB.
+ * <p>The high 4 bits of each long are a selector that encodes the bit-width and count of the packed
+ * integers. The remaining 60 bits hold the actual values, packed from LSB to MSB.
  *
  * <p>Designed for {@code int} values (non-negative, max {@link Integer#MAX_VALUE} = 2^31 - 1).
  *
@@ -106,7 +123,7 @@ public class Simple64 {
       throw new IllegalArgumentException("Invalid Simple64 selector: " + selector);
     }
     final int count = COUNTS[selector];
-    final int bits  = BITS[selector];
+    final int bits = BITS[selector];
     final long mask = MASKS[selector];
     for (int i = 0; i < count; i++) {
       out[outOffset + i] = (int) (word & mask);
@@ -135,7 +152,7 @@ public class Simple64 {
    * @return number of longs written
    */
   public static int encodeAll(int[] ints, int offset, int length, long[] out, int outOffset) {
-    int inPos  = offset;
+    int inPos = offset;
     int outPos = outOffset;
     final int end = offset + length;
     while (inPos < end) {
@@ -155,7 +172,7 @@ public class Simple64 {
    * @return number of longs consumed
    */
   public static int decodeAll(long[] longs, int offset, int[] out, int outOffset, int count) {
-    int inPos     = offset;
+    int inPos = offset;
     int remaining = count;
     while (remaining > 0) {
       long word = longs[inPos++];
@@ -164,8 +181,8 @@ public class Simple64 {
         throw new IllegalArgumentException("Invalid Simple64 selector: " + selector);
       }
       final int toRead = Math.min(COUNTS[selector], remaining);
-      final int bits   = BITS[selector];
-      final long mask  = MASKS[selector];
+      final int bits = BITS[selector];
+      final long mask = MASKS[selector];
       for (int i = 0; i < toRead; i++) {
         out[outOffset++] = (int) (word & mask);
         word >>>= bits;
