@@ -1,4 +1,3 @@
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -82,21 +81,99 @@ public class TestStableTflSimilarity extends BaseSimilarityTestCase {
     assertTrue(expected.getMessage().contains("illegal c value"));
   }
 
+  public void testIllegalK3() {
+    IllegalArgumentException expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              new StableTflSimilarity(1.2f, 0.917f, Float.POSITIVE_INFINITY);
+            });
+    assertTrue(expected.getMessage().contains("illegal k3 value"));
+
+    expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              new StableTflSimilarity(1.2f, 0.917f, Float.NEGATIVE_INFINITY);
+            });
+    assertTrue(expected.getMessage().contains("illegal k3 value"));
+
+    expected =
+        expectThrows(
+            IllegalArgumentException.class,
+            () -> {
+              new StableTflSimilarity(1.2f, 0.917f, Float.NaN);
+            });
+    assertTrue(expected.getMessage().contains("illegal k3 value"));
+  }
+
+  public void testValidK3() {
+    // negative k3 disables saturation — should be allowed
+    StableTflSimilarity sim = new StableTflSimilarity(1.2f, 0.917f, -1f);
+    assertEquals(-1f, sim.getK3(), 0f);
+
+    // zero k3 — maximum saturation
+    sim = new StableTflSimilarity(1.2f, 0.917f, 0f);
+    assertEquals(0f, sim.getK3(), 0f);
+
+    // typical k3 value
+    sim = new StableTflSimilarity(1.2f, 0.917f, 8f);
+    assertEquals(8f, sim.getK3(), 0f);
+  }
+
+  public void testComputeQueryTermWeight() {
+    // negative k3 disables saturation: weight is the (linear) query term frequency
+    StableTflSimilarity disabled = new StableTflSimilarity(1.2f, 0.917f, -1f);
+    for (int qtf = 1; qtf <= 5; qtf++) {
+      assertEquals((float) qtf, disabled.computeQueryTermWeight(qtf), 0f);
+    }
+
+    // k3 = 0 fully saturates: any positive frequency yields a weight of 1
+    StableTflSimilarity saturated = new StableTflSimilarity(1.2f, 0.917f, 0f);
+    for (int qtf = 1; qtf <= 5; qtf++) {
+      assertEquals(1f, saturated.computeQueryTermWeight(qtf), 0f);
+    }
+
+    // positive k3 saturates: ((k3 + 1) * qtf) / (k3 + qtf), monotonic but sub-linear
+    float k3 = 8f;
+    StableTflSimilarity sim = new StableTflSimilarity(1.2f, 0.917f, k3);
+    float prev = 0f;
+    for (int qtf = 1; qtf <= 10; qtf++) {
+      float expected = ((k3 + 1f) * qtf) / (k3 + qtf);
+      float weight = sim.computeQueryTermWeight(qtf);
+      assertEquals(expected, weight, 0f);
+      assertTrue("weight should not decrease as qtf increases", weight >= prev);
+      assertTrue("saturation should keep weight at or below linear", weight <= qtf);
+      prev = weight;
+    }
+  }
+
   public void testValidParameters() {
     // boundary values: zero is allowed for both parameters
     StableTflSimilarity sim = new StableTflSimilarity(0f, 0f);
-    assertNotNull(sim);
+    assertEquals(0f, sim.getK1(), 0f);
+    assertEquals(0f, sim.getC(), 0f);
+
+    // typical values are returned as set
+    sim = new StableTflSimilarity(1.5f, 0.9f, 8f);
+    assertEquals(1.5f, sim.getK1(), 0f);
+    assertEquals(0.9f, sim.getC(), 0f);
+    assertEquals(8f, sim.getK3(), 0f);
 
     // the no-arg constructor uses the documented defaults
-    assertEquals(
-        new StableTflSimilarity(StableTflSimilarity.DEFAULT_K1, StableTflSimilarity.DEFAULT_C)
-            .toString(),
-        new StableTflSimilarity().toString());
+    StableTflSimilarity defaults = new StableTflSimilarity();
+    assertEquals(StableTflSimilarity.DEFAULT_K1, defaults.getK1(), 0f);
+    assertEquals(StableTflSimilarity.DEFAULT_C, defaults.getC(), 0f);
+    assertEquals(StableTflSimilarity.DEFAULT_K3, defaults.getK3(), 0f);
   }
 
   public void testToString() {
     StableTflSimilarity sim = new StableTflSimilarity();
     assertEquals("StableTFLSimilarity(k1=1.2, c=0.917, m=0.00781)", sim.toString());
+
+    // k3 is only rendered when saturation is enabled (non-negative)
+    StableTflSimilarity withK3 = new StableTflSimilarity(1.2f, 0.917f, 8.0f);
+    assertEquals("StableTFLSimilarity(k1=1.2, c=0.917, m=0.00781, k3=8.0)", withK3.toString());
   }
 
   /**
@@ -122,7 +199,7 @@ public class TestStableTflSimilarity extends BaseSimilarityTestCase {
         """
         1.3955811 = score(freq=1), computed as boost * tr * tf from:
           1.0 = boost
-          0.45454544 = tf, computed as freq / (freq + k1)) from:
+          0.45454544 = tf, computed as freq / (freq + k1) from:
             1 = freq
             1.2 = k1, term saturation parameter
           3.0702786 = tr, term rarity, computed as log(1 + (1 - p + 0.05) / (p + 0.05)) from:
@@ -197,6 +274,9 @@ public class TestStableTflSimilarity extends BaseSimilarityTestCase {
         c = Integer.MAX_VALUE * random.nextFloat();
         break;
     }
-    return new StableTflSimilarity(k1, c);
+
+    // query-term saturation parameter k3: negative (disabled) or a finite non-negative value
+    final float k3 = random.nextBoolean() ? -1f : random.nextFloat() * 20f;
+    return new StableTflSimilarity(k1, c, k3);
   }
 }

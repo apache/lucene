@@ -113,6 +113,10 @@ New Features
 
 * GITHUB#15818: Add BM25 k3 query-term frequency saturation to BM25Similarity. (Sagar Upadhyaya)
 
+* GITHUB#: Add StableTflSimilarity, a similarity that estimates term rarity from term length and
+  document length instead of corpus statistics such as document frequency. It also supports k3
+  query-term frequency saturation. (Tianxiao Wei)
+
 Improvements
 ---------------------
 * GITHUB#15704: Replace LinkedList with more efficient data structure. (Renato Haeberli)
