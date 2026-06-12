@@ -398,6 +398,169 @@ public class TestMMapDirectory extends BaseDirectoryTestCase {
     assertFalse(func.apply("_51a.si").isPresent());
   }
 
+  // Verifies that isRandom is set at construction when openInput is called with a RANDOM context.
+  // Fails without the fix that passes readAdvice == ReadAdvice.RANDOM into newInstance().
+  public void testIsRandomSetByOpenInput() throws IOException {
+    final int size = 8 * 1024;
+    try (MMapDirectory dir = new MMapDirectory(createTempDir("testIsRandomSetByOpenInput"))) {
+      dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT);
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(new byte[size], 0, size);
+      }
+      try (var in =
+          (MemorySegmentIndexInput)
+              dir.openInput("test", new DefaultIOContext(DataAccessHint.RANDOM))) {
+        assertTrue(in.isRandom);
+      }
+      try (var in =
+          (MemorySegmentIndexInput)
+              dir.openInput("test", new DefaultIOContext(DataAccessHint.SEQUENTIAL))) {
+        assertFalse(in.isRandom);
+      }
+    }
+  }
+
+  // Verifies that isRandom is set/cleared correctly when the read advice changes via
+  // updateIOContext.
+  public void testIsRandomSetByUpdateIOContext() throws IOException {
+    final int size = 8 * 1024;
+    try (MMapDirectory dir = new MMapDirectory(createTempDir("testIsRandomSetByUpdateIOContext"))) {
+      dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT);
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(new byte[size], 0, size);
+      }
+      try (var in = (MemorySegmentIndexInput) dir.openInput("test", IOContext.DEFAULT)) {
+        assertFalse(in.isRandom);
+        in.updateIOContext(new DefaultIOContext(DataAccessHint.RANDOM));
+        assertTrue(in.isRandom);
+        in.updateIOContext(new DefaultIOContext(DataAccessHint.SEQUENTIAL));
+        assertFalse(in.isRandom);
+      }
+    }
+  }
+
+  // Verifies that isRandom is set on slices created with an IOContext — the primary entry point
+  // for HNSW vector files. Without this, the volatile field would be set correctly by
+  // updateIOContext but missed entirely for slices, leaving prefetch throttled despite RANDOM
+  // advice.
+  public void testIsRandomSetBySliceWithContext() throws IOException {
+    final int size = 8 * 1024;
+    try (MMapDirectory dir =
+        new MMapDirectory(createTempDir("testIsRandomSetBySliceWithContext"))) {
+      dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT);
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(new byte[size], 0, size);
+      }
+      try (var in = dir.openInput("test", IOContext.DEFAULT)) {
+        var randomSlice =
+            (MemorySegmentIndexInput)
+                in.slice("s", 0, in.length(), new DefaultIOContext(DataAccessHint.RANDOM));
+        assertTrue(randomSlice.isRandom);
+
+        var normalSlice =
+            (MemorySegmentIndexInput)
+                in.slice("s", 0, in.length(), new DefaultIOContext(DataAccessHint.SEQUENTIAL));
+        assertFalse(normalSlice.isRandom);
+      }
+    }
+  }
+
+  // Verifies that slices created without an IOContext inherit isRandom from the parent.
+  // Fails without the fix that passes isRandom (rather than false) into buildSlice().
+  public void testSliceInheritsIsRandom() throws IOException {
+    final int size = 8 * 1024;
+    try (MMapDirectory dir = new MMapDirectory(createTempDir("testSliceInheritsIsRandom"))) {
+      dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT);
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(new byte[size], 0, size);
+      }
+      try (var in =
+          (MemorySegmentIndexInput)
+              dir.openInput("test", new DefaultIOContext(DataAccessHint.RANDOM))) {
+        assertTrue(in.isRandom);
+        var slice = in.slice("s", 0, in.length());
+        assertTrue("slice must inherit isRandom=true", slice.isRandom);
+      }
+      try (var in =
+          (MemorySegmentIndexInput)
+              dir.openInput("test", new DefaultIOContext(DataAccessHint.SEQUENTIAL))) {
+        assertFalse(in.isRandom);
+        var slice = in.slice("s", 0, in.length());
+        assertFalse("slice must inherit isRandom=false", slice.isRandom);
+      }
+    }
+  }
+
+  // Verifies that the power-of-two throttle (sharedPrefetchCounter) is bypassed in RANDOM mode.
+  // In NORMAL mode the counter increments on every prefetch() call; in RANDOM mode the isRandom
+  // short-circuit prevents getAndIncrement() from running so the counter stays put.
+  public void testPrefetchNotThrottledForRandom() throws IOException {
+    assumeTrue("madvise required for prefetch", MMapDirectory.supportsMadvise());
+    final int size = 8 * 1024;
+    try (MMapDirectory dir =
+        new MMapDirectory(createTempDir("testPrefetchNotThrottledForRandom"))) {
+      dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT);
+      dir.setPreload(MMapDirectory.PRELOAD_HINT);
+      try (IndexOutput out =
+          dir.createOutput("test", IOContext.DEFAULT.withHints(PreloadHint.INSTANCE))) {
+        out.writeBytes(new byte[size], 0, size);
+      }
+      try (var in =
+          (MemorySegmentIndexInput)
+              dir.openInput("test", IOContext.DEFAULT.withHints(PreloadHint.INSTANCE))) {
+        assertTrue("file should be preloaded", in.isLoaded().orElse(false));
+        assertFalse(in.isRandom);
+
+        // NORMAL mode: counter increments on each call (no misses because pages are warm)
+        for (int i = 0; i < 4; i++) in.prefetch(0, in.length());
+        assertTrue(
+            "counter should have incremented in NORMAL mode", in.sharedPrefetchCounter.get() > 0);
+
+        // RANDOM mode: isRandom short-circuits before getAndIncrement(), counter must not change
+        in.updateIOContext(new DefaultIOContext(DataAccessHint.RANDOM));
+        assertTrue(in.isRandom);
+        int counterSnapshot = in.sharedPrefetchCounter.get();
+        for (int i = 0; i < 4; i++) in.prefetch(0, in.length());
+        assertEquals(
+            "counter must not increment in RANDOM mode",
+            counterSnapshot,
+            in.sharedPrefetchCounter.get());
+      }
+    }
+  }
+
+  public void testCloneCopiesIsRandomSingleSegment() throws IOException {
+    testCloneCopiesIsRandom(64 * 1024);
+  }
+
+  public void testCloneCopiesIsRandomMultiSegment() throws IOException {
+    testCloneCopiesIsRandom(16);
+  }
+
+  void testCloneCopiesIsRandom(long maxChunkSize) throws IOException {
+    final int size = 64;
+    try (MMapDirectory dir =
+        new MMapDirectory(createTempDir("testCloneCopiesIsRandom"), maxChunkSize)) {
+      dir.setReadAdvice(MMapDirectory.ADVISE_BY_CONTEXT);
+      try (IndexOutput out = dir.createOutput("test", IOContext.DEFAULT)) {
+        out.writeBytes(new byte[size], 0, size);
+      }
+      // isRandom=true: clone must inherit it (fails without the clone fix)
+      try (var in = (MemorySegmentIndexInput) dir.openInput("test", IOContext.DEFAULT)) {
+        in.updateIOContext(new DefaultIOContext(DataAccessHint.RANDOM));
+        assertTrue(in.isRandom);
+        var clone = in.clone();
+        assertTrue("clone must inherit isRandom=true", clone.isRandom);
+      }
+      // isRandom=false: clone must also reflect false
+      try (var in = (MemorySegmentIndexInput) dir.openInput("test", IOContext.DEFAULT)) {
+        assertFalse(in.isRandom);
+        var clone = in.clone();
+        assertFalse("clone must inherit isRandom=false", clone.isRandom);
+      }
+    }
+  }
+
   public void testPrefetchWithSingleSegment() throws IOException {
     testPrefetchWithSegments(64 * 1024);
   }

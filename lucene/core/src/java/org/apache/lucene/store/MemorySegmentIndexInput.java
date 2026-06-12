@@ -60,6 +60,9 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   final MemorySegment[] segments;
   final Function<IOContext, ReadAdvice> toReadAdvice;
   final AtomicInteger sharedPrefetchCounter;
+  // True when ReadAdvice.RANDOM is active. Checked before the power-of-two throttle in prefetch()
+  // so that random-access patterns always fire madvise regardless of the page-cache hit counter.
+  boolean isRandom;
 
   int curSegmentIndex = -1;
   MemorySegment
@@ -73,7 +76,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       long length,
       int chunkSizePower,
       boolean confined,
-      Function<IOContext, ReadAdvice> toReadAdvice) {
+      Function<IOContext, ReadAdvice> toReadAdvice,
+      boolean isRandom) {
     assert Arrays.stream(segments).map(MemorySegment::scope).allMatch(arena.scope()::equals);
     AtomicInteger sharedPrefetchCounter = new AtomicInteger();
     if (segments.length == 1) {
@@ -85,7 +89,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           chunkSizePower,
           confined,
           toReadAdvice,
-          sharedPrefetchCounter);
+          sharedPrefetchCounter,
+          isRandom);
     } else {
       return new MultiSegmentImpl(
           resourceDescription,
@@ -96,7 +101,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           chunkSizePower,
           confined,
           toReadAdvice,
-          sharedPrefetchCounter);
+          sharedPrefetchCounter,
+          isRandom);
     }
   }
 
@@ -108,7 +114,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
       int chunkSizePower,
       boolean confined,
       Function<IOContext, ReadAdvice> toReadAdvice,
-      AtomicInteger sharedPrefetchCounter) {
+      AtomicInteger sharedPrefetchCounter,
+      boolean isRandom) {
     super(resourceDescription);
     this.arena = arena;
     this.segments = segments;
@@ -119,6 +126,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     this.curSegment = segments[0];
     this.toReadAdvice = toReadAdvice;
     this.sharedPrefetchCounter = sharedPrefetchCounter;
+    this.isRandom = isRandom;
   }
 
   void ensureOpen() {
@@ -335,7 +343,9 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
 
     ensureOpen();
 
-    if (BitUtil.isZeroOrPowerOfTwo(sharedPrefetchCounter.getAndIncrement()) == false) {
+    final boolean skipPrefetchBackoff = this.isRandom;
+    if (skipPrefetchBackoff == false
+        && BitUtil.isZeroOrPowerOfTwo(sharedPrefetchCounter.getAndIncrement()) == false) {
       // We've had enough consecutive hits on the page cache that this number is neither zero nor a
       // power of two. There is a good chance that a good chunk of this index input is cached in
       // physical memory. Let's skip the overhead of the madvise system call, we'll be trying again
@@ -348,8 +358,14 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
         offset,
         length,
         segment -> {
+          if (skipPrefetchBackoff) {
+            // RANDOM mode: always fire madvise, skip isLoaded() overhead (mincore on every
+            // segment).
+            nativeAccess.madviseWillNeed(segment);
+            return true;
+          }
           if (segment.isLoaded() == false) {
-            // We have a cache miss on at least one page, let's reset the counter.
+            // Cache miss: reset counter so the next prefetch fires immediately.
             sharedPrefetchCounter.set(0);
             nativeAccess.madviseWillNeed(segment);
             return true;
@@ -364,6 +380,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   }
 
   private void updateReadAdvice(ReadAdvice readAdvice) throws IOException {
+    isRandom = (readAdvice == ReadAdvice.RANDOM);
     if (NATIVE_ACCESS.isEmpty()) {
       return;
     }
@@ -558,7 +575,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
               chunkSizePower,
               confined,
               toReadAdvice,
-              sharedPrefetchCounter);
+              sharedPrefetchCounter,
+              isRandom);
     } else {
       clone =
           new MultiSegmentImpl(
@@ -570,7 +588,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
               chunkSizePower,
               confined,
               toReadAdvice,
-              sharedPrefetchCounter);
+              sharedPrefetchCounter,
+              isRandom);
     }
     try {
       clone.seek(getFilePointer());
@@ -601,14 +620,15 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
               + this);
     }
 
-    return buildSlice(sliceDescription, offset, length);
+    return buildSlice(sliceDescription, offset, length, isRandom);
   }
 
   @Override
   public final MemorySegmentIndexInput slice(
       String sliceDescription, long offset, long length, IOContext context) throws IOException {
-    MemorySegmentIndexInput slice = slice(sliceDescription, offset, length);
     ReadAdvice advice = toReadAdvice.apply(context);
+    MemorySegmentIndexInput slice =
+        buildSlice(sliceDescription, offset, length, advice == ReadAdvice.RANDOM);
     if (NATIVE_ACCESS.isPresent() && advice != ReadAdvice.NORMAL) {
       // No need to madvise with a normal advice, since it's the OS' default.
       final NativeAccess nativeAccess = NATIVE_ACCESS.get();
@@ -632,7 +652,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
   }
 
   /** Builds the actual sliced IndexInput (may apply extra offset in subclasses). * */
-  MemorySegmentIndexInput buildSlice(String sliceDescription, long offset, long length) {
+  MemorySegmentIndexInput buildSlice(
+      String sliceDescription, long offset, long length, boolean isRandom) {
     ensureOpen();
     ensureAccessible();
     final MemorySegment[] slices;
@@ -663,7 +684,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           chunkSizePower,
           confined,
           toReadAdvice,
-          sharedPrefetchCounter);
+          sharedPrefetchCounter,
+          isRandom);
     } else {
       return new MultiSegmentImpl(
           newResourceDescription,
@@ -674,7 +696,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           chunkSizePower,
           confined,
           toReadAdvice,
-          sharedPrefetchCounter);
+          sharedPrefetchCounter,
+          isRandom);
     }
   }
 
@@ -719,7 +742,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
         int chunkSizePower,
         boolean confined,
         Function<IOContext, ReadAdvice> toReadAdvice,
-        AtomicInteger sharedPrefetchCounter) {
+        AtomicInteger sharedPrefetchCounter,
+        boolean isRandom) {
       super(
           resourceDescription,
           arena,
@@ -728,7 +752,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           chunkSizePower,
           confined,
           toReadAdvice,
-          sharedPrefetchCounter);
+          sharedPrefetchCounter,
+          isRandom);
       this.curSegmentIndex = 0;
     }
 
@@ -833,7 +858,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
         int chunkSizePower,
         boolean confined,
         Function<IOContext, ReadAdvice> toReadAdvice,
-        AtomicInteger sharedPrefetchCounter) {
+        AtomicInteger sharedPrefetchCounter,
+        boolean isRandom) {
       super(
           resourceDescription,
           arena,
@@ -842,7 +868,8 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
           chunkSizePower,
           confined,
           toReadAdvice,
-          sharedPrefetchCounter);
+          sharedPrefetchCounter,
+          isRandom);
       this.offset = offset;
       try {
         seek(0L);
@@ -909,8 +936,9 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
     }
 
     @Override
-    MemorySegmentIndexInput buildSlice(String sliceDescription, long ofs, long length) {
-      return super.buildSlice(sliceDescription, this.offset + ofs, length);
+    MemorySegmentIndexInput buildSlice(
+        String sliceDescription, long ofs, long length, boolean isRandom) {
+      return super.buildSlice(sliceDescription, this.offset + ofs, length, isRandom);
     }
 
     @Override

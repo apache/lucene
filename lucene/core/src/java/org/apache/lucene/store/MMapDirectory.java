@@ -327,6 +327,7 @@ public class MMapDirectory extends FSDirectory {
     final Arena arena = confined ? Arena.ofConfined() : getSharedArena(name, arenas);
     try (var fc = FileChannel.open(path, StandardOpenOption.READ)) {
       final long fileSize = fc.size();
+      final ReadAdvice readAdvice = toReadAdvice.apply(context);
       return MemorySegmentIndexInput.newInstance(
           resourceDescription,
           arena,
@@ -334,14 +335,15 @@ public class MMapDirectory extends FSDirectory {
               arena,
               resourceDescription,
               fc,
-              toReadAdvice.apply(context),
+              readAdvice,
               chunkSizePower,
               preload.test(name, context),
               fileSize),
           fileSize,
           chunkSizePower,
           confined,
-          toReadAdvice);
+          toReadAdvice,
+          readAdvice == ReadAdvice.RANDOM);
     } catch (Throwable t) {
       arena.close();
       throw t;

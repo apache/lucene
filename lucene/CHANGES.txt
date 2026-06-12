@@ -141,6 +141,12 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16145: Always fire prefetch when ReadAdvice is RANDOM in MemorySegmentIndexInput. The power-of-two throttle
+  assumes "consecutive cache hits → file is warm", which does not hold for random-access patterns where each request
+  visits unpredictable pages. An isRandom boolean flag bypasses the throttle with zero overhead on the non-RANDOM
+  hot path.
+  (Michael Marshall)
+
 * GITHUB#15681, GITHUB#15833, GITHUB#16056: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
