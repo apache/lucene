@@ -306,12 +306,19 @@ API Changes
 * GITHUB#16062: Add FlatFieldVectorsWriter.asKnnVectorValues to return directly a KnnVectorValues "view" over
   vectors to be written. (Lorenzo Dematte)
 
-* GITHUB#16101 Add DictionaryColumn for SORTED / SORTED_SET docvalues using experimental column api (Tim Brooks)
+* GITHUB#16101: Add DictionaryColumn for SORTED / SORTED_SET docvalues using experimental column api (Tim Brooks)
 
 * GITHUB#16104: Add public constructors and a public getSearchStrategy() to FloatVectorSimilarityQuery, ByteVectorSimilarityQuery and VectorSimilarityCollector that accept a KnnSearchStrategy. (Sasilekha R)
 
+* GITHUB#16227: Add dense indexing path for BinaryColumn while using experimental column api (Tim Brooks)
+
 New Features
 ---------------------
+
+* GITHUB#16202: Add BinarySortField, allowing BinaryDocValues fields to be used as an index sort. It
+  compares the raw bytes directly in unsigned byte order, a good fit for high-cardinality fields where a
+  SortedDocValues dictionary is pure overhead. A subclass may override getSortKeyDocValues to supply a
+  custom order-preserving sort key. (Jim Ferenczi)
 
 * GITHUB#15740, GITHUB#15817: Add NumericFieldStats utility for retrieving global numeric field
   statistics (min, max, doc count) from index metadata structures. Migrate
@@ -376,6 +383,8 @@ Improvements
 
 * GITHUB#16000: Clarify that Accountable#ramBytesUsed() reports JVM heap memory only. (Luca Cavanna)
 
+* GITHUB#15795: Introduce MemoryAccountingBitsetCollectorManager to parallelize search when using MemoryAccountingBitsetCollector. (Binlong Gao)
+
 * GITHUB#15574: Introduce FirstPassGroupingCollectorManager to parallelize search when using FirstPassGroupingCollector. (Binlong Gao)
 
 * GITHUB#15660: Introduce LargeNumHitsTopDocsCollectorManager to parallelize search when using LargeNumHitsTopDocsCollector. (Binlong Gao)
@@ -384,8 +393,19 @@ Improvements
 
 * GITHUB#16144: Clarify LeafCollector batch collection scoring contract. (Costin Leau)
 
+* GITHUB#16229: BooleanWeight.explain prints failing optional clauses when query fails due to insufficient SHOULD matches. (Jakub Slowinski)
+
 Optimizations
 ---------------------
+* GITHUB#16222: MultiTermQuery constant-score wrapper now defers term collection to ScorerSupplier#get()
+  for queries with an unknown term count (automaton queries such as wildcard/regexp/prefix/range),
+  instead of scanning the term dictionary while building the ScorerSupplier. This keeps the
+  ScorerSupplier "planning" phase cheap so a parent conjunction can short-circuit (e.g. a sibling
+  clause matching no documents) before a non-seekable scan, such as a leading wildcard, runs.
+  (Tianxiao Wei)
+
+* GITHUB#16176: Restore WANDScorer for TOP_SCORES + minShouldMatch > 1. (Tianxiao Wei)
+
 * GITHUB#16153: Use TernaryLongHeap in UpdateGraphsUtils for faster HNSW graph merging. (Prithvi S)
 
 * GITHUB#15861: Optimise PhraseScorer by short circuiting non competitive documents in TOP_SCORES mode. (Prithvi S)
@@ -435,8 +455,10 @@ Optimizations
 
 * GITHUB#16001: IndexSearcher.count() was calling query.rewrite twice, a regression since v9.10 (David Smiley)
 
-* GITHUB#16050: Add SIMD-accelerated bulk range evaluation for dense numeric doc values via
-  BatchDocValuesRangeIterator and DocValuesRangeSupport. (Sagar Upadhyaya)
+* GITHUB#16050, GITHUB#16177: Doc-values range queries are now always two-phase iterators, with
+  SIMD-accelerated bulk range evaluation for dense numeric doc values exposed through
+  TwoPhaseIterator#intoBitSet (overridable for SIMD block evaluation) instead of a separate plain
+  DocIdSetIterator, speeding up conjunctions of range filters. (Sagar Upadhyaya, Jim Ferenczi)
 
 * GITHUB#16061, GITHUB#16070, GITHUB#16085, GITHUB#16120: Improve cost estimation in SortedSetDocValuesRangeQuery
   and SortedNumericDocValuesRangeQuery when using DocValuesSkipper, the field is dense and is the primary sort of
@@ -486,6 +508,13 @@ Optimizations
 * GITHUB#16119: Optimize byte array writes in OutputStreamIndexOutput to remove unnecessary overhead. (neoremind)
 
 * GITHUB#16155: Use BitSet#nextClearBit to iterate uninitialized nodes in MergingHnswGraphBuilder. (Sasilekha R)
+
+* GITHUB#16174: Convert contiguous ordinal sets to ranges in DocValuesRangeIterator#forOrdinalSet. (Sasilekha R)
+
+* GITHUB#16172: Bulk-evaluate skip-indexed sorted and sorted-set doc-values range queries via a block-aware
+  DocValuesRangeIterator#intoBitSet. (Costin Leau)
+
+* GITHUB#16166: Add bulk range evaluation for multi-valued sorted numeric doc values. (Costin Leau)
 
 Bug Fixes
 ---------------------
@@ -554,6 +583,8 @@ Bug Fixes
 * GITHUB#16156: OffHeapFloatVectorValues#prefetch now bounds its loop by the requested
   count instead of the full ordinal array, matching OffHeapByteVectorValues. (Vignesh)
 
+* GITHUB#16179: Fix minor lock/unlock acquisition order in DocumentsWriterDeleteQueue (Chris Hegarty)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
@@ -594,6 +625,10 @@ Other
 
 * GITHUB#16178: Simplify how we collect hits in the LRU cache from a DocIdStream into a RoaringDocIdSet.
   (Ignacio Vera)
+
+* GITHUB#16218: Add non-degenerate DocValuesSkipper implementation to SimpleTextCodec. (Alan Woodward)
+
+* GITHUB#16197: Remove deprecated usages of search(Query, Collector) from monitor module. (Luca Cavanna)
 
 ======================= Lucene 10.4.0 =======================
 

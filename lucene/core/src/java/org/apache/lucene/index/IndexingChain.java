@@ -44,6 +44,7 @@ import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.document.column.BinaryColumn;
+import org.apache.lucene.document.column.BytesRefValuesCursor;
 import org.apache.lucene.document.column.Column;
 import org.apache.lucene.document.column.ColumnBatch;
 import org.apache.lucene.document.column.ColumnFieldAdapter;
@@ -86,6 +87,8 @@ final class IndexingChain implements Accountable {
   final TermsHash termsHash;
   // Shared pool for doc-value terms
   final ByteBlockPool docValuesBytePool;
+  // Shared scratch buffers for dense points encoding
+  final SharedIndexingScratch sharedIndexingScratch;
   // Writes stored fields
   final StoredFieldsConsumer storedFieldsConsumer;
   final VectorValuesConsumer vectorValuesConsumer;
@@ -155,6 +158,7 @@ final class IndexingChain implements Accountable {
         new FreqProxTermsWriter(
             intBlockAllocator, byteBlockAllocator, bytesUsed, termVectorsWriter);
     docValuesBytePool = new ByteBlockPool(byteBlockAllocator);
+    sharedIndexingScratch = new SharedIndexingScratch(bytesUsed);
     if (indexWriterConfig.getParentField() != null) {
       this.parentField = new NumericDocValuesField(indexWriterConfig.getParentField(), -1);
       parentPf = getOrAddPerField(this.parentField.name());
@@ -1082,6 +1086,12 @@ final class IndexingChain implements Accountable {
       throws IOException {
     final DocValuesType dvType = fieldType.docValuesType();
     final boolean hasPoints = fieldType.pointDimensionCount() != 0;
+
+    if (column.density() == Column.Density.DENSE) {
+      processDenseBinaryColumn(baseDocID, numDocs, column, pf, dvType, hasPoints);
+      return;
+    }
+
     final PointValuesWriter pointWriter = hasPoints ? pf.pointValuesWriter : null;
     final ObjectTupleCursor<BytesRef> cursor = column.tuples();
 
@@ -1140,6 +1150,51 @@ final class IndexingChain implements Accountable {
       default ->
           throw new IllegalArgumentException(
               "BinaryColumn \"" + column.name() + "\" has incompatible docValuesType: " + dvType);
+    }
+  }
+
+  private static void processDenseBinaryColumn(
+      int baseDocID,
+      int numDocs,
+      BinaryColumn column,
+      PerField pf,
+      DocValuesType dvType,
+      boolean hasPoints)
+      throws IOException {
+    // DV pass first: dense values cursor
+    if (dvType != DocValuesType.NONE) {
+      BytesRefValuesCursor dvCursor = column.values();
+      ColumnValidation.checkDenseCount(column, dvCursor.size(), numDocs);
+      switch (dvType) {
+        case BINARY -> {
+          BinaryDocValuesWriter writer = (BinaryDocValuesWriter) pf.docValuesWriter;
+          for (int i = 0; i < dvCursor.size(); i++) {
+            writer.addValue(baseDocID + i, dvCursor.nextValue());
+          }
+        }
+        case SORTED -> {
+          SortedDocValuesWriter writer = (SortedDocValuesWriter) pf.docValuesWriter;
+          for (int i = 0; i < dvCursor.size(); i++) {
+            writer.addValue(baseDocID + i, dvCursor.nextValue());
+          }
+        }
+        case SORTED_SET -> {
+          SortedSetDocValuesWriter writer = (SortedSetDocValuesWriter) pf.docValuesWriter;
+          for (int i = 0; i < dvCursor.size(); i++) {
+            writer.addValue(baseDocID + i, dvCursor.nextValue());
+          }
+        }
+        // $CASES-OMITTED$
+        default ->
+            throw new IllegalArgumentException(
+                "BinaryColumn \"" + column.name() + "\" has incompatible docValuesType: " + dvType);
+      }
+    }
+    if (hasPoints) {
+      // Points pass: fresh dense values cursor → bulk ND points add.
+      BytesRefValuesCursor pc = column.values();
+      ColumnValidation.checkDenseCount(column, pc.size(), numDocs);
+      pf.pointValuesWriter.addDenseNDValues(baseDocID, pc);
     }
   }
 
@@ -1291,7 +1346,7 @@ final class IndexingChain implements Accountable {
         throw new AssertionError("unrecognized DocValues.Type: " + dvType);
     }
     if (fi.getPointDimensionCount() != 0) {
-      pf.pointValuesWriter = new PointValuesWriter(bytesUsed, fi);
+      pf.pointValuesWriter = new PointValuesWriter(bytesUsed, fi, sharedIndexingScratch);
     }
     if (fi.getVectorDimension() != 0) {
       try {

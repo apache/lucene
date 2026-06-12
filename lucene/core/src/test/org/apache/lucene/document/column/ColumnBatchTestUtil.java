@@ -147,6 +147,125 @@ public class ColumnBatchTestUtil {
     }
   }
 
+  /** Dense {@link BinaryColumn} backed by a fixed {@link BytesRef} array, one value per doc. */
+  public static class ArrayDenseBinaryColumn extends BinaryColumn {
+    private final BytesRef[] values;
+
+    public ArrayDenseBinaryColumn(String name, IndexableFieldType fieldType, BytesRef[] values) {
+      super(name, fieldType, Density.DENSE);
+      this.values = values;
+    }
+
+    @Override
+    public ObjectTupleCursor<BytesRef> tuples() {
+      return new ObjectTupleCursor<>() {
+        int pos = -1;
+
+        @Override
+        public int nextDoc() {
+          pos++;
+          return pos < values.length ? pos : DocIdSetIterator.NO_MORE_DOCS;
+        }
+
+        @Override
+        public BytesRef value() {
+          return values[pos];
+        }
+      };
+    }
+
+    @Override
+    public BytesRefValuesCursor values() {
+      return new BytesRefValuesCursor(values.length) {
+        int pos = 0;
+
+        @Override
+        public BytesRef nextValue() {
+          if (pos >= values.length) {
+            throw new IllegalStateException(
+                "BytesRefValuesCursor exhausted: size=" + values.length);
+          }
+          return values[pos++];
+        }
+      };
+    }
+  }
+
+  /**
+   * Dense {@link BinaryColumn} backed by a single contiguous packed {@code byte[]} of {@code n *
+   * width} bytes.
+   */
+  public static class ContiguousDenseBinaryColumn extends BinaryColumn {
+    private final byte[] packed;
+    private final int width;
+    private final int n;
+
+    /**
+     * @param packed flat array of {@code n * width} bytes; {@code packed[i*width..(i+1)*width)} is
+     *     the value for batch-local doc-id {@code i}.
+     * @param width number of bytes per value
+     */
+    public ContiguousDenseBinaryColumn(
+        String name, IndexableFieldType fieldType, byte[] packed, int width) {
+      super(name, fieldType, Density.DENSE);
+      assert packed.length % width == 0 : "packed.length must be a multiple of width";
+      this.packed = packed;
+      this.width = width;
+      this.n = packed.length / width;
+    }
+
+    @Override
+    public ObjectTupleCursor<BytesRef> tuples() {
+      return new ObjectTupleCursor<>() {
+        int pos = -1;
+        final BytesRef ref = new BytesRef(packed, 0, width);
+
+        @Override
+        public int nextDoc() {
+          pos++;
+          if (pos < n) {
+            ref.offset = pos * width;
+            return pos;
+          }
+          return DocIdSetIterator.NO_MORE_DOCS;
+        }
+
+        @Override
+        public BytesRef value() {
+          return ref;
+        }
+      };
+    }
+
+    @Override
+    public BytesRefValuesCursor values() {
+      return new BytesRefValuesCursor(n) {
+        int consumed = 0;
+        final BytesRef ref = new BytesRef(packed, 0, width);
+
+        @Override
+        public BytesRef nextValue() {
+          if (consumed >= n) {
+            throw new IllegalStateException("BytesRefValuesCursor exhausted: size=" + n);
+          }
+          ref.offset = consumed * width;
+          consumed++;
+          return ref;
+        }
+
+        /** Single bulk copy — exercises the override path. */
+        @Override
+        public void fillPackedPoints(byte[] dst, int offset, int length, int width) {
+          if (consumed + length > n) {
+            throw new IllegalStateException("BytesRefValuesCursor exhausted: size=" + n);
+          }
+          System.arraycopy(packed, consumed * width, dst, offset, length * width);
+          consumed += length;
+        }
+      };
+    }
+  }
+
   /** Dense {@link LongColumn} with an optional bulk values cursor. */
   public static class ArrayDenseLongColumn extends LongColumn {
     private final long[] values;
