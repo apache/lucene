@@ -32,13 +32,13 @@ public abstract class ColumnBatch {
   public abstract int numDocs();
 
   /**
-   * Returns the columns in this batch. Each column covers one indexing aspect (inversion, stored,
+   * Returns the columns in this batch. Each column covers one indexing feature (inversion, stored,
    * doc values, points, or vectors) of a field across all documents in the batch.
    *
-   * <p>Multiple columns may share a field name to combine distinct aspects — for example, a stored
-   * {@link BinaryColumn} alongside a separate inverted column for the same field — but each aspect
+   * <p>Multiple columns may share a field name to combine distinct features — for example, a stored
+   * {@link BinaryColumn} alongside a separate inverted column for the same field — but each feature
    * must be carried by exactly one column. Multi-valued fields must use a single column whose tuple
-   * cursor emits multiple values per doc-id; an aspect must not be split across columns.
+   * cursor emits multiple values per doc-id; a feature must not be split across columns.
    */
   public abstract Iterable<Column> columns();
 }

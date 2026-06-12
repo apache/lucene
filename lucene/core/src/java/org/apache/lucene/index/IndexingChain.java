@@ -713,14 +713,14 @@ final class IndexingChain implements Accountable {
     long batchGen = nextFieldGen++;
 
     // First pass: validate all columns and accumulate each field's schema. A batch may carry more
-    // than one column for a field name to combine distinct aspects (see aspectMask).
+    // than one column for a field name to combine distinct features (see featureMask).
     int columnIdx = 0;
     int uniqueFieldCount = 0;
     for (Column column : columnBatch.columns()) {
       final String fieldName = column.name();
       final IndexableFieldType fieldType = column.fieldType();
 
-      ColumnValidation.validateColumnHasIndexingAspect(fieldName, fieldType);
+      ColumnValidation.validateColumnHasIndexingFeature(fieldName, fieldType);
 
       switch (column) {
         case BinaryColumn bc -> ColumnValidation.validateBinaryColumn(bc, fieldType);
@@ -747,26 +747,26 @@ final class IndexingChain implements Accountable {
       docFields[columnIdx++] = pf;
 
       if (pf.fieldGen != batchGen) {
-        // First column for this field name in this batch: start a fresh schema and aspect set, and
+        // First column for this field name in this batch: start a fresh schema and feature set, and
         // collect the field once so its FieldInfo is initialized/validated after the loop.
         pf.fieldGen = batchGen;
-        pf.columnAspects = 0;
+        pf.columnFeatures = 0;
         pf.schema.reset(baseDocID);
         fields[uniqueFieldCount++] = pf;
       }
 
-      // Each indexing aspect must come from a single column for a given field name.
-      int columnAspects = ColumnValidation.aspectMask(fieldType);
-      int overlap = pf.columnAspects & columnAspects;
+      // Each indexing feature must come from a single column for a given field name.
+      int columnFeatures = ColumnValidation.featureMask(fieldType);
+      int overlap = pf.columnFeatures & columnFeatures;
       if (overlap != 0) {
         throw new IllegalArgumentException(
             "ColumnBatch has multiple columns for field \""
                 + fieldName
-                + "\" claiming the same indexing aspect "
-                + ColumnValidation.aspectNames(overlap)
-                + "; each aspect must come from a single column.");
+                + "\" claiming the same indexing feature "
+                + ColumnValidation.featureNames(overlap)
+                + "; each feature must come from exactly one column.");
       }
-      pf.columnAspects |= (byte) columnAspects;
+      pf.columnFeatures |= (byte) columnFeatures;
 
       updateDocFieldSchema(fieldName, pf.schema, fieldType);
     }
@@ -1743,14 +1743,14 @@ final class IndexingChain implements Accountable {
     long fieldGen = -1;
 
     /**
-     * Bit set of indexing aspects (as returned by {@link ColumnValidation#aspectMask}) already
+     * Bit set of indexing features (as returned by {@link ColumnValidation#featureMask}) already
      * claimed for this field name within the current {@code addBatch} call. A column batch may
-     * carry several columns for one field name to combine distinct aspects (e.g. a stored column
-     * plus an inverted column), but each aspect — inversion, stored, doc values, points, vectors —
+     * carry several columns for one field name to combine distinct features (e.g. a stored column
+     * plus an inverted column), but each feature — inversion, stored, doc values, points, vectors —
      * must come from a single column. Reset to 0 on the first sighting of the name in a batch
      * (keyed off {@code fieldGen}).
      */
-    byte columnAspects;
+    byte columnFeatures;
 
     // Used by the hash table
     PerField next;

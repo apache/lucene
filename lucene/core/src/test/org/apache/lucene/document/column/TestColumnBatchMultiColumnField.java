@@ -367,7 +367,7 @@ public class TestColumnBatchMultiColumnField extends LuceneTestCase {
     dir.close();
   }
 
-  public void testRejectsDuplicateInversionAspect() throws IOException {
+  public void testRejectsDuplicateInversionFeature() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
     expectThrows(
@@ -387,7 +387,7 @@ public class TestColumnBatchMultiColumnField extends LuceneTestCase {
     dir.close();
   }
 
-  public void testRejectsDuplicateStoredAspect() throws IOException {
+  public void testRejectsDuplicateStoredFeature() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
     expectThrows(
@@ -410,7 +410,7 @@ public class TestColumnBatchMultiColumnField extends LuceneTestCase {
     dir.close();
   }
 
-  public void testRejectsDuplicateDocValuesAspect() throws IOException {
+  public void testRejectsDuplicateDocValuesFeature() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
     expectThrows(
@@ -427,7 +427,7 @@ public class TestColumnBatchMultiColumnField extends LuceneTestCase {
     dir.close();
   }
 
-  public void testRejectsDuplicatePointsAspect() throws IOException {
+  public void testRejectsDuplicatePointsFeature() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
     FieldType pointType = new FieldType();
@@ -451,7 +451,7 @@ public class TestColumnBatchMultiColumnField extends LuceneTestCase {
     dir.close();
   }
 
-  public void testRejectsDuplicateVectorAspect() throws IOException {
+  public void testRejectsDuplicateVectorFeature() throws IOException {
     Directory dir = newDirectory();
     IndexWriter w = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())));
     FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
