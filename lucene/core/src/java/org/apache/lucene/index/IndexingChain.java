@@ -764,7 +764,7 @@ final class IndexingChain implements Accountable {
                 + fieldName
                 + "\" claiming the same indexing feature "
                 + ColumnValidation.featureNames(overlap)
-                + "; each feature must come from exactly one column.");
+                + "; each feature may appear in at most one column.");
       }
       pf.columnFeatures |= (byte) columnFeatures;
 
