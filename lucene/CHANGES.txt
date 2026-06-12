@@ -303,9 +303,11 @@ API Changes
 * GITHUB#16062: Add FlatFieldVectorsWriter.asKnnVectorValues to return directly a KnnVectorValues "view" over
   vectors to be written. (Lorenzo Dematte)
 
-* GITHUB#16101 Add DictionaryColumn for SORTED / SORTED_SET docvalues using experimental column api (Tim Brooks)
+* GITHUB#16101: Add DictionaryColumn for SORTED / SORTED_SET docvalues using experimental column api (Tim Brooks)
 
 * GITHUB#16104: Add public constructors and a public getSearchStrategy() to FloatVectorSimilarityQuery, ByteVectorSimilarityQuery and VectorSimilarityCollector that accept a KnnSearchStrategy. (Sasilekha R)
+
+* GITHUB#16227: Add dense indexing path for BinaryColumn while using experimental column api (Tim Brooks)
 
 New Features
 ---------------------
@@ -388,8 +390,17 @@ Improvements
 
 * GITHUB#16144: Clarify LeafCollector batch collection scoring contract. (Costin Leau)
 
+* GITHUB#16229: BooleanWeight.explain prints failing optional clauses when query fails due to insufficient SHOULD matches. (Jakub Slowinski)
+
 Optimizations
 ---------------------
+* GITHUB#16222: MultiTermQuery constant-score wrapper now defers term collection to ScorerSupplier#get()
+  for queries with an unknown term count (automaton queries such as wildcard/regexp/prefix/range),
+  instead of scanning the term dictionary while building the ScorerSupplier. This keeps the
+  ScorerSupplier "planning" phase cheap so a parent conjunction can short-circuit (e.g. a sibling
+  clause matching no documents) before a non-seekable scan, such as a leading wildcard, runs.
+  (Tianxiao Wei)
+
 * GITHUB#16176: Restore WANDScorer for TOP_SCORES + minShouldMatch > 1. (Tianxiao Wei)
 
 * GITHUB#16153: Use TernaryLongHeap in UpdateGraphsUtils for faster HNSW graph merging. (Prithvi S)
@@ -500,6 +511,8 @@ Optimizations
 * GITHUB#16172: Bulk-evaluate skip-indexed sorted and sorted-set doc-values range queries via a block-aware
   DocValuesRangeIterator#intoBitSet. (Costin Leau)
 
+* GITHUB#16166: Add bulk range evaluation for multi-valued sorted numeric doc values. (Costin Leau)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
@@ -609,6 +622,8 @@ Other
 
 * GITHUB#16178: Simplify how we collect hits in the LRU cache from a DocIdStream into a RoaringDocIdSet.
   (Ignacio Vera)
+
+* GITHUB#16218: Add non-degenerate DocValuesSkipper implementation to SimpleTextCodec. (Alan Woodward)
 
 * GITHUB#16197: Remove deprecated usages of search(Query, Collector) from monitor module. (Luca Cavanna)
 
