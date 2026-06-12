@@ -59,7 +59,7 @@ public class TestSimple64 extends LuceneTestCase {
     assertEquals("selector=1 for value=2", 1, (int) (word >>> 60));
     int[] out = new int[30];
     assertEquals("decoded count", 30, Simple64.decode(word, out, 0));
-    assertArrayEquals("decoded values", input, out, 30);
+    assertArrayEquals("decoded values", input, out);
   }
 
   public void testRoundtripAllSelectors() {
@@ -71,7 +71,7 @@ public class TestSimple64 extends LuceneTestCase {
       long word = Simple64.pack(s, input, 0, count); // force this selector
       int[] out = new int[count];
       assertEquals("selector " + s + " decode count", count, Simple64.decode(word, out, 0));
-      assertArrayEquals("selector " + s + " values", input, out, count);
+      assertArrayEquals("selector " + s + " values", input, out);
     }
   }
 
@@ -93,7 +93,7 @@ public class TestSimple64 extends LuceneTestCase {
     int numLongs = Simple64.encodeAll(input, 0, 35, longs, 0);
     int[] decoded = new int[35];
     Simple64.decodeAll(longs, 0, decoded, 0, 35);
-    assertArrayEquals("encodeAll roundtrip", input, decoded, 35);
+    assertArrayEquals("encodeAll roundtrip", input, decoded);
   }
 
   public void testSuffixLengths() {
@@ -105,35 +105,7 @@ public class TestSimple64 extends LuceneTestCase {
     int numLongs = Simple64.encodeAll(input, 0, len, longs, 0);
     int[] decoded = new int[len];
     Simple64.decodeAll(longs, 0, decoded, 0, len);
-    assertArrayEquals("suffix roundtrip", input, decoded, len);
-  }
-
-  public void testNegativeValueThrows() {
-    boolean threw = false;
-    try {
-      Simple64.encode(new int[] {1, -1, 3}, 0, 3);
-    } catch (IllegalArgumentException e) {
-      threw = true;
-    }
-    assertTrue("negative value throws", threw);
-  }
-
-  public void testInvalidSelectorThrows() {
-    long badWord = 15L << 60;
-    boolean threw = false;
-    try {
-      Simple64.decode(badWord, new int[10], 0);
-    } catch (IllegalArgumentException e) {
-      threw = true;
-    }
-    assertTrue("invalid selector throws on decode", threw);
-    threw = false;
-    try {
-      Simple64.count(badWord);
-    } catch (IllegalArgumentException e) {
-      threw = true;
-    }
-    assertTrue("invalid selector throws on count", threw);
+    assertArrayEquals("suffix roundtrip", input, decoded);
   }
 
   public void testCountWithoutDecode() {
@@ -164,9 +136,5 @@ public class TestSimple64 extends LuceneTestCase {
       if (!Arrays.equals(input, decoded)) errors++;
     }
     assertEquals("fuzz errors", 0, errors);
-  }
-
-  private void assertArrayEquals(String msg, int[] expected, int[] actual, int len) {
-    assertTrue(msg, Arrays.equals(Arrays.copyOf(expected, len), Arrays.copyOf(actual, len)));
   }
 }

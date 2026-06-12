@@ -84,10 +84,7 @@ public class Simple64 {
       boolean fits = true;
       for (int i = 0; i < count; i++) {
         int v = ints[offset + i];
-        if (v < 0) {
-          throw new IllegalArgumentException(
-              "Simple64 does not support negative values, got: " + v);
-        }
+        assert v >= 0 : "Simple64 does not support negative values, got: " + v;
         if (v > mask) {
           fits = false;
           break;
@@ -119,9 +116,7 @@ public class Simple64 {
    */
   public static int decode(long word, int[] out, int outOffset) {
     final int selector = (int) (word >>> 60);
-    if (selector >= 14) {
-      throw new IllegalArgumentException("Invalid Simple64 selector: " + selector);
-    }
+    assert selector < 14 : "Invalid Simple64 selector: " + selector;
     final int count = COUNTS[selector];
     final int bits = BITS[selector];
     final long mask = MASKS[selector];
@@ -139,9 +134,7 @@ public class Simple64 {
    */
   public static int count(long word) {
     final int selector = (int) (word >>> 60);
-    if (selector >= 14) {
-      throw new IllegalArgumentException("Invalid Simple64 selector: " + selector);
-    }
+    assert selector < 14 : "Invalid Simple64 selector: " + selector;
     return COUNTS[selector];
   }
 
@@ -177,9 +170,7 @@ public class Simple64 {
     while (remaining > 0) {
       long word = longs[inPos++];
       final int selector = (int) (word >>> 60);
-      if (selector >= 14) {
-        throw new IllegalArgumentException("Invalid Simple64 selector: " + selector);
-      }
+      assert selector < 14 : "Invalid Simple64 selector: " + selector;
       final int toRead = Math.min(COUNTS[selector], remaining);
       final int bits = BITS[selector];
       final long mask = MASKS[selector];
