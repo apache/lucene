@@ -70,11 +70,16 @@ public class Simple64 {
    *
    * <p>Call {@link #count(long)} on the returned word to find out how many integers were consumed.
    *
+   * <p>NOTE: a selector is only accepted when <em>all</em> {@code Math.min(COUNTS[selector],
+   * length)} values fit its bit-width, so that {@link #count(long)} always returns the correct
+   * number of consumed integers. The exception is the last encoded long, where {@code length <
+   * COUNTS[selector]} leaves it partially filled and {@link #count(long)} over-reports; this is
+   * harmless because {@link #encodeAll} terminates immediately after.
+   *
    * @param ints source array of non-negative integers
    * @param offset start index
    * @param length number of integers available from {@code offset}
    * @return encoded long
-   * @throws IllegalArgumentException if any value is negative or exceeds {@link Integer#MAX_VALUE}
    */
   public static long encode(int[] ints, int offset, int length) {
     for (int s = 0; s < 14; s++) {
@@ -127,11 +132,7 @@ public class Simple64 {
     return count;
   }
 
-  /**
-   * Return the number of integers packed in {@code word} without fully decoding it.
-   *
-   * @throws IllegalArgumentException if the selector field is invalid (14 or 15)
-   */
+  /** Return the number of integers packed in {@code word} without fully decoding it. */
   public static int count(long word) {
     final int selector = (int) (word >>> 60);
     assert selector < 14 : "Invalid Simple64 selector: " + selector;
