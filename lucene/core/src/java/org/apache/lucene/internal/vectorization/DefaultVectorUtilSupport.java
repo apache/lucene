@@ -211,6 +211,19 @@ final class DefaultVectorUtilSupport implements VectorUtilSupport {
   }
 
   @Override
+  public float cosine(byte[] a, int aNormSquared, byte[] b) {
+    // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
+    int sum = 0;
+    int norm2 = 0;
+
+    for (int i = 0; i < a.length; i++) {
+      sum += a[i] * b[i];
+      norm2 += b[i] * b[i];
+    }
+    return (float) (sum / Math.sqrt((double) aNormSquared * (double) norm2));
+  }
+
+  @Override
   public int squareDistance(byte[] a, byte[] b) {
     // Note: this will not overflow if dim < 2^18, since max(byte * byte) = 2^14.
     int squareSum = 0;

@@ -707,6 +707,123 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return cosineBody(new ArrayLoader(a), new MemorySegmentLoader(b));
   }
 
+  @Override
+  public float cosine(byte[] a, int aNormSquared, byte[] b) {
+    return cosineBodyPrecomputedNorm(new ArrayLoader(a), aNormSquared, new ArrayLoader(b));
+  }
+
+  public static float cosine(byte[] a, int aNormSquared, MemorySegment b) {
+    return cosineBodyPrecomputedNorm(new ArrayLoader(a), aNormSquared, new MemorySegmentLoader(b));
+  }
+
+  public static float cosine(MemorySegment a, int aNormSquared, MemorySegment b) {
+    return cosineBodyPrecomputedNorm(
+        new MemorySegmentLoader(a), aNormSquared, new MemorySegmentLoader(b));
+  }
+
+  private static float cosineBodyPrecomputedNorm(
+      ByteVectorLoader a, int aNormSquared, ByteVectorLoader b) {
+    int i = 0;
+    int sum = 0;
+    int norm2 = 0;
+
+    // only vectorize if we'll at least enter the loop a single time
+    if (a.length() >= 16) {
+      final int[] ret;
+      if (VECTOR_BITSIZE >= 512) {
+        i += BYTE_SPECIES.loopBound(a.length());
+        ret = cosineBodyPrecomputedNorm512(a, b, i);
+      } else if (VECTOR_BITSIZE == 256) {
+        i += BYTE_SPECIES.loopBound(a.length());
+        ret = cosineBodyPrecomputedNorm256(a, b, i);
+      } else {
+        // tricky: we don't have SPECIES_32, so we workaround with "overlapping read"
+        i += ByteVector.SPECIES_64.loopBound(a.length() - ByteVector.SPECIES_64.length());
+        ret = cosineBodyPrecomputedNorm128(a, b, i);
+      }
+      sum += ret[0];
+      norm2 += ret[1];
+    }
+
+    // scalar tail
+    for (; i < a.length(); i++) {
+      byte elem1 = a.tail(i);
+      byte elem2 = b.tail(i);
+      sum += elem1 * elem2;
+      norm2 += elem2 * elem2;
+    }
+    return (float) (sum / Math.sqrt((double) aNormSquared * (double) norm2));
+  }
+
+  /** vectorized cosine body with precomputed norm (512 bit vectors) */
+  private static int[] cosineBodyPrecomputedNorm512(
+      ByteVectorLoader a, ByteVectorLoader b, int limit) {
+    IntVector accSum = IntVector.zero(INT_SPECIES);
+    IntVector accNorm2 = IntVector.zero(INT_SPECIES);
+    for (int i = 0; i < limit; i += BYTE_SPECIES.length()) {
+      ByteVector va8 = a.load(BYTE_SPECIES, i);
+      ByteVector vb8 = b.load(BYTE_SPECIES, i);
+
+      // 16-bit multiply: avoid AVX-512 heavy multiply on zmm
+      Vector<Short> va16 = va8.convertShape(B2S, SHORT_SPECIES, 0);
+      Vector<Short> vb16 = vb8.convertShape(B2S, SHORT_SPECIES, 0);
+      Vector<Short> norm2_16 = vb16.mul(vb16);
+      Vector<Short> prod16 = va16.mul(vb16);
+
+      // sum into accumulators: 32-bit add
+      Vector<Integer> norm2_32 = norm2_16.convertShape(S2I, INT_SPECIES, 0);
+      Vector<Integer> prod32 = prod16.convertShape(S2I, INT_SPECIES, 0);
+      accNorm2 = accNorm2.add(norm2_32);
+      accSum = accSum.add(prod32);
+    }
+    // reduce
+    return new int[] {accSum.reduceLanes(ADD), accNorm2.reduceLanes(ADD)};
+  }
+
+  /** vectorized cosine body with precomputed norm (256 bit vectors) */
+  private static int[] cosineBodyPrecomputedNorm256(
+      ByteVectorLoader a, ByteVectorLoader b, int limit) {
+    IntVector accSum = IntVector.zero(IntVector.SPECIES_256);
+    IntVector accNorm2 = IntVector.zero(IntVector.SPECIES_256);
+    for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length()) {
+      ByteVector va8 = a.load(ByteVector.SPECIES_64, i);
+      ByteVector vb8 = b.load(ByteVector.SPECIES_64, i);
+
+      // 32-bit multiply, and add into accumulators
+      Vector<Integer> va32 = va8.convertShape(B2I, IntVector.SPECIES_256, 0);
+      Vector<Integer> vb32 = vb8.convertShape(B2I, IntVector.SPECIES_256, 0);
+      Vector<Integer> norm2_32 = vb32.mul(vb32);
+      Vector<Integer> prod32 = va32.mul(vb32);
+      accNorm2 = accNorm2.add(norm2_32);
+      accSum = accSum.add(prod32);
+    }
+    // reduce
+    return new int[] {accSum.reduceLanes(ADD), accNorm2.reduceLanes(ADD)};
+  }
+
+  /** vectorized cosine body with precomputed norm (128 bit vectors) */
+  private static int[] cosineBodyPrecomputedNorm128(
+      ByteVectorLoader a, ByteVectorLoader b, int limit) {
+    IntVector accSum = IntVector.zero(IntVector.SPECIES_128);
+    IntVector accNorm2 = IntVector.zero(IntVector.SPECIES_128);
+    for (int i = 0; i < limit; i += ByteVector.SPECIES_64.length() >> 1) {
+      ByteVector va8 = a.load(ByteVector.SPECIES_64, i);
+      ByteVector vb8 = b.load(ByteVector.SPECIES_64, i);
+
+      // process first half only: 16-bit multiply
+      Vector<Short> va16 = va8.convert(B2S, 0);
+      Vector<Short> vb16 = vb8.convert(B2S, 0);
+      Vector<Short> norm2_16 = vb16.mul(vb16);
+      Vector<Short> prod16 = va16.mul(vb16);
+
+      // sum into accumulators: 32-bit add
+      accNorm2 = accNorm2.add(norm2_16.convertShape(S2I, IntVector.SPECIES_128, 0));
+      accSum = accSum.add(prod16.convertShape(S2I, IntVector.SPECIES_128, 0));
+    }
+    // reduce
+    return new int[] {accSum.reduceLanes(ADD), accNorm2.reduceLanes(ADD)};
+  }
+
   private static float cosineBody(ByteVectorLoader a, ByteVectorLoader b) {
     int i = 0;
     int sum = 0;

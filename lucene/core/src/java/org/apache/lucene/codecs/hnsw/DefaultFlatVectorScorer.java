@@ -22,6 +22,7 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.VectorUtil;
 import org.apache.lucene.util.hnsw.RandomVectorScorer;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.hnsw.UpdateableRandomVectorScorer;
@@ -103,15 +104,25 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
     @Override
     public UpdateableRandomVectorScorer scorer() throws IOException {
       byte[] vector = new byte[vectors.dimension()];
+      final boolean isCosine = similarityFunction == VectorSimilarityFunction.COSINE;
       return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(vectors) {
+        private int queryNormSquared;
 
         @Override
         public void setScoringOrdinal(int node) throws IOException {
           System.arraycopy(targetVectors.vectorValue(node), 0, vector, 0, vector.length);
+          if (isCosine) {
+            queryNormSquared = VectorUtil.dotProduct(vector, vector);
+          }
         }
 
         @Override
         public float score(int node) throws IOException {
+          if (isCosine) {
+            return (1
+                    + VectorUtil.cosine(vector, queryNormSquared, targetVectors.vectorValue(node)))
+                / 2;
+          }
           return similarityFunction.compare(vector, targetVectors.vectorValue(node));
         }
       };
@@ -193,6 +204,7 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
     private final ByteVectorValues values;
     private final byte[] query;
     private final VectorSimilarityFunction similarityFunction;
+    private final int queryNormSquared;
 
     public ByteVectorScorer(
         ByteVectorValues values, byte[] query, VectorSimilarityFunction similarityFunction) {
@@ -200,10 +212,17 @@ public class DefaultFlatVectorScorer implements FlatVectorsScorer {
       this.values = values;
       this.query = query;
       this.similarityFunction = similarityFunction;
+      this.queryNormSquared =
+          (similarityFunction == VectorSimilarityFunction.COSINE)
+              ? VectorUtil.dotProduct(query, query)
+              : 0;
     }
 
     @Override
     public float score(int node) throws IOException {
+      if (similarityFunction == VectorSimilarityFunction.COSINE) {
+        return (1 + VectorUtil.cosine(query, queryNormSquared, values.vectorValue(node))) / 2;
+      }
       return similarityFunction.compare(query, values.vectorValue(node));
     }
   }

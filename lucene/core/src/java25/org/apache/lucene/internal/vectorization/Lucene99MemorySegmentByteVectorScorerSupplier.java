@@ -114,23 +114,34 @@ public abstract sealed class Lucene99MemorySegmentByteVectorScorerSupplier
     public UpdateableRandomVectorScorer scorer() {
       return new UpdateableRandomVectorScorer.AbstractUpdateableRandomVectorScorer(values) {
         private int queryOrd = 0;
+        private int queryNormSquared = 0;
 
         @Override
         public float score(int node) throws IOException {
           checkOrdinal(node);
           float raw;
           if (Constants.NATIVE_DOT_PRODUCT_ENABLED) {
-            raw = NativeVectorUtilSupport.cosine(getFirstSegment(queryOrd), getSecondSegment(node));
+            raw =
+                NativeVectorUtilSupport.cosine(
+                    getFirstSegment(queryOrd), queryNormSquared, getSecondSegment(node));
           } else {
-            raw = PanamaVectorUtilSupport.cosine(getFirstSegment(queryOrd), getSecondSegment(node));
+            raw =
+                PanamaVectorUtilSupport.cosine(
+                    getFirstSegment(queryOrd), queryNormSquared, getSecondSegment(node));
           }
           return (1 + raw) / 2;
         }
 
         @Override
-        public void setScoringOrdinal(int node) {
+        public void setScoringOrdinal(int node) throws IOException {
           checkOrdinal(node);
           queryOrd = node;
+          MemorySegment querySeg = getFirstSegment(node);
+          if (Constants.NATIVE_DOT_PRODUCT_ENABLED) {
+            queryNormSquared = NativeVectorUtilSupport.dotProduct(querySeg, querySeg);
+          } else {
+            queryNormSquared = PanamaVectorUtilSupport.dotProduct(querySeg, querySeg);
+          }
         }
       };
     }

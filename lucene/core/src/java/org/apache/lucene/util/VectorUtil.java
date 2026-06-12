@@ -99,6 +99,23 @@ public final class VectorUtil {
   }
 
   /**
+   * Returns the cosine similarity between the two byte vectors, given a precomputed squared norm
+   * for the first vector. This avoids recomputing the norm of {@code a} on every call when the
+   * query vector is fixed.
+   *
+   * @param a the first vector (typically the query)
+   * @param aNormSquared the precomputed value of {@code dotProduct(a, a)}
+   * @param b the second vector
+   * @return the cosine similarity between the two vectors
+   */
+  public static float cosine(byte[] a, int aNormSquared, byte[] b) {
+    if (a.length != b.length) {
+      throw new IllegalArgumentException("vector dimensions differ: " + a.length + "!=" + b.length);
+    }
+    return IMPL.cosine(a, aNormSquared, b);
+  }
+
+  /**
    * Returns the sum of squared differences of the two vectors.
    *
    * @throws IllegalArgumentException if the vectors' dimensions differ.

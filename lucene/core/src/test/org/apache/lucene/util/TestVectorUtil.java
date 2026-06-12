@@ -684,4 +684,49 @@ public class TestVectorUtil extends LuceneTestCase {
     }
     return res;
   }
+
+  public void testCosinePrecomputedNormBasic() {
+    byte[] a = new byte[] {1, 2, 3};
+    byte[] b = new byte[] {-10, 0, 5};
+    int aNormSquared = VectorUtil.dotProduct(a, a);
+    assertEquals(VectorUtil.cosine(a, b), VectorUtil.cosine(a, aNormSquared, b), 0f);
+  }
+
+  public void testCosinePrecomputedNormSelf() {
+    byte[] v = randomVectorBytes();
+    v[0] = (byte) (random().nextInt(126) + 1);
+    int normSquared = VectorUtil.dotProduct(v, v);
+    assertEquals(1.0f, VectorUtil.cosine(v, normSquared, v), DELTA);
+  }
+
+  public void testCosinePrecomputedNormRandom() {
+    int iterations = atLeast(50);
+    for (int iter = 0; iter < iterations; iter++) {
+      int dim = TestUtil.nextInt(random(), 1, 256);
+      byte[] a = randomVectorBytes(dim);
+      byte[] b = randomVectorBytes(dim);
+      // ensure non-zero vectors
+      a[0] = (byte) (random().nextInt(126) + 1);
+      b[0] = (byte) (random().nextInt(126) + 1);
+      int aNormSquared = VectorUtil.dotProduct(a, a);
+      float expected = VectorUtil.cosine(a, b);
+      float actual = VectorUtil.cosine(a, aNormSquared, b);
+      assertEquals(expected, actual, 0f);
+    }
+  }
+
+  public void testCosinePrecomputedNormAllImpls() {
+    int iterations = atLeast(50);
+    for (int iter = 0; iter < iterations; iter++) {
+      int dim = TestUtil.nextInt(random(), 1, 256);
+      byte[] a = randomVectorBytes(dim);
+      byte[] b = randomVectorBytes(dim);
+      a[0] = (byte) (random().nextInt(126) + 1);
+      b[0] = (byte) (random().nextInt(126) + 1);
+      int aNormSquared = VectorUtil.dotProduct(a, a);
+      float expected = defaultedProvider.getVectorUtilSupport().cosine(a, aNormSquared, b);
+      float actual = defOrPanamaProvider.getVectorUtilSupport().cosine(a, aNormSquared, b);
+      assertEquals(expected, actual, 0f);
+    }
+  }
 }
