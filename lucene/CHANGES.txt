@@ -158,11 +158,6 @@ Optimizations
 
 Bug Fixes
 ---------------------
-* GITHUB#XXXXX: Fix FastVectorHighlighter StringIndexOutOfBoundsException when term offsets overlap.
-  Analyzers like CJK bigram or ik_max_word produce overlapping tokens; the highlighter now clips
-  overlapping portions instead of throwing an exception, ensuring the full matched region is
-  highlighted. (Baojun Han)
-
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
@@ -195,6 +190,8 @@ Bug Fixes
 * GITHUB#15838: Fix luke terms export failure on Windows when field names contain characters forbidden in file name (Binlong Gao)
 
 * GITHUB#15939: Fix thread-safety issues with NFARunAutomaton. (Dimitris Rempapis)
+
+* GITHUB#16246: Fix FVH StringIndexOutOfBoundsException with overlapping token offsets. (hanbj)
 
 Changes in Runtime Behavior
 ---------------------

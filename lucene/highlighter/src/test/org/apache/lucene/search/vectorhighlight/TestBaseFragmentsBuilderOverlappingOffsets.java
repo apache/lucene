@@ -76,7 +76,8 @@ public class TestBaseFragmentsBuilderOverlappingOffsets extends LuceneTestCase {
   }
 
   /**
-   * Token entirely contained within a previously highlighted region should be skipped without error.
+   * Token entirely contained within a previously highlighted region should be skipped without
+   * error.
    */
   public void testFullyContainedTokenIsSkipped() {
     String src = "abcdefghij";
@@ -95,8 +96,8 @@ public class TestBaseFragmentsBuilderOverlappingOffsets extends LuceneTestCase {
   }
 
   /**
-   * CJK max-word segmentation: "中华人民共和国" produces 7 overlapping tokens that collectively
-   * cover [0,7). All characters must be highlighted.
+   * CJK max-word segmentation: "中华人民共和国" produces 7 overlapping tokens that collectively cover
+   * [0,7). All characters must be highlighted.
    */
   public void testCjkMaxWordOverlappingTokens() {
     String src = "中华人民共和国";
@@ -183,7 +184,7 @@ public class TestBaseFragmentsBuilderOverlappingOffsets extends LuceneTestCase {
     assertEquals("the <b>quick</b><b> brow</b>n fox", result);
   }
 
-  /** Inverted offset (endOffset < startOffset) should be skipped without error. */
+  /** Inverted offset (endOffset &lt; startOffset) should be skipped without error. */
   public void testInvertedOffsetsSkipped() {
     String src = "hello world";
 
