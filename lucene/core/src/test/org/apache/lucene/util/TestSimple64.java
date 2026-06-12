@@ -90,7 +90,7 @@ public class TestSimple64 extends LuceneTestCase {
     Random rng = new Random(42);
     for (int i = 0; i < 35; i++) input[i] = rng.nextInt(10) + 1;
     long[] longs = new long[35];
-    int numLongs = Simple64.encodeAll(input, 0, 35, longs, 0);
+    Simple64.encodeAll(input, 0, 35, longs, 0);
     int[] decoded = new int[35];
     Simple64.decodeAll(longs, 0, decoded, 0, 35);
     assertArrayEquals("encodeAll roundtrip", input, decoded);
@@ -102,7 +102,7 @@ public class TestSimple64 extends LuceneTestCase {
     };
     int len = input.length;
     long[] longs = new long[len];
-    int numLongs = Simple64.encodeAll(input, 0, len, longs, 0);
+    Simple64.encodeAll(input, 0, len, longs, 0);
     int[] decoded = new int[len];
     Simple64.decodeAll(longs, 0, decoded, 0, len);
     assertArrayEquals("suffix roundtrip", input, decoded);
