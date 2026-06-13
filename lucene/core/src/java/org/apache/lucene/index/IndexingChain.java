@@ -684,10 +684,10 @@ final class IndexingChain implements Accountable {
       PerField pf = fields[i];
       if (pf.fieldInfo == null) {
         initializeFieldInfo(pf);
-        pf.trySetValidatedFrozenFieldType();
       } else {
         pf.schema.assertSameSchema(pf.fieldInfo);
       }
+      pf.trySetValidatedFrozenFieldType();
     }
   }
 
@@ -1768,12 +1768,7 @@ final class IndexingChain implements Accountable {
 
     void reset(int docId, IndexableFieldType fieldType) {
       first = true;
-      if (fieldInfo == null) {
-        // The first time we encounter this field in a segment propose a frozen field to optimize
-        // the validation step. This will be promoted in trySetValidatedFrozenFieldType if it is
-        // frozen and valid.
-        candidateFieldType = fieldType;
-      }
+      candidateFieldType = fieldType;
       if (fieldType == validatedFrozenFieldType) {
         schema.resetJustDocId(docId);
       } else {

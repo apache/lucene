@@ -513,6 +513,8 @@ Optimizations
 
 * GITHUB#16166: Add bulk range evaluation for multi-valued sorted numeric doc values. (Costin Leau)
 
+* GITHUB#16171: Address frozen FieldType cache never recovering after type switch. (neoremind)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
