@@ -33,9 +33,9 @@ public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
   static final int MAX_DOC = 2048;
 
   /**
-   * Single definition of the fake field's data shape: the first doc that has a value and is
-   * greater than or equal to {@code target}, or {@link DocIdSetIterator#NO_MORE_DOCS}. Pure
-   * function, does not touch iteration state.
+   * Single definition of the fake field's data shape: the first doc that has a value and is greater
+   * than or equal to {@code target}, or {@link DocIdSetIterator#NO_MORE_DOCS}. Pure function, does
+   * not touch iteration state.
    */
   private static int firstDocWithValueOnOrAfter(int target) {
     if (target >= MAX_DOC) {
