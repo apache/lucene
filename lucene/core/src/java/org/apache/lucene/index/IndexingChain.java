@@ -746,27 +746,27 @@ final class IndexingChain implements Accountable {
       }
       docFields[columnIdx++] = pf;
 
+      int columnFeatures = ColumnValidation.featureMask(fieldType);
       if (pf.fieldGen != batchGen) {
         // First column for this field name in this batch: start a fresh schema and feature set, and
         // collect the field once so its FieldInfo is initialized/validated after the loop.
         pf.fieldGen = batchGen;
-        pf.columnFeatures = 0;
+        pf.columnFeatures = (byte) columnFeatures;
         pf.schema.reset(baseDocID);
         fields[uniqueFieldCount++] = pf;
+      } else {
+        // Each indexing feature must come from a single column for a given field name.
+        int overlap = pf.columnFeatures & columnFeatures;
+        if (overlap != 0) {
+          throw new IllegalArgumentException(
+              "ColumnBatch has multiple columns for field \""
+                  + fieldName
+                  + "\" claiming the same indexing feature "
+                  + ColumnValidation.featureNames(overlap)
+                  + "; each feature may appear in at most one column.");
+        }
+        pf.columnFeatures |= (byte) columnFeatures;
       }
-
-      // Each indexing feature must come from a single column for a given field name.
-      int columnFeatures = ColumnValidation.featureMask(fieldType);
-      int overlap = pf.columnFeatures & columnFeatures;
-      if (overlap != 0) {
-        throw new IllegalArgumentException(
-            "ColumnBatch has multiple columns for field \""
-                + fieldName
-                + "\" claiming the same indexing feature "
-                + ColumnValidation.featureNames(overlap)
-                + "; each feature may appear in at most one column.");
-      }
-      pf.columnFeatures |= (byte) columnFeatures;
 
       updateDocFieldSchema(fieldName, pf.schema, fieldType);
     }
