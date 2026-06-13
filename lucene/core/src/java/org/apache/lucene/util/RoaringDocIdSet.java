@@ -454,6 +454,9 @@ public class RoaringDocIdSet extends DocIdSet {
     @Override
     public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
       for (; ; ) {
+        if (sub == null) {
+          break;
+        }
         int subUpto = upTo - (block << 16);
         if (subUpto < 0) {
           break;
