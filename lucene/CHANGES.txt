@@ -580,6 +580,8 @@ Bug Fixes
 
 * GITHUB#16179: Fix minor lock/unlock acquisition order in DocumentsWriterDeleteQueue (Chris Hegarty)
 
+* GITHUB#16253: Fix backward advanceExact in DocValuesRangeIterator#intoBitSet (Zhang Chao)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
