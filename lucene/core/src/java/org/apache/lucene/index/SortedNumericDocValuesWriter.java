@@ -171,21 +171,21 @@ class SortedNumericDocValuesWriter extends DocValuesWriter<SortedNumericDocValue
         float acceptableOverheadRatio)
         throws IOException {
       offsets = new long[maxDoc];
-      PackedLongValues.Builder valuesBuiler =
+      PackedLongValues.Builder valuesBuilder =
           PackedLongValues.packedBuilder(acceptableOverheadRatio);
       int docID;
       long offsetIndex = 1; // 0 means the doc has no values
       while ((docID = oldValues.nextDoc()) != NO_MORE_DOCS) {
         int newDocID = sortMap.oldToNew(docID);
         int numValues = oldValues.docValueCount();
-        valuesBuiler.add(numValues);
+        valuesBuilder.add(numValues);
         offsets[newDocID] = offsetIndex++;
         for (int i = 0; i < numValues; i++) {
-          valuesBuiler.add(oldValues.nextValue());
+          valuesBuilder.add(oldValues.nextValue());
           offsetIndex++;
         }
       }
-      values = valuesBuiler.build();
+      values = valuesBuilder.build();
     }
   }
 

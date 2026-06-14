@@ -395,7 +395,7 @@ public class TestRegExpParsing extends LuceneTestCase {
         });
   }
 
-  public void testExcapedNotCharClass() {
+  public void testEscapedNotCharClass() {
     RegExp re = new RegExp("[\\?]");
     assertEquals("\\?", re.toString());
     assertEquals("REGEXP_CHAR char=?\n", re.toStringTree());
@@ -407,7 +407,7 @@ public class TestRegExpParsing extends LuceneTestCase {
     assertSameLanguage(expected, actual);
   }
 
-  public void testExcapedSlashNotCharClass() {
+  public void testEscapedSlashNotCharClass() {
     RegExp re = new RegExp("[\\\\]");
     assertEquals("\\\\", re.toString());
     assertEquals("REGEXP_CHAR char=\\\n", re.toStringTree());

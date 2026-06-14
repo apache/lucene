@@ -211,7 +211,7 @@ public class TestWildcardQuery extends LuceneTestCase {
     IndexReader reader = DirectoryReader.open(indexStore);
     IndexSearcher searcher = newSearcher(reader);
 
-    // without escape: matches foo??bar, fooCDbar, foo*bar, and fooSOMETHINGbar
+    // without escape: matches foo??bar, fooCDbar, foo*bar, and 'fooSOMETHINGbar'
     WildcardQuery unescaped = new WildcardQuery(new Term("field", "foo*bar"));
     assertMatches(searcher, unescaped, 4);
 
@@ -368,7 +368,7 @@ public class TestWildcardQuery extends LuceneTestCase {
       assertEquals(0, hits.length);
     }
 
-    // thest the prefi queries find only one doc
+    // test the prefi queries find only one doc
     for (int i = 0; i < matchOneDocPrefix.length; i++) {
       for (int j = 0; j < matchOneDocPrefix[i].length; j++) {
         Query q = matchOneDocPrefix[i][j];

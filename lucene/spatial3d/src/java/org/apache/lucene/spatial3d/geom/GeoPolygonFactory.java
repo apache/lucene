@@ -1863,8 +1863,8 @@ public class GeoPolygonFactory {
         // Build the new edge
         // We need to know the sidedness of the new plane.  The point we're going to be presenting
         // to it has a certain relationship with the sided plane we already have for the current
-        // edge.  If the current edge is colinear with the new edge, then we want to maintain the
-        // same relationship.  If the new edge is not colinear, then we can use the new point's
+        // edge.  If the current edge is collinear with the new edge, then we want to maintain the
+        // same relationship.  If the new edge is not collinear, then we can use the new point's
         // relationship with the current edge as our guide.
 
         final boolean isNewPointWithin = currentEdge.plane.isWithin(newPoint);
