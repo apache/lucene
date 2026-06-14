@@ -236,7 +236,7 @@ public final class DocIdSetBuilder {
    * docs will exceed the threshold above which a FixedBitSet is preferred, eagerly upgrade to
    * FixedBitSet.
    */
-  public void growHint(long expectedDocs) {
+  public void expectMore(long expectedDocs) {
     if (bitSet != null || expectedDocs <= 0) {
       return;
     }

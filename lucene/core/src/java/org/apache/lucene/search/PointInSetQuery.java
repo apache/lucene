@@ -210,7 +210,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
               DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
               if (cost != -1) {
                 // If it is large, switch the builder to FixedBitSet mode up front.
-                result.growHint(cost);
+                result.expectMore(cost);
               }
               values.intersect(new MergePointVisitor(sortedPackedPoints.iterator(), result));
               DocIdSetIterator iterator = result.build().iterator();
@@ -249,7 +249,7 @@ public abstract class PointInSetQuery extends Query implements Accountable {
               DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
               if (cost != -1) {
                 // If it is large, switch the builder to FixedBitSet mode up front.
-                result.growHint(cost);
+                result.expectMore(cost);
               }
               SinglePointVisitor visitor = new SinglePointVisitor(result);
               TermIterator iterator = sortedPackedPoints.iterator();

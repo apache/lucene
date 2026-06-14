@@ -321,7 +321,7 @@ public abstract class PointRangeQuery extends Query {
 
               if (cost != -1) {
                 // If it is large, switch the builder to FixedBitSet mode up front.
-                result.growHint(cost);
+                result.expectMore(cost);
               }
               values.intersect(visitor);
               return result.build().iterator();

@@ -332,7 +332,7 @@ abstract class SpatialQuery extends Query {
         final DocIdSetBuilder docIdSetBuilder = new DocIdSetBuilder(reader.maxDoc(), values);
         if (cost != -1) {
           // If it is large, switch the builder to FixedBitSet mode up front.
-          docIdSetBuilder.growHint(cost);
+          docIdSetBuilder.expectMore(cost);
         }
         values.intersect(getSparseVisitor(spatialVisitor, queryRelation, docIdSetBuilder));
         final DocIdSetIterator iterator = docIdSetBuilder.build().iterator();
