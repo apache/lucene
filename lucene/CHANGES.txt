@@ -141,7 +141,7 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#XXXX: Enable the vectorized findNextGEQ path on aarch64, where it was disabled on cores
+* GITHUB#16254: Enable the vectorized findNextGEQ path on aarch64, where it was disabled on cores
   with fewer than 8 int lanes (Graviton2 and Graviton4). The vector compare beats the scalar
   fallback by +75% on Graviton4 and +35% on Graviton2 (AdvanceBenchmark). (Shitij Bhargava)
 
