@@ -721,8 +721,10 @@ final class IndexingChain implements Accountable {
     boolean hasRowColumns = false;
     long batchGen = nextFieldGen++;
 
-    // First pass: validate all column schemas and initialize field infos
+    // First pass: validate all columns and accumulate each field's schema. A batch may carry more
+    // than one column for a field name to combine distinct features (see featureMask).
     int columnIdx = 0;
+    int uniqueFieldCount = 0;
     for (Column column : columnBatch.columns()) {
       final String fieldName = column.name();
       final IndexableFieldType fieldType = column.fieldType();
@@ -753,14 +755,34 @@ final class IndexingChain implements Accountable {
       }
       docFields[columnIdx++] = pf;
 
-      if (pf.fieldGen == batchGen) {
-        throw new IllegalArgumentException(
-            "ColumnBatch contains more than one column for field \""
-                + fieldName
-                + "\"; multi-valued fields must use a single column with a sparse cursor");
+      int columnFeatures = ColumnValidation.featureMask(fieldType);
+      if (pf.fieldGen != batchGen) {
+        // First column for this field name in this batch: start a fresh schema and feature set, and
+        // collect the field once so its FieldInfo is initialized/validated after the loop.
+        pf.fieldGen = batchGen;
+        pf.columnFeatures = (byte) columnFeatures;
+        pf.schema.reset(baseDocID);
+        fields[uniqueFieldCount++] = pf;
+      } else {
+        // Each indexing feature must come from a single column for a given field name.
+        int overlap = pf.columnFeatures & columnFeatures;
+        if (overlap != 0) {
+          throw new IllegalArgumentException(
+              "ColumnBatch has multiple columns for field \""
+                  + fieldName
+                  + "\" claiming the same indexing feature "
+                  + ColumnValidation.featureNames(overlap)
+                  + "; each feature may appear in at most one column.");
+        }
+        pf.columnFeatures |= (byte) columnFeatures;
       }
-      pf.fieldGen = batchGen;
-      validateColumnSchema(fieldName, pf, fieldType);
+
+      updateDocFieldSchema(fieldName, pf.schema, fieldType);
+    }
+
+    // Initialize field infos / validate schemas once per unique field name in the batch.
+    if (uniqueFieldCount > 0) {
+      initAndValidateFields(uniqueFieldCount);
     }
 
     if (parentPf != null) {
@@ -932,17 +954,6 @@ final class IndexingChain implements Accountable {
                 + numDocs
                 + ")");
       }
-    }
-  }
-
-  private void validateColumnSchema(String fieldName, PerField pf, IndexableFieldType fieldType)
-      throws IOException {
-    updateDocFieldSchema(fieldName, pf.schema, fieldType);
-    if (pf.fieldInfo == null) {
-      initializeFieldInfo(pf);
-      pf.trySetValidatedFrozenFieldType();
-    } else {
-      pf.schema.assertSameSchema(pf.fieldInfo);
     }
   }
 
@@ -1739,6 +1750,16 @@ final class IndexingChain implements Accountable {
 
     /** We use this to know when a PerField is seen for the first time in the current document. */
     long fieldGen = -1;
+
+    /**
+     * Bit set of indexing features (as returned by {@link ColumnValidation#featureMask}) already
+     * claimed for this field name within the current {@code addBatch} call. A column batch may
+     * carry several columns for one field name to combine distinct features (e.g. a stored column
+     * plus an inverted column), but each feature — inversion, stored, doc values, points, vectors —
+     * must come from a single column. Reset to 0 on the first sighting of the name in a batch
+     * (keyed off {@code fieldGen}).
+     */
+    byte columnFeatures;
 
     // Used by the hash table
     PerField next;
