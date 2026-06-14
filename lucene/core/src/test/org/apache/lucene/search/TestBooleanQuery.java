@@ -1395,7 +1395,7 @@ public class TestBooleanQuery extends LuceneTestCase {
     bqBuilder.add(new TermQuery(d), Occur.MUST_NOT);
     bqBuilder.add(new TermQuery(d), Occur.MUST_NOT);
     BooleanQuery bq = bqBuilder.build();
-    // should and must are not dedupliacated
+    // should and must are not deduplicated
     assertEquals(2, bq.getClauses(Occur.SHOULD).size());
     assertEquals(2, bq.getClauses(Occur.MUST).size());
     // filter and must not are deduplicated

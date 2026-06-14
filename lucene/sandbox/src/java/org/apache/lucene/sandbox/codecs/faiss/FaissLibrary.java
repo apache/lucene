@@ -54,5 +54,5 @@ interface FaissLibrary {
       FloatVectorValues floatVectorValues,
       IntToIntFunction oldToNewDocId);
 
-  Index readIndex(IndexInput input);
+  Index readIndex(IndexInput input, VectorSimilarityFunction function);
 }

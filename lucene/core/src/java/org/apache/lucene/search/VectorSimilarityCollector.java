@@ -21,6 +21,7 @@ import static org.apache.lucene.search.AbstractVectorSimilarityQuery.DECAY_MAX_Q
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.search.knn.KnnSearchStrategy;
 
 /**
  * Perform a similarity-based graph search to find all (approximate) vectors above a similarity
@@ -49,15 +50,33 @@ class VectorSimilarityCollector extends AbstractKnnCollector {
   private float minCompetitiveSimilarity;
 
   /**
-   * Perform a similarity-based graph search.
+   * Perform a similarity-based graph search, using the default {@link KnnSearchStrategy} of
+   * {@linkplain AbstractVectorSimilarityQuery#DEFAULT_STRATEGY similarity-threshold queries}.
    *
    * @param resultSimilarity similarity score for result collection.
    * @param decay decay factor for graph traversal buffer.
    * @param visitLimit limit on number of nodes to visit.
    */
   public VectorSimilarityCollector(float resultSimilarity, float decay, long visitLimit) {
-    // TODO: enable supplying KnnSearchStrategy
-    super(1, visitLimit, AbstractVectorSimilarityQuery.DEFAULT_STRATEGY);
+    this(resultSimilarity, decay, visitLimit, AbstractVectorSimilarityQuery.DEFAULT_STRATEGY);
+  }
+
+  /**
+   * Perform a similarity-based graph search, using a caller-supplied {@link KnnSearchStrategy}.
+   *
+   * @param resultSimilarity similarity score for result collection.
+   * @param decay decay factor for graph traversal buffer.
+   * @param visitLimit limit on number of nodes to visit.
+   * @param searchStrategy the {@link KnnSearchStrategy} to use during graph search. If {@code
+   *     null}, the {@linkplain AbstractVectorSimilarityQuery#DEFAULT_STRATEGY default strategy} is
+   *     used.
+   */
+  public VectorSimilarityCollector(
+      float resultSimilarity, float decay, long visitLimit, KnnSearchStrategy searchStrategy) {
+    super(
+        1,
+        visitLimit,
+        searchStrategy == null ? AbstractVectorSimilarityQuery.DEFAULT_STRATEGY : searchStrategy);
 
     assert Float.isNaN(resultSimilarity) == false
         : "resultSimilarity must have a valid value; got " + resultSimilarity;

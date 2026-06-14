@@ -26,6 +26,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Random;
 import java.util.Set;
 import java.util.function.IntFunction;
 import org.apache.lucene.codecs.Codec;
@@ -39,7 +41,10 @@ import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReaderContext;
@@ -47,16 +52,17 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.QueryUtils;
-import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.tests.util.LuceneTestCaseJupiter;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.NumericUtils;
+import org.junit.jupiter.api.Test;
 
-public class TestDocValuesQueries extends LuceneTestCase {
+public class TestDocValuesQueries extends LuceneTestCaseJupiter {
 
-  private Codec getCodec() {
+  private Codec getCodec(Random random) {
     // small interval size to test with many intervals
-    return TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(random().nextInt(4, 16)));
+    return TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(random.nextInt(4, 16)));
   }
 
   private Codec getCodec(int skipIntervalSize) {
@@ -64,39 +70,49 @@ public class TestDocValuesQueries extends LuceneTestCase {
     return TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(skipIntervalSize));
   }
 
-  public void testDuelPointRangeSortedNumericRangeQuery() throws IOException {
-    doTestDuelPointRangeNumericRangeQuery(true, 1, false);
+  @Test
+  public void testDuelPointRangeSortedNumericRangeQuery(Random random) throws IOException {
+    doTestDuelPointRangeNumericRangeQuery(random, true, 1, false);
   }
 
-  public void testDuelPointRangeSortedNumericRangeWithSlipperQuery() throws IOException {
-    doTestDuelPointRangeNumericRangeQuery(true, 1, true);
+  @Test
+  public void testDuelPointRangeSortedNumericRangeWithSlipperQuery(Random random)
+      throws IOException {
+    doTestDuelPointRangeNumericRangeQuery(random, true, 1, true);
   }
 
-  public void testDuelPointRangeMultivaluedSortedNumericRangeQuery() throws IOException {
-    doTestDuelPointRangeNumericRangeQuery(true, 3, false);
+  @Test
+  public void testDuelPointRangeMultivaluedSortedNumericRangeQuery(Random random)
+      throws IOException {
+    doTestDuelPointRangeNumericRangeQuery(random, true, 3, false);
   }
 
-  public void testDuelPointRangeMultivaluedSortedNumericRangeWithSkipperQuery() throws IOException {
-    doTestDuelPointRangeNumericRangeQuery(true, 3, true);
+  @Test
+  public void testDuelPointRangeMultivaluedSortedNumericRangeWithSkipperQuery(Random random)
+      throws IOException {
+    doTestDuelPointRangeNumericRangeQuery(random, true, 3, true);
   }
 
-  public void testDuelPointRangeNumericRangeQuery() throws IOException {
-    doTestDuelPointRangeNumericRangeQuery(false, 1, false);
+  @Test
+  public void testDuelPointRangeNumericRangeQuery(Random random) throws IOException {
+    doTestDuelPointRangeNumericRangeQuery(random, false, 1, false);
   }
 
-  public void testDuelPointRangeNumericRangeWithSkipperQuery() throws IOException {
-    doTestDuelPointRangeNumericRangeQuery(false, 1, true);
+  @Test
+  public void testDuelPointRangeNumericRangeWithSkipperQuery(Random random) throws IOException {
+    doTestDuelPointRangeNumericRangeQuery(random, false, 1, true);
   }
 
-  public void testDuelPointNumericSortedWithSkipperRangeQuery() throws IOException {
+  @Test
+  public void testDuelPointNumericSortedWithSkipperRangeQuery(Random random) throws IOException {
     Directory dir = newDirectory();
-    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec());
-    config.setIndexSort(new Sort(new SortField("dv", SortField.Type.LONG, random().nextBoolean())));
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, config);
+    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(random));
+    config.setIndexSort(new Sort(new SortField("dv", SortField.Type.LONG, random.nextBoolean())));
+    RandomIndexWriter iw = new RandomIndexWriter(random, dir, config);
     final int numDocs = atLeast(1000);
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
-      final long value = TestUtil.nextLong(random(), -100, 10000);
+      final long value = TestUtil.nextLong(random, -100, 10000);
       doc.add(NumericDocValuesField.indexedField("dv", value));
       doc.add(new LongPoint("idx", value));
       iw.addDocument(doc);
@@ -108,9 +124,9 @@ public class TestDocValuesQueries extends LuceneTestCase {
 
     for (int i = 0; i < 100; ++i) {
       final long min =
-          random().nextBoolean() ? Long.MIN_VALUE : TestUtil.nextLong(random(), -100, 10000);
+          random.nextBoolean() ? Long.MIN_VALUE : TestUtil.nextLong(random, -100, 10000);
       final long max =
-          random().nextBoolean() ? Long.MAX_VALUE : TestUtil.nextLong(random(), -100, 10000);
+          random.nextBoolean() ? Long.MAX_VALUE : TestUtil.nextLong(random, -100, 10000);
       final Query q1 = LongPoint.newRangeQuery("idx", min, max);
       final Query q2 = NumericDocValuesField.newSlowRangeQuery("dv", min, max);
       assertSameMatches(searcher, q1, q2, false);
@@ -120,25 +136,26 @@ public class TestDocValuesQueries extends LuceneTestCase {
   }
 
   private void doTestDuelPointRangeNumericRangeQuery(
-      boolean sortedNumeric, int maxValuesPerDoc, boolean skypper) throws IOException {
+      Random random, boolean sortedNumeric, int maxValuesPerDoc, boolean skypper)
+      throws IOException {
     final int iters = atLeast(10);
     for (int iter = 0; iter < iters; ++iter) {
       Directory dir = newDirectory();
       RandomIndexWriter iw;
-      if (sortedNumeric || random().nextBoolean()) {
-        iw = new RandomIndexWriter(random(), dir);
+      if (sortedNumeric || random.nextBoolean()) {
+        iw = new RandomIndexWriter(random, dir);
       } else {
-        IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec());
+        IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(random));
         config.setIndexSort(
-            new Sort(new SortField("dv", SortField.Type.LONG, random().nextBoolean())));
-        iw = new RandomIndexWriter(random(), dir, config);
+            new Sort(new SortField("dv", SortField.Type.LONG, random.nextBoolean())));
+        iw = new RandomIndexWriter(random, dir, config);
       }
       final int numDocs = atLeast(100);
       for (int i = 0; i < numDocs; ++i) {
         Document doc = new Document();
-        final int numValues = TestUtil.nextInt(random(), 0, maxValuesPerDoc);
+        final int numValues = TestUtil.nextInt(random, 0, maxValuesPerDoc);
         for (int j = 0; j < numValues; ++j) {
-          final long value = TestUtil.nextLong(random(), -100, 10000);
+          final long value = TestUtil.nextLong(random, -100, 10000);
           if (sortedNumeric) {
             if (skypper) {
               doc.add(SortedNumericDocValuesField.indexedField("dv", value));
@@ -156,7 +173,7 @@ public class TestDocValuesQueries extends LuceneTestCase {
         }
         iw.addDocument(doc);
       }
-      if (random().nextBoolean()) {
+      if (random.nextBoolean()) {
         iw.deleteDocuments(LongPoint.newRangeQuery("idx", 0L, 10L));
       }
       final IndexReader reader = iw.getReader();
@@ -165,9 +182,9 @@ public class TestDocValuesQueries extends LuceneTestCase {
 
       for (int i = 0; i < 100; ++i) {
         final long min =
-            random().nextBoolean() ? Long.MIN_VALUE : TestUtil.nextLong(random(), -100, 10000);
+            random.nextBoolean() ? Long.MIN_VALUE : TestUtil.nextLong(random, -100, 10000);
         final long max =
-            random().nextBoolean() ? Long.MAX_VALUE : TestUtil.nextLong(random(), -100, 10000);
+            random.nextBoolean() ? Long.MAX_VALUE : TestUtil.nextLong(random, -100, 10000);
         final Query q1 = LongPoint.newRangeQuery("idx", min, max);
         final Query q2;
         if (sortedNumeric) {
@@ -184,25 +201,25 @@ public class TestDocValuesQueries extends LuceneTestCase {
   }
 
   private void doTestDuelPointRangeSortedRangeQuery(
-      boolean sortedSet, int maxValuesPerDoc, boolean skypper) throws IOException {
+      Random random, boolean sortedSet, int maxValuesPerDoc, boolean skypper) throws IOException {
     final int iters = atLeast(10);
     for (int iter = 0; iter < iters; ++iter) {
       Directory dir = newDirectory();
       RandomIndexWriter iw;
-      if (sortedSet || random().nextBoolean()) {
-        iw = new RandomIndexWriter(random(), dir);
+      if (sortedSet || random.nextBoolean()) {
+        iw = new RandomIndexWriter(random, dir);
       } else {
-        IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec());
+        IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(random));
         config.setIndexSort(
-            new Sort(new SortField("dv", SortField.Type.STRING, random().nextBoolean())));
-        iw = new RandomIndexWriter(random(), dir, config);
+            new Sort(new SortField("dv", SortField.Type.STRING, random.nextBoolean())));
+        iw = new RandomIndexWriter(random, dir, config);
       }
       final int numDocs = atLeast(100);
       for (int i = 0; i < numDocs; ++i) {
         Document doc = new Document();
-        final int numValues = TestUtil.nextInt(random(), 0, maxValuesPerDoc);
+        final int numValues = TestUtil.nextInt(random, 0, maxValuesPerDoc);
         for (int j = 0; j < numValues; ++j) {
-          final long value = TestUtil.nextLong(random(), -100, 10000);
+          final long value = TestUtil.nextLong(random, -100, 10000);
           byte[] encoded = new byte[Long.BYTES];
           LongPoint.encodeDimension(value, encoded, 0);
           if (sortedSet) {
@@ -222,7 +239,7 @@ public class TestDocValuesQueries extends LuceneTestCase {
         }
         iw.addDocument(doc);
       }
-      if (random().nextBoolean()) {
+      if (random.nextBoolean()) {
         iw.deleteDocuments(LongPoint.newRangeQuery("idx", 0L, 10L));
       }
       final IndexReader reader = iw.getReader();
@@ -230,21 +247,19 @@ public class TestDocValuesQueries extends LuceneTestCase {
       iw.close();
 
       for (int i = 0; i < 100; ++i) {
-        long min =
-            random().nextBoolean() ? Long.MIN_VALUE : TestUtil.nextLong(random(), -100, 10000);
-        long max =
-            random().nextBoolean() ? Long.MAX_VALUE : TestUtil.nextLong(random(), -100, 10000);
+        long min = random.nextBoolean() ? Long.MIN_VALUE : TestUtil.nextLong(random, -100, 10000);
+        long max = random.nextBoolean() ? Long.MAX_VALUE : TestUtil.nextLong(random, -100, 10000);
         byte[] encodedMin = new byte[Long.BYTES];
         byte[] encodedMax = new byte[Long.BYTES];
         LongPoint.encodeDimension(min, encodedMin, 0);
         LongPoint.encodeDimension(max, encodedMax, 0);
         boolean includeMin = true;
         boolean includeMax = true;
-        if (random().nextBoolean()) {
+        if (random.nextBoolean()) {
           includeMin = false;
           min++;
         }
-        if (random().nextBoolean()) {
+        if (random.nextBoolean()) {
           includeMax = false;
           max--;
         }
@@ -254,16 +269,16 @@ public class TestDocValuesQueries extends LuceneTestCase {
           q2 =
               SortedSetDocValuesField.newSlowRangeQuery(
                   "dv",
-                  min == Long.MIN_VALUE && random().nextBoolean() ? null : newBytesRef(encodedMin),
-                  max == Long.MAX_VALUE && random().nextBoolean() ? null : newBytesRef(encodedMax),
+                  min == Long.MIN_VALUE && random.nextBoolean() ? null : newBytesRef(encodedMin),
+                  max == Long.MAX_VALUE && random.nextBoolean() ? null : newBytesRef(encodedMax),
                   includeMin,
                   includeMax);
         } else {
           q2 =
               SortedDocValuesField.newSlowRangeQuery(
                   "dv",
-                  min == Long.MIN_VALUE && random().nextBoolean() ? null : newBytesRef(encodedMin),
-                  max == Long.MAX_VALUE && random().nextBoolean() ? null : newBytesRef(encodedMax),
+                  min == Long.MIN_VALUE && random.nextBoolean() ? null : newBytesRef(encodedMin),
+                  max == Long.MAX_VALUE && random.nextBoolean() ? null : newBytesRef(encodedMax),
                   includeMin,
                   includeMax);
         }
@@ -275,40 +290,111 @@ public class TestDocValuesQueries extends LuceneTestCase {
     }
   }
 
-  public void testDuelPointRangeSortedSetRangeQuery() throws IOException {
-    doTestDuelPointRangeSortedRangeQuery(true, 1, false);
+  @Test
+  public void testDuelPointRangeSortedSetRangeQuery(Random random) throws IOException {
+    doTestDuelPointRangeSortedRangeQuery(random, true, 1, false);
   }
 
-  public void testDuelPointRangeSortedSetRangeSkipperQuery() throws IOException {
-    doTestDuelPointRangeSortedRangeQuery(true, 1, true);
+  @Test
+  public void testDuelPointRangeSortedSetRangeSkipperQuery(Random random) throws IOException {
+    doTestDuelPointRangeSortedRangeQuery(random, true, 1, true);
   }
 
-  public void testDuelPointRangeMultivaluedSortedSetRangeQuery() throws IOException {
-    doTestDuelPointRangeSortedRangeQuery(true, 3, false);
+  @Test
+  public void testDuelPointRangeMultivaluedSortedSetRangeQuery(Random random) throws IOException {
+    doTestDuelPointRangeSortedRangeQuery(random, true, 3, false);
   }
 
-  public void testDuelPointRangeMultivaluedSortedSetRangeSkipperQuery() throws IOException {
-    doTestDuelPointRangeSortedRangeQuery(true, 3, true);
+  @Test
+  public void testDuelPointRangeMultivaluedSortedSetRangeSkipperQuery(Random random)
+      throws IOException {
+    doTestDuelPointRangeSortedRangeQuery(random, true, 3, true);
   }
 
-  public void testDuelPointRangeSortedRangeQuery() throws IOException {
-    doTestDuelPointRangeSortedRangeQuery(false, 1, false);
+  @Test
+  public void testSortedSetRangeQueryUsesTwoPhaseRangeIteratorWithSkipper() throws IOException {
+    assertSortedSetRangeQueryUsesTwoPhaseRangeIteratorWithSkipper(false);
+    assertSortedSetRangeQueryUsesTwoPhaseRangeIteratorWithSkipper(true);
   }
 
-  public void testDuelPointRangeSortedRangeSkipperQuery() throws IOException {
-    doTestDuelPointRangeSortedRangeQuery(false, 1, true);
+  private void assertSortedSetRangeQueryUsesTwoPhaseRangeIteratorWithSkipper(boolean multiValued)
+      throws IOException {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(8));
+      try (IndexWriter iw = new IndexWriter(dir, config)) {
+        for (int i = 0; i < 512; i++) {
+          Document doc = new Document();
+          addSortedSetValue(doc, i % 100);
+          if (multiValued) {
+            addSortedSetValue(doc, 100 + (i % 100));
+          }
+          iw.addDocument(doc);
+        }
+        iw.forceMerge(1);
+
+        try (IndexReader reader = DirectoryReader.open(iw)) {
+          IndexSearcher searcher = newSearcher(reader, false);
+          byte[] encodedMin = new byte[Long.BYTES];
+          byte[] encodedMax = new byte[Long.BYTES];
+          LongPoint.encodeDimension(20, encodedMin, 0);
+          LongPoint.encodeDimension(40, encodedMax, 0);
+          Query query =
+              SortedSetDocValuesField.newSlowRangeQuery(
+                  "dv", newBytesRef(encodedMin), newBytesRef(encodedMax), true, true);
+
+          LeafReaderContext leaf = reader.leaves().get(0);
+          assertSame(query, searcher.rewrite(query));
+          assertNull(leaf.reader().getMetaData().sort());
+          assertNotNull(leaf.reader().getDocValuesSkipper("dv"));
+          assertEquals(
+              multiValued == false,
+              DocValues.unwrapSingleton(DocValues.getSortedSet(leaf.reader(), "dv")) != null);
+
+          Weight weight = query.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1f);
+          ScorerSupplier scorerSupplier = weight.scorerSupplier(leaf);
+
+          assertNotNull(scorerSupplier);
+          assertTrue(
+              scorerSupplier.getClass().getName(),
+              scorerSupplier instanceof ConstantScoreScorerSupplier);
+          DocIdSetIterator iterator =
+              ((ConstantScoreScorerSupplier) scorerSupplier).iterator(Long.MAX_VALUE);
+          // The skipper route exposes a two-phase DocValuesRangeIterator whose intoBitSet
+          // bulk-evaluates skip blocks, rather than a per-doc plain iterator.
+          TwoPhaseIterator twoPhase = TwoPhaseIterator.unwrap(iterator);
+          assertNotNull(iterator.getClass().getName(), twoPhase);
+          assertTrue(twoPhase.getClass().getName(), twoPhase instanceof DocValuesRangeIterator);
+        }
+      }
+    }
   }
 
-  public void testDuelPointSortedSetSortedWithSkipperRangeQuery() throws IOException {
+  private void addSortedSetValue(Document doc, long value) {
+    byte[] encoded = new byte[Long.BYTES];
+    LongPoint.encodeDimension(value, encoded, 0);
+    doc.add(SortedSetDocValuesField.indexedField("dv", newBytesRef(encoded)));
+  }
+
+  @Test
+  public void testDuelPointRangeSortedRangeQuery(Random random) throws IOException {
+    doTestDuelPointRangeSortedRangeQuery(random, false, 1, false);
+  }
+
+  @Test
+  public void testDuelPointRangeSortedRangeSkipperQuery(Random random) throws IOException {
+    doTestDuelPointRangeSortedRangeQuery(random, false, 1, true);
+  }
+
+  @Test
+  public void testDuelPointSortedSetSortedWithSkipperRangeQuery(Random random) throws IOException {
     Directory dir = newDirectory();
-    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec());
-    config.setIndexSort(
-        new Sort(new SortField("dv", SortField.Type.STRING, random().nextBoolean())));
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, config);
+    IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(random));
+    config.setIndexSort(new Sort(new SortField("dv", SortField.Type.STRING, random.nextBoolean())));
+    RandomIndexWriter iw = new RandomIndexWriter(random, dir, config);
     final int numDocs = atLeast(1000);
     for (int i = 0; i < numDocs; ++i) {
       Document doc = new Document();
-      final long value = TestUtil.nextLong(random(), -100, 10000);
+      final long value = TestUtil.nextLong(random, -100, 10000);
       byte[] encoded = new byte[Long.BYTES];
       LongPoint.encodeDimension(value, encoded, 0);
       doc.add(SortedDocValuesField.indexedField("dv", newBytesRef(encoded)));
@@ -321,19 +407,19 @@ public class TestDocValuesQueries extends LuceneTestCase {
     iw.close();
 
     for (int i = 0; i < 100; ++i) {
-      long min = random().nextBoolean() ? Long.MIN_VALUE : TestUtil.nextLong(random(), -100, 10000);
-      long max = random().nextBoolean() ? Long.MAX_VALUE : TestUtil.nextLong(random(), -100, 10000);
+      long min = random.nextBoolean() ? Long.MIN_VALUE : TestUtil.nextLong(random, -100, 10000);
+      long max = random.nextBoolean() ? Long.MAX_VALUE : TestUtil.nextLong(random, -100, 10000);
       byte[] encodedMin = new byte[Long.BYTES];
       byte[] encodedMax = new byte[Long.BYTES];
       LongPoint.encodeDimension(min, encodedMin, 0);
       LongPoint.encodeDimension(max, encodedMax, 0);
       boolean includeMin = true;
       boolean includeMax = true;
-      if (random().nextBoolean()) {
+      if (random.nextBoolean()) {
         includeMin = false;
         min++;
       }
-      if (random().nextBoolean()) {
+      if (random.nextBoolean()) {
         includeMax = false;
         max--;
       }
@@ -341,8 +427,8 @@ public class TestDocValuesQueries extends LuceneTestCase {
       final Query q2 =
           SortedDocValuesField.newSlowRangeQuery(
               "dv",
-              min == Long.MIN_VALUE && random().nextBoolean() ? null : newBytesRef(encodedMin),
-              max == Long.MAX_VALUE && random().nextBoolean() ? null : newBytesRef(encodedMax),
+              min == Long.MIN_VALUE && random.nextBoolean() ? null : newBytesRef(encodedMin),
+              max == Long.MAX_VALUE && random.nextBoolean() ? null : newBytesRef(encodedMax),
               includeMin,
               includeMax);
       assertSameMatches(searcher, q1, q2, false);
@@ -365,6 +451,7 @@ public class TestDocValuesQueries extends LuceneTestCase {
     }
   }
 
+  @Test
   public void testEquals() {
     Query q1 = SortedNumericDocValuesField.newSlowRangeQuery("foo", 3, 5);
     QueryUtils.checkEqual(q1, SortedNumericDocValuesField.newSlowRangeQuery("foo", 3, 5));
@@ -393,6 +480,7 @@ public class TestDocValuesQueries extends LuceneTestCase {
             "quux", newBytesRef("bar"), newBytesRef("baz"), true, true));
   }
 
+  @Test
   public void testToString() {
     Query q1 = SortedNumericDocValuesField.newSlowRangeQuery("foo", 3, 5);
     assertEquals("foo:[3 TO 5]", q1.toString());
@@ -419,9 +507,10 @@ public class TestDocValuesQueries extends LuceneTestCase {
     assertEquals("foo:{* TO [62 61 7a]]", q2.toString("bar"));
   }
 
-  public void testMissingField() throws IOException {
+  @Test
+  public void testMissingField(Random random) throws IOException {
     Directory dir = newDirectory();
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    RandomIndexWriter iw = new RandomIndexWriter(random, dir);
     iw.addDocument(new Document());
     IndexReader reader = iw.getReader();
     iw.close();
@@ -434,14 +523,14 @@ public class TestDocValuesQueries extends LuceneTestCase {
                 "foo",
                 newBytesRef("abc"),
                 newBytesRef("bcd"),
-                random().nextBoolean(),
-                random().nextBoolean()),
+                random.nextBoolean(),
+                random.nextBoolean()),
             SortedSetDocValuesField.newSlowRangeQuery(
                 "foo",
                 newBytesRef("abc"),
                 newBytesRef("bcd"),
-                random().nextBoolean(),
-                random().nextBoolean()))) {
+                random.nextBoolean(),
+                random.nextBoolean()))) {
       Weight w = searcher.createWeight(searcher.rewrite(query), ScoreMode.COMPLETE, 1);
       assertNull(w.scorer(searcher.getIndexReader().leaves().get(0)));
     }
@@ -449,9 +538,10 @@ public class TestDocValuesQueries extends LuceneTestCase {
     dir.close();
   }
 
-  public void testSlowRangeQueryRewrite() throws IOException {
+  @Test
+  public void testSlowRangeQueryRewrite(Random random) throws IOException {
     Directory dir = newDirectory();
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    RandomIndexWriter iw = new RandomIndexWriter(random, dir);
     IndexReader reader = iw.getReader();
     iw.close();
     IndexSearcher searcher = newSearcher(reader);
@@ -467,9 +557,10 @@ public class TestDocValuesQueries extends LuceneTestCase {
     dir.close();
   }
 
-  public void testSortedNumericNPE() throws IOException {
+  @Test
+  public void testSortedNumericNPE(Random random) throws IOException {
     Directory dir = newDirectory();
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    RandomIndexWriter iw = new RandomIndexWriter(random, dir);
     double[] nums = {
       -1.7147449030215377E-208,
       -1.6887024655302576E-11,
@@ -506,7 +597,8 @@ public class TestDocValuesQueries extends LuceneTestCase {
     dir.close();
   }
 
-  public void testSetEquals() {
+  @Test
+  public void testSetEquals(Random random) {
     assertEquals(
         NumericDocValuesField.newSlowSetQuery("field", 17L, 42L),
         NumericDocValuesField.newSlowSetQuery("field", 17L, 42L));
@@ -521,27 +613,28 @@ public class TestDocValuesQueries extends LuceneTestCase {
         NumericDocValuesField.newSlowSetQuery("field", 17L, 32416190071L));
   }
 
-  public void testDuelSetVsTermsQuery() throws IOException {
+  @Test
+  public void testDuelSetVsTermsQuery(Random random) throws IOException {
     final int iters = atLeast(2);
     for (int iter = 0; iter < iters; ++iter) {
       final List<Long> allNumbers = new ArrayList<>();
-      final int numNumbers = TestUtil.nextInt(random(), 1, 1 << TestUtil.nextInt(random(), 1, 10));
+      final int numNumbers = TestUtil.nextInt(random, 1, 1 << TestUtil.nextInt(random, 1, 10));
       for (int i = 0; i < numNumbers; ++i) {
-        allNumbers.add(random().nextLong());
+        allNumbers.add(random.nextLong());
       }
       Directory dir = newDirectory();
-      RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+      RandomIndexWriter iw = new RandomIndexWriter(random, dir);
       final int numDocs = atLeast(100);
       for (int i = 0; i < numDocs; ++i) {
         Document doc = new Document();
-        final Long number = allNumbers.get(random().nextInt(allNumbers.size()));
+        final Long number = allNumbers.get(random.nextInt(allNumbers.size()));
         doc.add(new StringField("text", number.toString(), Field.Store.NO));
         doc.add(new NumericDocValuesField("long", number));
         doc.add(new SortedNumericDocValuesField("twolongs", number));
         doc.add(new SortedNumericDocValuesField("twolongs", number * 2));
         iw.addDocument(doc);
       }
-      if (numNumbers > 1 && random().nextBoolean()) {
+      if (numNumbers > 1 && random.nextBoolean()) {
         iw.deleteDocuments(new TermQuery(new Term("text", allNumbers.get(0).toString())));
       }
       iw.commit();
@@ -556,13 +649,13 @@ public class TestDocValuesQueries extends LuceneTestCase {
       }
 
       for (int i = 0; i < 100; ++i) {
-        final float boost = random().nextFloat() * 10;
+        final float boost = random.nextFloat() * 10;
         final int numQueryNumbers =
-            TestUtil.nextInt(random(), 1, 1 << TestUtil.nextInt(random(), 1, 8));
+            TestUtil.nextInt(random, 1, 1 << TestUtil.nextInt(random, 1, 8));
         Set<Long> queryNumbers = new HashSet<>();
         Set<Long> queryNumbersX2 = new HashSet<>();
         for (int j = 0; j < numQueryNumbers; ++j) {
-          Long number = allNumbers.get(random().nextInt(allNumbers.size()));
+          Long number = allNumbers.get(random.nextInt(allNumbers.size()));
           queryNumbers.add(number);
           queryNumbersX2.add(2 * number);
         }
@@ -595,9 +688,10 @@ public class TestDocValuesQueries extends LuceneTestCase {
     }
   }
 
-  public void testSortedNumericDocValuesRangeQueryCount() throws Exception {
+  @Test
+  public void testSortedNumericDocValuesRangeQueryCount(Random random) throws Exception {
     try (Directory dir = newDirectory();
-        RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
+        RandomIndexWriter iw = new RandomIndexWriter(random, dir)) {
       for (int i = 0; i < 100; i++) {
         Document doc = new Document();
         doc.add(SortedNumericDocValuesField.indexedField("with_index", 100 + i));
@@ -663,9 +757,194 @@ public class TestDocValuesQueries extends LuceneTestCase {
     assertEquals(expectedCount, w.count(searcher.reader.leaves().getFirst()));
   }
 
-  public void testSortedNumericDocValuesRangeQueryRewrites() throws Exception {
+  @Test
+  public void testSortedSetDocValuesRangeQueryCount() throws Exception {
     try (Directory dir = newDirectory();
         RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
+      for (int i = 0; i < 100; i++) {
+        String val = String.format(Locale.ROOT, "%03d", i);
+        Document doc = new Document();
+        doc.add(SortedSetDocValuesField.indexedField("with_index", newBytesRef(val)));
+        doc.add(new SortedSetDocValuesField("without_index", newBytesRef(val)));
+        if (i != 55) {
+          doc.add(SortedSetDocValuesField.indexedField("sparse", newBytesRef(val)));
+        }
+        iw.addDocument(doc);
+      }
+      iw.commit();
+      iw.forceMerge(1);
+
+      try (IndexReader reader = iw.getReader()) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+
+        // Nonexistent field
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "nonexistent", newBytesRef("000"), newBytesRef("099"), true, true),
+            0);
+
+        // Below all values: range is entirely before "000"
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("!"), newBytesRef("/"), true, true),
+            0);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "without_index", newBytesRef("!"), newBytesRef("/"), true, true),
+            0);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "sparse", newBytesRef("!"), newBytesRef("/"), true, true),
+            0);
+
+        // Match all values: "000" through "099"
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("000"), newBytesRef("099"), true, true),
+            100);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "without_index", newBytesRef("000"), newBytesRef("099"), true, true),
+            -1);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "sparse", newBytesRef("000"), newBytesRef("099"), true, true),
+            -1);
+
+        // Partial match: "050" through "060" = 11 values
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("050"), newBytesRef("060"), true, true),
+            -1);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "without_index", newBytesRef("050"), newBytesRef("060"), true, true),
+            -1);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "sparse", newBytesRef("050"), newBytesRef("060"), true, true),
+            -1);
+
+        // Partial match with bounds not in the index: "0501" falls between "050" and "051"
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("0501"), newBytesRef("100"), true, true),
+            -1);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "without_index", newBytesRef("0501"), newBytesRef("100"), true, true),
+            -1);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "sparse", newBytesRef("0501"), newBytesRef("100"), true, true),
+            -1);
+
+        // Non-indexed bounds that cover all values: "//" < "000" and "1000" > "099"
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("//"), newBytesRef("1000"), true, true),
+            100);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "without_index", newBytesRef("//"), newBytesRef("1000"), true, true),
+            -1);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "sparse", newBytesRef("//"), newBytesRef("1000"), true, true),
+            -1);
+
+        // Non-indexed bounds that match nothing: "0991" through "0999" are above all values
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("0991"), newBytesRef("0999"), true, true),
+            0);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "without_index", newBytesRef("0991"), newBytesRef("0999"), true, true),
+            0);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "sparse", newBytesRef("0991"), newBytesRef("0999"), true, true),
+            0);
+
+        // Above all values: range is entirely after "099"
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("100"), newBytesRef("199"), true, true),
+            0);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "without_index", newBytesRef("100"), newBytesRef("199"), true, true),
+            0);
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "sparse", newBytesRef("100"), newBytesRef("199"), true, true),
+            0);
+      }
+
+      // Delete docs with values "020" through "030" (11 docs)
+      iw.deleteDocuments(
+          SortedSetDocValuesField.newSlowRangeQuery(
+              "with_index", newBytesRef("020"), newBytesRef("030"), true, true));
+      iw.commit();
+
+      try (IndexReader reader = iw.getReader()) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+
+        // Below all values still matches nothing
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("!"), newBytesRef("/"), true, true),
+            0);
+        // All values minus 11 deleted = 89
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("000"), newBytesRef("099"), true, true),
+            89);
+        // Partial match still can't be counted cheaply
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("050"), newBytesRef("060"), true, true),
+            -1);
+        // Above all values still matches nothing
+        assertCount(
+            searcher,
+            SortedSetDocValuesField.newSlowRangeQuery(
+                "with_index", newBytesRef("100"), newBytesRef("199"), true, true),
+            0);
+      }
+    }
+  }
+
+  @Test
+  public void testSortedNumericDocValuesRangeQueryRewrites(Random random) throws Exception {
+    try (Directory dir = newDirectory();
+        RandomIndexWriter iw = new RandomIndexWriter(random, dir)) {
       for (int i = 0; i < 100; i++) {
         Document doc = new Document();
         doc.add(SortedNumericDocValuesField.indexedField("with_index", 100 + i));
@@ -735,9 +1014,10 @@ public class TestDocValuesQueries extends LuceneTestCase {
     }
   }
 
-  public void testRewriteWorksWithPointsButNoSkipIndex() throws IOException {
+  @Test
+  public void testRewriteWorksWithPointsButNoSkipIndex(Random random) throws IOException {
     try (Directory dir = newDirectory()) {
-      try (RandomIndexWriter iw = new RandomIndexWriter(random(), dir)) {
+      try (RandomIndexWriter iw = new RandomIndexWriter(random, dir)) {
         for (int i = 0; i < 100; i++) {
           final Document doc = new Document();
           doc.add(new LongField("field", 100 + i, Field.Store.NO));
@@ -761,8 +1041,10 @@ public class TestDocValuesQueries extends LuceneTestCase {
     }
   }
 
-  public void testPrimarySortDenseSortedDocValuesExactMatch() throws IOException {
+  @Test
+  public void testPrimarySortDenseSortedDocValuesExactMatch(Random random) throws IOException {
     doTestPrimarySortDenseExactMatch(
+        random,
         SortField.Type.STRING,
         i -> SortedDocValuesField.indexedField("dv", newBytesRef(i + "")),
         i ->
@@ -770,28 +1052,33 @@ public class TestDocValuesQueries extends LuceneTestCase {
                 "dv", newBytesRef(i + ""), newBytesRef(i + ""), true, true));
   }
 
-  public void testPrimarySortDenseNumericDocValuesExactMatch() throws IOException {
+  @Test
+  public void testPrimarySortDenseNumericDocValuesExactMatch(Random random) throws IOException {
     doTestPrimarySortDenseExactMatch(
+        random,
         SortField.Type.LONG,
         i -> NumericDocValuesField.indexedField("dv", i),
         i -> NumericDocValuesField.newSlowRangeQuery("dv", i, i));
   }
 
   public void doTestPrimarySortDenseExactMatch(
-      SortField.Type type, IntFunction<IndexableField> fields, IntFunction<Query> queries)
+      Random random,
+      SortField.Type type,
+      IntFunction<IndexableField> fields,
+      IntFunction<Query> queries)
       throws IOException {
-    boolean deletes = random().nextBoolean();
+    boolean deletes = random.nextBoolean();
     Directory dir = newDirectory();
-    int skipIntervalSize = random().nextInt(4, 4096);
+    int skipIntervalSize = random.nextInt(4, 4096);
     IndexWriterConfig config = new IndexWriterConfig().setCodec(getCodec(skipIntervalSize));
-    config.setIndexSort(new Sort(new SortField("dv", type, random().nextBoolean())));
-    int numBlocks = random().nextInt(4, 16);
+    config.setIndexSort(new Sort(new SortField("dv", type, random.nextBoolean())));
+    int numBlocks = random.nextInt(4, 16);
     int[] sizes = new int[numBlocks];
     for (int i = 0; i < numBlocks; i++) {
-      sizes[i] = random().nextInt(1, 250);
+      sizes[i] = random.nextInt(1, 250);
     }
     int[] totalSizes = new int[numBlocks];
-    RandomIndexWriter iw = new RandomIndexWriter(random(), dir, config);
+    RandomIndexWriter iw = new RandomIndexWriter(random, dir, config);
     for (int i = 0; i < numBlocks; i++) {
       totalSizes[i] = sizes[i];
       for (int j = 0; j < sizes[i]; j++) {
@@ -799,7 +1086,7 @@ public class TestDocValuesQueries extends LuceneTestCase {
         IndexableField dv = fields.apply(i);
         doc.add(dv);
         iw.addDocument(doc);
-        if (deletes && random().nextInt(10) == 0) {
+        if (deletes && random.nextInt(10) == 0) {
           doc = new Document();
           doc.add(dv);
           doc.add(new StringField("id", "to_delete", Field.Store.NO));

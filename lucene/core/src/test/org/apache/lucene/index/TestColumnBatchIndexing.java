@@ -30,6 +30,8 @@ import static org.apache.lucene.document.column.ColumnBatchTestUtil.simpleBatch;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
@@ -444,7 +446,10 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
 
     // --- Batch path ---
     Directory batchDir = newDirectory();
-    try (IndexWriter batchW = new IndexWriter(batchDir, newIndexWriterConfig())) {
+    IndexWriterConfig batchIwc = newIndexWriterConfig().setMergePolicy(new TieredMergePolicy());
+    batchIwc.setRAMBufferSizeMB(16);
+    batchIwc.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+    try (IndexWriter batchW = new IndexWriter(batchDir, batchIwc)) {
       BytesRef[] refs = new BytesRef[values.length];
       for (int i = 0; i < values.length; i++) {
         refs[i] = newBytesRef(values[i]);
@@ -459,9 +464,10 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     }
 
     Directory singleDir = newDirectory();
-    try (IndexWriter singleW =
-        new IndexWriter(
-            singleDir, newIndexWriterConfig().setMergePolicy(new TieredMergePolicy()))) {
+    IndexWriterConfig singleIwc = newIndexWriterConfig().setMergePolicy(new TieredMergePolicy());
+    singleIwc.setRAMBufferSizeMB(16);
+    singleIwc.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+    try (IndexWriter singleW = new IndexWriter(singleDir, singleIwc)) {
       int next = 0;
       for (int d = 0; d < totalDocs; d++) {
         Document doc = new Document();
@@ -592,12 +598,22 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     LeafReader leaf = getOnlyLeafReader(r);
     FloatVectorValues values = leaf.getFloatVectorValues("v");
     KnnVectorValues.DocIndexIterator it = values.iterator();
-    float[][] all = {firstBatch[0], firstBatch[1], secondBatch[0], secondBatch[1], secondBatch[2]};
-    for (int i = 0; i < all.length; i++) {
-      assertEquals(i, it.nextDoc());
-      assertArrayEquals(all[i], values.vectorValue(it.index()), 0f);
+    List<float[]> collected = new ArrayList<>();
+    while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+      collected.add(values.vectorValue(it.index()).clone());
     }
-    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.nextDoc());
+    // Merge order is not guaranteed when batches flush to separate segments,
+    // so compare as a sorted set rather than by doc-ID position.
+    Comparator<float[]> byFirst = Comparator.comparingDouble(v -> v[0]);
+    collected.sort(byFirst);
+    float[][] expected = {
+      firstBatch[0], firstBatch[1], secondBatch[0], secondBatch[1], secondBatch[2]
+    };
+    Arrays.sort(expected, byFirst);
+    assertEquals(expected.length, collected.size());
+    for (int i = 0; i < expected.length; i++) {
+      assertArrayEquals(expected[i], collected.get(i), 0f);
+    }
 
     r.close();
     w.close();
@@ -663,8 +679,10 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
 
   public void testLongTupleCursorThrowMidBatchRecovers() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter w =
-        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(new TieredMergePolicy()));
+    IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(new TieredMergePolicy());
+    iwc.setRAMBufferSizeMB(16);
+    iwc.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+    IndexWriter w = new IndexWriter(dir, iwc);
 
     // 5-doc batch; LongTupleCursor#nextDoc throws at index 2 (during column pass).
     int[] docIds = {0, 1, 2, 3, 4};
@@ -719,8 +737,10 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
 
   public void testLongValuesCursorThrowMidBatchRecovers() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter w =
-        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(new TieredMergePolicy()));
+    IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(new TieredMergePolicy());
+    iwc.setRAMBufferSizeMB(16);
+    iwc.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+    IndexWriter w = new IndexWriter(dir, iwc);
 
     // 6-doc dense batch; LongValuesCursor#fillDocValues throws partway (after 3 fills).
     long[] values = {1, 2, 3, 4, 5, 6};
@@ -771,7 +791,10 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
 
   public void testBinaryTupleCursorThrowMidBatchRecovers() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(new TieredMergePolicy());
+    iwc.setRAMBufferSizeMB(16);
+    iwc.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+    IndexWriter w = new IndexWriter(dir, iwc);
 
     int[] docIds = {0, 1, 2, 3};
     BytesRef[] values = {
@@ -815,7 +838,10 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
 
   public void testVectorTupleCursorThrowMidBatchRecovers() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(new TieredMergePolicy());
+    iwc.setRAMBufferSizeMB(16);
+    iwc.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+    IndexWriter w = new IndexWriter(dir, iwc);
 
     FieldType vectorType = floatVectorType(2, VectorSimilarityFunction.EUCLIDEAN);
     int[] docIds = {0, 1, 2};
@@ -882,8 +908,10 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
 
   public void testMultipleBatchesIntoOneSegment() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter w =
-        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(new TieredMergePolicy()));
+    IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(new TieredMergePolicy());
+    iwc.setRAMBufferSizeMB(16);
+    iwc.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+    IndexWriter w = new IndexWriter(dir, iwc);
 
     w.addBatch(
         simpleBatch(
@@ -919,8 +947,10 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
    */
   public void testStoredFieldsAppearAfterStoredFreeBatch() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter w =
-        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(new TieredMergePolicy()));
+    IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(new TieredMergePolicy());
+    iwc.setRAMBufferSizeMB(16);
+    iwc.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+    IndexWriter w = new IndexWriter(dir, iwc);
 
     // Batch A: 3 docs, indexed-only string column (no stored).
     BytesRef[] ids = {newBytesRef("a"), newBytesRef("b"), newBytesRef("c")};
@@ -1005,8 +1035,10 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
   /** Interleaving addBatch and addDocument keeps doc-ids contiguous and values consistent. */
   public void testAddBatchInterleavedWithAddDocument() throws IOException {
     Directory dir = newDirectory();
-    IndexWriter w =
-        new IndexWriter(dir, newIndexWriterConfig().setMergePolicy(new TieredMergePolicy()));
+    IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(new TieredMergePolicy());
+    iwc.setRAMBufferSizeMB(16);
+    iwc.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+    IndexWriter w = new IndexWriter(dir, iwc);
 
     // batch (3) → doc → batch (2) → doc, expecting docs 0..6 in order.
     w.addBatch(
@@ -1104,7 +1136,12 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     Directory dir = newDirectory();
     // Pin a non-mock merge policy: MockRandomMergePolicy.reorder may reverse doc-ids during
     // merge, which is legitimate behavior but defeats the strict per-doc-id assertions below.
+    // Also disable auto-flush so the 3 addDocument calls land in a single segment; otherwise a
+    // randomized tiny maxBufferedDocs splits them into multiple small segments and TMP's
+    // size-sorted forceMerge can interleave them with the addBatch segment.
     IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(new TieredMergePolicy());
+    iwc.setRAMBufferSizeMB(16);
+    iwc.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
     IndexWriter w = new IndexWriter(dir, iwc);
 
     // Segment A via addDocument: values 10, 20, 30.
@@ -1243,7 +1280,11 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
   }
 
   private static void buildDocByDocIndex(Directory dir, ParityDoc[] docs) throws IOException {
-    try (IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+    IndexWriterConfig iwc =
+        new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(new TieredMergePolicy());
+    iwc.setRAMBufferSizeMB(16);
+    iwc.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+    try (IndexWriter w = new IndexWriter(dir, iwc)) {
       for (ParityDoc d : docs) {
         Document doc = new Document();
         if (d.num != null) doc.add(new NumericDocValuesField("num", d.num));
@@ -1295,7 +1336,11 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
     vecType.setVectorAttributes(2, VectorEncoding.FLOAT32, VectorSimilarityFunction.EUCLIDEAN);
     vecType.freeze();
 
-    try (IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())))) {
+    IndexWriterConfig iwc =
+        new IndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(new TieredMergePolicy());
+    iwc.setRAMBufferSizeMB(16);
+    iwc.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+    try (IndexWriter w = new IndexWriter(dir, iwc)) {
       for (int bi = 0; bi < numBatches; bi++) {
         int from = starts[bi];
         int toExcl = starts[bi + 1];
@@ -1659,5 +1704,73 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
       assertArrayEquals(expected, bV.vectorValue(bIt.index()), 0f);
     }
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, bIt.nextDoc());
+  }
+
+  public void testDuplicateColumnNameRejected() throws IOException {
+    Directory dir = newDirectory();
+    try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      int[] ids = {0, 1};
+      long[] vals = {1L, 2L};
+      IllegalArgumentException e =
+          expectThrows(
+              IllegalArgumentException.class,
+              () ->
+                  w.addBatch(
+                      simpleBatch(
+                          2,
+                          new ArrayLongColumn("field", NumericDocValuesField.TYPE, ids, vals),
+                          new ArrayLongColumn("field", NumericDocValuesField.TYPE, ids, vals))));
+      assertTrue(e.getMessage(), e.getMessage().contains("field"));
+
+      // Writer still usable after validation failure.
+      w.addBatch(
+          simpleBatch(
+              1,
+              new ArrayLongColumn("v", NumericDocValuesField.TYPE, new int[] {0}, new long[] {7})));
+      w.forceMerge(1);
+      DirectoryReader r = DirectoryReader.open(w);
+      // After forceMerge, fully-deleted segments are pruned; only the recovery doc remains.
+      assertEquals(1, r.numDocs());
+      LeafReader leaf = getOnlyLeafReader(r);
+      NumericDocValues dv = leaf.getNumericDocValues("v");
+      assertNotNull(dv);
+      assertTrue(dv.nextDoc() != DocIdSetIterator.NO_MORE_DOCS);
+      assertEquals(7, dv.longValue());
+      r.close();
+    }
+    dir.close();
+  }
+
+  public void testSameFieldNameAcrossBatchesAllowed() throws IOException {
+    Directory dir = newDirectory();
+    // Pin a stable IWC so randomized small buffers / merge policies cannot reorder
+    // this test asserts doc-id ordering.
+    IndexWriterConfig iwc = newIndexWriterConfig().setMergePolicy(new TieredMergePolicy());
+    iwc.setRAMBufferSizeMB(16);
+    iwc.setMaxBufferedDocs(IndexWriterConfig.DISABLE_AUTO_FLUSH);
+    try (IndexWriter w = new IndexWriter(dir, iwc)) {
+      w.addBatch(
+          simpleBatch(
+              1,
+              new ArrayLongColumn(
+                  "f", NumericDocValuesField.TYPE, new int[] {0}, new long[] {1L})));
+      w.addBatch(
+          simpleBatch(
+              1,
+              new ArrayLongColumn(
+                  "f", NumericDocValuesField.TYPE, new int[] {0}, new long[] {2L})));
+      w.forceMerge(1);
+      try (DirectoryReader r = DirectoryReader.open(w)) {
+        LeafReader leaf = getOnlyLeafReader(r);
+        NumericDocValues dv = leaf.getNumericDocValues("f");
+        assertNotNull(dv);
+        assertEquals(0, dv.nextDoc());
+        assertEquals(1L, dv.longValue());
+        assertEquals(1, dv.nextDoc());
+        assertEquals(2L, dv.longValue());
+        assertEquals(DocIdSetIterator.NO_MORE_DOCS, dv.nextDoc());
+      }
+    }
+    dir.close();
   }
 }

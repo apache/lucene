@@ -34,8 +34,8 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
- * Tests correctness of {@link BatchDocValuesRangeIterator} and its {@code intoBitSet()} path,
- * including YES, YES_IF_PRESENT, and MAYBE block states.
+ * Tests the {@code intoBitSet()} bulk path of {@link DocValuesRangeIterator} over single-valued
+ * numeric doc values, including YES, YES_IF_PRESENT, and MAYBE block states.
  */
 public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTests {
 
@@ -60,6 +60,8 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
       values[i] = i % 100; // deterministic: 0..99 repeating
       Document doc = new Document();
       doc.add(NumericDocValuesField.indexedField("age", values[i]));
+      doc.add(SortedNumericDocValuesField.indexedField("multi_age", values[i] - 1000));
+      doc.add(SortedNumericDocValuesField.indexedField("multi_age", values[i]));
       doc.add(NumericDocValuesField.indexedField("score", (i * 7L) % 1000));
       w.addDocument(doc);
     }
@@ -77,10 +79,10 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
   }
 
   /**
-   * Verifies that SortedNumericDocValuesRangeQuery wires BatchDocValuesRangeIterator when the field
-   * has a skip index and is single-valued.
+   * Verifies that SortedNumericDocValuesRangeQuery wires a DocValuesRangeIterator two-phase when
+   * the field has a skip index and is single-valued.
    */
-  public void testBatchIteratorIsWired() throws Exception {
+  public void testTwoPhaseIteratorIsWired() throws Exception {
     LeafReaderContext ctx = reader.leaves().get(0);
     // Use a range that won't be rewritten to MatchAll or MatchNone
     Query q = SortedNumericDocValuesField.newSlowRangeQuery("age", 20, 40);
@@ -92,11 +94,34 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
         "ScorerSupplier must be a ConstantScoreScorerSupplier",
         ss instanceof ConstantScoreScorerSupplier);
     DocIdSetIterator iter = ((ConstantScoreScorerSupplier) ss).iterator(Long.MAX_VALUE);
+    TwoPhaseIterator twoPhase = TwoPhaseIterator.unwrap(iter);
     assertTrue(
-        "Range query on single-valued field with skip index must use BatchDocValuesRangeIterator"
+        "Range query on single-valued field with skip index must use a DocValuesRangeIterator,"
             + " but got: "
-            + iter.getClass().getSimpleName(),
-        iter instanceof BatchDocValuesRangeIterator);
+            + (twoPhase == null ? iter.getClass() : twoPhase.getClass()).getSimpleName(),
+        twoPhase instanceof DocValuesRangeIterator);
+  }
+
+  public void testMultiValuedTwoPhaseIteratorIsWired() throws Exception {
+    LeafReaderContext ctx = reader.leaves().get(0);
+    Query q = SortedNumericDocValuesField.newSlowRangeQuery("multi_age", 20, 40);
+    Weight weight = q.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1f);
+    ScorerSupplier ss = weight.scorerSupplier(ctx);
+    assertNotNull("ScorerSupplier must not be null", ss);
+
+    assertTrue(
+        "ScorerSupplier must be a ConstantScoreScorerSupplier",
+        ss instanceof ConstantScoreScorerSupplier);
+    DocIdSetIterator iter = ((ConstantScoreScorerSupplier) ss).iterator(Long.MAX_VALUE);
+    TwoPhaseIterator twoPhase = TwoPhaseIterator.unwrap(iter);
+    assertTrue(
+        "Range query on multi-valued field with skip index must use a DocValuesRangeIterator,"
+            + " but got: "
+            + (twoPhase == null ? iter.getClass() : twoPhase.getClass()).getSimpleName(),
+        twoPhase instanceof DocValuesRangeIterator);
+    assertEquals(
+        searcher.count(SortedNumericDocValuesField.newSlowRangeQuery("age", 20, 40)),
+        searcher.count(q));
   }
 
   public void testSingleFieldRangeCorrectness() throws Exception {
@@ -171,17 +196,19 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
 
     NumericDocValues values = docValues(queryMin, queryMax);
     DocValuesSkipper skipper = docValuesSkipper(queryMin, queryMax, true);
-    BatchDocValuesRangeIterator iter =
-        new BatchDocValuesRangeIterator(values, skipper, queryMin, queryMax);
-    assertEquals(0, iter.nextDoc());
+    DocValuesRangeIterator iter =
+        DocValuesRangeIterator.forRange(values, skipper, queryMin, queryMax);
+    DocIdSetIterator approximation = iter.approximation();
+    assertEquals(0, approximation.nextDoc());
 
     FixedBitSet bitSet = new FixedBitSet(2048);
     iter.intoBitSet(128, bitSet, 0);
 
     assertEquals("All docs in the YES block must match", 128, bitSet.cardinality());
     assertTrue(
-        "docID must skip the NO block that starts at the block boundary, but was " + iter.docID(),
-        iter.docID() >= 512);
+        "approximation must skip the NO block that starts at the block boundary, but was "
+            + approximation.docID(),
+        approximation.docID() >= 512);
 
     // Continue filling the bitset in a second window, as DenseConjunctionBulkScorer does.
     iter.intoBitSet(2048, bitSet, 0);
@@ -232,8 +259,8 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
     NumericDocValues dv = ctx.reader().getNumericDocValues("age");
     assertNotNull("Field must have a skip index", skipper);
 
-    BatchDocValuesRangeIterator iter = new BatchDocValuesRangeIterator(dv, skipper, 20, 40);
-    iter.nextDoc();
+    DocValuesRangeIterator iter = DocValuesRangeIterator.forRange(dv, skipper, 20, 40);
+    iter.approximation().nextDoc();
 
     FixedBitSet actual = new FixedBitSet(windowSize);
     iter.intoBitSet(Math.min(maxDoc, windowSize), actual, 0);
@@ -270,8 +297,8 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
     NumericDocValues dv = ctx.reader().getNumericDocValues("age");
     assertNotNull(skipper);
 
-    BatchDocValuesRangeIterator iter = new BatchDocValuesRangeIterator(dv, skipper, 0, 99);
-    iter.nextDoc();
+    DocValuesRangeIterator iter = DocValuesRangeIterator.forRange(dv, skipper, 0, 99);
+    iter.approximation().nextDoc();
 
     FixedBitSet bitSet = new FixedBitSet(maxDoc);
     iter.intoBitSet(maxDoc, bitSet, 0);
@@ -302,8 +329,8 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
     NumericDocValues dv = ctx.reader().getNumericDocValues("age");
     assertNotNull(skipper);
 
-    BatchDocValuesRangeIterator iter = new BatchDocValuesRangeIterator(dv, skipper, 200, 300);
-    iter.nextDoc();
+    DocValuesRangeIterator iter = DocValuesRangeIterator.forRange(dv, skipper, 200, 300);
+    iter.approximation().nextDoc();
 
     FixedBitSet bitSet = new FixedBitSet(maxDoc);
     iter.intoBitSet(maxDoc, bitSet, 0);
@@ -345,8 +372,8 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
         NumericDocValues dv = ctx.reader().getNumericDocValues("sparse");
         if (skipper == null) return;
 
-        BatchDocValuesRangeIterator iter = new BatchDocValuesRangeIterator(dv, skipper, 20, 40);
-        iter.nextDoc();
+        DocValuesRangeIterator iter = DocValuesRangeIterator.forRange(dv, skipper, 20, 40);
+        iter.approximation().nextDoc();
 
         FixedBitSet bitSet = new FixedBitSet(numDocs);
         iter.intoBitSet(numDocs, bitSet, 0);
@@ -394,7 +421,8 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
     NumericDocValues dv = ctx.reader().getNumericDocValues("age");
     assertNotNull(skipper);
 
-    BatchDocValuesRangeIterator iter = new BatchDocValuesRangeIterator(dv, skipper, 20, 40);
+    DocIdSetIterator iter =
+        TwoPhaseIterator.asDocIdSetIterator(DocValuesRangeIterator.forRange(dv, skipper, 20, 40));
     List<Integer> actual = new ArrayList<>();
     for (int d = iter.nextDoc(); d != DocIdSetIterator.NO_MORE_DOCS; d = iter.nextDoc()) {
       actual.add(d);
@@ -406,7 +434,8 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
     // verifying each advance lands on the correct next matching doc.
     skipper = ctx.reader().getDocValuesSkipper("age");
     dv = ctx.reader().getNumericDocValues("age");
-    iter = new BatchDocValuesRangeIterator(dv, skipper, 20, 40);
+    iter =
+        TwoPhaseIterator.asDocIdSetIterator(DocValuesRangeIterator.forRange(dv, skipper, 20, 40));
     Random rng = random();
     int idx = 0;
     while (idx < expected.size()) {
@@ -422,7 +451,8 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
     // advance returns the next matching doc after the target.
     skipper = ctx.reader().getDocValuesSkipper("age");
     dv = ctx.reader().getNumericDocValues("age");
-    iter = new BatchDocValuesRangeIterator(dv, skipper, 20, 40);
+    iter =
+        TwoPhaseIterator.asDocIdSetIterator(DocValuesRangeIterator.forRange(dv, skipper, 20, 40));
     int prevDoc = -1;
     for (int i = 0; i < expected.size() && i < 20; i++) {
       int matchDoc = expected.get(i);
@@ -441,7 +471,8 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
     // Test 4: advance() past all docs returns NO_MORE_DOCS
     skipper = ctx.reader().getDocValuesSkipper("age");
     dv = ctx.reader().getNumericDocValues("age");
-    iter = new BatchDocValuesRangeIterator(dv, skipper, 20, 40);
+    iter =
+        TwoPhaseIterator.asDocIdSetIterator(DocValuesRangeIterator.forRange(dv, skipper, 20, 40));
     int doc = iter.advance(ctx.reader().maxDoc());
     assertEquals(DocIdSetIterator.NO_MORE_DOCS, doc);
   }
@@ -460,9 +491,9 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
   }
 
   /**
-   * Tests BatchDocValuesRangeIterator using the fake NumericDocValues and DocValuesSkipper from
-   * BaseDocValuesSkipperTests, which exercises all block types (YES, NO, MAYBE, YES_IF_PRESENT)
-   * across both dense and sparse regions.
+   * Tests the DocValuesRangeIterator iteration and intoBitSet paths using the fake NumericDocValues
+   * and DocValuesSkipper from BaseDocValuesSkipperTests, which exercises all block types (YES, NO,
+   * MAYBE, YES_IF_PRESENT) across both dense and sparse regions.
    */
   public void testAllBlockTypesWithFakeSkipper() throws Exception {
     long queryMin = 10;
@@ -484,8 +515,9 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
     // Test nextDoc() through all block types
     NumericDocValues values = docValues(queryMin, queryMax);
     DocValuesSkipper skipper = docValuesSkipper(queryMin, queryMax, true);
-    BatchDocValuesRangeIterator iter =
-        new BatchDocValuesRangeIterator(values, skipper, queryMin, queryMax);
+    DocIdSetIterator iter =
+        TwoPhaseIterator.asDocIdSetIterator(
+            DocValuesRangeIterator.forRange(values, skipper, queryMin, queryMax));
     List<Integer> actual = new ArrayList<>();
     for (int d = iter.nextDoc(); d != DocIdSetIterator.NO_MORE_DOCS; d = iter.nextDoc()) {
       actual.add(d);
@@ -500,7 +532,9 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
     // - advance past end
     values = docValues(queryMin, queryMax);
     skipper = docValuesSkipper(queryMin, queryMax, true);
-    iter = new BatchDocValuesRangeIterator(values, skipper, queryMin, queryMax);
+    iter =
+        TwoPhaseIterator.asDocIdSetIterator(
+            DocValuesRangeIterator.forRange(values, skipper, queryMin, queryMax));
 
     // advance into YES block — should land exactly on target
     assertEquals(50, iter.advance(50));
@@ -520,11 +554,12 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
     // Test intoBitSet() across all block types
     values = docValues(queryMin, queryMax);
     skipper = docValuesSkipper(queryMin, queryMax, true);
-    iter = new BatchDocValuesRangeIterator(values, skipper, queryMin, queryMax);
-    int firstDoc = iter.nextDoc();
+    DocValuesRangeIterator rangeIter =
+        DocValuesRangeIterator.forRange(values, skipper, queryMin, queryMax);
+    int firstDoc = rangeIter.approximation().nextDoc();
 
     FixedBitSet bitSet = new FixedBitSet(2048);
-    iter.intoBitSet(2048, bitSet, 0);
+    rangeIter.intoBitSet(2048, bitSet, 0);
 
     // All expected docs after firstDoc should be set
     for (int expectedDoc : expected) {
@@ -537,6 +572,126 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
         d != DocIdSetIterator.NO_MORE_DOCS;
         d = d + 1 < bitSet.length() ? bitSet.nextSetBit(d + 1) : DocIdSetIterator.NO_MORE_DOCS) {
       assertTrue("Doc " + d + " set in bitset but not in expected", expected.contains(d));
+    }
+  }
+
+  /**
+   * Tests that rangeIntoBitSet (SIMD/fast path) produces the exact same results as per-doc
+   * evaluation (slow path) across random data with various densities and range selectivities.
+   */
+  public void testRangeIntoBitSetMatchesPerDocEvaluation() throws Exception {
+    Random rng = random();
+    for (int iter = 0; iter < 10; iter++) {
+      int numDocs = rng.nextInt(4096, 4096 * 5);
+      long maxValue = rng.nextInt(100, 10000);
+      // Random range selectivity
+      long rangeMin = rng.nextLong(0, maxValue / 2);
+      long rangeMax = rangeMin + rng.nextLong(1, maxValue / 2);
+
+      try (Directory dir = newDirectory()) {
+        IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+        try (IndexWriter w = new IndexWriter(dir, iwc)) {
+          for (int i = 0; i < numDocs; i++) {
+            Document doc = new Document();
+            doc.add(NumericDocValuesField.indexedField("val", rng.nextLong(0, maxValue)));
+            w.addDocument(doc);
+          }
+          w.forceMerge(1);
+        }
+
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          LeafReaderContext ctx = reader.leaves().get(0);
+
+          // Slow path: per-doc evaluation
+          FixedBitSet expected = new FixedBitSet(numDocs);
+          NumericDocValues slowDv = ctx.reader().getNumericDocValues("val");
+          for (int d = 0; d < numDocs; d++) {
+            if (slowDv.advanceExact(d)) {
+              long v = slowDv.longValue();
+              if (v >= rangeMin && v <= rangeMax) {
+                expected.set(d);
+              }
+            }
+          }
+
+          // Fast path: rangeIntoBitSet
+          FixedBitSet actual = new FixedBitSet(numDocs);
+          NumericDocValues fastDv = ctx.reader().getNumericDocValues("val");
+          fastDv.rangeIntoBitSet(0, numDocs, rangeMin, rangeMax, actual, 0);
+
+          assertEquals(
+              "rangeIntoBitSet must match per-doc evaluation (numDocs="
+                  + numDocs
+                  + ", range=["
+                  + rangeMin
+                  + ","
+                  + rangeMax
+                  + "])",
+              expected,
+              actual);
+        }
+      }
+    }
+  }
+
+  public void testSortedNumericRangeIntoBitSetDenseFixedCardinality() throws Exception {
+    doTestSortedNumericRangeIntoBitSet(true, true);
+  }
+
+  public void testSortedNumericRangeIntoBitSetDenseVariableCardinality() throws Exception {
+    doTestSortedNumericRangeIntoBitSet(true, false);
+  }
+
+  public void testSortedNumericRangeIntoBitSetSparseFixedCardinality() throws Exception {
+    doTestSortedNumericRangeIntoBitSet(false, true);
+  }
+
+  public void testSortedNumericRangeIntoBitSetSparseVariableCardinality() throws Exception {
+    doTestSortedNumericRangeIntoBitSet(false, false);
+  }
+
+  private void doTestSortedNumericRangeIntoBitSet(boolean dense, boolean fixedCardinality)
+      throws Exception {
+    int numDocs = 4096 * 2;
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int docID = 0; docID < numDocs; docID++) {
+          Document doc = new Document();
+          if (dense || docID % 3 != 0) {
+            int valueCount = fixedCardinality ? 4 : 1 + (docID & 3);
+            long firstValue = (docID * 13L) % 100;
+            for (int i = 0; i < valueCount; i++) {
+              doc.add(SortedNumericDocValuesField.indexedField("sn", firstValue + i * 3L));
+            }
+          }
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        LeafReaderContext ctx = reader.leaves().get(0);
+        FixedBitSet expected = new FixedBitSet(numDocs);
+        var expectedValues = ctx.reader().getSortedNumericDocValues("sn");
+        for (int docID = 0; docID < numDocs; docID++) {
+          if (expectedValues.advanceExact(docID)) {
+            for (int i = 0, count = expectedValues.docValueCount(); i < count; i++) {
+              long value = expectedValues.nextValue();
+              if (value >= 20) {
+                if (value <= 40) {
+                  expected.set(docID);
+                }
+                break;
+              }
+            }
+          }
+        }
+
+        FixedBitSet actual = new FixedBitSet(numDocs);
+        ctx.reader().getSortedNumericDocValues("sn").rangeIntoBitSet(0, numDocs, 20, 40, actual, 0);
+        assertEquals(expected, actual);
+      }
     }
   }
 }
