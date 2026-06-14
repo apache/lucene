@@ -20,19 +20,26 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.not;
 
 import java.io.IOException;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.index.AutomatonTermsEnum;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.FilterDirectoryReader;
+import org.apache.lucene.index.FilterLeafReader;
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiTerms;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
+import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.automaton.CompiledAutomaton;
 
 /** TestWildcardQuery tests the '*' and '?' wildcard characters. */
 public class TestWildcardQuery extends LuceneTestCase {
@@ -438,7 +445,10 @@ public class TestWildcardQuery extends LuceneTestCase {
     Query rewritten = searcher.rewrite(query);
     Weight weight = rewritten.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
     ScorerSupplier supplier = weight.scorerSupplier(lrc);
-    assertEquals(2000, supplier.cost()); // Sum the terms doc freqs
+    // Automaton queries have an unknown term count, so term collection is deferred to get() and the
+    // cost is the worst-case estimate (sum of doc freqs across all terms) rather than the sum over
+    // the matching terms only.
+    assertEquals(3000, supplier.cost());
 
     query = new WildcardQuery(new Term("body", "bar*"));
     rewritten = searcher.rewrite(query);
@@ -448,5 +458,118 @@ public class TestWildcardQuery extends LuceneTestCase {
 
     reader.close();
     dir.close();
+  }
+
+  // A leading wildcard is an automaton MultiTermQuery with an unknown term count (getTermsCount()
+  // == -1). Building its ScorerSupplier must not scan the term dictionary -- that is the cheap
+  // "planning" phase, and a leading wildcard such as "*foo*" cannot seek, so collecting terms
+  // there would walk the whole dictionary. The scan must be deferred to ScorerSupplier#get(), so a
+  // parent conjunction can short-circuit (a sibling clause matching no documents) before it runs.
+  public void testScorerSupplierDoesNotScanTermsEagerly() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter writer = new RandomIndexWriter(random(), dir);
+    for (int i = 0; i < 1000; i++) {
+      Document doc = new Document();
+      doc.add(newStringField("body", "foo " + i, Field.Store.NO));
+      writer.addDocument(doc);
+    }
+    writer.flush();
+    writer.forceMerge(1);
+    writer.close();
+
+    AtomicInteger termsEnumNextCalls = new AtomicInteger();
+    DirectoryReader reader =
+        new NextCountingReaderWrapper(DirectoryReader.open(dir), termsEnumNextCalls);
+    IndexSearcher searcher = new IndexSearcher(reader);
+    LeafReaderContext lrc = reader.leaves().get(0);
+
+    // Leading wildcard => automaton query, getTermsCount() == -1.
+    WildcardQuery query = new WildcardQuery(new Term("body", "*foo*"));
+    Query rewritten = searcher.rewrite(query);
+    Weight weight = rewritten.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1.0f);
+
+    termsEnumNextCalls.set(0);
+    ScorerSupplier supplier = weight.scorerSupplier(lrc);
+    assertNotNull(supplier);
+    assertEquals(
+        "scorerSupplier() must not scan the term dictionary for an automaton MultiTermQuery",
+        0,
+        termsEnumNextCalls.get());
+
+    // The scan is deferred to get(): building the scorer is where the terms are actually walked.
+    assertNotNull(supplier.get(Long.MAX_VALUE));
+    assertTrue("get() should scan the term dictionary", termsEnumNextCalls.get() > 0);
+
+    reader.close();
+    dir.close();
+  }
+
+  private static TermsEnum nextCountingTermsEnum(TermsEnum in, AtomicInteger counter) {
+    return new FilterLeafReader.FilterTermsEnum(in) {
+      @Override
+      public BytesRef next() throws IOException {
+        counter.incrementAndGet();
+        return super.next();
+      }
+    };
+  }
+
+  /**
+   * Wraps a reader so every {@link TermsEnum#next()} (via iterator() or intersect()) is counted.
+   */
+  private static class NextCountingReaderWrapper extends FilterDirectoryReader {
+    private final AtomicInteger counter;
+
+    NextCountingReaderWrapper(DirectoryReader in, AtomicInteger counter) throws IOException {
+      super(
+          in,
+          new SubReaderWrapper() {
+            @Override
+            public LeafReader wrap(LeafReader reader) {
+              return new FilterLeafReader(reader) {
+                @Override
+                public Terms terms(String field) {
+                  Terms terms = super.terms(field);
+                  if (terms == null) {
+                    return null;
+                  }
+                  return new FilterTerms(terms) {
+                    @Override
+                    public TermsEnum iterator() throws IOException {
+                      return nextCountingTermsEnum(in.iterator(), counter);
+                    }
+
+                    @Override
+                    public TermsEnum intersect(CompiledAutomaton automaton, BytesRef startTerm)
+                        throws IOException {
+                      return nextCountingTermsEnum(in.intersect(automaton, startTerm), counter);
+                    }
+                  };
+                }
+
+                @Override
+                public CacheHelper getCoreCacheHelper() {
+                  return null;
+                }
+
+                @Override
+                public CacheHelper getReaderCacheHelper() {
+                  return null;
+                }
+              };
+            }
+          });
+      this.counter = counter;
+    }
+
+    @Override
+    protected DirectoryReader doWrapDirectoryReader(DirectoryReader in) throws IOException {
+      return new NextCountingReaderWrapper(in, counter);
+    }
+
+    @Override
+    public CacheHelper getReaderCacheHelper() {
+      return null;
+    }
   }
 }

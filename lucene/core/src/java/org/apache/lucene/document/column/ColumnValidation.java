@@ -32,6 +32,71 @@ public final class ColumnValidation {
 
   private ColumnValidation() {}
 
+  /** Inverted-index feature ({@code indexOptions() != NONE}). */
+  static final int FEATURE_INVERSION = 1 << 0;
+
+  /** Stored-fields feature ({@code stored()}). */
+  static final int FEATURE_STORED = 1 << 1;
+
+  /** Doc-values feature ({@code docValuesType() != NONE}). */
+  static final int FEATURE_DOCVALUES = 1 << 2;
+
+  /** Points feature ({@code pointDimensionCount() != 0}). */
+  static final int FEATURE_POINTS = 1 << 3;
+
+  /** KNN-vector feature ({@code vectorDimension() != 0}). */
+  static final int FEATURE_VECTOR = 1 << 4;
+
+  /**
+   * Returns a bitmask of the indexing features ({@code FEATURE_*}) declared by {@code fieldType}.
+   * Used by the column-batch path to enforce that, when several columns share a field name, each
+   * feature is carried by at most one column.
+   */
+  public static int featureMask(IndexableFieldType fieldType) {
+    int mask = 0;
+    if (fieldType.indexOptions() != IndexOptions.NONE) {
+      mask |= FEATURE_INVERSION;
+    }
+    if (fieldType.stored()) {
+      mask |= FEATURE_STORED;
+    }
+    if (fieldType.docValuesType() != DocValuesType.NONE) {
+      mask |= FEATURE_DOCVALUES;
+    }
+    if (fieldType.pointDimensionCount() != 0) {
+      mask |= FEATURE_POINTS;
+    }
+    if (fieldType.vectorDimension() != 0) {
+      mask |= FEATURE_VECTOR;
+    }
+    return mask;
+  }
+
+  /** Returns a human-readable comma-separated list of the feature names set in {@code mask}. */
+  public static String featureNames(int mask) {
+    StringBuilder sb = new StringBuilder();
+    if ((mask & FEATURE_INVERSION) != 0) {
+      sb.append("inversion");
+    }
+    if ((mask & FEATURE_STORED) != 0) {
+      if (!sb.isEmpty()) sb.append(", ");
+      sb.append("stored");
+    }
+    if ((mask & FEATURE_DOCVALUES) != 0) {
+      if (!sb.isEmpty()) sb.append(", ");
+      sb.append("doc values");
+    }
+    if ((mask & FEATURE_POINTS) != 0) {
+      if (!sb.isEmpty()) sb.append(", ");
+      sb.append("points");
+    }
+    if ((mask & FEATURE_VECTOR) != 0) {
+      if (!sb.isEmpty()) sb.append(", ");
+      sb.append("vectors");
+    }
+    return "[" + sb + "]";
+  }
+
   /**
    * Throws {@link IllegalArgumentException} if {@code fieldType} declares no indexing feature (no
    * doc values, no points, not stored, no index options, no vectors).
