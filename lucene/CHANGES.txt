@@ -141,6 +141,10 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16254: Enable the vectorized findNextGEQ path on aarch64, where it was disabled on cores
+  with fewer than 8 int lanes (Graviton2 and Graviton4). The vector compare beats the scalar
+  fallback by +75% on Graviton4 and +35% on Graviton2 (AdvanceBenchmark). (Shitij Bhargava)
+
 * GITHUB#15681, GITHUB#15833, GITHUB#16056: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
 
 * GITHUB#13782: Replace handwritten loops compare with Arrays.compareUnsigned in TermsEnum and TermsEnumFrame classes. (Zhou Hui)
@@ -513,6 +517,8 @@ Optimizations
 
 * GITHUB#16166: Add bulk range evaluation for multi-valued sorted numeric doc values. (Costin Leau)
 
+* GITHUB#16171: Address frozen FieldType cache never recovering after type switch. (neoremind)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
@@ -626,6 +632,8 @@ Other
 * GITHUB#16218: Add non-degenerate DocValuesSkipper implementation to SimpleTextCodec. (Alan Woodward)
 
 * GITHUB#16197: Remove deprecated usages of search(Query, Collector) from monitor module. (Luca Cavanna)
+
+* GITHUB#16219: Allow multiple addBatch columns per field name. (Tim Brooks)
 
 ======================= Lucene 10.4.0 =======================
 
