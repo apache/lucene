@@ -17,7 +17,7 @@
 # -------------------------------------------------------------------------------------
 
 #
-# This alg reads the information from a ContentSoruce. It is useful for
+# This alg reads the information from a ContentSource. It is useful for
 # measuring the performance of a particular ContentSource implementation, or
 # gather baselines for operations like indexing (if reading from the content
 # source takes 'X' time, we cannot index faster).

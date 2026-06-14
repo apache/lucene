@@ -584,7 +584,7 @@ public class TestGrouping extends LuceneTestCase {
                 groupValue,
                 mvalGd.groupSortValues()));
       }
-      // NOTE: currenlty using diamond operator on MergedIterator (without explicit Term class)
+      // NOTE: currently using diamond operator on MergedIterator (without explicit Term class)
       // causes
       // errors on Eclipse Compiler (ecj) used for javadoc lint
       return new TopGroups<>(

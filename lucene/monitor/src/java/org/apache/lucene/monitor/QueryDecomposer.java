@@ -28,7 +28,7 @@ import org.apache.lucene.search.DisjunctionMaxQuery;
 import org.apache.lucene.search.Query;
 
 /**
- * Split a disjunction query into its consituent parts, so that they can be indexed and run
+ * Split a disjunction query into its constituent parts, so that they can be indexed and run
  * separately in the Monitor.
  */
 public class QueryDecomposer {
