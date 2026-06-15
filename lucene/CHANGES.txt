@@ -509,7 +509,7 @@ Optimizations
 * GITHUB#16172: Bulk-evaluate skip-indexed sorted and sorted-set doc-values range queries via a block-aware
   DocValuesRangeIterator#intoBitSet. (Costin Leau)
 
-* GITHUB#16166: Add bulk range evaluation for multi-valued sorted numeric doc values. (Costin Leau)
+* GITHUB#16166, GITHUB#16253: Add bulk range evaluation for multi-valued sorted numeric doc values. (Costin Leau, Zhang Chao)
 
 Bug Fixes
 ---------------------
@@ -579,8 +579,6 @@ Bug Fixes
   count instead of the full ordinal array, matching OffHeapByteVectorValues. (Vignesh)
 
 * GITHUB#16179: Fix minor lock/unlock acquisition order in DocumentsWriterDeleteQueue (Chris Hegarty)
-
-* GITHUB#16253: Fix backward advanceExact in DocValuesRangeIterator#intoBitSet (Zhang Chao)
 
 Other
 ---------------------
