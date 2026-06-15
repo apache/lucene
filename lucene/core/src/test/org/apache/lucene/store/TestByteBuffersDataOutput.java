@@ -240,15 +240,15 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
     }
   }
 
-  public void testToWriteableBufferListReturnsOriginalBuffers() throws Exception {
+  public void testToWritableBufferListReturnsOriginalBuffers() throws Exception {
     ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
-    for (ByteBuffer bb : dst.toWriteableBufferList()) {
+    for (ByteBuffer bb : dst.toWritableBufferList()) {
       assertTrue(!bb.isReadOnly());
       assertTrue(bb.hasArray()); // even the empty buffer should have a backing array.
     }
 
     dst.writeBytes(new byte[100]);
-    for (ByteBuffer bb : dst.toWriteableBufferList()) {
+    for (ByteBuffer bb : dst.toWritableBufferList()) {
       assertTrue(!bb.isReadOnly());
       assertTrue(bb.hasArray()); // heap-based by default, so array should be there.
     }

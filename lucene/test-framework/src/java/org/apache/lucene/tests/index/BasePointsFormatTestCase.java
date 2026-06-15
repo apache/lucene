@@ -1153,7 +1153,7 @@ public abstract class BasePointsFormatTestCase extends BaseIndexFileFormatTestCa
     w.addDocument(doc);
     w.close();
 
-    // Different field number assigments:
+    // Different field number assignments:
     Directory dir2 = newDirectory();
     w = new RandomIndexWriter(random(), dir2);
     doc = new Document();

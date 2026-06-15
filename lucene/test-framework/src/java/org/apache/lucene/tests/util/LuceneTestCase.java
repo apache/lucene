@@ -376,13 +376,13 @@ public abstract non-sealed class LuceneTestCase extends LuceneTestCaseParent {
                       supplier = () -> new MaxCallCountRandom(finalizedSupplier.get(), maxCalls);
                     }
 
-                    int maxAquires =
+                    int maxAcquires =
                         Integer.parseInt(System.getProperty(SYSPROP_RANDOM_MAXACQUIRES, "0"));
-                    if (maxAquires > 0) {
+                    if (maxAcquires > 0) {
                       var finalizedSupplier = supplier;
                       supplier =
                           () -> {
-                            if (randomCalls.incrementAndGet() > maxAquires) {
+                            if (randomCalls.incrementAndGet() > maxAcquires) {
                               throw new RuntimeException(
                                   "Too many random() calls. Consider using LuceneTestCase.nonAssertingRandom for"
                                       + " large loops or data generation.");

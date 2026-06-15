@@ -567,7 +567,7 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
                     assert isMerge || Thread.currentThread() == mainThread;
 
                     // We iterate the provided TermsEnum
-                    // twice, so we excercise this new freedom
+                    // twice, so we exercise this new freedom
                     // with the inverted API; if
                     // addOnSecondPass is true, we add up
                     // term stats on the 2nd iteration:
