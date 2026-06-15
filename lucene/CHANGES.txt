@@ -46,6 +46,7 @@ API Changes
 
 * GITHUB#16224 Add TokenStreamColumn for experimental columnar batch indexing. (Tim Brooks)
 
+
 New Features
 ---------------------
 
@@ -263,6 +264,8 @@ Optimizations
 * GITHUB#16171: Address frozen FieldType cache never recovering after type switch. (neoremind)
 
 * GITHUB#16257: Support JDK 26 in Panama Vectorization Provider. (Chris Hegarty)
+
+* GITHUB#16228: Reuse scratch int[] for ordinal translation. (Tim Brooks)
 
 Bug Fixes
 ---------------------
