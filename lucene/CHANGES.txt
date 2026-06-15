@@ -380,6 +380,8 @@ Improvements
 
 * GITHUB#15603, GITHUB#15995: Introduce TopGroupsCollectorManager to parallelize search when using TopGroupsCollector. (Binlong Gao)
 
+* GITHUB#15936: Introduce BlockGroupingCollectorManager to parallelize search when using BlockGroupingCollector. (Binlong Gao)
+
 * GITHUB#15565: Introduce AllGroupHeadsCollectorManager to parallelize search when using AllGroupHeadsCollector. (Binlong Gao)
 
 * GITHUB#15989: DocValuesRangeIterator always tries to use skipper-based block iteration
@@ -398,6 +400,12 @@ Improvements
 * GITHUB#16144: Clarify LeafCollector batch collection scoring contract. (Costin Leau)
 
 * GITHUB#16229: BooleanWeight.explain prints failing optional clauses when query fails due to insufficient SHOULD matches. (Jakub Slowinski)
+
+* GITHUB#16217: Introduce DistinctValuesCollectorManager to parallelize search when using DistinctValuesCollector. (Luca Cavanna)
+
+* GITHUB#16216: Add DiversifiedTopDocsCollectorManager to enable concurrent search with
+  DiversifiedTopDocsCollector, removing usages of the deprecated IndexSearcher#search(Query, Collector).
+  (Luca Cavanna)
 
 Optimizations
 ---------------------
@@ -477,7 +485,7 @@ Optimizations
 
 * GITHUB#16080: Add a BulkScrer implementation spcialized for filters that match dense ranges. (Ignacio Vera)
 
-* GITHUB#16081: Implement LeafCollector#collectRange in the collectors used in LRUCache. (Ignacio Vera)
+* GITHUB#16081, GITHUB#16256: Implement LeafCollector#collectRange in the collectors used in LRUCache. (Ignacio Vera, Zhang Chao)
 
 * GITHUB#16084: Added range encoding to  RoaringDocIdSet. (Ignacio Vera)
 
@@ -518,9 +526,11 @@ Optimizations
 * GITHUB#16172: Bulk-evaluate skip-indexed sorted and sorted-set doc-values range queries via a block-aware
   DocValuesRangeIterator#intoBitSet. (Costin Leau)
 
-* GITHUB#16166: Add bulk range evaluation for multi-valued sorted numeric doc values. (Costin Leau)
+* GITHUB#16166, GITHUB#16253: Add bulk range evaluation for multi-valued sorted numeric doc values. (Costin Leau, Zhang Chao)
 
 * GITHUB#16171: Address frozen FieldType cache never recovering after type switch. (neoremind)
+
+* GITHUB#16257: Support JDK 26 in Panama Vectorization Provider. (Chris Hegarty)
 
 * GITHUB#16228: Reuse scratch int[] for ordinal translation. (Tim Brooks)
 
@@ -639,6 +649,8 @@ Other
 * GITHUB#16197: Remove deprecated usages of search(Query, Collector) from monitor module. (Luca Cavanna)
 
 * GITHUB#16219: Allow multiple addBatch columns per field name. (Tim Brooks)
+
+* GITHUB#16215: Extract segment-boundary check into helper in QueryUtils (Luca Cavanna)
 
 ======================= Lucene 10.4.0 =======================
 

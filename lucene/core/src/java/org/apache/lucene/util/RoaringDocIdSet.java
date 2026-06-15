@@ -199,7 +199,7 @@ public class RoaringDocIdSet extends DocIdSet {
       assert (toDocExclusive >>> 16) == block || toDocExclusive == (block + 1) << 16;
       assert fromDoc < toDocExclusive;
       final int span = toDocExclusive - fromDoc;
-      if (currentBlockCardinality + span < MAX_ARRAY_LENGTH) {
+      if (currentBlockCardinality + span <= MAX_ARRAY_LENGTH) {
         for (int d = fromDoc; d < toDocExclusive; d++) {
           buffer[currentBlockCardinality++] = (short) d;
         }
