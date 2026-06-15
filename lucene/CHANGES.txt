@@ -639,6 +639,8 @@ Other
 
 * GITHUB#16219: Allow multiple addBatch columns per field name. (Tim Brooks)
 
+* GITHUB#16215: Extract segment-boundary check into helper in QueryUtils (Luca Cavanna)
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes
