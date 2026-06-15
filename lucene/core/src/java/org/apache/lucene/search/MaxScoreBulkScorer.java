@@ -72,11 +72,18 @@ final class MaxScoreBulkScorer extends BulkScorer {
     docAndScoreAccBuffer = new DocAndScoreAccBuffer();
     docAndScoreAccBuffer.growNoCopy(INNER_WINDOW_SIZE);
 
-    if (this.filter != null
-        && this.filter.twoPhaseView == null
-        && maxDoc >= INNER_WINDOW_SIZE
-        && this.filter.cost >= maxDoc / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE) {
-      this.filterMatches = new FixedBitSet(INNER_WINDOW_SIZE);
+    if (this.filter != null && this.filter.twoPhaseView == null && maxDoc >= INNER_WINDOW_SIZE) {
+      long minScorerCost = allScorers[0].cost;
+      for (int j = 1; j < allScorers.length; j++) {
+        minScorerCost = Math.min(minScorerCost, allScorers[j].cost);
+      }
+      // Use the bitset filter path if either:
+      //  - the sparsest disjunction scorer is denser than the filter, OR
+      //  - there are more than four scorers meaning that the overheap from
+      //    maintaining the leapfrog heap is too high
+      if (minScorerCost >= this.filter.cost || allScorers.length > 4) {
+        this.filterMatches = new FixedBitSet(INNER_WINDOW_SIZE);
+      }
     }
   }
 

@@ -23,6 +23,7 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
@@ -35,6 +36,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.search.RandomApproximationQuery;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.FixedBitSet;
 
 // These basic tests are similar to some of the tests in TestWANDScorer, and may not need to be kept
 public class TestMaxScoreBulkScorer extends LuceneTestCase {
@@ -1075,6 +1077,248 @@ public class TestMaxScoreBulkScorer extends LuceneTestCase {
             0,
             numDocs);
       }
+    }
+  }
+
+  /**
+   * When the filter is sparse relative to the scorers, MaxScoreBulkScorer should use the leap-frog
+   * path (calling advance() on the filter) rather than the bitset path (calling intoBitSet()). This
+   * simulates a FilteredOrHighMed scenario: one dense scorer + one scorer sparser than the filter.
+   */
+  public void testSparseFilterUsesLeapFrog() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
+    for (int i = 0; i < 10000; i++) {
+      Document doc = new Document();
+      doc.add(new TextField("body", "high", Field.Store.NO));
+      if (i % 50 == 0) {
+        doc.add(new TextField("body", "medium", Field.Store.NO));
+      }
+      if (i % 20 == 0) {
+        doc.add(new TextField("filter", "yes", Field.Store.NO));
+      }
+      w.addDocument(doc);
+    }
+    w.close();
+
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+    searcher.setQueryCache(null);
+
+    // minScorerCost = min(10000, 200) = 200 < filter.cost(500) → leap-frog
+    int[] intoBitSetCalls = {0};
+    int[] advanceCalls = {0};
+
+    Query filterQuery =
+        new CountingFilterQuery(
+            new TermQuery(new Term("filter", "yes")), intoBitSetCalls, advanceCalls);
+
+    BooleanQuery innerOr =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("body", "high")), Occur.SHOULD)
+            .add(new TermQuery(new Term("body", "medium")), Occur.SHOULD)
+            .build();
+
+    BooleanQuery outerQuery =
+        new BooleanQuery.Builder().add(innerOr, Occur.MUST).add(filterQuery, Occur.FILTER).build();
+
+    Query rewritten = searcher.rewrite(outerQuery);
+    Weight weight = searcher.createWeight(rewritten, ScoreMode.TOP_SCORES, 1f);
+    for (LeafReaderContext ctx : reader.leaves()) {
+      ScorerSupplier ss = weight.scorerSupplier(ctx);
+      if (ss != null) {
+        BulkScorer bs = ss.bulkScorer();
+        assertTrue(
+            "Expected MaxScoreBulkScorer but got " + bs.getClass().getSimpleName(),
+            bs instanceof MaxScoreBulkScorer);
+        bs.score(
+            new LeafCollector() {
+              @Override
+              public void setScorer(Scorable scorer) {}
+
+              @Override
+              public void collect(int doc) {}
+            },
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
+      }
+    }
+
+    assertTrue(
+        "Expected advance() calls (leap-frog) but got intoBitSet="
+            + intoBitSetCalls[0]
+            + " advance="
+            + advanceCalls[0],
+        advanceCalls[0] > 0);
+    assertEquals("Expected no intoBitSet() calls for sparse filter", 0, intoBitSetCalls[0]);
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * When all scorers are individually denser than the filter, MaxScoreBulkScorer should use the
+   * bitset path (calling intoBitSet() on the filter). This simulates a FilteredOrHighHigh scenario:
+   * both scorers have higher cost than the filter.
+   */
+  public void testDenseScorersUseBitSet() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig());
+    for (int i = 0; i < 10000; i++) {
+      Document doc = new Document();
+      if (i % 2 == 0) {
+        doc.add(new TextField("body", "dense1", Field.Store.NO));
+      }
+      if (i % 2 == 1) {
+        doc.add(new TextField("body", "dense2", Field.Store.NO));
+      }
+      if (i % 20 == 1) {
+        doc.add(new TextField("filter", "yes", Field.Store.NO));
+      }
+      w.addDocument(doc);
+    }
+    w.close();
+
+    DirectoryReader reader = DirectoryReader.open(dir);
+    IndexSearcher searcher = new IndexSearcher(reader);
+    searcher.setQueryCache(null);
+
+    // minScorerCost = min(5000, 5000) = 5000 >= filter.cost(500) → bitset path
+    int[] intoBitSetCalls = {0};
+    int[] advanceCalls = {0};
+
+    Query filterQuery =
+        new CountingFilterQuery(
+            new TermQuery(new Term("filter", "yes")), intoBitSetCalls, advanceCalls);
+
+    BooleanQuery innerOr =
+        new BooleanQuery.Builder()
+            .add(new TermQuery(new Term("body", "dense1")), Occur.SHOULD)
+            .add(new TermQuery(new Term("body", "dense2")), Occur.SHOULD)
+            .build();
+
+    BooleanQuery outerQuery =
+        new BooleanQuery.Builder().add(innerOr, Occur.MUST).add(filterQuery, Occur.FILTER).build();
+
+    Query rewritten = searcher.rewrite(outerQuery);
+    Weight weight = searcher.createWeight(rewritten, ScoreMode.TOP_SCORES, 1f);
+    for (LeafReaderContext ctx : reader.leaves()) {
+      ScorerSupplier ss = weight.scorerSupplier(ctx);
+      if (ss != null) {
+        BulkScorer bs = ss.bulkScorer();
+        assertTrue(
+            "Expected MaxScoreBulkScorer but got " + bs.getClass().getSimpleName(),
+            bs instanceof MaxScoreBulkScorer);
+        bs.score(
+            new LeafCollector() {
+              @Override
+              public void setScorer(Scorable scorer) {}
+
+              @Override
+              public void collect(int doc) {}
+            },
+            null,
+            0,
+            DocIdSetIterator.NO_MORE_DOCS);
+      }
+    }
+
+    assertTrue(
+        "Expected intoBitSet() calls (bitset path) but got intoBitSet="
+            + intoBitSetCalls[0]
+            + " advance="
+            + advanceCalls[0],
+        intoBitSetCalls[0] > 0);
+
+    reader.close();
+    dir.close();
+  }
+
+  /**
+   * A query wrapper that counts intoBitSet() and advance() calls on the filter iterator. This lets
+   * us detect which path MaxScoreBulkScorer takes without exposing internal state.
+   */
+  private static class CountingFilterQuery extends Query {
+    private final Query delegate;
+    private final int[] intoBitSetCalls;
+    private final int[] advanceCalls;
+
+    CountingFilterQuery(Query delegate, int[] intoBitSetCalls, int[] advanceCalls) {
+      this.delegate = delegate;
+      this.intoBitSetCalls = intoBitSetCalls;
+      this.advanceCalls = advanceCalls;
+    }
+
+    @Override
+    public Weight createWeight(IndexSearcher searcher, ScoreMode scoreMode, float boost)
+        throws IOException {
+      Weight inner = delegate.createWeight(searcher, scoreMode, boost);
+      return new FilterWeight(this, inner) {
+        @Override
+        public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
+          ScorerSupplier innerSS = inner.scorerSupplier(context);
+          if (innerSS == null) return null;
+          return new ScorerSupplier() {
+            @Override
+            public Scorer get(long leadCost) throws IOException {
+              Scorer innerScorer = innerSS.get(leadCost);
+              DocIdSetIterator innerIter = innerScorer.iterator();
+              DocIdSetIterator countingIter =
+                  new FilterDocIdSetIterator(innerIter) {
+                    @Override
+                    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset)
+                        throws IOException {
+                      intoBitSetCalls[0]++;
+                      in.intoBitSet(upTo, bitSet, offset);
+                    }
+
+                    @Override
+                    public int advance(int target) throws IOException {
+                      advanceCalls[0]++;
+                      return in.advance(target);
+                    }
+
+                    @Override
+                    public int nextDoc() throws IOException {
+                      return in.nextDoc();
+                    }
+
+                    @Override
+                    public int docID() {
+                      return in.docID();
+                    }
+                  };
+              return new ConstantScoreScorer(0f, scoreMode, countingIter);
+            }
+
+            @Override
+            public long cost() {
+              return innerSS.cost();
+            }
+          };
+        }
+      };
+    }
+
+    @Override
+    public void visit(QueryVisitor visitor) {
+      delegate.visit(visitor);
+    }
+
+    @Override
+    public String toString(String field) {
+      return "CountingFilter(" + delegate.toString(field) + ")";
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return obj instanceof CountingFilterQuery cfq && delegate.equals(cfq.delegate);
+    }
+
+    @Override
+    public int hashCode() {
+      return 31 * classHash() + delegate.hashCode();
     }
   }
 }
