@@ -400,6 +400,8 @@ Improvements
 
 * GITHUB#16229: BooleanWeight.explain prints failing optional clauses when query fails due to insufficient SHOULD matches. (Jakub Slowinski)
 
+* GITHUB#16217: Introduce DistinctValuesCollectorManager to parallelize search when using DistinctValuesCollector. (Luca Cavanna)
+
 * GITHUB#16216: Add DiversifiedTopDocsCollectorManager to enable concurrent search with
   DiversifiedTopDocsCollector, removing usages of the deprecated IndexSearcher#search(Query, Collector).
   (Luca Cavanna)
