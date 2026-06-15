@@ -141,8 +141,6 @@ Improvements
 
 Optimizations
 ---------------------
-* GITHUB#16257: Support JDK 26 in Panama Vectorization Provider. (Chris Hegarty)
-
 * GITHUB#16254: Enable the vectorized findNextGEQ path on aarch64, where it was disabled on cores
   with fewer than 8 int lanes (Graviton2 and Graviton4). The vector compare beats the scalar
   fallback by +75% on Graviton4 and +35% on Graviton2 (AdvanceBenchmark). (Shitij Bhargava)
@@ -526,6 +524,8 @@ Optimizations
 * GITHUB#16166, GITHUB#16253: Add bulk range evaluation for multi-valued sorted numeric doc values. (Costin Leau, Zhang Chao)
 
 * GITHUB#16171: Address frozen FieldType cache never recovering after type switch. (neoremind)
+
+* GITHUB#16257: Support JDK 26 in Panama Vectorization Provider. (Chris Hegarty)
 
 Bug Fixes
 ---------------------
