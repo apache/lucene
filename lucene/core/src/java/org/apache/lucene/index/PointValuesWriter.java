@@ -27,6 +27,7 @@ import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.PagedBytes;
+import org.apache.lucene.util.bkd.BKDConfig;
 
 /** Buffers up pending byte[][] value(s) per doc, then flushes when segment flushes. */
 class PointValuesWriter {
@@ -34,6 +35,7 @@ class PointValuesWriter {
   private final PagedBytes bytes;
   private final DataOutput bytesOut;
   private final Counter iwBytesUsed;
+  private final SharedIndexingScratch sharedScratch;
   private int[] docIDs;
   private int numPoints;
   private int numDocs;
@@ -45,7 +47,16 @@ class PointValuesWriter {
   private static final int POINTS_BUFFER_LONG_VALUES =
       SharedIndexingScratch.BYTES_SCRATCH_SIZE / Long.BYTES;
 
-  private final SharedIndexingScratch sharedScratch;
+  static {
+    // If Lucene ever supports packed points > BYTES_SCRATCH_SIZE either the buffer needs to be
+    // increased or a fallback indexing code-path bypassing the buffer needs to be added.
+    assert SharedIndexingScratch.BYTES_SCRATCH_SIZE
+            >= PointValues.MAX_NUM_BYTES * BKDConfig.MAX_DIMS
+        : "BYTES_SCRATCH_SIZE="
+            + SharedIndexingScratch.BYTES_SCRATCH_SIZE
+            + " must be >= MAX_NUM_BYTES * MAX_DIMS="
+            + (PointValues.MAX_NUM_BYTES * BKDConfig.MAX_DIMS);
+  }
 
   PointValuesWriter(Counter bytesUsed, FieldInfo fieldInfo, SharedIndexingScratch sharedScratch) {
     this.fieldInfo = fieldInfo;

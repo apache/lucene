@@ -24,7 +24,7 @@ public class TrecLATimesParser extends TrecDocParser {
 
   private static final String DATE = "<DATE>";
   private static final String DATE_END = "</DATE>";
-  private static final String DATE_NOISE = "day,"; // anything aftre the ','
+  private static final String DATE_NOISE = "day,"; // anything after the ','
 
   private static final String SUBJECT = "<SUBJECT>";
   private static final String SUBJECT_END = "</SUBJECT>";

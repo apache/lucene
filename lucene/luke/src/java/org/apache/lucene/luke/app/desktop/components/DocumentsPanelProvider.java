@@ -734,7 +734,7 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
                     documentTable.getSelectedRow(), DocumentsTableModel.Column.VALUE.getIndex());
     if (Objects.isNull(value)) {
       messageBroker.showStatusMessage(
-          MessageUtils.getLocalizedMessage("documents.stored.message.not_availabe", field, docid));
+          MessageUtils.getLocalizedMessage("documents.stored.message.not_available", field, docid));
       return;
     }
     new DialogOpener<>(valueDialogFactory)
@@ -765,7 +765,7 @@ public final class DocumentsPanelProvider implements DocumentsTabOperator {
                     documentTable.getSelectedRow(), DocumentsTableModel.Column.VALUE.getIndex());
     if (Objects.isNull(value)) {
       messageBroker.showStatusMessage(
-          MessageUtils.getLocalizedMessage("documents.stored.message.not_availabe", field, docid));
+          MessageUtils.getLocalizedMessage("documents.stored.message.not_available", field, docid));
       return;
     }
     Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();

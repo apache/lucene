@@ -57,6 +57,12 @@ final class SharedIndexingScratch {
     return bytesScratchBuffer;
   }
 
+  /**
+   * Returns the shared int scratch buffer, allocating it on the first call and tracking its RAM via
+   * the {@link Counter} supplied at construction.
+   *
+   * <p>Callers must treat the returned array as transient scratch.
+   */
   int[] intsScratch() {
     if (intsScratchBuffer == null) {
       intsScratchBuffer = new int[INTS_SCRATCH_SIZE];

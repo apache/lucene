@@ -115,7 +115,7 @@ public abstract class BaseFragListBuilder implements FragListBuilder {
    * @param info the phrase info to accept
    * @param matchLength the match length of the current phrase
    * @param fragCharSize the configured fragment character size
-   * @return <code>true</code> if this phrase info should be accepted as a highligh phrase
+   * @return <code>true</code> if this phrase info should be accepted as a highlight phrase
    */
   protected boolean acceptPhrase(WeightedPhraseInfo info, int matchLength, int fragCharSize) {
     return info.getTermsOffsets().size() <= 1 || matchLength <= fragCharSize;
