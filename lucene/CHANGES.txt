@@ -643,6 +643,8 @@ Other
 
 * GITHUB#16215: Extract segment-boundary check into helper in QueryUtils (Luca Cavanna)
 
+* GITHUB#XXXXZ: Extract per-doc assertion helpers in QueryUtils (Luca Cavanna)
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes

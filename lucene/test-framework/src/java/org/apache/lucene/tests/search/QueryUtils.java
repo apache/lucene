@@ -536,8 +536,7 @@ public class QueryUtils {
       assertEquals("scorerDoc=" + scorerDoc + ",doc=" + doc, scorerDoc, doc);
       assertTrue("score=" + score + ", scorerScore=" + scorerScore, scoreDiff <= maxDiff);
       assertTrue(
-          "scorerScorer=" + scorerScore + ", scorerScore2=" + scorerScore2,
-          scorerDiff <= maxDiff);
+          "scorerScorer=" + scorerScore + ", scorerScore2=" + scorerScore2, scorerDiff <= maxDiff);
       success = true;
     } finally {
       if (!success) {
