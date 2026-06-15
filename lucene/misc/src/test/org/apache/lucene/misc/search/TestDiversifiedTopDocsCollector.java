@@ -30,6 +30,7 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.MultiDocValues;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
@@ -147,11 +148,20 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
   // Diversifying collector that looks up de-dup keys using SortedDocValues
   // from a top-level Reader
   private static final class DocValuesDiversifiedCollector extends DiversifiedTopDocsCollector {
-    private final SortedDocValues sdv;
+    private SortedDocValues sdv;
 
-    public DocValuesDiversifiedCollector(int size, int maxHitsPerKey, SortedDocValues sdv) {
+    public DocValuesDiversifiedCollector(int size, int maxHitsPerKey) {
       super(size, maxHitsPerKey);
-      this.sdv = sdv;
+    }
+
+    @Override
+    public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+      if (sdv == null) {
+        sdv =
+            MultiDocValues.getSortedValues(
+                ReaderUtil.getTopLevelContext(context).reader(), "artist");
+      }
+      return super.getLeafCollector(context);
     }
 
     @Override
@@ -397,10 +407,8 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
         new DiversifiedTopDocsCollectorManager<DocValuesDiversifiedCollector>(
             numResults, maxResultsPerArtist) {
           @Override
-          public DocValuesDiversifiedCollector newCollector() throws IOException {
-            // Each slice needs its own SortedDocValues instance for thread-safety
-            return new DocValuesDiversifiedCollector(
-                numResults, maxResultsPerArtist, MultiDocValues.getSortedValues(reader, "artist"));
+          public DocValuesDiversifiedCollector newCollector() {
+            return new DocValuesDiversifiedCollector(numResults, maxResultsPerArtist);
           }
         });
   }
