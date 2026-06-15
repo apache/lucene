@@ -475,7 +475,7 @@ public class TestPhraseQuery extends LuceneTestCase {
     // commented out for sloppy-phrase efficiency (issue 736) - see SloppyPhraseScorer.phraseFreq().
     // assertTrue("ordered scores higher in palindrome",score1+SCORE_COMP_THRESH<score2);
 
-    // search reveresed in palyndrome, find it twice
+    // search reversed in palyndrome, find it twice
     query =
         new PhraseQuery(
             2,
@@ -544,7 +544,7 @@ public class TestPhraseQuery extends LuceneTestCase {
     // commented out for sloppy-phrase efficiency (issue 736) - see SloppyPhraseScorer.phraseFreq().
     // assertTrue("ordered scores higher in palindrome",score1+SCORE_COMP_THRESH<score2);
 
-    // search reveresed in palyndrome, find it twice
+    // search reversed in palyndrome, find it twice
     // must be at least four for both ordered and reversed to match
     query = new PhraseQuery(4, "palindrome", "three", "two", "one");
     hits = searcher.search(query, 1000).scoreDocs;

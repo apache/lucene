@@ -30,7 +30,7 @@ public class QualityStats {
   private double maxGoodPoints;
   private double recall;
   private final double[] pAt;
-  private double pReleventSum = 0;
+  private double pRelevantSum = 0;
   private double numPoints = 0;
   private double numGoodPoints = 0;
   private double mrr = 0;
@@ -92,7 +92,7 @@ public class QualityStats {
     numPoints = n;
     double p = numGoodPoints / numPoints;
     if (isRelevant) {
-      pReleventSum += p;
+      pRelevantSum += p;
     }
     if (n < pAt.length) {
       pAt[n] = p;
@@ -120,7 +120,7 @@ public class QualityStats {
 
   /** Return the average precision at recall points. */
   public double getAvp() {
-    return maxGoodPoints == 0 ? 0 : pReleventSum / maxGoodPoints;
+    return maxGoodPoints == 0 ? 0 : pRelevantSum / maxGoodPoints;
   }
 
   /** Return the recall: |{relevant hits found}| / |{relevant hits existing}|. */
@@ -134,8 +134,8 @@ public class QualityStats {
    * @param logger Logger.
    * @param prefix prefix before each log line.
    */
-  public void log(String title, int paddLines, PrintWriter logger, String prefix) {
-    for (int i = 0; i < paddLines; i++) {
+  public void log(String title, int paddingLines, PrintWriter logger, String prefix) {
+    for (int i = 0; i < paddingLines; i++) {
       logger.println();
     }
     if (title != null && title.trim().length() > 0) {
@@ -165,22 +165,22 @@ public class QualityStats {
               + format("Precision At " + i + ": ", M)
               + fracFormat(nf.format(getPrecisionAt(i))));
     }
-    for (int i = 0; i < paddLines; i++) {
+    for (int i = 0; i < paddingLines; i++) {
       logger.println();
     }
   }
 
-  private static final String padd = "                                    ";
+  private static final String padding = "                                    ";
 
   private String format(String s, int minLen) {
     s = (s == null ? "" : s);
     int n = Math.max(minLen, s.length());
-    return (s + padd).substring(0, n);
+    return (s + padding).substring(0, n);
   }
 
   private String fracFormat(String frac) {
     int k = frac.indexOf('.');
-    String s1 = padd + frac.substring(0, k);
+    String s1 = padding + frac.substring(0, k);
     int n = Math.max(k, 6);
     s1 = s1.substring(s1.length() - n);
     return s1 + frac.substring(k);
@@ -195,7 +195,7 @@ public class QualityStats {
   public static QualityStats average(QualityStats[] stats) {
     QualityStats avg = new QualityStats(0, 0);
     if (stats.length == 0) {
-      // weired, no stats to average!
+      // weird, no stats to average!
       return avg;
     }
     int m = 0; // queries with positive judgements
@@ -207,7 +207,7 @@ public class QualityStats {
         m++;
         avg.numGoodPoints += stat.numGoodPoints;
         avg.numPoints += stat.numPoints;
-        avg.pReleventSum += stat.getAvp();
+        avg.pRelevantSum += stat.getAvp();
         avg.recall += stat.recall;
         avg.mrr += stat.getMRR();
         avg.maxGoodPoints += stat.maxGoodPoints;
@@ -228,8 +228,8 @@ public class QualityStats {
     for (int j = 1; j < avg.pAt.length; j++) {
       avg.pAt[j] /= m;
     }
-    avg.pReleventSum /= m; // this is actually avgp now
-    avg.pReleventSum *= avg.maxGoodPoints; // so that getAvgP() would be correct
+    avg.pRelevantSum /= m; // this is actually avgp now
+    avg.pRelevantSum *= avg.maxGoodPoints; // so that getAvgP() would be correct
 
     return avg;
   }

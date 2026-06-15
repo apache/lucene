@@ -32,7 +32,7 @@ import org.apache.lucene.store.IndexInput;
  * <pre>
  * 0 1 2 3 4 5
  * d d d d d d    (posting list)
- *     ^     ^    (skip point in MultiLeveSkipWriter)
+ *     ^     ^    (skip point in MultiLevelSkipWriter)
  *       ^        (skip point in Lucene90SkipWriter)
  * </pre>
  *

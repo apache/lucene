@@ -25,11 +25,11 @@ from configparser import ConfigParser, ExtendedInterpolation
 from scriptutil import Version, find_branch_type, find_current_version, run, update_file
 
 
-def update_changes(filename: str, new_version: Version, init_changes: str, headers: list[str]):
+def update_changes(filename: str, new_version: Version, init_changes: str, headers: list[str]) -> None:
   print("  adding new section to %s..." % filename, end="", flush=True)
   matcher = re.compile(r"\d+\.\d+\.\d+\s+===")
 
-  def edit(buffer: list[str], _match: re.Match[str], line: str):
+  def edit(buffer: list[str], _match: re.Match[str], line: str) -> bool | None:
     if new_version.dot in line:
       return None
     match = new_version.previous_dot_matcher.search(line)
@@ -45,14 +45,14 @@ def update_changes(filename: str, new_version: Version, init_changes: str, heade
   print("done" if changed else "uptodate")
 
 
-def add_constant(new_version: Version, deprecate: bool):
+def add_constant(new_version: Version, deprecate: bool) -> None:
   filename = "lucene/core/src/java/org/apache/lucene/util/Version.java"
   print("  adding constant %s..." % new_version.constant, end="", flush=True)
   constant_prefix = "public static final Version LUCENE_"
   matcher = re.compile(constant_prefix)
   prev_matcher = new_version.make_previous_matcher(prefix=constant_prefix, sep="_")
 
-  def ensure_deprecated(buffer: list[str]):
+  def ensure_deprecated(buffer: list[str]) -> None:
     last = buffer[-1]
     if last.strip() != "@Deprecated":
       spaces = " " * (len(last) - len(last.lstrip()) - 1)
@@ -61,7 +61,7 @@ def add_constant(new_version: Version, deprecate: bool):
         del buffer[-3:]  # drop the trailing lines '<p> / Use this to get the latest ... / ... for Lucene.'
       buffer.append(("{0} * @deprecated ({1}) Use latest\n" + "{0} */\n" + "{0}@Deprecated\n").format(spaces, new_version))
 
-  def buffer_constant(buffer: list[str], line: str):
+  def buffer_constant(buffer: list[str], line: str) -> None:
     spaces = " " * (len(line) - len(line.lstrip()))
     buffer.append(("\n{0}/**\n" + "{0} * Match settings and bugs in Lucene's {1} release.\n").format(spaces, new_version))
     if deprecate:
@@ -76,7 +76,7 @@ def add_constant(new_version: Version, deprecate: bool):
   class Edit:
     found = -1
 
-    def __call__(self, buffer: list[str], _match: re.Match[str], line: str):
+    def __call__(self, buffer: list[str], _match: re.Match[str], line: str) -> bool | None:
       if new_version.constant in line:
         return None  # constant already exists
       # outer match is just to find lines declaring version constants
@@ -102,11 +102,11 @@ def add_constant(new_version: Version, deprecate: bool):
   print("done" if changed else "uptodate")
 
 
-def update_build_version(new_version: Version):
+def update_build_version(new_version: Version) -> None:
   print("  changing baseVersion...", end="", flush=True)
   filename = "build-options.properties"
 
-  def edit(buffer: list[str], _match: re.Match[str], line: str):
+  def edit(buffer: list[str], _match: re.Match[str], line: str) -> bool | None:
     if new_version.dot in line:
       return None
     buffer.append("version.base=" + new_version.dot + "\n")
@@ -117,12 +117,12 @@ def update_build_version(new_version: Version):
   print("done" if changed else "uptodate")
 
 
-def update_latest_constant(new_version: Version):
+def update_latest_constant(new_version: Version) -> None:
   print("  changing Version.LATEST to %s..." % new_version.constant, end="", flush=True)
   filename = "lucene/core/src/java/org/apache/lucene/util/Version.java"
   matcher = re.compile("public static final Version LATEST")
 
-  def edit(buffer: list[str], _match: re.Match[str], line: str):
+  def edit(buffer: list[str], _match: re.Match[str], line: str) -> bool | None:
     if new_version.constant in line:
       return None
     buffer.append(line.rpartition("=")[0] + ("= %s;\n" % new_version.constant))
@@ -132,17 +132,17 @@ def update_latest_constant(new_version: Version):
   print("done" if changed else "uptodate")
 
 
-def onerror(x: Exception):
+def onerror(x: Exception) -> None:
   raise x
 
 
-def check_lucene_version_tests():
+def check_lucene_version_tests() -> None:
   print("  checking lucene version tests...", end="", flush=True)
   run("./gradlew -p lucene/core test --tests TestVersion")
   print("ok")
 
 
-def read_config(current_version: Version):
+def read_config(current_version: Version) -> argparse.Namespace:
   parser = argparse.ArgumentParser(description="Add a new version to CHANGES, to Version.java and build.gradle files")
   parser.add_argument("version", type=Version.parse)
   newconf = parser.parse_args()
@@ -156,14 +156,14 @@ def read_config(current_version: Version):
 
 
 # Hack ConfigParser, designed to parse INI files, to parse & interpolate Java .properties files
-def parse_properties_file(filename: str):
+def parse_properties_file(filename: str) -> dict[str, str]:
   contents = open(filename, encoding="ISO-8859-1").read().replace("%", "%%")  # Escape interpolation metachar
   parser = ConfigParser(interpolation=ExtendedInterpolation())  # Handle ${property-name} interpolation
   parser.read_string("[DUMMY_SECTION]\n" + contents)  # Add required section
   return dict(parser.items("DUMMY_SECTION"))
 
 
-def main():
+def main() -> None:
   if not os.path.exists("build-options.properties"):
     sys.exit("Tool must be run from the root of a source checkout.")
   current_version = Version.parse(find_current_version())

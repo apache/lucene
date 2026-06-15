@@ -489,10 +489,10 @@ public final class JoinUtil {
    *     index, no ordinal map needs to be provided.
    * @param min Optionally the minimum number of "from" documents that are required to match for a
    *     "to" document to be a match. The min is inclusive. Setting min to 0 and max to <code>
-   *     Interger.MAX_VALUE</code> disables the min and max "from" documents filtering
+   *     Integer.MAX_VALUE</code> disables the min and max "from" documents filtering
    * @param max Optionally the maximum number of "from" documents that are allowed to match for a
    *     "to" document to be a match. The max is inclusive. Setting min to 0 and max to <code>
-   *     Interger.MAX_VALUE</code> disables the min and max "from" documents filtering
+   *     Integer.MAX_VALUE</code> disables the min and max "from" documents filtering
    * @return a {@link Query} instance that can be used to join documents based on the join field
    * @throws IOException If I/O related errors occur
    */

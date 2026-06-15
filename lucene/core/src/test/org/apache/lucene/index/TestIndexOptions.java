@@ -235,6 +235,7 @@ public class TestIndexOptions extends LuceneTestCase {
     Document doc = new Document();
     doc.add(new Field("foo", "bar1", frozenFt));
     doc.add(new Field("foo", "bar2", differentFt));
+    // throw exception because of intra-document inconsistency
     IllegalArgumentException e =
         expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc));
     assertTrue(e.getMessage(), e.getMessage().contains("index options"));
@@ -327,6 +328,41 @@ public class TestIndexOptions extends LuceneTestCase {
             IllegalArgumentException.class,
             () -> w.addDocument(Collections.singleton(new Field("foo", "bar", ft2))));
     assertTrue(e.getMessage(), e.getMessage().contains("index options"));
+    w.close();
+    dir.close();
+  }
+
+  public void testMultiValueForcesDeoptimization() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    FieldType ftA = new FieldType(TextField.TYPE_STORED);
+    ftA.freeze();
+    FieldType ftB = new FieldType(TextField.TYPE_STORED); // same schema, different instance
+    ftB.freeze();
+    // Doc 0
+    w.addDocument(Collections.singleton(new Field("foo", "val0", ftA)));
+    // Doc 1
+    Document doc = new Document();
+    doc.add(new Field("foo", "val1a", ftA));
+    doc.add(new Field("foo", "val1b", ftB));
+    w.addDocument(doc);
+    // Doc 2
+    w.addDocument(Collections.singleton(new Field("foo", "val2", ftB)));
+    // Doc 3
+    w.addDocument(Collections.singleton(new Field("foo", "val3", ftB)));
+    try (LeafReader r = getOnlyLeafReader(DirectoryReader.open(w))) {
+      assertEquals(4, r.maxDoc());
+    }
+    // Doc 4: multi-valued with incompatible frozen type — must fail
+    FieldType ftC = new FieldType(TextField.TYPE_STORED);
+    ftC.setStoreTermVectors(true);
+    ftC.freeze();
+    Document doc4 = new Document();
+    doc4.add(new Field("foo", "val4a", ftB));
+    doc4.add(new Field("foo", "val4b", ftC));
+    IllegalArgumentException e =
+        expectThrows(IllegalArgumentException.class, () -> w.addDocument(doc4));
+    assertTrue(e.getMessage(), e.getMessage().contains("store term vector"));
     w.close();
     dir.close();
   }

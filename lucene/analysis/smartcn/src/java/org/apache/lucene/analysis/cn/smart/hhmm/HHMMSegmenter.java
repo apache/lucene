@@ -147,7 +147,7 @@ public class HHMMSegmenter {
           j = i + 1;
           // No need to search the weight for the punctuation.  Picking the highest frequency will
           // work.
-          frequency = Utility.MAX_FREQUENCE;
+          frequency = Utility.MAX_FREQUENCY;
           charArray = new char[] {sentence.charAt(i)};
           token = new SegToken(charArray, i, j, WordType.DELIMITER, frequency);
           segGraph.addToken(token);
