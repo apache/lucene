@@ -1347,13 +1347,15 @@ final class IndexingChain implements Accountable {
         pf.docValuesWriter = new BinaryDocValuesWriter(fi, bytesUsed);
         break;
       case SORTED:
-        pf.docValuesWriter = new SortedDocValuesWriter(fi, bytesUsed, docValuesBytePool);
+        pf.docValuesWriter =
+            new SortedDocValuesWriter(fi, bytesUsed, docValuesBytePool, sharedIndexingScratch);
         break;
       case SORTED_NUMERIC:
         pf.docValuesWriter = new SortedNumericDocValuesWriter(fi, bytesUsed);
         break;
       case SORTED_SET:
-        pf.docValuesWriter = new SortedSetDocValuesWriter(fi, bytesUsed, docValuesBytePool);
+        pf.docValuesWriter =
+            new SortedSetDocValuesWriter(fi, bytesUsed, docValuesBytePool, sharedIndexingScratch);
         break;
       default:
         throw new AssertionError("unrecognized DocValues.Type: " + dvType);
