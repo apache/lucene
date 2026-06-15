@@ -72,11 +72,20 @@ final class MaxScoreBulkScorer extends BulkScorer {
     docAndScoreAccBuffer = new DocAndScoreAccBuffer();
     docAndScoreAccBuffer.growNoCopy(INNER_WINDOW_SIZE);
 
-    if (this.filter != null
-        && this.filter.twoPhaseView == null
-        && maxDoc >= INNER_WINDOW_SIZE
-        && this.filter.cost >= maxDoc / DenseConjunctionBulkScorer.DENSITY_THRESHOLD_INVERSE) {
-      this.filterMatches = new FixedBitSet(INNER_WINDOW_SIZE);
+    if (this.filter != null && this.filter.twoPhaseView == null && maxDoc >= INNER_WINDOW_SIZE) {
+      long minScorerCost = allScorers[0].cost;
+      for (int j = 1; j < allScorers.length; j++) {
+        minScorerCost = Math.min(minScorerCost, allScorers[j].cost);
+      }
+      // Use the bitset filter path if either:
+      //  - the sparsest disjunction scorer is denser than the filter, OR
+      //  - there are many scorers and their combined cost is denser than the filter, so the
+      //    candidate stream is dense enough to favor bulk bit-set gating over per-candidate
+      //    filter advance()
+      if (minScorerCost >= this.filter.cost
+          || (allScorers.length > 4 && this.cost >= this.filter.cost)) {
+        this.filterMatches = new FixedBitSet(INNER_WINDOW_SIZE);
+      }
     }
   }
 
@@ -180,6 +189,10 @@ final class MaxScoreBulkScorer extends BulkScorer {
       // Must use the iterator as `top` might be a two-phase iterator
       top.doc = top.iterator.advance(filter.doc);
       top = essentialQueue.updateTop();
+    }
+
+    if (top.doc >= max) {
+      return;
     }
 
     // Only score an inner window, after that we'll check if the min competitive score has increased

@@ -1609,8 +1609,7 @@ public class Dictionary {
     }
     Path tmpPath = Paths.get(tmpDir);
     if (!Files.isWritable(tmpPath)) {
-      throw new IOException(
-          "Temporary path not present or writeable?: " + tmpPath.toAbsolutePath());
+      throw new IOException("Temporary path not present or writable?: " + tmpPath.toAbsolutePath());
     }
     return tmpPath;
   }

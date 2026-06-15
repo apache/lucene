@@ -60,6 +60,8 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
       values[i] = i % 100; // deterministic: 0..99 repeating
       Document doc = new Document();
       doc.add(NumericDocValuesField.indexedField("age", values[i]));
+      doc.add(SortedNumericDocValuesField.indexedField("multi_age", values[i] - 1000));
+      doc.add(SortedNumericDocValuesField.indexedField("multi_age", values[i]));
       doc.add(NumericDocValuesField.indexedField("score", (i * 7L) % 1000));
       w.addDocument(doc);
     }
@@ -98,6 +100,28 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
             + " but got: "
             + (twoPhase == null ? iter.getClass() : twoPhase.getClass()).getSimpleName(),
         twoPhase instanceof DocValuesRangeIterator);
+  }
+
+  public void testMultiValuedTwoPhaseIteratorIsWired() throws Exception {
+    LeafReaderContext ctx = reader.leaves().get(0);
+    Query q = SortedNumericDocValuesField.newSlowRangeQuery("multi_age", 20, 40);
+    Weight weight = q.createWeight(searcher, ScoreMode.COMPLETE_NO_SCORES, 1f);
+    ScorerSupplier ss = weight.scorerSupplier(ctx);
+    assertNotNull("ScorerSupplier must not be null", ss);
+
+    assertTrue(
+        "ScorerSupplier must be a ConstantScoreScorerSupplier",
+        ss instanceof ConstantScoreScorerSupplier);
+    DocIdSetIterator iter = ((ConstantScoreScorerSupplier) ss).iterator(Long.MAX_VALUE);
+    TwoPhaseIterator twoPhase = TwoPhaseIterator.unwrap(iter);
+    assertTrue(
+        "Range query on multi-valued field with skip index must use a DocValuesRangeIterator,"
+            + " but got: "
+            + (twoPhase == null ? iter.getClass() : twoPhase.getClass()).getSimpleName(),
+        twoPhase instanceof DocValuesRangeIterator);
+    assertEquals(
+        searcher.count(SortedNumericDocValuesField.newSlowRangeQuery("age", 20, 40)),
+        searcher.count(q));
   }
 
   public void testSingleFieldRangeCorrectness() throws Exception {
@@ -606,6 +630,67 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
               expected,
               actual);
         }
+      }
+    }
+  }
+
+  public void testSortedNumericRangeIntoBitSetDenseFixedCardinality() throws Exception {
+    doTestSortedNumericRangeIntoBitSet(true, true);
+  }
+
+  public void testSortedNumericRangeIntoBitSetDenseVariableCardinality() throws Exception {
+    doTestSortedNumericRangeIntoBitSet(true, false);
+  }
+
+  public void testSortedNumericRangeIntoBitSetSparseFixedCardinality() throws Exception {
+    doTestSortedNumericRangeIntoBitSet(false, true);
+  }
+
+  public void testSortedNumericRangeIntoBitSetSparseVariableCardinality() throws Exception {
+    doTestSortedNumericRangeIntoBitSet(false, false);
+  }
+
+  private void doTestSortedNumericRangeIntoBitSet(boolean dense, boolean fixedCardinality)
+      throws Exception {
+    int numDocs = 4096 * 2;
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (int docID = 0; docID < numDocs; docID++) {
+          Document doc = new Document();
+          if (dense || docID % 3 != 0) {
+            int valueCount = fixedCardinality ? 4 : 1 + (docID & 3);
+            long firstValue = (docID * 13L) % 100;
+            for (int i = 0; i < valueCount; i++) {
+              doc.add(SortedNumericDocValuesField.indexedField("sn", firstValue + i * 3L));
+            }
+          }
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        LeafReaderContext ctx = reader.leaves().get(0);
+        FixedBitSet expected = new FixedBitSet(numDocs);
+        var expectedValues = ctx.reader().getSortedNumericDocValues("sn");
+        for (int docID = 0; docID < numDocs; docID++) {
+          if (expectedValues.advanceExact(docID)) {
+            for (int i = 0, count = expectedValues.docValueCount(); i < count; i++) {
+              long value = expectedValues.nextValue();
+              if (value >= 20) {
+                if (value <= 40) {
+                  expected.set(docID);
+                }
+                break;
+              }
+            }
+          }
+        }
+
+        FixedBitSet actual = new FixedBitSet(numDocs);
+        ctx.reader().getSortedNumericDocValues("sn").rangeIntoBitSet(0, numDocs, 20, 40, actual, 0);
+        assertEquals(expected, actual);
       }
     }
   }

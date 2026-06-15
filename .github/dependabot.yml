@@ -14,18 +14,6 @@ updates:
     cooldown:
       default-days: 7
 
-  # python dependencies in /dev-tools/scripts
-  - package-ecosystem: pip
-    directory: /dev-tools/scripts/
-    open-pull-requests-limit: 25
-    schedule:
-      interval: monthly
-    commit-message:
-      prefix: build(deps)
-    labels: [dependencies, skip-changelog]
-    cooldown:
-      default-days: 7
-
   # python dependencies in /dev-tools
   - package-ecosystem: uv
     directory: /dev-tools/

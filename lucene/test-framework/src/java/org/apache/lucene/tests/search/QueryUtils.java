@@ -60,7 +60,6 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.Version;
-import org.junit.Assert;
 
 /** Utility class for sanity-checking queries. */
 public class QueryUtils {
@@ -464,34 +463,8 @@ public class QueryUtils {
               // confirm that skipping beyond the last doc, on the
               // previous reader, hits NO_MORE_DOCS
               if (lastReader[0] != null) {
-                final LeafReader previousReader = lastReader[0];
-                IndexSearcher indexSearcher = LuceneTestCase.newSearcher(previousReader, false);
-                indexSearcher.setSimilarity(s.getSimilarity());
-                Query rewritten = indexSearcher.rewrite(q);
-                Weight w = indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
-                LeafReaderContext ctx = (LeafReaderContext) indexSearcher.getTopReaderContext();
-                Scorer scorer = w.scorer(ctx);
-                if (scorer != null) {
-                  DocIdSetIterator iterator = scorer.iterator();
-                  boolean more = false;
-                  final Bits liveDocs = context.reader().getLiveDocs();
-                  for (int d = iterator.advance(lastDoc[0] + 1);
-                      d != DocIdSetIterator.NO_MORE_DOCS;
-                      d = iterator.nextDoc()) {
-                    if (liveDocs == null || liveDocs.get(d)) {
-                      more = true;
-                      break;
-                    }
-                  }
-                  Assert.assertFalse(
-                      "query's last doc was "
-                          + lastDoc[0]
-                          + " but advance("
-                          + (lastDoc[0] + 1)
-                          + ") got to "
-                          + scorer.docID(),
-                      more);
-                }
+                assertNoPastSegmentEnd(
+                    q, s, lastReader[0], lastDoc[0], context.reader().getLiveDocs());
                 leafPtr++;
               }
               lastReader[0] = context.reader();
@@ -502,36 +475,7 @@ public class QueryUtils {
           });
 
       if (lastReader[0] != null) {
-        // confirm that skipping beyond the last doc, on the
-        // previous reader, hits NO_MORE_DOCS
-        final LeafReader previousReader = lastReader[0];
-        IndexSearcher indexSearcher = LuceneTestCase.newSearcher(previousReader, false);
-        indexSearcher.setSimilarity(s.getSimilarity());
-        Query rewritten = indexSearcher.rewrite(q);
-        Weight w = indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
-        LeafReaderContext ctx = previousReader.getContext();
-        Scorer scorer = w.scorer(ctx);
-        if (scorer != null) {
-          DocIdSetIterator iterator = scorer.iterator();
-          boolean more = false;
-          final Bits liveDocs = lastReader[0].getLiveDocs();
-          for (int d = iterator.advance(lastDoc[0] + 1);
-              d != DocIdSetIterator.NO_MORE_DOCS;
-              d = iterator.nextDoc()) {
-            if (liveDocs == null || liveDocs.get(d)) {
-              more = true;
-              break;
-            }
-          }
-          assertFalse(
-              "query's last doc was "
-                  + lastDoc[0]
-                  + " but advance("
-                  + (lastDoc[0] + 1)
-                  + ") got to "
-                  + scorer.docID(),
-              more);
-        }
+        assertNoPastSegmentEnd(q, s, lastReader[0], lastDoc[0], lastReader[0].getLiveDocs());
       }
     }
   }
@@ -606,32 +550,8 @@ public class QueryUtils {
             // confirm that skipping beyond the last doc, on the
             // previous reader, hits NO_MORE_DOCS
             if (lastReader[0] != null) {
-              final LeafReader previousReader = lastReader[0];
-              IndexSearcher indexSearcher = LuceneTestCase.newSearcher(previousReader, false);
-              indexSearcher.setSimilarity(s.getSimilarity());
-              Weight w = indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
-              Scorer scorer = w.scorer((LeafReaderContext) indexSearcher.getTopReaderContext());
-              if (scorer != null) {
-                DocIdSetIterator iterator = scorer.iterator();
-                boolean more = false;
-                final Bits liveDocs = context.reader().getLiveDocs();
-                for (int d = iterator.advance(lastDoc[0] + 1);
-                    d != DocIdSetIterator.NO_MORE_DOCS;
-                    d = iterator.nextDoc()) {
-                  if (liveDocs == null || liveDocs.get(d)) {
-                    more = true;
-                    break;
-                  }
-                }
-                assertFalse(
-                    "query's last doc was "
-                        + lastDoc[0]
-                        + " but advance("
-                        + (lastDoc[0] + 1)
-                        + ") got to "
-                        + scorer.docID(),
-                    more);
-              }
+              assertNoPastSegmentEnd(
+                  q, s, lastReader[0], lastDoc[0], context.reader().getLiveDocs());
               leafPtr++;
             }
 
@@ -641,34 +561,42 @@ public class QueryUtils {
         });
 
     if (lastReader[0] != null) {
-      // confirm that skipping beyond the last doc, on the
-      // previous reader, hits NO_MORE_DOCS
-      final LeafReader previousReader = lastReader[0];
-      IndexSearcher indexSearcher = LuceneTestCase.newSearcher(previousReader, false);
-      indexSearcher.setSimilarity(s.getSimilarity());
-      Weight w = indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
-      Scorer scorer = w.scorer((LeafReaderContext) indexSearcher.getTopReaderContext());
-      if (scorer != null) {
-        DocIdSetIterator iterator = scorer.iterator();
-        boolean more = false;
-        final Bits liveDocs = lastReader[0].getLiveDocs();
-        for (int d = iterator.advance(lastDoc[0] + 1);
-            d != DocIdSetIterator.NO_MORE_DOCS;
-            d = iterator.nextDoc()) {
-          if (liveDocs == null || liveDocs.get(d)) {
-            more = true;
-            break;
-          }
+      assertNoPastSegmentEnd(q, s, lastReader[0], lastDoc[0], lastReader[0].getLiveDocs());
+    }
+  }
+
+  /**
+   * Asserts that the given query's scorer on {@code previousReader} has no more matching live
+   * documents after {@code lastDoc}. Used to verify segment-boundary correctness.
+   */
+  private static void assertNoPastSegmentEnd(
+      Query q, IndexSearcher s, LeafReader previousReader, int lastDoc, Bits liveDocs)
+      throws IOException {
+    IndexSearcher indexSearcher = LuceneTestCase.newSearcher(previousReader, false);
+    indexSearcher.setSimilarity(s.getSimilarity());
+    Query rewritten = indexSearcher.rewrite(q);
+    Weight w = indexSearcher.createWeight(rewritten, ScoreMode.COMPLETE, 1);
+    LeafReaderContext ctx = (LeafReaderContext) indexSearcher.getTopReaderContext();
+    Scorer scorer = w.scorer(ctx);
+    if (scorer != null) {
+      DocIdSetIterator iterator = scorer.iterator();
+      boolean more = false;
+      for (int d = iterator.advance(lastDoc + 1);
+          d != DocIdSetIterator.NO_MORE_DOCS;
+          d = iterator.nextDoc()) {
+        if (liveDocs == null || liveDocs.get(d)) {
+          more = true;
+          break;
         }
-        assertFalse(
-            "query's last doc was "
-                + lastDoc[0]
-                + " but advance("
-                + (lastDoc[0] + 1)
-                + ") got to "
-                + scorer.docID(),
-            more);
       }
+      assertFalse(
+          "query's last doc was "
+              + lastDoc
+              + " but advance("
+              + (lastDoc + 1)
+              + ") got to "
+              + scorer.docID(),
+          more);
     }
   }
 

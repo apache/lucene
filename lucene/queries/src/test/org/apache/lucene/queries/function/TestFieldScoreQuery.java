@@ -121,7 +121,7 @@ public class TestFieldScoreQuery extends FunctionTestSetup {
       String id = s.getIndexReader().storedFields().document(aSd.doc).get(ID_FIELD);
       float expectedScore = expectedFieldScore(id); // "ID7" --> 7.0
       assertEquals(
-          "score of " + id + " shuould be " + expectedScore + " != " + score,
+          "score of " + id + " should be " + expectedScore + " != " + score,
           expectedScore,
           score,
           TEST_SCORE_TOLERANCE_DELTA);

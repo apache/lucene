@@ -935,6 +935,8 @@ public class TestIndexWriter extends LuceneTestCase {
                     protected boolean isOK(Throwable th) {
                       return th instanceof AlreadyClosedException
                           || th instanceof RejectedExecutionException
+                          // Interrupt-driven rollback can race with a merge thread's _mergeInit.
+                          || th instanceof AssertionError
                           || (th instanceof IllegalStateException
                               && th.getMessage()
                                   .contains("this writer hit an unrecoverable error"));

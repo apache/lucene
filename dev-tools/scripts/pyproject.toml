@@ -1,26 +1,16 @@
-[tool.pyright]
-pythonVersion = "3.12"
-venvPath = "."
-venv = ".venv"
-typeCheckingMode = "strict"
-reportCallInDefaultInitializer = "error"
-reportImplicitStringConcatenation = "error"
-reportImportCycles = "error"
-reportImplicitOverride = "error"
-reportPropertyTypeMismatch = "error"
-reportUninitializedInstanceVariable = "error"
-reportUnnecessaryTypeIgnoreComment = "error"
+[tool.ty.environment]
+python-version = "3.12"
 
-# This is a big TODO list of current typing problems
-# Pick an item off the list, change to "error", and send a pull request to fix it!
-# You can find more information on a rule at https://github.com/microsoft/pyright/blob/main/docs/configuration.md
-reportConstantRedefinition = "hint"          # Requires fixing nonstandard variable conventions
-reportMissingSuperCall = "hint"              # Requires adding missing super().__init__() calls
-reportMissingTypeStubs = "hint"              # Can be fixed by switching 'ics' to alternative such as 'icalendar'
-reportPrivateUsage = "hint"                  # Can be fixed by using TLS properly (Ruff S323)
-reportUnnecessaryComparison = "hint"         # Requires cleaning up some dead code
-reportUntypedNamedTuple = "hint"             # Requires moving to different type of named tuple
-reportUnusedCallResult = "none"              # Forces you to assign unused retvals to '_', very noisy.
+[tool.ty.rules]
+division-by-zero = "warn"
+missing-override-decorator = "warn"
+possibly-missing-attribute = "warn"
+possibly-missing-import = "warn"
+possibly-unresolved-reference = "warn"
+unsupported-dynamic-base = "warn"
+
+[tool.ty.terminal]
+error-on-warning = true
 
 [tool.ruff]
 target-version = "py312"
@@ -37,11 +27,6 @@ ignore = [
   # You can find more information on a rule at https://docs.astral.sh/ruff/rules/
   "A001",    # variable name is shadowing a python builtin
   "A002",    # function argument name is shadowing a python builtin
-  "ANN001",  # missing type annotation for function argument
-  "ANN201",  # missing return annotation for public function
-  "ANN202",  # missing return annotation for private function
-  "ANN204",  # missing return annotation for special method
-  "ANN206",  # missing return annotation for classmethod
   "ANN401",  # use of Any as function parameter
   "ARG005",  # unused lambda argument
   "B006",    # do not use mutable datastructures for arg defaults

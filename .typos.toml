@@ -1,0 +1,77 @@
+[default]
+check-file = false
+# words with length <= 4 chars can be noisy
+extend-ignore-words-re = [ "^[a-zA-Z]{1,4}$" ]
+# disable some ranges to reduce hassles
+extend-ignore-re = [
+  # Ignore lines that end with `// spellchecker:disable-line`
+  "(?Rm)^.*(#|//)\\s*spellchecker:disable-line$",
+  # Ignore the line after `// spellchecker:ignore-next-line`:
+  "(#|//)\\s*spellchecker:ignore-next-line\\n.*",
+  # Ignore blocks between `// spellchecker:off` and `// spellchecker:on`
+  "(?s)(#|//)\\s*spellchecker:off.*?\\n\\s*(#|//)\\s*spellchecker:on",
+
+  # Ignore quoted text / string literals, a must for this repository
+  "[\"][^\\n\"]*[\"]",
+  "['][^\\n']*[']",
+  "(?s)[\"][\"][\"]\\n.*?[\"][\"][\"]",
+
+  # Ignore lines containing Copyright, often names
+  ".*Copyright.*"
+]
+
+[default.extend-identifiers]
+# not allowed!
+nocommit = ""
+# not allowed!
+TOOD = "TODO"
+# customize the correction
+seeked = "seek()ed"
+
+[files]
+# enable checking of e.g. .github
+ignore-hidden = false
+extend-exclude = [
+  # branch names etc
+  ".git/**",
+  # test data
+  "**/src/test/**/*.{html,xml}",
+  # stemmers
+  "**/*Stemmer.java",
+  # spell/suggest
+  "**/hunspell/*.java"
+]
+
+[type.asciidoc]
+check-file = true
+
+[type.changelog]
+check-file = true
+extend-glob = [ "CHANGES.txt" ]
+# ignore (user)names within parens in CHANGES.txt
+extend-ignore-re = [ "[(][^()*]*[)]" ]
+
+[type.groovy]
+check-file = true
+
+[type.help]
+check-file = true
+extend-glob = [ "help/*.txt"]
+
+[type.html]
+check-file = true
+
+[type.java]
+check-file = true
+
+[type.md]
+check-file = true
+
+[type.py]
+check-file = true
+
+[type.xml]
+check-file = true
+
+[type.yaml]
+check-file = true

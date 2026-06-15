@@ -292,7 +292,14 @@ final class BooleanScorerSupplier extends ScorerSupplier {
       return subs.get(Occur.SHOULD).iterator().next().bulkScorer();
     }
 
-    if (scoreMode == ScoreMode.TOP_SCORES && minShouldMatch <= 1) {
+    if (scoreMode == ScoreMode.TOP_SCORES) {
+      if (minShouldMatch > 1) {
+        // Fall back to BS2/WANDScorer: it supports both block-max impact
+        // pruning and minShouldMatch > 1. BooleanScorer (the fall-through
+        // below) does not consult score upper bounds and would score every
+        // doc in the 2048-doc window, defeating top-K pruning.
+        return null;
+      }
       List<Scorer> optionalScorers = new ArrayList<>();
       for (ScorerSupplier ss : subs.get(Occur.SHOULD)) {
         optionalScorers.add(ss.get(Long.MAX_VALUE));
