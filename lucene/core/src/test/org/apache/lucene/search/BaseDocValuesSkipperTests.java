@@ -55,8 +55,8 @@ public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
    * {@link #DENSE_END}-1 are dense (all have values); docs from {@link #DENSE_END} onward are
    * sparse (only even docs have a value).
    *
-   * <p>The returned instance is wrapped in {@link AssertingNumericDocValues},
-   * which enforces the forward-only iteration contracts like real sparse implementations rely on.
+   * <p>The returned instance is wrapped in {@link AssertingNumericDocValues}, which enforces the
+   * forward-only iteration contracts like real sparse implementations rely on.
    */
   protected static NumericDocValues docValues(long queryMin, long queryMax) {
     NumericDocValues values =
