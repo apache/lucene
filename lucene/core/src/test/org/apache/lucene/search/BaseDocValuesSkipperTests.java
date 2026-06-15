@@ -19,7 +19,7 @@ package org.apache.lucene.search;
 import java.io.IOException;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.tests.index.AssertingLeafReader;
+import org.apache.lucene.tests.index.AssertingLeafReader.AssertingNumericDocValues;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
@@ -55,7 +55,7 @@ public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
    * {@link #DENSE_END}-1 are dense (all have values); docs from {@link #DENSE_END} onward are
    * sparse (only even docs have a value).
    *
-   * <p>The returned instance is wrapped in {@link AssertingLeafReader.AssertingNumericDocValues},
+   * <p>The returned instance is wrapped in {@link AssertingNumericDocValues},
    * which enforces the forward-only iteration contracts like real sparse implementations rely on.
    */
   protected static NumericDocValues docValues(long queryMin, long queryMax) {
@@ -111,7 +111,7 @@ public abstract class BaseDocValuesSkipperTests extends LuceneTestCase {
             return 42;
           }
         };
-    return new AssertingLeafReader.AssertingNumericDocValues(values, MAX_DOC);
+    return new AssertingNumericDocValues(values, MAX_DOC);
   }
 
   /**
