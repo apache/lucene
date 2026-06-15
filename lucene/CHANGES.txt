@@ -258,6 +258,8 @@ Optimizations
 
 * GITHUB#16171: Address frozen FieldType cache never recovering after type switch. (neoremind)
 
+* GITHUB#16257: Support JDK 26 in Panama Vectorization Provider. (Chris Hegarty)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
