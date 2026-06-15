@@ -79,9 +79,11 @@ final class MaxScoreBulkScorer extends BulkScorer {
       }
       // Use the bitset filter path if either:
       //  - the sparsest disjunction scorer is denser than the filter, OR
-      //  - there are more than four scorers meaning that the overheap from
-      //    maintaining the leapfrog heap is too high
-      if (minScorerCost >= this.filter.cost || allScorers.length > 4) {
+      //  - there are many scorers and their combined cost is denser than the filter, so the
+      //    candidate stream is dense enough to favor bulk bit-set gating over per-candidate
+      //    filter advance()
+      if (minScorerCost >= this.filter.cost
+          || (allScorers.length > 4 && this.cost >= this.filter.cost)) {
         this.filterMatches = new FixedBitSet(INNER_WINDOW_SIZE);
       }
     }
