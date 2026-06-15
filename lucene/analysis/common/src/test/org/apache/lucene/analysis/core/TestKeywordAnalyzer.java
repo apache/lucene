@@ -81,7 +81,7 @@ public class TestKeywordAnalyzer extends BaseTokenStreamTestCase {
   }
   */
 
-  public void testMutipleDocument() throws Exception {
+  public void testMultipleDocument() throws Exception {
     Directory dir = new ByteBuffersDirectory();
     Analyzer analyzer = new KeywordAnalyzer();
     IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig(analyzer));

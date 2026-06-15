@@ -126,7 +126,7 @@ public class GroupingSearch {
     if (grouper != null) {
       return groupByFieldOrFunction(searcher, query, groupOffset, groupLimit);
     } else if (groupEndDocs != null) {
-      return (TopGroups<T>) groupByDocBlock(searcher, query, groupOffset, groupLimit);
+      return groupByDocBlock(searcher, query, groupOffset, groupLimit);
     } else {
       throw new IllegalStateException(
           "Either groupField, groupFunction or groupEndDocs must be set."); // This can't happen...
@@ -190,21 +190,23 @@ public class GroupingSearch {
     }
   }
 
-  protected TopGroups<?> groupByDocBlock(
+  protected <T> TopGroups<T> groupByDocBlock(
       IndexSearcher searcher, Query query, int groupOffset, int groupLimit) throws IOException {
-    int topN = groupOffset + groupLimit;
     final Query endDocsQuery = searcher.rewrite(this.groupEndDocs);
     final Weight groupEndDocs =
         searcher.createWeight(endDocsQuery, ScoreMode.COMPLETE_NO_SCORES, 1);
-    BlockGroupingCollector c =
-        new BlockGroupingCollector(
+    BlockGroupingCollectorManager<T> bcm =
+        new BlockGroupingCollectorManager<>(
             groupSort,
-            topN,
+            groupOffset,
+            groupLimit,
             groupSort.needsScores() || sortWithinGroup.needsScores(),
-            groupEndDocs);
-    searcher.search(query, c);
-    int topNInsideGroup = groupDocsOffset + groupDocsLimit;
-    return c.getTopGroups(sortWithinGroup, groupOffset, groupDocsOffset, topNInsideGroup);
+            groupEndDocs,
+            sortWithinGroup,
+            groupDocsOffset,
+            groupDocsOffset + groupDocsLimit);
+
+    return searcher.search(query, bcm);
   }
 
   /**

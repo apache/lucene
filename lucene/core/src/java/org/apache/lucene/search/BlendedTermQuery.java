@@ -64,8 +64,8 @@ public final class BlendedTermQuery extends Query {
      *
      * @see RewriteMethod
      */
-    public Builder setRewriteMethod(RewriteMethod rewiteMethod) {
-      this.rewriteMethod = rewiteMethod;
+    public Builder setRewriteMethod(RewriteMethod rewriteMethod) {
+      this.rewriteMethod = rewriteMethod;
       return this;
     }
 
