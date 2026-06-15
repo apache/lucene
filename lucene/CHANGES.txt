@@ -139,10 +139,6 @@ Improvements
 
 * GITHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
 
-* GITHUB#16216: Add DiversifiedTopDocsCollectorManager to enable concurrent search with
-  DiversifiedTopDocsCollector, removing usages of the deprecated IndexSearcher#search(Query, Collector).
-  (Luca Cavanna)
-
 Optimizations
 ---------------------
 * GITHUB#15681, GITHUB#15833, GITHUB#16056: Replace pre-sized array or empty array with lambda expression to call Collection#toArray. (Zhou Hui)
@@ -391,6 +387,10 @@ Improvements
 * GITHUB#16088: SearchGroup#merge now returns an empty collection instead of null when topGroups is empty. (Luca Cavanna)
 
 * GITHUB#16144: Clarify LeafCollector batch collection scoring contract. (Costin Leau)
+
+* GITHUB#16216: Add DiversifiedTopDocsCollectorManager to enable concurrent search with
+  DiversifiedTopDocsCollector, removing usages of the deprecated IndexSearcher#search(Query, Collector).
+  (Luca Cavanna)
 
 Optimizations
 ---------------------
