@@ -130,6 +130,10 @@ Improvements
 
 * GITHUB#16144: Clarify LeafCollector batch collection scoring contract. (Costin Leau)
 
+* GITHUB#16229: BooleanWeight.explain prints failing optional clauses when query fails due to insufficient SHOULD matches. (Jakub Slowinski)
+
+* GITHUB#16217: Introduce DistinctValuesCollectorManager to parallelize search when using DistinctValuesCollector. (Luca Cavanna)
+
 Optimizations
 ---------------------
 
