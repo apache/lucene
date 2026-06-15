@@ -402,6 +402,10 @@ Improvements
 
 * GITHUB#16217: Introduce DistinctValuesCollectorManager to parallelize search when using DistinctValuesCollector. (Luca Cavanna)
 
+* GITHUB#16216: Add DiversifiedTopDocsCollectorManager to enable concurrent search with
+  DiversifiedTopDocsCollector, removing usages of the deprecated IndexSearcher#search(Query, Collector).
+  (Luca Cavanna)
+
 Optimizations
 ---------------------
 * GITHUB#16222: MultiTermQuery constant-score wrapper now defers term collection to ScorerSupplier#get()
