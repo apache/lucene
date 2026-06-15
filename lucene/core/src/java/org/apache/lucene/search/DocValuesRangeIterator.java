@@ -389,7 +389,11 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     @Override
     void intoMaybeBlock(int blockStart, int blockEnd, FixedBitSet bitSet, int offset)
         throws IOException {
-      numericValues.rangeIntoBitSet(blockStart, blockEnd, minValue, maxValue, bitSet, offset);
+      // numericValues is the same instance as disi, so a preceding matches() call may have
+      // moved it beyond blockStart. Adjust the starting point to keep rangeIntoBitSet's
+      // advanceExact calls forward-only.
+      int from = Math.max(blockStart, numericValues.docID());
+      numericValues.rangeIntoBitSet(from, blockEnd, minValue, maxValue, bitSet, offset);
     }
   }
 
@@ -416,7 +420,11 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     @Override
     void intoMaybeBlock(int blockStart, int blockEnd, FixedBitSet bitSet, int offset)
         throws IOException {
-      sortedNumericValues.rangeIntoBitSet(blockStart, blockEnd, minValue, maxValue, bitSet, offset);
+      // sortedNumericValues is the same instance as disi, so a preceding matches() call may have
+      // moved it beyond blockStart. Adjust the starting point to keep rangeIntoBitSet's
+      // advanceExact calls forward-only.
+      int from = Math.max(blockStart, sortedNumericValues.docID());
+      sortedNumericValues.rangeIntoBitSet(from, blockEnd, minValue, maxValue, bitSet, offset);
     }
   }
 
