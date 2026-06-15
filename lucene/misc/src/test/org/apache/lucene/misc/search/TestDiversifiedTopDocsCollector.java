@@ -35,6 +35,7 @@ import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
@@ -107,7 +108,7 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
     DiversifiedTopDocsCollector tdc =
         new HashedDocValuesDiversifiedCollector(numResults, 15, "artist");
 
-    // start < 0
+    // start < 0 throws
     IllegalArgumentException expected =
         expectThrows(IllegalArgumentException.class, () -> tdc.topDocs(-1));
     assertEquals(
@@ -116,8 +117,8 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
     // start > pq.size() (pq is empty; any positive start is out of range)
     assertEquals(0, tdc.topDocs(numResults + 1).scoreDocs.length);
 
-    // start == pq.size()
-    assertEquals(0, tdc.topDocs(numResults).scoreDocs.length);
+    // start == pq.size() == 0
+    assertEquals(0, tdc.topDocs(0).scoreDocs.length);
 
     // howMany < 0
     expected = expectThrows(IllegalArgumentException.class, () -> tdc.topDocs(0, -1));
@@ -126,6 +127,21 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
 
     // howMany == 0
     assertEquals(0, tdc.topDocs(0, 0).scoreDocs.length);
+
+    // Verify start == pq.size() returns empty with a non-empty collector
+    HashedDocValuesDiversifiedCollector populated =
+        new HashedDocValuesDiversifiedCollector(numResults, 15, "artist");
+    Weight w = searcher.createWeight(searcher.rewrite(getTestQuery()), ScoreMode.COMPLETE, 1f);
+    for (LeafReaderContext ctx : reader.leaves()) {
+      LeafCollector lc = populated.getLeafCollector(ctx);
+      BulkScorer bs = w.bulkScorer(ctx);
+      if (bs != null) {
+        bs.score(lc, ctx.reader().getLiveDocs(), 0, DocIdSetIterator.NO_MORE_DOCS);
+      }
+    }
+    int collectedCount = populated.topDocs().scoreDocs.length;
+    assertTrue(collectedCount > 0);
+    assertEquals(0, populated.topDocs(collectedCount).scoreDocs.length);
   }
 
   // Diversifying collector that looks up de-dup keys using SortedDocValues
