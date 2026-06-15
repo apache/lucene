@@ -198,6 +198,23 @@ public class TestRoaringDocIdSet extends BaseDocIdSetTestCase<RoaringDocIdSet> {
     assertEquals(maxDoc, expected, b.build());
   }
 
+  public void testAddRangeBlockCardinalityAtSparseBufferCapacity() throws IOException {
+    int maxDoc = 5_000;
+    // Cover the boundary at the sparse buffer capacity
+    for (int blockCardinality : new int[] {4095, 4096, 4097}) {
+      BitSet expected = new BitSet(maxDoc);
+      expected.set(0);
+
+      int docsInRange = blockCardinality - 1; // contiguous-range after the singleton at doc 0
+      int rangeEnd = 2 + docsInRange; // added via the contiguous-range add(min, max)
+      expected.set(2, rangeEnd);
+      RoaringDocIdSet.Builder b = new RoaringDocIdSet.Builder(maxDoc);
+      b.add(0);
+      b.add(2, rangeEnd);
+      assertEquals(maxDoc, expected, b.build());
+    }
+  }
+
   public void testAddRangeEmptyNoOp() throws IOException {
     int maxDoc = 100;
     RoaringDocIdSet.Builder b = new RoaringDocIdSet.Builder(maxDoc);
