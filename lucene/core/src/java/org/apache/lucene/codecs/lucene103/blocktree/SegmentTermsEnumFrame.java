@@ -26,6 +26,7 @@ import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.Simple64;
 
 final class SegmentTermsEnumFrame {
   // Our index in stack[]:
@@ -49,6 +50,7 @@ final class SegmentTermsEnumFrame {
   ByteArrayDataInput suffixesReader;
 
   byte[] suffixLengthBytes;
+  // Only used in non-leaf blocks.
   final ByteArrayDataInput suffixLengthsReader;
 
   byte[] statBytes;
@@ -79,6 +81,7 @@ final class SegmentTermsEnumFrame {
 
   // True if all entries have the same length.
   boolean allEqual;
+  int[] suffixLengths; // only used when !allEqual in leaf blocks.
 
   long lastSubFP;
 
@@ -106,6 +109,7 @@ final class SegmentTermsEnumFrame {
     this.state = ste.fr.parent.postingsReader.newTermState();
     this.state.totalTermFreq = -1;
     suffixLengthsReader = new ByteArrayDataInput();
+    suffixLengths = null;
   }
 
   public void setFloorData(IndexInput in) throws IOException {
@@ -209,15 +213,32 @@ final class SegmentTermsEnumFrame {
     int numSuffixLengthBytes = ste.in.readVInt();
     allEqual = (numSuffixLengthBytes & 0x01) != 0;
     numSuffixLengthBytes >>>= 1;
-    if (suffixLengthBytes == null || suffixLengthBytes.length < numSuffixLengthBytes) {
-      suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
-    }
-    if (allEqual) {
-      Arrays.fill(suffixLengthBytes, 0, numSuffixLengthBytes, ste.in.readByte());
+
+    if (isLeafBlock) {
+      if (allEqual) {
+        suffixLength = numSuffixLengthBytes;
+      } else {
+        final int numLongs = numSuffixLengthBytes;
+        suffixLengths = new int[entCount];
+        long[] longs = new long[numLongs];
+        for (int i = 0; i < numLongs; i++) {
+          longs[i] = ste.in.readVLong();
+        }
+        // TODO: read and decode one long.
+        Simple64.decodeAll(longs, 0, suffixLengths, 0, entCount);
+      }
     } else {
-      ste.in.readBytes(suffixLengthBytes, 0, numSuffixLengthBytes);
+      if (suffixLengthBytes == null || suffixLengthBytes.length < numSuffixLengthBytes) {
+        suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
+      }
+      if (allEqual) {
+        Arrays.fill(suffixLengthBytes, 0, numSuffixLengthBytes, ste.in.readByte());
+      } else {
+        ste.in.readBytes(suffixLengthBytes, 0, numSuffixLengthBytes);
+      }
+      suffixLengthsReader.reset(suffixLengthBytes, 0, numSuffixLengthBytes);
     }
-    suffixLengthsReader.reset(suffixLengthBytes, 0, numSuffixLengthBytes);
+
     totalSuffixBytes = ste.in.getFilePointer() - startSuffixFP;
 
     /*if (DEBUG) {
@@ -332,8 +353,10 @@ final class SegmentTermsEnumFrame {
     // " entCount=" + entCount);
     assert nextEnt != -1 && nextEnt < entCount
         : "nextEnt=" + nextEnt + " entCount=" + entCount + " fp=" + fp;
+    if (allEqual == false) {
+      suffixLength = suffixLengths[nextEnt];
+    }
     nextEnt++;
-    suffixLength = suffixLengthsReader.readVInt();
     startBytePos = suffixesReader.getPosition();
     ste.term.setLength(prefixLength + suffixLength);
     ste.term.grow(ste.term.length());
@@ -596,11 +619,13 @@ final class SegmentTermsEnumFrame {
 
     assert prefixMatches(target);
 
+    // suffixLengths assigned in loadBlock,
+    assert suffixLengths != null;
+
     // Loop over each entry (term or sub-block) in this block:
     do {
+      suffixLength = suffixLengths[nextEnt];
       nextEnt++;
-
-      suffixLength = suffixLengthsReader.readVInt();
 
       // if (DEBUG) {
       //   BytesRef suffixBytesRef = new BytesRef();
@@ -690,7 +715,9 @@ final class SegmentTermsEnumFrame {
 
     assert prefixMatches(target);
 
-    suffixLength = suffixLengthsReader.readVInt();
+    // suffixLength assigned in loadBlock, and all suffixes have the same length in this block.
+    assert suffixLength > 0;
+
     // TODO early terminate when target length unequals suffix + prefix.
     // But we need to keep the same status with scanToTermLeaf.
     int start = nextEnt;

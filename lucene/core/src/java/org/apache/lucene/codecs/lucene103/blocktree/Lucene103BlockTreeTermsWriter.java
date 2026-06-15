@@ -790,7 +790,7 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
 
           suffixLengths[i - start] = suffixLength;
           if (allEquals && i > start) {
-            allEquals = suffixLength == suffixLengths[start];
+            allEquals = suffixLength == suffixLengths[0];
           }
 
           suffixWriter.append(term.termBytes, prefixLength, suffixLength);
@@ -952,21 +952,21 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
             termsOut.writeVLong(encodedSuffixLengths[i]);
           }
         }
-      }
-
-      // Write suffix lengths
-      final int numSuffixBytes = Math.toIntExact(suffixLengthsWriter.size());
-      spareBytes = ArrayUtil.growNoCopy(spareBytes, numSuffixBytes);
-      suffixLengthsWriter.copyTo(new ByteArrayDataOutput(spareBytes));
-      suffixLengthsWriter.reset();
-
-      if (allEqual(spareBytes, 1, numSuffixBytes, spareBytes[0])) {
-        // Structured fields like IDs often have most values of the same length
-        termsOut.writeVInt((numSuffixBytes << 1) | 1);
-        termsOut.writeByte(spareBytes[0]);
       } else {
-        termsOut.writeVInt(numSuffixBytes << 1);
-        termsOut.writeBytes(spareBytes, numSuffixBytes);
+        // Write suffix lengths
+        final int numSuffixBytes = Math.toIntExact(suffixLengthsWriter.size());
+        spareBytes = ArrayUtil.growNoCopy(spareBytes, numSuffixBytes);
+        suffixLengthsWriter.copyTo(new ByteArrayDataOutput(spareBytes));
+        suffixLengthsWriter.reset();
+
+        if (allEqual(spareBytes, 1, numSuffixBytes, spareBytes[0])) {
+          // Structured fields like IDs often have most values of the same length
+          termsOut.writeVInt((numSuffixBytes << 1) | 1);
+          termsOut.writeByte(spareBytes[0]);
+        } else {
+          termsOut.writeVInt(numSuffixBytes << 1);
+          termsOut.writeBytes(spareBytes, numSuffixBytes);
+        }
       }
 
       // Stats
