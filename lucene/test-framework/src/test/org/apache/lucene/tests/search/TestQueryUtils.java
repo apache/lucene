@@ -117,6 +117,50 @@ public class TestQueryUtils extends LuceneTestCase {
     expectThrows(AssertionError.class, () -> QueryUtils.checkFirstSkipTo(q, searcher));
   }
 
+  // nextDoc() terminates early — exercises assertNoPastSegmentEnd
+
+  public void testCheckSkipToDetectsEarlyTermination() throws IOException {
+    Directory localDir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), localDir);
+    for (int i = 0; i < 5; i++) {
+      Document doc = new Document();
+      doc.add(newTextField("f", "v", Field.Store.NO));
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+    IndexReader localReader = iw.getReader();
+    iw.close();
+    IndexSearcher localSearcher = newSearcher(localReader, false);
+    try {
+      Query q = new EarlyTerminationQuery(new TermQuery(new Term("f", "v")));
+      expectThrows(AssertionError.class, () -> QueryUtils.checkSkipTo(q, localSearcher));
+    } finally {
+      localReader.close();
+      localDir.close();
+    }
+  }
+
+  public void testCheckFirstSkipToDetectsEarlyTermination() throws IOException {
+    Directory localDir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), localDir);
+    for (int i = 0; i < 5; i++) {
+      Document doc = new Document();
+      doc.add(newTextField("f", "v", Field.Store.NO));
+      iw.addDocument(doc);
+    }
+    iw.forceMerge(1);
+    IndexReader localReader = iw.getReader();
+    iw.close();
+    IndexSearcher localSearcher = newSearcher(localReader, false);
+    try {
+      Query q = new EarlyTerminationQuery(new TermQuery(new Term("f", "v")));
+      expectThrows(AssertionError.class, () -> QueryUtils.checkFirstSkipTo(q, localSearcher));
+    } finally {
+      localReader.close();
+      localDir.close();
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Shared query/weight infrastructure
   // ---------------------------------------------------------------------------
@@ -380,6 +424,50 @@ public class TestQueryUtils extends LuceneTestCase {
           return iter;
         }
       };
+    }
+  }
+
+  /**
+   * nextDoc() returns NO_MORE_DOCS after the very first call, even when further matches remain.
+   * advance() is unaffected so a freshly created scorer (as used by assertNoPastSegmentEnd) can
+   * still find documents past the prematurely stopped position.
+   */
+  private static final class EarlyTerminationQuery extends BrokenQuery {
+    EarlyTerminationQuery(Query delegate) {
+      super(delegate);
+    }
+
+    @Override
+    Scorer wrapScorer(Scorer inner) {
+      DocIdSetIterator innerIter = inner.iterator();
+      final int[] docId = {-1};
+      final boolean[] exhausted = {false};
+      DocIdSetIterator iter =
+          new DocIdSetIterator() {
+            @Override
+            public int docID() {
+              return docId[0];
+            }
+
+            @Override
+            public int nextDoc() throws IOException {
+              if (exhausted[0]) return docId[0] = NO_MORE_DOCS;
+              exhausted[0] = true;
+              return docId[0] = innerIter.nextDoc();
+            }
+
+            @Override
+            public int advance(int target) throws IOException {
+              exhausted[0] = true;
+              return docId[0] = innerIter.advance(target);
+            }
+
+            @Override
+            public long cost() {
+              return innerIter.cost();
+            }
+          };
+      return scorerForIter(inner, iter);
     }
   }
 
