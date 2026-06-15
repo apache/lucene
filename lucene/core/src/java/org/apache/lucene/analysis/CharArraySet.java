@@ -17,6 +17,7 @@
 package org.apache.lucene.analysis;
 
 import java.util.AbstractSet;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.Set;
@@ -166,6 +167,31 @@ public class CharArraySet extends AbstractSet<Object> {
     return map.originalKeySet().iterator();
   }
 
+  /** Returns {@code true} if this set matches entries case-insensitively. */
+  public boolean isIgnoreCase() {
+    return map.isIgnoreCase();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (o == this) return true;
+    if (!(o instanceof CharArraySet other)) return false;
+    if (isIgnoreCase() != other.isIgnoreCase()) return false;
+    if (size() != other.size()) return false;
+    return containsAll(other);
+  }
+
+  @Override
+  public int hashCode() {
+    int h = Boolean.hashCode(isIgnoreCase());
+    for (Object o : this) {
+      if (o instanceof char[] chars) {
+        h += Arrays.hashCode(chars);
+      }
+    }
+    return h;
+  }
+
   @Override
   public String toString() {
     final StringBuilder sb = new StringBuilder("[");
@@ -177,6 +203,7 @@ public class CharArraySet extends AbstractSet<Object> {
         sb.append(item);
       }
     }
-    return sb.append(']').toString();
+    sb.append("](ignoreCase=").append(isIgnoreCase()).append(')');
+    return sb.toString();
   }
 }
