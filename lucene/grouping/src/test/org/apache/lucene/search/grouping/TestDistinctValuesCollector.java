@@ -263,7 +263,6 @@ public class TestDistinctValuesCollector extends AbstractGroupingTestCase {
           continue;
         }
 
-        @SuppressWarnings("unchecked")
         List<DistinctValuesCollector.GroupCount<Comparable<Object>, Comparable<Object>>>
             actualResult =
                 searcher.search(
