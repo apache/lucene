@@ -248,7 +248,7 @@ Optimizations
 * GITHUB#16172: Bulk-evaluate skip-indexed sorted and sorted-set doc-values range queries via a block-aware
   DocValuesRangeIterator#intoBitSet. (Costin Leau)
 
-* GITHUB#16166: Add bulk range evaluation for multi-valued sorted numeric doc values. (Costin Leau)
+* GITHUB#16166, GITHUB#16253: Add bulk range evaluation for multi-valued sorted numeric doc values. (Costin Leau, Zhang Chao)
 
 * GITHUB#16171: Address frozen FieldType cache never recovering after type switch. (neoremind)
 
