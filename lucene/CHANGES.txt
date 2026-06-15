@@ -522,6 +522,8 @@ Optimizations
 
 * GITHUB#16171: Address frozen FieldType cache never recovering after type switch. (neoremind)
 
+* GITHUB#16228: Reuse scratch int[] for ordinal translation. (Tim Brooks)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
