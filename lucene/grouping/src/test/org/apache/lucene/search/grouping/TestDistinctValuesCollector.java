@@ -373,16 +373,15 @@ public class TestDistinctValuesCollector extends AbstractGroupingTestCase {
     doc.add(new SortedDocValuesField(field, new BytesRef(value)));
   }
 
-  @SuppressWarnings({"unchecked", "rawtypes"})
-  private <T> Supplier<GroupSelector<T>> createGroupSelectorFactory(
+  @SuppressWarnings({"unchecked"})
+  private static <T> Supplier<GroupSelector<T>> createGroupSelectorFactory(
       String field, boolean useValueSource) {
     if (useValueSource) {
       return () ->
           (GroupSelector<T>)
-              (GroupSelector)
-                  new ValueSourceGroupSelector(new BytesRefFieldSource(field), new HashMap<>());
+              new ValueSourceGroupSelector(new BytesRefFieldSource(field), new HashMap<>());
     } else {
-      return () -> (GroupSelector<T>) (GroupSelector) new TermGroupSelector(field);
+      return () -> (GroupSelector<T>) new TermGroupSelector(field);
     }
   }
 
