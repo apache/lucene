@@ -222,7 +222,7 @@ final class Lucene80DocValuesProducer extends DocValuesProducer {
 
       // Old count of uncompressed addresses
       long numAddresses = entry.numDocsWithField + 1L;
-      // New count of compressed addresses - the number of compresseed blocks
+      // New count of compressed addresses - the number of compressed blocks
       if (entry.compressed) {
         entry.numCompressedChunks = meta.readVInt();
         entry.docsPerChunkShift = meta.readVInt();

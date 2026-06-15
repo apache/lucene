@@ -1596,7 +1596,7 @@ class GeoComplexPolygon extends GeoBasePolygon {
       this.plane = plane;
       this.abovePlane = abovePlane;
       this.belowPlane = belowPlane;
-      // We have to be sure we don't accidently create two bounds that would exclude all points.
+      // We have to be sure we don't accidentally create two bounds that would exclude all points.
       // Not sure this can happen but...
       final SidedPlane bound1Plane =
           new SidedPlane(thePointX, thePointY, thePointZ, plane, testPoint);

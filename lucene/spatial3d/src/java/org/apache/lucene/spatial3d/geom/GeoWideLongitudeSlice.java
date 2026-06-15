@@ -48,7 +48,7 @@ class GeoWideLongitudeSlice extends GeoBaseBBox {
   protected final GeoPoint[] edgePoints;
 
   /**
-   * Accepts only values in the following ranges: lon: {@code -PI -> PI}. Horizantal angle must be
+   * Accepts only values in the following ranges: lon: {@code -PI -> PI}. Horizontal angle must be
    * greater than or equal to PI.
    *
    * @param planetModel is the planet model.
