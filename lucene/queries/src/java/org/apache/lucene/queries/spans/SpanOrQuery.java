@@ -181,7 +181,7 @@ public final class SpanOrQuery extends SpanQuery {
      * Creates per-clause SpanScorers, each using its own simScorer. Returns null if no clauses have
      * spans in this segment.
      */
-    public List<SpanScorer> createPerClauseScorers(
+    private List<SpanScorer> createPerClauseScorers(
         LeafReaderContext context, NumericDocValues norms) throws IOException {
       List<SpanScorer> subScorers = new ArrayList<>();
       for (SpanWeight w : subWeights) {
