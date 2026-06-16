@@ -22,6 +22,7 @@ import java.util.List;
 import org.apache.lucene.facet.MultiLongValues;
 import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
+import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
 import org.apache.lucene.search.LongValues;
@@ -32,8 +33,9 @@ class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
   NonOverlappingLongRangeFacetCutter(
       MultiLongValuesSource longValuesSource,
       LongValuesSource singleLongValuesSource,
-      LongRange[] longRanges) {
-    super(longValuesSource, singleLongValuesSource, longRanges);
+      LongRange[] longRanges,
+      String skipField) {
+    super(longValuesSource, singleLongValuesSource, longRanges, skipField);
   }
 
   /**
@@ -68,6 +70,13 @@ class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
 
   @Override
   public LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException {
+    // Use the skip index when we can, otherwise fall back to the value source.
+    DocValuesSkipper skipper = maybeSkipper(context);
+    if (skipper != null) {
+      LongValues values = skipFieldValues(context);
+      return new NonOverlappingLongRangeSingleValueLeafFacetCutter(
+          values, boundaries, pos, skipper);
+    }
     if (singleValues != null) {
       LongValues values = singleValues.getValues(context, null);
       return new NonOverlappingLongRangeSingleValueLeafFacetCutter(values, boundaries, pos);
@@ -110,6 +119,11 @@ class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
     NonOverlappingLongRangeSingleValueLeafFacetCutter(
         LongValues longValues, long[] boundaries, int[] pos) {
       super(longValues, boundaries, pos);
+    }
+
+    NonOverlappingLongRangeSingleValueLeafFacetCutter(
+        LongValues longValues, long[] boundaries, int[] pos, DocValuesSkipper skipper) {
+      super(longValues, boundaries, pos, skipper);
     }
 
     @Override
