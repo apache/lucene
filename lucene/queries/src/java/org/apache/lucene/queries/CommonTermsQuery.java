@@ -245,7 +245,7 @@ public class CommonTermsQuery extends Query {
    * Specifies a minimum number of the low frequent optional BooleanClauses which must be satisfied
    * in order to produce a match on the low frequency terms query part. This method accepts a float
    * value in the range [0..1) as a fraction of the actual query terms in the low frequent clause or
-   * a number <code>&gt;=1</code> as an absolut number of clauses that need to match.
+   * a number <code>&gt;=1</code> as an absolute number of clauses that need to match.
    *
    * <p>By default no optional clauses are necessary for a match (unless there are no required
    * clauses). If this method is used, then the specified number of clauses is required.
@@ -267,7 +267,7 @@ public class CommonTermsQuery extends Query {
    * Specifies a minimum number of the high frequent optional BooleanClauses which must be satisfied
    * in order to produce a match on the low frequency terms query part. This method accepts a float
    * value in the range [0..1) as a fraction of the actual query terms in the low frequent clause or
-   * a number <code>&gt;=1</code> as an absolut number of clauses that need to match.
+   * a number <code>&gt;=1</code> as an absolute number of clauses that need to match.
    *
    * <p>By default no optional clauses are necessary for a match (unless there are no required
    * clauses). If this method is used, then the specified number of clauses is required.

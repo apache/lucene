@@ -96,7 +96,7 @@ public class TestDuelingCodecs extends LuceneTestCase {
     super.tearDown();
   }
 
-  /** populates a writer with random stuff. this must be fully reproducable with the seed! */
+  /** populates a writer with random stuff. this must be fully reproducible with the seed! */
   public static void createRandomIndex(int numdocs, RandomIndexWriter writer, long seed)
       throws IOException {
     Random random = new Random(seed);

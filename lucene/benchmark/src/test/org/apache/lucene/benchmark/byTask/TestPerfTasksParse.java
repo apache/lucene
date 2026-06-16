@@ -68,7 +68,7 @@ public class TestPerfTasksParse extends LuceneTestCase {
       }
       if (task instanceof TaskSequence) {
         assertEquals(
-            "repetions should be 1000 for " + parsedTasks,
+            "repetitions should be 1000 for " + parsedTasks,
             1000,
             ((TaskSequence) task).getRepetitions());
         assertTrue(
@@ -93,7 +93,7 @@ public class TestPerfTasksParse extends LuceneTestCase {
       }
       if (task instanceof TaskSequence) {
         assertEquals(
-            "repetions should be 1000 for " + parsedTasks,
+            "repetitions should be 1000 for " + parsedTasks,
             1000,
             ((TaskSequence) task).getRepetitions());
         assertFalse(

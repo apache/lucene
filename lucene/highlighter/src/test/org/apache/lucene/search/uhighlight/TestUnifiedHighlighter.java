@@ -819,7 +819,7 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
     ir.close();
   }
 
-  /** Make sure highlighter we can customize how emtpy highlight is returned. */
+  /** Make sure highlighter we can customize how empty highlight is returned. */
   public void testCustomEmptyHighlights() throws Exception {
     indexAnalyzer.setPositionIncrementGap(10);
     RandomIndexWriter iw = newIndexOrderPreservingWriter();
@@ -1357,7 +1357,7 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
         "field_characters",
         new MockAnalyzer(random(), new CharacterRunAutomaton(new RegExp(".").toAutomaton()), true));
     fieldAnalyzers.put( // Every three letters is a token
-        "field_tripples",
+        "field_triples",
         new MockAnalyzer(
             random(), new CharacterRunAutomaton(new RegExp("...").toAutomaton()), true));
     Analyzer analyzer =
@@ -1377,7 +1377,7 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
         doc.add(new Field("field", "dance with star", fieldType));
         doc.add(new Field("field_english", "dance with star", fieldTypeMatched));
         doc.add(new Field("field_characters", "dance with star", fieldTypeMatched));
-        doc.add(new Field("field_tripples", "dance with star", fieldTypeMatched));
+        doc.add(new Field("field_triples", "dance with star", fieldTypeMatched));
         writer.addDocument(doc);
       }
 
@@ -1403,23 +1403,23 @@ public class TestUnifiedHighlighter extends UnifiedHighlighterTestBase {
             "<b>danc</b>e with star",
             "<b>d</b><b>a</b><b>n</b><b>c</b>e with star");
 
-        // field is highlighted based on the matches from the "field_tripples"
+        // field is highlighted based on the matches from the "field_triples"
         maskedFieldsTestCase(
             analyzer,
             searcher,
             "field",
-            Set.of("field_tripples"),
+            Set.of("field_triples"),
             "danc",
             "<b>dan</b>ce with star",
             "<b>dan</b>ce with star");
 
         // field is highlighted based on the matches from the "field_characters" and
-        // "field_tripples"
+        // "field_triples"
         maskedFieldsTestCase(
             analyzer,
             searcher,
             "field",
-            Set.of("field_tripples", "field_characters"),
+            Set.of("field_triples", "field_characters"),
             "danc",
             "<b>danc</b>e with star",
             "<b>dan</b><b>c</b>e with star");

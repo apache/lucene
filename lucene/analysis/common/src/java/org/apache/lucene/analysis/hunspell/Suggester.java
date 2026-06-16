@@ -127,8 +127,8 @@ public class Suggester {
 
   /**
    * @param word the misspelled word to calculate suggestions for
-   * @param timeLimitMs the duration limit in milliseconds after which the computation is interruped
-   *     by an exception
+   * @param timeLimitMs the duration limit in milliseconds after which the computation is
+   *     interrupted by an exception
    * @param checkCanceled an object that's periodically called, allowing to interrupt or suggestion
    *     generation by throwing an exception
    * @throws SuggestionTimeoutException if the computation takes too long. Use {@link

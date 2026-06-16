@@ -373,9 +373,9 @@ public class UnifiedHighlighter {
     }
 
     /**
-     * Set up a function that given a field retuns a set of masked fields whose matches are combined
-     * to highlight the given field. Masked fields should not include the original field. This is
-     * useful when you want to highlight a field based on matches from several fields.
+     * Set up a function that given a field returns a set of masked fields whose matches are
+     * combined to highlight the given field. Masked fields should not include the original field.
+     * This is useful when you want to highlight a field based on matches from several fields.
      *
      * <p>Note: All masked fields must share the same source as the field being highlighted,
      * otherwise their offsets will not correspond to the highlighted field.
@@ -1329,7 +1329,7 @@ public class UnifiedHighlighter {
    * When highlighting phrases accurately, we may need to handle custom queries that aren't
    * supported in the {@link org.apache.lucene.search.highlight.WeightedSpanTermExtractor} as called
    * by the {@code PhraseHelper}. Should custom query types be needed, this method should be
-   * overriden to return a collection of queries if appropriate, or null if nothing to do. If the
+   * overridden to return a collection of queries if appropriate, or null if nothing to do. If the
    * query is not custom, simply returning null will allow the default rules to apply.
    *
    * @param query Query to be highlighted

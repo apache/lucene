@@ -1899,7 +1899,7 @@ public class BKDWriter implements Closeable {
   }
 
   /**
-   * The point writer contains the data that is going to be splitted using radix selection. /* This
+   * The point writer contains the data that is going to be split using radix selection. /* This
    * method is used when we are merging previously written segments, in the numDims > 1 case.
    */
   private void build(
