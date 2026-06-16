@@ -141,10 +141,11 @@ Improvements
 
 Optimizations
 ---------------------
-
 * GITHUB#16254: Enable the vectorized findNextGEQ path on aarch64, where it was disabled on cores
   with fewer than 8 int lanes (Graviton2 and Graviton4). The vector compare beats the scalar
   fallback by +75% on Graviton4 and +35% on Graviton2 (AdvanceBenchmark). (Shitij Bhargava)
+
+* GITHUB#16111: Optimize FieldExistsQuery.count() when all docs have the field. (Prithvi S)
 
 * GITHUB#16222: MultiTermQuery constant-score wrapper now defers term collection to ScorerSupplier#get()
   for queries with an unknown term count (automaton queries such as wildcard/regexp/prefix/range),
