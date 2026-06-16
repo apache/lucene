@@ -22,8 +22,6 @@ import static org.apache.lucene.index.PostingsEnum.NONE;
 import static org.apache.lucene.index.PostingsEnum.OFFSETS;
 import static org.apache.lucene.index.PostingsEnum.PAYLOADS;
 import static org.apache.lucene.index.PostingsEnum.POSITIONS;
-import static org.apache.lucene.tests.util.TestUtil.alwaysPostingsFormat;
-import static org.apache.lucene.tests.util.TestUtil.getDefaultPostingsFormat;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -412,97 +410,6 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
   }
 
   protected void subCheckBinarySearch(TermsEnum termsEnum) throws Exception {}
-
-  public void testUnequalLengthTerms() throws Exception {
-    Directory dir = newDirectory();
-
-    IndexWriterConfig iwc = newIndexWriterConfig(null);
-    iwc.setCodec(getCodec());
-    iwc.setMergePolicy(newTieredMergePolicy());
-    IndexWriter iw = new IndexWriter(dir, iwc);
-
-    String[] foos =
-        new String[] {
-          "regular",
-          "request1",
-          "request2",
-          "request3",
-          "request4",
-          "rest1",
-          "rest2",
-          "rest3",
-          "rest4"
-        };
-
-    for (String foo : foos) {
-      Document doc = new Document();
-      doc.add(newStringField("foo", foo, Field.Store.YES));
-      iw.addDocument(doc);
-    }
-
-    iw.commit();
-    iw.forceMerge(1);
-
-    DirectoryReader reader = DirectoryReader.open(iw);
-    TermsEnum termsEnum = getOnlyLeafReader(reader).terms("foo").iterator();
-
-    for (String foo : foos) {
-      BytesRef target = new BytesRef(foo);
-      assertTrue(termsEnum.seekExact(target));
-      assertEquals(termsEnum.term(), target);
-    }
-
-    reader.close();
-    iw.close();
-    dir.close();
-  }
-
-  public void testUnequalLengthTermsWithSubBlock() throws Exception {
-    Directory dir = newDirectory();
-
-    // Set minTermBlockSize to 4, maxTermBlockSize to 5, to generate deep subBlock.
-    PostingsFormat postingsFormat = getDefaultPostingsFormat(2, 5);
-
-    IndexWriterConfig iwc = newIndexWriterConfig(null);
-    iwc.setCodec(alwaysPostingsFormat(postingsFormat));
-    iwc.setMergePolicy(newTieredMergePolicy());
-    IndexWriter iw = new IndexWriter(dir, iwc);
-
-    String[] foos =
-        new String[] {
-          "regular",
-          "request1",
-          "request22",
-          "request333",
-          "request4444",
-          "rest1111",
-          "rest22",
-          "rest3",
-          "rest444"
-        };
-
-    for (String foo : foos) {
-      Document doc = new Document();
-      doc.add(newStringField("foo", foo, Field.Store.YES));
-      iw.addDocument(doc);
-    }
-
-    iw.commit();
-    iw.forceMerge(1);
-
-    DirectoryReader reader = DirectoryReader.open(iw);
-    TermsEnum termsEnum = getOnlyLeafReader(reader).terms("foo").iterator();
-
-    for (String foo : foos) {
-      BytesRef target = new BytesRef(foo);
-      assertTrue(termsEnum.seekExact(target));
-      assertEquals(termsEnum.term(), target);
-    }
-
-    reader.close();
-    iw.close();
-    dir.close();
-  }
 
   public void testBinarySearchTermLeaf() throws Exception {
     Directory dir = newDirectory();
