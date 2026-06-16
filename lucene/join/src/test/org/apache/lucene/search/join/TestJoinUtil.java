@@ -1814,7 +1814,7 @@ public class TestJoinUtil extends LuceneTestCase {
                   @Override
                   public Map<BytesRef, JoinScore> reduce(
                       Collection<SortedSetJoinScoreCollector> collectors) {
-                    return mergeJoinValueMaps(collectors);
+                    return SortedSetJoinScoreCollector.mergeJoinValueMaps(collectors);
                   }
                 });
       } else {
@@ -1831,7 +1831,7 @@ public class TestJoinUtil extends LuceneTestCase {
                   @Override
                   public Map<BytesRef, JoinScore> reduce(
                       Collection<SortedDocValuesJoinScoreCollector> collectors) {
-                    return mergeJoinValueMaps(collectors);
+                    return SortedDocValuesJoinScoreCollector.mergeJoinValueMaps(collectors);
                   }
                 });
       }
@@ -2102,15 +2102,49 @@ public class TestJoinUtil extends LuceneTestCase {
 
   private abstract static class JoinValueCollector extends SimpleCollector {
     final Map<BytesRef, JoinScore> localMap = new HashMap<>();
+    final String fromField;
+    Scorable scorer;
+
+    JoinValueCollector(String fromField) {
+      this.fromField = fromField;
+    }
+
+    @Override
+    public final void setScorer(Scorable s) {
+      this.scorer = s;
+    }
+
+    @Override
+    public final org.apache.lucene.search.ScoreMode scoreMode() {
+      return org.apache.lucene.search.ScoreMode.COMPLETE;
+    }
+
+    static Map<BytesRef, JoinScore> mergeJoinValueMaps(
+        Collection<? extends JoinValueCollector> collectors) {
+      Map<BytesRef, JoinScore> merged = new HashMap<>();
+      for (JoinValueCollector c : collectors) {
+        for (Map.Entry<BytesRef, JoinScore> entry : c.localMap.entrySet()) {
+          merged.merge(
+              entry.getKey(),
+              entry.getValue(),
+              (existing, src) -> {
+                if (src.minScore < existing.minScore) existing.minScore = src.minScore;
+                if (src.maxScore > existing.maxScore) existing.maxScore = src.maxScore;
+                existing.total += src.total;
+                existing.count += src.count;
+                return existing;
+              });
+        }
+      }
+      return merged;
+    }
   }
 
   private static class SortedSetJoinScoreCollector extends JoinValueCollector {
-    private final String fromField;
-    private Scorable scorer;
     private SortedSetDocValues docTermOrds;
 
     SortedSetJoinScoreCollector(String fromField) {
-      this.fromField = fromField;
+      super(fromField);
     }
 
     @Override
@@ -2136,25 +2170,13 @@ public class TestJoinUtil extends LuceneTestCase {
     protected void doSetNextReader(LeafReaderContext ctx) throws IOException {
       docTermOrds = DocValues.getSortedSet(ctx.reader(), fromField);
     }
-
-    @Override
-    public void setScorer(Scorable s) {
-      this.scorer = s;
-    }
-
-    @Override
-    public org.apache.lucene.search.ScoreMode scoreMode() {
-      return org.apache.lucene.search.ScoreMode.COMPLETE;
-    }
   }
 
   private static class SortedDocValuesJoinScoreCollector extends JoinValueCollector {
-    private final String fromField;
-    private Scorable scorer;
     private SortedDocValues terms;
 
     SortedDocValuesJoinScoreCollector(String fromField) {
-      this.fromField = fromField;
+      super(fromField);
     }
 
     @Override
@@ -2179,16 +2201,6 @@ public class TestJoinUtil extends LuceneTestCase {
     @Override
     protected void doSetNextReader(LeafReaderContext ctx) throws IOException {
       terms = DocValues.getSorted(ctx.reader(), fromField);
-    }
-
-    @Override
-    public void setScorer(Scorable s) {
-      this.scorer = s;
-    }
-
-    @Override
-    public org.apache.lucene.search.ScoreMode scoreMode() {
-      return org.apache.lucene.search.ScoreMode.COMPLETE;
     }
   }
 
@@ -2232,26 +2244,6 @@ public class TestJoinUtil extends LuceneTestCase {
     public org.apache.lucene.search.ScoreMode scoreMode() {
       return org.apache.lucene.search.ScoreMode.COMPLETE_NO_SCORES;
     }
-  }
-
-  private static Map<BytesRef, JoinScore> mergeJoinValueMaps(
-      Collection<? extends JoinValueCollector> collectors) {
-    Map<BytesRef, JoinScore> merged = new HashMap<>();
-    for (JoinValueCollector c : collectors) {
-      for (Map.Entry<BytesRef, JoinScore> entry : c.localMap.entrySet()) {
-        merged.merge(
-            entry.getKey(),
-            entry.getValue(),
-            (existing, src) -> {
-              if (src.minScore < existing.minScore) existing.minScore = src.minScore;
-              if (src.maxScore > existing.maxScore) existing.maxScore = src.maxScore;
-              existing.total += src.total;
-              existing.count += src.count;
-              return existing;
-            });
-      }
-    }
-    return merged;
   }
 
   private static class BitSetCollectorManager
