@@ -606,6 +606,8 @@ Optimizations
 
 * GITHUB#16228: Reuse scratch int[] for ordinal translation. (Tim Brooks)
 
+* GITHUB#16268: Use the doc-values skip index to skip per-doc value lookups for dense blocks in LongRangeFacetCutter. (Jakub Slowinski)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent

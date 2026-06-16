@@ -23,6 +23,11 @@ import java.util.List;
 import org.apache.lucene.facet.MultiLongValues;
 import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
+import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.sandbox.facet.cutters.FacetCutter;
 import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
 import org.apache.lucene.search.LongValues;
@@ -42,6 +47,10 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
 
   // TODO: refactor - weird that we have both multi and single here.
   final LongValuesSource singleValues;
+
+  // Field to read a DocValuesSkipper from on the single-valued path, or null when disabled.
+  final String skipField;
+
   final LongRangeAndPos[] sortedRanges;
 
   final int requestedRangeCount;
@@ -62,17 +71,34 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
       MultiLongValuesSource longValuesSource,
       LongValuesSource singleLongValuesSource,
       LongRange[] longRanges) {
+    return createSingleOrMultiValued(longValuesSource, singleLongValuesSource, longRanges, null);
+  }
+
+  /** Same as above, but uses the {@code skipField} skip index on the single-valued path. */
+  static LongRangeFacetCutter createSingleOrMultiValued(
+      MultiLongValuesSource longValuesSource,
+      LongValuesSource singleLongValuesSource,
+      LongRange[] longRanges,
+      String skipField) {
     if (areOverlappingRanges(longRanges)) {
       return new OverlappingLongRangeFacetCutter(
-          longValuesSource, singleLongValuesSource, longRanges);
+          longValuesSource, singleLongValuesSource, longRanges, skipField);
     }
     return new NonOverlappingLongRangeFacetCutter(
-        longValuesSource, singleLongValuesSource, longRanges);
+        longValuesSource, singleLongValuesSource, longRanges, skipField);
   }
 
   public static LongRangeFacetCutter create(
       MultiLongValuesSource longValuesSource, LongRange[] longRanges) {
-    return createSingleOrMultiValued(longValuesSource, null, longRanges);
+    return createSingleOrMultiValued(longValuesSource, null, longRanges, null);
+  }
+
+  /** Create {@link FacetCutter} for a long field by name, using its skip index when present. */
+  public static LongRangeFacetCutter create(String field, LongRange[] longRanges) {
+    // Leave the single-valued source null. The skip path reads the field directly, and a
+    // multi-valued segment must fall back to the multi-valued leaf cutter.
+    return createSingleOrMultiValued(
+        MultiLongValuesSource.fromLongField(field), null, longRanges, field);
   }
 
   // caller handles conversion of Doubles and DoubleRange to Long and LongRange
@@ -80,7 +106,8 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
   LongRangeFacetCutter(
       MultiLongValuesSource longValuesSource,
       LongValuesSource singleLongValuesSource,
-      LongRange[] longRanges) {
+      LongRange[] longRanges,
+      String skipField) {
     super();
     valuesSource = longValuesSource;
     if (singleLongValuesSource != null) {
@@ -88,6 +115,7 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
     } else {
       singleValues = MultiLongValuesSource.unwrapSingleton(valuesSource);
     }
+    this.skipField = skipField;
 
     sortedRanges = new LongRangeAndPos[longRanges.length];
     requestedRangeCount = longRanges.length;
@@ -123,6 +151,39 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
    * they overlap.
    */
   abstract List<InclusiveRange> buildElementaryIntervals();
+
+  /**
+   * Returns the {@link DocValuesSkipper} for {@link #skipField} in this segment. Null when: no skip
+   * field is configured, the field has no skip index, or some doc in this segment has more than one
+   * value.
+   */
+  final DocValuesSkipper maybeSkipper(LeafReaderContext context) throws IOException {
+    if (skipField == null) {
+      return null;
+    }
+    SortedNumericDocValues sortedNumeric = DocValues.getSortedNumeric(context.reader(), skipField);
+    if (DocValues.unwrapSingleton(sortedNumeric) == null) {
+      return null;
+    }
+    return context.reader().getDocValuesSkipper(skipField);
+  }
+
+  /** Single-valued {@link LongValues} for {@link #skipField} in this segment. */
+  final LongValues skipFieldValues(LeafReaderContext context) throws IOException {
+    NumericDocValues values =
+        DocValues.unwrapSingleton(DocValues.getSortedNumeric(context.reader(), skipField));
+    return new LongValues() {
+      @Override
+      public long longValue() throws IOException {
+        return values.longValue();
+      }
+
+      @Override
+      public boolean advanceExact(int doc) throws IOException {
+        return values.advanceExact(doc);
+      }
+    };
+  }
 
   private static boolean areOverlappingRanges(LongRange[] ranges) {
     if (ranges.length == 0) {
@@ -252,27 +313,92 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
 
     IntervalTracker requestedIntervalTracker;
 
+    // Skip index for the faceted field, or null when disabled.
+    private final DocValuesSkipper skipper;
+
+    // Cached decision from advanceSkipper, valid for every doc up to (and including) upToInclusive:
+    // when upToSameInterval is true, all those docs map to elementary interval upToIntervalOrd.
+    private int upToInclusive = -1;
+    private boolean upToSameInterval;
+    private int upToIntervalOrd;
+
     LongRangeSingleValuedLeafFacetCutter(LongValues longValues, long[] boundaries, int[] pos) {
+      this(longValues, boundaries, pos, null);
+    }
+
+    LongRangeSingleValuedLeafFacetCutter(
+        LongValues longValues, long[] boundaries, int[] pos, DocValuesSkipper skipper) {
       this.longValues = longValues;
       this.boundaries = boundaries;
       this.pos = pos;
+      this.skipper = skipper;
+      // The skip path counts a dense block as one value per doc, so it's single-valued only.
+      assert skipper == null || skipper.maxValueCount() <= 1
+          : "skip-index fast path requires a single-valued field, got maxValueCount="
+              + skipper.maxValueCount();
     }
 
     @Override
     public boolean advanceExact(int doc) throws IOException {
-      if (longValues.advanceExact(doc) == false) {
+      if (skipper != null && doc > upToInclusive) {
+        advanceSkipper(doc);
+      }
+
+      int intervalOrd;
+      if (upToSameInterval) {
+        // We are inside a dense skip block that maps entirely to one elementary interval, so reuse
+        // the cached ordinal and skip the per-doc value lookup and binary search.
+        intervalOrd = upToIntervalOrd;
+      } else if (longValues.advanceExact(doc)) {
+        intervalOrd = processValue(longValues.longValue());
+      } else {
         return false;
       }
+
       if (requestedIntervalTracker != null) {
         requestedIntervalTracker.clear();
       }
-      elementaryIntervalOrd = processValue(longValues.longValue());
+      elementaryIntervalOrd = intervalOrd;
       maybeRollUp(requestedIntervalTracker);
       if (requestedIntervalTracker != null) {
         requestedIntervalTracker.freeze();
       }
 
       return true;
+    }
+
+    /** Mirrors {@code HistogramCollector#advanceSkipper}. */
+    private void advanceSkipper(int doc) throws IOException {
+      if (doc > skipper.maxDocID(0)) {
+        skipper.advance(doc);
+      }
+      upToSameInterval = false;
+
+      if (skipper.minDocID(0) > doc) {
+        // Corner case which happens if doc doesn't have a value and is between two intervals of the
+        // skip index. Fall back to per-doc lookups until the next block.
+        upToInclusive = skipper.minDocID(0) - 1;
+        return;
+      }
+
+      upToInclusive = skipper.maxDocID(0);
+      // Now find the highest level where all docs have a value and map to the same interval.
+      for (int level = 0; level < skipper.numLevels(); ++level) {
+        int totalDocsAtLevel = skipper.maxDocID(level) - skipper.minDocID(level) + 1;
+        if (skipper.docCount(level) != totalDocsAtLevel) {
+          // Some docs at this level have no value, so we can't resolve the whole block at once.
+          break;
+        }
+        // Long fields store raw values, the skipper's min/max map straight into the boundary space.
+        int minInterval = processValue(skipper.minValue(level));
+        int maxInterval = processValue(skipper.maxValue(level));
+        if (minInterval != maxInterval) {
+          break;
+        }
+        upToInclusive = skipper.maxDocID(level);
+        upToSameInterval = true;
+        upToIntervalOrd = minInterval;
+      }
     }
 
     // Returns the value of the interval v belongs or lastIntervalSeen

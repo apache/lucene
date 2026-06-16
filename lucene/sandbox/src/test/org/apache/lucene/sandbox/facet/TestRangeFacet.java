@@ -21,6 +21,7 @@ import static org.apache.lucene.facet.FacetsConfig.DEFAULT_INDEX_FIELD_NAME;
 import com.carrotsearch.randomizedtesting.generators.RandomNumbers;
 import java.io.IOException;
 import java.util.List;
+import org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoubleDocValuesField;
 import org.apache.lucene.document.DoublePoint;
@@ -57,6 +58,8 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.LongValuesSource;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.MultiCollectorManager;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.DummyTotalHitCountCollector;
@@ -891,6 +894,166 @@ public class TestRangeFacet extends SandboxFacetTestCase {
 
     w.close();
     IOUtils.close(r, dir);
+  }
+
+  public void testSkipIndexEquivalenceLong() throws Exception {
+    // mode 1 sorts by the field and mode 2 also shrinks the skip interval, so the blocks are dense
+    // enough for the fast path to fire.
+    for (int mode = 0; mode < 3; mode++) {
+      Directory dir = newDirectory();
+      IndexWriterConfig iwc = newIndexWriterConfig();
+      if (mode >= 1) {
+        iwc.setIndexSort(new Sort(new SortField("field", SortField.Type.LONG)));
+      }
+      if (mode == 2) {
+        iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(4)));
+      }
+      RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+      int numDocs = atLeast(1000);
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        long v = TestUtil.nextLong(random(), -100, 100);
+        doc.add(NumericDocValuesField.indexedField("field", v));
+        w.addDocument(doc);
+      }
+
+      assertSkipIndexEquivalence(w, "mode=" + mode);
+
+      w.close();
+      IOUtils.close(dir);
+    }
+  }
+
+  public void testSkipIndexEquivalenceExtremeValues() throws Exception {
+    // Index sorted with extreme values mixed in, so some skip blocks carry Long.MIN/MAX_VALUE as
+    // their min/max bounds and advanceSkipper's processValue is exercised on those bounds.
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setIndexSort(new Sort(new SortField("field", SortField.Type.LONG)));
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(4)));
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    int numDocs = atLeast(1000);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      long v =
+          switch (random().nextInt(4)) {
+            case 0 -> Long.MIN_VALUE;
+            case 1 -> Long.MAX_VALUE;
+            default -> TestUtil.nextLong(random(), -100, 100);
+          };
+      doc.add(NumericDocValuesField.indexedField("field", v));
+      doc.add(new LongPoint("point", v));
+      w.addDocument(doc);
+    }
+
+    assertSkipIndexEquivalence(w, "extreme");
+
+    w.close();
+    IOUtils.close(dir);
+  }
+
+  public void testSkipIndexEquivalenceSparse() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setIndexSort(new Sort(new SortField("field", SortField.Type.LONG, false)));
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(4)));
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    int numDocs = atLeast(1000);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      // Leave roughly a third of the docs without a value so skip blocks aren't dense.
+      if (random().nextInt(3) != 0) {
+        doc.add(
+            NumericDocValuesField.indexedField("field", TestUtil.nextLong(random(), -100, 100)));
+      }
+      w.addDocument(doc);
+    }
+
+    assertSkipIndexEquivalence(w, "sparse");
+
+    w.close();
+    IOUtils.close(dir);
+  }
+
+  public void testSkipIndexEquivalenceMultiValued() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    int numDocs = atLeast(500);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      int numVals = TestUtil.nextInt(random(), 1, 5);
+      for (int j = 0; j < numVals; j++) {
+        doc.add(new SortedNumericDocValuesField("field", TestUtil.nextLong(random(), -100, 100)));
+      }
+      w.addDocument(doc);
+    }
+
+    assertSkipIndexEquivalence(w, "multi-valued");
+
+    w.close();
+    IOUtils.close(dir);
+  }
+
+  // Asserts faceting "field" by name (skip index when available) matches faceting via a
+  // MultiLongValuesSource (no skip index), over random range sets including extreme bounds.
+  private void assertSkipIndexEquivalence(RandomIndexWriter w, String desc) throws IOException {
+    IndexReader r = w.getReader();
+    try {
+      IndexSearcher s = newSearcher(r, false);
+
+      int numIters = atLeast(10);
+      for (int iter = 0; iter < numIters; iter++) {
+        int numRange = TestUtil.nextInt(random(), 0, 20);
+        LongRange[] ranges = new LongRange[numRange];
+        for (int rangeID = 0; rangeID < numRange; rangeID++) {
+          long min;
+          long max;
+          if (random().nextInt(20) == 0) {
+            // Occasionally use extreme bounds to exercise the boundary edges of processValue.
+            min = random().nextBoolean() ? Long.MIN_VALUE : TestUtil.nextLong(random(), -120, 120);
+            max = random().nextBoolean() ? Long.MAX_VALUE : TestUtil.nextLong(random(), -120, 120);
+          } else {
+            min = TestUtil.nextLong(random(), -120, 120);
+            max = TestUtil.nextLong(random(), -120, 120);
+          }
+          if (min > max) {
+            long x = min;
+            min = max;
+            max = x;
+          }
+          ranges[rangeID] = new LongRange("r" + rangeID, min, true, max, true);
+        }
+        OrdToLabel ordToLabel = new RangeOrdToLabel(ranges);
+
+        // value-source path, no skipper.
+        CountFacetRecorder baselineRecorder = new CountFacetRecorder();
+        s.search(
+            MatchAllDocsQuery.INSTANCE,
+            new FacetFieldCollectorManager<>(
+                LongRangeFacetCutter.create(MultiLongValuesSource.fromLongField("field"), ranges),
+                baselineRecorder));
+        String baseline =
+            getAllSortByOrd(getRangeOrdinals(ranges), baselineRecorder, "field", ordToLabel)
+                .toString();
+
+        // by-field cutter, uses the skip index.
+        CountFacetRecorder skipRecorder = new CountFacetRecorder();
+        s.search(
+            MatchAllDocsQuery.INSTANCE,
+            new FacetFieldCollectorManager<>(
+                LongRangeFacetCutter.create("field", ranges), skipRecorder));
+        String withSkip =
+            getAllSortByOrd(getRangeOrdinals(ranges), skipRecorder, "field", ordToLabel).toString();
+
+        assertEquals(desc + " iter=" + iter, baseline, withSkip);
+      }
+    } finally {
+      IOUtils.close(r);
+    }
   }
 
   public void testRandomLongsMultiValued() throws Exception {
