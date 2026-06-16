@@ -902,7 +902,8 @@ public class TestJoinUtil extends LuceneTestCase {
     w.addDocument(doc);
 
     w.forceMerge(1);
-
+    // single segment test, that relies on sequential collection, the searcher is also created
+    // without an executor
     IndexSearcher indexSearcher = new IndexSearcher(w.getReader());
     w.close();
 
