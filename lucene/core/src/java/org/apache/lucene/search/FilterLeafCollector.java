@@ -51,7 +51,7 @@ public abstract class FilterLeafCollector implements LeafCollector {
   public String toString() {
     String name = getClass().getSimpleName();
     if (name.length() == 0) {
-      // an anonoymous subclass will have empty name?
+      // an anonymous subclass will have empty name?
       name = "FilterLeafCollector";
     }
     return name + "(" + in + ")";

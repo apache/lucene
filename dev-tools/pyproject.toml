@@ -16,11 +16,13 @@ dev = [
   # validates bash
   "shellcheck-py==0.11.0.1",
   # validates markdown
-  "rumdl==0.2.4",
+  "rumdl==0.2.5",
   # validates python
   "ruff==0.15.15",
   # validates various
   "ast-grep-cli==0.42.3",
+  # checks spelling
+  "typos==1.47.2",
 ]
 
 [tool.uv]

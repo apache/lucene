@@ -152,7 +152,7 @@ public abstract class ThreadedIndexingAndSearchingTestCase extends LuceneTestCas
             @Override
             public void run() {
               // TODO: would be better if this were cross thread, so that we make sure one thread
-              // deleting anothers added docs works:
+              // deleting another added docs works:
               final List<String> toDeleteIDs = new ArrayList<>();
               final List<SubDocs> toDeleteSubDocs = new ArrayList<>();
               int iterations = 0;
