@@ -222,9 +222,9 @@ final class SegmentTermsEnumFrame {
         suffixLengths = new int[entCount];
         long[] longs = new long[numLongs];
         for (int i = 0; i < numLongs; i++) {
-          longs[i] = ste.in.readVLong();
+          longs[i] = ste.in.readLong();
         }
-        // TODO: read and decode one long.
+        // TODO: read and decode one long only when it is needed.
         Simple64.decodeAll(longs, 0, suffixLengths, 0, entCount);
       }
     } else {
