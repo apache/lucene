@@ -716,7 +716,7 @@ final class SegmentTermsEnumFrame {
     assert prefixMatches(target);
 
     // suffixLength assigned in loadBlock, and all suffixes have the same length in this block.
-    assert suffixLength > 0;
+    assert suffixLength >= 0;
 
     // TODO early terminate when target length unequals suffix + prefix.
     // But we need to keep the same status with scanToTermLeaf.
