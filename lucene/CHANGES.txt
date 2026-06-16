@@ -410,7 +410,7 @@ Improvements
 Optimizations
 ---------------------
 * GITHUB#16111: Optimize FieldExistsQuery.count() when all docs have the field. (Prithvi S)
- 
+
 * GITHUB#16222: MultiTermQuery constant-score wrapper now defers term collection to ScorerSupplier#get()
   for queries with an unknown term count (automaton queries such as wildcard/regexp/prefix/range),
   instead of scanning the term dictionary while building the ScorerSupplier. This keeps the
