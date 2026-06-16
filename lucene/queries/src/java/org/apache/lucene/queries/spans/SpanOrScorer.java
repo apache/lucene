@@ -37,6 +37,11 @@ final class SpanOrScorer extends SpanScorer {
 
   @Override
   protected float scoreCurrentDoc() throws IOException {
+    return scoreCurrentDoc(0f);
+  }
+
+  @Override
+  public float scoreCurrentDoc(float freq) throws IOException {
     int doc = docID();
     float sum = 0;
     for (SpanScorer sub : subScorers) {

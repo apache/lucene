@@ -81,6 +81,21 @@ public class SpanScorer extends Scorer {
   }
 
   /**
+   * Score the current doc using an externally-provided sloppy freq. Subclasses may override this to
+   * implement alternative scoring (e.g., per-clause scoring for disjunctions).
+   *
+   * @lucene.internal
+   */
+  public float scoreCurrentDoc(float freq) throws IOException {
+    assert scorer != null : getClass() + " has a null docScorer!";
+    long norm = 1L;
+    if (norms != null && norms.advanceExact(docID())) {
+      norm = norms.longValue();
+    }
+    return scorer.score(freq, norm);
+  }
+
+  /**
    * Sets {@link #freq} for the current document.
    *
    * <p>This will be called at most once per document.
@@ -147,7 +162,7 @@ public class SpanScorer extends Scorer {
    *
    * @lucene.internal
    */
-  final float sloppyFreq() throws IOException {
+  protected final float sloppyFreq() throws IOException {
     ensureFreq();
     return freq;
   }

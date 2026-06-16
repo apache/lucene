@@ -32,7 +32,6 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
-import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.util.PriorityQueue;
@@ -169,38 +168,25 @@ public final class SpanOrQuery extends SpanQuery {
     }
 
     @Override
-    public ScorerSupplier scorerSupplier(LeafReaderContext context) throws IOException {
-      List<SpanScorer> subScorers = createPerClauseScorers(context);
+    public SpanScorer createSpanScorer(Spans spans, LeafReaderContext ctx) throws IOException {
+      NumericDocValues norms = ctx.reader().getNormValues(field);
+      List<SpanScorer> subScorers = createPerClauseScorers(ctx, norms);
       if (subScorers == null) {
-        return null;
+        return new SpanScorer(spans, simScorer, norms);
       }
-
-      Spans mergedSpans = getSpans(context, Postings.POSITIONS);
-      NumericDocValues norms = context.reader().getNormValues(field);
-      final var scorer = new SpanOrScorer(subScorers, mergedSpans, norms);
-      return new ScorerSupplier() {
-        @Override
-        public SpanOrScorer get(long leadCost) {
-          return scorer;
-        }
-
-        @Override
-        public long cost() {
-          return scorer.iterator().cost();
-        }
-      };
+      return new SpanOrScorer(subScorers, spans, norms);
     }
 
     /**
      * Creates per-clause SpanScorers, each using its own simScorer. Returns null if no clauses have
      * spans in this segment.
      */
-    public List<SpanScorer> createPerClauseScorers(LeafReaderContext context) throws IOException {
+    public List<SpanScorer> createPerClauseScorers(
+        LeafReaderContext context, NumericDocValues norms) throws IOException {
       List<SpanScorer> subScorers = new ArrayList<>();
       for (SpanWeight w : subWeights) {
         Spans spans = w.getSpans(context, Postings.POSITIONS);
         if (spans != null) {
-          NumericDocValues norms = context.reader().getNormValues(field);
           subScorers.add(new SpanScorer(spans, w.getSimScorer(), norms));
         }
       }
