@@ -408,7 +408,7 @@ Improvements
 
 * GITHUB#16091: Replace deprecated IndexSearcher#search(Query, Collector) usage with CollectorManager
   in JoinUtil#createJoinQuery for the GlobalOrdinalsCollector case. (Luca Cavanna)
-  
+
 Optimizations
 ---------------------
 * GITHUB#16222: MultiTermQuery constant-score wrapper now defers term collection to ScorerSupplier#get()
