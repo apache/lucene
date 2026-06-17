@@ -94,6 +94,8 @@ public class MergeState {
   /**
    * The merge that this state is associated with, or {@code null} if this merge state is not
    * associated with an {@link IndexWriter} merge (e.g. for addIndexes).
+   *
+   * @lucene.internal
    */
   public final MergePolicy.OneMerge oneMerge;
 
