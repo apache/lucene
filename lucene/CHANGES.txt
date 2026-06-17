@@ -158,9 +158,6 @@ Optimizations
 
 Bug Fixes
 ---------------------
-* GITHUB#16250: Fix NullPointerException in RoaringDocIdSet#intoBitSet when the iterator is already
-  exhausted. (Venkateshwaran Shanmugham)
-
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
@@ -584,6 +581,9 @@ Bug Fixes
   count instead of the full ordinal array, matching OffHeapByteVectorValues. (Vignesh)
 
 * GITHUB#16179: Fix minor lock/unlock acquisition order in DocumentsWriterDeleteQueue (Chris Hegarty)
+
+* GITHUB#16250: Fix NullPointerException in RoaringDocIdSet#intoBitSet when the iterator is already
+  exhausted. (Venkateshwaran Shanmugham)
 
 Other
 ---------------------
