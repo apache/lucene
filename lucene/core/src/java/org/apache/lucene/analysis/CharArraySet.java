@@ -184,9 +184,9 @@ public class CharArraySet extends AbstractSet<Object> {
   @Override
   public int hashCode() {
     int h = Boolean.hashCode(isIgnoreCase());
-    for (Object o : this) {
-      if (o instanceof char[] chars) {
-        h += Arrays.hashCode(chars);
+    for (char[] key : map.keys) {
+      if (key != null) {
+        h += Arrays.hashCode(key);
       }
     }
     return h;

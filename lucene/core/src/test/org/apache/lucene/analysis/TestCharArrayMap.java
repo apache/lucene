@@ -206,7 +206,7 @@ public class TestCharArrayMap extends LuceneTestCase {
 
   public void testToString() {
     CharArrayMap<Integer> cm = new CharArrayMap<>(Collections.singletonMap("test", 1), false);
-    assertEquals("[test]", cm.keySet().toString());
+    assertEquals("[test](ignoreCase=false)", cm.keySet().toString());
     assertEquals("[1]", cm.values().toString());
     assertEquals("[test=1]", cm.entrySet().toString());
     assertEquals("{test=1}", cm.toString());
