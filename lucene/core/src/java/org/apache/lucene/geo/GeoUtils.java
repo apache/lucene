@@ -269,11 +269,11 @@ public final class GeoUtils {
   }
 
   /**
-   * used to define the orientation of 3 points -1 = Clockwise 0 = Colinear 1 = Counter-clockwise
+   * used to define the orientation of 3 points -1 = Clockwise 0 = Collinear 1 = Counter-clockwise
    */
   public enum WindingOrder {
     CW(-1),
-    COLINEAR(0),
+    COLLINEAR(0),
     CCW(1);
     private final int sign;
 
@@ -287,7 +287,7 @@ public final class GeoUtils {
 
     public static WindingOrder fromSign(final int sign) {
       if (sign == CW.sign) return CW;
-      if (sign == COLINEAR.sign) return COLINEAR;
+      if (sign == COLLINEAR.sign) return COLLINEAR;
       if (sign == CCW.sign) return CCW;
       throw new IllegalArgumentException("Invalid WindingOrder sign: " + sign);
     }

@@ -1128,9 +1128,11 @@ final class PanamaVectorUtilSupport implements VectorUtilSupport {
     return sum;
   }
 
-  // Experiments suggest that we need at least 8 lanes so that the overhead of going with the vector
-  // approach and counting trues on vector masks pays off.
-  private static final boolean ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO = INT_SPECIES.length() >= 8;
+  // On x86 we need at least 8 lanes so the overhead of the vector approach plus counting trues on
+  // vector masks pays off. On aarch64 the vector path also beats the scalar fallback at 4 lanes
+  // (Graviton2 on NEON-128 and Graviton4 on 128-bit SVE2), so enable it there too.
+  private static final boolean ENABLE_FIND_NEXT_GEQ_VECTOR_OPTO =
+      INT_SPECIES.length() >= 8 || Constants.OS_ARCH.equals("aarch64");
 
   @Override
   public int findNextGEQ(int[] buffer, int target, int from, int to) {

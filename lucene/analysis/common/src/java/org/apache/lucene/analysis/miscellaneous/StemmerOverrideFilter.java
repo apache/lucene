@@ -102,7 +102,7 @@ public final class StemmerOverrideFilter extends TokenFilter {
      * Creates a new {@link StemmerOverrideMap}
      *
      * @param fst the fst to lookup the overrides
-     * @param ignoreCase if the keys case should be ingored
+     * @param ignoreCase if the keys case should be ignored
      */
     public StemmerOverrideMap(FST<BytesRef> fst, boolean ignoreCase) {
       this.fst = fst;

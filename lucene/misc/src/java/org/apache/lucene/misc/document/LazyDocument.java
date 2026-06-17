@@ -103,7 +103,7 @@ public class LazyDocument {
     return doc;
   }
 
-  // :TODO: synchronize to prevent redundent copying? (sync per field name?)
+  // :TODO: synchronize to prevent redundant copying? (sync per field name?)
   private void fetchRealValues(String name, int fieldNum) {
     Document d = getDocument();
 

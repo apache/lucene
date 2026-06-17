@@ -61,7 +61,7 @@ public final class DisjunctionMaxQuery extends Query implements Iterable<Query> 
    *     (i.e., one that is not in any higher scored field.
    */
   public DisjunctionMaxQuery(Collection<? extends Query> disjuncts, float tieBreakerMultiplier) {
-    Objects.requireNonNull(disjuncts, "Collection of Querys must not be null");
+    Objects.requireNonNull(disjuncts, "Collection of Query objects must not be null");
     if (tieBreakerMultiplier < 0 || tieBreakerMultiplier > 1) {
       throw new IllegalArgumentException("tieBreakerMultiplier must be in [0, 1]");
     }

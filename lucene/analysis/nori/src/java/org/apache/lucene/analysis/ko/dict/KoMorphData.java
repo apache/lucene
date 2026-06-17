@@ -31,7 +31,7 @@ public interface KoMorphData extends MorphData {
   POS.Type getPOSType(int morphId);
 
   /**
-   * Get the left {@link org.apache.lucene.analysis.ko.POS.Tag} of specfied word.
+   * Get the left {@link org.apache.lucene.analysis.ko.POS.Tag} of specified word.
    *
    * <p>For {@link org.apache.lucene.analysis.ko.POS.Type#MORPHEME} and {@link
    * org.apache.lucene.analysis.ko.POS.Type#COMPOUND} the left and right POS are the same.
@@ -39,7 +39,7 @@ public interface KoMorphData extends MorphData {
   POS.Tag getLeftPOS(int morphId);
 
   /**
-   * Get the right {@link org.apache.lucene.analysis.ko.POS.Tag} of specfied word.
+   * Get the right {@link org.apache.lucene.analysis.ko.POS.Tag} of specified word.
    *
    * <p>For {@link org.apache.lucene.analysis.ko.POS.Type#MORPHEME} and {@link
    * org.apache.lucene.analysis.ko.POS.Type#COMPOUND} the left and right POS are the same.
