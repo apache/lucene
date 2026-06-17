@@ -340,6 +340,9 @@ Bug Fixes
 
 * GITHUB#16033: Fix data race in BlockingFloatHeap.poll function. (Vijay)
 
+* GITHUB#16250: Fix NullPointerException in RoaringDocIdSet#intoBitSet when the iterator is already
+  exhausted. (Venkateshwaran Shanmugham)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
