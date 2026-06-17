@@ -61,6 +61,11 @@ public class CharArrayMap<V> extends AbstractMap<Object, V> {
     values = (V[]) new Object[size];
   }
 
+  /** Returns {@code true} if this map matches keys case-insensitively. */
+  public boolean isIgnoreCase() {
+    return ignoreCase;
+  }
+
   /**
    * Creates a map from the mappings in another map.
    *

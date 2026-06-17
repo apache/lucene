@@ -373,8 +373,34 @@ public class TestCharArraySet extends LuceneTestCase {
 
   public void testToString() {
     CharArraySet set = CharArraySet.copy(Collections.singleton("test"));
-    assertEquals("[test]", set.toString());
+    assertEquals("[test](ignoreCase=false)", set.toString());
     set.add("test2");
     assertTrue(set.toString().contains(", "));
+
+    CharArraySet ignoreCase = new CharArraySet(Collections.singleton("test"), true);
+    assertEquals("[test](ignoreCase=true)", ignoreCase.toString());
+  }
+
+  public void testEqualsAndHashCode_sameContentSameIgnoreCase() {
+    for (boolean ignoreCase : new boolean[] {false, true}) {
+      CharArraySet a = new CharArraySet(Arrays.asList(TEST_STOP_WORDS), ignoreCase);
+      CharArraySet b = new CharArraySet(Arrays.asList(TEST_STOP_WORDS), ignoreCase);
+      assertNotSame(a, b);
+      assertEquals(a, b);
+      assertEquals(a.hashCode(), b.hashCode());
+    }
+  }
+
+  public void testEqualsAndHashCode_sameContentDifferentIgnoreCase() {
+    CharArraySet sensitive = new CharArraySet(Arrays.asList("hund", "katze"), false);
+    CharArraySet insensitive = new CharArraySet(Arrays.asList("hund", "katze"), true);
+    assertNotEquals(sensitive, insensitive);
+    assertNotEquals(sensitive.hashCode(), insensitive.hashCode());
+  }
+
+  public void testEqualsAndHashCode_differentContent() {
+    CharArraySet a = new CharArraySet(Arrays.asList("hund"), false);
+    CharArraySet b = new CharArraySet(Arrays.asList("katze"), false);
+    assertNotEquals(a, b);
   }
 }
