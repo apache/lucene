@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * A {@link CollectorManager} that wraps a delegate {@link CollectorManager} and caches all
@@ -35,7 +34,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *
  * <pre class="prettyprint">
  * CachingCollectorManager&lt;C1, R1&gt; caching = new CachingCollectorManager&lt;&gt;(
- *     firstPassManager, cacheScores, maxRAMMB);
+ *     firstPassManager, cacheScores, maxRAMMB, null);
  * R1 firstResult = searcher.search(query, caching);
  *
  * if (caching.isCached()) {
@@ -48,17 +47,16 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *
  * @lucene.experimental
  */
-public class CachingCollectorManager<C extends Collector, R> implements CollectorManager<C, R> {
+public class CachingCollectorManager<C extends Collector, R>
+    implements CollectorManager<CachingCollector, R> {
 
   private final CollectorManager<C, R> delegate;
   private final boolean cacheScores;
   private final Double maxRAMMB;
   private final Integer maxDocsToCache;
 
-  // One CachingCollector per slice, thread-safe for concurrent newCollector() calls.
-  private final List<CachingCollector> cachingCollectors = new CopyOnWriteArrayList<>();
-  // The original unwrapped collectors
-  private final List<C> originalCollectors = new CopyOnWriteArrayList<>();
+  // One CachingCollector per slice
+  private final List<CachingCollector> cachingCollectors = new ArrayList<>();
 
   /**
    * @param delegate the first-pass {@link CollectorManager}
@@ -82,27 +80,30 @@ public class CachingCollectorManager<C extends Collector, R> implements Collecto
   }
 
   @Override
-  public C newCollector() throws IOException {
+  public CachingCollector newCollector() throws IOException {
     C collector = delegate.newCollector();
-    originalCollectors.add(collector);
     CachingCollector cache =
         maxDocsToCache != null
             ? CachingCollector.create(collector, cacheScores, maxDocsToCache)
             : CachingCollector.create(collector, cacheScores, maxRAMMB);
     cachingCollectors.add(cache);
-    @SuppressWarnings("unchecked")
-    C wrapped = (C) cache;
-    return wrapped;
+    return cache;
   }
 
   @Override
-  public R reduce(Collection<C> collectors) throws IOException {
-    return delegate.reduce(originalCollectors);
+  @SuppressWarnings("unchecked")
+  public R reduce(Collection<CachingCollector> collectors) throws IOException {
+    List<C> originals = new ArrayList<>(collectors.size());
+    for (CachingCollector cache : collectors) {
+      originals.add((C) cache.in);
+    }
+    return delegate.reduce(originals);
   }
 
   /**
-   * Returns {@code true} if all per-slice caches are intact (none overflowed their RAM budget),
-   * meaning {@link #replay} can be called.
+   * Returns {@code true} if the search has been run and all per-slice caches are intact (none
+   * overflowed their RAM/doc budget). Returns {@code false} if the search has not yet been run or
+   * any cache overflowed.
    */
   public boolean isCached() {
     return !cachingCollectors.isEmpty()
@@ -112,7 +113,7 @@ public class CachingCollectorManager<C extends Collector, R> implements Collecto
   /**
    * Replays each per-slice cache into a fresh second-pass collector, then reduces all results.
    *
-   * @throws IllegalStateException if any slice cache is not available
+   * @throws IllegalStateException if {@link #isCached()} returns {@code false}
    */
   public <C2 extends Collector, R2> R2 replay(CollectorManager<C2, R2> secondPassManager)
       throws IOException {
