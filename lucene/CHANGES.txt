@@ -649,6 +649,8 @@ Other
 
 * GITHUB#16215: Extract segment-boundary check into helper in QueryUtils (Luca Cavanna)
 
+* GITHUB#16261: Fix CharArraySet equals/hashCode to be content-based and incorporate ignoreCase. (Mayya Sharipova)
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes
