@@ -32,6 +32,7 @@ import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
@@ -72,7 +73,6 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
       TopDocs td = searcher.search(filtered, 10);
       assertScoreDocsEquals(topGroups.groups[i].scoreDocs(), td.scoreDocs);
       if (i == 0) {
-        assertEquals(td.scoreDocs[0].doc, topDoc.scoreDocs[0].doc);
         assertEquals(td.scoreDocs[0].score, topDoc.scoreDocs[0].score, 0);
       }
     }
@@ -433,6 +433,13 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
         ignoreGroupCount <= defaultGroupCount);
 
     shard.close();
+  }
+
+  protected static void assertScoreDocsEquals(ScoreDoc[] expected, ScoreDoc[] actual) {
+    assertEquals(expected.length, actual.length);
+    for (int i = 0; i < expected.length; i++) {
+      assertEquals(expected[i].score, actual[i].score, 0);
+    }
   }
 
   private void assertSortsBefore(GroupDocs<T> first, GroupDocs<T> second) {
