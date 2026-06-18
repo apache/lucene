@@ -734,7 +734,7 @@ final class IndexingChain implements Accountable {
                 "Unknown column type: " + column.getClass().getName());
       }
 
-      if (IndexingFeatures.rowEligible(fieldType)) {
+      if (fieldType.stored() || fieldType.indexOptions() != IndexOptions.NONE) {
         hasRowColumns = true;
       }
 
@@ -854,7 +854,7 @@ final class IndexingChain implements Accountable {
     int originalIdx = 0;
     for (Column column : columns) {
       IndexableFieldType fieldType = column.fieldType();
-      if (IndexingFeatures.rowEligible(fieldType) == false) {
+      if (fieldType.stored() == false && fieldType.indexOptions() == IndexOptions.NONE) {
         originalIdx++;
         continue;
       }
@@ -867,12 +867,7 @@ final class IndexingChain implements Accountable {
       adapters[numRowCols] = adapter;
       rowPfIndices[numRowCols] = originalIdx;
       heads[numRowCols] = adapter.nextDoc();
-      // Defined as the seam for moving column-eligible inversion out of the row pass later; the
-      // partition assert documents that an indexed field is exactly one of the two inversion kinds.
-      assert (IndexingFeatures.rowBoundInversion(fieldType)
-              || IndexingFeatures.columnEligibleInversion(fieldType))
-          == IndexingFeatures.indexed(fieldType);
-      if (IndexingFeatures.indexed(fieldType)) {
+      if (fieldType.indexOptions() != IndexOptions.NONE) {
         hasInverted = true;
       }
       if (fieldType.stored()) {
