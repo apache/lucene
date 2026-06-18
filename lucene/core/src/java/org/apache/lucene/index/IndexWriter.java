@@ -1550,21 +1550,17 @@ public class IndexWriter
       final DocumentsWriterDeleteQueue.Node<?> delNode, ColumnBatch columnBatch)
       throws IOException {
     ensureOpen();
-    boolean success = false;
     try {
-      final long seqNo = maybeProcessEvents(docWriter.updateBatch(columnBatch, delNode));
-      success = true;
-      return seqNo;
-    } catch (Error tragedy) {
-      tragicEvent(tragedy, "updateBatch");
-      throw tragedy;
-    } finally {
-      if (success == false) {
-        if (infoStream.isEnabled("IW")) {
-          infoStream.message("IW", "hit exception adding batch");
-        }
-        maybeCloseOnTragicEvent();
+      return maybeProcessEvents(docWriter.updateBatch(columnBatch, delNode));
+    } catch (Throwable t) {
+      if (t instanceof Error) {
+        onTragicEvent(t, "updateBatch");
       }
+      if (infoStream.isEnabled("IW")) {
+        infoStream.message("IW", "hit exception adding batch: " + t);
+      }
+      maybeCloseOnTragicEvent();
+      throw t;
     }
   }
 
