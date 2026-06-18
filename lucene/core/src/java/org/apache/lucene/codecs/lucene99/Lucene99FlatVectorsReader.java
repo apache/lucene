@@ -28,12 +28,14 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene95.OffHeapByteVectorValues;
+import org.apache.lucene.codecs.lucene95.OffHeapFloat16VectorValues;
 import org.apache.lucene.codecs.lucene95.OffHeapFloatVectorValues;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.Float16VectorValues;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.SegmentReadState;
@@ -253,6 +255,20 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
   }
 
   @Override
+  public Float16VectorValues getFloat16VectorValues(String field) throws IOException {
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT16);
+    return OffHeapFloat16VectorValues.load(
+        fieldEntry.similarityFunction,
+        vectorScorer,
+        fieldEntry.ordToDoc,
+        fieldEntry.vectorEncoding,
+        fieldEntry.dimension,
+        fieldEntry.vectorDataOffset,
+        fieldEntry.vectorDataLength,
+        vectorData);
+  }
+
+  @Override
   public FlatVectorsScorer getFlatVectorScorer(String field) throws IOException {
     return vectorScorer;
   }
@@ -280,6 +296,24 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
     return vectorScorer.getRandomVectorScorer(
         fieldEntry.similarityFunction,
         OffHeapByteVectorValues.load(
+            fieldEntry.similarityFunction,
+            vectorScorer,
+            fieldEntry.ordToDoc,
+            fieldEntry.vectorEncoding,
+            fieldEntry.dimension,
+            fieldEntry.vectorDataOffset,
+            fieldEntry.vectorDataLength,
+            vectorData),
+        target);
+  }
+
+  @Override
+  public RandomVectorScorer getRandomVectorScorer(String field, short[] target) throws IOException {
+
+    final FieldEntry fieldEntry = getFieldEntry(field, VectorEncoding.FLOAT16);
+    return vectorScorer.getRandomVectorScorer(
+        fieldEntry.similarityFunction,
+        OffHeapFloat16VectorValues.load(
             fieldEntry.similarityFunction,
             vectorScorer,
             fieldEntry.ordToDoc,
@@ -338,6 +372,7 @@ public final class Lucene99FlatVectorsReader extends FlatVectorsReader {
           switch (info.getVectorEncoding()) {
             case BYTE -> Byte.BYTES;
             case FLOAT32 -> Float.BYTES;
+            case FLOAT16 -> Short.BYTES;
           };
       long vectorBytes = Math.multiplyExact((long) infoVectorDimension, byteSize);
       long numBytes = Math.multiplyExact(vectorBytes, size);

@@ -266,6 +266,22 @@ public class OptimizedScalarQuantizer {
     return dequantized;
   }
 
+  public static short[] deQuantize(
+      byte[] quantized,
+      short[] dequantized,
+      byte bits,
+      float lowerInterval,
+      float upperInterval,
+      float[] centroid) {
+    int nSteps = (1 << bits) - 1;
+    double step = (upperInterval - lowerInterval) / nSteps;
+    for (int h = 0; h < quantized.length; h++) {
+      double xi = (double) (quantized[h] & 0xFF) * step + lowerInterval;
+      dequantized[h] = Float.floatToFloat16((float) (xi + centroid[h]));
+    }
+    return dequantized;
+  }
+
   /**
    * Compute the loss of the vector given the interval. Effectively, we are computing the MSE of a
    * dequantized vector with the raw vector.

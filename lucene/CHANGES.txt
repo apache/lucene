@@ -345,6 +345,8 @@ New Features
 * GITHUB#16110: Add count() to BayesianScoreQuery.BayesianScoreWeight, delegating to
   the inner weight. (Prithvi S)
 
+* GITHUB#15549: Add fp16 vector encoding support. (Pulkit Gupta)
+
 Improvements
 ---------------------
 * GITHUB#15948: Improve BayesianScoreQuery and LogOddsFusionQuery with base rate prior,
