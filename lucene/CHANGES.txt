@@ -557,7 +557,7 @@ Bug Fixes
 
 * GITHUB#15656: Fix wrong BitSet result in MemoryAccountingBitsetCollector (Binlong Gao)
 
-* GITHUB#15656: Fix SpanOrQuery scores each document using the combined IDF of all clauses rather than the matched clauses(Binlong Gao)
+* GITHUB#15819: Fix SpanOrQuery scores each document using the combined IDF of all clauses rather than the matched clauses (Binlong Gao)
 
 * GITHUB#15844: Prevent class initialization failure when JVM has no support for
   native code at all (wrong platform); disable native code on 32 bit platforms.
