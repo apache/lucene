@@ -1546,6 +1546,40 @@ public class IndexWriter
     return updateBatch(null, columnBatch);
   }
 
+  /**
+   * Atomically deletes documents matching the provided term and adds a batch of documents in
+   * column-oriented format.
+   *
+   * <p>See {@link #addBatch(ColumnBatch)}.
+   *
+   * @param delTerm the term to identify the documents to be deleted, or null if no deletion should
+   *     occur
+   * @param columnBatch the column-oriented batch of documents to add
+   * @return The <a href="#sequence_number">sequence number</a> for this operation
+   * @throws IOException if there is a low-level IO error
+   * @lucene.experimental
+   */
+  public long updateDocuments(Term delTerm, ColumnBatch columnBatch) throws IOException {
+    return updateBatch(
+        delTerm == null ? null : DocumentsWriterDeleteQueue.newNode(delTerm), columnBatch);
+  }
+
+  /**
+   * Similar to {@link #updateDocuments(Term, ColumnBatch)}, but takes a query instead of a term to
+   * identify the documents to be deleted.
+   *
+   * @param delQuery the query to identify the documents to be deleted, or null if no deletion
+   *     should occur
+   * @param columnBatch the column-oriented batch of documents to add
+   * @return The <a href="#sequence_number">sequence number</a> for this operation
+   * @throws IOException if there is a low-level IO error
+   * @lucene.experimental
+   */
+  public long updateDocuments(Query delQuery, ColumnBatch columnBatch) throws IOException {
+    return updateBatch(
+        delQuery == null ? null : DocumentsWriterDeleteQueue.newNode(delQuery), columnBatch);
+  }
+
   private long updateBatch(
       final DocumentsWriterDeleteQueue.Node<?> delNode, ColumnBatch columnBatch)
       throws IOException {
