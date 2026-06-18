@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.util.FixedBitSet;
 
 public class TestDocValuesRangeIterator extends BaseDocValuesSkipperTests {
 
@@ -289,5 +290,23 @@ public class TestDocValuesRangeIterator extends BaseDocValuesSkipperTests {
     approx.advance(1088);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
     assertEquals(1089, iter.docIDRunEnd());
+  }
+
+  public void testIntoBitSetAfterMatchesOnSparseRegion() throws IOException {
+    DocValuesRangeIterator iter = createIterator(true);
+    SkipBlockRangeIterator approx = (SkipBlockRangeIterator) iter.approximation();
+    // Doc 1537 is in the sparse region, in a block with mixed values -> MAYBE
+    approx.advance(1537);
+    assertEquals(SkipBlockRangeIterator.Match.MAYBE, approx.getMatch());
+    assertFalse(iter.matches());
+    FixedBitSet bitSet = new FixedBitSet(2048);
+    iter.intoBitSet(2048, bitSet, 0);
+    FixedBitSet expected = new FixedBitSet(2048);
+    for (int doc = 1537; doc < 2048; doc++) {
+      if (docHasValue(doc) && valueInRange(doc)) {
+        expected.set(doc);
+      }
+    }
+    assertEquals(expected, bitSet);
   }
 }

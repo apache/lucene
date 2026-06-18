@@ -21,6 +21,8 @@ dev = [
   "ruff==0.15.15",
   # validates various
   "ast-grep-cli==0.42.3",
+  # checks spelling
+  "typos==1.47.2",
 ]
 
 [tool.uv]

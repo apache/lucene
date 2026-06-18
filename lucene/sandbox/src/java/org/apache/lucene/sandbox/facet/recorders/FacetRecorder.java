@@ -27,7 +27,7 @@ import org.apache.lucene.sandbox.facet.iterators.OrdinalIterator;
  *
  * <p>TODO: In the next iteration we can add an extra layer between FacetRecorder and
  * LeafFacetRecorder, e.g. SliceFacetRecorder. The new layer will be created per {@link
- * org.apache.lucene.search.Collector}, which means that collecting of multiple leafs (segments)
+ * org.apache.lucene.search.Collector}, which means that collecting of multiple leaves (segments)
  * within a slice is sequential and can be done to a single non-sync map to improve performance and
  * reduce memory consumption. We already tried that, but didn't see any performance improvement.
  * Given that it also makes lazy leaf recorder init in {@link

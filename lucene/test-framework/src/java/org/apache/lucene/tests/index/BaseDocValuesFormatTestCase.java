@@ -66,24 +66,6 @@ import org.apache.lucene.util.IOUtils;
  */
 public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFormatTestCase {
 
-  /**
-   * Override and return {@code false} if the {@link DocValuesSkipper} produced by this format
-   * sometimes returns documents in {@link DocValuesSkipper#minDocID(int)} or {@link
-   * DocValuesSkipper#maxDocID(int)} that may not have a value.
-   */
-  protected boolean skipperHasAccurateDocBounds() {
-    return true;
-  }
-
-  /**
-   * Override and return {@code false} if the {@link DocValuesSkipper} produced by this format
-   * sometimes returns values in {@link DocValuesSkipper#minValue(int)} or {@link
-   * DocValuesSkipper#maxValue(int)} that none of the documents in the range have.
-   */
-  protected boolean skipperHasAccurateValueBounds() {
-    return true;
-  }
-
   public void testSortedMergeAwayAllValuesWithSkipper() throws IOException {
     Directory directory = newDirectory();
     Analyzer analyzer = new MockAnalyzer(random());
@@ -802,13 +784,7 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
       int previousMaxDoc = skipper.maxDocID(0);
       skipper.advance(previousMaxDoc + 1);
       assertTrue(skipper.minDocID(0) > previousMaxDoc);
-      if (skipperHasAccurateDocBounds()) {
-        assertEquals(iterator.docID(), skipper.minDocID(0));
-      } else {
-        assertTrue(
-            "Expected: " + iterator.docID() + " but got " + skipper.minDocID(0),
-            skipper.minDocID(0) <= iterator.docID());
-      }
+      assertEquals(iterator.docID(), skipper.minDocID(0));
 
       if (skipper.minDocID(0) == NO_MORE_DOCS) {
         assertEquals(NO_MORE_DOCS, skipper.maxDocID(0));
@@ -827,24 +803,9 @@ public abstract class BaseDocValuesFormatTestCase extends LegacyBaseDocValuesFor
         maxValueCount = Math.max(maxValueCount, iterator.docValueCount());
         iterator.advance(iterator.docID() + 1);
       }
-      if (skipperHasAccurateDocBounds()) {
-        assertEquals(maxDoc, skipper.maxDocID(0));
-      } else {
-        assertTrue(
-            "Expected: " + maxDoc + " but got " + skipper.maxDocID(0),
-            skipper.maxDocID(0) >= maxDoc);
-      }
-      if (skipperHasAccurateValueBounds()) {
-        assertEquals(minVal, skipper.minValue(0));
-        assertEquals(maxVal, skipper.maxValue(0));
-      } else {
-        assertTrue(
-            "Expected: " + minVal + " but got " + skipper.minValue(0),
-            minVal >= skipper.minValue(0));
-        assertTrue(
-            "Expected: " + maxVal + " but got " + skipper.maxValue(0),
-            maxVal <= skipper.maxValue(0));
-      }
+      assertEquals(maxDoc, skipper.maxDocID(0));
+      assertEquals(minVal, skipper.minValue(0));
+      assertEquals(maxVal, skipper.maxValue(0));
       docCount += skipper.docCount(0);
       for (int level = 1; level < skipper.numLevels(); level++) {
         assertTrue(skipper.minDocID(0) >= skipper.minDocID(level));

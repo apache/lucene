@@ -247,18 +247,18 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
   }
 
   /**
-   * Returns a list of writeable blocks over the (source) content buffers.
+   * Returns a list of writable blocks over the (source) content buffers.
    *
    * <p>This method returns the raw content of source buffers that may change over the lifetime of
    * this object (blocks can be recycled or discarded, for example). Most applications should favor
    * calling {@link #toBufferList()} which returns a read-only <i>view</i> over the content of the
    * source buffers.
    *
-   * <p>The difference between {@link #toBufferList()} and {@link #toWriteableBufferList()} is that
+   * <p>The difference between {@link #toBufferList()} and {@link #toWritableBufferList()} is that
    * read-only view of source buffers will always return {@code false} from {@link
    * ByteBuffer#hasArray()} (which sometimes may be required to avoid double copying).
    */
-  public ArrayList<ByteBuffer> toWriteableBufferList() {
+  public ArrayList<ByteBuffer> toWritableBufferList() {
     ArrayList<ByteBuffer> result = new ArrayList<>(Math.max(blocks.size(), 1));
     if (blocks.isEmpty()) {
       result.add(EMPTY);
