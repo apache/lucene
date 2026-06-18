@@ -403,4 +403,11 @@ public class TestCharArraySet extends LuceneTestCase {
     CharArraySet b = new CharArraySet(Arrays.asList("katze"), false);
     assertNotEquals(a, b);
   }
+
+  public void testEqualsAndHashCode_ignoreCaseMixedCasing() {
+    CharArraySet upper = new CharArraySet(Arrays.asList("Hund", "Katze"), true);
+    CharArraySet lower = new CharArraySet(Arrays.asList("hund", "katze"), true);
+    assertEquals(upper, lower);
+    assertEquals(upper.hashCode(), lower.hashCode());
+  }
 }
