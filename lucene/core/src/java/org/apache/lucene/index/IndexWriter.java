@@ -1541,6 +1541,8 @@ public class IndexWriter
    * Atomically deletes documents matching the provided term and adds a batch of documents in
    * column-oriented format.
    *
+   * <p>See {@link #addBatch(ColumnBatch)}.
+   *
    * @param delTerm the term to identify the documents to be deleted, or null if no deletion should
    *     occur
    * @param columnBatch the column-oriented batch of documents to add
