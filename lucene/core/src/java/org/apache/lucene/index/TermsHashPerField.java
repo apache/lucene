@@ -131,7 +131,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
   // because token text has already been "interned" into
   // textStart, so we hash by textStart.  term vectors use
   // this API.
-  private void addInterned(int textStart, final int docID) throws IOException {
+  private void add(int textStart, final int docID) throws IOException {
     int termID = bytesHash.addByPoolOffset(textStart);
     if (termID >= 0) { // New posting
       // First time we are seeing this token since we last
@@ -204,7 +204,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
       }
     }
     if (doNextCall) {
-      termVectorsPerField.addInterned(postingsArray.textStarts[termID], docID);
+      termVectorsPerField.add(postingsArray.textStarts[termID], docID);
     }
   }
 

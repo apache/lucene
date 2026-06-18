@@ -17,8 +17,8 @@
 package org.apache.lucene.index;
 
 /**
- * Classification predicates over an {@link IndexableFieldType} that name how a field participates in
- * indexing. These exist so the row-vs-column routing in {@link IndexingChain} is declared once
+ * Classification predicates over an {@link IndexableFieldType} that name how a field participates
+ * in indexing. These exist so the row-vs-column routing in {@link IndexingChain} is declared once
  * rather than re-derived inline at each call site.
  *
  * <p>The key distinction is between the two kinds of term inversion:
@@ -50,8 +50,8 @@ final class IndexingFeatures {
   }
 
   /**
-   * Inversion that has a per-document obligation and must run in the row pass: an indexed field with
-   * term vectors.
+   * Inversion that has a per-document obligation and must run in the row pass: an indexed field
+   * with term vectors.
    */
   static boolean rowBoundInversion(IndexableFieldType fieldType) {
     return indexed(fieldType) && hasTermVectors(fieldType);

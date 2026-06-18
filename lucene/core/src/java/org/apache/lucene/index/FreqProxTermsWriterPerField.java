@@ -62,8 +62,7 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
     hasProx = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
     hasOffsets = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
     isTermDoc = fieldInfo.isTermDocField();
-    // The downstream term-vectors per-field exists iff the field stores term vectors. This makes
-    // "has a per-document row dependency" a structural fact (getTermVectorsPerField() != null).
+    // The downstream term-vectors per-field exists iff the field stores term vectors.
     assert (getTermVectorsPerField() != null) == fieldInfo.hasTermVectors();
   }
 

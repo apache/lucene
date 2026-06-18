@@ -1551,8 +1551,8 @@ final class IndexingChain implements Accountable {
   /**
    * Verifies that an indexed field which does not store term vectors does not request any
    * term-vector sub-options. Previously enforced lazily in {@code
-   * TermVectorsConsumerPerField#start}; now that the term-vectors per-field is only built for fields
-   * that store term vectors, this runs in the schema layer for every indexed field.
+   * TermVectorsConsumerPerField#start}; now that the term-vectors per-field is only built for
+   * fields that store term vectors, this runs in the schema layer for every indexed field.
    */
   private static void verifyNoTermVectorOptionsWithoutVectors(String name, IndexableFieldType ft) {
     if (ft.storeTermVectorOffsets()) {
