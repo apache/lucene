@@ -146,34 +146,29 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
 
       hasPayloads = false;
 
-      doVectors = field.fieldType().storeTermVectors();
+      // This per-field is only built for fields that store term vectors (see
+      // FreqProxTermsWriter#addField), so doVectors is always true here.
+      assert field.fieldType().storeTermVectors()
+          : "term-vectors per-field created for a field without term vectors";
+      doVectors = true;
 
-      if (doVectors) {
-        doVectorPositions = field.fieldType().storeTermVectorPositions();
+      doVectorPositions = field.fieldType().storeTermVectorPositions();
 
-        // Somewhat confusingly, unlike postings, you are
-        // allowed to index TV offsets without TV positions:
-        doVectorOffsets = field.fieldType().storeTermVectorOffsets();
+      // Somewhat confusingly, unlike postings, you are
+      // allowed to index TV offsets without TV positions:
+      doVectorOffsets = field.fieldType().storeTermVectorOffsets();
 
-        if (doVectorPositions) {
-          doVectorPayloads = field.fieldType().storeTermVectorPayloads();
-        } else {
-          doVectorPayloads = false;
-          if (field.fieldType().storeTermVectorPayloads()) {
-            // TODO: move this check somewhere else, and impl the other missing ones
-            throw new IllegalArgumentException(
-                "cannot index term vector payloads without term vector positions (field=\""
-                    + field.name()
-                    + "\")");
-          }
-        }
-
+      if (doVectorPositions) {
+        doVectorPayloads = field.fieldType().storeTermVectorPayloads();
       } else {
-        // Unreachable: this per-field is only built for fields that store term vectors (see
-        // FreqProxTermsWriter#addField), and the schema layer enforces every instance agrees. The
-        // "term-vector sub-option without term vectors" validation lives in
-        // IndexingChain#verifyNoTermVectorOptionsWithoutVectors.
-        assert false : "term-vectors per-field created for a field without term vectors";
+        doVectorPayloads = false;
+        if (field.fieldType().storeTermVectorPayloads()) {
+          // TODO: move this check somewhere else, and impl the other missing ones
+          throw new IllegalArgumentException(
+              "cannot index term vector payloads without term vector positions (field=\""
+                  + field.name()
+                  + "\")");
+        }
       }
     } else {
       if (doVectors != field.fieldType().storeTermVectors()) {
