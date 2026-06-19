@@ -33,7 +33,11 @@ import org.apache.lucene.util.PriorityQueue;
  * Base class for computing grouped facets.
  *
  * @lucene.experimental
+ * @deprecated Use {@code TermGroupFacetCollectorManager} instead, which supports concurrent search.
+ *     {@code GroupedFacetResult} and {@code GroupedFacetResult.FacetEntry} are now top-level
+ *     classes.
  */
+@Deprecated
 public abstract class GroupFacetCollector extends SimpleCollector {
 
   protected final String groupField;

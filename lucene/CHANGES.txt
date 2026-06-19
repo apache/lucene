@@ -287,7 +287,9 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+* GITHUB#XXXX: Introduce TermGroupFacetCollectorManager to enable concurrent search with grouped
+  faceting, removing usages of the deprecated IndexSearcher#search(Query, Collector).
+  (Luca Cavanna)
 
 Optimizations
 ---------------------
