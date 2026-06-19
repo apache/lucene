@@ -3521,7 +3521,8 @@ public class IndexWriter
             trackingDir,
             globalFieldNumberMap,
             context,
-            intraMergeExecutor);
+            intraMergeExecutor,
+            merge);
     try {
       if (!merger.shouldMerge()) {
         return;
@@ -5322,7 +5323,8 @@ public class IndexWriter
               dirWrapper,
               globalFieldNumberMap,
               context,
-              intraMergeExecutor);
+              intraMergeExecutor,
+              merge);
       MergeState mergeState = merger.mergeState;
       MergeState.DocMap[] docMaps;
       try {

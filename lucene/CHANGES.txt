@@ -410,6 +410,9 @@ Improvements
   DiversifiedTopDocsCollector, removing usages of the deprecated IndexSearcher#search(Query, Collector).
   (Luca Cavanna)
 
+* GITHUB#16264: Check if merge is aborted before executing file integrity checks to avoid
+  costly full-file checksums on segments when the merge has already been cancelled. (Tanguy Leroux)
+
 Optimizations
 ---------------------
 * GITHUB#16111: Optimize FieldExistsQuery.count() when all docs have the field. (Prithvi S)
