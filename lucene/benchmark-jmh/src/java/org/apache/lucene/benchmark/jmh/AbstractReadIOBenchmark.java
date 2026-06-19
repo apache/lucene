@@ -46,7 +46,7 @@ import org.openjdk.jmh.annotations.TearDown;
 @SuppressWarnings("restricted")
 public abstract class AbstractReadIOBenchmark {
 
-  protected static final int READ_SIZE = 16 * 1024; // 16 KiB
+  protected static final int READ_SIZE = 4 * 1024; // 4 KiB
   protected static final int READS_PER_OP = 16;
   protected static final long ALIGNMENT = 4096;
 

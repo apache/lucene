@@ -37,8 +37,8 @@ import org.openjdk.jmh.infra.Blackhole;
 /**
  * Benchmark comparing sequential read I/O strategies: mmap (normal, MADV_RANDOM, MADV_RANDOM +
  * MADV_WILLNEED), FileChannel, FFI pread, and O_DIRECT — under varying concurrency and memory
- * pressure. Each operation picks a random starting offset, then reads 16 consecutive 16KB blocks
- * sequentially forward (256KB total per op).
+ * pressure. Each operation picks a random starting offset, then reads 16 consecutive 4KB blocks
+ * sequentially forward (64KB total per op).
  *
  * <p>Run with:
  *
