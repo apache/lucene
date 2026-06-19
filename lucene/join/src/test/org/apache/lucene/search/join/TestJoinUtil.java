@@ -952,6 +952,7 @@ public class TestJoinUtil extends LuceneTestCase {
 
           @Override
           public Void reduce(Collection<SimpleCollector> collectors) {
+            assert collectors.size() == 1 : "concurrent execution is not supported by this test";
             return null;
           }
         });
