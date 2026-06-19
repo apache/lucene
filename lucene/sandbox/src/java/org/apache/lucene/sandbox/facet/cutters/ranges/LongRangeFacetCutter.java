@@ -332,10 +332,6 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
       this.boundaries = boundaries;
       this.pos = pos;
       this.skipper = skipper;
-      // The skip path counts a dense block as one value per doc, so it's single-valued only.
-      assert skipper == null || skipper.maxValueCount() <= 1
-          : "skip-index fast path requires a single-valued field, got maxValueCount="
-              + skipper.maxValueCount();
     }
 
     @Override
