@@ -515,6 +515,42 @@ abstract class BaseKnnVectorQueryTestCase extends LuceneTestCase {
     }
   }
 
+  public void testExplainTieBreak() throws IOException {
+    try (Directory d = newDirectoryForTest()) {
+      // All five docs share one vector, so they all score equally. With top k = 3, two are dropped
+      // due to tie-break.
+      try (IndexWriter w = new IndexWriter(d, new IndexWriterConfig())) {
+        for (int j = 0; j < 5; j++) {
+          Document doc = new Document();
+          doc.add(getKnnVectorField("field", new float[] {1, 1}));
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+      try (IndexReader reader = DirectoryReader.open(d)) {
+        IndexSearcher searcher = new IndexSearcher(reader);
+        AbstractKnnVectorQuery query = getKnnVectorQuery("field", new float[] {1, 1}, 3);
+
+        Set<Integer> collected = new HashSet<>();
+        for (ScoreDoc sd : searcher.search(query, 3).scoreDocs) {
+          collected.add(sd.doc);
+        }
+        int dropped = -1;
+        for (int doc = 0; doc < 5; doc++) {
+          if (collected.contains(doc) == false) {
+            dropped = doc;
+            break;
+          }
+        }
+        Explanation nomatch = searcher.explain(query, dropped);
+        assertFalse(nomatch.isMatch());
+        String description = nomatch.getDescription();
+        assertTrue(description, description.startsWith("Not in top 3 doc(s): score "));
+        assertTrue(description, description.endsWith(" (tie-break or approximate-search miss)"));
+      }
+    }
+  }
+
   /** Test that when vectors are abnormally distributed among segments, we still find the top K */
   public void testSkewedIndex() throws IOException {
     /* We have to choose the numbers carefully here so that some segment has more than the expected
