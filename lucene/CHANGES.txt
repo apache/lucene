@@ -315,6 +315,7 @@ API Changes
 
 * GITHUB#16224 Add TokenStreamColumn for experimental columnar batch indexing. (Tim Brooks)
 
+
 New Features
 ---------------------
 
@@ -343,6 +344,9 @@ New Features
 
 * GITHUB#16110: Add count() to BayesianScoreQuery.BayesianScoreWeight, delegating to
   the inner weight. (Prithvi S)
+
+* GITHUB#16117: Add updateDocuments(Term, ColumnBatch) and updateDocuments(Query, ColumnBatch)
+  to IndexWriter for atomic delete-and-add columnar operations. (Prithvi S)
 
 Improvements
 ---------------------
@@ -406,8 +410,13 @@ Improvements
   DiversifiedTopDocsCollector, removing usages of the deprecated IndexSearcher#search(Query, Collector).
   (Luca Cavanna)
 
+* GITHUB#16264: Check if merge is aborted before executing file integrity checks to avoid
+  costly full-file checksums on segments when the merge has already been cancelled. (Tanguy Leroux)
+
 Optimizations
 ---------------------
+* GITHUB#16111: Optimize FieldExistsQuery.count() when all docs have the field. (Prithvi S)
+
 * GITHUB#16222: MultiTermQuery constant-score wrapper now defers term collection to ScorerSupplier#get()
   for queries with an unknown term count (automaton queries such as wildcard/regexp/prefix/range),
   instead of scanning the term dictionary while building the ScorerSupplier. This keeps the
@@ -531,6 +540,8 @@ Optimizations
 
 * GITHUB#16257: Support JDK 26 in Panama Vectorization Provider. (Chris Hegarty)
 
+* GITHUB#16228: Reuse scratch int[] for ordinal translation. (Tim Brooks)
+
 Bug Fixes
 ---------------------
 * GITHUB#15754: Fix HTMLStripCharFilter to prevent tags from incorrectly consuming subsequent
@@ -600,6 +611,9 @@ Bug Fixes
 
 * GITHUB#16179: Fix minor lock/unlock acquisition order in DocumentsWriterDeleteQueue (Chris Hegarty)
 
+* GITHUB#16250: Fix NullPointerException in RoaringDocIdSet#intoBitSet when the iterator is already
+  exhausted. (Venkateshwaran Shanmugham)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
@@ -648,6 +662,8 @@ Other
 * GITHUB#16219: Allow multiple addBatch columns per field name. (Tim Brooks)
 
 * GITHUB#16215: Extract segment-boundary check into helper in QueryUtils (Luca Cavanna)
+
+* GITHUB#16258: Extract per-doc assertion helpers in QueryUtils (Luca Cavanna)
 
 ======================= Lucene 10.4.0 =======================
 

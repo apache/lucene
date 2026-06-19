@@ -132,6 +132,7 @@ public abstract class DocValuesConsumer implements Closeable {
   public void merge(MergeState mergeState) throws IOException {
     for (DocValuesProducer docValuesProducer : mergeState.docValuesProducers) {
       if (docValuesProducer != null) {
+        mergeState.checkAborted();
         docValuesProducer.checkIntegrity();
       }
     }
