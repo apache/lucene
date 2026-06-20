@@ -250,7 +250,7 @@ public abstract class AbstractReadIOBenchmark {
    * running as root or with passwordless sudo. Uses: sync && echo 3 > /proc/sys/vm/drop_caches
    */
   private static void dropPageCaches() throws IOException {
-    Process sync = new ProcessBuilder("sync").inheritIO().start();
+    Process sync = new ProcessBuilder("/usr/bin/sync").inheritIO().start();
     try {
       if (sync.waitFor() != 0) {
         throw new IOException("sync failed with exit code " + sync.exitValue());
@@ -261,7 +261,7 @@ public abstract class AbstractReadIOBenchmark {
     }
 
     Process drop =
-        new ProcessBuilder("sudo", "bash", "-c", "echo 3 > /proc/sys/vm/drop_caches")
+        new ProcessBuilder("/usr/bin/sudo", "/usr/bin/bash", "-c", "echo 3 > /proc/sys/vm/drop_caches")
             .inheritIO()
             .start();
     try {
