@@ -195,7 +195,7 @@ Bug Fixes
 
 * GITHUB#15939: Fix thread-safety issues with NFARunAutomaton. (Dimitris Rempapis)
 
-* GITHUB#: Add suppressed exception details when lock acquisition fails in
+* GITHUB#16278: Add suppressed exception details when lock acquisition fails in
   NativeFSLockFactory. Exceptions thrown while closing the FileChannel on lock
   failure are now attached as suppressed exceptions instead of being silently
   swallowed, resolving a long-standing TODO. (Bharathi-Kanna)
