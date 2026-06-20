@@ -29,6 +29,8 @@ import org.apache.lucene.util.PriorityQueue;
  */
 public class FieldValueHitQueue<T extends FieldValueHitQueue.Entry> extends PriorityQueue<T> {
 
+  private static final int HEAP_ARITY = 3;
+
   /** Extension of ScoreDoc to also store the {@link FieldComparator} slot. */
   public static class Entry extends ScoreDoc {
     public int slot;
@@ -112,7 +114,7 @@ public class FieldValueHitQueue<T extends FieldValueHitQueue.Entry> extends Prio
 
   // prevent instantiation and extension.
   private FieldValueHitQueue(SortField[] fields, int size, EntryLessThan lessThan) {
-    super(size, lessThan);
+    super(size, HEAP_ARITY, lessThan);
     // When we get here, fields.length is guaranteed to be > 0, therefore no
     // need to check it again.
     this.fields = fields;
