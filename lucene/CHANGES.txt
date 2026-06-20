@@ -235,6 +235,9 @@ Build
 Other
 ---------------------
 
+* GITHUB#16276: Removed overdue deprecated methods setOptimizeSortWithIndexedData and
+  setOptimizeSortWithPoints (along with their getters) from SortField. Sort optimization
+  is now unconditionally enabled when possible. (Bharathi Kanna)
 * GITHUB#16074: Ban presized collection#toArray. (Zhou Hui)
 
 * GITHUB#16063: Remove redundant final modifiers. (Zhou Hui)
