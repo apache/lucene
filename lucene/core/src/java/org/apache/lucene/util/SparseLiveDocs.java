@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.util;
 
+import java.util.Arrays;
 import java.util.Locale;
 import org.apache.lucene.search.DocIdSetIterator;
 
@@ -142,6 +143,22 @@ public final class SparseLiveDocs implements LiveDocs {
   @Override
   public int deletedCount() {
     return deletedCount;
+  }
+
+  FixedBitSet toFixedBitSet() {
+    int numWords = FixedBitSet.bits2words(maxDoc);
+    long[] rawBits = new long[numWords];
+    Arrays.fill(rawBits, -1L);
+    int ghostBits = maxDoc & 63;
+    if (ghostBits != 0) {
+      rawBits[numWords - 1] = (1L << ghostBits) - 1;
+    }
+    for (int doc = deletedDocs.nextSetBit(0);
+        doc != DocIdSetIterator.NO_MORE_DOCS;
+        doc = deletedDocs.nextSetBit(doc + 1)) {
+      rawBits[doc >> 6] &= ~(1L << doc);
+    }
+    return new FixedBitSet(rawBits, maxDoc);
   }
 
   /**
