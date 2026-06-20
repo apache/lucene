@@ -299,7 +299,7 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+* GITHUB#16279: Add JMH benchmarks comparing read I/O strategies under memory pressure
 
 ======================= Lucene 10.5.0 =======================
 
