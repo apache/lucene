@@ -275,6 +275,32 @@ Other
 
 * GITHUB#16170: Add JMH benchmarks for int4BitDotProduct and int4DibitDotProduct. (Vignesh)
 
+======================= Lucene 10.6.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================= Lucene 10.5.0 =======================
 
 API Changes
@@ -345,6 +371,9 @@ New Features
 * GITHUB#16110: Add count() to BayesianScoreQuery.BayesianScoreWeight, delegating to
   the inner weight. (Prithvi S)
 
+* GITHUB#16117: Add updateDocuments(Term, ColumnBatch) and updateDocuments(Query, ColumnBatch)
+  to IndexWriter for atomic delete-and-add columnar operations. (Prithvi S)
+
 Improvements
 ---------------------
 * GITHUB#15948: Improve BayesianScoreQuery and LogOddsFusionQuery with base rate prior,
@@ -406,6 +435,9 @@ Improvements
 * GITHUB#16216: Add DiversifiedTopDocsCollectorManager to enable concurrent search with
   DiversifiedTopDocsCollector, removing usages of the deprecated IndexSearcher#search(Query, Collector).
   (Luca Cavanna)
+
+* GITHUB#16264: Check if merge is aborted before executing file integrity checks to avoid
+  costly full-file checksums on segments when the merge has already been cancelled. (Tanguy Leroux)
 
 Optimizations
 ---------------------
