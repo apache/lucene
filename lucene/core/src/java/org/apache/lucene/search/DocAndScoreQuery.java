@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.ReaderUtil;
 
 /** A query that wraps precomputed documents and scores */
 class DocAndScoreQuery extends Query {
@@ -151,8 +152,10 @@ class DocAndScoreQuery extends Query {
       public Explanation explain(LeafReaderContext context, int doc) throws IOException {
         int found = Arrays.binarySearch(docs, doc + context.docBase);
         if (found < 0) {
-          // Defer to the originating query for a richer reason, if available.
-          if (noMatchExplainer != null) {
+          // Defer to the originating query for a richer reason, but only when this leaf belongs
+          // to the reader this query was built against.
+          if (noMatchExplainer != null
+              && ReaderUtil.getTopLevelContext(context).id() == contextIdentity) {
             Explanation enriched = noMatchExplainer.explain(context, doc, docs.length);
             if (enriched != null) {
               return enriched;
