@@ -261,7 +261,8 @@ public abstract class AbstractReadIOBenchmark {
     }
 
     Process drop =
-        new ProcessBuilder("/usr/bin/sudo", "/usr/bin/bash", "-c", "echo 3 > /proc/sys/vm/drop_caches")
+        new ProcessBuilder(
+                "/usr/bin/sudo", "/usr/bin/bash", "-c", "echo 3 > /proc/sys/vm/drop_caches")
             .inheritIO()
             .start();
     try {
