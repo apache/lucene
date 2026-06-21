@@ -291,7 +291,8 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#16283: Use Panama Vector API to SIMD-evaluate fixed-cardinality sorted numeric range
+  queries in rangeIntoBitSet. (Costin Leau)
 
 Bug Fixes
 ---------------------

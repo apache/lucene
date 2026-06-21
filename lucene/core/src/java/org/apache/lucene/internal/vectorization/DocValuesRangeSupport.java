@@ -50,4 +50,31 @@ public interface DocValuesRangeSupport {
       long maxValue,
       FixedBitSet bitSet,
       int offset);
+
+  /**
+   * Fills {@code bitSet} with docs in {@code [fromDoc, toDoc)} whose {@code cardinality} sorted
+   * values contain at least one value in {@code [minValue, maxValue]}.
+   */
+  default void sortedNumericRangeIntoBitSet(
+      LongValues values,
+      int fromDoc,
+      int toDoc,
+      int cardinality,
+      long minValue,
+      long maxValue,
+      FixedBitSet bitSet,
+      int offset) {
+    for (int doc = fromDoc; doc < toDoc; doc++) {
+      long valueOffset = (long) doc * cardinality;
+      for (int i = 0; i < cardinality; i++) {
+        long value = values.get(valueOffset + i);
+        if (value >= minValue) {
+          if (value <= maxValue) {
+            bitSet.set(doc - offset);
+          }
+          break;
+        }
+      }
+    }
+  }
 }
