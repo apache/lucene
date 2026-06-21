@@ -111,7 +111,7 @@ public class ComplexPhraseQueryParser extends QueryParser {
       }
     }
 
-    // First pass - parse the top-level query recording any PhraseQuerys
+    // First pass - parse the top-level query recording any PhraseQuery
     // which will need to be resolved
     complexPhrases = new ArrayList<>();
     Query q = super.parse(query);

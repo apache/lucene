@@ -26,7 +26,7 @@ env:
 
 jobs:
   gradleScriptBootstrapCheck:
-    name: "Check gradle boostrap script sanity on old JVMs."
+    name: "Check gradle bootstrap script sanity on old JVMs."
     timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:

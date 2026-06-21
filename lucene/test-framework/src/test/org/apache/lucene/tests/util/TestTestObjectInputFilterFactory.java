@@ -42,38 +42,38 @@ public final class TestTestObjectInputFilterFactory extends LuceneTestCase {
 
   private InputStream openStream() throws IOException {
     var out = new ByteArrayOutputStream();
-    try (var oout = new ObjectOutputStream(out)) {
-      oout.writeObject(new HashMap<>());
+    try (var stream = new ObjectOutputStream(out)) {
+      stream.writeObject(new HashMap<>());
     }
     return new ByteArrayInputStream(out.toByteArray());
   }
 
   public void testDeserializationWithoutFilter() throws Exception {
-    try (var oin = new ObjectInputStream(openStream())) {
+    try (var stream = new ObjectInputStream(openStream())) {
       // no filter set!
-      var ex = assertThrows(InvalidClassException.class, () -> oin.readObject());
+      var ex = assertThrows(InvalidClassException.class, () -> stream.readObject());
       assertTrue(ex.getMessage().contains("REJECTED"));
     }
   }
 
   public void testDeserializationWithAllowFilter() throws Exception {
-    try (var oin = new ObjectInputStream(openStream())) {
-      oin.setObjectInputFilter(createFilter("java.util.HashMap;!*"));
-      oin.readObject();
+    try (var stream = new ObjectInputStream(openStream())) {
+      stream.setObjectInputFilter(createFilter("java.util.HashMap;!*"));
+      stream.readObject();
     }
   }
 
   public void testDeserializationWithDenyFilter() throws Exception {
-    try (var oin = new ObjectInputStream(openStream())) {
-      oin.setObjectInputFilter(createFilter("!*"));
-      var ex = assertThrows(InvalidClassException.class, () -> oin.readObject());
+    try (var stream = new ObjectInputStream(openStream())) {
+      stream.setObjectInputFilter(createFilter("!*"));
+      var ex = assertThrows(InvalidClassException.class, () -> stream.readObject());
       assertTrue(ex.getMessage().contains("REJECTED"));
     }
   }
 
   public void testBadCodeJustSettingNullFilter() throws Exception {
-    try (var oin = new ObjectInputStream(openStream())) {
-      assertThrows(IllegalStateException.class, () -> oin.setObjectInputFilter(null));
+    try (var stream = new ObjectInputStream(openStream())) {
+      assertThrows(IllegalStateException.class, () -> stream.setObjectInputFilter(null));
     }
   }
 }

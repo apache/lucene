@@ -43,6 +43,10 @@
  *       inversion, and stored binary or string fields.
  *   <li>{@link org.apache.lucene.document.column.VectorColumn} — KNN vectors (FLOAT32 or BYTE
  *       encoding); vector-only field type.
+ *   <li>{@link org.apache.lucene.document.column.TokenStreamColumn} — caller-supplied {@link
+ *       org.apache.lucene.analysis.TokenStream}s for term inversion (the columnar analogue of a
+ *       custom token stream on a {@link org.apache.lucene.document.Field}); inverted-index-only
+ *       field type.
  * </ul>
  *
  * <h2>Cursors</h2>

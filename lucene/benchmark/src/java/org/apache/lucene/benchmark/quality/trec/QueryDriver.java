@@ -97,7 +97,7 @@ public class QueryDriver {
       qrun.setMaxResults(maxResults);
       QualityStats[] stats = qrun.execute(judge, submitLog, logger);
 
-      // print an avarage sum of the results
+      // print an average sum of the results
       QualityStats avg = QualityStats.average(stats);
       avg.log("SUMMARY", 2, logger, "  ");
     }

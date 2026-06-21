@@ -428,7 +428,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
   }
 
   public void testNumber() throws Exception {
-    // The numbers go away because SimpleAnalzyer ignores them
+    // The numbers go away because SimpleAnalyzer ignores them
     assertMatchNoDocsQuery("3", null);
     assertQueryEquals("term 1.0 1 2", null, "term");
     assertQueryEquals("term term1 term2", null, "term term term");
@@ -466,7 +466,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
     assertTrue(getQuery("term*germ") instanceof WildcardQuery);
 
     /* Tests to see that wild card terms are (or are not) properly
-     * lower-cased with propery parser configuration
+     * lower-cased with parser configuration
      */
     // First prefix queries:
     // by default, convert to lowercase:
@@ -830,7 +830,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
 
     // Tests bug LUCENE-800
     assertQueryEquals("(item:\\\\ item:ABCD\\\\)", a, "item:\\ item:ABCD\\");
-    assertParseException("(item:\\\\ item:ABCD\\\\))"); // unmatched closing paranthesis
+    assertParseException("(item:\\\\ item:ABCD\\\\))"); // unmatched closing parenthesis
     assertQueryEquals("\\*", a, "*");
     assertQueryEquals("\\\\", a, "\\"); // escaped backslash
 
@@ -1143,7 +1143,7 @@ public abstract class QueryParserTestBase extends LuceneTestCase {
             new MockAnalyzer(
                 random(), MockTokenizer.SIMPLE, true, MockTokenFilter.ENGLISH_STOPSET));
     qp.setEnablePositionIncrements(true);
-    String qtxt = "\"the words in poisitions pos02578 are stopped in this phrasequery\"";
+    String qtxt = "\"the words in positions pos02578 are stopped in this phrasequery\"";
     //               0         2                      5           7  8
     int[] expectedPositions = {1, 3, 4, 6, 9};
     PhraseQuery pq = (PhraseQuery) getQuery(qtxt, qp);

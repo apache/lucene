@@ -17,6 +17,7 @@
 package org.apache.lucene.document.column;
 
 import java.util.List;
+import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.StoredValue;
 import org.apache.lucene.index.IndexableFieldType;
@@ -142,6 +143,38 @@ public class ColumnBatchTestUtil {
         @Override
         public BytesRef value() {
           return values[pos];
+        }
+      };
+    }
+  }
+
+  /** Sparse {@link TokenStreamColumn} backed by parallel docId/stream arrays. */
+  public static class ArrayTokenStreamColumn extends TokenStreamColumn {
+    private final int[] docIds;
+    private final TokenStream[] streams;
+
+    public ArrayTokenStreamColumn(
+        String name, IndexableFieldType fieldType, int[] docIds, TokenStream[] streams) {
+      super(name, fieldType, Density.SPARSE);
+      assert docIds.length == streams.length;
+      this.docIds = docIds;
+      this.streams = streams;
+    }
+
+    @Override
+    public ObjectTupleCursor<TokenStream> tuples() {
+      return new ObjectTupleCursor<>() {
+        int pos = -1;
+
+        @Override
+        public int nextDoc() {
+          pos++;
+          return pos < docIds.length ? docIds[pos] : DocIdSetIterator.NO_MORE_DOCS;
+        }
+
+        @Override
+        public TokenStream value() {
+          return streams[pos];
         }
       };
     }
