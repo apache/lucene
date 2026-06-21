@@ -106,29 +106,41 @@ public final class NativeFSLockFactory extends FSLockFactory {
         Files.readAttributes(realPath, BasicFileAttributes.class).creationTime();
 
     if (LOCK_HELD.add(realPath.toString())) {
-      FileChannel channel = null;
-      FileLock lock = null;
+      NativeFSLock lock = null;
       try {
-        channel = FileChannel.open(realPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
-        lock = channel.tryLock();
-        if (lock != null) {
-          return new NativeFSLock(lock, channel, realPath, creationTime);
-        } else {
-          throw new LockObtainFailedException("Lock held by another program: " + realPath);
-        }
-      } catch (Throwable t) {
-        if (channel != null) {
-          IOUtils.closeWhileSuppressingExceptions(t, channel);
-        }
-        try {
+        lock = tryLock(realPath, creationTime);
+        return lock;
+      } finally {
+        if (lock == null) {
           clearLockHeld(realPath);
-        } catch (Throwable t2) {
-          t.addSuppressed(t2);
         }
-        throw t;
       }
     } else {
       throw new LockObtainFailedException("Lock held by this virtual machine: " + realPath);
+    }
+  }
+
+  /**
+   * Attempts to obtain the lock without blocking.
+   *
+   * @return a NativeFSLock if successful
+   * @throws IOException if not successful
+   */
+  private static NativeFSLock tryLock(Path path, FileTime creationTime) throws IOException {
+    FileChannel channel = null;
+    FileLock lock = null;
+    try {
+      channel = FileChannel.open(path, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+      lock = channel.tryLock();
+      if (lock != null) {
+        return new NativeFSLock(lock, channel, path, creationTime);
+      } else {
+        throw new LockObtainFailedException("Lock held by another program: " + path);
+      }
+    } finally {
+      if (lock == null) { // not successful - clear up and move out
+        IOUtils.closeWhileHandlingException(channel); // TODO: addSuppressed
+      }
     }
   }
 
