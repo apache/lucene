@@ -125,8 +125,6 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     bytesHash.reinit();
   }
 
-  private boolean doNextCall;
-
   // Secondary entry point (for 2nd & subsequent TermsHash),
   // because token text has already been "interned" into
   // textStart, so we hash by textStart.  term vectors use
@@ -203,7 +201,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
         throw new DuplicateTermException(e.getMessage() + " '" + termBytes.utf8ToString() + "'");
       }
     }
-    if (doNextCall) {
+    if (termVectorsPerField != null) {
       termVectorsPerField.add(postingsArray.textStarts[termID], docID);
     }
   }
@@ -344,11 +342,10 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
    * Start adding a new field instance; first is true if this is the first time this field name was
    * seen in the document.
    */
-  boolean start(IndexableField field, boolean first) {
+  void start(IndexableField field, boolean first) {
     if (termVectorsPerField != null) {
-      doNextCall = termVectorsPerField.start(field, first);
+      termVectorsPerField.start(field, first);
     }
-    return true;
   }
 
   /** Called when a term is seen for the first time. */

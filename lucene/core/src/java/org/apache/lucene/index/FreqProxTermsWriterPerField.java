@@ -75,12 +75,11 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
   }
 
   @Override
-  boolean start(IndexableField f, boolean first) {
+  void start(IndexableField f, boolean first) {
     super.start(f, first);
     termFreqAtt = fieldState.termFreqAttribute;
     payloadAttribute = fieldState.payloadAttribute;
     offsetAttribute = fieldState.offsetAttribute;
-    return true;
   }
 
   void writeProx(int termID, int proxCode) {

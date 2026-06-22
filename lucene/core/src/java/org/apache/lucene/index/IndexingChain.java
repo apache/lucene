@@ -84,8 +84,8 @@ final class IndexingChain implements Accountable {
   final Counter bytesUsed = Counter.newCounter();
   final FieldInfos.Builder fieldInfos;
 
-  // Writes postings and term vectors:
-  final TermsHash termsHash;
+  // Writes postings, and drives the (optional) downstream term-vectors consumer:
+  final FreqProxTermsWriter termsHash;
   // Shared pool for doc-value terms
   final ByteBlockPool docValuesBytePool;
   // Shared scratch buffers for dense points encoding

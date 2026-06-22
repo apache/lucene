@@ -16,10 +16,6 @@
  */
 package org.apache.lucene.index;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.util.ByteBlockPool;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.IntBlockPool;
@@ -71,26 +67,6 @@ abstract class TermsHash {
     // we don't reuse so we drop everything and don't fill with 0
     intPool.reset(false, false);
     bytePool.reset(false, false);
-  }
-
-  void flush(
-      Map<String, TermsHashPerField> fieldsToFlush,
-      final SegmentWriteState state,
-      Sorter.DocMap sortMap,
-      NormsProducer norms)
-      throws IOException {
-    if (nextTermsHash != null) {
-      Map<String, TermsHashPerField> nextChildFields = new HashMap<>();
-      for (final Map.Entry<String, TermsHashPerField> entry : fieldsToFlush.entrySet()) {
-        // A field only has a next per-field when it feeds a downstream consumer (term vectors).
-        // Fields without one are simply absent from the downstream flush map.
-        TermsHashPerField next = entry.getValue().getTermVectorsPerField();
-        if (next != null) {
-          nextChildFields.put(entry.getKey(), next);
-        }
-      }
-      nextTermsHash.flush(nextChildFields, state, sortMap, norms);
-    }
   }
 
   abstract TermsHashPerField addField(FieldInvertState fieldInvertState, FieldInfo fieldInfo);

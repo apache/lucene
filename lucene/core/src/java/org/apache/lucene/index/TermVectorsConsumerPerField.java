@@ -32,7 +32,9 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
   private final FieldInvertState fieldState;
   private final FieldInfo fieldInfo;
 
-  private boolean doVectors;
+  // True once this field has buffered vectors for the current document that still need flushing in
+  // finishDocument(); reset to false there.
+  private boolean pendingDoc;
   private boolean doVectorPositions;
   private boolean doVectorOffsets;
   private boolean doVectorPayloads;
@@ -67,18 +69,18 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
    */
   @Override
   void finish() {
-    if (!doVectors || getNumTerms() == 0) {
+    if (!pendingDoc || getNumTerms() == 0) {
       return;
     }
     termsWriter.addFieldToFlush(this);
   }
 
   void finishDocument() throws IOException {
-    if (doVectors == false) {
+    if (pendingDoc == false) {
       return;
     }
 
-    doVectors = false;
+    pendingDoc = false;
 
     final int numPostings = getNumTerms();
 
@@ -128,7 +130,7 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
   }
 
   @Override
-  boolean start(IndexableField field, boolean first) {
+  void start(IndexableField field, boolean first) {
     super.start(field, first);
     termFreqAtt = fieldState.termFreqAttribute;
     assert field.fieldType().indexOptions() != IndexOptions.NONE;
@@ -147,10 +149,11 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
       hasPayloads = false;
 
       // This per-field is only built for fields that store term vectors (see
-      // FreqProxTermsWriter#addField), so doVectors is always true here.
+      // FreqProxTermsWriter#addField), and FieldSchema locks storeTermVectors for the segment, so
+      // this field always stores term vectors.
       assert field.fieldType().storeTermVectors()
           : "term-vectors per-field created for a field without term vectors";
-      doVectors = true;
+      pendingDoc = true;
 
       doVectorPositions = field.fieldType().storeTermVectorPositions();
 
@@ -171,12 +174,8 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
         }
       }
     } else {
-      if (doVectors != field.fieldType().storeTermVectors()) {
-        throw new IllegalArgumentException(
-            "all instances of a given field name must have the same term vectors settings (storeTermVectors changed for field=\""
-                + field.name()
-                + "\")");
-      }
+      // storeTermVectors itself is locked for the segment by FieldSchema, but the sub-options are
+      // not, so they are validated here for consistency across instances within the document.
       if (doVectorPositions != field.fieldType().storeTermVectorPositions()) {
         throw new IllegalArgumentException(
             "all instances of a given field name must have the same term vectors settings (storeTermVectorPositions changed for field=\""
@@ -197,21 +196,17 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
       }
     }
 
-    if (doVectors) {
-      if (doVectorOffsets) {
-        offsetAttribute = fieldState.offsetAttribute;
-        assert offsetAttribute != null;
-      }
-
-      if (doVectorPayloads) {
-        // Can be null:
-        payloadAttribute = fieldState.payloadAttribute;
-      } else {
-        payloadAttribute = null;
-      }
+    if (doVectorOffsets) {
+      offsetAttribute = fieldState.offsetAttribute;
+      assert offsetAttribute != null;
     }
 
-    return doVectors;
+    if (doVectorPayloads) {
+      // Can be null:
+      payloadAttribute = fieldState.payloadAttribute;
+    } else {
+      payloadAttribute = null;
+    }
   }
 
   void writeProx(TermVectorsPostingsArray postings, int termID) {

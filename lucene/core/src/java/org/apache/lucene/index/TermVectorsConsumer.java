@@ -18,9 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Map;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.TermVectorsWriter;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FlushInfo;
@@ -68,13 +66,7 @@ class TermVectorsConsumer extends TermsHash {
     this.codec = codec;
   }
 
-  @Override
-  void flush(
-      Map<String, TermsHashPerField> fieldsToFlush,
-      final SegmentWriteState state,
-      Sorter.DocMap sortMap,
-      NormsProducer norms)
-      throws IOException {
+  void flush(final SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
     if (writer != null) {
       int numDocs = state.segmentInfo.maxDoc();
       assert numDocs > 0;

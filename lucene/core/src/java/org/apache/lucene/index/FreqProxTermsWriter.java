@@ -42,12 +42,18 @@ import org.apache.lucene.util.packed.PackedInts;
 
 final class FreqProxTermsWriter extends TermsHash {
 
+  // The term vectors consumer is the (optional) downstream consumer of the terms interned here:
+  // it reuses our term byte pool and only buffers fields that store term vectors. This is the same
+  // instance the base class tracks as nextTermsHash, kept here with its concrete type.
+  private final TermVectorsConsumer termVectors;
+
   FreqProxTermsWriter(
       final IntBlockPool.Allocator intBlockAllocator,
       final ByteBlockPool.Allocator byteBlockAllocator,
       Counter bytesUsed,
-      TermsHash termVectors) {
+      TermVectorsConsumer termVectors) {
     super(intBlockAllocator, byteBlockAllocator, bytesUsed, termVectors);
+    this.termVectors = termVectors;
   }
 
   private void applyDeletes(SegmentWriteState state, Fields fields) throws IOException {
@@ -79,14 +85,15 @@ final class FreqProxTermsWriter extends TermsHash {
     }
   }
 
-  @Override
   public void flush(
       Map<String, TermsHashPerField> fieldsToFlush,
       final SegmentWriteState state,
       Sorter.DocMap sortMap,
       NormsProducer norms)
       throws IOException {
-    super.flush(fieldsToFlush, state, sortMap, norms);
+    // Flush the per-document term vectors first (they were buffered as each document finished),
+    // then write the postings gathered per-field below.
+    termVectors.flush(state, sortMap);
 
     // Gather all fields that saw any postings:
     List<FreqProxTermsWriterPerField> allFields = new ArrayList<>();
@@ -137,10 +144,9 @@ final class FreqProxTermsWriter extends TermsHash {
   @Override
   public TermsHashPerField addField(FieldInvertState invertState, FieldInfo fieldInfo) {
     // Only build the downstream term-vectors per-field when the field actually stores term vectors.
-    // hasTermVectors() is fixed at field-init time (baked into the FieldInfo before this runs) and
-    // is immutable for the segment.
+    // hasTermVectors() is fixed at field-init time and is immutable for the segment.
     TermsHashPerField termVectorsPerField =
-        fieldInfo.hasTermVectors() ? nextTermsHash.addField(invertState, fieldInfo) : null;
+        fieldInfo.hasTermVectors() ? termVectors.addField(invertState, fieldInfo) : null;
     return new FreqProxTermsWriterPerField(invertState, this, fieldInfo, termVectorsPerField);
   }
 
