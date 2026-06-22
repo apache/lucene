@@ -80,12 +80,16 @@ ext {
   // Minimum Java version required to compile and run Lucene.
   minJavaVersion = JavaVersion.toVersion(deps.versions.minJava.get())
 
-  // also change this in extractor tool: ExtractForeignAPI
+  // Java versions where the vector module is still incubating.
+  // Used by testing infrastructure to pass --add-modules jdk.incubator.vector to test JVMs.
+  // Also change in extractor tool: ExtractJdkApis
   vectorIncubatorJavaVersions = [
     JavaVersion.VERSION_21,
     JavaVersion.VERSION_22,
     JavaVersion.VERSION_23,
-    JavaVersion.VERSION_24 ] as Set
+    JavaVersion.VERSION_24,
+    JavaVersion.VERSION_25,
+    JavaVersion.VERSION_26 ] as Set
 
   // snapshot build marker used in scripts.
   snapshotBuild = version.contains("SNAPSHOT")
