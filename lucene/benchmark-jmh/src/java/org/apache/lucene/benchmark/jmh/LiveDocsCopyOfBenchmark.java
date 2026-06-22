@@ -36,8 +36,8 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 
 /**
- * Benchmarks {@link FixedBitSet#copyOf(org.apache.lucene.util.Bits)} for {@link SparseLiveDocs}
- * and {@link DenseLiveDocs} inputs.
+ * Benchmarks {@link FixedBitSet#copyOf(org.apache.lucene.util.Bits)} for {@link SparseLiveDocs} and
+ * {@link DenseLiveDocs} inputs.
  *
  * <p>This benchmark measures the speedup from the fast paths added to {@code copyOf()} for the
  * {@link SparseLiveDocs} and {@link DenseLiveDocs} types introduced by GITHUB#15413. Without these
