@@ -482,12 +482,28 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   }
 
   /**
-   * Maps the raw query bounds {@code [minValue, maxValue]} into the encoded domain so the SIMD
-   * kernel in {@link org.apache.lucene.internal.vectorization.DocValuesRangeSupport} can run
-   * directly on packed values: {@code [encodedMin, encodedMax] = [ceil((min - delta) / mul),
-   * floor((max - delta) / mul)]}. Open bounds (e.g. {@code Long.MIN_VALUE} or {@code
-   * Long.MAX_VALUE}) are saturated to the encoded domain so they keep the SIMD path even when
-   * {@code min - delta} or {@code max - delta} would overflow.
+   * Transforms query bounds {@code [minValue, maxValue]} into the encoded domain where stored
+   * values satisfy {@code stored = raw * mul + delta}. Returns {@code {encodedMin, encodedMax}} or
+   * {@code null} if the range is empty (no raw value can match).
+   */
+  private static long[] transformGcdBounds(long minValue, long maxValue, long mul, long delta) {
+    assert mul > 0;
+    long encodedMin = saturatingShiftLower(minValue, delta);
+    long encodedMax = saturatingShiftUpper(maxValue, delta);
+    if (mul != 1) {
+      encodedMin = Math.ceilDiv(encodedMin, mul);
+      encodedMax = Math.floorDiv(encodedMax, mul);
+    }
+    encodedMin = Math.max(0, encodedMin);
+    if (encodedMin > encodedMax) {
+      return null;
+    }
+    return new long[] {encodedMin, encodedMax};
+  }
+
+  /**
+   * Maps the raw query bounds {@code [minValue, maxValue]} into the encoded domain and runs the
+   * SIMD range scan directly on packed values.
    */
   private static void rangeGcdDeltaIntoBitSet(
       LongValues values,
@@ -499,18 +515,9 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       long delta,
       FixedBitSet bitSet,
       int offset) {
-    assert mul > 0;
-    long encodedMin = saturatingShiftLower(minValue, delta);
-    long encodedMax = saturatingShiftUpper(maxValue, delta);
-    if (mul != 1) {
-      // Math.ceilDiv / Math.floorDiv never overflow for mul > 0 (only Long.MIN_VALUE / -1 does),
-      // so the SIMD path is always taken; no fallback to the per-doc decoded loop is required.
-      encodedMin = Math.ceilDiv(encodedMin, mul);
-      encodedMax = Math.floorDiv(encodedMax, mul);
-    }
-    encodedMin = Math.max(0, encodedMin);
-    if (encodedMin <= encodedMax) {
-      rangeIntoBitSet(values, fromDoc, toDoc, encodedMin, encodedMax, bitSet, offset);
+    long[] bounds = transformGcdBounds(minValue, maxValue, mul, delta);
+    if (bounds != null) {
+      rangeIntoBitSet(values, fromDoc, toDoc, bounds[0], bounds[1], bitSet, offset);
     }
   }
 
@@ -1933,6 +1940,27 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     final LongValues values = getNumericValues(entry);
     final int denseFixedCardinality = fixedCardinality(entry, skipperEntry);
 
+    // For GCD/delta encoded entries, capture raw packed values for rangeIntoBitSet optimization.
+    // The decoded `values` wrapper applies mul*get+delta per call; using raw values with
+    // transformed bounds avoids this per-value decode cost.
+    final boolean hasGcdEncoding =
+        entry.bitsPerValue > 0
+            && entry.blockShift < 0
+            && entry.table == null
+            && (entry.gcd != 1 || entry.minValue != 0);
+    final LongValues rawValues;
+    final long mul, delta;
+    if (hasGcdEncoding) {
+      RandomAccessInput rawSlice = data.randomAccessSlice(entry.valuesOffset, entry.valuesLength);
+      rawValues = getDirectReaderInstance(rawSlice, entry.bitsPerValue, 0L, entry.numValues);
+      mul = entry.gcd;
+      delta = entry.minValue;
+    } else {
+      rawValues = null;
+      mul = 1;
+      delta = 0;
+    }
+
     if (entry.docsWithFieldOffset == -1) {
       // dense
       return new SortedNumericDocValues() {
@@ -1996,6 +2024,27 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           if (entry.bitsPerValue == 0) {
             if (entry.minValue >= minValue && entry.minValue <= maxValue) {
               bitSet.set(fromDoc - offset, endDoc - offset);
+            }
+            return;
+          }
+          if (rawValues != null) {
+            long[] bounds = transformGcdBounds(minValue, maxValue, mul, delta);
+            if (bounds == null) {
+              return;
+            }
+            int cardinality = denseFixedCardinality;
+            if (cardinality > 1) {
+              sortedNumericScalarRangeIntoBitSet(
+                  rawValues, fromDoc, endDoc, cardinality, bounds[0], bounds[1], bitSet, offset);
+              return;
+            }
+            for (int currentDoc = fromDoc; currentDoc < endDoc; currentDoc++) {
+              long startOffset = addresses.get(currentDoc);
+              long endOffset = addresses.get(currentDoc + 1L);
+              if (sortedNumericMatchesRange(
+                  rawValues, startOffset, endOffset, bounds[0], bounds[1])) {
+                bitSet.set(currentDoc - offset);
+              }
             }
             return;
           }
@@ -2104,6 +2153,24 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           if (entry.bitsPerValue == 0) {
             if (entry.minValue >= minValue && entry.minValue <= maxValue) {
               disi.intoBitSet(endDoc, bitSet, offset);
+            }
+            set = false;
+            return;
+          }
+          if (rawValues != null) {
+            long[] bounds = transformGcdBounds(minValue, maxValue, mul, delta);
+            if (bounds == null) {
+              set = false;
+              return;
+            }
+            for (; currentDoc < endDoc; currentDoc = disi.nextDoc()) {
+              int index = disi.index();
+              long startOffset = addresses.get(index);
+              long endOffset = addresses.get(index + 1L);
+              if (sortedNumericMatchesRange(
+                  rawValues, startOffset, endOffset, bounds[0], bounds[1])) {
+                bitSet.set(currentDoc - offset);
+              }
             }
             set = false;
             return;
