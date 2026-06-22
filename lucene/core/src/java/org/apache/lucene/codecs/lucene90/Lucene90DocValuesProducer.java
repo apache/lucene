@@ -34,6 +34,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
@@ -2284,6 +2285,14 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     CodecUtil.checksumEntireFile(data);
     if (skipIndexData != null) {
       CodecUtil.checksumEntireFile(skipIndexData);
+    }
+  }
+
+  @Override
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    CodecUtil.checksumEntireFile(data, merge);
+    if (skipIndexData != null) {
+      CodecUtil.checksumEntireFile(skipIndexData, merge);
     }
   }
 

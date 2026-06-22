@@ -19,6 +19,7 @@ package org.apache.lucene.codecs;
 import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.NumericDocValues;
 
 /**
@@ -47,6 +48,20 @@ public abstract class NormsProducer implements Closeable {
    * @lucene.internal
    */
   public abstract void checkIntegrity() throws IOException;
+
+  /**
+   * Checks consistency of this producer, periodically checking if the provided merge has been
+   * aborted. Subclasses should override this to propagate the abort check into expensive checksum
+   * computations.
+   *
+   * <p>The default implementation delegates to {@link #checkIntegrity()}.
+   *
+   * @param merge the merge to check for abort, or {@code null} for non-interruptible behavior
+   * @lucene.internal
+   */
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    checkIntegrity();
+  }
 
   /**
    * Returns an instance optimized for merging. This instance may only be used from the thread that

@@ -39,6 +39,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.FilterLeafReader.FilterFields;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -351,6 +352,13 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
     public void checkIntegrity() throws IOException {
       for (FieldsProducer producer : formats.values()) {
         producer.checkIntegrity();
+      }
+    }
+
+    @Override
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+      for (FieldsProducer producer : formats.values()) {
+        producer.checkIntegrity(merge);
       }
     }
 

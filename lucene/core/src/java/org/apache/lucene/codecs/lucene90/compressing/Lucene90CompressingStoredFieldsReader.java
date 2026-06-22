@@ -50,6 +50,7 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.StoredFieldDataInput;
 import org.apache.lucene.index.StoredFieldVisitor;
@@ -758,6 +759,12 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   public void checkIntegrity() throws IOException {
     indexReader.checkIntegrity();
     CodecUtil.checksumEntireFile(fieldsStream);
+  }
+
+  @Override
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    indexReader.checkIntegrity(merge);
+    CodecUtil.checksumEntireFile(fieldsStream, merge);
   }
 
   @Override

@@ -38,6 +38,7 @@ import org.apache.lucene.index.Impacts;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.internal.vectorization.PostingDecodingUtil;
@@ -1478,6 +1479,19 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
     }
     if (payIn != null) {
       CodecUtil.checksumEntireFile(payIn);
+    }
+  }
+
+  @Override
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    if (docIn != null) {
+      CodecUtil.checksumEntireFile(docIn, merge);
+    }
+    if (posIn != null) {
+      CodecUtil.checksumEntireFile(posIn, merge);
+    }
+    if (payIn != null) {
+      CodecUtil.checksumEntireFile(payIn, merge);
     }
   }
 

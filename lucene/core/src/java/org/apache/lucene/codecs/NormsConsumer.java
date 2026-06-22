@@ -67,7 +67,7 @@ public abstract class NormsConsumer implements Closeable {
     for (NormsProducer normsProducer : mergeState.normsProducers) {
       if (normsProducer != null) {
         mergeState.checkAborted();
-        normsProducer.checkIntegrity();
+        normsProducer.checkIntegrity(mergeState.oneMerge);
       }
     }
     for (FieldInfo mergeFieldInfo : mergeState.mergeFieldInfos) {

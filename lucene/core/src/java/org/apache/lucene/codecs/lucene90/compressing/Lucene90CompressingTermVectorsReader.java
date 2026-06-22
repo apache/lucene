@@ -46,6 +46,7 @@ import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentInfo;
 import org.apache.lucene.index.SlowImpactsEnum;
@@ -1352,6 +1353,12 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
   public void checkIntegrity() throws IOException {
     indexReader.checkIntegrity();
     CodecUtil.checksumEntireFile(vectorsStream);
+  }
+
+  @Override
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+    indexReader.checkIntegrity(merge);
+    CodecUtil.checksumEntireFile(vectorsStream, merge);
   }
 
   @Override

@@ -30,6 +30,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.OrdTermState;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
@@ -149,6 +150,12 @@ public final class DirectPostingsFormat extends PostingsFormat {
 
     @Override
     public void checkIntegrity() throws IOException {
+      // if we read entirely into ram, we already validated.
+      // otherwise returned the raw postings reader
+    }
+
+    @Override
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       // if we read entirely into ram, we already validated.
       // otherwise returned the raw postings reader
     }

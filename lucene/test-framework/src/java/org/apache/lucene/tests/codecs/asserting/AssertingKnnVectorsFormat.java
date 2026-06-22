@@ -29,6 +29,7 @@ import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -128,6 +129,11 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     @Override
     public void checkIntegrity() throws IOException {
       delegate.checkIntegrity();
+    }
+
+    @Override
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+      delegate.checkIntegrity(merge);
     }
 
     @Override
