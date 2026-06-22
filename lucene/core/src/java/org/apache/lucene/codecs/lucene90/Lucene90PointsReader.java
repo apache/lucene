@@ -62,11 +62,17 @@ public class Lucene90PointsReader extends PointsReader {
       indexIn =
           readState.directory.openInput(
               indexFileName, readState.context.withHints(FileTypeHint.INDEX));
+      // Reader upper bound is the upstream latest (v1, VERSION_BKD_VECTORIZED_BPV24), not
+      // VERSION_CURRENT — the writer is pinned to v0 for 9.11.1 rollback, but we still need to
+      // read v1 segments from upstream backward-compat fixtures
+      // (`TestIndexSortBackwardsCompatibility and friends ship v1 .kdi/.kdd/.kdm payloads from
+      // index.10.2.0+.zip onwards). Same pattern {@link Lucene94FieldInfosFormatV1} uses for
+      // FieldInfos. Restore to VERSION_CURRENT in Phase 4.
       CodecUtil.checkIndexHeader(
           indexIn,
           Lucene90PointsFormat.INDEX_CODEC_NAME,
           Lucene90PointsFormat.VERSION_START,
-          Lucene90PointsFormat.VERSION_CURRENT,
+          Lucene90PointsFormat.VERSION_BKD_VECTORIZED_BPV24,
           readState.segmentInfo.getId(),
           readState.segmentSuffix);
       CodecUtil.retrieveChecksum(indexIn);
@@ -80,7 +86,7 @@ public class Lucene90PointsReader extends PointsReader {
           dataIn,
           Lucene90PointsFormat.DATA_CODEC_NAME,
           Lucene90PointsFormat.VERSION_START,
-          Lucene90PointsFormat.VERSION_CURRENT,
+          Lucene90PointsFormat.VERSION_BKD_VECTORIZED_BPV24,
           readState.segmentInfo.getId(),
           readState.segmentSuffix);
       CodecUtil.retrieveChecksum(dataIn);
@@ -93,7 +99,7 @@ public class Lucene90PointsReader extends PointsReader {
               metaIn,
               Lucene90PointsFormat.META_CODEC_NAME,
               Lucene90PointsFormat.VERSION_START,
-              Lucene90PointsFormat.VERSION_CURRENT,
+              Lucene90PointsFormat.VERSION_BKD_VECTORIZED_BPV24,
               readState.segmentInfo.getId(),
               readState.segmentSuffix);
 

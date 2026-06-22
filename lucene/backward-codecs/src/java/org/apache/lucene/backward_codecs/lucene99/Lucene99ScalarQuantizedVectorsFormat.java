@@ -143,8 +143,19 @@ public class Lucene99ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
   }
 
   @Override
+  // Writer restored while {@code Lucene99Codec} is still the writer (Phase 3 of the 10.x upgrade).
+  // On-disk version is unchanged from 9.11.1 ({@code VERSION_ADD_BITS = 1}), so output is
+  // binary-compatible with a 9.11 reader. The companion {@link
+  // Lucene99ScalarQuantizedVectorsWriter}
+  // was moved from {@code src/test} to {@code src/java} to make this call resolvable.
   public FlatVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    throw new UnsupportedOperationException("Old codecs may only be used for reading");
+    return new Lucene99ScalarQuantizedVectorsWriter(
+        state,
+        confidenceInterval,
+        bits,
+        compress,
+        rawVectorFormat.fieldsWriter(state),
+        flatVectorScorer);
   }
 
   @Override

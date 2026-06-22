@@ -95,12 +95,18 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
     try (ChecksumIndexInput meta = state.directory.openChecksumInput(metaFileName)) {
       Throwable priorE = null;
       try {
+        // Reader upper bound is the upstream latest (v1, VERSION_GROUPVARINT), not
+        // VERSION_CURRENT — the writer is pinned to v0 for 9.11.1 rollback, but we still need to
+        // read v1 segments from upstream backward-compat fixtures (e.g.
+        // TestInt7HnswBackwardsCompatibility
+        // ships v1-formatted HNSW data). Same pattern Lucene94FieldInfosFormatV1 uses. Restore to
+        // VERSION_CURRENT in Phase 4.
         versionMeta =
             CodecUtil.checkIndexHeader(
                 meta,
                 Lucene99HnswVectorsFormat.META_CODEC_NAME,
                 Lucene99HnswVectorsFormat.VERSION_START,
-                Lucene99HnswVectorsFormat.VERSION_CURRENT,
+                Lucene99HnswVectorsFormat.VERSION_GROUPVARINT,
                 state.segmentInfo.getId(),
                 state.segmentSuffix);
         readFields(meta);
@@ -167,7 +173,7 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
               in,
               codecName,
               Lucene99HnswVectorsFormat.VERSION_START,
-              Lucene99HnswVectorsFormat.VERSION_CURRENT,
+              Lucene99HnswVectorsFormat.VERSION_GROUPVARINT,
               state.segmentInfo.getId(),
               state.segmentSuffix);
       if (versionMeta != versionVectorData) {

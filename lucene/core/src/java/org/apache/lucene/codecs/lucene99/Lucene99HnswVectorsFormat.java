@@ -88,7 +88,16 @@ public final class Lucene99HnswVectorsFormat extends KnnVectorsFormat {
 
   public static final int VERSION_START = 0;
   public static final int VERSION_GROUPVARINT = 1;
-  public static final int VERSION_CURRENT = VERSION_GROUPVARINT;
+
+  /**
+   * Held at {@link #VERSION_START} so segments written by {@code Lucene99Codec} remain readable by
+   * Lucene 9.11.1 — a 9.11 reader rejects any newer header via {@link
+   * org.apache.lucene.codecs.CodecUtil#checkIndexHeader}, which would block binary rollback during
+   * the 10.4 code upgrade. {@link Lucene99HnswVectorsReader} keeps its upper bound at {@link
+   * #VERSION_GROUPVARINT} explicitly so it can still read v1 segments from upstream backward-compat
+   * fixtures. Restore to the latest revision when {@code Lucene99Codec} is no longer the writer.
+   */
+  public static final int VERSION_CURRENT = VERSION_START;
 
   /**
    * A maximum configurable maximum max conn.

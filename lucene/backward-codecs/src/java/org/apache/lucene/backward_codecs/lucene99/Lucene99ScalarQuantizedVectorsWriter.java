@@ -105,6 +105,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
   private final int version;
   private boolean finished;
 
+  /** Public constructor. */
   public Lucene99ScalarQuantizedVectorsWriter(
       SegmentWriteState state,
       Float confidenceInterval,
@@ -124,6 +125,7 @@ public final class Lucene99ScalarQuantizedVectorsWriter extends FlatVectorsWrite
     }
   }
 
+  /** Public constructor */
   public Lucene99ScalarQuantizedVectorsWriter(
       SegmentWriteState state,
       Float confidenceInterval,

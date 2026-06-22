@@ -46,7 +46,7 @@ import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 
 public class TestLucene99PostingsFormat extends BasePostingsFormatTestCase {
-  private final Codec codec = TestUtil.alwaysPostingsFormat(new Lucene99RWPostingsFormat());
+  private final Codec codec = TestUtil.alwaysPostingsFormat(new Lucene99PostingsFormat());
 
   @Override
   protected Codec getCodec() {
@@ -82,7 +82,7 @@ public class TestLucene99PostingsFormat extends BasePostingsFormatTestCase {
     expectThrows(
         IllegalArgumentException.class,
         () -> {
-          new Lucene99RWPostingsFormat(minItemsInBlock, maxItemsInBlock);
+          new Lucene99PostingsFormat(minItemsInBlock, maxItemsInBlock);
         });
   }
 

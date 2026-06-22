@@ -17,7 +17,6 @@
 package org.apache.lucene.backward_codecs.lucene99;
 
 import java.util.Objects;
-import org.apache.lucene.backward_codecs.lucene912.Lucene912PostingsFormat;
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.CompoundFormat;
 import org.apache.lucene.codecs.DocValuesFormat;
@@ -38,7 +37,8 @@ import org.apache.lucene.codecs.lucene90.Lucene90NormsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90PointsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90StoredFieldsFormat;
 import org.apache.lucene.codecs.lucene90.Lucene90TermVectorsFormat;
-import org.apache.lucene.codecs.lucene94.Lucene94FieldInfosFormat;
+// Lucene94FieldInfosFormatV1 pins the on-disk format to version 1 for 9.11 backward compatibility.
+// The core Lucene94FieldInfosFormat writes version 2 (DocValuesSkipIndex), which 9.11 rejects.
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99SegmentInfoFormat;
 import org.apache.lucene.codecs.perfield.PerFieldDocValuesFormat;
@@ -70,7 +70,7 @@ public class Lucene99Codec extends Codec {
   }
 
   private final TermVectorsFormat vectorsFormat = new Lucene90TermVectorsFormat();
-  private final FieldInfosFormat fieldInfosFormat = new Lucene94FieldInfosFormat();
+  private final FieldInfosFormat fieldInfosFormat = new Lucene94FieldInfosFormatV1();
   private final SegmentInfoFormat segmentInfosFormat = new Lucene99SegmentInfoFormat();
   private final LiveDocsFormat liveDocsFormat = new Lucene90LiveDocsFormat();
   private final CompoundFormat compoundFormat = new Lucene90CompoundFormat();
@@ -119,7 +119,7 @@ public class Lucene99Codec extends Codec {
     super("Lucene99");
     this.storedFieldsFormat =
         new Lucene90StoredFieldsFormat(Objects.requireNonNull(mode).storedMode);
-    this.defaultPostingsFormat = new Lucene912PostingsFormat();
+    this.defaultPostingsFormat = new Lucene99PostingsFormat();
     this.defaultDVFormat = new Lucene90DocValuesFormat();
     this.defaultKnnVectorsFormat = new Lucene99HnswVectorsFormat();
   }

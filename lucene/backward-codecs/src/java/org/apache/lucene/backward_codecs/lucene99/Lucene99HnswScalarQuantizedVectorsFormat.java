@@ -31,8 +31,10 @@ import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsReader;
+import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsWriter;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.util.hnsw.HnswGraph;
 
 /**
@@ -62,6 +64,12 @@ public class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
 
   /** The format for storing, reading, merging vectors on disk */
   private final FlatVectorsFormat flatVectorsFormat;
+
+  // Restored from upstream 10.1.0 — needed by {@link #fieldsWriter} to thread multi-worker merge
+  // through to {@link Lucene99HnswVectorsWriter}. Removed when the class was moved to
+  // backward_codecs (read-only); reinstated for the Phase 3 write-side restoration.
+  private final int numMergeWorkers;
+  private final TaskExecutor mergeExec;
 
   /** Constructs a format using default graph construction parameters with 7 bit quantization */
   public Lucene99HnswScalarQuantizedVectorsFormat() {
@@ -126,13 +134,25 @@ public class Lucene99HnswScalarQuantizedVectorsFormat extends KnnVectorsFormat {
       throw new IllegalArgumentException(
           "No executor service is needed as we'll use single thread to merge");
     }
+    this.numMergeWorkers = numMergeWorkers;
+    this.mergeExec = mergeExec == null ? null : new TaskExecutor(mergeExec);
     this.flatVectorsFormat =
         new Lucene99ScalarQuantizedVectorsFormat(confidenceInterval, bits, compress);
   }
 
   @Override
+  // Writer restored while {@code Lucene99Codec} is still the writer (Phase 3 of the 10.x upgrade).
+  // On-disk version is unchanged from 9.11.1, so output is binary-compatible with a 9.11 reader.
+  // Delegates to the core {@link Lucene99HnswVectorsWriter} for graph construction; the quantized
+  // payload comes from {@link #flatVectorsFormat}.
   public KnnVectorsWriter fieldsWriter(SegmentWriteState state) throws IOException {
-    throw new UnsupportedOperationException("Old codecs may only be used for reading");
+    return new Lucene99HnswVectorsWriter(
+        state,
+        maxConn,
+        beamWidth,
+        flatVectorsFormat.fieldsWriter(state),
+        numMergeWorkers,
+        mergeExec);
   }
 
   @Override

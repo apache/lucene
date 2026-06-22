@@ -3,6 +3,13 @@ Lucene Change Log
 For more information on past and future Lucene versions, please see:
 http://s.apache.org/luceneversions
 
+======================= Lucene-mongot 10.4.0-1 =======================
+
+API Changes
+---------------------
+* GITHUB #15: Restore Lucene99Codec write support for 9.11 backward compatability in 10.4.0
+
+
 ======================= Lucene 10.4.0 =======================
 
 API Changes
