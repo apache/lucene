@@ -287,7 +287,7 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+* GITHUB#16271: Add detail to KNN no-match explanations. (Jakub Slowinski)
 
 Optimizations
 ---------------------
@@ -438,8 +438,6 @@ Improvements
 
 * GITHUB#16264: Check if merge is aborted before executing file integrity checks to avoid
   costly full-file checksums on segments when the merge has already been cancelled. (Tanguy Leroux)
-
-* GITHUB#16271: Add detail to KNN no-match explanations. (Jakub Slowinski)
 
 Optimizations
 ---------------------
