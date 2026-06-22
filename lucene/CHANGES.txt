@@ -9,6 +9,8 @@ API Changes
 ---------------------
 * GITHUB #15: Restore Lucene99Codec write support for 9.11 backward compatability in 10.4.0
 
+* GITHUB#15636: Introduce TermsEnum.preferSeekExact(). Update and delete processing obey this setting,
+  allowing bloom or other approximate membership filters to apply in these paths. (Trevor McCulloch)
 
 ======================= Lucene 10.4.0 =======================
 

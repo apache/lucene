@@ -189,6 +189,17 @@ public abstract class TermsEnum implements BytesRefIterator {
   public abstract TermState termState() throws IOException;
 
   /**
+   * Expert: prefer using seekExact() to seekCeil().
+   *
+   * <p>This is consumed within Lucene when performing key lookups for update and delete operations.
+   * Override this for implementations that use an approximate membership filter to ensure that the
+   * membership filter is consulted.
+   */
+  public boolean preferSeekExact() {
+    return false;
+  }
+
+  /**
    * An empty TermsEnum for quickly returning an empty instance e.g. in {@link
    * org.apache.lucene.search.MultiTermQuery}
    *

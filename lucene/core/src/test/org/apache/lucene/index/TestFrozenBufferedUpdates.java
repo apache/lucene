@@ -39,6 +39,36 @@ import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.FixedBitSet;
 
 public class TestFrozenBufferedUpdates extends LuceneTestCase {
+  private static class PreferSeekExactLeafReader extends FilterLeafReader {
+    public PreferSeekExactLeafReader(LeafReader in) {
+      super(in);
+    }
+
+    @Override
+    public Terms terms(String field) throws IOException {
+      return new FilterTerms(in.terms(field)) {
+        @Override
+        public TermsEnum iterator() throws IOException {
+          return new FilterTermsEnum(in.iterator()) {
+            @Override
+            public boolean preferSeekExact() {
+              return true;
+            }
+          };
+        }
+      };
+    }
+
+    @Override
+    public IndexReader.CacheHelper getCoreCacheHelper() {
+      return this.in.getCoreCacheHelper();
+    }
+
+    @Override
+    public IndexReader.CacheHelper getReaderCacheHelper() {
+      return this.in.getReaderCacheHelper();
+    }
+  }
 
   public void testTermDocsIterator() throws IOException {
     for (int j = 0; j < 5; j++) {
@@ -76,10 +106,15 @@ public class TestFrozenBufferedUpdates extends LuceneTestCase {
         writer.commit();
         try (DirectoryReader reader = DirectoryReader.open(dir)) {
           boolean sorted = random().nextBoolean();
+          boolean preferSeekExact = random().nextBoolean();
           BytesRefIterator values =
               sorted ? array.iterator(Comparator.naturalOrder()) : array.iterator();
           assertEquals(1, reader.leaves().size());
-          TermDocsIterator iterator = new TermDocsIterator(reader.leaves().get(0).reader(), sorted);
+          LeafReader leafReader = reader.leaves().get(0).reader();
+          if (preferSeekExact) {
+            leafReader = new PreferSeekExactLeafReader(leafReader);
+          }
+          TermDocsIterator iterator = new TermDocsIterator(leafReader, sorted);
           FixedBitSet bitSet = new FixedBitSet(reader.maxDoc());
           BytesRef ref;
           while ((ref = values.next()) != null) {
