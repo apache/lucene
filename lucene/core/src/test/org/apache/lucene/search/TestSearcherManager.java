@@ -470,7 +470,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     t.join();
 
     // if maybeRefreshBlocking didn't release the lock, this will fail.
-    assertTrue("failde to obtain the refreshLock!", sm.maybeRefresh());
+    assertTrue("failed to obtain the refreshLock!", sm.maybeRefresh());
 
     sm.close();
     dir.close();

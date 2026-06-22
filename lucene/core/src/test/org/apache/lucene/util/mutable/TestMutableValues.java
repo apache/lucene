@@ -19,7 +19,7 @@ package org.apache.lucene.util.mutable;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 
-/** Simple test of the basic contract of the various {@link MutableValue} implementaitons. */
+/** Simple test of the basic contract of the various {@link MutableValue} implementations. */
 public class TestMutableValues extends LuceneTestCase {
 
   public void testStr() {

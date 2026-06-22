@@ -130,6 +130,7 @@ public abstract class StoredFieldsWriter implements Closeable, Accountable {
     List<StoredFieldsMergeSub> subs = new ArrayList<>();
     for (int i = 0; i < mergeState.storedFieldsReaders.length; i++) {
       StoredFieldsReader storedFieldsReader = mergeState.storedFieldsReaders[i];
+      mergeState.checkAborted();
       storedFieldsReader.checkIntegrity();
       subs.add(
           new StoredFieldsMergeSub(

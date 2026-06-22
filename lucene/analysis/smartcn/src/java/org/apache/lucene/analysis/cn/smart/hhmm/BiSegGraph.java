@@ -51,7 +51,7 @@ class BiSegGraph {
     double smooth = 0.1;
     int wordPairFreq = 0;
     int maxStart = segGraph.getMaxStart();
-    double oneWordFreq, weight, tinyDouble = 1.0 / Utility.MAX_FREQUENCE;
+    double oneWordFreq, weight, tinyDouble = 1.0 / Utility.MAX_FREQUENCY;
 
     int next;
     char[] idBuffer;
@@ -102,7 +102,7 @@ class BiSegGraph {
             // -log{a*P(Ci-1)+(1-a)P(Ci|Ci-1)} Note 0<a<1
             weight =
                 -Math.log(
-                    smooth * (1.0 + oneWordFreq) / (Utility.MAX_FREQUENCE + 0.0)
+                    smooth * (1.0 + oneWordFreq) / (Utility.MAX_FREQUENCY + 0.0)
                         + (1.0 - smooth)
                             * ((1.0 - tinyDouble) * wordPairFreq / (1.0 + oneWordFreq)
                                 + tinyDouble));

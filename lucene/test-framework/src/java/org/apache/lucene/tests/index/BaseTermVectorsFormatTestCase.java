@@ -386,16 +386,16 @@ public abstract class BaseTermVectorsFormatTestCase extends BaseIndexFileFormatT
     private final String[] terms;
     private final BytesRef[] termBytes;
 
-    protected RandomDocumentFactory(int distinctFieldNames, int disctinctTerms) {
+    protected RandomDocumentFactory(int distinctFieldNames, int distinctTerms) {
       final Set<String> fieldNames = new HashSet<>();
       while (fieldNames.size() < distinctFieldNames) {
         fieldNames.add(TestUtil.randomSimpleString(random()));
         fieldNames.remove("id");
       }
       this.fieldNames = fieldNames.toArray(String[]::new);
-      terms = new String[disctinctTerms];
-      termBytes = new BytesRef[disctinctTerms];
-      for (int i = 0; i < disctinctTerms; ++i) {
+      terms = new String[distinctTerms];
+      termBytes = new BytesRef[distinctTerms];
+      for (int i = 0; i < distinctTerms; ++i) {
         terms[i] = TestUtil.randomRealisticUnicodeString(random());
         termBytes[i] = newBytesRef(terms[i]);
       }

@@ -125,7 +125,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
     TaxonomyOrdLabelBiMap ordLabels = new TaxonomyOrdLabelBiMap(taxoReader);
     FacetLabel parentLabel = new FacetLabel(dimension, path);
     int parentOrdinal = ordLabels.getOrd(parentLabel);
-    OrdinalIterator childrenIternator =
+    OrdinalIterator childrenIterator =
         new TaxonomyChildrenOrdinalIterator(
             countFacetRecorder.recordedOrds(),
             taxoReader.getParallelTaxonomyArrays().parents(),
@@ -133,7 +133,7 @@ public abstract class SandboxFacetTestCase extends LuceneTestCase {
     // Get array of final ordinals - we need to use all of them to get labels first, and then to get
     // counts,
     // but OrdinalIterator only allows reading ordinals once.
-    int[] resultOrdinals = childrenIternator.toArray();
+    int[] resultOrdinals = childrenIterator.toArray();
 
     FacetLabel[] labels = ordLabels.getLabels(resultOrdinals);
     List<LabelAndValue> labelsAndValues = new ArrayList<>(labels.length);
