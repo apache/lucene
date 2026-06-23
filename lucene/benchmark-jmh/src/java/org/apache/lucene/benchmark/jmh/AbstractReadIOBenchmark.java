@@ -38,20 +38,19 @@ import org.openjdk.jmh.annotations.TearDown;
 
 /**
  * Abstract base for read I/O benchmarks. Provides shared FFI handles (pread, open, close,
- * posix_madvise), thread-local buffers, file/mmap setup, and configuration parsing.
- *
- * <p>Subclasses define their own offset bounds and benchmark methods.
+ * posix_madvise, fcntl), thread-local buffers, file/mmap setup, and configuration parsing.
  */
 @State(Scope.Benchmark)
 @SuppressWarnings("restricted")
 public abstract class AbstractReadIOBenchmark {
 
-  protected static final int READ_SIZE = 4 * 1024; // 4 KiB
-  protected static final int READS_PER_OP = 16;
   protected static final long ALIGNMENT = 4096;
 
+  /** Max read size for buffer pre-allocation. Actual read size is a @Param on subclasses. */
+  protected static final int MAX_READ_SIZE = 1024 * 1024; // 1MB max
+
   protected static final long FILE_SIZE =
-      Long.parseLong(envOrProp("BENCH_FILE_SIZE_MIB", "bench.fileSizeMiB", "1024")) * 1024L * 1024L;
+      Long.parseLong(envOrProp("BENCH_FILE_SIZE_MB", "bench.fileSizeMB", "1024")) * 1024L * 1024L;
 
   protected static final String BENCH_FILE =
       envOrProp("BENCH_FILE", "bench.file", "/tmp/pread-bench.dat");
@@ -63,11 +62,16 @@ public abstract class AbstractReadIOBenchmark {
   protected static final int MADV_RANDOM = 1;
   protected static final int MADV_WILLNEED = 3;
 
+  private static final boolean IS_MAC = System.getProperty("os.name").toLowerCase().contains("mac");
+  private static final boolean IS_LINUX =
+      System.getProperty("os.name").toLowerCase().contains("linux");
+
   // FFI handles
   protected static final MethodHandle PREAD;
   protected static final MethodHandle OPEN;
   protected static final MethodHandle CLOSE;
   protected static final MethodHandle POSIX_MADVISE;
+  protected static final MethodHandle FCNTL;
 
   static {
     Linker linker = Linker.nativeLinker();
@@ -101,9 +105,18 @@ public abstract class AbstractReadIOBenchmark {
                 ValueLayout.ADDRESS,
                 ValueLayout.JAVA_LONG,
                 ValueLayout.JAVA_INT));
+
+    FCNTL =
+        linker.downcallHandle(
+            lookup.find("fcntl").orElseThrow(),
+            FunctionDescriptor.of(
+                ValueLayout.JAVA_INT,
+                ValueLayout.JAVA_INT,
+                ValueLayout.JAVA_INT,
+                ValueLayout.JAVA_INT));
   }
 
-  /** Per-thread pre-allocated buffers to avoid allocation noise in the measured path. */
+  /** Per-thread pre-allocated buffers sized to MAX_READ_SIZE. */
   @State(Scope.Thread)
   public static class ThreadBuffers {
     public ByteBuffer directBuf;
@@ -114,11 +127,11 @@ public abstract class AbstractReadIOBenchmark {
 
     @Setup(Level.Trial)
     public void setup() {
-      directBuf = ByteBuffer.allocateDirect(READ_SIZE);
-      heapBuf = ByteBuffer.allocate(READ_SIZE);
+      directBuf = ByteBuffer.allocateDirect(MAX_READ_SIZE);
+      heapBuf = ByteBuffer.allocate(MAX_READ_SIZE);
       ffiArena = Arena.ofConfined();
-      ffiBuf = ffiArena.allocate(READ_SIZE);
-      ffiDirectIoBuf = ffiArena.allocate(READ_SIZE, 4096);
+      ffiBuf = ffiArena.allocate(MAX_READ_SIZE);
+      ffiDirectIoBuf = ffiArena.allocate(MAX_READ_SIZE, 4096);
     }
 
     @TearDown(Level.Trial)
@@ -135,21 +148,23 @@ public abstract class AbstractReadIOBenchmark {
   protected int directIoFd;
   protected Arena arena;
 
-  /** Subclasses return a name for logging (e.g. "RandomReadIOBenchmark"). */
-  protected abstract String benchmarkName();
+  protected String benchmarkName() {
+    return getClass().getSimpleName();
+  }
 
-  /** Subclasses may print extra config lines. */
-  protected void printExtraConfig() {}
+  protected void validateReadSize(int readSize) {
+    if (readSize > MAX_READ_SIZE) {
+      throw new IllegalArgumentException(
+          "readSize (" + readSize + ") exceeds MAX_READ_SIZE (" + MAX_READ_SIZE + ").");
+    }
+  }
 
   @Setup(Level.Trial)
   public void setup() throws Exception {
     System.out.println("[bench] ===== " + benchmarkName() + " Configuration =====");
-    System.out.println("[bench]   file:       " + BENCH_FILE);
-    System.out.println("[bench]   fileSizeMiB:  " + (FILE_SIZE / (1024 * 1024)));
+    System.out.println("[bench]   file:         " + BENCH_FILE);
+    System.out.println("[bench]   fileSizeMB:   " + (FILE_SIZE / (1024 * 1024)));
     System.out.println("[bench]   dropCaches:   " + DROP_CACHES);
-    System.out.println("[bench]   readSize:     " + READ_SIZE + " bytes");
-    System.out.println("[bench]   readsPerOp:   " + READS_PER_OP);
-    printExtraConfig();
     System.out.println("[bench] ===============================================");
 
     tempFile = Path.of(BENCH_FILE);
@@ -202,19 +217,30 @@ public abstract class AbstractReadIOBenchmark {
       throw new IOException("FFI open() returned " + nativeFd);
     }
 
-    // Open native fd with O_DIRECT for Direct I/O (Linux only, bypasses page cache)
-    int O_DIRECT = 0x4000;
+    // Direct I/O: Linux uses O_DIRECT, macOS uses fcntl(F_NOCACHE)
     try {
-      directIoFd = (int) OPEN.invokeExact(pathStr, O_RDONLY | O_DIRECT);
+      if (IS_LINUX) {
+        int O_DIRECT = 0x4000;
+        directIoFd = (int) OPEN.invokeExact(pathStr, O_RDONLY | O_DIRECT);
+      } else if (IS_MAC) {
+        directIoFd = (int) OPEN.invokeExact(pathStr, O_RDONLY);
+        if (directIoFd >= 0) {
+          int F_NOCACHE = 48;
+          int rc = (int) FCNTL.invokeExact(directIoFd, F_NOCACHE, 1);
+          if (rc != 0) {
+            System.err.println("WARNING: fcntl(F_NOCACHE) failed");
+            CLOSE.invokeExact(directIoFd);
+            directIoFd = -1;
+          }
+        }
+      } else {
+        directIoFd = -1;
+      }
     } catch (Throwable t) {
-      throw new RuntimeException("Failed to open file with O_DIRECT via FFI", t);
+      throw new RuntimeException("Failed to open file for direct I/O", t);
     }
     if (directIoFd < 0) {
-      System.err.println(
-          "WARNING: O_DIRECT open failed (fd="
-              + directIoFd
-              + "). "
-              + "Direct I/O benchmarks will fail. Use a filesystem that supports O_DIRECT.");
+      System.err.println("WARNING: Direct I/O unavailable. Those benchmarks will skip.");
       directIoFd = -1;
     }
   }
@@ -233,11 +259,6 @@ public abstract class AbstractReadIOBenchmark {
     arena.close();
   }
 
-  /**
-   * Drops page caches before each iteration (warmup and measurement). This ensures each iteration
-   * starts with a cold page cache. JIT still warms up across iterations since the JVM persists
-   * across the fork.
-   */
   @Setup(Level.Iteration)
   public void setupIteration() throws IOException {
     if (DROP_CACHES) {
@@ -245,36 +266,40 @@ public abstract class AbstractReadIOBenchmark {
     }
   }
 
-  /**
-   * Drops the kernel page cache to simulate cold-cache / memory-constrained scenarios. Requires
-   * running as root or with passwordless sudo. Uses: sync && echo 3 > /proc/sys/vm/drop_caches
-   */
   private static void dropPageCaches() throws IOException {
-    Process sync = new ProcessBuilder("/usr/bin/sync").inheritIO().start();
-    try {
-      if (sync.waitFor() != 0) {
-        throw new IOException("sync failed with exit code " + sync.exitValue());
+    if (IS_MAC) {
+      Process purge = new ProcessBuilder("/usr/bin/sudo", "purge").inheritIO().start();
+      try {
+        if (purge.waitFor() != 0) {
+          throw new IOException("purge failed with exit code " + purge.exitValue());
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IOException("Interrupted during purge", e);
       }
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new IOException("Interrupted during sync", e);
-    }
-
-    Process drop =
-        new ProcessBuilder(
-                "/usr/bin/sudo", "/usr/bin/bash", "-c", "echo 3 > /proc/sys/vm/drop_caches")
-            .inheritIO()
-            .start();
-    try {
-      if (drop.waitFor() != 0) {
-        throw new IOException(
-            "Failed to drop page caches (exit code "
-                + drop.exitValue()
-                + "). Run as root or with: sudo sysctl vm.drop_caches=3");
+    } else {
+      Process sync = new ProcessBuilder("/usr/bin/sync").inheritIO().start();
+      try {
+        if (sync.waitFor() != 0) {
+          throw new IOException("sync failed with exit code " + sync.exitValue());
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IOException("Interrupted during sync", e);
       }
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new IOException("Interrupted during drop_caches", e);
+      Process drop =
+          new ProcessBuilder(
+                  "/usr/bin/sudo", "/usr/bin/bash", "-c", "echo 3 > /proc/sys/vm/drop_caches")
+              .inheritIO()
+              .start();
+      try {
+        if (drop.waitFor() != 0) {
+          throw new IOException("Failed to drop page caches (exit code " + drop.exitValue() + ").");
+        }
+      } catch (InterruptedException e) {
+        Thread.currentThread().interrupt();
+        throw new IOException("Interrupted during drop_caches", e);
+      }
     }
     System.out.println("[bench] Page caches dropped.");
   }
