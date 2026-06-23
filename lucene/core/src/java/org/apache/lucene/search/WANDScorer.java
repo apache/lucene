@@ -569,17 +569,16 @@ final class WANDScorer extends Scorer {
     // Propagate to sub-scorers. Scorers past target constrain the boundary to docID - 1.
     int newUpTo = DocIdSetIterator.NO_MORE_DOCS;
     for (Scorer scorer : allScorers) {
+      // Use <= instead of < so we still propagate and use the block boundary when already at
+      // target.
       if (scorer.docID() <= target) {
         newUpTo = Math.min(newUpTo, scorer.advanceShallow(target));
       } else if (scorer.docID() != DocIdSetIterator.NO_MORE_DOCS) {
         newUpTo = Math.min(newUpTo, scorer.docID() - 1);
       }
     }
-    if (target <= upTo) {
-      // Within current block, return existing boundary. Sub-scorers already propagated.
-      return upTo;
-    }
-    return newUpTo;
+    // If within the current block, prefer the tighter freshly-computed boundary.
+    return target <= upTo ? Math.min(upTo, newUpTo) : newUpTo;
   }
 
   @Override

@@ -323,6 +323,8 @@ Optimizations
 ---------------------
 * GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
 
+* GITHUB#16220: Implement WANDScorer.advanceShallow() to enable block-max optimizations when nested in conjunctions. (Prithvi S)
+
 * GITHUB#16146: Speed up no-score filtered-optional Boolean queries by routing dense conjunctions with cached FixedBitSet filters
   through ConstantScoreBulkScorer, which batches matches in bulk via DocIdStream. (Costin Leau)
 
@@ -631,8 +633,6 @@ Optimizations
 * GITHUB#16257: Support JDK 26 in Panama Vectorization Provider. (Chris Hegarty)
 
 * GITHUB#16228: Reuse scratch int[] for ordinal translation. (Tim Brooks)
-
-* GITHUB#16220: Implement WANDScorer.advanceShallow() to enable block-max optimizations when nested in conjunctions. (Prithvi S)
 
 Bug Fixes
 ---------------------
