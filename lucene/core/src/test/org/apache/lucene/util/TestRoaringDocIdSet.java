@@ -255,4 +255,23 @@ public class TestRoaringDocIdSet extends BaseDocIdSetTestCase<RoaringDocIdSet> {
     RoaringDocIdSet.Builder b = new RoaringDocIdSet.Builder(100);
     expectThrows(IllegalArgumentException.class, () -> b.add(10, 5));
   }
+
+  public void testIntoBitSetWhenExhausted() throws IOException {
+    int maxDoc = 3 << 16; // 3 blocks; docs only in block 0
+    RoaringDocIdSet set = new RoaringDocIdSet.Builder(maxDoc).add(5).add(10).add(20).build();
+
+    DocIdSetIterator it = set.iterator();
+    while (it.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {}
+    FixedBitSet bitSet = new FixedBitSet(maxDoc);
+    it.intoBitSet(maxDoc, bitSet, 0);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.docID());
+    assertTrue(bitSet.scanIsEmpty());
+
+    it = set.iterator();
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.advance(maxDoc));
+    bitSet = new FixedBitSet(maxDoc);
+    it.intoBitSet(maxDoc, bitSet, 0);
+    assertEquals(DocIdSetIterator.NO_MORE_DOCS, it.docID());
+    assertTrue(bitSet.scanIsEmpty());
+  }
 }
