@@ -944,7 +944,6 @@ public class TestRangeFacet extends SandboxFacetTestCase {
             default -> TestUtil.nextLong(random(), -100, 100);
           };
       doc.add(NumericDocValuesField.indexedField("field", v));
-      doc.add(new LongPoint("point", v));
       w.addDocument(doc);
     }
 
@@ -998,8 +997,43 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     IOUtils.close(dir);
   }
 
-  // Asserts faceting "field" by name (skip index when available) matches faceting via a
-  // MultiLongValuesSource (no skip index), over random range sets including extreme bounds.
+  public void testSkipIndexEquivalenceFewValues() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setIndexSort(new Sort(new SortField("field", SortField.Type.LONG, false)));
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(4)));
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    int numDocs = atLeast(1000);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      doc.add(NumericDocValuesField.indexedField("field", TestUtil.nextLong(random(), 0, 5)));
+      w.addDocument(doc);
+    }
+
+    assertSkipIndexEquivalence(w, "few-values");
+
+    w.close();
+    IOUtils.close(dir);
+  }
+
+  public void testSingleValuedNoSkipIndex() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    int numDocs = atLeast(1000);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      doc.add(new NumericDocValuesField("field", TestUtil.nextLong(random(), -100, 100)));
+      w.addDocument(doc);
+    }
+
+    assertSkipIndexEquivalence(w, "single-valued-no-skip");
+
+    w.close();
+    IOUtils.close(dir);
+  }
+
   private void assertSkipIndexEquivalence(RandomIndexWriter w, String desc) throws IOException {
     IndexReader r = w.getReader();
     try {

@@ -27,7 +27,6 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.sandbox.facet.cutters.FacetCutter;
 import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
 import org.apache.lucene.search.LongValues;
@@ -48,7 +47,7 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
   // TODO: refactor - weird that we have both multi and single here.
   final LongValuesSource singleValues;
 
-  // Field to read a DocValuesSkipper from on the single-valued path, or null when disabled.
+  // Field name whose skip index is used on the single-valued path, or null when faceting a source.
   final String skipField;
 
   final LongRangeAndPos[] sortedRanges;
@@ -153,25 +152,18 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
   abstract List<InclusiveRange> buildElementaryIntervals();
 
   /**
-   * Returns the {@link DocValuesSkipper} for {@link #skipField} in this segment. Null when: no skip
-   * field is configured, the field has no skip index, or some doc in this segment has more than one
-   * value.
+   * Single-valued {@link LongValues} read directly from {@link #skipField} so its skip index can be
+   * used, or null when there is no skip field or the segment is multi-valued.
    */
-  final DocValuesSkipper maybeSkipper(LeafReaderContext context) throws IOException {
+  final LongValues singleValuedSkipField(LeafReaderContext context) throws IOException {
     if (skipField == null) {
       return null;
     }
-    SortedNumericDocValues sortedNumeric = DocValues.getSortedNumeric(context.reader(), skipField);
-    if (DocValues.unwrapSingleton(sortedNumeric) == null) {
-      return null;
-    }
-    return context.reader().getDocValuesSkipper(skipField);
-  }
-
-  /** Single-valued {@link LongValues} for {@link #skipField} in this segment. */
-  final LongValues skipFieldValues(LeafReaderContext context) throws IOException {
     NumericDocValues values =
         DocValues.unwrapSingleton(DocValues.getSortedNumeric(context.reader(), skipField));
+    if (values == null) {
+      return null;
+    }
     return new LongValues() {
       @Override
       public long longValue() throws IOException {
@@ -313,14 +305,19 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
 
     IntervalTracker requestedIntervalTracker;
 
-    // Skip index for the faceted field, or null when disabled.
     private final DocValuesSkipper skipper;
 
-    // Cached decision from advanceSkipper, valid for every doc up to (and including) upToInclusive:
-    // when upToSameInterval is true, all those docs map to elementary interval upToIntervalOrd.
+    // advanceSkipper's decisions for the current block; the fields below hold while doc <=
+    // upToInclusive, after which it runs again for the next block.
     private int upToInclusive = -1;
+    // Whether every value in the block maps to the single interval upToIntervalOrd.
     private boolean upToSameInterval;
+    // Whether every doc in the block has a value.
+    private boolean upToDense;
     private int upToIntervalOrd;
+
+    // Interval of the previous doc with a value, for replaying the tracker on a repeat.
+    private int previousIntervalOrd = -1;
 
     LongRangeSingleValuedLeafFacetCutter(LongValues longValues, long[] boundaries, int[] pos) {
       this(longValues, boundaries, pos, null);
@@ -342,8 +339,11 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
 
       int intervalOrd;
       if (upToSameInterval) {
-        // We are inside a dense skip block that maps entirely to one elementary interval, so reuse
-        // the cached ordinal and skip the per-doc value lookup and binary search.
+        // Reuse the cached ordinal, skipping the binary search. A dense block also skips the value
+        // lookup, a sparse one still needs advanceExact to know whether this doc has a value.
+        if (upToDense == false && longValues.advanceExact(doc) == false) {
+          return false;
+        }
         intervalOrd = upToIntervalOrd;
       } else if (longValues.advanceExact(doc)) {
         intervalOrd = processValue(longValues.longValue());
@@ -351,19 +351,22 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
         return false;
       }
 
-      if (requestedIntervalTracker != null) {
-        requestedIntervalTracker.clear();
-      }
       elementaryIntervalOrd = intervalOrd;
-      maybeRollUp(requestedIntervalTracker);
       if (requestedIntervalTracker != null) {
-        requestedIntervalTracker.freeze();
+        if (skipper != null && intervalOrd == previousIntervalOrd) {
+          // Same interval as the previous doc, so replay its frozen rollup instead of rebuilding.
+          requestedIntervalTracker.rewind();
+        } else {
+          requestedIntervalTracker.clear();
+          maybeRollUp(requestedIntervalTracker);
+          requestedIntervalTracker.freeze();
+          previousIntervalOrd = intervalOrd;
+        }
       }
 
       return true;
     }
 
-    /** Mirrors {@code HistogramCollector#advanceSkipper}. */
     private void advanceSkipper(int doc) throws IOException {
       if (doc > skipper.maxDocID(0)) {
         skipper.advance(doc);
@@ -378,14 +381,9 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
       }
 
       upToInclusive = skipper.maxDocID(0);
-      // Now find the highest level where all docs have a value and map to the same interval.
+      // Climb to the highest level that still maps to a single interval.
       for (int level = 0; level < skipper.numLevels(); ++level) {
-        int totalDocsAtLevel = skipper.maxDocID(level) - skipper.minDocID(level) + 1;
-        if (skipper.docCount(level) != totalDocsAtLevel) {
-          // Some docs at this level have no value, so we can't resolve the whole block at once.
-          break;
-        }
-        // Long fields store raw values, the skipper's min/max map straight into the boundary space.
+        // Long fields store raw values, skipper's min/max maps straight into the boundary space.
         int minInterval = processValue(skipper.minValue(level));
         int maxInterval = processValue(skipper.maxValue(level));
         if (minInterval != maxInterval) {
@@ -394,6 +392,8 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
         upToInclusive = skipper.maxDocID(level);
         upToSameInterval = true;
         upToIntervalOrd = minInterval;
+        int totalDocsAtLevel = skipper.maxDocID(level) - skipper.minDocID(level) + 1;
+        upToDense = skipper.docCount(level) == totalDocsAtLevel;
       }
     }
 

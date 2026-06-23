@@ -149,12 +149,11 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
 
   @Override
   public LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException {
-    // Use the skip index when we can, otherwise fall back to the value source.
-    DocValuesSkipper skipper = maybeSkipper(context);
-    if (skipper != null) {
-      LongValues values = skipFieldValues(context);
+    LongValues skipFieldValues = singleValuedSkipField(context);
+    if (skipFieldValues != null) {
+      DocValuesSkipper skipper = context.reader().getDocValuesSkipper(skipField);
       return new OverlappingSingleValuedRangeLeafFacetCutter(
-          values, boundaries, pos, requestedRangeCount, root, skipper);
+          skipFieldValues, boundaries, pos, requestedRangeCount, root, skipper);
     }
     if (singleValues != null) {
       LongValues values = singleValues.getValues(context, null);

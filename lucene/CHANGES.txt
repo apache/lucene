@@ -293,6 +293,8 @@ Optimizations
 ---------------------
 * GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
 
+* GITHUB#16268: Use the doc-values skip index to skip per-doc value lookups in LongRangeFacetCutter. (Jakub Slowinski)
+
 Bug Fixes
 ---------------------
 (No changes)
@@ -567,8 +569,6 @@ Optimizations
 * GITHUB#16257: Support JDK 26 in Panama Vectorization Provider. (Chris Hegarty)
 
 * GITHUB#16228: Reuse scratch int[] for ordinal translation. (Tim Brooks)
-
-* GITHUB#16268: Use the doc-values skip index to skip per-doc value lookups for dense blocks in LongRangeFacetCutter. (Jakub Slowinski)
 
 Bug Fixes
 ---------------------
