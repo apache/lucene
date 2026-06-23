@@ -325,6 +325,9 @@ Optimizations
 
 * GITHUB#16352: Better cost() estimation for SkipBlockRangeIterator. (Alan Woodward)
 
+* GITHUB#16285: Apply GCD bound transform to sorted numeric rangeIntoBitSet, comparing raw
+  encoded values directly instead of decoding every packed value. (Costin Leau)
+
 Bug Fixes
 ---------------------
 
