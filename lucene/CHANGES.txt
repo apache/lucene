@@ -320,6 +320,9 @@ Optimizations
 
 * GITHUB#16160: Improve numeric doc values range query performance for dense fields that use GCD or delta encoding. (Costin Leau)
 
+* GITHUB#16285: Apply GCD bound transform to sorted numeric rangeIntoBitSet, comparing raw
+  encoded values directly instead of decoding every packed value. (Costin Leau)
+
 Bug Fixes
 ---------------------
 (No changes)
