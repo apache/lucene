@@ -323,6 +323,8 @@ Optimizations
 * GITHUB#16283: Use Panama Vector API to SIMD-evaluate fixed-cardinality sorted numeric range queries in
   rangeIntoBitSet. (Costin Leau)
 
+* GITHUB#16268: Use the doc-values skip index to skip per-doc value lookups in LongRangeFacetCutter. (Jakub Slowinski)
+
 Bug Fixes
 ---------------------
 
@@ -605,8 +607,6 @@ Optimizations
 * GITHUB#16257: Support JDK 26 in Panama Vectorization Provider. (Chris Hegarty)
 
 * GITHUB#16228: Reuse scratch int[] for ordinal translation. (Tim Brooks)
-
-* GITHUB#16268: Use the doc-values skip index to skip per-doc value lookups for dense blocks in LongRangeFacetCutter. (Jakub Slowinski)
 
 Bug Fixes
 ---------------------
