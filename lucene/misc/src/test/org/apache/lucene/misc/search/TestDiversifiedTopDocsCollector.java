@@ -133,7 +133,7 @@ public class TestDiversifiedTopDocsCollector extends LuceneTestCase {
     HashedDocValuesDiversifiedCollector populated =
         new HashedDocValuesDiversifiedCollector(numResults, 15, "artist");
     Weight w = searcher.createWeight(searcher.rewrite(getTestQuery()), ScoreMode.COMPLETE, 1f);
-    for (LeafReaderContext ctx : reader.leaves()) {
+    for (LeafReaderContext ctx : searcher.getIndexReader().leaves()) {
       LeafCollector lc = populated.getLeafCollector(ctx);
       BulkScorer bs = w.bulkScorer(ctx);
       if (bs != null) {
