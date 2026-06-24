@@ -40,7 +40,7 @@ minGradle = "9.6.0"
 # @keep This is the minimum required Java version.
 minJava = "25"
 # analysis/morfologik polish support
-morfologik = "2.1.9"
+morfologik = "2.2.0"
 # analysis/morfologik ukrainian support
 morfologik-ukrainian = "4.9.1"
 # benchmark/ html parsing
