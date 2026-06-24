@@ -456,7 +456,12 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
             searcher.search(
                 new TermQuery(new Term("content", searchTerm)),
                 createRandomCollectorManager(
-                    "group", "facet", facetPrefix, multipleFacetsPerDocument, size, minCount,
+                    "group",
+                    "facet",
+                    facetPrefix,
+                    multipleFacetsPerDocument,
+                    size,
+                    minCount,
                     orderByCount));
 
         List<GroupedFacetResult.FacetEntry> expectedFacetEntries =
@@ -793,7 +798,12 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
       boolean orderByCount) {
     BytesRef facetPrefixBR = facetPrefix == null ? null : new BytesRef(facetPrefix);
     return new TermGroupFacetCollectorManager(
-        groupField, facetField, multipleFacetsPerDocument, facetPrefixBR, size, minCount,
+        groupField,
+        facetField,
+        multipleFacetsPerDocument,
+        facetPrefixBR,
+        size,
+        minCount,
         orderByCount);
   }
 
@@ -840,7 +850,5 @@ public class TestGroupFacetCollector extends AbstractGroupingTestCase {
   }
 
   private record ExpectedFacetResult(
-      int totalCount,
-      int totalMissingCount,
-      List<GroupedFacetResult.FacetEntry> facetEntries) {}
+      int totalCount, int totalMissingCount, List<GroupedFacetResult.FacetEntry> facetEntries) {}
 }

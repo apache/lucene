@@ -248,7 +248,10 @@ public class TermGroupFacetCollectorManager
             TermsEnum tenum = facetDV.termsEnum();
             tenum.seekExact(start);
             for (int i = start; i < endFacetOrd; i++) {
-              allFacetTermsInRange.add(BytesRef.deepCopyOf(tenum.term()));
+              BytesRef term = tenum.term();
+              if (!allFacetTermsInRange.contains(term)) {
+                allFacetTermsInRange.add(BytesRef.deepCopyOf(term));
+              }
               if (i + 1 < endFacetOrd) {
                 tenum.next();
               }
@@ -305,24 +308,30 @@ public class TermGroupFacetCollectorManager
 
       @Override
       public void collect(int doc) throws IOException {
-        if (doc > groupDV.docID()) {
-          groupDV.advance(doc);
-        }
-        int groupOrd = doc == groupDV.docID() ? groupDV.ordValue() : -1;
-
         if (doc > facetDV.docID()) {
           facetDV.advance(doc);
         }
         boolean hasFacetDocValues = doc == facetDV.docID();
         if (hasFacetDocValues) {
+          int groupOrd = Integer.MIN_VALUE; // lazily fetched on first in-range facet ord
           for (int i = 0; i < facetDV.docValueCount(); i++) {
             int facetOrd = (int) facetDV.nextOrd();
             if (facetOrd >= startFacetOrd && facetOrd < endFacetOrd) {
+              if (groupOrd == Integer.MIN_VALUE) {
+                if (doc > groupDV.docID()) {
+                  groupDV.advance(doc);
+                }
+                groupOrd = doc == groupDV.docID() ? groupDV.ordValue() : -1;
+              }
               segmentPairs.add(encodePair(groupOrd, facetOrd));
             }
           }
         } else if (facetPrefix == null) {
           // No facet values at all and no prefix: count as missing (facetOrd = -1).
+          if (doc > groupDV.docID()) {
+            groupDV.advance(doc);
+          }
+          int groupOrd = doc == groupDV.docID() ? groupDV.ordValue() : -1;
           segmentPairs.add(encodePair(groupOrd, -1));
         }
       }
@@ -343,7 +352,10 @@ public class TermGroupFacetCollectorManager
           TermsEnum tenum = facetDV.termsEnum();
           tenum.seekExact(startFacetOrd);
           for (int i = startFacetOrd; i < endFacetOrd; i++) {
-            allFacetTermsInRange.add(BytesRef.deepCopyOf(tenum.term()));
+            BytesRef term = tenum.term();
+            if (!allFacetTermsInRange.contains(term)) {
+              allFacetTermsInRange.add(BytesRef.deepCopyOf(term));
+            }
             if (i + 1 < endFacetOrd) {
               tenum.next();
             }
