@@ -33,7 +33,8 @@ import org.apache.lucene.store.ByteBuffersDirectory;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.IOUtils;
 
-abstract class DocumentBatch implements Closeable, Supplier<LeafReader> {
+/** Abstraction for a DocumentBatch containing a single or a set of documents. */
+public abstract class DocumentBatch implements Closeable, Supplier<LeafReader> {
 
   /**
    * Create a DocumentBatch containing a single InputDocument
