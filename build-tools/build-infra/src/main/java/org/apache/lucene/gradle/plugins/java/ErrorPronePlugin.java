@@ -554,7 +554,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "JavaDurationWithNanos:OFF", // we don't use these Duration methods
     "JavaDurationWithSeconds:OFF", // we don't use these Duration methods
     "JavaInstantGetSecondsGetNano:OFF", // we don't use these Instant methods
-    "JavaLangClash:OFF", // TODO: there are problems
+    "AvoidCommonTypeNames:OFF", // TODO: there are problems
     "JavaLocalDateTimeGetNano:OFF", // we don't use LocalDateTime
     "JavaLocalTimeGetNano:OFF", // we don't use LocalTime
     "JavaPeriodGetDays:OFF", // we don't use Period
