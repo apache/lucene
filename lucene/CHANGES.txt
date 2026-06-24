@@ -280,7 +280,7 @@ Other
 API Changes
 ---------------------
 
-* GITHUB#XXXXX: Introduce BinaryDocValues#binaryValues to help speed up the
+* GITHUB#16286: Introduce BinaryDocValues#binaryValues to help speed up the
   retrieval of many binary doc values at once. (Costin Leau)
 
 New Features
