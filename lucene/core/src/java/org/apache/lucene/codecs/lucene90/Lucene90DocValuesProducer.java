@@ -2281,14 +2281,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    CodecUtil.checksumEntireFile(data);
-    if (skipIndexData != null) {
-      CodecUtil.checksumEntireFile(skipIndexData);
-    }
-  }
-
-  @Override
   public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     CodecUtil.checksumEntireFile(data, merge);
     if (skipIndexData != null) {

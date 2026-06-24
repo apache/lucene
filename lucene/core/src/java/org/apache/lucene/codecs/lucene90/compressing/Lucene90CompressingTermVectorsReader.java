@@ -1350,12 +1350,6 @@ public final class Lucene90CompressingTermVectorsReader extends TermVectorsReade
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    indexReader.checkIntegrity();
-    CodecUtil.checksumEntireFile(vectorsStream);
-  }
-
-  @Override
   public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     indexReader.checkIntegrity(merge);
     CodecUtil.checksumEntireFile(vectorsStream, merge);

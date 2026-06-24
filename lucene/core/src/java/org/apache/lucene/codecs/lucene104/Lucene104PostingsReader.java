@@ -1470,19 +1470,6 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    if (docIn != null) {
-      CodecUtil.checksumEntireFile(docIn);
-    }
-    if (posIn != null) {
-      CodecUtil.checksumEntireFile(posIn);
-    }
-    if (payIn != null) {
-      CodecUtil.checksumEntireFile(payIn);
-    }
-  }
-
-  @Override
   public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     if (docIn != null) {
       CodecUtil.checksumEntireFile(docIn, merge);

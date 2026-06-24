@@ -94,11 +94,6 @@ public class MismatchedCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      in.checkIntegrity();
-    }
-
-    @Override
     public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       in.checkIntegrity(merge);
     }
@@ -172,11 +167,6 @@ public class MismatchedCodecReader extends FilterCodecReader {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      in.checkIntegrity();
-    }
-
-    @Override
     public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       in.checkIntegrity(merge);
     }
@@ -217,11 +207,6 @@ public class MismatchedCodecReader extends FilterCodecReader {
     @Override
     public NumericDocValues getNorms(FieldInfo field) throws IOException {
       return in.getNorms(remapFieldInfo(field));
-    }
-
-    @Override
-    public void checkIntegrity() throws IOException {
-      in.checkIntegrity();
     }
 
     @Override

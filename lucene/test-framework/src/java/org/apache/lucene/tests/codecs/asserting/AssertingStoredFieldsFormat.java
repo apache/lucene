@@ -85,11 +85,6 @@ public class AssertingStoredFieldsFormat extends StoredFieldsFormat {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      in.checkIntegrity();
-    }
-
-    @Override
     public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       in.checkIntegrity(merge);
     }

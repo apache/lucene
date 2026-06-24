@@ -105,17 +105,6 @@ class CrankyPointsFormat extends PointsFormat {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      if (random.nextInt(100) == 0) {
-        throw new IOException("Fake IOException");
-      }
-      delegate.checkIntegrity();
-      if (random.nextInt(100) == 0) {
-        throw new IOException("Fake IOException");
-      }
-    }
-
-    @Override
     public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       if (random.nextInt(100) == 0) {
         throw new IOException("Fake IOException");

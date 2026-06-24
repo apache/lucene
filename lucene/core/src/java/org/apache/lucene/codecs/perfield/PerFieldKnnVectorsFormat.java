@@ -268,13 +268,6 @@ public abstract class PerFieldKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      for (ObjectCursor<KnnVectorsReader> cursor : fields.values()) {
-        cursor.value.checkIntegrity();
-      }
-    }
-
-    @Override
     public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (ObjectCursor<KnnVectorsReader> cursor : fields.values()) {
         cursor.value.checkIntegrity(merge);

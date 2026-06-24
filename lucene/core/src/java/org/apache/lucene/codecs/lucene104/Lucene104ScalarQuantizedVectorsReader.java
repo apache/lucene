@@ -222,12 +222,6 @@ public class Lucene104ScalarQuantizedVectorsReader extends FlatVectorsReader
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    rawVectorsReader.checkIntegrity();
-    CodecUtil.checksumEntireFile(quantizedVectorData);
-  }
-
-  @Override
   public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     rawVectorsReader.checkIntegrity(merge);
     CodecUtil.checksumEntireFile(quantizedVectorData, merge);

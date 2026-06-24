@@ -35,25 +35,12 @@ public abstract class TermVectorsReader extends TermVectors implements Cloneable
    * Checks consistency of this reader.
    *
    * <p>Note that this may be costly in terms of I/O, e.g. may involve computing a checksum value
-   * against large data files.
-   *
-   * @lucene.internal
-   */
-  public abstract void checkIntegrity() throws IOException;
-
-  /**
-   * Checks consistency of this reader, periodically checking if the provided merge has been
-   * aborted. Subclasses should override this to propagate the abort check into expensive checksum
-   * computations.
-   *
-   * <p>The default implementation delegates to {@link #checkIntegrity()}.
+   * against large data files. A {@code OneMerge} can be provided so that expensive checksum
+   * computations can be periodically interrupted when the merge is aborted.
    *
    * @param merge the merge to check for abort, or {@code null} for non-interruptible behavior
-   * @lucene.internal
    */
-  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
-    checkIntegrity();
-  }
+  public abstract void checkIntegrity(MergePolicy.OneMerge merge) throws IOException;
 
   /** Create a clone that one caller at a time may use to read term vectors. */
   @Override

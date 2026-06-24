@@ -127,11 +127,6 @@ public class AssertingKnnVectorsFormat extends KnnVectorsFormat {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      delegate.checkIntegrity();
-    }
-
-    @Override
     public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       delegate.checkIntegrity(merge);
     }

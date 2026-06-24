@@ -297,18 +297,6 @@ public final class Lucene103BlockTreeTermsReader extends FieldsProducer {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    // terms index
-    CodecUtil.checksumEntireFile(indexIn);
-
-    // term dictionary
-    CodecUtil.checksumEntireFile(termsIn);
-
-    // postings
-    postingsReader.checkIntegrity();
-  }
-
-  @Override
   public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     // terms index
     CodecUtil.checksumEntireFile(indexIn, merge);

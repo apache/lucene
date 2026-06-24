@@ -756,12 +756,6 @@ public final class Lucene90CompressingStoredFieldsReader extends StoredFieldsRea
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    indexReader.checkIntegrity();
-    CodecUtil.checksumEntireFile(fieldsStream);
-  }
-
-  @Override
   public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     indexReader.checkIntegrity(merge);
     CodecUtil.checksumEntireFile(fieldsStream, merge);

@@ -349,13 +349,6 @@ public abstract class PerFieldPostingsFormat extends PostingsFormat {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      for (FieldsProducer producer : formats.values()) {
-        producer.checkIntegrity();
-      }
-    }
-
-    @Override
     public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (FieldsProducer producer : formats.values()) {
         producer.checkIntegrity(merge);

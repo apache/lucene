@@ -263,12 +263,6 @@ public final class Lucene99HnswVectorsReader extends KnnVectorsReader
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    flatVectorsReader.checkIntegrity();
-    CodecUtil.checksumEntireFile(vectorIndex);
-  }
-
-  @Override
   public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     flatVectorsReader.checkIntegrity(merge);
     CodecUtil.checksumEntireFile(vectorIndex, merge);

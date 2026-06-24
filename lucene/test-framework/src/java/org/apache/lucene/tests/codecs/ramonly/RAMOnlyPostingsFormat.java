@@ -88,9 +88,6 @@ public final class RAMOnlyPostingsFormat extends PostingsFormat {
     public void close() {}
 
     @Override
-    public void checkIntegrity() throws IOException {}
-
-    @Override
     public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {}
   }
 

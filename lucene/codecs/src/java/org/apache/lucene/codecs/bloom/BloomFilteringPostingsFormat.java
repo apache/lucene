@@ -388,11 +388,6 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      delegateFieldsProducer.checkIntegrity();
-    }
-
-    @Override
     public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       delegateFieldsProducer.checkIntegrity(merge);
     }

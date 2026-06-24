@@ -155,11 +155,6 @@ final class FieldsIndexReader extends FieldsIndex {
   }
 
   @Override
-  void checkIntegrity() throws IOException {
-    CodecUtil.checksumEntireFile(indexInput);
-  }
-
-  @Override
   void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     CodecUtil.checksumEntireFile(indexInput, merge);
   }

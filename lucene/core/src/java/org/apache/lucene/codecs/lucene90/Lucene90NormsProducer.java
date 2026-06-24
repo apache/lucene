@@ -501,11 +501,6 @@ final class Lucene90NormsProducer extends NormsProducer implements Cloneable {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    CodecUtil.checksumEntireFile(data);
-  }
-
-  @Override
   public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     CodecUtil.checksumEntireFile(data, merge);
   }

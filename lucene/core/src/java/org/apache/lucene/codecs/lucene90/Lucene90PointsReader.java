@@ -144,12 +144,6 @@ public class Lucene90PointsReader extends PointsReader {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
-    CodecUtil.checksumEntireFile(indexIn);
-    CodecUtil.checksumEntireFile(dataIn);
-  }
-
-  @Override
   public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     CodecUtil.checksumEntireFile(indexIn, merge);
     CodecUtil.checksumEntireFile(dataIn, merge);

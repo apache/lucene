@@ -74,11 +74,6 @@ public class SimpleTextNormsFormat extends NormsFormat {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      impl.checkIntegrity();
-    }
-
-    @Override
     public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       impl.checkIntegrity(merge);
     }

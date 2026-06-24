@@ -354,13 +354,6 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      for (DocValuesProducer format : formats.values()) {
-        format.checkIntegrity();
-      }
-    }
-
-    @Override
     public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (DocValuesProducer format : formats.values()) {
         format.checkIntegrity(merge);

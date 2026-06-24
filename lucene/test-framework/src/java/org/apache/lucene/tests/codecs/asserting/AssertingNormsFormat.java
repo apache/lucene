@@ -114,11 +114,6 @@ public class AssertingNormsFormat extends NormsFormat {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      in.checkIntegrity();
-    }
-
-    @Override
     public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       in.checkIntegrity(merge);
     }

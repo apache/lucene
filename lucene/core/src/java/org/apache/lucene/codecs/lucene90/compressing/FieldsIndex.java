@@ -36,13 +36,8 @@ abstract class FieldsIndex implements Cloneable, Closeable {
     return getBlockStartPointer(getBlockID(docID));
   }
 
-  /** Check the integrity of the index. */
-  abstract void checkIntegrity() throws IOException;
-
   /** Check the integrity of the index, with periodic merge abort checks. */
-  void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
-    checkIntegrity();
-  }
+  abstract void checkIntegrity(MergePolicy.OneMerge merge) throws IOException;
 
   @Override
   public abstract FieldsIndex clone();
