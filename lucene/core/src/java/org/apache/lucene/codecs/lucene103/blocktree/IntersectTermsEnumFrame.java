@@ -24,6 +24,7 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.store.ByteArrayDataInput;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.Simple64;
 import org.apache.lucene.util.automaton.Transition;
 
 // TODO: can we share this with the frame in STE?
@@ -48,6 +49,7 @@ final class IntersectTermsEnumFrame {
   final ByteArrayDataInput suffixesReader = new ByteArrayDataInput();
 
   byte[] suffixLengthBytes;
+  // Only used in non-leaf blocks.
   final ByteArrayDataInput suffixLengthsReader;
 
   byte[] statBytes = new byte[64];
@@ -73,6 +75,10 @@ final class IntersectTermsEnumFrame {
   // True if all entries are terms
   boolean isLeafBlock;
 
+  // True if all entries have the same length.
+  boolean allEqual;
+  int[] suffixLengths; // only used when !allEqual in leaf blocks.
+
   int numFollowFloorBlocks;
   int nextFloorLabel;
 
@@ -90,7 +96,7 @@ final class IntersectTermsEnumFrame {
   final ByteArrayDataInput bytesReader = new ByteArrayDataInput();
 
   int startBytePos;
-  int suffix;
+  int suffixLength;
 
   private final IntersectTermsEnum ite;
 
@@ -101,6 +107,7 @@ final class IntersectTermsEnumFrame {
     this.termState.totalTermFreq = -1;
     suffixLengthBytes = new byte[32];
     suffixLengthsReader = new ByteArrayDataInput();
+    suffixLengths = null;
   }
 
   void loadNextFloorBlock() throws IOException {
@@ -190,18 +197,32 @@ final class IntersectTermsEnumFrame {
     suffixesReader.reset(suffixBytes, 0, numSuffixBytes);
 
     int numSuffixLengthBytes = ite.in.readVInt();
-    final boolean allEqual = (numSuffixLengthBytes & 0x01) != 0;
+    allEqual = (numSuffixLengthBytes & 0x01) != 0;
     numSuffixLengthBytes >>>= 1;
-    if (suffixLengthBytes.length < numSuffixLengthBytes) {
-      suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
-    }
-    if (allEqual) {
-      Arrays.fill(suffixLengthBytes, 0, numSuffixLengthBytes, ite.in.readByte());
+    if (isLeafBlock) {
+      if (allEqual) {
+        suffixLength = numSuffixLengthBytes;
+      } else {
+        final int numLongs = numSuffixLengthBytes;
+        suffixLengths = new int[entCount];
+        long[] longs = new long[numLongs];
+        for (int i = 0; i < numLongs; i++) {
+          longs[i] = ite.in.readLong();
+        }
+        // TODO: read and decode one long only when it is needed.
+        Simple64.decodeAll(longs, 0, suffixLengths, 0, entCount);
+      }
     } else {
-      ite.in.readBytes(suffixLengthBytes, 0, numSuffixLengthBytes);
+      if (suffixLengthBytes.length < numSuffixLengthBytes) {
+        suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
+      }
+      if (allEqual) {
+        Arrays.fill(suffixLengthBytes, 0, numSuffixLengthBytes, ite.in.readByte());
+      } else {
+        ite.in.readBytes(suffixLengthBytes, 0, numSuffixLengthBytes);
+      }
+      suffixLengthsReader.reset(suffixLengthBytes, 0, numSuffixLengthBytes);
     }
-    suffixLengthsReader.reset(suffixLengthBytes, 0, numSuffixLengthBytes);
-
     // stats
     int numBytes = ite.in.readVInt();
     if (statBytes.length < numBytes) {
@@ -245,10 +266,12 @@ final class IntersectTermsEnumFrame {
   public void nextLeaf() {
     assert nextEnt != -1 && nextEnt < entCount
         : "nextEnt=" + nextEnt + " entCount=" + entCount + " fp=" + fp;
+    if (allEqual == false) {
+      suffixLength = suffixLengths[nextEnt];
+    }
     nextEnt++;
-    suffix = suffixLengthsReader.readVInt();
     startBytePos = suffixesReader.getPosition();
-    suffixesReader.skipBytes(suffix);
+    suffixesReader.skipBytes(suffixLength);
   }
 
   public boolean nextNonLeaf() {
@@ -256,9 +279,9 @@ final class IntersectTermsEnumFrame {
         : "nextEnt=" + nextEnt + " entCount=" + entCount + " fp=" + fp;
     nextEnt++;
     final int code = suffixLengthsReader.readVInt();
-    suffix = code >>> 1;
+    suffixLength = code >>> 1;
     startBytePos = suffixesReader.getPosition();
-    suffixesReader.skipBytes(suffix);
+    suffixesReader.skipBytes(suffixLength);
     if ((code & 1) == 0) {
       // A normal term
       termState.termBlockOrd++;

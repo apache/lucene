@@ -43,6 +43,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.Simple64;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.ToStringUtils;
 import org.apache.lucene.util.compress.LZ4;
@@ -762,11 +763,14 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
 
       boolean absolute = true;
 
+      int[] suffixLengths = null;
+      boolean allEquals = true;
       if (isLeafBlock) {
         // Block contains only ordinary terms:
         subIndices = null;
         StatsWriter statsWriter =
             new StatsWriter(this.statsWriter, fieldInfo.getIndexOptions() != IndexOptions.DOCS);
+        suffixLengths = new int[end - start];
         for (int i = start; i < end; i++) {
           PendingEntry ent = pending.get(i);
           assert ent.isTerm : "i=" + i;
@@ -784,8 +788,11 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
           // ToStringUtils.bytesRefToString(suffixBytes));
           // }
 
-          // For leaf block we write suffixLength straight
-          suffixLengthsWriter.writeVInt(suffixLength);
+          suffixLengths[i - start] = suffixLength;
+          if (allEquals && i > start) {
+            allEquals = suffixLength == suffixLengths[0];
+          }
+
           suffixWriter.append(term.termBytes, prefixLength, suffixLength);
           assert floorLeadLabel == -1 || (term.termBytes[prefixLength] & 0xff) >= floorLeadLabel;
 
@@ -931,18 +938,35 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
       suffixWriter.setLength(0);
       spareWriter.reset();
 
-      // Write suffix lengths
-      final int numSuffixBytes = Math.toIntExact(suffixLengthsWriter.size());
-      spareBytes = ArrayUtil.growNoCopy(spareBytes, numSuffixBytes);
-      suffixLengthsWriter.copyTo(new ByteArrayDataOutput(spareBytes));
-      suffixLengthsWriter.reset();
-      if (allEqual(spareBytes, 1, numSuffixBytes, spareBytes[0])) {
-        // Structured fields like IDs often have most values of the same length
-        termsOut.writeVInt((numSuffixBytes << 1) | 1);
-        termsOut.writeByte(spareBytes[0]);
+      if (isLeafBlock) {
+        assert suffixLengths != null;
+        if (allEquals) {
+          // All suffix lengths are the same, so we can just write that one length:
+          termsOut.writeVInt((suffixLengths[0] << 1) | 1);
+        } else {
+          long[] encodedSuffixLengths = new long[suffixLengths.length];
+          int numLongs =
+              Simple64.encodeAll(suffixLengths, 0, suffixLengths.length, encodedSuffixLengths, 0);
+          termsOut.writeVInt(numLongs << 1);
+          for (int i = 0; i < numLongs; i++) {
+            termsOut.writeLong(encodedSuffixLengths[i]);
+          }
+        }
       } else {
-        termsOut.writeVInt(numSuffixBytes << 1);
-        termsOut.writeBytes(spareBytes, numSuffixBytes);
+        // Write suffix lengths
+        final int numSuffixBytes = Math.toIntExact(suffixLengthsWriter.size());
+        spareBytes = ArrayUtil.growNoCopy(spareBytes, numSuffixBytes);
+        suffixLengthsWriter.copyTo(new ByteArrayDataOutput(spareBytes));
+        suffixLengthsWriter.reset();
+
+        if (allEqual(spareBytes, 1, numSuffixBytes, spareBytes[0])) {
+          // Structured fields like IDs often have most values of the same length
+          termsOut.writeVInt((numSuffixBytes << 1) | 1);
+          termsOut.writeByte(spareBytes[0]);
+        } else {
+          termsOut.writeVInt(numSuffixBytes << 1);
+          termsOut.writeBytes(spareBytes, numSuffixBytes);
+        }
       }
 
       // Stats
