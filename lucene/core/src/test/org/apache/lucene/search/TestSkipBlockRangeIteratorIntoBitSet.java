@@ -807,6 +807,45 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
     }
   }
 
+  public void testSingletonDelegatesRangeIntoBitSet() throws Exception {
+    int numDocs = 4096 * 4;
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig conf = new IndexWriterConfig();
+      conf.setCodec(new Lucene104Codec());
+      try (IndexWriter writer = new IndexWriter(dir, conf)) {
+        for (int i = 0; i < numDocs; i++) {
+          Document doc = new Document();
+          long value = i % 100;
+          doc.add(NumericDocValuesField.indexedField("numeric", value));
+          doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric", value));
+          writer.addDocument(doc);
+        }
+        writer.forceMerge(1);
+      }
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        for (LeafReaderContext ctx : reader.leaves()) {
+          int maxDoc = ctx.reader().maxDoc();
+
+          FixedBitSet fromNumeric = new FixedBitSet(maxDoc);
+          ctx.reader()
+              .getNumericDocValues("numeric")
+              .rangeIntoBitSet(0, maxDoc, 20, 40, fromNumeric, 0);
+
+          FixedBitSet fromSingleton = new FixedBitSet(maxDoc);
+          ctx.reader()
+              .getSortedNumericDocValues("sorted_numeric")
+              .rangeIntoBitSet(0, maxDoc, 20, 40, fromSingleton, 0);
+
+          assertEquals(
+              "Singleton sorted numeric should produce identical results to underlying numeric",
+              fromNumeric,
+              fromSingleton);
+          assertTrue("Expected some bits set", fromNumeric.cardinality() > 0);
+        }
+      }
+    }
+  }
+
   private static long[] rangeValues(int numDocs, LongUnaryOperator valueFunction) {
     long[] values = new long[numDocs];
     for (int i = 0; i < numDocs; i++) {
