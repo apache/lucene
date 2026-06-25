@@ -259,6 +259,7 @@ public class TestRamUsageEstimator extends LuceneTestCase {
   }
 
   private static class DummyAccountable implements Accountable {
+    @Override
     public long ramBytesUsed() {
       return 1L;
     }
