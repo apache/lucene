@@ -428,6 +428,9 @@ public final class RamUsageEstimator {
    * Accountable#ramBytesUsed()} method.
    */
   public static long sizeOf(Accountable accountable) {
+    if(accountable == null){
+      return 0;
+    }
     return accountable.ramBytesUsed();
   }
 
