@@ -58,11 +58,27 @@ public class TestCachingCollectorManager extends LuceneTestCase {
         () -> caching.replay(new TopScoreDocCollectorManager(10, Integer.MAX_VALUE)));
   }
 
-  public void testConstructorValidation() {
+  public void testConstructor() {
     assertThrows(
         IllegalArgumentException.class,
         () ->
             new CachingCollectorManager<>(
                 new TopScoreDocCollectorManager(10, Integer.MAX_VALUE), false, null, null));
+
+    CachingCollectorManager<TopScoreDocCollector, TopDocs> caching =
+        new CachingCollectorManager<>(
+            new TopScoreDocCollectorManager(10, Integer.MAX_VALUE),
+            random().nextBoolean(),
+            null,
+            Integer.MAX_VALUE);
+    assertFalse(caching.isCached());
+
+    caching =
+        new CachingCollectorManager<>(
+            new TopScoreDocCollectorManager(10, Integer.MAX_VALUE),
+            random().nextBoolean(),
+            1.0,
+            null);
+    assertFalse(caching.isCached());
   }
 }
