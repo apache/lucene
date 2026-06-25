@@ -150,7 +150,7 @@ public class TestRamUsageEstimator extends LuceneTestCase {
     assertEquals((double) actual, (double) estimated, (double) actual * errorFactor);
   }
 
-  public void testAccountable(){
+  public void testAccountable() {
     assertEquals(0L, RamUsageEstimator.sizeOf((Accountable) null));
     assertEquals(1L, RamUsageEstimator.sizeOf(new DummyAccountable()));
   }
