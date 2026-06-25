@@ -275,6 +275,32 @@ Other
 
 * GITHUB#16170: Add JMH benchmarks for int4BitDotProduct and int4DibitDotProduct. (Vignesh)
 
+======================= Lucene 10.6.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+(No changes)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================= Lucene 10.5.0 =======================
 
 API Changes
@@ -345,6 +371,9 @@ New Features
 * GITHUB#16110: Add count() to BayesianScoreQuery.BayesianScoreWeight, delegating to
   the inner weight. (Prithvi S)
 
+* GITHUB#16117: Add updateDocuments(Term, ColumnBatch) and updateDocuments(Query, ColumnBatch)
+  to IndexWriter for atomic delete-and-add columnar operations. (Prithvi S)
+
 Improvements
 ---------------------
 * GITHUB#15948: Improve BayesianScoreQuery and LogOddsFusionQuery with base rate prior,
@@ -408,6 +437,9 @@ Improvements
 * GITHUB#16216: Add DiversifiedTopDocsCollectorManager to enable concurrent search with
   DiversifiedTopDocsCollector, removing usages of the deprecated IndexSearcher#search(Query, Collector).
   (Luca Cavanna)
+
+* GITHUB#16264: Check if merge is aborted before executing file integrity checks to avoid
+  costly full-file checksums on segments when the merge has already been cancelled. (Tanguy Leroux)
 
 Optimizations
 ---------------------
@@ -607,6 +639,9 @@ Bug Fixes
 
 * GITHUB#16179: Fix minor lock/unlock acquisition order in DocumentsWriterDeleteQueue (Chris Hegarty)
 
+* GITHUB#16250: Fix NullPointerException in RoaringDocIdSet#intoBitSet when the iterator is already
+  exhausted. (Venkateshwaran Shanmugham)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
@@ -655,6 +690,8 @@ Other
 * GITHUB#16219: Allow multiple addBatch columns per field name. (Tim Brooks)
 
 * GITHUB#16215: Extract segment-boundary check into helper in QueryUtils (Luca Cavanna)
+
+* GITHUB#16258: Extract per-doc assertion helpers in QueryUtils (Luca Cavanna)
 
 ======================= Lucene 10.4.0 =======================
 
