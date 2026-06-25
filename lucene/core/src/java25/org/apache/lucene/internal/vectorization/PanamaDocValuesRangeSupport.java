@@ -80,6 +80,7 @@ final class PanamaDocValuesRangeSupport implements DocValuesRangeSupport {
       long maxValue,
       FixedBitSet bitSet,
       int offset) {
+    assert cardinality > 0 : "cardinality must be positive: " + cardinality;
     final int vectorLen = LONG_SPECIES.length();
     final int docsPerVector = vectorLen / cardinality;
     if (docsPerVector == 0 || vectorLen % cardinality != 0) {

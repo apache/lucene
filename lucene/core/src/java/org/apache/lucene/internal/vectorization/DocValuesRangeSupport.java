@@ -52,8 +52,13 @@ public interface DocValuesRangeSupport {
       int offset);
 
   /**
-   * Fills {@code bitSet} with docs in {@code [fromDoc, toDoc)} whose {@code cardinality} sorted
-   * values contain at least one value in {@code [minValue, maxValue]}.
+   * Fills {@code bitSet} with docs in {@code [fromDoc, toDoc)} whose sorted numeric values contain
+   * at least one value in {@code [minValue, maxValue]}.
+   *
+   * <p>This method only supports <b>fixed-cardinality</b> fields where every document has exactly
+   * {@code cardinality} values stored contiguously starting at index {@code doc * cardinality}.
+   *
+   * @param cardinality number of values per document (must be &gt; 0)
    */
   default void sortedNumericRangeIntoBitSet(
       LongValues values,
