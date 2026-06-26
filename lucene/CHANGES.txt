@@ -323,7 +323,7 @@ Optimizations
 Bug Fixes
 ---------------------
 
-* GITHUB#XXXXX: SingletonSortedNumericDocValues now delegates rangeIntoBitSet
+* GITHUB#16295: SingletonSortedNumericDocValues now delegates rangeIntoBitSet
   to the wrapped NumericDocValues, enabling optimized range evaluation for
   single-valued sorted numeric fields. (Costin Leau)
 
