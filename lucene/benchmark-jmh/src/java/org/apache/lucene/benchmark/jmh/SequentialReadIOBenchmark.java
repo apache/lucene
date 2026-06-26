@@ -81,6 +81,7 @@ public class SequentialReadIOBenchmark extends AbstractReadIOBenchmark {
   // ======== mmap NORMAL + sliding 2MB WILLNEED prefetch window ========
 
   @Benchmark
+  @SuppressWarnings("unused")
   public void mmapBatchedPrefetch(ThreadBuffers tb, Blackhole bh) {
     byte[] dst = tb.heapBuf.array();
     long offset = seqPosition;

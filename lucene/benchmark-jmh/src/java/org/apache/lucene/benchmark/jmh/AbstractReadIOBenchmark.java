@@ -41,7 +41,7 @@ import org.openjdk.jmh.annotations.TearDown;
  * posix_madvise, fcntl), thread-local buffers, file/mmap setup, and configuration parsing.
  */
 @State(Scope.Benchmark)
-@SuppressWarnings("restricted")
+@SuppressWarnings({"restricted", "unused"})
 public abstract class AbstractReadIOBenchmark {
 
   protected static final long ALIGNMENT = 4096;

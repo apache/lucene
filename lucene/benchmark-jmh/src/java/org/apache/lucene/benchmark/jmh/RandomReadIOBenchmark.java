@@ -268,6 +268,7 @@ public class RandomReadIOBenchmark extends AbstractReadIOBenchmark {
     }
   }
 
+  @SuppressWarnings("unused")
   private void doMmapBatchedPrefetch(ThreadBuffers tb, Blackhole bh) {
     ThreadLocalRandom rng = ThreadLocalRandom.current();
     byte[] dst = tb.heapBuf.array();
@@ -289,6 +290,7 @@ public class RandomReadIOBenchmark extends AbstractReadIOBenchmark {
     }
   }
 
+  @SuppressWarnings("unused")
   private void doMmapMadvRandomBatchedPrefetch(ThreadBuffers tb, Blackhole bh) {
     ThreadLocalRandom rng = ThreadLocalRandom.current();
     byte[] dst = tb.heapBuf.array();
