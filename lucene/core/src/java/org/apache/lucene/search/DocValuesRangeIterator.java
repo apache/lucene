@@ -172,7 +172,7 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     }
     boolean contiguous = distinctCount == max - min + 1;
     if (contiguous) {
-      return new OrdinalSet(min, max, v -> true, true);
+      return new OrdinalSet(min, max, _ -> true, true);
     }
     LongHashSet ords = new LongHashSet(count);
     for (int i = 0; i < count; i++) {
