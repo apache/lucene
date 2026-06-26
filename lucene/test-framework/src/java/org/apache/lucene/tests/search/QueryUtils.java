@@ -364,8 +364,10 @@ public class QueryUtils {
           continue;
         }
         DocIdSetIterator outerIterator = outerScorer.iterator();
+        Bits liveDocs = leafContext.reader().getLiveDocs();
         int doc;
         while ((doc = outerIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          if (liveDocs != null && !liveDocs.get(doc)) continue;
           float score = outerScorer.score();
           lastDoc = doc;
 
@@ -415,8 +417,10 @@ public class QueryUtils {
         continue;
       }
       DocIdSetIterator outerIterator = outerScorer.iterator();
+      Bits liveDocs = leafContext.reader().getLiveDocs();
       int doc;
       while ((doc = outerIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        if (liveDocs != null && !liveDocs.get(doc)) continue;
         float score = outerScorer.score();
         // The intervalTimes32 trick helps contain the runtime of this check: first we check
         // every single doc in the interval, then after 32 docs we check every 2 docs, etc.
