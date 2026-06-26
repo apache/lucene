@@ -292,7 +292,7 @@ Improvements
 Optimizations
 ---------------------
 
-* GITHUB#XXXXX: Route constant-score doc-values queries through
+* GITHUB#16294: Route constant-score doc-values queries through
   ConstantScoreScorerSupplier so they can benefit from batch scoring.
   Affects BinaryRangeFieldRangeQuery, LatLonDocValuesBoxQuery,
   LatLonDocValuesQuery, XYDocValuesPointInGeometryQuery, and
