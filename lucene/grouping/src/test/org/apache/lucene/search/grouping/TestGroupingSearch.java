@@ -106,7 +106,7 @@ public class TestGroupingSearch extends AbstractGroupingTestCase {
     // 6 -- no author field
     doc = new Document();
     doc.add(new TextField("content", "random word stuck in alot of other text", Field.Store.YES));
-    doc.add(new Field("id", "7", customType));
+    doc.add(new Field("id", "6", customType));
     doc.add(new StringField("groupend", "x", Field.Store.NO));
 
     w.addDocument(doc);
