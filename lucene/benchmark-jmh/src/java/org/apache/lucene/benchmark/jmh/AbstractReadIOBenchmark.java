@@ -30,6 +30,7 @@ import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.Locale;
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
@@ -41,7 +42,6 @@ import org.openjdk.jmh.annotations.TearDown;
  * posix_madvise, fcntl), thread-local buffers, file/mmap setup, and configuration parsing.
  */
 @State(Scope.Benchmark)
-@SuppressWarnings({"restricted", "unused"})
 public abstract class AbstractReadIOBenchmark {
 
   protected static final long ALIGNMENT = 4096;
@@ -62,9 +62,10 @@ public abstract class AbstractReadIOBenchmark {
   protected static final int MADV_RANDOM = 1;
   protected static final int MADV_WILLNEED = 3;
 
-  private static final boolean IS_MAC = System.getProperty("os.name").toLowerCase().contains("mac");
+  private static final boolean IS_MAC =
+      System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("mac");
   private static final boolean IS_LINUX =
-      System.getProperty("os.name").toLowerCase().contains("linux");
+      System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("linux");
 
   // FFI handles
   protected static final MethodHandle PREAD;
@@ -161,12 +162,6 @@ public abstract class AbstractReadIOBenchmark {
 
   @Setup(Level.Trial)
   public void setup() throws Exception {
-    System.out.println("[bench] ===== " + benchmarkName() + " Configuration =====");
-    System.out.println("[bench]   file:         " + BENCH_FILE);
-    System.out.println("[bench]   fileSizeMB:   " + (FILE_SIZE / (1024 * 1024)));
-    System.out.println("[bench]   dropCaches:   " + DROP_CACHES);
-    System.out.println("[bench] ===============================================");
-
     tempFile = Path.of(BENCH_FILE);
     if (!Files.exists(tempFile)) {
       throw new IOException(
@@ -200,7 +195,7 @@ public abstract class AbstractReadIOBenchmark {
     try {
       int rc = (int) POSIX_MADVISE.invokeExact(mmapSegmentMadvRandom, FILE_SIZE, MADV_RANDOM);
       if (rc != 0) {
-        System.err.println("WARNING: posix_madvise(MADV_RANDOM) returned " + rc);
+        throw new IllegalStateException("WARNING: posix_madvise(MADV_RANDOM) returned " + rc);
       }
     } catch (Throwable t) {
       throw new RuntimeException("posix_madvise(MADV_RANDOM) failed", t);
@@ -228,9 +223,8 @@ public abstract class AbstractReadIOBenchmark {
           int F_NOCACHE = 48;
           int rc = (int) FCNTL.invokeExact(directIoFd, F_NOCACHE, 1);
           if (rc != 0) {
-            System.err.println("WARNING: fcntl(F_NOCACHE) failed");
             CLOSE.invokeExact(directIoFd);
-            directIoFd = -1;
+            throw new IllegalStateException("WARNING: fcntl(F_NOCACHE) failed");
           }
         }
       } else {
@@ -240,12 +234,12 @@ public abstract class AbstractReadIOBenchmark {
       throw new RuntimeException("Failed to open file for direct I/O", t);
     }
     if (directIoFd < 0) {
-      System.err.println("WARNING: Direct I/O unavailable. Those benchmarks will skip.");
       directIoFd = -1;
     }
   }
 
   @TearDown(Level.Trial)
+  @SuppressWarnings({"restricted", "unused"})
   public void tearDown() throws Exception {
     fileChannel.close();
     try {
@@ -301,7 +295,6 @@ public abstract class AbstractReadIOBenchmark {
         throw new IOException("Interrupted during drop_caches", e);
       }
     }
-    System.out.println("[bench] Page caches dropped.");
   }
 
   /** Reads a config value from env var first, then system property, then default. */
