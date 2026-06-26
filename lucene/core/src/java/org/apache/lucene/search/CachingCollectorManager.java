@@ -70,8 +70,8 @@ public class CachingCollectorManager<C extends Collector, R>
       boolean cacheScores,
       Double maxRAMMB,
       Integer maxDocsToCache) {
-    if (maxRAMMB == null && maxDocsToCache == null) {
-      throw new IllegalArgumentException("Either maxRAMMB or maxDocsToCache must be set");
+    if (maxRAMMB == null && maxDocsToCache == null || maxRAMMB != null && maxDocsToCache != null) {
+      throw new IllegalArgumentException("Exactly one of maxRAMMB or maxDocsToCache must be set");
     }
     this.delegate = delegate;
     this.cacheScores = cacheScores;

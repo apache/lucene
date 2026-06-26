@@ -58,21 +58,21 @@ public class TestGroupingSearch extends AbstractGroupingTestCase {
     Document doc = new Document();
     addGroupField(doc, groupField, "author1", canUseIDV);
     doc.add(new TextField("content", "random text", Field.Store.YES));
-    doc.add(new Field("id", "0", customType));
+    doc.add(new Field("id", "1", customType));
     documents.add(doc);
 
     // 1
     doc = new Document();
     addGroupField(doc, groupField, "author1", canUseIDV);
     doc.add(new TextField("content", "some more random text", Field.Store.YES));
-    doc.add(new Field("id", "1", customType));
+    doc.add(new Field("id", "2", customType));
     documents.add(doc);
 
     // 2
     doc = new Document();
     addGroupField(doc, groupField, "author1", canUseIDV);
     doc.add(new TextField("content", "some more random textual data", Field.Store.YES));
-    doc.add(new Field("id", "2", customType));
+    doc.add(new Field("id", "3", customType));
     doc.add(new StringField("groupend", "x", Field.Store.NO));
     documents.add(doc);
     w.addDocuments(documents);
@@ -82,7 +82,7 @@ public class TestGroupingSearch extends AbstractGroupingTestCase {
     doc = new Document();
     addGroupField(doc, groupField, "author2", canUseIDV);
     doc.add(new TextField("content", "some random text", Field.Store.YES));
-    doc.add(new Field("id", "3", customType));
+    doc.add(new Field("id", "4", customType));
     doc.add(new StringField("groupend", "x", Field.Store.NO));
     w.addDocument(doc);
 
@@ -90,14 +90,14 @@ public class TestGroupingSearch extends AbstractGroupingTestCase {
     doc = new Document();
     addGroupField(doc, groupField, "author3", canUseIDV);
     doc.add(new TextField("content", "some more random text", Field.Store.YES));
-    doc.add(new Field("id", "4", customType));
+    doc.add(new Field("id", "5", customType));
     documents.add(doc);
 
     // 5
     doc = new Document();
     addGroupField(doc, groupField, "author3", canUseIDV);
     doc.add(new TextField("content", "random", Field.Store.YES));
-    doc.add(new Field("id", "5", customType));
+    doc.add(new Field("id", "6", customType));
     doc.add(new StringField("groupend", "x", Field.Store.NO));
     documents.add(doc);
     w.addDocuments(documents);
@@ -106,7 +106,7 @@ public class TestGroupingSearch extends AbstractGroupingTestCase {
     // 6 -- no author field
     doc = new Document();
     doc.add(new TextField("content", "random word stuck in alot of other text", Field.Store.YES));
-    doc.add(new Field("id", "6", customType));
+    doc.add(new Field("id", "7", customType));
     doc.add(new StringField("groupend", "x", Field.Store.NO));
 
     w.addDocument(doc);

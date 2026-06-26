@@ -58,6 +58,31 @@ public class TestCachingCollectorManager extends LuceneTestCase {
         () -> caching.replay(new TopScoreDocCollectorManager(10, Integer.MAX_VALUE)));
   }
 
+  public void testBasic() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter iw = new RandomIndexWriter(random(), dir);
+    for (int i = 0; i < 10; i++) {
+      iw.addDocument(new Document());
+    }
+    IndexSearcher searcher = newSearcher(iw.getReader());
+    iw.close();
+
+    CachingCollectorManager<TopScoreDocCollector, TopDocs> caching =
+        new CachingCollectorManager<>(
+            new TopScoreDocCollectorManager(10, Integer.MAX_VALUE), true, null, Integer.MAX_VALUE);
+
+    TopDocs firstResult = searcher.search(MatchAllDocsQuery.INSTANCE, caching);
+    assertTrue(caching.isCached());
+    assertEquals(10, firstResult.totalHits.value());
+
+    TopDocs replayResult = caching.replay(new TopScoreDocCollectorManager(10, Integer.MAX_VALUE));
+    assertEquals(firstResult.totalHits.value(), replayResult.totalHits.value());
+    assertEquals(firstResult.scoreDocs.length, replayResult.scoreDocs.length);
+
+    searcher.getIndexReader().close();
+    dir.close();
+  }
+
   public void testConstructor() {
     assertThrows(
         IllegalArgumentException.class,
@@ -65,20 +90,10 @@ public class TestCachingCollectorManager extends LuceneTestCase {
             new CachingCollectorManager<>(
                 new TopScoreDocCollectorManager(10, Integer.MAX_VALUE), false, null, null));
 
-    CachingCollectorManager<TopScoreDocCollector, TopDocs> caching =
-        new CachingCollectorManager<>(
-            new TopScoreDocCollectorManager(10, Integer.MAX_VALUE),
-            random().nextBoolean(),
-            null,
-            Integer.MAX_VALUE);
-    assertFalse(caching.isCached());
-
-    caching =
-        new CachingCollectorManager<>(
-            new TopScoreDocCollectorManager(10, Integer.MAX_VALUE),
-            random().nextBoolean(),
-            1.0,
-            null);
-    assertFalse(caching.isCached());
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            new CachingCollectorManager<>(
+                new TopScoreDocCollectorManager(10, Integer.MAX_VALUE), false, 1.0, 1));
   }
 }

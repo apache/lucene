@@ -287,7 +287,8 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#16247: Introduce CachingCollectorManager to parallelize search when using CachingCollector and remove useless GroupingSearch constructor (Binlong Gao)
 
 Optimizations
 ---------------------
@@ -423,8 +424,6 @@ Improvements
 * GITHUB#15574: Introduce FirstPassGroupingCollectorManager to parallelize search when using FirstPassGroupingCollector. (Binlong Gao)
 
 * GITHUB#15660: Introduce LargeNumHitsTopDocsCollectorManager to parallelize search when using LargeNumHitsTopDocsCollector. (Binlong Gao)
-
-* GITHUB#16247: Introduce CachingCollectorManager to parallelize search when using CachingCollector. (Binlong Gao)
 
 * GITHUB#16088: SearchGroup#merge now returns an empty collection instead of null when topGroups is empty. (Luca Cavanna)
 
