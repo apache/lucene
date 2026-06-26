@@ -291,7 +291,10 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUB#16282: Add fast paths to FixedBitSet.copyOf() for SparseLiveDocs and DenseLiveDocs,
+  avoiding the O(maxDoc) generic fallback. SparseLiveDocs now copies in O(deletedDocs) by
+  iterating only deleted doc IDs; DenseLiveDocs copies in O(maxDoc/64) by cloning the backing
+  FixedBitSet directly. (salvatorecampagna)
 
 Bug Fixes
 ---------------------

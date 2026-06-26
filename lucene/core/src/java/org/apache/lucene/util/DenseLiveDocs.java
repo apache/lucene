@@ -144,6 +144,10 @@ public final class DenseLiveDocs implements LiveDocs {
     return deletedCount;
   }
 
+  FixedBitSet toFixedBitSet() {
+    return liveDocs.clone();
+  }
+
   /**
    * Returns the memory usage in bytes.
    *

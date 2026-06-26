@@ -905,4 +905,41 @@ public class TestFixedBitSet extends BaseBitSetTestCase<FixedBitSet> {
       }
     }
   }
+
+  public void testCopyOfDenseLiveDocs() {
+    final int maxDoc = atLeast(1000);
+    final int numDeleted = random().nextInt(maxDoc / 2) + 1;
+
+    FixedBitSet liveDocsBitSet = new FixedBitSet(maxDoc);
+    liveDocsBitSet.set(0, maxDoc);
+    for (int i = 0; i < numDeleted; i++) {
+      liveDocsBitSet.clear(random().nextInt(maxDoc));
+    }
+    DenseLiveDocs dense = DenseLiveDocs.builder(liveDocsBitSet, maxDoc).build();
+
+    FixedBitSet result = FixedBitSet.copyOf(dense);
+
+    assertEquals(maxDoc, result.length());
+    for (int doc = 0; doc < maxDoc; doc++) {
+      assertEquals("mismatch at doc " + doc, dense.get(doc), result.get(doc));
+    }
+  }
+
+  public void testCopyOfSparseLiveDocs() {
+    final int maxDoc = atLeast(1000);
+    final int numDeleted = random().nextInt(Math.max(1, maxDoc / 100)) + 1;
+
+    SparseFixedBitSet deletedDocsBitSet = new SparseFixedBitSet(maxDoc);
+    for (int i = 0; i < numDeleted; i++) {
+      deletedDocsBitSet.set(random().nextInt(maxDoc));
+    }
+    SparseLiveDocs sparse = SparseLiveDocs.builder(deletedDocsBitSet, maxDoc).build();
+
+    FixedBitSet result = FixedBitSet.copyOf(sparse);
+
+    assertEquals(maxDoc, result.length());
+    for (int doc = 0; doc < maxDoc; doc++) {
+      assertEquals("mismatch at doc " + doc, sparse.get(doc), result.get(doc));
+    }
+  }
 }
