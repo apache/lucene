@@ -39,8 +39,8 @@ import org.openjdk.jmh.annotations.Warmup;
  * testing, as used by DocValuesRangeIterator.forOrdinalSet() on the per-doc hot path.
  *
  * <p>The ordinal space (ordCount) represents total unique values in a segment. The match count
- * represents how many ordinals a MultiTermQuery actually matches. Lookups simulate the per-doc check
- * where the doc's ordinal is tested against the set.
+ * represents how many ordinals a MultiTermQuery actually matches. Lookups simulate the per-doc
+ * check where the doc's ordinal is tested against the set.
  */
 @State(Scope.Thread)
 @BenchmarkMode(Mode.Throughput)
