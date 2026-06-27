@@ -139,6 +139,8 @@ Improvements
 
 * GITHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
 
+* GITHUB#16089: Upgrade DocIdSetBuilder to use FixedBitSet eagerly once exceeding the threshold (Ke Wei)
+
 Optimizations
 ---------------------
 * GITHUB#16254: Enable the vectorized findNextGEQ path on aarch64, where it was disabled on cores

@@ -208,6 +208,10 @@ public abstract class PointInSetQuery extends Query implements Accountable {
             @Override
             public Scorer get(long leadCost) throws IOException {
               DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
+              if (cost != -1) {
+                // If it is large, switch the builder to FixedBitSet mode up front.
+                result.expectMore(cost);
+              }
               values.intersect(new MergePointVisitor(sortedPackedPoints.iterator(), result));
               DocIdSetIterator iterator = result.build().iterator();
               return new ConstantScoreScorer(score(), scoreMode, iterator);
@@ -243,6 +247,10 @@ public abstract class PointInSetQuery extends Query implements Accountable {
             @Override
             public Scorer get(long leadCost) throws IOException {
               DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values);
+              if (cost != -1) {
+                // If it is large, switch the builder to FixedBitSet mode up front.
+                result.expectMore(cost);
+              }
               SinglePointVisitor visitor = new SinglePointVisitor(result);
               TermIterator iterator = sortedPackedPoints.iterator();
               for (BytesRef point = iterator.next(); point != null; point = iterator.next()) {

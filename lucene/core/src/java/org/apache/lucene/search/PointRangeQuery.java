@@ -319,6 +319,10 @@ public abstract class PointRangeQuery extends Query {
                 return new BitSetIterator(result, cost[0]);
               }
 
+              if (cost != -1) {
+                // If it is large, switch the builder to FixedBitSet mode up front.
+                result.expectMore(cost);
+              }
               values.intersect(visitor);
               return result.build().iterator();
             }
