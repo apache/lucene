@@ -43,6 +43,11 @@ public abstract class FilterLeafCollector implements LeafCollector {
   }
 
   @Override
+  public DocIdSetIterator competitiveIterator() throws IOException {
+    return in.competitiveIterator();
+  }
+
+  @Override
   public void finish() throws IOException {
     in.finish();
   }

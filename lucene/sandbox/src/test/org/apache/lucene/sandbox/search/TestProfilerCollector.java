@@ -24,14 +24,22 @@ import java.io.IOException;
 import java.util.List;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field.Store;
+import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FilterCollector;
 import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.TopFieldCollectorManager;
 import org.apache.lucene.search.TotalHitCountCollector;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
@@ -84,6 +92,35 @@ public class TestProfilerCollector extends LuceneTestCase {
         };
 
     assertEquals("TestCollector(TotalHitCountCollector)", collector.getName());
+  }
+
+  public void testCompetitiveIteratorDelegation() throws IOException {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    final int numDocs = TestUtil.nextInt(random(), 10, 100);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      doc.add(new LongPoint("score", i));
+      doc.add(new NumericDocValuesField("score", i));
+      w.addDocument(doc);
+    }
+    w.forceMerge(1);
+    DirectoryReader reader = w.getReader();
+    w.close();
+
+    SortField sortField = new SortField("score", SortField.Type.LONG);
+    TopFieldCollectorManager topFieldCollectorManager =
+        new TopFieldCollectorManager(new Sort(sortField), 1, Integer.MAX_VALUE);
+
+    ProfilerCollectorWrapper wrapper =
+        new ProfilerCollectorWrapper(topFieldCollectorManager.newCollector());
+    LeafCollector leafCollector = wrapper.getLeafCollector(reader.leaves().get(0));
+
+    DocIdSetIterator competitiveIterator = leafCollector.competitiveIterator();
+    assertNotNull(competitiveIterator);
+
+    reader.close();
+    dir.close();
   }
 
   private static final class TestCollector extends FilterCollector {
