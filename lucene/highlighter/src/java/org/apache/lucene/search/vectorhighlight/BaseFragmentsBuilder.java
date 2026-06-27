@@ -214,18 +214,30 @@ public abstract class BaseFragmentsBuilder implements FragmentsBuilder {
     int srcIndex = 0;
     for (SubInfo subInfo : fragInfo.getSubInfos()) {
       for (Toffs to : subInfo.termsOffsets()) {
+        int toffsStart = to.getStartOffset() - modifiedStartOffset[0];
+        int toffsEnd = to.getEndOffset() - modifiedStartOffset[0];
+        // Skip tokens with truly invalid offsets that cannot be salvaged.
+        if (toffsEnd < toffsStart || toffsEnd > src.length() || toffsEnd <= 0) {
+          continue;
+        }
+        if (toffsStart < 0) {
+          toffsStart = 0;
+        }
+        // Handle overlapping tokens: analyzers (e.g. CJK bigram, ik_max_word) commonly
+        // produce tokens whose offsets overlap. Rather than skipping, highlight the
+        // non-overlapping tail so the full matched region is covered.
+        if (toffsStart < srcIndex) {
+          if (toffsEnd <= srcIndex) {
+            continue;
+          }
+          toffsStart = srcIndex;
+        }
         fragment
-            .append(
-                encoder.encodeText(
-                    src.substring(srcIndex, to.getStartOffset() - modifiedStartOffset[0])))
+            .append(encoder.encodeText(src.substring(srcIndex, toffsStart)))
             .append(getPreTag(preTags, subInfo.seqnum()))
-            .append(
-                encoder.encodeText(
-                    src.substring(
-                        to.getStartOffset() - modifiedStartOffset[0],
-                        to.getEndOffset() - modifiedStartOffset[0])))
+            .append(encoder.encodeText(src.substring(toffsStart, toffsEnd)))
             .append(getPostTag(postTags, subInfo.seqnum()));
-        srcIndex = to.getEndOffset() - modifiedStartOffset[0];
+        srcIndex = toffsEnd;
       }
     }
     fragment.append(encoder.encodeText(src.substring(srcIndex)));
