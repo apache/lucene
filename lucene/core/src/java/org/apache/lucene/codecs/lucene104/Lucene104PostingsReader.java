@@ -476,7 +476,7 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
         endOffset = -1;
       }
 
-      if (indexHasPayloads) {
+      if (needsPayloads) {
         payloadLengthBuffer = new int[BLOCK_SIZE];
         payloadBytes = new byte[128];
         payload = new BytesRef();
@@ -1180,12 +1180,12 @@ public final class Lucene104PostingsReader extends PostingsReaderBase {
       for (int i = 0; i < count; i++) {
         int code = posIn.readVInt();
         if (indexHasPayloads) {
+          posDeltaBuffer[i] = code >>> 1;
           if ((code & 1) != 0) {
             payloadLength = posIn.readVInt();
           }
-          if (payloadLengthBuffer != null) { // needs payloads
+          if (needsPayloads) {
             payloadLengthBuffer[i] = payloadLength;
-            posDeltaBuffer[i] = code >>> 1;
             if (payloadLength != 0) {
               if (payloadByteUpto + payloadLength > payloadBytes.length) {
                 payloadBytes = ArrayUtil.grow(payloadBytes, payloadByteUpto + payloadLength);
