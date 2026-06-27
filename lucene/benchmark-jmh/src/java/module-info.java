@@ -23,6 +23,7 @@ module org.apache.lucene.benchmark.jmh {
   requires jmh.core;
   requires jdk.unsupported;
   requires org.apache.lucene.core;
+  requires org.apache.lucene.codecs;
   requires org.apache.lucene.expressions;
   requires org.apache.lucene.join;
   requires org.apache.lucene.sandbox;

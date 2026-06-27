@@ -100,6 +100,11 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#XXXXX: TurboQuant vector quantization codec — data-oblivious rotation-based quantization
+  with near-optimal distortion rates (Zandieh et al., ICLR 2026). Supports 2/3/4/8 bits per
+  coordinate, dimensions up to 16384, and byte-copy merge via global rotation seed. Located in
+  lucene/sandbox module as TurboQuantHnswVectorsFormat.
+
 * GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
   PolishSnowballAnalyzer in the stempel package) (Justas Sakalauskas, Dawid Weiss)
 
