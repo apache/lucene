@@ -20,7 +20,6 @@ import com.carrotsearch.randomizedtesting.generators.RandomStrings;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -48,6 +47,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.RamUsageTester;
@@ -301,90 +301,16 @@ public class TestTermInSetQuery extends LuceneTestCase {
     } else {
       // For no-score comparisons, only doc-id set equality matters. Avoid materializing
       // all hits as sorted TopDocs for every query pair.
-      final MatchSet matches1 = collectMatches(searcher, q1, maxDoc);
-      final MatchSet matches2 = collectMatches(searcher, q2, maxDoc);
+      final FixedBitSet matches1 = collectMatches(searcher, q1, maxDoc);
+      final FixedBitSet matches2 = collectMatches(searcher, q2, maxDoc);
 
-      assertEquals(matches1.totalHits, matches2.totalHits);
-      assertEquals(matches1.docs, matches2.docs);
+      assertEquals(matches1, matches2);
     }
   }
 
-  private static MatchSet collectMatches(IndexSearcher searcher, Query query, int maxDoc)
+  private static FixedBitSet collectMatches(IndexSearcher searcher, Query query, int maxDoc)
       throws IOException {
-    return searcher.search(
-        query,
-        new CollectorManager<MatchSetCollector, MatchSet>() {
-          @Override
-          public MatchSetCollector newCollector() {
-            return new MatchSetCollector(maxDoc);
-          }
-
-          @Override
-          public MatchSet reduce(Collection<MatchSetCollector> collectors) {
-            MatchSet reduced = new MatchSet(maxDoc);
-            for (MatchSetCollector collector : collectors) {
-              reduced.or(collector.matches);
-            }
-            return reduced;
-          }
-        });
-  }
-
-  private static class MatchSet {
-    final FixedBitSet docs;
-    int totalHits;
-
-    MatchSet(int maxDoc) {
-      docs = new FixedBitSet(maxDoc);
-    }
-
-    void or(MatchSet other) {
-      docs.or(other.docs);
-      totalHits += other.totalHits;
-    }
-  }
-
-  private static class MatchSetCollector implements Collector {
-    private final MatchSet matches;
-
-    MatchSetCollector(int maxDoc) {
-      matches = new MatchSet(maxDoc);
-    }
-
-    @Override
-    public LeafCollector getLeafCollector(LeafReaderContext context) {
-      final int docBase = context.docBase;
-      return new LeafCollector() {
-        @Override
-        public void setScorer(Scorable scorer) {}
-
-        @Override
-        public void collect(int doc) {
-          matches.docs.set(docBase + doc);
-          matches.totalHits++;
-        }
-
-        @Override
-        public void collectRange(int min, int max) {
-          matches.docs.set(docBase + min, docBase + max);
-          matches.totalHits += max - min;
-        }
-
-        @Override
-        public void collect(DocIdStream stream) throws IOException {
-          stream.forEach(
-              doc -> {
-                matches.docs.set(docBase + doc);
-                matches.totalHits++;
-              });
-        }
-      };
-    }
-
-    @Override
-    public ScoreMode scoreMode() {
-      return ScoreMode.COMPLETE_NO_SCORES;
-    }
+    return searcher.search(query, FixedBitSetCollector.createManager(maxDoc));
   }
 
   public void testHashCodeAndEquals() {
