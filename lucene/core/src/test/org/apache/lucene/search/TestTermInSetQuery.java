@@ -305,16 +305,7 @@ public class TestTermInSetQuery extends LuceneTestCase {
       final MatchSet matches2 = collectMatches(searcher, q2, maxDoc);
 
       assertEquals(matches1.totalHits, matches2.totalHits);
-      for (int doc = matches1.docs.nextSetBit(0);
-          doc != DocIdSetIterator.NO_MORE_DOCS;
-          doc = matches1.docs.nextSetBit(doc + 1)) {
-        assertTrue(matches2.docs.get(doc));
-      }
-      for (int doc = matches2.docs.nextSetBit(0);
-          doc != DocIdSetIterator.NO_MORE_DOCS;
-          doc = matches2.docs.nextSetBit(doc + 1)) {
-        assertTrue(matches1.docs.get(doc));
-      }
+      assertEquals(matches1.docs, matches2.docs);
     }
   }
 
