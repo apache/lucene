@@ -20,6 +20,7 @@ import com.carrotsearch.randomizedtesting.generators.RandomStrings;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -53,6 +54,7 @@ import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefIterator;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.automaton.ByteRunnable;
 
@@ -139,6 +141,7 @@ public class TestTermInSetQuery extends LuceneTestCase {
       iw.commit();
       final IndexReader reader = iw.getReader();
       final IndexSearcher searcher = newSearcher(reader);
+      searcher.setQueryCache(null);
       iw.close();
 
       if (reader.numDocs() == 0) {
@@ -284,14 +287,106 @@ public class TestTermInSetQuery extends LuceneTestCase {
   private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)
       throws IOException {
     final int maxDoc = searcher.getIndexReader().maxDoc();
-    final TopDocs td1 = searcher.search(q1, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
-    final TopDocs td2 = searcher.search(q2, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
-    assertEquals(td1.totalHits.value(), td2.totalHits.value());
-    for (int i = 0; i < td1.scoreDocs.length; ++i) {
-      assertEquals(td1.scoreDocs[i].doc, td2.scoreDocs[i].doc);
-      if (scores) {
+    if (scores) {
+      final TopDocs td1 = searcher.search(q1, maxDoc);
+      final TopDocs td2 = searcher.search(q2, maxDoc);
+      assertEquals(td1.totalHits.value(), td2.totalHits.value());
+      for (int i = 0; i < td1.scoreDocs.length; ++i) {
+        assertEquals(td1.scoreDocs[i].doc, td2.scoreDocs[i].doc);
         assertEquals(td1.scoreDocs[i].score, td2.scoreDocs[i].score, 10e-7);
       }
+    } else {
+      final MatchSet matches1 = collectMatches(searcher, q1, maxDoc);
+      final MatchSet matches2 = collectMatches(searcher, q2, maxDoc);
+      assertEquals(matches1.totalHits, matches2.totalHits);
+      for (int doc = matches1.docs.nextSetBit(0);
+          doc != DocIdSetIterator.NO_MORE_DOCS;
+          doc = matches1.docs.nextSetBit(doc + 1)) {
+        assertTrue(matches2.docs.get(doc));
+      }
+      for (int doc = matches2.docs.nextSetBit(0);
+          doc != DocIdSetIterator.NO_MORE_DOCS;
+          doc = matches2.docs.nextSetBit(doc + 1)) {
+        assertTrue(matches1.docs.get(doc));
+      }
+    }
+  }
+
+  private static MatchSet collectMatches(IndexSearcher searcher, Query query, int maxDoc)
+      throws IOException {
+    return searcher.search(
+        query,
+        new CollectorManager<MatchSetCollector, MatchSet>() {
+          @Override
+          public MatchSetCollector newCollector() {
+            return new MatchSetCollector(maxDoc);
+          }
+
+          @Override
+          public MatchSet reduce(Collection<MatchSetCollector> collectors) {
+            MatchSet reduced = new MatchSet(maxDoc);
+            for (MatchSetCollector collector : collectors) {
+              reduced.or(collector.matches);
+            }
+            return reduced;
+          }
+        });
+  }
+
+  private static class MatchSet {
+    final FixedBitSet docs;
+    int totalHits;
+
+    MatchSet(int maxDoc) {
+      docs = new FixedBitSet(maxDoc);
+    }
+
+    void or(MatchSet other) {
+      docs.or(other.docs);
+      totalHits += other.totalHits;
+    }
+  }
+
+  private static class MatchSetCollector implements Collector {
+    private final MatchSet matches;
+
+    MatchSetCollector(int maxDoc) {
+      matches = new MatchSet(maxDoc);
+    }
+
+    @Override
+    public LeafCollector getLeafCollector(LeafReaderContext context) {
+      final int docBase = context.docBase;
+      return new LeafCollector() {
+        @Override
+        public void setScorer(Scorable scorer) {}
+
+        @Override
+        public void collect(int doc) {
+          matches.docs.set(docBase + doc);
+          matches.totalHits++;
+        }
+
+        @Override
+        public void collectRange(int min, int max) {
+          matches.docs.set(docBase + min, docBase + max);
+          matches.totalHits += max - min;
+        }
+
+        @Override
+        public void collect(DocIdStream stream) throws IOException {
+          stream.forEach(
+              doc -> {
+                matches.docs.set(docBase + doc);
+                matches.totalHits++;
+              });
+        }
+      };
+    }
+
+    @Override
+    public ScoreMode scoreMode() {
+      return ScoreMode.COMPLETE_NO_SCORES;
     }
   }
 
