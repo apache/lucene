@@ -18,9 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Iterator;
-import java.util.Map;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.TermVectorsFormat;
 import org.apache.lucene.codecs.TermVectorsReader;
 import org.apache.lucene.codecs.TermVectorsWriter;
@@ -51,13 +49,8 @@ final class SortingTermVectorsConsumer extends TermVectorsConsumer {
   }
 
   @Override
-  void flush(
-      Map<String, TermsHashPerField> fieldsToFlush,
-      final SegmentWriteState state,
-      Sorter.DocMap sortMap,
-      NormsProducer norms)
-      throws IOException {
-    super.flush(fieldsToFlush, state, sortMap, norms);
+  void flush(final SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
+    super.flush(state, sortMap);
     if (tmpDirectory != null) {
       TermVectorsReader reader =
           TEMP_TERM_VECTORS_FORMAT.vectorsReader(

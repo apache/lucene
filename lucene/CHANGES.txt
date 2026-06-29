@@ -292,7 +292,8 @@ New Features
 
 Improvements
 ---------------------
-(No changes)
+
+* GITHUB#16269: Lazily build the term-vectors per-field. (Tim Brooks)
 
 Optimizations
 ---------------------

@@ -32,7 +32,9 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
   private final FieldInvertState fieldState;
   private final FieldInfo fieldInfo;
 
-  private boolean doVectors;
+  // True once this field has buffered vectors for the current document that still need flushing in
+  // finishDocument(); reset to false there.
+  private boolean pendingDoc;
   private boolean doVectorPositions;
   private boolean doVectorOffsets;
   private boolean doVectorPayloads;
@@ -67,18 +69,18 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
    */
   @Override
   void finish() {
-    if (!doVectors || getNumTerms() == 0) {
+    if (!pendingDoc || getNumTerms() == 0) {
       return;
     }
     termsWriter.addFieldToFlush(this);
   }
 
   void finishDocument() throws IOException {
-    if (doVectors == false) {
+    if (pendingDoc == false) {
       return;
     }
 
-    doVectors = false;
+    pendingDoc = false;
 
     final int numPostings = getNumTerms();
 
@@ -128,7 +130,7 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
   }
 
   @Override
-  boolean start(IndexableField field, boolean first) {
+  void start(IndexableField field, boolean first) {
     super.start(field, first);
     termFreqAtt = fieldState.termFreqAttribute;
     assert field.fieldType().indexOptions() != IndexOptions.NONE;
@@ -146,55 +148,34 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
 
       hasPayloads = false;
 
-      doVectors = field.fieldType().storeTermVectors();
+      // This per-field is only built for fields that store term vectors (see
+      // FreqProxTermsWriter#addField), and FieldSchema locks storeTermVectors for the segment, so
+      // this field always stores term vectors.
+      assert field.fieldType().storeTermVectors()
+          : "term-vectors per-field created for a field without term vectors";
+      pendingDoc = true;
 
-      if (doVectors) {
-        doVectorPositions = field.fieldType().storeTermVectorPositions();
+      doVectorPositions = field.fieldType().storeTermVectorPositions();
 
-        // Somewhat confusingly, unlike postings, you are
-        // allowed to index TV offsets without TV positions:
-        doVectorOffsets = field.fieldType().storeTermVectorOffsets();
+      // Somewhat confusingly, unlike postings, you are
+      // allowed to index TV offsets without TV positions:
+      doVectorOffsets = field.fieldType().storeTermVectorOffsets();
 
-        if (doVectorPositions) {
-          doVectorPayloads = field.fieldType().storeTermVectorPayloads();
-        } else {
-          doVectorPayloads = false;
-          if (field.fieldType().storeTermVectorPayloads()) {
-            // TODO: move this check somewhere else, and impl the other missing ones
-            throw new IllegalArgumentException(
-                "cannot index term vector payloads without term vector positions (field=\""
-                    + field.name()
-                    + "\")");
-          }
-        }
-
+      if (doVectorPositions) {
+        doVectorPayloads = field.fieldType().storeTermVectorPayloads();
       } else {
-        if (field.fieldType().storeTermVectorOffsets()) {
-          throw new IllegalArgumentException(
-              "cannot index term vector offsets when term vectors are not indexed (field=\""
-                  + field.name()
-                  + "\")");
-        }
-        if (field.fieldType().storeTermVectorPositions()) {
-          throw new IllegalArgumentException(
-              "cannot index term vector positions when term vectors are not indexed (field=\""
-                  + field.name()
-                  + "\")");
-        }
+        doVectorPayloads = false;
         if (field.fieldType().storeTermVectorPayloads()) {
+          // TODO: move this check somewhere else, and impl the other missing ones
           throw new IllegalArgumentException(
-              "cannot index term vector payloads when term vectors are not indexed (field=\""
+              "cannot index term vector payloads without term vector positions (field=\""
                   + field.name()
                   + "\")");
         }
       }
     } else {
-      if (doVectors != field.fieldType().storeTermVectors()) {
-        throw new IllegalArgumentException(
-            "all instances of a given field name must have the same term vectors settings (storeTermVectors changed for field=\""
-                + field.name()
-                + "\")");
-      }
+      // storeTermVectors itself is locked for the segment by FieldSchema, but the sub-options are
+      // not, so they are validated here for consistency across instances within the document.
       if (doVectorPositions != field.fieldType().storeTermVectorPositions()) {
         throw new IllegalArgumentException(
             "all instances of a given field name must have the same term vectors settings (storeTermVectorPositions changed for field=\""
@@ -215,21 +196,17 @@ final class TermVectorsConsumerPerField extends TermsHashPerField {
       }
     }
 
-    if (doVectors) {
-      if (doVectorOffsets) {
-        offsetAttribute = fieldState.offsetAttribute;
-        assert offsetAttribute != null;
-      }
-
-      if (doVectorPayloads) {
-        // Can be null:
-        payloadAttribute = fieldState.payloadAttribute;
-      } else {
-        payloadAttribute = null;
-      }
+    if (doVectorOffsets) {
+      offsetAttribute = fieldState.offsetAttribute;
+      assert offsetAttribute != null;
     }
 
-    return doVectors;
+    if (doVectorPayloads) {
+      // Can be null:
+      payloadAttribute = fieldState.payloadAttribute;
+    } else {
+      payloadAttribute = null;
+    }
   }
 
   void writeProx(TermVectorsPostingsArray postings, int termID) {

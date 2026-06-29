@@ -46,14 +46,14 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
       FieldInvertState invertState,
       TermsHash termsHash,
       FieldInfo fieldInfo,
-      TermsHashPerField nextPerField) {
+      TermsHashPerField termVectorsPerField) {
     super(
         fieldInfo.getIndexOptions().subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) ? 2 : 1,
         termsHash.intPool,
         termsHash.bytePool,
         termsHash.termBytePool,
         termsHash.bytesUsed,
-        nextPerField,
+        termVectorsPerField,
         fieldInfo.name,
         fieldInfo.getIndexOptions());
     this.fieldState = invertState;
@@ -62,6 +62,8 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
     hasProx = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS);
     hasOffsets = indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_AND_OFFSETS);
     isTermDoc = fieldInfo.isTermDocField();
+    // The downstream term-vectors per-field exists iff the field stores term vectors.
+    assert (getTermVectorsPerField() != null) == fieldInfo.hasTermVectors();
   }
 
   @Override
@@ -73,12 +75,11 @@ final class FreqProxTermsWriterPerField extends TermsHashPerField {
   }
 
   @Override
-  boolean start(IndexableField f, boolean first) {
+  void start(IndexableField f, boolean first) {
     super.start(f, first);
     termFreqAtt = fieldState.termFreqAttribute;
     payloadAttribute = fieldState.payloadAttribute;
     offsetAttribute = fieldState.offsetAttribute;
-    return true;
   }
 
   void writeProx(int termID, int proxCode) {

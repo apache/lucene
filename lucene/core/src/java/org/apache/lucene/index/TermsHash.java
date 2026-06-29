@@ -16,10 +16,6 @@
  */
 package org.apache.lucene.index;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.util.ByteBlockPool;
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.IntBlockPool;
@@ -73,32 +69,5 @@ abstract class TermsHash {
     bytePool.reset(false, false);
   }
 
-  void flush(
-      Map<String, TermsHashPerField> fieldsToFlush,
-      final SegmentWriteState state,
-      Sorter.DocMap sortMap,
-      NormsProducer norms)
-      throws IOException {
-    if (nextTermsHash != null) {
-      Map<String, TermsHashPerField> nextChildFields = new HashMap<>();
-      for (final Map.Entry<String, TermsHashPerField> entry : fieldsToFlush.entrySet()) {
-        nextChildFields.put(entry.getKey(), entry.getValue().getNextPerField());
-      }
-      nextTermsHash.flush(nextChildFields, state, sortMap, norms);
-    }
-  }
-
   abstract TermsHashPerField addField(FieldInvertState fieldInvertState, FieldInfo fieldInfo);
-
-  void finishDocument(int docID) throws IOException {
-    if (nextTermsHash != null) {
-      nextTermsHash.finishDocument(docID);
-    }
-  }
-
-  void startDocument() throws IOException {
-    if (nextTermsHash != null) {
-      nextTermsHash.startDocument();
-    }
-  }
 }

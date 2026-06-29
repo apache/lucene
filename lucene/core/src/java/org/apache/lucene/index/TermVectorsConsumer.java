@@ -18,9 +18,7 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Map;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.NormsProducer;
 import org.apache.lucene.codecs.TermVectorsWriter;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FlushInfo;
@@ -68,13 +66,7 @@ class TermVectorsConsumer extends TermsHash {
     this.codec = codec;
   }
 
-  @Override
-  void flush(
-      Map<String, TermsHashPerField> fieldsToFlush,
-      final SegmentWriteState state,
-      Sorter.DocMap sortMap,
-      NormsProducer norms)
-      throws IOException {
+  void flush(final SegmentWriteState state, Sorter.DocMap sortMap) throws IOException {
     if (writer != null) {
       int numDocs = state.segmentInfo.maxDoc();
       assert numDocs > 0;
@@ -113,7 +105,7 @@ class TermVectorsConsumer extends TermsHash {
     hasVectors = true;
   }
 
-  @Override
+  /** Writes this document's term vectors. Called per document by {@link IndexingChain}. */
   void finishDocument(int docID) throws IOException {
 
     if (!hasVectors) {
@@ -173,7 +165,7 @@ class TermVectorsConsumer extends TermsHash {
     perFields[numVectorFields++] = fieldToFlush;
   }
 
-  @Override
+  /** Resets per-document state. Called per document by {@link IndexingChain}. */
   void startDocument() {
     resetFields();
     numVectorFields = 0;

@@ -35,7 +35,7 @@ import org.apache.lucene.util.IntBlockPool;
 abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
   private static final int HASH_INIT_SIZE = 4;
 
-  private final TermsHashPerField nextPerField;
+  private final TermsHashPerField termVectorsPerField;
   private final IntBlockPool intPool;
   final ByteBlockPool bytePool;
   private final ByteSlicePool slicePool;
@@ -68,7 +68,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
       ByteBlockPool bytePool,
       ByteBlockPool termBytePool,
       Counter bytesUsed,
-      TermsHashPerField nextPerField,
+      TermsHashPerField termVectorsPerField,
       String fieldName,
       IndexOptions indexOptions) {
     this.intPool = intPool;
@@ -76,7 +76,7 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     this.slicePool = new ByteSlicePool(bytePool);
     this.streamCount = streamCount;
     this.fieldName = fieldName;
-    this.nextPerField = nextPerField;
+    this.termVectorsPerField = termVectorsPerField;
     assert indexOptions != IndexOptions.NONE;
     this.indexOptions = indexOptions;
     PostingsBytesStartArray byteStarts = new PostingsBytesStartArray(this, bytesUsed);
@@ -86,8 +86,8 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
   void reset() {
     bytesHash.clear(false);
     sortedTermIDs = null;
-    if (nextPerField != null) {
-      nextPerField.reset();
+    if (termVectorsPerField != null) {
+      termVectorsPerField.reset();
     }
   }
 
@@ -124,8 +124,6 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     sortedTermIDs = null;
     bytesHash.reinit();
   }
-
-  private boolean doNextCall;
 
   // Secondary entry point (for 2nd & subsequent TermsHash),
   // because token text has already been "interned" into
@@ -203,8 +201,8 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
         throw new DuplicateTermException(e.getMessage() + " '" + termBytes.utf8ToString() + "'");
       }
     }
-    if (doNextCall) {
-      nextPerField.add(postingsArray.textStarts[termID], docID);
+    if (termVectorsPerField != null) {
+      termVectorsPerField.add(postingsArray.textStarts[termID], docID);
     }
   }
 
@@ -268,8 +266,8 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
     writeByte(stream, (byte) i);
   }
 
-  final TermsHashPerField getNextPerField() {
-    return nextPerField;
+  final TermsHashPerField getTermVectorsPerField() {
+    return termVectorsPerField;
   }
 
   final String getFieldName() {
@@ -331,8 +329,8 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
 
   /** Finish adding all instances of this field to the current document. */
   void finish() throws IOException {
-    if (nextPerField != null) {
-      nextPerField.finish();
+    if (termVectorsPerField != null) {
+      termVectorsPerField.finish();
     }
   }
 
@@ -344,11 +342,10 @@ abstract class TermsHashPerField implements Comparable<TermsHashPerField> {
    * Start adding a new field instance; first is true if this is the first time this field name was
    * seen in the document.
    */
-  boolean start(IndexableField field, boolean first) {
-    if (nextPerField != null) {
-      doNextCall = nextPerField.start(field, first);
+  void start(IndexableField field, boolean first) {
+    if (termVectorsPerField != null) {
+      termVectorsPerField.start(field, first);
     }
-    return true;
   }
 
   /** Called when a term is seen for the first time. */

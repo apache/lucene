@@ -84,8 +84,8 @@ final class IndexingChain implements Accountable {
   final Counter bytesUsed = Counter.newCounter();
   final FieldInfos.Builder fieldInfos;
 
-  // Writes postings and term vectors:
-  final TermsHash termsHash;
+  // Writes postings, and drives the (optional) downstream term-vectors consumer:
+  final FreqProxTermsWriter termsHash;
   // Shared pool for doc-value terms
   final ByteBlockPool docValuesBytePool;
   // Shared scratch buffers for dense points encoding
@@ -592,7 +592,7 @@ final class IndexingChain implements Accountable {
     // analyzer is free to reuse TokenStream across fields
     // (i.e., we cannot have more than one TokenStream
     // running "at once"):
-    termsHash.startDocument();
+    termVectorsWriter.startDocument();
     startStoredFields(docID);
     try {
       // Handle the parent field first (before document fields). Its schema was already
@@ -663,9 +663,9 @@ final class IndexingChain implements Accountable {
           fields[i].finish(docID);
         }
         finishStoredFields();
-        // TODO: for broken docs, optimize termsHash.finishDocument
+        // TODO: for broken docs, optimize termVectorsWriter.finishDocument
         try {
-          termsHash.finishDocument(docID);
+          termVectorsWriter.finishDocument(docID);
         } catch (Throwable th) {
           // Must abort, on the possibility that on-disk term
           // vectors are now corrupt:
@@ -886,7 +886,7 @@ final class IndexingChain implements Accountable {
       int indexedFieldCount = 0;
 
       if (hasInverted) {
-        termsHash.startDocument();
+        termVectorsWriter.startDocument();
       }
       if (hasStored) {
         startStoredFields(segDocID);
@@ -925,7 +925,7 @@ final class IndexingChain implements Accountable {
           }
           if (hasInverted) {
             try {
-              termsHash.finishDocument(segDocID);
+              termVectorsWriter.finishDocument(segDocID);
             } catch (Throwable th) {
               abortingExceptionConsumer.accept(th);
               throw th;
@@ -1478,6 +1478,9 @@ final class IndexingChain implements Accountable {
     if (fieldType.indexOptions() != IndexOptions.NONE) {
       schema.setIndexOptions(
           fieldType.indexOptions(), fieldType.omitNorms(), fieldType.storeTermVectors());
+      if (fieldType.storeTermVectors() == false) {
+        verifyNoTermVectorOptionsWithoutVectors(fieldName, fieldType);
+      }
     } else {
       // TODO: should this be checked when a fieldType is created?
       verifyUnIndexedFieldType(fieldName, fieldType);
@@ -1535,6 +1538,31 @@ final class IndexingChain implements Accountable {
       throw new IllegalArgumentException(
           "cannot store term vector payloads "
               + "for a field that is not indexed (field=\""
+              + name
+              + "\")");
+    }
+  }
+
+  /**
+   * Verifies that an indexed field which does not store term vectors does not request any
+   * term-vector sub-options.
+   */
+  private static void verifyNoTermVectorOptionsWithoutVectors(String name, IndexableFieldType ft) {
+    if (ft.storeTermVectorOffsets()) {
+      throw new IllegalArgumentException(
+          "cannot index term vector offsets when term vectors are not indexed (field=\""
+              + name
+              + "\")");
+    }
+    if (ft.storeTermVectorPositions()) {
+      throw new IllegalArgumentException(
+          "cannot index term vector positions when term vectors are not indexed (field=\""
+              + name
+              + "\")");
+    }
+    if (ft.storeTermVectorPayloads()) {
+      throw new IllegalArgumentException(
+          "cannot index term vector payloads when term vectors are not indexed (field=\""
               + name
               + "\")");
     }
