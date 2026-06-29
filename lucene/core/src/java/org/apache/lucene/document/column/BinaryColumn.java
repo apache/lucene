@@ -21,9 +21,9 @@ import org.apache.lucene.index.IndexableFieldType;
 import org.apache.lucene.util.BytesRef;
 
 /**
- * A {@link Column} that provides variable-size binary values via a tuple cursor. Used for {@link
- * org.apache.lucene.index.DocValuesType#BINARY BINARY}, {@link
- * org.apache.lucene.index.DocValuesType#SORTED SORTED}, and {@link
+ * A {@link Column} that provides variable-size binary values via a tuple cursor, and dense values
+ * via a {@link BytesRefValuesCursor}. Used for {@link org.apache.lucene.index.DocValuesType#BINARY
+ * BINARY}, {@link org.apache.lucene.index.DocValuesType#SORTED SORTED}, and {@link
  * org.apache.lucene.index.DocValuesType#SORTED_SET SORTED_SET} doc values, and for stored/indexed
  * binary or text fields. Values fed to points are passed through unchanged, so callers are
  * responsible for producing sort-encoded bytes of the correct total length.
