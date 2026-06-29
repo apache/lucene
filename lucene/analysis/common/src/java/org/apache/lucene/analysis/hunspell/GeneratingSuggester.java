@@ -21,15 +21,14 @@ import static org.apache.lucene.analysis.hunspell.Dictionary.AFFIX_FLAG;
 import static org.apache.lucene.analysis.hunspell.Dictionary.AFFIX_STRIP_ORD;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.function.Consumer;
 import org.apache.lucene.util.CharsRef;
 import org.apache.lucene.util.IntsRef;
+import org.apache.lucene.util.PriorityQueue;
 import org.apache.lucene.util.fst.FST;
 
 /**
@@ -60,7 +59,13 @@ class GeneratingSuggester {
 
   private List<Weighted<Root<String>>> findSimilarDictionaryEntries(
       String word, WordCase originalCase) {
-    PriorityQueue<Weighted<Root<String>>> roots = new PriorityQueue<>(Comparator.reverseOrder());
+    PriorityQueue<Weighted<Root<String>>> roots =
+        new PriorityQueue<>(MAX_ROOTS) {
+          @Override
+          protected boolean lessThan(Weighted<Root<String>> a, Weighted<Root<String>> b) {
+            return a.compareTo(b) > 0;
+          }
+        };
 
     boolean ignoreTitleCaseRoots = originalCase == WordCase.LOWER && !dictionary.hasLanguage("de");
     TrigramAutomaton automaton = new TrigramAutomaton(word);
@@ -81,7 +86,7 @@ class GeneratingSuggester {
           CharsRef rootChars = entry.root();
           sc += commonPrefix(word, rootChars) - longerWorsePenalty(word.length(), rootChars.length);
 
-          if (roots.size() == MAX_ROOTS && isWorseThan(sc, rootChars, roots.peek())) {
+          if (roots.size() == MAX_ROOTS && isWorseThan(sc, rootChars, roots.top())) {
             return;
           }
 
@@ -91,13 +96,15 @@ class GeneratingSuggester {
           IntsRef forms = entry.forms();
           for (int i = 0; i < forms.length; i += dictionary.formStep()) {
             int form = forms.ints[forms.offset + i];
-            roots.add(new Weighted<>(new Root<>(root, form), sc));
-            if (roots.size() > MAX_ROOTS) {
-              roots.poll();
-            }
+            roots.insertWithOverflow(new Weighted<>(new Root<>(root, form), sc));
           }
         });
-    return roots.stream().sorted().toList();
+    List<Weighted<Root<String>>> sorted = new ArrayList<>(roots.size());
+    for (Weighted<Root<String>> root : roots) {
+      sorted.add(root);
+    }
+    sorted.sort(null);
+    return sorted;
   }
 
   private static boolean isWorseThan(int score, CharsRef candidate, Weighted<Root<String>> root) {
