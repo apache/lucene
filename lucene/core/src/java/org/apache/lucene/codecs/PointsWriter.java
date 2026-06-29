@@ -222,6 +222,7 @@ public abstract class PointsWriter implements Closeable {
     // check each incoming reader
     for (PointsReader reader : mergeState.pointsReaders) {
       if (reader != null) {
+        mergeState.checkAborted();
         reader.checkIntegrity();
       }
     }

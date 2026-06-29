@@ -27,7 +27,7 @@ javacc = "7.0.13"
 # analysis/ tokenizer grammars
 jflex = "1.9.1"
 # build infra only (diff of changes from google java format tasks)
-jgit = "7.6.0.202603022253-r"
+jgit = "7.7.0.202606012155-r"
 # benchmark-jmh/ microbenchmarks
 jmh = "1.37"
 # spatial-extras/ support
@@ -36,11 +36,11 @@ jts = "1.20.0"
 junit = "4.13.2"
 junit5 = "6.1.0"
 # @keep Minimum gradle version to run the build
-minGradle = "9.5.1"
+minGradle = "9.6.0"
 # @keep This is the minimum required Java version.
 minJava = "25"
 # analysis/morfologik polish support
-morfologik = "2.1.9"
+morfologik = "2.2.0"
 # analysis/morfologik ukrainian support
 morfologik-ukrainian = "4.9.1"
 # benchmark/ html parsing
@@ -59,7 +59,7 @@ spatial4j = "0.8"
 # benchmark/ XML parsing
 xerces = "2.12.2"
 # external datasets decompression
-zstd = "1.5.7-10"
+zstd = "1.5.7-11"
 
 [libraries]
 antlr-core = { module = "org.antlr:antlr4", version.ref = "antlr" }
@@ -110,6 +110,6 @@ errorprone = "net.ltgt.errorprone:5.1.0"
 forbiddenapis = "de.thetaphi.forbiddenapis:3.10"
 jacocolog = "org.barfuin.gradle.jacocolog:4.0.2"
 randomizedtesting = "com.carrotsearch.gradle.randomizedtesting:0.0.6"
-spotless = "com.diffplug.spotless:8.6.0"
+spotless = "com.diffplug.spotless:8.7.0"
 undercouch-download = "de.undercouch.download:5.7.0"
 versionCatalogUpdate = "nl.littlerobots.version-catalog-update:1.1.0"

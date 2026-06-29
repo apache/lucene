@@ -204,6 +204,7 @@ public class Lucene90PointsWriter extends PointsWriter {
     }
     for (PointsReader reader : mergeState.pointsReaders) {
       if (reader != null) {
+        mergeState.checkAborted();
         reader.checkIntegrity();
       }
     }

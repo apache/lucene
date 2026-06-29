@@ -31,6 +31,7 @@ import static org.apache.lucene.document.column.ColumnBatchTestUtil.simpleBatch;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
@@ -1769,6 +1770,104 @@ public class TestColumnBatchIndexing extends LuceneTestCase {
         assertEquals(1, dv.nextDoc());
         assertEquals(2L, dv.longValue());
         assertEquals(DocIdSetIterator.NO_MORE_DOCS, dv.nextDoc());
+      }
+    }
+    dir.close();
+  }
+
+  public void testUpdateDocumentsByTerm() throws IOException {
+    Directory dir = newDirectory();
+    try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      FieldType idType = new FieldType(StringField.TYPE_NOT_STORED);
+      idType.freeze();
+
+      BytesRef[] ids12 = new BytesRef[] {newBytesRef("1"), newBytesRef("2")};
+      BytesRef[] ids3 = new BytesRef[] {newBytesRef("3")};
+
+      // Add initial batch with string id field (indexed for TermQuery)
+      w.addBatch(
+          simpleBatch(
+              2,
+              new ArrayBinaryColumn("id", idType, new int[] {0, 1}, ids12),
+              new ArrayLongColumn(
+                  "value", NumericDocValuesField.TYPE, new int[] {0, 1}, new long[] {100, 200})));
+
+      // Update documents where id="1": delete and add new batch
+      w.updateDocuments(
+          new Term("id", "1"),
+          simpleBatch(
+              1,
+              new ArrayBinaryColumn("id", idType, new int[] {0}, ids3),
+              new ArrayLongColumn(
+                  "value", NumericDocValuesField.TYPE, new int[] {0}, new long[] {300})));
+
+      w.forceMerge(1);
+      try (DirectoryReader r = DirectoryReader.open(w)) {
+        IndexSearcher s = new IndexSearcher(r);
+        // Old doc with id="1" should be deleted
+        assertEquals(0, s.count(new TermQuery(new Term("id", "1"))));
+        // New doc with id="3" should exist
+        assertEquals(1, s.count(new TermQuery(new Term("id", "3"))));
+        // Doc with id="2" should still exist
+        assertEquals(1, s.count(new TermQuery(new Term("id", "2"))));
+
+        // Should have 2 live docs: value=200 and value=300
+        assertEquals(2, r.numDocs());
+
+        LeafReader leaf = getOnlyLeafReader(r);
+        NumericDocValues valueDv = leaf.getNumericDocValues("value");
+        assertNotNull(valueDv);
+
+        List<Long> values = new ArrayList<>();
+        while (valueDv.nextDoc() != DocIdSetIterator.NO_MORE_DOCS) {
+          values.add(valueDv.longValue());
+        }
+        Collections.sort(values);
+        assertEquals(2, values.size());
+        assertEquals(200, values.get(0).longValue());
+        assertEquals(300, values.get(1).longValue());
+      }
+    }
+    dir.close();
+  }
+
+  public void testUpdateDocumentsByQuery() throws IOException {
+    Directory dir = newDirectory();
+    try (IndexWriter w = new IndexWriter(dir, newIndexWriterConfig())) {
+      FieldType idType = new FieldType(StringField.TYPE_NOT_STORED);
+      idType.freeze();
+
+      BytesRef[] ids12 = new BytesRef[] {newBytesRef("1"), newBytesRef("2")};
+      BytesRef[] ids3 = new BytesRef[] {newBytesRef("3")};
+
+      // Add initial batch with string id field (indexed for TermQuery)
+      w.addBatch(
+          simpleBatch(
+              2,
+              new ArrayBinaryColumn("id", idType, new int[] {0, 1}, ids12),
+              new ArrayLongColumn(
+                  "value", NumericDocValuesField.TYPE, new int[] {0, 1}, new long[] {100, 200})));
+
+      // Update documents where id="2" using a Query: delete and add new batch
+      w.updateDocuments(
+          new TermQuery(new Term("id", "2")),
+          simpleBatch(
+              1,
+              new ArrayBinaryColumn("id", idType, new int[] {0}, ids3),
+              new ArrayLongColumn(
+                  "value", NumericDocValuesField.TYPE, new int[] {0}, new long[] {300})));
+
+      w.forceMerge(1);
+      try (DirectoryReader r = DirectoryReader.open(w)) {
+        IndexSearcher s = new IndexSearcher(r);
+        // Old doc with id="2" should be deleted
+        assertEquals(0, s.count(new TermQuery(new Term("id", "2"))));
+        // New doc with id="3" should exist
+        assertEquals(1, s.count(new TermQuery(new Term("id", "3"))));
+        // Doc with id="1" should still exist
+        assertEquals(1, s.count(new TermQuery(new Term("id", "1"))));
+
+        assertEquals(2, r.numDocs());
       }
     }
     dir.close();
