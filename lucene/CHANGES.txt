@@ -19,7 +19,7 @@ Improvements
 
 Optimizations
 ---------------------
-(No changes)
+* GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
 
 Bug Fixes
 ---------------------
