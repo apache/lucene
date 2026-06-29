@@ -27,6 +27,7 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.sandbox.facet.cutters.FacetCutter;
 import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
 import org.apache.lucene.search.LongValues;
@@ -152,18 +153,25 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
   abstract List<InclusiveRange> buildElementaryIntervals();
 
   /**
-   * Single-valued {@link LongValues} read directly from {@link #skipField} so its skip index can be
-   * used, or null when there is no skip field or the segment is multi-valued.
+   * Returns the {@link DocValuesSkipper} for {@link #skipField} in this segment. Null when: no skip
+   * field is configured, the field has no skip index, or some doc in this segment has more than one
+   * value.
    */
-  final LongValues singleValuedSkipField(LeafReaderContext context) throws IOException {
+  final DocValuesSkipper maybeSkipper(LeafReaderContext context) throws IOException {
     if (skipField == null) {
       return null;
     }
-    NumericDocValues values =
-        DocValues.unwrapSingleton(DocValues.getSortedNumeric(context.reader(), skipField));
-    if (values == null) {
+    SortedNumericDocValues sortedNumeric = DocValues.getSortedNumeric(context.reader(), skipField);
+    if (DocValues.unwrapSingleton(sortedNumeric) == null) {
       return null;
     }
+    return context.reader().getDocValuesSkipper(skipField);
+  }
+
+  /** Single-valued {@link LongValues} for {@link #skipField} in this segment. */
+  final LongValues skipFieldValues(LeafReaderContext context) throws IOException {
+    NumericDocValues values =
+        DocValues.unwrapSingleton(DocValues.getSortedNumeric(context.reader(), skipField));
     return new LongValues() {
       @Override
       public long longValue() throws IOException {

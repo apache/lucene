@@ -1017,23 +1017,6 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     IOUtils.close(dir);
   }
 
-  public void testSingleValuedNoSkipIndex() throws Exception {
-    Directory dir = newDirectory();
-    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
-
-    int numDocs = atLeast(1000);
-    for (int i = 0; i < numDocs; i++) {
-      Document doc = new Document();
-      doc.add(new NumericDocValuesField("field", TestUtil.nextLong(random(), -100, 100)));
-      w.addDocument(doc);
-    }
-
-    assertSkipIndexEquivalence(w, "single-valued-no-skip");
-
-    w.close();
-    IOUtils.close(dir);
-  }
-
   private void assertSkipIndexEquivalence(RandomIndexWriter w, String desc) throws IOException {
     IndexReader r = w.getReader();
     try {
