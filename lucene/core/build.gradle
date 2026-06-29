@@ -60,7 +60,7 @@ createForUtilRegenerateTask(project, "ForUtil", "ForUtil.java", "gen_ForUtil.py"
 
 configure(project(":lucene:backward-codecs")) {
   createForUtilRegenerateTask(project, "ForUtil90", "ForUtil.java", "gen_ForUtil.py",
-      file("src/java/org/apache/lucene/backward_codecs/lucene90"))
+  file("src/java/org/apache/lucene/backward_codecs/lucene90"))
 
   createForUtilRegenerateTask(project, "ForUtil99", "ForUtil.java", "gen_ForUtil.py",
       file("src/java/org/apache/lucene/backward_codecs/lucene99"))
@@ -108,11 +108,11 @@ configure(project(":lucene:core")) {
 
     doLast {
       ant.replace(
-          file: file('src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.java'),
-          encoding: "UTF-8",
-          token: "private static final int ZZ_BUFFERSIZE =",
-          value: "private int ZZ_BUFFERSIZE ="
-          )
+      file: file('src/java/org/apache/lucene/analysis/standard/StandardTokenizerImpl.java'),
+      encoding: "UTF-8",
+      token: "private static final int ZZ_BUFFERSIZE =",
+      value: "private int ZZ_BUFFERSIZE ="
+      )
     }
   })
 }
@@ -217,11 +217,11 @@ configure(project(":lucene:analysis:common")) {
 
     doLast {
       ant.replace(
-          file: file('src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.java'),
-          encoding: "UTF-8",
-          token: "private static final int ZZ_BUFFERSIZE =",
-          value: "private int ZZ_BUFFERSIZE ="
-          )
+      file: file('src/java/org/apache/lucene/analysis/email/UAX29URLEmailTokenizerImpl.java'),
+      encoding: "UTF-8",
+      token: "private static final int ZZ_BUFFERSIZE =",
+      value: "private int ZZ_BUFFERSIZE ="
+      )
     }
   })
 
@@ -245,10 +245,10 @@ configure(project(":lucene:analysis:common")) {
 
     doLast {
       project.ant.fixcrlf(
-          file: target,
-          encoding: "UTF-8",
-          eol: "lf"
-          )
+      file: target,
+      encoding: "UTF-8",
+      eol: "lf"
+      )
     }
   })
 
