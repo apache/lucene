@@ -39,33 +39,43 @@ import org.openjdk.jmh.annotations.TearDown;
 
 /**
  * Abstract base for read I/O benchmarks. Provides shared FFI handles (pread, open, close,
- * posix_madvise, fcntl), thread-local buffers, file/mmap setup, and configuration parsing.
+ * posix_madvise, fcntl), thread-local buffers, and file/mmap/fd setups.
  */
 @State(Scope.Benchmark)
 public abstract class AbstractReadIOBenchmark {
 
-  protected static final long ALIGNMENT = 4096;
-
-  /** Max read size for buffer pre-allocation. Actual read size is a @Param on subclasses. */
-  protected static final int MAX_READ_SIZE = 1024 * 1024; // 1MB max
-
-  protected static final long FILE_SIZE =
-      Long.parseLong(envOrProp("BENCH_FILE_SIZE_MB", "bench.fileSizeMB", "1024")) * 1024L * 1024L;
-
-  protected static final String BENCH_FILE =
-      envOrProp("BENCH_FILE", "bench.file", "/tmp/pread-bench.dat");
-
-  protected static final boolean DROP_CACHES =
-      Boolean.parseBoolean(envOrProp("BENCH_DROP_CACHES", "bench.dropCaches", "false"));
-
-  protected static final int MADV_NORMAL = 0;
-  protected static final int MADV_RANDOM = 1;
-  protected static final int MADV_WILLNEED = 3;
+  private static final int O_RDONLY = 0;
+  private static final int O_DIRECT = 0x4000; // Linux
+  private static final int F_NOCACHE = 48;
 
   private static final boolean IS_MAC =
       System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("mac");
   private static final boolean IS_LINUX =
       System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("linux");
+
+  /** Max read size for buffer pre-allocation. Actual read size is a @Param on subclasses. */
+  protected static final int MAX_READ_SIZE = 1024 * 1024;
+
+  /**
+   * Max reads per operation for buffer pre-allocation. Actual readsPerOp is a @Param on subclasses.
+   */
+  protected static final int MAX_READS_PER_OPERATION = 256;
+
+  protected static final long FILE_SIZE =
+      Long.parseLong(getConfigFromEnvOrProp("BENCH_FILE_SIZE_MB", "bench.fileSizeMB", "1024"))
+          * 1024L
+          * 1024L;
+
+  protected static final String BENCH_FILE =
+      getConfigFromEnvOrProp("BENCH_FILE", "bench.file", "/tmp/pread-bench.dat");
+
+  protected static final boolean DROP_PAGE_CACHE =
+      Boolean.parseBoolean(
+          getConfigFromEnvOrProp("BENCH_DROP_CACHES", "bench.dropPageCache", "false"));
+
+  protected static final int POSIX_MADV_RANDOM = 1;
+  protected static final int POSIX_MADV_SEQUENTIAL = 2;
+  protected static final int POSIX_MADV_WILLNEED = 3;
 
   // FFI handles
   protected static final MethodHandle PREAD;
@@ -74,13 +84,17 @@ public abstract class AbstractReadIOBenchmark {
   protected static final MethodHandle POSIX_MADVISE;
   protected static final MethodHandle FCNTL;
 
+  protected static final int PAGE_SIZE;
+
   static {
-    Linker linker = Linker.nativeLinker();
-    SymbolLookup lookup = linker.defaultLookup();
+    final Linker linker = Linker.nativeLinker();
+    final SymbolLookup stdlib = linker.defaultLookup();
 
     PREAD =
-        linker.downcallHandle(
-            lookup.find("pread").orElseThrow(),
+        findFunction(
+            linker,
+            stdlib,
+            "pread",
             FunctionDescriptor.of(
                 ValueLayout.JAVA_LONG,
                 ValueLayout.JAVA_INT,
@@ -89,18 +103,24 @@ public abstract class AbstractReadIOBenchmark {
                 ValueLayout.JAVA_LONG));
 
     OPEN =
-        linker.downcallHandle(
-            lookup.find("open").orElseThrow(),
+        findFunction(
+            linker,
+            stdlib,
+            "open",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_INT));
 
     CLOSE =
-        linker.downcallHandle(
-            lookup.find("close").orElseThrow(),
+        findFunction(
+            linker,
+            stdlib,
+            "close",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
 
     POSIX_MADVISE =
-        linker.downcallHandle(
-            lookup.find("posix_madvise").orElseThrow(),
+        findFunction(
+            linker,
+            stdlib,
+            "posix_madvise",
             FunctionDescriptor.of(
                 ValueLayout.JAVA_INT,
                 ValueLayout.ADDRESS,
@@ -108,31 +128,58 @@ public abstract class AbstractReadIOBenchmark {
                 ValueLayout.JAVA_INT));
 
     FCNTL =
-        linker.downcallHandle(
-            lookup.find("fcntl").orElseThrow(),
+        findFunction(
+            linker,
+            stdlib,
+            "fcntl",
             FunctionDescriptor.of(
                 ValueLayout.JAVA_INT,
                 ValueLayout.JAVA_INT,
                 ValueLayout.JAVA_INT,
                 ValueLayout.JAVA_INT));
+
+    try {
+      PAGE_SIZE =
+          (int)
+              findFunction(
+                      linker, stdlib, "getpagesize", FunctionDescriptor.of(ValueLayout.JAVA_INT))
+                  .invokeExact();
+    } catch (Throwable e) {
+      throw new RuntimeException("getpagesize() failed", e);
+    }
   }
 
-  /** Per-thread pre-allocated buffers sized to MAX_READ_SIZE. */
+  @SuppressWarnings("restricted") // unsafe functionality is used
+  private static MethodHandle findFunction(
+      Linker linker, SymbolLookup lookup, String name, FunctionDescriptor desc) {
+    final MemorySegment symbol =
+        lookup
+            .find(name)
+            .orElseThrow(
+                () ->
+                    new UnsupportedOperationException(
+                        "Platform has no symbol for '" + name + "' in libc."));
+    return linker.downcallHandle(symbol, desc);
+  }
+
+  /** Per-thread pre-allocated buffers. */
   @State(Scope.Thread)
   public static class ThreadBuffers {
     public ByteBuffer directBuf;
-    public ByteBuffer heapBuf;
+    public byte[] heapBuf;
     public Arena ffiArena;
     public MemorySegment ffiBuf;
-    public MemorySegment ffiDirectIoBuf;
+    public MemorySegment ffiDirectIOBuf;
+    public long[] offsets;
 
     @Setup(Level.Trial)
     public void setup() {
       directBuf = ByteBuffer.allocateDirect(MAX_READ_SIZE);
-      heapBuf = ByteBuffer.allocate(MAX_READ_SIZE);
+      heapBuf = new byte[MAX_READ_SIZE];
       ffiArena = Arena.ofConfined();
       ffiBuf = ffiArena.allocate(MAX_READ_SIZE);
-      ffiDirectIoBuf = ffiArena.allocate(MAX_READ_SIZE, 4096);
+      ffiDirectIOBuf = ffiArena.allocate(MAX_READ_SIZE, PAGE_SIZE);
+      offsets = new long[MAX_READS_PER_OPERATION];
     }
 
     @TearDown(Level.Trial)
@@ -141,17 +188,14 @@ public abstract class AbstractReadIOBenchmark {
     }
   }
 
-  protected Path tempFile;
+  protected Path benchFile;
   protected FileChannel fileChannel;
   protected MemorySegment mmapSegmentNormal;
-  protected MemorySegment mmapSegmentMadvRandom;
-  protected int nativeFd;
-  protected int directIoFd;
+  protected MemorySegment mmapSegmentSequential;
+  protected MemorySegment mmapSegmentRandom;
+  protected int preadFd;
+  protected int directIOFd;
   protected Arena arena;
-
-  protected String benchmarkName() {
-    return getClass().getSimpleName();
-  }
 
   protected void validateReadSize(int readSize) {
     if (readSize > MAX_READ_SIZE) {
@@ -160,19 +204,31 @@ public abstract class AbstractReadIOBenchmark {
     }
   }
 
+  protected void validateReadsPerOp(int readsPerOp) {
+    if (readsPerOp > MAX_READS_PER_OPERATION) {
+      throw new IllegalArgumentException(
+          "readsPerOp ("
+              + readsPerOp
+              + ") exceeds MAX_READS_PER_OPERATION ("
+              + MAX_READS_PER_OPERATION
+              + ").");
+    }
+  }
+
   @Setup(Level.Trial)
   public void setup() throws Exception {
-    tempFile = Path.of(BENCH_FILE);
-    if (!Files.exists(tempFile)) {
+    benchFile = Path.of(BENCH_FILE);
+    if (!Files.exists(benchFile)) {
       throw new IOException(
           "Benchmark file not found: "
-              + tempFile
+              + benchFile
               + "\nCreate it with: dd if=/dev/urandom of="
               + BENCH_FILE
               + " bs=1M count="
               + (FILE_SIZE / (1024 * 1024)));
     }
-    long size = Files.size(tempFile);
+
+    long size = Files.size(benchFile);
     if (size < FILE_SIZE) {
       throw new IOException(
           "Benchmark file too small: "
@@ -185,120 +241,137 @@ public abstract class AbstractReadIOBenchmark {
               + (FILE_SIZE / (1024 * 1024)));
     }
 
-    fileChannel = FileChannel.open(tempFile, StandardOpenOption.READ);
-
     arena = Arena.ofShared();
+    fileChannel = FileChannel.open(benchFile, StandardOpenOption.READ);
+    try {
+      setupMmap();
+      setupPreadFd();
+      setupDirectIOFd();
+    } catch (Exception e) {
+      tearDown();
+      throw e;
+    }
+  }
 
+  private void setupMmap() throws IOException {
     mmapSegmentNormal = fileChannel.map(MapMode.READ_ONLY, 0, FILE_SIZE, arena);
+    mmapSegmentSequential = fileChannel.map(MapMode.READ_ONLY, 0, FILE_SIZE, arena);
+    mmapSegmentRandom = fileChannel.map(MapMode.READ_ONLY, 0, FILE_SIZE, arena);
+    madvise(mmapSegmentSequential, POSIX_MADV_SEQUENTIAL);
+    madvise(mmapSegmentRandom, POSIX_MADV_RANDOM);
+  }
 
-    mmapSegmentMadvRandom = fileChannel.map(MapMode.READ_ONLY, 0, FILE_SIZE, arena);
+  protected void madvise(MemorySegment segment, int advice) throws IOException {
+    if (segment.byteSize() == 0L) {
+      return;
+    }
+    final int rc;
     try {
-      int rc = (int) POSIX_MADVISE.invokeExact(mmapSegmentMadvRandom, FILE_SIZE, MADV_RANDOM);
-      if (rc != 0) {
-        throw new IllegalStateException("WARNING: posix_madvise(MADV_RANDOM) returned " + rc);
-      }
+      rc = (int) POSIX_MADVISE.invokeExact(segment, segment.byteSize(), advice);
     } catch (Throwable t) {
-      throw new RuntimeException("posix_madvise(MADV_RANDOM) failed", t);
+      throw new RuntimeException("posix_madvise failed", t);
     }
+    if (rc != 0) {
+      throw new IOException("posix_madvise(" + advice + ") returned " + rc);
+    }
+  }
 
-    MemorySegment pathStr = arena.allocateFrom(tempFile.toString());
-    int O_RDONLY = 0;
+  private void setupPreadFd() throws IOException {
+    MemorySegment pathStr = arena.allocateFrom(benchFile.toString());
     try {
-      nativeFd = (int) OPEN.invokeExact(pathStr, O_RDONLY);
+      preadFd = (int) OPEN.invokeExact(pathStr, O_RDONLY);
     } catch (Throwable t) {
-      throw new RuntimeException("Failed to open file via FFI", t);
+      throw new RuntimeException("FFI open() failed", t);
     }
-    if (nativeFd < 0) {
-      throw new IOException("FFI open() returned " + nativeFd);
+    if (preadFd < 0) {
+      throw new IOException("open() for pread returned fd=" + preadFd);
     }
+  }
 
-    // Direct I/O: Linux uses O_DIRECT, macOS uses fcntl(F_NOCACHE)
+  private void setupDirectIOFd() throws IOException {
+    MemorySegment pathStr = arena.allocateFrom(benchFile.toString());
     try {
       if (IS_LINUX) {
-        int O_DIRECT = 0x4000;
-        directIoFd = (int) OPEN.invokeExact(pathStr, O_RDONLY | O_DIRECT);
+        directIOFd = (int) OPEN.invokeExact(pathStr, O_RDONLY | O_DIRECT);
+        if (directIOFd < 0) {
+          throw new IOException("open(O_DIRECT) returned fd=" + directIOFd);
+        }
       } else if (IS_MAC) {
-        directIoFd = (int) OPEN.invokeExact(pathStr, O_RDONLY);
-        if (directIoFd >= 0) {
-          int F_NOCACHE = 48;
-          int rc = (int) FCNTL.invokeExact(directIoFd, F_NOCACHE, 1);
-          if (rc != 0) {
-            CLOSE.invokeExact(directIoFd);
-            throw new IllegalStateException("WARNING: fcntl(F_NOCACHE) failed");
-          }
+        directIOFd = (int) OPEN.invokeExact(pathStr, O_RDONLY);
+        if (directIOFd < 0) {
+          throw new IOException("open() for direct I/O returned fd=" + directIOFd);
+        }
+        int rc = (int) FCNTL.invokeExact(directIOFd, F_NOCACHE, 1);
+        if (rc != 0) {
+          CLOSE.invokeExact(directIOFd);
+          directIOFd = -1;
+          throw new IOException("fcntl(F_NOCACHE) returned " + rc);
         }
       } else {
-        directIoFd = -1;
+        // skip direct I/O benchmarks for other platforms
+        directIOFd = -1;
       }
+    } catch (IOException e) {
+      throw e;
     } catch (Throwable t) {
-      throw new RuntimeException("Failed to open file for direct I/O", t);
-    }
-    if (directIoFd < 0) {
-      directIoFd = -1;
+      throw new RuntimeException("Failed to open for direct I/O", t);
     }
   }
 
   @TearDown(Level.Trial)
   @SuppressWarnings({"restricted", "unused"})
   public void tearDown() throws Exception {
-    fileChannel.close();
+    if (fileChannel != null) {
+      fileChannel.close();
+    }
     try {
-      int rc = (int) CLOSE.invokeExact(nativeFd);
-      if (directIoFd >= 0) {
-        rc = (int) CLOSE.invokeExact(directIoFd);
+      if (preadFd > 0) {
+        int rc = (int) CLOSE.invokeExact(preadFd);
+      }
+      if (directIOFd > 0) {
+        int rc = (int) CLOSE.invokeExact(directIOFd);
       }
     } catch (Throwable t) {
-      throw new RuntimeException(t);
+      throw new RuntimeException("Failed to close fd", t);
     }
-    arena.close();
+    if (arena != null) {
+      arena.close();
+    }
   }
 
   @Setup(Level.Iteration)
   public void setupIteration() throws IOException {
-    if (DROP_CACHES) {
+    if (DROP_PAGE_CACHE) {
       dropPageCaches();
     }
   }
 
   private static void dropPageCaches() throws IOException {
     if (IS_MAC) {
-      Process purge = new ProcessBuilder("/usr/bin/sudo", "purge").inheritIO().start();
-      try {
-        if (purge.waitFor() != 0) {
-          throw new IOException("purge failed with exit code " + purge.exitValue());
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new IOException("Interrupted during purge", e);
+      exec("/usr/bin/sudo", "purge");
+    } else if (IS_LINUX) {
+      exec("/usr/bin/sync");
+      exec("/usr/bin/sudo", "/usr/bin/bash", "-c", "echo 3 > /proc/sys/vm/drop_caches");
+    }
+  }
+
+  private static void exec(String... command) throws IOException {
+    Process proc = new ProcessBuilder(command).inheritIO().start();
+    try {
+      int exitCode = proc.waitFor();
+      if (exitCode != 0) {
+        throw new IOException(
+            "Command failed with exit code " + exitCode + ": " + String.join(" ", command));
       }
-    } else {
-      Process sync = new ProcessBuilder("/usr/bin/sync").inheritIO().start();
-      try {
-        if (sync.waitFor() != 0) {
-          throw new IOException("sync failed with exit code " + sync.exitValue());
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new IOException("Interrupted during sync", e);
-      }
-      Process drop =
-          new ProcessBuilder(
-                  "/usr/bin/sudo", "/usr/bin/bash", "-c", "echo 3 > /proc/sys/vm/drop_caches")
-              .inheritIO()
-              .start();
-      try {
-        if (drop.waitFor() != 0) {
-          throw new IOException("Failed to drop page caches (exit code " + drop.exitValue() + ").");
-        }
-      } catch (InterruptedException e) {
-        Thread.currentThread().interrupt();
-        throw new IOException("Interrupted during drop_caches", e);
-      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IOException("Interrupted waiting for: " + String.join(" ", command), e);
     }
   }
 
   /** Reads a config value from env var first, then system property, then default. */
-  protected static String envOrProp(String envKey, String propKey, String defaultValue) {
+  protected static String getConfigFromEnvOrProp(
+      String envKey, String propKey, String defaultValue) {
     String env = System.getenv(envKey);
     if (env != null && !env.isEmpty()) {
       return env;

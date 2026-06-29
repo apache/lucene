@@ -60,8 +60,17 @@ public class RandomReadIOBenchmark extends AbstractReadIOBenchmark {
   @Setup(Level.Trial)
   public void validateParams() {
     validateReadSize(readSize);
+    validateReadsPerOp(readsPerOp);
+    if (directIOFd >= 0 && readSize % PAGE_SIZE != 0) {
+      throw new IllegalArgumentException(
+          "readSize ("
+              + readSize
+              + ") must be a multiple of PAGE_SIZE ("
+              + PAGE_SIZE
+              + ") for O_DIRECT.");
+    }
     maxOffset = FILE_SIZE - readSize;
-    maxAlignedOffset = (maxOffset / ALIGNMENT) * ALIGNMENT;
+    maxAlignedOffset = (maxOffset / PAGE_SIZE) * PAGE_SIZE;
   }
 
   // ======== mmap NORMAL ========
@@ -120,25 +129,25 @@ public class RandomReadIOBenchmark extends AbstractReadIOBenchmark {
 
   @Benchmark
   @Threads(1)
-  public void mmapBatchedPrefetch_T01(ThreadBuffers tb, Blackhole bh) {
+  public void mmapBatchedPrefetch_T01(ThreadBuffers tb, Blackhole bh) throws IOException {
     doMmapBatchedPrefetch(tb, bh);
   }
 
   @Benchmark
   @Threads(4)
-  public void mmapBatchedPrefetch_T04(ThreadBuffers tb, Blackhole bh) {
+  public void mmapBatchedPrefetch_T04(ThreadBuffers tb, Blackhole bh) throws IOException {
     doMmapBatchedPrefetch(tb, bh);
   }
 
   @Benchmark
   @Threads(8)
-  public void mmapBatchedPrefetch_T08(ThreadBuffers tb, Blackhole bh) {
+  public void mmapBatchedPrefetch_T08(ThreadBuffers tb, Blackhole bh) throws IOException {
     doMmapBatchedPrefetch(tb, bh);
   }
 
   @Benchmark
   @Threads(16)
-  public void mmapBatchedPrefetch_T16(ThreadBuffers tb, Blackhole bh) {
+  public void mmapBatchedPrefetch_T16(ThreadBuffers tb, Blackhole bh) throws IOException {
     doMmapBatchedPrefetch(tb, bh);
   }
 
@@ -146,25 +155,25 @@ public class RandomReadIOBenchmark extends AbstractReadIOBenchmark {
 
   @Benchmark
   @Threads(1)
-  public void mmapMadvRandomBatchedPrefetch_T01(ThreadBuffers tb, Blackhole bh) {
+  public void mmapMadvRandomBatchedPrefetch_T01(ThreadBuffers tb, Blackhole bh) throws IOException {
     doMmapMadvRandomBatchedPrefetch(tb, bh);
   }
 
   @Benchmark
   @Threads(4)
-  public void mmapMadvRandomBatchedPrefetch_T04(ThreadBuffers tb, Blackhole bh) {
+  public void mmapMadvRandomBatchedPrefetch_T04(ThreadBuffers tb, Blackhole bh) throws IOException {
     doMmapMadvRandomBatchedPrefetch(tb, bh);
   }
 
   @Benchmark
   @Threads(8)
-  public void mmapMadvRandomBatchedPrefetch_T08(ThreadBuffers tb, Blackhole bh) {
+  public void mmapMadvRandomBatchedPrefetch_T08(ThreadBuffers tb, Blackhole bh) throws IOException {
     doMmapMadvRandomBatchedPrefetch(tb, bh);
   }
 
   @Benchmark
   @Threads(16)
-  public void mmapMadvRandomBatchedPrefetch_T16(ThreadBuffers tb, Blackhole bh) {
+  public void mmapMadvRandomBatchedPrefetch_T16(ThreadBuffers tb, Blackhole bh) throws IOException {
     doMmapMadvRandomBatchedPrefetch(tb, bh);
   }
 
@@ -222,25 +231,25 @@ public class RandomReadIOBenchmark extends AbstractReadIOBenchmark {
 
   // ======== FFI pread + O_DIRECT ========
 
-  // @Benchmark
+  @Benchmark
   @Threads(1)
   public void ffiPreadDirectIO_T01(ThreadBuffers tb, Blackhole bh) {
     doFfiDirectIoReads(tb, bh);
   }
 
-  // @Benchmark
+  @Benchmark
   @Threads(4)
   public void ffiPreadDirectIO_T04(ThreadBuffers tb, Blackhole bh) {
     doFfiDirectIoReads(tb, bh);
   }
 
-  // @Benchmark
+  @Benchmark
   @Threads(8)
   public void ffiPreadDirectIO_T08(ThreadBuffers tb, Blackhole bh) {
     doFfiDirectIoReads(tb, bh);
   }
 
-  // @Benchmark
+  @Benchmark
   @Threads(16)
   public void ffiPreadDirectIO_T16(ThreadBuffers tb, Blackhole bh) {
     doFfiDirectIoReads(tb, bh);
@@ -250,7 +259,7 @@ public class RandomReadIOBenchmark extends AbstractReadIOBenchmark {
 
   private void doMmapNormalReads(ThreadBuffers tb, Blackhole bh) {
     ThreadLocalRandom rng = ThreadLocalRandom.current();
-    byte[] dst = tb.heapBuf.array();
+    byte[] dst = tb.heapBuf;
     for (int i = 0; i < readsPerOp; i++) {
       long offset = rng.nextLong(maxOffset);
       MemorySegment.copy(mmapSegmentNormal, ValueLayout.JAVA_BYTE, offset, dst, 0, readSize);
@@ -260,56 +269,51 @@ public class RandomReadIOBenchmark extends AbstractReadIOBenchmark {
 
   private void doMmapMadvRandomReads(ThreadBuffers tb, Blackhole bh) {
     ThreadLocalRandom rng = ThreadLocalRandom.current();
-    byte[] dst = tb.heapBuf.array();
+    byte[] dst = tb.heapBuf;
     for (int i = 0; i < readsPerOp; i++) {
       long offset = rng.nextLong(maxOffset);
-      MemorySegment.copy(mmapSegmentMadvRandom, ValueLayout.JAVA_BYTE, offset, dst, 0, readSize);
+      MemorySegment.copy(mmapSegmentRandom, ValueLayout.JAVA_BYTE, offset, dst, 0, readSize);
       bh.consume(dst[0]);
     }
   }
 
-  @SuppressWarnings("unused")
-  private void doMmapBatchedPrefetch(ThreadBuffers tb, Blackhole bh) {
+  private void doMmapBatchedPrefetch(ThreadBuffers tb, Blackhole bh) throws IOException {
     ThreadLocalRandom rng = ThreadLocalRandom.current();
-    byte[] dst = tb.heapBuf.array();
-    long[] offsets = new long[readsPerOp];
-    try {
-      for (int i = 0; i < readsPerOp; i++) {
-        offsets[i] = rng.nextLong(maxOffset);
-      }
-      for (int i = 0; i < readsPerOp; i++) {
-        MemorySegment slice = mmapSegmentNormal.asSlice(offsets[i], readSize);
-        int rc = (int) POSIX_MADVISE.invokeExact(slice, (long) readSize, MADV_WILLNEED);
-      }
-      for (int i = 0; i < readsPerOp; i++) {
-        MemorySegment.copy(mmapSegmentNormal, ValueLayout.JAVA_BYTE, offsets[i], dst, 0, readSize);
-        bh.consume(dst[0]);
-      }
-    } catch (Throwable t) {
-      throw new RuntimeException(t);
+    byte[] dst = tb.heapBuf;
+    long[] offsets = tb.offsets;
+    for (int i = 0; i < readsPerOp; i++) {
+      offsets[i] = rng.nextLong(maxOffset);
+    }
+    for (int i = 0; i < readsPerOp; i++) {
+      long offsetInPage = (mmapSegmentNormal.address() + offsets[i]) % PAGE_SIZE;
+      long alignedOffset = offsets[i] - offsetInPage;
+      long alignedLength = readSize + offsetInPage;
+      MemorySegment slice = mmapSegmentNormal.asSlice(alignedOffset, alignedLength);
+      madvise(slice, POSIX_MADV_WILLNEED);
+    }
+    for (int i = 0; i < readsPerOp; i++) {
+      MemorySegment.copy(mmapSegmentNormal, ValueLayout.JAVA_BYTE, offsets[i], dst, 0, readSize);
+      bh.consume(dst[0]);
     }
   }
 
-  @SuppressWarnings("unused")
-  private void doMmapMadvRandomBatchedPrefetch(ThreadBuffers tb, Blackhole bh) {
+  private void doMmapMadvRandomBatchedPrefetch(ThreadBuffers tb, Blackhole bh) throws IOException {
     ThreadLocalRandom rng = ThreadLocalRandom.current();
-    byte[] dst = tb.heapBuf.array();
-    long[] offsets = new long[readsPerOp];
-    try {
-      for (int i = 0; i < readsPerOp; i++) {
-        offsets[i] = rng.nextLong(maxOffset);
-      }
-      for (int i = 0; i < readsPerOp; i++) {
-        MemorySegment slice = mmapSegmentMadvRandom.asSlice(offsets[i], readSize);
-        int rc = (int) POSIX_MADVISE.invokeExact(slice, (long) readSize, MADV_WILLNEED);
-      }
-      for (int i = 0; i < readsPerOp; i++) {
-        MemorySegment.copy(
-            mmapSegmentMadvRandom, ValueLayout.JAVA_BYTE, offsets[i], dst, 0, readSize);
-        bh.consume(dst[0]);
-      }
-    } catch (Throwable t) {
-      throw new RuntimeException(t);
+    byte[] dst = tb.heapBuf;
+    long[] offsets = tb.offsets;
+    for (int i = 0; i < readsPerOp; i++) {
+      offsets[i] = rng.nextLong(maxOffset);
+    }
+    for (int i = 0; i < readsPerOp; i++) {
+      long offsetInPage = (mmapSegmentRandom.address() + offsets[i]) % PAGE_SIZE;
+      long alignedOffset = offsets[i] - offsetInPage;
+      long alignedLength = readSize + offsetInPage;
+      MemorySegment slice = mmapSegmentRandom.asSlice(alignedOffset, alignedLength);
+      madvise(slice, POSIX_MADV_WILLNEED);
+    }
+    for (int i = 0; i < readsPerOp; i++) {
+      MemorySegment.copy(mmapSegmentRandom, ValueLayout.JAVA_BYTE, offsets[i], dst, 0, readSize);
+      bh.consume(dst[0]);
     }
   }
 
@@ -330,7 +334,7 @@ public class RandomReadIOBenchmark extends AbstractReadIOBenchmark {
     try {
       for (int i = 0; i < readsPerOp; i++) {
         long offset = rng.nextLong(maxOffset);
-        long n = (long) PREAD.invokeExact(nativeFd, buf, (long) readSize, offset);
+        long n = (long) PREAD.invokeExact(preadFd, buf, (long) readSize, offset);
         bh.consume(n);
       }
     } catch (Throwable t) {
@@ -339,20 +343,20 @@ public class RandomReadIOBenchmark extends AbstractReadIOBenchmark {
   }
 
   private void doFfiDirectIoReads(ThreadBuffers tb, Blackhole bh) {
-    if (directIoFd < 0) {
+    if (directIOFd < 0) {
       bh.consume(0);
       return;
     }
     ThreadLocalRandom rng = ThreadLocalRandom.current();
-    MemorySegment buf = tb.ffiDirectIoBuf;
+    MemorySegment buf = tb.ffiDirectIOBuf;
     try {
       for (int i = 0; i < readsPerOp; i++) {
-        long offset = (rng.nextLong(maxAlignedOffset / ALIGNMENT)) * ALIGNMENT;
-        long n = (long) PREAD.invokeExact(directIoFd, buf, (long) readSize, offset);
+        long offset = (rng.nextLong(maxAlignedOffset / PAGE_SIZE)) * PAGE_SIZE;
+        long n = (long) PREAD.invokeExact(directIOFd, buf, (long) readSize, offset);
         bh.consume(n);
       }
     } catch (Throwable t) {
-      throw new RuntimeException(t);
+      throw new RuntimeException("pread failed", t);
     }
   }
 }

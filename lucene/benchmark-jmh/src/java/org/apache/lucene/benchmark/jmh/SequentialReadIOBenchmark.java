@@ -24,11 +24,13 @@ import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
+import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Measurement;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.OutputTimeUnit;
 import org.openjdk.jmh.annotations.Param;
 import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Threads;
 import org.openjdk.jmh.annotations.Warmup;
@@ -49,57 +51,126 @@ import org.openjdk.jmh.infra.Blackhole;
 @Threads(1)
 public class SequentialReadIOBenchmark extends AbstractReadIOBenchmark {
 
-  @Param({"4096"})
+  private static final long PREFETCH_WINDOW = 2 * 1024 * 1024;
+
+  @Param({"16384"})
   public int readSize;
 
-  @Param({"64"})
+  @Param({"16"})
   public int readsPerOp;
-
-  /** Sliding prefetch window size. */
-  private static final long PREFETCH_WINDOW = 2 * 1024 * 1024;
 
   /** Current sequential scan position — advances across JMH invocations, wraps at EOF. */
   private long seqPosition = 0;
+
+  /** Tracks how far ahead we've prefetched. */
+  private long prefetchedUpTo = 0;
+
+  private long maxOffset;
+
+  @Setup(Level.Trial)
+  public void validateParams() {
+    validateReadSize(readSize);
+    validateReadsPerOp(readsPerOp);
+    if (directIOFd >= 0 && readSize % PAGE_SIZE != 0) {
+      throw new IllegalArgumentException(
+          "readSize ("
+              + readSize
+              + ") must be a multiple of PAGE_SIZE ("
+              + PAGE_SIZE
+              + ") for O_DIRECT.");
+    }
+    maxOffset = FILE_SIZE - readSize;
+  }
 
   // ======== mmap NORMAL ========
 
   @Benchmark
   public void mmap(ThreadBuffers tb, Blackhole bh) {
-    byte[] dst = tb.heapBuf.array();
+    byte[] dst = tb.heapBuf;
     long offset = seqPosition;
     for (int i = 0; i < readsPerOp; i++) {
       MemorySegment.copy(mmapSegmentNormal, ValueLayout.JAVA_BYTE, offset, dst, 0, readSize);
       bh.consume(dst[0]);
       offset += readSize;
-      if (offset >= FILE_SIZE) {
+      if (offset > maxOffset) {
         offset = 0;
       }
     }
     seqPosition = offset;
   }
 
-  // ======== mmap NORMAL + sliding 2MB WILLNEED prefetch window ========
+  // ======== mmap SEQUENTIAL ========
 
   @Benchmark
-  @SuppressWarnings("unused")
-  public void mmapBatchedPrefetch(ThreadBuffers tb, Blackhole bh) {
-    byte[] dst = tb.heapBuf.array();
+  public void mmapMadvSequential(ThreadBuffers tb, Blackhole bh) {
+    byte[] dst = tb.heapBuf;
     long offset = seqPosition;
-    try {
-      long prefetchOff = offset + (long) readsPerOp * readSize;
-      if (prefetchOff + PREFETCH_WINDOW <= FILE_SIZE) {
-        MemorySegment slice = mmapSegmentNormal.asSlice(prefetchOff, PREFETCH_WINDOW);
-        int rc = (int) POSIX_MADVISE.invokeExact(slice, PREFETCH_WINDOW, MADV_WILLNEED);
-      }
-    } catch (Throwable t) {
-      throw new RuntimeException(t);
-    }
     for (int i = 0; i < readsPerOp; i++) {
-      MemorySegment.copy(mmapSegmentNormal, ValueLayout.JAVA_BYTE, offset, dst, 0, readSize);
+      MemorySegment.copy(mmapSegmentSequential, ValueLayout.JAVA_BYTE, offset, dst, 0, readSize);
       bh.consume(dst[0]);
       offset += readSize;
-      if (offset >= FILE_SIZE) {
+      if (offset > maxOffset) {
         offset = 0;
+      }
+    }
+    seqPosition = offset;
+  }
+
+  // ======== mmap RANDOM + batched prefetch ========
+
+  @Benchmark
+  public void mmapMadvRandomBatchedPrefetch(ThreadBuffers tb, Blackhole bh) throws IOException {
+    byte[] dst = tb.heapBuf;
+    long offset = seqPosition;
+    long prefetchOffset = offset;
+    for (int i = 0; i < readsPerOp; i++) {
+      long offsetInPage = (mmapSegmentRandom.address() + prefetchOffset) % PAGE_SIZE;
+      long alignedOffset = prefetchOffset - offsetInPage;
+      long alignedLength = readSize + offsetInPage;
+      MemorySegment slice = mmapSegmentRandom.asSlice(alignedOffset, alignedLength);
+      madvise(slice, POSIX_MADV_WILLNEED);
+      prefetchOffset += readSize;
+      if (prefetchOffset > maxOffset) {
+        prefetchOffset = 0;
+      }
+    }
+    for (int i = 0; i < readsPerOp; i++) {
+      MemorySegment.copy(mmapSegmentRandom, ValueLayout.JAVA_BYTE, offset, dst, 0, readSize);
+      bh.consume(dst[0]);
+      offset += readSize;
+      if (offset > maxOffset) {
+        offset = 0;
+      }
+    }
+    seqPosition = offset;
+  }
+
+  // ======== mmap RANDOM + sliding 2MB WILLNEED prefetch window ========
+
+  @Benchmark
+  public void mmapMadvRandomSlidingPrefetch(ThreadBuffers tb, Blackhole bh) throws IOException {
+    byte[] dst = tb.heapBuf;
+    long offset = seqPosition;
+
+    for (int i = 0; i < readsPerOp; i++) {
+      // Slide the prefetch window ahead if needed
+      if (offset + PREFETCH_WINDOW > prefetchedUpTo) {
+        long prefetchStart = prefetchedUpTo;
+        long prefetchEnd = Math.min(offset + PREFETCH_WINDOW, FILE_SIZE);
+        if (prefetchStart < prefetchEnd) {
+          madvise(
+              mmapSegmentRandom.asSlice(prefetchStart, prefetchEnd - prefetchStart),
+              POSIX_MADV_WILLNEED);
+        }
+        prefetchedUpTo = prefetchEnd;
+      }
+
+      MemorySegment.copy(mmapSegmentRandom, ValueLayout.JAVA_BYTE, offset, dst, 0, readSize);
+      bh.consume(dst[0]);
+      offset += readSize;
+      if (offset > maxOffset) {
+        offset = 0;
+        prefetchedUpTo = 0;
       }
     }
     seqPosition = offset;
@@ -113,10 +184,10 @@ public class SequentialReadIOBenchmark extends AbstractReadIOBenchmark {
     long offset = seqPosition;
     try {
       for (int i = 0; i < readsPerOp; i++) {
-        long n = (long) PREAD.invokeExact(nativeFd, buf, (long) readSize, offset);
+        long n = (long) PREAD.invokeExact(preadFd, buf, (long) readSize, offset);
         bh.consume(n);
         offset += readSize;
-        if (offset >= FILE_SIZE) {
+        if (offset > maxOffset) {
           offset = 0;
         }
       }
@@ -137,7 +208,9 @@ public class SequentialReadIOBenchmark extends AbstractReadIOBenchmark {
       int n = fileChannel.read(buf, offset);
       bh.consume(n);
       offset += readSize;
-      if (offset >= FILE_SIZE) offset = 0;
+      if (offset > maxOffset) {
+        offset = 0;
+      }
     }
     seqPosition = offset;
   }
@@ -146,18 +219,20 @@ public class SequentialReadIOBenchmark extends AbstractReadIOBenchmark {
 
   @Benchmark
   public void ffiPreadDirectIO(ThreadBuffers tb, Blackhole bh) {
-    if (directIoFd < 0) {
+    if (directIOFd < 0) {
       bh.consume(0);
       return;
     }
-    MemorySegment buf = tb.ffiDirectIoBuf;
-    long offset = (seqPosition / ALIGNMENT) * ALIGNMENT;
+    MemorySegment buf = tb.ffiDirectIOBuf;
+    long offset = (seqPosition / PAGE_SIZE) * PAGE_SIZE;
     try {
       for (int i = 0; i < readsPerOp; i++) {
-        long n = (long) PREAD.invokeExact(directIoFd, buf, (long) readSize, offset);
+        long n = (long) PREAD.invokeExact(directIOFd, buf, (long) readSize, offset);
         bh.consume(n);
         offset += readSize;
-        if (offset >= FILE_SIZE) offset = 0;
+        if (offset > maxOffset) {
+          offset = 0;
+        }
       }
     } catch (Throwable t) {
       throw new RuntimeException(t);
