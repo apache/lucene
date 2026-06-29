@@ -58,6 +58,11 @@ class PointValuesWriter {
             + (PointValues.MAX_NUM_BYTES * BKDConfig.MAX_DIMS);
   }
 
+  /** Minimum number of values to process per chunk in the dense N-D bulk path. */
+  private static final int MIN_VALUES_PER_CHUNK = 64;
+
+  private byte[] densePointsBuffer;
+
   PointValuesWriter(Counter bytesUsed, FieldInfo fieldInfo, SharedIndexingScratch sharedScratch) {
     this.fieldInfo = fieldInfo;
     this.iwBytesUsed = bytesUsed;
@@ -137,6 +142,10 @@ class PointValuesWriter {
     commitDenseRange(firstDocID, size, ramBefore);
   }
 
+  /**
+   * Bulk-adds dense N-dimensional packed point values from a {@link BytesRefValuesCursor}. Each
+   * value is a pre-encoded packed byte array of {@code packedBytesLength} bytes.
+   */
   void addDenseNDValues(int firstDocID, BytesRefValuesCursor cursor) throws IOException {
     final int size = cursor.size();
     if (size == 0) {
@@ -144,8 +153,19 @@ class PointValuesWriter {
     }
     final long ramBefore = reserveDenseRange(firstDocID, size);
     final int width = packedBytesLength;
-    final int perChunk = SharedIndexingScratch.BYTES_SCRATCH_SIZE / width;
-    final byte[] buffer = sharedScratch.bytesScratch();
+    final byte[] buffer;
+    final int perChunk;
+    if (width * MIN_VALUES_PER_CHUNK <= SharedIndexingScratch.BYTES_SCRATCH_SIZE) {
+      // Common case (packed <= ~64 bytes): reuse the shared 4 KiB scratch which already gives
+      // at least MIN_VALUES_PER_CHUNK values per chunk. Matches the 1D dense path behavior.
+      buffer = sharedScratch.bytesScratch();
+      perChunk = SharedIndexingScratch.BYTES_SCRATCH_SIZE / width;
+    } else {
+      // Wide points: shared 4 KiB would yield < MIN_VALUES_PER_CHUNK; allocate a dedicated
+      // larger buffer (sized for at least 64 values) and keep it for the lifetime of this writer.
+      buffer = pointsDenseBuffer(width);
+      perChunk = buffer.length / width;
+    }
     int remaining = size;
     while (remaining > 0) {
       int chunk = Math.min(perChunk, remaining);
@@ -154,6 +174,26 @@ class PointValuesWriter {
       remaining -= chunk;
     }
     commitDenseRange(firstDocID, size, ramBefore);
+  }
+
+  /**
+   * Returns (and caches) a dedicated buffer for wide packed point values, sized to hold at least
+   * {@code MIN_VALUES_PER_CHUNK} values. Only called when the shared scratch would result in fewer
+   * than {@link #MIN_VALUES_PER_CHUNK} values per chunk (i.e. packed length > ~64 bytes).
+   *
+   * <p>The allocated size is charged to {@code iwBytesUsed}.
+   */
+  private byte[] pointsDenseBuffer(int packedLength) {
+    final int minBytes = packedLength * MIN_VALUES_PER_CHUNK;
+    if (densePointsBuffer == null) {
+      densePointsBuffer = new byte[minBytes];
+      iwBytesUsed.addAndGet(minBytes);
+    } else if (densePointsBuffer.length < minBytes) {
+      final int old = densePointsBuffer.length;
+      densePointsBuffer = new byte[minBytes];
+      iwBytesUsed.addAndGet(minBytes - (long) old);
+    }
+    return densePointsBuffer;
   }
 
   private void validate1DPacked(int byteWidth) {

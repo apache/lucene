@@ -284,7 +284,7 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+* GITHUB#16209: Add dense bulk path for multi-dimensional point fields via BinaryColumn. (Prithvi S)
 
 New Features
 ---------------------
@@ -345,7 +345,6 @@ API Changes
 * GITHUB#16227: Add dense indexing path for BinaryColumn while using experimental column api (Tim Brooks)
 
 * GITHUB#16224 Add TokenStreamColumn for experimental columnar batch indexing. (Tim Brooks)
-
 
 New Features
 ---------------------
