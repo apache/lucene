@@ -137,10 +137,9 @@ public final class NativeFSLockFactory extends FSLockFactory {
       } else {
         throw new LockObtainFailedException("Lock held by another program: " + path);
       }
-    } finally {
-      if (lock == null) { // not successful - clear up and move out
-        IOUtils.closeWhileHandlingException(channel); // TODO: addSuppressed
-      }
+    } catch (Throwable t) {
+      IOUtils.closeWhileSuppressingExceptions(t, channel);
+      throw t;
     }
   }
 
