@@ -163,9 +163,6 @@ Optimizations
 
 * GITHUB#15597, GITHUB#15777: Reduce memory usage of NeighborArray (Viliam Durina)
 
-* GITHUB#16146: Speed up no-score filtered-optional Boolean queries by routing dense conjunctions with cached FixedBitSet filters
-  through ConstantScoreBulkScorer, which batches matches in bulk via DocIdStream. (Costin Leau)
-
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
@@ -300,6 +297,9 @@ Improvements
 Optimizations
 ---------------------
 * GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
+
+* GITHUB#16146: Speed up no-score filtered-optional Boolean queries by routing dense conjunctions with cached FixedBitSet filters
+  through ConstantScoreBulkScorer, which batches matches in bulk via DocIdStream. (Costin Leau)
 
 Bug Fixes
 ---------------------
