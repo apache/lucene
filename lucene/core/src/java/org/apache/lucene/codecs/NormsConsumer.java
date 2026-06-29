@@ -66,6 +66,7 @@ public abstract class NormsConsumer implements Closeable {
   public void merge(MergeState mergeState) throws IOException {
     for (NormsProducer normsProducer : mergeState.normsProducers) {
       if (normsProducer != null) {
+        mergeState.checkAborted();
         normsProducer.checkIntegrity();
       }
     }

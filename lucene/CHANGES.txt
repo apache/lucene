@@ -100,6 +100,9 @@ API Changes
 
 New Features
 ---------------------
+* GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
+  modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)
+
 * GITHUB#15505: Upgrade snowball to 2d2e312df56f2ede014a4ffb3e91e6dea43c24be. New stemmer: PolishStemmer (and
   PolishSnowballAnalyzer in the stempel package) (Justas Sakalauskas, Dawid Weiss)
 
@@ -198,6 +201,8 @@ Bug Fixes
 
 * GITHUB#15939: Fix thread-safety issues with NFARunAutomaton. (Dimitris Rempapis)
 
+* GITHUB#16278: Refactor NativeFSLockFactory lock acquisition to cleanly separate locking and file system logic. (Bharathi-Kanna)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
@@ -278,6 +283,32 @@ Other
 
 * GITHUB#16170: Add JMH benchmarks for int4BitDotProduct and int4DibitDotProduct. (Vignesh)
 
+======================= Lucene 10.6.0 =======================
+
+API Changes
+---------------------
+(No changes)
+
+New Features
+---------------------
+(No changes)
+
+Improvements
+---------------------
+(No changes)
+
+Optimizations
+---------------------
+* GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
+
+Bug Fixes
+---------------------
+(No changes)
+
+Other
+---------------------
+(No changes)
+
 ======================= Lucene 10.5.0 =======================
 
 API Changes
@@ -348,6 +379,9 @@ New Features
 * GITHUB#16110: Add count() to BayesianScoreQuery.BayesianScoreWeight, delegating to
   the inner weight. (Prithvi S)
 
+* GITHUB#16117: Add updateDocuments(Term, ColumnBatch) and updateDocuments(Query, ColumnBatch)
+  to IndexWriter for atomic delete-and-add columnar operations. (Prithvi S)
+
 Improvements
 ---------------------
 * GITHUB#15948: Improve BayesianScoreQuery and LogOddsFusionQuery with base rate prior,
@@ -410,8 +444,13 @@ Improvements
   DiversifiedTopDocsCollector, removing usages of the deprecated IndexSearcher#search(Query, Collector).
   (Luca Cavanna)
 
+* GITHUB#16264: Check if merge is aborted before executing file integrity checks to avoid
+  costly full-file checksums on segments when the merge has already been cancelled. (Tanguy Leroux)
+
 Optimizations
 ---------------------
+* GITHUB#16111: Optimize FieldExistsQuery.count() when all docs have the field. (Prithvi S)
+
 * GITHUB#16222: MultiTermQuery constant-score wrapper now defers term collection to ScorerSupplier#get()
   for queries with an unknown term count (automaton queries such as wildcard/regexp/prefix/range),
   instead of scanning the term dictionary while building the ScorerSupplier. This keeps the
@@ -606,6 +645,9 @@ Bug Fixes
 
 * GITHUB#16179: Fix minor lock/unlock acquisition order in DocumentsWriterDeleteQueue (Chris Hegarty)
 
+* GITHUB#16250: Fix NullPointerException in RoaringDocIdSet#intoBitSet when the iterator is already
+  exhausted. (Venkateshwaran Shanmugham)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
@@ -654,6 +696,8 @@ Other
 * GITHUB#16219: Allow multiple addBatch columns per field name. (Tim Brooks)
 
 * GITHUB#16215: Extract segment-boundary check into helper in QueryUtils (Luca Cavanna)
+
+* GITHUB#16258: Extract per-doc assertion helpers in QueryUtils (Luca Cavanna)
 
 ======================= Lucene 10.4.0 =======================
 
