@@ -324,6 +324,8 @@ Improvements
 
 * GITHUB#16271: Add detail to KNN no-match explanations. (Jakub Slowinski)
 
+* GITHUB#16170: Remove unused public methods in AllGroupHeadsCollector. (Binlong Gao)
+
 Optimizations
 ---------------------
 * GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
