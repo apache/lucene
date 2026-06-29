@@ -16,8 +16,10 @@
  */
 package org.apache.lucene.benchmark.jmh;
 
+import java.nio.charset.StandardCharsets;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -91,175 +93,59 @@ public class ByteBuffersDataOutputWriteStringBenchmark {
     Random random = new Random(42);
     testStrings = new String[STRING_POOL_SIZE];
 
-    int avgBytesPerString;
-    switch (stringType) {
-      case "ascii_1":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomAscii(random, 1);
-        }
-        avgBytesPerString = 2;
-        break;
-      case "ascii_10":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomAscii(random, 8 + random.nextInt(5));
-        }
-        avgBytesPerString = 11;
-        break;
-      case "ascii_20":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomAscii(random, 18 + random.nextInt(5));
-        }
-        avgBytesPerString = 21;
-        break;
-      case "ascii_30":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomAscii(random, 28 + random.nextInt(5));
-        }
-        avgBytesPerString = 31;
-        break;
-      case "ascii_40":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomAscii(random, 38 + random.nextInt(5));
-        }
-        avgBytesPerString = 41;
-        break;
-      case "ascii_medium":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomAscii(random, 50 + random.nextInt(100));
-        }
-        avgBytesPerString = 100;
-        break;
-      case "ascii_long":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomAscii(random, 900 + random.nextInt(250));
-        }
-        avgBytesPerString = 1024;
-        break;
-      case "ascii_vlarge":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomAscii(random, 7000 + random.nextInt(2400));
-        }
-        avgBytesPerString = 8192;
-        break;
-      case "cjk_1":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomCjk(random, 1);
-        }
-        avgBytesPerString = 4;
-        break;
-      case "cjk_10":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomCjk(random, 8 + random.nextInt(5));
-        }
-        avgBytesPerString = 32;
-        break;
-      case "cjk_20":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomCjk(random, 18 + random.nextInt(5));
-        }
-        avgBytesPerString = 62;
-        break;
-      case "cjk_30":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomCjk(random, 28 + random.nextInt(5));
-        }
-        avgBytesPerString = 92;
-        break;
-      case "cjk_40":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomCjk(random, 38 + random.nextInt(5));
-        }
-        avgBytesPerString = 122;
-        break;
-      case "cjk_medium":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomCjk(random, 50 + random.nextInt(100));
-        }
-        avgBytesPerString = 300;
-        break;
-      case "cjk_long":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomCjk(random, 400 + random.nextInt(200));
-        }
-        avgBytesPerString = 1500;
-        break;
-      case "cjk_vlarge":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomCjk(random, 5500 + random.nextInt(1000));
-        }
-        avgBytesPerString = 18000;
-        break;
-      case "latin_ext_1":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomLatinExtended(random, 1);
-        }
-        avgBytesPerString = 3;
-        break;
-      case "latin_ext_10":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomLatinExtended(random, 8 + random.nextInt(5));
-        }
-        avgBytesPerString = 21;
-        break;
-      case "latin_ext_20":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomLatinExtended(random, 18 + random.nextInt(5));
-        }
-        avgBytesPerString = 41;
-        break;
-      case "latin_ext_30":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomLatinExtended(random, 28 + random.nextInt(5));
-        }
-        avgBytesPerString = 61;
-        break;
-      case "latin_ext_40":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomLatinExtended(random, 38 + random.nextInt(5));
-        }
-        avgBytesPerString = 81;
-        break;
-      case "latin_ext_medium":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomLatinExtended(random, 50 + random.nextInt(100));
-        }
-        avgBytesPerString = 200;
-        break;
-      case "latin_ext_long":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomLatinExtended(random, 400 + random.nextInt(200));
-        }
-        avgBytesPerString = 1000;
-        break;
-      case "latin_ext_vlarge":
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          testStrings[i] = randomLatinExtended(random, 5500 + random.nextInt(1000));
-        }
-        avgBytesPerString = 12000;
-        break;
-      case "mixed":
-        // Varying lengths
-        for (int i = 0; i < STRING_POOL_SIZE; i++) {
-          int roll = random.nextInt(100);
-          if (roll < 50) {
-            testStrings[i] = randomAscii(random, 3 + random.nextInt(30));
-          } else if (roll < 65) {
-            testStrings[i] = randomAscii(random, 50 + random.nextInt(100));
-          } else if (roll < 75) {
-            testStrings[i] = randomAscii(random, 500 + random.nextInt(500));
-          } else if (roll < 85) {
-            testStrings[i] = randomCjk(random, 5 + random.nextInt(20));
-          } else if (roll < 95) {
-            testStrings[i] = randomLatinExtended(random, 20 + random.nextInt(60));
-          } else {
-            testStrings[i] = randomCjk(random, 200 + random.nextInt(300));
-          }
-        }
-        avgBytesPerString = 80;
-        break;
-      default:
-        throw new IllegalArgumentException("Unknown stringType: " + stringType);
+    Supplier<String> generator =
+        switch (stringType) {
+          case "ascii_1" -> () -> randomAscii(random, 1);
+          case "ascii_10" -> () -> randomAscii(random, 8 + random.nextInt(5));
+          case "ascii_20" -> () -> randomAscii(random, 18 + random.nextInt(5));
+          case "ascii_30" -> () -> randomAscii(random, 28 + random.nextInt(5));
+          case "ascii_40" -> () -> randomAscii(random, 38 + random.nextInt(5));
+          case "ascii_medium" -> () -> randomAscii(random, 50 + random.nextInt(100));
+          case "ascii_long" -> () -> randomAscii(random, 900 + random.nextInt(250));
+          case "ascii_vlarge" -> () -> randomAscii(random, 7000 + random.nextInt(2400));
+          case "cjk_1" -> () -> randomCjk(random, 1);
+          case "cjk_10" -> () -> randomCjk(random, 8 + random.nextInt(5));
+          case "cjk_20" -> () -> randomCjk(random, 18 + random.nextInt(5));
+          case "cjk_30" -> () -> randomCjk(random, 28 + random.nextInt(5));
+          case "cjk_40" -> () -> randomCjk(random, 38 + random.nextInt(5));
+          case "cjk_medium" -> () -> randomCjk(random, 50 + random.nextInt(100));
+          case "cjk_long" -> () -> randomCjk(random, 400 + random.nextInt(200));
+          case "cjk_vlarge" -> () -> randomCjk(random, 5500 + random.nextInt(1000));
+          case "latin_ext_1" -> () -> randomLatinExtended(random, 1);
+          case "latin_ext_10" -> () -> randomLatinExtended(random, 8 + random.nextInt(5));
+          case "latin_ext_20" -> () -> randomLatinExtended(random, 18 + random.nextInt(5));
+          case "latin_ext_30" -> () -> randomLatinExtended(random, 28 + random.nextInt(5));
+          case "latin_ext_40" -> () -> randomLatinExtended(random, 38 + random.nextInt(5));
+          case "latin_ext_medium" -> () -> randomLatinExtended(random, 50 + random.nextInt(100));
+          case "latin_ext_long" -> () -> randomLatinExtended(random, 400 + random.nextInt(200));
+          case "latin_ext_vlarge" -> () -> randomLatinExtended(random, 5500 + random.nextInt(1000));
+          case "mixed" ->
+              () -> {
+                // Varying lengths
+                int roll = random.nextInt(100);
+                if (roll < 50) {
+                  return randomAscii(random, 3 + random.nextInt(30));
+                } else if (roll < 65) {
+                  return randomAscii(random, 50 + random.nextInt(100));
+                } else if (roll < 75) {
+                  return randomAscii(random, 500 + random.nextInt(500));
+                } else if (roll < 85) {
+                  return randomCjk(random, 5 + random.nextInt(20));
+                } else if (roll < 95) {
+                  return randomLatinExtended(random, 20 + random.nextInt(60));
+                } else {
+                  return randomCjk(random, 200 + random.nextInt(300));
+                }
+              };
+          default -> throw new IllegalArgumentException("Unknown stringType: " + stringType);
+        };
+
+    long totalBytes = 0;
+    for (int i = 0; i < STRING_POOL_SIZE; i++) {
+      testStrings[i] = generator.get();
+      totalBytes += testStrings[i].getBytes(StandardCharsets.UTF_8).length;
     }
+    int avgBytesPerString = Math.max(1, (int) (totalBytes / STRING_POOL_SIZE));
 
     stringsPerInvocation = targetBytes / avgBytesPerString;
 
