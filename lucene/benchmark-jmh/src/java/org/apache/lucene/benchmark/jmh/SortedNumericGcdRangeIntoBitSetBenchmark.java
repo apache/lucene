@@ -24,15 +24,18 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedNumericDocValuesField;
+import org.apache.lucene.document.StringField;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MMapDirectory;
 import org.openjdk.jmh.annotations.Benchmark;
@@ -61,6 +64,8 @@ import org.openjdk.jmh.annotations.Warmup;
 public class SortedNumericGcdRangeIntoBitSetBenchmark {
 
   private static final String FIELD = "val";
+  private static final String LEAD_FIELD = "lead";
+  private static final String LEAD_VALUE = "yes";
   private static final long DOMAIN = 10_000_000L;
   private static final long DELTA = 1_700_000_000_000L;
 
@@ -95,6 +100,7 @@ public class SortedNumericGcdRangeIntoBitSetBenchmark {
         for (int c = 0; c < cardinality; c++) {
           doc.add(SortedNumericDocValuesField.indexedField(FIELD, base + c * step()));
         }
+        doc.add(new StringField(LEAD_FIELD, LEAD_VALUE, Field.Store.NO));
         writer.addDocument(doc);
       }
       writer.forceMerge(1);
@@ -132,7 +138,7 @@ public class SortedNumericGcdRangeIntoBitSetBenchmark {
     long actualMax = actualValue(max);
     Query rangeQuery = SortedNumericDocValuesField.newSlowRangeQuery(FIELD, actualMin, actualMax);
     return new BooleanQuery.Builder()
-        .add(new MatchAllDocsQuery(), Occur.FILTER)
+        .add(new TermQuery(new Term(LEAD_FIELD, LEAD_VALUE)), Occur.FILTER)
         .add(rangeQuery, Occur.FILTER)
         .build();
   }
