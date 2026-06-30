@@ -98,6 +98,9 @@ API Changes
 * GITHUB#16052: Remove IOException from LeafReader#getPointValues, LeafReader#terms,
   LeafReader#getDocCount signatures. (Ignacio Vera)
 
+* GITHUB#16281: The checkIntegrity() method of codec Producer APIs gains a OneMerge parameter,
+  which is used to check for aborted merges during checksum validation. (Tanguy Leroux)
+
 New Features
 ---------------------
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
@@ -141,6 +144,8 @@ Improvements
 * GITHUB#15225: Improve package documentation for org.apache.lucene.util. (Syed Mohammad Saad)
 
 * GITHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
+
+* GITHUB#16281: File integrity checks periodically check if a merge is aborted. (Tanguy Leroux)
 
 Optimizations
 ---------------------
