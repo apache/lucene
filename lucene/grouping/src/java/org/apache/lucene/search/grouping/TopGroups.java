@@ -350,7 +350,8 @@ public class TopGroups<T> {
    * @param groupOffset Which group to start from.
    * @param topNGroups How many top groups to keep.
    * @param docSort The sort to use within each group
-   * @return TopGroups instance or null if there are no groups.
+   * @return TopGroups instance; if there are no groups, returns a TopGroups with an empty groups
+   *     array.
    */
   @SuppressWarnings("unchecked")
   public static <T> TopGroups<T> mergeBlockGroups(
