@@ -1234,6 +1234,27 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             bytesSlice.readBytes((long) doc * length, bytes.bytes, 0, length);
             return bytes;
           }
+
+          @Override
+          public void binaryValues(
+              int size, int[] docs, int docsOffset, BytesRef[] values, int valuesOffset)
+              throws IOException {
+            if (size == 0) {
+              return;
+            }
+            byte[] bulk = new byte[size * length];
+            if (isContiguous(size, docs, docsOffset)) {
+              bytesSlice.readBytes((long) docs[docsOffset] * length, bulk, 0, bulk.length);
+            } else {
+              for (int di = docsOffset, bi = 0, end = docsOffset + size; di < end; di++, bi++) {
+                bytesSlice.readBytes((long) docs[di] * length, bulk, bi * length, length);
+              }
+            }
+            for (int i = 0; i < size; i++) {
+              values[valuesOffset + i] = new BytesRef(bulk, i * length, length);
+            }
+            doc = docs[docsOffset + size - 1];
+          }
         };
       } else {
         // variable length
@@ -1255,6 +1276,41 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             bytes.length = (int) (addresses.get(doc + 1L) - startOffset);
             bytesSlice.readBytes(startOffset, bytes.bytes, 0, bytes.length);
             return bytes;
+          }
+
+          @Override
+          public void binaryValues(
+              int size, int[] docs, int docsOffset, BytesRef[] values, int valuesOffset)
+              throws IOException {
+            if (size == 0) {
+              return;
+            }
+            if (isContiguous(size, docs, docsOffset)) {
+              long firstStart = addresses.get(docs[docsOffset]);
+              long lastEnd = addresses.get(docs[docsOffset + size - 1] + 1L);
+              int totalBytes = (int) (lastEnd - firstStart);
+              byte[] bulk = new byte[totalBytes];
+              bytesSlice.readBytes(firstStart, bulk, 0, totalBytes);
+              for (int di = docsOffset, vi = valuesOffset, end = docsOffset + size;
+                  di < end;
+                  di++, vi++) {
+                int offset = (int) (addresses.get(docs[di]) - firstStart);
+                int len = (int) (addresses.get(docs[di] + 1L) - addresses.get(docs[di]));
+                values[vi] = new BytesRef(bulk, offset, len);
+              }
+            } else {
+              for (int di = docsOffset, vi = valuesOffset, end = docsOffset + size;
+                  di < end;
+                  di++, vi++) {
+                int d = docs[di];
+                long startOffset = addresses.get(d);
+                int len = (int) (addresses.get(d + 1L) - startOffset);
+                byte[] b = new byte[len];
+                bytesSlice.readBytes(startOffset, b, 0, len);
+                values[vi] = new BytesRef(b, 0, len);
+              }
+            }
+            doc = docs[docsOffset + size - 1];
           }
         };
       }
