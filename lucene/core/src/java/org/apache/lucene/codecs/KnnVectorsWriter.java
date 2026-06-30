@@ -114,7 +114,7 @@ public abstract class KnnVectorsWriter implements Accountable, Closeable {
       assert reader != null || mergeState.fieldInfos[i].hasVectorValues() == false;
       if (reader != null) {
         mergeState.checkAborted();
-        reader.checkIntegrity();
+        reader.checkIntegrity(mergeState.oneMerge);
       }
     }
 
