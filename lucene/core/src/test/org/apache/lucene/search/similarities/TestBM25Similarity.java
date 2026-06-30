@@ -48,8 +48,6 @@ public class TestBM25Similarity extends BaseSimilarityTestCase {
   }
 
   public void testIllegalK3() {
-    assertTrue(Float.isFinite(Float.NaN) == false);
-
     IllegalArgumentException expected =
         expectThrows(
             IllegalArgumentException.class,
