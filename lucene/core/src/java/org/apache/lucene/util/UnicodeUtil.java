@@ -127,6 +127,9 @@ public final class UnicodeUtil {
   /** Maximum number of UTF8 bytes per UTF16 character. */
   public static final int MAX_UTF8_BYTES_PER_CHAR = 3;
 
+  /** Max charCount where the string's UTF-8 byte count is guaranteed to need only a 1-byte VInt */
+  public static final int MAX_CHARS_FOR_1_BYTE_VINT = 127 / MAX_UTF8_BYTES_PER_CHAR;
+
   /**
    * Encode characters from a char[] source, starting at offset for length chars. It is the
    * responsibility of the caller to make sure that the destination array is large enough.
