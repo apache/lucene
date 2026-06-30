@@ -128,10 +128,9 @@ public final class NativeFSLockFactory extends FSLockFactory {
    */
   private static NativeFSLock tryLock(Path path, FileTime creationTime) throws IOException {
     FileChannel channel = null;
-    FileLock lock = null;
     try {
       channel = FileChannel.open(path, StandardOpenOption.CREATE, StandardOpenOption.WRITE);
-      lock = channel.tryLock();
+      FileLock lock = channel.tryLock();
       if (lock != null) {
         return new NativeFSLock(lock, channel, path, creationTime);
       } else {
