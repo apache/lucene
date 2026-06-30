@@ -1374,7 +1374,7 @@ public class TestDrillSideways extends FacetTestCase {
               ddq,
               new SimpleCollectorManager(
                   numDocs,
-                  Comparator.comparing(cr -> cr.docAndScore.doc),
+                  Comparator.comparingInt(cr -> cr.docAndScore.doc),
                   ScoreMode.COMPLETE_NO_SCORES));
 
       Sort sort = new Sort(new SortField("id", SortField.Type.STRING));

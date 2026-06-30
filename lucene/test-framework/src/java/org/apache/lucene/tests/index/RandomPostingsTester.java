@@ -1268,7 +1268,7 @@ public class RandomPostingsTester {
         long norm = docToNorm.applyAsLong(doc);
         int idx =
             Collections.binarySearch(
-                impactsCopy, new Impact(freq, norm), Comparator.comparing(i -> i.freq));
+                impactsCopy, new Impact(freq, norm), Comparator.comparingInt(i -> i.freq));
         if (idx < 0) {
           idx = -1 - idx;
         }
@@ -1356,7 +1356,7 @@ public class RandomPostingsTester {
         long norm = docToNorm.applyAsLong(doc);
         int idx =
             Collections.binarySearch(
-                impactsCopy, new Impact(freq, norm), Comparator.comparing(i -> i.freq));
+                impactsCopy, new Impact(freq, norm), Comparator.comparingInt(i -> i.freq));
         if (idx < 0) {
           idx = -1 - idx;
         }
