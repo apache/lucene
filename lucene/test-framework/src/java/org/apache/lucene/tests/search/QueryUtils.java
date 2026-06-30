@@ -55,7 +55,6 @@ import org.apache.lucene.search.Scorable;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
-import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.Bits;
@@ -339,76 +338,57 @@ public class QueryUtils {
       // System.out.print("Order:");for (int i = 0; i < order.length; i++)
       // System.out.print(order[i]==skip_op ? " skip()":" next()");
       // System.out.println();
-      final int[] opidx = {0};
-      final int[] lastDoc = {-1};
+      int lastDoc = -1;
 
       // FUTURE: ensure scorer.doc()==-1
 
       final float maxDiff = 1e-5f;
-      final LeafReader[] lastReader = {null};
+      LeafReader lastReader = null;
 
-      s.search(
-          q,
-          new SimpleCollector() {
-            private Scorable sc;
-            private Scorer scorer;
-            private DocIdSetIterator iterator;
-            private int leafPtr;
+      Query rewritten = s.rewrite(q);
+      Weight outerWeight = s.createWeight(rewritten, ScoreMode.COMPLETE, 1);
+      Weight shadowWeight = s.createWeight(rewritten, ScoreMode.COMPLETE, 1);
 
-            @Override
-            public void setScorer(Scorable scorer) {
-              this.sc = scorer;
-            }
+      int opidx = 0;
+      for (LeafReaderContext leafContext : readerContextArray) {
+        if (lastReader != null) {
+          assertNoPastSegmentEnd(q, s, lastReader, lastDoc, leafContext.reader().getLiveDocs());
+        }
+        lastReader = leafContext.reader();
+        lastDoc = -1;
+        Scorer scorer = null;
+        DocIdSetIterator iterator = null;
 
-            @Override
-            public void collect(int doc) throws IOException {
-              float score = sc.score();
-              lastDoc[0] = doc;
-              try {
-                if (scorer == null) {
-                  Query rewritten = s.rewrite(q);
-                  Weight w = s.createWeight(rewritten, ScoreMode.COMPLETE, 1);
-                  LeafReaderContext context = readerContextArray.get(leafPtr);
-                  scorer = w.scorer(context);
-                  iterator = scorer.iterator();
-                }
+        Scorer outerScorer = outerWeight.scorer(leafContext);
+        if (outerScorer == null) {
+          continue;
+        }
+        DocIdSetIterator outerIterator = outerScorer.iterator();
+        Bits liveDocs = leafContext.reader().getLiveDocs();
+        int doc;
+        while ((doc = outerIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          if (liveDocs != null && !liveDocs.get(doc)) continue;
+          float score = outerScorer.score();
+          lastDoc = doc;
 
-                int op = order[(opidx[0]++) % order.length];
-                // System.out.println(op==skip_op ?
-                // "skip("+(sdoc[0]+1)+")":"next()");
-                boolean more =
-                    op == skip_op
-                        ? iterator.advance(scorer.docID() + 1) != DocIdSetIterator.NO_MORE_DOCS
-                        : iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS;
-                assertDocAndScore(doc, score, more, scorer, maxDiff, order, op, skip_op, q, s);
-              } catch (IOException e) {
-                throw new RuntimeException(e);
-              }
-            }
+          if (scorer == null) {
+            scorer = shadowWeight.scorer(leafContext);
+            iterator = scorer.iterator();
+          }
 
-            @Override
-            public ScoreMode scoreMode() {
-              return ScoreMode.COMPLETE;
-            }
+          int op = order[(opidx++) % order.length];
+          // System.out.println(op==skip_op ?
+          // "skip("+(sdoc[0]+1)+")":"next()");
+          boolean more =
+              op == skip_op
+                  ? iterator.advance(scorer.docID() + 1) != DocIdSetIterator.NO_MORE_DOCS
+                  : iterator.nextDoc() != DocIdSetIterator.NO_MORE_DOCS;
+          assertDocAndScore(doc, score, more, scorer, maxDiff, order, op, skip_op, q, s);
+        }
+      }
 
-            @Override
-            protected void doSetNextReader(LeafReaderContext context) throws IOException {
-              // confirm that skipping beyond the last doc, on the
-              // previous reader, hits NO_MORE_DOCS
-              if (lastReader[0] != null) {
-                assertNoPastSegmentEnd(
-                    q, s, lastReader[0], lastDoc[0], context.reader().getLiveDocs());
-                leafPtr++;
-              }
-              lastReader[0] = context.reader();
-              assert readerContextArray.get(leafPtr).reader() == context.reader();
-              this.scorer = null;
-              lastDoc[0] = -1;
-            }
-          });
-
-      if (lastReader[0] != null) {
-        assertNoPastSegmentEnd(q, s, lastReader[0], lastDoc[0], lastReader[0].getLiveDocs());
+      if (lastReader != null) {
+        assertNoPastSegmentEnd(q, s, lastReader, lastDoc, lastReader.getLiveDocs());
       }
     }
   }
@@ -417,60 +397,42 @@ public class QueryUtils {
   public static void checkFirstSkipTo(final Query q, final IndexSearcher s) throws IOException {
     // System.out.println("checkFirstSkipTo: "+q);
     final float maxDiff = 1e-3f;
-    final int[] lastDoc = {-1};
-    final LeafReader[] lastReader = {null};
+    int lastDoc = -1;
+    LeafReader lastReader = null;
     final List<LeafReaderContext> context = s.getTopReaderContext().leaves();
     Query rewritten = s.rewrite(q);
-    s.search(
-        q,
-        new SimpleCollector() {
-          private final Weight w = s.createWeight(rewritten, ScoreMode.COMPLETE, 1);
-          private Scorable scorer;
-          private int leafPtr;
-          private long intervalTimes32 = 1 * 32;
+    Weight outerWeight = s.createWeight(rewritten, ScoreMode.COMPLETE, 1);
+    Weight w = s.createWeight(rewritten, ScoreMode.COMPLETE, 1);
+    long intervalTimes32 = 1 * 32;
 
-          @Override
-          public void setScorer(Scorable scorer) {
-            this.scorer = scorer;
-          }
+    for (LeafReaderContext leafContext : context) {
+      if (lastReader != null) {
+        assertNoPastSegmentEnd(q, s, lastReader, lastDoc, leafContext.reader().getLiveDocs());
+      }
+      lastReader = leafContext.reader();
+      lastDoc = -1;
 
-          @Override
-          public void collect(int doc) throws IOException {
-            float score = scorer.score();
-            try {
-              // The intervalTimes32 trick helps contain the runtime of this check: first we check
-              // every single doc in the interval, then after 32 docs we check every 2 docs, etc.
-              for (int i = lastDoc[0] + 1; i <= doc; i += intervalTimes32++ / 1024) {
-                assertAdvanceTo(doc, i, score, w, context.get(leafPtr), maxDiff);
-              }
-              lastDoc[0] = doc;
-            } catch (IOException e) {
-              throw new RuntimeException(e);
-            }
-          }
+      Scorer outerScorer = outerWeight.scorer(leafContext);
+      if (outerScorer == null) {
+        continue;
+      }
+      DocIdSetIterator outerIterator = outerScorer.iterator();
+      Bits liveDocs = leafContext.reader().getLiveDocs();
+      int doc;
+      while ((doc = outerIterator.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+        if (liveDocs != null && !liveDocs.get(doc)) continue;
+        float score = outerScorer.score();
+        // The intervalTimes32 trick helps contain the runtime of this check: first we check
+        // every single doc in the interval, then after 32 docs we check every 2 docs, etc.
+        for (int i = lastDoc + 1; i <= doc; i += intervalTimes32++ / 1024) {
+          assertAdvanceTo(doc, i, score, w, leafContext, maxDiff);
+        }
+        lastDoc = doc;
+      }
+    }
 
-          @Override
-          public ScoreMode scoreMode() {
-            return ScoreMode.COMPLETE;
-          }
-
-          @Override
-          protected void doSetNextReader(LeafReaderContext context) throws IOException {
-            // confirm that skipping beyond the last doc, on the
-            // previous reader, hits NO_MORE_DOCS
-            if (lastReader[0] != null) {
-              assertNoPastSegmentEnd(
-                  q, s, lastReader[0], lastDoc[0], context.reader().getLiveDocs());
-              leafPtr++;
-            }
-
-            lastReader[0] = context.reader();
-            lastDoc[0] = -1;
-          }
-        });
-
-    if (lastReader[0] != null) {
-      assertNoPastSegmentEnd(q, s, lastReader[0], lastDoc[0], lastReader[0].getLiveDocs());
+    if (lastReader != null) {
+      assertNoPastSegmentEnd(q, s, lastReader, lastDoc, lastReader.getLiveDocs());
     }
   }
 

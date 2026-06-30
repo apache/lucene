@@ -23,6 +23,7 @@ import java.util.Set;
 import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.search.AcceptDocs;
@@ -126,7 +127,7 @@ public abstract class KnnVectorsFormat implements NamedSPILoader.NamedSPI {
         public KnnVectorsReader fieldsReader(SegmentReadState state) {
           return new KnnVectorsReader() {
             @Override
-            public void checkIntegrity() {}
+            public void checkIntegrity(MergePolicy.OneMerge merge) {}
 
             @Override
             public FloatVectorValues getFloatVectorValues(String field) {

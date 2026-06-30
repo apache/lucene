@@ -30,6 +30,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.TermState;
@@ -867,11 +868,11 @@ public class BlockTermsReader extends FieldsProducer {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     // verify terms
-    CodecUtil.checksumEntireFile(in);
+    CodecUtil.checksumEntireFile(in, merge);
 
     // verify postings
-    postingsReader.checkIntegrity();
+    postingsReader.checkIntegrity(merge);
   }
 }
