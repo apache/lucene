@@ -298,6 +298,9 @@ Optimizations
 ---------------------
 * GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
 
+* GITHUB#16146: Speed up no-score filtered-optional Boolean queries by routing dense conjunctions with cached FixedBitSet filters
+  through ConstantScoreBulkScorer, which batches matches in bulk via DocIdStream. (Costin Leau)
+
 Bug Fixes
 ---------------------
 (No changes)
