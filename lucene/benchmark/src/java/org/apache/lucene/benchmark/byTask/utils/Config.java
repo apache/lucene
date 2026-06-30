@@ -414,7 +414,7 @@ public class Config {
       String template = " " + colName;
       if (roundNum < 0) {
         // just append blanks
-        sb.append(Format.formatPaddLeft("-", template));
+        sb.append(Format.formatPadLeft("-", template));
       } else {
         String valByRoundName = entry.getKey();
 
@@ -432,7 +432,7 @@ public class Config {
         } else {
           boolean[] ab = (boolean[]) a;
           int n = roundNum % ab.length;
-          sb.append(Format.formatPaddLeft("" + ab[n], template));
+          sb.append(Format.formatPadLeft("" + ab[n], template));
         }
       }
     }

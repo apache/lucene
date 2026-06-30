@@ -148,14 +148,6 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
     }
   }
 
-  @Override
-  protected boolean mergeIsStable() {
-    // suppress this test from base class: merges for knn graphs are not stable due to connected
-    // components
-    // logic
-    return false;
-  }
-
   private int getVectorsMaxDimensions(String fieldName) {
     return Codec.getDefault().knnVectorsFormat().getMaxDimensions(fieldName);
   }
@@ -1212,7 +1204,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
   }
 
   /**
-   * This method is overrideable since old codec versions only support {@link
+   * This method is overridable since old codec versions only support {@link
    * VectorEncoding#FLOAT32}.
    */
   protected VectorEncoding randomVectorEncoding() {
@@ -1681,7 +1673,7 @@ public abstract class BaseKnnVectorsFormatTestCase extends BaseIndexFileFormatTe
           // assert that searchNearestVectors returns the expected number of documents,
           // in descending score order
           int size = ctx.reader().getFloatVectorValues(fieldName).size();
-          int k = random().nextInt(size / 10 + 1) + 1;
+          int k = random().nextInt(size / 50 + 1) + 1;
           if (k > numLiveDocsWithVectors) {
             k = numLiveDocsWithVectors;
           }

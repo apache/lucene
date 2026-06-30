@@ -39,7 +39,7 @@ import org.apache.lucene.util.IOUtils;
  * example, by using {@link SearcherManager}), and then record this searcher:
  *
  * <pre><code class="language-java">
- *   // Record the current searcher, and save the returend
+ *   // Record the current searcher, and save the returned
  *   // token into user's search results (eg as a  hidden
  *   // HTML form field):
  *   long token = mgr.record(searcher);

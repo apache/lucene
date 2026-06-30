@@ -413,7 +413,7 @@ public final class FST<T> implements Accountable {
   private static final int DEFAULT_MAX_BLOCK_BITS = Constants.JRE_IS_64BIT ? 30 : 28;
 
   /**
-   * Load a previously saved FST with a DataInput for metdata using an {@link OnHeapFSTStore} with
+   * Load a previously saved FST with a DataInput for metadata using an {@link OnHeapFSTStore} with
    * maxBlockBits set to {@link #DEFAULT_MAX_BLOCK_BITS}
    */
   public FST(FSTMetadata<T> metadata, DataInput in) throws IOException {

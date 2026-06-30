@@ -38,6 +38,7 @@ import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -87,7 +88,7 @@ public final class RAMOnlyPostingsFormat extends PostingsFormat {
     public void close() {}
 
     @Override
-    public void checkIntegrity() throws IOException {}
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {}
   }
 
   static class RAMField extends Terms {

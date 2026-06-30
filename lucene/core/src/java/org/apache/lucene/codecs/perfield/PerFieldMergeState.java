@@ -28,6 +28,7 @@ import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.IndexOptions;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeState;
 import org.apache.lucene.index.Terms;
 
@@ -69,7 +70,8 @@ final class PerFieldMergeState {
         in.maxDocs,
         in.infoStream,
         in.intraMergeTaskExecutor,
-        in.needsIndexSort);
+        in.needsIndexSort,
+        in.oneMerge);
   }
 
   private static class FilterFieldInfos extends FieldInfos {
@@ -264,8 +266,8 @@ final class PerFieldMergeState {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      in.checkIntegrity();
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+      in.checkIntegrity(merge);
     }
   }
 }

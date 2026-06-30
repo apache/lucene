@@ -68,7 +68,7 @@ import org.apache.lucene.util.quantization.QuantizedByteVectorValues;
  *
  * <p>The same field/format assignment will happen regardless of order, a hash is computed up front
  * that determines the mapping. This means fields can be put into things like HashSets and added to
- * documents in different orders and the test will still be deterministic and reproducable.
+ * documents in different orders and the test will still be deterministic and reproducible.
  */
 public class RandomCodec extends AssertingCodec {
   /** Shuffled list of postings formats to use for new mappings */
@@ -222,7 +222,7 @@ public class RandomCodec extends AssertingCodec {
   public RandomCodec(Random random, Set<String> avoidCodecs) {
     this.perFieldSeed = random.nextInt();
     this.avoidCodecs = avoidCodecs;
-    // TODO: make it possible to specify min/max iterms per
+    // TODO: make it possible to specify min/max terms per
     // block via CL:
     int minItemsPerBlock = TestUtil.nextInt(random, 2, 100);
     int maxItemsPerBlock = 2 * (Math.max(2, minItemsPerBlock - 1)) + random.nextInt(100);

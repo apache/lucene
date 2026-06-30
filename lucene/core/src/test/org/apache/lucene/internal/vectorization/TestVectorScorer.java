@@ -216,8 +216,8 @@ public class TestVectorScorer extends LuceneTestCase {
         }
       }
 
-      try (var outter = dir.openInput(fileName, IOContext.DEFAULT);
-          var in = outter.slice("slice", initialOffset, outter.length() - initialOffset)) {
+      try (var outer = dir.openInput(fileName, IOContext.DEFAULT);
+          var in = outer.slice("slice", initialOffset, outer.length() - initialOffset)) {
         for (int times = 0; times < TIMES; times++) {
           for (var sim : List.of(COSINE, EUCLIDEAN, DOT_PRODUCT, MAXIMUM_INNER_PRODUCT)) {
             var vectorValues = vectorValues(dims, size, in, sim);
