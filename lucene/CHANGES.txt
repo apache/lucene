@@ -307,7 +307,8 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+* GITHUB#16266: Remove deprecated search(Query, Collector) calls in QueryUtils by replacing
+  SimpleCollector-based iteration with explicit leaf-level Weight.scorer() calls. (Luca Cavanna)
 
 ======================= Lucene 10.5.0 =======================
 
