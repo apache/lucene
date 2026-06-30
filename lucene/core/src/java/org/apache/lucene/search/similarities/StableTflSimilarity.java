@@ -105,7 +105,7 @@ public class StableTflSimilarity extends Similarity {
    *     A negative value disables saturation (linear behavior). Common values are 7 or 8.
    * @throws IllegalArgumentException if {@code k1} is infinite or negative
    * @throws IllegalArgumentException if {@code c} is infinite or negative
-   * @throws IllegalArgumentException if {@code k3} is NaN or infinite
+   * @throws IllegalArgumentException if {@code k3} is infinite
    */
   public StableTflSimilarity(float k1, float c, float k3) {
     if (Float.isFinite(k1) == false || k1 < 0) {
@@ -116,7 +116,7 @@ public class StableTflSimilarity extends Similarity {
       throw new IllegalArgumentException(
           "illegal c value: " + c + ", must be a non-negative finite value");
     }
-    if (Float.isNaN(k3) || Float.isInfinite(k3)) {
+    if (Float.isFinite(k3) == false) {
       throw new IllegalArgumentException(
           "illegal k3 value: " + k3 + ", must be a finite value (negative to disable)");
     }
