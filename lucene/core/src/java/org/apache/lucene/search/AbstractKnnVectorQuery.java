@@ -184,14 +184,15 @@ abstract class AbstractKnnVectorQuery extends Query {
     }
     float score = vectorScorer.score();
     if (score < minTopKScore) {
-      return Explanation.noMatch(prefix + "score " + score + " < minTopKScore " + minTopKScore);
+      return Explanation.noMatch(
+          prefix + "score " + score + " < minimum top-K score " + minTopKScore);
     }
     // Score meets the cutoff but the doc was not collected (tie-break, recall miss, or rescoring).
     return Explanation.noMatch(
         prefix
             + "score "
             + score
-            + " >= minTopKScore "
+            + " >= minimum top-K score "
             + minTopKScore
             + " (tie-break or approximate-search miss)");
   }
