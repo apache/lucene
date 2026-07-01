@@ -1,15 +1,15 @@
 name: Backport PR
 
 on:
-  pull_request:
-    types: [closed]
+  push:
+    branches:
+      - main
 
 permissions: {}
 
 jobs:
   prepare:
     name: Prepare Backport Targets
-    if: github.event.pull_request.merged == true
     timeout-minutes: 15
     runs-on: ubuntu-latest
     permissions:
@@ -32,8 +32,9 @@ jobs:
         id: plan
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_MERGE_COMMIT_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          REPOSITORY: ${{ github.repository }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+          PUSH_AFTER_SHA: ${{ github.event.after }}
           BACKPORT_DRY_RUN: ${{ vars.BACKPORT_DRY_RUN || 'true' }}
         run: ./.github/workflows/backport.sh
 
@@ -59,48 +60,51 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           persist-credentials: false
 
-      - name: Cherry-pick with approved action
+      - name: Create backport pull request
         id: cherry_pick
         continue-on-error: true
-        uses: carloscastrojumo/github-cherry-pick-action@503773289f4a459069c832dc628826685b75b4b3 # v1.0.10
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ matrix.target }}
-          cherry-pick-branch: backport-${{ github.event.pull_request.number }}-to-${{ matrix.target }}
-          title: '[Backport ${{ matrix.target }}] {old_title}'
-          body: |
-            ## 🔄 Automatic Backport
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ matrix.pr_number }}
+          PR_TITLE: ${{ matrix.pr_title }}
+          MERGE_COMMIT_SHA: ${{ matrix.merge_commit_sha }}
+          TARGET_BRANCH: ${{ matrix.target }}
+          TARGET_VERSION: ${{ matrix.version }}
+        run: |
+          backport_branch="backport-${PR_NUMBER}-to-${TARGET_BRANCH}"
+          body=$(cat <<EOF
+          ## Automatic Backport
 
-            Backport of #{old_pull_request_id} to `${{ matrix.target }}`.
+          Backport of #${PR_NUMBER} to \`${TARGET_BRANCH}\`.
 
-            **Target:** `${{ matrix.target }}`
-            **Version:** `${{ matrix.version }}`
-          labels: |
-            backport
-          inherit_labels: 'false'
+          **Target:** \`${TARGET_BRANCH}\`
+          **Version:** \`${TARGET_VERSION}\`
+          EOF
+          )
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${REPOSITORY}.git"
+          git checkout -b "$backport_branch" "origin/${TARGET_BRANCH}"
+          git cherry-pick -x "$MERGE_COMMIT_SHA"
+          git push origin "$backport_branch"
+          gh pr create \
+            --repo "$REPOSITORY" \
+            --base "$TARGET_BRANCH" \
+            --head "$backport_branch" \
+            --title "[Backport ${TARGET_BRANCH}] ${PR_TITLE}" \
+            --body "$body" \
+            --label backport
 
       - name: Handle failed action backport
         if: steps.cherry_pick.outcome != 'success'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ matrix.pr_number }}
           TARGET_BRANCH: ${{ matrix.target }}
         run: |
-          body="❌ **Backport to \`${TARGET_BRANCH}\` failed**"$'\n\n'"Automatic cherry-pick action failed for this target. Please inspect workflow logs and backport manually if needed."
-          gh pr comment "$PR_NUMBER" --body "$body"
-          gh pr edit "$PR_NUMBER" --add-label "backport-failed" 2>/dev/null || true
-
-  dry-run-report:
-    name: Report Dry-Run Plan
-    needs: prepare
-    if: needs.prepare.outputs.has_targets == 'true' && needs.prepare.outputs.dry_run == 'true'
-    timeout-minutes: 5
-    runs-on: ubuntu-latest
-    permissions: {}
-    steps:
-      - name: Report dry-run targets
-        env:
-          PLANNED_TARGETS: ${{ needs.prepare.outputs.targets }}
-        run: |
-          echo "Backport dry-run mode is enabled."
-          printf 'Planned targets: %s\n' "$PLANNED_TARGETS"
+          body="❌ **Backport to \`${TARGET_BRANCH}\` failed**"$'\n\n'"Automatic backport failed for this target. Please inspect workflow logs and backport manually if needed."
+          gh pr comment "$PR_NUMBER" --repo "$REPOSITORY" --body "$body"
+          gh pr edit "$PR_NUMBER" --repo "$REPOSITORY" --add-label "backport-failed" 2>/dev/null || true
