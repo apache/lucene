@@ -28,8 +28,16 @@ public class BufferedChecksum implements Checksum {
   private final byte[] buffer;
   private int upto;
 
-  /** Default buffer size: 1024 */
-  public static final int DEFAULT_BUFFERSIZE = 1024;
+  /** Default buffer size: 2048 */
+  public static final int DEFAULT_BUFFERSIZE = 2048;
+
+  /**
+   * Minimum bulk write length that bypasses the buffer and goes directly to the underlying
+   * checksum. Below this threshold, small arrays are buffered to amortize per-call overhead. At or
+   * above this threshold, the native CRC32 implementation is efficient enough that direct
+   * pass-through is faster than arraycopy + deferred flush.
+   */
+  private static final int DIRECT_THRESHOLD = 256;
 
   /** Create a new BufferedChecksum with {@link #DEFAULT_BUFFERSIZE} */
   public BufferedChecksum(Checksum in) {
@@ -52,7 +60,7 @@ public class BufferedChecksum implements Checksum {
 
   @Override
   public void update(byte[] b, int off, int len) {
-    if (len >= buffer.length) {
+    if (len >= buffer.length) { // TEMP: old behavior for baseline benchmark
       flush();
       in.update(b, off, len);
     } else {
@@ -70,7 +78,7 @@ public class BufferedChecksum implements Checksum {
     upto += Short.BYTES;
   }
 
-  void updateInt(int val) {
+  public void updateInt(int val) {
     if (upto + Integer.BYTES > buffer.length) flush();
     BitUtil.VH_LE_INT.set(buffer, upto, val);
     upto += Integer.BYTES;
