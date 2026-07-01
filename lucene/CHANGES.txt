@@ -139,6 +139,9 @@ Improvements
 
 * GITHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
 
+* GITHUB#16313: Refactored the Hunspell dictionary parser to use switch-based dispatch for affix directives,
+  improving readability of the parsing logic. (Rajat Jain)
+
 Optimizations
 ---------------------
 * GITHUB#16254: Enable the vectorized findNextGEQ path on aarch64, where it was disabled on cores
