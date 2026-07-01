@@ -179,6 +179,8 @@ public class GroupingSearch {
     Collection<SearchGroup<T>> topSearchGroups =
         (Collection<SearchGroup<T>>) firstRoundResults[resultIdx++];
     if (topSearchGroups.isEmpty()) {
+      matchingGroups = Collections.emptyList();
+      matchingGroupHeads = new Bits.MatchNoBits(searcher.getIndexReader().maxDoc());
       return new TopGroups<>(new SortField[0], new SortField[0], 0, 0, new GroupDocs[0], Float.NaN);
     }
 

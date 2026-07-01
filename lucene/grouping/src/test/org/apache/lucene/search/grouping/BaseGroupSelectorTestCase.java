@@ -71,7 +71,7 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
               .add(filterQuery(topGroups.groups[i].groupValue()), BooleanClause.Occur.FILTER)
               .build();
       TopDocs td = searcher.search(filtered, 10);
-      assertScoreDocsEquals(topGroups.groups[i].scoreDocs(), td.scoreDocs);
+      assertScoresEquals(topGroups.groups[i].scoreDocs(), td.scoreDocs);
       if (i == 0) {
         assertEquals(td.scoreDocs[0].score, topDoc.scoreDocs[0].score, 0);
       }
@@ -108,7 +108,7 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
               .add(filterQuery(topGroups.groups[i].groupValue()), BooleanClause.Occur.FILTER)
               .build();
       TopDocs td = searcher.search(filtered, 10);
-      assertScoreDocsEquals(topGroups.groups[i].scoreDocs(), td.scoreDocs);
+      assertScoresEquals(topGroups.groups[i].scoreDocs(), td.scoreDocs);
       // The top group should have sort values equal to the sort values of the top doc of
       // a top-level search sorted by the same Sort; subsequent groups should have sort values
       // that compare lower than their predecessor.
@@ -160,7 +160,7 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
               .add(filterQuery(topGroups.groups[i].groupValue()), BooleanClause.Occur.FILTER)
               .build();
       TopDocs td = searcher.search(filtered, 10, sort);
-      assertScoreDocsEquals(td.scoreDocs, topGroups.groups[i].scoreDocs());
+      assertScoresEquals(td.scoreDocs, topGroups.groups[i].scoreDocs());
     }
 
     shard.close();
@@ -435,7 +435,7 @@ public abstract class BaseGroupSelectorTestCase<T> extends AbstractGroupingTestC
     shard.close();
   }
 
-  protected static void assertScoreDocsEquals(ScoreDoc[] expected, ScoreDoc[] actual) {
+  private void assertScoresEquals(ScoreDoc[] expected, ScoreDoc[] actual) {
     assertEquals(expected.length, actual.length);
     for (int i = 0; i < expected.length; i++) {
       assertEquals(expected[i].score, actual[i].score, 0);
