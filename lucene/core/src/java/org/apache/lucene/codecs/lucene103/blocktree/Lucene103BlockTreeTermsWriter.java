@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import org.apache.lucene.codecs.BlockTermState;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.FieldsConsumer;
@@ -690,16 +689,6 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
       newBlocks.clear();
     }
 
-    private boolean allEqual(byte[] b, int startOffset, int endOffset, byte value) {
-      Objects.checkFromToIndex(startOffset, endOffset, b.length);
-      for (int i = startOffset; i < endOffset; ++i) {
-        if (b[i] != value) {
-          return false;
-        }
-      }
-      return true;
-    }
-
     /**
      * Writes the specified slice (start is inclusive, end is exclusive) from pending stack as a new
      * block. If isFloor is true, there were too many (more than maxItemsInBlock) entries sharing
@@ -762,6 +751,9 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
 
       boolean absolute = true;
 
+      boolean allEqual = true;
+      int lastSuffixLength = -1;
+
       if (isLeafBlock) {
         // Block contains only ordinary terms:
         subIndices = null;
@@ -786,6 +778,16 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
 
           // For leaf block we write suffixLength straight
           suffixLengthsWriter.writeVInt(suffixLength);
+
+          // Check if all suffixes in this block have the same length.
+          if (allEqual) {
+            if (i == start) {
+              lastSuffixLength = suffixLength;
+            } else if (lastSuffixLength != suffixLength) {
+              allEqual = false;
+            }
+          }
+
           suffixWriter.append(term.termBytes, prefixLength, suffixLength);
           assert floorLeadLabel == -1 || (term.termBytes[prefixLength] & 0xff) >= floorLeadLabel;
 
@@ -798,6 +800,12 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
         }
         statsWriter.finish();
       } else {
+        // We need to write sub-block's start file pointer after writing a floor block term's
+        // length.
+        // TODO: If all suffixes have the same length, we can write the suffix length first, then
+        // write a term/sub-block fixBit, and write all sub-blocks' file pointers.
+        allEqual = false;
+
         // Block has at least one prefix term or a sub block:
         subIndices = new ArrayList<>();
         StatsWriter statsWriter =
@@ -936,7 +944,9 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
       spareBytes = ArrayUtil.growNoCopy(spareBytes, numSuffixBytes);
       suffixLengthsWriter.copyTo(new ByteArrayDataOutput(spareBytes));
       suffixLengthsWriter.reset();
-      if (allEqual(spareBytes, 1, numSuffixBytes, spareBytes[0])) {
+      // TODO：Maybe release the constraint of Byte.MAX_VALUE and write this VInt length, then we
+      // need to fill suffixLengthBytes and set it in suffixLengthsReader(ByteArrayDataInput).
+      if (allEqual && lastSuffixLength <= Byte.MAX_VALUE) {
         // Structured fields like IDs often have most values of the same length
         termsOut.writeVInt((numSuffixBytes << 1) | 1);
         termsOut.writeByte(spareBytes[0]);

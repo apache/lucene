@@ -464,6 +464,62 @@ public abstract class BasePostingsFormatTestCase extends BaseIndexFileFormatTest
     dir.close();
   }
 
+  /**
+   * Ensures terms with long suffixes (>127 bytes) are readable via seekExact/seekCeil. This
+   * exercises multi-byte VInt encoding for suffix lengths in block tree term dictionaries.
+   */
+  public void testLongSuffixLengthVIntEncoding() throws Exception {
+    Directory dir = newDirectory();
+
+    IndexWriterConfig iwc = newIndexWriterConfig(null);
+    iwc.setCodec(getCodec());
+    iwc.setMergePolicy(newTieredMergePolicy());
+    IndexWriter iw = new IndexWriter(dir, iwc);
+
+    final int termLength = 130; // requires at least 2 bytes in VInt length encoding
+    final int termCount = 40;
+    for (int i = 0; i < termCount; i++) {
+      Document document = new Document();
+      document.add(new StringField("id", longIdTerm(i, termLength), Field.Store.NO));
+      iw.addDocument(document);
+    }
+    iw.commit();
+    iw.forceMerge(1);
+
+    DirectoryReader reader = DirectoryReader.open(iw);
+    TermsEnum termsEnum = getOnlyLeafReader(reader).terms("id").iterator();
+
+    for (int i = 0; i < termCount; i++) {
+      BytesRef target = new BytesRef(longIdTerm(i, termLength));
+      assertTrue(termsEnum.seekExact(target));
+      assertEquals(target, termsEnum.term());
+      assertEquals(SeekStatus.FOUND, termsEnum.seekCeil(target));
+      assertEquals(target, termsEnum.term());
+    }
+
+    BytesRef missing = new BytesRef(longIdTerm(termCount + 1000, termLength));
+    assertFalse(termsEnum.seekExact(missing));
+
+    reader.close();
+    iw.close();
+    dir.close();
+  }
+
+  private static String longIdTerm(int id, int totalLength) {
+    StringBuilder sb = new StringBuilder(totalLength);
+    sb.append('t');
+    if (id < 10) {
+      sb.append("00");
+    } else if (id < 100) {
+      sb.append('0');
+    }
+    sb.append(id);
+    while (sb.length() < totalLength) {
+      sb.append('x');
+    }
+    return sb.toString();
+  }
+
   // tests that level 2 ghost fields still work
   public void testLevel2Ghosts() throws Exception {
     Directory dir = newDirectory();
