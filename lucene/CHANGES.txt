@@ -13,7 +13,10 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#16243: Add StableTflSimilarity, a similarity that estimates term rarity from term length
+  and document length instead of corpus statistics such as document frequency. It also supports k3
+  query-term frequency saturation. (Tianxiao Wei)
 
 Improvements
 ---------------------
