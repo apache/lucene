@@ -139,6 +139,9 @@ Improvements
 
 * GITHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
 
+* GITHUB#16311: Improved simple text term vectors postings reuse by allowing reused postings enums to be
+  reinitialized in place when available, reducing unnecessary object creation. (Rajat Jain)
+
 Optimizations
 ---------------------
 * GITHUB#16254: Enable the vectorized findNextGEQ path on aarch64, where it was disabled on cores
