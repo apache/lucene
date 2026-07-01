@@ -308,6 +308,8 @@ Optimizations
 * GITHUB#16146: Speed up no-score filtered-optional Boolean queries by routing dense conjunctions with cached FixedBitSet filters
   through ConstantScoreBulkScorer, which batches matches in bulk via DocIdStream. (Costin Leau)
 
+* GITHUB#16268: Use the doc-values skip index to skip per-doc value lookups in LongRangeFacetCutter. (Jakub Slowinski)
+
 Bug Fixes
 ---------------------
 (No changes)
