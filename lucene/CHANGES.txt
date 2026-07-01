@@ -319,6 +319,8 @@ Other
 
 * GITHUB#16308: upgrade opennlp to 2.5.10 (Dawid Weiss)
 
+* GITHUB#16315: Fix flaky test TestIndexOptions > testMultiValueForcesDeoptimization (neoremind)
+
 ======================= Lucene 10.5.0 =======================
 
 API Changes
