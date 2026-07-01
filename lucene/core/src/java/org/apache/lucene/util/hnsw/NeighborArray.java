@@ -158,7 +158,7 @@ public class NeighborArray {
 
     int count = size - sortedNodeSize;
     int[] uncheckedIndexes = new int[count];
-    int[] unsortedIndexes = new int[count];
+    Integer[] unsortedIndexes = new Integer[count];
     int[] newNodes = new int[size];
     float[] newScores = new float[size];
 
