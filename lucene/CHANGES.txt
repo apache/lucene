@@ -378,6 +378,8 @@ Bug Fixes
 
 * GITHUB#16179: Fix minor lock/unlock acquisition order in DocumentsWriterDeleteQueue (Chris Hegarty)
 
+* GITHUB#16033: Fix data race in BlockingFloatHeap.poll function. (Vijay)
+
 * GITHUB#16250: Fix NullPointerException in RoaringDocIdSet#intoBitSet when the iterator is already
   exhausted. (Venkateshwaran Shanmugham)
 
