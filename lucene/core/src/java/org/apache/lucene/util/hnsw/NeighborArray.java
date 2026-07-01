@@ -307,32 +307,6 @@ public class NeighborArray {
     return "NeighborArray[" + size + "]";
   }
 
-  private int ascSortFindRightMostInsertionPoint(float newScore, int bound) {
-    int insertionPoint = Arrays.binarySearch(scores, 0, bound, newScore);
-    if (insertionPoint >= 0) {
-      // find the right most position with the same score
-      while ((insertionPoint < bound - 1)
-          && (scores[insertionPoint + 1] == scores[insertionPoint])) {
-        insertionPoint++;
-      }
-      insertionPoint++;
-    } else {
-      insertionPoint = -insertionPoint - 1;
-    }
-    return insertionPoint;
-  }
-
-  private int descSortFindRightMostInsertionPoint(float newScore, int bound) {
-    int start = 0;
-    int end = bound - 1;
-    while (start <= end) {
-      int mid = (start + end) / 2;
-      if (scores[mid] < newScore) end = mid - 1;
-      else start = mid + 1;
-    }
-    return start;
-  }
-
   /**
    * Find first non-diverse neighbour among the list of neighbors starting from the most distant
    * neighbours
