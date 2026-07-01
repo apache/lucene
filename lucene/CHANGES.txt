@@ -373,6 +373,8 @@ Bug Fixes
   instantiated, so a crafted spatial3d shape stream cannot load arbitrary classes. Also adapt
   experimental SerializedObject API to be more type safe. (metsw24-max, Uwe Schindler)
 
+* GITHUB#15831: Fixed a race condition in ReferenceManager.maybeRefresh() where refreshes could be missed if a new generation was flushed just before the refresh lock was released. (Vijay)
+
 * GITHUB#16156: OffHeapFloatVectorValues#prefetch now bounds its loop by the requested
   count instead of the full ordinal array, matching OffHeapByteVectorValues. (Vignesh)
 
