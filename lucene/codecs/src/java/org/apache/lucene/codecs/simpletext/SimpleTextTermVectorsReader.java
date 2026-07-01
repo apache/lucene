@@ -407,16 +407,24 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
       if (PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS)) {
         SimpleTVPostings postings = current.getValue();
         if (postings.positions != null || postings.startOffsets != null) {
-          // TODO: reuse
-          SimpleTVPostingsEnum e = new SimpleTVPostingsEnum();
+          SimpleTVPostingsEnum e;
+          if (reuse instanceof SimpleTVPostingsEnum reuseEnum) {
+            e = reuseEnum;
+          } else {
+            e = new SimpleTVPostingsEnum();
+          }
           e.reset(
               postings.positions, postings.startOffsets, postings.endOffsets, postings.payloads);
           return e;
         }
       }
 
-      // TODO: reuse
-      SimpleTVDocsEnum e = new SimpleTVDocsEnum();
+      SimpleTVDocsEnum e;
+      if (reuse instanceof SimpleTVDocsEnum reuseEnum) {
+        e = reuseEnum;
+      } else {
+        e = new SimpleTVDocsEnum();
+      }
       e.reset(
           PostingsEnum.featureRequested(flags, PostingsEnum.FREQS) == false
               ? 1
