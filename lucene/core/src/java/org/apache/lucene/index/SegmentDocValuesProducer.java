@@ -131,9 +131,9 @@ class SegmentDocValuesProducer extends DocValuesProducer {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     for (DocValuesProducer producer : dvProducers) {
-      producer.checkIntegrity();
+      producer.checkIntegrity(merge);
     }
   }
 

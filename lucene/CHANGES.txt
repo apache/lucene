@@ -98,6 +98,9 @@ API Changes
 * GITHUB#16052: Remove IOException from LeafReader#getPointValues, LeafReader#terms,
   LeafReader#getDocCount signatures. (Ignacio Vera)
 
+* GITHUB#16281: The checkIntegrity() method of codec Producer APIs gains a OneMerge parameter,
+  which is used to check for aborted merges during checksum validation. (Tanguy Leroux)
+
 New Features
 ---------------------
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
@@ -141,6 +144,8 @@ Improvements
 * GITHUB#15225: Improve package documentation for org.apache.lucene.util. (Syed Mohammad Saad)
 
 * GITHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
+
+* GITHUB#16281: File integrity checks periodically check if a merge is aborted. (Tanguy Leroux)
 
 Optimizations
 ---------------------
@@ -284,15 +289,20 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+
+* GITHUB#16286: Introduce BinaryDocValues#binaryValues to help speed up the
+  retrieval of many binary doc values at once. (Costin Leau)
 
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#16243: Add StableTflSimilarity, a similarity that estimates term rarity from term length
+  and document length instead of corpus statistics such as document frequency. It also supports k3
+  query-term frequency saturation. (Tianxiao Wei)
 
 Improvements
 ---------------------
-(No changes)
+* GITHUB#16170: Alter TopGroups.merge() to not return null if no groups. (Binlong Gao)
 
 Optimizations
 ---------------------
@@ -300,6 +310,9 @@ Optimizations
 
 * GITHUB#16146: Speed up no-score filtered-optional Boolean queries by routing dense conjunctions with cached FixedBitSet filters
   through ConstantScoreBulkScorer, which batches matches in bulk via DocIdStream. (Costin Leau)
+
+* GITHUB#16316: Lazily allocate buffers in MaxScoreBulkScorer.  These are now only allocated when going
+  via code paths that actually use them. (Alan Woodward)
 
 * GITHUB#16160: Improve numeric doc values range query performance for dense fields that use GCD or delta encoding. (Costin Leau)
 
@@ -309,7 +322,12 @@ Bug Fixes
 
 Other
 ---------------------
-(No changes)
+* GITHUB#16266: Remove deprecated search(Query, Collector) calls in QueryUtils by replacing
+  SimpleCollector-based iteration with explicit leaf-level Weight.scorer() calls. (Luca Cavanna)
+
+* GITHUB#16308: upgrade opennlp to 2.5.10 (Dawid Weiss)
+
+* GITHUB#16315: Fix flaky test TestIndexOptions > testMultiValueForcesDeoptimization (neoremind)
 
 ======================= Lucene 10.5.0 =======================
 
