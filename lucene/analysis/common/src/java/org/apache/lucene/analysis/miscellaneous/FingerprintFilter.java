@@ -165,15 +165,16 @@ public class FingerprintFilter extends TokenFilter {
           return len1 - len2;
         });
 
-    // TODO lets append directly to termAttribute?
-    StringBuilder sb = new StringBuilder();
+    termAttribute.setEmpty();
+    boolean first = true;
     for (Object item : items) {
-      if (sb.length() >= 1) {
-        sb.append(separator);
+      if (!first) {
+        termAttribute.append(separator);
+      } else {
+        first = false;
       }
-      sb.append((char[]) item);
+      termAttribute.append((char[]) item);
     }
-    termAttribute.setEmpty().append(sb);
     uniqueTerms.clear();
     return true;
   }
