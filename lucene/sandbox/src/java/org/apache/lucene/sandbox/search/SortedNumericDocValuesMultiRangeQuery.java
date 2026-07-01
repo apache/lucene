@@ -89,7 +89,7 @@ public class SortedNumericDocValuesMultiRangeQuery extends Query {
       Collection<DocValuesMultiRangeQuery.LongRange> clauses) {
     NavigableSet<DocValuesMultiRangeQuery.LongRange> sortedClauses =
         new TreeSet<>(
-            Comparator.comparing(r -> r.lower)
+            Comparator.comparingLong(r -> r.lower)
             // .thenComparing(r -> r.upper)// have to ignore upper boundary for .floor() lookups
             );
     List<Edge> clauseEdges = new ArrayList<>(clauses.size() * 2);

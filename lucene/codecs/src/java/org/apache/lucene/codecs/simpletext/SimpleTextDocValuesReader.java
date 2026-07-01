@@ -58,6 +58,7 @@ import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SortedDocValues;
@@ -882,7 +883,7 @@ class SimpleTextDocValuesReader extends DocValuesProducer {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     BytesRefBuilder scratch = new BytesRefBuilder();
     IndexInput clone = data.clone();
     clone.seek(0);
