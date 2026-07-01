@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.lucene90.IndexedDISI;
+import org.apache.lucene.codecs.lucene95.HasIndexSlice;
 import org.apache.lucene.codecs.lucene95.OrdToDocDISIReaderConfiguration;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.DocIdSetIterator;
@@ -160,6 +161,13 @@ public abstract class OffHeapScalarQuantizedVectorValues extends QuantizedByteVe
   @Override
   public OptimizedScalarQuantizer getQuantizer() {
     return quantizer;
+  }
+
+  @Override
+  public void prefetch(final int[] ordsToPrefetch, int numOrds) throws IOException {
+    // Lets per-query consumers (e.g. Lucene99HnswVectorsReader honouring QueryAccessHint.POINT)
+    // issue a prefetch for each upcoming quantised vector record before bulkScore reads it.
+    HasIndexSlice.prefetchOrdinals(slice, byteSize, ordsToPrefetch, numOrds);
   }
 
   @Override

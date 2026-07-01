@@ -76,6 +76,9 @@ public class SeededKnnVectorQuery extends AbstractKnnVectorQuery {
       int k,
       Query filter,
       KnnSearchStrategy searchStrategy) {
+    // The wrapper carries no independent read-hint state: getKnnCollectorManager() delegates to the
+    // inner query, which owns the hints (see #withReadHints on the concrete KNN queries). Passing
+    // them up to super too would double-count them in equals/hashCode (the delegate already does).
     super(field, k, filter, searchStrategy);
     this.delegate = knnQuery;
     this.seed = Objects.requireNonNull(seed);
