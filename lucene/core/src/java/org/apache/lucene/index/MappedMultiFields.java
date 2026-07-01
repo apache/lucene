@@ -77,12 +77,12 @@ public class MappedMultiFields extends FilterFields {
     }
 
     @Override
-    public long getSumTotalTermFreq() throws IOException {
+    public long getSumTotalTermFreq() {
       throw new UnsupportedOperationException();
     }
 
     @Override
-    public long getSumDocFreq() throws IOException {
+    public long getSumDocFreq() {
       throw new UnsupportedOperationException();
     }
 

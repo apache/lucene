@@ -96,7 +96,8 @@ API Changes
 * GITHUB#: Add junit5/jupiter support to the test-framework module. (Dawid Weiss)
 
 * GITHUB#16052: Remove IOException from LeafReader#getPointValues, LeafReader#terms,
-  LeafReader#getDocCount signatures. (Ignacio Vera)
+  LeafReader#getDocCount, LeafReader#getSumDocFreq and LeafReader#getSumTotalTermFreq
+  signatures. (Ignacio Vera)
 
 * GITHUB#16281: The checkIntegrity() method of codec Producer APIs gains a OneMerge parameter,
   which is used to check for aborted merges during checksum validation. (Tanguy Leroux)
