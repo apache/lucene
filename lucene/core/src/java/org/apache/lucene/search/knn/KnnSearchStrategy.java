@@ -53,6 +53,7 @@ public abstract class KnnSearchStrategy {
     public static final Hnsw DEFAULT = new Hnsw(DEFAULT_FILTERED_SEARCH_THRESHOLD);
 
     private final int filteredSearchThreshold;
+    private final Integer queryBitSizeHint;
 
     /**
      * Create a new Hnsw strategy
@@ -61,14 +62,39 @@ public abstract class KnnSearchStrategy {
      *     100 where 0 means never use filtered search and 100 means always use filtered search.
      */
     public Hnsw(int filteredSearchThreshold) {
+      this(filteredSearchThreshold, null);
+    }
+
+    /**
+     * Create a new Hnsw strategy
+     *
+     * @param filteredSearchThreshold threshold for filtered search, a percentage value from 0 to
+     *     100 where 0 means never use filtered search and 100 means always use filtered search.
+     * @param queryBitSizeHint optional hint for query bit size to be used by codecs/scorers that
+     *     support this optimization.
+     */
+    public Hnsw(int filteredSearchThreshold, Integer queryBitSizeHint) {
       if (filteredSearchThreshold < 0 || filteredSearchThreshold > 100) {
         throw new IllegalArgumentException("filteredSearchThreshold must be >= 0 and <= 100");
       }
+      if (queryBitSizeHint != null && queryBitSizeHint <= 0) {
+        throw new IllegalArgumentException("queryBitSizeHint must be > 0");
+      }
       this.filteredSearchThreshold = filteredSearchThreshold;
+      this.queryBitSizeHint = queryBitSizeHint;
     }
 
     public int filteredSearchThreshold() {
       return filteredSearchThreshold;
+    }
+
+    /**
+     * Optional hint for query bit size used by supported codecs/scorers.
+     *
+     * @return query bit size hint, or null when unspecified
+     */
+    public Integer queryBitSizeHint() {
+      return queryBitSizeHint;
     }
 
     /**
@@ -87,12 +113,13 @@ public abstract class KnnSearchStrategy {
       if (this == o) return true;
       if (o == null || getClass() != o.getClass()) return false;
       Hnsw hnsw = (Hnsw) o;
-      return filteredSearchThreshold == hnsw.filteredSearchThreshold;
+      return filteredSearchThreshold == hnsw.filteredSearchThreshold
+          && Objects.equals(queryBitSizeHint, hnsw.queryBitSizeHint);
     }
 
     @Override
     public int hashCode() {
-      return Objects.hashCode(filteredSearchThreshold);
+      return Objects.hash(filteredSearchThreshold, queryBitSizeHint);
     }
 
     @Override
@@ -180,7 +207,14 @@ public abstract class KnnSearchStrategy {
     private final HnswQueueSaturationCollector collector;
 
     public Patience(HnswQueueSaturationCollector collector, int filteredSearchThreshold) {
-      super(filteredSearchThreshold);
+      this(collector, filteredSearchThreshold, null);
+    }
+
+    public Patience(
+        HnswQueueSaturationCollector collector,
+        int filteredSearchThreshold,
+        Integer queryBitSizeHint) {
+      super(filteredSearchThreshold, queryBitSizeHint);
       this.collector = collector;
     }
 
@@ -191,7 +225,7 @@ public abstract class KnnSearchStrategy {
 
     @Override
     public int hashCode() {
-      return Objects.hash(super.filteredSearchThreshold, collector);
+      return Objects.hash(super.hashCode(), collector);
     }
 
     @Override

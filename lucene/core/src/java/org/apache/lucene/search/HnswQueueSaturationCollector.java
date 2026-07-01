@@ -96,14 +96,16 @@ public class HnswQueueSaturationCollector extends KnnCollector.Decorator {
   public KnnSearchStrategy getSearchStrategy() {
     KnnSearchStrategy delegateStrategy = delegate.getSearchStrategy();
     if (delegateStrategy instanceof KnnSearchStrategy.Hnsw hnswStrategy) {
-      return new KnnSearchStrategy.Patience(this, hnswStrategy.filteredSearchThreshold());
+      return new KnnSearchStrategy.Patience(
+          this, hnswStrategy.filteredSearchThreshold(), hnswStrategy.queryBitSizeHint());
     } else if (delegateStrategy instanceof KnnSearchStrategy.Seeded seededStrategy) {
       if (seededStrategy.originalStrategy() instanceof KnnSearchStrategy.Hnsw hnswStrategy) {
         // rewrap the underlying HNSW strategy with patience
         // this way we still use the seeded entry points, filter threshold,
         // and can utilize patience thresholds
         KnnSearchStrategy.Patience patienceStrategy =
-            new KnnSearchStrategy.Patience(this, hnswStrategy.filteredSearchThreshold());
+            new KnnSearchStrategy.Patience(
+                this, hnswStrategy.filteredSearchThreshold(), hnswStrategy.queryBitSizeHint());
         return new KnnSearchStrategy.Seeded(
             seededStrategy.entryPoints(), seededStrategy.numberOfEntryPoints(), patienceStrategy);
       }
