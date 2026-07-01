@@ -136,7 +136,9 @@ public class StableTflSimilarity extends Similarity {
   private static float getTermLength(BytesRef termText) {
     try {
       return UnicodeUtil.codePointCount(termText);
-    } catch (@SuppressWarnings("unused") IllegalArgumentException e) {
+    } catch (
+        @SuppressWarnings("unused")
+        IllegalArgumentException e) {
       return NON_UTF_8_DEFAULT_TERM_LENGTH;
     }
   }
