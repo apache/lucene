@@ -247,7 +247,10 @@ public class NeighborArray {
   /** This method is for test only. */
   void insertSorted(int newNode, float newScore) throws IOException {
     addOutOfOrder(newNode, newScore);
-    insertSortedInternal(null);
+    if (size == sortedNodeSize) {
+      return;
+    }
+    sort(null);
   }
 
   public int size() {
