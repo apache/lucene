@@ -658,6 +658,8 @@ Bug Fixes
 * GITHUB#16250: Fix NullPointerException in RoaringDocIdSet#intoBitSet when the iterator is already
   exhausted. (Venkateshwaran Shanmugham)
 
+* GITHUB#15831: Fixed a race condition in ReferenceManager.maybeRefresh() where refreshes could be missed if a new generation was flushed just before the refresh lock was released. (Vijay)
+
 Other
 ---------------------
 * GITHUB#15586: Document that scoring and ranking may change across major Lucene versions, and that applications requiring stable ranking should explicitly configure Similarity. (Parveen Saini)
