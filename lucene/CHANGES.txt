@@ -317,6 +317,8 @@ Other
 * GITHUB#16266: Remove deprecated search(Query, Collector) calls in QueryUtils by replacing
   SimpleCollector-based iteration with explicit leaf-level Weight.scorer() calls. (Luca Cavanna)
 
+* GITHUB#16315: Fix flaky test TestIndexOptions > testMultiValueForcesDeoptimization (neoremind)
+
 ======================= Lucene 10.5.0 =======================
 
 API Changes
