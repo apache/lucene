@@ -17,9 +17,9 @@
 package org.apache.lucene.search.similarities;
 
 import java.util.Random;
+import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.FieldStats;
-import org.apache.lucene.search.TermStats;
+import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.search.similarities.Similarity.SimScorer;
 import org.apache.lucene.tests.search.similarities.BaseSimilarityTestCase;
 import org.apache.lucene.util.BytesRef;
@@ -79,73 +79,6 @@ public class TestStableTflSimilarity extends BaseSimilarityTestCase {
     assertTrue(expected.getMessage().contains("illegal c value"));
   }
 
-  public void testIllegalK3() {
-    IllegalArgumentException expected =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              new StableTflSimilarity(1.2f, 0.917f, Float.POSITIVE_INFINITY);
-            });
-    assertTrue(expected.getMessage().contains("illegal k3 value"));
-
-    expected =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              new StableTflSimilarity(1.2f, 0.917f, Float.NEGATIVE_INFINITY);
-            });
-    assertTrue(expected.getMessage().contains("illegal k3 value"));
-
-    expected =
-        expectThrows(
-            IllegalArgumentException.class,
-            () -> {
-              new StableTflSimilarity(1.2f, 0.917f, Float.NaN);
-            });
-    assertTrue(expected.getMessage().contains("illegal k3 value"));
-  }
-
-  public void testValidK3() {
-    // negative k3 disables saturation — should be allowed
-    StableTflSimilarity sim = new StableTflSimilarity(1.2f, 0.917f, -1f);
-    assertEquals(-1f, sim.getK3(), 0f);
-
-    // zero k3 — maximum saturation
-    sim = new StableTflSimilarity(1.2f, 0.917f, 0f);
-    assertEquals(0f, sim.getK3(), 0f);
-
-    // typical k3 value
-    sim = new StableTflSimilarity(1.2f, 0.917f, 8f);
-    assertEquals(8f, sim.getK3(), 0f);
-  }
-
-  public void testComputeQueryTermWeight() {
-    // negative k3 disables saturation: weight is the (linear) query term frequency
-    StableTflSimilarity disabled = new StableTflSimilarity(1.2f, 0.917f, -1f);
-    for (int qtf = 1; qtf <= 5; qtf++) {
-      assertEquals((float) qtf, disabled.computeQueryTermWeight(qtf), 0f);
-    }
-
-    // k3 = 0 fully saturates: any positive frequency yields a weight of 1
-    StableTflSimilarity saturated = new StableTflSimilarity(1.2f, 0.917f, 0f);
-    for (int qtf = 1; qtf <= 5; qtf++) {
-      assertEquals(1f, saturated.computeQueryTermWeight(qtf), 0f);
-    }
-
-    // positive k3 saturates: ((k3 + 1) * qtf) / (k3 + qtf), monotonic but sub-linear
-    float k3 = 8f;
-    StableTflSimilarity sim = new StableTflSimilarity(1.2f, 0.917f, k3);
-    float prev = 0f;
-    for (int qtf = 1; qtf <= 10; qtf++) {
-      float expected = ((k3 + 1f) * qtf) / (k3 + qtf);
-      float weight = sim.computeQueryTermWeight(qtf);
-      assertEquals(expected, weight, 0f);
-      assertTrue("weight should not decrease as qtf increases", weight >= prev);
-      assertTrue("saturation should keep weight at or below linear", weight <= qtf);
-      prev = weight;
-    }
-  }
-
   public void testValidParameters() {
     // boundary values: zero is allowed for both parameters
     StableTflSimilarity sim = new StableTflSimilarity(0f, 0f);
@@ -153,36 +86,30 @@ public class TestStableTflSimilarity extends BaseSimilarityTestCase {
     assertEquals(0f, sim.getC(), 0f);
 
     // typical values are returned as set
-    sim = new StableTflSimilarity(1.5f, 0.9f, 8f);
+    sim = new StableTflSimilarity(1.5f, 0.9f);
     assertEquals(1.5f, sim.getK1(), 0f);
     assertEquals(0.9f, sim.getC(), 0f);
-    assertEquals(8f, sim.getK3(), 0f);
 
     // the no-arg constructor uses the documented defaults
     StableTflSimilarity defaults = new StableTflSimilarity();
     assertEquals(StableTflSimilarity.DEFAULT_K1, defaults.getK1(), 0f);
     assertEquals(StableTflSimilarity.DEFAULT_C, defaults.getC(), 0f);
-    assertEquals(StableTflSimilarity.DEFAULT_K3, defaults.getK3(), 0f);
   }
 
   public void testToString() {
     StableTflSimilarity sim = new StableTflSimilarity();
     assertEquals("StableTflSimilarity(k1=1.2, c=0.917)", sim.toString());
-
-    // k3 is only rendered when saturation is enabled (non-negative)
-    StableTflSimilarity withK3 = new StableTflSimilarity(1.2f, 0.917f, 8.0f);
-    assertEquals("StableTflSimilarity(k1=1.2, c=0.917, k3=8.0)", withK3.toString());
   }
 
   /**
    * Reproduces the canonical scoring example: term rarity is derived from the term length and the
-   * document length rather than from corpus statistics, so the supplied {@link FieldStats}/{@link
-   * TermStats} do not affect the score.
+   * document length rather than from corpus statistics, so the supplied {@link
+   * CollectionStatistics}/{@link TermStatistics} do not affect the score.
    */
   public void testExplain() throws Exception {
     StableTflSimilarity similarity = new StableTflSimilarity();
-    FieldStats fieldStats = new FieldStats("field", 4, 4, 3003, 2000);
-    TermStats termStats = new TermStats(new BytesRef("photosynthesis"), 3, 3);
+    CollectionStatistics fieldStats = new CollectionStatistics("field", 4, 4, 3003, 2000);
+    TermStatistics termStats = new TermStatistics(new BytesRef("photosynthesis"), 3, 3);
     SimScorer scorer = similarity.scorer(1, fieldStats, termStats);
 
     int numTerms = 1000;
@@ -214,13 +141,13 @@ public class TestStableTflSimilarity extends BaseSimilarityTestCase {
   /** Multi-term queries sum the term rarity of each query term. */
   public void testMultiTermExplain() throws Exception {
     StableTflSimilarity similarity = new StableTflSimilarity();
-    FieldStats fieldStats = new FieldStats("field", 4, 4, 3003, 2000);
+    CollectionStatistics fieldStats = new CollectionStatistics("field", 4, 4, 3003, 2000);
     SimScorer scorer =
         similarity.scorer(
             1,
             fieldStats,
-            new TermStats(new BytesRef("photosynthesis"), 3, 3),
-            new TermStats(new BytesRef("chlorophyll"), 3, 3));
+            new TermStatistics(new BytesRef("photosynthesis"), 3, 3),
+            new TermStatistics(new BytesRef("chlorophyll"), 3, 3));
 
     long norm = SmallFloat.intToByte4(1000);
     Explanation explain = scorer.explain(Explanation.match(1, "freq"), norm);
@@ -235,16 +162,17 @@ public class TestStableTflSimilarity extends BaseSimilarityTestCase {
    */
   public void testNonUtf8TermFallsBackToDefaultLength() {
     StableTflSimilarity similarity = new StableTflSimilarity();
-    FieldStats fieldStats = new FieldStats("field", 4, 4, 3003, 2000);
+    CollectionStatistics fieldStats = new CollectionStatistics("field", 4, 4, 3003, 2000);
     long norm = SmallFloat.intToByte4(1000);
 
     // 0xFF is never a valid UTF-8 leading byte
     BytesRef invalidUtf8 = new BytesRef(new byte[] {(byte) 0xFF, (byte) 0xFF});
-    SimScorer invalidScorer = similarity.scorer(1, fieldStats, new TermStats(invalidUtf8, 3, 3));
+    SimScorer invalidScorer =
+        similarity.scorer(1, fieldStats, new TermStatistics(invalidUtf8, 3, 3));
 
     // "hello" has exactly 5 code points, the default term length for undecodable terms
     SimScorer fiveCharScorer =
-        similarity.scorer(1, fieldStats, new TermStats(new BytesRef("hello"), 3, 3));
+        similarity.scorer(1, fieldStats, new TermStatistics(new BytesRef("hello"), 3, 3));
 
     assertEquals(fiveCharScorer.score(1, norm), invalidScorer.score(1, norm), 0f);
   }
@@ -256,12 +184,13 @@ public class TestStableTflSimilarity extends BaseSimilarityTestCase {
     long norm = SmallFloat.intToByte4(1000);
 
     SimScorer sparse =
-        similarity.scorer(1, new FieldStats("field", 4, 4, 3003, 2000), new TermStats(term, 1, 1));
+        similarity.scorer(
+            1, new CollectionStatistics("field", 4, 4, 3003, 2000), new TermStatistics(term, 1, 1));
     SimScorer dense =
         similarity.scorer(
             1,
-            new FieldStats("field", 1_000_000, 999_999, 123_456_789, 99_999_999),
-            new TermStats(term, 999_999, 12_345_678));
+            new CollectionStatistics("field", 1_000_000, 999_999, 123_456_789, 99_999_999),
+            new TermStatistics(term, 999_999, 12_345_678));
 
     assertEquals(sparse.score(1, norm), dense.score(1, norm), 0f);
   }
@@ -272,9 +201,9 @@ public class TestStableTflSimilarity extends BaseSimilarityTestCase {
    */
   public void testMultiTermScoreIsSumOfSingleTermScores() {
     StableTflSimilarity similarity = new StableTflSimilarity();
-    FieldStats fieldStats = new FieldStats("field", 4, 4, 3003, 2000);
-    TermStats term1 = new TermStats(new BytesRef("photosynthesis"), 3, 3);
-    TermStats term2 = new TermStats(new BytesRef("chlorophyll"), 3, 3);
+    CollectionStatistics fieldStats = new CollectionStatistics("field", 4, 4, 3003, 2000);
+    TermStatistics term1 = new TermStatistics(new BytesRef("photosynthesis"), 3, 3);
+    TermStatistics term2 = new TermStatistics(new BytesRef("chlorophyll"), 3, 3);
     long norm = SmallFloat.intToByte4(1000);
     float freq = 2;
 
@@ -330,8 +259,6 @@ public class TestStableTflSimilarity extends BaseSimilarityTestCase {
         break;
     }
 
-    // query-term saturation parameter k3: negative (disabled) or a finite non-negative value
-    final float k3 = random.nextBoolean() ? -1f : random.nextFloat() * 20f;
-    return new StableTflSimilarity(k1, c, k3);
+    return new StableTflSimilarity(k1, c);
   }
 }

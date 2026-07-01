@@ -18,9 +18,9 @@ package org.apache.lucene.search.similarities;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
-import org.apache.lucene.search.FieldStats;
-import org.apache.lucene.search.TermStats;
+import org.apache.lucene.search.TermStatistics;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.SmallFloat;
@@ -47,7 +47,6 @@ import org.apache.lucene.util.UnicodeUtil;
  * <ul>
  *   <li>{@code k1} - saturation parameter for term frequency
  *   <li>{@code c} - decay constant controlling how term length impacts rarity
- *   <li>{@code k3} - query-side saturation for repeated query terms (disabled by default)
  * </ul>
  *
  * <p>The constant {@code m} is fixed internally and controls the base term-match probability.
@@ -61,9 +60,6 @@ public class StableTflSimilarity extends Similarity {
 
   /** Empirical value of c derived from modeling term frequency in English corpuses. */
   public static final float DEFAULT_C = 0.917f;
-
-  /** Default k3 value. A negative value disables query-term frequency saturation. */
-  public static final float DEFAULT_K3 = -1f;
 
   /** Multiplicative constant to term matching probability. Non-adjustable by users. */
   private static final float M = 0.00781f;
@@ -90,24 +86,14 @@ public class StableTflSimilarity extends Similarity {
   private final float c;
 
   /**
-   * Controls query-side term frequency saturation. A negative value disables saturation (linear
-   * behavior).
-   */
-  private final float k3;
-
-  /**
    * StableTFL with the supplied parameter values.
    *
    * @param k1 Controls non-linear term frequency normalization (saturation).
    * @param c Controls how much term length affects term rarity (decay constant).
-   * @param k3 Controls query-side term frequency saturation. When duplicate terms appear in a
-   *     query, their boost is computed as ((k3 + 1) * qtf) / (k3 + qtf) instead of linear summing.
-   *     A negative value disables saturation (linear behavior). Common values are 7 or 8.
    * @throws IllegalArgumentException if {@code k1} is infinite or negative
    * @throws IllegalArgumentException if {@code c} is infinite or negative
-   * @throws IllegalArgumentException if {@code k3} is infinite
    */
-  public StableTflSimilarity(float k1, float c, float k3) {
+  public StableTflSimilarity(float k1, float c) {
     if (Float.isFinite(k1) == false || k1 < 0) {
       throw new IllegalArgumentException(
           "illegal k1 value: " + k1 + ", must be a non-negative finite value");
@@ -116,25 +102,8 @@ public class StableTflSimilarity extends Similarity {
       throw new IllegalArgumentException(
           "illegal c value: " + c + ", must be a non-negative finite value");
     }
-    if (Float.isFinite(k3) == false) {
-      throw new IllegalArgumentException(
-          "illegal k3 value: " + k3 + ", must be a finite value (negative to disable)");
-    }
     this.k1 = k1;
     this.c = c;
-    this.k3 = k3;
-  }
-
-  /**
-   * StableTFL with the supplied parameter values and query-term frequency saturation disabled.
-   *
-   * @param k1 Controls non-linear term frequency normalization (saturation).
-   * @param c Controls how much term length affects term rarity (decay constant).
-   * @throws IllegalArgumentException if {@code k1} is infinite or negative
-   * @throws IllegalArgumentException if {@code c} is infinite or negative
-   */
-  public StableTflSimilarity(float k1, float c) {
-    this(k1, c, DEFAULT_K3);
   }
 
   /**
@@ -143,24 +112,10 @@ public class StableTflSimilarity extends Similarity {
    * <ul>
    *   <li>{@code k1 = 1.2}
    *   <li>{@code c = 0.917}
-   *   <li>{@code k3 = -1} (query-term frequency saturation disabled)
    * </ul>
    */
   public StableTflSimilarity() {
-    this(DEFAULT_K1, DEFAULT_C, DEFAULT_K3);
-  }
-
-  /**
-   * Computes the query-term weight using the same k3 saturation formula as BM25: ((k3 + 1) * qtf) /
-   * (k3 + qtf). When k3 is negative (disabled), falls back to linear weighting where the weight
-   * equals the query term frequency.
-   */
-  @Override
-  public float computeQueryTermWeight(int queryTermFrequency) {
-    if (k3 < 0) {
-      return (float) queryTermFrequency;
-    }
-    return ((k3 + 1f) * queryTermFrequency) / (k3 + queryTermFrequency);
+    this(DEFAULT_K1, DEFAULT_C);
   }
 
   /**
@@ -181,13 +136,14 @@ public class StableTflSimilarity extends Similarity {
   private static float getTermLength(BytesRef termText) {
     try {
       return UnicodeUtil.codePointCount(termText);
-    } catch (IllegalArgumentException _) {
+    } catch (IllegalArgumentException e) {
       return NON_UTF_8_DEFAULT_TERM_LENGTH;
     }
   }
 
   @Override
-  public final SimScorer scorer(float boost, FieldStats fieldStats, TermStats... termStats) {
+  public final SimScorer scorer(
+      float boost, CollectionStatistics fieldStats, TermStatistics... termStats) {
     float[] cache = new float[256];
     float[] termLengths = new float[termStats.length];
 
@@ -355,16 +311,8 @@ public class StableTflSimilarity extends Similarity {
     return c;
   }
 
-  /**
-   * Returns the <code>k3</code> parameter for query-side term frequency saturation. A negative
-   * value means saturation is disabled.
-   */
-  public final float getK3() {
-    return k3;
-  }
-
   @Override
   public String toString() {
-    return "StableTflSimilarity(k1=" + k1 + ", c=" + c + (k3 >= 0 ? ", k3=" + k3 : "") + ")";
+    return "StableTflSimilarity(k1=" + k1 + ", c=" + c + ")";
   }
 }
