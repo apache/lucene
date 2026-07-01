@@ -73,7 +73,7 @@ API Changes
 
 * GITHUB#14615 : Remove unnecessary public methods in FuzzySet (Greg Miller)
 
-* GITHUB#15295 : Switched to a fixed CFS threshold (Shubham Sharma)
+* GITHUB#15295 : Switched to a fixed CFS threshold(Shubham Sharma)
 
 * GITHUB#15486: Change TopGroups.merge() to accept a list of TopGroups (Binlong Gao)
 
@@ -118,6 +118,10 @@ New Features
 * GITHUB#15508: Use native vectorization in Lucene. (Ankur Goel, Shubham Chaudhary, Dawid Weiss)
 
 * GITHUB#15818: Add BM25 k3 query-term frequency saturation to BM25Similarity. (Sagar Upadhyaya)
+
+* GITHUB#KNN-COLLAB: Introduce Collaborative HNSW search, allowing dynamic threshold
+  updates from collectors to enable cluster-wide search pruning. (Kristian Rickert)
+
 
 Improvements
 ---------------------
@@ -2285,7 +2289,7 @@ Optimizations
 
 * GITHUB#13184: Make the HitQueue size more appropriate for KNN exact search (Pan Guixin)
 
-* GITHUB#13199: Speed up dynamic pruning by breaking point estimation when threshold get exceeded. (Guo Feng)
+* GITHUB#13199: Speed up dynamic pruning by breaking point estimation when thresholdget exceeded. (Guo Feng)
 
 * GITHUB#13203: Speed up writeGroupVInts (Zhang Chao)
 

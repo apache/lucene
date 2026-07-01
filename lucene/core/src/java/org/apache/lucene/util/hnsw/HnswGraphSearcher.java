@@ -305,6 +305,13 @@ public class HnswGraphSearcher extends AbstractHnswGraphSearcher {
     // We should allow exploring equivalent minAcceptedSimilarity values at least once
     boolean shouldExploreMinSim = true;
     while (candidates.size() > 0 && results.earlyTerminated() == false) {
+      // Update the threshold dynamically from the collector to allow external pruning.
+      float liveMinSimilarity = results.minCompetitiveSimilarity();
+      if (liveMinSimilarity > minAcceptedSimilarity) {
+        minAcceptedSimilarity = liveMinSimilarity;
+        shouldExploreMinSim = true;
+      }
+
       // get the best candidate (closest or best scoring)
       float topCandidateSimilarity = candidates.topScore();
       if (topCandidateSimilarity < minAcceptedSimilarity) {
