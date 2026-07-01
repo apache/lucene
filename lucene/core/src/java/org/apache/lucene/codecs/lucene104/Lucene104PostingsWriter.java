@@ -451,8 +451,8 @@ public class Lucene104PostingsWriter extends PushPostingsWriterBase {
           spareBitSet.set(s);
         }
         // We never use the bit set encoding when it requires more than Integer.SIZE=32 bits per
-        // value. So the bit set cannot have more than BLOCK_SIZE * Integer.SIZE / Long.SIZE = 64
-        // longs, which fits on a byte.
+        // value. So the bit set cannot have more than BLOCK_SIZE * Integer.SIZE / Long.SIZE = 128
+        // longs. -128 fits in a byte so we're good.
         assert numBitSetLongs <= BLOCK_SIZE / 2;
         level0Output.writeByte((byte) -numBitSetLongs);
         for (int i = 0; i < numBitSetLongs; ++i) {
