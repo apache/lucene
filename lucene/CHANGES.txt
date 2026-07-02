@@ -172,6 +172,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* Fix missing null check in RamUsageEstimator.sizeOf(Accountable) to be consistent
+  with sizeOf(String) and sizeOf(Accountable[]). (Tim Grein)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
