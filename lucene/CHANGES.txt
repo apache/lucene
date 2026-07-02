@@ -308,6 +308,10 @@ Improvements
 ---------------------
 * GITHUB#16170: Alter TopGroups.merge() to not return null if no groups. (Binlong Gao)
 
+* GITHUB#16292: Introduce TermGroupFacetCollectorManager to enable concurrent search with grouped
+  faceting, removing usages of the deprecated IndexSearcher#search(Query, Collector).
+  (Luca Cavanna)
+
 Optimizations
 ---------------------
 * GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
