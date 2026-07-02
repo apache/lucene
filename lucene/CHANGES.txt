@@ -311,7 +311,7 @@ Improvements
 Optimizations
 ---------------------
 * GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
-  
+
 * GITHUB#16146: Speed up no-score filtered-optional Boolean queries by routing dense conjunctions with cached FixedBitSet filters
   through ConstantScoreBulkScorer, which batches matches in bulk via DocIdStream. (Costin Leau)
 
@@ -320,7 +320,7 @@ Optimizations
 
 * GITHUB#16160: Improve numeric doc values range query performance for dense fields that use GCD or delta encoding. (Costin Leau)
 
-* GITHUB#16283: Use Panama Vector API to SIMD-evaluate fixed-cardinality sorted numeric range queries in 
+* GITHUB#16283: Use Panama Vector API to SIMD-evaluate fixed-cardinality sorted numeric range queries in
   rangeIntoBitSet. (Costin Leau)
 
 Bug Fixes
