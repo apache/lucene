@@ -297,37 +297,37 @@ public abstract class CodecReader extends LeafReader {
 
     // terms/postings
     if (getPostingsReader() != null) {
-      getPostingsReader().checkIntegrity();
+      getPostingsReader().checkIntegrity(null);
     }
 
     // norms
     if (getNormsReader() != null) {
-      getNormsReader().checkIntegrity();
+      getNormsReader().checkIntegrity(null);
     }
 
     // docvalues
     if (getDocValuesReader() != null) {
-      getDocValuesReader().checkIntegrity();
+      getDocValuesReader().checkIntegrity(null);
     }
 
     // stored fields
     if (getFieldsReader() != null) {
-      getFieldsReader().checkIntegrity();
+      getFieldsReader().checkIntegrity(null);
     }
 
     // term vectors
     if (getTermVectorsReader() != null) {
-      getTermVectorsReader().checkIntegrity();
+      getTermVectorsReader().checkIntegrity(null);
     }
 
     // points
     if (getPointsReader() != null) {
-      getPointsReader().checkIntegrity();
+      getPointsReader().checkIntegrity(null);
     }
 
     // vectors
     if (getVectorReader() != null) {
-      getVectorReader().checkIntegrity();
+      getVectorReader().checkIntegrity(null);
     }
   }
 }
