@@ -36,8 +36,8 @@ def commonCleanups = { FileTree generatedFiles ->
   generatedFiles.matching({include "CharStream.java"}).each {file ->
     buildGlobals.modifyFile(file, {text ->
       return text.replace(
-          "implemetation", // spellchecker:disable-line
-          "implementation");
+      "implemetation", // spellchecker:disable-line
+      "implementation");
     })
   }
 
@@ -55,8 +55,8 @@ def commonCleanups = { FileTree generatedFiles ->
     buildGlobals.modifyFile(file, {text ->
       // Remove redundant imports.
       text = text.replaceAll(
-          /(?m)^import .+/,
-          "")
+      /(?m)^import .+/,
+      "")
       // Add CharStream imports.
       text = text.replaceAll(
           /package (.+)/,
@@ -106,8 +106,8 @@ tasks.register("regenerateClassicQueryParser", JavaCCTask, {
     generatedFiles.matching {include "QueryParser.java"}.each {file ->
       buildGlobals.modifyFile(file, {text ->
         text = text.replace(
-            "public QueryParser(CharStream ",
-            "protected QueryParser(CharStream ")
+        "public QueryParser(CharStream ",
+        "protected QueryParser(CharStream ")
         text = text.replace(
             "public QueryParser(QueryParserTokenManager ",
             "protected QueryParser(QueryParserTokenManager ")
@@ -145,8 +145,8 @@ tasks.register("regenerateSurroundQueryParser", JavaCCTask, {
     generatedFiles.matching {include "QueryParser.java"}.each {file ->
       buildGlobals.modifyFile(file, {text ->
         text = text.replace(
-            "import org.apache.lucene.analysis.TokenStream;",
-            "")
+        "import org.apache.lucene.analysis.TokenStream;",
+        "")
         text = text.replace(
             "new java.util.ArrayList<int[]>",
             "new java.util.ArrayList<>")
@@ -172,8 +172,8 @@ tasks.register("regenerateFlexibleStandardSyntaxParser", JavaCCTask, {
       buildGlobals.modifyFile(file, {text ->
         // Modify constructor.
         text = text.replace(
-            "class ParseException extends Exception",
-            "class ParseException extends QueryNodeParseException")
+        "class ParseException extends Exception",
+        "class ParseException extends QueryNodeParseException")
 
         // Modify imports.
         text = text.replace(
@@ -223,8 +223,8 @@ tasks.register("regenerateFlexibleStandardSyntaxParser", JavaCCTask, {
       buildGlobals.modifyFile(file, {text ->
         // Remove redundant cast
         text = text.replace(
-            "new java.util.ArrayList<int[]>",
-            "new java.util.ArrayList<>")
+        "new java.util.ArrayList<int[]>",
+        "new java.util.ArrayList<>")
         text = text.replace(
             "new ArrayList<QueryNode>()",
             "new ArrayList<>()")

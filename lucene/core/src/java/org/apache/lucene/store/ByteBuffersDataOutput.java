@@ -415,9 +415,28 @@ public final class ByteBuffersDataOutput extends DataOutput implements Accountab
   public void writeString(String v) {
     try {
       final int charCount = v.length();
+      ByteBuffer currentBlock = this.currentBlock;
+
+      // Fast path for short strings (charCount <= 42): the VInt length prefix is guaranteed to be 1
+      // byte,
+      // so we can encode directly and backfill the length without computing the UTF-8 byte count
+      // upfront.
+      if (charCount <= UnicodeUtil.MAX_CHARS_FOR_1_BYTE_VINT
+          && currentBlock.hasArray()
+          && currentBlock.remaining() >= 1 + charCount * UnicodeUtil.MAX_UTF8_BYTES_PER_CHAR) {
+        byte[] array = currentBlock.array();
+        int startingPos = currentBlock.position();
+        int off = currentBlock.arrayOffset() + startingPos;
+        int encodedEnd = UnicodeUtil.UTF16toUTF8(v, 0, charCount, array, off + 1);
+        int byteLen = encodedEnd - (off + 1);
+        array[off] = (byte) byteLen;
+        currentBlock.position(startingPos + 1 + byteLen);
+        return;
+      }
+
       final int byteLen = UnicodeUtil.calcUTF16toUTF8Length(v, 0, charCount);
       writeVInt(byteLen);
-      ByteBuffer currentBlock = this.currentBlock;
+      currentBlock = this.currentBlock;
       if (currentBlock.hasArray() && currentBlock.remaining() >= byteLen) {
         int startingPos = currentBlock.position();
         UnicodeUtil.UTF16toUTF8(
