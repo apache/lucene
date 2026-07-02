@@ -323,6 +323,9 @@ Optimizations
 * GITHUB#16283: Use Panama Vector API to SIMD-evaluate fixed-cardinality sorted numeric range queries in
   rangeIntoBitSet. (Costin Leau)
 
+* GITHUB#16285: Apply GCD bound transform to sorted numeric rangeIntoBitSet, comparing raw
+  encoded values directly instead of decoding every packed value. (Costin Leau)
+
 Bug Fixes
 ---------------------
 (No changes)
