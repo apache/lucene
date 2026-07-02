@@ -764,6 +764,17 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
 
   private void doTestSortedNumericRangeIntoBitSet(boolean dense, boolean fixedCardinality)
       throws Exception {
+    doTestSortedNumericRangeIntoBitSet(dense, fixedCardinality, 4);
+  }
+
+  public void testSortedNumericRangeIntoBitSetVaryingCardinality() throws Exception {
+    for (int cardinality : new int[] {2, 3, 4, 5, 7, 8}) {
+      doTestSortedNumericRangeIntoBitSet(true, true, cardinality);
+    }
+  }
+
+  private void doTestSortedNumericRangeIntoBitSet(
+      boolean dense, boolean fixedCardinality, int fixedCardinalityValue) throws Exception {
     int numDocs = 4096 * 2;
     try (Directory dir = newDirectory()) {
       IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
@@ -771,7 +782,7 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
         for (int docID = 0; docID < numDocs; docID++) {
           Document doc = new Document();
           if (dense || docID % 3 != 0) {
-            int valueCount = fixedCardinality ? 4 : 1 + (docID & 3);
+            int valueCount = fixedCardinality ? fixedCardinalityValue : 1 + (docID & 3);
             long firstValue = (docID * 13L) % 100;
             for (int i = 0; i < valueCount; i++) {
               doc.add(SortedNumericDocValuesField.indexedField("sn", firstValue + i * 3L));
