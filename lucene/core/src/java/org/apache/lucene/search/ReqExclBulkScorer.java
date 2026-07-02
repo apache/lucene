@@ -61,8 +61,11 @@ final class ReqExclBulkScorer extends BulkScorer {
           // from upTo to docIdRunEnd() are excluded, so we scored up to docIdRunEnd()
           upTo = Math.min(exclApproximation.docIDRunEnd(), max);
         } else if (exclTwoPhase.matches()) {
-          // upTo is excluded so we can consider that we scored up to upTo+1
-          upTo += 1;
+          // upTo is excluded; skip the whole run of consecutive excluded docs at once, like the
+          // non-two-phase branch above. Note that TwoPhaseIterator#docIDRunEnd defaults to the
+          // current doc (unlike DocIdSetIterator#docIDRunEnd, which returns docID()+1), so clamp to
+          // at least upTo+1 to guarantee progress when the run end is not overridden.
+          upTo = Math.max(upTo + 1, Math.min(exclTwoPhase.docIDRunEnd(), max));
         }
         exclDoc = exclApproximation.nextDoc();
       } else {
