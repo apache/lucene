@@ -146,7 +146,9 @@ abstract class AbstractKnnVectorQuery extends Query {
       }
       assert leafReaderContexts.size() == tasks.size();
       assert perLeafResults.size() == reader.leaves().size();
-      topK = runSearchTasks(tasks, taskExecutor, perLeafResults, leafReaderContexts);
+      if (tasks.size() > 0) {
+        topK = runSearchTasks(tasks, taskExecutor, perLeafResults, leafReaderContexts);
+      }
     }
     if (topK.scoreDocs.length == 0) {
       return new MatchNoDocsQuery("No documents matched the nearest-neighbor search");

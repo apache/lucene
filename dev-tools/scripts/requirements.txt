@@ -5,7 +5,7 @@ PyYAML==6.0.3
 # types
 types-PyYAML==6.0.12.20260518
 # international holidays in releaseWizard
-holidays==0.98
+holidays==0.99
 # calendar processing in releaseWizard
 ics==0.7.3
 # terminal processing in releaseWizard
@@ -15,6 +15,6 @@ PyGithub==2.9.1
 # JIRA processing in githubPRs
 jira==3.10.5
 # type-checking in "make lint"
-ty==0.0.46
+ty==0.0.53
 # linting in "make lint"
-ruff==0.15.15
+ruff==0.15.19

@@ -98,6 +98,9 @@ API Changes
 * GITHUB#16052: Remove IOException from LeafReader#getPointValues, LeafReader#terms,
   LeafReader#getDocCount signatures. (Ignacio Vera)
 
+* GITHUB#16281: The checkIntegrity() method of codec Producer APIs gains a OneMerge parameter,
+  which is used to check for aborted merges during checksum validation. (Tanguy Leroux)
+
 New Features
 ---------------------
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
@@ -142,6 +145,8 @@ Improvements
 
 * GITHUB#15558: Refactor QueryCache for performance. (Sagar Upadhyaya)
 
+* GITHUB#16281: File integrity checks periodically check if a merge is aborted. (Tanguy Leroux)
+
 Optimizations
 ---------------------
 * GITHUB#16254: Enable the vectorized findNextGEQ path on aarch64, where it was disabled on cores
@@ -162,6 +167,8 @@ Optimizations
 * GITHUB#15085, GITHUB#15092: Hunspell suggestions: Ensure candidate roots are not worse before updating. (Ilia Permiashkin)
 
 * GITHUB#15597, GITHUB#15777: Reduce memory usage of NeighborArray (Viliam Durina)
+
+* GITHUB#12324: ELiminate redundant work in AbstractKnnVectorQuery.rewrite (Mike Sokolov)
 
 Bug Fixes
 ---------------------
@@ -199,6 +206,8 @@ Bug Fixes
 * GITHUB#15939: Fix thread-safety issues with NFARunAutomaton. (Dimitris Rempapis)
 
 * GITHUB#16278: Refactor NativeFSLockFactory lock acquisition to cleanly separate locking and file system logic. (Bharathi-Kanna)
+
+* GITHUB#16303: Add suppressed exception details when lock acquisition fails in NativeFSLockFactory. (Bharathi-Kanna)
 
 Changes in Runtime Behavior
 ---------------------
@@ -284,14 +293,21 @@ Other
 
 API Changes
 ---------------------
-(No changes)
+
+* GITHUB#16286: Introduce BinaryDocValues#binaryValues to help speed up the
+  retrieval of many binary doc values at once. (Costin Leau)
 
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#16243: Add StableTflSimilarity, a similarity that estimates term rarity from term length
+  and document length instead of corpus statistics such as document frequency. It also supports k3
+  query-term frequency saturation. (Tianxiao Wei)
 
 Improvements
 ---------------------
+* GITHUB#16170: Alter TopGroups.merge() to not return null if no groups. (Binlong Gao)
+
 * GITHUB#16271: Add detail to KNN no-match explanations. (Jakub Slowinski)
 
 Optimizations
@@ -301,13 +317,21 @@ Optimizations
 * GITHUB#16146: Speed up no-score filtered-optional Boolean queries by routing dense conjunctions with cached FixedBitSet filters
   through ConstantScoreBulkScorer, which batches matches in bulk via DocIdStream. (Costin Leau)
 
+* GITHUB#16316: Lazily allocate buffers in MaxScoreBulkScorer.  These are now only allocated when going
+  via code paths that actually use them. (Alan Woodward)
+
 Bug Fixes
 ---------------------
 (No changes)
 
 Other
 ---------------------
-(No changes)
+* GITHUB#16266: Remove deprecated search(Query, Collector) calls in QueryUtils by replacing
+  SimpleCollector-based iteration with explicit leaf-level Weight.scorer() calls. (Luca Cavanna)
+
+* GITHUB#16308: upgrade opennlp to 2.5.10 (Dawid Weiss)
+
+* GITHUB#16315: Fix flaky test TestIndexOptions > testMultiValueForcesDeoptimization (neoremind)
 
 ======================= Lucene 10.5.0 =======================
 
