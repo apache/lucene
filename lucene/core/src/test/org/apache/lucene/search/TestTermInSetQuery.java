@@ -47,12 +47,14 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.index.RandomIndexWriter;
+import org.apache.lucene.tests.search.FixedBitSetCollector;
 import org.apache.lucene.tests.search.QueryUtils;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.RamUsageTester;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefIterator;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.automaton.ByteRunnable;
 
@@ -139,6 +141,9 @@ public class TestTermInSetQuery extends LuceneTestCase {
       iw.commit();
       final IndexReader reader = iw.getReader();
       final IndexSearcher searcher = newSearcher(reader);
+      // This test checks query equivalence, not query-cache behavior. Keep the randomized
+      // test-framework searcher, but avoid retaining cached doc-id sets across iterations.
+      searcher.setQueryCache(null);
       iw.close();
 
       if (reader.numDocs() == 0) {
@@ -284,15 +289,28 @@ public class TestTermInSetQuery extends LuceneTestCase {
   private void assertSameMatches(IndexSearcher searcher, Query q1, Query q2, boolean scores)
       throws IOException {
     final int maxDoc = searcher.getIndexReader().maxDoc();
-    final TopDocs td1 = searcher.search(q1, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
-    final TopDocs td2 = searcher.search(q2, maxDoc, scores ? Sort.RELEVANCE : Sort.INDEXORDER);
-    assertEquals(td1.totalHits.value(), td2.totalHits.value());
-    for (int i = 0; i < td1.scoreDocs.length; ++i) {
-      assertEquals(td1.scoreDocs[i].doc, td2.scoreDocs[i].doc);
-      if (scores) {
+    if (scores) {
+      final TopDocs td1 = searcher.search(q1, maxDoc);
+      final TopDocs td2 = searcher.search(q2, maxDoc);
+
+      assertEquals(td1.totalHits.value(), td2.totalHits.value());
+      for (int i = 0; i < td1.scoreDocs.length; ++i) {
+        assertEquals(td1.scoreDocs[i].doc, td2.scoreDocs[i].doc);
         assertEquals(td1.scoreDocs[i].score, td2.scoreDocs[i].score, 10e-7);
       }
+    } else {
+      // For no-score comparisons, only doc-id set equality matters. Avoid materializing
+      // all hits as sorted TopDocs for every query pair.
+      final FixedBitSet matches1 = collectMatches(searcher, q1, maxDoc);
+      final FixedBitSet matches2 = collectMatches(searcher, q2, maxDoc);
+
+      assertEquals(matches1, matches2);
     }
+  }
+
+  private static FixedBitSet collectMatches(IndexSearcher searcher, Query query, int maxDoc)
+      throws IOException {
+    return searcher.search(query, FixedBitSetCollector.createManager(maxDoc));
   }
 
   public void testHashCodeAndEquals() {

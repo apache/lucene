@@ -172,6 +172,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16300: Reduce memory pressure in TestTermInSetQuery.testDuel stress runs.
+  (Sanghun Lee)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
