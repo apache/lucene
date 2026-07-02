@@ -31,6 +31,8 @@ Optimizations
 * GITHUB#16316: Lazily allocate buffers in MaxScoreBulkScorer.  These are now only allocated when going
   via code paths that actually use them. (Alan Woodward)
 
+* GITHUB#16160: Improve numeric doc values range query performance for dense fields that use GCD or delta encoding. (Costin Leau)
+
 Bug Fixes
 ---------------------
 (No changes)
