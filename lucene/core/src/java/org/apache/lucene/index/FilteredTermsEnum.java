@@ -34,6 +34,7 @@ public abstract class FilteredTermsEnum extends TermsEnum {
 
   private BytesRef initialSeekTerm;
   private boolean doSeek;
+  private int visitsBudget = Integer.MAX_VALUE;
 
   /** Which term the enum is currently positioned to. */
   protected BytesRef actualTerm;
@@ -88,6 +89,26 @@ public abstract class FilteredTermsEnum extends TermsEnum {
     assert tenum != null;
     this.tenum = tenum;
     doSeek = startWithSeek;
+  }
+
+  /**
+   * Sets a budget on the number of underlying {@link TermsEnum} operations ({@code seekCeil} and
+   * {@code next}) that {@link #next()} may perform. When the budget is exhausted, {@code next()}
+   * returns {@code null} as if the enum were exhausted. Use {@link #isVisitsBudgetExhausted()} to
+   * distinguish budget exhaustion from a true end of matching terms.
+   *
+   * <p>The default budget is {@link Integer#MAX_VALUE} (effectively unlimited).
+   */
+  public void setVisitsBudget(int budget) {
+    this.visitsBudget = budget;
+  }
+
+  /**
+   * Returns {@code true} if a previous {@link #next()} call returned {@code null} due to the visits
+   * budget being exhausted rather than the terms being truly exhausted.
+   */
+  public boolean isVisitsBudgetExhausted() {
+    return visitsBudget <= 0;
   }
 
   /**
@@ -228,19 +249,20 @@ public abstract class FilteredTermsEnum extends TermsEnum {
       if (doSeek) {
         doSeek = false;
         final BytesRef t = nextSeekTerm(actualTerm);
-        // System.out.println("  seek to t=" + (t == null ? "null" : t.utf8ToString()) + " tenum=" +
-        // tenum);
         // Make sure we always seek forward:
         assert actualTerm == null || t == null || t.compareTo(actualTerm) > 0
             : "curTerm=" + actualTerm + " seekTerm=" + t;
-        if (t == null || tenum.seekCeil(t) == SeekStatus.END) {
-          // no more terms to seek to or enum exhausted
-          // System.out.println("  return null");
+        if (t == null) {
+          return null;
+        }
+        if (--visitsBudget < 0 || tenum.seekCeil(t) == SeekStatus.END) {
           return null;
         }
         actualTerm = tenum.term();
-        // System.out.println("  got term=" + actualTerm.utf8ToString());
       } else {
+        if (--visitsBudget < 0) {
+          return null;
+        }
         actualTerm = tenum.next();
         if (actualTerm == null) {
           // enum exhausted
