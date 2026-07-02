@@ -145,10 +145,10 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (StoredFieldsReader reader : readers) {
         if (reader != null) {
-          reader.checkIntegrity();
+          reader.checkIntegrity(merge);
         }
       }
     }
@@ -236,10 +236,10 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (TermVectorsReader reader : readers) {
         if (reader != null) {
-          reader.checkIntegrity();
+          reader.checkIntegrity(merge);
         }
       }
     }
@@ -293,10 +293,10 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (NormsProducer producer : producers) {
         if (producer != null) {
-          producer.checkIntegrity();
+          producer.checkIntegrity(merge);
         }
       }
     }
@@ -400,10 +400,10 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (DocValuesProducer producer : producers) {
         if (producer != null) {
-          producer.checkIntegrity();
+          producer.checkIntegrity(merge);
         }
       }
     }
@@ -528,10 +528,10 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (FieldsProducer producer : producers) {
         if (producer != null) {
-          producer.checkIntegrity();
+          producer.checkIntegrity(merge);
         }
       }
     }
@@ -585,10 +585,10 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (PointsReader reader : readers) {
         if (reader != null) {
-          reader.checkIntegrity();
+          reader.checkIntegrity(merge);
         }
       }
     }
@@ -825,10 +825,10 @@ final class SlowCompositeCodecReaderWrapper extends CodecReader {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
       for (KnnVectorsReader reader : readers) {
         if (reader != null) {
-          reader.checkIntegrity();
+          reader.checkIntegrity(merge);
         }
       }
     }

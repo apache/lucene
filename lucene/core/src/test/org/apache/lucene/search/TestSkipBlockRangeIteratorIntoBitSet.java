@@ -19,6 +19,7 @@ package org.apache.lucene.search;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.function.LongUnaryOperator;
 import org.apache.lucene.codecs.lucene104.Lucene104Codec;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.NumericDocValuesField;
@@ -634,6 +635,117 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
     }
   }
 
+  public void testRangeIntoBitSetMatchesPerDocEvaluationWithDeltaEncoding() throws Exception {
+    long delta = 1_000_000L;
+    long[] values = rangeValues(DOC_COUNT, doc -> delta + doc);
+    assertRangeIntoBitSetMatchesPerDocEvaluation(
+        "delta-only encoded range must match decoded evaluation",
+        values,
+        delta + 127,
+        delta + 4097);
+  }
+
+  public void testRangeIntoBitSetMatchesPerDocEvaluationWithGcdEncoding() throws Exception {
+    long[] values = rangeValues(DOC_COUNT, doc -> doc * 1_000L);
+    assertRangeIntoBitSetMatchesPerDocEvaluation(
+        "gcd encoded range must match decoded evaluation", values, 123_456L, 4_567_890L);
+  }
+
+  public void testRangeIntoBitSetMatchesPerDocEvaluationWithGcdAndDeltaEncoding() throws Exception {
+    long delta = 1_000_000L;
+    long[] values = rangeValues(DOC_COUNT, doc -> delta + doc * 100L);
+    assertRangeIntoBitSetMatchesPerDocEvaluation(
+        "gcd+delta encoded range must match decoded evaluation",
+        values,
+        delta + 123,
+        delta + 456_789);
+  }
+
+  public void testRangeIntoBitSetMatchesPerDocEvaluationWhenGcdRangeFallsBetweenValues()
+      throws Exception {
+    long[] values = rangeValues(DOC_COUNT, doc -> 10L + doc * 5L);
+    assertRangeIntoBitSetMatchesPerDocEvaluation(
+        "gcd encoded gap range must match no docs", values, 11, 14);
+  }
+
+  public void testRangeIntoBitSetMatchesPerDocEvaluationWithOpenLowerBound() throws Exception {
+    long delta = 1_000_000L;
+    long[] values = rangeValues(DOC_COUNT, doc -> delta + doc);
+    assertRangeIntoBitSetMatchesPerDocEvaluation(
+        "open Long.MIN_VALUE lower bound must saturate and match all docs up to the upper bound",
+        values,
+        Long.MIN_VALUE,
+        delta + 127);
+  }
+
+  public void testRangeIntoBitSetMatchesPerDocEvaluationWithOpenUpperBound() throws Exception {
+    long delta = 1_000_000L;
+    long[] values = rangeValues(DOC_COUNT, doc -> delta + doc * 100L);
+    assertRangeIntoBitSetMatchesPerDocEvaluation(
+        "open Long.MAX_VALUE upper bound must saturate and match all docs from the lower bound",
+        values,
+        delta + 50L * 100L,
+        Long.MAX_VALUE);
+  }
+
+  public void testRangeIntoBitSetMatchesPerDocEvaluationWithBothOpenBounds() throws Exception {
+    long delta = 1_000_000L;
+    long[] values = rangeValues(DOC_COUNT, doc -> delta + doc * 100L);
+    assertRangeIntoBitSetMatchesPerDocEvaluation(
+        "fully open range must match every doc", values, Long.MIN_VALUE, Long.MAX_VALUE);
+  }
+
+  public void testRangeIntoBitSetMatchesPerDocEvaluationWithNegativeEncodedLowerBound()
+      throws Exception {
+    // Stored values are non-negative (min == delta), but the query lower bound is below delta so
+    // (minValue - delta) is negative even though Math.subtractExact succeeds. This exercises the
+    // Math.max(0, encodedMin) clamp.
+    long delta = 1_000_000L;
+    long[] values = rangeValues(DOC_COUNT, doc -> delta + doc);
+    assertRangeIntoBitSetMatchesPerDocEvaluation(
+        "negative encoded lower bound must clamp to 0 and match docs up to the upper bound",
+        values,
+        delta - 50,
+        delta + 100);
+  }
+
+  public void testRangeIntoBitSetMatchesPerDocEvaluationWithRangeBelowStoredValues()
+      throws Exception {
+    // The whole query range is below the stored minimum, so encodedMin > encodedMax after the
+    // bound transformation and the SIMD path is skipped without iterating.
+    long delta = 1_000_000L;
+    long[] values = rangeValues(DOC_COUNT, doc -> delta + doc * 100L);
+    assertRangeIntoBitSetMatchesPerDocEvaluation(
+        "query range below stored values must match no docs", values, delta - 1_000L, delta - 1L);
+  }
+
+  public void testRangeIntoBitSetMatchesPerDocEvaluationWithRangeAboveStoredValues()
+      throws Exception {
+    long delta = 1_000_000L;
+    long[] values = rangeValues(DOC_COUNT, doc -> delta + doc * 100L);
+    long max = delta + (DOC_COUNT - 1L) * 100L;
+    assertRangeIntoBitSetMatchesPerDocEvaluation(
+        "query range above stored values must match no docs", values, max + 1L, max + 1_000L);
+  }
+
+  public void testRangeIntoBitSetMatchesPerDocEvaluationWithFullGcdDeltaRange() throws Exception {
+    long delta = 1_000_000L;
+    long[] values = rangeValues(DOC_COUNT, doc -> delta + doc * 100L);
+    assertRangeIntoBitSetMatchesPerDocEvaluation(
+        "full gcd+delta encoded range must match all docs",
+        values,
+        delta,
+        delta + (DOC_COUNT - 1L) * 100L);
+  }
+
+  public void testRangeIntoBitSetMatchesPerDocEvaluationWithSingleGcdDeltaValue() throws Exception {
+    long delta = 1_000_000L;
+    long value = delta + 123L * 100L;
+    long[] values = rangeValues(DOC_COUNT, doc -> delta + doc * 100L);
+    assertRangeIntoBitSetMatchesPerDocEvaluation(
+        "single gcd+delta encoded value range must match one doc", values, value, value);
+  }
+
   public void testSortedNumericRangeIntoBitSetDenseFixedCardinality() throws Exception {
     doTestSortedNumericRangeIntoBitSet(true, true);
   }
@@ -702,6 +814,49 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
         FixedBitSet actual = new FixedBitSet(numDocs);
         ctx.reader().getSortedNumericDocValues("sn").rangeIntoBitSet(0, numDocs, 20, 40, actual, 0);
         assertEquals(expected, actual);
+      }
+    }
+  }
+
+  private static long[] rangeValues(int numDocs, LongUnaryOperator valueFunction) {
+    long[] values = new long[numDocs];
+    for (int i = 0; i < numDocs; i++) {
+      values[i] = valueFunction.applyAsLong(i);
+    }
+    return values;
+  }
+
+  private void assertRangeIntoBitSetMatchesPerDocEvaluation(
+      String message, long[] values, long rangeMin, long rangeMax) throws Exception {
+    try (Directory dir = newDirectory()) {
+      IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+      try (IndexWriter w = new IndexWriter(dir, iwc)) {
+        for (long value : values) {
+          Document doc = new Document();
+          doc.add(NumericDocValuesField.indexedField("val", value));
+          w.addDocument(doc);
+        }
+        w.forceMerge(1);
+      }
+
+      try (DirectoryReader reader = DirectoryReader.open(dir)) {
+        LeafReaderContext ctx = reader.leaves().get(0);
+        FixedBitSet expected = new FixedBitSet(values.length);
+        NumericDocValues slowDv = ctx.reader().getNumericDocValues("val");
+        for (int d = 0; d < values.length; d++) {
+          if (slowDv.advanceExact(d)) {
+            long value = slowDv.longValue();
+            if (value >= rangeMin && value <= rangeMax) {
+              expected.set(d);
+            }
+          }
+        }
+
+        FixedBitSet actual = new FixedBitSet(values.length);
+        NumericDocValues fastDv = ctx.reader().getNumericDocValues("val");
+        fastDv.rangeIntoBitSet(0, values.length, rangeMin, rangeMax, actual, 0);
+
+        assertEquals(message, expected, actual);
       }
     }
   }
