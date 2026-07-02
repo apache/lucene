@@ -220,6 +220,14 @@ public class CharTermAttributeImpl extends AttributeImpl
   public CharTermAttributeImpl clone() {
     CharTermAttributeImpl t = (CharTermAttributeImpl) super.clone();
     // Do a deep clone
+    // Validate termLength to prevent excessive allocation or copy of invalid data
+    if (this.termLength < 0) {
+      throw new IllegalStateException("termLength cannot be negative: " + this.termLength);
+    }
+    if (this.termLength > ArrayUtil.MAX_ARRAY_LENGTH) {
+      throw new IllegalStateException(
+          "termLength (" + this.termLength + ") exceeds maximum allowed array length");
+    }
     t.termBuffer = new char[this.termLength];
     System.arraycopy(this.termBuffer, 0, t.termBuffer, 0, this.termLength);
     t.builder = new BytesRefBuilder();

@@ -41,7 +41,8 @@ public final class ArrayUtil {
    * @param arrayLength the length of the source array
    * @param newLength the requested new length
    * @throws IllegalArgumentException if newLength is invalid (negative or exceeds max)
-   * @throws IndexOutOfBoundsException if newLength is less than arrayLength (backward compatibility)
+   * @throws IndexOutOfBoundsException if newLength is less than arrayLength (backward
+   *     compatibility)
    */
   private static void checkGrowExactLength(int arrayLength, int newLength) {
     if (newLength < 0) {

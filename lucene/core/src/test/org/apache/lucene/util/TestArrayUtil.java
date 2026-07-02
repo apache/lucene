@@ -368,6 +368,32 @@ public class TestArrayUtil extends LuceneTestCase {
         () -> growExact(new String[] {"a", "b", "c"}, random().nextInt(3)));
   }
 
+  public void testGrowExactBoundsValidation() {
+    // Test negative newLength throws IllegalArgumentException
+    expectThrows(IllegalArgumentException.class, () -> growExact(new byte[] {1, 2, 3}, -1));
+    expectThrows(IllegalArgumentException.class, () -> growExact(new int[] {1, 2, 3}, -1));
+    expectThrows(IllegalArgumentException.class, () -> growExact(new char[] {'a', 'b', 'c'}, -1));
+    expectThrows(IllegalArgumentException.class, () -> growExact(new long[] {1, 2, 3}, -1));
+    expectThrows(IllegalArgumentException.class, () -> growExact(new short[] {1, 2, 3}, -1));
+    expectThrows(IllegalArgumentException.class, () -> growExact(new float[] {1, 2, 3}, -1));
+    expectThrows(IllegalArgumentException.class, () -> growExact(new double[] {1, 2, 3}, -1));
+    expectThrows(IllegalArgumentException.class, () -> growExact(new String[] {"a", "b", "c"}, -1));
+
+    // Test newLength > MAX_ARRAY_LENGTH throws IllegalArgumentException
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> growExact(new byte[] {1, 2, 3}, ArrayUtil.MAX_ARRAY_LENGTH + 1));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> growExact(new int[] {1, 2, 3}, ArrayUtil.MAX_ARRAY_LENGTH + 1));
+
+    // Test valid boundary: newLength = MAX_ARRAY_LENGTH for empty array
+    // This should succeed for empty arrays
+    byte[] emptyByteArray = new byte[0];
+    byte[] grown = growExact(emptyByteArray, ArrayUtil.MAX_ARRAY_LENGTH);
+    assertEquals(ArrayUtil.MAX_ARRAY_LENGTH, grown.length);
+  }
+
   public void testGrowInRange() {
     int[] array = new int[] {1, 2, 3};
 

@@ -209,6 +209,9 @@ Bug Fixes
 
 * GITHUB#16303: Add suppressed exception details when lock acquisition fails in NativeFSLockFactory. (Bharathi-Kanna)
 
+* GITHUB#16345: Add validation to ArrayUtil.growExact() and CharTermAttributeImpl.clone() to prevent
+  potential DoS via crafted input values that could cause excessive memory allocation. (Vikram Singh)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
