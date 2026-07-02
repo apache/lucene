@@ -173,7 +173,7 @@ public class FingerprintFilter extends TokenFilter {
       } else {
         first = false;
       }
-      termAttribute.append((char[]) item);
+      termAttribute.append(new String((char[]) item));
     }
     uniqueTerms.clear();
     return true;
