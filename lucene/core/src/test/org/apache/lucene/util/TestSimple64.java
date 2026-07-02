@@ -75,6 +75,21 @@ public class TestSimple64 extends LuceneTestCase {
     }
   }
 
+  public void testFastPathParitySelectors0To3() {
+    Random rng = new Random(7);
+    for (int s = 0; s <= 3; s++) {
+      int[] input = new int[COUNTS[s]];
+      int maxVal = (int) MASKS[s];
+      for (int i = 0; i < input.length; i++) {
+        input[i] = rng.nextInt(maxVal + 1);
+      }
+      assertEquals(
+          "selector " + s + " fast-path word",
+          Simple64.pack(s, input, 0, input.length),
+          Simple64.encode(input, 0, input.length));
+    }
+  }
+
   /** Selector 13 must handle Integer.MAX_VALUE. */
   public void testIntegerMaxValue() {
     int[] input = {Integer.MAX_VALUE};
@@ -99,6 +114,37 @@ public class TestSimple64 extends LuceneTestCase {
     assertArrayEquals("encodeAll roundtrip", input, decoded);
   }
 
+  public void testEncodeAllAndDecodeAllWithOffsets() {
+    int[] input = {7, 2, 6, 6, 5, 1, 8, 2, 7, 2, 3, 4, 5, 6, 7, 8, 9};
+    long[] longs = new long[input.length + 4];
+    Arrays.fill(longs, -1L);
+    int numLongs = Simple64.encodeAll(input, 0, input.length, longs, 2);
+    assertEquals(-1L, longs[1]);
+    if (numLongs + 2 < longs.length) {
+      assertEquals(-1L, longs[numLongs + 2]);
+    }
+
+    int[] decoded = new int[input.length + 6];
+    Arrays.fill(decoded, -1);
+    int consumed = Simple64.decodeAll(longs, 2, decoded, 3, input.length);
+    assertEquals(numLongs, consumed);
+    assertEquals(-1, decoded[2]);
+    assertEquals(-1, decoded[input.length + 3]);
+    assertArrayEquals(input, Arrays.copyOfRange(decoded, 3, 3 + input.length));
+  }
+
+  public void testDecodeWithOutOffset() {
+    int[] input = new int[COUNTS[3]];
+    Arrays.fill(input, 8);
+    long word = Simple64.encode(input, 0, input.length);
+    int[] out = new int[input.length + 4];
+    Arrays.fill(out, -1);
+    assertEquals(input.length, Simple64.decode(word, out, 2));
+    assertEquals(-1, out[1]);
+    assertEquals(-1, out[input.length + 2]);
+    assertArrayEquals(input, Arrays.copyOfRange(out, 2, 2 + input.length));
+  }
+
   public void testSuffixLengths() {
     int[] input = {
       3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 8, 9, 7, 9, 3, 2, 3, 8, 4, 6, 2, 6, 4, 3, 3, 8, 3
@@ -121,6 +167,19 @@ public class TestSimple64 extends LuceneTestCase {
     long word = Simple64.encode(input, 0, 10);
     assertEquals("selector=5 for value=63", 5, (int) (word >>> 60));
     assertEquals("count()==10", 10, Simple64.count(word));
+  }
+
+  public void testInvalidInputs() {
+    expectThrows(IllegalArgumentException.class, () -> Simple64.encode(new int[1], 0, 0));
+    expectThrows(IllegalArgumentException.class, () -> Simple64.encode(new int[] {-1}, 0, 1));
+
+    long invalidSelector = 14L << 60;
+    expectThrows(IllegalArgumentException.class, () -> Simple64.count(invalidSelector));
+    expectThrows(
+        IllegalArgumentException.class, () -> Simple64.decode(invalidSelector, new int[1], 0));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> Simple64.decodeAll(new long[] {invalidSelector}, 0, new int[1], 0, 1));
   }
 
   public void testFuzz() {

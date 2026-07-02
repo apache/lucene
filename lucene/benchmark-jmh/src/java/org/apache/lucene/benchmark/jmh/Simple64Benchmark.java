@@ -49,16 +49,19 @@ public class Simple64Benchmark {
   @Param({"40"})
   int blockSize;
 
-  @Param({"200"})
-  int maxSuffix;
+  @Param({"SMALL_1_8", "MID_1_64", "LARGE_1_200", "MIXED"})
+  String distribution;
 
   // input
   int[] suffixLengths;
 
   // Simple64
-  long[] encodedLongs;
-  int encodedLongCount;
+  long[] encodedWords;
+  int encodedWordCount;
+  byte[] encodedWordBytes;
+  int encodedWordBytesLength;
   int[] decodeOutSimple64;
+  long[] decodeWordBuffer;
 
   // VInt
   byte[] encodedVInt;
@@ -66,8 +69,13 @@ public class Simple64Benchmark {
   int[] decodeOutVInt;
 
   // encode output buffers
-  long[] encodeOutLongs;
-  byte[] encodeOutBytes;
+  long[] encodeOutWords;
+  byte[] encodeOutWordBytes;
+  byte[] encodeOutVIntBytes;
+  ByteArrayDataOutput wordOut;
+  ByteArrayDataOutput vintOut;
+  ByteArrayDataInput wordIn;
+  ByteArrayDataInput vintIn;
 
   @Setup(Level.Trial)
   public void setup() throws IOException {
@@ -75,14 +83,22 @@ public class Simple64Benchmark {
 
     suffixLengths = new int[blockSize];
     for (int i = 0; i < blockSize; i++) {
-      suffixLengths[i] = rng.nextInt(maxSuffix) + 1;
+      suffixLengths[i] = nextSuffixLength(rng);
     }
 
     // pre-encode Simple64
-    encodedLongs = new long[blockSize + 1];
-    encodedLongCount = Simple64.encodeAll(suffixLengths, 0, blockSize, encodedLongs, 0);
+    encodedWords = new long[blockSize + 1];
+    encodedWordCount = Simple64.encodeAll(suffixLengths, 0, blockSize, encodedWords, 0);
     decodeOutSimple64 = new int[blockSize + Simple64.COUNTS[0]];
-    encodeOutLongs = new long[blockSize + 1];
+    decodeWordBuffer = new long[blockSize + 1];
+    encodeOutWords = new long[blockSize + 1];
+
+    encodedWordBytes = new byte[(blockSize + 1) * Long.BYTES];
+    ByteArrayDataOutput encodedWordOut = new ByteArrayDataOutput(encodedWordBytes);
+    for (int i = 0; i < encodedWordCount; i++) {
+      encodedWordOut.writeLong(encodedWords[i]);
+    }
+    encodedWordBytesLength = encodedWordOut.getPosition();
 
     // pre-encode VInt
     encodedVInt = new byte[blockSize * 5];
@@ -92,40 +108,98 @@ public class Simple64Benchmark {
     }
     encodedVIntLength = out.getPosition();
     decodeOutVInt = new int[blockSize];
-    encodeOutBytes = new byte[blockSize * 5];
+
+    encodeOutWordBytes = new byte[(blockSize + 1) * Long.BYTES];
+    encodeOutVIntBytes = new byte[blockSize * 5];
+    wordOut = new ByteArrayDataOutput(encodeOutWordBytes);
+    vintOut = new ByteArrayDataOutput(encodeOutVIntBytes);
+    wordIn = new ByteArrayDataInput(encodedWordBytes, 0, encodedWordBytesLength);
+    vintIn = new ByteArrayDataInput(encodedVInt, 0, encodedVIntLength);
   }
 
   // ---- Simple64 ----
 
   @Benchmark
-  public void encodeSimple64(Blackhole bh) {
-    int n = Simple64.encodeAll(suffixLengths, 0, blockSize, encodeOutLongs, 0);
+  public void encodeSimple64Words(Blackhole bh) {
+    int n = Simple64.encodeAll(suffixLengths, 0, blockSize, encodeOutWords, 0);
     bh.consume(n);
+    bh.consume(encodeOutWords[0]);
+    bh.consume(encodeOutWords[n - 1]);
   }
 
   @Benchmark
-  public void decodeSimple64(Blackhole bh) {
-    Simple64.decodeAll(encodedLongs, 0, decodeOutSimple64, 0, blockSize);
-    bh.consume(decodeOutSimple64[0]);
+  public void decodeSimple64Words(Blackhole bh) {
+    Simple64.decodeAll(encodedWords, 0, decodeOutSimple64, 0, blockSize);
+    bh.consume(checksum(decodeOutSimple64, blockSize));
+  }
+
+  @Benchmark
+  public void encodeSimple64Bytes(Blackhole bh) throws IOException {
+    int n = Simple64.encodeAll(suffixLengths, 0, blockSize, encodeOutWords, 0);
+    wordOut.reset(encodeOutWordBytes);
+    for (int i = 0; i < n; i++) {
+      wordOut.writeLong(encodeOutWords[i]);
+    }
+    bh.consume(wordOut.getPosition());
+    bh.consume(encodeOutWordBytes[0]);
+    bh.consume(encodeOutWordBytes[wordOut.getPosition() - 1]);
+  }
+
+  @Benchmark
+  public void decodeSimple64Bytes(Blackhole bh) throws IOException {
+    wordIn.reset(encodedWordBytes, 0, encodedWordBytesLength);
+    for (int i = 0; i < encodedWordCount; i++) {
+      decodeWordBuffer[i] = wordIn.readLong();
+    }
+    Simple64.decodeAll(decodeWordBuffer, 0, decodeOutSimple64, 0, blockSize);
+    bh.consume(checksum(decodeOutSimple64, blockSize));
   }
 
   // ---- VInt ----
 
   @Benchmark
   public void encodeVInt(Blackhole bh) throws IOException {
-    ByteArrayDataOutput out = new ByteArrayDataOutput(encodeOutBytes);
+    vintOut.reset(encodeOutVIntBytes);
     for (int i = 0; i < blockSize; i++) {
-      out.writeVInt(suffixLengths[i]);
+      vintOut.writeVInt(suffixLengths[i]);
     }
-    bh.consume(out.getPosition());
+    bh.consume(vintOut.getPosition());
+    bh.consume(encodeOutVIntBytes[0]);
+    bh.consume(encodeOutVIntBytes[vintOut.getPosition() - 1]);
   }
 
   @Benchmark
   public void decodeVInt(Blackhole bh) throws IOException {
-    ByteArrayDataInput in = new ByteArrayDataInput(encodedVInt, 0, encodedVIntLength);
+    vintIn.reset(encodedVInt, 0, encodedVIntLength);
     for (int i = 0; i < blockSize; i++) {
-      decodeOutVInt[i] = in.readVInt();
+      decodeOutVInt[i] = vintIn.readVInt();
     }
-    bh.consume(decodeOutVInt[0]);
+    bh.consume(checksum(decodeOutVInt, blockSize));
+  }
+
+  private int nextSuffixLength(Random rng) {
+    return switch (distribution) {
+      case "SMALL_1_8" -> rng.nextInt(8) + 1;
+      case "MID_1_64" -> rng.nextInt(64) + 1;
+      case "LARGE_1_200" -> rng.nextInt(200) + 1;
+      case "MIXED" -> {
+        int bucket = rng.nextInt(10);
+        if (bucket < 7) {
+          yield rng.nextInt(8) + 1;
+        } else if (bucket < 9) {
+          yield rng.nextInt(64) + 1;
+        }
+        yield rng.nextInt(200) + 1;
+      }
+      default -> throw new IllegalArgumentException("Unknown distribution: " + distribution);
+    };
+  }
+
+  private int checksum(int[] values, int length) {
+    int sum = 0;
+    for (int i = 0; i < length; i++) {
+      sum = 31 * sum + values[i];
+    }
+    return sum;
   }
 }
