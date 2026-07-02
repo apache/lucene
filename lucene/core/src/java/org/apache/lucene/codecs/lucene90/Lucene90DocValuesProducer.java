@@ -562,29 +562,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     return (int) cardinality;
   }
 
-  private static void sortedNumericScalarRangeIntoBitSet(
-      LongValues values,
-      int fromDoc,
-      int toDoc,
-      int cardinality,
-      long minValue,
-      long maxValue,
-      FixedBitSet bitSet,
-      int offset) {
-    for (int doc = fromDoc; doc < toDoc; doc++) {
-      long valueOffset = (long) doc * cardinality;
-      for (int i = 0; i < cardinality; i++) {
-        long value = values.get(valueOffset + i);
-        if (value >= minValue) {
-          if (value <= maxValue) {
-            bitSet.set(doc - offset);
-          }
-          break;
-        }
-      }
-    }
-  }
-
   private static boolean sortedNumericMatchesRange(
       LongValues values, long start, long end, long minValue, long maxValue) {
     for (long valueOffset = start; valueOffset < end; valueOffset++) {
@@ -2024,7 +2001,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
           int cardinality = denseFixedCardinality;
           if (cardinality > 1) {
-            sortedNumericScalarRangeIntoBitSet(
+            DOC_VALUES_RANGE_SUPPORT.sortedNumericRangeIntoBitSet(
                 values, fromDoc, endDoc, cardinality, minValue, maxValue, bitSet, offset);
             return;
           }
