@@ -71,12 +71,17 @@ class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
 
   @Override
   public LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException {
-    NumericDocValues singletonValues = singletonFieldValues(context);
-    if (singletonValues != null) {
+    if (fieldName != null) {
       DocValuesSkipper skipper = context.reader().getDocValuesSkipper(fieldName);
       if (skipper != null) {
-        return new NonOverlappingLongRangeSingleValueLeafFacetCutter(
-            asLongValues(singletonValues), boundaries, pos, skipper);
+        NumericDocValues singletonValues = singletonFieldValues(context);
+        if (singletonValues != null) {
+          return new NonOverlappingLongRangeSingleValueLeafFacetCutter(
+              asLongValues(singletonValues), boundaries, pos, skipper);
+        }
+        MultiLongValues values = valuesSource.getValues(context);
+        return new NonOverlappingLongRangeMultiValueLeafFacetCutter(
+            values, boundaries, pos, skipper);
       }
     }
     if (singleValues != null) {
@@ -99,6 +104,11 @@ class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
     NonOverlappingLongRangeMultiValueLeafFacetCutter(
         MultiLongValues longValues, long[] boundaries, int[] pos) {
       super(longValues, boundaries, pos);
+    }
+
+    NonOverlappingLongRangeMultiValueLeafFacetCutter(
+        MultiLongValues longValues, long[] boundaries, int[] pos, DocValuesSkipper skipper) {
+      super(longValues, boundaries, pos, skipper);
     }
 
     @Override

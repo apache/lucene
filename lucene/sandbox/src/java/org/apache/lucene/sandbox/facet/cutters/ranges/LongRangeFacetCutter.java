@@ -212,36 +212,63 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
     // exclusive ranges.
     IntervalTracker requestedIntervalTracker;
 
+    private final DocValuesSkipper skipper;
+
+    // advanceSkipper's decisions for the current block; the fields below hold while doc <=
+    // upToInclusive, after which it runs again for the next block.
+    private int upToInclusive = -1;
+    // Whether every value in the block maps to the single interval upToIntervalOrd.
+    private boolean upToSameInterval;
+    // Whether every doc in the block has a value.
+    private boolean upToDense;
+    private int upToIntervalOrd;
+
     LongRangeMultivaluedLeafFacetCutter(MultiLongValues longValues, long[] boundaries, int[] pos) {
+      this(longValues, boundaries, pos, null);
+    }
+
+    LongRangeMultivaluedLeafFacetCutter(
+        MultiLongValues longValues, long[] boundaries, int[] pos, DocValuesSkipper skipper) {
       this.multiLongValues = longValues;
       this.boundaries = boundaries;
       this.pos = pos;
+      this.skipper = skipper;
       elementaryIntervalTracker = new IntervalTracker.MultiIntervalTracker(boundaries.length);
     }
 
     @Override
     public boolean advanceExact(int doc) throws IOException {
-      if (multiLongValues.advanceExact(doc) == false) {
-        return false;
+      if (skipper != null && doc > upToInclusive) {
+        advanceSkipper(doc);
       }
 
       elementaryIntervalTracker.clear();
-
       if (requestedIntervalTracker != null) {
         requestedIntervalTracker.clear();
       }
 
-      long numValues = multiLongValues.getValueCount();
-
-      int lastIntervalSeen = -1;
-
-      for (int i = 0; i < numValues; i++) {
-        lastIntervalSeen = processValue(multiLongValues.nextValue(), lastIntervalSeen);
-        assert lastIntervalSeen >= 0 && lastIntervalSeen < boundaries.length;
-        elementaryIntervalTracker.set(lastIntervalSeen);
-        if (lastIntervalSeen == boundaries.length - 1) {
-          // we've already reached the end of all possible intervals for this doc
-          break;
+      if (upToSameInterval) {
+        // Every value in the block maps to upToIntervalOrd, so this doc maps to exactly that
+        // interval. A dense block also skips the value lookup, a sparse one still needs advanceExact
+        // to know whether this doc has a value.
+        if (upToDense == false && multiLongValues.advanceExact(doc) == false) {
+          return false;
+        }
+        elementaryIntervalTracker.set(upToIntervalOrd);
+      } else {
+        if (multiLongValues.advanceExact(doc) == false) {
+          return false;
+        }
+        long numValues = multiLongValues.getValueCount();
+        int lastIntervalSeen = -1;
+        for (int i = 0; i < numValues; i++) {
+          lastIntervalSeen = processValue(multiLongValues.nextValue(), lastIntervalSeen);
+          assert lastIntervalSeen >= 0 && lastIntervalSeen < boundaries.length;
+          elementaryIntervalTracker.set(lastIntervalSeen);
+          if (lastIntervalSeen == boundaries.length - 1) {
+            // we've already reached the end of all possible intervals for this doc
+            break;
+          }
         }
       }
       maybeRollUp(requestedIntervalTracker);
@@ -253,6 +280,36 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
       }
 
       return true;
+    }
+
+    private void advanceSkipper(int doc) throws IOException {
+      if (doc > skipper.maxDocID(0)) {
+        skipper.advance(doc);
+      }
+      upToSameInterval = false;
+
+      if (skipper.minDocID(0) > doc) {
+        // Corner case which happens if doc doesn't have a value and is between two intervals of the
+        // skip index. Fall back to per-doc lookups until the next block.
+        upToInclusive = skipper.minDocID(0) - 1;
+        return;
+      }
+
+      upToInclusive = skipper.maxDocID(0);
+      // Climb to the highest level that still maps to a single interval.
+      for (int level = 0; level < skipper.numLevels(); ++level) {
+        // Long fields store raw values, skipper's min/max maps straight into the boundary space.
+        int minInterval = processValue(skipper.minValue(level), -1);
+        int maxInterval = processValue(skipper.maxValue(level), -1);
+        if (minInterval != maxInterval) {
+          break;
+        }
+        upToInclusive = skipper.maxDocID(level);
+        upToSameInterval = true;
+        upToIntervalOrd = minInterval;
+        int totalDocsAtLevel = skipper.maxDocID(level) - skipper.minDocID(level) + 1;
+        upToDense = skipper.docCount(level) == totalDocsAtLevel;
+      }
     }
 
     // Returns the value of the interval v belongs or lastIntervalSeen

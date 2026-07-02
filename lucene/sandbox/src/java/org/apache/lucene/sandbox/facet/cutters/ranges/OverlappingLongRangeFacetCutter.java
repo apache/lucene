@@ -150,12 +150,17 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
 
   @Override
   public LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException {
-    NumericDocValues singletonValues = singletonFieldValues(context);
-    if (singletonValues != null) {
+    if (fieldName != null) {
       DocValuesSkipper skipper = context.reader().getDocValuesSkipper(fieldName);
       if (skipper != null) {
-        return new OverlappingSingleValuedRangeLeafFacetCutter(
-            asLongValues(singletonValues), boundaries, pos, requestedRangeCount, root, skipper);
+        NumericDocValues singletonValues = singletonFieldValues(context);
+        if (singletonValues != null) {
+          return new OverlappingSingleValuedRangeLeafFacetCutter(
+              asLongValues(singletonValues), boundaries, pos, requestedRangeCount, root, skipper);
+        }
+        MultiLongValues values = valuesSource.getValues(context);
+        return new OverlappingMultivaluedRangeLeafFacetCutter(
+            values, boundaries, pos, requestedRangeCount, root, skipper);
       }
     }
     if (singleValues != null) {
@@ -188,6 +193,18 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
         int requestedRangeCount,
         LongRangeNode elementaryIntervalRoot) {
       super(longValues, boundaries, pos);
+      requestedIntervalTracker = new IntervalTracker.MultiIntervalTracker(requestedRangeCount);
+      this.elementaryIntervalRoot = elementaryIntervalRoot;
+    }
+
+    OverlappingMultivaluedRangeLeafFacetCutter(
+        MultiLongValues longValues,
+        long[] boundaries,
+        int[] pos,
+        int requestedRangeCount,
+        LongRangeNode elementaryIntervalRoot,
+        DocValuesSkipper skipper) {
+      super(longValues, boundaries, pos, skipper);
       requestedIntervalTracker = new IntervalTracker.MultiIntervalTracker(requestedRangeCount);
       this.elementaryIntervalRoot = elementaryIntervalRoot;
     }

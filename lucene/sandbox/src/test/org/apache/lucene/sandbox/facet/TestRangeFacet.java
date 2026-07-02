@@ -997,6 +997,113 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     IOUtils.close(dir);
   }
 
+  public void testSkipIndexEquivalenceMultiValuedFewValues() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(4)));
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    int numDocs = atLeast(1000);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      int numVals = TestUtil.nextInt(random(), 1, 3);
+      for (int j = 0; j < numVals; j++) {
+        doc.add(SortedNumericDocValuesField.indexedField("field", TestUtil.nextLong(random(), 0, 5)));
+      }
+      w.addDocument(doc);
+    }
+
+    assertSkipIndexEquivalence(w, "multi-valued-few-values");
+
+    w.close();
+    IOUtils.close(dir);
+  }
+
+  public void testSkipIndexEquivalenceMultiValuedExtremeValues() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(4)));
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    int numDocs = atLeast(1000);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      int numVals = TestUtil.nextInt(random(), 1, 3);
+      for (int j = 0; j < numVals; j++) {
+        long v =
+            switch (random().nextInt(4)) {
+              case 0 -> Long.MIN_VALUE;
+              case 1 -> Long.MAX_VALUE;
+              default -> TestUtil.nextLong(random(), -5, 5);
+            };
+        doc.add(SortedNumericDocValuesField.indexedField("field", v));
+      }
+      w.addDocument(doc);
+    }
+
+    assertSkipIndexEquivalence(w, "multi-valued-extreme");
+
+    w.close();
+    IOUtils.close(dir);
+  }
+
+  public void testSkipIndexEquivalenceMultiValuedSparse() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    iwc.setCodec(TestUtil.alwaysDocValuesFormat(new Lucene90DocValuesFormat(4)));
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+    int numDocs = atLeast(1000);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      // Leave roughly a third of the docs without a value so skip blocks aren't dense.
+      if (random().nextInt(3) != 0) {
+        int numVals = TestUtil.nextInt(random(), 1, 3);
+        for (int j = 0; j < numVals; j++) {
+          doc.add(
+              SortedNumericDocValuesField.indexedField("field", TestUtil.nextLong(random(), 0, 5)));
+        }
+      }
+      w.addDocument(doc);
+    }
+
+    assertSkipIndexEquivalence(w, "multi-valued-sparse");
+
+    w.close();
+    IOUtils.close(dir);
+  }
+
+  public void testSkipIndexEquivalenceLongRunsDefaultInterval() throws Exception {
+    for (boolean multiValued : new boolean[] {false, true}) {
+      Directory dir = newDirectory();
+      IndexWriterConfig iwc = newIndexWriterConfig();
+      // A multi-valued SORTED_NUMERIC field can't be index-sorted with a plain LONG SortField.
+      if (multiValued == false) {
+        iwc.setIndexSort(new Sort(new SortField("field", SortField.Type.LONG)));
+      }
+      RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
+
+      int numDocs = atLeast(20000);
+      // Few distinct values with long runs => wide same-interval, dense skip spans across levels.
+      for (int i = 0; i < numDocs; i++) {
+        Document doc = new Document();
+        long v = (i / 5000) % 4;
+        if (multiValued) {
+          doc.add(SortedNumericDocValuesField.indexedField("field", v));
+          doc.add(SortedNumericDocValuesField.indexedField("field", v));
+        } else {
+          doc.add(NumericDocValuesField.indexedField("field", v));
+        }
+        w.addDocument(doc);
+      }
+
+      assertSkipIndexEquivalence(w, "multi-level-dense mv=" + multiValued);
+
+      w.close();
+      IOUtils.close(dir);
+    }
+  }
+
   public void testSkipIndexEquivalenceFewValues() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = newIndexWriterConfig();
@@ -1012,6 +1119,23 @@ public class TestRangeFacet extends SandboxFacetTestCase {
     }
 
     assertSkipIndexEquivalence(w, "few-values");
+
+    w.close();
+    IOUtils.close(dir);
+  }
+
+  public void testByNameNoSkipIndexEquivalence() throws Exception {
+    Directory dir = newDirectory();
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+
+    int numDocs = atLeast(1000);
+    for (int i = 0; i < numDocs; i++) {
+      Document doc = new Document();
+      doc.add(new NumericDocValuesField("field", TestUtil.nextLong(random(), -100, 100)));
+      w.addDocument(doc);
+    }
+
+    assertSkipIndexEquivalence(w, "by-name-no-skip-index");
 
     w.close();
     IOUtils.close(dir);
