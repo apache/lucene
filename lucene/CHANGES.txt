@@ -33,6 +33,9 @@ Optimizations
 
 * GITHUB#16160: Improve numeric doc values range query performance for dense fields that use GCD or delta encoding. (Costin Leau)
 
+* GITHUB#16283: Use Panama Vector API to SIMD-evaluate fixed-cardinality sorted numeric range queries in
+  rangeIntoBitSet. (Costin Leau)
+
 Bug Fixes
 ---------------------
 (No changes)
