@@ -35,6 +35,29 @@ public final class ArrayUtil {
 
   private ArrayUtil() {} // no instance
 
+  /**
+   * Validates that newLength is valid for array growth.
+   *
+   * @param arrayLength the length of the source array
+   * @param newLength the requested new length
+   * @throws IllegalArgumentException if newLength is invalid (negative or exceeds max)
+   * @throws IndexOutOfBoundsException if newLength is less than arrayLength (backward compatibility)
+   */
+  private static void checkGrowExactLength(int arrayLength, int newLength) {
+    if (newLength < 0) {
+      throw new IllegalArgumentException("newLength must be >= 0 (got " + newLength + ")");
+    }
+    if (newLength < arrayLength) {
+      // Maintain backward compatibility: existing tests expect IndexOutOfBoundsException
+      throw new IndexOutOfBoundsException(
+          "newLength (" + newLength + ") must be >= array.length (" + arrayLength + ")");
+    }
+    if (newLength > MAX_ARRAY_LENGTH) {
+      throw new IllegalArgumentException(
+          "newLength (" + newLength + ") exceeds MAX_ARRAY_LENGTH (" + MAX_ARRAY_LENGTH + ")");
+    }
+  }
+
   /*
     Begin Apache Harmony code
 
@@ -208,6 +231,7 @@ public final class ArrayUtil {
    * Returns a new array whose size is exact the specified {@code newLength} without over-allocating
    */
   public static <T> T[] growExact(T[] array, int newLength) {
+    checkGrowExactLength(array.length, newLength);
     Class<? extends Object[]> type = array.getClass();
     @SuppressWarnings("unchecked")
     T[] copy =
@@ -239,6 +263,7 @@ public final class ArrayUtil {
    * Returns a new array whose size is exact the specified {@code newLength} without over-allocating
    */
   public static short[] growExact(short[] array, int newLength) {
+    checkGrowExactLength(array.length, newLength);
     short[] copy = new short[newLength];
     System.arraycopy(array, 0, copy, 0, array.length);
     return copy;
@@ -264,6 +289,7 @@ public final class ArrayUtil {
    * Returns a new array whose size is exact the specified {@code newLength} without over-allocating
    */
   public static float[] growExact(float[] array, int newLength) {
+    checkGrowExactLength(array.length, newLength);
     float[] copy = new float[newLength];
     System.arraycopy(array, 0, copy, 0, array.length);
     return copy;
@@ -291,6 +317,7 @@ public final class ArrayUtil {
    * Returns a new array whose size is exact the specified {@code newLength} without over-allocating
    */
   public static double[] growExact(double[] array, int newLength) {
+    checkGrowExactLength(array.length, newLength);
     double[] copy = new double[newLength];
     System.arraycopy(array, 0, copy, 0, array.length);
     return copy;
@@ -316,6 +343,7 @@ public final class ArrayUtil {
    * Returns a new array whose size is exact the specified {@code newLength} without over-allocating
    */
   public static int[] growExact(int[] array, int newLength) {
+    checkGrowExactLength(array.length, newLength);
     int[] copy = new int[newLength];
     System.arraycopy(array, 0, copy, 0, array.length);
     return copy;
@@ -397,6 +425,7 @@ public final class ArrayUtil {
    * Returns a new array whose size is exact the specified {@code newLength} without over-allocating
    */
   public static long[] growExact(long[] array, int newLength) {
+    checkGrowExactLength(array.length, newLength);
     long[] copy = new long[newLength];
     System.arraycopy(array, 0, copy, 0, array.length);
     return copy;
@@ -433,6 +462,7 @@ public final class ArrayUtil {
    * Returns a new array whose size is exact the specified {@code newLength} without over-allocating
    */
   public static byte[] growExact(byte[] array, int newLength) {
+    checkGrowExactLength(array.length, newLength);
     byte[] copy = new byte[newLength];
     System.arraycopy(array, 0, copy, 0, array.length);
     return copy;
@@ -469,6 +499,7 @@ public final class ArrayUtil {
    * Returns a new array whose size is exact the specified {@code newLength} without over-allocating
    */
   public static char[] growExact(char[] array, int newLength) {
+    checkGrowExactLength(array.length, newLength);
     char[] copy = new char[newLength];
     System.arraycopy(array, 0, copy, 0, array.length);
     return copy;
