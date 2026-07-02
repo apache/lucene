@@ -24,6 +24,7 @@ import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
 import org.apache.lucene.search.LongValues;
 import org.apache.lucene.search.LongValuesSource;
@@ -34,8 +35,8 @@ class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
       MultiLongValuesSource longValuesSource,
       LongValuesSource singleLongValuesSource,
       LongRange[] longRanges,
-      String skipField) {
-    super(longValuesSource, singleLongValuesSource, longRanges, skipField);
+      String fieldName) {
+    super(longValuesSource, singleLongValuesSource, longRanges, fieldName);
   }
 
   /**
@@ -70,12 +71,13 @@ class NonOverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
 
   @Override
   public LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException {
-    // Use the skip index when we can, otherwise fall back to the value source.
-    DocValuesSkipper skipper = maybeSkipper(context);
-    if (skipper != null) {
-      LongValues values = skipFieldValues(context);
-      return new NonOverlappingLongRangeSingleValueLeafFacetCutter(
-          values, boundaries, pos, skipper);
+    NumericDocValues singletonValues = singletonFieldValues(context);
+    if (singletonValues != null) {
+      DocValuesSkipper skipper = context.reader().getDocValuesSkipper(fieldName);
+      if (skipper != null) {
+        return new NonOverlappingLongRangeSingleValueLeafFacetCutter(
+            asLongValues(singletonValues), boundaries, pos, skipper);
+      }
     }
     if (singleValues != null) {
       LongValues values = singleValues.getValues(context, null);

@@ -27,6 +27,7 @@ import org.apache.lucene.facet.MultiLongValuesSource;
 import org.apache.lucene.facet.range.LongRange;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.internal.hppc.IntCursor;
 import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
 import org.apache.lucene.search.LongValues;
@@ -45,8 +46,8 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
       MultiLongValuesSource longValuesSource,
       LongValuesSource singleLongValuesSource,
       LongRange[] longRanges,
-      String skipField) {
-    super(longValuesSource, singleLongValuesSource, longRanges, skipField);
+      String fieldName) {
+    super(longValuesSource, singleLongValuesSource, longRanges, fieldName);
 
     // Build binary tree on top of intervals:
     root = split(0, elementaryIntervals.size(), elementaryIntervals);
@@ -149,12 +150,13 @@ class OverlappingLongRangeFacetCutter extends LongRangeFacetCutter {
 
   @Override
   public LeafFacetCutter createLeafCutter(LeafReaderContext context) throws IOException {
-    // Use the skip index when we can, otherwise fall back to the value source.
-    DocValuesSkipper skipper = maybeSkipper(context);
-    if (skipper != null) {
-      LongValues values = skipFieldValues(context);
-      return new OverlappingSingleValuedRangeLeafFacetCutter(
-          values, boundaries, pos, requestedRangeCount, root, skipper);
+    NumericDocValues singletonValues = singletonFieldValues(context);
+    if (singletonValues != null) {
+      DocValuesSkipper skipper = context.reader().getDocValuesSkipper(fieldName);
+      if (skipper != null) {
+        return new OverlappingSingleValuedRangeLeafFacetCutter(
+            asLongValues(singletonValues), boundaries, pos, requestedRangeCount, root, skipper);
+      }
     }
     if (singleValues != null) {
       LongValues values = singleValues.getValues(context, null);

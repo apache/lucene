@@ -27,7 +27,6 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
-import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.sandbox.facet.cutters.FacetCutter;
 import org.apache.lucene.sandbox.facet.cutters.LeafFacetCutter;
 import org.apache.lucene.search.LongValues;
@@ -48,8 +47,8 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
   // TODO: refactor - weird that we have both multi and single here.
   final LongValuesSource singleValues;
 
-  // Field name whose skip index is used on the single-valued path, or null when faceting a source.
-  final String skipField;
+  // Field faceted by name, whose skip index is used when present, or null when faceting a source.
+  final String fieldName;
 
   final LongRangeAndPos[] sortedRanges;
 
@@ -74,18 +73,18 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
     return createSingleOrMultiValued(longValuesSource, singleLongValuesSource, longRanges, null);
   }
 
-  /** Same as above, but uses the {@code skipField} skip index on the single-valued path. */
+  /** Same as above, but uses the {@code fieldName} skip index when present. */
   static LongRangeFacetCutter createSingleOrMultiValued(
       MultiLongValuesSource longValuesSource,
       LongValuesSource singleLongValuesSource,
       LongRange[] longRanges,
-      String skipField) {
+      String fieldName) {
     if (areOverlappingRanges(longRanges)) {
       return new OverlappingLongRangeFacetCutter(
-          longValuesSource, singleLongValuesSource, longRanges, skipField);
+          longValuesSource, singleLongValuesSource, longRanges, fieldName);
     }
     return new NonOverlappingLongRangeFacetCutter(
-        longValuesSource, singleLongValuesSource, longRanges, skipField);
+        longValuesSource, singleLongValuesSource, longRanges, fieldName);
   }
 
   public static LongRangeFacetCutter create(
@@ -107,7 +106,7 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
       MultiLongValuesSource longValuesSource,
       LongValuesSource singleLongValuesSource,
       LongRange[] longRanges,
-      String skipField) {
+      String fieldName) {
     super();
     valuesSource = longValuesSource;
     if (singleLongValuesSource != null) {
@@ -115,7 +114,7 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
     } else {
       singleValues = MultiLongValuesSource.unwrapSingleton(valuesSource);
     }
-    this.skipField = skipField;
+    this.fieldName = fieldName;
 
     sortedRanges = new LongRangeAndPos[longRanges.length];
     requestedRangeCount = longRanges.length;
@@ -153,25 +152,18 @@ public abstract class LongRangeFacetCutter implements FacetCutter {
   abstract List<InclusiveRange> buildElementaryIntervals();
 
   /**
-   * Returns the {@link DocValuesSkipper} for {@link #skipField} in this segment. Null when: no skip
-   * field is configured, the field has no skip index, or some doc in this segment has more than one
-   * value.
+   * Single-valued {@link NumericDocValues} for {@link #fieldName} in this segment, or null when no
+   * field is configured or some doc in this segment has more than one value.
    */
-  final DocValuesSkipper maybeSkipper(LeafReaderContext context) throws IOException {
-    if (skipField == null) {
+  final NumericDocValues singletonFieldValues(LeafReaderContext context) throws IOException {
+    if (fieldName == null) {
       return null;
     }
-    SortedNumericDocValues sortedNumeric = DocValues.getSortedNumeric(context.reader(), skipField);
-    if (DocValues.unwrapSingleton(sortedNumeric) == null) {
-      return null;
-    }
-    return context.reader().getDocValuesSkipper(skipField);
+    return DocValues.unwrapSingleton(DocValues.getSortedNumeric(context.reader(), fieldName));
   }
 
-  /** Single-valued {@link LongValues} for {@link #skipField} in this segment. */
-  final LongValues skipFieldValues(LeafReaderContext context) throws IOException {
-    NumericDocValues values =
-        DocValues.unwrapSingleton(DocValues.getSortedNumeric(context.reader(), skipField));
+  /** Wraps {@link NumericDocValues} as {@link LongValues}. */
+  static LongValues asLongValues(NumericDocValues values) {
     return new LongValues() {
       @Override
       public long longValue() throws IOException {
