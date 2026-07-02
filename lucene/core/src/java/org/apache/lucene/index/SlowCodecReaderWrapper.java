@@ -153,7 +153,7 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
         // We already checkIntegrity the entire reader up front
       }
 
@@ -189,7 +189,7 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public void checkIntegrity() {
+      public void checkIntegrity(MergePolicy.OneMerge merge) {
         // We already checkIntegrity the entire reader up front
       }
 
@@ -226,7 +226,7 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
         // We already checkIntegrity the entire reader up front
       }
 
@@ -269,7 +269,7 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
         // We already checkIntegrity the entire reader up front
       }
 
@@ -302,7 +302,7 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
         // We already checkIntegrity the entire reader up front
       }
 
@@ -335,7 +335,7 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
         // We already checkIntegrity the entire reader up front
       }
 
@@ -369,7 +369,7 @@ public final class SlowCodecReaderWrapper {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
         // We already checkIntegrity the entire reader up front
       }
 
