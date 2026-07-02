@@ -292,6 +292,7 @@ Improvements
 Optimizations
 ---------------------
 * GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
+
 * GITHUB#16283: Use Panama Vector API to SIMD-evaluate fixed-cardinality sorted numeric range
   queries in rangeIntoBitSet. (Costin Leau)
 
