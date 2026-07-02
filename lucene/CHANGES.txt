@@ -209,8 +209,8 @@ Bug Fixes
 
 * GITHUB#16303: Add suppressed exception details when lock acquisition fails in NativeFSLockFactory. (Bharathi-Kanna)
 
-* GITHUB#16345: Add validation to ArrayUtil.growExact() and CharTermAttributeImpl.clone() to prevent
-  potential DoS via crafted input values that could cause excessive memory allocation. (Vikram Singh)
+* GITHUB#16346: Add bounds validation to ArrayUtil.growExact() and CharTermAttributeImpl.clone()
+  to reject invalid length values with clear error messages. (Vikram Singh)
 
 Changes in Runtime Behavior
 ---------------------

@@ -387,11 +387,10 @@ public class TestArrayUtil extends LuceneTestCase {
         IllegalArgumentException.class,
         () -> growExact(new int[] {1, 2, 3}, ArrayUtil.MAX_ARRAY_LENGTH + 1));
 
-    // Test valid boundary: newLength = MAX_ARRAY_LENGTH for empty array
-    // This should succeed for empty arrays
-    byte[] emptyByteArray = new byte[0];
-    byte[] grown = growExact(emptyByteArray, ArrayUtil.MAX_ARRAY_LENGTH);
-    assertEquals(ArrayUtil.MAX_ARRAY_LENGTH, grown.length);
+    // Test valid boundary: newLength = array.length (no growth, should succeed)
+    byte[] byteArray = new byte[] {1, 2, 3};
+    byte[] sameSize = growExact(byteArray, byteArray.length);
+    assertEquals(byteArray.length, sameSize.length);
   }
 
   public void testGrowInRange() {
