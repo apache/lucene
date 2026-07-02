@@ -1008,7 +1008,8 @@ public class TestRangeFacet extends SandboxFacetTestCase {
       Document doc = new Document();
       int numVals = TestUtil.nextInt(random(), 1, 3);
       for (int j = 0; j < numVals; j++) {
-        doc.add(SortedNumericDocValuesField.indexedField("field", TestUtil.nextLong(random(), 0, 5)));
+        doc.add(
+            SortedNumericDocValuesField.indexedField("field", TestUtil.nextLong(random(), 0, 5)));
       }
       w.addDocument(doc);
     }
