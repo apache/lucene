@@ -168,6 +168,8 @@ Optimizations
 
 * GITHUB#15597, GITHUB#15777: Reduce memory usage of NeighborArray (Viliam Durina)
 
+* GITHUB#12324: ELiminate redundant work in AbstractKnnVectorQuery.rewrite (Mike Sokolov)
+
 Bug Fixes
 ---------------------
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
@@ -204,6 +206,8 @@ Bug Fixes
 * GITHUB#15939: Fix thread-safety issues with NFARunAutomaton. (Dimitris Rempapis)
 
 * GITHUB#16278: Refactor NativeFSLockFactory lock acquisition to cleanly separate locking and file system logic. (Bharathi-Kanna)
+
+* GITHUB#16303: Add suppressed exception details when lock acquisition fails in NativeFSLockFactory. (Bharathi-Kanna)
 
 Changes in Runtime Behavior
 ---------------------
@@ -295,7 +299,10 @@ API Changes
 
 New Features
 ---------------------
-(No changes)
+
+* GITHUB#16243: Add StableTflSimilarity, a similarity that estimates term rarity from term length
+  and document length instead of corpus statistics such as document frequency. It also supports k3
+  query-term frequency saturation. (Tianxiao Wei)
 
 Improvements
 ---------------------
@@ -313,6 +320,14 @@ Optimizations
 * GITHUB#16146: Speed up no-score filtered-optional Boolean queries by routing dense conjunctions with cached FixedBitSet filters
   through ConstantScoreBulkScorer, which batches matches in bulk via DocIdStream. (Costin Leau)
 
+* GITHUB#16316: Lazily allocate buffers in MaxScoreBulkScorer.  These are now only allocated when going
+  via code paths that actually use them. (Alan Woodward)
+
+* GITHUB#16160: Improve numeric doc values range query performance for dense fields that use GCD or delta encoding. (Costin Leau)
+
+* GITHUB#16283: Use Panama Vector API to SIMD-evaluate fixed-cardinality sorted numeric range queries in
+  rangeIntoBitSet. (Costin Leau)
+
 Bug Fixes
 ---------------------
 (No changes)
@@ -321,6 +336,10 @@ Other
 ---------------------
 * GITHUB#16266: Remove deprecated search(Query, Collector) calls in QueryUtils by replacing
   SimpleCollector-based iteration with explicit leaf-level Weight.scorer() calls. (Luca Cavanna)
+
+* GITHUB#16308: upgrade opennlp to 2.5.10 (Dawid Weiss)
+
+* GITHUB#16315: Fix flaky test TestIndexOptions > testMultiValueForcesDeoptimization (neoremind)
 
 ======================= Lucene 10.5.0 =======================
 
