@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.search;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -25,11 +26,13 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.FixedBitSet;
@@ -816,6 +819,62 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
         assertEquals(expected, actual);
       }
     }
+  }
+
+  public void testSingletonDelegatesRangeIntoBitSet() throws Exception {
+    int maxDoc = 100;
+    boolean[] delegated = {false};
+    NumericDocValues spy =
+        new NumericDocValues() {
+          private int doc = -1;
+
+          @Override
+          public long longValue() {
+            return doc;
+          }
+
+          @Override
+          public boolean advanceExact(int target) {
+            doc = target;
+            return true;
+          }
+
+          @Override
+          public int docID() {
+            return doc;
+          }
+
+          @Override
+          public int nextDoc() {
+            return ++doc < maxDoc ? doc : NO_MORE_DOCS;
+          }
+
+          @Override
+          public int advance(int target) {
+            doc = target;
+            return doc < maxDoc ? doc : NO_MORE_DOCS;
+          }
+
+          @Override
+          public long cost() {
+            return maxDoc;
+          }
+
+          @Override
+          public void rangeIntoBitSet(
+              int fromDoc, int toDoc, long minValue, long maxValue, FixedBitSet bitSet, int offset)
+              throws IOException {
+            delegated[0] = true;
+            super.rangeIntoBitSet(fromDoc, toDoc, minValue, maxValue, bitSet, offset);
+          }
+        };
+
+    SortedNumericDocValues singleton = DocValues.singleton(spy);
+    FixedBitSet bitSet = new FixedBitSet(maxDoc);
+    singleton.rangeIntoBitSet(0, maxDoc, 20, 40, bitSet, 0);
+
+    assertTrue("Expected delegation to NumericDocValues.rangeIntoBitSet", delegated[0]);
+    assertTrue("Expected some bits set", bitSet.cardinality() > 0);
   }
 
   private static long[] rangeValues(int numDocs, LongUnaryOperator valueFunction) {
