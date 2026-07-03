@@ -325,7 +325,14 @@ Optimizations
 
 Bug Fixes
 ---------------------
+<<<<<<< monitor/disable-bulk-scoring
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
+=======
+
+* GITHUB#16295: SingletonSortedNumericDocValues now delegates rangeIntoBitSet
+  to the wrapped NumericDocValues, enabling optimized range evaluation for
+  single-valued sorted numeric fields. (Costin Leau)
+>>>>>>> main
 
 Other
 ---------------------
