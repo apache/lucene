@@ -16,6 +16,7 @@
  */
 package org.apache.lucene.search;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -25,11 +26,13 @@ import org.apache.lucene.document.Document;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
 import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.FixedBitSet;
@@ -819,42 +822,59 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
   }
 
   public void testSingletonDelegatesRangeIntoBitSet() throws Exception {
-    int numDocs = 4096 * 4;
-    try (Directory dir = newDirectory()) {
-      IndexWriterConfig conf = new IndexWriterConfig();
-      conf.setCodec(new Lucene104Codec());
-      try (IndexWriter writer = new IndexWriter(dir, conf)) {
-        for (int i = 0; i < numDocs; i++) {
-          Document doc = new Document();
-          long value = i % 100;
-          doc.add(NumericDocValuesField.indexedField("numeric", value));
-          doc.add(SortedNumericDocValuesField.indexedField("sorted_numeric", value));
-          writer.addDocument(doc);
-        }
-        writer.forceMerge(1);
-      }
-      try (DirectoryReader reader = DirectoryReader.open(dir)) {
-        for (LeafReaderContext ctx : reader.leaves()) {
-          int maxDoc = ctx.reader().maxDoc();
+    int maxDoc = 100;
+    boolean[] delegated = {false};
+    NumericDocValues spy =
+        new NumericDocValues() {
+          private int doc = -1;
 
-          FixedBitSet fromNumeric = new FixedBitSet(maxDoc);
-          ctx.reader()
-              .getNumericDocValues("numeric")
-              .rangeIntoBitSet(0, maxDoc, 20, 40, fromNumeric, 0);
+          @Override
+          public long longValue() {
+            return doc;
+          }
 
-          FixedBitSet fromSingleton = new FixedBitSet(maxDoc);
-          ctx.reader()
-              .getSortedNumericDocValues("sorted_numeric")
-              .rangeIntoBitSet(0, maxDoc, 20, 40, fromSingleton, 0);
+          @Override
+          public boolean advanceExact(int target) {
+            doc = target;
+            return true;
+          }
 
-          assertEquals(
-              "Singleton sorted numeric should produce identical results to underlying numeric",
-              fromNumeric,
-              fromSingleton);
-          assertTrue("Expected some bits set", fromNumeric.cardinality() > 0);
-        }
-      }
-    }
+          @Override
+          public int docID() {
+            return doc;
+          }
+
+          @Override
+          public int nextDoc() {
+            return ++doc < maxDoc ? doc : NO_MORE_DOCS;
+          }
+
+          @Override
+          public int advance(int target) {
+            doc = target;
+            return doc < maxDoc ? doc : NO_MORE_DOCS;
+          }
+
+          @Override
+          public long cost() {
+            return maxDoc;
+          }
+
+          @Override
+          public void rangeIntoBitSet(
+              int fromDoc, int toDoc, long minValue, long maxValue, FixedBitSet bitSet, int offset)
+              throws IOException {
+            delegated[0] = true;
+            super.rangeIntoBitSet(fromDoc, toDoc, minValue, maxValue, bitSet, offset);
+          }
+        };
+
+    SortedNumericDocValues singleton = DocValues.singleton(spy);
+    FixedBitSet bitSet = new FixedBitSet(maxDoc);
+    singleton.rangeIntoBitSet(0, maxDoc, 20, 40, bitSet, 0);
+
+    assertTrue("Expected delegation to NumericDocValues.rangeIntoBitSet", delegated[0]);
+    assertTrue("Expected some bits set", bitSet.cardinality() > 0);
   }
 
   private static long[] rangeValues(int numDocs, LongUnaryOperator valueFunction) {
