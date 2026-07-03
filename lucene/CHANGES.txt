@@ -323,6 +323,8 @@ Optimizations
 * GITHUB#16283: Use Panama Vector API to SIMD-evaluate fixed-cardinality sorted numeric range queries in
   rangeIntoBitSet. (Costin Leau)
 
+* GITHUB#16352: Better cost() estimation for SkipBlockRangeIterator. (Alan Woodward)
+
 Bug Fixes
 ---------------------
 
