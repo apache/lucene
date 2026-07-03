@@ -2027,37 +2027,31 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             }
             return;
           }
+          LongValues v;
+          long lo, hi;
           if (rawValues != null) {
             long[] bounds = transformGcdBounds(minValue, maxValue, mul, delta);
             if (bounds == null) {
               return;
             }
-            int cardinality = denseFixedCardinality;
-            if (cardinality > 1) {
-              sortedNumericScalarRangeIntoBitSet(
-                  rawValues, fromDoc, endDoc, cardinality, bounds[0], bounds[1], bitSet, offset);
-              return;
-            }
-            for (int currentDoc = fromDoc; currentDoc < endDoc; currentDoc++) {
-              long startOffset = addresses.get(currentDoc);
-              long endOffset = addresses.get(currentDoc + 1L);
-              if (sortedNumericMatchesRange(
-                  rawValues, startOffset, endOffset, bounds[0], bounds[1])) {
-                bitSet.set(currentDoc - offset);
-              }
-            }
-            return;
+            v = rawValues;
+            lo = bounds[0];
+            hi = bounds[1];
+          } else {
+            v = values;
+            lo = minValue;
+            hi = maxValue;
           }
           int cardinality = denseFixedCardinality;
           if (cardinality > 1) {
             DOC_VALUES_RANGE_SUPPORT.sortedNumericRangeIntoBitSet(
-                values, fromDoc, endDoc, cardinality, minValue, maxValue, bitSet, offset);
+                v, fromDoc, endDoc, cardinality, lo, hi, bitSet, offset);
             return;
           }
           for (int currentDoc = fromDoc; currentDoc < endDoc; currentDoc++) {
             long startOffset = addresses.get(currentDoc);
             long endOffset = addresses.get(currentDoc + 1L);
-            if (sortedNumericMatchesRange(values, startOffset, endOffset, minValue, maxValue)) {
+            if (sortedNumericMatchesRange(v, startOffset, endOffset, lo, hi)) {
               bitSet.set(currentDoc - offset);
             }
           }
@@ -2157,29 +2151,27 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
             set = false;
             return;
           }
+          LongValues v;
+          long lo, hi;
           if (rawValues != null) {
             long[] bounds = transformGcdBounds(minValue, maxValue, mul, delta);
             if (bounds == null) {
               set = false;
               return;
             }
-            for (; currentDoc < endDoc; currentDoc = disi.nextDoc()) {
-              int index = disi.index();
-              long startOffset = addresses.get(index);
-              long endOffset = addresses.get(index + 1L);
-              if (sortedNumericMatchesRange(
-                  rawValues, startOffset, endOffset, bounds[0], bounds[1])) {
-                bitSet.set(currentDoc - offset);
-              }
-            }
-            set = false;
-            return;
+            v = rawValues;
+            lo = bounds[0];
+            hi = bounds[1];
+          } else {
+            v = values;
+            lo = minValue;
+            hi = maxValue;
           }
           for (; currentDoc < endDoc; currentDoc = disi.nextDoc()) {
             int index = disi.index();
             long startOffset = addresses.get(index);
             long endOffset = addresses.get(index + 1L);
-            if (sortedNumericMatchesRange(values, startOffset, endOffset, minValue, maxValue)) {
+            if (sortedNumericMatchesRange(v, startOffset, endOffset, lo, hi)) {
               bitSet.set(currentDoc - offset);
             }
           }
