@@ -323,6 +323,9 @@ Optimizations
 * GITHUB#16283: Use Panama Vector API to SIMD-evaluate fixed-cardinality sorted numeric range queries in
   rangeIntoBitSet. (Costin Leau)
 
+* GITHUB#XXXX: Add ASCII fast-path to CharacterUtils.toLowerCase, avoiding per-char codepoint
+  conversion for ASCII-only tokens. 2.16x throughput on English text. (Costin Leau)
+
 Bug Fixes
 ---------------------
 
