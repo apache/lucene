@@ -323,6 +323,9 @@ Optimizations
 * GITHUB#16283: Use Panama Vector API to SIMD-evaluate fixed-cardinality sorted numeric range queries in
   rangeIntoBitSet. (Costin Leau)
 
+* GITHUB#XXXX: Cache stem results in SnowballFilter to avoid redundant stemmer invocations on
+  repeated tokens. 2.3-2.7x throughput improvement. Disableable via new constructor. (Costin Leau)
+
 Bug Fixes
 ---------------------
 
