@@ -178,11 +178,6 @@ public class GroupingSearch {
     int resultIdx = 0;
     Collection<SearchGroup<T>> topSearchGroups =
         (Collection<SearchGroup<T>>) firstRoundResults[resultIdx++];
-    if (topSearchGroups.isEmpty()) {
-      matchingGroups = Collections.emptyList();
-      matchingGroupHeads = new Bits.MatchNoBits(searcher.getIndexReader().maxDoc());
-      return new TopGroups<>(new SortField[0], new SortField[0], 0, 0, new GroupDocs[0], Float.NaN);
-    }
 
     matchingGroups =
         allGroups ? (Collection<?>) firstRoundResults[resultIdx++] : Collections.emptyList();
@@ -193,6 +188,10 @@ public class GroupingSearch {
       matchingGroupHeads = headsResult.retrieveGroupHeads(searcher.getIndexReader().maxDoc());
     } else {
       matchingGroupHeads = new Bits.MatchNoBits(searcher.getIndexReader().maxDoc());
+    }
+
+    if (topSearchGroups.isEmpty()) {
+      return new TopGroups<>(new SortField[0], new SortField[0], 0, 0, new GroupDocs[0], Float.NaN);
     }
 
     TopGroupsCollectorManager<T> secondPassManager =
