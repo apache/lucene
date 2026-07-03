@@ -325,7 +325,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
 
 Other
 ---------------------
