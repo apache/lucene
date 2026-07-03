@@ -277,18 +277,20 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
     final boolean hasOffsets;
     final boolean hasPositions;
     final boolean hasPayloads;
+    private SimpleTVTermsEnum termsEnum;
 
     SimpleTVTerms(boolean hasOffsets, boolean hasPositions, boolean hasPayloads) {
       this.hasOffsets = hasOffsets;
       this.hasPositions = hasPositions;
       this.hasPayloads = hasPayloads;
       terms = new TreeMap<>();
+      termsEnum = new SimpleTVTermsEnum(terms);
     }
 
     @Override
     public TermsEnum iterator() throws IOException {
-      // TODO: reuse
-      return new SimpleTVTermsEnum(terms);
+      termsEnum.reset();
+      return termsEnum;
     }
 
     @Override
@@ -350,10 +352,19 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
     SortedMap<BytesRef, SimpleTVPostings> terms;
     Iterator<Map.Entry<BytesRef, SimpleTextTermVectorsReader.SimpleTVPostings>> iterator;
     Map.Entry<BytesRef, SimpleTextTermVectorsReader.SimpleTVPostings> current;
+    private SimpleTVPostingsEnum postingsEnum;
+    private SimpleTVDocsEnum docsEnum;
 
     SimpleTVTermsEnum(SortedMap<BytesRef, SimpleTVPostings> terms) {
       this.terms = terms;
       this.iterator = terms.entrySet().iterator();
+      this.postingsEnum = new SimpleTVPostingsEnum();
+      this.docsEnum = new SimpleTVDocsEnum();
+    }
+
+    void reset() {
+      this.iterator = terms.entrySet().iterator();
+      this.current = null;
     }
 
     @Override
@@ -407,21 +418,17 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
       if (PostingsEnum.featureRequested(flags, PostingsEnum.POSITIONS)) {
         SimpleTVPostings postings = current.getValue();
         if (postings.positions != null || postings.startOffsets != null) {
-          // TODO: reuse
-          SimpleTVPostingsEnum e = new SimpleTVPostingsEnum();
-          e.reset(
+          postingsEnum.reset(
               postings.positions, postings.startOffsets, postings.endOffsets, postings.payloads);
-          return e;
+          return postingsEnum;
         }
       }
 
-      // TODO: reuse
-      SimpleTVDocsEnum e = new SimpleTVDocsEnum();
-      e.reset(
+      docsEnum.reset(
           PostingsEnum.featureRequested(flags, PostingsEnum.FREQS) == false
               ? 1
               : current.getValue().freq);
-      return e;
+      return docsEnum;
     }
 
     @Override
@@ -488,6 +495,12 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
       didNext = false;
     }
 
+    void reinitialize() {
+      this.doc = -1;
+      this.didNext = false;
+      this.freq = 0;
+    }
+
     @Override
     public long cost() {
       return 1;
@@ -541,6 +554,16 @@ public class SimpleTextTermVectorsReader extends TermVectorsReader {
       this.doc = -1;
       didNext = false;
       nextPos = 0;
+    }
+
+    void reinitialize() {
+      this.doc = -1;
+      this.didNext = false;
+      this.nextPos = 0;
+      this.positions = null;
+      this.startOffsets = null;
+      this.endOffsets = null;
+      this.payloads = null;
     }
 
     @Override
