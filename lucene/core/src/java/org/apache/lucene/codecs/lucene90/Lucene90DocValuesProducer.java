@@ -1478,6 +1478,15 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
               advance(upTo);
             }
           }
+
+          @Override
+          public void ordinalRangeIntoBitSet(
+              int fromDoc, int toDoc, long minOrd, long maxOrd, FixedBitSet bitSet, int offset)
+              throws IOException {
+            // Dense packed ordinals: bulk evaluate via the same SIMD path as NumericDocValues
+            Lucene90DocValuesProducer.rangeIntoBitSet(
+                values, fromDoc, toDoc, minOrd, maxOrd, bitSet, offset);
+          }
         };
       } else if (ordsEntry.docsWithFieldOffset >= 0) { // sparse but non-empty
         final IndexedDISI disi =
@@ -1575,6 +1584,15 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       @Override
       public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
         ords.intoBitSet(upTo, bitSet, offset);
+      }
+
+      @Override
+      public void ordinalRangeIntoBitSet(
+          int fromDoc, int toDoc, long minOrd, long maxOrd, FixedBitSet bitSet, int offset)
+          throws IOException {
+        // Delegate to the underlying NumericDocValues which already has a (possibly SIMD)
+        // rangeIntoBitSet override.
+        ords.rangeIntoBitSet(fromDoc, toDoc, minOrd, maxOrd, bitSet, offset);
       }
     };
   }
