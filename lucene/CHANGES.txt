@@ -323,12 +323,17 @@ Optimizations
 * GITHUB#16283: Use Panama Vector API to SIMD-evaluate fixed-cardinality sorted numeric range queries in
   rangeIntoBitSet. (Costin Leau)
 
+* GITHUB#16352: Better cost() estimation for SkipBlockRangeIterator. (Alan Woodward)
+
 * GITHUB#16297: Use LongHashSet for sparse ordinal sets in DocValuesRangeIterator so memory
   scales with matching terms instead of segment cardinality. (Costin Leau)
-
+  
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#16295: SingletonSortedNumericDocValues now delegates rangeIntoBitSet
+  to the wrapped NumericDocValues, enabling optimized range evaluation for
+  single-valued sorted numeric fields. (Costin Leau)
 
 Other
 ---------------------

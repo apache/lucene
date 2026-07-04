@@ -108,7 +108,7 @@ public class SkipBlockRangeIterator extends AbstractDocIdSetIterator {
 
   @Override
   public long cost() {
-    return DocIdSetIterator.NO_MORE_DOCS;
+    return skipper.docCount();
   }
 
   /**
