@@ -583,7 +583,8 @@ final class SimpleTextBKDWriter implements Closeable {
       rotateToTree(2 * nodeID, offset, leftHalf, index, leafBlockStartValues);
 
       // Recurse right
-      rotateToTree(2 * nodeID + 1, rootOffset + 1, count - leftHalf - 1, index, leafBlockStartValues);
+      rotateToTree(
+          2 * nodeID + 1, rootOffset + 1, count - leftHalf - 1, index, leafBlockStartValues);
     }
   }
 
