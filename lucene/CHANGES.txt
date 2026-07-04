@@ -324,15 +324,20 @@ Optimizations
 * GITHUB#16283: Use Panama Vector API to SIMD-evaluate fixed-cardinality sorted numeric range queries in
   rangeIntoBitSet. (Costin Leau)
 
+* GITHUB#16352: Better cost() estimation for SkipBlockRangeIterator. (Alan Woodward)
+
 * GITHUB#16294: Route constant-score doc-values queries through
   ConstantScoreScorerSupplier so they can benefit from batch scoring.
   Affects BinaryRangeFieldRangeQuery, LatLonDocValuesBoxQuery,
   LatLonDocValuesQuery, XYDocValuesPointInGeometryQuery, and
   SortedNumericDocValuesSetQuery. (Costin Leau)
-
+  
 Bug Fixes
 ---------------------
-(No changes)
+
+* GITHUB#16295: SingletonSortedNumericDocValues now delegates rangeIntoBitSet
+  to the wrapped NumericDocValues, enabling optimized range evaluation for
+  single-valued sorted numeric fields. (Costin Leau)
 
 Other
 ---------------------
