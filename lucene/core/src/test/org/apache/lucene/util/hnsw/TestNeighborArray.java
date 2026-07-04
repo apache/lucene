@@ -189,6 +189,20 @@ public class TestNeighborArray extends LuceneTestCase {
     assertScoresEqual(new float[] {7, 6, 5, 4, 3, 2, 1}, neighbors2);
   }
 
+  public void testSortDescStableOrderForEqualScores() throws IOException {
+    NeighborArray neighbors = new NeighborArray(5, true);
+    neighbors.addInOrder(0, 1.0f);
+    neighbors.addInOrder(1, 0.8f);
+    neighbors.addOutOfOrder(2, 0.8f);
+    neighbors.addOutOfOrder(3, 0.9f);
+
+    int[] unchecked = neighbors.sort(null);
+
+    assertArrayEquals(new int[] {1, 3}, unchecked);
+    assertNodesEqual(new int[] {0, 3, 1, 2}, neighbors);
+    assertScoresEqual(new float[] {1.0f, 0.9f, 0.8f, 0.8f}, neighbors);
+  }
+
   public void testAddWithScoringFunction() throws IOException {
     NeighborArray neighbors = new NeighborArray(10, true);
     neighbors.addOutOfOrder(1, Float.NaN);

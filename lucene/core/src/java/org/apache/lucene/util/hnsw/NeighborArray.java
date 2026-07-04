@@ -155,53 +155,102 @@ public class NeighborArray {
       return null;
     }
     assert sortedNodeSize < size;
-    int[] uncheckedIndexes = new int[size - sortedNodeSize];
-    int count = 0;
-    while (sortedNodeSize != size) {
-      // TODO: Instead of doing an array copy on every insertion, I think we can do better here:
-      //       Remember the insertion point of each unsorted node and insert them altogether
-      //       We can save several array copy by doing that
-      uncheckedIndexes[count] = insertSortedInternal(scorer); // sortedNodeSize is increased inside
-      for (int i = 0; i < count; i++) {
-        if (uncheckedIndexes[i] >= uncheckedIndexes[count]) {
-          // the previous inserted nodes has been shifted
-          uncheckedIndexes[i]++;
-        }
+
+    int count = size - sortedNodeSize;
+    int[] uncheckedIndexes = new int[count];
+    Integer[] unsortedIndexes = new Integer[count];
+    int[] newNodes = new int[size];
+    float[] newScores = new float[size];
+
+    for (int i = 0; i < count; i++) {
+      int index = sortedNodeSize + i;
+      unsortedIndexes[i] = index;
+      float score = scores[index];
+      if (Float.isNaN(score)) {
+        score = scorer.score(nodes[index]);
       }
-      count++;
+      scores[index] = score;
     }
+
+    Arrays.sort(
+        unsortedIndexes,
+        (left, right) -> {
+          float leftScore = scores[left];
+          float rightScore = scores[right];
+          if (scoresDescOrder) {
+            if (leftScore > rightScore) {
+              return -1;
+            } else if (leftScore < rightScore) {
+              return 1;
+            }
+          } else {
+            if (leftScore < rightScore) {
+              return -1;
+            } else if (leftScore > rightScore) {
+              return 1;
+            }
+          }
+          return 0;
+        });
+
+    int prefixCursor = 0;
+    int unsortedCursor = 0;
+    int outCursor = 0;
+    while (prefixCursor < sortedNodeSize && unsortedCursor < count) {
+      int prefixIndex = prefixCursor;
+      int unsortedIndex = unsortedIndexes[unsortedCursor];
+      if (shouldTakePrefix(prefixIndex, unsortedIndex)) {
+        newNodes[outCursor] = nodes[prefixIndex];
+        newScores[outCursor] = scores[prefixIndex];
+        prefixCursor++;
+      } else {
+        newNodes[outCursor] = nodes[unsortedIndex];
+        newScores[outCursor] = scores[unsortedIndex];
+        uncheckedIndexes[unsortedCursor] = outCursor;
+        unsortedCursor++;
+      }
+      outCursor++;
+    }
+
+    while (prefixCursor < sortedNodeSize) {
+      newNodes[outCursor] = nodes[prefixCursor];
+      newScores[outCursor] = scores[prefixCursor];
+      prefixCursor++;
+      outCursor++;
+    }
+
+    while (unsortedCursor < count) {
+      int unsortedIndex = unsortedIndexes[unsortedCursor];
+      newNodes[outCursor] = nodes[unsortedIndex];
+      newScores[outCursor] = scores[unsortedIndex];
+      uncheckedIndexes[unsortedCursor] = outCursor;
+      unsortedCursor++;
+      outCursor++;
+    }
+
+    nodes = newNodes;
+    scores = newScores;
+    sortedNodeSize = size;
     Arrays.sort(uncheckedIndexes);
     return uncheckedIndexes;
   }
 
-  /** insert the first unsorted node into its sorted position */
-  private int insertSortedInternal(RandomVectorScorer scorer) throws IOException {
-    assert sortedNodeSize < size : "Call this method only when there's unsorted node";
-    int tmpNode = nodes[sortedNodeSize];
-    float tmpScore = scores[sortedNodeSize];
-
-    if (Float.isNaN(tmpScore)) {
-      tmpScore = scorer.score(tmpNode);
+  private boolean shouldTakePrefix(int prefixIndex, int unsortedIndex) {
+    float prefixScore = scores[prefixIndex];
+    float unsortedScore = scores[unsortedIndex];
+    if (scoresDescOrder) {
+      return prefixScore >= unsortedScore;
     }
-
-    int insertionPoint =
-        scoresDescOrder
-            ? descSortFindRightMostInsertionPoint(tmpScore, sortedNodeSize)
-            : ascSortFindRightMostInsertionPoint(tmpScore, sortedNodeSize);
-    System.arraycopy(
-        nodes, insertionPoint, nodes, insertionPoint + 1, sortedNodeSize - insertionPoint);
-    System.arraycopy(
-        scores, insertionPoint, scores, insertionPoint + 1, sortedNodeSize - insertionPoint);
-    nodes[insertionPoint] = tmpNode;
-    scores[insertionPoint] = tmpScore;
-    ++sortedNodeSize;
-    return insertionPoint;
+    return prefixScore <= unsortedScore;
   }
 
   /** This method is for test only. */
   void insertSorted(int newNode, float newScore) throws IOException {
     addOutOfOrder(newNode, newScore);
-    insertSortedInternal(null);
+    if (size == sortedNodeSize) {
+      return;
+    }
+    sort(null);
   }
 
   public int size() {
@@ -256,32 +305,6 @@ public class NeighborArray {
   @Override
   public String toString() {
     return "NeighborArray[" + size + "]";
-  }
-
-  private int ascSortFindRightMostInsertionPoint(float newScore, int bound) {
-    int insertionPoint = Arrays.binarySearch(scores, 0, bound, newScore);
-    if (insertionPoint >= 0) {
-      // find the right most position with the same score
-      while ((insertionPoint < bound - 1)
-          && (scores[insertionPoint + 1] == scores[insertionPoint])) {
-        insertionPoint++;
-      }
-      insertionPoint++;
-    } else {
-      insertionPoint = -insertionPoint - 1;
-    }
-    return insertionPoint;
-  }
-
-  private int descSortFindRightMostInsertionPoint(float newScore, int bound) {
-    int start = 0;
-    int end = bound - 1;
-    while (start <= end) {
-      int mid = (start + end) / 2;
-      if (scores[mid] < newScore) end = mid - 1;
-      else start = mid + 1;
-    }
-    return start;
   }
 
   /**
