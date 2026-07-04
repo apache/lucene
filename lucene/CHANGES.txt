@@ -325,7 +325,7 @@ Optimizations
 
 * GITHUB#16352: Better cost() estimation for SkipBlockRangeIterator. (Alan Woodward)
 
-* GITHUB#XXXX: Cache stem results in SnowballFilter to avoid redundant stemmer invocations on
+* GITHUB#16356: Cache stem results in SnowballFilter to avoid redundant stemmer invocations on
   repeated tokens. 2.3-2.7x throughput improvement. Disableable via new constructor. (Costin Leau)
 
 Bug Fixes
