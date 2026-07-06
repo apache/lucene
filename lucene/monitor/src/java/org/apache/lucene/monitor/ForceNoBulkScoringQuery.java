@@ -20,12 +20,14 @@ package org.apache.lucene.monitor;
 import java.io.IOException;
 import java.util.Objects;
 import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.BulkScorer;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Matches;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.QueryVisitor;
 import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.ScorerSupplier;
 import org.apache.lucene.search.Weight;
 
@@ -87,7 +89,29 @@ class ForceNoBulkScoringQuery extends Query {
 
       @Override
       public ScorerSupplier scorerSupplier(LeafReaderContext leafReaderContext) throws IOException {
-        return innerWeight.scorerSupplier(leafReaderContext);
+        ScorerSupplier innerScorerSupplier = innerWeight.scorerSupplier(leafReaderContext);
+        if (innerScorerSupplier == null) {
+          return null;
+        }
+        return new ScorerSupplier() {
+
+          @Override
+          public Scorer get(long leadCost) throws IOException {
+            return innerScorerSupplier.get(leadCost);
+          }
+
+          @Override
+          public long cost() {
+            return innerScorerSupplier.cost();
+          }
+
+          @Override
+          public BulkScorer bulkScorer() throws IOException {
+            // force the use of the default doc-by-doc BulkScorer, rather than any
+            // optimized bulk-scoring implementation the wrapped query may provide
+            return new DefaultBulkScorer(get(Long.MAX_VALUE));
+          }
+        };
       }
 
       @Override
