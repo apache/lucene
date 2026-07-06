@@ -458,8 +458,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
-        postingsReader.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        postingsReader.checkIntegrity(merge);
       }
 
       @Override
@@ -510,8 +510,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        delegate.checkIntegrity(merge);
       }
 
       @Override
@@ -539,8 +539,8 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
     return new PointsReader() {
       @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        delegate.checkIntegrity(merge);
       }
 
       @Override
@@ -567,8 +567,8 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
     return new KnnVectorsReader() {
       @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        delegate.checkIntegrity(merge);
       }
 
       @Override
@@ -619,8 +619,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        delegate.checkIntegrity(merge);
       }
 
       @Override
@@ -701,8 +701,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        delegate.checkIntegrity(merge);
       }
 
       @Override
@@ -752,8 +752,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        delegate.checkIntegrity(merge);
       }
 
       @Override

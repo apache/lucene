@@ -350,6 +350,7 @@ public class TestIndexOptions extends LuceneTestCase {
     w.addDocument(Collections.singleton(new Field("foo", "val2", ftB)));
     // Doc 3
     w.addDocument(Collections.singleton(new Field("foo", "val3", ftB)));
+    w.forceMerge(1);
     try (LeafReader r = getOnlyLeafReader(DirectoryReader.open(w))) {
       assertEquals(4, r.maxDoc());
     }
