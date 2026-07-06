@@ -481,6 +481,72 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
         values, fromDoc, toDoc, minValue, maxValue, bitSet, offset);
   }
 
+  /**
+   * Maps the raw query bounds {@code [minValue, maxValue]} into the encoded domain so the SIMD
+   * kernel in {@link org.apache.lucene.internal.vectorization.DocValuesRangeSupport} can run
+   * directly on packed values: {@code [encodedMin, encodedMax] = [ceil((min - delta) / mul),
+   * floor((max - delta) / mul)]}. Open bounds (e.g. {@code Long.MIN_VALUE} or {@code
+   * Long.MAX_VALUE}) are saturated to the encoded domain so they keep the SIMD path even when
+   * {@code min - delta} or {@code max - delta} would overflow.
+   */
+  private static void rangeGcdDeltaIntoBitSet(
+      LongValues values,
+      int fromDoc,
+      int toDoc,
+      long minValue,
+      long maxValue,
+      long mul,
+      long delta,
+      FixedBitSet bitSet,
+      int offset) {
+    assert mul > 0;
+    long encodedMin = saturatingShiftLower(minValue, delta);
+    long encodedMax = saturatingShiftUpper(maxValue, delta);
+    if (mul != 1) {
+      // Math.ceilDiv / Math.floorDiv never overflow for mul > 0 (only Long.MIN_VALUE / -1 does),
+      // so the SIMD path is always taken; no fallback to the per-doc decoded loop is required.
+      encodedMin = Math.ceilDiv(encodedMin, mul);
+      encodedMax = Math.floorDiv(encodedMax, mul);
+    }
+    encodedMin = Math.max(0, encodedMin);
+    if (encodedMin <= encodedMax) {
+      rangeIntoBitSet(values, fromDoc, toDoc, encodedMin, encodedMax, bitSet, offset);
+    }
+  }
+
+  /**
+   * Returns {@code minValue - delta}, saturating to {@code Long.MIN_VALUE} when the real value
+   * would underflow (every non-negative stored value satisfies the lower bound) or to {@code
+   * Long.MAX_VALUE} when it would overflow (no stored value can satisfy the lower bound). Stored
+   * values are non-negative, so the caller can keep using the SIMD path with these saturated
+   * sentinels.
+   */
+  private static long saturatingShiftLower(long minValue, long delta) {
+    try {
+      return Math.subtractExact(minValue, delta);
+    } catch (
+        @SuppressWarnings("unused")
+        ArithmeticException overflow) {
+      return delta > 0 ? Long.MIN_VALUE : Long.MAX_VALUE;
+    }
+  }
+
+  /**
+   * Symmetric counterpart of {@link #saturatingShiftLower}: returns {@code maxValue - delta},
+   * saturating to {@code Long.MAX_VALUE} when the real value would overflow (every stored value
+   * satisfies the upper bound) or to {@code Long.MIN_VALUE} when it would underflow (no stored
+   * value can satisfy the upper bound).
+   */
+  private static long saturatingShiftUpper(long maxValue, long delta) {
+    try {
+      return Math.subtractExact(maxValue, delta);
+    } catch (
+        @SuppressWarnings("unused")
+        ArithmeticException overflow) {
+      return delta < 0 ? Long.MAX_VALUE : Long.MIN_VALUE;
+    }
+  }
+
   private static int fixedCardinality(
       SortedNumericEntry entry, DocValuesSkipperEntry skipperEntry) {
     if (skipperEntry == null
@@ -494,29 +560,6 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       return -1;
     }
     return (int) cardinality;
-  }
-
-  private static void sortedNumericScalarRangeIntoBitSet(
-      LongValues values,
-      int fromDoc,
-      int toDoc,
-      int cardinality,
-      long minValue,
-      long maxValue,
-      FixedBitSet bitSet,
-      int offset) {
-    for (int doc = fromDoc; doc < toDoc; doc++) {
-      long valueOffset = (long) doc * cardinality;
-      for (int i = 0; i < cardinality; i++) {
-        long value = values.get(valueOffset + i);
-        if (value >= minValue) {
-          if (value <= maxValue) {
-            bitSet.set(doc - offset);
-          }
-          break;
-        }
-      }
-    }
   }
 
   private static boolean sortedNumericMatchesRange(
@@ -960,13 +1003,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
                   long maxValue,
                   FixedBitSet bitSet,
                   int offset) {
-                // Per-doc evaluation for gcd/delta encoded fields
-                for (int d = fromDoc; d < toDoc; d++) {
-                  long v = mul * values.get(d) + delta;
-                  if (v >= minValue && v <= maxValue) {
-                    bitSet.set(d - offset);
-                  }
-                }
+                Lucene90DocValuesProducer.rangeGcdDeltaIntoBitSet(
+                    values, fromDoc, toDoc, minValue, maxValue, mul, delta, bitSet, offset);
               }
             };
           }
@@ -1963,7 +2001,7 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           }
           int cardinality = denseFixedCardinality;
           if (cardinality > 1) {
-            sortedNumericScalarRangeIntoBitSet(
+            DOC_VALUES_RANGE_SUPPORT.sortedNumericRangeIntoBitSet(
                 values, fromDoc, endDoc, cardinality, minValue, maxValue, bitSet, offset);
             return;
           }

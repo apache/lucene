@@ -149,6 +149,10 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16307: ReqExclBulkScorer now skips runs of excluded docs via
+  TwoPhaseIterator#docIDRunEnd for two-phase excluded clauses (e.g. a doc-values
+  not-equals filter), instead of advancing one doc at a time. (Jim Ferenczi)
+
 * GITHUB#16254: Enable the vectorized findNextGEQ path on aarch64, where it was disabled on cores
   with fewer than 8 int lanes (Graviton2 and Graviton4). The vector compare beats the scalar
   fallback by +75% on Graviton4 and +35% on Graviton2 (AdvanceBenchmark). (Shitij Bhargava)
@@ -320,9 +324,20 @@ Optimizations
 * GITHUB#16316: Lazily allocate buffers in MaxScoreBulkScorer.  These are now only allocated when going
   via code paths that actually use them. (Alan Woodward)
 
+* GITHUB#16160: Improve numeric doc values range query performance for dense fields that use GCD or delta encoding. (Costin Leau)
+
+* GITHUB#16283: Use Panama Vector API to SIMD-evaluate fixed-cardinality sorted numeric range queries in
+  rangeIntoBitSet. (Costin Leau)
+
+* GITHUB#16352: Better cost() estimation for SkipBlockRangeIterator. (Alan Woodward)
+
 Bug Fixes
 ---------------------
-(No changes)
+* GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
+
+* GITHUB#16295: SingletonSortedNumericDocValues now delegates rangeIntoBitSet
+  to the wrapped NumericDocValues, enabling optimized range evaluation for
+  single-valued sorted numeric fields. (Costin Leau)
 
 Other
 ---------------------
