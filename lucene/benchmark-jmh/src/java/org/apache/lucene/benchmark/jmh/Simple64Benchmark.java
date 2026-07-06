@@ -37,7 +37,22 @@ import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Warmup;
 import org.openjdk.jmh.infra.Blackhole;
 
-/** Benchmark comparing Simple64 vs VInt for encoding/decoding suffix lengths. */
+/**
+ * Benchmark comparing Simple64 vs VInt for encoding/decoding suffix lengths.
+ *
+ * <p>Performance (JMH, blockSize=40, decode throughput):
+ *
+ * <p>After hand-unrolling pack/decode for all 14 selectors, Simple64's decode throughput is largely
+ * insensitive to value distribution (~28.8-31.5 ops/us across SMALL_1_8, MID_1_64, LARGE_1_200,
+ * MIXED), since cost is driven by word count, not value magnitude. VInt throughput varies much more
+ * (~19.7-29.2 ops/us) because it depends on branch-prediction accuracy for the continuation bit,
+ * which degrades once values mix 1-byte and 2+-byte encodings.
+ *
+ * <p>Net effect: Simple64 is ~47% faster than VInt when VInt's branch prediction is worst
+ * (LARGE_1_200), roughly on par when VInt predicts well (MID_1_64, ~+1%), and slightly behind in
+ * MIXED (~-1%). The advantage is consistency, not a uniform speedup: Simple64 avoids VInt's worst
+ * case rather than beating its best case.
+ */
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.MICROSECONDS)
 @State(Scope.Benchmark)
