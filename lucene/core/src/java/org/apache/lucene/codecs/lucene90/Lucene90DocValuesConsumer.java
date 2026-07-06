@@ -323,23 +323,54 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     for (int i = 0; i < SKIP_INDEX_MAX_LEVEL - 1; i++) {
       accumulatorsLevels.add(buildLevel(accumulatorsLevels.get(i)));
     }
+    // Reusable buffer for writing all level entries of one interval before lengths are known.
+    // IndexOutput is forward-only, so we buffer the entire interval, then write the total
+    // interval length followed by the buffered contents.
+    final ByteBuffersDataOutput intervalBuffer = ByteBuffersDataOutput.newResettableInstance();
+    final ByteBuffersDataOutput entryBuffer = ByteBuffersDataOutput.newResettableInstance();
     int totalAccumulators = accumulators.size();
     for (int index = 0; index < totalAccumulators; index++) {
       // compute how many levels we need to write for the current accumulator
       final int levels = getLevels(index, totalAccumulators);
       // write the number of levels
       skipIndex.writeByte((byte) levels);
-      // write intervals in reverse order. This is done so we don't
-      // need to read all of them in case of slipping
+
+      intervalBuffer.reset();
+
+      // Write all level entries for this interval into intervalBuffer in reverse order.
+      // The outermost entry (highest level) has the widest docID span and is checked first
+      // by advance(), which can skip the entire interval via the interval length if its
+      // maxDocID < target, avoiding reading any lower-level entries.
       for (int level = levels - 1; level >= 0; level--) {
         final SkipAccumulator accumulator =
             accumulatorsLevels.get(level).get(index >> (SKIP_INDEX_LEVEL_SHIFT * level));
-        skipIndex.writeInt(accumulator.maxDocID);
-        skipIndex.writeInt(accumulator.minDocID);
-        skipIndex.writeLong(accumulator.maxValue);
-        skipIndex.writeLong(accumulator.minValue);
-        skipIndex.writeInt(accumulator.docCount);
+
+        entryBuffer.reset();
+
+        // SKIP_STAT_RANGE(default) is always written first in each level entry.
+        entryBuffer.writeByte(Lucene90DocValuesFormat.SKIP_STAT_RANGE);
+        entryBuffer.writeInt(accumulator.minDocID);
+        entryBuffer.writeLong(accumulator.maxValue);
+        entryBuffer.writeLong(accumulator.minValue);
+        entryBuffer.writeInt(accumulator.docCount);
+
+        // Future optional stats can be appended here.
+
+        // Per-level on-disk layout:
+        //   [4 bytes: maxDocID]       ← read first for cheap rejection
+        //   [4 bytes: entry length]   ← bytes of stats following (= entryBuffer.size())
+        //   [N bytes: stats]
+        intervalBuffer.writeInt(accumulator.maxDocID);
+        intervalBuffer.writeInt(Math.toIntExact(entryBuffer.size()));
+        entryBuffer.copyTo(intervalBuffer);
       }
+
+      // Write the total interval length then all level entries.
+      // advance() reads the highest-level maxDocID first. If it rejects, it uses this
+      // length to seek past the entire interval (all levels), without needing a
+      // precomputed jump table.
+      skipIndex.writeInt(Math.toIntExact(intervalBuffer.size()));
+      intervalBuffer.copyTo(skipIndex);
     }
   }
 

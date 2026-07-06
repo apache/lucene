@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.codecs.lucene90;
 
-import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_INDEX_JUMP_LENGTH_PER_LEVEL;
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.SKIP_INDEX_MAX_LEVEL;
 import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.TERMS_DICT_BLOCK_LZ4_SHIFT;
 
@@ -2489,30 +2488,84 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
           // find next interval
           assert target > maxDocID[0]
               : "target " + target + " must be bigger that current interval " + maxDocID[0];
-          while (true) {
-            levels = input.readByte();
-            assert levels <= SKIP_INDEX_MAX_LEVEL && levels > 0
-                : "level out of range [" + levels + "]";
-            boolean valid = true;
-            // check if current interval is competitive or we can jump to the next position
-            for (int level = levels - 1; level >= 0; level--) {
-              if ((maxDocID[level] = input.readInt()) < target) {
-                input.skipBytes(SKIP_INDEX_JUMP_LENGTH_PER_LEVEL[level]); // the jump for the level
-                valid = false;
-                break;
-              }
-              minDocID[level] = input.readInt();
-              maxValue[level] = input.readLong();
-              minValue[level] = input.readLong();
-              docCount[level] = input.readInt();
-            }
-            if (valid) {
-              // adjust levels
-              while (levels < SKIP_INDEX_MAX_LEVEL && maxDocID[levels] >= target) {
-                levels++;
-              }
+          if (version >= Lucene90DocValuesFormat.VERSION_SKIPPER_STATS_FORMAT) {
+            advanceStatsFormat(input, target);
+          } else {
+            advanceLegacyFormat(input, target);
+          }
+        }
+      }
+
+      private void advanceStatsFormat(IndexInput input, int target) throws IOException {
+        while (true) {
+          levels = input.readByte();
+          assert levels <= SKIP_INDEX_MAX_LEVEL && levels > 0
+              : "level out of range [" + levels + "]";
+
+          // Read the total interval length covering all level entries.
+          // Used to skip the entire interval when the highest level rejects.
+          final int intervalLength = input.readInt();
+          final long intervalEnd = input.getFilePointer() + intervalLength;
+
+          boolean valid = true;
+          for (int level = levels - 1; level >= 0; level--) {
+            if ((maxDocID[level] = input.readInt()) < target) {
+              // This level rejects: skip the rest of this interval entirely.
+              input.seek(intervalEnd);
+              valid = false;
               break;
             }
+            final int entryLength = input.readInt();
+            final long entryEnd = input.getFilePointer() + entryLength;
+            while (input.getFilePointer() < entryEnd) {
+              final byte statType = input.readByte();
+              switch (statType) {
+                case Lucene90DocValuesFormat.SKIP_STAT_RANGE -> {
+                  minDocID[level] = input.readInt();
+                  maxValue[level] = input.readLong();
+                  minValue[level] = input.readLong();
+                  docCount[level] = input.readInt();
+                }
+                // Unknown stat types: skip to entry end. This allows new stats to be
+                // added without a version bump — older readers just ignore them.
+                default -> input.seek(entryEnd);
+              }
+            }
+          }
+          if (valid) {
+            while (levels < SKIP_INDEX_MAX_LEVEL && maxDocID[levels] >= target) {
+              levels++;
+            }
+            break;
+          }
+        }
+      }
+
+      private void advanceLegacyFormat(IndexInput input, int target) throws IOException {
+        while (true) {
+          levels = input.readByte();
+          assert levels <= SKIP_INDEX_MAX_LEVEL && levels > 0
+              : "level out of range [" + levels + "]";
+          boolean valid = true;
+          // check if current interval is competitive or we can jump to the next position
+          for (int level = levels - 1; level >= 0; level--) {
+            if ((maxDocID[level] = input.readInt()) < target) {
+              input.skipBytes(
+                  Lucene90DocValuesFormat.SKIP_INDEX_JUMP_LENGTH_PER_LEVEL_LEGACY[level]);
+              valid = false;
+              break;
+            }
+            minDocID[level] = input.readInt();
+            maxValue[level] = input.readLong();
+            minValue[level] = input.readLong();
+            docCount[level] = input.readInt();
+          }
+          if (valid) {
+            // adjust levels
+            while (levels < SKIP_INDEX_MAX_LEVEL && maxDocID[levels] >= target) {
+              levels++;
+            }
+            break;
           }
         }
       }
