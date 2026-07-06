@@ -354,12 +354,6 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
         entryBuffer.writeLong(accumulator.minValue);
         entryBuffer.writeInt(accumulator.docCount);
 
-        // Future optional stats can be appended here.
-
-        // Per-level on-disk layout:
-        //   [4 bytes: maxDocID]       ← read first for cheap rejection
-        //   [4 bytes: entry length]   ← bytes of stats following (= entryBuffer.size())
-        //   [N bytes: stats]
         intervalBuffer.writeInt(accumulator.maxDocID);
         intervalBuffer.writeInt(Math.toIntExact(entryBuffer.size()));
         entryBuffer.copyTo(intervalBuffer);
