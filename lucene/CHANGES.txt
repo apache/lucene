@@ -331,6 +331,9 @@ Optimizations
 
 * GITHUB#16352: Better cost() estimation for SkipBlockRangeIterator. (Alan Woodward)
 
+* GITHUB#16355: Add ASCII fast-path to CharacterUtils.toLowerCase, avoiding per-char codepoint
+  conversion for ASCII-only tokens. 2.16x throughput on English text. (Costin Leau)
+
 Bug Fixes
 ---------------------
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
