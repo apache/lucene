@@ -100,7 +100,7 @@ API Changes
 
 * GITHUB#16281: The checkIntegrity() method of codec Producer APIs gains a OneMerge parameter,
   which is used to check for aborted merges during checksum validation. (Tanguy Leroux)
-  
+
 * GITHUB#16363: Add API to use a custom `DictionarySuggester` instead of hardcoded `GeneratingSuggester`
 
 New Features
