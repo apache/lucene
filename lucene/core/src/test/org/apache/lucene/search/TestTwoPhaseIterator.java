@@ -144,6 +144,51 @@ public class TestTwoPhaseIterator extends LuceneTestCase {
   }
 
   /**
+   * The bitSet passed to applyMask may be larger than the requested window ({@code upTo - offset})
+   * -- DenseConjunctionBulkScorer's windowMatches is a fixed WINDOW_SIZE bitset reused across
+   * windows that are often smaller than that. applyMask must not confirm, clear, or otherwise touch
+   * bits at or beyond upTo, even though they're addressable in bitSet.
+   */
+  public void testApplyMaskDoesNotTouchBitsAtOrBeyondUpTo() throws Exception {
+    Random rng = random();
+    int bitSetLength = TestUtil.nextInt(rng, 200, 5000);
+    int upTo = TestUtil.nextInt(rng, 10, bitSetLength - 10); // strictly smaller than bitSetLength
+
+    FixedBitSet trueMatches = randomBitSet(rng, bitSetLength, rng.nextDouble());
+    FixedBitSet candidates = randomBitSet(rng, bitSetLength, rng.nextDouble());
+
+    // Guarantee at least one candidate at or beyond upTo that is a false positive (a candidate
+    // that is NOT a true match): a buggy implementation that processes bits beyond upTo would
+    // observably clear it, since matches() correctly returns false for it.
+    int falsePositiveDoc = TestUtil.nextInt(rng, upTo, bitSetLength - 1);
+    trueMatches.clear(falsePositiveDoc);
+    candidates.set(falsePositiveDoc);
+
+    FixedBitSet original = candidates.clone();
+
+    FixedBitSet expectedBelowUpTo = candidates.clone();
+    expectedBelowUpTo.and(trueMatches);
+
+    TwoPhaseIterator twoPhase =
+        new RandomTwoPhaseView(
+            rng, new BitSetIterator(trueMatches, trueMatches.approximateCardinality()));
+    twoPhase.applyMask(upTo, candidates, 0);
+
+    for (int d = 0; d < upTo; d++) {
+      assertEquals(
+          "bit " + d + " is below upTo and must match linear scan",
+          expectedBelowUpTo.get(d),
+          candidates.get(d));
+    }
+    for (int d = upTo; d < bitSetLength; d++) {
+      assertEquals(
+          "bit " + d + " is at or beyond upTo and must not be touched by applyMask",
+          original.get(d),
+          candidates.get(d));
+    }
+  }
+
+  /**
    * applyMask must be correct when the mask represents a window offset from doc 0, mirroring how
    * DenseConjunctionBulkScorer calls it once per window.
    */

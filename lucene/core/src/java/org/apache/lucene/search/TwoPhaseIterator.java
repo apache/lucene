@@ -163,8 +163,9 @@ public abstract class TwoPhaseIterator {
    */
   public void applyMask(int upTo, FixedBitSet bitSet, int offset) throws IOException {
     DocIdSetIterator approximation = approximation();
+    int upperBound = Math.min(bitSet.length(), upTo - offset);
     for (int i = bitSet.nextSetBit(0);
-        i != DocIdSetIterator.NO_MORE_DOCS;
+        i != DocIdSetIterator.NO_MORE_DOCS && i < upperBound;
         i = i + 1 >= bitSet.length() ? DocIdSetIterator.NO_MORE_DOCS : bitSet.nextSetBit(i + 1)) {
       int doc = offset + i;
       int approxDoc = approximation.docID();

@@ -225,7 +225,9 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
         break;
       }
     }
-    // "sparse" mirrors the bit set's own WINDOW_SIZE/4 bulk-confirm cutoff (leadCost <= maxDoc/4).
+    // "sparse" means the lead clause's cost estimates it matches at most 1/4 of the document
+    // space -- cheap enough that leap-frog's per-survivor confirmation beats materializing a bit
+    // set for the whole window.
     boolean sparse =
         windowClauses.isEmpty() == false
             && windowClauses.get(0).approximation().cost() <= (long) maxDoc / 4;

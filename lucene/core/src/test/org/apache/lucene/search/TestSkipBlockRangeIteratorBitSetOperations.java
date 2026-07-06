@@ -854,6 +854,143 @@ public class TestSkipBlockRangeIteratorBitSetOperations extends BaseDocValuesSki
   }
 
   /**
+   * Regression test for a leading NO-gap: if the caller has already advanced the approximation past
+   * {@code offset} into a {@code [offset, blockStart)} span that doesn't intersect the query range
+   * at all -- as DenseConjunctionBulkScorer does when a middle clause's block covering windowBase
+   * is a NO block -- applyMask must still clear any candidates sitting in that gap rather than
+   * leaving them untouched because no block ever "lands" on them.
+   */
+  public void testApplyMaskClearsLeadingNoGap() throws Exception {
+    long queryMin = 10;
+    long queryMax = 20;
+
+    NumericDocValues values = docValues(queryMin, queryMax);
+    DocValuesSkipper skipper = docValuesSkipper(queryMin, queryMax, true);
+    DocValuesRangeIterator iter =
+        DocValuesRangeIterator.forRange(values, skipper, queryMin, queryMax);
+
+    // 300 is inside the [256, 512) NO region (values queryMin-1, entirely out of range), so
+    // advancing from there jumps straight past it -- exactly what DenseConjunctionBulkScorer's
+    // own advance(windowBase) does for a middle clause.
+    int windowBase = 300;
+    int landedAt = iter.approximation().advance(windowBase);
+    assertTrue(
+        "test requires advancing from within a NO region to jump forward", landedAt > windowBase);
+
+    FixedBitSet candidates = new FixedBitSet(2048 - windowBase);
+    candidates.set(0, candidates.length()); // every doc from windowBase onward is a candidate
+
+    iter.applyMask(2048, candidates, windowBase);
+
+    for (int d = windowBase; d < landedAt; d++) {
+      assertFalse(
+          "doc " + d + " is in the leading NO gap and must be cleared",
+          candidates.get(d - windowBase));
+    }
+  }
+
+  /**
+   * Regression test for the degenerate case where the approximation is already positioned at or
+   * beyond {@code upTo} when applyMask is called, because the whole requested window falls inside a
+   * NO gap. The while loop body never runs, so applyMask must still clear every candidate via the
+   * trailing gap check rather than leaving the loop having done nothing.
+   */
+  public void testApplyMaskWhenApproximationStartsAtOrPastUpTo() throws Exception {
+    long queryMin = 10;
+    long queryMax = 20;
+
+    NumericDocValues values = docValues(queryMin, queryMax);
+    DocValuesSkipper skipper = docValuesSkipper(queryMin, queryMax, true);
+    DocValuesRangeIterator iter =
+        DocValuesRangeIterator.forRange(values, skipper, queryMin, queryMax);
+
+    int windowBase = 300;
+    int landedAt = iter.approximation().advance(windowBase);
+    int upTo = windowBase + 50;
+    assertTrue("test requires the approximation to land beyond a small window", landedAt >= upTo);
+
+    FixedBitSet candidates = new FixedBitSet(upTo - windowBase);
+    candidates.set(0, candidates.length());
+
+    iter.applyMask(upTo, candidates, windowBase);
+
+    assertEquals(
+        "the whole window is a NO gap; every candidate must be cleared",
+        0,
+        candidates.cardinality());
+  }
+
+  /**
+   * Regression test ensuring the MAYBE branch of applyMask keeps confirming via the bulk (SIMD-
+   * capable) {@link NumericDocValues#rangeIntoBitSet} path instead of falling back to a scalar
+   * per-doc {@code matches()} loop, which would silently lose vectorization once a range clause
+   * becomes a trailing clause in a conjunction rather than the sole/leading clause.
+   */
+  public void testApplyMaskMaybeBlockUsesVectorizedPath() throws Exception {
+    long queryMin = 10;
+    long queryMax = 20;
+
+    int[] rangeIntoBitSetCalls = {0};
+    NumericDocValues delegate = docValues(queryMin, queryMax);
+    NumericDocValues counting =
+        new NumericDocValues() {
+          @Override
+          public long longValue() throws IOException {
+            return delegate.longValue();
+          }
+
+          @Override
+          public boolean advanceExact(int target) throws IOException {
+            return delegate.advanceExact(target);
+          }
+
+          @Override
+          public int docID() {
+            return delegate.docID();
+          }
+
+          @Override
+          public int nextDoc() throws IOException {
+            return delegate.nextDoc();
+          }
+
+          @Override
+          public int advance(int target) throws IOException {
+            return delegate.advance(target);
+          }
+
+          @Override
+          public long cost() {
+            return delegate.cost();
+          }
+
+          @Override
+          public void rangeIntoBitSet(
+              int fromDoc, int toDoc, long minValue, long maxValue, FixedBitSet bitSet, int offset)
+              throws IOException {
+            rangeIntoBitSetCalls[0]++;
+            super.rangeIntoBitSet(fromDoc, toDoc, minValue, maxValue, bitSet, offset);
+          }
+        };
+
+    DocValuesSkipper skipper = docValuesSkipper(queryMin, queryMax, true);
+    DocValuesRangeIterator iter =
+        DocValuesRangeIterator.forRange(counting, skipper, queryMin, queryMax);
+    // Docs [512, 1024) mix in-range and out-of-range values: a MAYBE region.
+    iter.approximation().advance(512);
+
+    FixedBitSet candidates = new FixedBitSet(2048);
+    candidates.set(512, 1024);
+
+    iter.applyMask(1024, candidates, 0);
+
+    assertTrue(
+        "MAYBE block confirmation must use the vectorized rangeIntoBitSet path, not a scalar"
+            + " per-doc fallback",
+        rangeIntoBitSetCalls[0] > 0);
+  }
+
+  /**
    * Randomized end-to-end check on a real index: applyMask must match per-doc evaluation restricted
    * to a random candidate set, across random data and range selectivities.
    */
