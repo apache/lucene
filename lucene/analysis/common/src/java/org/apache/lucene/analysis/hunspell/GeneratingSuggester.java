@@ -101,8 +101,8 @@ class GeneratingSuggester {
   }
 
   private static boolean isWorseThan(int score, CharsRef candidate, Weighted<Root<String>> root) {
-    return score < root.score()
-        || score == root.score() && CharSequence.compare(candidate, root.word().word()) > 0;
+    return score < root.score
+        || score == root.score && CharSequence.compare(candidate, root.word.word()) > 0;
   }
 
   private void processSuggestibleWords(
@@ -120,7 +120,7 @@ class GeneratingSuggester {
 
     TreeSet<Weighted<String>> expanded = new TreeSet<>();
     for (Weighted<Root<String>> weighted : roots) {
-      for (String guess : expandRoot(weighted.word(), misspelled)) {
+      for (String guess : expandRoot(weighted.word, misspelled)) {
         String lower = dictionary.toLowerCase(guess);
         int sc =
             anyMismatchNgram(misspelled.length(), misspelled, lower, false)
@@ -279,10 +279,10 @@ class GeneratingSuggester {
     double fact = (10.0 - dictionary.maxDiff) / 5.0;
     TreeSet<Weighted<String>> bySimilarity = new TreeSet<>();
     for (Weighted<String> weighted : expanded) {
-      String guess = weighted.word();
+      String guess = weighted.word;
       String lower = dictionary.toLowerCase(guess);
       if (lower.equals(word)) {
-        bySimilarity.add(new Weighted<>(guess, weighted.score() + 2000));
+        bySimilarity.add(new Weighted<>(guess, weighted.score + 2000));
         break;
       }
 
@@ -306,22 +306,22 @@ class GeneratingSuggester {
     List<String> result = new ArrayList<>();
     boolean hasExcellent = false;
     for (Weighted<String> weighted : bySimilarity) {
-      if (weighted.score() > 1000) {
+      if (weighted.score > 1000) {
         hasExcellent = true;
       } else if (hasExcellent) {
         break; // leave only excellent suggestions, if any
       }
 
-      boolean bad = weighted.score() < -100;
+      boolean bad = weighted.score < -100;
       // keep the best ngram suggestions, unless in ONLYMAXDIFF mode
       if (bad && (!result.isEmpty() || dictionary.onlyMaxDiff)) {
         break;
       }
 
-      if (prevSuggestions.stream().noneMatch(s -> weighted.word().contains(s.raw))
-          && result.stream().noneMatch(weighted.word()::contains)
-          && speller.checkWord(weighted.word())) {
-        result.add(weighted.word());
+      if (prevSuggestions.stream().noneMatch(s -> weighted.word.contains(s.raw))
+          && result.stream().noneMatch(weighted.word::contains)
+          && speller.checkWord(weighted.word)) {
+        result.add(weighted.word);
         if (result.size() >= dictionary.maxNGramSuggestions) {
           break;
         }
