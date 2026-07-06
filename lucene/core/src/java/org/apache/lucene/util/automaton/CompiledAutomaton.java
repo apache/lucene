@@ -278,17 +278,19 @@ public class CompiledAutomaton implements Accountable {
     // System.out.println("addTail state=" + state + " term=" + term.utf8ToString() + " idx=" + idx
     // + " leadLabel=" + (char) leadLabel);
     // System.out.println(automaton.toDot());
-    // Find biggest transition that's < label
-    // TODO: use binary search here
+    // Find biggest transition that's < label using binary search
+    int numTransitions = automaton.getNumTransitions(state);
+    int low = 0;
+    int high = numTransitions - 1;
     int maxIndex = -1;
-    int numTransitions = automaton.initTransition(state, transition);
-    for (int i = 0; i < numTransitions; i++) {
-      automaton.getNextTransition(transition);
+    while (low <= high) {
+      int mid = (low + high) >>> 1;
+      automaton.getTransition(state, mid, transition);
       if (transition.min < leadLabel) {
-        maxIndex = i;
+        maxIndex = mid;
+        low = mid + 1;
       } else {
-        // Transitions are always sorted
-        break;
+        high = mid - 1;
       }
     }
 
