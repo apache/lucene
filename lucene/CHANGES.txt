@@ -306,6 +306,8 @@ New Features
 
 Improvements
 ---------------------
+* GITHUB#16358: Make .dvs skip index extensible via type-tagged stats. (Sagar Upadhyaya)
+
 * GITHUB#16170: Alter TopGroups.merge() to not return null if no groups. (Binlong Gao)
 
 Optimizations
