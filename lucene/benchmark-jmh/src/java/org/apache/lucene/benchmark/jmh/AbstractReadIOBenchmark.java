@@ -24,42 +24,33 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
-import java.nio.channels.FileChannel.MapMode;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.util.Locale;
+import java.util.Optional;
+import org.apache.lucene.store.IOContext;
+import org.apache.lucene.store.IndexInput;
+import org.apache.lucene.store.MMapDirectory;
+import org.apache.lucene.store.NIOFSDirectory;
+import org.apache.lucene.store.ReadAdvice;
+import org.apache.lucene.util.Constants;
 import org.openjdk.jmh.annotations.Level;
-import org.openjdk.jmh.annotations.Scope;
 import org.openjdk.jmh.annotations.Setup;
-import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
 
 /**
- * Abstract base for read I/O benchmarks. Provides shared FFI handles (pread, open, close,
- * posix_madvise, fcntl), thread-local buffers, and file/mmap/fd setups.
+ * Abstract base for read I/O benchmarks. Provides shared FFI handles (pread, open, close, fcntl),
+ * Lucene Directory/IndexInput setups, and per-thread state.
  */
-@State(Scope.Benchmark)
 public abstract class AbstractReadIOBenchmark {
 
+  /** POSIX open(2) flag: read-only. */
   private static final int O_RDONLY = 0;
-  private static final int O_DIRECT = 0x4000; // Linux
+
+  /** Linux open(2) flag: bypass the page cache (requires aligned buffers and offsets). */
+  private static final int O_DIRECT = 0x4000;
+
+  /** macOS fcntl(2) command: disable unified buffer cache for this fd (equivalent to O_DIRECT). */
   private static final int F_NOCACHE = 48;
-
-  private static final boolean IS_MAC =
-      System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("mac");
-  private static final boolean IS_LINUX =
-      System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("linux");
-
-  /** Max read size for buffer pre-allocation. Actual read size is a @Param on subclasses. */
-  protected static final int MAX_READ_SIZE = 1024 * 1024;
-
-  /**
-   * Max reads per operation for buffer pre-allocation. Actual readsPerOp is a @Param on subclasses.
-   */
-  protected static final int MAX_READS_PER_OPERATION = 256;
 
   protected static final long FILE_SIZE =
       Long.parseLong(getConfigFromEnvOrProp("BENCH_FILE_SIZE_MB", "bench.fileSizeMB", "1024"))
@@ -73,15 +64,9 @@ public abstract class AbstractReadIOBenchmark {
       Boolean.parseBoolean(
           getConfigFromEnvOrProp("BENCH_DROP_CACHES", "bench.dropPageCache", "false"));
 
-  protected static final int POSIX_MADV_RANDOM = 1;
-  protected static final int POSIX_MADV_SEQUENTIAL = 2;
-  protected static final int POSIX_MADV_WILLNEED = 3;
-
-  // FFI handles
   protected static final MethodHandle PREAD;
   protected static final MethodHandle OPEN;
   protected static final MethodHandle CLOSE;
-  protected static final MethodHandle POSIX_MADVISE;
   protected static final MethodHandle FCNTL;
 
   protected static final int PAGE_SIZE;
@@ -116,17 +101,6 @@ public abstract class AbstractReadIOBenchmark {
             "close",
             FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
 
-    POSIX_MADVISE =
-        findFunction(
-            linker,
-            stdlib,
-            "posix_madvise",
-            FunctionDescriptor.of(
-                ValueLayout.JAVA_INT,
-                ValueLayout.ADDRESS,
-                ValueLayout.JAVA_LONG,
-                ValueLayout.JAVA_INT));
-
     FCNTL =
         findFunction(
             linker,
@@ -149,7 +123,7 @@ public abstract class AbstractReadIOBenchmark {
     }
   }
 
-  @SuppressWarnings("restricted") // unsafe functionality is used
+  @SuppressWarnings("restricted")
   private static MethodHandle findFunction(
       Linker linker, SymbolLookup lookup, String name, FunctionDescriptor desc) {
     final MemorySegment symbol =
@@ -162,62 +136,26 @@ public abstract class AbstractReadIOBenchmark {
     return linker.downcallHandle(symbol, desc);
   }
 
-  /** Per-thread pre-allocated buffers. */
-  @State(Scope.Thread)
-  public static class ThreadBuffers {
-    public ByteBuffer directBuf;
-    public byte[] heapBuf;
-    public Arena ffiArena;
-    public MemorySegment ffiBuf;
-    public MemorySegment ffiDirectIOBuf;
-    public long[] offsets;
+  protected MMapDirectory mmapDir;
+  protected IndexInput mmapInput;
 
-    @Setup(Level.Trial)
-    public void setup() {
-      directBuf = ByteBuffer.allocateDirect(MAX_READ_SIZE);
-      heapBuf = new byte[MAX_READ_SIZE];
-      ffiArena = Arena.ofConfined();
-      ffiBuf = ffiArena.allocate(MAX_READ_SIZE);
-      ffiDirectIOBuf = ffiArena.allocate(MAX_READ_SIZE, PAGE_SIZE);
-      offsets = new long[MAX_READS_PER_OPERATION];
-    }
+  protected MMapDirectory mmapSequentialDir;
+  protected IndexInput mmapSequentialInput;
 
-    @TearDown(Level.Trial)
-    public void tearDown() {
-      ffiArena.close();
-    }
-  }
+  protected MMapDirectory mmapRandomDir;
+  protected IndexInput mmapRandomInput;
 
-  protected Path benchFile;
-  protected FileChannel fileChannel;
-  protected MemorySegment mmapSegmentNormal;
-  protected MemorySegment mmapSegmentSequential;
-  protected MemorySegment mmapSegmentRandom;
+  protected NIOFSDirectory niofsDir;
+  protected IndexInput niofsInput;
+
+  // FFI pread file descriptors
   protected int preadFd;
   protected int directIOFd;
-  protected Arena arena;
-
-  protected void validateReadSize(int readSize) {
-    if (readSize > MAX_READ_SIZE) {
-      throw new IllegalArgumentException(
-          "readSize (" + readSize + ") exceeds MAX_READ_SIZE (" + MAX_READ_SIZE + ").");
-    }
-  }
-
-  protected void validateReadsPerOp(int readsPerOp) {
-    if (readsPerOp > MAX_READS_PER_OPERATION) {
-      throw new IllegalArgumentException(
-          "readsPerOp ("
-              + readsPerOp
-              + ") exceeds MAX_READS_PER_OPERATION ("
-              + MAX_READS_PER_OPERATION
-              + ").");
-    }
-  }
+  protected Arena ffiArena;
 
   @Setup(Level.Trial)
   public void setup() throws Exception {
-    benchFile = Path.of(BENCH_FILE);
+    Path benchFile = Path.of(BENCH_FILE);
     if (!Files.exists(benchFile)) {
       throw new IOException(
           "Benchmark file not found: "
@@ -241,43 +179,47 @@ public abstract class AbstractReadIOBenchmark {
               + (FILE_SIZE / (1024 * 1024)));
     }
 
-    arena = Arena.ofShared();
-    fileChannel = FileChannel.open(benchFile, StandardOpenOption.READ);
-    try {
-      setupMmap();
-      setupPreadFd();
-      setupDirectIOFd();
-    } catch (Exception e) {
-      tearDown();
-      throw e;
-    }
+    String fileName = benchFile.getFileName().toString();
+    Path dirPath = benchFile.getParent();
+
+    setupMMapAndNIOFSDirectory(dirPath, fileName);
+
+    // Setup FFI pread file descriptors
+    ffiArena = Arena.ofShared();
+    setupPreadFd(benchFile);
+    setupDirectIOFd(benchFile);
   }
 
-  private void setupMmap() throws IOException {
-    mmapSegmentNormal = fileChannel.map(MapMode.READ_ONLY, 0, FILE_SIZE, arena);
-    mmapSegmentSequential = fileChannel.map(MapMode.READ_ONLY, 0, FILE_SIZE, arena);
-    mmapSegmentRandom = fileChannel.map(MapMode.READ_ONLY, 0, FILE_SIZE, arena);
-    madvise(mmapSegmentSequential, POSIX_MADV_SEQUENTIAL);
-    madvise(mmapSegmentRandom, POSIX_MADV_RANDOM);
+  private void setupMMapAndNIOFSDirectory(Path dirPath, String fileName) throws IOException {
+    mmapDir = new MMapDirectory(dirPath);
+    mmapInput = mmapDir.openInput(fileName, IOContext.DEFAULT);
+
+    mmapSequentialDir = new MMapDirectory(dirPath);
+    mmapSequentialDir.setReadAdvice(
+        (name, context) -> {
+          if (name.equals(fileName)) {
+            return Optional.of(ReadAdvice.SEQUENTIAL);
+          }
+          return Optional.empty();
+        });
+    mmapSequentialInput = mmapSequentialDir.openInput(fileName, IOContext.DEFAULT);
+
+    mmapRandomDir = new MMapDirectory(dirPath);
+    mmapRandomDir.setReadAdvice(
+        (name, context) -> {
+          if (name.equals(fileName)) {
+            return Optional.of(ReadAdvice.RANDOM);
+          }
+          return Optional.empty();
+        });
+    mmapRandomInput = mmapRandomDir.openInput(fileName, IOContext.DEFAULT);
+
+    niofsDir = new NIOFSDirectory(dirPath);
+    niofsInput = niofsDir.openInput(fileName, IOContext.DEFAULT);
   }
 
-  protected void madvise(MemorySegment segment, int advice) throws IOException {
-    if (segment.byteSize() == 0L) {
-      return;
-    }
-    final int rc;
-    try {
-      rc = (int) POSIX_MADVISE.invokeExact(segment, segment.byteSize(), advice);
-    } catch (Throwable t) {
-      throw new RuntimeException("posix_madvise failed", t);
-    }
-    if (rc != 0) {
-      throw new IOException("posix_madvise(" + advice + ") returned " + rc);
-    }
-  }
-
-  private void setupPreadFd() throws IOException {
-    MemorySegment pathStr = arena.allocateFrom(benchFile.toString());
+  private void setupPreadFd(Path benchFile) throws IOException {
+    MemorySegment pathStr = ffiArena.allocateFrom(benchFile.toString());
     try {
       preadFd = (int) OPEN.invokeExact(pathStr, O_RDONLY);
     } catch (Throwable t) {
@@ -288,15 +230,15 @@ public abstract class AbstractReadIOBenchmark {
     }
   }
 
-  private void setupDirectIOFd() throws IOException {
-    MemorySegment pathStr = arena.allocateFrom(benchFile.toString());
+  private void setupDirectIOFd(Path benchFile) throws IOException {
+    MemorySegment pathStr = ffiArena.allocateFrom(benchFile.toString());
     try {
-      if (IS_LINUX) {
+      if (Constants.LINUX) {
         directIOFd = (int) OPEN.invokeExact(pathStr, O_RDONLY | O_DIRECT);
         if (directIOFd < 0) {
           throw new IOException("open(O_DIRECT) returned fd=" + directIOFd);
         }
-      } else if (IS_MAC) {
+      } else if (Constants.MAC_OS_X) {
         directIOFd = (int) OPEN.invokeExact(pathStr, O_RDONLY);
         if (directIOFd < 0) {
           throw new IOException("open() for direct I/O returned fd=" + directIOFd);
@@ -304,11 +246,9 @@ public abstract class AbstractReadIOBenchmark {
         int rc = (int) FCNTL.invokeExact(directIOFd, F_NOCACHE, 1);
         if (rc != 0) {
           CLOSE.invokeExact(directIOFd);
-          directIOFd = -1;
           throw new IOException("fcntl(F_NOCACHE) returned " + rc);
         }
       } else {
-        // skip direct I/O benchmarks for other platforms
         directIOFd = -1;
       }
     } catch (IOException e) {
@@ -321,9 +261,32 @@ public abstract class AbstractReadIOBenchmark {
   @TearDown(Level.Trial)
   @SuppressWarnings({"restricted", "unused"})
   public void tearDown() throws Exception {
-    if (fileChannel != null) {
-      fileChannel.close();
+    // Close Lucene IndexInputs and Directories
+    if (mmapInput != null) {
+      mmapInput.close();
     }
+    if (mmapSequentialInput != null) {
+      mmapSequentialInput.close();
+    }
+    if (mmapRandomInput != null) {
+      mmapRandomInput.close();
+    }
+    if (mmapDir != null) {
+      mmapDir.close();
+    }
+    if (mmapSequentialDir != null) {
+      mmapSequentialDir.close();
+    }
+    if (mmapRandomDir != null) {
+      mmapRandomDir.close();
+    }
+    if (niofsInput != null) {
+      niofsInput.close();
+    }
+    if (niofsDir != null) {
+      niofsDir.close();
+    }
+
     try {
       if (preadFd > 0) {
         int rc = (int) CLOSE.invokeExact(preadFd);
@@ -334,8 +297,8 @@ public abstract class AbstractReadIOBenchmark {
     } catch (Throwable t) {
       throw new RuntimeException("Failed to close fd", t);
     }
-    if (arena != null) {
-      arena.close();
+    if (ffiArena != null) {
+      ffiArena.close();
     }
   }
 
@@ -347,9 +310,9 @@ public abstract class AbstractReadIOBenchmark {
   }
 
   private static void dropPageCaches() throws IOException {
-    if (IS_MAC) {
+    if (Constants.MAC_OS_X) {
       exec("/usr/bin/sudo", "purge");
-    } else if (IS_LINUX) {
+    } else if (Constants.LINUX) {
       exec("/usr/bin/sync");
       exec("/usr/bin/sudo", "/usr/bin/bash", "-c", "echo 3 > /proc/sys/vm/drop_caches");
     }
@@ -377,5 +340,35 @@ public abstract class AbstractReadIOBenchmark {
       return env;
     }
     return System.getProperty(propKey, defaultValue);
+  }
+
+  public static class BaseThreadState {
+    public IndexInput mmapInput;
+    public IndexInput mmapSequentialInput;
+    public IndexInput mmapRandomInput;
+    public IndexInput niofsInput;
+    public Arena ffiArena;
+    public MemorySegment ffiBuf;
+    public MemorySegment ffiDirectIOBuf;
+    public byte[] heapBuf;
+
+    public void init(AbstractReadIOBenchmark bench, int readSize) throws IOException {
+      mmapInput = bench.mmapInput.clone();
+      mmapSequentialInput = bench.mmapSequentialInput.clone();
+      mmapRandomInput = bench.mmapRandomInput.clone();
+      niofsInput = bench.niofsInput.clone();
+      ffiArena = Arena.ofConfined();
+      ffiBuf = ffiArena.allocate(readSize);
+      ffiDirectIOBuf = ffiArena.allocate(readSize, PAGE_SIZE);
+      heapBuf = new byte[readSize];
+    }
+
+    public void cleanup() throws IOException {
+      mmapInput.close();
+      mmapSequentialInput.close();
+      mmapRandomInput.close();
+      niofsInput.close();
+      ffiArena.close();
+    }
   }
 }
