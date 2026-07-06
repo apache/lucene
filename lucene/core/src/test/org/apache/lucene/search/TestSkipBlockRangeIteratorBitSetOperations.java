@@ -38,10 +38,11 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
- * Tests the {@code intoBitSet()} bulk path of {@link DocValuesRangeIterator} over single-valued
- * numeric doc values, including YES, YES_IF_PRESENT, and MAYBE block states.
+ * Tests the {@code intoBitSet()} and {@code applyMask()} bulk paths of {@link
+ * DocValuesRangeIterator} over single-valued numeric doc values, including YES, YES_IF_PRESENT,
+ * and MAYBE block states.
  */
-public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTests {
+public class TestSkipBlockRangeIteratorBitSetOperations extends BaseDocValuesSkipperTests {
 
   // Use enough docs to span at least 4 skip blocks (default skip block size = 4096 docs).
   private static final int DOC_COUNT = 4096 * 4;
@@ -576,6 +577,346 @@ public class TestSkipBlockRangeIteratorIntoBitSet extends BaseDocValuesSkipperTe
         d != DocIdSetIterator.NO_MORE_DOCS;
         d = d + 1 < bitSet.length() ? bitSet.nextSetBit(d + 1) : DocIdSetIterator.NO_MORE_DOCS) {
       assertTrue("Doc " + d + " set in bitset but not in expected", expected.contains(d));
+    }
+  }
+
+  /**
+   * With every doc a candidate, {@code applyMask} must confirm exactly the same docs as {@code
+   * intoBitSet} would set from scratch.
+   */
+  public void testApplyMaskWithFullCandidateSetMatchesIntoBitSet() throws Exception {
+    long queryMin = 10;
+    long queryMax = 20;
+
+    NumericDocValues values = docValues(queryMin, queryMax);
+    DocValuesSkipper skipper = docValuesSkipper(queryMin, queryMax, true);
+    DocValuesRangeIterator intoBitSetIter =
+        DocValuesRangeIterator.forRange(values, skipper, queryMin, queryMax);
+    intoBitSetIter.approximation().nextDoc();
+    FixedBitSet expected = new FixedBitSet(2048);
+    intoBitSetIter.intoBitSet(2048, expected, 0);
+
+    values = docValues(queryMin, queryMax);
+    skipper = docValuesSkipper(queryMin, queryMax, true);
+    DocValuesRangeIterator maskIter =
+        DocValuesRangeIterator.forRange(values, skipper, queryMin, queryMax);
+    maskIter.approximation().nextDoc();
+    FixedBitSet allCandidates = new FixedBitSet(2048);
+    allCandidates.set(0, 2048);
+    maskIter.applyMask(2048, allCandidates, 0);
+
+    assertEquals(
+        "applyMask with every doc a candidate must match intoBitSet", expected, allCandidates);
+  }
+
+  /** {@code applyMask} must only ever clear candidate bits, never set new ones. */
+  public void testApplyMaskNeverSetsBitsOutsideInitialCandidates() throws Exception {
+    long queryMin = 10;
+    long queryMax = 20;
+
+    NumericDocValues values = docValues(queryMin, queryMax);
+    DocValuesSkipper skipper = docValuesSkipper(queryMin, queryMax, true);
+    DocValuesRangeIterator iter =
+        DocValuesRangeIterator.forRange(values, skipper, queryMin, queryMax);
+    iter.approximation().nextDoc();
+
+    Random rng = random();
+    FixedBitSet candidates = new FixedBitSet(2048);
+    FixedBitSet originalCandidates = new FixedBitSet(2048);
+    for (int d = 0; d < 2048; d++) {
+      if (rng.nextInt(5) == 0) {
+        candidates.set(d);
+        originalCandidates.set(d);
+      }
+    }
+
+    iter.applyMask(2048, candidates, 0);
+
+    FixedBitSet extra = candidates.clone();
+    extra.andNot(originalCandidates);
+    assertEquals(
+        "applyMask must never set a bit that wasn't already a candidate", 0, extra.cardinality());
+  }
+
+  /**
+   * Directly tests applyMask() against a linear scan restricted to a random candidate set, across
+   * all block types (YES, NO, MAYBE, YES_IF_PRESENT).
+   */
+  public void testApplyMaskMatchesLinearScanRestrictedToCandidates() throws Exception {
+    long queryMin = 10;
+    long queryMax = 20;
+
+    Random rng = random();
+    FixedBitSet candidates = new FixedBitSet(2048);
+    for (int d = 0; d < 2048; d++) {
+      if (rng.nextBoolean()) {
+        candidates.set(d);
+      }
+    }
+
+    NumericDocValues refValues = docValues(queryMin, queryMax);
+    FixedBitSet expected = new FixedBitSet(2048);
+    for (int d = refValues.nextDoc();
+        d != DocIdSetIterator.NO_MORE_DOCS && d < 2048;
+        d = refValues.nextDoc()) {
+      if (candidates.get(d)
+          && refValues.longValue() >= queryMin
+          && refValues.longValue() <= queryMax) {
+        expected.set(d);
+      }
+    }
+
+    NumericDocValues values = docValues(queryMin, queryMax);
+    DocValuesSkipper skipper = docValuesSkipper(queryMin, queryMax, true);
+    DocValuesRangeIterator iter =
+        DocValuesRangeIterator.forRange(values, skipper, queryMin, queryMax);
+    iter.approximation().nextDoc();
+
+    FixedBitSet actual = candidates.clone();
+    iter.applyMask(2048, actual, 0);
+
+    assertEquals("applyMask must match linear scan restricted to candidates", expected, actual);
+  }
+
+  /** A YES block means every doc in it matches, so its candidate bits must remain untouched. */
+  public void testApplyMaskLeavesYesBlockCandidatesSet() throws Exception {
+    long queryMin = 10;
+    long queryMax = 20;
+
+    NumericDocValues values = docValues(queryMin, queryMax);
+    DocValuesSkipper skipper = docValuesSkipper(queryMin, queryMax, true);
+    DocValuesRangeIterator iter =
+        DocValuesRangeIterator.forRange(values, skipper, queryMin, queryMax);
+    iter.approximation().nextDoc();
+
+    // Docs [0, 128) are dense and within [queryMin, queryMax]: a YES block.
+    FixedBitSet candidates = new FixedBitSet(2048);
+    candidates.set(0, 128);
+
+    iter.applyMask(128, candidates, 0);
+
+    assertEquals("Every candidate in a YES block must remain set", 128, candidates.cardinality());
+  }
+
+  /**
+   * A YES_IF_PRESENT block means every doc that has a value matches; applyMask must clear
+   * candidates whose doc has no value while leaving present candidates set.
+   */
+  public void testApplyMaskClearsAbsentCandidatesInYesIfPresentBlock() throws Exception {
+    long queryMin = 10;
+    long queryMax = 20;
+
+    NumericDocValues values = docValues(queryMin, queryMax);
+    DocValuesSkipper skipper = docValuesSkipper(queryMin, queryMax, true);
+    DocValuesRangeIterator iter =
+        DocValuesRangeIterator.forRange(values, skipper, queryMin, queryMax);
+    // Docs [1088, 1152) are sparse (only even docs have a value) but every present value is
+    // within [queryMin, queryMax]: a YES_IF_PRESENT block.
+    assertEquals(1088, iter.approximation().advance(1088));
+
+    FixedBitSet candidates = new FixedBitSet(2048);
+    candidates.set(1088, 1152);
+
+    iter.applyMask(1152, candidates, 0);
+
+    for (int d = 1088; d < 1152; d++) {
+      if (d % 2 == 0) {
+        assertTrue(
+            "Present doc " + d + " in a YES_IF_PRESENT block must remain a candidate",
+            candidates.get(d));
+      } else {
+        assertFalse("Absent doc " + d + " must be cleared", candidates.get(d));
+      }
+    }
+  }
+
+  /**
+   * A MAYBE block has no block-level shortcut; applyMask must confirm each candidate doc
+   * individually against the predicate.
+   */
+  public void testApplyMaskConfirmsIndividualCandidatesInMaybeBlock() throws Exception {
+    long queryMin = 10;
+    long queryMax = 20;
+
+    // Docs [512, 1024) mix in-range and out-of-range values depending on (d/2)%3: a MAYBE block.
+    NumericDocValues refValues = docValues(queryMin, queryMax);
+    FixedBitSet expected = new FixedBitSet(2048);
+    for (int d = 512; d < 1024; d++) {
+      refValues.advanceExact(d);
+      if (refValues.longValue() >= queryMin && refValues.longValue() <= queryMax) {
+        expected.set(d);
+      }
+    }
+    assertTrue(
+        "Test requires a genuine mix of matches and non-matches",
+        expected.cardinality() > 0 && expected.cardinality() < 512);
+
+    NumericDocValues values = docValues(queryMin, queryMax);
+    DocValuesSkipper skipper = docValuesSkipper(queryMin, queryMax, true);
+    DocValuesRangeIterator iter =
+        DocValuesRangeIterator.forRange(values, skipper, queryMin, queryMax);
+    iter.approximation().advance(512);
+
+    FixedBitSet candidates = new FixedBitSet(2048);
+    candidates.set(512, 1024);
+    iter.applyMask(1024, candidates, 0);
+
+    assertEquals(
+        "applyMask must confirm each candidate individually in a MAYBE block",
+        expected,
+        candidates);
+  }
+
+  /**
+   * When there are no candidates anywhere in the requested range, applyMask must never touch doc
+   * values -- not even to bulk-scan presence for a YES_IF_PRESENT block or evaluate the predicate
+   * for a MAYBE block.
+   */
+  public void testApplyMaskTouchesNoDocValuesWhenNoCandidates() throws Exception {
+    long queryMin = 10;
+    long queryMax = 20;
+
+    int[] callCount = {0};
+    NumericDocValues delegate = docValues(queryMin, queryMax);
+    NumericDocValues counting =
+        new NumericDocValues() {
+          @Override
+          public long longValue() throws IOException {
+            callCount[0]++;
+            return delegate.longValue();
+          }
+
+          @Override
+          public boolean advanceExact(int target) throws IOException {
+            callCount[0]++;
+            return delegate.advanceExact(target);
+          }
+
+          @Override
+          public int docID() {
+            return delegate.docID();
+          }
+
+          @Override
+          public int nextDoc() throws IOException {
+            callCount[0]++;
+            return delegate.nextDoc();
+          }
+
+          @Override
+          public int advance(int target) throws IOException {
+            callCount[0]++;
+            return delegate.advance(target);
+          }
+
+          @Override
+          public long cost() {
+            return delegate.cost();
+          }
+        };
+
+    DocValuesSkipper skipper = docValuesSkipper(queryMin, queryMax, true);
+    DocValuesRangeIterator iter =
+        DocValuesRangeIterator.forRange(counting, skipper, queryMin, queryMax);
+    // approximation() is the block iterator over the skipper, not `counting`, so positioning it
+    // never touches doc values.
+    iter.approximation().nextDoc();
+    assertEquals(0, callCount[0]);
+
+    FixedBitSet noCandidates = new FixedBitSet(2048); // nothing is a candidate anywhere
+    iter.applyMask(2048, noCandidates, 0);
+
+    assertEquals(
+        "applyMask must not touch doc values when there are no candidates", 0, callCount[0]);
+    assertEquals(0, noCandidates.cardinality());
+  }
+
+  /** applyMask must leave the approximation positioned at or beyond upTo, mirroring intoBitSet. */
+  public void testApplyMaskAdvancesApproximationToUpTo() throws Exception {
+    long queryMin = 10;
+    long queryMax = 20;
+
+    NumericDocValues values = docValues(queryMin, queryMax);
+    DocValuesSkipper skipper = docValuesSkipper(queryMin, queryMax, true);
+    DocValuesRangeIterator iter =
+        DocValuesRangeIterator.forRange(values, skipper, queryMin, queryMax);
+    DocIdSetIterator approximation = iter.approximation();
+    assertEquals(0, approximation.nextDoc());
+
+    FixedBitSet candidates = new FixedBitSet(2048);
+    candidates.set(0, 128);
+    iter.applyMask(128, candidates, 0);
+
+    assertTrue(
+        "approximation must be positioned at or beyond upTo after applyMask, but was "
+            + approximation.docID(),
+        approximation.docID() >= 128);
+  }
+
+  /**
+   * Randomized end-to-end check on a real index: applyMask must match per-doc evaluation
+   * restricted to a random candidate set, across random data and range selectivities.
+   */
+  public void testApplyMaskMatchesPerDocEvaluationOnRealIndex() throws Exception {
+    Random rng = random();
+    for (int iter = 0; iter < 10; iter++) {
+      int numDocs = rng.nextInt(4096, 4096 * 3);
+      long maxValue = rng.nextInt(100, 10000);
+      long rangeMin = rng.nextLong(0, maxValue / 2);
+      long rangeMax = rangeMin + rng.nextLong(1, maxValue / 2);
+
+      try (Directory dir = newDirectory()) {
+        IndexWriterConfig iwc = new IndexWriterConfig().setCodec(new Lucene104Codec());
+        long[] values = new long[numDocs];
+        try (IndexWriter w = new IndexWriter(dir, iwc)) {
+          for (int i = 0; i < numDocs; i++) {
+            values[i] = rng.nextLong(0, maxValue);
+            Document doc = new Document();
+            doc.add(NumericDocValuesField.indexedField("val", values[i]));
+            w.addDocument(doc);
+          }
+          w.forceMerge(1);
+        }
+
+        try (DirectoryReader reader = DirectoryReader.open(dir)) {
+          LeafReaderContext ctx = reader.leaves().get(0);
+          DocValuesSkipper skipper = ctx.reader().getDocValuesSkipper("val");
+          assertNotNull("Field must have a skip index", skipper);
+
+          FixedBitSet candidates = new FixedBitSet(numDocs);
+          for (int d = 0; d < numDocs; d++) {
+            if (rng.nextInt(3) != 0) {
+              candidates.set(d);
+            }
+          }
+
+          FixedBitSet expected = candidates.clone();
+          for (int d = 0; d < numDocs; d++) {
+            if (expected.get(d) && (values[d] < rangeMin || values[d] > rangeMax)) {
+              expected.clear(d);
+            }
+          }
+
+          NumericDocValues dv = ctx.reader().getNumericDocValues("val");
+          DocValuesRangeIterator rangeIter =
+              DocValuesRangeIterator.forRange(dv, skipper, rangeMin, rangeMax);
+          rangeIter.approximation().nextDoc();
+
+          FixedBitSet actual = candidates.clone();
+          rangeIter.applyMask(numDocs, actual, 0);
+
+          assertEquals(
+              "applyMask must match per-doc evaluation restricted to candidates (numDocs="
+                  + numDocs
+                  + ", range=["
+                  + rangeMin
+                  + ","
+                  + rangeMax
+                  + "])",
+              expected,
+              actual);
+        }
+      }
     }
   }
 

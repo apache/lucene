@@ -337,12 +337,7 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
       while (blockIterator.docID() < upTo) {
         int blockStart = blockIterator.docID();
         SkipBlockRangeIterator.Match match = blockIterator.getMatch();
-        // For MAYBE blocks docIDRunEnd() is conservative (doc+1), so use the full block boundary to
-        // evaluate the whole block at once.
-        int blockEnd =
-            match == SkipBlockRangeIterator.Match.MAYBE
-                ? Math.min(upTo, blockIterator.blockEnd())
-                : Math.min(upTo, blockIterator.docIDRunEnd());
+        int blockEnd = blockEnd(upTo, match);
         switch (match) {
           case YES -> bitSet.set(blockStart - offset, blockEnd - offset);
           case YES_IF_PRESENT -> {
@@ -364,6 +359,75 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
     /** Confirms the docs of a single MAYBE block in {@code [blockStart, blockEnd)}. */
     abstract void intoMaybeBlock(int blockStart, int blockEnd, FixedBitSet bitSet, int offset)
         throws IOException;
+
+    // For MAYBE blocks docIDRunEnd() is conservative (doc+1), so use the full block boundary to
+    // evaluate/classify the whole block at once.
+    private int blockEnd(int upTo, SkipBlockRangeIterator.Match match) throws IOException {
+      return match == SkipBlockRangeIterator.Match.MAYBE
+          ? Math.min(upTo, blockIterator.blockEnd())
+          : Math.min(upTo, blockIterator.docIDRunEnd());
+    }
+
+    @Override
+    public final void applyMask(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      FixedBitSet scratch = null;
+      while (blockIterator.docID() < upTo) {
+        int blockStart = blockIterator.docID();
+        SkipBlockRangeIterator.Match match = blockIterator.getMatch();
+        int blockEnd = blockEnd(upTo, match);
+
+        switch (match) {
+          case YES -> {
+            // Every doc in the block matches; candidate bits are already correct, nothing to
+            // confirm.
+          }
+          case YES_IF_PRESENT -> {
+            // All present values are in range, so only docs with no value need to be excluded.
+            // Skip the block entirely, without touching doc values, if it has no candidates.
+            // Otherwise bulk-scan disi's (possibly vectorized) presence for just this block into a
+            // scratch bitset sized to the block, then AND it into the candidate bits for the
+            // block's range -- this keeps the bulk scan while leaving candidate bits outside the
+            // block untouched.
+            if (bitSet.nextSetBit(blockStart - offset, blockEnd - offset)
+                != DocIdSetIterator.NO_MORE_DOCS) {
+              if (disi.docID() < blockStart) {
+                disi.advance(blockStart);
+              }
+              int blockLength = blockEnd - blockStart;
+              if (scratch == null || scratch.length() < blockLength) {
+                scratch = new FixedBitSet(blockLength);
+              }
+              disi.intoBitSet(blockEnd, scratch, blockStart);
+              FixedBitSet.andRange(scratch, 0, bitSet, blockStart - offset, blockLength);
+              scratch.clear(0, blockLength);
+            }
+          }
+          case MAYBE -> {
+            // No block-level shortcut; confirm only the docs that are still candidates, never
+            // visiting doc values for a block that has none.
+            int blockEndBit = blockEnd - offset;
+            for (int i = bitSet.nextSetBit(blockStart - offset, blockEndBit);
+                i != DocIdSetIterator.NO_MORE_DOCS;
+                i =
+                    i + 1 >= blockEndBit
+                        ? DocIdSetIterator.NO_MORE_DOCS
+                        : bitSet.nextSetBit(i + 1, blockEndBit)) {
+              blockIterator.advance(offset + i);
+              if (matches() == false) {
+                bitSet.clear(i);
+              }
+            }
+          }
+        }
+        int advanced = blockIterator.advance(blockEnd);
+        if (blockEnd < upTo && advanced > blockEnd) {
+          // The skip index proved that [blockEnd, advanced) doesn't intersect the query range at
+          // all -- intoBitSet would never have set bits there either, but unlike intoBitSet,
+          // applyMask must clear any pre-existing candidates in a span it never lands on.
+          bitSet.clear(blockEnd - offset, Math.min(advanced, upTo) - offset);
+        }
+      }
+    }
   }
 
   /** Bulk range iterator over single-valued numeric doc values. */
