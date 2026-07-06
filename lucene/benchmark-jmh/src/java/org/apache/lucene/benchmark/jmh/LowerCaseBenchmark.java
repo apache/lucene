@@ -18,6 +18,7 @@ package org.apache.lucene.benchmark.jmh;
 
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
+import org.apache.lucene.util.UnicodeUtil;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
