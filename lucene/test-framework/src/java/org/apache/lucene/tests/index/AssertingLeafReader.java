@@ -968,6 +968,22 @@ public class AssertingLeafReader extends FilterLeafReader {
     }
 
     @Override
+    public void binaryValues(int size, int[] docs, BytesRef[] values) throws IOException {
+      assertThread("Binary doc values", creationThread);
+      assert size >= 0;
+      assert size == 0 || docs[0] >= docID();
+      assert size == 0 || docs[0] >= 0;
+      for (int i = 1; i < size; ++i) {
+        assert docs[i] > docs[i - 1];
+      }
+      assert size == 0 || docs[size - 1] < maxDoc;
+      int expectedDocIdOnReturn = size == 0 ? docID() : docs[size - 1];
+      super.binaryValues(size, docs, values);
+      lastDocID = in.docID();
+      assert lastDocID == expectedDocIdOnReturn;
+    }
+
+    @Override
     public String toString() {
       return "AssertingBinaryDocValues(" + in + ")";
     }

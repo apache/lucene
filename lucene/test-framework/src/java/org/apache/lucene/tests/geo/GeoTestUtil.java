@@ -763,22 +763,22 @@ public class GeoTestUtil {
     boolean c = false;
     int i, j;
     int nvert = polyLats.length;
-    double[] verty = polyLats;
-    double[] vertx = polyLons;
+    double[] vertY = polyLats;
+    double[] vertX = polyLons;
     double testy = latitude;
     double testx = longitude;
     for (i = 0, j = 1; j < nvert; ++i, ++j) {
-      if (testy == verty[j] && testy == verty[i]
-          || ((testy <= verty[j] && testy >= verty[i])
-              != (testy >= verty[j] && testy <= verty[i]))) {
-        if ((testx == vertx[j] && testx == vertx[i])
-            || ((testx <= vertx[j] && testx >= vertx[i]) != (testx >= vertx[j] && testx <= vertx[i])
-                && GeoUtils.orient(vertx[i], verty[i], vertx[j], verty[j], testx, testy) == 0)) {
+      if (testy == vertY[j] && testy == vertY[i]
+          || ((testy <= vertY[j] && testy >= vertY[i])
+              != (testy >= vertY[j] && testy <= vertY[i]))) {
+        if ((testx == vertX[j] && testx == vertX[i])
+            || ((testx <= vertX[j] && testx >= vertX[i]) != (testx >= vertX[j] && testx <= vertX[i])
+                && GeoUtils.orient(vertX[i], vertY[i], vertX[j], vertY[j], testx, testy) == 0)) {
           // return true if point is on boundary
           return true;
-        } else if (((verty[i] > testy) != (verty[j] > testy))
+        } else if (((vertY[i] > testy) != (vertY[j] > testy))
             && (testx
-                < (vertx[j] - vertx[i]) * (testy - verty[i]) / (verty[j] - verty[i]) + vertx[i])) {
+                < (vertX[j] - vertX[i]) * (testy - vertY[i]) / (vertY[j] - vertY[i]) + vertX[i])) {
           c = !c;
         }
       }

@@ -733,7 +733,7 @@ public class TestSortOptimization extends LuceneTestCase {
    * Test that sorting on _doc works correctly. This test goes through
    * DefaultBulkSorter::scoreRange, where scorerIterator is BitSetIterator. As a conjunction of this
    * BitSetIterator with DocComparator's iterator, we get BitSetConjunctionDISI.
-   * BitSetConjuctionDISI advances based on the DocComparator's iterator, and doesn't consider that
+   * BitSetConjunctionDISI advances based on the DocComparator's iterator, and doesn't consider that
    * its BitSetIterator may have advanced passed a certain doc.
    */
   public void testDocSort() throws IOException {

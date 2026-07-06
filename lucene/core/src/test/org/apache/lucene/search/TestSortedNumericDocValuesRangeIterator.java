@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.SortedNumericDocValues;
+import org.apache.lucene.tests.index.AssertingLeafReader;
 import org.apache.lucene.util.FixedBitSet;
 
 /**
@@ -90,6 +91,12 @@ public class TestSortedNumericDocValuesRangeIterator extends BaseDocValuesSkippe
   }
 
   private static SortedNumericDocValues sortedNumericDocValues(long queryMin, long queryMax) {
+    SortedNumericDocValues values = newSortedNumericDocValues(queryMin, queryMax);
+    // Enforce the forward-only iteration contracts like real sparse implementations rely on.
+    return AssertingLeafReader.AssertingSortedNumericDocValues.create(values, MAX_DOC);
+  }
+
+  private static SortedNumericDocValues newSortedNumericDocValues(long queryMin, long queryMax) {
     return new SortedNumericDocValues() {
       int doc = -1;
       int valueIdx = 0;
@@ -397,5 +404,23 @@ public class TestSortedNumericDocValuesRangeIterator extends BaseDocValuesSkippe
     approx.advance(1088);
     assertEquals(SkipBlockRangeIterator.Match.YES_IF_PRESENT, approx.getMatch());
     assertEquals(1089, iter.docIDRunEnd());
+  }
+
+  public void testIntoBitSetAfterMatchesOnSparseRegion() throws IOException {
+    DocValuesRangeIterator iter = createIterator(true);
+    SkipBlockRangeIterator approx = (SkipBlockRangeIterator) iter.approximation();
+    // Doc 1537 is in the sparse region, in a block with mixed values -> MAYBE
+    approx.advance(1537);
+    assertEquals(SkipBlockRangeIterator.Match.MAYBE, approx.getMatch());
+    assertFalse(iter.matches());
+    FixedBitSet bitSet = new FixedBitSet(MAX_DOC);
+    iter.intoBitSet(MAX_DOC, bitSet, 0);
+    FixedBitSet expected = new FixedBitSet(MAX_DOC);
+    for (int doc = 1537; doc < MAX_DOC; doc++) {
+      if (docHasValue(doc) && valueInRange(doc)) {
+        expected.set(doc);
+      }
+    }
+    assertEquals(expected, bitSet);
   }
 }

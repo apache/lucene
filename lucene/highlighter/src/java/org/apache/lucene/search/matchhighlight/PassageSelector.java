@@ -201,7 +201,7 @@ public class PassageSelector {
         for (int j = i + 1; j < passages.length; j++) {
           Passage b = passages[j];
           if (b != null) {
-            if (adjecentOrOverlapping(a, b)) {
+            if (adjacentOrOverlapping(a, b)) {
               passages[j] = null;
             }
           }
@@ -303,7 +303,7 @@ public class PassageSelector {
     return defaultPassages.toArray(Passage[]::new);
   }
 
-  private static boolean adjecentOrOverlapping(Passage a, Passage b) {
+  private static boolean adjacentOrOverlapping(Passage a, Passage b) {
     if (a.from >= b.from) {
       return a.from <= b.to - 1;
     } else {

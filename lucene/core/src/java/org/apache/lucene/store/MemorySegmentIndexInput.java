@@ -583,7 +583,7 @@ abstract class MemorySegmentIndexInput extends IndexInput implements MemorySegme
 
   /**
    * Creates a slice of this index input, with the given description, offset, and length. The slice
-   * is seeked to the beginning.
+   * is seek()ed to the beginning.
    */
   @Override
   public final MemorySegmentIndexInput slice(String sliceDescription, long offset, long length) {

@@ -76,6 +76,9 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
   private final FixedBitSet windowMatches = new FixedBitSet(WINDOW_SIZE);
   private final FixedBitSet clauseWindowMatches = new FixedBitSet(WINDOW_SIZE);
   private final List<DisiWrapper> windowClauses = new ArrayList<>();
+  // Reused by the leap-frog path.
+  private final List<DocIdSetIterator> windowApproximations = new ArrayList<>();
+  private final List<TwoPhaseIterator> windowTwoPhases = new ArrayList<>();
 
   static DenseConjunctionBulkScorer of(List<Scorer> filters, int maxDoc, float constantScore) {
     List<DocIdSetIterator> iterators = new ArrayList<>();
@@ -107,7 +110,11 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     for (TwoPhaseIterator twoPhase : twoPhases) {
       this.iterators.add(new DisiWrapper(twoPhase));
     }
-    this.iterators.sort(Comparator.comparing(w -> w.approximation().cost()));
+    // Plain approximations before two-phase ones, so matches() only runs on docs that already
+    // satisfy every approximation; within each group, cheapest approximation first (lead skipping).
+    this.iterators.sort(
+        Comparator.<DisiWrapper>comparingInt(w -> w.twoPhase() == null ? 0 : 1)
+            .thenComparingLong(w -> w.approximation().cost()));
     this.scorable = new SimpleScorable();
     scorable.score = constantScore;
   }
@@ -202,7 +209,42 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
 
     int bitsetWindowMax = MathUtil.unsignedMin(minDocIDRunEnd, WINDOW_SIZE + min);
 
-    scoreWindowUsingBitSet(collector, acceptDocs, windowClauses, min, bitsetWindowMax);
+    // The bit-set path pays a fixed per-window cost (materialize the lead, applyMask, cardinality,
+    // BitSetDocIdStream); it wins when most candidates must be tested anyway. But for a sparse
+    // window confirmed by a two-phase clause that can be skipped, plain leap-frog -- which only
+    // touches surviving docs and never materializes a bit set -- is cheaper.
+    //
+    // A two-phase clause whose approximation matches every doc (cost >= maxDoc, e.g. a skip-indexed
+    // doc-values range, whose block iterator reports NO_MORE_DOCS) cannot be skipped and stays on
+    // the bit-set path for its vectorized intoBitSet. A selective approximation (cost < maxDoc,
+    // e.g. a phrase) can be skipped, so a sparse window is cheaper via leap-frog.
+    boolean skippableTwoPhase = false;
+    for (DisiWrapper w : windowClauses) {
+      if (w.twoPhase() != null && w.approximation().cost() < maxDoc) {
+        skippableTwoPhase = true;
+        break;
+      }
+    }
+    // "sparse" mirrors the bit set's own WINDOW_SIZE/4 bulk-confirm cutoff (leadCost <= maxDoc/4).
+    boolean sparse =
+        windowClauses.isEmpty() == false
+            && windowClauses.get(0).approximation().cost() <= (long) maxDoc / 4;
+
+    if (skippableTwoPhase && sparse) {
+      for (DisiWrapper w : windowClauses) {
+        windowApproximations.add(w.approximation());
+        if (w.twoPhase() != null) {
+          windowTwoPhases.add(w.twoPhase());
+        }
+      }
+      windowTwoPhases.sort(Comparator.comparingDouble(TwoPhaseIterator::matchCost));
+      scoreWindowUsingLeapFrog(
+          collector, acceptDocs, windowApproximations, windowTwoPhases, min, bitsetWindowMax);
+      windowApproximations.clear();
+      windowTwoPhases.clear();
+    } else {
+      scoreWindowUsingBitSet(collector, acceptDocs, windowClauses, min, bitsetWindowMax);
+    }
     windowClauses.clear();
 
     return bitsetWindowMax;
@@ -314,6 +356,79 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     }
 
     windowMatches.clear();
+  }
+
+  // Confirm two-phase matches() only on docs that survived every approximation, without
+  // materializing a window bit set. Cheaper than the bit-set path for sparse windows with a
+  // skippable two-phase clause (see scoreWindow).
+  private static void scoreWindowUsingLeapFrog(
+      LeafCollector collector,
+      Bits acceptDocs,
+      List<DocIdSetIterator> approximations,
+      List<TwoPhaseIterator> twoPhases,
+      int min,
+      int max)
+      throws IOException {
+    assert twoPhases.size() > 0;
+    assert approximations.size() >= twoPhases.size();
+
+    if (approximations.size() == 1) {
+      // scoreWindowUsingLeapFrog is only used if there is at least one two-phase iterator, so our
+      // single clause is a two-phase iterator
+      assert twoPhases.size() == 1;
+      DocIdSetIterator approximation = approximations.get(0);
+      TwoPhaseIterator twoPhase = twoPhases.get(0);
+      if (approximation.docID() < min) {
+        approximation.advance(min);
+      }
+      for (int doc = approximation.docID(); doc < max; doc = approximation.nextDoc()) {
+        if ((acceptDocs == null || acceptDocs.get(doc)) && twoPhase.matches()) {
+          collector.collect(doc);
+        }
+      }
+    } else {
+      DocIdSetIterator lead1 = approximations.get(0);
+      DocIdSetIterator lead2 = approximations.get(1);
+
+      if (lead1.docID() < min) {
+        lead1.advance(min);
+      }
+
+      advanceHead:
+      for (int doc = lead1.docID(); doc < max; ) {
+        if (acceptDocs != null && acceptDocs.get(doc) == false) {
+          doc = lead1.nextDoc();
+          continue;
+        }
+        int doc2 = lead2.docID();
+        if (doc2 < doc) {
+          doc2 = lead2.advance(doc);
+        }
+        if (doc != doc2) {
+          doc = lead1.advance(Math.min(doc2, max));
+          continue;
+        }
+        for (int i = 2; i < approximations.size(); ++i) {
+          DocIdSetIterator other = approximations.get(i);
+          int docN = other.docID();
+          if (docN < doc) {
+            docN = other.advance(doc);
+          }
+          if (doc != docN) {
+            doc = lead1.advance(Math.min(docN, max));
+            continue advanceHead;
+          }
+        }
+        for (TwoPhaseIterator twoPhase : twoPhases) {
+          if (twoPhase.matches() == false) {
+            doc = lead1.nextDoc();
+            continue advanceHead;
+          }
+        }
+        collector.collect(doc);
+        doc = lead1.nextDoc();
+      }
+    }
   }
 
   @Override

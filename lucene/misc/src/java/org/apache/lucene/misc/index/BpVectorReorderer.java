@@ -69,7 +69,7 @@ public class BpVectorReorderer extends AbstractBPReorderer {
    *
    * <p>to maximize dot-product over unit vectors, note that: sum(dot(c0, v)) = dot(c0, sum(v))
    * which is maximized, again, when c0 = sum(v) / n.  For max inner product score, vectors may not
-   * be unit vectors. In this case there is no maximum, but since all colinear vectors of whatever
+   * be unit vectors. In this case there is no maximum, but since all collinear vectors of whatever
    * scale will generate the same partition for these angular scores, we are free to choose any
    * scale and ignore the normalization factor.
    */

@@ -47,7 +47,7 @@ public abstract class PerfTask implements Cloneable {
 
   private PerfRunData runData;
 
-  // propeties that all tasks have
+  // properties that all tasks have
   private String name;
   private int depth = 0;
   protected int logStep;
@@ -203,8 +203,8 @@ public abstract class PerfTask implements Cloneable {
 
   @Override
   public String toString() {
-    String padd = getPadding();
-    StringBuilder sb = new StringBuilder(padd);
+    String padding = getPadding();
+    StringBuilder sb = new StringBuilder(padding);
     if (disableCounting) {
       sb.append('-');
     }

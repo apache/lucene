@@ -287,7 +287,7 @@ class ReleaseState:
     try:
       self.script_branch_type = scriptutil.find_branch_type()
     except Exception:
-      print("WARNING: This script shold (ideally) run from the release branch, not a feature branch (%s)" % self.script_branch)
+      print("WARNING: This script should (ideally) run from the release branch, not a feature branch (%s)" % self.script_branch)
       self.script_branch_type = "feature"
     self.set_release_version(release_version)
 

@@ -60,7 +60,7 @@ final class IntersectTermsEnumFrame {
   IndexInput floorDataReader;
 
   // Length of prefix shared by all terms in this block
-  int prefix;
+  int prefixLength;
 
   // Number of entries (term or sub-block) in this block
   int entCount;
@@ -270,6 +270,7 @@ final class IntersectTermsEnumFrame {
       suffixLength = suffixLengths[nextEnt];
     }
     nextEnt++;
+    suffixLength = suffixLengthsReader.readVInt();
     startBytePos = suffixesReader.getPosition();
     suffixesReader.skipBytes(suffixLength);
   }

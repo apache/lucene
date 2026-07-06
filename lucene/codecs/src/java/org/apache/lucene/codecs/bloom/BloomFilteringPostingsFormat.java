@@ -34,6 +34,7 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.ImpactsEnum;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
@@ -298,7 +299,7 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
       private TermsEnum delegate() throws IOException {
         if (delegateTermsEnum == null) {
           /* pull the iterator only if we really need it -
-           * this can be a relativly heavy operation depending on the
+           * this can be a relatively heavy operation depending on the
            * delegate postings format and they underlying directory
            * (clone IndexInput) */
           delegateTermsEnum = delegateTerms.iterator();
@@ -387,8 +388,8 @@ public final class BloomFilteringPostingsFormat extends PostingsFormat {
     }
 
     @Override
-    public void checkIntegrity() throws IOException {
-      delegateFieldsProducer.checkIntegrity();
+    public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+      delegateFieldsProducer.checkIntegrity(merge);
     }
 
     @Override
