@@ -16,30 +16,26 @@
  */
 package org.apache.lucene.analysis.hunspell;
 
-import org.apache.lucene.util.CharsRef;
-import org.apache.lucene.util.IntsRef;
+import java.util.List;
+import java.util.Set;
 
-/** A mutable entry object used when enumerating dictionary entries. */
-public abstract class FlyweightEntry {
-  FlyweightEntry() {}
-
-  /**
-   * @return whether this entry's root is title-cased
-   */
-  public abstract boolean hasTitleCase();
+/** Generates suggestions by traversing dictionary entries. */
+@FunctionalInterface
+public interface DictionarySuggester {
 
   /**
-   * @return the dictionary root
+   * @param hunspell spell checker configured for suggestion generation
+   * @param suggestibleEntryCache optional cache from {@link Suggester#withSuggestibleEntryCache()}
+   *     or {@code null}
+   * @param lowerCase the lower-case misspelled word
+   * @param wordCase case of the misspelled word before lower-casing
+   * @param suggestions suggestions already found by earlier phases
+   * @return raw suggestions to add
    */
-  public abstract CharsRef root();
-
-  /**
-   * @return the lower-case dictionary root
-   */
-  public abstract CharSequence lowerCaseRoot();
-
-  /**
-   * @return encoded form data for this entry
-   */
-  public abstract IntsRef forms();
+  List<String> suggest(
+      Hunspell hunspell,
+      SuggestibleEntryCache suggestibleEntryCache,
+      String lowerCase,
+      WordCase wordCase,
+      Set<Suggestion> suggestions);
 }
