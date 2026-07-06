@@ -39,8 +39,8 @@ import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Tests the {@code intoBitSet()} and {@code applyMask()} bulk paths of {@link
- * DocValuesRangeIterator} over single-valued numeric doc values, including YES, YES_IF_PRESENT,
- * and MAYBE block states.
+ * DocValuesRangeIterator} over single-valued numeric doc values, including YES, YES_IF_PRESENT, and
+ * MAYBE block states.
  */
 public class TestSkipBlockRangeIteratorBitSetOperations extends BaseDocValuesSkipperTests {
 
@@ -854,8 +854,8 @@ public class TestSkipBlockRangeIteratorBitSetOperations extends BaseDocValuesSki
   }
 
   /**
-   * Randomized end-to-end check on a real index: applyMask must match per-doc evaluation
-   * restricted to a random candidate set, across random data and range selectivities.
+   * Randomized end-to-end check on a real index: applyMask must match per-doc evaluation restricted
+   * to a random candidate set, across random data and range selectivities.
    */
   public void testApplyMaskMatchesPerDocEvaluationOnRealIndex() throws Exception {
     Random rng = random();

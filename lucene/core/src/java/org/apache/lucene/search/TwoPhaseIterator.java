@@ -151,9 +151,9 @@ public abstract class TwoPhaseIterator {
    * that turn out not to match. Upon return {@link #approximation()} is positioned on the first doc
    * that is {@code >= upTo}, mirroring {@link #intoBitSet}.
    *
-   * <p>Prefer this over {@link #intoBitSet} followed by a separate intersection when {@code
-   * bitSet} already holds a candidate set narrowed down by other clauses of a conjunction: it
-   * avoids confirming matches for docs that are already known not to be candidates.
+   * <p>Prefer this over {@link #intoBitSet} followed by a separate intersection when {@code bitSet}
+   * already holds a candidate set narrowed down by other clauses of a conjunction: it avoids
+   * confirming matches for docs that are already known not to be candidates.
    *
    * <p>The default implementation walks the set bits of {@code bitSet} one at a time, advancing
    * {@link #approximation()} to each and calling {@link #matches()}. Implementations that can

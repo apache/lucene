@@ -26,10 +26,10 @@ import org.apache.lucene.util.FixedBitSet;
 /**
  * Tests the default (non-overridden) {@link TwoPhaseIterator#applyMask} implementation, using
  * {@link RandomTwoPhaseView} as a generic two-phase iterator whose approximation is a random
- * superset of the true matches -- exactly the shape {@code applyMask} must handle correctly
- * without any subclass-specific bulk optimization. {@link RandomTwoPhaseView} itself asserts that
- * {@code matches()} is never called on an unpositioned doc and never called twice for the same
- * doc, so these tests also validate that the default implementation drives the two-phase protocol
+ * superset of the true matches -- exactly the shape {@code applyMask} must handle correctly without
+ * any subclass-specific bulk optimization. {@link RandomTwoPhaseView} itself asserts that {@code
+ * matches()} is never called on an unpositioned doc and never called twice for the same doc, so
+ * these tests also validate that the default implementation drives the two-phase protocol
  * correctly, not just that it produces the right bits.
  */
 public class TestTwoPhaseIterator extends LuceneTestCase {
