@@ -38,6 +38,10 @@ Optimizations
 
 * GITHUB#16352: Better cost() estimation for SkipBlockRangeIterator. (Alan Woodward)
 
+* GITHUB#16307: ReqExclBulkScorer now skips runs of excluded docs via
+  TwoPhaseIterator#docIDRunEnd for two-phase excluded clauses (e.g. a doc-values
+  not-equals filter), instead of advancing one doc at a time. (Jim Ferenczi)
+
 Bug Fixes
 ---------------------
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
