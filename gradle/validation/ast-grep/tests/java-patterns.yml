@@ -54,25 +54,6 @@ valid:
   - |
     /* notjavadoc @author */
 ---
-id: nocommit-comment
-invalid:
-  - |
-    // nocommit: fix this
-  - |
-    /* nocommit: fix this */
-valid:
-  - boolean nocommit = false;
----
-id: tood-comment
-invalid:
-  - |
-    // TOOD: fix this
-  - |
-    /* TOOD: fix this */
-valid:
-  - |
-    var foo = "TOOD: whatever";
----
 id: missing-spi-block-tag
 invalid:
   - |
@@ -133,3 +114,13 @@ valid:
     * Something and...
     * {@inheritDoc}
     */
+---
+id: CollectionToArrayPreSizedArray
+valid:
+  - list.toArray(new String[0])
+  - list.toArray(String[]::new)
+  - list.toArray()
+invalid:
+  - list.toArray(new String[list.size()])
+  - list.toArray(new String[n])
+  - set.toArray(new Foo[expectedSize])

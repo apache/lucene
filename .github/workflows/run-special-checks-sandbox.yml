@@ -29,7 +29,7 @@ jobs:
 
     steps:
       - name: Install Mamba
-        uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167 #v3.3.0
+        uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5 #v4.0.1
         with:
           miniforge-version: 'latest'
           auto-activate-base: 'false'
@@ -39,12 +39,21 @@ jobs:
           conda-remove-defaults: 'true'
 
       - name: Install Faiss
-        run: mamba install faiss-cpu="${FAISS_VERSION}"
+        run: mamba install faiss-cpu="${FAISS_VERSION}" "mkl=2024.*"
         env:
           FAISS_VERSION: ${{ matrix.faiss-version }}
 
+      - name: Debug Faiss/MKL libraries
+        run: |
+          echo "=== MKL libs in conda prefix ==="
+          find "$CONDA_PREFIX/lib" -name "libmkl*" | sort
+          echo "=== faiss libs ==="
+          find "$CONDA_PREFIX/lib" -name "libfaiss*" | sort
+          echo "=== ldd on libfaiss_c.so ==="
+          ldd "$CONDA_PREFIX/lib/libfaiss_c.so" || true
+
       - name: Checkout Lucene
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           persist-credentials: false
 

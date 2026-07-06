@@ -21,8 +21,10 @@ import static org.apache.lucene.util.ByteBlockPool.BYTE_BLOCK_SIZE;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import org.apache.lucene.codecs.DocValuesConsumer;
 import org.apache.lucene.codecs.DocValuesProducer;
+import org.apache.lucene.document.column.OrdinalsTupleCursor;
 import org.apache.lucene.index.SortedDocValuesWriter.BufferedSortedDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.ArrayUtil;
@@ -31,6 +33,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefHash;
 import org.apache.lucene.util.BytesRefHash.DirectBytesStartArray;
 import org.apache.lucene.util.Counter;
+import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.packed.GrowableWriter;
 import org.apache.lucene.util.packed.PackedInts;
@@ -52,15 +55,18 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
   private int[] currentValues = new int[8];
   private int currentUpto;
   private int maxCount;
+  private final SharedIndexingScratch scratch;
 
   private PackedLongValues finalOrds;
   private PackedLongValues finalOrdCounts;
   private int[] finalSortedValues;
   private int[] finalOrdMap;
 
-  SortedSetDocValuesWriter(FieldInfo fieldInfo, Counter iwBytesUsed, ByteBlockPool pool) {
+  SortedSetDocValuesWriter(
+      FieldInfo fieldInfo, Counter iwBytesUsed, ByteBlockPool pool, SharedIndexingScratch scratch) {
     this.fieldInfo = fieldInfo;
     this.iwBytesUsed = iwBytesUsed;
+    this.scratch = scratch;
     hash =
         new BytesRefHash(
             pool,
@@ -95,6 +101,60 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
     }
 
     addOneValue(value);
+    updateBytesUsed();
+  }
+
+  /**
+   * Bulk-adds dictionary-encoded values from a tuple cursor. Each {@code (docID, ordinal)} pair is
+   * translated to the writer's internal hash term ID on first sight per distinct ordinal;
+   * subsequent docs that use the same ordinal pay only an array lookup.
+   *
+   * <p>All ordinals must be in {@code [0, dictionary.length)}. Doc-ids from the cursor are
+   * batch-local and are offset by {@code baseDocID} to produce segment-level ids.
+   */
+  void addOrdinalTuples(int baseDocID, List<BytesRef> dictionary, OrdinalsTupleCursor cursor) {
+    int dictSize = dictionary.size();
+    int[] ordToHash =
+        dictSize <= SharedIndexingScratch.INTS_SCRATCH_SIZE
+            ? scratch.intsScratch()
+            : new int[dictSize];
+    Arrays.fill(ordToHash, 0, dictSize, -1);
+    int batchDocID;
+    while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+      int docID = baseDocID + batchDocID;
+      assert docID >= currentDoc;
+      if (docID != currentDoc) {
+        finishCurrentDoc();
+        currentDoc = docID;
+      }
+      int ord = cursor.ordValue();
+      if (ord < 0 || ord >= dictionary.size()) {
+        throw new IllegalArgumentException(
+            "DocValuesField \""
+                + fieldInfo.name
+                + "\": ordinal "
+                + ord
+                + " is out of range [0, "
+                + dictionary.size()
+                + ")");
+      }
+      int hashID = ordToHash[ord];
+      if (hashID < 0) {
+        hashID = hash.add(dictionary.get(ord));
+        if (hashID < 0) {
+          hashID = -hashID - 1;
+        } else {
+          iwBytesUsed.addAndGet(2 * Integer.BYTES);
+        }
+        ordToHash[ord] = hashID;
+      }
+      if (currentUpto == currentValues.length) {
+        currentValues = ArrayUtil.grow(currentValues, currentValues.length + 1);
+        iwBytesUsed.addAndGet((currentValues.length - currentUpto) * (long) Integer.BYTES);
+      }
+      currentValues[currentUpto] = hashID;
+      currentUpto++;
+    }
     updateBytesUsed();
   }
 
@@ -320,6 +380,16 @@ class SortedSetDocValuesWriter extends DocValuesWriter<SortedSetDocValues> {
     @Override
     public long cost() {
       return docsWithField.cost();
+    }
+
+    @Override
+    public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      docsWithField.intoBitSet(upTo, bitSet, offset);
+    }
+
+    @Override
+    public int docIDRunEnd() throws IOException {
+      return docsWithField.docIDRunEnd();
     }
 
     @Override

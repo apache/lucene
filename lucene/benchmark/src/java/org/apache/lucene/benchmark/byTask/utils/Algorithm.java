@@ -279,7 +279,7 @@ public class Algorithm implements AutoCloseable {
     }
 
     // remove redundant top level enclosing sequences
-    while (sequence.isCollapsable() && sequence.getRepetitions() == 1 && sequence.getRate() == 0) {
+    while (sequence.isCollapsible() && sequence.getRepetitions() == 1 && sequence.getRate() == 0) {
       ArrayList<PerfTask> t = sequence.getTasks();
       if (t != null && t.size() == 1) {
         PerfTask p = t.get(0);
@@ -301,7 +301,7 @@ public class Algorithm implements AutoCloseable {
     ArrayList<String> pkgs = new ArrayList<>();
     pkgs.add(dfltPkg);
     Collections.addAll(pkgs, alts.split(","));
-    return pkgs.toArray(new String[0]);
+    return pkgs.toArray(String[]::new);
   }
 
   private Class<?> taskClass(Config config, String taskName) throws ClassNotFoundException {

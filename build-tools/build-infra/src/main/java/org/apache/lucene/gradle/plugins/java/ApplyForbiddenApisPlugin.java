@@ -132,6 +132,21 @@ public class ApplyForbiddenApisPlugin extends LuceneGradlePlugin {
                                   .toFile())));
             });
 
+    // Junit4->Junit5 transition.
+    var forbiddenApisTestTask = allForbiddenApisTasks.named("forbiddenApisTest");
+    switch (project.getPath()) {
+      case ":lucene:expressions", ":lucene:memory":
+        forbiddenApisTestTask.configure(
+            task -> {
+              task.setSignaturesFiles(
+                  task.getSignaturesFiles()
+                      .plus(
+                          project.files(
+                              forbiddenApisDir.resolve("non-standard/junit4.txt").toFile())));
+            });
+        break;
+    }
+
     // Configure non-standard, per-project stuff.
     var forbiddenApisMainTask = allForbiddenApisTasks.named("forbiddenApisMain");
 

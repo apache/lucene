@@ -18,6 +18,7 @@ package org.apache.lucene.search;
 
 import java.io.IOException;
 import java.util.Objects;
+import org.apache.lucene.util.FixedBitSet;
 
 /**
  * Returned by {@link Scorer#twoPhaseIterator()} to expose an approximation of a {@link
@@ -116,9 +117,32 @@ public abstract class TwoPhaseIterator {
    * <p><b>Note</b>: It is illegal to call this method when the approximation is exhausted or not
    * positioned.
    *
-   * <p>The default implementation returns the current doc ID of the approximation.
+   * <p>The default implementation assumes runs of a single doc ID and returns the current doc ID of
+   * the approximation plus one, mirroring {@link DocIdSetIterator#docIDRunEnd()}.
    */
   public int docIDRunEnd() throws IOException {
-    return approximation().docID();
+    return approximation().docID() + 1;
+  }
+
+  /**
+   * Load the doc IDs that both belong to the {@link #approximation()} and {@link #matches() match},
+   * and are in {@code [approximation().docID(), upTo)}, into {@code bitSet}, the document whose ID
+   * is {@code i} being stored at bit {@code i - offset}. Upon return the {@link #approximation()}
+   * is positioned on the first doc that is {@code >= upTo}, mirroring {@link
+   * DocIdSetIterator#intoBitSet}.
+   *
+   * <p>The default implementation walks the {@link #approximation()} and confirms each doc with
+   * {@link #matches()} — i.e. it is functionally identical to the leap-frog evaluation, just
+   * writing into a bit set. Implementations that can confirm matches in bulk — for instance a
+   * vectorized scan over a columnar block — should override it; the bit set window is then
+   * collected in one shot rather than one doc at a time.
+   */
+  public void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+    DocIdSetIterator approximation = approximation();
+    for (int doc = approximation.docID(); doc < upTo; doc = approximation.nextDoc()) {
+      if (matches()) {
+        bitSet.set(doc - offset);
+      }
+    }
   }
 }

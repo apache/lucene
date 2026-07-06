@@ -84,7 +84,7 @@ public class SpanNearQuery extends SpanQuery implements Cloneable {
 
     /** Build the query */
     public SpanNearQuery build() {
-      return new SpanNearQuery(clauses.toArray(new SpanQuery[clauses.size()]), slop, ordered);
+      return new SpanNearQuery(clauses.toArray(SpanQuery[]::new), slop, ordered);
     }
   }
 
@@ -132,7 +132,7 @@ public class SpanNearQuery extends SpanQuery implements Cloneable {
 
   /** Return the clauses whose spans are matched. */
   public SpanQuery[] getClauses() {
-    return clauses.toArray(new SpanQuery[clauses.size()]);
+    return clauses.toArray(SpanQuery[]::new);
   }
 
   /** Return the maximum number of intervening unmatched positions permitted. */

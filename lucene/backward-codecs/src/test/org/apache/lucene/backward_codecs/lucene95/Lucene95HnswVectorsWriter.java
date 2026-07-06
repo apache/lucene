@@ -48,6 +48,7 @@ import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.util.ArrayUtil;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -317,7 +318,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       int node = nodesOnLevel0.nextInt();
       NeighborArray neighbors = graph.getNeighbors(0, newToOldMap[node]);
       long offset = vectorIndex.getFilePointer();
-      reconstructAndWriteNeigbours(neighbors, oldToNewMap, maxConnOnLevel, maxOrd);
+      reconstructAndWriteNeighbours(neighbors, oldToNewMap, maxConnOnLevel, maxOrd);
       levelNodeOffsets[0][node] = Math.toIntExact(vectorIndex.getFilePointer() - offset);
     }
 
@@ -335,7 +336,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
       for (int node : newNodes) {
         NeighborArray neighbors = graph.getNeighbors(level, newToOldMap[node]);
         long offset = vectorIndex.getFilePointer();
-        reconstructAndWriteNeigbours(neighbors, oldToNewMap, maxConnOnLevel, maxOrd);
+        reconstructAndWriteNeighbours(neighbors, oldToNewMap, maxConnOnLevel, maxOrd);
         levelNodeOffsets[level][nodeOffsetIndex++] =
             Math.toIntExact(vectorIndex.getFilePointer() - offset);
       }
@@ -387,7 +388,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
     };
   }
 
-  private void reconstructAndWriteNeigbours(
+  private void reconstructAndWriteNeighbours(
       NeighborArray neighbors, int[] oldToNewMap, int maxConnOnLevel, int maxOrd)
       throws IOException {
     int size = neighbors.size();
@@ -411,7 +412,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+  public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
     long vectorDataOffset = vectorData.alignFilePointer(Float.BYTES);
     IndexOutput tempVectorData =
         segmentWriteState.directory.createTempOutput(
@@ -526,6 +527,7 @@ public final class Lucene95HnswVectorsWriter extends KnnVectorsWriter {
             segmentWriteState.directory, tempVectorData.getName());
       }
     }
+    return null;
   }
 
   /**

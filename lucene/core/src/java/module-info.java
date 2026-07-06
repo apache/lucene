@@ -76,6 +76,7 @@ module org.apache.lucene.core {
   exports org.apache.lucene.codecs.hnsw;
   exports org.apache.lucene.internal.vectorization to
       org.apache.lucene.benchmark.jmh;
+  exports org.apache.lucene.document.column;
 
   provides org.apache.lucene.analysis.TokenizerFactory with
       org.apache.lucene.analysis.standard.StandardTokenizerFactory;
@@ -90,6 +91,7 @@ module org.apache.lucene.core {
   provides org.apache.lucene.codecs.PostingsFormat with
       org.apache.lucene.codecs.lucene104.Lucene104PostingsFormat;
   provides org.apache.lucene.index.SortFieldProvider with
+      org.apache.lucene.search.BinarySortField.Provider,
       org.apache.lucene.search.SortField.Provider,
       org.apache.lucene.search.SortedNumericSortField.Provider,
       org.apache.lucene.search.SortedSetSortField.Provider;

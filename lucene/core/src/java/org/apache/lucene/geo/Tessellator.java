@@ -904,7 +904,7 @@ public final class Tessellator {
 
   /**
    * Attempt to split a polygon and independently triangulate each side. Return true if the polygon
-   * was splitted *
+   * was split *
    */
   private static boolean splitEarcut(
       final Object polygon,
@@ -1152,7 +1152,7 @@ public final class Tessellator {
     return isPointInLine(a, b, point.getX(), point.getY());
   }
 
-  /** returns true if the lon, lat point is colinear w/ the provided a and b point */
+  /** returns true if the lon, lat point is collinear w/ the provided a and b point */
   private static boolean isPointInLine(
       final Node a, final Node b, final double lon, final double lat) {
     final double dxc = lon - a.getX();
@@ -1663,12 +1663,12 @@ public final class Tessellator {
     }
 
     /** get the x value */
-    public final double getX() {
+    public double getX() {
       return polyX[vrtxIdx];
     }
 
     /** get the y value */
-    public final double getY() {
+    public double getY() {
       return polyY[vrtxIdx];
     }
 

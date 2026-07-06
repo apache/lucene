@@ -281,6 +281,8 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "AssertEqualsArgumentOrderChecker:WARN",
     "AssertFalse:OFF", // TODO: new, not checked if applicable to Lucene
     "AssertSameIncompatible:WARN",
+    "AssertThrowsBlockToExpression:OFF", // doesn't seem that useful.
+    "AssertThrowsMinimizer:OFF", // doesn't seem that useful.
     "AssertThrowsMultipleStatements:WARN",
     "AssertionFailureIgnored:OFF", // TODO: there are problems
     "AssignmentExpression:OFF", // TODO: there are problems
@@ -296,6 +298,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "AutoValueFinalMethods:OFF", // we don't use autovalue
     "AutoValueImmutableFields:OFF", // we don't use autovalue
     "AutoValueSubclassLeaked:OFF", // we don't use autovalue
+    "AvoidCommonTypeNames:OFF", // TODO: there are problems
     "AvoidObjectArrays:OFF", // TODO: new, not checked if applicable to Lucene
     "AvoidValueSetter:ERROR",
     "BadAnnotationImplementation:ERROR",
@@ -315,6 +318,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "BooleanParameter:OFF", // TODO: new, not checked if applicable to Lucene
     "BoxedPrimitiveConstructor:OFF", // we have forbiddenapis for that
     "BoxedPrimitiveEquality:OFF", // TODO: there are problems
+    "BoxingComparator:ERROR",
     "BugPatternNaming:OFF", // we don't use this annotation
     "BuilderReturnThis:OFF", // TODO: new, not checked if applicable to Lucene
     "BundleDeserializationCast:OFF", // we don't use android
@@ -415,6 +419,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "ExpectedExceptionChecker:OFF", // TODO: new, not checked if applicable to Lucene
     "ExpensiveLenientFormatString:OFF", // we use astgrep for this check.
     "ExplicitArrayForVarargs:OFF", // TODO: new, not checked if applicable to Lucene
+    "ExposedPrivateType:OFF", // TODO: there are multiple violations
     "ExtendingJUnitAssert:OFF", // noisy
     "ExtendsAutoValue:OFF", // TODO: new, not checked if applicable to Lucene
     "ExtendsObject:OFF", // TODO: there are problems
@@ -545,6 +550,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "JUnitAmbiguousTestClass:OFF", // we don't use junit3
     "JUnitAssertSameCheck:ERROR",
     "JUnitIncompatibleType:WARN",
+    "JUnitMethodInvoked:OFF", // irrelevant
     "JUnitParameterMethodNotFound:ERROR",
     "Java8ApiChecker:OFF", // TODO: new, not checked if applicable to Lucene
     "JavaDurationGetSecondsGetNano:OFF", // we don't use these Duration methods
@@ -552,7 +558,6 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "JavaDurationWithNanos:OFF", // we don't use these Duration methods
     "JavaDurationWithSeconds:OFF", // we don't use these Duration methods
     "JavaInstantGetSecondsGetNano:OFF", // we don't use these Instant methods
-    "JavaLangClash:OFF", // TODO: there are problems
     "JavaLocalDateTimeGetNano:OFF", // we don't use LocalDateTime
     "JavaLocalTimeGetNano:OFF", // we don't use LocalTime
     "JavaPeriodGetDays:OFF", // we don't use Period
@@ -573,6 +578,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "LabelledBreakTarget:OFF", // stylistic
     "LambdaFunctionalInterface:OFF", // TODO: new, not checked if applicable to Lucene
     "LenientFormatStringValidation:OFF", // we don't use these google libraries
+    "ListRemoveAmbiguous:OFF", // true potential bug but tiny probability
     "LiteByteStringUtf8:OFF", // we don't use protobuf
     "LiteEnumValueOf:OFF", // we don't use protobuf
     "LiteProtoToString:OFF", // we don't use protobuf
@@ -591,6 +597,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "MathAbsoluteNegative:OFF", // TODO: there are problems
     "MathRoundIntLong:ERROR",
     "MemoizeConstantVisitorStateLookups:OFF", // we don't use this class
+    "MemorySegmentReferenceEquality:ERROR",
     "MethodCanBeStatic:OFF", // TODO: new, not checked if applicable to Lucene
     "MisformattedTestData:OFF", // stylistic
     "MislabeledAndroidString:OFF", // we don't use android
@@ -651,7 +658,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "NonFinalStaticField:WARN",
     "NonOverridingEquals:WARN",
     "NonRuntimeAnnotation:ERROR",
-    "NotJavadoc:WARN",
+    "NotJavadoc:OFF", // this triggers errors for javadocs on inner classes; it's harmless.
     "NullArgumentForNonNullParameter:OFF", // we don't use this annotation
     "NullNeedsCastForVarargs:ERROR",
     "NullOptional:WARN",
@@ -696,6 +703,8 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "PreconditionsInvalidPlaceholder:OFF", // we don't use guava
     "PreferInstanceofOverGetKind:OFF", // TODO: new, not checked if applicable to Lucene
     "PreferJavaTimeOverload:OFF", // TODO: new, not checked if applicable to Lucene
+    "PreferTestParameter:OFF", // irrelevant
+    "PreferThrowsTag:OFF", // TODO: perhaps worth considering
     "PreferredInterfaceType:OFF", // TODO: new, not checked if applicable to Lucene
     "PrimitiveArrayPassedToVarargsMethod:OFF", // TODO: new, not checked if applicable to Lucene
     "PrimitiveAtomicReference:WARN",
@@ -716,6 +725,9 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "RandomCast:ERROR",
     "RandomModInteger:ERROR",
     "ReachabilityFenceUsage:WARN",
+    "RecordAccessorInCompactConstructor:ERROR",
+    "RecordComponentAccessorAnnotationConflict:OFF", // not applicable in Lucene
+    "RecordComponentOverride:OFF", // not applicable in Lucene
     "RectIntersectReturnValueIgnored:OFF", // we don't use android
     "RedundantControlFlow:OFF", // stylistic
     "RedundantNullCheck:ERROR",
@@ -794,6 +806,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "ThrowIfUncheckedKnownUnchecked:OFF", // we don't use these google libraries
     "ThrowNull:OFF", // noisy (LuceneTestCase)
     "ThrowSpecificExceptions:OFF", // TODO: new, not checked if applicable to Lucene
+    "ThrowableEqualsHashCode:ERROR",
     "ThrowsUncheckedException:OFF", // TODO: new, not checked if applicable to Lucene
     "TimeInStaticInitializer:ERROR",
     "TimeUnitConversionChecker:WARN",
@@ -873,6 +886,7 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "UsingJsr305CheckReturnValue:OFF", // TODO: new, not checked if applicable to Lucene
     "Var:OFF", // TODO: new, not checked if applicable to Lucene
     "VarTypeName:ERROR",
+    "VarWithPrimitive:OFF", // very subjective
     "VariableNameSameAsType:WARN",
     "Varifier:OFF", // TODO: new, not checked if applicable to Lucene
     "VoidMissingNullable:OFF", // TODO: new, not checked if applicable to Lucene
@@ -880,7 +894,6 @@ public class ErrorPronePlugin extends LuceneGradlePlugin {
     "WaitNotInLoop:OFF", // TODO: there are problems
     "WakelockReleasedDangerously:OFF", // we don't use android
     "WildcardImport:OFF", // we use ast-grep for this check.
-    "WithSignatureDiscouraged:OFF", // we aren't using this error-prone internal api
     "WrongOneof:OFF", // we don't use protobuf
     "XorPower:ERROR",
     "YodaCondition:OFF", // TODO: new, not checked if applicable to Lucene

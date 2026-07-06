@@ -458,8 +458,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
-        postingsReader.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        postingsReader.checkIntegrity(merge);
       }
 
       @Override
@@ -468,7 +468,7 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public Terms terms(String field) throws IOException {
+      public Terms terms(String field) {
         Terms terms = postingsReader.terms(field);
         return terms == null
             ? null
@@ -510,8 +510,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        delegate.checkIntegrity(merge);
       }
 
       @Override
@@ -539,17 +539,17 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
     return new PointsReader() {
       @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        delegate.checkIntegrity(merge);
       }
 
       @Override
-      public PointValues getValues(String field) throws IOException {
-        var values = delegate.getValues(field);
+      public PointValues getValues(String field) {
+        PointValues values = delegate.getValues(field);
         if (values == null) {
           return null;
         }
-        return new SortingPointValues(delegate.getValues(field), docMap);
+        return new SortingPointValues(values, docMap);
       }
 
       @Override
@@ -567,8 +567,8 @@ public final class SortingCodecReader extends FilterCodecReader {
     }
     return new KnnVectorsReader() {
       @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        delegate.checkIntegrity(merge);
       }
 
       @Override
@@ -619,8 +619,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        delegate.checkIntegrity(merge);
       }
 
       @Override
@@ -701,8 +701,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        delegate.checkIntegrity(merge);
       }
 
       @Override
@@ -752,8 +752,8 @@ public final class SortingCodecReader extends FilterCodecReader {
       }
 
       @Override
-      public void checkIntegrity() throws IOException {
-        delegate.checkIntegrity();
+      public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
+        delegate.checkIntegrity(merge);
       }
 
       @Override

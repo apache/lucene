@@ -64,13 +64,11 @@ import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.search.CheckHits;
 import org.apache.lucene.tests.search.ScorerIndexSearcher;
 import org.apache.lucene.tests.util.LuceneTestCase;
-import org.apache.lucene.tests.util.LuceneTestCase.SuppressCodecs;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 
-@SuppressCodecs("SimpleText")
 public class TestSortOptimization extends LuceneTestCase {
 
   public void testLongSortOptimizationPointIndex() throws Exception {
@@ -735,7 +733,7 @@ public class TestSortOptimization extends LuceneTestCase {
    * Test that sorting on _doc works correctly. This test goes through
    * DefaultBulkSorter::scoreRange, where scorerIterator is BitSetIterator. As a conjunction of this
    * BitSetIterator with DocComparator's iterator, we get BitSetConjunctionDISI.
-   * BitSetConjuctionDISI advances based on the DocComparator's iterator, and doesn't consider that
+   * BitSetConjunctionDISI advances based on the DocComparator's iterator, and doesn't consider that
    * its BitSetIterator may have advanced passed a certain doc.
    */
   public void testDocSort() throws IOException {
@@ -1463,12 +1461,12 @@ public class TestSortOptimization extends LuceneTestCase {
     }
 
     @Override
-    public Terms terms(String field) throws IOException {
+    public Terms terms(String field) {
       return null;
     }
 
     @Override
-    public PointValues getPointValues(String field) throws IOException {
+    public PointValues getPointValues(String field) {
       return null;
     }
 

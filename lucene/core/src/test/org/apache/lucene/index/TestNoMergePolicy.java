@@ -23,7 +23,6 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import org.apache.lucene.index.MergePolicy.MergeSpecification;
 import org.apache.lucene.tests.index.BaseMergePolicyTestCase;
-import org.junit.Test;
 
 public class TestNoMergePolicy extends BaseMergePolicyTestCase {
 
@@ -32,7 +31,6 @@ public class TestNoMergePolicy extends BaseMergePolicyTestCase {
     return NoMergePolicy.INSTANCE;
   }
 
-  @Test
   public void testNoMergePolicy() throws Exception {
     MergePolicy mp = mergePolicy();
     assertNull(mp.findMerges(null, (SegmentInfos) null, null));
@@ -40,7 +38,6 @@ public class TestNoMergePolicy extends BaseMergePolicyTestCase {
     assertNull(mp.findForcedDeletesMerges(null, null));
   }
 
-  @Test
   public void testFinalSingleton() throws Exception {
     assertTrue(Modifier.isFinal(NoMergePolicy.class.getModifiers()));
     Constructor<?>[] ctors = NoMergePolicy.class.getDeclaredConstructors();
@@ -49,7 +46,6 @@ public class TestNoMergePolicy extends BaseMergePolicyTestCase {
         "that 1 should be private: " + ctors[0], Modifier.isPrivate(ctors[0].getModifiers()));
   }
 
-  @Test
   public void testMethodsOverridden() throws Exception {
     // Ensures that all methods of MergePolicy are overridden. That's important
     // to ensure that NoMergePolicy overrides everything, so that no unexpected

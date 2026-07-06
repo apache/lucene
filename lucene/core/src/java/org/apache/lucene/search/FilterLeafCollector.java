@@ -21,6 +21,12 @@ import java.io.IOException;
 /**
  * {@link LeafCollector} delegator.
  *
+ * <p>This collector inherits the default batch collection behavior from {@link LeafCollector},
+ * which decomposes batches through {@link #collect(int)}. This preserves per-document behavior for
+ * subclasses that override {@link #collect(int)}. Subclasses that only delegate and want to
+ * preserve bulk-collection optimizations may override {@link #collect(DocIdStream)} and {@link
+ * #collectRange(int, int)} to forward directly to the wrapped collector.
+ *
  * @lucene.experimental
  */
 public abstract class FilterLeafCollector implements LeafCollector {
@@ -51,7 +57,7 @@ public abstract class FilterLeafCollector implements LeafCollector {
   public String toString() {
     String name = getClass().getSimpleName();
     if (name.length() == 0) {
-      // an anonoymous subclass will have empty name?
+      // an anonymous subclass will have empty name?
       name = "FilterLeafCollector";
     }
     return name + "(" + in + ")";

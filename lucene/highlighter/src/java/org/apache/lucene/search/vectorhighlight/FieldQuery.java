@@ -152,7 +152,7 @@ public class FieldQuery {
         rewritten = sourceQuery.rewrite(searcher);
       }
       if (rewritten != sourceQuery) {
-        // only rewrite once and then flatten again - the rewritten query could have a speacial
+        // only rewrite once and then flatten again - the rewritten query could have a special
         // treatment
         // if this method is overwritten in a subclass.
         flatten(rewritten, searcher, flatQueries, boost);

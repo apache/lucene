@@ -127,6 +127,18 @@ repos:
           glob:
             - .github/**/*.yml
 
+      - id: typos
+        name: Check for typos
+        priority: 0
+        language: system
+        entry: uv
+        args: [ 'run', 'typos', '--force-exclude' ]
+        env:
+          UV_PROJECT: dev-tools
+          UV_FROZEN: "1"
+        types: [ 'text' ]
+        require_serial: true
+
       - id: rumdl
         name: Fix Markdown
         language: system

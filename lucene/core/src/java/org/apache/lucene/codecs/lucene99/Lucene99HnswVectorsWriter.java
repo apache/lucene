@@ -34,20 +34,23 @@ import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.KnnFieldVectorsWriter;
 import org.apache.lucene.codecs.KnnVectorsWriter;
 import org.apache.lucene.codecs.hnsw.FlatFieldVectorsWriter;
+import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
 import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
 import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
-import org.apache.lucene.index.ByteVectorValues;
 import org.apache.lucene.index.DocsWithFieldSet;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
 import org.apache.lucene.index.KnnVectorValues;
 import org.apache.lucene.index.MergeState;
+import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Sorter;
+import org.apache.lucene.index.VectorEncoding;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.search.TaskExecutor;
 import org.apache.lucene.store.IndexOutput;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -62,6 +65,7 @@ import org.apache.lucene.util.hnsw.NeighborArray;
 import org.apache.lucene.util.hnsw.OnHeapHnswGraph;
 import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
 import org.apache.lucene.util.packed.DirectMonotonicWriter;
+import org.apache.lucene.util.quantization.QuantizedVectorsReader;
 
 /**
  * Writes vector values and knn graphs to index segments.
@@ -77,6 +81,9 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   private final int M;
   private final int beamWidth;
   private final FlatVectorsWriter flatVectorWriter;
+  private final FlatVectorsFormat flatVectorsFormat;
+  private FlatVectorsReader flatVectorsReader;
+  private boolean flatWriterClosed = false;
   private final int numMergeWorkers;
   private final TaskExecutor mergeExec;
   private final int tinySegmentsThreshold;
@@ -89,6 +96,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       SegmentWriteState state,
       int M,
       int beamWidth,
+      FlatVectorsFormat flatVectorsFormat,
       FlatVectorsWriter flatVectorWriter,
       int numMergeWorkers,
       TaskExecutor mergeExec)
@@ -97,6 +105,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         state,
         M,
         beamWidth,
+        flatVectorsFormat,
         flatVectorWriter,
         numMergeWorkers,
         mergeExec,
@@ -108,6 +117,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       SegmentWriteState state,
       int M,
       int beamWidth,
+      FlatVectorsFormat flatVectorsFormat,
       FlatVectorsWriter flatVectorWriter,
       int numMergeWorkers,
       TaskExecutor mergeExec,
@@ -117,6 +127,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
         state,
         M,
         beamWidth,
+        flatVectorsFormat,
         flatVectorWriter,
         numMergeWorkers,
         mergeExec,
@@ -128,6 +139,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       SegmentWriteState state,
       int M,
       int beamWidth,
+      FlatVectorsFormat flatVectorsFormat,
       FlatVectorsWriter flatVectorWriter,
       int numMergeWorkers,
       TaskExecutor mergeExec,
@@ -136,6 +148,7 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       throws IOException {
     this.M = M;
     this.flatVectorWriter = flatVectorWriter;
+    this.flatVectorsFormat = flatVectorsFormat;
     this.beamWidth = beamWidth;
     this.numMergeWorkers = numMergeWorkers;
     this.mergeExec = mergeExec;
@@ -207,7 +220,9 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       throw new IllegalStateException("already finished");
     }
     finished = true;
-    flatVectorWriter.finish();
+    if (flatWriterClosed == false) {
+      flatVectorWriter.finish();
+    }
 
     if (meta != null) {
       // write end of fields marker
@@ -401,65 +416,96 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
   }
 
   @Override
-  public void mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
-    CloseableRandomVectorScorerSupplier scorerSupplier =
-        flatVectorWriter.mergeOneFieldToIndex(fieldInfo, mergeState);
-    try {
-      long vectorIndexOffset = vectorIndex.getFilePointer();
-      // build the graph using the temporary vector data
-      // we use Lucene99HnswVectorsReader.DenseOffHeapVectorValues for the graph construction
-      // doesn't need to know docIds
-      OnHeapHnswGraph graph = null;
-      int[][] vectorIndexNodeOffsets = null;
-      // Check if we should bypass graph building for tiny segments
-      boolean makeHnswGraph =
-          scorerSupplier.totalVectorCount() > 0
-              && (shouldCreateGraph(tinySegmentsThreshold, scorerSupplier.totalVectorCount()));
-      if (makeHnswGraph) {
-        // build graph
-        HnswGraphMerger merger =
-            createGraphMerger(
-                fieldInfo,
-                scorerSupplier,
-                mergeState.intraMergeTaskExecutor == null
-                    ? null
-                    : new TaskExecutor(mergeState.intraMergeTaskExecutor),
-                numMergeWorkers);
-        for (int i = 0; i < mergeState.liveDocs.length; i++) {
-          if (hasVectorValues(mergeState.fieldInfos[i], fieldInfo.name)) {
-            merger.addReader(
-                mergeState.knnVectorsReaders[i], mergeState.docMaps[i], mergeState.liveDocs[i]);
+  public IORunnable mergeOneField(FieldInfo fieldInfo, MergeState mergeState) throws IOException {
+    flatVectorWriter.mergeOneFlatVectorField(fieldInfo, mergeState);
+    return () -> {
+      // Lazily finish flat writer and open a reader for the written segment
+      ensureFlatReaderOpen();
+      // Get the vector values and scorer supplier from the written segment
+      KnnVectorValues vectorValues =
+          switch (fieldInfo.getVectorEncoding()) {
+            case BYTE -> flatVectorsReader.getByteVectorValues(fieldInfo.name);
+            case FLOAT32 -> flatVectorsReader.getFloatVectorValues(fieldInfo.name);
+          };
+      int totalVectorCount = vectorValues == null ? 0 : vectorValues.size();
+      if (totalVectorCount > 0 && shouldCreateGraph(tinySegmentsThreshold, totalVectorCount)) {
+        if (flatVectorsReader instanceof QuantizedVectorsReader quantizedVectorsReader
+            && fieldInfo.getVectorEncoding().equals(VectorEncoding.FLOAT32)) {
+          CloseableRandomVectorScorerSupplier scorerSupplier =
+              quantizedVectorsReader.getRandomVectorScorerSupplierForMerge(
+                  fieldInfo, segmentWriteState);
+          try {
+            buildAndWriteGraph(
+                fieldInfo, mergeState, vectorValues, scorerSupplier, totalVectorCount);
+          } catch (Throwable t) {
+            IOUtils.closeWhileSuppressingExceptions(t, scorerSupplier);
+            throw t;
           }
+          IOUtils.close(scorerSupplier);
+        } else {
+          RandomVectorScorerSupplier scorerSupplier =
+              flatVectorsReader
+                  .getFlatVectorScorer(fieldInfo.getName())
+                  .getRandomVectorScorerSupplier(
+                      fieldInfo.getVectorSimilarityFunction(), vectorValues);
+          buildAndWriteGraph(fieldInfo, mergeState, vectorValues, scorerSupplier, totalVectorCount);
         }
-        KnnVectorValues mergedVectorValues = null;
-        switch (fieldInfo.getVectorEncoding()) {
-          case BYTE ->
-              mergedVectorValues =
-                  KnnVectorsWriter.MergedVectorValues.mergeByteVectorValues(fieldInfo, mergeState);
-          case FLOAT32 ->
-              mergedVectorValues =
-                  KnnVectorsWriter.MergedVectorValues.mergeFloatVectorValues(fieldInfo, mergeState);
-        }
-        graph =
-            merger.merge(
-                mergedVectorValues,
-                segmentWriteState.infoStream,
-                scorerSupplier.totalVectorCount());
-        vectorIndexNodeOffsets = writeGraph(graph);
+      } else {
+        writeMeta(fieldInfo, vectorIndex.getFilePointer(), 0L, totalVectorCount, null, null);
       }
-      long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
-      writeMeta(
-          fieldInfo,
-          vectorIndexOffset,
-          vectorIndexLength,
-          scorerSupplier.totalVectorCount(),
-          graph,
-          vectorIndexNodeOffsets);
-    } catch (Throwable t) {
-      IOUtils.closeWhileSuppressingExceptions(t, scorerSupplier);
-      throw t;
+    };
+  }
+
+  private void buildAndWriteGraph(
+      FieldInfo fieldInfo,
+      MergeState mergeState,
+      KnnVectorValues vectorValues,
+      RandomVectorScorerSupplier scorerSupplier,
+      int totalVectorCount)
+      throws IOException {
+    long vectorIndexOffset = vectorIndex.getFilePointer();
+    OnHeapHnswGraph graph = null;
+    int[][] vectorIndexNodeOffsets = null;
+    HnswGraphMerger merger =
+        createGraphMerger(
+            fieldInfo,
+            scorerSupplier,
+            mergeState.intraMergeTaskExecutor == null
+                ? null
+                : new TaskExecutor(mergeState.intraMergeTaskExecutor),
+            numMergeWorkers);
+    for (int i = 0; i < mergeState.liveDocs.length; i++) {
+      if (hasVectorValues(mergeState.fieldInfos[i], fieldInfo.name)) {
+        merger.addReader(
+            mergeState.knnVectorsReaders[i], mergeState.docMaps[i], mergeState.liveDocs[i]);
+      }
     }
-    IOUtils.close(scorerSupplier);
+    graph = merger.merge(vectorValues, segmentWriteState.infoStream, totalVectorCount);
+    vectorIndexNodeOffsets = writeGraph(graph);
+    long vectorIndexLength = vectorIndex.getFilePointer() - vectorIndexOffset;
+    writeMeta(
+        fieldInfo,
+        vectorIndexOffset,
+        vectorIndexLength,
+        totalVectorCount,
+        graph,
+        vectorIndexNodeOffsets);
+  }
+
+  private void ensureFlatReaderOpen() throws IOException {
+    if (flatVectorsReader == null) {
+      flatVectorWriter.finish();
+      flatVectorWriter.close();
+      flatWriterClosed = true;
+      SegmentReadState readState =
+          new SegmentReadState(
+              segmentWriteState.directory,
+              segmentWriteState.segmentInfo,
+              segmentWriteState.fieldInfos,
+              segmentWriteState.context,
+              segmentWriteState.segmentSuffix);
+      flatVectorsReader = flatVectorsFormat.fieldsReader(readState);
+    }
   }
 
   /**
@@ -599,7 +645,11 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
 
   @Override
   public void close() throws IOException {
-    IOUtils.close(meta, vectorIndex, flatVectorWriter);
+    if (flatWriterClosed) {
+      IOUtils.close(meta, vectorIndex, flatVectorsReader);
+    } else {
+      IOUtils.close(meta, vectorIndex, flatVectorWriter, flatVectorsReader);
+    }
   }
 
   static int distFuncToOrd(VectorSimilarityFunction func) {
@@ -684,20 +734,10 @@ public final class Lucene99HnswVectorsWriter extends KnnVectorsWriter {
       this.flatFieldVectorsWriter = Objects.requireNonNull(flatFieldVectorsWriter);
       this.graphThreshold = tinySegmentsThreshold;
       this.scorerSupplier =
-          switch (fieldInfo.getVectorEncoding()) {
-            case BYTE ->
-                scorer.getRandomVectorScorerSupplier(
-                    fieldInfo.getVectorSimilarityFunction(),
-                    ByteVectorValues.fromBytes(
-                        (List<byte[]>) flatFieldVectorsWriter.getVectors(),
-                        fieldInfo.getVectorDimension()));
-            case FLOAT32 ->
-                scorer.getRandomVectorScorerSupplier(
-                    fieldInfo.getVectorSimilarityFunction(),
-                    FloatVectorValues.fromFloats(
-                        (List<float[]>) flatFieldVectorsWriter.getVectors(),
-                        fieldInfo.getVectorDimension()));
-          };
+          scorer.getRandomVectorScorerSupplier(
+              fieldInfo.getVectorSimilarityFunction(),
+              flatFieldVectorsWriter.asKnnVectorValues(
+                  fieldInfo.getVectorEncoding(), fieldInfo.getVectorDimension()));
 
       if (graphThreshold <= 0) {
         // Initialize graph builder if optimization is disabled

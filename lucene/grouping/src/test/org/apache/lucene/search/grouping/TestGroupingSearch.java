@@ -36,11 +36,10 @@ import org.apache.lucene.search.similarities.BM25Similarity;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
-import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.mutable.MutableValueStr;
 
-public class TestGroupingSearch extends LuceneTestCase {
+public class TestGroupingSearch extends AbstractGroupingTestCase {
 
   // Tests some very basic usages...
   public void testBasic() throws Exception {
@@ -50,12 +49,9 @@ public class TestGroupingSearch extends LuceneTestCase {
     FieldType customType = new FieldType();
     customType.setStored(true);
 
-    Directory dir = newDirectory();
-    RandomIndexWriter w =
-        new RandomIndexWriter(
-            random(),
-            dir,
-            newIndexWriterConfig(new MockAnalyzer(random())).setMergePolicy(newLogMergePolicy()));
+    Shard shard = new Shard();
+    RandomIndexWriter w = shard.writer;
+
     boolean canUseIDV = true;
     List<Document> documents = new ArrayList<>();
     // 0
@@ -115,7 +111,7 @@ public class TestGroupingSearch extends LuceneTestCase {
 
     w.addDocument(doc);
 
-    IndexSearcher indexSearcher = newSearcher(w.getReader());
+    IndexSearcher indexSearcher = shard.getIndexSearcher();
     indexSearcher.setSimilarity(new BM25Similarity());
     w.close();
 
@@ -169,8 +165,7 @@ public class TestGroupingSearch extends LuceneTestCase {
     assertEquals(4, groups.totalGroupCount.longValue());
     assertEquals(4, groups.groups.length);
 
-    indexSearcher.getIndexReader().close();
-    dir.close();
+    shard.close();
   }
 
   private void addGroupField(Document doc, String groupField, String value, boolean canUseIDV) {

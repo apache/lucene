@@ -254,7 +254,7 @@ public class SimpleTextFieldInfosFormat extends FieldInfosFormat {
 
         SimpleTextUtil.write(out, INDEXOPTIONS);
         IndexOptions indexOptions = fi.getIndexOptions();
-        assert indexOptions.compareTo(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS) >= 0
+        assert indexOptions.subsumes(IndexOptions.DOCS_AND_FREQS_AND_POSITIONS)
             || !fi.hasPayloads();
         SimpleTextUtil.write(out, indexOptions.toString(), scratch);
         SimpleTextUtil.writeNewline(out);

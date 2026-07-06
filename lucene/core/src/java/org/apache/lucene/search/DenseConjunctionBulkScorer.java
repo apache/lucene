@@ -51,6 +51,14 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
         return twoPhase().docIDRunEnd();
       }
     }
+
+    void intoBitSet(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+      if (twoPhase() == null) {
+        approximation().intoBitSet(upTo, bitSet, offset);
+      } else {
+        twoPhase().intoBitSet(upTo, bitSet, offset);
+      }
+    }
   }
 
   // Use a small-ish window size to make sure that we can take advantage of gaps in the postings of
@@ -67,6 +75,8 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
 
   private final FixedBitSet windowMatches = new FixedBitSet(WINDOW_SIZE);
   private final FixedBitSet clauseWindowMatches = new FixedBitSet(WINDOW_SIZE);
+  private final List<DisiWrapper> windowClauses = new ArrayList<>();
+  // Reused by the leap-frog path.
   private final List<DocIdSetIterator> windowApproximations = new ArrayList<>();
   private final List<TwoPhaseIterator> windowTwoPhases = new ArrayList<>();
 
@@ -100,7 +110,11 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     for (TwoPhaseIterator twoPhase : twoPhases) {
       this.iterators.add(new DisiWrapper(twoPhase));
     }
-    this.iterators.sort(Comparator.comparing(w -> w.approximation().cost()));
+    // Plain approximations before two-phase ones, so matches() only runs on docs that already
+    // satisfy every approximation; within each group, cheapest approximation first (lead skipping).
+    this.iterators.sort(
+        Comparator.<DisiWrapper>comparingInt(w -> w.twoPhase() == null ? 0 : 1)
+            .thenComparingLong(w -> w.approximation().cost()));
     this.scorable = new SimpleScorable();
     scorable.score = constantScore;
   }
@@ -181,16 +195,13 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     for (DisiWrapper w : iterators) {
       int docIdRunEnd = w.docIDRunEnd();
       if (w.docID() > min || docIdRunEnd < minRunEndThreshold) {
-        windowApproximations.add(w.approximation());
-        if (w.twoPhase() != null) {
-          windowTwoPhases.add(w.twoPhase());
-        }
+        windowClauses.add(w);
       } else {
         minDocIDRunEnd = Math.min(minDocIDRunEnd, docIdRunEnd);
       }
     }
 
-    if (acceptDocs == null && windowApproximations.isEmpty()) {
+    if (acceptDocs == null && windowClauses.isEmpty()) {
       // We have a large range of doc IDs that all match.
       collector.collectRange(min, minDocIDRunEnd);
       return minDocIDRunEnd;
@@ -198,15 +209,43 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
 
     int bitsetWindowMax = MathUtil.unsignedMin(minDocIDRunEnd, WINDOW_SIZE + min);
 
-    if (windowTwoPhases.isEmpty()) {
-      scoreWindowUsingBitSet(collector, acceptDocs, windowApproximations, min, bitsetWindowMax);
-    } else {
+    // The bit-set path pays a fixed per-window cost (materialize the lead, applyMask, cardinality,
+    // BitSetDocIdStream); it wins when most candidates must be tested anyway. But for a sparse
+    // window confirmed by a two-phase clause that can be skipped, plain leap-frog -- which only
+    // touches surviving docs and never materializes a bit set -- is cheaper.
+    //
+    // A two-phase clause whose approximation matches every doc (cost >= maxDoc, e.g. a skip-indexed
+    // doc-values range, whose block iterator reports NO_MORE_DOCS) cannot be skipped and stays on
+    // the bit-set path for its vectorized intoBitSet. A selective approximation (cost < maxDoc,
+    // e.g. a phrase) can be skipped, so a sparse window is cheaper via leap-frog.
+    boolean skippableTwoPhase = false;
+    for (DisiWrapper w : windowClauses) {
+      if (w.twoPhase() != null && w.approximation().cost() < maxDoc) {
+        skippableTwoPhase = true;
+        break;
+      }
+    }
+    // "sparse" mirrors the bit set's own WINDOW_SIZE/4 bulk-confirm cutoff (leadCost <= maxDoc/4).
+    boolean sparse =
+        windowClauses.isEmpty() == false
+            && windowClauses.get(0).approximation().cost() <= (long) maxDoc / 4;
+
+    if (skippableTwoPhase && sparse) {
+      for (DisiWrapper w : windowClauses) {
+        windowApproximations.add(w.approximation());
+        if (w.twoPhase() != null) {
+          windowTwoPhases.add(w.twoPhase());
+        }
+      }
       windowTwoPhases.sort(Comparator.comparingDouble(TwoPhaseIterator::matchCost));
       scoreWindowUsingLeapFrog(
           collector, acceptDocs, windowApproximations, windowTwoPhases, min, bitsetWindowMax);
+      windowApproximations.clear();
       windowTwoPhases.clear();
+    } else {
+      scoreWindowUsingBitSet(collector, acceptDocs, windowClauses, min, bitsetWindowMax);
     }
-    windowApproximations.clear();
+    windowClauses.clear();
 
     return bitsetWindowMax;
   }
@@ -214,7 +253,7 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
   private void scoreWindowUsingBitSet(
       LeafCollector collector,
       Bits acceptDocs,
-      List<DocIdSetIterator> iterators,
+      List<DisiWrapper> iterators,
       int windowBase,
       int windowMax)
       throws IOException {
@@ -226,9 +265,9 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
       // This happens if all clauses fully matched the window and there are deleted docs.
       windowMatches.set(0, windowMax - windowBase);
     } else {
-      DocIdSetIterator lead = iterators.get(0);
+      DisiWrapper lead = iterators.get(0);
       if (lead.docID() < windowBase) {
-        lead.advance(windowBase);
+        lead.approximation().advance(windowBase);
       }
       lead.intoBitSet(windowMax, windowMatches, windowBase);
     }
@@ -240,15 +279,42 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
 
     int windowSize = windowMax - windowBase;
     int threshold = windowSize / DENSITY_THRESHOLD_INVERSE;
+    // Above this many surviving docs, decoding a two-phase clause's whole window in one shot beats
+    // confirming each survivor one at a time; below it we confirm survivors only.
+    int bulkConfirmThreshold = windowSize / 4;
     int upTo = 1; // the leading clause at index 0 is already applied
-    for (; upTo < iterators.size() && windowMatches.cardinality() >= threshold; upTo++) {
-      DocIdSetIterator other = iterators.get(upTo);
+    for (int cardinality = windowMatches.cardinality();
+        upTo < iterators.size() && cardinality >= threshold;
+        upTo++, cardinality = windowMatches.cardinality()) {
+      DisiWrapper other = iterators.get(upTo);
       if (other.docID() < windowBase) {
-        other.advance(windowBase);
+        other.approximation().advance(windowBase);
       }
-      other.intoBitSet(windowMax, clauseWindowMatches, windowBase);
-      windowMatches.and(clauseWindowMatches);
-      clauseWindowMatches.clear();
+      TwoPhaseIterator twoPhase = other.twoPhase();
+      if (twoPhase != null && cardinality < bulkConfirmThreshold) {
+        // Sparse survivors + per-doc confirmation: confirm only the docs that survived the cheaper
+        // clauses (the bit set gates matches()), never decoding a doc another clause excluded.
+        DocIdSetIterator approximation = other.approximation();
+        for (int windowMatch = windowMatches.nextSetBit(0);
+            windowMatch != DocIdSetIterator.NO_MORE_DOCS; ) {
+          int doc = windowBase + windowMatch;
+          int otherDoc = approximation.docID();
+          if (otherDoc < doc) {
+            otherDoc = approximation.advance(doc);
+          }
+          if (otherDoc != doc || twoPhase.matches() == false) {
+            windowMatches.clear(windowMatch);
+          }
+          windowMatch = advance(windowMatches, windowMatch + 1);
+        }
+      } else {
+        // Dense survivors, or a plain iterator: load this clause's matches in bulk and intersect.
+        // For a two-phase clause this still confirms matches() via its (possibly vectorized)
+        // intoBitSet.
+        other.intoBitSet(windowMax, clauseWindowMatches, windowBase);
+        windowMatches.and(clauseWindowMatches);
+        clauseWindowMatches.clear();
+      }
     }
 
     if (upTo < iterators.size()) {
@@ -256,19 +322,29 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
       // after applying a few clauses, we finish evaluating the intersection using the traditional
       // leap-frog approach. This proved important with a query such as "+secretary +of +state" on
       // wikibigall, where the intersection becomes sparse after intersecting "secretary" and
-      // "state".
+      // "state". As the leap-frog only visits surviving docs, two-phase clauses confirm matches()
+      // here only on docs that no cheaper clause already excluded.
       advanceHead:
       for (int windowMatch = windowMatches.nextSetBit(0);
           windowMatch != DocIdSetIterator.NO_MORE_DOCS; ) {
         int doc = windowBase + windowMatch;
+        // First confirm every remaining approximation is on doc...
         for (int i = upTo; i < iterators.size(); ++i) {
-          DocIdSetIterator other = iterators.get(i);
+          DocIdSetIterator other = iterators.get(i).approximation();
           int otherDoc = other.docID();
           if (otherDoc < doc) {
             otherDoc = other.advance(doc);
           }
           if (doc != otherDoc) {
             windowMatch = advance(windowMatches, otherDoc - windowBase);
+            continue advanceHead;
+          }
+        }
+        // ...then run the (more expensive) two-phase confirmations, only on surviving docs.
+        for (int i = upTo; i < iterators.size(); ++i) {
+          TwoPhaseIterator twoPhase = iterators.get(i).twoPhase();
+          if (twoPhase != null && twoPhase.matches() == false) {
+            windowMatch = advance(windowMatches, windowMatch + 1);
             continue advanceHead;
           }
         }
@@ -282,6 +358,9 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     windowMatches.clear();
   }
 
+  // Confirm two-phase matches() only on docs that survived every approximation, without
+  // materializing a window bit set. Cheaper than the bit-set path for sparse windows with a
+  // skippable two-phase clause (see scoreWindow).
   private static void scoreWindowUsingLeapFrog(
       LeafCollector collector,
       Bits acceptDocs,
