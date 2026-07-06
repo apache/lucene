@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.lucene.benchmark.jmh;
 
 import java.io.IOException;
@@ -58,10 +59,7 @@ public class Simple64Benchmark {
   // Simple64
   long[] encodedWords;
   int encodedWordCount;
-  byte[] encodedWordBytes;
-  int encodedWordBytesLength;
   int[] decodeOutSimple64;
-  long[] decodeWordBuffer;
 
   // VInt
   byte[] encodedVInt;
@@ -70,11 +68,8 @@ public class Simple64Benchmark {
 
   // encode output buffers
   long[] encodeOutWords;
-  byte[] encodeOutWordBytes;
   byte[] encodeOutVIntBytes;
-  ByteArrayDataOutput wordOut;
   ByteArrayDataOutput vintOut;
-  ByteArrayDataInput wordIn;
   ByteArrayDataInput vintIn;
 
   @Setup(Level.Trial)
@@ -90,15 +85,7 @@ public class Simple64Benchmark {
     encodedWords = new long[blockSize + 1];
     encodedWordCount = Simple64.encodeAll(suffixLengths, 0, blockSize, encodedWords, 0);
     decodeOutSimple64 = new int[blockSize + Simple64.COUNTS[0]];
-    decodeWordBuffer = new long[blockSize + 1];
     encodeOutWords = new long[blockSize + 1];
-
-    encodedWordBytes = new byte[(blockSize + 1) * Long.BYTES];
-    ByteArrayDataOutput encodedWordOut = new ByteArrayDataOutput(encodedWordBytes);
-    for (int i = 0; i < encodedWordCount; i++) {
-      encodedWordOut.writeLong(encodedWords[i]);
-    }
-    encodedWordBytesLength = encodedWordOut.getPosition();
 
     // pre-encode VInt
     encodedVInt = new byte[blockSize * 5];
@@ -109,18 +96,15 @@ public class Simple64Benchmark {
     encodedVIntLength = out.getPosition();
     decodeOutVInt = new int[blockSize];
 
-    encodeOutWordBytes = new byte[(blockSize + 1) * Long.BYTES];
     encodeOutVIntBytes = new byte[blockSize * 5];
-    wordOut = new ByteArrayDataOutput(encodeOutWordBytes);
     vintOut = new ByteArrayDataOutput(encodeOutVIntBytes);
-    wordIn = new ByteArrayDataInput(encodedWordBytes, 0, encodedWordBytesLength);
     vintIn = new ByteArrayDataInput(encodedVInt, 0, encodedVIntLength);
   }
 
   // ---- Simple64 ----
 
   @Benchmark
-  public void encodeSimple64Words(Blackhole bh) {
+  public void encodeSimple64(Blackhole bh) {
     int n = Simple64.encodeAll(suffixLengths, 0, blockSize, encodeOutWords, 0);
     bh.consume(n);
     bh.consume(encodeOutWords[0]);
@@ -128,30 +112,8 @@ public class Simple64Benchmark {
   }
 
   @Benchmark
-  public void decodeSimple64Words(Blackhole bh) {
+  public void decodeSimple64(Blackhole bh) {
     Simple64.decodeAll(encodedWords, 0, decodeOutSimple64, 0, blockSize);
-    bh.consume(checksum(decodeOutSimple64, blockSize));
-  }
-
-  @Benchmark
-  public void encodeSimple64Bytes(Blackhole bh) throws IOException {
-    int n = Simple64.encodeAll(suffixLengths, 0, blockSize, encodeOutWords, 0);
-    wordOut.reset(encodeOutWordBytes);
-    for (int i = 0; i < n; i++) {
-      wordOut.writeLong(encodeOutWords[i]);
-    }
-    bh.consume(wordOut.getPosition());
-    bh.consume(encodeOutWordBytes[0]);
-    bh.consume(encodeOutWordBytes[wordOut.getPosition() - 1]);
-  }
-
-  @Benchmark
-  public void decodeSimple64Bytes(Blackhole bh) throws IOException {
-    wordIn.reset(encodedWordBytes, 0, encodedWordBytesLength);
-    for (int i = 0; i < encodedWordCount; i++) {
-      decodeWordBuffer[i] = wordIn.readLong();
-    }
-    Simple64.decodeAll(decodeWordBuffer, 0, decodeOutSimple64, 0, blockSize);
     bh.consume(checksum(decodeOutSimple64, blockSize));
   }
 

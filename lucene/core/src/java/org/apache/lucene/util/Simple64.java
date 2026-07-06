@@ -45,6 +45,10 @@ package org.apache.lucene.util;
  *   12     |     2    |    30     |          1073741823
  *   13     |     1    |    31     |  2147483647 (Integer.MAX_VALUE)
  * </pre>
+ *
+ * <p>Every selector has a hand-unrolled pack/decode pair (e.g. {@link #pack8x7} / {@link
+ * #decode8x7}) used whenever a word is completely full for that selector, avoiding the generic
+ * shift-loop in {@link #unpack} for the common case.
  */
 public final class Simple64 {
   /** Number of integers each selector can pack. */
@@ -183,6 +187,26 @@ public final class Simple64 {
           return pack20x3(ints, offset);
         case 3:
           return pack15x4(ints, offset);
+        case 4:
+          return pack12x5(ints, offset);
+        case 5:
+          return pack10x6(ints, offset);
+        case 6:
+          return pack8x7(ints, offset);
+        case 7:
+          return pack7x8(ints, offset);
+        case 8:
+          return pack6x10(ints, offset);
+        case 9:
+          return pack5x12(ints, offset);
+        case 10:
+          return pack4x15(ints, offset);
+        case 11:
+          return pack3x20(ints, offset);
+        case 12:
+          return pack2x30(ints, offset);
+        case 13:
+          return pack1x31(ints, offset);
         default:
           break;
       }
@@ -304,6 +328,30 @@ public final class Simple64 {
           decode7x8(word, out, outOffset);
           return;
         }
+        case 8 -> {
+          decode6x10(word, out, outOffset);
+          return;
+        }
+        case 9 -> {
+          decode5x12(word, out, outOffset);
+          return;
+        }
+        case 10 -> {
+          decode4x15(word, out, outOffset);
+          return;
+        }
+        case 11 -> {
+          decode3x20(word, out, outOffset);
+          return;
+        }
+        case 12 -> {
+          decode2x30(word, out, outOffset);
+          return;
+        }
+        case 13 -> {
+          decode1x31(word, out, outOffset);
+          return;
+        }
         default -> {}
       }
     }
@@ -318,99 +366,9 @@ public final class Simple64 {
     }
   }
 
-  private static void decode60x1(long word, int[] out, int outOffset) {
-    unpack(word, 1, MASKS[0], out, outOffset, 60);
-  }
-
-  private static void decode30x2(long word, int[] out, int outOffset) {
-    out[outOffset] = (int) (word & 0x3L);
-    out[outOffset + 1] = (int) ((word >>> 2) & 0x3L);
-    out[outOffset + 2] = (int) ((word >>> 4) & 0x3L);
-    out[outOffset + 3] = (int) ((word >>> 6) & 0x3L);
-    out[outOffset + 4] = (int) ((word >>> 8) & 0x3L);
-    out[outOffset + 5] = (int) ((word >>> 10) & 0x3L);
-    out[outOffset + 6] = (int) ((word >>> 12) & 0x3L);
-    out[outOffset + 7] = (int) ((word >>> 14) & 0x3L);
-    out[outOffset + 8] = (int) ((word >>> 16) & 0x3L);
-    out[outOffset + 9] = (int) ((word >>> 18) & 0x3L);
-    out[outOffset + 10] = (int) ((word >>> 20) & 0x3L);
-    out[outOffset + 11] = (int) ((word >>> 22) & 0x3L);
-    out[outOffset + 12] = (int) ((word >>> 24) & 0x3L);
-    out[outOffset + 13] = (int) ((word >>> 26) & 0x3L);
-    out[outOffset + 14] = (int) ((word >>> 28) & 0x3L);
-    out[outOffset + 15] = (int) ((word >>> 30) & 0x3L);
-    out[outOffset + 16] = (int) ((word >>> 32) & 0x3L);
-    out[outOffset + 17] = (int) ((word >>> 34) & 0x3L);
-    out[outOffset + 18] = (int) ((word >>> 36) & 0x3L);
-    out[outOffset + 19] = (int) ((word >>> 38) & 0x3L);
-    out[outOffset + 20] = (int) ((word >>> 40) & 0x3L);
-    out[outOffset + 21] = (int) ((word >>> 42) & 0x3L);
-    out[outOffset + 22] = (int) ((word >>> 44) & 0x3L);
-    out[outOffset + 23] = (int) ((word >>> 46) & 0x3L);
-    out[outOffset + 24] = (int) ((word >>> 48) & 0x3L);
-    out[outOffset + 25] = (int) ((word >>> 50) & 0x3L);
-    out[outOffset + 26] = (int) ((word >>> 52) & 0x3L);
-    out[outOffset + 27] = (int) ((word >>> 54) & 0x3L);
-    out[outOffset + 28] = (int) ((word >>> 56) & 0x3L);
-    out[outOffset + 29] = (int) ((word >>> 58) & 0x3L);
-  }
-
-  private static void decode20x3(long word, int[] out, int outOffset) {
-    out[outOffset] = (int) (word & 0x7L);
-    out[outOffset + 1] = (int) ((word >>> 3) & 0x7L);
-    out[outOffset + 2] = (int) ((word >>> 6) & 0x7L);
-    out[outOffset + 3] = (int) ((word >>> 9) & 0x7L);
-    out[outOffset + 4] = (int) ((word >>> 12) & 0x7L);
-    out[outOffset + 5] = (int) ((word >>> 15) & 0x7L);
-    out[outOffset + 6] = (int) ((word >>> 18) & 0x7L);
-    out[outOffset + 7] = (int) ((word >>> 21) & 0x7L);
-    out[outOffset + 8] = (int) ((word >>> 24) & 0x7L);
-    out[outOffset + 9] = (int) ((word >>> 27) & 0x7L);
-    out[outOffset + 10] = (int) ((word >>> 30) & 0x7L);
-    out[outOffset + 11] = (int) ((word >>> 33) & 0x7L);
-    out[outOffset + 12] = (int) ((word >>> 36) & 0x7L);
-    out[outOffset + 13] = (int) ((word >>> 39) & 0x7L);
-    out[outOffset + 14] = (int) ((word >>> 42) & 0x7L);
-    out[outOffset + 15] = (int) ((word >>> 45) & 0x7L);
-    out[outOffset + 16] = (int) ((word >>> 48) & 0x7L);
-    out[outOffset + 17] = (int) ((word >>> 51) & 0x7L);
-    out[outOffset + 18] = (int) ((word >>> 54) & 0x7L);
-    out[outOffset + 19] = (int) ((word >>> 57) & 0x7L);
-  }
-
-  private static void decode15x4(long word, int[] out, int outOffset) {
-    out[outOffset] = (int) (word & 0xFL);
-    out[outOffset + 1] = (int) ((word >>> 4) & 0xFL);
-    out[outOffset + 2] = (int) ((word >>> 8) & 0xFL);
-    out[outOffset + 3] = (int) ((word >>> 12) & 0xFL);
-    out[outOffset + 4] = (int) ((word >>> 16) & 0xFL);
-    out[outOffset + 5] = (int) ((word >>> 20) & 0xFL);
-    out[outOffset + 6] = (int) ((word >>> 24) & 0xFL);
-    out[outOffset + 7] = (int) ((word >>> 28) & 0xFL);
-    out[outOffset + 8] = (int) ((word >>> 32) & 0xFL);
-    out[outOffset + 9] = (int) ((word >>> 36) & 0xFL);
-    out[outOffset + 10] = (int) ((word >>> 40) & 0xFL);
-    out[outOffset + 11] = (int) ((word >>> 44) & 0xFL);
-    out[outOffset + 12] = (int) ((word >>> 48) & 0xFL);
-    out[outOffset + 13] = (int) ((word >>> 52) & 0xFL);
-    out[outOffset + 14] = (int) ((word >>> 56) & 0xFL);
-  }
-
-  private static void decode12x5(long word, int[] out, int outOffset) {
-    unpack(word, 5, MASKS[4], out, outOffset, 12);
-  }
-
-  private static void decode10x6(long word, int[] out, int outOffset) {
-    unpack(word, 6, MASKS[5], out, outOffset, 10);
-  }
-
-  private static void decode8x7(long word, int[] out, int outOffset) {
-    unpack(word, 7, MASKS[6], out, outOffset, 8);
-  }
-
-  private static void decode7x8(long word, int[] out, int outOffset) {
-    unpack(word, 8, MASKS[7], out, outOffset, 7);
-  }
+  // ---------------------------------------------------------------------
+  // Hand-unrolled pack methods, one per selector.
+  // ---------------------------------------------------------------------
 
   private static long pack60x1(int[] ints, int offset) {
     return ((long) ints[offset])
@@ -550,5 +508,329 @@ public final class Simple64 {
         | ((long) ints[offset + 12] << 48)
         | ((long) ints[offset + 13] << 52)
         | ((long) ints[offset + 14] << 56);
+  }
+
+  private static long pack12x5(int[] ints, int offset) {
+    return (4L << 60)
+        | ((long) ints[offset])
+        | ((long) ints[offset + 1] << 5)
+        | ((long) ints[offset + 2] << 10)
+        | ((long) ints[offset + 3] << 15)
+        | ((long) ints[offset + 4] << 20)
+        | ((long) ints[offset + 5] << 25)
+        | ((long) ints[offset + 6] << 30)
+        | ((long) ints[offset + 7] << 35)
+        | ((long) ints[offset + 8] << 40)
+        | ((long) ints[offset + 9] << 45)
+        | ((long) ints[offset + 10] << 50)
+        | ((long) ints[offset + 11] << 55);
+  }
+
+  private static long pack10x6(int[] ints, int offset) {
+    return (5L << 60)
+        | ((long) ints[offset])
+        | ((long) ints[offset + 1] << 6)
+        | ((long) ints[offset + 2] << 12)
+        | ((long) ints[offset + 3] << 18)
+        | ((long) ints[offset + 4] << 24)
+        | ((long) ints[offset + 5] << 30)
+        | ((long) ints[offset + 6] << 36)
+        | ((long) ints[offset + 7] << 42)
+        | ((long) ints[offset + 8] << 48)
+        | ((long) ints[offset + 9] << 54);
+  }
+
+  private static long pack8x7(int[] ints, int offset) {
+    return (6L << 60)
+        | ((long) ints[offset])
+        | ((long) ints[offset + 1] << 7)
+        | ((long) ints[offset + 2] << 14)
+        | ((long) ints[offset + 3] << 21)
+        | ((long) ints[offset + 4] << 28)
+        | ((long) ints[offset + 5] << 35)
+        | ((long) ints[offset + 6] << 42)
+        | ((long) ints[offset + 7] << 49);
+  }
+
+  private static long pack7x8(int[] ints, int offset) {
+    return (7L << 60)
+        | ((long) ints[offset])
+        | ((long) ints[offset + 1] << 8)
+        | ((long) ints[offset + 2] << 16)
+        | ((long) ints[offset + 3] << 24)
+        | ((long) ints[offset + 4] << 32)
+        | ((long) ints[offset + 5] << 40)
+        | ((long) ints[offset + 6] << 48);
+  }
+
+  private static long pack6x10(int[] ints, int offset) {
+    return (8L << 60)
+        | ((long) ints[offset])
+        | ((long) ints[offset + 1] << 10)
+        | ((long) ints[offset + 2] << 20)
+        | ((long) ints[offset + 3] << 30)
+        | ((long) ints[offset + 4] << 40)
+        | ((long) ints[offset + 5] << 50);
+  }
+
+  private static long pack5x12(int[] ints, int offset) {
+    return (9L << 60)
+        | ((long) ints[offset])
+        | ((long) ints[offset + 1] << 12)
+        | ((long) ints[offset + 2] << 24)
+        | ((long) ints[offset + 3] << 36)
+        | ((long) ints[offset + 4] << 48);
+  }
+
+  private static long pack4x15(int[] ints, int offset) {
+    return (10L << 60)
+        | ((long) ints[offset])
+        | ((long) ints[offset + 1] << 15)
+        | ((long) ints[offset + 2] << 30)
+        | ((long) ints[offset + 3] << 45);
+  }
+
+  private static long pack3x20(int[] ints, int offset) {
+    return (11L << 60)
+        | ((long) ints[offset])
+        | ((long) ints[offset + 1] << 20)
+        | ((long) ints[offset + 2] << 40);
+  }
+
+  private static long pack2x30(int[] ints, int offset) {
+    return (12L << 60) | ((long) ints[offset]) | ((long) ints[offset + 1] << 30);
+  }
+
+  private static long pack1x31(int[] ints, int offset) {
+    return (13L << 60) | ((long) ints[offset]);
+  }
+
+  // ---------------------------------------------------------------------
+  // Hand-unrolled decode methods, one per selector.
+  // ---------------------------------------------------------------------
+
+  private static void decode60x1(long word, int[] out, int outOffset) {
+    out[outOffset] = (int) (word & 0x1L);
+    out[outOffset + 1] = (int) ((word >>> 1) & 0x1L);
+    out[outOffset + 2] = (int) ((word >>> 2) & 0x1L);
+    out[outOffset + 3] = (int) ((word >>> 3) & 0x1L);
+    out[outOffset + 4] = (int) ((word >>> 4) & 0x1L);
+    out[outOffset + 5] = (int) ((word >>> 5) & 0x1L);
+    out[outOffset + 6] = (int) ((word >>> 6) & 0x1L);
+    out[outOffset + 7] = (int) ((word >>> 7) & 0x1L);
+    out[outOffset + 8] = (int) ((word >>> 8) & 0x1L);
+    out[outOffset + 9] = (int) ((word >>> 9) & 0x1L);
+    out[outOffset + 10] = (int) ((word >>> 10) & 0x1L);
+    out[outOffset + 11] = (int) ((word >>> 11) & 0x1L);
+    out[outOffset + 12] = (int) ((word >>> 12) & 0x1L);
+    out[outOffset + 13] = (int) ((word >>> 13) & 0x1L);
+    out[outOffset + 14] = (int) ((word >>> 14) & 0x1L);
+    out[outOffset + 15] = (int) ((word >>> 15) & 0x1L);
+    out[outOffset + 16] = (int) ((word >>> 16) & 0x1L);
+    out[outOffset + 17] = (int) ((word >>> 17) & 0x1L);
+    out[outOffset + 18] = (int) ((word >>> 18) & 0x1L);
+    out[outOffset + 19] = (int) ((word >>> 19) & 0x1L);
+    out[outOffset + 20] = (int) ((word >>> 20) & 0x1L);
+    out[outOffset + 21] = (int) ((word >>> 21) & 0x1L);
+    out[outOffset + 22] = (int) ((word >>> 22) & 0x1L);
+    out[outOffset + 23] = (int) ((word >>> 23) & 0x1L);
+    out[outOffset + 24] = (int) ((word >>> 24) & 0x1L);
+    out[outOffset + 25] = (int) ((word >>> 25) & 0x1L);
+    out[outOffset + 26] = (int) ((word >>> 26) & 0x1L);
+    out[outOffset + 27] = (int) ((word >>> 27) & 0x1L);
+    out[outOffset + 28] = (int) ((word >>> 28) & 0x1L);
+    out[outOffset + 29] = (int) ((word >>> 29) & 0x1L);
+    out[outOffset + 30] = (int) ((word >>> 30) & 0x1L);
+    out[outOffset + 31] = (int) ((word >>> 31) & 0x1L);
+    out[outOffset + 32] = (int) ((word >>> 32) & 0x1L);
+    out[outOffset + 33] = (int) ((word >>> 33) & 0x1L);
+    out[outOffset + 34] = (int) ((word >>> 34) & 0x1L);
+    out[outOffset + 35] = (int) ((word >>> 35) & 0x1L);
+    out[outOffset + 36] = (int) ((word >>> 36) & 0x1L);
+    out[outOffset + 37] = (int) ((word >>> 37) & 0x1L);
+    out[outOffset + 38] = (int) ((word >>> 38) & 0x1L);
+    out[outOffset + 39] = (int) ((word >>> 39) & 0x1L);
+    out[outOffset + 40] = (int) ((word >>> 40) & 0x1L);
+    out[outOffset + 41] = (int) ((word >>> 41) & 0x1L);
+    out[outOffset + 42] = (int) ((word >>> 42) & 0x1L);
+    out[outOffset + 43] = (int) ((word >>> 43) & 0x1L);
+    out[outOffset + 44] = (int) ((word >>> 44) & 0x1L);
+    out[outOffset + 45] = (int) ((word >>> 45) & 0x1L);
+    out[outOffset + 46] = (int) ((word >>> 46) & 0x1L);
+    out[outOffset + 47] = (int) ((word >>> 47) & 0x1L);
+    out[outOffset + 48] = (int) ((word >>> 48) & 0x1L);
+    out[outOffset + 49] = (int) ((word >>> 49) & 0x1L);
+    out[outOffset + 50] = (int) ((word >>> 50) & 0x1L);
+    out[outOffset + 51] = (int) ((word >>> 51) & 0x1L);
+    out[outOffset + 52] = (int) ((word >>> 52) & 0x1L);
+    out[outOffset + 53] = (int) ((word >>> 53) & 0x1L);
+    out[outOffset + 54] = (int) ((word >>> 54) & 0x1L);
+    out[outOffset + 55] = (int) ((word >>> 55) & 0x1L);
+    out[outOffset + 56] = (int) ((word >>> 56) & 0x1L);
+    out[outOffset + 57] = (int) ((word >>> 57) & 0x1L);
+    out[outOffset + 58] = (int) ((word >>> 58) & 0x1L);
+    out[outOffset + 59] = (int) ((word >>> 59) & 0x1L);
+  }
+
+  private static void decode30x2(long word, int[] out, int outOffset) {
+    out[outOffset] = (int) (word & 0x3L);
+    out[outOffset + 1] = (int) ((word >>> 2) & 0x3L);
+    out[outOffset + 2] = (int) ((word >>> 4) & 0x3L);
+    out[outOffset + 3] = (int) ((word >>> 6) & 0x3L);
+    out[outOffset + 4] = (int) ((word >>> 8) & 0x3L);
+    out[outOffset + 5] = (int) ((word >>> 10) & 0x3L);
+    out[outOffset + 6] = (int) ((word >>> 12) & 0x3L);
+    out[outOffset + 7] = (int) ((word >>> 14) & 0x3L);
+    out[outOffset + 8] = (int) ((word >>> 16) & 0x3L);
+    out[outOffset + 9] = (int) ((word >>> 18) & 0x3L);
+    out[outOffset + 10] = (int) ((word >>> 20) & 0x3L);
+    out[outOffset + 11] = (int) ((word >>> 22) & 0x3L);
+    out[outOffset + 12] = (int) ((word >>> 24) & 0x3L);
+    out[outOffset + 13] = (int) ((word >>> 26) & 0x3L);
+    out[outOffset + 14] = (int) ((word >>> 28) & 0x3L);
+    out[outOffset + 15] = (int) ((word >>> 30) & 0x3L);
+    out[outOffset + 16] = (int) ((word >>> 32) & 0x3L);
+    out[outOffset + 17] = (int) ((word >>> 34) & 0x3L);
+    out[outOffset + 18] = (int) ((word >>> 36) & 0x3L);
+    out[outOffset + 19] = (int) ((word >>> 38) & 0x3L);
+    out[outOffset + 20] = (int) ((word >>> 40) & 0x3L);
+    out[outOffset + 21] = (int) ((word >>> 42) & 0x3L);
+    out[outOffset + 22] = (int) ((word >>> 44) & 0x3L);
+    out[outOffset + 23] = (int) ((word >>> 46) & 0x3L);
+    out[outOffset + 24] = (int) ((word >>> 48) & 0x3L);
+    out[outOffset + 25] = (int) ((word >>> 50) & 0x3L);
+    out[outOffset + 26] = (int) ((word >>> 52) & 0x3L);
+    out[outOffset + 27] = (int) ((word >>> 54) & 0x3L);
+    out[outOffset + 28] = (int) ((word >>> 56) & 0x3L);
+    out[outOffset + 29] = (int) ((word >>> 58) & 0x3L);
+  }
+
+  private static void decode20x3(long word, int[] out, int outOffset) {
+    out[outOffset] = (int) (word & 0x7L);
+    out[outOffset + 1] = (int) ((word >>> 3) & 0x7L);
+    out[outOffset + 2] = (int) ((word >>> 6) & 0x7L);
+    out[outOffset + 3] = (int) ((word >>> 9) & 0x7L);
+    out[outOffset + 4] = (int) ((word >>> 12) & 0x7L);
+    out[outOffset + 5] = (int) ((word >>> 15) & 0x7L);
+    out[outOffset + 6] = (int) ((word >>> 18) & 0x7L);
+    out[outOffset + 7] = (int) ((word >>> 21) & 0x7L);
+    out[outOffset + 8] = (int) ((word >>> 24) & 0x7L);
+    out[outOffset + 9] = (int) ((word >>> 27) & 0x7L);
+    out[outOffset + 10] = (int) ((word >>> 30) & 0x7L);
+    out[outOffset + 11] = (int) ((word >>> 33) & 0x7L);
+    out[outOffset + 12] = (int) ((word >>> 36) & 0x7L);
+    out[outOffset + 13] = (int) ((word >>> 39) & 0x7L);
+    out[outOffset + 14] = (int) ((word >>> 42) & 0x7L);
+    out[outOffset + 15] = (int) ((word >>> 45) & 0x7L);
+    out[outOffset + 16] = (int) ((word >>> 48) & 0x7L);
+    out[outOffset + 17] = (int) ((word >>> 51) & 0x7L);
+    out[outOffset + 18] = (int) ((word >>> 54) & 0x7L);
+    out[outOffset + 19] = (int) ((word >>> 57) & 0x7L);
+  }
+
+  private static void decode15x4(long word, int[] out, int outOffset) {
+    out[outOffset] = (int) (word & 0xFL);
+    out[outOffset + 1] = (int) ((word >>> 4) & 0xFL);
+    out[outOffset + 2] = (int) ((word >>> 8) & 0xFL);
+    out[outOffset + 3] = (int) ((word >>> 12) & 0xFL);
+    out[outOffset + 4] = (int) ((word >>> 16) & 0xFL);
+    out[outOffset + 5] = (int) ((word >>> 20) & 0xFL);
+    out[outOffset + 6] = (int) ((word >>> 24) & 0xFL);
+    out[outOffset + 7] = (int) ((word >>> 28) & 0xFL);
+    out[outOffset + 8] = (int) ((word >>> 32) & 0xFL);
+    out[outOffset + 9] = (int) ((word >>> 36) & 0xFL);
+    out[outOffset + 10] = (int) ((word >>> 40) & 0xFL);
+    out[outOffset + 11] = (int) ((word >>> 44) & 0xFL);
+    out[outOffset + 12] = (int) ((word >>> 48) & 0xFL);
+    out[outOffset + 13] = (int) ((word >>> 52) & 0xFL);
+    out[outOffset + 14] = (int) ((word >>> 56) & 0xFL);
+  }
+
+  private static void decode12x5(long word, int[] out, int outOffset) {
+    out[outOffset] = (int) (word & 0x1FL);
+    out[outOffset + 1] = (int) ((word >>> 5) & 0x1FL);
+    out[outOffset + 2] = (int) ((word >>> 10) & 0x1FL);
+    out[outOffset + 3] = (int) ((word >>> 15) & 0x1FL);
+    out[outOffset + 4] = (int) ((word >>> 20) & 0x1FL);
+    out[outOffset + 5] = (int) ((word >>> 25) & 0x1FL);
+    out[outOffset + 6] = (int) ((word >>> 30) & 0x1FL);
+    out[outOffset + 7] = (int) ((word >>> 35) & 0x1FL);
+    out[outOffset + 8] = (int) ((word >>> 40) & 0x1FL);
+    out[outOffset + 9] = (int) ((word >>> 45) & 0x1FL);
+    out[outOffset + 10] = (int) ((word >>> 50) & 0x1FL);
+    out[outOffset + 11] = (int) ((word >>> 55) & 0x1FL);
+  }
+
+  private static void decode10x6(long word, int[] out, int outOffset) {
+    out[outOffset] = (int) (word & 0x3FL);
+    out[outOffset + 1] = (int) ((word >>> 6) & 0x3FL);
+    out[outOffset + 2] = (int) ((word >>> 12) & 0x3FL);
+    out[outOffset + 3] = (int) ((word >>> 18) & 0x3FL);
+    out[outOffset + 4] = (int) ((word >>> 24) & 0x3FL);
+    out[outOffset + 5] = (int) ((word >>> 30) & 0x3FL);
+    out[outOffset + 6] = (int) ((word >>> 36) & 0x3FL);
+    out[outOffset + 7] = (int) ((word >>> 42) & 0x3FL);
+    out[outOffset + 8] = (int) ((word >>> 48) & 0x3FL);
+    out[outOffset + 9] = (int) ((word >>> 54) & 0x3FL);
+  }
+
+  private static void decode8x7(long word, int[] out, int outOffset) {
+    out[outOffset] = (int) (word & 0x7FL);
+    out[outOffset + 1] = (int) ((word >>> 7) & 0x7FL);
+    out[outOffset + 2] = (int) ((word >>> 14) & 0x7FL);
+    out[outOffset + 3] = (int) ((word >>> 21) & 0x7FL);
+    out[outOffset + 4] = (int) ((word >>> 28) & 0x7FL);
+    out[outOffset + 5] = (int) ((word >>> 35) & 0x7FL);
+    out[outOffset + 6] = (int) ((word >>> 42) & 0x7FL);
+    out[outOffset + 7] = (int) ((word >>> 49) & 0x7FL);
+  }
+
+  private static void decode7x8(long word, int[] out, int outOffset) {
+    out[outOffset] = (int) (word & 0xFFL);
+    out[outOffset + 1] = (int) ((word >>> 8) & 0xFFL);
+    out[outOffset + 2] = (int) ((word >>> 16) & 0xFFL);
+    out[outOffset + 3] = (int) ((word >>> 24) & 0xFFL);
+    out[outOffset + 4] = (int) ((word >>> 32) & 0xFFL);
+    out[outOffset + 5] = (int) ((word >>> 40) & 0xFFL);
+    out[outOffset + 6] = (int) ((word >>> 48) & 0xFFL);
+  }
+
+  private static void decode6x10(long word, int[] out, int outOffset) {
+    out[outOffset] = (int) (word & 0x3FFL);
+    out[outOffset + 1] = (int) ((word >>> 10) & 0x3FFL);
+    out[outOffset + 2] = (int) ((word >>> 20) & 0x3FFL);
+    out[outOffset + 3] = (int) ((word >>> 30) & 0x3FFL);
+    out[outOffset + 4] = (int) ((word >>> 40) & 0x3FFL);
+    out[outOffset + 5] = (int) ((word >>> 50) & 0x3FFL);
+  }
+
+  private static void decode5x12(long word, int[] out, int outOffset) {
+    out[outOffset] = (int) (word & 0xFFFL);
+    out[outOffset + 1] = (int) ((word >>> 12) & 0xFFFL);
+    out[outOffset + 2] = (int) ((word >>> 24) & 0xFFFL);
+    out[outOffset + 3] = (int) ((word >>> 36) & 0xFFFL);
+    out[outOffset + 4] = (int) ((word >>> 48) & 0xFFFL);
+  }
+
+  private static void decode4x15(long word, int[] out, int outOffset) {
+    out[outOffset] = (int) (word & 0x7FFFL);
+    out[outOffset + 1] = (int) ((word >>> 15) & 0x7FFFL);
+    out[outOffset + 2] = (int) ((word >>> 30) & 0x7FFFL);
+    out[outOffset + 3] = (int) ((word >>> 45) & 0x7FFFL);
+  }
+
+  private static void decode3x20(long word, int[] out, int outOffset) {
+    out[outOffset] = (int) (word & 0xFFFFFL);
+    out[outOffset + 1] = (int) ((word >>> 20) & 0xFFFFFL);
+    out[outOffset + 2] = (int) ((word >>> 40) & 0xFFFFFL);
+  }
+
+  private static void decode2x30(long word, int[] out, int outOffset) {
+    out[outOffset] = (int) (word & 0x3FFFFFFFL);
+    out[outOffset + 1] = (int) ((word >>> 30) & 0x3FFFFFFFL);
+  }
+
+  private static void decode1x31(long word, int[] out, int outOffset) {
+    out[outOffset] = (int) (word & 0x7FFFFFFFL);
   }
 }
