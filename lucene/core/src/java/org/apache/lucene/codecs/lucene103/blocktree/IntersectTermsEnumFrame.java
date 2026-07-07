@@ -270,7 +270,6 @@ final class IntersectTermsEnumFrame {
       suffixLength = suffixLengths[nextEnt];
     }
     nextEnt++;
-    suffixLength = suffixLengthsReader.readVInt();
     startBytePos = suffixesReader.getPosition();
     suffixesReader.skipBytes(suffixLength);
   }
