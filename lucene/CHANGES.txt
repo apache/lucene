@@ -351,6 +351,8 @@ Other
 
 * GITHUB#16315: Fix flaky test TestIndexOptions > testMultiValueForcesDeoptimization (neoremind)
 
+* GITHUB#16279: Add JMH benchmarks comparing read I/O strategies under memory pressure
+
 ======================= Lucene 10.5.0 =======================
 
 API Changes

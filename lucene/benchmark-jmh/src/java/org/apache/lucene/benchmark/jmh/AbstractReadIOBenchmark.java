@@ -196,7 +196,7 @@ public abstract class AbstractReadIOBenchmark {
 
     mmapSequentialDir = new MMapDirectory(dirPath);
     mmapSequentialDir.setReadAdvice(
-        (name, context) -> {
+        (name, _) -> {
           if (name.equals(fileName)) {
             return Optional.of(ReadAdvice.SEQUENTIAL);
           }
@@ -206,7 +206,7 @@ public abstract class AbstractReadIOBenchmark {
 
     mmapRandomDir = new MMapDirectory(dirPath);
     mmapRandomDir.setReadAdvice(
-        (name, context) -> {
+        (name, _) -> {
           if (name.equals(fileName)) {
             return Optional.of(ReadAdvice.RANDOM);
           }
