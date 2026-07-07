@@ -31,7 +31,6 @@ import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.DocValuesField;
 import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesSkipper;
-import org.apache.lucene.index.SkipStat;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.ImpactsEnum;
@@ -40,6 +39,7 @@ import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.PostingsEnum;
 import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SkipStat;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
@@ -327,7 +327,13 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     }
 
     return new DocValuesSkipperEntry(
-        offset, length, minValue, maxValue, docCount, maxDocID, maxValueCount,
+        offset,
+        length,
+        minValue,
+        maxValue,
+        docCount,
+        maxDocID,
+        maxValueCount,
         availableStatsBitmask);
   }
 
