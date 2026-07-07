@@ -178,6 +178,10 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* GITHUB#16367: HNSW graph construction now periodically checks whether the surrounding merge has
+  been aborted, so IndexWriter#rollback and abortMerges no longer block until the entire graph is
+  built. (Jeho Jeong)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 

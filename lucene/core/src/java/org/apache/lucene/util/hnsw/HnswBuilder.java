@@ -19,6 +19,7 @@ package org.apache.lucene.util.hnsw;
 
 import java.io.IOException;
 import org.apache.lucene.internal.hppc.IntHashSet;
+import org.apache.lucene.util.IORunnable;
 import org.apache.lucene.util.InfoStream;
 
 /**
@@ -45,6 +46,14 @@ public interface HnswBuilder {
 
   /** Set info-stream to output debugging information */
   void setInfoStream(InfoStream infoStream);
+
+  /**
+   * Sets a check that is invoked before every node insertion during graph construction. The check
+   * may throw an exception to abort the build promptly, e.g. {@link
+   * org.apache.lucene.index.MergePolicy.MergeAbortedException} when the merge that triggered the
+   * build has been aborted.
+   */
+  void setAbortCheck(IORunnable abortCheck);
 
   OnHeapHnswGraph getGraph();
 
