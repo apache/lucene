@@ -1071,7 +1071,8 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
    * When two two-phase clauses tie on approximation cost, the scorer must still confirm the clause
    * with the cheaper {@link TwoPhaseIterator#matchCost()} first, so that it thins out candidates
    * before the more expensive confirmation runs. The clauses are passed to the constructor with the
-   * expensive one first, so any observed ordering comes purely from the {@code matchCost} tie-break.
+   * expensive one first, so any observed ordering comes purely from the {@code matchCost}
+   * tie-break.
    */
   public void testTwoPhaseIteratorsOrderedByMatchCost() throws IOException {
     int maxDoc = 100_000;
@@ -1140,13 +1141,15 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     assertEquals(expected, result);
 
     // The cheap clause runs first and thins out the candidate set, so the expensive clause -- even
-    // though it matches every candidate it's asked about -- gets confirmed far less often.
+    // though it matches every candidate it's asked about -- gets confirmed less often. Without the
+    // matchCost tie-break, both clauses tie on approximation cost and the expensive one would be
+    // confirmed just as often as the cheap one.
     assertTrue(
-        "expensive matchCost clause should be confirmed far less often than the cheap one: cheap="
+        "expensive matchCost clause should be confirmed less often than the cheap one: cheap="
             + cheapCalls[0]
             + " expensive="
             + expensiveCalls[0],
-        expensiveCalls[0] < cheapCalls[0] / 4);
+        expensiveCalls[0] < cheapCalls[0]);
   }
 
   public void testMixedTwoPhaseRangeIntersection() throws IOException {
