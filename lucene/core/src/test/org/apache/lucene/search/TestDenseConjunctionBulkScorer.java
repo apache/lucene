@@ -1067,6 +1067,88 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
     assertEquals(30_000, collector.count);
   }
 
+  /**
+   * When two two-phase clauses tie on approximation cost, the scorer must still confirm the clause
+   * with the cheaper {@link TwoPhaseIterator#matchCost()} first, so that it thins out candidates
+   * before the more expensive confirmation runs. The clauses are passed to the constructor with the
+   * expensive one first, so any observed ordering comes purely from the {@code matchCost} tie-break.
+   */
+  public void testTwoPhaseIteratorsOrderedByMatchCost() throws IOException {
+    int maxDoc = 100_000;
+
+    // A plain (non-two-phase) leading clause that matches every other doc.
+    FixedBitSet leadMatches = new FixedBitSet(maxDoc);
+    for (int i = 0; i < maxDoc; i += 2) {
+      leadMatches.set(i);
+    }
+    DocIdSetIterator lead = new BitSetIterator(leadMatches, leadMatches.approximateCardinality());
+
+    int[] cheapCalls = {0};
+    int[] expensiveCalls = {0};
+
+    // Cheap to confirm, and selective: only matches 1 in 8 candidates.
+    TwoPhaseIterator cheap =
+        new TwoPhaseIterator(DocIdSetIterator.all(maxDoc)) {
+          @Override
+          public boolean matches() throws IOException {
+            cheapCalls[0]++;
+            return approximation().docID() % 8 == 0;
+          }
+
+          @Override
+          public float matchCost() {
+            return 1f;
+          }
+        };
+    // Expensive to confirm, and matches everything it's asked about.
+    TwoPhaseIterator expensive =
+        new TwoPhaseIterator(DocIdSetIterator.all(maxDoc)) {
+          @Override
+          public boolean matches() throws IOException {
+            expensiveCalls[0]++;
+            return true;
+          }
+
+          @Override
+          public float matchCost() {
+            return 1000f;
+          }
+        };
+
+    BulkScorer scorer =
+        new DenseConjunctionBulkScorer(
+            Collections.singletonList(lead), Arrays.asList(expensive, cheap), maxDoc, 0f);
+    FixedBitSet result = new FixedBitSet(maxDoc);
+    scorer.score(
+        new LeafCollector() {
+          @Override
+          public void setScorer(Scorable scorer) throws IOException {}
+
+          @Override
+          public void collect(int doc) throws IOException {
+            result.set(doc);
+          }
+        },
+        null,
+        0,
+        DocIdSetIterator.NO_MORE_DOCS);
+
+    FixedBitSet expected = new FixedBitSet(maxDoc);
+    for (int i = 0; i < maxDoc; i += 8) {
+      expected.set(i);
+    }
+    assertEquals(expected, result);
+
+    // The cheap clause runs first and thins out the candidate set, so the expensive clause -- even
+    // though it matches every candidate it's asked about -- gets confirmed far less often.
+    assertTrue(
+        "expensive matchCost clause should be confirmed far less often than the cheap one: cheap="
+            + cheapCalls[0]
+            + " expensive="
+            + expensiveCalls[0],
+        expensiveCalls[0] < cheapCalls[0] / 4);
+  }
+
   public void testMixedTwoPhaseRangeIntersection() throws IOException {
     int maxDoc = 100_000;
     DocIdSetIterator clause1 = DocIdSetIterator.range(10_000, 60_000);

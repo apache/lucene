@@ -112,9 +112,13 @@ final class DenseConjunctionBulkScorer extends BulkScorer {
     }
     // Plain approximations before two-phase ones, so matches() only runs on docs that already
     // satisfy every approximation; within each group, cheapest approximation first (lead skipping).
+    // Two-phase clauses that tie on approximation cost are further ordered by matchCost, so a cheap
+    // confirmation (e.g. a doc values range) runs before an expensive one (e.g. a script) even when
+    // both report the same approximation cost.
     this.iterators.sort(
         Comparator.<DisiWrapper>comparingInt(w -> w.twoPhase() == null ? 0 : 1)
-            .thenComparingLong(w -> w.approximation().cost()));
+            .thenComparingLong(w -> w.approximation().cost())
+            .thenComparingDouble(w -> w.twoPhase() == null ? 0 : w.twoPhase().matchCost()));
     this.scorable = new SimpleScorable();
     scorable.score = constantScore;
   }
