@@ -101,6 +101,8 @@ API Changes
 * GITHUB#16281: The checkIntegrity() method of codec Producer APIs gains a OneMerge parameter,
   which is used to check for aborted merges during checksum validation. (Tanguy Leroux)
 
+* GITHUB#16363: Add API to use a custom `DictionarySuggester` instead of hardcoded `GeneratingSuggester`
+
 New Features
 ---------------------
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
@@ -176,6 +178,9 @@ Optimizations
 
 Bug Fixes
 ---------------------
+* Fix missing null check in RamUsageEstimator.sizeOf(Accountable) to be consistent
+  with sizeOf(String) and sizeOf(Accountable[]). (Tim Grein)
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
@@ -330,6 +335,15 @@ Optimizations
   rangeIntoBitSet. (Costin Leau)
 
 * GITHUB#16352: Better cost() estimation for SkipBlockRangeIterator. (Alan Woodward)
+
+* GITHUB#16362: Add TwoPhaseIterator.applyMask() to support bulk matching for more
+  expensive queries. (Alan Woodward)
+
+* GITHUB#16355: Add ASCII fast-path to CharacterUtils.toLowerCase, avoiding per-char codepoint
+  conversion for ASCII-only tokens. 2.16x throughput on English text. (Costin Leau)
+
+* GITHUB#16370: Sort two-phase iterators by matchCost in DenseConjunctionBulkScorer.
+  (Alan Woodward)
 
 Bug Fixes
 ---------------------
