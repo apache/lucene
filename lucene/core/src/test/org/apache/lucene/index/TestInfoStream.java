@@ -131,8 +131,8 @@ public class TestInfoStream extends LuceneTestCase {
     int mergedCount = 0;
     synchronized (infoStream) {
       for (String message : infoStream) {
-        // we don't want to be printing full diagnostics every time a segment is mentioned in the log,
-        // only when it is first flushed
+        // we don't want to be printing full diagnostics every time a segment is mentioned in the
+        // log, only when it is first flushed
         if (message.contains("diagnostics")) {
           if (message.startsWith("[IW] publishFlushedSegment")) {
             flushedCount++;
@@ -152,5 +152,5 @@ public class TestInfoStream extends LuceneTestCase {
       assertEquals(2, flushedCount);
       assertEquals(1, mergedCount);
     }
-  }g
+  }
 }
