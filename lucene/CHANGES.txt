@@ -310,6 +310,10 @@ New Features
   and document length instead of corpus statistics such as document frequency. It also supports k3
   query-term frequency saturation. (Tianxiao Wei)
 
+* GITHUB#XXXX: Add CaseFoldingFilter and UnicodeUtil.foldCase() for Unicode simple case folding
+  using a flat lookup table, up to 12x faster than Character.toLowerCase() on non-ASCII text.
+  No ICU dependency required. (Costin Leau)
+
 Improvements
 ---------------------
 * GITHUB#16170: Alter TopGroups.merge() to not return null if no groups. (Binlong Gao)
