@@ -94,7 +94,10 @@ public class TestForceNoBulkScoringQuery extends LuceneTestCase {
       iw.commit();
 
       try (IndexReader reader = DirectoryReader.open(dir)) {
-        IndexSearcher searcher = newSearcher(reader);
+        // use a plain searcher: newSearcher may wrap with AssertingIndexSearcher, whose
+        // ScorerSupplier sometimes builds the bulk scorer from scorer() instead of delegating to
+        // bulkScorer(), which breaks the sanity check below for some seeds
+        IndexSearcher searcher = new IndexSearcher(reader);
         // disable query caching, so that we exercise the search path directly rather than
         // any bulk-scoring optimizations the cache may apply internally
         searcher.setQueryCache(null);
