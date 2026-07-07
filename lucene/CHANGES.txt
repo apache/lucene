@@ -325,6 +325,9 @@ Optimizations
 
 * GITHUB#16352: Better cost() estimation for SkipBlockRangeIterator. (Alan Woodward)
 
+* GITHUB#16362: Add TwoPhaseIterator.applyMask() to support bulk matching for more
+  expensive queries. (Alan Woodward)
+
 Bug Fixes
 ---------------------
 
