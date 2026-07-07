@@ -34,6 +34,7 @@ import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FloatVectorValues;
 import org.apache.lucene.index.IndexFileNames;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SegmentReadState;
 import org.apache.lucene.index.VectorSimilarityFunction;
 import org.apache.lucene.internal.hppc.IntObjectHashMap;
@@ -239,7 +240,7 @@ public class SimpleTextKnnVectorsReader extends KnnVectorsReader {
   }
 
   @Override
-  public void checkIntegrity() throws IOException {
+  public void checkIntegrity(MergePolicy.OneMerge merge) throws IOException {
     IndexInput clone = dataIn.clone();
     clone.seek(0);
 

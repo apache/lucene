@@ -117,10 +117,11 @@ public abstract class TwoPhaseIterator {
    * <p><b>Note</b>: It is illegal to call this method when the approximation is exhausted or not
    * positioned.
    *
-   * <p>The default implementation returns the current doc ID of the approximation.
+   * <p>The default implementation assumes runs of a single doc ID and returns the current doc ID of
+   * the approximation plus one, mirroring {@link DocIdSetIterator#docIDRunEnd()}.
    */
   public int docIDRunEnd() throws IOException {
-    return approximation().docID();
+    return approximation().docID() + 1;
   }
 
   /**
@@ -142,6 +143,42 @@ public abstract class TwoPhaseIterator {
       if (matches()) {
         bitSet.set(doc - offset);
       }
+    }
+  }
+
+  /**
+   * Confirms {@link #matches()} only for the doc IDs whose bit is set in {@code bitSet} (the
+   * document whose ID is {@code i} being stored at bit {@code i - offset}), clearing bits for docs
+   * that turn out not to match. Upon return {@link #approximation()} is positioned on the first doc
+   * that is {@code >= upTo}, mirroring {@link #intoBitSet}.
+   *
+   * <p>Prefer this over {@link #intoBitSet} followed by a separate intersection when {@code bitSet}
+   * already holds a candidate set narrowed down by other clauses of a conjunction: it avoids
+   * confirming matches for docs that are already known not to be candidates.
+   *
+   * <p>The default implementation walks the set bits of {@code bitSet} one at a time, advancing
+   * {@link #approximation()} to each and calling {@link #matches()}. Implementations that can
+   * classify a whole span of a sparse candidate set in bulk -- for instance a block-based skip
+   * index that can tell that an entire span is fully matching or fully non-matching without
+   * visiting doc values -- should override this.
+   */
+  public void applyMask(int upTo, FixedBitSet bitSet, int offset) throws IOException {
+    DocIdSetIterator approximation = approximation();
+    int upperBound = Math.min(bitSet.length(), upTo - offset);
+    for (int i = bitSet.nextSetBit(0);
+        i != DocIdSetIterator.NO_MORE_DOCS && i < upperBound;
+        i = i + 1 >= bitSet.length() ? DocIdSetIterator.NO_MORE_DOCS : bitSet.nextSetBit(i + 1)) {
+      int doc = offset + i;
+      int approxDoc = approximation.docID();
+      if (approxDoc < doc) {
+        approxDoc = approximation.advance(doc);
+      }
+      if (approxDoc != doc || matches() == false) {
+        bitSet.clear(i);
+      }
+    }
+    if (approximation.docID() < upTo) {
+      approximation.advance(upTo);
     }
   }
 }

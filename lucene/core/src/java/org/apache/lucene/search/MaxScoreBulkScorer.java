@@ -52,7 +52,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
   private FixedBitSet filterMatches = null;
 
   private final DocAndFloatFeatureBuffer docAndScoreBuffer = new DocAndFloatFeatureBuffer();
-  private final DocAndScoreAccBuffer docAndScoreAccBuffer;
+  private final DocAndScoreAccBuffer docAndScoreAccBuffer = new DocAndScoreAccBuffer();
 
   MaxScoreBulkScorer(int maxDoc, List<Scorer> scorers, Scorer filter) throws IOException {
     this.maxDoc = maxDoc;
@@ -69,8 +69,6 @@ final class MaxScoreBulkScorer extends BulkScorer {
     this.cost = cost;
     essentialQueue = DisiPriorityQueue.ofMaxSize(allScorers.length);
     maxScoreSums = new double[allScorers.length];
-    docAndScoreAccBuffer = new DocAndScoreAccBuffer();
-    docAndScoreAccBuffer.growNoCopy(INNER_WINDOW_SIZE);
 
     if (this.filter != null && this.filter.twoPhaseView == null && maxDoc >= INNER_WINDOW_SIZE) {
       long minScorerCost = allScorers[0].cost;
@@ -309,6 +307,7 @@ final class MaxScoreBulkScorer extends BulkScorer {
   /** Flush {@link #windowMatches} and {@link #windowScores} into {@link #docAndScoreAccBuffer}. */
   private void flushWindowToDocAndScoreAccBuffer(int innerWindowMin, int innerWindowSize)
       throws IOException {
+    docAndScoreAccBuffer.growNoCopy(innerWindowSize);
     docAndScoreAccBuffer.size = 0;
     windowMatches.forEach(
         0,

@@ -21,7 +21,6 @@ import static org.apache.lucene.search.TopDocsCollector.EMPTY_TOPDOCS;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import org.apache.lucene.index.LeafReaderContext;
@@ -146,11 +145,10 @@ public final class LargeNumHitsTopDocsCollector implements Collector {
 
     // Total number of hits collected were less than requestedHitCount
     assert totalHits <= requestedHitCount;
-    Collections.sort(
-        hits,
-        Comparator.comparing((ScoreDoc scoreDoc) -> scoreDoc.score)
+    hits.sort(
+        Comparator.comparingDouble((ScoreDoc scoreDoc) -> scoreDoc.score)
             .reversed()
-            .thenComparing(scoreDoc -> scoreDoc.doc));
+            .thenComparingInt(scoreDoc -> scoreDoc.doc));
 
     for (int i = 0; i < howMany; i++) {
       results[i] = hits.get(i);

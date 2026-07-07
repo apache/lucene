@@ -328,7 +328,7 @@ class PointValuesWriter {
           }
 
           @Override
-          public void checkIntegrity() {
+          public void checkIntegrity(MergePolicy.OneMerge merge) {
             throw new UnsupportedOperationException();
           }
 
