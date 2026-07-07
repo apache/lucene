@@ -104,6 +104,30 @@ public class TestFloorAwareKnnCollector extends LuceneTestCase {
                 9));
   }
 
+  public void testGreedinessForClampRoundTrips() {
+    // The helper must invert the clamp sizing: constructing a collector with the derived
+    // greediness yields a clamp of exactly the requested width, at any gate size. This is the
+    // property that makes width-first configuration safe where a constant greediness is not.
+    int[][] cases = {{6000, 600}, {184, 64}, {1012, 101}, {117, 58}, {10000, 16}};
+    for (int[] c : cases) {
+      int gateK = c[0];
+      int clampSlots = c[1];
+      float greediness = FloorAwareKnnCollector.greedinessForClamp(gateK, clampSlots);
+      assertEquals(
+          "gateK=" + gateK + " clampSlots=" + clampSlots,
+          clampSlots,
+          Math.round((1 - greediness) * gateK));
+    }
+    // A width of the whole gate or more means the floor cannot bind: greediness 0, stock search.
+    assertEquals(0f, FloorAwareKnnCollector.greedinessForClamp(44, 64), 0.0f);
+    assertEquals(0f, FloorAwareKnnCollector.greedinessForClamp(64, 64), 0.0f);
+
+    expectThrows(
+        IllegalArgumentException.class, () -> FloorAwareKnnCollector.greedinessForClamp(0, 16));
+    expectThrows(
+        IllegalArgumentException.class, () -> FloorAwareKnnCollector.greedinessForClamp(100, 0));
+  }
+
   public void testGateBelowQueueSizeOpensAtGateKResults() {
     // A share-sized gate: the local queue holds 32 results but the collector's expected share of
     // the merged top-k is only 8, so the floor must engage after 8 collected results, long before

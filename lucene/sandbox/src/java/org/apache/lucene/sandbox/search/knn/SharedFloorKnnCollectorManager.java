@@ -212,10 +212,11 @@ public final class SharedFloorKnnCollectorManager implements KnnCollectorManager
    *     GlobalKnnFloor#k()} must equal {@code k}
    * @param greediness fraction of each segment's search effort that follows the shared floor, in
    *     {@code [0, 1]}; see {@link FloorAwareKnnCollector}. When {@code globalShare} is below 1,
-   *     prefer values of {@code 0.9} or above: the greediness clamp is sized from the (now small)
-   *     gate, and a low greediness can leave the clamp as the binding constraint for the whole
-   *     search, reducing the adaptive floor to a fixed quota. See the caution on {@link
-   *     FloorAwareKnnCollector}'s greediness clamp.
+   *     the gate is small and the clamp {@code (1 - greediness) * gateK} with it: derive this value
+   *     from the exploration width the graph needs via {@link
+   *     FloorAwareKnnCollector#greedinessForClamp(int, int)} (with {@code gateK} from {@link
+   *     #perShardGate(int, double)}) rather than choosing a constant. See the caution on {@link
+   *     FloorAwareKnnCollector}'s greediness clamp for what goes wrong with constants.
    * @param floorActivationK the smallest k at which floor sharing engages; for smaller k this
    *     manager creates plain collectors and the search is exactly stock search. See the class
    *     comment for the reasoning behind the {@link #DEFAULT_FLOOR_ACTIVATION_K default}.

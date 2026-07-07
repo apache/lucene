@@ -67,8 +67,8 @@ import org.apache.lucene.util.hnsw.FloatHeap;
  *       measurements of such a configuration measure the quota, not the floor. (Benchmarked
  *       directly: {@code greediness = 0.5, gateK = 6000} on a 16-shard k=10000 search reproduced a
  *       static per-shard quota of 3000 result-for-result.) When configuring a gate below the queue
- *       size, prefer {@code greediness >= 0.9}, and verify that {@code (1 - greediness) * gateK} is
- *       small relative to the per-searcher share of the merged top-k.
+ *       size, derive greediness from the exploration width the graph needs via {@link
+ *       #greedinessForClamp(int, int)} instead of choosing a constant fraction.
  *   <li><b>Batched synchronization.</b> Scores are published to the shared floor, and the floor is
  *       re-read, when the ascent gate opens and each time {@code syncInterval} further vectors have
  *       been visited (default {@value #DEFAULT_SYNC_INTERVAL}), so the shared state is touched a
@@ -119,6 +119,34 @@ public final class FloorAwareKnnCollector extends KnnCollector.Decorator {
    * with.
    */
   public static final int DEFAULT_SYNC_INTERVAL = 256;
+
+  /**
+   * The greediness at which the clamp keeps {@code clampSlots} exploration slots against a gate of
+   * {@code gateK}: {@code 1 - clampSlots / gateK}, or 0 when the requested width is the whole gate
+   * or more (the floor is then fully neutralized).
+   *
+   * <p>Prefer deriving greediness through this method over choosing a constant. What protects
+   * recall is the clamp's <em>absolute</em> width, not the greediness fraction: the same {@code
+   * greediness = 0.9} that leaves a comfortable 600-slot clamp at {@code gateK = 6000} collapses to
+   * the bare minimum at {@code gateK = 184}, which benchmarked at double-digit recall loss. A
+   * caller who instead fixes the width it needs, and lets this method translate it, is safe at
+   * every gate size.
+   *
+   * @param gateK the ascent gate the collector will use, at least 1
+   * @param clampSlots the exploration width to preserve, at least 1
+   */
+  public static float greedinessForClamp(int gateK, int clampSlots) {
+    if (gateK < 1) {
+      throw new IllegalArgumentException("gateK must be at least 1, got: " + gateK);
+    }
+    if (clampSlots < 1) {
+      throw new IllegalArgumentException("clampSlots must be at least 1, got: " + clampSlots);
+    }
+    if (clampSlots >= gateK) {
+      return 0f;
+    }
+    return 1f - clampSlots / (float) gateK;
+  }
 
   private final AbstractKnnCollector subCollector;
   private final GlobalKnnFloor globalFloor;
