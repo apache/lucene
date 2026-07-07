@@ -61,6 +61,9 @@ Bug Fixes
   to the wrapped NumericDocValues, enabling optimized range evaluation for
   single-valued sorted numeric fields. (Costin Leau)
 
+* GITHUB#16296: Fix missing null check in RamUsageEstimator.sizeOf(Accountable)
+  to be consistent with sizeOf(String) and sizeOf(Accountable[]). (Tim Grein)
+
 Other
 ---------------------
 * GITHUB#16266: Remove deprecated search(Query, Collector) calls in QueryUtils by replacing
