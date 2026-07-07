@@ -178,9 +178,6 @@ Optimizations
 
 Bug Fixes
 ---------------------
-* Fix missing null check in RamUsageEstimator.sizeOf(Accountable) to be consistent
-  with sizeOf(String) and sizeOf(Accountable[]). (Tim Grein)
-
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
@@ -350,6 +347,9 @@ Bug Fixes
 * GITHUB#16295: SingletonSortedNumericDocValues now delegates rangeIntoBitSet
   to the wrapped NumericDocValues, enabling optimized range evaluation for
   single-valued sorted numeric fields. (Costin Leau)
+
+* GITHUB#16296: Fix missing null check in RamUsageEstimator.sizeOf(Accountable)
+  to be consistent with sizeOf(String) and sizeOf(Accountable[]). (Tim Grein)
 
 Other
 ---------------------
