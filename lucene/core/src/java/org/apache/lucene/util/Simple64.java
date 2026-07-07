@@ -366,10 +366,6 @@ public final class Simple64 {
     }
   }
 
-  // ---------------------------------------------------------------------
-  // Hand-unrolled pack methods, one per selector.
-  // ---------------------------------------------------------------------
-
   private static long pack60x1(int[] ints, int offset) {
     return ((long) ints[offset])
         | ((long) ints[offset + 1] << 1)
@@ -604,10 +600,6 @@ public final class Simple64 {
   private static long pack1x31(int[] ints, int offset) {
     return (13L << 60) | ((long) ints[offset]);
   }
-
-  // ---------------------------------------------------------------------
-  // Hand-unrolled decode methods, one per selector.
-  // ---------------------------------------------------------------------
 
   private static void decode60x1(long word, int[] out, int outOffset) {
     out[outOffset] = (int) (word & 0x1L);
