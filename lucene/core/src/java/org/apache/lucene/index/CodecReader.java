@@ -207,6 +207,16 @@ public abstract class CodecReader extends LeafReader {
   }
 
   @Override
+  public final DocValuesField getDocValuesField(String field) throws IOException {
+    ensureOpen();
+    FieldInfo fi = getFieldInfos().fieldInfo(field);
+    if (fi == null || fi.docValuesSkipIndexType() == DocValuesSkipIndexType.NONE) {
+      return null;
+    }
+    return getDocValuesReader().getDocValuesField(fi);
+  }
+
+  @Override
   public final NumericDocValues getNormValues(String field) throws IOException {
     ensureOpen();
     FieldInfo fi = getFieldInfos().fieldInfo(field);

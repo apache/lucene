@@ -19,6 +19,7 @@ package org.apache.lucene.codecs;
 import java.io.Closeable;
 import java.io.IOException;
 import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.DocValuesField;
 import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesSkipper;
 import org.apache.lucene.index.DocValuesType;
@@ -82,6 +83,46 @@ public abstract class DocValuesProducer implements Closeable {
    * FieldInfo#docValuesSkipIndexType()} returns {@link DocValuesSkipIndexType#NONE}.
    */
   public abstract DocValuesSkipper getSkipper(FieldInfo field) throws IOException;
+
+  /**
+   * Returns a {@link DocValuesField} providing global statistics and skipper access. The default
+   * wraps {@link #getSkipper(FieldInfo)}. Codecs should override to serve global stats from
+   * already-loaded .dvm metadata without IO.
+   *
+   * @lucene.experimental
+   */
+  public DocValuesField getDocValuesField(FieldInfo field) throws IOException {
+    final DocValuesSkipper skipper = getSkipper(field);
+    if (skipper == null) {
+      return null;
+    }
+    return new DocValuesField() {
+      @Override
+      public long minValue() {
+        return skipper.minValue();
+      }
+
+      @Override
+      public long maxValue() {
+        return skipper.maxValue();
+      }
+
+      @Override
+      public int docCount() {
+        return skipper.docCount();
+      }
+
+      @Override
+      public int maxValueCount() {
+        return skipper.maxValueCount();
+      }
+
+      @Override
+      public DocValuesSkipper getSkipper() {
+        return skipper;
+      }
+    };
+  }
 
   /**
    * Checks consistency of this producer

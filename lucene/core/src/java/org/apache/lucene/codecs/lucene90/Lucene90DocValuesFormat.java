@@ -236,7 +236,8 @@ public final class Lucene90DocValuesFormat extends DocValuesFormat {
   // Each level entry is length-prefixed and contains a sequence of type-tagged stats.
   // New stats can be appended without a version bump: readers that encounter an unknown
   // type tag skip to the entry end via the length prefix.
-  static final byte SKIP_STAT_RANGE = 0x01;
+  // This must be a compile-time constant for use in switch statements.
+  static final byte SKIP_STAT_RANGE = 0x01; // == SkipStat.RANGE.id()
 
   static {
     // Size of the interval minus read bytes (1 byte for level and 4 bytes for maxDocID)

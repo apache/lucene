@@ -315,6 +315,9 @@ final class Lucene90DocValuesConsumer extends DocValuesConsumer {
     meta.writeInt(globalDocCount);
     meta.writeInt(maxDocId);
     meta.writeInt(globalMaxValueCount);
+    // Bitmask of optional SkipStat types written per skip interval (beyond base range stats).
+    // Bit N set means SkipStat with ordinal N is present. Currently 0 (only base range stats).
+    meta.writeInt(0);
   }
 
   private void writeLevels(List<SkipAccumulator> accumulators) throws IOException {

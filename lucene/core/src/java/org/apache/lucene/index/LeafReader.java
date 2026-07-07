@@ -212,6 +212,17 @@ public abstract non-sealed class LeafReader extends IndexReader {
   public abstract DocValuesSkipper getDocValuesSkipper(String field) throws IOException;
 
   /**
+   * Returns a {@link DocValuesField} providing global statistics and skipper access for the given
+   * field, or {@code null} if no skip index was indexed. Global statistics are available without
+   * additional IO.
+   *
+   * @lucene.experimental
+   */
+  public DocValuesField getDocValuesField(String field) throws IOException {
+    return null;
+  }
+
+  /**
    * Returns {@link FloatVectorValues} for this field, or null if no {@link FloatVectorValues} were
    * indexed. The returned instance should only be used by a single thread.
    *

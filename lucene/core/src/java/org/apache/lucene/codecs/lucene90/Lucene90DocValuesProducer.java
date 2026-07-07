@@ -21,14 +21,17 @@ import static org.apache.lucene.codecs.lucene90.Lucene90DocValuesFormat.TERMS_DI
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Set;
 import org.apache.lucene.codecs.CodecUtil;
 import org.apache.lucene.codecs.DocValuesProducer;
 import org.apache.lucene.index.BaseTermsEnum;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.CorruptIndexException;
 import org.apache.lucene.index.DocValues;
+import org.apache.lucene.index.DocValuesField;
 import org.apache.lucene.index.DocValuesSkipIndexType;
 import org.apache.lucene.index.DocValuesSkipper;
+import org.apache.lucene.index.SkipStat;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
 import org.apache.lucene.index.ImpactsEnum;
@@ -264,7 +267,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
                   entry.maxValue,
                   entry.docCount,
                   entry.maxDocId,
-                  inferredMaxValueCount));
+                  inferredMaxValueCount,
+                  entry.availableStatsBitmask));
         }
       }
     }
@@ -315,9 +319,16 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
     } else {
       maxValueCount = docCount == 0 ? 0 : -1;
     }
+    final int availableStatsBitmask;
+    if (version >= Lucene90DocValuesFormat.VERSION_SKIPPER_STATS_FORMAT) {
+      availableStatsBitmask = meta.readInt();
+    } else {
+      availableStatsBitmask = 0;
+    }
 
     return new DocValuesSkipperEntry(
-        offset, length, minValue, maxValue, docCount, maxDocID, maxValueCount);
+        offset, length, minValue, maxValue, docCount, maxDocID, maxValueCount,
+        availableStatsBitmask);
   }
 
   private void readNumeric(IndexInput meta, NumericEntry entry) throws IOException {
@@ -456,7 +467,8 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       long maxValue,
       int docCount,
       int maxDocId,
-      int maxValueCount) {}
+      int maxValueCount,
+      int availableStatsBitmask) {}
 
   // Cached VectorizationProvider instance to avoid repeated stack walks in ensureCaller()
   private static final org.apache.lucene.internal.vectorization.DocValuesRangeSupport
@@ -2453,6 +2465,60 @@ final class Lucene90DocValuesProducer extends DocValuesProducer {
       }
       return mul * values.get(index & mask) + delta;
     }
+  }
+
+  @Override
+  public DocValuesField getDocValuesField(FieldInfo field) throws IOException {
+    final DocValuesSkipperEntry entry = skippers.get(field.number);
+    if (entry == null) {
+      return null;
+    }
+    final Lucene90DocValuesProducer producer = this;
+    final Set<SkipStat<?>> available = decodeStatsBitmask(entry.availableStatsBitmask());
+    return new DocValuesField() {
+      @Override
+      public long minValue() {
+        return entry.minValue();
+      }
+
+      @Override
+      public long maxValue() {
+        return entry.maxValue();
+      }
+
+      @Override
+      public int docCount() {
+        return entry.docCount();
+      }
+
+      @Override
+      public int maxValueCount() {
+        return entry.maxValueCount();
+      }
+
+      @Override
+      public Set<SkipStat<?>> availableBlockStats() {
+        return available;
+      }
+
+      @Override
+      public DocValuesSkipper getSkipper() throws IOException {
+        return producer.getSkipper(field);
+      }
+    };
+  }
+
+  private static Set<SkipStat<?>> decodeStatsBitmask(int bitmask) {
+    if (bitmask == 0) {
+      return Set.of();
+    }
+    Set<SkipStat<?>> stats = new java.util.HashSet<>();
+    for (SkipStat<?> stat : SkipStat.values()) {
+      if ((bitmask & (1 << stat.id())) != 0) {
+        stats.add(stat);
+      }
+    }
+    return java.util.Collections.unmodifiableSet(stats);
   }
 
   @Override
