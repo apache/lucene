@@ -52,8 +52,6 @@ public class TestFloorAwareKnnCollector extends LuceneTestCase {
   public void testInvalidSyncInterval() {
     GlobalKnnFloor floor = new GlobalKnnFloor(4);
     TopKnnCollector delegate = new TopKnnCollector(4, Integer.MAX_VALUE);
-    // The interval is applied as a bit mask over the visited count, hence the power-of-two
-    // requirement; anything else would synchronize at irregular, surprising points.
     expectThrows(
         IllegalArgumentException.class,
         () ->
@@ -63,12 +61,11 @@ public class TestFloorAwareKnnCollector extends LuceneTestCase {
         IllegalArgumentException.class,
         () ->
             new FloorAwareKnnCollector(
-                delegate, floor, 0.5f, FloorAwareKnnCollector.DEFAULT_MIN_EXPLORATION_SLOTS, 100));
-    expectThrows(
-        IllegalArgumentException.class,
-        () ->
-            new FloorAwareKnnCollector(
                 delegate, floor, 0.5f, FloorAwareKnnCollector.DEFAULT_MIN_EXPLORATION_SLOTS, -8));
+    // Any positive interval is valid: synchronization is scheduled against a visited-count
+    // threshold, not a bit mask, so no power-of-two restriction applies.
+    new FloorAwareKnnCollector(
+        delegate, floor, 0.5f, FloorAwareKnnCollector.DEFAULT_MIN_EXPLORATION_SLOTS, 100);
   }
 
   public void testInvalidGateK() {
@@ -334,13 +331,79 @@ public class TestFloorAwareKnnCollector extends LuceneTestCase {
         "a rejected hit between synchronizations must not report an update",
         collector.collect(k, 1f));
 
-    // Advance to the next synchronization boundary: even a rejected hit must report an update
-    // there, because the re-read of the shared floor may have moved the effective bound.
-    collector.incVisitedCount(256 - (k + 1));
-    assertEquals(0, collector.visitedCount() & 0xff);
+    // Advance a full sync interval past the gate-open synchronization: even a rejected hit must
+    // report an update there, because the re-read of the shared floor may have moved the
+    // effective bound.
+    collector.incVisitedCount(FloorAwareKnnCollector.DEFAULT_SYNC_INTERVAL);
     assertTrue(
-        "a hit on a synchronization boundary must report an update after the floor re-read",
+        "a hit past the synchronization threshold must report an update after the floor re-read",
         collector.collect(k + 1, 1f));
+  }
+
+  public void testSyncHappensOnceIntervalElapsesRegardlessOfAlignment() {
+    // The synchronization schedule must be a threshold over the visited count, not an exact
+    // boundary match: collect() is invoked only for candidates that beat the current bound, so
+    // visited counts arrive at irregular strides, and a boundary that falls between two collects
+    // must trigger on the next collect rather than being skipped. Skipped boundaries starve the
+    // floor exactly in the late phase of the search, when few candidates beat the bar.
+    int k = 4;
+    GlobalKnnFloor floor = new GlobalKnnFloor(k);
+    FloorAwareKnnCollector collector =
+        new FloorAwareKnnCollector(
+            new TopKnnCollector(k, Integer.MAX_VALUE), floor, 0.5f, 1, 256, k);
+
+    // Fill to the gate: the first batch publishes and defines the floor at the k-th best, 1.
+    for (int doc = 0; doc < k; doc++) {
+      collector.incVisitedCount(1);
+      collector.collect(doc, doc + 1f);
+    }
+    assertEquals(1f, floor.floor(), 0.0f);
+
+    // A better score arrives, then the visited count jumps far past the next synchronization
+    // threshold without ever landing on a multiple of the interval.
+    collector.incVisitedCount(1);
+    collector.collect(k, 100f);
+    collector.incVisitedCount(300);
+    assertTrue("test setup: land off any interval multiple", collector.visitedCount() % 256 != 0);
+    collector.incVisitedCount(1);
+    collector.collect(k + 1, 101f);
+
+    assertTrue(
+        "a collect past the synchronization threshold must publish the pending scores",
+        floor.floor() > 1f);
+  }
+
+  public void testNonPublishingCollectorReadsButNeverFeedsTheFloor() {
+    int k = 20;
+    GlobalKnnFloor floor = new GlobalKnnFloor(k);
+    FloorAwareKnnCollector collector =
+        new FloorAwareKnnCollector(
+            new TopKnnCollector(k, Integer.MAX_VALUE), floor, 1f, 2, 256, k, false);
+    assertFalse(collector.publishesToFloor());
+
+    // Collect a full queue of scores: a publishing collector would have defined the floor here.
+    for (int doc = 0; doc < k; doc++) {
+      collector.incVisitedCount(1);
+      collector.collect(doc, doc + 1f);
+    }
+    assertEquals(
+        "a non-publishing collector must never feed the shared floor",
+        Float.NEGATIVE_INFINITY,
+        floor.floor(),
+        0.0f);
+
+    // The floor rises externally; the collector must still read it and prune against it. After
+    // the final collect the clamp holds the two best scores seen ({20, 30}), so the bound is
+    // max(local k-th best = 2, min(clamp = 20, nextDown(1000))) = 20 — above anything the local
+    // queue alone would justify, provable only by a floor that was actually read.
+    floor.advertise(1000f);
+    collector.incVisitedCount(FloorAwareKnnCollector.DEFAULT_SYNC_INTERVAL);
+    collector.collect(k, 30f);
+    assertEquals(
+        "a non-publishing collector must still prune against the shared floor",
+        20f,
+        collector.minCompetitiveSimilarity(),
+        0.0f);
   }
 
   public void testDelegationOfCollectorPlumbing() {

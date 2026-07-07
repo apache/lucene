@@ -119,16 +119,22 @@ public final class GlobalKnnFloor {
       throw new IllegalArgumentException("len must be positive, got: " + len);
     }
     assert isSorted(scores, len) : "scores must be sorted in ascending order";
+    // The flag must be read BEFORE the offer. heapTop is only a valid k-th-best bound if the heap
+    // was already full when our scores went in; reading the flag afterwards would let a concurrent
+    // publisher fill the heap and set the flag in between, tricking this thread into publishing a
+    // heapTop computed over fewer than k scores, which can overshoot the true k-th best and cause
+    // over-pruning.
+    boolean wasFull = heapFull;
     float heapTop = heap.offer(scores, len);
-    if (heapFull) {
+    if (wasFull) {
       // The heap already held k scores before this call, so the value returned by offer() is the
       // minimum of a full heap: the k-th best of everything observed, a valid bound.
       floorBits.accumulate(encode(heapTop));
     } else if (heap.size() >= k) {
       heapFull = true;
-      // The heap may have been filled by a concurrent publisher after our offer() returned, in
-      // which case our heapTop is the minimum of fewer than k scores and could overshoot the
-      // true k-th best. Re-read the top of the now-full heap instead of trusting heapTop.
+      // The heap was not full before this call but is now (filled by this batch, a concurrent
+      // publisher, or both). heapTop may predate the fill, so re-read the top of the now-full
+      // heap instead of trusting it.
       floorBits.accumulate(encode(heap.peek()));
     }
     return floor();

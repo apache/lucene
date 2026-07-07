@@ -210,4 +210,71 @@ public class TestGlobalKnnFloor extends LuceneTestCase {
         floor.floor(),
         0.0f);
   }
+
+  public void testConcurrentFillNeverOvershootsTrueKthBest() throws Exception {
+    // Regression tripwire for a heap-fill race: a publisher whose batch lands while the heap is
+    // not yet full must not treat its returned heap top as a valid bound, even if a concurrent
+    // publisher fills the heap in the window between the offer returning and the fullness flag
+    // being read. The scenario is adversarial by construction: one thread offers high scores that
+    // do not fill the heap on their own, the other offers low scores that complete the fill. The
+    // true k-th best is a low score, so a stale partial-heap top (a high score) published as the
+    // floor overshoots it — and because the floor is a monotonic maximum, a single overshoot
+    // survives to the final assertion. The race window is narrow, hence the many short rounds.
+    int rounds = 500;
+    int k = 32;
+    ExecutorService executor =
+        Executors.newFixedThreadPool(2, new NamedThreadFactory("global-knn-floor-race-test"));
+    try {
+      for (int round = 0; round < rounds; round++) {
+        GlobalKnnFloor floor = new GlobalKnnFloor(k);
+        float[] highs = new float[k - 1];
+        for (int i = 0; i < highs.length; i++) {
+          highs[i] = 0.9f + i * 0.001f;
+        }
+        float[] lows = new float[k];
+        for (int i = 0; i < lows.length; i++) {
+          lows[i] = 0.1f + i * 0.001f;
+        }
+        // Top-k of the union: all k-1 highs plus the single best low, whose score is the k-th
+        // best and the highest floor any correct execution can reach.
+        float trueKthBest = lows[lows.length - 1];
+
+        CountDownLatch startingGun = new CountDownLatch(1);
+        Future<?> highPublisher =
+            executor.submit(
+                () -> {
+                  try {
+                    startingGun.await();
+                  } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(e);
+                  }
+                  floor.offer(highs, highs.length);
+                });
+        Future<?> lowPublisher =
+            executor.submit(
+                () -> {
+                  try {
+                    startingGun.await();
+                  } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(e);
+                  }
+                  floor.offer(lows, lows.length);
+                });
+        startingGun.countDown();
+        highPublisher.get();
+        lowPublisher.get();
+
+        assertEquals(
+            "round " + round + ": the floor must be exactly the k-th best of everything offered",
+            trueKthBest,
+            floor.floor(),
+            0.0f);
+      }
+    } finally {
+      executor.shutdown();
+      assertTrue(executor.awaitTermination(30, TimeUnit.SECONDS));
+    }
+  }
 }
