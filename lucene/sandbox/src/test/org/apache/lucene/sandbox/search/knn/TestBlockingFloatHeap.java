@@ -19,7 +19,9 @@ package org.apache.lucene.sandbox.search.knn;
 
 import static com.carrotsearch.randomizedtesting.RandomizedTest.randomIntBetween;
 
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.SuppressForbidden;
 
@@ -95,6 +97,61 @@ public class TestBlockingFloatHeap extends LuceneTestCase {
     latch.countDown();
     for (Thread t : threads) {
       t.join();
+    }
+  }
+
+  public void testConcurrentPollsDoNotCorruptTheHeap() throws Exception {
+    // Twice as many pollers as elements: the surplus polls must fail cleanly with
+    // IllegalStateException, never pass an emptiness check raced by another poller and corrupt
+    // the heap's size or return garbage. Every successfully polled value must be one of the
+    // values actually offered, each exactly once.
+    int size = 8;
+    int pollers = 2 * size;
+    BlockingFloatHeap heap = new BlockingFloatHeap(size);
+    for (int i = 0; i < size; i++) {
+      heap.offer(i + 1f);
+    }
+
+    CountDownLatch startingGun = new CountDownLatch(1);
+    ConcurrentLinkedQueue<Float> polled = new ConcurrentLinkedQueue<>();
+    AtomicInteger emptyPolls = new AtomicInteger();
+    Thread[] threads = new Thread[pollers];
+    for (int i = 0; i < pollers; i++) {
+      threads[i] =
+          new Thread(
+              () -> {
+                try {
+                  startingGun.await();
+                } catch (InterruptedException e) {
+                  Thread.currentThread().interrupt();
+                  throw new RuntimeException(e);
+                }
+                try {
+                  polled.add(heap.poll());
+                } catch (
+                    @SuppressWarnings("unused")
+                    IllegalStateException e) {
+                  emptyPolls.incrementAndGet();
+                }
+              });
+      threads[i].start();
+    }
+    startingGun.countDown();
+    for (Thread t : threads) {
+      t.join();
+    }
+
+    assertEquals("every element must be polled exactly once", size, polled.size());
+    assertEquals("every surplus poll must fail cleanly", pollers - size, emptyPolls.get());
+    assertEquals(0, heap.size());
+    float[] values = new float[polled.size()];
+    int i = 0;
+    for (float value : polled) {
+      values[i++] = value;
+    }
+    java.util.Arrays.sort(values);
+    for (int v = 0; v < size; v++) {
+      assertEquals("polled values must be exactly the offered values", v + 1f, values[v], 0.0f);
     }
   }
 }

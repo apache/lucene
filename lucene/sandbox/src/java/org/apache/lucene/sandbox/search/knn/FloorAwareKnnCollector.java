@@ -60,13 +60,22 @@ import org.apache.lucene.util.hnsw.FloatHeap;
  *       greediness = 0} the floor has no effect; at {@code greediness = 1} the collector retains
  *       only the absolute minimum of exploration slots. See {@link #DEFAULT_MIN_EXPLORATION_SLOTS}
  *       for why the clamp has an absolute lower bound.
+ *       <p><b>Caution:</b> because the clamp is sized from {@code gateK}, a low greediness combined
+ *       with a gate well below the local queue size can leave the clamp as the binding constraint
+ *       for the entire search, silently reducing the collector to a fixed per-searcher quota of
+ *       {@code (1 - greediness) * gateK} results — the floor's adaptivity is neutralized, and
+ *       measurements of such a configuration measure the quota, not the floor. (Benchmarked
+ *       directly: {@code greediness = 0.5, gateK = 6000} on a 16-shard k=10000 search reproduced a
+ *       static per-shard quota of 3000 result-for-result.) When configuring a gate below the queue
+ *       size, prefer {@code greediness >= 0.9}, and verify that {@code (1 - greediness) * gateK} is
+ *       small relative to the per-searcher share of the merged top-k.
  *   <li><b>Batched synchronization.</b> Scores are published to the shared floor, and the floor is
- *       re-read, only when the local queue first fills and every {@code syncInterval} visited
- *       vectors afterwards (default {@value #DEFAULT_SYNC_INTERVAL}), so the shared state is
- *       touched a constant number of times per few hundred scored candidates rather than once per
- *       candidate. A stale floor can only delay termination, never cause a wrong result, so the
- *       interval trades a bounded amount of extra work for the absence of cross-thread traffic in
- *       the scoring loop.
+ *       re-read, when the ascent gate opens and each time {@code syncInterval} further vectors have
+ *       been visited (default {@value #DEFAULT_SYNC_INTERVAL}), so the shared state is touched a
+ *       constant number of times per few hundred scored candidates rather than once per candidate.
+ *       A stale floor can only delay termination, never cause a wrong result, so the interval
+ *       trades a bounded amount of extra work for the absence of cross-thread traffic in the
+ *       scoring loop.
  * </ul>
  *
  * <p>The effective bound derived from the floor is one ulp below the floor itself. The floor is the
@@ -120,11 +129,18 @@ public final class FloorAwareKnnCollector extends KnnCollector.Decorator {
    */
   private final int gateK;
 
+  /** Number of visited vectors between synchronizations with the shared floor. */
+  private final int syncInterval;
+
   /**
-   * Bit mask selecting the visited counts at which to synchronize, {@code syncInterval - 1}; the
-   * power-of-two requirement on the interval exists so this mask works.
+   * Whether this collector publishes its observed similarities into the shared floor. A
+   * non-publishing collector still reads the floor and prunes against it; it only never feeds it.
+   * Used when the same documents' scores have already been published by an earlier search of the
+   * same leaf (the optimistic strategy's second pass), where publishing again would insert
+   * duplicate scores into the floor's heap and could inflate the floor above the true merged
+   * cutoff, violating {@link GlobalKnnFloor}'s distinct-document contract.
    */
-  private final int syncIntervalMask;
+  private final boolean publishToFloor;
 
   /**
    * The best {@code max(minExplorationSlots, (1 - greediness) * k)} similarities seen by this
@@ -133,13 +149,29 @@ public final class FloorAwareKnnCollector extends KnnCollector.Decorator {
    */
   private final FloatHeap nonCompetitiveQueue;
 
-  /** Similarities observed since the last synchronization, awaiting publication. */
+  /**
+   * Similarities observed since the last synchronization, awaiting publication; {@code null} for a
+   * non-publishing collector.
+   */
   private final FloatHeap updatesQueue;
 
-  /** Scratch used to drain {@link #updatesQueue} in ascending order for batch publication. */
+  /**
+   * Scratch used to drain {@link #updatesQueue} in ascending order for batch publication; {@code
+   * null} for a non-publishing collector.
+   */
   private final float[] updatesScratch;
 
   private boolean gateOpened;
+
+  /**
+   * The visited count at or beyond which the next synchronization with the shared floor happens.
+   * Deliberately a threshold rather than an exact boundary: {@link #collect} is invoked only for
+   * candidates that beat the current bound, so visited counts are consulted at irregular strides
+   * and an equality test would skip every boundary that falls between two collects — precisely in
+   * the late phase of the search, when few candidates beat the bar and the floor matters most.
+   */
+  private long nextSyncAt;
+
   private float cachedGlobalFloor = Float.NEGATIVE_INFINITY;
 
   /**
@@ -182,8 +214,8 @@ public final class FloorAwareKnnCollector extends KnnCollector.Decorator {
    *     the greediness; must be at least 1. See {@link #DEFAULT_MIN_EXPLORATION_SLOTS} for the role
    *     this plays in protecting recall.
    * @param syncInterval number of visited vectors between synchronizations with the shared floor;
-   *     must be a power of two. Smaller intervals keep the floor fresher (fewer visits) at the
-   *     price of more cross-thread traffic.
+   *     must be positive. Smaller intervals keep the floor fresher (fewer visits) at the price of
+   *     more cross-thread traffic.
    */
   public FloorAwareKnnCollector(
       AbstractKnnCollector subCollector,
@@ -206,13 +238,14 @@ public final class FloorAwareKnnCollector extends KnnCollector.Decorator {
    *     the greediness; must be at least 1. See {@link #DEFAULT_MIN_EXPLORATION_SLOTS} for the role
    *     this plays in protecting recall.
    * @param syncInterval number of visited vectors between synchronizations with the shared floor;
-   *     must be a power of two. Smaller intervals keep the floor fresher (fewer visits) at the
-   *     price of more cross-thread traffic.
+   *     must be positive. Smaller intervals keep the floor fresher (fewer visits) at the price of
+   *     more cross-thread traffic.
    * @param gateK the number of locally collected results after which the shared floor engages, in
    *     {@code [1, subCollector.k()]}. The default, used by the other constructors, is {@code
    *     subCollector.k()}: the floor engages when the local queue fills. Set it below the queue
    *     size when this collector's expected share of the merged top-k is smaller than the queue it
-   *     collects into; see the class comment on the ascent gate for when that applies.
+   *     collects into; see the class comment on the ascent gate for when that applies, and the
+   *     greediness clamp caution for the interaction between a below-queue gate and low greediness.
    */
   public FloorAwareKnnCollector(
       AbstractKnnCollector subCollector,
@@ -221,6 +254,22 @@ public final class FloorAwareKnnCollector extends KnnCollector.Decorator {
       int minExplorationSlots,
       int syncInterval,
       int gateK) {
+    this(subCollector, globalFloor, greediness, minExplorationSlots, syncInterval, gateK, true);
+  }
+
+  /**
+   * Create a fully configured collector that may be barred from publishing. Package-private: used
+   * by {@link SharedFloorKnnCollectorManager} to enforce {@link GlobalKnnFloor}'s distinct-document
+   * contract by publishing each leaf's scores at most once per query; see {@link #publishToFloor}.
+   */
+  FloorAwareKnnCollector(
+      AbstractKnnCollector subCollector,
+      GlobalKnnFloor globalFloor,
+      float greediness,
+      int minExplorationSlots,
+      int syncInterval,
+      int gateK,
+      boolean publishToFloor) {
     super(subCollector);
     if (greediness < 0 || greediness > 1 || Float.isNaN(greediness)) {
       throw new IllegalArgumentException("greediness must be in [0,1], got: " + greediness);
@@ -229,9 +278,8 @@ public final class FloorAwareKnnCollector extends KnnCollector.Decorator {
       throw new IllegalArgumentException(
           "minExplorationSlots must be at least 1, got: " + minExplorationSlots);
     }
-    if (syncInterval < 1 || Integer.bitCount(syncInterval) != 1) {
-      throw new IllegalArgumentException(
-          "syncInterval must be a power of two, got: " + syncInterval);
+    if (syncInterval < 1) {
+      throw new IllegalArgumentException("syncInterval must be positive, got: " + syncInterval);
     }
     if (gateK < 1 || gateK > subCollector.k()) {
       throw new IllegalArgumentException(
@@ -240,11 +288,22 @@ public final class FloorAwareKnnCollector extends KnnCollector.Decorator {
     this.subCollector = subCollector;
     this.globalFloor = globalFloor;
     this.gateK = gateK;
-    this.syncIntervalMask = syncInterval - 1;
+    this.syncInterval = syncInterval;
+    this.publishToFloor = publishToFloor;
     this.nonCompetitiveQueue =
         new FloatHeap(Math.max(minExplorationSlots, Math.round((1 - greediness) * gateK)));
-    this.updatesQueue = new FloatHeap(globalFloor.k());
-    this.updatesScratch = new float[globalFloor.k()];
+    this.updatesQueue = publishToFloor ? new FloatHeap(globalFloor.k()) : null;
+    this.updatesScratch = publishToFloor ? new float[globalFloor.k()] : null;
+  }
+
+  /** The ascent gate's threshold; package-private, for tests and the manager. */
+  int gateK() {
+    return gateK;
+  }
+
+  /** Whether this collector feeds the shared floor; package-private, for tests. */
+  boolean publishesToFloor() {
+    return publishToFloor;
   }
 
   @Override
@@ -254,21 +313,32 @@ public final class FloorAwareKnnCollector extends KnnCollector.Decorator {
     if (gateJustOpened) {
       gateOpened = true;
     }
-    updatesQueue.offer(similarity);
+    if (publishToFloor) {
+      updatesQueue.offer(similarity);
+    }
     boolean globalSimUpdated = nonCompetitiveQueue.offer(similarity);
 
-    if (gateOpened && (gateJustOpened || (visitedCount() & syncIntervalMask) == 0)) {
-      // The shared heap requires ascending input; draining the pending min-heap yields exactly
-      // that. Scores observed before the gate opened are included in the first batch, so nothing
-      // seen during the ascent is lost to the shared floor.
-      int len = updatesQueue.size();
-      if (len > 0) {
-        for (int i = 0; i < len; i++) {
-          updatesScratch[i] = updatesQueue.poll();
+    if (gateOpened && (gateJustOpened || visitedCount() >= nextSyncAt)) {
+      nextSyncAt = visitedCount() + syncInterval;
+      if (publishToFloor) {
+        // The shared heap requires ascending input; draining the pending min-heap yields exactly
+        // that. Scores observed before the gate opened are included in the first batch, so nothing
+        // seen during the ascent is lost to the shared floor.
+        int len = updatesQueue.size();
+        if (len > 0) {
+          for (int i = 0; i < len; i++) {
+            updatesScratch[i] = updatesQueue.poll();
+          }
+          assert updatesQueue.size() == 0;
+          cachedGlobalFloor = globalFloor.offer(updatesScratch, len);
+          globalSimUpdated = true;
         }
-        assert updatesQueue.size() == 0;
-        cachedGlobalFloor = globalFloor.offer(updatesScratch, len);
-        globalSimUpdated = true;
+      } else {
+        float refreshed = globalFloor.floor();
+        if (refreshed > cachedGlobalFloor) {
+          cachedGlobalFloor = refreshed;
+          globalSimUpdated = true;
+        }
       }
     }
     // Reporting an update whenever the effective bound may have moved (locally or via the shared
