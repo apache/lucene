@@ -117,10 +117,11 @@ public abstract class TwoPhaseIterator {
    * <p><b>Note</b>: It is illegal to call this method when the approximation is exhausted or not
    * positioned.
    *
-   * <p>The default implementation returns the current doc ID of the approximation.
+   * <p>The default implementation assumes runs of a single doc ID and returns the current doc ID of
+   * the approximation plus one, mirroring {@link DocIdSetIterator#docIDRunEnd()}.
    */
   public int docIDRunEnd() throws IOException {
-    return approximation().docID();
+    return approximation().docID() + 1;
   }
 
   /**
