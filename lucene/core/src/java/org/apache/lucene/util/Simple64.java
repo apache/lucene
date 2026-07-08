@@ -301,10 +301,15 @@ public final class Simple64 {
     while (remaining > 0) {
       long word = longs[inPos++];
       final int selector = selector(word);
-      final int toRead = Math.min(COUNTS[selector], remaining);
-      decodeValues(word, selector, out, outOffset, toRead);
-      outOffset += toRead;
-      remaining -= toRead;
+      final int packedCount = COUNTS[selector];
+      if (remaining >= packedCount) {
+        decodeFull(word, selector, out, outOffset);
+        outOffset += packedCount;
+        remaining -= packedCount;
+      } else {
+        unpack(word, BITS[selector], MASKS[selector], out, outOffset, remaining);
+        break;
+      }
     }
     return inPos - offset;
   }
@@ -327,68 +332,36 @@ public final class Simple64 {
     }
 
     if (count == COUNTS[selector]) {
-      switch (selector) {
-        case 0 -> {
-          decode60x1(word, out, outOffset);
-          return;
-        }
-        case 1 -> {
-          decode30x2(word, out, outOffset);
-          return;
-        }
-        case 2 -> {
-          decode20x3(word, out, outOffset);
-          return;
-        }
-        case 3 -> {
-          decode15x4(word, out, outOffset);
-          return;
-        }
-        case 4 -> {
-          decode12x5(word, out, outOffset);
-          return;
-        }
-        case 5 -> {
-          decode10x6(word, out, outOffset);
-          return;
-        }
-        case 6 -> {
-          decode8x7(word, out, outOffset);
-          return;
-        }
-        case 7 -> {
-          decode7x8(word, out, outOffset);
-          return;
-        }
-        case 8 -> {
-          decode6x10(word, out, outOffset);
-          return;
-        }
-        case 9 -> {
-          decode5x12(word, out, outOffset);
-          return;
-        }
-        case 10 -> {
-          decode4x15(word, out, outOffset);
-          return;
-        }
-        case 11 -> {
-          decode3x20(word, out, outOffset);
-          return;
-        }
-        case 12 -> {
-          decode2x30(word, out, outOffset);
-          return;
-        }
-        case 13 -> {
-          decode1x31(word, out, outOffset);
-          return;
-        }
-        default -> {}
-      }
+      decodeFull(word, selector, out, outOffset);
+      return;
     }
 
     unpack(word, BITS[selector], MASKS[selector], out, outOffset, count);
+  }
+
+  private static void decodeFull(long word, int selector, int[] out, int outOffset) {
+    switch (selector) {
+      // TODO: Maybe use unpack for selectors 0 and 1, since the benchmark shows no performance
+      // difference.
+      // Let's decide after seeing the luceneutil results.
+      //      case 0 -> unpack(word, 1, 0x1L, out, outOffset, 60);
+      //      case 1 -> unpack(word, 2, 0x3L, out, outOffset, 30);
+      case 0 -> decode60x1(word, out, outOffset);
+      case 1 -> decode30x2(word, out, outOffset);
+      case 2 -> decode20x3(word, out, outOffset);
+      case 3 -> decode15x4(word, out, outOffset);
+      case 4 -> decode12x5(word, out, outOffset);
+      case 5 -> decode10x6(word, out, outOffset);
+      case 6 -> decode8x7(word, out, outOffset);
+      case 7 -> decode7x8(word, out, outOffset);
+      case 8 -> decode6x10(word, out, outOffset);
+      case 9 -> decode5x12(word, out, outOffset);
+      case 10 -> decode4x15(word, out, outOffset);
+      case 11 -> decode3x20(word, out, outOffset);
+      case 12 -> decode2x30(word, out, outOffset);
+      case 13 -> decode1x31(word, out, outOffset);
+      default -> throw new AssertionError("invalid selector: " + selector);
+    }
   }
 
   private static void unpack(long word, int bits, long mask, int[] out, int outOffset, int count) {
