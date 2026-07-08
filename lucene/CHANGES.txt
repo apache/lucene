@@ -312,7 +312,12 @@ New Features
 
 Improvements
 ---------------------
-* GITHUB#16170: Alter TopGroups.merge() to not return null if no groups. (Binlong Gao)
+
+* GITHUB#16247: Introduce CachingCollectorManager to parallelize search when using CachingCollector.
+                Remove experimental GroupingSearch constructor that takes a GroupSelector as argument
+                in favour of providing a GroupSelector supplier. (Binlong Gao)
+
+* GITHUB#16305: Alter TopGroups.merge() to not return null if no groups. (Binlong Gao)
 
 Optimizations
 ---------------------
