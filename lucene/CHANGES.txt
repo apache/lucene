@@ -17,7 +17,8 @@ New Features
 ---------------------
 
 * GITHUB#16243: Add StableTflSimilarity, a similarity that estimates term rarity from term length
-  and document length instead of corpus statistics such as document frequency. (Tianxiao Wei)
+  and document length instead of corpus statistics such as document frequency. It also supports k3
+  query-term frequency saturation. (Tianxiao Wei)
 
 Improvements
 ---------------------
@@ -77,6 +78,9 @@ Other
 * GITHUB#16308: upgrade opennlp to 2.5.10 (Dawid Weiss)
 
 * GITHUB#16315: Fix flaky test TestIndexOptions > testMultiValueForcesDeoptimization (neoremind)
+
+* GITHUB#16300: Reduce memory pressure in TestTermInSetQuery.testDuel stress runs.
+  (Sanghun Lee)
 
 ======================= Lucene 10.5.0 =======================
 
