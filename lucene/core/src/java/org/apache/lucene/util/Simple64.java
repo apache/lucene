@@ -103,32 +103,64 @@ public final class Simple64 {
       final int bits = bitsRequired(prefixOr);
 
       switch (i) {
-        case 1 -> fitMask |= 1 << 13;
+        case 1 -> {
+          if (bits == 31) {
+            return pack1x31(ints, offset);
+          }
+          fitMask |= 1 << 13;
+        }
         case 2 -> {
+          if (length >= 2 && bits == 30) {
+            return pack2x30(ints, offset);
+          }
           if (bits <= 30) fitMask |= 1 << 12;
         }
         case 3 -> {
+          if (length >= 3 && bits == 20) {
+            return pack3x20(ints, offset);
+          }
           if (bits <= 20) fitMask |= 1 << 11;
         }
         case 4 -> {
+          if (length >= 4 && bits == 15) {
+            return pack4x15(ints, offset);
+          }
           if (bits <= 15) fitMask |= 1 << 10;
         }
         case 5 -> {
+          if (length >= 5 && bits == 12) {
+            return pack5x12(ints, offset);
+          }
           if (bits <= 12) fitMask |= 1 << 9;
         }
         case 6 -> {
+          if (length >= 6 && bits == 10) {
+            return pack6x10(ints, offset);
+          }
           if (bits <= 10) fitMask |= 1 << 8;
         }
         case 7 -> {
+          if (length >= 7 && bits == 8) {
+            return pack7x8(ints, offset);
+          }
           if (bits <= 8) fitMask |= 1 << 7;
         }
         case 8 -> {
+          if (length >= 8 && bits == 7) {
+            return pack8x7(ints, offset);
+          }
           if (bits <= 7) fitMask |= 1 << 6;
         }
         case 10 -> {
+          if (length >= 10 && bits == 6) {
+            return pack10x6(ints, offset);
+          }
           if (bits <= 6) fitMask |= 1 << 5;
         }
         case 12 -> {
+          if (length >= 12 && bits == 5) {
+            return pack12x5(ints, offset);
+          }
           if (bits <= 5) fitMask |= 1 << 4;
         }
         case 15 -> {
