@@ -17,10 +17,6 @@
 
 package org.apache.lucene.util;
 
-import static org.apache.lucene.util.Simple64.BITS;
-import static org.apache.lucene.util.Simple64.COUNTS;
-import static org.apache.lucene.util.Simple64.MASKS;
-
 import java.util.Arrays;
 import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -29,25 +25,29 @@ public class TestSimple64 extends LuceneTestCase {
 
   /** Verify selector table invariants. */
   public void testSelectorTable() {
-    for (int s = 0; s < 14; s++) {
+    for (int s = 0; s < Simple64.numSelectors(); s++) {
       // bits must fit inside the 60 data bits
-      assertTrue("selector " + s + ": COUNTS[s]*BITS[s] <= 60", (long) COUNTS[s] * BITS[s] <= 60);
+      assertTrue(
+          "selector " + s + ": COUNTS[s]*BITS[s] <= 60",
+          (long) Simple64.selectorCount(s) * Simple64.selectorBits(s) <= 60);
       // max value must be representable as a non-negative int
       assertTrue(
-          "selector " + s + ": MASKS[s] <= Integer.MAX_VALUE", MASKS[s] <= Integer.MAX_VALUE);
+          "selector " + s + ": MASKS[s] <= Integer.MAX_VALUE",
+          Simple64.selectorMask(s) <= Integer.MAX_VALUE);
     }
     // selector 13 must cover Integer.MAX_VALUE
-    assertTrue("selector 13 covers Integer.MAX_VALUE", MASKS[13] >= Integer.MAX_VALUE);
+    assertTrue(
+        "selector 13 covers Integer.MAX_VALUE", Simple64.selectorMask(13) >= Integer.MAX_VALUE);
   }
 
   /** Each selector should be chosen when values exactly hit its upper bound. */
   public void testSelectorBoundaries() {
-    for (int s = 0; s < 14; s++) {
-      int maxVal = (int) MASKS[s];
-      int[] input = new int[COUNTS[s]];
+    for (int s = 0; s < Simple64.numSelectors(); s++) {
+      int maxVal = (int) Simple64.selectorMask(s);
+      int[] input = new int[Simple64.selectorCount(s)];
       Arrays.fill(input, maxVal);
       long word = Simple64.encodeOneLong(input, 0, input.length);
-      assertEquals("selector for bits=" + BITS[s], s, (int) (word >>> 60));
+      assertEquals("selector for bits=" + Simple64.selectorBits(s), s, (int) (word >>> 60));
     }
   }
 
@@ -63,9 +63,9 @@ public class TestSimple64 extends LuceneTestCase {
   }
 
   public void testRoundtripAllSelectors() {
-    for (int s = 0; s < 14; s++) {
-      int count = COUNTS[s];
-      int maxVal = (int) MASKS[s];
+    for (int s = 0; s < Simple64.numSelectors(); s++) {
+      int count = Simple64.selectorCount(s);
+      int maxVal = (int) Simple64.selectorMask(s);
       int[] input = new int[count];
       Arrays.fill(input, maxVal);
       long word = Simple64.encodeOneLong(input, 0, count);
@@ -79,8 +79,8 @@ public class TestSimple64 extends LuceneTestCase {
   public void testFastPathSelectors0To3() {
     Random rng = new Random(7);
     for (int s = 0; s <= 3; s++) {
-      int[] input = new int[COUNTS[s]];
-      int maxVal = (int) MASKS[s];
+      int[] input = new int[Simple64.selectorCount(s)];
+      int maxVal = (int) Simple64.selectorMask(s);
       for (int i = 0; i < input.length; i++) {
         input[i] = rng.nextInt(maxVal + 1);
       }
@@ -137,7 +137,7 @@ public class TestSimple64 extends LuceneTestCase {
   }
 
   public void testDecodeOneLongWithOutOffset() {
-    int[] input = new int[COUNTS[3]];
+    int[] input = new int[Simple64.selectorCount(3)];
     Arrays.fill(input, 8);
     long word = Simple64.encodeOneLong(input, 0, input.length);
     int[] out = new int[input.length + 4];

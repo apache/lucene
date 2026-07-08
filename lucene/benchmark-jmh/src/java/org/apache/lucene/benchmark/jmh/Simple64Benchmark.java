@@ -99,7 +99,7 @@ public class Simple64Benchmark {
     // pre-encode Simple64
     encodedWords = new long[blockSize + 1];
     encodedWordCount = Simple64.encodeAll(suffixLengths, 0, blockSize, encodedWords, 0);
-    decodeOutSimple64 = new int[blockSize + Simple64.COUNTS[0]];
+    decodeOutSimple64 = new int[blockSize + Simple64.MAX_VALUES_PER_LONG];
     encodeOutWords = new long[blockSize + 1];
 
     // pre-encode VInt

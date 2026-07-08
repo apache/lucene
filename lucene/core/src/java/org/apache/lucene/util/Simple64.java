@@ -52,15 +52,18 @@ package org.apache.lucene.util;
  */
 public final class Simple64 {
   private static final int NUM_SELECTORS = 14;
+  public static final int MAX_VALUES_PER_LONG = 60;
 
   /** Number of integers each selector can pack. */
-  public static final int[] COUNTS = {60, 30, 20, 15, 12, 10, 8, 7, 6, 5, 4, 3, 2, 1};
+  private static final int[] COUNTS = {
+    MAX_VALUES_PER_LONG, 30, 20, 15, 12, 10, 8, 7, 6, 5, 4, 3, 2, 1
+  };
 
   /** Bit-width per integer for each selector. */
-  public static final int[] BITS = {1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 30, 31};
+  private static final int[] BITS = {1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 30, 31};
 
   /** Bit-mask for extracting one value under each selector. */
-  public static final long[] MASKS = new long[NUM_SELECTORS];
+  private static final long[] MASKS = new long[NUM_SELECTORS];
 
   static {
     for (int s = 0; s < NUM_SELECTORS; s++) {
@@ -69,6 +72,22 @@ public final class Simple64 {
   }
 
   private Simple64() {}
+
+  static int numSelectors() {
+    return NUM_SELECTORS;
+  }
+
+  static int selectorCount(int selector) {
+    return COUNTS[selector];
+  }
+
+  static int selectorBits(int selector) {
+    return BITS[selector];
+  }
+
+  static long selectorMask(int selector) {
+    return MASKS[selector];
+  }
 
   /**
    * Encode as many integers from {@code ints[offset..]} as fit into a single long, using the
