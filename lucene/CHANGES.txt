@@ -215,6 +215,8 @@ Bug Fixes
 
 * GITHUB#16303: Add suppressed exception details when lock acquisition fails in NativeFSLockFactory. (Bharathi-Kanna)
 
+* Make VectorScorer#bulk default method lazily position its iterator on first use. (Michael Marshall)
+
 Changes in Runtime Behavior
 ---------------------
 * GITHUB#14187: The query cache is now disabled by default. (Adrien Grand)
