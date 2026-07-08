@@ -51,6 +51,8 @@ package org.apache.lucene.util;
  * shift-loop in {@link #unpack} for the common case.
  */
 public final class Simple64 {
+  private static final int NUM_SELECTORS = 14;
+
   /** Number of integers each selector can pack. */
   public static final int[] COUNTS = {60, 30, 20, 15, 12, 10, 8, 7, 6, 5, 4, 3, 2, 1};
 
@@ -58,10 +60,10 @@ public final class Simple64 {
   public static final int[] BITS = {1, 2, 3, 4, 5, 6, 7, 8, 10, 12, 15, 20, 30, 31};
 
   /** Bit-mask for extracting one value under each selector. */
-  public static final long[] MASKS = new long[14];
+  public static final long[] MASKS = new long[NUM_SELECTORS];
 
   static {
-    for (int s = 0; s < 14; s++) {
+    for (int s = 0; s < NUM_SELECTORS; s++) {
       MASKS[s] = (1L << BITS[s]) - 1L;
     }
   }
@@ -192,7 +194,7 @@ public final class Simple64 {
     }
 
     final int bits = bitsRequired(prefixOr);
-    for (int s = 0; s < 14; s++) {
+    for (int s = 0; s < NUM_SELECTORS; s++) {
       final int count = COUNTS[s];
       if (count >= length) {
         if (bits <= BITS[s]) {
@@ -318,7 +320,7 @@ public final class Simple64 {
 
   private static int selector(long word) {
     final int selector = (int) (word >>> 60);
-    if (selector >= 14) {
+    if (selector >= NUM_SELECTORS) {
       throw new IllegalArgumentException("Invalid Simple64 selector: " + selector);
     }
     return selector;
