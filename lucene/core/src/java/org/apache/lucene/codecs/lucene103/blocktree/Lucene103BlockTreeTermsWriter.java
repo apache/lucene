@@ -691,7 +691,7 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
       newBlocks.clear();
     }
 
-    private boolean allEqual(byte[] b, int startOffset, int endOffset, byte value) {
+    private boolean allBytesEqual(byte[] b, int startOffset, int endOffset, byte value) {
       Objects.checkFromToIndex(startOffset, endOffset, b.length);
       for (int i = startOffset; i < endOffset; ++i) {
         if (b[i] != value) {
@@ -941,7 +941,8 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
       if (isLeafBlock) {
         assert suffixLengths != null;
         if (allEquals) {
-          // All suffix lengths are the same, so we can just write that one length:
+          // Leaf blocks store only term suffix lengths. Here allEqual means every term
+          // has the same suffix length, so we can encode that single length directly.
           termsOut.writeVInt((suffixLengths[0] << 1) | 1);
         } else {
           long[] encodedSuffixLengths = new long[suffixLengths.length];
@@ -959,7 +960,9 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
         suffixLengthsWriter.copyTo(new ByteArrayDataOutput(spareBytes));
         suffixLengthsWriter.reset();
 
-        if (allEqual(spareBytes, 1, numSuffixBytes, spareBytes[0])) {
+        // Non-leaf blocks keep both term suffix lengths and sub-block's FP.
+        // allBytesEqual checks the encoded bytes, not suffix lengths.
+        if (allBytesEqual(spareBytes, 1, numSuffixBytes, spareBytes[0])) {
           // Structured fields like IDs often have most values of the same length
           termsOut.writeVInt((numSuffixBytes << 1) | 1);
           termsOut.writeByte(spareBytes[0]);
