@@ -92,17 +92,17 @@ public final class Simple64 {
       throw new IllegalArgumentException("length must be > 0; got " + length);
     }
 
-    final int limit = Math.min(COUNTS[0], length);
+    int limit = Math.min(COUNTS[0], length);
     long prefixOr = 0L;
     int fitMask = 0;
 
     for (int i = 1; i <= limit; i++) {
-      final int v = ints[offset + i - 1];
+      int v = ints[offset + i - 1];
       if (v < 0) {
         throw new IllegalArgumentException("Simple64 does not support negative values, got: " + v);
       }
       prefixOr |= v;
-      final int bits = bitsRequired(prefixOr);
+      int bits = bitsRequired(prefixOr);
 
       switch (i) {
         case 1 -> {
@@ -193,9 +193,9 @@ public final class Simple64 {
       }
     }
 
-    final int bits = bitsRequired(prefixOr);
+    int bits = bitsRequired(prefixOr);
     for (int s = 0; s < NUM_SELECTORS; s++) {
-      final int count = COUNTS[s];
+      int count = COUNTS[s];
       if (count >= length) {
         if (bits <= BITS[s]) {
           return packOneLong(s, ints, offset, length);
@@ -248,7 +248,7 @@ public final class Simple64 {
 
     // Fallback for the last encoded word, when there are not enough values to fill this selector.
     assert count < COUNTS[selector];
-    final int bits = BITS[selector];
+    int bits = BITS[selector];
     long word = (long) selector << 60;
     for (int i = 0; i < count; i++) {
       word |= ((long) ints[offset + i]) << (i * bits);
@@ -262,8 +262,8 @@ public final class Simple64 {
    * @return number of integers written
    */
   public static int decodeOneLong(long word, int[] out, int outOffset) {
-    final int selector = selector(word);
-    final int count = COUNTS[selector];
+    int selector = selector(word);
+    int count = COUNTS[selector];
     decodeOneLong(word, selector, out, outOffset, count);
     return count;
   }
@@ -282,7 +282,7 @@ public final class Simple64 {
   public static int encodeAll(int[] ints, int offset, int length, long[] out, int outOffset) {
     int inPos = offset;
     int outPos = outOffset;
-    final int end = offset + length;
+    int end = offset + length;
     while (inPos < end) {
       long word = encodeOneLong(ints, inPos, end - inPos);
       out[outPos++] = word;
@@ -304,8 +304,8 @@ public final class Simple64 {
     int remaining = count;
     while (remaining > 0) {
       long word = longs[inPos++];
-      final int selector = selector(word);
-      final int packedCount = COUNTS[selector];
+      int selector = selector(word);
+      int packedCount = COUNTS[selector];
       if (remaining >= packedCount) {
         decodeFull(word, selector, out, outOffset);
         outOffset += packedCount;
@@ -319,7 +319,7 @@ public final class Simple64 {
   }
 
   private static int selector(long word) {
-    final int selector = (int) (word >>> 60);
+    int selector = (int) (word >>> 60);
     if (selector >= NUM_SELECTORS) {
       throw new IllegalArgumentException("Invalid Simple64 selector: " + selector);
     }
