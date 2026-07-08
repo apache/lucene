@@ -244,6 +244,8 @@ public final class Simple64 {
       }
     }
 
+    // Fallback for the last encoded word, when there are not enough values to fill this selector.
+    assert count < COUNTS[selector];
     final int bits = BITS[selector];
     long word = (long) selector << 60;
     for (int i = 0; i < count; i++) {
