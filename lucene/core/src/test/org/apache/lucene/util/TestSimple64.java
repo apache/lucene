@@ -68,7 +68,7 @@ public class TestSimple64 extends LuceneTestCase {
       int maxVal = (int) MASKS[s];
       int[] input = new int[count];
       Arrays.fill(input, maxVal);
-      long word = Simple64.pack(s, input, 0, count); // force this selector
+      long word = Simple64.packOneLong(s, input, 0, count); // force this selector
       int[] out = new int[count];
       assertEquals("selector " + s + " decode count", count, Simple64.decodeOneLong(word, out, 0));
       assertArrayEquals("selector " + s + " values", input, out);
@@ -85,7 +85,7 @@ public class TestSimple64 extends LuceneTestCase {
       }
       assertEquals(
           "selector " + s + " fast-path word",
-          Simple64.pack(s, input, 0, input.length),
+          Simple64.packOneLong(s, input, 0, input.length),
           Simple64.encodeOneLong(input, 0, input.length));
     }
   }

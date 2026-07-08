@@ -196,10 +196,10 @@ public final class Simple64 {
       final int count = COUNTS[s];
       if (count >= length) {
         if (bits <= BITS[s]) {
-          return pack(s, ints, offset, length);
+          return packOneLong(s, ints, offset, length);
         }
       } else if ((fitMask & (1 << s)) != 0) {
-        return pack(s, ints, offset, count);
+        return packOneLong(s, ints, offset, count);
       }
     }
 
@@ -208,7 +208,7 @@ public final class Simple64 {
   }
 
   /** Pack {@code count} integers using the given selector (low-to-high bit order). */
-  public static long pack(int selector, int[] ints, int offset, int count) {
+  static long packOneLong(int selector, int[] ints, int offset, int count) {
     if (count == COUNTS[selector]) {
       switch (selector) {
         case 0:
