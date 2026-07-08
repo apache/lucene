@@ -85,7 +85,7 @@ public final class Simple64 {
    * @param length number of integers available from {@code offset}
    * @return encoded long
    */
-  public static long encode(int[] ints, int offset, int length) {
+  public static long encodeOneLong(int[] ints, int offset, int length) {
     if (length <= 0) {
       throw new IllegalArgumentException("length must be > 0; got " + length);
     }
@@ -257,7 +257,7 @@ public final class Simple64 {
    *
    * @return number of integers written
    */
-  public static int decode(long word, int[] out, int outOffset) {
+  public static int decodeOneLong(long word, int[] out, int outOffset) {
     final int selector = selector(word);
     final int count = COUNTS[selector];
     decodeValues(word, selector, out, outOffset, count);
@@ -280,7 +280,7 @@ public final class Simple64 {
     int outPos = outOffset;
     final int end = offset + length;
     while (inPos < end) {
-      long word = encode(ints, inPos, end - inPos);
+      long word = encodeOneLong(ints, inPos, end - inPos);
       out[outPos++] = word;
       inPos += count(word);
     }
