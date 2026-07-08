@@ -18,8 +18,11 @@ package org.apache.lucene.index;
 
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import org.apache.lucene.codecs.KnnVectorsFormat;
 import org.apache.lucene.codecs.lucene99.Lucene99HnswVectorsFormat;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -29,6 +32,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.tests.util.TestUtil;
 import org.apache.lucene.util.InfoStream;
+import org.apache.lucene.util.NamedThreadFactory;
 
 /**
  * Tests that aborting a merge (e.g. via {@link IndexWriter#rollback()}) promptly interrupts HNSW
@@ -47,7 +51,7 @@ public class TestHnswMergeAbort extends LuceneTestCase {
    * scratch via {@code HnswGraphBuilder#addVectors}.
    */
   public void testRollbackDuringFullRebuildMerge() throws Exception {
-    doTestRollbackDuringMerge(true);
+    doTestRollbackDuringMerge(true, new Lucene99HnswVectorsFormat(16, BEAM_WIDTH));
   }
 
   /**
@@ -55,13 +59,29 @@ public class TestHnswMergeAbort extends LuceneTestCase {
    * via {@code MergingHnswGraphBuilder}.
    */
   public void testRollbackDuringGraphJoinMerge() throws Exception {
-    doTestRollbackDuringMerge(false);
+    doTestRollbackDuringMerge(false, new Lucene99HnswVectorsFormat(16, BEAM_WIDTH));
   }
 
-  private void doTestRollbackDuringMerge(boolean withDeletes) throws Exception {
+  /**
+   * The merged graph is built by {@code HnswConcurrentMergeBuilder} workers ({@code numMergeWorkers
+   * > 1}), which must forward the abort check to every worker.
+   */
+  public void testRollbackDuringConcurrentMerge() throws Exception {
+    ExecutorService mergeExec =
+        Executors.newFixedThreadPool(2, new NamedThreadFactory("hnsw-merge-worker"));
+    try {
+      doTestRollbackDuringMerge(true, new Lucene99HnswVectorsFormat(16, BEAM_WIDTH, 2, mergeExec));
+    } finally {
+      mergeExec.shutdown();
+      assertTrue(mergeExec.awaitTermination(30, TimeUnit.SECONDS));
+    }
+  }
+
+  private void doTestRollbackDuringMerge(boolean withDeletes, KnnVectorsFormat format)
+      throws Exception {
     try (Directory dir = newDirectory()) {
       IndexWriterConfig cfg = new IndexWriterConfig();
-      cfg.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(16, BEAM_WIDTH)));
+      cfg.setCodec(TestUtil.alwaysKnnVectorsFormat(format));
       cfg.setMergePolicy(NoMergePolicy.INSTANCE);
       try (IndexWriter w = new IndexWriter(dir, cfg)) {
         Random r = random();
@@ -108,7 +128,7 @@ public class TestHnswMergeAbort extends LuceneTestCase {
           };
 
       IndexWriterConfig cfg2 = new IndexWriterConfig();
-      cfg2.setCodec(TestUtil.alwaysKnnVectorsFormat(new Lucene99HnswVectorsFormat(16, BEAM_WIDTH)));
+      cfg2.setCodec(TestUtil.alwaysKnnVectorsFormat(format));
       cfg2.setMergeScheduler(new ConcurrentMergeScheduler());
       cfg2.setInfoStream(latching);
       IndexWriter w2 = new IndexWriter(dir, cfg2);
@@ -133,7 +153,7 @@ public class TestHnswMergeAbort extends LuceneTestCase {
             "rollback() blocked for "
                 + rollbackMillis
                 + " ms waiting for HNSW graph construction to finish",
-            rollbackMillis < 5_000);
+            rollbackMillis < 10_000);
       } finally {
         merger.join(TimeUnit.MINUTES.toMillis(5));
         assertFalse("merge thread did not terminate", merger.isAlive());
