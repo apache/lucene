@@ -262,7 +262,7 @@ public final class Simple64 {
   public static int decodeOneLong(long word, int[] out, int outOffset) {
     final int selector = selector(word);
     final int count = COUNTS[selector];
-    decodeValues(word, selector, out, outOffset, count);
+    decodeOneLong(word, selector, out, outOffset, count);
     return count;
   }
 
@@ -328,7 +328,7 @@ public final class Simple64 {
     return value == 0 ? 1 : Long.SIZE - Long.numberOfLeadingZeros(value);
   }
 
-  private static void decodeValues(long word, int selector, int[] out, int outOffset, int count) {
+  private static void decodeOneLong(long word, int selector, int[] out, int outOffset, int count) {
     if (count == 0) {
       return;
     }
