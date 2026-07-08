@@ -764,7 +764,7 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
       boolean absolute = true;
 
       int[] suffixLengths = null;
-      boolean allEquals = true;
+      boolean allEqual = true;
       if (isLeafBlock) {
         // Block contains only ordinary terms:
         subIndices = null;
@@ -789,8 +789,8 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
           // }
 
           suffixLengths[i - start] = suffixLength;
-          if (allEquals && i > start) {
-            allEquals = suffixLength == suffixLengths[0];
+          if (allEqual && i > start) {
+            allEqual = suffixLength == suffixLengths[0];
           }
 
           suffixWriter.append(term.termBytes, prefixLength, suffixLength);
@@ -940,7 +940,7 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
 
       if (isLeafBlock) {
         assert suffixLengths != null;
-        if (allEquals) {
+        if (allEqual) {
           // Leaf blocks store only term suffix lengths. Here allEqual means every term
           // has the same suffix length, so we can encode that single length directly.
           termsOut.writeVInt((suffixLengths[0] << 1) | 1);
