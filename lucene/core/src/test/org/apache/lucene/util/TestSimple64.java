@@ -68,14 +68,15 @@ public class TestSimple64 extends LuceneTestCase {
       int maxVal = (int) MASKS[s];
       int[] input = new int[count];
       Arrays.fill(input, maxVal);
-      long word = Simple64.packOneLong(s, input, 0, count); // force this selector
+      long word = Simple64.encodeOneLong(input, 0, count);
+      assertEquals("selector " + s, s, (int) (word >>> 60));
       int[] out = new int[count];
       assertEquals("selector " + s + " decode count", count, Simple64.decodeOneLong(word, out, 0));
       assertArrayEquals("selector " + s + " values", input, out);
     }
   }
 
-  public void testFastPathParitySelectors0To3() {
+  public void testFastPathSelectors0To3() {
     Random rng = new Random(7);
     for (int s = 0; s <= 3; s++) {
       int[] input = new int[COUNTS[s]];
@@ -83,10 +84,12 @@ public class TestSimple64 extends LuceneTestCase {
       for (int i = 0; i < input.length; i++) {
         input[i] = rng.nextInt(maxVal + 1);
       }
-      assertEquals(
-          "selector " + s + " fast-path word",
-          Simple64.packOneLong(s, input, 0, input.length),
-          Simple64.encodeOneLong(input, 0, input.length));
+      input[0] = maxVal;
+      long word = Simple64.encodeOneLong(input, 0, input.length);
+      assertEquals("selector " + s + " fast path", s, (int) (word >>> 60));
+      int[] out = new int[input.length];
+      Simple64.decodeOneLong(word, out, 0);
+      assertArrayEquals("selector " + s + " values", input, out);
     }
   }
 
@@ -171,12 +174,14 @@ public class TestSimple64 extends LuceneTestCase {
 
   public void testInvalidInputs() {
     expectThrows(IllegalArgumentException.class, () -> Simple64.encodeOneLong(new int[1], 0, 0));
-    expectThrows(IllegalArgumentException.class, () -> Simple64.encodeOneLong(new int[] {-1}, 0, 1));
+    expectThrows(
+        IllegalArgumentException.class, () -> Simple64.encodeOneLong(new int[] {-1}, 0, 1));
 
     long invalidSelector = 14L << 60;
     expectThrows(IllegalArgumentException.class, () -> Simple64.count(invalidSelector));
     expectThrows(
-        IllegalArgumentException.class, () -> Simple64.decodeOneLong(invalidSelector, new int[1], 0));
+        IllegalArgumentException.class,
+        () -> Simple64.decodeOneLong(invalidSelector, new int[1], 0));
     expectThrows(
         IllegalArgumentException.class,
         () -> Simple64.decodeAll(new long[] {invalidSelector}, 0, new int[1], 0, 1));

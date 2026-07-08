@@ -208,7 +208,7 @@ public final class Simple64 {
   }
 
   /** Pack {@code count} integers using the given selector (low-to-high bit order). */
-  static long packOneLong(int selector, int[] ints, int offset, int count) {
+  private static long packOneLong(int selector, int[] ints, int offset, int count) {
     if (count == COUNTS[selector]) {
       switch (selector) {
         case 0:
