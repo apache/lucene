@@ -117,11 +117,18 @@ public abstract class TwoPhaseIterator {
    * <p><b>Note</b>: It is illegal to call this method when the approximation is exhausted or not
    * positioned.
    *
-   * <p>The default implementation assumes runs of a single doc ID and returns the current doc ID of
-   * the approximation plus one, mirroring {@link DocIdSetIterator#docIDRunEnd()}.
+   * <p>The default implementation is conservative and returns the current doc ID of the
+   * approximation, i.e. it reports no matching run. Unlike a positioned {@link DocIdSetIterator} --
+   * whose current doc is by definition a match -- a positioned {@link TwoPhaseIterator} has not yet
+   * confirmed that the current doc matches, so the default cannot claim it as part of a matching
+   * run without a (potentially side-effecting) {@link #matches()} call. Callers must therefore
+   * treat a return value equal to {@code approximation().docID()} as "no known matching run" and
+   * fall back to per-doc {@link #matches()} confirmation. Implementations that can cheaply prove
+   * that a run of docs matches -- e.g. a doc-values skipper reporting a fully-matching block --
+   * should override this to return the real run end.
    */
   public int docIDRunEnd() throws IOException {
-    return approximation().docID() + 1;
+    return approximation().docID();
   }
 
   /**

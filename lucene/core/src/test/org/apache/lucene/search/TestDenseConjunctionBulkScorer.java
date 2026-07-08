@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.IntPredicate;
 import org.apache.lucene.tests.search.AssertingBulkScorer;
 import org.apache.lucene.tests.search.RandomApproximationQuery.RandomTwoPhaseView;
 import org.apache.lucene.tests.util.LuceneTestCase;
@@ -588,6 +589,80 @@ public class TestDenseConjunctionBulkScorer extends LuceneTestCase {
         0,
         DocIdSetIterator.NO_MORE_DOCS);
     assertEquals(50_000, collectedViaRange[0]);
+  }
+
+  /**
+   * A two-phase clause that relies on the default {@link TwoPhaseIterator#docIDRunEnd()} — which
+   * reports no matching run, because the current approximation doc is only a candidate until {@link
+   * TwoPhaseIterator#matches()} confirms it — must produce the same matches however the doc space
+   * is split into scoring windows. That partition invariance is what intra-segment search
+   * concurrency relies on: a segment scored in one pass and the same segment scored as adjacent
+   * sub-ranges must agree. A per-doc (width-1) partition is the strongest such split and forces
+   * every window to go through {@link TwoPhaseIterator#matches()} confirmation rather than the
+   * {@link LeafCollector#collectRange} fast path, which must never collect an unconfirmed doc.
+   */
+  public void testTwoPhaseDefaultRunEndIsPartitionInvariant() throws IOException {
+    int maxDoc = 5_000;
+    // The approximation is positioned on every doc; matches() confirms a non-trivial subset.
+    IntPredicate matching = doc -> doc % 3 != 0;
+
+    FixedBitSet expected = new FixedBitSet(maxDoc);
+    for (int doc = 0; doc < maxDoc; doc++) {
+      if (matching.test(doc)) {
+        expected.set(doc);
+      }
+    }
+
+    // Whole range in one pass.
+    FixedBitSet singlePass = new FixedBitSet(maxDoc);
+    newTwoPhaseScorer(maxDoc, matching)
+        .score(collectInto(singlePass), null, 0, DocIdSetIterator.NO_MORE_DOCS);
+    assertEquals(expected, singlePass);
+
+    // Same range as adjacent width-1 windows must collect exactly the same docs.
+    FixedBitSet perDoc = new FixedBitSet(maxDoc);
+    BulkScorer scorer = newTwoPhaseScorer(maxDoc, matching);
+    LeafCollector collector = collectInto(perDoc);
+    for (int doc = 0; doc < maxDoc; doc++) {
+      scorer.score(collector, null, doc, doc + 1);
+    }
+    assertEquals(expected, perDoc);
+  }
+
+  /** A single dense two-phase clause using the default (unoverridden) {@code docIDRunEnd()}. */
+  private static BulkScorer newTwoPhaseScorer(int maxDoc, IntPredicate matching) {
+    TwoPhaseIterator twoPhase =
+        new TwoPhaseIterator(DocIdSetIterator.all(maxDoc)) {
+          @Override
+          public boolean matches() {
+            return matching.test(approximation().docID());
+          }
+
+          @Override
+          public float matchCost() {
+            return 1f;
+          }
+        };
+    return new DenseConjunctionBulkScorer(
+        Collections.emptyList(), Collections.singletonList(twoPhase), maxDoc, 0f);
+  }
+
+  /** A collector that records every collected doc, whichever collection path delivers it. */
+  private static LeafCollector collectInto(FixedBitSet bitSet) {
+    return new LeafCollector() {
+      @Override
+      public void setScorer(Scorable scorer) throws IOException {}
+
+      @Override
+      public void collect(int doc) throws IOException {
+        bitSet.set(doc);
+      }
+
+      @Override
+      public void collect(DocIdStream stream) throws IOException {
+        stream.forEach(bitSet::set);
+      }
+    };
   }
 
   private static class CountingLeafCollector implements LeafCollector {
