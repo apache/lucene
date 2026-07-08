@@ -17,14 +17,18 @@
 package org.apache.lucene.search.grouping;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.apache.lucene.queries.function.ValueSource;
-import org.apache.lucene.search.CachingCollector;
+import org.apache.lucene.search.CachingCollectorManager;
 import org.apache.lucene.search.Collector;
+import org.apache.lucene.search.CollectorManager;
 import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.MultiCollector;
+import org.apache.lucene.search.MultiCollectorManager;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreMode;
 import org.apache.lucene.search.Sort;
@@ -41,7 +45,7 @@ import org.apache.lucene.util.mutable.MutableValue;
  */
 public class GroupingSearch {
 
-  private final GroupSelector<?> grouper;
+  private final Supplier<GroupSelector<?>> grouperFactory;
   private final Query groupEndDocs;
 
   private Sort groupSort = Sort.RELEVANCE;
@@ -69,17 +73,17 @@ public class GroupingSearch {
    * @param groupField The name of the field to group by.
    */
   public GroupingSearch(String groupField) {
-    this(new TermGroupSelector(groupField), null);
+    this(() -> new TermGroupSelector(groupField), null);
   }
 
   /**
    * Constructs a <code>GroupingSearch</code> instance that groups documents using a {@link
-   * GroupSelector}
+   * GroupSelector} factory.
    *
-   * @param groupSelector a {@link GroupSelector} that defines groups for this GroupingSearch
+   * @param grouperFactory a factory that creates fresh {@link GroupSelector} instances
    */
-  public GroupingSearch(GroupSelector<?> groupSelector) {
-    this(groupSelector, null);
+  public GroupingSearch(Supplier<GroupSelector<?>> grouperFactory) {
+    this(grouperFactory, null);
   }
 
   /**
@@ -90,7 +94,7 @@ public class GroupingSearch {
    * @param valueSourceContext The context of the specified groupFunction
    */
   public GroupingSearch(ValueSource groupFunction, Map<Object, Object> valueSourceContext) {
-    this(new ValueSourceGroupSelector(groupFunction, valueSourceContext), null);
+    this(() -> new ValueSourceGroupSelector(groupFunction, valueSourceContext), null);
   }
 
   /**
@@ -103,8 +107,8 @@ public class GroupingSearch {
     this(null, groupEndDocs);
   }
 
-  private GroupingSearch(GroupSelector<?> grouper, Query groupEndDocs) {
-    this.grouper = grouper;
+  private GroupingSearch(Supplier<GroupSelector<?>> grouperFactory, Query groupEndDocs) {
+    this.grouperFactory = grouperFactory;
     this.groupEndDocs = groupEndDocs;
   }
 
@@ -123,7 +127,7 @@ public class GroupingSearch {
   @SuppressWarnings("unchecked")
   public <T> TopGroups<T> search(
       IndexSearcher searcher, Query query, int groupOffset, int groupLimit) throws IOException {
-    if (grouper != null) {
+    if (grouperFactory != null) {
       return groupByFieldOrFunction(searcher, query, groupOffset, groupLimit);
     } else if (groupEndDocs != null) {
       return groupByDocBlock(searcher, query, groupOffset, groupLimit);
@@ -134,59 +138,83 @@ public class GroupingSearch {
   }
 
   @SuppressWarnings({"unchecked", "rawtypes"})
-  protected TopGroups groupByFieldOrFunction(
+  protected <T> TopGroups<T> groupByFieldOrFunction(
       IndexSearcher searcher, Query query, int groupOffset, int groupLimit) throws IOException {
-    int topN = groupOffset + groupLimit;
+    @SuppressWarnings("unchecked")
+    Supplier<GroupSelector<T>> typedGrouperFactory =
+        (Supplier<GroupSelector<T>>) (Supplier<?>) grouperFactory;
+    FirstPassGroupingCollectorManager<T> firstPassManager =
+        new FirstPassGroupingCollectorManager<>(
+            typedGrouperFactory, groupSort, groupOffset, groupLimit, ignoreDocsWithoutGroupField);
+    List<CollectorManager<? extends Collector, ?>> firstRoundManagers = new ArrayList<>();
+    firstRoundManagers.add(firstPassManager);
+    AllGroupsCollectorManager<T> allGroupsManager;
+    if (allGroups) {
+      allGroupsManager = new AllGroupsCollectorManager<>(typedGrouperFactory);
+      firstRoundManagers.add(allGroupsManager);
+    }
 
-    final FirstPassGroupingCollector firstPassCollector =
-        new FirstPassGroupingCollector(grouper, groupSort, topN, ignoreDocsWithoutGroupField);
-    final AllGroupsCollector allGroupsCollector =
-        allGroups ? new AllGroupsCollector(grouper) : null;
-    final AllGroupHeadsCollector allGroupHeadsCollector =
-        allGroupHeads ? AllGroupHeadsCollector.newCollector(grouper, sortWithinGroup) : null;
+    AllGroupHeadsCollectorManager<T> allGroupHeadsManager;
+    if (allGroupHeads) {
+      allGroupHeadsManager =
+          new AllGroupHeadsCollectorManager<>(typedGrouperFactory, sortWithinGroup);
+      firstRoundManagers.add(allGroupHeadsManager);
+    }
 
-    final Collector firstRound =
-        MultiCollector.wrap(firstPassCollector, allGroupsCollector, allGroupHeadsCollector);
+    CollectorManager<?, Object[]> firstRoundManager =
+        new MultiCollectorManager(firstRoundManagers.toArray(CollectorManager[]::new));
 
-    CachingCollector cachedCollector = null;
+    CachingCollectorManager<?, Object[]> cachingManager = null;
+    Object[] firstRoundResults;
     if (maxCacheRAMMB != null || maxDocsToCache != null) {
-      if (maxCacheRAMMB != null) {
-        cachedCollector = CachingCollector.create(firstRound, cacheScores, maxCacheRAMMB);
-      } else {
-        cachedCollector = CachingCollector.create(firstRound, cacheScores, maxDocsToCache);
-      }
-      searcher.search(query, cachedCollector);
+      cachingManager =
+          new CachingCollectorManager<>(
+              firstRoundManager, cacheScores, maxCacheRAMMB, maxDocsToCache);
+      firstRoundResults = searcher.search(query, cachingManager);
     } else {
-      searcher.search(query, firstRound);
+      firstRoundResults = searcher.search(query, firstRoundManager);
     }
 
-    matchingGroups = allGroups ? allGroupsCollector.getGroups() : Collections.emptyList();
-    matchingGroupHeads =
-        allGroupHeads
-            ? allGroupHeadsCollector.retrieveGroupHeads(searcher.getIndexReader().maxDoc())
-            : new Bits.MatchNoBits(searcher.getIndexReader().maxDoc());
+    int resultIdx = 0;
+    Collection<SearchGroup<T>> topSearchGroups =
+        (Collection<SearchGroup<T>>) firstRoundResults[resultIdx++];
 
-    Collection<SearchGroup> topSearchGroups = firstPassCollector.getTopGroups(groupOffset);
-    if (topSearchGroups == null) {
-      return new TopGroups(new SortField[0], new SortField[0], 0, 0, new GroupDocs[0], Float.NaN);
+    matchingGroups =
+        allGroups ? (Collection<?>) firstRoundResults[resultIdx++] : Collections.emptyList();
+
+    if (allGroupHeads) {
+      AllGroupHeadsCollectorManager.GroupHeadsResult headsResult =
+          (AllGroupHeadsCollectorManager.GroupHeadsResult) firstRoundResults[resultIdx];
+      matchingGroupHeads = headsResult.retrieveGroupHeads(searcher.getIndexReader().maxDoc());
+    } else {
+      matchingGroupHeads = new Bits.MatchNoBits(searcher.getIndexReader().maxDoc());
     }
 
-    int topNInsideGroup = groupDocsOffset + groupDocsLimit;
-    TopGroupsCollector secondPassCollector =
-        new TopGroupsCollector(
-            grouper, topSearchGroups, groupSort, sortWithinGroup, topNInsideGroup, includeMaxScore);
+    if (topSearchGroups.isEmpty()) {
+      return new TopGroups<>(new SortField[0], new SortField[0], 0, 0, new GroupDocs[0], Float.NaN);
+    }
 
-    if (cachedCollector != null && cachedCollector.isCached()) {
-      cachedCollector.replay(secondPassCollector);
+    TopGroupsCollectorManager<T> secondPassManager =
+        new TopGroupsCollectorManager<>(
+            typedGrouperFactory,
+            topSearchGroups,
+            groupSort,
+            sortWithinGroup,
+            groupDocsOffset,
+            groupDocsLimit,
+            includeMaxScore);
+
+    TopGroups<T> secondResult;
+    if (cachingManager != null && cachingManager.isCached()) {
+      secondResult = cachingManager.replay(secondPassManager);
     } else {
-      searcher.search(query, secondPassCollector);
+      secondResult = searcher.search(query, secondPassManager);
     }
 
     if (allGroups) {
-      return new TopGroups(
-          secondPassCollector.getTopGroups(groupDocsOffset), matchingGroups.size());
+      return new TopGroups<>(secondResult, matchingGroups.size());
     } else {
-      return secondPassCollector.getTopGroups(groupDocsOffset);
+      return secondResult;
     }
   }
 
