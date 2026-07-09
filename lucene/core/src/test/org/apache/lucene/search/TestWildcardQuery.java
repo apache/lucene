@@ -39,6 +39,7 @@ import org.apache.lucene.tests.analysis.MockAnalyzer;
 import org.apache.lucene.tests.index.RandomIndexWriter;
 import org.apache.lucene.tests.util.LuceneTestCase;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.automaton.Automaton;
 import org.apache.lucene.util.automaton.CompiledAutomaton;
 
 /** TestWildcardQuery tests the '*' and '?' wildcard characters. */
@@ -233,6 +234,14 @@ public class TestWildcardQuery extends LuceneTestCase {
 
     reader.close();
     indexStore.close();
+  }
+
+  public void testRepeatedAsterisksCollapse() {
+    Automaton single = WildcardQuery.toAutomaton(new Term("field", "*"));
+    Automaton repeated = WildcardQuery.toAutomaton(new Term("field", "*".repeat(1000)));
+
+    assertEquals(single.getNumStates(), repeated.getNumStates());
+    assertEquals(single.getNumTransitions(), repeated.getNumTransitions());
   }
 
   private Directory getIndexStore(String field, String[] contents) throws IOException {

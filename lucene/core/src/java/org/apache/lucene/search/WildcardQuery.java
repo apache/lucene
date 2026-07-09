@@ -70,15 +70,20 @@ public class WildcardQuery extends AutomatonQuery {
 
     String wildcardText = wildcardquery.text();
 
+    boolean lastWasWildcardString = false;
     for (int i = 0; i < wildcardText.length(); ) {
       final int c = wildcardText.codePointAt(i);
       int length = Character.charCount(c);
       switch (c) {
         case WILDCARD_STRING:
-          automata.add(Automata.makeAnyString());
+          if (!lastWasWildcardString) {
+            automata.add(Automata.makeAnyString());
+            lastWasWildcardString = true;
+          }
           break;
         case WILDCARD_CHAR:
           automata.add(Automata.makeAnyChar());
+          lastWasWildcardString = false;
           break;
         case WILDCARD_ESCAPE:
           // add the next codepoint instead, if it exists
@@ -86,10 +91,12 @@ public class WildcardQuery extends AutomatonQuery {
             final int nextChar = wildcardText.codePointAt(i + length);
             length += Character.charCount(nextChar);
             automata.add(Automata.makeChar(nextChar));
+            lastWasWildcardString = false;
             break;
           } // else fallthru, lenient parsing with a trailing \
         default:
           automata.add(Automata.makeChar(c));
+          lastWasWildcardString = false;
       }
       i += length;
     }
