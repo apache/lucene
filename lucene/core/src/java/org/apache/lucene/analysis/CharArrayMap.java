@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
+import org.apache.lucene.internal.hppc.LongHashSet;
 import org.apache.lucene.util.CharsRef;
 
 /**
@@ -36,8 +37,13 @@ public class CharArrayMap<V> extends AbstractMap<Object, V> {
   private static final CharArrayMap<?> EMPTY_MAP = new EmptyCharArrayMap<>();
 
   private static final int INIT_SIZE = 8;
+  static final int DEFAULT_MAX_CACHED_LENGTH = 8;
+
   private final boolean ignoreCase;
+  private final int maxCachedLength;
   private int count;
+  private LongHashSet packedKeys;
+
   // package private because used in CharArraySet's non Set-conform CharArraySetIterator
   char[][] keys;
   // package private because used in CharArraySet's non Set-conform CharArraySetIterator
@@ -52,7 +58,23 @@ public class CharArrayMap<V> extends AbstractMap<Object, V> {
    */
   @SuppressWarnings("unchecked")
   public CharArrayMap(int startSize, boolean ignoreCase) {
+    this(startSize, ignoreCase, DEFAULT_MAX_CACHED_LENGTH);
+  }
+
+  /**
+   * Create map with enough capacity to hold startSize terms. When {@code ignoreCase} is true, keys
+   * up to {@code maxCachedLength} ASCII characters are cached in a compact representation for
+   * faster lookup, avoiding per-character case conversion overhead. Set to 0 to disable.
+   *
+   * @param startSize the initial capacity
+   * @param ignoreCase <code>false</code> if and only if the set should be case sensitive otherwise
+   *     <code>true</code>.
+   * @param maxCachedLength maximum ASCII length to cache for faster lookup (0 to disable)
+   */
+  @SuppressWarnings("unchecked")
+  public CharArrayMap(int startSize, boolean ignoreCase, int maxCachedLength) {
     this.ignoreCase = ignoreCase;
+    this.maxCachedLength = maxCachedLength;
     int size = INIT_SIZE;
     while (startSize + (startSize >> 2) > size) {
       size <<= 1;
@@ -78,7 +100,9 @@ public class CharArrayMap<V> extends AbstractMap<Object, V> {
     this.keys = toCopy.keys;
     this.values = toCopy.values;
     this.ignoreCase = toCopy.ignoreCase;
+    this.maxCachedLength = toCopy.maxCachedLength;
     this.count = toCopy.count;
+    this.packedKeys = toCopy.packedKeys;
   }
 
   /**
@@ -88,6 +112,7 @@ public class CharArrayMap<V> extends AbstractMap<Object, V> {
   @Override
   public void clear() {
     count = 0;
+    packedKeys = null;
     Arrays.fill(keys, null);
     Arrays.fill(values, null);
   }
@@ -97,11 +122,19 @@ public class CharArrayMap<V> extends AbstractMap<Object, V> {
    * {@link #keySet()}
    */
   public boolean containsKey(char[] text, int off, int len) {
+    if (packedKeys != null) {
+      long packed = pack(text, off, len, ignoreCase);
+      return packed >= 0 && packedKeys.contains(packed);
+    }
     return keys[getSlot(text, off, len)] != null;
   }
 
   /** true if the <code>CharSequence</code> is in the {@link #keySet()} */
   public boolean containsKey(CharSequence cs) {
+    if (packedKeys != null) {
+      long packed = packCharSequence(cs, ignoreCase);
+      return packed >= 0 && packedKeys.contains(packed);
+    }
     return keys[getSlot(cs)] != null;
   }
 
@@ -118,11 +151,19 @@ public class CharArrayMap<V> extends AbstractMap<Object, V> {
    * <code>off</code>
    */
   public V get(char[] text, int off, int len) {
+    if (packedKeys != null) {
+      long packed = pack(text, off, len, ignoreCase);
+      if (packed < 0 || !packedKeys.contains(packed)) return null;
+    }
     return values[getSlot(text, off, len)];
   }
 
   /** returns the value of the mapping of the chars inside this {@code CharSequence} */
   public V get(CharSequence cs) {
+    if (packedKeys != null) {
+      long packed = packCharSequence(cs, ignoreCase);
+      if (packed < 0 || !packedKeys.contains(packed)) return null;
+    }
     return values[getSlot(cs)];
   }
 
@@ -191,6 +232,7 @@ public class CharArrayMap<V> extends AbstractMap<Object, V> {
     if (ignoreCase) {
       CharacterUtils.toLowerCase(text, 0, text.length);
     }
+    packedKeys = null;
     int slot = getSlot(text, 0, text.length);
     if (keys[slot] != null) {
       final V oldValue = values[slot];
@@ -295,6 +337,46 @@ public class CharArrayMap<V> extends AbstractMap<Object, V> {
       }
     }
     return code;
+  }
+
+  void tryBuildPackedKeys() {
+    if (!ignoreCase || maxCachedLength == 0) return;
+    LongHashSet set = new LongHashSet(count);
+    for (char[] key : keys) {
+      if (key == null) continue;
+      long packed = pack(key, 0, key.length, false);
+      if (packed < 0) {
+        packedKeys = null;
+        return;
+      }
+      set.add(packed);
+    }
+    packedKeys = set;
+  }
+
+  private long pack(char[] buf, int off, int len, boolean toLowerCase) {
+    if (len > maxCachedLength || len == 0) return -1;
+    long packed = 0;
+    for (int i = 0; i < len; i++) {
+      char c = buf[off + i];
+      if (c > 127) return -1;
+      if (toLowerCase && c >= 'A' && c <= 'Z') c = (char) (c | 0x20);
+      packed = (packed << 8) | c;
+    }
+    return packed;
+  }
+
+  private long packCharSequence(CharSequence cs, boolean toLowerCase) {
+    int len = cs.length();
+    if (len > maxCachedLength || len == 0) return -1;
+    long packed = 0;
+    for (int i = 0; i < len; i++) {
+      char c = cs.charAt(i);
+      if (c > 127) return -1;
+      if (toLowerCase && c >= 'A' && c <= 'Z') c = (char) (c | 0x20);
+      packed = (packed << 8) | c;
+    }
+    return packed;
   }
 
   @Override
