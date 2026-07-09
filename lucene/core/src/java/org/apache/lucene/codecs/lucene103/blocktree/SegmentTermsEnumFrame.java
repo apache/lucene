@@ -217,7 +217,11 @@ final class SegmentTermsEnumFrame {
     if (isLeafBlock) {
       if (allEqual) {
         suffixLength = numSuffixLengthBytes;
+        // This frame maybe reused from a stale frame, so reset stale frame's state.
+        suffixLengths = null;
       } else {
+        // This frame maybe reused from a stale frame, so reset stale frame's state.
+        suffixLength = -1;
         final int numLongs = numSuffixLengthBytes;
         suffixLengths = new int[entCount];
         long[] longs = new long[numLongs];
@@ -229,6 +233,9 @@ final class SegmentTermsEnumFrame {
         assert consumed == numLongs;
       }
     } else {
+      // This frame maybe reused from a stale frame, so reset stale frame's state.
+      suffixLength = -1;
+      suffixLengths = null;
       if (suffixLengthBytes == null || suffixLengthBytes.length < numSuffixLengthBytes) {
         suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
       }

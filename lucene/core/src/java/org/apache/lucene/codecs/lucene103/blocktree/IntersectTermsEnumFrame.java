@@ -202,7 +202,14 @@ final class IntersectTermsEnumFrame {
     if (isLeafBlock) {
       if (allEqual) {
         suffixLength = numSuffixLengthBytes;
+        // This frame maybe reused from a stale frame, so reset stale frame's state.
+        suffixLengths = null;
       } else {
+        // This frame maybe reused from a stale frame, so reset stale frame's state.
+        // We can't reset suffixLength to -1, since IntersectTermsEnum#seekToStartTerm uses
+        // saveSuffix as length to arraycopy when cmp > 0, when target is ""
+        // the length is 0 is ok. if reset suffixLength to -1, the length will be -1.
+        //        suffixLength = -1;
         final int numLongs = numSuffixLengthBytes;
         suffixLengths = new int[entCount];
         long[] longs = new long[numLongs];
@@ -214,6 +221,12 @@ final class IntersectTermsEnumFrame {
         assert consumed == numLongs;
       }
     } else {
+      // This frame maybe reused from a stale frame, so reset stale frame's state.
+      // We can't reset suffixLength to -1, since IntersectTermsEnum#seekToStartTerm uses saveSuffix
+      // as length to arraycopy when cmp > 0, when target is ""
+      // the length is 0 is ok. if reset suffixLength to -1, the length will be -1.
+      //      suffixLength = -1;
+      suffixLengths = null;
       if (suffixLengthBytes.length < numSuffixLengthBytes) {
         suffixLengthBytes = new byte[ArrayUtil.oversize(numSuffixLengthBytes, 1)];
       }
