@@ -173,6 +173,7 @@ public abstract class AllGroupHeadsCollector<T> extends SimpleCollector {
   @Override
   public void setScorer(Scorable scorer) throws IOException {
     this.scorer = scorer;
+    groupSelector.setScorer(scorer);
     for (GroupHead<T> head : heads.values()) {
       head.setScorer(scorer);
     }
