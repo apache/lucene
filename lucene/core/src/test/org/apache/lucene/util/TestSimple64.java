@@ -190,15 +190,15 @@ public class TestSimple64 extends LuceneTestCase {
   public void testFuzz() {
     Random rng = new Random(12345);
     int rounds = 20_000;
-    int errors = 0;
     for (int r = 0; r < rounds; r++) {
       int len = rng.nextInt(60) + 1;
       // random bit-width 1..31 to exercise all selectors including 13
       int maxBits = rng.nextInt(31) + 1;
       int maxVal = (maxBits == 31) ? Integer.MAX_VALUE : (1 << maxBits) - 1;
       int[] input = new int[len];
-      for (int i = 0; i < len; i++)
+      for (int i = 0; i < len; i++) {
         input[i] = (int) (((long) rng.nextInt() & 0x7FFFFFFFL) % ((long) maxVal + 1));
+      }
       long[] longs = new long[len + 1];
       int numLongs = Simple64.encodeAll(input, 0, len, longs, 0);
       if (numLongs < longs.length) {
@@ -206,8 +206,25 @@ public class TestSimple64 extends LuceneTestCase {
       }
       int[] decoded = new int[len];
       Simple64.decodeAll(longs, 0, decoded, 0, len);
-      if (!Arrays.equals(input, decoded)) errors++;
+      if (Arrays.equals(input, decoded) == false) {
+        fail(
+            "Simple64 fuzz roundtrip failed: round="
+                + r
+                + ", len="
+                + len
+                + ", maxBits="
+                + maxBits
+                + ", maxVal="
+                + maxVal
+                + ", numLongs="
+                + numLongs
+                + ", longs="
+                + Arrays.toString(Arrays.copyOf(longs, numLongs))
+                + ", input="
+                + Arrays.toString(input)
+                + ", decoded="
+                + Arrays.toString(decoded));
+      }
     }
-    assertEquals("fuzz errors", 0, errors);
   }
 }
