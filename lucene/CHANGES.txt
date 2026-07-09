@@ -360,8 +360,14 @@ Bug Fixes
   to the wrapped NumericDocValues, enabling optimized range evaluation for
   single-valued sorted numeric fields. (Costin Leau)
 
+<<<<<<< join_util_scores
+* GITHUB#16378: Accumulate join Total/Avg scores in double precision in
+  TermsWithScoreCollector and JoinUtil's numeric point join, fixing
+  intermittent failures caused by non-associative float addition. (Luca Cavanna)
+=======
 * GITHUB#16296: Fix missing null check in RamUsageEstimator.sizeOf(Accountable)
   to be consistent with sizeOf(String) and sizeOf(Accountable[]). (Tim Grein)
+>>>>>>> main
 
 Other
 ---------------------
