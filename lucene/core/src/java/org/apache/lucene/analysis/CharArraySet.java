@@ -127,6 +127,10 @@ public class CharArraySet extends AbstractSet<Object> {
     return map.size();
   }
 
+  boolean getIgnoreCase() {
+    return map.getIgnoreCase();
+  }
+
   /**
    * Returns an unmodifiable {@link CharArraySet}. This allows to provide unmodifiable views of
    * internal sets for "read-only" use.

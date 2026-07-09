@@ -38,6 +38,11 @@ public class CharArrayMap<V> extends AbstractMap<Object, V> {
   private static final int INIT_SIZE = 8;
   private final boolean ignoreCase;
   private int count;
+
+  boolean getIgnoreCase() {
+    return ignoreCase;
+  }
+
   // package private because used in CharArraySet's non Set-conform CharArraySetIterator
   char[][] keys;
   // package private because used in CharArraySet's non Set-conform CharArraySetIterator
