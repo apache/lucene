@@ -324,6 +324,7 @@ Improvements
 
 Optimizations
 ---------------------
+
 * GITHUG#16280: Single-pass writeString fast path for short strings in ByteBuffersDataOutput (neoremind)
 
 * GITHUB#16146: Speed up no-score filtered-optional Boolean queries by routing dense conjunctions with cached FixedBitSet filters
@@ -351,6 +352,12 @@ Optimizations
 
 * GITHUB#16370: Sort two-phase iterators by matchCost in DenseConjunctionBulkScorer.
   (Alan Woodward)
+
+* GITHUB#16294: Route constant-score doc-values queries through
+  ConstantScoreScorerSupplier so they can benefit from batch scoring.
+  Affects BinaryRangeFieldRangeQuery, LatLonDocValuesBoxQuery,
+  LatLonDocValuesQuery, XYDocValuesPointInGeometryQuery, and
+  SortedNumericDocValuesSetQuery. (Costin Leau)
 
 Bug Fixes
 ---------------------
