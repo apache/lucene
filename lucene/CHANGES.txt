@@ -307,6 +307,8 @@ API Changes
 * GITHUB#16286: Introduce BinaryDocValues#binaryValues to help speed up the
   retrieval of many binary doc values at once. (Costin Leau)
 
+* GITHUB#16363: Add API to use a custom `DictionarySuggester` instead of hardcoded `GeneratingSuggester`
+
 New Features
 ---------------------
 
@@ -316,7 +318,12 @@ New Features
 
 Improvements
 ---------------------
-* GITHUB#16170: Alter TopGroups.merge() to not return null if no groups. (Binlong Gao)
+
+* GITHUB#16247: Introduce CachingCollectorManager to parallelize search when using CachingCollector.
+                Remove experimental GroupingSearch constructor that takes a GroupSelector as argument
+                in favour of providing a GroupSelector supplier. (Binlong Gao)
+
+* GITHUB#16305: Alter TopGroups.merge() to not return null if no groups. (Binlong Gao)
 
 Optimizations
 ---------------------
@@ -334,6 +341,10 @@ Optimizations
   rangeIntoBitSet. (Costin Leau)
 
 * GITHUB#16352: Better cost() estimation for SkipBlockRangeIterator. (Alan Woodward)
+
+* GITHUB#16307: ReqExclBulkScorer now skips runs of excluded docs via
+  TwoPhaseIterator#docIDRunEnd for two-phase excluded clauses (e.g. a doc-values
+  not-equals filter), instead of advancing one doc at a time. (Jim Ferenczi)
 
 * GITHUB#16362: Add TwoPhaseIterator.applyMask() to support bulk matching for more
   expensive queries. (Alan Woodward)
@@ -363,6 +374,9 @@ Other
 * GITHUB#16308: upgrade opennlp to 2.5.10 (Dawid Weiss)
 
 * GITHUB#16315: Fix flaky test TestIndexOptions > testMultiValueForcesDeoptimization (neoremind)
+
+* GITHUB#16300: Reduce memory pressure in TestTermInSetQuery.testDuel stress runs.
+  (Sanghun Lee)
 
 ======================= Lucene 10.5.0 =======================
 
