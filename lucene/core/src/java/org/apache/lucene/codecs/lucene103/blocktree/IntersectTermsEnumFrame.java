@@ -49,7 +49,8 @@ final class IntersectTermsEnumFrame {
   final ByteArrayDataInput suffixesReader = new ByteArrayDataInput();
 
   byte[] suffixLengthBytes;
-  // Only used in non-leaf blocks.
+  // Only used in non-leaf blocks, because for leaf blocks we fully decode all terms' suffix lengths
+  // up front.
   final ByteArrayDataInput suffixLengthsReader;
 
   byte[] statBytes = new byte[64];

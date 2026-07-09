@@ -50,7 +50,8 @@ final class SegmentTermsEnumFrame {
   ByteArrayDataInput suffixesReader;
 
   byte[] suffixLengthBytes;
-  // Only used in non-leaf blocks.
+  // Only used in non-leaf blocks, because for leaf blocks we fully decode all terms' suffix lengths
+  // up front.
   final ByteArrayDataInput suffixLengthsReader;
 
   byte[] statBytes;
