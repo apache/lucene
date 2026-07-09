@@ -18,7 +18,6 @@
 package org.apache.lucene.util;
 
 import java.util.Arrays;
-import java.util.Random;
 import org.apache.lucene.tests.util.LuceneTestCase;
 
 public class TestSimple64 extends LuceneTestCase {
@@ -77,12 +76,11 @@ public class TestSimple64 extends LuceneTestCase {
   }
 
   public void testFastPathSelectors0To3() {
-    Random rng = new Random(7);
     for (int s = 0; s <= 3; s++) {
       int[] input = new int[Simple64.selectorCount(s)];
       int maxVal = (int) Simple64.selectorMask(s);
       for (int i = 0; i < input.length; i++) {
-        input[i] = rng.nextInt(maxVal + 1);
+        input[i] = random().nextInt(maxVal + 1);
       }
       input[0] = maxVal;
       long word = Simple64.encodeOneLong(input, 0, input.length);
@@ -140,9 +138,8 @@ public class TestSimple64 extends LuceneTestCase {
 
   public void testEncodeOneLongAll() {
     int[] input = new int[35];
-    Random rng = new Random(42);
     for (int i = 0; i < 35; i++) {
-      input[i] = rng.nextInt(10) + 1;
+      input[i] = 1 + random().nextInt(10);
     }
     long[] longs = new long[35];
     int numLongs = Simple64.encodeAll(input, 0, 35, longs, 0);
@@ -228,16 +225,15 @@ public class TestSimple64 extends LuceneTestCase {
   }
 
   public void testFuzz() {
-    Random rng = new Random(12345);
-    int rounds = 20_000;
+    int rounds = TEST_NIGHTLY ? atLeast(100_000) : atLeast(20_000);
     for (int r = 0; r < rounds; r++) {
-      int len = rng.nextInt(60) + 1;
+      int len = 1 + random().nextInt(Simple64.MAX_VALUES_PER_LONG);
       // random bit-width 1..31 to exercise all selectors including 13
-      int maxBits = rng.nextInt(31) + 1;
+      int maxBits = 1 + random().nextInt(31);
       int maxVal = (maxBits == 31) ? Integer.MAX_VALUE : (1 << maxBits) - 1;
       int[] input = new int[len];
       for (int i = 0; i < len; i++) {
-        input[i] = (int) (((long) rng.nextInt() & 0x7FFFFFFFL) % ((long) maxVal + 1));
+        input[i] = (int) (((long) random().nextInt() & 0x7FFFFFFFL) % ((long) maxVal + 1));
       }
       long[] longs = new long[len + 1];
       int numLongs = Simple64.encodeAll(input, 0, len, longs, 0);
