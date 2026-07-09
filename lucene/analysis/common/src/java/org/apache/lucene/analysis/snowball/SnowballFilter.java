@@ -18,6 +18,7 @@ package org.apache.lucene.analysis.snowball;
 
 import java.io.IOException;
 import java.util.Objects;
+import org.apache.lucene.analysis.CharArrayMap;
 import org.apache.lucene.analysis.LowerCaseFilter;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -47,14 +48,33 @@ import org.tartarus.snowball.SnowballStemmer;
  */
 public final class SnowballFilter extends TokenFilter {
 
+  private static final int DEFAULT_MAX_CACHE_SIZE = 1024;
+  private static final int MAX_CACHEABLE_LENGTH = 10;
+
   private final SnowballStemmer stemmer;
+  private final int maxCacheSize;
+  private final CharArrayMap<char[]> cache;
 
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
   private final KeywordAttribute keywordAttr = addAttribute(KeywordAttribute.class);
 
   public SnowballFilter(TokenStream input, SnowballStemmer stemmer) {
+    this(input, stemmer, DEFAULT_MAX_CACHE_SIZE);
+  }
+
+  /**
+   * Creates a SnowballFilter with the specified cache size. The cache stores stem results keyed by
+   * the original token text. Only tokens with length &le; {@value #MAX_CACHEABLE_LENGTH} are
+   * cached. Set {@code maxCacheSize} to 0 to disable caching.
+   */
+  public SnowballFilter(TokenStream input, SnowballStemmer stemmer, int maxCacheSize) {
     super(input);
     this.stemmer = Objects.requireNonNull(stemmer, "stemmer");
+    if (maxCacheSize < 0) {
+      throw new IllegalArgumentException("maxCacheSize must be >= 0, got: " + maxCacheSize);
+    }
+    this.maxCacheSize = maxCacheSize;
+    this.cache = maxCacheSize > 0 ? new CharArrayMap<>(Math.min(maxCacheSize, 256), false) : null;
   }
 
   /**
@@ -68,8 +88,16 @@ public final class SnowballFilter extends TokenFilter {
    * @param name the name of a stemmer
    */
   public SnowballFilter(TokenStream in, String name) {
+    this(in, name, DEFAULT_MAX_CACHE_SIZE);
+  }
+
+  /** Same as {@link #SnowballFilter(TokenStream, String)} with a configurable cache size. */
+  public SnowballFilter(TokenStream in, String name, int maxCacheSize) {
     super(in);
     Objects.requireNonNull(name, "name");
+    if (maxCacheSize < 0) {
+      throw new IllegalArgumentException("maxCacheSize must be >= 0, got: " + maxCacheSize);
+    }
     // it was called "German2" for eons, but snowball folded it into "German" and deleted "German2"
     // for now, don't annoy our users...
     if (name.equals("German2")) {
@@ -85,6 +113,8 @@ public final class SnowballFilter extends TokenFilter {
     } catch (ReflectiveOperationException e) {
       throw new IllegalArgumentException("Invalid stemmer class specified: " + name, e);
     }
+    this.maxCacheSize = maxCacheSize;
+    this.cache = maxCacheSize > 0 ? new CharArrayMap<>(Math.min(maxCacheSize, 256), false) : null;
   }
 
   /** Returns the next input Token, after being stemmed */
@@ -94,12 +124,34 @@ public final class SnowballFilter extends TokenFilter {
       if (!keywordAttr.isKeyword()) {
         char[] termBuffer = termAtt.buffer();
         final int length = termAtt.length();
+        final boolean lookupCache = cache != null && length <= MAX_CACHEABLE_LENGTH;
+
+        if (lookupCache) {
+          char[] cached = cache.get(termBuffer, 0, length);
+          if (cached != null) {
+            termAtt.copyBuffer(cached, 0, cached.length);
+            return true;
+          }
+        }
+
+        char[] key = null;
+        if (lookupCache && cache.size() < maxCacheSize) {
+          key = new char[length];
+          System.arraycopy(termBuffer, 0, key, 0, length);
+        }
+
         stemmer.setCurrent(termBuffer, length);
         stemmer.stem();
         final char[] finalTerm = stemmer.getCurrentBuffer();
         final int newLength = stemmer.getCurrentBufferLength();
         if (finalTerm != termBuffer) termAtt.copyBuffer(finalTerm, 0, newLength);
         else termAtt.setLength(newLength);
+
+        if (key != null) {
+          char[] value = new char[newLength];
+          System.arraycopy(finalTerm, 0, value, 0, newLength);
+          cache.put(key, value);
+        }
       }
       return true;
     } else {

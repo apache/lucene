@@ -352,6 +352,9 @@ Optimizations
 * GITHUB#16370: Sort two-phase iterators by matchCost in DenseConjunctionBulkScorer.
   (Alan Woodward)
 
+* GITHUB#16356: Cache stem results in SnowballFilter to avoid redundant stemmer invocations on
+  repeated tokens. 2.3-2.7x throughput improvement. Disableable via new constructor. (Costin Leau)
+
 Bug Fixes
 ---------------------
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
