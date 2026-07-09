@@ -339,7 +339,7 @@ Optimizations
   rangeIntoBitSet. (Costin Leau)
 
 * GITHUB#16352: Better cost() estimation for SkipBlockRangeIterator. (Alan Woodward)
-  
+
 * GITHUB#16307: ReqExclBulkScorer now skips runs of excluded docs via
   TwoPhaseIterator#docIDRunEnd for two-phase excluded clauses (e.g. a doc-values
   not-equals filter), instead of advancing one doc at a time. (Jim Ferenczi)
@@ -352,7 +352,7 @@ Optimizations
 
 * GITHUB#16370: Sort two-phase iterators by matchCost in DenseConjunctionBulkScorer.
   (Alan Woodward)
-  
+
 * GITHUB#16294: Route constant-score doc-values queries through
   ConstantScoreScorerSupplier so they can benefit from batch scoring.
   Affects BinaryRangeFieldRangeQuery, LatLonDocValuesBoxQuery,
