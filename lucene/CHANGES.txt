@@ -101,6 +101,8 @@ API Changes
 * GITHUB#16281: The checkIntegrity() method of codec Producer APIs gains a OneMerge parameter,
   which is used to check for aborted merges during checksum validation. (Tanguy Leroux)
 
+* GITHUB#16363: Add API to use a custom `DictionarySuggester` instead of hardcoded `GeneratingSuggester`
+
 New Features
 ---------------------
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
@@ -149,6 +151,10 @@ Improvements
 
 Optimizations
 ---------------------
+* GITHUB#16307: ReqExclBulkScorer now skips runs of excluded docs via
+  TwoPhaseIterator#docIDRunEnd for two-phase excluded clauses (e.g. a doc-values
+  not-equals filter), instead of advancing one doc at a time. (Jim Ferenczi)
+
 * GITHUB#16254: Enable the vectorized findNextGEQ path on aarch64, where it was disabled on cores
   with fewer than 8 int lanes (Graviton2 and Graviton4). The vector compare beats the scalar
   fallback by +75% on Graviton4 and +35% on Graviton2 (AdvanceBenchmark). (Shitij Bhargava)
@@ -172,6 +178,7 @@ Optimizations
 
 Bug Fixes
 ---------------------
+
 * GITHUB#14049: Randomize KNN codec params in RandomCodec. Fixes scalar quantization div-by-zero
   when all values are identical. (Mike Sokolov)
 
@@ -297,6 +304,8 @@ API Changes
 * GITHUB#16286: Introduce BinaryDocValues#binaryValues to help speed up the
   retrieval of many binary doc values at once. (Costin Leau)
 
+* GITHUB#16363: Add API to use a custom `DictionarySuggester` instead of hardcoded `GeneratingSuggester`
+
 New Features
 ---------------------
 
@@ -306,7 +315,12 @@ New Features
 
 Improvements
 ---------------------
-* GITHUB#16170: Alter TopGroups.merge() to not return null if no groups. (Binlong Gao)
+
+* GITHUB#16247: Introduce CachingCollectorManager to parallelize search when using CachingCollector.
+                Remove experimental GroupingSearch constructor that takes a GroupSelector as argument
+                in favour of providing a GroupSelector supplier. (Binlong Gao)
+
+* GITHUB#16305: Alter TopGroups.merge() to not return null if no groups. (Binlong Gao)
 
 Optimizations
 ---------------------
@@ -325,19 +339,36 @@ Optimizations
   rangeIntoBitSet. (Costin Leau)
 
 * GITHUB#16352: Better cost() estimation for SkipBlockRangeIterator. (Alan Woodward)
+  
+* GITHUB#16307: ReqExclBulkScorer now skips runs of excluded docs via
+  TwoPhaseIterator#docIDRunEnd for two-phase excluded clauses (e.g. a doc-values
+  not-equals filter), instead of advancing one doc at a time. (Jim Ferenczi)
 
+* GITHUB#16362: Add TwoPhaseIterator.applyMask() to support bulk matching for more
+  expensive queries. (Alan Woodward)
+
+* GITHUB#16355: Add ASCII fast-path to CharacterUtils.toLowerCase, avoiding per-char codepoint
+  conversion for ASCII-only tokens. 2.16x throughput on English text. (Costin Leau)
+
+* GITHUB#16370: Sort two-phase iterators by matchCost in DenseConjunctionBulkScorer.
+  (Alan Woodward)
+  
 * GITHUB#16294: Route constant-score doc-values queries through
   ConstantScoreScorerSupplier so they can benefit from batch scoring.
   Affects BinaryRangeFieldRangeQuery, LatLonDocValuesBoxQuery,
   LatLonDocValuesQuery, XYDocValuesPointInGeometryQuery, and
   SortedNumericDocValuesSetQuery. (Costin Leau)
-  
+
 Bug Fixes
 ---------------------
+* GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
 
 * GITHUB#16295: SingletonSortedNumericDocValues now delegates rangeIntoBitSet
   to the wrapped NumericDocValues, enabling optimized range evaluation for
   single-valued sorted numeric fields. (Costin Leau)
+
+* GITHUB#16296: Fix missing null check in RamUsageEstimator.sizeOf(Accountable)
+  to be consistent with sizeOf(String) and sizeOf(Accountable[]). (Tim Grein)
 
 Other
 ---------------------
@@ -347,6 +378,9 @@ Other
 * GITHUB#16308: upgrade opennlp to 2.5.10 (Dawid Weiss)
 
 * GITHUB#16315: Fix flaky test TestIndexOptions > testMultiValueForcesDeoptimization (neoremind)
+
+* GITHUB#16300: Reduce memory pressure in TestTermInSetQuery.testDuel stress runs.
+  (Sanghun Lee)
 
 ======================= Lucene 10.5.0 =======================
 

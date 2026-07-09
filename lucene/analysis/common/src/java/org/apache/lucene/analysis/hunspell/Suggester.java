@@ -54,20 +54,30 @@ public class Suggester {
   private final SuggestibleEntryCache suggestibleCache;
   private final FragmentChecker fragmentChecker;
   private final boolean proceedPastRep;
+  private final DictionarySuggester suggester;
 
   public Suggester(Dictionary dictionary) {
-    this(dictionary, null, FragmentChecker.EVERYTHING_POSSIBLE, false);
+    this(
+        dictionary,
+        null,
+        FragmentChecker.EVERYTHING_POSSIBLE,
+        false,
+        (speller, entryCache, word, originalCase, prevSuggestions) ->
+            new GeneratingSuggester(speller, entryCache)
+                .suggest(word, originalCase, prevSuggestions));
   }
 
   private Suggester(
       Dictionary dictionary,
       SuggestibleEntryCache suggestibleCache,
       FragmentChecker checker,
-      boolean proceedPastRep) {
+      boolean proceedPastRep,
+      DictionarySuggester suggester) {
     this.dictionary = dictionary;
     this.suggestibleCache = suggestibleCache;
     this.fragmentChecker = checker;
     this.proceedPastRep = proceedPastRep;
+    this.suggester = suggester;
   }
 
   /**
@@ -77,7 +87,7 @@ public class Suggester {
    */
   public Suggester withSuggestibleEntryCache() {
     SuggestibleEntryCache cache = SuggestibleEntryCache.buildCache(dictionary.words);
-    return new Suggester(dictionary, cache, fragmentChecker, proceedPastRep);
+    return new Suggester(dictionary, cache, fragmentChecker, proceedPastRep, suggester);
   }
 
   /**
@@ -85,7 +95,7 @@ public class Suggester {
    * the performance of the "Modification" phase performance.
    */
   public Suggester withFragmentChecker(FragmentChecker checker) {
-    return new Suggester(dictionary, suggestibleCache, checker, proceedPastRep);
+    return new Suggester(dictionary, suggestibleCache, checker, proceedPastRep, suggester);
   }
 
   /**
@@ -95,7 +105,16 @@ public class Suggester {
    * not "times", which could also be meant.
    */
   public Suggester proceedPastRep() {
-    return new Suggester(dictionary, suggestibleCache, fragmentChecker, true);
+    return new Suggester(dictionary, suggestibleCache, fragmentChecker, true, suggester);
+  }
+
+  /**
+   * Returns a copy of this suggester instance that uses custom {@link DictionarySuggester} instead
+   * of default {@link GeneratingSuggester}
+   */
+  public Suggester withDictionarySuggester(DictionarySuggester dictionarySuggester) {
+    return new Suggester(
+        dictionary, suggestibleCache, fragmentChecker, proceedPastRep, dictionarySuggester);
   }
 
   /**
@@ -195,8 +214,12 @@ public class Suggester {
 
     if (!hasGoodSuggestions && dictionary.maxNGramSuggestions > 0) {
       List<String> generated =
-          new GeneratingSuggester(suggestionSpeller, suggestibleCache)
-              .suggest(dictionary.toLowerCase(word), wordCase, suggestions);
+          this.suggester.suggest(
+              suggestionSpeller,
+              suggestibleCache,
+              dictionary.toLowerCase(word),
+              wordCase,
+              suggestions);
       for (String raw : generated) {
         suggestions.add(new Suggestion(raw, word, wordCase, suggestionSpeller));
       }
