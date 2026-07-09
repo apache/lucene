@@ -213,9 +213,7 @@ final class IntersectTermsEnumFrame {
         int numLongs = numSuffixLengthBytes;
         suffixLengths = new int[entCount];
         long[] longs = new long[numLongs];
-        for (int i = 0; i < numLongs; i++) {
-          longs[i] = ite.in.readLong();
-        }
+        ite.in.readLongs(longs, 0, numLongs);
         // TODO: Maybe decode one long only when we need to scan its corresponding suffixLengths.
         int consumed = Simple64.decodeAll(longs, 0, suffixLengths, 0, entCount);
         assert consumed == numLongs;
