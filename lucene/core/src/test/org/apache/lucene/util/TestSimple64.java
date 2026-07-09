@@ -103,6 +103,41 @@ public class TestSimple64 extends LuceneTestCase {
     assertEquals("decoded Integer.MAX_VALUE", Integer.MAX_VALUE, out[0]);
   }
 
+  public void testIntegerMaxValueArray() {
+    int valueCount = 2 + random().nextInt(127);
+    int[] input = new int[valueCount];
+    Arrays.fill(input, Integer.MAX_VALUE);
+    long[] longs = new long[input.length];
+    int numLongs = Simple64.encodeAll(input, 0, input.length, longs, 0);
+    assertTrue("Simple64 should not expand the number of values", numLongs <= input.length);
+
+    int[] decoded = new int[input.length];
+    assertEquals(numLongs, Simple64.decodeAll(longs, 0, decoded, 0, input.length));
+    assertArrayEquals(input, decoded);
+  }
+
+  public void testZeroValuesAreAllowed() {
+    int[] input = {3, 0, 5, 0, 8};
+    long[] longs = new long[input.length];
+    int numLongs = Simple64.encodeAll(input, 0, input.length, longs, 0);
+    assertTrue("Simple64 should not expand the number of values", numLongs <= input.length);
+
+    int[] decoded = new int[input.length];
+    assertEquals(numLongs, Simple64.decodeAll(longs, 0, decoded, 0, input.length));
+    assertArrayEquals(input, decoded);
+  }
+
+  public void testAllZeroValues() {
+    int[] input = new int[Simple64.MAX_VALUES_PER_LONG];
+    long word = Simple64.encodeOneLong(input, 0, input.length);
+    assertEquals(0, (int) (word >>> 60));
+    assertEquals(0L, word);
+
+    int[] decoded = new int[input.length];
+    assertEquals(input.length, Simple64.decodeOneLong(word, decoded, 0));
+    assertArrayEquals(input, decoded);
+  }
+
   public void testEncodeOneLongAll() {
     int[] input = new int[35];
     Random rng = new Random(42);
@@ -176,6 +211,9 @@ public class TestSimple64 extends LuceneTestCase {
     expectThrows(IllegalArgumentException.class, () -> Simple64.encodeOneLong(new int[1], 0, 0));
     expectThrows(
         IllegalArgumentException.class, () -> Simple64.encodeOneLong(new int[] {-1}, 0, 1));
+    expectThrows(
+        IllegalArgumentException.class,
+        () -> Simple64.encodeAll(new int[] {1, -1, 2}, 0, 3, new long[3], 0));
 
     long invalidSelector = 14L << 60;
     expectThrows(IllegalArgumentException.class, () -> Simple64.count(invalidSelector));
@@ -201,8 +239,9 @@ public class TestSimple64 extends LuceneTestCase {
       }
       long[] longs = new long[len + 1];
       int numLongs = Simple64.encodeAll(input, 0, len, longs, 0);
+      assertTrue("Simple64 should not expand the number of values", numLongs <= len);
       if (numLongs < longs.length) {
-        assert longs[numLongs] == 0;
+        assertEquals(0L, longs[numLongs]);
       }
       int[] decoded = new int[len];
       Simple64.decodeAll(longs, 0, decoded, 0, len);
