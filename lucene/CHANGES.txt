@@ -352,7 +352,7 @@ Optimizations
 * GITHUB#16370: Sort two-phase iterators by matchCost in DenseConjunctionBulkScorer.
   (Alan Woodward)
 
-* StopFilter: pack short ASCII stop words into longs for LongHashSet lookup,
+* GITHUB#16381: StopFilter: pack short ASCII stop words into longs for LongHashSet lookup,
   avoiding char[] pointer chasing. 2.6x faster lookups on English stop words. (Costin Leau)
 
 Bug Fixes
