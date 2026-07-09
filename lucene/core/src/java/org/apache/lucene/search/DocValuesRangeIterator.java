@@ -99,8 +99,8 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
         };
     return skipper == null
         ? new DocValuesValueRangeIterator(values, check, 2)
-        : new BulkOrdinalRangeIterator(
-            values, new SkipBlockRangeIterator(skipper, min, max), check, 2);
+        : new BulkSortedRangeIterator(
+            values, new SkipBlockRangeIterator(skipper, min, max), check, 2, min, max);
   }
 
   /**
@@ -474,9 +474,43 @@ public abstract sealed class DocValuesRangeIterator extends TwoPhaseIterator {
   }
 
   /**
-   * Bulk range iterator over ordinal (sorted / sorted-set) doc values. There is no columnar
-   * range-decode like the numeric path, so MAYBE blocks confirm the ordinal predicate one doc at a
-   * time, visiting only docs that have a value.
+   * Bulk range iterator over single-valued sorted (ordinal) doc values. Delegates MAYBE blocks to
+   * {@link SortedDocValues#ordinalRangeIntoBitSet} so that dense packed implementations can use
+   * direct (SIMD) range evaluation over the ordinal array.
+   */
+  private static final class BulkSortedRangeIterator extends BulkBlockRangeIterator {
+
+    private final SortedDocValues sortedValues;
+    private final long minOrd;
+    private final long maxOrd;
+
+    private BulkSortedRangeIterator(
+        SortedDocValues values,
+        SkipBlockRangeIterator blockIterator,
+        IOBooleanSupplier predicate,
+        float matchCost,
+        long minOrd,
+        long maxOrd) {
+      super(values, blockIterator, predicate, matchCost);
+      this.sortedValues = values;
+      this.minOrd = minOrd;
+      this.maxOrd = maxOrd;
+    }
+
+    @Override
+    void intoMaybeBlock(int blockStart, int blockEnd, FixedBitSet bitSet, int offset)
+        throws IOException {
+      // sortedValues is the same instance as disi, so a preceding matches() call may have
+      // moved it beyond blockStart. Adjust the starting point.
+      int from = Math.max(blockStart, sortedValues.docID());
+      sortedValues.ordinalRangeIntoBitSet(from, blockEnd, minOrd, maxOrd, bitSet, offset);
+    }
+  }
+
+  /**
+   * Bulk range iterator over ordinal (sorted-set) doc values. There is no columnar range-decode
+   * like the numeric path, and for multi-valued we must check the predicate (which walks the
+   * per-doc ords), so MAYBE blocks confirm by visiting only docs that have a value.
    */
   private static final class BulkOrdinalRangeIterator extends BulkBlockRangeIterator {
 

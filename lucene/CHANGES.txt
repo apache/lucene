@@ -352,6 +352,8 @@ Optimizations
 * GITHUB#16370: Sort two-phase iterators by matchCost in DenseConjunctionBulkScorer.
   (Alan Woodward)
 
+* GITHUB#16180: Add bulk intoBitSet for SortedDocValues ordinal ranges. (Prithvi S)
+
 Bug Fixes
 ---------------------
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
