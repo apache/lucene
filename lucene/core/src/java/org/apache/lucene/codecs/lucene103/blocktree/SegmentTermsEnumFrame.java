@@ -224,8 +224,9 @@ final class SegmentTermsEnumFrame {
         for (int i = 0; i < numLongs; i++) {
           longs[i] = ste.in.readLong();
         }
-        // TODO: read and decode one long only when it is needed.
-        Simple64.decodeAll(longs, 0, suffixLengths, 0, entCount);
+        // TODO: Maybe decode one long only when we need to scan its corresponding suffixLengths.
+        int consumed = Simple64.decodeAll(longs, 0, suffixLengths, 0, entCount);
+        assert consumed == numLongs;
       }
     } else {
       if (suffixLengthBytes == null || suffixLengthBytes.length < numSuffixLengthBytes) {
