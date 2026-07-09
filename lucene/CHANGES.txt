@@ -352,6 +352,9 @@ Optimizations
 * GITHUB#16370: Sort two-phase iterators by matchCost in DenseConjunctionBulkScorer.
   (Alan Woodward)
 
+* GITHUB#16297: Use LongHashSet for sparse ordinal sets in DocValuesRangeIterator so memory
+  scales with matching terms instead of segment cardinality. (Costin Leau)
+
 Bug Fixes
 ---------------------
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
