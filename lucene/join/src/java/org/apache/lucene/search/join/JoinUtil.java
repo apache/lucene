@@ -35,9 +35,9 @@ import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.internal.hppc.LongArrayList;
 import org.apache.lucene.internal.hppc.LongCursor;
-import org.apache.lucene.internal.hppc.LongFloatHashMap;
 import org.apache.lucene.internal.hppc.LongHashSet;
 import org.apache.lucene.internal.hppc.LongIntHashMap;
+import org.apache.lucene.internal.hppc.LongObjectHashMap;
 import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchNoDocsQuery;
@@ -149,7 +149,8 @@ public final class JoinUtil {
       ScoreMode scoreMode)
       throws IOException {
     LongHashSet joinValues = new LongHashSet();
-    LongFloatHashMap aggregatedScores = new LongFloatHashMap();
+    // Maps a join value to its aggregated score cell; see ScoreCell for why double precision.
+    LongObjectHashMap<ScoreCell> aggregatedScores = new LongObjectHashMap<>();
     LongIntHashMap occurrences = new LongIntHashMap();
     boolean needsScore = scoreMode != ScoreMode.None;
     LongFloatProcedure scoreAggregator;
@@ -158,10 +159,12 @@ public final class JoinUtil {
           (key, score) -> {
             int index = aggregatedScores.indexOf(key);
             if (index < 0) {
-              aggregatedScores.indexInsert(index, key, score);
+              ScoreCell cell = new ScoreCell();
+              cell.value = score;
+              aggregatedScores.indexInsert(index, key, cell);
             } else {
-              float currentScore = aggregatedScores.indexGet(index);
-              aggregatedScores.indexReplace(index, Math.max(currentScore, score));
+              ScoreCell cell = aggregatedScores.indexGet(index);
+              cell.value = Math.max(cell.value, score);
             }
           };
     } else if (scoreMode == ScoreMode.Min) {
@@ -169,18 +172,37 @@ public final class JoinUtil {
           (key, score) -> {
             int index = aggregatedScores.indexOf(key);
             if (index < 0) {
-              aggregatedScores.indexInsert(index, key, score);
+              ScoreCell cell = new ScoreCell();
+              cell.value = score;
+              aggregatedScores.indexInsert(index, key, cell);
             } else {
-              float currentScore = aggregatedScores.indexGet(index);
-              aggregatedScores.indexReplace(index, Math.min(currentScore, score));
+              ScoreCell cell = aggregatedScores.indexGet(index);
+              cell.value = Math.min(cell.value, score);
             }
           };
     } else if (scoreMode == ScoreMode.Total) {
-      scoreAggregator = aggregatedScores::addTo;
+      scoreAggregator =
+          (key, score) -> {
+            int index = aggregatedScores.indexOf(key);
+            if (index < 0) {
+              ScoreCell cell = new ScoreCell();
+              cell.value = score;
+              aggregatedScores.indexInsert(index, key, cell);
+            } else {
+              aggregatedScores.indexGet(index).value += score;
+            }
+          };
     } else if (scoreMode == ScoreMode.Avg) {
       scoreAggregator =
           (key, score) -> {
-            aggregatedScores.addTo(key, score);
+            int index = aggregatedScores.indexOf(key);
+            if (index < 0) {
+              ScoreCell cell = new ScoreCell();
+              cell.value = score;
+              aggregatedScores.indexInsert(index, key, cell);
+            } else {
+              aggregatedScores.indexGet(index).value += score;
+            }
             occurrences.addTo(key, 1);
           };
     } else {
@@ -194,12 +216,12 @@ public final class JoinUtil {
     if (scoreMode == ScoreMode.Avg) {
       joinScorer =
           (joinValue) -> {
-            float aggregatedScore = aggregatedScores.get(joinValue);
+            double aggregatedScore = aggregatedScores.get(joinValue).value;
             int occurrence = occurrences.get(joinValue);
-            return aggregatedScore / occurrence;
+            return (float) (aggregatedScore / occurrence);
           };
     } else {
-      joinScorer = aggregatedScores::get;
+      joinScorer = (joinValue) -> (float) aggregatedScores.get(joinValue).value;
     }
 
     Collector collector;
@@ -581,6 +603,15 @@ public final class JoinUtil {
         min,
         max,
         searcher.getTopReaderContext().id());
+  }
+
+  /**
+   * A mutable double precision score accumulator, kept in double rather than float since float
+   * addition isn't associative: summing the same per-document scores in a different order may round
+   * to a different float.
+   */
+  private static final class ScoreCell {
+    double value;
   }
 
   /** Similar to {@link java.util.function.LongFunction} for primitive argument and result. */
