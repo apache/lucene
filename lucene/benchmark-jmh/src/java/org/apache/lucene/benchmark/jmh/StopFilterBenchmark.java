@@ -20,7 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
-import org.apache.lucene.internal.hppc.LongHashSet;
+import org.apache.lucene.analysis.CharArraySet;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -58,20 +58,15 @@ public class StopFilterBenchmark {
   @Param({"english", "technical"})
   String textType;
 
-  private CharArraySetBaseline charArraySet;
-  private LongHashSet packedSet;
+  private CharArraySet baseline;
+  private CharArraySet packed;
   private char[][] lookupTokens;
   private int[] lookupLengths;
 
   @Setup(Level.Trial)
   public void setup() {
-    charArraySet = new CharArraySetBaseline(ENGLISH_STOP_WORDS);
-
-    packedSet = new LongHashSet(ENGLISH_STOP_WORDS.size());
-    for (String w : ENGLISH_STOP_WORDS) {
-      char[] chars = w.toLowerCase(java.util.Locale.ROOT).toCharArray();
-      packedSet.add(pack(chars, 0, chars.length));
-    }
+    baseline = new CharArraySet(ENGLISH_STOP_WORDS, true, 0);
+    packed = new CharArraySet(ENGLISH_STOP_WORDS, true);
 
     Random rng = new Random(42);
     int tokenCount = 2000;
@@ -92,81 +87,16 @@ public class StopFilterBenchmark {
   }
 
   @Benchmark
-  public void charArraySet(Blackhole bh) {
+  public void baseline(Blackhole bh) {
     for (int i = 0; i < lookupTokens.length; i++) {
-      bh.consume(charArraySet.contains(lookupTokens[i], 0, lookupLengths[i]));
+      bh.consume(baseline.contains(lookupTokens[i], 0, lookupLengths[i]));
     }
   }
 
   @Benchmark
-  public void packedLongHashSet(Blackhole bh) {
+  public void packed(Blackhole bh) {
     for (int i = 0; i < lookupTokens.length; i++) {
-      long packed = pack(lookupTokens[i], 0, lookupLengths[i]);
-      bh.consume(packed >= 0 && packedSet.contains(packed));
-    }
-  }
-
-  static long pack(char[] buf, int off, int len) {
-    if (len > 8 || len == 0) return -1;
-    long packed = 0;
-    for (int i = 0; i < len; i++) {
-      char c = buf[off + i];
-      if (c > 127) return -1;
-      if (c >= 'A' && c <= 'Z') c = (char) (c | 0x20);
-      packed = (packed << 8) | c;
-    }
-    return packed;
-  }
-
-  static final class CharArraySetBaseline {
-    private final char[][] keys;
-    private final int mask;
-
-    CharArraySetBaseline(List<String> words) {
-      int size = Integer.highestOneBit(Math.max(words.size() * 2, 1)) << 1;
-      mask = size - 1;
-      keys = new char[size][];
-      for (String w : words) {
-        char[] key = w.toLowerCase(java.util.Locale.ROOT).toCharArray();
-        int slot = hash(key, 0, key.length) & mask;
-        while (keys[slot] != null) {
-          slot = (slot + 1) & mask;
-        }
-        keys[slot] = key;
-      }
-    }
-
-    boolean contains(char[] text, int off, int len) {
-      int slot = hash(text, off, len) & mask;
-      while (true) {
-        char[] stored = keys[slot];
-        if (stored == null) return false;
-        if (stored.length == len && equals(text, off, len, stored)) return true;
-        slot = (slot + 1) & mask;
-      }
-    }
-
-    private static int hash(char[] text, int off, int len) {
-      int code = 0;
-      int stop = off + len;
-      for (int i = off; i < stop; ) {
-        int codePointAt = Character.codePointAt(text, i, stop);
-        code = code * 31 + Character.toLowerCase(codePointAt);
-        i += Character.charCount(codePointAt);
-      }
-      return code;
-    }
-
-    private static boolean equals(char[] text1, int off, int len, char[] text2) {
-      int limit = off + len;
-      for (int i = 0; i < len; ) {
-        int codePointAt = Character.codePointAt(text1, off + i, limit);
-        if (Character.toLowerCase(codePointAt) != Character.codePointAt(text2, i, text2.length)) {
-          return false;
-        }
-        i += Character.charCount(codePointAt);
-      }
-      return true;
+      bh.consume(packed.contains(lookupTokens[i], 0, lookupLengths[i]));
     }
   }
 }

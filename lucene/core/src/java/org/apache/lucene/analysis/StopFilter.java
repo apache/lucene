@@ -20,22 +20,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.apache.lucene.internal.hppc.LongHashSet;
 
-/**
- * Removes stop words from a token stream.
- *
- * <p>When all stop words are short ASCII (up to 8 chars), packs them into longs and uses a {@link
- * LongHashSet} for O(1) lookup without pointer chasing. Otherwise falls back to {@link
- * CharArraySet}.
- */
+/** Removes stop words from a token stream. */
 public class StopFilter extends FilteringTokenFilter {
 
-  private static final int MAX_PACK_LEN = 8;
-
-  private final LongHashSet packedStopWords;
-  private final CharArraySet fallback;
-  private final boolean ignoreCase;
+  private final CharArraySet stopWords;
   private final CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
 
   /**
@@ -47,11 +36,7 @@ public class StopFilter extends FilteringTokenFilter {
    */
   public StopFilter(TokenStream in, CharArraySet stopWords) {
     super(in);
-    Objects.requireNonNull(stopWords, "stopWords");
-    this.ignoreCase = stopWords.getIgnoreCase();
-    long[] packed = tryPackAll(stopWords);
-    this.packedStopWords = packed != null ? toLongHashSet(packed) : null;
-    this.fallback = packed != null ? null : stopWords;
+    this.stopWords = Objects.requireNonNull(stopWords, "stopWords");
   }
 
   /**
@@ -106,48 +91,9 @@ public class StopFilter extends FilteringTokenFilter {
     return stopSet;
   }
 
+  /** Returns the next input Token whose term() is not a stop word. */
   @Override
   protected boolean accept() {
-    if (fallback != null) {
-      return !fallback.contains(termAtt.buffer(), 0, termAtt.length());
-    }
-    long packed = pack(termAtt.buffer(), 0, termAtt.length(), ignoreCase);
-    return packed < 0 || !packedStopWords.contains(packed);
-  }
-
-  /**
-   * Tries to pack all stop words into longs. Returns null if any word is non-ASCII or longer than 8
-   * chars. Keys from case-insensitive sets are already stored lowercased by CharArrayMap.
-   */
-  private static long[] tryPackAll(CharArraySet stopWords) {
-    long[] result = new long[stopWords.size()];
-    int i = 0;
-    for (Object obj : stopWords) {
-      char[] word = (char[]) obj;
-      long packed = pack(word, 0, word.length, false);
-      if (packed < 0) return null;
-      result[i++] = packed;
-    }
-    return result;
-  }
-
-  private static LongHashSet toLongHashSet(long[] keys) {
-    var set = new LongHashSet(keys.length);
-    for (long key : keys) {
-      set.add(key);
-    }
-    return set;
-  }
-
-  static long pack(char[] buf, int off, int len, boolean toLowerCase) {
-    if (len > MAX_PACK_LEN || len == 0) return -1;
-    long packed = 0;
-    for (int i = 0; i < len; i++) {
-      char c = buf[off + i];
-      if (c > 127) return -1;
-      if (toLowerCase && c >= 'A' && c <= 'Z') c = (char) (c | 0x20);
-      packed = (packed << 8) | c;
-    }
-    return packed;
+    return !stopWords.contains(termAtt.buffer(), 0, termAtt.length());
   }
 }
