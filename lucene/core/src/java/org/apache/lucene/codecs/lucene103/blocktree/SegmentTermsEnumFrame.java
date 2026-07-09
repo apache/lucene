@@ -81,7 +81,8 @@ final class SegmentTermsEnumFrame {
 
   // True if all entries have the same length.
   boolean allEqual;
-  int[] suffixLengths; // only used when !allEqual in leaf blocks.
+  // only used when the block is a leaf and allEqual == false.
+  int[] suffixLengths;
 
   long lastSubFP;
 
@@ -109,7 +110,6 @@ final class SegmentTermsEnumFrame {
     this.state = ste.fr.parent.postingsReader.newTermState();
     this.state.totalTermFreq = -1;
     suffixLengthsReader = new ByteArrayDataInput();
-    suffixLengths = null;
   }
 
   public void setFloorData(IndexInput in) throws IOException {

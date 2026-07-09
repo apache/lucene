@@ -77,7 +77,8 @@ final class IntersectTermsEnumFrame {
 
   // True if all entries have the same length.
   boolean allEqual;
-  int[] suffixLengths; // only used when !allEqual in leaf blocks.
+  // only used when the block is a leaf and allEqual == false.
+  int[] suffixLengths;
 
   int numFollowFloorBlocks;
   int nextFloorLabel;
@@ -107,7 +108,6 @@ final class IntersectTermsEnumFrame {
     this.termState.totalTermFreq = -1;
     suffixLengthBytes = new byte[32];
     suffixLengthsReader = new ByteArrayDataInput();
-    suffixLengths = null;
   }
 
   void loadNextFloorBlock() throws IOException {
