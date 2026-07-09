@@ -141,7 +141,9 @@ public class TestSimple64 extends LuceneTestCase {
   public void testEncodeOneLongAll() {
     int[] input = new int[35];
     Random rng = new Random(42);
-    for (int i = 0; i < 35; i++) input[i] = rng.nextInt(10) + 1;
+    for (int i = 0; i < 35; i++) {
+      input[i] = rng.nextInt(10) + 1;
+    }
     long[] longs = new long[35];
     int numLongs = Simple64.encodeAll(input, 0, 35, longs, 0);
     if (numLongs < longs.length) {
