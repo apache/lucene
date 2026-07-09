@@ -222,7 +222,7 @@ final class SegmentTermsEnumFrame {
       } else {
         // This frame maybe reused from a stale frame, so reset stale frame's state.
         suffixLength = -1;
-        final int numLongs = numSuffixLengthBytes;
+        int numLongs = numSuffixLengthBytes;
         suffixLengths = new int[entCount];
         long[] longs = new long[numLongs];
         for (int i = 0; i < numLongs; i++) {

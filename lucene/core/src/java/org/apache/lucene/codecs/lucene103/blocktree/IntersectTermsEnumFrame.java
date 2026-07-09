@@ -210,7 +210,7 @@ final class IntersectTermsEnumFrame {
         // saveSuffix as length to arraycopy when cmp > 0, when target is ""
         // the length is 0 is ok. if reset suffixLength to -1, the length will be -1.
         //        suffixLength = -1;
-        final int numLongs = numSuffixLengthBytes;
+        int numLongs = numSuffixLengthBytes;
         suffixLengths = new int[entCount];
         long[] longs = new long[numLongs];
         for (int i = 0; i < numLongs; i++) {
