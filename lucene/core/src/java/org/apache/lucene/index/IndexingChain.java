@@ -40,6 +40,7 @@ import org.apache.lucene.codecs.PointsFormat;
 import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.KnnByteVectorField;
+import org.apache.lucene.document.KnnFloat16VectorField;
 import org.apache.lucene.document.KnnFloatVectorField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredValue;
@@ -1284,6 +1285,19 @@ final class IndexingChain implements Accountable {
           consumed++;
         }
       }
+      case FLOAT16 -> {
+        KnnFieldVectorsWriter<short[]> writer =
+            (KnnFieldVectorsWriter<short[]>) pf.knnFieldVectorsWriter;
+        while ((batchDocID = cursor.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
+          ColumnValidation.checkDocID(column, batchDocID, numDocs);
+          ColumnValidation.checkVectorDocIDStrictlyIncreasing(column, batchDocID, prevBatchDocID);
+          short[] vec = (short[]) cursor.value();
+          ColumnValidation.checkVectorDimension(column, vec.length, dimension, batchDocID);
+          writer.addValue(baseDocID + batchDocID, vec);
+          prevBatchDocID = batchDocID;
+          consumed++;
+        }
+      }
     }
     if (column.density() == Column.Density.DENSE) {
       ColumnValidation.checkDenseCount(column, consumed, numDocs);
@@ -1693,6 +1707,9 @@ final class IndexingChain implements Accountable {
       case FLOAT32 ->
           ((KnnFieldVectorsWriter<float[]>) pf.knnFieldVectorsWriter)
               .addValue(docID, ((KnnFloatVectorField) field).vectorValue());
+      case FLOAT16 ->
+          ((KnnFieldVectorsWriter<short[]>) pf.knnFieldVectorsWriter)
+              .addValue(docID, ((KnnFloat16VectorField) field).vectorValue());
     }
   }
 
