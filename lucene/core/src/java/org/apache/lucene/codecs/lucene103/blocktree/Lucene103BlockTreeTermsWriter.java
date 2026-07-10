@@ -34,7 +34,6 @@ import org.apache.lucene.index.IndexOptions;
 import org.apache.lucene.index.SegmentWriteState;
 import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
-import org.apache.lucene.store.ByteArrayDataOutput;
 import org.apache.lucene.store.ByteBuffersDataOutput;
 import org.apache.lucene.store.DataOutput;
 import org.apache.lucene.store.IndexOutput;
@@ -957,7 +956,7 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
         // Write suffix lengths
         final int numSuffixBytes = Math.toIntExact(suffixLengthsWriter.size());
         spareBytes = ArrayUtil.growNoCopy(spareBytes, numSuffixBytes);
-        suffixLengthsWriter.copyTo(new ByteArrayDataOutput(spareBytes));
+        suffixLengthsWriter.copyTo(spareBytes, 0);
         suffixLengthsWriter.reset();
 
         // Non-leaf blocks keep both term suffix lengths and sub-block's FP.

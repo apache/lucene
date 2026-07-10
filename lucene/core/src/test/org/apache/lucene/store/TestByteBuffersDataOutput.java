@@ -18,6 +18,7 @@ package org.apache.lucene.store;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -230,6 +231,33 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
     o.copyBytes(in, len);
     Assert.assertArrayEquals(
         o.toArrayCopy(), ArrayUtil.copyOfSubArray(bytes, offset, offset + len));
+  }
+
+  public void testCopyToByteArray() {
+    byte[] bytes = new byte[1024 * 8 + 10];
+    random().nextBytes(bytes);
+    ByteBuffersDataOutput out =
+        new ByteBuffersDataOutput(
+            ByteBuffersDataOutput.DEFAULT_MIN_BITS_PER_BLOCK,
+            ByteBuffersDataOutput.DEFAULT_MAX_BITS_PER_BLOCK,
+            random().nextBoolean()
+                ? ByteBuffersDataOutput.ALLOCATE_BB_ON_HEAP
+                : ByteBuffer::allocateDirect,
+            ByteBuffersDataOutput.NO_REUSE);
+    out.writeBytes(bytes, 0, bytes.length);
+
+    int offset = TestUtil.nextInt(random(), 0, 100);
+    byte[] dest = new byte[offset + bytes.length + 100];
+    Arrays.fill(dest, (byte) 1);
+    out.copyTo(dest, offset);
+
+    assertArrayEquals(bytes, ArrayUtil.copyOfSubArray(dest, offset, offset + bytes.length));
+    for (int i = 0; i < offset; i++) {
+      assertEquals(1, dest[i]);
+    }
+    for (int i = offset + bytes.length; i < dest.length; i++) {
+      assertEquals(1, dest[i]);
+    }
   }
 
   public void testToBufferListReturnsReadOnlyBuffers() throws Exception {
