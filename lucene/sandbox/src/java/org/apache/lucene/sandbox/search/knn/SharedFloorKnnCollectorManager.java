@@ -78,7 +78,15 @@ import org.apache.lucene.search.knn.KnnSearchStrategy;
  *
  * <p>A manager, like the floor it holds, carries the state of a single query execution: create one
  * per query, and never share one across queries. Both collector-creation methods may be called
- * concurrently, as segments are searched in parallel.
+ * concurrently, as segments are searched in parallel. The same execution-scoped manager must also
+ * be returned for optimistic reentry; callers should construct their query and manager together for
+ * one search rather than retaining either as reusable query state.
+ *
+ * <p>Filtered kNN queries may fall back to exact search in core when floor pruning intentionally
+ * returns fewer than the core per-leaf quota. This preserves correctness but can erase the expected
+ * visit reduction. Until core exposes an intentional-partial-result contract, deployments should
+ * measure filtered queries separately and disable floor sharing where that fallback is
+ * unacceptable.
  *
  * @lucene.experimental
  */

@@ -28,13 +28,16 @@ import java.util.concurrent.locks.ReentrantLock;
  *
  * @lucene.internal
  */
-public final class BlockingFloatHeap {
+final class BlockingFloatHeap {
   private final int maxSize;
   private final float[] heap;
   private final ReentrantLock lock;
   private int size;
 
   public BlockingFloatHeap(int maxSize) {
+    if (maxSize < 1) {
+      throw new IllegalArgumentException("maxSize must be at least 1, got: " + maxSize);
+    }
     this.maxSize = maxSize;
     this.heap = new float[maxSize + 1];
     this.lock = new ReentrantLock();
@@ -76,6 +79,10 @@ public final class BlockingFloatHeap {
    * @return the new 'top' element in the queue.
    */
   public float offer(float[] values, int len) {
+    if (len < 0 || len > values.length) {
+      throw new IllegalArgumentException(
+          "len must be in [0, values.length=" + values.length + "], got: " + len);
+    }
     lock.lock();
     try {
       for (int i = len - 1; i >= 0; i--) {

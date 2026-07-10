@@ -24,8 +24,10 @@ import org.apache.lucene.util.hnsw.FloatHeap;
 /**
  * A {@link org.apache.lucene.search.KnnCollector.Decorator} that raises its {@link
  * #minCompetitiveSimilarity()} using a {@link GlobalKnnFloor} shared with the other searchers of
- * the same query, so that a graph search stops exploring candidates that cannot enter the query's
- * final, merged top-k, not merely candidates that cannot enter this collector's local top-k.
+ * the same query, so that a graph search can reduce exploration of candidates whose score cannot
+ * enter the query's final, merged top-k, not merely candidates that cannot enter this collector's
+ * local top-k. Because HNSW may need low-scoring bridge nodes to reach better neighborhoods, this
+ * is an approximate-search optimization: the exploration clamp controls its recall/visit trade-off.
  *
  * <p>The graph searcher already re-reads {@link #minCompetitiveSimilarity()} whenever a collected
  * hit reports an improvement, and uses it both to stop the search when the best remaining candidate

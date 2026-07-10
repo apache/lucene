@@ -106,8 +106,9 @@ New Features
 * GITHUB#16357: Add shared-floor kNN collection to the sandbox module: GlobalKnnFloor,
   FloorAwareKnnCollector and SharedFloorKnnCollectorManager let concurrent searchers of one query
   (segments in one process, or shards across processes via GlobalKnnFloor#advertise) prune graph
-  exploration against a shared lower bound of the query's final merged top-k cutoff. Opt-in, no
-  changes to core search. (Kristian Rickert)
+  exploration against a shared lower bound of the query's final merged top-k cutoff. This remains
+  an approximate-search optimization: deployments must measure its recall/visit trade-off. Opt-in,
+  no changes to core search. (Kristian Rickert)
 
 * GITHUB#16241: Add HangulCompositionCharFilter to analysis-nori for opt-in composition of
   modern Hangul conjoining jamo before KoreanTokenizer. (Mingi Jeong)

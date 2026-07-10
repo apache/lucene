@@ -17,6 +17,7 @@
 
 package org.apache.lucene.sandbox.search.knn;
 
+import java.util.Objects;
 import java.util.concurrent.atomic.LongAccumulator;
 import org.apache.lucene.util.NumericUtils;
 
@@ -30,8 +31,11 @@ import org.apache.lucene.util.NumericUtils;
  * the hits that will ever exist for this query, the k-th best of the observed subset can never
  * exceed the k-th best of the complete result set. The floor is therefore, at every moment, a valid
  * lower bound on the final top-k similarity cutoff: a candidate that cannot beat the current floor
- * can never enter the final merged top-k, and abandoning it loses nothing. This invariant requires
- * that every score offered or advertised belongs to a distinct document; feeding duplicate
+ * can never enter the final merged top-k. This is a score-bound invariant, not a proof of HNSW
+ * recall: graph navigation may need to traverse a low-scoring bridge node to reach a better region.
+ * {@link FloorAwareKnnCollector} therefore applies the bound through a configurable exploration
+ * clamp, whose recall/visit trade-off must be measured for the target corpus. This invariant
+ * requires that every score offered or advertised belongs to a distinct document; feeding duplicate
  * documents (for example, hits for the same document from two replicas) may inflate the floor above
  * the true cutoff and callers must deduplicate before publishing.
  *
@@ -52,7 +56,10 @@ import org.apache.lucene.util.NumericUtils;
  *       similarity found by a remote shard for the same query. It may be called from any thread at
  *       any time, typically a transport handler reacting to a message from another JVM. The caller
  *       is responsible for the value actually being a valid lower bound of the final k-th best
- *       similarity; the k-th best of any set of real, distinct hits for this query qualifies.
+ *       similarity; the k-th best of any set of real, distinct hits for this query qualifies. A
+ *       distributed coordinator should aggregate score batches from distinct document IDs before
+ *       advertising its floor; this class deliberately does not define transport or replica
+ *       deduplication.
  * </ul>
  *
  * <p>An instance carries the state of a single query execution and must not be reused across
@@ -115,10 +122,18 @@ public final class GlobalKnnFloor {
    *     been observed so far
    */
   public float offer(float[] scores, int len) {
+    Objects.requireNonNull(scores, "scores");
     if (len <= 0) {
       throw new IllegalArgumentException("len must be positive, got: " + len);
     }
-    assert isSorted(scores, len) : "scores must be sorted in ascending order";
+    if (len > scores.length) {
+      throw new IllegalArgumentException(
+          "len must not exceed scores.length: len=" + len + ", scores.length=" + scores.length);
+    }
+    if (isSorted(scores, len) == false) {
+      throw new IllegalArgumentException(
+          "scores must be sorted in ascending order and must not contain NaN");
+    }
     // The flag must be read BEFORE the offer. heapTop is only a valid k-th-best bound if the heap
     // was already full when our scores went in; reading the flag afterwards would let a concurrent
     // publisher fill the heap and set the flag in between, tricking this thread into publishing a
@@ -177,8 +192,14 @@ public final class GlobalKnnFloor {
   }
 
   private static boolean isSorted(float[] scores, int len) {
+    // The last element needs an explicit NaN check: NaN compares false against everything, so a
+    // trailing NaN never trips the pairwise comparison below, and Arrays.sort places NaN exactly
+    // there.
+    if (Float.isNaN(scores[len - 1])) {
+      return false;
+    }
     for (int i = 1; i < len; i++) {
-      if (scores[i - 1] > scores[i]) {
+      if (Float.isNaN(scores[i - 1]) || scores[i - 1] > scores[i]) {
         return false;
       }
     }
