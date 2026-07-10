@@ -27,6 +27,11 @@ import org.apache.lucene.util.SuppressForbidden;
 
 public class TestBlockingFloatHeap extends LuceneTestCase {
 
+  public void testRejectsInvalidCapacity() {
+    expectThrows(IllegalArgumentException.class, () -> new BlockingFloatHeap(0));
+    expectThrows(IllegalArgumentException.class, () -> new BlockingFloatHeap(-1));
+  }
+
   public void testBasicOperations() {
     BlockingFloatHeap heap = new BlockingFloatHeap(3);
     heap.offer(2);

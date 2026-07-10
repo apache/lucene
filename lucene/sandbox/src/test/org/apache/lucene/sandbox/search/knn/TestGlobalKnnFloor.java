@@ -145,6 +145,20 @@ public class TestGlobalKnnFloor extends LuceneTestCase {
     expectThrows(IllegalArgumentException.class, () -> floor.offer(new float[] {1f}, -1));
   }
 
+  public void testOfferValidatesItsPublicBatchContract() {
+    GlobalKnnFloor floor = new GlobalKnnFloor(2);
+    expectThrows(NullPointerException.class, () -> floor.offer(null, 1));
+    expectThrows(IllegalArgumentException.class, () -> floor.offer(new float[] {1f}, 2));
+    expectThrows(IllegalArgumentException.class, () -> floor.offer(new float[] {2f, 1f}, 2));
+    expectThrows(IllegalArgumentException.class, () -> floor.offer(new float[] {Float.NaN}, 1));
+    // A trailing NaN is the layout Arrays.sort produces and never trips a pairwise comparison,
+    // so it needs its own rejection path. Encoded, NaN sorts above positive infinity: letting one
+    // into a full heap would publish a floor no real score can beat.
+    expectThrows(IllegalArgumentException.class, () -> floor.offer(new float[] {1f, Float.NaN}, 2));
+    expectThrows(
+        IllegalArgumentException.class, () -> floor.offer(new float[] {1f, 2f, Float.NaN}, 3));
+  }
+
   public void testConcurrentPublishersConvergeToKthBest() throws Exception {
     int k = 64;
     int numThreads = TestUtil.nextInt(random(), 2, 8);
