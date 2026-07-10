@@ -947,6 +947,7 @@ public final class Lucene103BlockTreeTermsWriter extends FieldsConsumer {
           long[] encodedSuffixLengths = new long[suffixLengths.length];
           int numLongs =
               Simple64.encodeAll(suffixLengths, 0, suffixLengths.length, encodedSuffixLengths, 0);
+          assert numLongs > 0 && numLongs <= suffixLengths.length;
           termsOut.writeVInt(numLongs << 1);
           termsOut.writeLongs(encodedSuffixLengths, 0, numLongs);
         }
