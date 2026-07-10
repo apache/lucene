@@ -313,7 +313,7 @@ New Features
   and document length instead of corpus statistics such as document frequency. It also supports k3
   query-term frequency saturation. (Tianxiao Wei)
 
-* GITHUB#15549: Add fp16 vector encoding support. (Pulkit Gupta)
+* GITHUB#16383: Add fp16 vector encoding support. (Pulkit Gupta)
 
 Improvements
 ---------------------
