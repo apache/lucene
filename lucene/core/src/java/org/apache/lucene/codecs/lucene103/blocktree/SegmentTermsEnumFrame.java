@@ -217,6 +217,9 @@ final class SegmentTermsEnumFrame {
 
     if (isLeafBlock) {
       if (allEqual) {
+        // Leaf blocks store term suffix lengths only. Here allEqual means every term has this same
+        // decoded suffix length(Instead of numSuffixLengthBytes, we save suffixLength directly for
+        // allEqual leaf block).
         suffixLength = numSuffixLengthBytes;
         // This frame maybe reused from a stale frame, so reset stale frame's state.
         suffixLengths = null;
@@ -232,6 +235,9 @@ final class SegmentTermsEnumFrame {
         assert consumed == numLongs;
       }
     } else {
+      // Non-leaf blocks store encoded VInt/VLong bytes containing both suffix lengths and sub-block
+      // FPs. Here allEqual means every encoded byte is identical, not that suffix lengths are
+      // equal.
       // This frame maybe reused from a stale frame, so reset stale frame's state.
       suffixLength = -1;
       suffixLengths = null;
