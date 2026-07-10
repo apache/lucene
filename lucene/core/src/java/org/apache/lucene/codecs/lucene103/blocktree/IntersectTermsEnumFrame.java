@@ -201,8 +201,9 @@ final class IntersectTermsEnumFrame {
     allEqual = (numSuffixLengthBytes & 0x01) != 0;
     numSuffixLengthBytes >>>= 1;
     if (isLeafBlock) {
-      // TODO: If this frame reused from a stale non leaf frame, we could reset/clear
-      // suffixLengthBytes and suffixLengthsReader.
+      // TODO: If this frame reused from a stale non leaf frame, we could reset/clean
+      // suffixLengthBytes and suffixLengthsReader. That would help gc, but suffixLengthBytes would
+      // need new allocate if this frame load non leaf block again.
       if (allEqual) {
         // Leaf blocks store term suffix lengths only. Here allEqual means every term has this same
         // decoded suffix length(Instead of numSuffixLengthBytes, we save suffixLength directly for
