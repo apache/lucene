@@ -260,6 +260,23 @@ public final class TestByteBuffersDataOutput extends BaseDataOutputTestCase<Byte
     }
   }
 
+  public void testWriteLongs() throws IOException {
+    long[] longs = new long[TestUtil.nextInt(random(), 1, 100)];
+    for (int i = 0; i < longs.length; i++) {
+      longs[i] = random().nextLong();
+    }
+
+    int offset = random().nextInt(longs.length);
+    int length = TestUtil.nextInt(random(), 0, longs.length - offset);
+    ByteBuffersDataOutput out = new ByteBuffersDataOutput();
+    out.writeLongs(longs, offset, length);
+
+    long[] decoded = new long[length];
+    ByteBuffersDataInput in = out.toDataInput();
+    in.readLongs(decoded, 0, length);
+    assertArrayEquals(ArrayUtil.copyOfSubArray(longs, offset, offset + length), decoded);
+  }
+
   public void testToBufferListReturnsReadOnlyBuffers() throws Exception {
     ByteBuffersDataOutput dst = new ByteBuffersDataOutput();
     dst.writeBytes(new byte[100]);
