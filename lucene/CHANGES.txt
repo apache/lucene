@@ -354,6 +354,8 @@ Optimizations
 * GITHUB#16370: Sort two-phase iterators by matchCost in DenseConjunctionBulkScorer.
   (Alan Woodward)
 
+* GITHUB#16248: Allocate payload buffers in Lucene104PostingsReader only if payloads are requested. (Jakub Slowinski)
+
 Bug Fixes
 ---------------------
 * GITHUB#16350: Disable bulk-scoring in monitor queries. (Alan Woodward)
